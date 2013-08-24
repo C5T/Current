@@ -1,11 +1,11 @@
 #include <cstdio>
+#include <vector>
 
-double f(double x[4]) {
+double f(const std::vector<double>& x) {
   return x[0] * x[1] + x[2] - x[3];
 }
 
 int main() {
-  double x[4] = { 5, 8, 9, 7 };
-  printf("%.3lf\n", f(x));
+  printf("%.3lf\n", f({5,8,9,7}));
 }
 
