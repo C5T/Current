@@ -1,11 +1,16 @@
 // TODO(dkorolev): Move to the header.
 // TODO(dkorolev): Readme, build instructions and a reference from this file.
+//
+// Requires:
+// * Boost, sudo apt-get install libboost-dev
 
 #include <cassert>
 #include <cstdio>
 #include <sstream>
 #include <string>
 #include <vector>
+
+#include <boost/utility.hpp>
 
 #define DEBUG_ASSERT(expression) assert(expression)
 
@@ -21,7 +26,7 @@ struct a {
 
 typedef a expression;
 
-struct x {  // TODO(dkorolev): noncopyable
+struct x : boost::noncopyable {
   int dim;
   explicit x(int dim) : dim(dim) {
     DEBUG_ASSERT(dim > 0);
@@ -41,7 +46,7 @@ template<> struct output<x> { typedef expression type; };
 
 }
 
-template<typename T> typename fncas::output<T>::type f(T x) {
+template<typename T> typename fncas::output<T>::type f(const T& x) {
   return x[0] * x[1] + x[2] - x[3];
 }
 
