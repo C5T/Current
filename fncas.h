@@ -152,7 +152,6 @@ struct node : node_constructor {
   node lhs() const { return node_constructor(node_vector_singleton()[index_].lhs_index()); }
   node rhs() const { return node_constructor(node_vector_singleton()[index_].rhs_index()); }
   fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
-  static node alloc() { return node(); }
   static node var(uint32_t index) {
     node result;
     result.type() = type_t::var;
@@ -205,7 +204,7 @@ template<> struct output<x> { typedef fncas::node type; };
 
 #define DECLARE_OP(OP,OP2,NAME) \
 inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
-  fncas::node result = fncas::node::alloc(); \
+  fncas::node result; \
   result.type() = fncas::type_t::op; \
   result.op() = fncas::op_t::NAME; \
   result.lhs_index() = lhs.index_; \
