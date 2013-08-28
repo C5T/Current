@@ -21,6 +21,8 @@
 
 namespace fncas {
 
+typedef double fncas_value_type;
+
 // Parsed expression are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.
 // Each node_impl refers to a value, an input variable, an operation or math function invocation.
@@ -34,18 +36,18 @@ std::string op_as_string(op_t op) {
   return (op >= 0 && op < static_cast<int>(op_t::end)) ? represenatation[op] : "?";
 }
 
-double apply_op(op_t op, double lhs, double rhs) {
-  static boost::function<double(double, double)> evaluator[op_t::end] = {
-    std::plus<double>(),
-    std::minus<double>(),
-    std::multiplies<double>(),
+template<typename T> T apply_op(op_t op, T lhs, T rhs) {
+  static boost::function<T(T, T)> evaluator[op_t::end] = {
+    std::plus<T>(),
+    std::minus<T>(),
+    std::multiplies<T>(),
   };
-  return (op >= 0 && op < static_cast<int>(op_t::end)) ? evaluator[op](lhs, rhs) : std::numeric_limits<double>::quiet_NaN();
+  return (op >= 0 && op < static_cast<int>(op_t::end)) ? evaluator[op](lhs, rhs) : std::numeric_limits<T>::quiet_NaN();
 }
 
 BOOST_STATIC_ASSERT(sizeof(type_t) == 1);
 BOOST_STATIC_ASSERT(sizeof(op_t) == 1);
-BOOST_STATIC_ASSERT(sizeof(double) == 8);
+BOOST_STATIC_ASSERT(sizeof(fncas_value_type) == 8);  // Counting on "double", comment if trying other data type.
 
 struct node_impl {
   uint8_t data_[10];
@@ -54,7 +56,7 @@ struct node_impl {
   op_t& op() { BOOST_ASSERT(type() == type_t::op); return *reinterpret_cast<op_t*>(&data_[1]); }
   uint32_t& lhs_index() { BOOST_ASSERT(type() == type_t::op); return *reinterpret_cast<uint32_t*>(&data_[2]); }
   uint32_t& rhs_index() { BOOST_ASSERT(type() == type_t::op); return *reinterpret_cast<uint32_t*>(&data_[6]); }
-  double& value() { BOOST_ASSERT(type() == type_t::value); return *reinterpret_cast<double*>(&data_[2]); }
+  fncas_value_type& value() { BOOST_ASSERT(type() == type_t::value); return *reinterpret_cast<fncas_value_type*>(&data_[2]); }
 };
 BOOST_STATIC_ASSERT(sizeof(node_impl) == 10);
 
@@ -79,7 +81,7 @@ struct node : node_constructor {
   node() : node_constructor() {}
   node(const node_constructor& instance) : node_constructor(instance) {}
  public:
-  node(double x) : node_constructor() { type() = type_t::value; value() = x; }
+  node(fncas_value_type x) : node_constructor() { type() = type_t::value; value() = x; }
   type_t& type() const { return node_vector_singleton()[index_].type(); }
   uint32_t& var_index() const { return node_vector_singleton()[index_].var_index(); }
   op_t& op() const { return node_vector_singleton()[index_].op(); }
@@ -87,7 +89,7 @@ struct node : node_constructor {
   uint32_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
   node lhs() const { return node_constructor(node_vector_singleton()[index_].lhs_index()); }
   node rhs() const { return node_constructor(node_vector_singleton()[index_].rhs_index()); }
-  double& value() const { return node_vector_singleton()[index_].value(); }
+  fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
   static node alloc() { return node(); }
   static node var(uint32_t index) {
     node result;
@@ -106,7 +108,7 @@ struct node : node_constructor {
       return "?";
     }
   }
-  double eval(const std::vector<double>& x) const {
+  fncas_value_type eval(const std::vector<fncas_value_type>& x) const {
     if (type() == type_t::var) {
       uint32_t i = var_index();
       BOOST_ASSERT(i >= 0 && i < x.size());
@@ -114,9 +116,9 @@ struct node : node_constructor {
     } else if (type() == type_t::value) {
       return value();
     } else if (type() == type_t::op) {
-      return apply_op(op(), lhs().eval(x), rhs().eval(x));
+      return apply_op<fncas_value_type>(op(), lhs().eval(x), rhs().eval(x));
     } else {
-      return std::numeric_limits<double>::quiet_NaN();
+      return std::numeric_limits<fncas_value_type>::quiet_NaN();
     }
   }
 };
@@ -141,7 +143,7 @@ struct x : boost::noncopyable {
 // Synopsis: template<typename T> typename fncas::output<T>::type f(const T& x);
 
 template<typename T> struct output {};
-template<> struct output<std::vector<double> > { typedef double type; };
+template<> struct output<std::vector<fncas_value_type> > { typedef fncas_value_type type; };
 template<> struct output<x> { typedef fncas::node type; };
 
 }  // namespace fncas
