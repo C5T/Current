@@ -25,7 +25,7 @@ namespace fncas {
 
 typedef double fncas_value_type;
 
-// Parsed expression are stored in an array of node_impl objects.
+// Parsed expressions are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.
 // Each node_impl refers to a value, an input variable, an operation or math function invocation.
 // Singleton vector<node_impl> is the allocator, therefore the code is single-threaded.
@@ -53,7 +53,7 @@ template<typename T> T apply_op(op_t op, T lhs, T rhs) {
 BOOST_STATIC_ASSERT(sizeof(type_t) == 1);
 BOOST_STATIC_ASSERT(sizeof(op_t) == 1);
 
-// Counting on "double", comment if trying other data type.
+// Counting on "double", comment out if trying other data type.
 BOOST_STATIC_ASSERT(sizeof(fncas_value_type) == 8);
 
 struct node_impl {
@@ -173,6 +173,8 @@ template<> struct output<std::vector<fncas_value_type> > { typedef fncas_value_t
 template<> struct output<x> { typedef fncas::node type; };
 
 }  // namespace fncas
+
+// Aritmetical operations and mathematical functions are defined outside namespace fncas.
 
 #define DECLARE_OP(OP,NAME) \
 inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
