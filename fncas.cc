@@ -1,7 +1,6 @@
-// TODO(dkorolev): Test evaluation.
+// TODO(dkorolev): Factor out fncas.h, add a proper test.
 // TODO(dkorolev): Use BFS instead of DFS for evaluating and printing.
 
-// TODO(dkorolev): Move to the header.
 // TODO(dkorolev): Readme, build instructions and a reference from this file.
 //
 // Requires:
@@ -18,6 +17,9 @@
 #include <boost/function.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/utility.hpp>
+
+#define BOOST_TEST_MODULE FNCAS
+#include <boost/test/included/unit_test.hpp>
 
 namespace fncas {
 
@@ -165,14 +167,10 @@ template<typename T> typename fncas::output<T>::type f(const T& x) {
   return 1 + x[0] * x[1] + x[2] - x[3] + 1;
 }
 
-void test_smoke() {
+BOOST_AUTO_TEST_CASE(SimpleTest) {
   std::vector<double> x({5,8,9,7});
-  printf("%.3lf\n", f(x));
+  BOOST_CHECK_EQUAL(f(x), 44);
   auto e = f(fncas::x(4));
-  printf("%s\n", e.debug_as_string().c_str());
-  printf("%.3lf\n", e.eval(x));
-}
-
-int main() {
-  test_smoke();
+  BOOST_CHECK_EQUAL(e.debug_as_string(), "((((1.000000+(x[0]*x[1]))+x[2])-x[3])+1.000000)");
+  BOOST_CHECK_EQUAL(e.eval(x), 44);
 }
