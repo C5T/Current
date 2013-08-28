@@ -32,10 +32,10 @@ typedef double fncas_value_type;
 // Singleton vector<node_impl> is the allocator, therefore the code is single-threaded.
 
 enum type_t : uint8_t { var, value, op };
-enum op_t : uint8_t { add = 0, subtract = 1, multiply = 2, end = 3 };
+enum op_t : uint8_t { add = 0, subtract = 1, multiply = 2, divide = 3, end = 4 };
 
 std::string op_as_string(op_t op) {
-  static std::string represenatation[op_t::end] = { "+", "-", "*" };
+  static std::string represenatation[op_t::end] = { "+", "-", "*", "/" };
   return (op >= 0 && op < static_cast<int>(op_t::end)) ? represenatation[op] : "?";
 }
 
@@ -44,6 +44,7 @@ template<typename T> T apply_op(op_t op, T lhs, T rhs) {
     std::plus<T>(),
     std::minus<T>(),
     std::multiplies<T>(),
+    std::divides<T>(),
   };
   return
     (op >= 0 && op < static_cast<int>(op_t::end))
@@ -105,9 +106,9 @@ struct node_constructor {
 
 struct node : node_constructor {
  private:
-  node() : node_constructor() {}
   node(const node_constructor& instance) : node_constructor(instance) {}
  public:
+  node() : node_constructor() {}
   node(fncas_value_type x) : node_constructor() { type() = type_t::value; value() = x; }
   type_t& type() const { return node_vector_singleton()[index_].type(); }
   uint32_t& var_index() const { return node_vector_singleton()[index_].var_index(); }
@@ -177,7 +178,7 @@ template<> struct output<x> { typedef fncas::node type; };
 
 // Aritmetical operations and mathematical functions are defined outside namespace fncas.
 
-#define DECLARE_OP(OP,NAME) \
+#define DECLARE_OP(OP,OP2,NAME) \
 inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
   fncas::node result = fncas::node::alloc(); \
   result.type() = fncas::type_t::op; \
@@ -185,9 +186,14 @@ inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) {
   result.lhs_index() = lhs.index_; \
   result.rhs_index() = rhs.index_; \
   return result; \
+} \
+inline const fncas::node& operator OP2(fncas::node& lhs, const fncas::node& rhs) { \
+  lhs = lhs OP rhs; \
+  return lhs; \
 }
-DECLARE_OP(+,add);
-DECLARE_OP(-,subtract);
-DECLARE_OP(*,multiply);
+DECLARE_OP(+,+=,add);
+DECLARE_OP(-,-=,subtract);
+DECLARE_OP(*,*=,multiply);
+DECLARE_OP(/,/=,divide);
 
 #endif

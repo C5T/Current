@@ -11,7 +11,17 @@
 #include "fncas.h"
 
 template<typename T> typename fncas::output<T>::type f(const T& x) {
-  return 1 + x[0] * x[1] + x[2] - x[3] + 1;
+  if (false) {
+    return 1 + x[0] * x[1] + x[2] - x[3] + 1;
+  } else {
+    typename fncas::output<T>::type tmp;
+    tmp = 42;
+    // Change 100 to 1000000 to have SEGFAULT due to stack overflow because of DFS.
+    for (int i = 0; i < 100; ++i) {
+      tmp += x[0];
+    }
+    return tmp;
+  }
 }
 
 int main() {
