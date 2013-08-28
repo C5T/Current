@@ -17,7 +17,7 @@ template<typename T> typename fncas::output<T>::type f(const T& x) {
     typename fncas::output<T>::type tmp;
     tmp = 42;
     // Change 100 to 1000000 to have SEGFAULT due to stack overflow because of DFS.
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 1000000; ++i) {
       tmp += x[0];
     }
     return tmp;
@@ -28,6 +28,6 @@ int main() {
   std::vector<double> x({5,8,9,7});
   printf("%lf\n", f(x));
   auto e = f(fncas::x(4));
-  printf("%s\n", e.debug_as_string().c_str());
+//  printf("%s\n", e.debug_as_string().c_str());
   printf("%lf\n", e.eval(x));
 }
