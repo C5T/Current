@@ -44,21 +44,43 @@ template<typename T> T apply_op(op_t op, T lhs, T rhs) {
     std::minus<T>(),
     std::multiplies<T>(),
   };
-  return (op >= 0 && op < static_cast<int>(op_t::end)) ? evaluator[op](lhs, rhs) : std::numeric_limits<T>::quiet_NaN();
+  return
+    (op >= 0 && op < static_cast<int>(op_t::end))
+    ? evaluator[op](lhs, rhs)
+    : std::numeric_limits<T>::quiet_NaN();
 }
 
 BOOST_STATIC_ASSERT(sizeof(type_t) == 1);
 BOOST_STATIC_ASSERT(sizeof(op_t) == 1);
-BOOST_STATIC_ASSERT(sizeof(fncas_value_type) == 8);  // Counting on "double", comment if trying other data type.
+
+// Counting on "double", comment if trying other data type.
+BOOST_STATIC_ASSERT(sizeof(fncas_value_type) == 8);
 
 struct node_impl {
   uint8_t data_[10];
-  type_t& type() { return *reinterpret_cast<type_t*>(&data_[0]); }
-  uint32_t& var_index() { BOOST_ASSERT(type() == type_t::var); return *reinterpret_cast<uint32_t*>(&data_[2]); }
-  op_t& op() { BOOST_ASSERT(type() == type_t::op); return *reinterpret_cast<op_t*>(&data_[1]); }
-  uint32_t& lhs_index() { BOOST_ASSERT(type() == type_t::op); return *reinterpret_cast<uint32_t*>(&data_[2]); }
-  uint32_t& rhs_index() { BOOST_ASSERT(type() == type_t::op); return *reinterpret_cast<uint32_t*>(&data_[6]); }
-  fncas_value_type& value() { BOOST_ASSERT(type() == type_t::value); return *reinterpret_cast<fncas_value_type*>(&data_[2]); }
+  type_t& type() {
+    return *reinterpret_cast<type_t*>(&data_[0]);
+  }
+  uint32_t& var_index() {
+    BOOST_ASSERT(type() == type_t::var); 
+    return *reinterpret_cast<uint32_t*>(&data_[2]);
+  }
+  op_t& op() {
+    BOOST_ASSERT(type() == type_t::op);
+    return *reinterpret_cast<op_t*>(&data_[1]);
+  }
+  uint32_t& lhs_index() { 
+    BOOST_ASSERT(type() == type_t::op); 
+    return *reinterpret_cast<uint32_t*>(&data_[2]);
+  }
+  uint32_t& rhs_index() { 
+    BOOST_ASSERT(type() == type_t::op);
+    return *reinterpret_cast<uint32_t*>(&data_[6]);
+  }
+  fncas_value_type& value() { 
+    BOOST_ASSERT(type() == type_t::value); 
+    return *reinterpret_cast<fncas_value_type*>(&data_[2]);
+  }
 };
 BOOST_STATIC_ASSERT(sizeof(node_impl) == 10);
 
@@ -75,7 +97,9 @@ inline std::vector<node_impl>& node_vector_singleton() {
 struct node_constructor {
   mutable uint64_t index_;
   explicit node_constructor(uint64_t index) : index_(static_cast<uint64_t>(index)) {}
-  explicit node_constructor() : index_(node_vector_singleton().size()) { node_vector_singleton().resize(index_ + 1); }
+  explicit node_constructor() : index_(node_vector_singleton().size()) {
+    node_vector_singleton().resize(index_ + 1);
+  }
 };
 
 struct node : node_constructor {
