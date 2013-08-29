@@ -1,12 +1,15 @@
-CC=g++
+# Tested with clang++ as well.
 
-fncas: fncas.cc fncas.h
-	${CC} --std=c++0x -o fncas fncas.cc
+CC=g++
+CCFLAGS=--std=c++0x -Wall
 
 all: fncas test
 
+fncas: fncas.cc fncas.h
+	${CC} ${CCFLAGS} -o fncas fncas.cc
+
 test: test.cc fncas.h
-	${CC} --std=c++0x -o test test.cc
+	${CC} ${CCFLAGS} -o test test.cc
 	./test
 
 clean:

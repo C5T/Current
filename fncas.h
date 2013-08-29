@@ -177,7 +177,7 @@ BOOST_STATIC_ASSERT(sizeof(node) == 8);
 struct x : boost::noncopyable {
   int dim;
   explicit x(int dim) : dim(dim) {
-    BOOST_ASSERT(dim > 0);
+    BOOST_ASSERT(dim >= 0);
   }
   node operator[](int i) const {
     BOOST_ASSERT(i >= 0);
