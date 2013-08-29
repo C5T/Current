@@ -1,6 +1,4 @@
-// TODO(dkorolev): Use BFS instead of DFS for evaluating and printing.
-
-// TODO(dkorolev): Readme, build instructions, not that tested on Ubuntu only.
+// TODO(dkorolev): Readme, build instructions, note that tested on Ubuntu only.
 
 // TODO(dkorolev): Header.
 
@@ -37,7 +35,7 @@ enum op_t : uint8_t { add = 0, subtract = 1, multiply = 2, divide = 3, end = 4 }
 
 std::string op_as_string(op_t op) {
   static std::string represenatation[op_t::end] = { "+", "-", "*", "/" };
-  return (op >= 0 && op < static_cast<int>(op_t::end)) ? represenatation[op] : "?";
+  return op < op_t::end ? represenatation[op] : "?";
 }
 
 template<typename T> T apply_op(op_t op, T lhs, T rhs) {
@@ -47,10 +45,7 @@ template<typename T> T apply_op(op_t op, T lhs, T rhs) {
     std::multiplies<T>(),
     std::divides<T>(),
   };
-  return
-    (op >= 0 && op < static_cast<int>(op_t::end))
-    ? evaluator[op](lhs, rhs)
-    : std::numeric_limits<T>::quiet_NaN();
+  return op < op_t::end ? evaluator[op](lhs, rhs) : std::numeric_limits<T>::quiet_NaN();
 }
 
 BOOST_STATIC_ASSERT(sizeof(type_t) == 1);

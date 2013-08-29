@@ -25,7 +25,11 @@ template<typename T> typename fncas::output<T>::type f(const T& x) {
 }
 
 int main() {
-  std::vector<double> x({5,8,9,7});
+  std::vector<double> x;
+  x.push_back(5);
+  x.push_back(8);
+  x.push_back(9);
+  x.push_back(7);
   printf("%lf\n", f(x));
   auto e = f(fncas::x(4));
 //  printf("%s\n", e.debug_as_string().c_str());
