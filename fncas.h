@@ -237,7 +237,6 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "#include <math.h>\n");
   fprintf(f, "double eval(const double* x, double* a) {\n");
   size_t max_dim = index;
-  std::vector<fncas_value_type> cache(node_vector_singleton().size());
   std::stack<uint32_t> stack;
   stack.push(index);
   while (!stack.empty()) {
