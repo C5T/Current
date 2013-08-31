@@ -15,7 +15,7 @@ const bool verbose = false;
 // Abstract function definition.
 // The functions to be tested defined below are be derived from this class.
 
-class f {
+class F {
  private:
   boost::mt19937 rng;
   std::vector<boost::function<double()>> p;
@@ -27,6 +27,7 @@ class f {
 
  public:
   size_t dim() const { return p.size(); }
+  virtual double iterations_coefficient() const { return 1.0; }
   std::vector<double> gen() const {
     std::vector<double> x(p.size());
     for (size_t i = 0; i < p.size(); ++i) {
@@ -38,13 +39,13 @@ class f {
 
 // The tmplementations of functions under test.
 
-struct forty_two : f {
+struct forty_two : F {
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     return 42;
   }
 };
 
-struct add_one : f {
+struct add_one : F {
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     return x[0] + 1;
   }
@@ -53,7 +54,7 @@ struct add_one : f {
   }
 };
 
-struct multiply_by_two : f {
+struct multiply_by_two : F {
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     return x[0] * 2;
   }
@@ -62,7 +63,7 @@ struct multiply_by_two : f {
   }
 };
 
-struct basic_arithmetics : f {
+struct basic_arithmetics : F {
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     return x[0] - x[1] * x[2] / x[3];
   }
@@ -74,7 +75,7 @@ struct basic_arithmetics : f {
   }
 };
 
-struct deep_function_tree : f {
+struct deep_function_tree : F {
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     typename fncas::output<T>::type tmp = 42;
     for (size_t i = 0; i < 100000; ++i) {
@@ -85,6 +86,7 @@ struct deep_function_tree : f {
   deep_function_tree() {
     add_var(boost::normal_distribution<double>());
   }
+  virtual double iterations_coefficient() const { return 0.1; }
 };
 
 // Test code to compare plain function evaluation to the evaluation of its compiled form.
@@ -93,7 +95,8 @@ template<typename T> void test_eval(size_t iterations = 100) {
   T f;
   auto e = f.f(fncas::x(f.dim()));
   std::vector<double> x;
-  while (iterations--) {
+  size_t real_iterations = std::max<size_t>(3, iterations  * f.iterations_coefficient());
+  while (real_iterations--) {
     x = f.gen();
     const double golden = f.f(x);
     const double test = e.eval(x);

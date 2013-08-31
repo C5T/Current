@@ -1,6 +1,6 @@
 # Tested with clang++ as well.
 
-CC=g++
+CC=clang++
 CCFLAGS=--std=c++0x -Wall
 
 all: fncas test
