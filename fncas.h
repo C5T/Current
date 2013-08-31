@@ -30,26 +30,49 @@ typedef double fncas_value_type;
 // Each node_impl refers to a value, an input variable, an operation or math function invocation.
 // Singleton vector<node_impl> is the allocator, therefore the code is single-threaded.
 
-enum type_t : uint8_t { var, value, op };
-enum op_t : uint8_t { add = 0, subtract = 1, multiply = 2, divide = 3, end = 4 };
+enum type_t : uint8_t { variable, value, operation, function };
+enum struct operation_t : uint8_t { add, subtract, multiply, divide, end };
+enum struct function_t : uint8_t { exp, log, sin, cos, tan, atan, end };
 
-std::string op_as_string(op_t op) {
-  static std::string represenatation[op_t::end] = { "+", "-", "*", "/" };
-  return op < op_t::end ? represenatation[op] : "?";
+std::string operation_as_string(operation_t operation) {
+  static std::string representation[static_cast<size_t>(operation_t::end)] = {
+    "+", "-", "*", "/"
+  };
+  return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
 
-template<typename T> T apply_op(op_t op, T lhs, T rhs) {
-  static boost::function<T(T, T)> evaluator[op_t::end] = {
+std::string function_as_string(function_t function) {
+  static std::string representation[static_cast<size_t>(function_t::end)] = {
+    "exp", "log", "sin", "cos", "tan", "atan"
+  };
+  return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
+}
+
+template<typename T> T apply_operation(operation_t operation, T lhs, T rhs) {
+  static boost::function<T(T, T)> evaluator[static_cast<size_t>(operation_t::end)] = {
     std::plus<T>(),
     std::minus<T>(),
     std::multiplies<T>(),
     std::divides<T>(),
   };
-  return op < op_t::end ? evaluator[op](lhs, rhs) : std::numeric_limits<T>::quiet_NaN();
+  return
+    operation < operation_t::end
+    ? evaluator[static_cast<size_t>(operation)](lhs, rhs)
+    : std::numeric_limits<T>::quiet_NaN();
+}
+
+template<typename T> T apply_function(function_t function, T argument) {
+  static boost::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
+    exp, log, sin, cos, tan, atan
+  };
+  return
+    function < function_t::end
+    ? evaluator[static_cast<size_t>(function)](argument)
+    : std::numeric_limits<T>::quiet_NaN();
 }
 
 BOOST_STATIC_ASSERT(sizeof(type_t) == 1);
-BOOST_STATIC_ASSERT(sizeof(op_t) == 1);
+BOOST_STATIC_ASSERT(sizeof(operation_t) == 1);
 
 // Counting on "double", comment out if trying other data type.
 BOOST_STATIC_ASSERT(sizeof(fncas_value_type) == 8);
@@ -59,25 +82,33 @@ struct node_impl {
   type_t& type() {
     return *reinterpret_cast<type_t*>(&data_[0]);
   }
-  uint32_t& var_index() {
-    BOOST_ASSERT(type() == type_t::var); 
+  uint32_t& variable() {
+    BOOST_ASSERT(type() == type_t::variable); 
     return *reinterpret_cast<uint32_t*>(&data_[2]);
-  }
-  op_t& op() {
-    BOOST_ASSERT(type() == type_t::op);
-    return *reinterpret_cast<op_t*>(&data_[1]);
-  }
-  uint32_t& lhs_index() { 
-    BOOST_ASSERT(type() == type_t::op); 
-    return *reinterpret_cast<uint32_t*>(&data_[2]);
-  }
-  uint32_t& rhs_index() { 
-    BOOST_ASSERT(type() == type_t::op);
-    return *reinterpret_cast<uint32_t*>(&data_[6]);
   }
   fncas_value_type& value() { 
     BOOST_ASSERT(type() == type_t::value); 
     return *reinterpret_cast<fncas_value_type*>(&data_[2]);
+  }
+  operation_t& operation() {
+    BOOST_ASSERT(type() == type_t::operation);
+    return *reinterpret_cast<operation_t*>(&data_[1]);
+  }
+  uint32_t& lhs_index() { 
+    BOOST_ASSERT(type() == type_t::operation); 
+    return *reinterpret_cast<uint32_t*>(&data_[2]);
+  }
+  uint32_t& rhs_index() { 
+    BOOST_ASSERT(type() == type_t::operation);
+    return *reinterpret_cast<uint32_t*>(&data_[6]);
+  }
+  function_t& function() {
+    BOOST_ASSERT(type() == type_t::function);
+    return *reinterpret_cast<function_t*>(&data_[1]);
+  }
+  uint32_t& argument_index() {
+    BOOST_ASSERT(type() == type_t::function); 
+    return *reinterpret_cast<uint32_t*>(&data_[2]);
   }
 };
 BOOST_STATIC_ASSERT(sizeof(node_impl) == 10);
@@ -99,22 +130,38 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
     const uint32_t dependent_i = ~i;
     if (i < dependent_i) {
       node_impl& node = node_vector_singleton()[i];
-      if (node.type() == type_t::var) {
-        uint32_t v = node.var_index();
+      if (node.type() == type_t::variable) {
+        uint32_t v = node.variable();
         BOOST_ASSERT(v >= 0 && v < x.size());
         cache[i] = x[v];
       } else if (node.type() == type_t::value) {
         cache[i] = node.value();
-      } else if (node.type() == type_t::op) {
+      } else if (node.type() == type_t::operation) {
         stack.push(~i);
         stack.push(node.lhs_index());
         stack.push(node.rhs_index());
+      } else if (node.type() == type_t::function) {
+        stack.push(~i);
+        stack.push(node.argument_index());
       } else {
+        BOOST_ASSERT(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
       }
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
-      cache[dependent_i] = apply_op<fncas_value_type>(node.op(), cache[node.lhs_index()], cache[node.rhs_index()]);
+      if (node.type() == type_t::operation) {
+        cache[dependent_i] = apply_operation<fncas_value_type>(
+          node.operation(),
+          cache[node.lhs_index()],
+          cache[node.rhs_index()]);
+      } else if (node.type() == type_t::function) {
+        cache[dependent_i] = apply_function<fncas_value_type>(
+          node.function(),
+          cache[node.argument_index()]);
+      } else {
+        BOOST_ASSERT(false);
+        return std::numeric_limits<fncas_value_type>::quiet_NaN();
+      }
     }
   }
   return cache[index];
@@ -140,27 +187,37 @@ struct node : node_constructor {
   node() : node_constructor() {}
   node(fncas_value_type x) : node_constructor() { type() = type_t::value; value() = x; }
   type_t& type() const { return node_vector_singleton()[index_].type(); }
-  uint32_t& var_index() const { return node_vector_singleton()[index_].var_index(); }
-  op_t& op() const { return node_vector_singleton()[index_].op(); }
+  uint32_t& variable() const { return node_vector_singleton()[index_].variable(); }
+  fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
+  operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
   uint32_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
   uint32_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
   node lhs() const { return node_constructor(node_vector_singleton()[index_].lhs_index()); }
   node rhs() const { return node_constructor(node_vector_singleton()[index_].rhs_index()); }
-  fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
-  static node var(uint32_t index) {
+  function_t& function() const { return node_vector_singleton()[index_].function(); }
+  uint32_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
+  node argument() const { return node_constructor(node_vector_singleton()[index_].argument_index()); }
+  static node variable(uint32_t index) {
     node result;
-    result.type() = type_t::var;
-    result.var_index() = index;
+    result.type() = type_t::variable;
+    result.variable() = index;
     return result;
   }
   std::string debug_as_string() const {
-    if (type() == type_t::var) {
-      return "x[" + std::to_string(var_index()) + "]";
+    if (type() == type_t::variable) {
+      return "x[" + std::to_string(variable()) + "]";
     } else if (type() == type_t::value) {
       return std::to_string(value());
-    } else if (type() == type_t::op) {
-      // Note: this recursive call will overflow the stack with SEGFAULT on most large functions.
-      return "(" + lhs().debug_as_string() + op_as_string(op()) + rhs().debug_as_string() + ")";
+    } else if (type() == type_t::operation) {
+      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
+      return
+        "(" + lhs().debug_as_string() +
+        operation_as_string(operation()) +
+        rhs().debug_as_string() + ")";
+    } else if (type() == type_t::function) {
+      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
+      return
+        function_as_string(function()) + "(" + argument().debug_as_string() + ")";
     } else {
       return "?";
     }
@@ -182,7 +239,7 @@ struct x : boost::noncopyable {
   node operator[](int i) const {
     BOOST_ASSERT(i >= 0);
     BOOST_ASSERT(i < dim);
-    return node::var(i);
+    return node::variable(i);
   }
 };
 
@@ -200,8 +257,8 @@ template<> struct output<x> { typedef fncas::node type; };
 #define DECLARE_OP(OP,OP2,NAME) \
 inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
   fncas::node result; \
-  result.type() = fncas::type_t::op; \
-  result.op() = fncas::op_t::NAME; \
+  result.type() = fncas::type_t::operation; \
+  result.operation() = fncas::operation_t::NAME; \
   result.lhs_index() = lhs.index_; \
   result.rhs_index() = rhs.index_; \
   return result; \
@@ -214,5 +271,20 @@ DECLARE_OP(+,+=,add);
 DECLARE_OP(-,-=,subtract);
 DECLARE_OP(*,*=,multiply);
 DECLARE_OP(/,/=,divide);
+
+#define DECLARE_FUNCTION(F) \
+inline fncas::node F(const fncas::node& argument) { \
+  fncas::node result; \
+  result.type() = fncas::type_t::function; \
+  result.function() = fncas::function_t:: F; \
+  result.argument_index() = argument.index_; \
+  return result; \
+}
+DECLARE_FUNCTION(exp);
+DECLARE_FUNCTION(log);
+DECLARE_FUNCTION(sin);
+DECLARE_FUNCTION(cos);
+DECLARE_FUNCTION(tan);
+DECLARE_FUNCTION(atan);
 
 #endif

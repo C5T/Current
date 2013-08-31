@@ -1,4 +1,5 @@
-// Please see fncas.h or Makefile for build instructions.
+// Can only be compiled by clang++, not g++:
+// g++: "sorry, unimplemented: cannot expand ‘XS ...’ into a fixed-length argument list".
 
 #include <cassert>
 #include <iostream>
@@ -87,6 +88,24 @@ struct basic_arithmetics : F {
   }
 };
 
+struct basic_math : F {
+  virtual const char* name() const {
+    return "exp(a) + log(b) + sin(c) + cos(d) + tan(e) + atan(f)";
+
+  }
+  template<typename T> typename fncas::output<T>::type f(const T& x) {
+    return exp(x[0]) + log(x[1]) + sin(x[2]) + cos(x[3]) + tan(x[4]) + atan(x[5]);
+  }
+  basic_math() {
+    add_var(boost::normal_distribution<double>());
+    add_var(boost::exponential_distribution<double>());
+    add_var(boost::normal_distribution<double>());
+    add_var(boost::normal_distribution<double>());
+    add_var(boost::normal_distribution<double>());
+    add_var(boost::normal_distribution<double>());
+  }
+};
+
 struct deep_function_tree : F {
   enum { DIM = 100000 };
   virtual std::string name() const {
@@ -165,6 +184,7 @@ int main() {
     add_one, 
     multiply_by_two, 
     basic_arithmetics,
+    basic_math,
     deep_function_tree>::run();
   std::cout << "OK, all tests passed." << std::endl;
 }
