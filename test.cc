@@ -8,6 +8,7 @@
 
 #include "fncas.h"
 
+#include "boost/progress.hpp"
 #include "boost/random.hpp"
 
 const bool verbose = false;
@@ -91,7 +92,6 @@ struct basic_arithmetics : F {
 struct basic_math : F {
   virtual const char* name() const {
     return "exp(a) + log(b) + sin(c) + cos(d) + tan(e) + atan(f)";
-
   }
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     return exp(x[0]) + log(x[1]) + sin(x[2]) + cos(x[3]) + tan(x[4]) + atan(x[5]);
@@ -107,7 +107,7 @@ struct basic_math : F {
 };
 
 struct deep_function_tree : F {
-  enum { DIM = 100000 };
+  enum { DIM = 10000 };
   virtual std::string name() const {
     std::ostringstream os;
     os << "sum<i=[0.." << DIM << ")>(x[i])";
@@ -128,39 +128,106 @@ struct deep_function_tree : F {
   virtual double iterations_coefficient() const { return 0.1; }
 };
 
-// Test code to compare plain function evaluation to the evaluation of its compiled form.
+struct big_math : F {
+  enum { DIM = 1000 };
+  virtual std::string name() const {
+    std::ostringstream os;
+    os << "sum<i=[0.." << DIM << ")>(exp(x[i]) + atan(x[i]))";
+    return os.str();
+  }
+  template<typename T> typename fncas::output<T>::type f(const T& x) {
+    typename fncas::output<T>::type tmp = 0;
+    for (size_t i = 0; i < DIM; ++i) {
+      tmp += exp(x[i]) + atan(x[i]);
+    }
+    return tmp;
+  }
+  big_math() {
+    for (size_t i = 0; i < DIM; ++i) {
+      add_var(boost::normal_distribution<double>());
+    }
+  }
+  virtual double iterations_coefficient() const { return 0.5; }
+};
+
+// Test code to compare plain function evaluation vs. its "byte-code" evaluation.
 
 template<typename T> struct test_eval {
-  enum { ITERATIONS = 100 };
+  enum { iterations = 10000 };
   static void run() {
+    fncas::reset();
     T f;
     auto e = f.f(fncas::x(f.dim()));
     std::vector<double> x;
-    size_t real_iterations = std::max<size_t>(3, ITERATIONS  * f.iterations_coefficient());
+    size_t real_iterations = std::max<size_t>(3, iterations * f.iterations_coefficient());
     std::cout
       << "\"" << f.name() << "\", dim "
-      << f.dim() << ", " << real_iterations << " iterations: ";
-    while (real_iterations--) {
-      x = f.gen();
-      const double golden = f.f(x);
-      const double test = e.eval(x);
-      if (verbose || golden != test) {
-        std::cout << "{ ";
-        for (auto& i: x) std::cout << i << ' ';
-        std::cout << "}: " << test << " vs. " << golden << std::endl;
+      << f.dim() << ", " << real_iterations << " iterations: " << std::flush;
+    {
+      boost::progress_timer p;
+      while (real_iterations--) {
+        x = f.gen();
+        const double golden = f.f(x);
+        const double test = e.eval(x);
+        if (verbose || golden != test) {
+          std::cout << "{ ";
+          for (auto& i: x) std::cout << i << ' ';
+          std::cout << "}: " << test << " vs. " << golden << std::endl;
+        }
+        if (golden != test) {
+          std::cout << "test failed." << std::endl;
+          exit(1);
+        }
       }
-      if (golden != test) {
-        std::cout << "Test Failed." << std::endl;
-        exit(1);
-      }
+      std::cout << "OK, ";  // boost::progress_timer takes care of the newline.
     }
-    std::cout << "OK" << std::endl;
+  }
+};
+
+// Test code to compare plain function evaluation vs. its compiled version.
+
+template<typename T> struct test_compiled_code_eval {
+  enum { iterations = 10000 };
+  static void run() {
+    fncas::reset();
+    T f;
+    auto e = f.f(fncas::x(f.dim()));
+    std::vector<double> x;
+    size_t real_iterations = std::max<size_t>(3, iterations * f.iterations_coefficient());
+    std::cout
+      << "\"" << f.name() << "\", dim "
+      << f.dim() << ", " << real_iterations << " iterations, compiled: " << std::flush;
+    std::unique_ptr<fncas::compiled_expression> e2;
+    {
+      // boost::progress_timer p;
+      e2 = e.compile();
+    }
+    std::cout << "compiled, " << std::flush;
+    {
+      boost::progress_timer p;
+      while (real_iterations--) {
+        x = f.gen();
+        const double golden = f.f(x);
+        const double test = e2->eval(x);
+        if (verbose || golden != test) {
+          std::cout << "{ ";
+          for (auto& i: x) std::cout << i << ' ';
+          std::cout << "}: " << test << " vs. " << golden << std::endl;
+        }
+        if (golden != test) {
+          std::cout << "test failed." << std::endl;
+          exit(1);
+        }
+      }
+      std::cout << "OK, ";  // boost::progress_timer takes care of the newline.
+    }
   }
 };
 
 template<typename T> struct test {
   static void run() {
     test_eval<T>::run();
+    test_compiled_code_eval<T>::run();
   }
 };
 
@@ -185,6 +252,7 @@ int main() {
     multiply_by_two, 
     basic_arithmetics,
     basic_math,
-    deep_function_tree>::run();
+    deep_function_tree,
+    big_math>::run();
   std::cout << "OK, all tests passed." << std::endl;
 }

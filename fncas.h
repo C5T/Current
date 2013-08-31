@@ -1,5 +1,7 @@
 // TODO(dkorolev): Readme, build instructions, note that tested on Ubuntu only.
 
+// TODO(dkorolev): Guard rnutime-compilation-specific and linux-specific code by #define-s.
+
 // TODO(dkorolev): Header.
 
 // Requires:
@@ -16,7 +18,11 @@
 #include <string>
 #include <vector>
 
+// TODO(dkorolev): Guard this.
+#include <dlfcn.h>
+
 #include <boost/assert.hpp>
+#include <boost/format.hpp>
 #include <boost/function.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/utility.hpp>
@@ -34,15 +40,15 @@ enum type_t : uint8_t { variable, value, operation, function };
 enum struct operation_t : uint8_t { add, subtract, multiply, divide, end };
 enum struct function_t : uint8_t { exp, log, sin, cos, tan, atan, end };
 
-std::string operation_as_string(operation_t operation) {
-  static std::string representation[static_cast<size_t>(operation_t::end)] = {
+const char* const operation_as_string(operation_t operation) {
+  static const char* representation[static_cast<size_t>(operation_t::end)] = {
     "+", "-", "*", "/"
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
 
-std::string function_as_string(function_t function) {
-  static std::string representation[static_cast<size_t>(function_t::end)] = {
+const char* const function_as_string(function_t function) {
+  static const char* representation[static_cast<size_t>(function_t::end)] = {
     "exp", "log", "sin", "cos", "tan", "atan"
   };
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
@@ -113,9 +119,27 @@ struct node_impl {
 };
 BOOST_STATIC_ASSERT(sizeof(node_impl) == 10);
 
-inline std::vector<node_impl>& node_vector_singleton() {
-  static std::vector<node_impl> storage;
+struct internals {
+  std::vector<node_impl> node_vector;
+  std::vector<double> ram_for_evaluations;
+  void reset() {
+    node_vector.clear();
+    ram_for_evaluations.clear();
+  }
+};
+
+inline internals& internal_singleton() {
+  static internals storage;
   return storage;
+}
+
+// Invalidates cached functions, resets temp notes enumberation from zero and frees cache memory.
+inline void reset() {
+  internal_singleton().reset();
+}
+
+inline std::vector<node_impl>& node_vector_singleton() {
+  return internal_singleton().node_vector;
 }
 
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
@@ -165,6 +189,104 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
     }
   }
   return cache[index];
+}
+
+// Unportable and unsafe, but designed to only work on Ubuntu Linux as of now.
+// TODO(dkorolev): Make it more portable one day. And make the implementaion(s) template-friendly.
+
+struct compiled_expression : boost::noncopyable {
+  typedef int (*DIM)();
+  typedef double (*EVAL)(const double* x, double* a);
+  void* lib_;
+  DIM dim_;
+  EVAL eval_;
+  explicit compiled_expression(const std::string& lib_filename) {
+    lib_ = dlopen(lib_filename.c_str(), RTLD_LAZY);
+    BOOST_ASSERT(lib_);
+    dim_ = reinterpret_cast<DIM>(dlsym(lib_, "dim"));
+    eval_ = reinterpret_cast<EVAL>(dlsym(lib_, "eval"));
+    BOOST_ASSERT(dim_);
+    BOOST_ASSERT(eval_);
+  }
+  ~compiled_expression() {
+    dlclose(lib_);
+  }
+  double eval(const double* x) const {
+    std::vector<double>& tmp = internal_singleton().ram_for_evaluations;
+    size_t dim = static_cast<size_t>(dim_());
+    if (tmp.size() < dim) {
+      tmp.resize(dim);
+    }
+    return eval_(x, &tmp[0]);
+  }
+  double eval(const std::vector<double>& x) const {
+    return eval(&x[0]);
+  }
+  static std::string syscall(const std::string command) {
+    FILE* f = popen(command.c_str(), "r");
+    BOOST_ASSERT(f);
+    static char buffer[1024 * 1024];
+    fscanf(f, "%s", buffer);
+    fclose(f);
+    return buffer;
+  }
+};
+
+// generate_c_code_for_node() writes C code to evaluate the expression to a file.
+void generate_c_code_for_node(uint32_t index, FILE* f) {
+  fprintf(f, "#include <math.h>\n");
+  fprintf(f, "double eval(const double* x, double* a) {\n");
+  size_t max_dim = index;
+  std::vector<fncas_value_type> cache(node_vector_singleton().size());
+  std::stack<uint32_t> stack;
+  stack.push(index);
+  while (!stack.empty()) {
+    const uint32_t i = stack.top();
+    stack.pop();
+    const uint32_t dependent_i = ~i;
+    if (i < dependent_i) {
+      max_dim = std::max(max_dim, static_cast<size_t>(i));
+      node_impl& node = node_vector_singleton()[i];
+      if (node.type() == type_t::variable) {
+        uint32_t v = node.variable();
+        fprintf(f, "  a[%d] = x[%d];\n", i, v);
+      } else if (node.type() == type_t::value) {
+        fprintf(f, "  a[%d] = %a;\n", i, node.value());  // "%a" is hexadecial full precision.
+      } else if (node.type() == type_t::operation) {
+        stack.push(~i);
+        stack.push(node.lhs_index());
+        stack.push(node.rhs_index());
+      } else if (node.type() == type_t::function) {
+        stack.push(~i);
+        stack.push(node.argument_index());
+      } else {
+        BOOST_ASSERT(false);
+      }
+    } else {
+      node_impl& node = node_vector_singleton()[dependent_i];
+      if (node.type() == type_t::operation) {
+        fprintf(
+          f,
+          "  a[%d] = a[%d] %s a[%d];\n",
+          dependent_i,
+          node.lhs_index(),
+          operation_as_string(node.operation()),
+          node.rhs_index());
+      } else if (node.type() == type_t::function) {
+        fprintf(
+          f,
+          "  a[%d] = %s(a[%d]);\n",
+          dependent_i,
+          function_as_string(node.function()),
+          node.argument_index());
+      } else {
+        BOOST_ASSERT(false);
+      }
+    }
+  }
+  fprintf(f, "  return a[%d];\n", index);
+  fprintf(f, "}\n");
+  fprintf(f, "int dim() { return %d; }\n", static_cast<int>(max_dim + 1));
 }
 
 // The code that deals with nodes directly uses class node as a wrapper to node_impl.
@@ -217,13 +339,26 @@ struct node : node_constructor {
     } else if (type() == type_t::function) {
       // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
       return
-        function_as_string(function()) + "(" + argument().debug_as_string() + ")";
+        std::string(function_as_string(function())) + "(" + argument().debug_as_string() + ")";
     } else {
       return "?";
     }
   }
   fncas_value_type eval(const std::vector<fncas_value_type>& x) const {
     return eval_node(index_, x);
+  }
+  // Generates and compiles code.
+  // TODO(dkorolev): Factor out per-language and per-system code generation and compilation as template parameters.
+  std::unique_ptr<compiled_expression> compile() const {
+    std::string tmp_filename = compiled_expression::syscall("mktemp");
+    FILE* f = fopen((tmp_filename + ".c").c_str(), "w");
+    BOOST_ASSERT(f);
+    generate_c_code_for_node(index_, f);
+    fclose(f);
+    const char* compile_cmdline = "clang -O3 -fPIC -shared -nostartfiles %1%.c -o %1%.so";
+    std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
+    compiled_expression::syscall(cmdline);
+    return std::unique_ptr<compiled_expression>(new compiled_expression(tmp_filename + ".so"));
   }
 };
 BOOST_STATIC_ASSERT(sizeof(node) == 8);
