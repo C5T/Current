@@ -133,7 +133,7 @@ inline internals& internal_singleton() {
   return storage;
 }
 
-// Invalidates cached functions, resets temp notes enumberation from zero and frees cache memory.
+// Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
 inline void reset() {
   internal_singleton().reset();
 }
