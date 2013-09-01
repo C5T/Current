@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#include "fncas.h"
+#include "../src/fncas.h"
 
 #include "boost/progress.hpp"
 #include "boost/random.hpp"
