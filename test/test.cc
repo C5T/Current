@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 
+#define FNCAS_JIT nasm
 #include "../src/fncas.h"
 
 #include "boost/progress.hpp"
