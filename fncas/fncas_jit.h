@@ -1,5 +1,3 @@
-// TODO(dkorolev): Add a big test trying different compilers, different optimizations and release/full lib versions.
-
 // FNCAS on-the-fly compilation logic.
 // FNCAS_JIT must be defined to enable, supported values are 'clang' and 'nasm'.
 
@@ -224,7 +222,7 @@ std::unique_ptr<compiled_expression> compile(uint32_t index) {
   {
     printf("Compiling code. ");
 //    boost::progress_timer p;
-    if (0) {
+    if (1) {
       const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
       std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
       compiled_expression::syscall(cmdline);
