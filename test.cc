@@ -107,7 +107,7 @@ struct basic_math : F {
 };
 
 struct deep_function_tree : F {
-  enum { DIM = 10000 };
+  enum { DIM = 100000 };
   virtual std::string name() const {
     std::ostringstream os;
     os << "sum<i=[0.." << DIM << ")>(x[i])";
@@ -125,35 +125,35 @@ struct deep_function_tree : F {
       add_var(boost::normal_distribution<double>());
     }
   }
-  virtual double iterations_coefficient() const { return 0.1; }
+  virtual double iterations_coefficient() const { return 0.5; }
 };
 
 struct big_math : F {
   enum { DIM = 1000 };
   virtual std::string name() const {
     std::ostringstream os;
-    os << "sum<i=[0.." << DIM << ")>(exp(x[i]) + atan(x[i]))";
+    os << "sum<i=[0.." << DIM << ")>(exp(x[i]) + log(x[i]))";
     return os.str();
   }
   template<typename T> typename fncas::output<T>::type f(const T& x) {
     typename fncas::output<T>::type tmp = 0;
     for (size_t i = 0; i < DIM; ++i) {
-      tmp += exp(x[i]) + atan(x[i]);
+      tmp += exp(x[i]) + log(x[i]);
     }
     return tmp;
   }
   big_math() {
     for (size_t i = 0; i < DIM; ++i) {
-      add_var(boost::normal_distribution<double>());
+      add_var(boost::exponential_distribution<double>());
     }
   }
-  virtual double iterations_coefficient() const { return 0.5; }
+  virtual double iterations_coefficient() const { return 1; }
 };
 
 // Test code to compare plain function evaluation vs. its "byte-code" evaluation.
 
 template<typename T> struct test_eval {
-  enum { iterations = 10000 };
+  enum { iterations = 3 }; //10000 };
   static void run() {
     fncas::reset();
     T f;
@@ -187,7 +187,7 @@ template<typename T> struct test_eval {
 // Test code to compare plain function evaluation vs. its compiled version.
 
 template<typename T> struct test_compiled_code_eval {
-  enum { iterations = 10000 };
+  enum { iterations = 100 }; //10000 };
   static void run() {
     fncas::reset();
     T f;
@@ -199,7 +199,7 @@ template<typename T> struct test_compiled_code_eval {
       << f.dim() << ", " << real_iterations << " iterations, compiled: " << std::flush;
     std::unique_ptr<fncas::compiled_expression> e2;
     {
-      // boost::progress_timer p;
+//      boost::progress_timer p;
       e2 = e.compile();
     }
     std::cout << "compiled, " << std::flush;
@@ -247,12 +247,13 @@ template<template<typename T> class F, class X> struct for_each_type<F, X> {
 int main() {
   for_each_type<
     test,
-    forty_two,
-    add_one, 
-    multiply_by_two, 
-    basic_arithmetics,
-    basic_math,
-    deep_function_tree,
-    big_math>::run();
+//    forty_two,
+//    add_one, 
+//    multiply_by_two, 
+//    basic_arithmetics,
+//    basic_math,
+    deep_function_tree
+//    big_math
+    >::run();
   std::cout << "OK, all tests passed." << std::endl;
 }

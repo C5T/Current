@@ -1,6 +1,10 @@
-// TODO(dkorolev): Readme, build instructions, note that tested on Ubuntu only.
-
 // TODO(dkorolev): Guard rnutime-compilation-specific and linux-specific code by #define-s.
+// TODO(dkorolev): Refactor code generation.
+// TODO(dkorolev): Split into multiple files.
+// TODO(dkorolev): Factor our "release" single file generation.
+// TODO(dkorolev): Add a big test trying different compilers, different optimizations and release/full lib versions.
+
+// TODO(dkorolev): Readme, build instructions, note that tested on Ubuntu only.
 
 // TODO(dkorolev): Header.
 
@@ -24,6 +28,7 @@
 #include <boost/assert.hpp>
 #include <boost/format.hpp>
 #include <boost/function.hpp>
+#include "boost/progress.hpp"
 #include <boost/static_assert.hpp>
 #include <boost/utility.hpp>
 
@@ -43,6 +48,13 @@ enum struct function_t : uint8_t { exp, log, sin, cos, tan, atan, end };
 const char* const operation_as_string(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {
     "+", "-", "*", "/"
+  };
+  return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
+}
+
+const char* const operation_as_nasm_instruction(operation_t operation) {
+  static const char* representation[static_cast<size_t>(operation_t::end)] = {
+    "addpd", "subpd", "mulpd", "divpd",
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
@@ -232,7 +244,7 @@ struct compiled_expression : boost::noncopyable {
   }
 };
 
-// generate_c_code_for_node() writes C code to evaluate the expression to a file.
+// generate_c_code_for_node() writes C code to evaluate the expression to the file.
 void generate_c_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "#include <math.h>\n");
   fprintf(f, "double eval(const double* x, double* a) {\n");
@@ -287,6 +299,89 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "}\n");
   fprintf(f, "int dim() { return %d; }\n", static_cast<int>(max_dim + 1));
 }
+
+// generate_asm_code_for_node() writes NASM code to evaluate the expression to the file.
+void generate_asm_code_for_node(uint32_t index, FILE* f) {
+  fprintf(f, "[bits 64]\n");
+  fprintf(f, "\n");
+  fprintf(f, "global eval, dim\n");
+  fprintf(f, "extern exp, log, sin, cos, tan, atan\n");
+  fprintf(f, "\n");
+  fprintf(f, "section .text\n");
+  fprintf(f, "\n");
+  fprintf(f, "eval:\n");
+  size_t max_dim = index;
+  std::stack<uint32_t> stack;
+  stack.push(index);
+  while (!stack.empty()) {
+    const uint32_t i = stack.top();
+    stack.pop();
+    const uint32_t dependent_i = ~i;
+    if (i < dependent_i) {
+      max_dim = std::max(max_dim, static_cast<size_t>(i));
+      node_impl& node = node_vector_singleton()[i];
+      if (node.type() == type_t::variable) {
+        uint32_t v = node.variable();
+        fprintf(f, "  ; a[%d] = x[%d];\n", i, v);
+        fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
+        fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
+      } else if (node.type() == type_t::value) {
+        fprintf(f, "  ; a[%d] = %a;\n", i, node.value());  // "%a" is hexadecial full precision.
+        fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<uint64_t*>(&node.value())).c_str());
+        fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
+      } else if (node.type() == type_t::operation) {
+        stack.push(~i);
+        stack.push(node.lhs_index());
+        stack.push(node.rhs_index());
+      } else if (node.type() == type_t::function) {
+        stack.push(~i);
+        stack.push(node.argument_index());
+      } else {
+        BOOST_ASSERT(false);
+      }
+    } else {
+      node_impl& node = node_vector_singleton()[dependent_i];
+      if (node.type() == type_t::operation) {
+        fprintf(
+          f,
+          "  ; a[%d] = a[%d] %s a[%d];\n",
+          dependent_i,
+          node.lhs_index(),
+          operation_as_string(node.operation()),
+          node.rhs_index());
+        fprintf(f, "  movq xmm0, [rsi+%d]\n", node.lhs_index() * 8);
+        fprintf(f, "  movq xmm1, [rsi+%d]\n", node.rhs_index() * 8);
+        fprintf(f, "  %s xmm0, xmm1\n", operation_as_nasm_instruction(node.operation()));
+        fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
+      } else if (node.type() == type_t::function) {
+        fprintf(
+         f,
+          "  ; a[%d] = %s(a[%d]);\n",
+          dependent_i,
+          function_as_string(node.function()),
+          node.argument_index());
+        fprintf(f, "  movq xmm0, [rsi+%d]\n", node.argument_index() * 8);
+        fprintf(f, "  push rdi\n");
+        fprintf(f, "  push rsi\n");
+        fprintf(f, "  call %s\n", function_as_string(node.function()));
+        fprintf(f, "  pop rsi\n");
+        fprintf(f, "  pop rdi\n");
+        fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
+      } else {
+        BOOST_ASSERT(false);
+      }
+    }
+  }
+  fprintf(f, "  ; return a[%d]\n", index);
+  fprintf(f, "  movq xmm0, [rsi+%d]\n", index * 8);
+  fprintf(f, "  ret\n");
+  fprintf(f, "\n");
+  fprintf(f, "dim:\n");
+  fprintf(f, "  mov rax, %d\n", static_cast<int>(max_dim + 1));
+  fprintf(f, "  ret\n");
+}
+
+
 
 // The code that deals with nodes directly uses class node as a wrapper to node_impl.
 // Since the storage for node_impl-s is global, class node just holds an index of node_impl.
@@ -350,13 +445,35 @@ struct node : node_constructor {
   // TODO(dkorolev): Factor out per-language and per-system code generation and compilation as template parameters.
   std::unique_ptr<compiled_expression> compile() const {
     std::string tmp_filename = compiled_expression::syscall("mktemp");
-    FILE* f = fopen((tmp_filename + ".c").c_str(), "w");
-    BOOST_ASSERT(f);
-    generate_c_code_for_node(index_, f);
-    fclose(f);
-    const char* compile_cmdline = "clang -O3 -fPIC -shared -nostartfiles %1%.c -o %1%.so";
-    std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
-    compiled_expression::syscall(cmdline);
+    {
+      printf("Generating code. ");
+      boost::progress_timer p;
+      FILE* f;
+      f = fopen((tmp_filename + ".asm").c_str(), "w");
+      BOOST_ASSERT(f);
+      generate_asm_code_for_node(index_, f);
+      fclose(f);
+      f = fopen((tmp_filename + ".c").c_str(), "w");
+      BOOST_ASSERT(f);
+      generate_c_code_for_node(index_, f);
+      fclose(f);
+    }
+    {
+      printf("Compiling code. ");
+      boost::progress_timer p;
+      if (0) {
+        const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
+        std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
+        compiled_expression::syscall(cmdline);
+      } else {
+        const char* compile_cmdline = "nasm -shared -f elf64 %1%.asm -o %1%.o";
+        std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
+        compiled_expression::syscall(cmdline);
+        const char* compile_cmdline2 = "ld -fPIC -shared -o %1%.so %1%.o -lm";
+        std::string cmdline2 = (boost::format(compile_cmdline2) % tmp_filename).str();
+        compiled_expression::syscall(cmdline2);
+      }
+    }
     return std::unique_ptr<compiled_expression>(new compiled_expression(tmp_filename + ".so"));
   }
 };
