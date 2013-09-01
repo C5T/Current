@@ -11,6 +11,7 @@
 // Requires:
 // * C++0X, use g++ --std=c++0x
 // * Boost, sudo apt-get install libboost-dev
+// * -fno-strict-aliasing, to avoid warnings when compiling with g++.
 
 #ifndef FNCAS_H
 #define FNCAS_H
@@ -92,8 +93,29 @@ template<typename T> T apply_function(function_t function, T argument) {
 BOOST_STATIC_ASSERT(sizeof(type_t) == 1);
 BOOST_STATIC_ASSERT(sizeof(operation_t) == 1);
 
-// Counting on "double", comment out if trying other data type.
-BOOST_STATIC_ASSERT(sizeof(fncas_value_type) == 8);
+struct node_impl;
+struct internals {
+  std::vector<node_impl> node_vector;
+  std::vector<double> ram_for_evaluations;
+  void reset() {
+    node_vector.clear();
+    ram_for_evaluations.clear();
+  }
+};
+
+inline internals& internal_singleton() {
+  static internals storage;
+  return storage;
+}
+
+// Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
+inline void reset() {
+  internal_singleton().reset();
+}
+
+inline std::vector<node_impl>& node_vector_singleton() {
+  return internal_singleton().node_vector;
+}
 
 struct node_impl {
   uint8_t data_[10];
@@ -130,29 +152,6 @@ struct node_impl {
   }
 };
 BOOST_STATIC_ASSERT(sizeof(node_impl) == 10);
-
-struct internals {
-  std::vector<node_impl> node_vector;
-  std::vector<double> ram_for_evaluations;
-  void reset() {
-    node_vector.clear();
-    ram_for_evaluations.clear();
-  }
-};
-
-inline internals& internal_singleton() {
-  static internals storage;
-  return storage;
-}
-
-// Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
-inline void reset() {
-  internal_singleton().reset();
-}
-
-inline std::vector<node_impl>& node_vector_singleton() {
-  return internal_singleton().node_vector;
-}
 
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
@@ -243,6 +242,109 @@ struct compiled_expression : boost::noncopyable {
     return buffer;
   }
 };
+
+std::unique_ptr<compiled_expression> compile_node(uint32_t index);
+
+// The code that deals with nodes directly uses class node as a wrapper to node_impl.
+// Since the storage for node_impl-s is global, class node just holds an index of node_impl.
+// User code that defines the function to work with is effectively dealing with class node objects:
+// arithmetical and mathematical operations are overloaded for class node.
+
+struct node_constructor {
+  mutable uint64_t index_;
+  explicit node_constructor(uint64_t index) : index_(static_cast<uint64_t>(index)) {}
+  explicit node_constructor() : index_(node_vector_singleton().size()) {
+    node_vector_singleton().resize(index_ + 1);
+  }
+};
+
+struct node : node_constructor {
+ private:
+  node(const node_constructor& instance) : node_constructor(instance) {}
+ public:
+  node() : node_constructor() {}
+  node(fncas_value_type x) : node_constructor() { type() = type_t::value; value() = x; }
+  type_t& type() const { return node_vector_singleton()[index_].type(); }
+  uint32_t& variable() const { return node_vector_singleton()[index_].variable(); }
+  fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
+  operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
+  uint32_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
+  uint32_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
+  node lhs() const { return node_constructor(node_vector_singleton()[index_].lhs_index()); }
+  node rhs() const { return node_constructor(node_vector_singleton()[index_].rhs_index()); }
+  function_t& function() const { return node_vector_singleton()[index_].function(); }
+  uint32_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
+  node argument() const { return node_constructor(node_vector_singleton()[index_].argument_index()); }
+  static node variable(uint32_t index) {
+    node result;
+    result.type() = type_t::variable;
+    result.variable() = index;
+    return result;
+  }
+  std::string debug_as_string() const {
+    if (type() == type_t::variable) {
+      return "x[" + std::to_string(variable()) + "]";
+    } else if (type() == type_t::value) {
+      return std::to_string(value());
+    } else if (type() == type_t::operation) {
+      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
+      return
+        "(" + lhs().debug_as_string() +
+        operation_as_string(operation()) +
+        rhs().debug_as_string() + ")";
+    } else if (type() == type_t::function) {
+      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
+      return
+        std::string(function_as_string(function())) + "(" + argument().debug_as_string() + ")";
+    } else {
+      return "?";
+    }
+  }
+  fncas_value_type eval(const std::vector<fncas_value_type>& x) const {
+    return eval_node(index_, x);
+  }
+  // Generates and compiles code.
+  // TODO(dkorolev): Factor out per-language and per-system code generation and compilation as template parameters.
+  std::unique_ptr<compiled_expression> compile() const {
+    return compile_node(index_);
+  }
+};
+BOOST_STATIC_ASSERT(sizeof(node) == 8);
+
+// Aritmetical operations and mathematical functions are defined outside namespace fncas.
+
+#define DECLARE_OP(OP,OP2,NAME) \
+inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
+  fncas::node result; \
+  result.type() = fncas::type_t::operation; \
+  result.operation() = fncas::operation_t::NAME; \
+  result.lhs_index() = lhs.index_; \
+  result.rhs_index() = rhs.index_; \
+  return result; \
+} \
+inline const fncas::node& operator OP2(fncas::node& lhs, const fncas::node& rhs) { \
+  lhs = lhs OP rhs; \
+  return lhs; \
+}
+DECLARE_OP(+,+=,add);
+DECLARE_OP(-,-=,subtract);
+DECLARE_OP(*,*=,multiply);
+DECLARE_OP(/,/=,divide);
+
+#define DECLARE_FUNCTION(F) \
+inline fncas::node F(const fncas::node& argument) { \
+  fncas::node result; \
+  result.type() = fncas::type_t::function; \
+  result.function() = fncas::function_t:: F; \
+  result.argument_index() = argument.index_; \
+  return result; \
+}
+DECLARE_FUNCTION(exp);
+DECLARE_FUNCTION(log);
+DECLARE_FUNCTION(sin);
+DECLARE_FUNCTION(cos);
+DECLARE_FUNCTION(tan);
+DECLARE_FUNCTION(atan);
 
 // generate_c_code_for_node() writes C code to evaluate the expression to the file.
 void generate_c_code_for_node(uint32_t index, FILE* f) {
@@ -381,103 +483,39 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "  ret\n");
 }
 
-
-
-// The code that deals with nodes directly uses class node as a wrapper to node_impl.
-// Since the storage for node_impl-s is global, class node just holds an index of node_impl.
-// User code that defines the function to work with is effectively dealing with class node objects:
-// arithmetical and mathematical operations are overloaded for class node.
-
-struct node_constructor {
-  mutable uint64_t index_;
-  explicit node_constructor(uint64_t index) : index_(static_cast<uint64_t>(index)) {}
-  explicit node_constructor() : index_(node_vector_singleton().size()) {
-    node_vector_singleton().resize(index_ + 1);
+std::unique_ptr<compiled_expression> compile_node(uint32_t index) {
+  std::string tmp_filename = compiled_expression::syscall("mktemp");
+  {
+    printf("Generating code. ");
+    boost::progress_timer p;
+    FILE* f;
+    f = fopen((tmp_filename + ".asm").c_str(), "w");
+    BOOST_ASSERT(f);
+    generate_asm_code_for_node(index, f);
+    fclose(f);
+    f = fopen((tmp_filename + ".c").c_str(), "w");
+    BOOST_ASSERT(f);
+    generate_c_code_for_node(index, f);
+    fclose(f);
   }
-};
-
-struct node : node_constructor {
- private:
-  node(const node_constructor& instance) : node_constructor(instance) {}
- public:
-  node() : node_constructor() {}
-  node(fncas_value_type x) : node_constructor() { type() = type_t::value; value() = x; }
-  type_t& type() const { return node_vector_singleton()[index_].type(); }
-  uint32_t& variable() const { return node_vector_singleton()[index_].variable(); }
-  fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
-  operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
-  uint32_t& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
-  uint32_t& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
-  node lhs() const { return node_constructor(node_vector_singleton()[index_].lhs_index()); }
-  node rhs() const { return node_constructor(node_vector_singleton()[index_].rhs_index()); }
-  function_t& function() const { return node_vector_singleton()[index_].function(); }
-  uint32_t& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
-  node argument() const { return node_constructor(node_vector_singleton()[index_].argument_index()); }
-  static node variable(uint32_t index) {
-    node result;
-    result.type() = type_t::variable;
-    result.variable() = index;
-    return result;
-  }
-  std::string debug_as_string() const {
-    if (type() == type_t::variable) {
-      return "x[" + std::to_string(variable()) + "]";
-    } else if (type() == type_t::value) {
-      return std::to_string(value());
-    } else if (type() == type_t::operation) {
-      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
-      return
-        "(" + lhs().debug_as_string() +
-        operation_as_string(operation()) +
-        rhs().debug_as_string() + ")";
-    } else if (type() == type_t::function) {
-      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
-      return
-        std::string(function_as_string(function())) + "(" + argument().debug_as_string() + ")";
+  {
+    printf("Compiling code. ");
+    boost::progress_timer p;
+    if (0) {
+      const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
+      std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
+      compiled_expression::syscall(cmdline);
     } else {
-      return "?";
+      const char* compile_cmdline = "nasm -shared -f elf64 %1%.asm -o %1%.o";
+      std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
+      compiled_expression::syscall(cmdline);
+      const char* compile_cmdline2 = "ld -fPIC -shared -o %1%.so %1%.o -lm";
+      std::string cmdline2 = (boost::format(compile_cmdline2) % tmp_filename).str();
+      compiled_expression::syscall(cmdline2);
     }
   }
-  fncas_value_type eval(const std::vector<fncas_value_type>& x) const {
-    return eval_node(index_, x);
-  }
-  // Generates and compiles code.
-  // TODO(dkorolev): Factor out per-language and per-system code generation and compilation as template parameters.
-  std::unique_ptr<compiled_expression> compile() const {
-    std::string tmp_filename = compiled_expression::syscall("mktemp");
-    {
-      printf("Generating code. ");
-      boost::progress_timer p;
-      FILE* f;
-      f = fopen((tmp_filename + ".asm").c_str(), "w");
-      BOOST_ASSERT(f);
-      generate_asm_code_for_node(index_, f);
-      fclose(f);
-      f = fopen((tmp_filename + ".c").c_str(), "w");
-      BOOST_ASSERT(f);
-      generate_c_code_for_node(index_, f);
-      fclose(f);
-    }
-    {
-      printf("Compiling code. ");
-      boost::progress_timer p;
-      if (0) {
-        const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
-        std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
-        compiled_expression::syscall(cmdline);
-      } else {
-        const char* compile_cmdline = "nasm -shared -f elf64 %1%.asm -o %1%.o";
-        std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
-        compiled_expression::syscall(cmdline);
-        const char* compile_cmdline2 = "ld -fPIC -shared -o %1%.so %1%.o -lm";
-        std::string cmdline2 = (boost::format(compile_cmdline2) % tmp_filename).str();
-        compiled_expression::syscall(cmdline2);
-      }
-    }
-    return std::unique_ptr<compiled_expression>(new compiled_expression(tmp_filename + ".so"));
-  }
-};
-BOOST_STATIC_ASSERT(sizeof(node) == 8);
+  return std::unique_ptr<compiled_expression>(new compiled_expression(tmp_filename + ".so"));
+}
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
@@ -502,40 +540,5 @@ template<> struct output<std::vector<fncas_value_type> > { typedef fncas_value_t
 template<> struct output<x> { typedef fncas::node type; };
 
 }  // namespace fncas
-
-// Aritmetical operations and mathematical functions are defined outside namespace fncas.
-
-#define DECLARE_OP(OP,OP2,NAME) \
-inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
-  fncas::node result; \
-  result.type() = fncas::type_t::operation; \
-  result.operation() = fncas::operation_t::NAME; \
-  result.lhs_index() = lhs.index_; \
-  result.rhs_index() = rhs.index_; \
-  return result; \
-} \
-inline const fncas::node& operator OP2(fncas::node& lhs, const fncas::node& rhs) { \
-  lhs = lhs OP rhs; \
-  return lhs; \
-}
-DECLARE_OP(+,+=,add);
-DECLARE_OP(-,-=,subtract);
-DECLARE_OP(*,*=,multiply);
-DECLARE_OP(/,/=,divide);
-
-#define DECLARE_FUNCTION(F) \
-inline fncas::node F(const fncas::node& argument) { \
-  fncas::node result; \
-  result.type() = fncas::type_t::function; \
-  result.function() = fncas::function_t:: F; \
-  result.argument_index() = argument.index_; \
-  return result; \
-}
-DECLARE_FUNCTION(exp);
-DECLARE_FUNCTION(log);
-DECLARE_FUNCTION(sin);
-DECLARE_FUNCTION(cos);
-DECLARE_FUNCTION(tan);
-DECLARE_FUNCTION(atan);
 
 #endif

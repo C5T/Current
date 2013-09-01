@@ -1,12 +1,4 @@
-*~
-*.o
-*.a
 */*~
 */*.o
 */*.a
-a.out
 */a.out
-src/fncas
-src/fncas_gcc
-src/fncas_clang
-test/test
