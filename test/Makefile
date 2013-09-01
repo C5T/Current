@@ -8,15 +8,13 @@ test: test_binary
 	./test_binary
 	rm -f test_binary
 
-test_binary : test.cc autogen/all_functions.h autogen/all_functions_list.h
+test_binary : test.cc autogen/functions.h
 	${CC} ${CCFLAGS} -o test_binary test.cc ${CCPOSTFLAGS}
 
-autogen/all_functions.h: functions/*.h
+autogen/functions.h: functions/*.h
 	mkdir -p autogen
-	cat functions/*.h >autogen/all_functions.h
-
-autogen/all_functions_list.h: functions/*.h
-	ls functions/ | sed "s/\.h//g"  | paste -s -d, >autogen/all_functions_list.h
+	cat functions/*.h >$@
+	ls functions/ | sed "s/\(.*\)\.h/REGISTER_FUNCTION(\1);/g" >>$@
 
 clean:
 	rm -rf autogen/

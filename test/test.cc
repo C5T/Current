@@ -1,9 +1,22 @@
+/*
+top-level: compile our code with clang++ or g++
+top-level: compile our code with and without optimizations
+
+mid-level: measure time for { just generate input data, generate+basic computation, generate+bytecode computation, generate+JIT{nasm,clang}}
+
+low-level: across all functions
+
+
+./test $function $action $seconds
+*/
+
 // TODO(dkorolev): Make it work.
 // TODO(dkorolev): Add a script to try different compiler/optimization/JIT parameters.
 // TODO(dkorolev): Get rid of function::name().
 
 #include <cassert>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <vector>
 
@@ -13,15 +26,8 @@
 #include "boost/progress.hpp"
 #include "boost/random.hpp"
 
-#include <boost/fusion/include/algorithm.hpp>
-#include <boost/fusion/include/vector.hpp>
-
 #include "function.h"
-#include "autogen/all_functions.h"
-
-typedef boost::fusion::vector<
-#include "autogen/all_functions_list.h"
-> FUNCTIONS_TYPELIST;
+#include "autogen/functions.h"
 
 /*
 // Test code to compare plain function evaluation vs. its "byte-code" evaluation.
@@ -125,7 +131,9 @@ struct run_f {
   };
 };
 
-int main() {
-  boost::fusion::for_each(FUNCTIONS_TYPELIST(), run_f());
+int main(int argc, char* argv[]) {
+  for (auto cit : registered_functions) {
+    std::cout << cit.first << " -> " << cit.second->dim() << std::endl;
+  }
   std::cout << "OK, all tests passed." << std::endl;
 }

@@ -28,3 +28,12 @@ class F {
     return x;
   }
 };
+
+std::map<std::string, F*> registered_functions;
+void register_function(const char* name, F* impl) {
+  registered_functions[name] = impl;
+}
+
+#define REGISTER_FUNCTION(x) \
+  static x x##_impl; \
+  static struct x##_registerer { x##_registerer() { register_function(#x, &x##_impl); } } x##_impl_registerer
