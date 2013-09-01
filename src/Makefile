@@ -8,10 +8,10 @@ all: fncas
 fncas: fncas_gcc fncas_clang
 	ln -sf fncas_clang fncas
 
-fncas_gcc: dummy.cc fncas.h
+fncas_gcc: dummy.cc fncas.h fncas_base.h fncas_node.h fncas_jit.h
 	g++ ${CCFLAGS} -o $@ dummy.cc ${CCPOSTFLAGS}
 
-fncas_clang: dummy.cc fncas.h
+fncas_clang: dummy.cc fncas.h fncas_base.h fncas_node.h fncas_jit.h
 	clang++ ${CCFLAGS} -o $@ dummy.cc ${CCPOSTFLAGS}
 
 clean:

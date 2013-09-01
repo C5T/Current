@@ -200,7 +200,7 @@ template<typename T> struct test_compiled_code_eval {
     std::unique_ptr<fncas::compiled_expression> e2;
     {
 //      boost::progress_timer p;
-      e2 = e.compile();
+      e2 = fncas::compile(e);
     }
     std::cout << "compiled, " << std::flush;
     {

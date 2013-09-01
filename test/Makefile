@@ -5,9 +5,12 @@ CCPOSTFLAGS=-ldl
 
 all: test
 
-test: test.cc
-	${CC} ${CCFLAGS} -o test_binary test.cc ${CCPOSTFLAGS}
+test: test_binary
 	./test_binary
+	rm -f test_binary
+
+test_binary : test.cc
+	${CC} ${CCFLAGS} -o test_binary test.cc ${CCPOSTFLAGS}
 
 clean:
 	rm -f test_binary
