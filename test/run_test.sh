@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # TODO(dkorolev): Get rid of the Makefile and compile from this script with various options.
+# TODO(dkorolev): report.txt -> report.html
 
 TEST_SECONDS=10
 

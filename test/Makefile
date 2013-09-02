@@ -17,4 +17,4 @@ autogen/functions.h: functions/*.h
 
 clean:
 	rm -rf autogen/
-	rm -f test_binary
+	rm -f test_binary report.txt
