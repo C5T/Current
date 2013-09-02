@@ -2,6 +2,8 @@
 
 # TODO(dkorolev): Get rid of the Makefile and compile from this script with various options.
 
+TEST_SECONDS=10
+
 cat >/dev/null <<EOF
 SAVE_IFS="$IFS"
 COMPILERS="g++ clang++"
@@ -23,14 +25,10 @@ EOF
 
 for function in $(ls functions/ | cut -f1 -d.) ; do 
   echo "Function: "$function
-  declare -A qps
+  data=''
   for action in generate evaluate intermediate_evaluate compiled_evaluate; do
-    qps[$action]=$(./test_binary $function $action 5)
+    data+=$(./test_binary $function $action $TEST_SECONDS)':'
   done
-  params=""
-  for action in generate evaluate intermediate_evaluate compiled_evaluate ; do
-    params+=${qps[$action]}':'
-  done
-  echo $function':'$params | awk -F: '{ printf "  %20s EvalNative %10.2f kqps, EvalSlow %10.2f kqps, EvalFast %10.2f kqps\n", $1, 0.001/(1/$3-1/$2), 0.001/(1/$4-1/$2), 0.001/(1/$5-1/$2) }'
+  echo $function':'$data | awk -F: '{ printf "  %20s EvalNative %10.2f kqps, EvalSlow %10.2f kqps, EvalFast %10.2f kqps, %.2fs compilation time.\n", $1, 0.001/(1/$3-1/$2), 0.001/(1/$4-1/$2), 0.001/(1/$5-1/$2), $5 }'
   unset times
 done
