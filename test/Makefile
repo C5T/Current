@@ -5,7 +5,7 @@ CCPOSTFLAGS=-ldl
 all: test
 
 test: test_binary
-	./test_binary
+	./run_test.sh
 	rm -f test_binary
 
 test_binary : test.cc autogen/functions.h

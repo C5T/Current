@@ -55,7 +55,7 @@ struct compiled_expression : boost::noncopyable {
     FILE* f = popen(command.c_str(), "r");
     BOOST_ASSERT(f);
     static char buffer[1024 * 1024];
-    fscanf(f, "%s", buffer);
+    BOOST_ASSERT(1 == fscanf(f, "%s", buffer));
     fclose(f);
     return buffer;
   }

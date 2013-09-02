@@ -1,8 +1,5 @@
 struct multiply_by_two : F {
-  virtual const char* name() const {
-    return "x * 2";
-  }
-  template<typename T> typename fncas::output<T>::type f(const T& x) {
+  template<typename T> static typename fncas::output<T>::type f(const T& x) {
     return x[0] * 2;
   }
   multiply_by_two() {

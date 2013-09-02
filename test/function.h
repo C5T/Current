@@ -20,20 +20,30 @@ class F {
     return 1.0;
   }
 
-  std::vector<double> gen() const {
-    std::vector<double> x(p.size());
+  void gen(std::vector<double>& x) const {
+    BOOST_ASSERT(x.size() == p.size());
     for (size_t i = 0; i < p.size(); ++i) {
       x[i] = p[i]();
     }
-    return x;
   }
+
+  virtual double eval_double(const std::vector<double>& x) const = 0;
+  virtual fncas::output<fncas::x>::type eval_expression(const fncas::x& x) const = 0;
 };
 
 std::map<std::string, F*> registered_functions;
-void register_function(const char* name, F* impl) {
+template<typename T> void register_function(const char* name, T* impl) {
   registered_functions[name] = impl;
 }
 
-#define REGISTER_FUNCTION(x) \
-  static x x##_impl; \
-  static struct x##_registerer { x##_registerer() { register_function(#x, &x##_impl); } } x##_impl_registerer
+#define REGISTER_FUNCTION(F) \
+  struct enchanced_##F : F { \
+    virtual double eval_double(const std::vector<double>& x) const { \
+      return F::f(x); \
+    } \
+    virtual fncas::output<fncas::x>::type eval_expression(const fncas::x& x) const { \
+      return F::f(x); \
+    } \
+  }; \
+  static enchanced_##F F##_impl; \
+  static struct F##_registerer { F##_registerer() { register_function<enchanced_##F>(#F, &F##_impl); } } F##_impl_registerer

@@ -1,29 +1,16 @@
-/*
-top-level: compile our code with clang++ or g++
-top-level: compile our code with and without optimizations
-
-mid-level: measure time for { just generate input data, generate+basic computation, generate+bytecode computation, generate+JIT{nasm,clang}}
-
-low-level: across all functions
-
-
-./test $function $action $seconds
-*/
-
-// TODO(dkorolev): Make it work.
 // TODO(dkorolev): Add a script to try different compiler/optimization/JIT parameters.
-// TODO(dkorolev): Get rid of function::name().
 
 #include <cassert>
+#include <chrono>
+#include <iomanip>
 #include <iostream>
 #include <map>
-#include <sstream>
 #include <vector>
 
 #define FNCAS_JIT nasm
 #include "../fncas/fncas.h"
 
-#include "boost/progress.hpp"
+//#include "boost/progress.hpp"
 #include "boost/random.hpp"
 
 #include "function.h"
@@ -103,37 +90,93 @@ template<typename T> struct test_compiled_code_eval {
     }
   }
 };
-
-template<typename T> struct test {
-  static void run() {
-    test_eval<T>::run();
-    test_compiled_code_eval<T>::run();
-  }
-};
-
-template<template<typename T> class F, class X, class... XS> struct for_each_type {
-  static void run() {
-    F<X>::run();
-    for_each_type<F, XS...>::run();
-  }
-};
-
-template<template<typename T> class F, class X> struct for_each_type<F, X> {
-  static void run() {
-    F<X>::run();
-  }
-};
 */
 
-struct run_f {
-  template <typename T> void operator()(const T& t) const {
-    std::cout << t.name() << std::endl;
-  };
+struct action_base {
+  virtual void run(const F* f, double seconds) = 0;
+};
+
+struct action_generate : action_base {
+  virtual void run(const F* f, double seconds) {
+    std::chrono::high_resolution_clock timer;
+    double duration;
+    size_t iterations = 0;
+    std::vector<double> x(f->dim());
+    auto begin = timer.now();
+    do {
+      f->gen(x);
+      duration =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+      ++iterations;
+    } while (duration < seconds);
+    std::cout << std::fixed << std::setprecision(5) << iterations / duration << std::endl;
+  }
+};
+
+struct action_evaluate : action_base {
+  virtual void run(const F* f, double seconds) {
+    std::chrono::high_resolution_clock timer;
+    std::vector<double> x(f->dim());
+    std::vector<double> results;
+    results.reserve(10000000);
+    double duration;
+    auto begin = timer.now();
+    do {
+      f->gen(x);
+      duration =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+      results.push_back(f->eval_double(x));
+    } while (duration < seconds);
+    // TODO(dkorolev): Reset pseudo-random seed and compare the results.
+    std::cout << std::fixed << std::setprecision(5) << results.size() / duration << std::endl;
+  }
+};
+
+struct action_intermediate_evaluate : action_base {
+  virtual void run(const F* f, double seconds) {
+    std::chrono::high_resolution_clock timer;
+    std::vector<double> x(f->dim());
+    std::vector<double> results;
+    results.reserve(10000000);
+    double duration;
+    auto expression = f->eval_expression(fncas::x(f->dim()));
+    auto begin = timer.now();
+    do {
+      f->gen(x);
+      duration =
+        std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+      results.push_back(expression.eval(x));
+    } while (duration < seconds);
+    // TODO(dkorolev): Reset pseudo-random seed and compare the results.
+    std::cout << std::fixed << std::setprecision(5) << results.size() / duration << std::endl;
+  }
 };
 
 int main(int argc, char* argv[]) {
-  for (auto cit : registered_functions) {
-    std::cout << cit.first << " -> " << cit.second->dim() << std::endl;
+  if (argc != 4) {
+    std::cerr << "Usage: " << argv[0] << " <function> <action> <seconds>" << std::endl;
+    return -1;
+  } else {
+    const F* f = registered_functions[argv[1]];
+    if (!f) {
+      std::cerr << "Function '" << argv[1] << "' is not defined in out functions/*.h." << std::endl;
+      return -1;
+    } else {
+      action_generate generate;
+      action_evaluate evaluate;
+      action_intermediate_evaluate intermediate_evaluate;
+      std::map<std::string, action_base*> actions;
+      actions["generate"] = &generate;
+      actions["evaluate"] = &evaluate;
+      actions["intermediate_evaluate"] = &intermediate_evaluate;
+      action_base* action = actions[argv[2]];
+      if (!action) {
+        std::cerr << "Action '" << argv[2] << "' is not defined." << std::endl;
+        return -1;
+      } else {
+        action->run(f, atof(argv[3]));
+        return 0;
+      }
+    }
   }
-  std::cout << "OK, all tests passed." << std::endl;
 }
