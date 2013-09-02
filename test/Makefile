@@ -2,11 +2,10 @@ CC=g++
 CCFLAGS=--std=c++0x -Wall -O3 -fno-strict-aliasing
 CCPOSTFLAGS=-ldl
 
-all: test
+all: report.txt
 
-test: test_binary
-	./run_test.sh
-	rm -f test_binary
+report.txt: test_binary
+	./run_test.sh | tee $@
 
 test_binary : test.cc autogen/functions.h
 	${CC} ${CCFLAGS} -o test_binary test.cc ${CCPOSTFLAGS}
