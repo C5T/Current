@@ -7,7 +7,7 @@ all: report.txt
 report.txt: test_binary
 	./run_test.sh | tee $@
 
-test_binary : test.cc autogen/functions.h
+test_binary : test.cc autogen/functions.h ../fncas/*.h
 	${CC} ${CCFLAGS} -o test_binary test.cc ${CCPOSTFLAGS}
 
 autogen/functions.h: functions/*.h

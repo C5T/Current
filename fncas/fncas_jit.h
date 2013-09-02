@@ -55,7 +55,7 @@ struct compiled_expression : boost::noncopyable {
     FILE* f = popen(command.c_str(), "r");
     BOOST_ASSERT(f);
     static char buffer[1024 * 1024];
-    BOOST_ASSERT(1 == fscanf(f, "%s", buffer));
+    fscanf(f, "%s", buffer);
     fclose(f);
     return buffer;
   }
@@ -207,7 +207,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
 std::unique_ptr<compiled_expression> compile(uint32_t index) {
   std::string tmp_filename = compiled_expression::syscall("mktemp");
   {
-    printf("Generating code. ");
+///    printf("Generating code. ");
 //    boost::progress_timer p;
     FILE* f;
     f = fopen((tmp_filename + ".asm").c_str(), "w");
@@ -220,7 +220,7 @@ std::unique_ptr<compiled_expression> compile(uint32_t index) {
     fclose(f);
   }
   {
-    printf("Compiling code. ");
+///    printf("Compiling code. ");
 //    boost::progress_timer p;
     if (1) {
       const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
