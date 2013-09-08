@@ -2,9 +2,9 @@ CC=g++
 CCFLAGS=--std=c++0x -Wall -O3 -fno-strict-aliasing
 CCPOSTFLAGS=-ldl
 
-all: report.txt
+all: report.html
 
-report.txt: test_binary
+report.html: run_test.sh test_binary
 	./run_test.sh | tee $@
 
 test_binary : test.cc autogen/functions.h ../fncas/*.h
@@ -17,4 +17,4 @@ autogen/functions.h: functions/*.h
 
 clean:
 	rm -rf autogen/
-	rm -f test_binary report.txt
+	rm -f test_binary report.html

@@ -17,55 +17,59 @@
 #include "function.h"
 #include "autogen/functions.h"
 
-void generate(const F* f, double seconds) {
+void generate(const F* f, size_t max_iterations, double max_seconds) {
   std::chrono::high_resolution_clock timer;
   double duration;
-  size_t iterations = 0;
   std::vector<double> x(f->dim());
+  size_t iterations = 0;
   auto begin = timer.now();
   do {
     f->gen(x);
     duration =
       std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
     ++iterations;
-  } while (duration < seconds);
+  } while (duration < max_seconds && iterations < max_iterations);
   std::cout << iterations / duration << std::endl;
 }
 
-void evaluate(const F* f, double seconds) {
+void evaluate(const F* f, size_t max_iterations, double max_seconds) {
   std::chrono::high_resolution_clock timer;
   std::vector<double> x(f->dim());
   std::vector<double> results;
   results.reserve(10000000);
   double duration;
+  size_t iterations = 0;
   auto begin = timer.now();
   do {
     f->gen(x);
     duration =
       std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+      ++iterations;
     results.push_back(f->eval_double(x));
-  } while (duration < seconds);
-  std::cout << results.size() / duration << std::endl;
+  } while (duration < max_seconds && iterations < max_iterations);
+  std::cout << iterations / duration << std::endl;
 }
 
-void intermediate_evaluate(const F* f, double seconds) {
+void intermediate_evaluate(const F* f, size_t max_iterations, double max_seconds) {
   std::chrono::high_resolution_clock timer;
   std::vector<double> x(f->dim());
   std::vector<double> results;
   results.reserve(10000000);
   double duration;
   auto expression = f->eval_expression(fncas::x(f->dim()));
+  size_t iterations = 0;
   auto begin = timer.now();
   do {
     f->gen(x);
     duration =
       std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
     results.push_back(expression.eval(x));
-  } while (duration < seconds);
-  std::cout << results.size() / duration << std::endl;
+    ++iterations;
+  } while (duration < max_seconds && iterations < max_iterations);
+  std::cout << iterations / duration << std::endl;
 }
 
-void compiled_evaluate(const F* f, double seconds) {
+void compiled_evaluate(const F* f, size_t max_iterations, double max_seconds) {
   std::chrono::high_resolution_clock timer;
   std::vector<double> x(f->dim());
   std::vector<double> results;
@@ -81,39 +85,45 @@ void compiled_evaluate(const F* f, double seconds) {
     compile_time =
       std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(end - begin).count() * 0.001;
   }
+  size_t iterations = 0;
   auto begin = timer.now();
   do {
     f->gen(x);
     duration =
       std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
     results.push_back(e2->eval(x));
-  } while (duration < seconds);
-  std::cout << results.size() / duration << ':' << compile_time << std::endl;
+    ++iterations;
+  } while (duration < max_seconds && iterations < max_iterations);
+  std::cout << iterations / duration << ':' << compile_time << std::endl;
 }
 
 int main(int argc, char* argv[]) {
   std::cout << std::fixed << std::setprecision(5);
-  if (argc != 4) {
-    std::cerr << "Usage: " << argv[0] << " <function> <action> <seconds>" << std::endl;
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0] << " <function> <action> <max_iterations=1000000> <max_seconds=2.0>" << std::endl;
     return -1;
   } else {
-    const F* f = registered_functions[argv[1]];
+    const char* function = argv[1];
+    const char* action = argv[2];
+    const size_t max_iterations = (argc >= 4) ? atoi(argv[3]) : 1000000;
+    const double max_seconds = (argc >= 5) ? atof(argv[4]) : 2.0;
+    const F* f = registered_functions[function];
     if (!f) {
-      std::cerr << "Function '" << argv[1] << "' is not defined in out functions/*.h." << std::endl;
+      std::cerr << "Function '" << function << "' is not defined in out functions/*.h." << std::endl;
       return -1;
     } else {
-      typedef boost::function<void(const F*, double)> F_ACTION;
+      typedef boost::function<void(const F*, size_t, double)> F_ACTION;
       std::map<std::string, F_ACTION> actions;
       actions["generate"] = generate;
       actions["evaluate"] = evaluate;
       actions["intermediate_evaluate"] = intermediate_evaluate;
       actions["compiled_evaluate"] = compiled_evaluate;
-      F_ACTION action = actions[argv[2]];
-      if (!action) {
-        std::cerr << "Action '" << argv[2] << "' is not defined." << std::endl;
+      F_ACTION action_handler = actions[action];
+      if (!action_handler) {
+        std::cerr << "Action '" << action << "' is not defined." << std::endl;
         return -1;
       } else {
-        action(f, atof(argv[3]));
+        action_handler(f, max_iterations, max_seconds);
         return 0;
       }
     }

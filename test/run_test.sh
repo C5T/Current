@@ -1,9 +1,10 @@
 #!/bin/bash
 
+# TODO(dkorolev): HTML format.
 # TODO(dkorolev): Get rid of the Makefile and compile from this script with various options.
-# TODO(dkorolev): report.txt -> report.html
 
-TEST_SECONDS=10
+MAX_ITERATIONS=2000000
+TEST_SECONDS=3
 
 cat >/dev/null <<EOF
 SAVE_IFS="$IFS"
@@ -28,8 +29,18 @@ for function in $(ls functions/ | cut -f1 -d.) ; do
   echo "Function: "$function
   data=''
   for action in generate evaluate intermediate_evaluate compiled_evaluate; do
-    data+=$(./test_binary $function $action $TEST_SECONDS)':'
+    data+=$(./test_binary $function $action $MAX_ITERATIONS $MAX_SECONDS)':'
   done
-  echo $function':'$data | awk -F: '{ printf "  %20s EvalNative %10.2f kqps, EvalSlow %10.2f kqps, EvalFast %10.2f kqps, %.2fs compilation time.\n", $1, 0.001/(1/$3-1/$2), 0.001/(1/$4-1/$2), 0.001/(1/$5-1/$2), $5 }'
-  unset times
+  echo $function':'$data | awk -F: '{
+    name=$1;
+    gen_qps = $2;
+    gen_eval_qps = $3;
+    gen_eval_intermediate_qps = $4;
+    gen_eval_compiled_qps = $5;
+    compile_time = $6;
+    eval_kqps=0.001/(1/gen_eval_qps - 1/gen_qps);
+    eval_intermediate_kqps=0.001/(1/gen_eval_intermediate_qps - 1/gen_qps);
+    eval_compiled_kqps=0.001/(1/gen_eval_compiled_qps - 1/gen_qps);
+    printf ("%20s EvalNative %10.2f kqps, EvalSlow %10.2f kqps, EvalFast %10.2f kqps, %.2fs compilation time.\n", name, eval_kqps, eval_intermediate_kqps, eval_compiled_kqps, compile_time);
+  }'
 done
