@@ -57,16 +57,16 @@ for function in $(ls functions/ | cut -f1 -d.) ; do
     eval_kqps=0.001/(1/gen_eval_qps - 1/gen_qps);
     eval_intermediate_kqps=0.001/(1/gen_eval_intermediate_qps - 1/gen_qps);
     eval_compiled_kqps=0.001/(1/gen_eval_compiled_qps - 1/gen_qps);
-    printf ("<tr>");
+    printf ("<tr>\n");
     printf ("<td align=right>%s</td>", name);
-    printf ("<td align=right>%10.2f kqps</td>\n", eval_kqps);
-    printf ("<td align=right>%10.2f kqps</td>\n", eval_intermediate_kqps);
-    printf ("<td align=right>%10.2f kqps</td>\n", eval_compiled_kqps);
+    printf ("<td align=right>%.2f kqps</td>\n", eval_kqps);
+    printf ("<td align=right>%.2f kqps</td>\n", eval_intermediate_kqps);
+    printf ("<td align=right>%.2f kqps</td>\n", eval_compiled_kqps);
     printf ("<td align=right>%.0f%%</td>\n", 100 * eval_intermediate_kqps / eval_kqps);
     printf ("<td align=right>%.0f%%</td>\n", 100 * eval_compiled_kqps / eval_kqps);
     printf ("<td align=right>%.1fx</td>\n", eval_compiled_kqps / eval_intermediate_kqps);
     printf ("<td align=right>%.2fs</td></tr>\n", compile_time);
-    printf ("</tr>");
+    printf ("</tr>\n");
   }'
 done
 echo '</table>'
