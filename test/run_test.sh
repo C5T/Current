@@ -42,29 +42,39 @@ echo -n '<td align=right>Compiled / Intermediate, times</td>'
 echo -n '<td align=right>Compilation time, s</td>'
 echo '</tr>'
 for function in $(ls functions/ | cut -f1 -d.) ; do 
-  echo "Function: "$function >/dev/stderr
+  echo $function >/dev/stderr
   data=''
-  for action in generate evaluate intermediate_evaluate compiled_evaluate; do
-    data+=$(./test_binary $function $action $MAX_ITERATIONS $MAX_SECONDS)':'
+  for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
+    echo -n '  '$action': ' >/dev/stderr
+    result=$(./test_binary $function $action $MAX_ITERATIONS $MAX_SECONDS)
+    echo $result >/dev/stderr
+    result_verdict=${result/\:*/}
+    result_data=${result/$result_verdict\:/}
+    if [ $result_verdict == 'OK' ] ; then
+      data+=$result_data':'
+    else
+      echo '</table><hr>'$result_data
+      exit 1
+    fi
   done
   echo $function':'$data | awk -F: '{
     name=$1;
     gen_qps = $2;
     gen_eval_qps = $3;
-    gen_eval_intermediate_qps = $4;
-    gen_eval_compiled_qps = $5;
+    gen_eval_ieval_qps = $4;
+    gen_eval_ceval_qps = $5;
     compile_time = $6;
     eval_kqps=0.001/(1/gen_eval_qps - 1/gen_qps);
-    eval_intermediate_kqps=0.001/(1/gen_eval_intermediate_qps - 1/gen_qps);
-    eval_compiled_kqps=0.001/(1/gen_eval_compiled_qps - 1/gen_qps);
+    ieval_kqps=0.001/(1/gen_eval_ieval_qps - 1/gen_eval_qps);
+    ceval_kqps=0.001/(1/gen_eval_ceval_qps - 1/gen_eval_qps);
     printf ("<tr>\n");
-    printf ("<td align=right>%s</td>", name);
+    printf ("<td align=right>%s</td>\n", name);
     printf ("<td align=right>%.2f kqps</td>\n", eval_kqps);
-    printf ("<td align=right>%.2f kqps</td>\n", eval_intermediate_kqps);
-    printf ("<td align=right>%.2f kqps</td>\n", eval_compiled_kqps);
-    printf ("<td align=right>%.0f%%</td>\n", 100 * eval_intermediate_kqps / eval_kqps);
-    printf ("<td align=right>%.0f%%</td>\n", 100 * eval_compiled_kqps / eval_kqps);
-    printf ("<td align=right>%.1fx</td>\n", eval_compiled_kqps / eval_intermediate_kqps);
+    printf ("<td align=right>%.2f kqps</td>\n", ieval_kqps);
+    printf ("<td align=right>%.2f kqps</td>\n", ceval_kqps);
+    printf ("<td align=right>%.0f%%</td>\n", 100 * ieval_kqps / eval_kqps);
+    printf ("<td align=right>%.0f%%</td>\n", 100 * ceval_kqps / eval_kqps);
+    printf ("<td align=right>%.1fx</td>\n", ceval_kqps / ieval_kqps);
     printf ("<td align=right>%.2fs</td></tr>\n", compile_time);
     printf ("</tr>\n");
   }'
