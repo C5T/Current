@@ -1,3 +1,17 @@
+/*
+# To test on a fresh Ubuntu machine run the following.
+sudo apt-get update
+sudo apt-get install -y git build-essential libboost-dev nasm clang
+git clone https://github.com/dkorolev/fncas.git
+cd fncas/fncas
+make
+cd -
+cd fncas/test
+make
+cd -
+# Examine fncas/test/report.html afterwards.
+*/
+
 // TODO(dkorolev): Finish the script to try different compiler/optimization/JIT parameters.
 
 #include <cassert>

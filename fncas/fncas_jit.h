@@ -244,7 +244,6 @@ std::unique_ptr<compiled_expression> compile(uint32_t index) {
   os << "/tmp/" << distribution(random);
   const std::string filebase = os.str();
   const std::string filename_so = filebase + ".so";
-  std::cerr << filebase << std::endl;
   unlink(filename_so.c_str());
   compile_impl::selected::compile(filebase, index);
   return std::unique_ptr<compiled_expression>(new compiled_expression(filename_so));
