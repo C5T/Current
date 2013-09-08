@@ -1,5 +1,5 @@
 // FNCAS on-the-fly compilation logic.
-// FNCAS_JIT must be defined to enable, supported values are 'clang' and 'nasm'.
+// FNCAS_JIT must be defined to enable, supported values are 'NASM' and 'CLANG'.
 
 #ifndef FNCAS_JIT_H
 #define FNCAS_JIT_H
@@ -178,7 +178,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
         fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
       } else if (node.type() == type_t::function) {
         fprintf(
-         f,
+          f,
           "  ; a[%d] = %s(a[%d]);\n",
           dependent_i,
           function_as_string(node.function()),
@@ -213,12 +213,10 @@ struct compile_impl {
       fclose(f);
 
       const char* compile_cmdline = "nasm -f elf64 %1%.asm -o %1%.o";
-      std::string cmdline = (boost::format(compile_cmdline) % filebase).str();
-      compiled_expression::syscall(cmdline);
-
       const char* link_cmdline = "ld -lm -shared -o %1%.so %1%.o";
-      std::string cmdline2 = (boost::format(link_cmdline) % filebase).str();
-      compiled_expression::syscall(cmdline2);
+
+      compiled_expression::syscall((boost::format(compile_cmdline) % filebase).str());
+      compiled_expression::syscall((boost::format(link_cmdline) % filebase).str());
     }
   };
   struct CLANG {
