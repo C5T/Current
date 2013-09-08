@@ -6,6 +6,7 @@
 
 #ifdef FNCAS_JIT
 
+#include <sstream>
 #include <stack>
 #include <string>
 #include <vector>
@@ -51,13 +52,12 @@ struct compiled_expression : boost::noncopyable {
   double eval(const std::vector<double>& x) const {
     return eval(&x[0]);
   }
-  static std::string syscall(const std::string command) {
-    FILE* f = popen(command.c_str(), "r");
-    BOOST_ASSERT(f);
-    static char buffer[1024 * 1024];
-    fscanf(f, "%s", buffer);
-    fclose(f);
-    return buffer;
+  static void syscall(const std::string& command) {
+    int retval = system(command.c_str());
+    if (retval) {
+      std::cerr << command << std::endl << retval << std::endl;
+      exit(-1);
+    }
   }
 };
 
@@ -204,38 +204,50 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "  ret\n");
 }
 
-std::unique_ptr<compiled_expression> compile(uint32_t index) {
-  std::string tmp_filename = compiled_expression::syscall("mktemp");
-  {
-///    printf("Generating code. ");
-//    boost::progress_timer p;
-    FILE* f;
-    f = fopen((tmp_filename + ".asm").c_str(), "w");
-    BOOST_ASSERT(f);
-    generate_asm_code_for_node(index, f);
-    fclose(f);
-    f = fopen((tmp_filename + ".c").c_str(), "w");
-    BOOST_ASSERT(f);
-    generate_c_code_for_node(index, f);
-    fclose(f);
-  }
-  {
-///    printf("Compiling code. ");
-//    boost::progress_timer p;
-    if (0) {
-      const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
-      std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
-      compiled_expression::syscall(cmdline);
-    } else {
+struct compile_impl {
+  struct NASM {
+    static void compile(const std::string& filebase, uint32_t index) {
+      FILE* f = fopen((filebase + ".asm").c_str(), "w");
+      BOOST_ASSERT(f);
+      generate_asm_code_for_node(index, f);
+      fclose(f);
+
       const char* compile_cmdline = "nasm -f elf64 %1%.asm -o %1%.o";
-      std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
+      std::string cmdline = (boost::format(compile_cmdline) % filebase).str();
       compiled_expression::syscall(cmdline);
-      const char* compile_cmdline2 = "ld -lm -shared -o %1%.so %1%.o";
-      std::string cmdline2 = (boost::format(compile_cmdline2) % tmp_filename).str();
+
+      const char* link_cmdline = "ld -lm -shared -o %1%.so %1%.o";
+      std::string cmdline2 = (boost::format(link_cmdline) % filebase).str();
       compiled_expression::syscall(cmdline2);
     }
-  }
-  return std::unique_ptr<compiled_expression>(new compiled_expression(tmp_filename + ".so"));
+  };
+  struct CLANG {
+    static void compile(const std::string& filebase, uint32_t index) {
+      FILE* f = fopen((filebase + ".c").c_str(), "w");
+      BOOST_ASSERT(f);
+      generate_c_code_for_node(index, f);
+      fclose(f);
+
+      const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
+      std::string cmdline = (boost::format(compile_cmdline) % filebase).str();
+      compiled_expression::syscall(cmdline);
+    }
+  };
+  struct _TMP { struct FNCAS_JIT {}; };  // Confirm FNCAS_JIT is a valid identifier.
+  typedef FNCAS_JIT selected;
+};
+
+std::unique_ptr<compiled_expression> compile(uint32_t index) {
+  std::random_device random;
+  std::uniform_int_distribution<int> distribution(1000000, 9999999);
+  std::ostringstream os;
+  os << "/tmp/" << distribution(random);
+  const std::string filebase = os.str();
+  const std::string filename_so = filebase + ".so";
+  std::cerr << filebase << std::endl;
+  unlink(filename_so.c_str());
+  compile_impl::selected::compile(filebase, index);
+  return std::unique_ptr<compiled_expression>(new compiled_expression(filename_so));
 }
 
 std::unique_ptr<compiled_expression> compile(const node& node) {

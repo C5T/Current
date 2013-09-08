@@ -8,7 +8,7 @@
 #include <sstream>
 #include <vector>
 
-#define FNCAS_JIT nasm
+#define FNCAS_JIT NASM  // TODO(dkorolev): This is to be moved to the script.
 #include "../fncas/fncas.h"
 
 #include "boost/random.hpp"
