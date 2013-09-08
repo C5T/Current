@@ -186,7 +186,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
         fprintf(f, "  movq xmm0, [rsi+%d]\n", node.argument_index() * 8);
         fprintf(f, "  push rdi\n");
         fprintf(f, "  push rsi\n");
-        fprintf(f, "  call %s\n", function_as_string(node.function()));
+        fprintf(f, "  call %s wrt ..plt\n", function_as_string(node.function()));
         fprintf(f, "  pop rsi\n");
         fprintf(f, "  pop rdi\n");
         fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
@@ -222,15 +222,15 @@ std::unique_ptr<compiled_expression> compile(uint32_t index) {
   {
 ///    printf("Compiling code. ");
 //    boost::progress_timer p;
-    if (1) {
+    if (0) {
       const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
       std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
       compiled_expression::syscall(cmdline);
     } else {
-      const char* compile_cmdline = "nasm -shared -f elf64 %1%.asm -o %1%.o";
+      const char* compile_cmdline = "nasm -f elf64 %1%.asm -o %1%.o";
       std::string cmdline = (boost::format(compile_cmdline) % tmp_filename).str();
       compiled_expression::syscall(cmdline);
-      const char* compile_cmdline2 = "ld -fPIC -shared -o %1%.so %1%.o -lm";
+      const char* compile_cmdline2 = "ld -lm -shared -o %1%.so %1%.o";
       std::string cmdline2 = (boost::format(compile_cmdline2) % tmp_filename).str();
       compiled_expression::syscall(cmdline2);
     }
