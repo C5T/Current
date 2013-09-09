@@ -7,12 +7,15 @@ cd fncas/fncas
 make
 cd -
 cd fncas/test
-make
+./run_test.sh
 cd -
 # Examine fncas/test/report.html afterwards.
 */
 
-// TODO(dkorolev): Finish the script to try different compiler/optimization/JIT parameters.
+// Normally FNCAS_JIT is set by run_test.sh that runs is with various compilation options.
+#ifndef FNCAS_JIT
+#error "FNCAS_JIT should be set to build test.cc."
+#endif
 
 #include <cassert>
 #include <chrono>
@@ -22,7 +25,6 @@ cd -
 #include <sstream>
 #include <vector>
 
-#define FNCAS_JIT NASM  // TODO(dkorolev): This is to be moved to the script.
 #include "../fncas/fncas.h"
 
 #include "boost/random.hpp"

@@ -1,14 +1,9 @@
-CC=g++
-CCFLAGS=--std=c++0x -Wall -O3 -fno-strict-aliasing
-CCPOSTFLAGS=-ldl
+# Build&run is performed by run.sh, with various options.
 
-all: test_binary #report.html
+all: report.html
 
-report.html: run_test.sh test_binary
-	./run_test.sh >$@
-
-test_binary : test.cc autogen/functions.h ../fncas/*.h
-	${CC} ${CCFLAGS} -o test_binary test.cc ${CCPOSTFLAGS}
+report.html: run.sh test.cc autogen/functions.h ../fncas/*.h
+	./run.sh >$@
 
 autogen/functions.h: functions/*.h
 	mkdir -p autogen
