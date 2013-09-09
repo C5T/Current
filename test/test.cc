@@ -22,7 +22,7 @@ cd -
 #endif
 
 #include <cassert>
-#include <chrono>
+#include <ctime>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -37,15 +37,13 @@ cd -
 #include "autogen/functions.h"
 
 bool gen(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
-  std::chrono::high_resolution_clock timer;
   double duration;
   std::vector<double> x(f->dim());
   size_t iteration = 0;
-  auto begin = timer.now();
+  clock_t begin = clock();
   do {
     f->gen(x);
-    duration =
-      std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+    duration = double(clock() - begin) / CLOCKS_PER_SEC;
     ++iteration;
   } while (duration < max_seconds && iteration < max_iterations);
   sout << iteration / duration;
@@ -53,33 +51,29 @@ bool gen(const F* f, size_t max_iterations, double max_seconds, std::ostream& so
 }
 
 bool gen_eval(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
-  std::chrono::high_resolution_clock timer;
   std::vector<double> x(f->dim());
   double duration;
   size_t iteration = 0;
-  auto begin = timer.now();
+  clock_t begin = clock();
   do {
     f->gen(x);
     f->eval_double(x);
-    duration =
-      std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
-      ++iteration;
+    duration = double(clock() - begin) / CLOCKS_PER_SEC;
+    ++iteration;
   } while (duration < max_seconds && iteration < max_iterations);
   sout << iteration / duration;
   return true;
 }
 
 bool gen_eval_ieval(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
-  std::chrono::high_resolution_clock timer;
   std::vector<double> x(f->dim());
   double duration;
   auto intermediate = f->eval_expression(fncas::x(f->dim()));
   size_t iteration = 0;
-  auto begin = timer.now();
+  clock_t begin = clock();
   do {
     f->gen(x);
-    duration =
-      std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+    duration = double(clock() - begin) / CLOCKS_PER_SEC;
     const double golden = f->eval_double(x);
     const double test = intermediate.eval(x);
     if (test != golden) {
@@ -93,25 +87,21 @@ bool gen_eval_ieval(const F* f, size_t max_iterations, double max_seconds, std::
 }
 
 bool gen_eval_ceval(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
-  std::chrono::high_resolution_clock timer;
   std::vector<double> x(f->dim());
   double duration;
   std::unique_ptr<fncas::compiled_expression> compiled;
   double compile_time;
   {
     auto e = f->eval_expression(fncas::x(f->dim()));
-    auto begin = timer.now();
+    clock_t begin = clock();
     compiled = fncas::compile(e);
-    auto end = timer.now();
-    compile_time =
-      std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(end - begin).count() * 0.001;
+    compile_time = double(clock() - begin) / CLOCKS_PER_SEC;
   }
   size_t iteration = 0;
-  auto begin = timer.now();
+  clock_t begin = clock();
   do {
     f->gen(x);
-    duration =
-      std::chrono::duration_cast<std::chrono::duration<int, std::milli>>(timer.now() - begin).count() * 0.001;
+    duration = double(clock() - begin) / CLOCKS_PER_SEC;
     const double golden = f->eval_double(x);
     const double test = compiled->eval(x);
     if (test != golden) {
