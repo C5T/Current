@@ -1,7 +1,7 @@
 #!/bin/bash
 
-MAX_ITERATIONS=100000000 # 100M
-TEST_SECONDS=5
+MAX_ITERATIONS=1000000000 # 1B
+TEST_SECONDS=10
 
 SAVE_IFS="$IFS"
 
@@ -102,6 +102,6 @@ for cmdline in $CMDLINES ; do
 done
 
 echo '<h1>Results</h1>'
-echo 'The regression test took $SECONDS seconds to run.'
+echo "The regression test took $SECONDS seconds to run."
 
 IFS="$SAVE_IFS"
