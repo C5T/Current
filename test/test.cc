@@ -36,10 +36,10 @@ cd -
 #include "function.h"
 #include "autogen/functions.h"
 
-bool gen(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
   double duration;
   std::vector<double> x(f->dim());
-  size_t iteration = 0;
+  uint64_t iteration = 0;
   clock_t begin = clock();
   do {
     f->gen(x);
@@ -50,10 +50,10 @@ bool gen(const F* f, size_t max_iterations, double max_seconds, std::ostream& so
   return true;
 }
 
-bool gen_eval(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen_eval(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
   std::vector<double> x(f->dim());
   double duration;
-  size_t iteration = 0;
+  uint64_t iteration = 0;
   clock_t begin = clock();
   do {
     f->gen(x);
@@ -65,11 +65,11 @@ bool gen_eval(const F* f, size_t max_iterations, double max_seconds, std::ostrea
   return true;
 }
 
-bool gen_eval_ieval(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen_eval_ieval(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
   std::vector<double> x(f->dim());
   double duration;
   auto intermediate = f->eval_expression(fncas::x(f->dim()));
-  size_t iteration = 0;
+  uint64_t iteration = 0;
   clock_t begin = clock();
   do {
     f->gen(x);
@@ -86,7 +86,7 @@ bool gen_eval_ieval(const F* f, size_t max_iterations, double max_seconds, std::
   return true;
 }
 
-bool gen_eval_ceval(const F* f, size_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen_eval_ceval(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
   std::vector<double> x(f->dim());
   double duration;
   std::unique_ptr<fncas::compiled_expression> compiled;
@@ -97,7 +97,7 @@ bool gen_eval_ceval(const F* f, size_t max_iterations, double max_seconds, std::
     compiled = fncas::compile(e);
     compile_time = double(clock() - begin) / CLOCKS_PER_SEC;
   }
-  size_t iteration = 0;
+  uint64_t iteration = 0;
   clock_t begin = clock();
   do {
     f->gen(x);
@@ -121,14 +121,14 @@ int main(int argc, char* argv[]) {
   } else {
     const char* function = argv[1];
     const char* action = argv[2];
-    const size_t max_iterations = (argc >= 4) ? atoi(argv[3]) : 1000000;
-    const double max_seconds = (argc >= 5) ? atof(argv[4]) : 2.0;
+    const int64_t max_iterations = (argc >= 4) ? atoll(argv[3]) : static_cast<int64_t>(1e9);
+    const double max_seconds = (argc >= 5) ? atof(argv[4]) : 10.0;
     const F* f = registered_functions[function];
     if (!f) {
       std::cerr << "Function '" << function << "' is not defined in functions/*.h." << std::endl;
       return -1;
     } else {
-      typedef boost::function<int(const F*, size_t, double, std::ostream&, std::ostream&)> F_ACTION;
+      typedef boost::function<int(const F*, uint64_t, double, std::ostream&, std::ostream&)> F_ACTION;
       std::map<std::string, F_ACTION> actions;
       actions["gen"] = gen;
       actions["gen_eval"] = gen_eval;
