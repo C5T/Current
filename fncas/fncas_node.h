@@ -1,3 +1,5 @@
+// https://github.com/dkorolev/fncas
+
 // Defines FNCAS node class for basic expressions and the means to use it.
 
 #ifndef FNCAS_NODE_H

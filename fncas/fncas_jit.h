@@ -1,3 +1,5 @@
+// https://github.com/dkorolev/fncas
+
 // FNCAS on-the-fly compilation logic.
 // FNCAS_JIT must be defined to enable, supported values are 'NASM' and 'CLANG'.
 
@@ -21,8 +23,8 @@
 
 namespace fncas {
 
-// Unportable and unsafe, but designed to only work on Ubuntu Linux as of now.
-// TODO(dkorolev): Make it more portable one day. And make the implementaion(s) template-friendly.
+// Linux-friendly code to compile into .so and link against it at runtime.
+// Not portable.
 
 struct compiled_expression : boost::noncopyable {
   typedef int (*DIM)();

@@ -1,3 +1,5 @@
+// https://github.com/dkorolev/fncas
+
 #ifndef FNCAS_BASE_H
 #define FNCAS_BASE_H
 

@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# TODO(dkorolev): Legend in HTML.
-
 MAX_ITERATIONS=100000000 # 100M
 TEST_SECONDS=5
 
-SAVE_IFS='$IFS'
+SAVE_IFS="$IFS"
 
 IFS="
 "
@@ -27,7 +25,12 @@ done
 
 echo '<!doctype html>'
 echo '<h1>Legend</h1>'
-echo 'TBD'
+echo 'Regression test validating the results of three evaluations and comparing their runtimes.'
+echo '<ul>'
+echo '<li>Native: When C (C++, actually) code of the function is compiled by the compiler itself and is being evaluated.</li>'
+echo '<li>Intermediate: When the code of the function is parsed into the intermediate format and evaluated by iterpretation.</li>'
+echo '<li>Compiled: When the intermediate code is being converted to a source file, compiled and then linked as an .so library.</li>'
+echo '</ul>'
 
 for cmdline in $CMDLINES ; do
   echo '<h1>'$cmdline'</h1>'
@@ -49,7 +52,7 @@ for cmdline in $CMDLINES ; do
   if [ ! -x test_binary ] ; then
     echo '</table><hr>'
     echo 'Compilation error.'
-    IFS='$SAVE_IFS'
+    IFS="$SAVE_IFS"
     exit 1
   fi
 
@@ -67,7 +70,7 @@ for cmdline in $CMDLINES ; do
         data+=$result_data':'
       else
         echo '</table><hr>'$result_data
-        IFS='$SAVE_IFS'
+        IFS="$SAVE_IFS"
         exit 1
       fi
       echo $result_data >/dev/stderr
@@ -101,4 +104,4 @@ done
 echo '<h1>Results</h1>'
 echo 'The regression test took $SECONDS seconds to run.'
 
-IFS='$SAVE_IFS'
+IFS="$SAVE_IFS"

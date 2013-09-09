@@ -1,4 +1,4 @@
-// TODO(dkorolev): Factor our "release" single file generation.
+// https://github.com/dkorolev/fncas
 
 // Requires:
 // * C++0X, use g++ --std=c++0x

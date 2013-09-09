@@ -1,4 +1,4 @@
-// TODO(dkorolev): Link to github wiki page as 1st line for all files in this directory.
+// https://github.com/dkorolev/fncas
 
 #include <iostream>
 
