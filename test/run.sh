@@ -1,9 +1,6 @@
 #!/bin/bash
 
-# 10^12 iterations.
-MAX_ITERATIONS=1000000000000
-
-# 2 minutes per measurement.
+# 2 minutes per QPS measurement.
 TEST_SECONDS=120
 
 SAVE_IFS="$IFS"
@@ -65,7 +62,7 @@ for cmdline in $CMDLINES ; do
     for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
       echo -n '    '$action': ' >/dev/stderr
       IFS=''
-      result=$(./test_binary $function $action $MAX_ITERATIONS $MAX_SECONDS)
+      result=$(./test_binary $function $action $MAX_SECONDS)
       result_verdict=${result/:*/}
       result_data=${result/$result_verdict:/}
       IFS=':'
