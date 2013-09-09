@@ -1,3 +1,5 @@
+// TODO: Handle NaN-s properly. Currently it seems that CLANG version eats them while NASM doesn't.
+
 /*
 # To test on a fresh Ubuntu machine run the following.
 sudo apt-get update
