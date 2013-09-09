@@ -36,7 +36,7 @@ cd -
 #include "function.h"
 #include "autogen/functions.h"
 
-bool gen(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen(const F* f, double test_seconds, std::ostream& sout, std::ostream& serr) {
   double duration;
   std::vector<double> x(f->dim());
   uint64_t iteration = 0;
@@ -45,12 +45,12 @@ bool gen(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& 
     f->gen(x);
     duration = double(clock() - begin) / CLOCKS_PER_SEC;
     ++iteration;
-  } while (duration < max_seconds && iteration < max_iterations);
+  } while (duration < test_seconds);
   sout << iteration / duration;
   return true;
 }
 
-bool gen_eval(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen_eval(const F* f, double test_seconds, std::ostream& sout, std::ostream& serr) {
   std::vector<double> x(f->dim());
   double duration;
   uint64_t iteration = 0;
@@ -60,12 +60,12 @@ bool gen_eval(const F* f, uint64_t max_iterations, double max_seconds, std::ostr
     f->eval_double(x);
     duration = double(clock() - begin) / CLOCKS_PER_SEC;
     ++iteration;
-  } while (duration < max_seconds && iteration < max_iterations);
+  } while (duration < test_seconds);
   sout << iteration / duration;
   return true;
 }
 
-bool gen_eval_ieval(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen_eval_ieval(const F* f, double test_seconds, std::ostream& sout, std::ostream& serr) {
   std::vector<double> x(f->dim());
   double duration;
   auto intermediate = f->eval_expression(fncas::x(f->dim()));
@@ -81,12 +81,12 @@ bool gen_eval_ieval(const F* f, uint64_t max_iterations, double max_seconds, std
       return false;
     }
     ++iteration;
-  } while (duration < max_seconds && iteration < max_iterations);
+  } while (duration < test_seconds);
   sout << iteration / duration;
   return true;
 }
 
-bool gen_eval_ceval(const F* f, uint64_t max_iterations, double max_seconds, std::ostream& sout, std::ostream& serr) {
+bool gen_eval_ceval(const F* f, double test_seconds, std::ostream& sout, std::ostream& serr) {
   std::vector<double> x(f->dim());
   double duration;
   std::unique_ptr<fncas::compiled_expression> compiled;
@@ -109,26 +109,25 @@ bool gen_eval_ceval(const F* f, uint64_t max_iterations, double max_seconds, std
       return false;
     }
     ++iteration;
-  } while (duration < max_seconds && iteration < max_iterations);
+  } while (duration < test_seconds);
   sout << iteration / duration << ':' << compile_time;
   return true;
 }
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
-    std::cerr << "Usage: " << argv[0] << " <function> <action> <max_iterations=1000000> <max_seconds=2.0>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <function> <action> <test_seconds=60>" << std::endl;
     return -1;
   } else {
     const char* function = argv[1];
     const char* action = argv[2];
-    const int64_t max_iterations = (argc >= 4) ? atoll(argv[3]) : static_cast<int64_t>(1e9);
-    const double max_seconds = (argc >= 5) ? atof(argv[4]) : 10.0;
+    const double test_seconds = (argc >= 4) ? atof(argv[3]) : 60.0;
     const F* f = registered_functions[function];
     if (!f) {
       std::cerr << "Function '" << function << "' is not defined in functions/*.h." << std::endl;
       return -1;
     } else {
-      typedef boost::function<int(const F*, uint64_t, double, std::ostream&, std::ostream&)> F_ACTION;
+      typedef boost::function<int(const F*, double, std::ostream&, std::ostream&)> F_ACTION;
       std::map<std::string, F_ACTION> actions;
       actions["gen"] = gen;
       actions["gen_eval"] = gen_eval;
@@ -143,7 +142,7 @@ int main(int argc, char* argv[]) {
         std::ostringstream serr;
         sout << std::fixed << std::setprecision(5);
         serr << std::fixed << std::setprecision(5);
-        if (action_handler(f, max_iterations, max_seconds, sout, serr)) {
+        if (action_handler(f, test_seconds, sout, serr)) {
           std::cout << "OK:" << sout.str() << std::endl;
           return 0;
         } else {

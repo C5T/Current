@@ -1,13 +1,13 @@
-struct big_math : F {
-  enum { DIM = 1000 };
+struct mul : F {
+  enum { DIM = 10000 };
   template<typename T> static typename fncas::output<T>::type f(const T& x) {
-    typename fncas::output<T>::type tmp = 0;
+    typename fncas::output<T>::type r = 1;
     for (size_t i = 0; i < DIM; ++i) {
-      tmp += exp(x[i]) + log(x[i]);
+      r *= x[i];
     }
-    return tmp;
+    return r;
   }
-  big_math() {
+  mul() {
     for (size_t i = 0; i < DIM; ++i) {
       add_var(boost::exponential_distribution<double>());
     }

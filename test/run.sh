@@ -1,7 +1,10 @@
 #!/bin/bash
 
-MAX_ITERATIONS=1000000000000 # 10^12
-TEST_SECONDS=45
+# 10^12 iterations.
+MAX_ITERATIONS=1000000000000
+
+# 2 minutes per measurement.
+TEST_SECONDS=120
 
 SAVE_IFS="$IFS"
 
@@ -11,7 +14,7 @@ FUNCTIONS=$(ls functions/ | cut -f1 -d. | paste -sd ':')
 IFS=':'
 
 COMPILERS='g++:clang++'
-OPTIONS='-O0:-O3'
+OPTIONS='-O3'
 JIT='NASM:CLANG'
 CMDLINES=''
 
@@ -28,7 +31,7 @@ echo '<h1>Legend</h1>'
 echo 'Regression test validating the results of three evaluations and comparing their runtimes.'
 echo '<ul>'
 echo '<li>Native: When C (C++, actually) code of the function is compiled by the compiler itself and is being evaluated.</li>'
-echo '<li>Intermediate: When the code of the function is parsed into the intermediate format and evaluated by iterpretation.</li>'
+echo '<li>Intermediate: When the code of the function is parsed into the intermediate format and evaluated by interpretation.</li>'
 echo '<li>Compiled: When the intermediate code is being converted to a source file, compiled and then linked as an .so library.</li>'
 echo '</ul>'
 

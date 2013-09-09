@@ -1,13 +1,13 @@
-struct deep_function_tree : F {
-  enum { DIM = 100000 };
+struct sum : F {
+  enum { DIM = 10000 };
   template<typename T> static typename fncas::output<T>::type f(const T& x) {
-    typename fncas::output<T>::type tmp = 42;
+    typename fncas::output<T>::type r = 0;
     for (size_t i = 0; i < DIM; ++i) {
-      tmp += x[i];
+      r += x[i];
     }
-    return tmp;
+    return r;
   }
-  deep_function_tree() {
+  sum() {
     for (size_t i = 0; i < DIM; ++i) {
       add_var(boost::normal_distribution<double>());
     }
