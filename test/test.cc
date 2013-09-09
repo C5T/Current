@@ -1,4 +1,5 @@
 // TODO: Handle NaN-s properly. Currently it seems that CLANG version eats them while NASM doesn't.
+// TODO: Use proper clock. The current implementation seems to measure user only.
 
 /*
 # To test on a fresh Ubuntu machine run the following.
@@ -96,7 +97,9 @@ bool gen_eval_ceval(const F* f, double test_seconds, std::ostream& sout, std::os
   {
     auto e = f->eval_expression(fncas::x(f->dim()));
     clock_t begin = clock();
-    compiled = fncas::compile(e);
+    {
+      compiled = fncas::compile(e);
+    }
     compile_time = double(clock() - begin) / CLOCKS_PER_SEC;
   }
   uint64_t iteration = 0;

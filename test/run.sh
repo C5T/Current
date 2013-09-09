@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 2 minutes per QPS measurement.
+# 2 minutes per each QPS measurement.
 TEST_SECONDS=120
 
 SAVE_IFS="$IFS"
@@ -33,6 +33,8 @@ echo '<li>Compiled: When the intermediate code is being converted to a source fi
 echo '</ul>'
 
 for cmdline in $CMDLINES ; do
+  echo $cmdline >/dev/stderr
+
   echo '<h1>'$cmdline'</h1>'
   echo '<pre>'
   echo '<table border=1 cellpadding=8>'
@@ -62,7 +64,7 @@ for cmdline in $CMDLINES ; do
     for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
       echo -n '    '$action': ' >/dev/stderr
       IFS=''
-      result=$(./test_binary $function $action $MAX_SECONDS)
+      result=$(./test_binary $function $action $TEST_SECONDS)
       result_verdict=${result/:*/}
       result_data=${result/$result_verdict:/}
       IFS=':'
