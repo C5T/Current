@@ -2,7 +2,7 @@
 
 # TODO(dkorolev): Legend in HTML.
 
-MAX_ITERATIONS=10000000 # 10M
+MAX_ITERATIONS=100000000 # 100M
 TEST_SECONDS=5
 
 SAVE_IFS='$IFS'
@@ -57,7 +57,7 @@ for cmdline in $CMDLINES ; do
     echo '  '$function >/dev/stderr
     data=''
     for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
-      echo '    '$action': ' >/dev/stderr # -n
+      echo -n '    '$action': ' >/dev/stderr
       IFS=''
       result=$(./test_binary $function $action $MAX_ITERATIONS $MAX_SECONDS)
       result_verdict=${result/:*/}
@@ -70,8 +70,8 @@ for cmdline in $CMDLINES ; do
         IFS='$SAVE_IFS'
         exit 1
       fi
+      echo $result_data >/dev/stderr
     done
-    echo $function' '$data | awk '{ printf "0:%s 1:%s 2:%s 3:%s\n", $0, $1, $2, $3 }' >/dev/stderr
     echo $function' '$data | awk '{
       name=$1;
       gen_qps = $2;

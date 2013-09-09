@@ -12,6 +12,10 @@ cd -
 # Examine fncas/test/report.html afterwards.
 */
 
+// Ah, and if you get an error like this when compiling with clang++:
+// /usr/include/c++/4.6/chrono:666:7: error: static_assert expression is not an integral constant expression
+// Just comment out the static_assert.
+
 // Normally FNCAS_JIT is set by run_test.sh that runs is with various compilation options.
 #ifndef FNCAS_JIT
 #error "FNCAS_JIT should be set to build test.cc."
