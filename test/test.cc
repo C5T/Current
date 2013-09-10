@@ -1,5 +1,4 @@
 // TODO: Handle NaN-s properly. Currently it seems that CLANG version eats them while NASM doesn't.
-// TODO: Use proper clock. The current implementation seems to measure user only.
 
 /*
 # To test on a fresh Ubuntu machine run the following.
@@ -36,17 +35,29 @@ cd -
 
 #include "boost/random.hpp"
 
+#include <sys/time.h>
+
 #include "function.h"
 #include "autogen/functions.h"
+
+double get_wall_time_seconds(){
+  // Single-threaded implementation.
+  // #include <chrono> not friendly with clang++.
+  // clock() and boost::time measure CPU time, not wall time.
+  // More advanced Boost timer seems to be not present in my Ubuntu 12.04 as of 2013-09-10.
+  static struct timeval time;
+  gettimeofday(&time, NULL);
+  return (double)time.tv_sec + (double)time.tv_usec * .000001;
+}
 
 bool gen(const F* f, double test_seconds, std::ostream& sout, std::ostream& serr) {
   double duration;
   std::vector<double> x(f->dim());
   uint64_t iteration = 0;
-  clock_t begin = clock();
+  double begin = get_wall_time_seconds();
   do {
     f->gen(x);
-    duration = double(clock() - begin) / CLOCKS_PER_SEC;
+    duration = get_wall_time_seconds() - begin;
     ++iteration;
   } while (duration < test_seconds);
   sout << iteration / duration;
@@ -57,11 +68,11 @@ bool gen_eval(const F* f, double test_seconds, std::ostream& sout, std::ostream&
   std::vector<double> x(f->dim());
   double duration;
   uint64_t iteration = 0;
-  clock_t begin = clock();
+  double begin = get_wall_time_seconds();
   do {
     f->gen(x);
     f->eval_double(x);
-    duration = double(clock() - begin) / CLOCKS_PER_SEC;
+    duration = get_wall_time_seconds() - begin;
     ++iteration;
   } while (duration < test_seconds);
   sout << iteration / duration;
@@ -73,10 +84,10 @@ bool gen_eval_ieval(const F* f, double test_seconds, std::ostream& sout, std::os
   double duration;
   auto intermediate = f->eval_expression(fncas::x(f->dim()));
   uint64_t iteration = 0;
-  clock_t begin = clock();
+  double begin = get_wall_time_seconds();
   do {
     f->gen(x);
-    duration = double(clock() - begin) / CLOCKS_PER_SEC;
+    duration = get_wall_time_seconds() - begin;
     const double golden = f->eval_double(x);
     const double test = intermediate.eval(x);
     if (test != golden) {
@@ -96,17 +107,17 @@ bool gen_eval_ceval(const F* f, double test_seconds, std::ostream& sout, std::os
   double compile_time;
   {
     auto e = f->eval_expression(fncas::x(f->dim()));
-    clock_t begin = clock();
+    double begin = get_wall_time_seconds();
     {
       compiled = fncas::compile(e);
     }
-    compile_time = double(clock() - begin) / CLOCKS_PER_SEC;
+    compile_time = get_wall_time_seconds() - begin;
   }
   uint64_t iteration = 0;
-  clock_t begin = clock();
+  double begin = get_wall_time_seconds();
   do {
     f->gen(x);
-    duration = double(clock() - begin) / CLOCKS_PER_SEC;
+    duration = get_wall_time_seconds() - begin;
     const double golden = f->eval_double(x);
     const double test = compiled->eval(x);
     if (test != golden) {
