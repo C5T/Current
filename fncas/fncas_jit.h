@@ -130,7 +130,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "[bits 64]\n");
   fprintf(f, "\n");
   fprintf(f, "global eval, dim\n");
-  fprintf(f, "extern exp, log, sin, cos, tan, atan\n");
+  fprintf(f, "extern exp, log, sin, cos, tan, asin, acos, atan\n");
   fprintf(f, "\n");
   fprintf(f, "section .text\n");
   fprintf(f, "\n");

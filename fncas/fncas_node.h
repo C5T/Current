@@ -26,7 +26,7 @@ namespace fncas {
 
 enum type_t : uint8_t { variable, value, operation, function };
 enum struct operation_t : uint8_t { add, subtract, multiply, divide, end };
-enum struct function_t : uint8_t { exp, log, sin, cos, tan, atan, end };
+enum struct function_t : uint8_t { exp, log, sin, cos, tan, asin, acos, atan, end };
 
 const char* const operation_as_string(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {
@@ -37,7 +37,7 @@ const char* const operation_as_string(operation_t operation) {
 
 const char* const function_as_string(function_t function) {
   static const char* representation[static_cast<size_t>(function_t::end)] = {
-    "exp", "log", "sin", "cos", "tan", "atan"
+    "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"
   };
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
 }
@@ -57,7 +57,7 @@ template<typename T> T apply_operation(operation_t operation, T lhs, T rhs) {
 
 template<typename T> T apply_function(function_t function, T argument) {
   static boost::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
-    exp, log, sin, cos, tan, atan
+    exp, log, sin, cos, tan, asin, acos, atan
   };
   return
     function < function_t::end
@@ -268,6 +268,8 @@ DECLARE_FUNCTION(log);
 DECLARE_FUNCTION(sin);
 DECLARE_FUNCTION(cos);
 DECLARE_FUNCTION(tan);
+DECLARE_FUNCTION(asin);
+DECLARE_FUNCTION(acos);
 DECLARE_FUNCTION(atan);
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
