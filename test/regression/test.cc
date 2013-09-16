@@ -159,10 +159,10 @@ int main(int argc, char* argv[]) {
         sout << std::fixed << std::setprecision(5);
         serr << std::fixed << std::setprecision(5);
         if (action_handler(f, test_seconds, sout, serr)) {
-          std::cout << "OK:" << sout.str() << std::endl;
+          std::cout << sout.str() << std::endl;
           return 0;
         } else {
-          std::cout << "ERROR:" << serr.str() << std::endl;
+          std::cout << serr.str() << std::endl;
           std::cerr << serr.str() << std::endl;
           return 1;
         }

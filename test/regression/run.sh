@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# TODO: Analyze return code of binary invocations.
-
 # 2 minutes per each QPS measurement.
 TEST_SECONDS=120
 
@@ -67,19 +65,14 @@ for cmdline in $CMDLINES ; do
     data=''
     for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
       echo -n '    '$action': ' >/dev/stderr
-      IFS=''
       result=$(./test_binary $function $action $TEST_SECONDS)
-      result_verdict=${result/:*/}
-      result_data=${result/$result_verdict:/}
-      IFS=':'
-      if [ $result_verdict == 'OK' ] ; then
-        data+=$result_data':'
-      else
+      if [ $? != 0 ] ; then
         echo '</table><hr>'$result_data
         IFS="$SAVE_IFS"
         exit 1
       fi
-      echo $result_data >/dev/stderr
+      data+=$result':'
+      echo $result >/dev/stderr
     done
     echo $function' '$data | awk '{
       name=$1;
