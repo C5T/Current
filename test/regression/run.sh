@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: Analyze return code of binary invocations.
+
 # 2 minutes per each QPS measurement.
 TEST_SECONDS=120
 
@@ -7,8 +9,10 @@ SAVE_IFS="$IFS"
 
 IFS="
 "
-FUNCTIONS=$(ls functions/ | cut -f1 -d. | paste -sd ':')
+FUNCTIONS=$(ls ../functions/ | cut -f1 -d. | paste -sd ':')
 IFS=':'
+
+make autogen/functions.h
 
 COMPILERS='g++:clang++'
 OPTIONS='-O3'

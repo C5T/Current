@@ -31,16 +31,16 @@ cd -
 #include <sstream>
 #include <vector>
 
-#include "../fncas/fncas.h"
+#include "../../fncas/fncas.h"
 
 #include "boost/random.hpp"
 
 #include <sys/time.h>
 
-#include "function.h"
+#include "../function.h"
 #include "autogen/functions.h"
 
-double get_wall_time_seconds(){
+double get_wall_time_seconds() {
   // Single-threaded implementation.
   // #include <chrono> not friendly with clang++.
   // clock() and boost::time measure CPU time, not wall time.
