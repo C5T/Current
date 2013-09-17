@@ -135,6 +135,8 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "section .text\n");
   fprintf(f, "\n");
   fprintf(f, "eval:\n");
+  fprintf(f, "  push rbp\n");
+  fprintf(f, "  mov rbp, rsp\n");
   size_t max_dim = index;
   std::stack<uint32_t> stack;
   stack.push(index);
@@ -199,10 +201,16 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   }
   fprintf(f, "  ; return a[%d]\n", index);
   fprintf(f, "  movq xmm0, [rsi+%d]\n", index * 8);
+  fprintf(f, "  mov rsp, rbp\n");
+  fprintf(f, "  pop rbp\n");
   fprintf(f, "  ret\n");
   fprintf(f, "\n");
   fprintf(f, "dim:\n");
+  fprintf(f, "  push rbp\n");
+  fprintf(f, "  mov rbp, rsp\n");
   fprintf(f, "  mov rax, %d\n", static_cast<int>(max_dim + 1));
+  fprintf(f, "  mov rsp, rbp\n");
+  fprintf(f, "  pop rbp\n");
   fprintf(f, "  ret\n");
 }
 
