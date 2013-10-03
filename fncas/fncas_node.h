@@ -235,7 +235,7 @@ struct node : node_constructor {
 };
 BOOST_STATIC_ASSERT(sizeof(node) == 8);
 
-// Aritmetical operations and mathematical functions are defined outside namespace fncas.
+// Arithmetic operations and mathematical functions are defined outside namespace fncas.
 
 #define DECLARE_OP(OP,OP2,NAME) \
 inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) { \
