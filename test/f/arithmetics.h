@@ -1,5 +1,6 @@
 struct arithmetics : F {
-  enum { DIM = 100000 };
+  INCLUDE_IN_SMOKE_TEST;
+  enum { DIM = 100 };
   template<typename T> static typename fncas::output<T>::type f(const T& x) {
     typename fncas::output<T>::type r = 0;
     for (size_t i = 0; i < DIM; ++i) {

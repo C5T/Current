@@ -1,4 +1,8 @@
 # This Makefile only confirms that the project can be built.
+#
+# The following warnings are OK -- D.K.
+# clang: warning: treating 'c-header' input as 'c++-header' when in C++ mode, this behavior is deprecated
+# clang: warning: -ldl: 'linker' input unused
 
 CCFLAGS=--std=c++0x -Wall -O3 -fno-strict-aliasing
 CCPOSTFLAGS=-ldl

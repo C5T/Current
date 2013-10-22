@@ -1,5 +1,28 @@
-// Abstract function definition.
-// The functions to be tested defined below are be derived from this class.
+// Defines abstract function definition for all f/*.h.
+// The functions to be tested should be derived from this class.
+// Check out any f/*.h, like f/sum.h, for an example.
+//
+// TODO(dkorolev): Implement assembly-based code generation and test it.
+//
+// The function in f/*.h also have some "tags" specified. Current tags are:
+//
+// * INCLUDE_IN_SMOKE_TEST: This function is to be included in the smoke test.
+//   The smoke test would generate multiple random inputs and test that
+//   the value of the function is equal across various ways to compute it.
+//   TODO(dkorolev): Smoke test should also test the derivatives.
+//   TODO(dkorolev): Add composite functions to the smoke test.
+//
+// * INCLUDE_IN_PERF_TEST: This function is to be included in the perf test.
+//   Perf test would compute the QPS for this function takes to compute
+//   under various circumstances and produce an HTML report on the performance
+//   of various methods to compute the function:
+//   { native, interpreted, compiled with different compilers, etc. }.
+//   Perf test doesn't make sense for tiny functions, and, on the other hand,
+//   it doesn't make sense to include large functions in the smoke test,
+//   hence the tags.
+//   Naturally, perf test also verifies that computation results match,
+//   so it also serves as a larger-scale smoke test.
+//   TODO(dkorolev): Add a few composite functions to the perf test as well.
 
 class F {
  private:
@@ -14,10 +37,6 @@ class F {
  public:
   size_t dim() const {
     return p.size();
-  }
-
-  virtual double iterations_coefficient() const {
-    return 1.0;
   }
 
   void gen(std::vector<double>& x) const {
@@ -47,3 +66,6 @@ template<typename T> void register_function(const char* name, T* impl) {
   }; \
   static enchanced_##F F##_impl; \
   static struct F##_registerer { F##_registerer() { register_function<enchanced_##F>(#F, &F##_impl); } } F##_impl_registerer
+
+#define INCLUDE_IN_SMOKE_TEST const bool INCLUDE_IN_SMOKE_TEST_ = true
+#define INCLUDE_IN_PERF_TEST const bool INCLUDE_IN_PERF_TEST_ = true

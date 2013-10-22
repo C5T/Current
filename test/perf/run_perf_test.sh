@@ -1,16 +1,32 @@
 #!/bin/bash
 
-# 2 minutes per each QPS measurement.
-TEST_SECONDS=120
+BINARY=autogen/eval
+
+# Half a minute per each QPS measurement.
+TEST_SECONDS=30
 
 SAVE_IFS="$IFS"
 
-IFS="
-"
-FUNCTIONS=$(ls ../functions/ | cut -f1 -d. | paste -sd ':')
-IFS=':'
+# Put together the functions to run the perf test against.
+IFS=":"
+FUNCTIONS_FILES=$(grep INCLUDE_IN_PERF_TEST ../f/*.h | cut -f1 -d: | sort -u | paste -sd ':')
+FUNCTIONS=''
+for i in $FUNCTIONS_FILES ; do
+  echo 'AAA: '$i
+  if [ -n "$FUNCTIONS" ] ; then FUNCTIONS+=':' ; fi
+  FUNCTIONS+=$(echo $i | sed 's/\.\.\/f\///g' | sed 's/\.h//g')
+done
 
-make autogen/functions.h
+echo 'Functions: '$FUNCTIONS >/dev/stderr
+
+mkdir -p autogen
+cp -f ../function.h autogen/functions.h
+for i in $FUNCTIONS_FILES ; do
+  cat $i >> autogen/functions.h
+done
+for i in $FUNCTIONS ; do
+  echo 'REGISTER_FUNCTION('$i');' >>autogen/functions.h
+done
 
 COMPILERS='g++:clang++'
 OPTIONS='-O3'
@@ -20,7 +36,7 @@ CMDLINES=''
 for compiler in $COMPILERS ; do
   for options in $OPTIONS ; do
     for jit in $JIT ; do
-      CMDLINES+=$compiler' --std=c++0x '$options' -DFNCAS_JIT='$jit' test.cc -o test_binary -ldl:'
+      CMDLINES+=$compiler' --std=c++0x '$options' -DFNCAS_JIT='$jit' ../eval.cc -I $PWD/autogen -o $BINARY -ldl:'
     done
   done
 done
@@ -51,9 +67,9 @@ for cmdline in $CMDLINES ; do
   echo -n '<td align=right>Compilation time, s</td>'
   echo '</tr>'
 
-  rm -f test_binary
+  rm -f $BINARY
   eval $cmdline
-  if [ ! -x test_binary ] ; then
+  if [ ! -x $BINARY ] ; then
     echo '</table><hr>'
     echo 'Compilation error.'
     IFS="$SAVE_IFS"
@@ -65,7 +81,7 @@ for cmdline in $CMDLINES ; do
     data=''
     for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
       echo -n '    '$action': ' >/dev/stderr
-      result=$(./test_binary $function $action $TEST_SECONDS)
+      result=$(./$BINARY $function $action -$TEST_SECONDS)
       if [ $? != 0 ] ; then
         echo '</table><hr>'$result_data
         IFS="$SAVE_IFS"
@@ -98,9 +114,11 @@ for cmdline in $CMDLINES ; do
   done
   echo '</table>' 
   echo '</pre>' 
+
+  rm -f $BINARY
 done
 
 echo '<h1>Results</h1>'
-echo "The regression test took $SECONDS seconds to run."
+echo 'The regression test took $SECONDS seconds to run.'
 
 IFS="$SAVE_IFS"
