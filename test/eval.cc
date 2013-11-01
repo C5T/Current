@@ -1,11 +1,13 @@
 // The binary to run smoke and perf tests.
+//
+// TODO(dkorolev): Binary code generation on the fly is not yet implemented.
 // 
 // Generates random inputs, computes the value of the function using various
 // computations techniques (native, intermediate code interpreted, code compiled
 // in different languages by different compilers, machine code generation on the fly),
 // compares them against each other.
 
-// FNCAS_JIT should be set externalls.
+// FNCAS_JIT should be set externally.
 // Normally it is done by the running script since it compiles eval.cc with various settings.
 
 #ifndef FNCAS_JIT
@@ -35,7 +37,7 @@ double get_wall_time_seconds() {
   // More advanced Boost timer seems to be not present in my Ubuntu 12.04 as of 2013-09-10 - D.K.
   static struct timeval time;
   gettimeofday(&time, NULL);
-  return (double)time.tv_sec + (double)time.tv_usec * .000001;
+  return (double)time.tv_sec + (double)time.tv_usec * 1e-6;
 }
 
 struct action {
@@ -55,11 +57,12 @@ struct action {
     start();
     double begin = get_wall_time_seconds();
     do {
-      if (!step()) {
+      const bool result = step();
+      ++iteration;
+      duration = get_wall_time_seconds() - begin;
+      if (!result) {
         return false;
       }
-      duration = get_wall_time_seconds() - begin;
-      ++iteration;
     } while (iteration < limit_iterations && duration < limit_seconds);
     done();
     return true;
@@ -174,7 +177,7 @@ int main(int argc, char* argv[]) {
         if (action_handler->run(f, quantity, &sout, &serr)) {
           if (quantity < 0) {
             // Only output perf stats in perf test mode,
-            // leave the output blank on smoke test mode in case of no errors.
+            // leave the output blank in smoke test mode in case of no errors.
             std::cout << sout.str() << std::endl;
           }
           return 0;

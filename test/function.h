@@ -4,7 +4,7 @@
 //
 // TODO(dkorolev): Implement assembly-based code generation and test it.
 //
-// The function in f/*.h also have some "tags" specified. Current tags are:
+// Functions implemented in f/*.h also have some "tags" specified. Current tags are:
 //
 // * INCLUDE_IN_SMOKE_TEST: This function is to be included in the smoke test.
 //   The smoke test would generate multiple random inputs and test that
@@ -56,7 +56,7 @@ template<typename T> void register_function(const char* name, T* impl) {
 }
 
 #define REGISTER_FUNCTION(F) \
-  struct enchanced_##F : F { \
+  struct enhanced_##F : F { \
     virtual double eval_double(const std::vector<double>& x) const { \
       return F::f(x); \
     } \
@@ -64,8 +64,8 @@ template<typename T> void register_function(const char* name, T* impl) {
       return F::f(x); \
     } \
   }; \
-  static enchanced_##F F##_impl; \
-  static struct F##_registerer { F##_registerer() { register_function<enchanced_##F>(#F, &F##_impl); } } F##_impl_registerer
+  static enhanced_##F F##_impl; \
+  static struct F##_registerer { F##_registerer() { register_function<enhanced_##F>(#F, &F##_impl); } } F##_impl_registerer
 
 #define INCLUDE_IN_SMOKE_TEST const bool INCLUDE_IN_SMOKE_TEST_ = true
 #define INCLUDE_IN_PERF_TEST const bool INCLUDE_IN_PERF_TEST_ = true

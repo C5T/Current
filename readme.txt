@@ -1,12 +1,14 @@
+//  To run on a fresh Ubuntu machine run the following.
 /*
-# To run on a fresh Ubuntu machine run the following.
 sudo apt-get update
 sudo apt-get install -y git build-essential libboost-dev nasm clang
+
 git clone https://github.com/dkorolev/fncas.git
-# This ensures the project can be built.
-(cd fncas/fncas; make)
-# This runs the perf test and generates fncas/test/perf/report.html.
-(cd fncas/test/perf; ./run_test.sh)
+
+cd fncas
+(cd fncas; make)
+(cd test; make)
+cd -
 */
 
 // Ah, and if you get an error like this when compiling with clang++:

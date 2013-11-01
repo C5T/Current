@@ -1,4 +1,5 @@
 # This Makefile only confirms that the project can be built.
+# Also builds headers individually to confirm they contain all the dependencies.
 #
 # The following warnings are OK -- D.K.
 # clang: warning: treating 'c-header' input as 'c++-header' when in C++ mode, this behavior is deprecated
@@ -7,7 +8,6 @@
 CCFLAGS=--std=c++0x -Wall -O3 -fno-strict-aliasing
 CCPOSTFLAGS=-ldl
 
-# Build the headers individually to confirm they contain all the dependencies.
 all: fncas_gcc fncas_clang fncas_jit_ok fncas.o fncas_base.o fncas_node.o fncas_jit.o
 
 fncas_gcc: dummy.cc *.h

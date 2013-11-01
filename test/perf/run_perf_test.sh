@@ -12,7 +12,6 @@ IFS=":"
 FUNCTIONS_FILES=$(grep INCLUDE_IN_PERF_TEST ../f/*.h | cut -f1 -d: | sort -u | paste -sd ':')
 FUNCTIONS=''
 for i in $FUNCTIONS_FILES ; do
-  echo 'AAA: '$i
   if [ -n "$FUNCTIONS" ] ; then FUNCTIONS+=':' ; fi
   FUNCTIONS+=$(echo $i | sed 's/\.\.\/f\///g' | sed 's/\.h//g')
 done
