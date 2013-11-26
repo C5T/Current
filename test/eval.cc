@@ -85,54 +85,18 @@ struct action_gen : action {
   }
 };
 
-struct action_gen_eval : action {
+template<typename X> struct action_gen_eval_Xeval : action, X {
   std::vector<double> x;
-  void start() {
-    x = std::vector<double>(f->dim());
-  }
-  bool step() {
-    f->gen(x);
-    f->eval_double(x);
-    return true;
-  }
-};
-
-struct action_gen_eval_ieval : action {
-  std::vector<double> x;
-  typename fncas::output<fncas::x>::type intermediate;
-  void start() {
-    x = std::vector<double>(f->dim());
-    intermediate = f->eval_expression(fncas::x(f->dim()));
-  }
-  bool step() {
-    f->gen(x);
-    const double golden = f->eval_double(x);
-    const double test = intermediate.eval(x);
-    if (test == golden) {
-      return true;
-    } else {
-      (*serr) << golden << " != " << test << " @" << iteration;
-      return false;
-    }
-  }
-};
-
-struct action_gen_eval_ceval : action {
-  std::vector<double> x;
-  typename fncas::output<fncas::x>::type intermediate;
-  std::unique_ptr<fncas::compiled_expression> compiled;
+  std::unique_ptr<fncas::f> fncas_f;
   double compile_time;
   void start() {
+    fncas_f = X::init(f);
     x = std::vector<double>(f->dim());
-    intermediate = f->eval_expression(fncas::x(f->dim()));
-    double begin = get_wall_time_seconds();
-    compiled = fncas::compile(intermediate);
-    compile_time = get_wall_time_seconds() - begin;
   }
   bool step() {
     f->gen(x);
-    const double golden = f->eval_double(x);
-    const double test = compiled->eval(x);
+    const double golden = f->eval_as_double(x);
+    const double test = fncas_f->invoke(x);
     if (test == golden) {
       return true;
     } else {
@@ -142,9 +106,77 @@ struct action_gen_eval_ceval : action {
   }
   virtual void done() {
     action::done();
-    (*sout) << ':' << compile_time;
+    X::done(*sout);
   }
 };
+
+// Evaluators to compare against result- and performance-wise.
+struct eval {
+  // Baseline code.
+  struct base {
+    void done(std::ostream& os) {
+    }
+  };
+  // Native implementation calls the function natively compiled as part of the binary being run.
+  struct native : base {
+    struct impl : fncas::f {
+      const F* f_;
+      impl(const F* f) : f_(f) {
+      }
+      virtual double invoke(const std::vector<double>& x) const {
+        return f_->eval_as_double(x);
+      }
+    };
+    std::unique_ptr<fncas::f> init(const F* f) {
+      return std::unique_ptr<fncas::f>(new impl(f));
+    }
+  };
+  // Intermeridate implementation calls fncas implemenation
+  // that interprets the internal representation of the function.
+  struct intermediate : base {
+    struct impl : fncas::f {
+      const fncas::output<fncas::x>::type e_;
+      impl(const F* f) : e_(f->eval_as_expression(fncas::x(f->dim()))) {
+      }
+      virtual double invoke(const std::vector<double>& x) const {
+        return e_.eval(x);
+      }
+    };
+    std::unique_ptr<fncas::f> init(const F* f) {
+      return std::unique_ptr<fncas::f>(new impl(f));  //->eval_as_expression(fncas::x(f->dim()))));
+    }
+  };
+  // Compiled implementation calls fncas implementation
+  // that invokes an externally compiled version of the function.
+  // The compilation takes place upon the construction of this object.
+  struct compiled : base {
+    struct impl : fncas::f {
+      std::unique_ptr<fncas::compiled_expression> c_;
+      double compile(const F* f) {
+        const double begin = get_wall_time_seconds();
+        c_ = fncas::compile(f->eval_as_expression(fncas::x(f->dim())));
+        const double end = get_wall_time_seconds();
+        return end - begin;
+      }
+      virtual double invoke(const std::vector<double>& x) const {
+        return c_->eval(x);
+      }
+    };
+    double compile_time;
+    std::unique_ptr<fncas::f> init(const F* f) {
+      std::unique_ptr<impl> p(new impl());
+      compile_time = p->compile(f);
+      return std::unique_ptr<fncas::f>(p.release());
+    }
+    void done(std::ostream& os) {
+      os << ':' << compile_time;
+    }
+  };
+};
+
+typedef action_gen_eval_Xeval<eval::native> action_gen_eval_eval;
+typedef action_gen_eval_Xeval<eval::intermediate> action_gen_eval_ieval;
+typedef action_gen_eval_Xeval<eval::compiled> action_gen_eval_ceval;
 
 int main(int argc, char* argv[]) {
   if (argc < 3) {
@@ -162,7 +194,7 @@ int main(int argc, char* argv[]) {
       typedef boost::function<int(const F*, double, std::ostream&, std::ostream&)> F_ACTION;
       std::map<std::string, std::unique_ptr<action>> actions;
       actions["gen"].reset(new action_gen());
-      actions["gen_eval"].reset(new action_gen_eval());
+      actions["gen_eval_eval"].reset(new action_gen_eval_eval());
       actions["gen_eval_ieval"].reset(new action_gen_eval_ieval());
       actions["gen_eval_ceval"].reset(new action_gen_eval_ceval());
       action* action_handler = actions[action_name].get();

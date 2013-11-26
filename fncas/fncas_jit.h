@@ -44,7 +44,7 @@ struct compiled_expression : boost::noncopyable {
     dlclose(lib_);
   }
   double eval(const double* x) const {
-    std::vector<double>& tmp = internals().ram_for_evaluations;
+    std::vector<double>& tmp = internals().ram_for_evaluations_;
     size_t dim = static_cast<size_t>(dim_());
     if (tmp.size() < dim) {
       tmp.resize(dim);

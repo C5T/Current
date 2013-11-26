@@ -67,11 +67,11 @@ template<typename T> T apply_function(function_t function, T argument) {
 
 struct node_impl;
 struct internals_impl {
-  std::vector<node_impl> node_vector;
-  std::vector<double> ram_for_evaluations;
+  std::vector<node_impl> node_vector_;
+  std::vector<fncas_value_type> ram_for_evaluations_;
   void reset() {
-    node_vector.clear();
-    ram_for_evaluations.clear();
+    node_vector_.clear();
+    ram_for_evaluations_.clear();
   }
 };
 
@@ -86,7 +86,7 @@ inline void reset() {
 }
 
 inline std::vector<node_impl>& node_vector_singleton() {
-  return internals().node_vector;
+  return internals().node_vector_;
 }
 
 struct node_impl {
@@ -216,13 +216,15 @@ struct node : node_constructor {
     } else if (type() == type_t::value) {
       return std::to_string(value());
     } else if (type() == type_t::operation) {
-      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
+      // Note: this recursive call will overflow the stack with SEGFAULT on deep functions.
+      // For debugging purposes only.
       return
         "(" + lhs().debug_as_string() +
         operation_as_string(operation()) +
         rhs().debug_as_string() + ")";
     } else if (type() == type_t::function) {
-      // Note: this recursive call may overflow the stack with SEGFAULT on deep functions.
+      // Note: this recursive call will overflow the stack with SEGFAULT on deep functions.
+      // For debugging purposes only.
       return
         std::string(function_as_string(function())) + "(" + argument().debug_as_string() + ")";
     } else {
@@ -234,6 +236,37 @@ struct node : node_constructor {
   }
 };
 BOOST_STATIC_ASSERT(sizeof(node) == 8);
+
+// Class "x" is the placeholder class an instance of which is to be passed to the user function
+// to record the computation rather than perform it.
+
+struct x : boost::noncopyable {
+  int dim_;
+  explicit x(int dim) : dim_(dim) {
+    BOOST_ASSERT(dim_ >= 0);
+  }
+  node operator[](int i) const {
+    BOOST_ASSERT(i >= 0);
+    BOOST_ASSERT(i < dim_);
+    return node::variable(i);
+  }
+};
+
+// Class "f" is the placeholder for function evaluators.
+
+struct f : boost::noncopyable {
+  virtual ~f() {}
+  virtual fncas_value_type invoke(const std::vector<fncas_value_type>& x) const = 0;
+};
+
+// Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
+// Synopsis: template<typename T> typename fncas::output<T>::type f(const T& x);
+
+template<typename T> struct output {};
+template<> struct output<std::vector<fncas_value_type> > { typedef fncas_value_type type; };
+template<> struct output<x> { typedef fncas::node type; };
+
+}  // namespace fncas
 
 // Arithmetic operations and mathematical functions are defined outside namespace fncas.
 
@@ -271,29 +304,5 @@ DECLARE_FUNCTION(tan);
 DECLARE_FUNCTION(asin);
 DECLARE_FUNCTION(acos);
 DECLARE_FUNCTION(atan);
-
-// Class "x" is the placeholder class an instance of which is to be passed to the user function
-// to record the computation rather than perform it.
-
-struct x : boost::noncopyable {
-  int dim;
-  explicit x(int dim) : dim(dim) {
-    BOOST_ASSERT(dim >= 0);
-  }
-  node operator[](int i) const {
-    BOOST_ASSERT(i >= 0);
-    BOOST_ASSERT(i < dim);
-    return node::variable(i);
-  }
-};
-
-// Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
-// Synopsis: template<typename T> typename fncas::output<T>::type f(const T& x);
-
-template<typename T> struct output {};
-template<> struct output<std::vector<fncas_value_type> > { typedef fncas_value_type type; };
-template<> struct output<x> { typedef fncas::node type; };
-
-}  // namespace fncas
 
 #endif  // #ifndef FNCAS_NODE_H

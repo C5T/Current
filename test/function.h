@@ -46,8 +46,9 @@ class F {
     }
   }
 
-  virtual double eval_double(const std::vector<double>& x) const = 0;
-  virtual fncas::output<fncas::x>::type eval_expression(const fncas::x& x) const = 0;
+  // To support registration macros.
+  virtual double eval_as_double(const std::vector<double>& x) const = 0;
+  virtual fncas::output<fncas::x>::type eval_as_expression(const fncas::x& x) const = 0;
 };
 
 std::map<std::string, F*> registered_functions;
@@ -55,12 +56,13 @@ template<typename T> void register_function(const char* name, T* impl) {
   registered_functions[name] = impl;
 }
 
+// To support registration macros.
 #define REGISTER_FUNCTION(F) \
   struct enhanced_##F : F { \
-    virtual double eval_double(const std::vector<double>& x) const { \
+    virtual double eval_as_double(const std::vector<double>& x) const { \
       return F::f(x); \
     } \
-    virtual fncas::output<fncas::x>::type eval_expression(const fncas::x& x) const { \
+    virtual fncas::output<fncas::x>::type eval_as_expression(const fncas::x& x) const { \
       return F::f(x); \
     } \
   }; \

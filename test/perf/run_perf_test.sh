@@ -78,7 +78,7 @@ for cmdline in $CMDLINES ; do
   for function in $FUNCTIONS ; do 
     echo '  '$function >/dev/stderr
     data=''
-    for action in gen gen_eval gen_eval_ieval gen_eval_ceval ; do
+    for action in gen gen_eval_eval gen_eval_ieval gen_eval_ceval ; do
       echo -n '    '$action': ' >/dev/stderr
       result=$(./$BINARY $function $action -$TEST_SECONDS)
       if [ $? != 0 ] ; then
@@ -91,14 +91,15 @@ for cmdline in $CMDLINES ; do
     done
     echo $function' '$data | awk '{
       name=$1;
-      gen_qps = $2;
-      gen_eval_qps = $3;
-      gen_eval_ieval_qps = $4;
-      gen_eval_ceval_qps = $5;
-      compile_time = $6;
-      eval_kqps=0.001/(1/gen_eval_qps - 1/gen_qps);
-      ieval_kqps=0.001/(1/gen_eval_ieval_qps - 1/gen_eval_qps);
-      ceval_kqps=0.001/(1/gen_eval_ceval_qps - 1/gen_eval_qps);
+      gen_spq=1/$2;
+      gen_eval_eval_spq=1/$3;
+      gen_eval_ieval_spq=1/$4;
+      gen_eval_ceval_spq=1/$5;
+      compile_time=$6;
+      gen_eval_spq=(gen_spq+gen_eval_eval_spq)/2;
+      eval_kqps=0.001/(gen_eval_spq-gen_spq);
+      ieval_kqps=0.001/(gen_eval_ieval_spq-gen_eval_spq);
+      ceval_kqps=0.001/(gen_eval_ceval_spq-gen_eval_spq);
       printf ("<tr>\n");
       printf ("<td align=right>%s</td>\n", name);
       printf ("<td align=right>%.2f kqps</td>\n", eval_kqps);
