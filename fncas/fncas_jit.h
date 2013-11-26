@@ -81,7 +81,7 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
         uint32_t v = node.variable();
         fprintf(f, "  a[%d] = x[%d];\n", i, v);
       } else if (node.type() == type_t::value) {
-        fprintf(f, "  a[%d] = %a;\n", i, node.value());  // "%a" is hexadecial full precision.
+        fprintf(f, "  a[%d] = %a;\n", i, node.value());  // "%a" is hexadecimal full precision.
       } else if (node.type() == type_t::operation) {
         stack.push(~i);
         stack.push(node.lhs_index());
@@ -153,7 +153,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
         fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
         fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
       } else if (node.type() == type_t::value) {
-        fprintf(f, "  ; a[%d] = %a;\n", i, node.value());  // "%a" is hexadecial full precision.
+        fprintf(f, "  ; a[%d] = %a;\n", i, node.value());  // "%a" is hexadecimal full precision.
         fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<uint64_t*>(&node.value())).c_str());
         fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
       } else if (node.type() == type_t::operation) {

@@ -32,7 +32,7 @@
 
 double get_wall_time_seconds() {
   // Single-threaded implementation.
-  // #include <chrono> not friendly with clang++.
+  // #include <chrono> is not friendly with clang++.
   // clock() and boost::time measure CPU time, not wall time.
   // More advanced Boost timer seems to be not present in my Ubuntu 12.04 as of 2013-09-10 - D.K.
   static struct timeval time;
