@@ -118,6 +118,6 @@ for cmdline in $CMDLINES ; do
 done
 
 echo '<h1>Results</h1>'
-echo 'The regression test took $SECONDS seconds to run.'
+echo "The regression test took $SECONDS seconds to run."
 
 IFS="$SAVE_IFS"
