@@ -134,43 +134,26 @@ struct eval {
   // Intermeridate implementation calls fncas implemenation
   // that interprets the internal representation of the function.
   struct intermediate : base {
-    struct impl : fncas::f {
-      const fncas::output<fncas::x>::type e_;
-      impl(const F* f) : e_(f->eval_as_expression(fncas::x(f->dim()))) {
-      }
-      virtual double invoke(const std::vector<double>& x) const {
-        return e_.eval(x);
-      }
-    };
     std::unique_ptr<fncas::f> init(const F* f) {
-      return std::unique_ptr<fncas::f>(new impl(f));  //->eval_as_expression(fncas::x(f->dim()))));
+      return std::unique_ptr<fncas::f>(new fncas::f_intermediate(f->eval_as_expression(fncas::x(f->dim()))));
     }
   };
   // Compiled implementation calls fncas implementation
   // that invokes an externally compiled version of the function.
   // The compilation takes place upon the construction of this object.
   struct compiled : base {
-    struct impl : fncas::f {
-      std::unique_ptr<fncas::compiled_expression> c_;
-      double compile(const F* f) {
-        const double begin = get_wall_time_seconds();
-        c_ = fncas::compile(f->eval_as_expression(fncas::x(f->dim())));
-        const double end = get_wall_time_seconds();
-        return end - begin;
-      }
-      virtual double invoke(const std::vector<double>& x) const {
-        return c_->eval(x);
-      }
-    };
-    double compile_time;
+    double compile_time_;
     std::unique_ptr<fncas::f> init(const F* f) {
-      std::unique_ptr<impl> p(new impl());
-      compile_time = p->compile(f);
-      return std::unique_ptr<fncas::f>(p.release());
+      const double begin = get_wall_time_seconds();
+      std::unique_ptr<fncas::f> result(new fncas::f_compiled(f->eval_as_expression(fncas::x(f->dim()))));
+      const double end = get_wall_time_seconds();
+      compile_time_ = end - begin;
+      return result;
     }
     void done(std::ostream& os) {
-      os << ':' << compile_time;
+      os << ':' << compile_time_;
     }
+
   };
 };
 

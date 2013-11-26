@@ -261,6 +261,15 @@ std::unique_ptr<compiled_expression> compile(const node& node) {
   return compile(node.index_);
 }
 
+struct f_compiled : f {
+  std::unique_ptr<fncas::compiled_expression> c_;
+  explicit f_compiled(const node& node) : c_(compile(node)) {
+  }
+  virtual double invoke(const std::vector<double>& x) const {
+    return c_->eval(x);
+  }
+};
+
 }  // namespace fncas
 
 #endif  // #ifdef FNCAS_JIT

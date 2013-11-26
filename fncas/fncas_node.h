@@ -253,10 +253,21 @@ struct x : boost::noncopyable {
 };
 
 // Class "f" is the placeholder for function evaluators.
+// One implementation -- f_intermediate -- is provided by default.
+// Compiled implementations using the same interface are defined in fncas_jit.h.
 
 struct f : boost::noncopyable {
   virtual ~f() {}
   virtual fncas_value_type invoke(const std::vector<fncas_value_type>& x) const = 0;
+};
+
+struct f_intermediate : f {
+  const node node_;
+  explicit f_intermediate(const node& node) : node_(node) {
+  }
+  virtual double invoke(const std::vector<double>& x) const {
+    return node_.eval(x);
+  }
 };
 
 // Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
