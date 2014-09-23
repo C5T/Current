@@ -1,7 +1,7 @@
 // The binary to run smoke and perf tests.
 //
 // TODO(dkorolev): Binary code generation on the fly is not yet implemented.
-// 
+//
 // Generates random inputs, computes the value of the function using various
 // computations techniques (native, intermediate code interpreted, code compiled
 // in different languages by different compilers, machine code generation on the fly),
@@ -67,7 +67,8 @@ struct action {
     done();
     return true;
   }
-  virtual void start() {}
+  virtual void start() {
+  }
   virtual bool step() = 0;
   virtual void done() {
     (*sout) << iteration / duration;
@@ -85,7 +86,7 @@ struct action_gen : action {
   }
 };
 
-template<typename X> struct action_gen_eval_Xeval : action, X {
+template <typename X> struct action_gen_eval_Xeval : action, X {
   std::vector<double> x;
   std::unique_ptr<fncas::f> fncas_f;
   double compile_time;
@@ -153,7 +154,6 @@ struct eval {
     void done(std::ostream& os) {
       os << ':' << compile_time_;
     }
-
   };
 };
 

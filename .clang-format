@@ -1,0 +1,11 @@
+BasedOnStyle: Google
+
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortFunctionsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: false
+BinPackParameters: false
+BreakConstructorInitializersBeforeComma: false
+ColumnLimit: 117
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+Cpp11BracedListStyle: true
+IndentCaseLabels: true

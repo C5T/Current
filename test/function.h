@@ -30,7 +30,7 @@ class F {
   std::vector<boost::function<double()>> p;
 
  protected:
-  template<typename T> void add_var(T var) {
+  template <typename T> void add_var(T var) {
     p.push_back(boost::variate_generator<boost::mt19937&, T>(rng, var));
   }
 
@@ -52,22 +52,26 @@ class F {
 };
 
 std::map<std::string, F*> registered_functions;
-template<typename T> void register_function(const char* name, T* impl) {
+template <typename T> void register_function(const char* name, T* impl) {
   registered_functions[name] = impl;
 }
 
 // To support registration macros.
-#define REGISTER_FUNCTION(F) \
-  struct enhanced_##F : F { \
-    virtual double eval_as_double(const std::vector<double>& x) const { \
-      return F::f(x); \
-    } \
+#define REGISTER_FUNCTION(F)                                                            \
+  struct enhanced_##F : F {                                                             \
+    virtual double eval_as_double(const std::vector<double>& x) const {                 \
+      return F::f(x);                                                                   \
+    }                                                                                   \
     virtual fncas::output<fncas::x>::type eval_as_expression(const fncas::x& x) const { \
-      return F::f(x); \
-    } \
-  }; \
-  static enhanced_##F F##_impl; \
-  static struct F##_registerer { F##_registerer() { register_function<enhanced_##F>(#F, &F##_impl); } } F##_impl_registerer
+      return F::f(x);                                                                   \
+    }                                                                                   \
+  };                                                                                    \
+  static enhanced_##F F##_impl;                                                         \
+  static struct F##_registerer {                                                        \
+    F##_registerer() {                                                                  \
+      register_function<enhanced_##F>(#F, &F##_impl);                                   \
+    }                                                                                   \
+  } F##_impl_registerer
 
 #define INCLUDE_IN_SMOKE_TEST const bool INCLUDE_IN_SMOKE_TEST_ = true
 #define INCLUDE_IN_PERF_TEST const bool INCLUDE_IN_PERF_TEST_ = true

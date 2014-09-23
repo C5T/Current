@@ -95,20 +95,15 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
       if (node.type() == type_t::operation) {
-        fprintf(
-          f,
-          "  a[%d] = a[%d] %s a[%d];\n",
-          dependent_i,
-          node.lhs_index(),
-          operation_as_string(node.operation()),
-          node.rhs_index());
+        fprintf(f,
+                "  a[%d] = a[%d] %s a[%d];\n",
+                dependent_i,
+                node.lhs_index(),
+                operation_as_string(node.operation()),
+                node.rhs_index());
       } else if (node.type() == type_t::function) {
         fprintf(
-          f,
-          "  a[%d] = %s(a[%d]);\n",
-          dependent_i,
-          function_as_string(node.function()),
-          node.argument_index());
+            f, "  a[%d] = %s(a[%d]);\n", dependent_i, function_as_string(node.function()), node.argument_index());
       } else {
         BOOST_ASSERT(false);
       }
@@ -122,7 +117,7 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
 // generate_asm_code_for_node() writes NASM code to evaluate the expression to the file.
 const char* const operation_as_nasm_instruction(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {
-    "addpd", "subpd", "mulpd", "divpd",
+      "addpd", "subpd", "mulpd", "divpd",
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
@@ -169,24 +164,19 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
       if (node.type() == type_t::operation) {
-        fprintf(
-          f,
-          "  ; a[%d] = a[%d] %s a[%d];\n",
-          dependent_i,
-          node.lhs_index(),
-          operation_as_string(node.operation()),
-          node.rhs_index());
+        fprintf(f,
+                "  ; a[%d] = a[%d] %s a[%d];\n",
+                dependent_i,
+                node.lhs_index(),
+                operation_as_string(node.operation()),
+                node.rhs_index());
         fprintf(f, "  movq xmm0, [rsi+%d]\n", node.lhs_index() * 8);
         fprintf(f, "  movq xmm1, [rsi+%d]\n", node.rhs_index() * 8);
         fprintf(f, "  %s xmm0, xmm1\n", operation_as_nasm_instruction(node.operation()));
         fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
       } else if (node.type() == type_t::function) {
         fprintf(
-          f,
-          "  ; a[%d] = %s(a[%d]);\n",
-          dependent_i,
-          function_as_string(node.function()),
-          node.argument_index());
+            f, "  ; a[%d] = %s(a[%d]);\n", dependent_i, function_as_string(node.function()), node.argument_index());
         fprintf(f, "  movq xmm0, [rsi+%d]\n", node.argument_index() * 8);
         fprintf(f, "  push rdi\n");
         fprintf(f, "  push rsi\n");
@@ -241,7 +231,10 @@ struct compile_impl {
       compiled_expression::syscall(cmdline);
     }
   };
-  struct _TMP { struct FNCAS_JIT {}; };  // Confirm FNCAS_JIT is a valid identifier.
+  // Confirm FNCAS_JIT is a valid identifier.
+  struct _TMP {
+    struct FNCAS_JIT {};
+  };
   typedef FNCAS_JIT selected;
 };
 
