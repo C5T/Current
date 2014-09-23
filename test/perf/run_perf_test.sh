@@ -35,7 +35,7 @@ CMDLINES=''
 for compiler in $COMPILERS ; do
   for options in $OPTIONS ; do
     for jit in $JIT ; do
-      CMDLINES+=$compiler' --std=c++0x '$options' -DFNCAS_JIT='$jit' ../eval.cc -I $PWD/autogen -o $BINARY -ldl:'
+      CMDLINES+=$compiler' --std=c++11 '$options' -DFNCAS_JIT='$jit' ../eval.cc -I $PWD/autogen -o $BINARY -ldl:'
     done
   done
 done

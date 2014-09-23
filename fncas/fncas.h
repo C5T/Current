@@ -1,7 +1,7 @@
 // https://github.com/dkorolev/fncas
 
 // Requires:
-// * C++0X, use g++ --std=c++0x
+// * c++11, use g++ --std=c++11
 // * Boost, sudo apt-get install libboost-dev
 // * -fno-strict-aliasing, to avoid warnings when compiling with g++.
 
