@@ -23,7 +23,7 @@ struct arithmetics : F {
   }
   arithmetics() {
     for (size_t i = 0; i < DIM; ++i) {
-      add_var(boost::exponential_distribution<double>());
+      add_var<std::exponential_distribution<double>>();
     }
   }
 };

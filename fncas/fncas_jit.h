@@ -15,7 +15,6 @@
 
 #include <dlfcn.h>
 
-#include <boost/assert.hpp>
 #include <boost/format.hpp>
 
 #include "fncas_base.h"
@@ -26,7 +25,7 @@ namespace fncas {
 // Linux-friendly code to compile into .so and link against it at runtime.
 // Not portable.
 
-struct compiled_expression : boost::noncopyable {
+struct compiled_expression : noncopyable {
   typedef int (*DIM)();
   typedef double (*EVAL)(const double* x, double* a);
   void* lib_;
@@ -34,11 +33,11 @@ struct compiled_expression : boost::noncopyable {
   EVAL eval_;
   explicit compiled_expression(const std::string& lib_filename) {
     lib_ = dlopen(lib_filename.c_str(), RTLD_LAZY);
-    BOOST_ASSERT(lib_);
+    assert(lib_);
     dim_ = reinterpret_cast<DIM>(dlsym(lib_, "dim"));
     eval_ = reinterpret_cast<EVAL>(dlsym(lib_, "eval"));
-    BOOST_ASSERT(dim_);
-    BOOST_ASSERT(eval_);
+    assert(dim_);
+    assert(eval_);
   }
   ~compiled_expression() {
     dlclose(lib_);
@@ -90,7 +89,7 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
         stack.push(~i);
         stack.push(node.argument_index());
       } else {
-        BOOST_ASSERT(false);
+        assert(false);
       }
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
@@ -105,7 +104,7 @@ void generate_c_code_for_node(uint32_t index, FILE* f) {
         fprintf(
             f, "  a[%d] = %s(a[%d]);\n", dependent_i, function_as_string(node.function()), node.argument_index());
       } else {
-        BOOST_ASSERT(false);
+        assert(false);
       }
     }
   }
@@ -159,7 +158,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
         stack.push(~i);
         stack.push(node.argument_index());
       } else {
-        BOOST_ASSERT(false);
+        assert(false);
       }
     } else {
       node_impl& node = node_vector_singleton()[dependent_i];
@@ -185,7 +184,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
         fprintf(f, "  pop rdi\n");
         fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
       } else {
-        BOOST_ASSERT(false);
+        assert(false);
       }
     }
   }
@@ -208,7 +207,7 @@ struct compile_impl {
   struct NASM {
     static void compile(const std::string& filebase, uint32_t index) {
       FILE* f = fopen((filebase + ".asm").c_str(), "w");
-      BOOST_ASSERT(f);
+      assert(f);
       generate_asm_code_for_node(index, f);
       fclose(f);
 
@@ -222,7 +221,7 @@ struct compile_impl {
   struct CLANG {
     static void compile(const std::string& filebase, uint32_t index) {
       FILE* f = fopen((filebase + ".c").c_str(), "w");
-      BOOST_ASSERT(f);
+      assert(f);
       generate_c_code_for_node(index, f);
       fclose(f);
 

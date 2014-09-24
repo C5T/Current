@@ -5,15 +5,13 @@
 #ifndef FNCAS_NODE_H
 #define FNCAS_NODE_H
 
+#include <cassert>
+#include <cmath>
+#include <functional>
 #include <limits>
 #include <stack>
 #include <string>
 #include <vector>
-
-#include <boost/assert.hpp>
-#include <boost/function.hpp>
-#include <boost/static_assert.hpp>
-#include <boost/utility.hpp>
 
 #include "fncas_base.h"
 
@@ -40,7 +38,7 @@ const char* const function_as_string(function_t function) {
 }
 
 template <typename T> T apply_operation(operation_t operation, T lhs, T rhs) {
-  static boost::function<T(T, T)> evaluator[static_cast<size_t>(operation_t::end)] = {
+  static std::function<T(T, T)> evaluator[static_cast<size_t>(operation_t::end)] = {
       std::plus<T>(), std::minus<T>(), std::multiplies<T>(), std::divides<T>(),
   };
   return operation < operation_t::end ? evaluator[static_cast<size_t>(operation)](lhs, rhs)
@@ -48,7 +46,7 @@ template <typename T> T apply_operation(operation_t operation, T lhs, T rhs) {
 }
 
 template <typename T> T apply_function(function_t function, T argument) {
-  static boost::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
+  static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
       exp, log, sin, cos, tan, asin, acos, atan};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
                                     : std::numeric_limits<T>::quiet_NaN();
@@ -84,35 +82,35 @@ struct node_impl {
     return *reinterpret_cast<type_t*>(&data_[0]);
   }
   uint32_t& variable() {
-    BOOST_ASSERT(type() == type_t::variable);
+    assert(type() == type_t::variable);
     return *reinterpret_cast<uint32_t*>(&data_[2]);
   }
   fncas_value_type& value() {
-    BOOST_ASSERT(type() == type_t::value);
+    assert(type() == type_t::value);
     return *reinterpret_cast<fncas_value_type*>(&data_[2]);
   }
   operation_t& operation() {
-    BOOST_ASSERT(type() == type_t::operation);
+    assert(type() == type_t::operation);
     return *reinterpret_cast<operation_t*>(&data_[1]);
   }
   uint32_t& lhs_index() {
-    BOOST_ASSERT(type() == type_t::operation);
+    assert(type() == type_t::operation);
     return *reinterpret_cast<uint32_t*>(&data_[2]);
   }
   uint32_t& rhs_index() {
-    BOOST_ASSERT(type() == type_t::operation);
+    assert(type() == type_t::operation);
     return *reinterpret_cast<uint32_t*>(&data_[6]);
   }
   function_t& function() {
-    BOOST_ASSERT(type() == type_t::function);
+    assert(type() == type_t::function);
     return *reinterpret_cast<function_t*>(&data_[1]);
   }
   uint32_t& argument_index() {
-    BOOST_ASSERT(type() == type_t::function);
+    assert(type() == type_t::function);
     return *reinterpret_cast<uint32_t*>(&data_[2]);
   }
 };
-BOOST_STATIC_ASSERT(sizeof(node_impl) == 10);
+static_assert(sizeof(node_impl) == 10, "sizeof(node_impl) should be 10. Check struct alignment compilation flags.");
 
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
@@ -128,7 +126,7 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
       node_impl& node = node_vector_singleton()[i];
       if (node.type() == type_t::variable) {
         uint32_t v = node.variable();
-        BOOST_ASSERT(v >= 0 && v < x.size());
+        assert(v >= 0 && v < x.size());
         cache[i] = x[v];
       } else if (node.type() == type_t::value) {
         cache[i] = node.value();
@@ -140,7 +138,7 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
         stack.push(~i);
         stack.push(node.argument_index());
       } else {
-        BOOST_ASSERT(false);
+        assert(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
       }
     } else {
@@ -151,7 +149,7 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
       } else if (node.type() == type_t::function) {
         cache[dependent_i] = apply_function<fncas_value_type>(node.function(), cache[node.argument_index()]);
       } else {
-        BOOST_ASSERT(false);
+        assert(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
       }
     }
@@ -245,19 +243,19 @@ struct node : node_constructor {
     return eval_node(index_, x);
   }
 };
-BOOST_STATIC_ASSERT(sizeof(node) == 8);
+static_assert(sizeof(node) == 8, "sizeof(node) should be 8. Check struct alignment compilation flags.");
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
-struct x : boost::noncopyable {
+struct x : noncopyable {
   int dim_;
   explicit x(int dim) : dim_(dim) {
-    BOOST_ASSERT(dim_ >= 0);
+    assert(dim_ >= 0);
   }
   node operator[](int i) const {
-    BOOST_ASSERT(i >= 0);
-    BOOST_ASSERT(i < dim_);
+    assert(i >= 0);
+    assert(i < dim_);
     return node::variable(i);
   }
 };
@@ -266,7 +264,7 @@ struct x : boost::noncopyable {
 // One implementation -- f_intermediate -- is provided by default.
 // Compiled implementations using the same interface are defined in fncas_jit.h.
 
-struct f : boost::noncopyable {
+struct f : noncopyable {
   virtual ~f() {
   }
   virtual fncas_value_type invoke(const std::vector<fncas_value_type>& x) const = 0;

@@ -26,12 +26,12 @@
 
 class F {
  private:
-  boost::mt19937 rng;
-  std::vector<boost::function<double()>> p;
+  std::mt19937 rng;
+  std::vector<std::function<double()>> p;
 
  protected:
-  template <typename T> void add_var(T var) {
-    p.push_back(boost::variate_generator<boost::mt19937&, T>(rng, var));
+  template <typename T_VAR_DISTRIBUTION> void add_var() {
+    p.push_back(std::bind(T_VAR_DISTRIBUTION(), rng));
   }
 
  public:

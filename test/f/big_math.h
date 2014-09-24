@@ -29,7 +29,7 @@ struct big_math : F {
   }
   big_math() {
     for (size_t i = 0; i < DIM; ++i) {
-      add_var(boost::normal_distribution<double>());
+      add_var<std::normal_distribution<double>>();
     }
   }
 };

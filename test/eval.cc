@@ -16,6 +16,7 @@
 
 #include <cassert>
 #include <ctime>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <map>
@@ -23,8 +24,6 @@
 #include <vector>
 
 #include "../fncas/fncas.h"
-
-#include "boost/random.hpp"
 
 #include <sys/time.h>
 
@@ -174,7 +173,7 @@ int main(int argc, char* argv[]) {
       std::cerr << "Function '" << function_name << "' is not defined in functions/*.h." << std::endl;
       return -1;
     } else {
-      typedef boost::function<int(const F*, double, std::ostream&, std::ostream&)> F_ACTION;
+      typedef std::function<int(const F*, double, std::ostream&, std::ostream&)> F_ACTION;
       std::map<std::string, std::unique_ptr<action>> actions;
       actions["gen"].reset(new action_gen());
       actions["gen_eval_eval"].reset(new action_gen_eval_eval());
