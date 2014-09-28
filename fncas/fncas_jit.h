@@ -31,7 +31,8 @@ struct compiled_expression : noncopyable {
   void* lib_;
   DIM dim_;
   EVAL eval_;
-  explicit compiled_expression(const std::string& lib_filename) {
+  const std::string lib_filename_;
+  explicit compiled_expression(const std::string& lib_filename) : lib_filename_(lib_filename) {
     lib_ = dlopen(lib_filename.c_str(), RTLD_LAZY);
     assert(lib_);
     dim_ = reinterpret_cast<DIM>(dlsym(lib_, "dim"));
@@ -59,6 +60,9 @@ struct compiled_expression : noncopyable {
       std::cerr << command << std::endl << retval << std::endl;
       exit(-1);
     }
+  }
+  const std::string& lib_filename() const {
+      return lib_filename_;
   }
 };
 
@@ -259,6 +263,9 @@ struct f_compiled : f {
   }
   virtual double invoke(const std::vector<double>& x) const {
     return c_->eval(x);
+  }
+  const std::string& lib_filename() const {
+      return c_->lib_filename();
   }
 };
 
