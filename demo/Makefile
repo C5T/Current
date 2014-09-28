@@ -1,7 +1,7 @@
-.PHONY: demo
+.PHONY: all binary
 
-all: demo
+all: binary
 
-demo:
-	g++ -std=c++11 demo.cc -o demo -ldl
-	./demo
+binary:
+	g++ -std=c++11 demo.cc -o binary -ldl
+	./binary
