@@ -239,7 +239,7 @@ struct node : node_constructor {
       return "?";
     }
   }
-  fncas_value_type eval(const std::vector<fncas_value_type>& x) const {
+  fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
     return eval_node(index_, x);
   }
 };
@@ -267,15 +267,20 @@ struct x : noncopyable {
 struct f : noncopyable {
   virtual ~f() {
   }
-  virtual fncas_value_type invoke(const std::vector<fncas_value_type>& x) const = 0;
+  virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const = 0;
 };
 
 struct f_intermediate : f {
   const node node_;
-  explicit f_intermediate(const node& node) : node_(node) {
+  f_intermediate(const node& node) : node_(node) {
   }
-  virtual double invoke(const std::vector<double>& x) const {
-    return node_.eval(x);
+  f_intermediate(f_intermediate&& rhs) : node_(rhs.node_) {
+  }
+  virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
+    return node_(x);
+  }
+  std::string debug_as_string() const {
+    return node_.debug_as_string();
   }
 };
 

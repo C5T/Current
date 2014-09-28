@@ -41,9 +41,20 @@ struct compiled_expression : noncopyable {
     assert(eval_);
   }
   ~compiled_expression() {
-    dlclose(lib_);
+    if (lib_) {
+      dlclose(lib_);
+    }
   }
-  double eval(const double* x) const {
+  compiled_expression(const compiled_expression&) = delete;
+  void operator=(const compiled_expression&) = delete;
+  compiled_expression(compiled_expression&& rhs)
+      : lib_(std::move(rhs.lib_)),
+        dim_(std::move(rhs.dim_)),
+        eval_(std::move(rhs.eval_)),
+        lib_filename_(std::move(rhs.lib_filename_)) {
+    rhs.lib_ = nullptr;
+  }
+  double operator()(const double* x) const {
     std::vector<double>& tmp = internals().ram_for_evaluations_;
     size_t dim = static_cast<size_t>(dim_());
     if (tmp.size() < dim) {
@@ -51,8 +62,8 @@ struct compiled_expression : noncopyable {
     }
     return eval_(x, &tmp[0]);
   }
-  double eval(const std::vector<double>& x) const {
-    return eval(&x[0]);
+  double operator()(const std::vector<double>& x) const {
+    return operator()(&x[0]);
   }
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
@@ -62,7 +73,7 @@ struct compiled_expression : noncopyable {
     }
   }
   const std::string& lib_filename() const {
-      return lib_filename_;
+    return lib_filename_;
   }
 };
 
@@ -241,7 +252,7 @@ struct compile_impl {
   typedef FNCAS_JIT selected;
 };
 
-std::unique_ptr<compiled_expression> compile(uint32_t index) {
+compiled_expression compile(uint32_t index) {
   std::random_device random;
   std::uniform_int_distribution<int> distribution(1000000, 9999999);
   std::ostringstream os;
@@ -250,22 +261,28 @@ std::unique_ptr<compiled_expression> compile(uint32_t index) {
   const std::string filename_so = filebase + ".so";
   unlink(filename_so.c_str());
   compile_impl::selected::compile(filebase, index);
-  return std::unique_ptr<compiled_expression>(new compiled_expression(filename_so));
+  return compiled_expression(filename_so);
 }
 
-std::unique_ptr<compiled_expression> compile(const node& node) {
+compiled_expression compile(const node& node) {
   return compile(node.index_);
 }
 
 struct f_compiled : f {
-  std::unique_ptr<fncas::compiled_expression> c_;
+  fncas::compiled_expression c_;
   explicit f_compiled(const node& node) : c_(compile(node)) {
   }
-  virtual double invoke(const std::vector<double>& x) const {
-    return c_->eval(x);
+  explicit f_compiled(const f_intermediate& f) : c_(compile(f.node_)) {
+  }
+  f_compiled(const f_compiled&) = delete;
+  void operator=(const f_compiled&) = delete;
+  f_compiled(f_compiled&& rhs) : c_(std::move(rhs.c_)) {
+  }
+  virtual double operator()(const std::vector<double>& x) const {
+    return c_(x);
   }
   const std::string& lib_filename() const {
-      return c_->lib_filename();
+    return c_.lib_filename();
   }
 };
 

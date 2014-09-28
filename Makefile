@@ -1,6 +1,8 @@
 # TODO(dkorolev): Add more make targets here.
 
-.PHONY: demo test indent
+.PHONY: all demo test indent
+
+all: demo test
 
 demo:
 	(cd demo; make)

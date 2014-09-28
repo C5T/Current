@@ -96,7 +96,7 @@ template <typename X> struct action_gen_eval_Xeval : action, X {
   bool step() {
     f->gen(x);
     const double golden = f->eval_as_double(x);
-    const double test = fncas_f->invoke(x);
+    const double test = (*fncas_f)(x);
     if (test == golden) {
       return true;
     } else {
@@ -123,7 +123,7 @@ struct eval {
       const F* f_;
       impl(const F* f) : f_(f) {
       }
-      virtual double invoke(const std::vector<double>& x) const {
+      virtual double operator()(const std::vector<double>& x) const {
         return f_->eval_as_double(x);
       }
     };
