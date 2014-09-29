@@ -11,18 +11,18 @@
 namespace fncas {
 
 uint32_t d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
-  static std::function<node(const node& a, const node& b, const node& da, const node& db)>
-      differentiator[static_cast<size_t>(operation_t::end)] = {
-          [](const node& a, const node& b, const node& da, const node& db) { return da + db; },
-          [](const node& a, const node& b, const node& da, const node& db) { return da - db; },
-          [](const node& a, const node& b, const node& da, const node& db) { return a * db + b * da; },
-          [](const node& a, const node& b, const node& da, const node& db) { return (b * da - a * db) / (b * b); }};
+  static const size_t n = static_cast<size_t>(operation_t::end);
+  static const std::function<node(const node&, const node&, const node&, const node&)> differentiator[n] = {
+      [](const node& a, const node& b, const node& da, const node& db) { return da + db; },
+      [](const node& a, const node& b, const node& da, const node& db) { return da - db; },
+      [](const node& a, const node& b, const node& da, const node& db) { return a * db + b * da; },
+      [](const node& a, const node& b, const node& da, const node& db) { return (b * da - a * db) / (b * b); }};
   return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
 uint32_t d_f(function_t function, const node& original, const node& x, const node& dx) {
-  static std::function<
-      node(const node& original, const node& x, const node& dx)> differentiator[static_cast<size_t>(function_t::end)] = {
+  static const size_t n = static_cast<size_t>(function_t::end);
+  static const std::function<node(const node&, const node&, const node&)> differentiator[n] = {
       // sqrt().
       [](const node& original, const node& x, const node& dx) { return dx / (original + original); },
       // exp().
