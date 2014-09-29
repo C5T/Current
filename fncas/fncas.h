@@ -10,6 +10,7 @@
 
 #include "fncas_base.h"
 #include "fncas_node.h"
+#include "fncas_differentiate.h"
 #include "fncas_jit.h"
 
 #endif

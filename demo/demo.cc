@@ -26,5 +26,8 @@ int main() {
   std::cout << "Intermediate details: " << fi.debug_as_string() << std::endl;
   std::cout << "Compiled details: " << fc.lib_filename() << std::endl;
 
+  fncas::f_intermediate df_by_x0 = fi.differentiate(0);
+  std::cout << "d(f) / d(x[0]): " << df_by_x0.debug_as_string() << std::endl;
+
   std::cout << "Done." << std::endl;
 }

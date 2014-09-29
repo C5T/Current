@@ -55,7 +55,7 @@ struct compiled_expression : noncopyable {
     rhs.lib_ = nullptr;
   }
   double operator()(const double* x) const {
-    std::vector<double>& tmp = internals().ram_for_evaluations_;
+    std::vector<double>& tmp = internals_singleton().ram_for_evaluations_;
     size_t dim = static_cast<size_t>(dim_());
     if (tmp.size() < dim) {
       tmp.resize(dim);
@@ -139,7 +139,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "[bits 64]\n");
   fprintf(f, "\n");
   fprintf(f, "global eval, dim\n");
-  fprintf(f, "extern exp, log, sin, cos, tan, asin, acos, atan\n");
+  fprintf(f, "extern sqrt, exp, log, sin, cos, tan, asin, acos, atan\n");
   fprintf(f, "\n");
   fprintf(f, "section .text\n");
   fprintf(f, "\n");

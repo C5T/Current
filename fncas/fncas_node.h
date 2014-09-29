@@ -9,6 +9,7 @@
 #include <cmath>
 #include <functional>
 #include <limits>
+#include <map>
 #include <stack>
 #include <string>
 #include <vector>
@@ -24,7 +25,7 @@ namespace fncas {
 
 enum type_t : uint8_t { variable, value, operation, function };
 enum struct operation_t : uint8_t { add, subtract, multiply, divide, end };
-enum struct function_t : uint8_t { exp, log, sin, cos, tan, asin, acos, atan, end };
+enum struct function_t : uint8_t { sqrt, exp, log, sin, cos, tan, asin, acos, atan, end };
 
 const char* const operation_as_string(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {"+", "-", "*", "/"};
@@ -33,7 +34,7 @@ const char* const operation_as_string(operation_t operation) {
 
 const char* const function_as_string(function_t function) {
   static const char* representation[static_cast<size_t>(function_t::end)] = {
-      "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
+      "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
 }
 
@@ -47,7 +48,7 @@ template <typename T> T apply_operation(operation_t operation, T lhs, T rhs) {
 
 template <typename T> T apply_function(function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
-      exp, log, sin, cos, tan, asin, acos, atan};
+      sqrt, exp, log, sin, cos, tan, asin, acos, atan};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
                                     : std::numeric_limits<T>::quiet_NaN();
 }
@@ -56,24 +57,27 @@ struct node_impl;
 struct internals_impl {
   std::vector<node_impl> node_vector_;
   std::vector<fncas_value_type> ram_for_evaluations_;
+  // df_by_var_[var_index][node_index] => node index for d (node[node_index]) / d (x[variable_index]).
+  std::map<uint32_t, std::map<uint32_t, uint32_t>> df_by_var_;
   void reset() {
     node_vector_.clear();
     ram_for_evaluations_.clear();
+    df_by_var_.clear();
   }
 };
 
-inline internals_impl& internals() {
+inline internals_impl& internals_singleton() {
   static internals_impl storage;
   return storage;
 }
 
 // Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
-inline void reset() {
-  internals().reset();
+inline void reset_internals_singleton() {
+  internals_singleton().reset();
 }
 
 inline std::vector<node_impl>& node_vector_singleton() {
-  return internals().node_vector_;
+  return internals_singleton().node_vector_;
 }
 
 struct node_impl {
@@ -123,31 +127,31 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
     stack.pop();
     const uint32_t dependent_i = ~i;
     if (i < dependent_i) {
-      node_impl& node = node_vector_singleton()[i];
-      if (node.type() == type_t::variable) {
-        uint32_t v = node.variable();
+      node_impl& f = node_vector_singleton()[i];
+      if (f.type() == type_t::variable) {
+        uint32_t v = f.variable();
         assert(v >= 0 && v < x.size());
         cache[i] = x[v];
-      } else if (node.type() == type_t::value) {
-        cache[i] = node.value();
-      } else if (node.type() == type_t::operation) {
+      } else if (f.type() == type_t::value) {
+        cache[i] = f.value();
+      } else if (f.type() == type_t::operation) {
         stack.push(~i);
-        stack.push(node.lhs_index());
-        stack.push(node.rhs_index());
-      } else if (node.type() == type_t::function) {
+        stack.push(f.lhs_index());
+        stack.push(f.rhs_index());
+      } else if (f.type() == type_t::function) {
         stack.push(~i);
-        stack.push(node.argument_index());
+        stack.push(f.argument_index());
       } else {
         assert(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
       }
     } else {
-      node_impl& node = node_vector_singleton()[dependent_i];
-      if (node.type() == type_t::operation) {
+      node_impl& f = node_vector_singleton()[dependent_i];
+      if (f.type() == type_t::operation) {
         cache[dependent_i] =
-            apply_operation<fncas_value_type>(node.operation(), cache[node.lhs_index()], cache[node.rhs_index()]);
-      } else if (node.type() == type_t::function) {
-        cache[dependent_i] = apply_function<fncas_value_type>(node.function(), cache[node.argument_index()]);
+            apply_operation<fncas_value_type>(f.operation(), cache[f.lhs_index()], cache[f.rhs_index()]);
+      } else if (f.type() == type_t::function) {
+        cache[dependent_i] = apply_function<fncas_value_type>(f.function(), cache[f.argument_index()]);
       } else {
         assert(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
@@ -162,26 +166,35 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
 // User code that defines the function to work with is effectively dealing with class node objects:
 // arithmetical and mathematical operations are overloaded for class node.
 
-struct node_constructor {
-  mutable uint64_t index_;
-  explicit node_constructor(uint64_t index) : index_(static_cast<uint64_t>(index)) {
+struct allocate_new {};
+enum class from_index : uint32_t;
+
+struct node_index_allocator {
+  uint64_t index_;  // non-const since `node` objects can be modified.
+  explicit inline node_index_allocator(from_index i) : index_(static_cast<uint64_t>(i)) {
   }
-  explicit node_constructor() : index_(node_vector_singleton().size()) {
+  explicit inline node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
     node_vector_singleton().resize(index_ + 1);
   }
+  uint64_t index() const {
+    return index_;
+  }
+  node_index_allocator() = delete;
 };
 
-struct node : node_constructor {
+struct node : node_index_allocator {
  private:
-  node(const node_constructor& instance) : node_constructor(instance) {
+  node(const node_index_allocator& instance) : node_index_allocator(instance) {
   }
 
  public:
-  node() : node_constructor() {
+  node() : node_index_allocator(allocate_new()) {
   }
-  node(fncas_value_type x) : node_constructor() {
+  node(fncas_value_type x) : node_index_allocator(allocate_new()) {
     type() = type_t::value;
     value() = x;
+  }
+  node(from_index i) : node_index_allocator(i) {
   }
   type_t& type() const {
     return node_vector_singleton()[index_].type();
@@ -202,10 +215,10 @@ struct node : node_constructor {
     return node_vector_singleton()[index_].rhs_index();
   }
   node lhs() const {
-    return node_constructor(node_vector_singleton()[index_].lhs_index());
+    return from_index(node_vector_singleton()[index_].lhs_index());
   }
   node rhs() const {
-    return node_constructor(node_vector_singleton()[index_].rhs_index());
+    return from_index(node_vector_singleton()[index_].rhs_index());
   }
   function_t& function() const {
     return node_vector_singleton()[index_].function();
@@ -214,7 +227,7 @@ struct node : node_constructor {
     return node_vector_singleton()[index_].argument_index();
   }
   node argument() const {
-    return node_constructor(node_vector_singleton()[index_].argument_index());
+    return from_index(node_vector_singleton()[index_].argument_index());
   }
   static node variable(uint32_t index) {
     node result;
@@ -241,6 +254,11 @@ struct node : node_constructor {
   }
   fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
     return eval_node(index_, x);
+  }
+  node differentiate(size_t variable_index) const {
+    // The implemenation of the differentiation operator is in `fncas_differentiate.h`.
+    uint32_t differentiate_node(uint32_t index, uint32_t var_index);
+    return from_index(differentiate_node(index_, variable_index));
   }
 };
 static_assert(sizeof(node) == 8, "sizeof(node) should be 8. Check struct alignment compilation flags.");
@@ -282,13 +300,16 @@ struct f_intermediate : f {
   std::string debug_as_string() const {
     return node_.debug_as_string();
   }
+  node differentiate(size_t variable_index) const {
+    return node_.differentiate(variable_index);
+  }
 };
 
 // Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
 // Synopsis: template<typename T> typename fncas::output<T>::type f(const T& x);
 
 template <typename T> struct output {};
-template <> struct output<std::vector<fncas_value_type> > { typedef fncas_value_type type; };
+template <> struct output<std::vector<fncas_value_type>> { typedef fncas_value_type type; };
 template <> struct output<x> { typedef fncas::node type; };
 
 }  // namespace fncas
@@ -321,6 +342,7 @@ DECLARE_OP(/, /=, divide);
     result.argument_index() = argument.index_;        \
     return result;                                    \
   }
+DECLARE_FUNCTION(sqrt);
 DECLARE_FUNCTION(exp);
 DECLARE_FUNCTION(log);
 DECLARE_FUNCTION(sin);

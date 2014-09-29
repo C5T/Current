@@ -4,23 +4,26 @@ struct big_math : F {
   template <typename T> static typename fncas::output<T>::type f(const T& x) {
     typename fncas::output<T>::type r = 0.0;
     for (size_t i = 0; i < DIM; ++i) {
-      switch (i % 6) {
+      switch (i % 7) {
         case 0:
-          r += exp(x[i] * 0.01);
+          r += sqrt(x[i] * x[i] + 1.0);
           break;
         case 1:
-          r += log(x[i] * x[i] + 1.0);
+          r += exp(x[i] * 0.01);
           break;
         case 2:
-          r += sin(x[i]);
+          r += log(x[i] * x[i] + 1.0);
           break;
         case 3:
-          r += cos(x[i]);
+          r += sin(x[i]);
           break;
         case 4:
-          r += tan(x[i] * 0.01);
+          r += cos(x[i]);
           break;
         case 5:
+          r += tan(x[i] * 0.01);
+          break;
+        case 6:
           r += atan(x[i] * 0.01);
           break;
       }

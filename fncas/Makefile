@@ -8,7 +8,7 @@
 CCFLAGS=--std=c++11 -Wall -O3 -fno-strict-aliasing
 CCPOSTFLAGS=-ldl
 
-all: fncas_gcc fncas_clang fncas_jit_ok fncas.o fncas_base.o fncas_node.o fncas_jit.o
+all: fncas_gcc fncas_clang fncas_jit_ok fncas.o fncas_base.o fncas_node.o fncas_differentiate.o fncas_jit.o
 
 fncas_gcc: dummy.cc *.h
 	g++ ${CCFLAGS} -o $@ dummy.cc ${CCPOSTFLAGS}
