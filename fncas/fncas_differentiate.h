@@ -10,6 +10,15 @@
 
 namespace fncas {
 
+template <typename F>
+double approximate_derivative(F f, const std::vector<double>& x, size_t i, const double EPS = 1e-6) {
+  std::vector<double> x1(x);
+  std::vector<double> x2(x);
+  x1[i] -= EPS;
+  x2[i] += EPS;
+  return (f(x2) - f(x1)) / (EPS + EPS);
+}
+
 uint32_t d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
   static const size_t n = static_cast<size_t>(operation_t::end);
   static const std::function<node(const node&, const node&, const node&, const node&)> differentiator[n] = {

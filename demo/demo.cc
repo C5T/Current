@@ -10,15 +10,6 @@ template <typename T> typename fncas::output<T>::type f(const T& x) {
   return (x[0] + x[1] * 2) * (x[0] + x[1] * 2);
 }
 
-template <typename F>
-double approximate_derivative(F f, const std::vector<double>& x, size_t i, const double EPS = 1e-6) {
-  std::vector<double> x1(x);
-  std::vector<double> x2(x);
-  x1[i] -= EPS;
-  x2[i] += EPS;
-  return (f(x2) - f(x1)) / (EPS + EPS);
-}
-
 int main() {
   std::cout << "Hello, FNCAS!" << std::endl;
 
@@ -44,8 +35,8 @@ int main() {
   std::cout << "df(3, 3) = { " << df_by_x0(p_3_3) << ", " << df_by_x1(p_3_3) << " }." << std::endl;
 
   auto double_f = f<std::vector<double>>;
-  auto d_3_3_approx =
-      std::vector<double>({approximate_derivative(double_f, p_3_3, 0), approximate_derivative(double_f, p_3_3, 1)});
+  auto d_3_3_approx = std::vector<double>(
+      {fncas::approximate_derivative(double_f, p_3_3, 0), fncas::approximate_derivative(double_f, p_3_3, 1)});
   std::cout << "approximate df(3, 3) = { " << d_3_3_approx[0] << ", " << d_3_3_approx[1] << " }." << std::endl;
 
   std::cout << "Done." << std::endl;
