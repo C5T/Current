@@ -126,6 +126,9 @@ struct eval {
       virtual double operator()(const std::vector<double>& x) const {
         return f_->eval_as_double(x);
       }
+      virtual size_t dim() const {
+        return f_->dim();
+      }
     };
     std::unique_ptr<fncas::f> init(const F* f) {
       return std::unique_ptr<fncas::f>(new impl(f));

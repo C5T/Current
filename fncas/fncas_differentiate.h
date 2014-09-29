@@ -11,12 +11,33 @@
 namespace fncas {
 
 template <typename F>
-double approximate_derivative(F f, const std::vector<double>& x, size_t i, const double EPS = 1e-6) {
-  std::vector<double> x1(x);
-  std::vector<double> x2(x);
+fncas_value_type approximate_derivative(F f,
+                                        const std::vector<fncas_value_type>& x,
+                                        size_t i,
+                                        const fncas_value_type EPS = 1e-6) {
+  std::vector<fncas_value_type> x1(x);
+  std::vector<fncas_value_type> x2(x);
   x1[i] -= EPS;
   x2[i] += EPS;
   return (f(x2) - f(x1)) / (EPS + EPS);
+}
+
+template <typename F>
+std::vector<fncas_value_type> approximate_gradient(F f,
+                                                   const std::vector<fncas_value_type>& x,
+                                                   const fncas_value_type EPS = 1e-6) {
+  std::vector<fncas_value_type> g(x.size());
+  std::vector<fncas_value_type> xx(x);
+  for (size_t i = 0; i < xx.size(); ++i) {
+    const fncas_value_type v0 = xx[i];
+    xx[i] = v0 - EPS;
+    const fncas_value_type f1 = f(xx);
+    xx[i] = v0 + EPS;
+    const fncas_value_type f2 = f(xx);
+    xx[i] = v0;
+    g[i] = (f2 - f1) / (EPS + EPS);
+  }
+  return g;
 }
 
 uint32_t d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
@@ -113,6 +134,67 @@ uint32_t differentiate_node(uint32_t index, uint32_t var_index) {
   assert(df_cache.count(index));
   return df_cache[index];
 }
+
+struct g : noncopyable {
+  struct result {
+    fncas_value_type value;
+    std::vector<fncas_value_type> gradient;
+  };
+  virtual ~g() {
+  }
+  virtual result operator()(const std::vector<fncas_value_type>& x) const = 0;
+  virtual size_t dim() const = 0;
+};
+
+struct g_approximate : g {
+  std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
+  size_t d_;
+  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, size_t d) : f_(f), d_(d) {
+  }
+  g_approximate(g_approximate&& rhs) : f_(rhs.f_) {
+  }
+  g_approximate(const g_approximate&) = delete;
+  void operator=(const g_approximate&) = delete;
+  virtual result operator()(const std::vector<fncas_value_type>& x) const {
+    result r;
+    r.value = f_(x);
+    r.gradient = approximate_gradient(f_, x);
+    return r;
+  }
+  virtual size_t dim() const {
+    return d_;
+  }
+};
+
+struct g_intermediate : g {
+  node f_;
+  std::vector<node> g_;
+  g_intermediate(const node& f, const size_t dim) : f_(f), g_(dim) {
+    for (size_t i = 0; i < dim; ++i) {
+      g_[i] = f_.differentiate(i);
+    }
+  }
+  explicit g_intermediate(const node_with_dim& fd) : g_intermediate(fd.f, fd.d) {
+  }
+  explicit g_intermediate(const f_intermediate& fi) : g_intermediate(fi.fd_) {
+  }
+  g_intermediate(g_intermediate&& rhs) {
+  }
+  g_intermediate(const g_intermediate&) = delete;
+  void operator=(const g_intermediate&) = delete;
+  virtual result operator()(const std::vector<fncas_value_type>& x) const {
+    result r;
+    r.value = f_(x);
+    r.gradient.resize(g_.size());
+    for (size_t i = 0; i < g_.size(); ++i) {
+      r.gradient[i] = g_[i](x);
+    }
+    return r;
+  }
+  virtual size_t dim() const {
+    return g_.size();
+  }
+};
 
 }  // namespace fncas
 

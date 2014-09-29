@@ -65,6 +65,9 @@ struct compiled_expression : noncopyable {
   double operator()(const std::vector<double>& x) const {
     return operator()(&x[0]);
   }
+  size_t dim() const {
+    return dim_ ? static_cast<size_t>(dim_()) : 0;
+  }
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
     if (retval) {
@@ -272,7 +275,7 @@ struct f_compiled : f {
   fncas::compiled_expression c_;
   explicit f_compiled(const node& node) : c_(compile(node)) {
   }
-  explicit f_compiled(const f_intermediate& f) : c_(compile(f.node_)) {
+  explicit f_compiled(const f_intermediate& f) : c_(compile(f.fd_.f)) {
   }
   f_compiled(const f_compiled&) = delete;
   void operator=(const f_compiled&) = delete;
@@ -280,6 +283,9 @@ struct f_compiled : f {
   }
   virtual double operator()(const std::vector<double>& x) const {
     return c_(x);
+  }
+  virtual size_t dim() const {
+    return c_.dim();
   }
   const std::string& lib_filename() const {
     return c_.lib_filename();

@@ -26,18 +26,19 @@ int main() {
   std::cout << "Intermediate details: " << fi.debug_as_string() << std::endl;
   std::cout << "Compiled details: " << fc.lib_filename() << std::endl;
 
-  fncas::f_intermediate df_by_x0 = fi.differentiate(0);
-  fncas::f_intermediate df_by_x1 = fi.differentiate(1);
-  std::cout << "d(f) / d(x[0]): " << df_by_x0.debug_as_string() << std::endl;
-  std::cout << "d(f) / d(x[1]): " << df_by_x1.debug_as_string() << std::endl;
-
   auto p_3_3 = std::vector<double>({3, 3});
-  std::cout << "df(3, 3) = { " << df_by_x0(p_3_3) << ", " << df_by_x1(p_3_3) << " }." << std::endl;
 
-  auto double_f = f<std::vector<double>>;
-  auto d_3_3_approx = std::vector<double>(
-      {fncas::approximate_derivative(double_f, p_3_3, 0), fncas::approximate_derivative(double_f, p_3_3, 1)});
-  std::cout << "approximate df(3, 3) = { " << d_3_3_approx[0] << ", " << d_3_3_approx[1] << " }." << std::endl;
+  fncas::g_approximate ga = fncas::g_approximate(f<std::vector<double>>, 2);
+  auto d_3_3_approx = ga(p_3_3);
+  std::cout << "Approximate {f, df}(3, 3) = { " << d_3_3_approx.value << ", { " << d_3_3_approx.gradient[0] << ", "
+            << d_3_3_approx.gradient[1] << " } }." << std::endl;
+
+  // Both syntaxes compile.
+  // fncas::g_intermediate gi = fncas::g_intermediate(fi);
+  fncas::g_intermediate gi = fncas::g_intermediate(f(fncas::x(2)));
+  auto d_3_3_intermediate = gi(p_3_3);
+  std::cout << "Differentiated {f, df}(3, 3) = { " << d_3_3_intermediate.value << ", { "
+            << d_3_3_intermediate.gradient[0] << ", " << d_3_3_intermediate.gradient[1] << " } }." << std::endl;
 
   std::cout << "Done." << std::endl;
 }
