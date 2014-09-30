@@ -328,6 +328,11 @@ struct x : noncopyable {
     assert(i < internals_singleton().dim_);
     return node(node::variable(i));
   }
+  size_t size() const {
+    auto& meta = internals_singleton();
+    assert(meta.x_ptr_ == this);
+    return static_cast<size_t>(meta.dim_);
+  }
   /*
   node_with_dim operator[](int32_t i) const {
     assert(i >= 0);
