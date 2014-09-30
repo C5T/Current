@@ -26,23 +26,23 @@
 
 class F {
  private:
-  std::mt19937 rng;
-  std::vector<std::function<double()>> p;
+  std::mt19937 rng_;
+  std::vector<std::function<double(std::mt19937&)>> p_;
 
  protected:
-  template <typename T_VAR_DISTRIBUTION> void add_var() {
-    p.push_back(std::bind(T_VAR_DISTRIBUTION(), rng));
+  void add_var(std::function<double(std::mt19937&)> p) {
+    p_.push_back(p);
   }
 
  public:
   size_t dim() const {
-    return p.size();
+    return p_.size();
   }
 
-  void gen(std::vector<double>& x) const {
-    BOOST_ASSERT(x.size() == p.size());
-    for (size_t i = 0; i < p.size(); ++i) {
-      x[i] = p[i]();
+  void gen(std::vector<double>& x) {
+    assert(x.size() == p_.size());
+    for (size_t i = 0; i < p_.size(); ++i) {
+      x[i] = p_[i](rng_);
     }
   }
 

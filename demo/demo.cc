@@ -15,7 +15,8 @@ int main() {
 
   std::cout << "f(x) is declared as f(x[2]) = (x_0 + 2 * x_1) ^ 2);" << std::endl;
 
-  std::cout << "Native execution:    f(1, 2) == " << f(std::vector<double>({1, 2})) << std::endl;
+  fncas::f_native fn(f<std::vector<double>>, 2);
+  std::cout << "Native execution:    f(1, 2) == " << fn(std::vector<double>({1, 2})) << std::endl;
 
   fncas::f_intermediate fi = f(fncas::x(2));
   std::cout << "Intermediate format: f(1, 2) == " << fi(std::vector<double>({1, 2})) << std::endl;

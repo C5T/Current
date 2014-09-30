@@ -1,6 +1,7 @@
 // The binary to run smoke and perf tests.
 //
 // TODO(dkorolev): Binary code generation on the fly is not yet implemented.
+// TODO(dkorolev): Add `override` here and in other places.
 //
 // Generates random inputs, computes the value of the function using various
 // computations techniques (native, intermediate code interpreted, code compiled
@@ -40,19 +41,26 @@ double get_wall_time_seconds() {
 }
 
 struct action {
-  const F* f;
+  F* f;
   uint64_t limit_iterations;
   double limit_seconds;
   std::ostream* sout;
   std::ostream* serr;
   double duration;
   uint64_t iteration = 0;
-  bool run(const F* f, double quantity, std::ostream* sout, std::ostream* serr) {
+  virtual bool run(F* f, double quantity, std::ostream* sout, std::ostream* serr) {
     this->f = f;
     limit_iterations = static_cast<uint64_t>(quantity > 0 ? quantity : 1e12);
     limit_seconds = quantity < 0 ? -quantity : 1e12;
     this->sout = sout;
     this->serr = serr;
+    do_run();
+  }
+  virtual bool do_run() = 0;
+};
+
+struct generic_action : action {
+  virtual bool do_run() {
     start();
     double begin = get_wall_time_seconds();
     do {
@@ -63,18 +71,18 @@ struct action {
         return false;
       }
     } while (iteration < limit_iterations && duration < limit_seconds);
-    done();
-    return true;
+    return done();
   }
   virtual void start() {
   }
   virtual bool step() = 0;
-  virtual void done() {
+  virtual bool done() {
     (*sout) << iteration / duration;
+    return true;
   }
 };
 
-struct action_gen : action {
+struct action_gen : generic_action {
   std::vector<double> x;
   void start() {
     x = std::vector<double>(f->dim());
@@ -85,7 +93,7 @@ struct action_gen : action {
   }
 };
 
-template <typename X> struct action_gen_eval_Xeval : action, X {
+template <typename X> struct action_gen_eval_Xeval : generic_action, X {
   std::vector<double> x;
   std::unique_ptr<fncas::f> fncas_f;
   double compile_time;
@@ -104,9 +112,9 @@ template <typename X> struct action_gen_eval_Xeval : action, X {
       return false;
     }
   }
-  virtual void done() {
-    action::done();
-    X::done(*sout);
+  virtual bool done() override {
+    generic_action::done();
+    return X::steps_done(*sout);
   }
 };
 
@@ -114,24 +122,15 @@ template <typename X> struct action_gen_eval_Xeval : action, X {
 struct eval {
   // Baseline code.
   struct base {
-    void done(std::ostream& os) {
+    virtual bool steps_done(std::ostream& os) {
+      return true;
     }
   };
   // Native implementation calls the function natively compiled as part of the binary being run.
   struct native : base {
-    struct impl : fncas::f {
-      const F* f_;
-      impl(const F* f) : f_(f) {
-      }
-      virtual double operator()(const std::vector<double>& x) const {
-        return f_->eval_as_double(x);
-      }
-      virtual size_t dim() const {
-        return f_->dim();
-      }
-    };
     std::unique_ptr<fncas::f> init(const F* f) {
-      return std::unique_ptr<fncas::f>(new impl(f));
+      return std::unique_ptr<fncas::f>(
+          new fncas::f_native(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim()));
     }
   };
   // Intermeridate implementation calls fncas implemenation
@@ -153,8 +152,9 @@ struct eval {
       compile_time_ = end - begin;
       return result;
     }
-    void done(std::ostream& os) {
+    virtual bool steps_done(std::ostream& os) override {
       os << ':' << compile_time_;
+      return true;
     }
   };
 };
@@ -163,6 +163,54 @@ typedef action_gen_eval_Xeval<eval::native> action_gen_eval_eval;
 typedef action_gen_eval_Xeval<eval::intermediate> action_gen_eval_ieval;
 typedef action_gen_eval_Xeval<eval::compiled> action_gen_eval_ceval;
 
+struct action_test_gradient : generic_action {
+  std::vector<double> x;
+  fncas::g_approximate ga;
+  fncas::g_intermediate gi;
+  std::vector<double> errors;
+  static double error_between(double a, double b) {
+    return fabs(b - a) / std::max(1.0, std::max(fabs(a), fabs(b)));
+  }
+  static bool approximate_compare(double a, double b, double eps = 0.03) {
+    return error_between(a, b) < eps;
+  }
+  void start() {
+    x = std::vector<double>(f->dim());
+    ga = fncas::g_approximate(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());
+    gi = fncas::g_intermediate(f->eval_as_expression(fncas::x(f->dim())));
+  }
+  bool step() {
+    f->gen(x);
+    fncas::g::result ra = ga(x);
+    fncas::g::result ri = gi(x);
+    if (!approximate_compare(ra.value, ri.value)) {
+      (*serr) << "V: " << ra.value << " != " << ri.value << " @" << iteration;
+      return false;
+    }
+    assert(ra.gradient.size() == ri.gradient.size());
+    for (size_t i = 0; i < ra.gradient.size(); ++i) {
+      errors.push_back(error_between(ra.gradient[i], ri.gradient[i]));
+    }
+    return true;
+  }
+  virtual bool done() override {
+    if (errors.size() < 100) {
+      (*serr) << "Not enough datapoints to test gradient.";
+      return false;
+    }
+    std::sort(errors.begin(), errors.end());
+    const double quantile = 0.95;
+    const double threshold = 1e-6;
+    const size_t i = static_cast<size_t>(quantile * errors.size());
+    if (errors[i] > threshold) {
+      (*serr) << "Error at quantile " << quantile << " is " << errors[i] << " which is above " << threshold;
+      return false;
+    } else {
+      return true;
+    }
+  }
+};
+
 int main(int argc, char* argv[]) {
   if (argc < 3) {
     std::cerr << "Usage: " << argv[0] << " <function> <action> <iterations or -seconds>" << std::endl;
@@ -170,8 +218,8 @@ int main(int argc, char* argv[]) {
   } else {
     const char* function_name = argv[1];
     const char* action_name = argv[2];
-    const double quantity = (argc >= 4) ? atof(argv[3]) : 1000;  // 1000 iterations by default.
-    const F* f = registered_functions[function_name];
+    const double quantity = (argc >= 4) ? atof(argv[3]) : 100;  // 100 iterations by default.
+    F* f = registered_functions[function_name];
     if (!f) {
       std::cerr << "Function '" << function_name << "' is not defined in functions/*.h." << std::endl;
       return -1;
@@ -182,6 +230,7 @@ int main(int argc, char* argv[]) {
       actions["gen_eval_eval"].reset(new action_gen_eval_eval());
       actions["gen_eval_ieval"].reset(new action_gen_eval_ieval());
       actions["gen_eval_ceval"].reset(new action_gen_eval_ceval());
+      actions["test_gradient"].reset(new action_test_gradient());
       action* action_handler = actions[action_name].get();
       if (!action_handler) {
         std::cerr << "Action '" << action_name << "' is not defined." << std::endl;

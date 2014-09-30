@@ -10,11 +10,13 @@
 
 namespace fncas {
 
+static const double APPROXIMATE_DERIVATIVE_EPS = 1e-4;
+
 template <typename F>
 fncas_value_type approximate_derivative(F f,
                                         const std::vector<fncas_value_type>& x,
                                         size_t i,
-                                        const fncas_value_type EPS = 1e-6) {
+                                        const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<fncas_value_type> x1(x);
   std::vector<fncas_value_type> x2(x);
   x1[i] -= EPS;
@@ -25,7 +27,7 @@ fncas_value_type approximate_derivative(F f,
 template <typename F>
 std::vector<fncas_value_type> approximate_gradient(F f,
                                                    const std::vector<fncas_value_type>& x,
-                                                   const fncas_value_type EPS = 1e-6) {
+                                                   const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<fncas_value_type> g(x.size());
   std::vector<fncas_value_type> xx(x);
   for (size_t i = 0; i < xx.size(); ++i) {
@@ -120,10 +122,10 @@ uint32_t differentiate_node(uint32_t index, uint32_t var_index) {
           const uint32_t db = df_cache[b];
           df_cache[dependent_i] = d_op(f.operation(), from_index(a), from_index(b), from_index(da), from_index(db));
         } else if (f.type() == type_t::function) {
-          const uint32_t x = f.lhs_index();
+          const uint32_t x = f.argument_index();
           assert(df_cache.count(x));
           const uint32_t dx = df_cache[x];
-          df_cache[dependent_i] = d_f(f.function(), dependent_i, from_index(x), from_index(dx));
+          df_cache[dependent_i] = d_f(f.function(), from_index(dependent_i), from_index(x), from_index(dx));
         } else {
           assert(false);
           return 0;
@@ -153,8 +155,12 @@ struct g_approximate : g {
   }
   g_approximate(g_approximate&& rhs) : f_(rhs.f_) {
   }
-  g_approximate(const g_approximate&) = delete;
-  void operator=(const g_approximate&) = delete;
+  g_approximate() = default;
+  g_approximate(const g_approximate&) = default;
+  void operator=(const g_approximate& rhs) {
+    f_ = rhs.f_;
+    d_ = rhs.d_;
+  }
   virtual result operator()(const std::vector<fncas_value_type>& x) const {
     result r;
     r.value = f_(x);
@@ -180,8 +186,12 @@ struct g_intermediate : g {
   }
   g_intermediate(g_intermediate&& rhs) {
   }
-  g_intermediate(const g_intermediate&) = delete;
-  void operator=(const g_intermediate&) = delete;
+  g_intermediate() = default;
+  g_intermediate(const g_intermediate&) = default;
+  void operator=(const g_intermediate& rhs) {
+    f_ = rhs.f_;
+    g_ = rhs.g_;
+  }
   virtual result operator()(const std::vector<fncas_value_type>& x) const {
     result r;
     r.value = f_(x);

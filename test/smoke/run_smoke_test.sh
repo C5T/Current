@@ -55,11 +55,13 @@ for cmdline in $CMDLINES ; do
   for function in $FUNCTIONS ; do 
     echo -n $function':'
     data=''
-    # Two actions are enough for the smoke test:
-    # 1) gen_eval_ieval: Diff native vs. interpreted byte-code computation.
-    # 2) gen_eval_ceval: Diff native vs. compiled function compututation.
+    # Actions for the smoke test:
+    # 1) gen_eval_eval: Diff native vs. `native wrapper`.
+    # 2) gen_eval_ieval: Diff native vs. interpreted byte-code computation.
+    # 3) gen_eval_ceval: Diff native vs. compiled function compututation.
+    # 4) test_gradient:  Diff approximate vs. analytically derived gradient.
     # By specifying no extra parameters, the binary runs in the default "smoke test" mode.
-    for action in gen_eval_ieval gen_eval_ceval ; do
+    for action in gen_eval_eval gen_eval_ieval gen_eval_ceval test_gradient ; do
       result=$(./$BINARY $function $action)
       if [ $? != 0 ] ; then
         echo 'Error '$result' in '$action

@@ -30,9 +30,10 @@ struct big_math : F {
     }
     return r;
   }
+  std::normal_distribution<double> distribution_;
   big_math() {
     for (size_t i = 0; i < DIM; ++i) {
-      add_var<std::normal_distribution<double>>();
+      add_var(distribution_);
     }
   }
 };

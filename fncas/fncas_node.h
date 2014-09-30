@@ -293,10 +293,22 @@ struct x : noncopyable {
 // Compiled implementations using the same interface are defined in fncas_jit.h.
 
 struct f : noncopyable {
-  virtual ~f() {
-  }
+  virtual ~f() = default;
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const = 0;
   virtual size_t dim() const = 0;
+};
+
+struct f_native : f {
+  std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
+  size_t d_;
+  f_native(std::function<fncas_value_type(std::vector<fncas_value_type>)> f, size_t d) : f_(f), d_(d) {
+  }
+  virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
+    return f_(x);
+  }
+  virtual size_t dim() const {
+    return d_;
+  }
 };
 
 struct f_intermediate : f {

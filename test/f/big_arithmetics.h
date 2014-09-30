@@ -21,9 +21,10 @@ struct big_arithmetics : F {
     }
     return r;
   }
-  big_arithmetics() {
+  std::exponential_distribution<double> distribution_;
+  big_arithmetics() : distribution_(1.0) {
     for (size_t i = 0; i < DIM; ++i) {
-      add_var<std::exponential_distribution<double>>();
+      add_var(distribution_);
     }
   }
 };
