@@ -177,7 +177,8 @@ struct action_test_gradient : generic_action {
   void start() {
     x = std::vector<double>(f->dim());
     ga = fncas::g_approximate(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());
-    gi = fncas::g_intermediate(f->eval_as_expression(fncas::x(f->dim())));
+    fncas::x argument(f->dim());
+    gi = fncas::g_intermediate(argument, f->eval_as_expression(argument));
   }
   bool step() {
     f->gen(x);

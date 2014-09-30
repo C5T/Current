@@ -275,7 +275,7 @@ struct f_compiled : f {
   fncas::compiled_expression c_;
   explicit f_compiled(const node& node) : c_(compile(node)) {
   }
-  explicit f_compiled(const f_intermediate& f) : c_(compile(f.fd_.f)) {
+  explicit f_compiled(const f_intermediate& f) : c_(compile(f.f_)) {
   }
   f_compiled(const f_compiled&) = delete;
   void operator=(const f_compiled&) = delete;

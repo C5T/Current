@@ -184,14 +184,15 @@ struct g_approximate : g {
 struct g_intermediate : g {
   node f_;
   std::vector<node> g_;
-  g_intermediate(const node& f, const int32_t dim) : f_(f), g_(dim) {
+  g_intermediate(const x& x_ref, const node& f) : f_(f) {
+    assert(&x_ref == internals_singleton().x_ptr_);
+    const int32_t dim = internals_singleton().dim_;
+    g_.resize(dim);
     for (int32_t i = 0; i < dim; ++i) {
-      g_[i] = f_.differentiate(i, dim);
+      g_[i] = f_.differentiate(x_ref, i);
     }
   }
-  explicit g_intermediate(const node_with_dim& fd) : g_intermediate(fd.f, fd.d) {
-  }
-  explicit g_intermediate(const f_intermediate& fi) : g_intermediate(fi.fd_) {
+  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi) {
   }
   g_intermediate(g_intermediate&& rhs) {
   }

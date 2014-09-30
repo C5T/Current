@@ -18,7 +18,8 @@ int main() {
   fncas::f_native fn(f<std::vector<double>>, 2);
   std::cout << "Native execution:    f(1, 2) == " << fn(std::vector<double>({1, 2})) << std::endl;
 
-  fncas::f_intermediate fi = f(fncas::x(2));
+  fncas::x x(2);
+  fncas::f_intermediate fi = f(x);
   std::cout << "Intermediate format: f(1, 2) == " << fi(std::vector<double>({1, 2})) << std::endl;
 
   fncas::f_compiled fc = fncas::f_compiled(fi);
@@ -34,7 +35,7 @@ int main() {
   std::cout << "Approximate {f, df}(3, 3) = { " << d_3_3_approx.value << ", { " << d_3_3_approx.gradient[0] << ", "
             << d_3_3_approx.gradient[1] << " } }." << std::endl;
 
-  fncas::g_intermediate gi = fncas::g_intermediate(f(fncas::x(2)));
+  fncas::g_intermediate gi = fncas::g_intermediate(x, f(x));
   auto d_3_3_intermediate = gi(p_3_3);
   std::cout << "Differentiated {f, df}(3, 3) = { " << d_3_3_intermediate.value << ", { "
             << d_3_3_intermediate.gradient[0] << ", " << d_3_3_intermediate.gradient[1] << " } }." << std::endl;

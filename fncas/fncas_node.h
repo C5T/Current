@@ -54,7 +54,12 @@ template <typename T> T apply_function(function_t function, T argument) {
 }
 
 struct node_impl;
+struct x;
 struct internals_impl {
+  // The dimensionality of the function that is currently being worked with.
+  int32_t dim_;
+  x* x_ptr_;
+
   // All expression nodes created so far, with fixed indexes.
   std::vector<node_impl> node_vector_;
 
@@ -69,6 +74,8 @@ struct internals_impl {
   std::vector<fncas_value_type> ram_for_compiled_evaluations_;
 
   void reset() {
+    dim_ = 0;
+    x_ptr_ = nullptr;
     node_vector_.clear();
     df_.clear();
     ram_for_compiled_evaluations_.clear();
@@ -281,15 +288,17 @@ struct node : node_index_allocator {
                               reuse_cache reuse = reuse_cache::invalidate) const {
     return eval_node(index_, x, reuse);
   }
-  node differentiate(int32_t variable_index, int32_t number_of_variables) const {
-    assert(variable_index < number_of_variables);
+  node differentiate(const x& x_ref, int32_t variable_index) const {
+    assert(&x_ref == internals_singleton().x_ptr_);
+    assert(variable_index < internals_singleton().dim_);
     // The implemenation of the differentiation operator is in `fncas_differentiate.h`.
     int32_t differentiate_node(int32_t index, int32_t var_index, int32_t number_of_variables);
-    return from_index(differentiate_node(index_, variable_index, number_of_variables));
+    return from_index(differentiate_node(index_, variable_index, internals_singleton().dim_));
   }
 };
 static_assert(sizeof(node) == 4, "sizeof(node) should be 4, as sizeof(uint32_t).");
 
+/*
 struct node_with_dim {
   node f;
   int32_t d;
@@ -299,20 +308,33 @@ struct node_with_dim {
   node_with_dim(fncas_value_type x) : f(x), d(0) {
   }
 };
+*/
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
 struct x : noncopyable {
-  int32_t dim_;
-  explicit x(int32_t dim) : dim_(dim) {
-    assert(dim_ > 0);
+  //  int32_t dim_;
+  explicit x(int32_t dim) {  //: dim_(dim) {
+    assert(dim > 0);
+    auto& meta = internals_singleton();
+    assert(!meta.x_ptr_);
+    assert(!meta.dim_);
+    meta.x_ptr_ = this;
+    meta.dim_ = dim;
   }
+  node operator[](int32_t i) const {
+    assert(i >= 0);
+    assert(i < internals_singleton().dim_);
+    return node(node::variable(i));
+  }
+  /*
   node_with_dim operator[](int32_t i) const {
     assert(i >= 0);
     assert(i < dim_);
     return node_with_dim(node::variable(i), dim_);
   }
+  */
 };
 
 // Class "f" is the placeholder for function evaluators.
@@ -339,29 +361,26 @@ struct f_native : f {
 };
 
 struct f_intermediate : f {
-  const node_with_dim fd_;
-  f_intermediate(const node_with_dim& fd) : fd_(fd) {
+  const node f_;
+  f_intermediate(const node& f) : f_(f) {
   }
-  f_intermediate(f_intermediate&& rhs) : fd_(rhs.fd_) {
+  f_intermediate(f_intermediate&& rhs) : f_(rhs.f_) {
   }
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
-    assert(!fd_.d || static_cast<int32_t>(x.size()) == fd_.d);
-    return fd_.f(x);
+    assert(static_cast<int32_t>(x.size()) == dim());
+    return f_(x);
   }
   std::string debug_as_string() const {
-    return fd_.f.debug_as_string();
+    return f_.debug_as_string();
   }
-  node differentiate(int32_t variable_index) const {
-    if (!fd_.d) {
-      return node(0.0);
-    } else {
-      assert(variable_index >= 0);
-      assert(variable_index < fd_.d);
-      return fd_.f.differentiate(variable_index, fd_.d);
-    }
+  node differentiate(const x& x_ref, int32_t variable_index) const {
+    assert(&x_ref == internals_singleton().x_ptr_);
+    assert(variable_index >= 0);
+    assert(variable_index < dim());
+    return f_.differentiate(x_ref, variable_index);
   }
   virtual int32_t dim() const {
-    return fd_.d;
+    return internals_singleton().dim_;
   }
 };
 
@@ -370,49 +389,57 @@ struct f_intermediate : f {
 
 template <typename T> struct output {};
 template <> struct output<std::vector<fncas_value_type>> { typedef fncas_value_type type; };
-template <> struct output<x> { typedef fncas::node_with_dim type; };
+// template <> struct output<x> { typedef fncas::node_with_dim type; };
+template <> struct output<x> { typedef fncas::node type; };
 
 }  // namespace fncas
 
 // Arithmetic operations and mathematical functions are defined outside namespace fncas.
 
-#define DECLARE_OP(OP, OP2, NAME)                                                                               \
-  inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) {                              \
-    fncas::node result;                                                                                         \
-    result.type() = fncas::type_t::operation;                                                                   \
-    result.operation() = fncas::operation_t::NAME;                                                              \
-    result.lhs_index() = lhs.index_;                                                                            \
-    result.rhs_index() = rhs.index_;                                                                            \
-    return result;                                                                                              \
-  }                                                                                                             \
-  inline const fncas::node& operator OP2(fncas::node& lhs, const fncas::node& rhs) {                            \
-    lhs = lhs OP rhs;                                                                                           \
-    return lhs;                                                                                                 \
-  }                                                                                                             \
-  inline fncas::node_with_dim operator OP(const fncas::node_with_dim& lhs, const fncas::node_with_dim& rhs) {   \
-    assert(!lhs.d || !rhs.d || lhs.d == rhs.d);                                                                 \
-    return fncas::node_with_dim({lhs.f OP rhs.f, std::max(lhs.d, rhs.d)});                                      \
-  }                                                                                                             \
-  inline const fncas::node_with_dim& operator OP2(fncas::node_with_dim& lhs, const fncas::node_with_dim& rhs) { \
-    lhs = lhs OP rhs;                                                                                           \
-    return lhs;                                                                                                 \
+#define DECLARE_OP(OP, OP2, NAME)                                                    \
+  inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) {   \
+    fncas::node result;                                                              \
+    result.type() = fncas::type_t::operation;                                        \
+    result.operation() = fncas::operation_t::NAME;                                   \
+    result.lhs_index() = lhs.index_;                                                 \
+    result.rhs_index() = rhs.index_;                                                 \
+    return result;                                                                   \
+  }                                                                                  \
+  inline const fncas::node& operator OP2(fncas::node& lhs, const fncas::node& rhs) { \
+    lhs = lhs OP rhs;                                                                \
+    return lhs;                                                                      \
   }
+
+/*
+inline fncas::node_with_dim operator OP(const fncas::node_with_dim& lhs, const fncas::node_with_dim& rhs) {   \
+  assert(!lhs.d || !rhs.d || lhs.d == rhs.d);                                                                 \
+  return fncas::node_with_dim({lhs.f OP rhs.f, std::max(lhs.d, rhs.d)});                                      \
+}                                                                                                             \
+inline const fncas::node_with_dim& operator OP2(fncas::node_with_dim& lhs, const fncas::node_with_dim& rhs) { \
+  lhs = lhs OP rhs;                                                                                           \
+  return lhs;                                                                                                 \
+}
+*/
+
 DECLARE_OP(+, +=, add);
 DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
 DECLARE_OP(/, /=, divide);
 
-#define DECLARE_FUNCTION(F)                                             \
-  inline fncas::node F(const fncas::node& argument) {                   \
-    fncas::node result;                                                 \
-    result.type() = fncas::type_t::function;                            \
-    result.function() = fncas::function_t::F;                           \
-    result.argument_index() = argument.index_;                          \
-    return result;                                                      \
-  }                                                                     \
-  inline fncas::node_with_dim F(const fncas::node_with_dim& argument) { \
-    return fncas::node_with_dim({F(argument.f), argument.d});           \
+#define DECLARE_FUNCTION(F)                           \
+  inline fncas::node F(const fncas::node& argument) { \
+    fncas::node result;                               \
+    result.type() = fncas::type_t::function;          \
+    result.function() = fncas::function_t::F;         \
+    result.argument_index() = argument.index_;        \
+    return result;                                    \
   }
+
+/*
+inline fncas::node_with_dim F(const fncas::node_with_dim& argument) { \
+  return fncas::node_with_dim({F(argument.f), argument.d});           \
+}
+*/
 DECLARE_FUNCTION(sqrt);
 DECLARE_FUNCTION(exp);
 DECLARE_FUNCTION(log);
