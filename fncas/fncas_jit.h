@@ -26,7 +26,7 @@ namespace fncas {
 // Not portable.
 
 struct compiled_expression : noncopyable {
-  typedef int (*DIM)();
+  typedef long long (*DIM)();
   typedef double (*EVAL)(const double* x, double* a);
   void* lib_;
   DIM dim_;
@@ -56,7 +56,7 @@ struct compiled_expression : noncopyable {
   }
   double operator()(const double* x) const {
     std::vector<double>& tmp = internals_singleton().ram_for_compiled_evaluations_;
-    int32_t dim = static_cast<int32_t>(dim_());
+    node_index_type dim = static_cast<node_index_type>(dim_());
     if (tmp.size() < dim) {
       tmp.resize(dim);
     }
@@ -65,8 +65,8 @@ struct compiled_expression : noncopyable {
   double operator()(const std::vector<double>& x) const {
     return operator()(&x[0]);
   }
-  int32_t dim() const {
-    return dim_ ? static_cast<int32_t>(dim_()) : 0;
+  node_index_type dim() const {
+    return dim_ ? static_cast<node_index_type>(dim_()) : 0;
   }
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
@@ -81,24 +81,25 @@ struct compiled_expression : noncopyable {
 };
 
 // generate_c_code_for_node() writes C code to evaluate the expression to the file.
-void generate_c_code_for_node(int32_t index, FILE* f) {
+void generate_c_code_for_node(node_index_type index, FILE* f) {
   fprintf(f, "#include <math.h>\n");
   fprintf(f, "double eval(const double* x, double* a) {\n");
-  int32_t max_dim = index;
-  std::stack<int32_t> stack;
+  node_index_type max_dim = index;
+  std::stack<node_index_type> stack;
   stack.push(index);
   while (!stack.empty()) {
-    const int32_t i = stack.top();
+    const node_index_type i = stack.top();
     stack.pop();
-    const int32_t dependent_i = ~i;
+    const node_index_type dependent_i = ~i;
     if (i > dependent_i) {
-      max_dim = std::max(max_dim, static_cast<int32_t>(i));
+      max_dim = std::max(max_dim, static_cast<node_index_type>(i));
       node_impl& node = node_vector_singleton()[i];
       if (node.type() == type_t::variable) {
         int32_t v = node.variable();
-        fprintf(f, "  a[%d] = x[%d];\n", i, v);
+        fprintf(f, "  a[%lld] = x[%d];\n", static_cast<long long>(i), v);
       } else if (node.type() == type_t::value) {
-        fprintf(f, "  a[%d] = %a;\n", i, node.value());  // "%a" is hexadecimal full precision.
+        fprintf(
+            f, "  a[%lld] = %a;\n", static_cast<long long>(i), node.value());  // "%a" is hexadecimal full precision.
       } else if (node.type() == type_t::operation) {
         stack.push(~i);
         stack.push(node.lhs_index());
@@ -113,22 +114,25 @@ void generate_c_code_for_node(int32_t index, FILE* f) {
       node_impl& node = node_vector_singleton()[dependent_i];
       if (node.type() == type_t::operation) {
         fprintf(f,
-                "  a[%d] = a[%d] %s a[%d];\n",
-                dependent_i,
-                node.lhs_index(),
+                "  a[%lld] = a[%lld] %s a[%lld];\n",
+                static_cast<long long>(dependent_i),
+                static_cast<long long>(node.lhs_index()),
                 operation_as_string(node.operation()),
-                node.rhs_index());
+                static_cast<long long>(node.rhs_index()));
       } else if (node.type() == type_t::function) {
-        fprintf(
-            f, "  a[%d] = %s(a[%d]);\n", dependent_i, function_as_string(node.function()), node.argument_index());
+        fprintf(f,
+                "  a[%lld] = %s(a[%lld]);\n",
+                static_cast<long long>(dependent_i),
+                function_as_string(node.function()),
+                static_cast<long long>(node.argument_index()));
       } else {
         assert(false);
       }
     }
   }
-  fprintf(f, "  return a[%d];\n", index);
+  fprintf(f, "  return a[%lld];\n", static_cast<long long>(index));
   fprintf(f, "}\n");
-  fprintf(f, "int dim() { return %d; }\n", static_cast<int>(max_dim + 1));
+  fprintf(f, "long long dim() { return %lld; }\n", static_cast<long long>(max_dim + 1));
 }
 
 // generate_asm_code_for_node() writes NASM code to evaluate the expression to the file.
@@ -138,7 +142,7 @@ const char* const operation_as_nasm_instruction(operation_t operation) {
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
-void generate_asm_code_for_node(int32_t index, FILE* f) {
+void generate_asm_code_for_node(node_index_type index, FILE* f) {
   fprintf(f, "[bits 64]\n");
   fprintf(f, "\n");
   fprintf(f, "global eval, dim\n");
@@ -149,25 +153,28 @@ void generate_asm_code_for_node(int32_t index, FILE* f) {
   fprintf(f, "eval:\n");
   fprintf(f, "  push rbp\n");
   fprintf(f, "  mov rbp, rsp\n");
-  int32_t max_dim = index;
-  std::stack<int32_t> stack;
+  node_index_type max_dim = index;
+  std::stack<node_index_type> stack;
   stack.push(index);
   while (!stack.empty()) {
-    const int32_t i = stack.top();
+    const node_index_type i = stack.top();
     stack.pop();
-    const int32_t dependent_i = ~i;
+    const node_index_type dependent_i = ~i;
     if (i > dependent_i) {
-      max_dim = std::max(max_dim, static_cast<int32_t>(i));
+      max_dim = std::max(max_dim, static_cast<node_index_type>(i));
       node_impl& node = node_vector_singleton()[i];
       if (node.type() == type_t::variable) {
         int32_t v = node.variable();
-        fprintf(f, "  ; a[%d] = x[%d];\n", i, v);
+        fprintf(f, "  ; a[%lld] = x[%d];\n", static_cast<long long>(i), v);
         fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
-        fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
+        fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
       } else if (node.type() == type_t::value) {
-        fprintf(f, "  ; a[%d] = %a;\n", i, node.value());  // "%a" is hexadecimal full precision.
+        fprintf(f,
+                "  ; a[%lld] = %a;\n",
+                static_cast<long long>(i),
+                node.value());  // "%a" is hexadecimal full precision.
         fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
-        fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
+        fprintf(f, "  mov [rsi+%lld], rax\n", static_cast<long long>(i) * 8);
       } else if (node.type() == type_t::operation) {
         stack.push(~i);
         stack.push(node.lhs_index());
@@ -182,32 +189,35 @@ void generate_asm_code_for_node(int32_t index, FILE* f) {
       node_impl& node = node_vector_singleton()[dependent_i];
       if (node.type() == type_t::operation) {
         fprintf(f,
-                "  ; a[%d] = a[%d] %s a[%d];\n",
-                dependent_i,
-                node.lhs_index(),
+                "  ; a[%lld] = a[%lld] %s a[%lld];\n",
+                static_cast<long long>(dependent_i),
+                static_cast<long long>(node.lhs_index()),
                 operation_as_string(node.operation()),
-                node.rhs_index());
-        fprintf(f, "  movq xmm0, [rsi+%d]\n", node.lhs_index() * 8);
-        fprintf(f, "  movq xmm1, [rsi+%d]\n", node.rhs_index() * 8);
+                static_cast<long long>(node.rhs_index()));
+        fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.lhs_index()) * 8);
+        fprintf(f, "  movq xmm1, [rsi+%lld]\n", static_cast<long long>(node.rhs_index()) * 8);
         fprintf(f, "  %s xmm0, xmm1\n", operation_as_nasm_instruction(node.operation()));
-        fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
+        fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
       } else if (node.type() == type_t::function) {
-        fprintf(
-            f, "  ; a[%d] = %s(a[%d]);\n", dependent_i, function_as_string(node.function()), node.argument_index());
-        fprintf(f, "  movq xmm0, [rsi+%d]\n", node.argument_index() * 8);
+        fprintf(f,
+                "  ; a[%lld] = %s(a[%lld]);\n",
+                static_cast<long long>(dependent_i),
+                function_as_string(node.function()),
+                static_cast<long long>(node.argument_index()));
+        fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(node.argument_index()) * 8);
         fprintf(f, "  push rdi\n");
         fprintf(f, "  push rsi\n");
         fprintf(f, "  call %s wrt ..plt\n", function_as_string(node.function()));
         fprintf(f, "  pop rsi\n");
         fprintf(f, "  pop rdi\n");
-        fprintf(f, "  movq [rsi+%d], xmm0\n", dependent_i * 8);
+        fprintf(f, "  movq [rsi+%lld], xmm0\n", static_cast<long long>(dependent_i) * 8);
       } else {
         assert(false);
       }
     }
   }
-  fprintf(f, "  ; return a[%d]\n", index);
-  fprintf(f, "  movq xmm0, [rsi+%d]\n", index * 8);
+  fprintf(f, "  ; return a[%lld]\n", static_cast<long long>(index));
+  fprintf(f, "  movq xmm0, [rsi+%lld]\n", static_cast<long long>(index) * 8);
   fprintf(f, "  mov rsp, rbp\n");
   fprintf(f, "  pop rbp\n");
   fprintf(f, "  ret\n");
@@ -215,7 +225,7 @@ void generate_asm_code_for_node(int32_t index, FILE* f) {
   fprintf(f, "dim:\n");
   fprintf(f, "  push rbp\n");
   fprintf(f, "  mov rbp, rsp\n");
-  fprintf(f, "  mov rax, %d\n", static_cast<int>(max_dim + 1));
+  fprintf(f, "  mov rax, %lld\n", static_cast<long long>(max_dim + 1));
   fprintf(f, "  mov rsp, rbp\n");
   fprintf(f, "  pop rbp\n");
   fprintf(f, "  ret\n");
@@ -223,7 +233,7 @@ void generate_asm_code_for_node(int32_t index, FILE* f) {
 
 struct compile_impl {
   struct NASM {
-    static void compile(const std::string& filebase, int32_t index) {
+    static void compile(const std::string& filebase, node_index_type index) {
       FILE* f = fopen((filebase + ".asm").c_str(), "w");
       assert(f);
       generate_asm_code_for_node(index, f);
@@ -237,7 +247,7 @@ struct compile_impl {
     }
   };
   struct CLANG {
-    static void compile(const std::string& filebase, int32_t index) {
+    static void compile(const std::string& filebase, node_index_type index) {
       FILE* f = fopen((filebase + ".c").c_str(), "w");
       assert(f);
       generate_c_code_for_node(index, f);
@@ -255,7 +265,7 @@ struct compile_impl {
   typedef FNCAS_JIT selected;
 };
 
-compiled_expression compile(int32_t index) {
+compiled_expression compile(node_index_type index) {
   std::random_device random;
   std::uniform_int_distribution<int> distribution(1000000, 9999999);
   std::ostringstream os;

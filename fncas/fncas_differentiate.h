@@ -15,7 +15,7 @@ static const double APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 template <typename F>
 fncas_value_type approximate_derivative(F f,
                                         const std::vector<fncas_value_type>& x,
-                                        int32_t i,
+                                        node_index_type i,
                                         const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<fncas_value_type> x1(x);
   std::vector<fncas_value_type> x2(x);
@@ -42,7 +42,7 @@ std::vector<fncas_value_type> approximate_gradient(F f,
   return g;
 }
 
-int32_t d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
+node_index_type d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
   static const size_t n = static_cast<size_t>(operation_t::end);
   static const std::function<node(const node&, const node&, const node&, const node&)> differentiator[n] = {
       [](const node& a, const node& b, const node& da, const node& db) { return da + db; },
@@ -52,7 +52,7 @@ int32_t d_op(operation_t operation, const node& a, const node& b, const node& da
   return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
-int32_t d_f(function_t function, const node& original, const node& x, const node& dx) {
+node_index_type d_f(function_t function, const node& original, const node& x, const node& dx) {
   static const size_t n = static_cast<size_t>(function_t::end);
   static const std::function<node(const node&, const node&, const node&)> differentiator[n] = {
       // sqrt().
@@ -83,29 +83,29 @@ int32_t d_f(function_t function, const node& original, const node& x, const node
 
 // differentiate_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
-int32_t differentiate_node(int32_t index, int32_t var_index, int32_t number_of_variables) {
+node_index_type differentiate_node(node_index_type index, int32_t var_index, int32_t number_of_variables) {
   assert(var_index < number_of_variables);
-  std::vector<std::vector<int32_t>>& df_container = internals_singleton().df_;
+  std::vector<std::vector<node_index_type>>& df_container = internals_singleton().df_;
   if (df_container.empty()) {
     df_container.resize(number_of_variables);
   }
   assert(static_cast<int32_t>(df_container.size()) == number_of_variables);
-  std::vector<int32_t>& df = df_container[var_index];
-  if (growing_vector_access(df, index, -1) == -1) {
-    const int32_t zero_index = node(0.0).index();
-    const int32_t one_index = node(1.0).index();
-    std::stack<int32_t> stack;
+  std::vector<node_index_type>& df = df_container[var_index];
+  if (growing_vector_access(df, index, static_cast<node_index_type>(-1)) == -1) {
+    const node_index_type zero_index = node(0.0).index();
+    const node_index_type one_index = node(1.0).index();
+    std::stack<node_index_type> stack;
     stack.push(index);
     while (!stack.empty()) {
-      const int32_t i = stack.top();
+      const node_index_type i = stack.top();
       stack.pop();
-      const int32_t dependent_i = ~i;
+      const node_index_type dependent_i = ~i;
       if (i > dependent_i) {
         node_impl& f = node_vector_singleton()[i];
         if (f.type() == type_t::variable && f.variable() == var_index) {
-          growing_vector_access(df, i, -1) = one_index;
+          growing_vector_access(df, i, static_cast<node_index_type>(-1)) = one_index;
         } else if (f.type() == type_t::variable || f.type() == type_t::value) {
-          growing_vector_access(df, i, -1) = zero_index;
+          growing_vector_access(df, i, static_cast<node_index_type>(-1)) = zero_index;
         } else if (f.type() == type_t::operation) {
           stack.push(~i);
           stack.push(f.lhs_index());
@@ -120,19 +120,19 @@ int32_t differentiate_node(int32_t index, int32_t var_index, int32_t number_of_v
       } else {
         node_impl& f = node_vector_singleton()[dependent_i];
         if (f.type() == type_t::operation) {
-          const int32_t a = f.lhs_index();
-          const int32_t b = f.rhs_index();
-          const int32_t da = growing_vector_access(df, a, -1);
-          const int32_t db = growing_vector_access(df, b, -1);
+          const node_index_type a = f.lhs_index();
+          const node_index_type b = f.rhs_index();
+          const node_index_type da = growing_vector_access(df, a, static_cast<node_index_type>(-1));
+          const node_index_type db = growing_vector_access(df, b, static_cast<node_index_type>(-1));
           assert(da != -1);
           assert(db != -1);
-          growing_vector_access(df, dependent_i, -1) =
+          growing_vector_access(df, dependent_i, static_cast<node_index_type>(-1)) =
               d_op(f.operation(), from_index(a), from_index(b), from_index(da), from_index(db));
         } else if (f.type() == type_t::function) {
-          const int32_t x = f.argument_index();
-          const int32_t dx = growing_vector_access(df, x, -1);
+          const node_index_type x = f.argument_index();
+          const node_index_type dx = growing_vector_access(df, x, static_cast<node_index_type>(-1));
           assert(dx != -1);
-          growing_vector_access(df, dependent_i, -1) =
+          growing_vector_access(df, dependent_i, static_cast<node_index_type>(-1)) =
               d_f(f.function(), from_index(dependent_i), from_index(x), from_index(dx));
         } else {
           assert(false);
@@ -141,7 +141,7 @@ int32_t differentiate_node(int32_t index, int32_t var_index, int32_t number_of_v
       }
     }
   }
-  const int32_t result = growing_vector_access(df, index, -1);
+  const node_index_type result = growing_vector_access(df, index, static_cast<node_index_type>(-1));
   assert(result != -1);
   return result;
 }
