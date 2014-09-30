@@ -192,7 +192,7 @@ struct g_intermediate : g {
       g_[i] = f_.differentiate(x_ref, i);
     }
   }
-  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi) {
+  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {
   }
   g_intermediate(g_intermediate&& rhs) {
   }
