@@ -55,8 +55,8 @@ struct compiled_expression : noncopyable {
     rhs.lib_ = nullptr;
   }
   double operator()(const double* x) const {
-    std::vector<double>& tmp = internals_singleton().ram_for_evaluations_;
-    size_t dim = static_cast<size_t>(dim_());
+    std::vector<double>& tmp = internals_singleton().ram_for_compiled_evaluations_;
+    int32_t dim = static_cast<int32_t>(dim_());
     if (tmp.size() < dim) {
       tmp.resize(dim);
     }
@@ -65,8 +65,8 @@ struct compiled_expression : noncopyable {
   double operator()(const std::vector<double>& x) const {
     return operator()(&x[0]);
   }
-  size_t dim() const {
-    return dim_ ? static_cast<size_t>(dim_()) : 0;
+  int32_t dim() const {
+    return dim_ ? static_cast<int32_t>(dim_()) : 0;
   }
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
@@ -81,21 +81,21 @@ struct compiled_expression : noncopyable {
 };
 
 // generate_c_code_for_node() writes C code to evaluate the expression to the file.
-void generate_c_code_for_node(uint32_t index, FILE* f) {
+void generate_c_code_for_node(int32_t index, FILE* f) {
   fprintf(f, "#include <math.h>\n");
   fprintf(f, "double eval(const double* x, double* a) {\n");
-  size_t max_dim = index;
-  std::stack<uint32_t> stack;
+  int32_t max_dim = index;
+  std::stack<int32_t> stack;
   stack.push(index);
   while (!stack.empty()) {
-    const uint32_t i = stack.top();
+    const int32_t i = stack.top();
     stack.pop();
-    const uint32_t dependent_i = ~i;
-    if (i < dependent_i) {
-      max_dim = std::max(max_dim, static_cast<size_t>(i));
+    const int32_t dependent_i = ~i;
+    if (i > dependent_i) {
+      max_dim = std::max(max_dim, static_cast<int32_t>(i));
       node_impl& node = node_vector_singleton()[i];
       if (node.type() == type_t::variable) {
-        uint32_t v = node.variable();
+        int32_t v = node.variable();
         fprintf(f, "  a[%d] = x[%d];\n", i, v);
       } else if (node.type() == type_t::value) {
         fprintf(f, "  a[%d] = %a;\n", i, node.value());  // "%a" is hexadecimal full precision.
@@ -138,7 +138,7 @@ const char* const operation_as_nasm_instruction(operation_t operation) {
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
-void generate_asm_code_for_node(uint32_t index, FILE* f) {
+void generate_asm_code_for_node(int32_t index, FILE* f) {
   fprintf(f, "[bits 64]\n");
   fprintf(f, "\n");
   fprintf(f, "global eval, dim\n");
@@ -149,24 +149,24 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
   fprintf(f, "eval:\n");
   fprintf(f, "  push rbp\n");
   fprintf(f, "  mov rbp, rsp\n");
-  size_t max_dim = index;
-  std::stack<uint32_t> stack;
+  int32_t max_dim = index;
+  std::stack<int32_t> stack;
   stack.push(index);
   while (!stack.empty()) {
-    const uint32_t i = stack.top();
+    const int32_t i = stack.top();
     stack.pop();
-    const uint32_t dependent_i = ~i;
-    if (i < dependent_i) {
-      max_dim = std::max(max_dim, static_cast<size_t>(i));
+    const int32_t dependent_i = ~i;
+    if (i > dependent_i) {
+      max_dim = std::max(max_dim, static_cast<int32_t>(i));
       node_impl& node = node_vector_singleton()[i];
       if (node.type() == type_t::variable) {
-        uint32_t v = node.variable();
+        int32_t v = node.variable();
         fprintf(f, "  ; a[%d] = x[%d];\n", i, v);
         fprintf(f, "  mov rax, [rdi+%d]\n", v * 8);
         fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
       } else if (node.type() == type_t::value) {
         fprintf(f, "  ; a[%d] = %a;\n", i, node.value());  // "%a" is hexadecimal full precision.
-        fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<uint64_t*>(&node.value())).c_str());
+        fprintf(f, "  mov rax, %s\n", std::to_string(*reinterpret_cast<int64_t*>(&node.value())).c_str());
         fprintf(f, "  mov [rsi+%d], rax\n", i * 8);
       } else if (node.type() == type_t::operation) {
         stack.push(~i);
@@ -223,7 +223,7 @@ void generate_asm_code_for_node(uint32_t index, FILE* f) {
 
 struct compile_impl {
   struct NASM {
-    static void compile(const std::string& filebase, uint32_t index) {
+    static void compile(const std::string& filebase, int32_t index) {
       FILE* f = fopen((filebase + ".asm").c_str(), "w");
       assert(f);
       generate_asm_code_for_node(index, f);
@@ -237,7 +237,7 @@ struct compile_impl {
     }
   };
   struct CLANG {
-    static void compile(const std::string& filebase, uint32_t index) {
+    static void compile(const std::string& filebase, int32_t index) {
       FILE* f = fopen((filebase + ".c").c_str(), "w");
       assert(f);
       generate_c_code_for_node(index, f);
@@ -255,7 +255,7 @@ struct compile_impl {
   typedef FNCAS_JIT selected;
 };
 
-compiled_expression compile(uint32_t index) {
+compiled_expression compile(int32_t index) {
   std::random_device random;
   std::uniform_int_distribution<int> distribution(1000000, 9999999);
   std::ostringstream os;
@@ -284,7 +284,7 @@ struct f_compiled : f {
   virtual double operator()(const std::vector<double>& x) const {
     return c_(x);
   }
-  virtual size_t dim() const {
+  virtual int32_t dim() const {
     return c_.dim();
   }
   const std::string& lib_filename() const {

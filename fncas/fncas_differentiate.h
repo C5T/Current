@@ -15,7 +15,7 @@ static const double APPROXIMATE_DERIVATIVE_EPS = 1e-4;
 template <typename F>
 fncas_value_type approximate_derivative(F f,
                                         const std::vector<fncas_value_type>& x,
-                                        size_t i,
+                                        int32_t i,
                                         const fncas_value_type EPS = APPROXIMATE_DERIVATIVE_EPS) {
   std::vector<fncas_value_type> x1(x);
   std::vector<fncas_value_type> x2(x);
@@ -42,7 +42,7 @@ std::vector<fncas_value_type> approximate_gradient(F f,
   return g;
 }
 
-uint32_t d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
+int32_t d_op(operation_t operation, const node& a, const node& b, const node& da, const node& db) {
   static const size_t n = static_cast<size_t>(operation_t::end);
   static const std::function<node(const node&, const node&, const node&, const node&)> differentiator[n] = {
       [](const node& a, const node& b, const node& da, const node& db) { return da + db; },
@@ -52,7 +52,7 @@ uint32_t d_op(operation_t operation, const node& a, const node& b, const node& d
   return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
 }
 
-uint32_t d_f(function_t function, const node& original, const node& x, const node& dx) {
+int32_t d_f(function_t function, const node& original, const node& x, const node& dx) {
   static const size_t n = static_cast<size_t>(function_t::end);
   static const std::function<node(const node&, const node&, const node&)> differentiator[n] = {
       // sqrt().
@@ -83,23 +83,29 @@ uint32_t d_f(function_t function, const node& original, const node& x, const nod
 
 // differentiate_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
-uint32_t differentiate_node(uint32_t index, uint32_t var_index) {
-  std::map<uint32_t, uint32_t>& df_cache = internals_singleton().df_by_var_[var_index];
-  if (!df_cache.count(index)) {
-    const uint32_t zero_index = node(0.0).index();
-    const uint32_t one_index = node(1.0).index();
-    std::stack<uint32_t> stack;
+int32_t differentiate_node(int32_t index, int32_t var_index, int32_t number_of_variables) {
+  assert(var_index < number_of_variables);
+  std::vector<std::vector<int32_t>>& df_container = internals_singleton().df_;
+  if (df_container.empty()) {
+    df_container.resize(number_of_variables);
+  }
+  assert(static_cast<int32_t>(df_container.size()) == number_of_variables);
+  std::vector<int32_t>& df = df_container[var_index];
+  if (growing_vector_access(df, index, -1) == -1) {
+    const int32_t zero_index = node(0.0).index();
+    const int32_t one_index = node(1.0).index();
+    std::stack<int32_t> stack;
     stack.push(index);
     while (!stack.empty()) {
-      const uint32_t i = stack.top();
+      const int32_t i = stack.top();
       stack.pop();
-      const uint32_t dependent_i = ~i;
-      if (i < dependent_i) {
+      const int32_t dependent_i = ~i;
+      if (i > dependent_i) {
         node_impl& f = node_vector_singleton()[i];
         if (f.type() == type_t::variable && f.variable() == var_index) {
-          df_cache[i] = one_index;
+          growing_vector_access(df, i, -1) = one_index;
         } else if (f.type() == type_t::variable || f.type() == type_t::value) {
-          df_cache[i] = zero_index;
+          growing_vector_access(df, i, -1) = zero_index;
         } else if (f.type() == type_t::operation) {
           stack.push(~i);
           stack.push(f.lhs_index());
@@ -114,18 +120,20 @@ uint32_t differentiate_node(uint32_t index, uint32_t var_index) {
       } else {
         node_impl& f = node_vector_singleton()[dependent_i];
         if (f.type() == type_t::operation) {
-          const uint32_t a = f.lhs_index();
-          const uint32_t b = f.rhs_index();
-          assert(df_cache.count(a));
-          assert(df_cache.count(b));
-          const uint32_t da = df_cache[a];
-          const uint32_t db = df_cache[b];
-          df_cache[dependent_i] = d_op(f.operation(), from_index(a), from_index(b), from_index(da), from_index(db));
+          const int32_t a = f.lhs_index();
+          const int32_t b = f.rhs_index();
+          const int32_t da = growing_vector_access(df, a, -1);
+          const int32_t db = growing_vector_access(df, b, -1);
+          assert(da != -1);
+          assert(db != -1);
+          growing_vector_access(df, dependent_i, -1) =
+              d_op(f.operation(), from_index(a), from_index(b), from_index(da), from_index(db));
         } else if (f.type() == type_t::function) {
-          const uint32_t x = f.argument_index();
-          assert(df_cache.count(x));
-          const uint32_t dx = df_cache[x];
-          df_cache[dependent_i] = d_f(f.function(), from_index(dependent_i), from_index(x), from_index(dx));
+          const int32_t x = f.argument_index();
+          const int32_t dx = growing_vector_access(df, x, -1);
+          assert(dx != -1);
+          growing_vector_access(df, dependent_i, -1) =
+              d_f(f.function(), from_index(dependent_i), from_index(x), from_index(dx));
         } else {
           assert(false);
           return 0;
@@ -133,8 +141,9 @@ uint32_t differentiate_node(uint32_t index, uint32_t var_index) {
       }
     }
   }
-  assert(df_cache.count(index));
-  return df_cache[index];
+  const int32_t result = growing_vector_access(df, index, -1);
+  assert(result != -1);
+  return result;
 }
 
 struct g : noncopyable {
@@ -145,13 +154,13 @@ struct g : noncopyable {
   virtual ~g() {
   }
   virtual result operator()(const std::vector<fncas_value_type>& x) const = 0;
-  virtual size_t dim() const = 0;
+  virtual int32_t dim() const = 0;
 };
 
 struct g_approximate : g {
   std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
-  size_t d_;
-  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, size_t d) : f_(f), d_(d) {
+  int32_t d_;
+  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, int32_t d) : f_(f), d_(d) {
   }
   g_approximate(g_approximate&& rhs) : f_(rhs.f_) {
   }
@@ -167,7 +176,7 @@ struct g_approximate : g {
     r.gradient = approximate_gradient(f_, x);
     return r;
   }
-  virtual size_t dim() const {
+  virtual int32_t dim() const {
     return d_;
   }
 };
@@ -175,9 +184,9 @@ struct g_approximate : g {
 struct g_intermediate : g {
   node f_;
   std::vector<node> g_;
-  g_intermediate(const node& f, const size_t dim) : f_(f), g_(dim) {
-    for (size_t i = 0; i < dim; ++i) {
-      g_[i] = f_.differentiate(i);
+  g_intermediate(const node& f, const int32_t dim) : f_(f), g_(dim) {
+    for (int32_t i = 0; i < dim; ++i) {
+      g_[i] = f_.differentiate(i, dim);
     }
   }
   explicit g_intermediate(const node_with_dim& fd) : g_intermediate(fd.f, fd.d) {
@@ -197,11 +206,11 @@ struct g_intermediate : g {
     r.value = f_(x);
     r.gradient.resize(g_.size());
     for (size_t i = 0; i < g_.size(); ++i) {
-      r.gradient[i] = g_[i](x);
+      r.gradient[i] = g_[i](x, reuse_cache::reuse);
     }
     return r;
   }
-  virtual size_t dim() const {
+  virtual int32_t dim() const {
     return g_.size();
   }
 };

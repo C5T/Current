@@ -55,14 +55,23 @@ template <typename T> T apply_function(function_t function, T argument) {
 
 struct node_impl;
 struct internals_impl {
+  // All expression nodes created so far, with fixed indexes.
   std::vector<node_impl> node_vector_;
-  std::vector<fncas_value_type> ram_for_evaluations_;
-  // df_by_var_[var_index][node_index] => node index for d (node[node_index]) / d (x[variable_index]).
-  std::map<uint32_t, std::map<uint32_t, uint32_t>> df_by_var_;
+
+  // Values per node computed so far.
+  std::vector<fncas_value_type> node_value_;
+  std::vector<int8_t> node_computed_;
+
+  // df_[var_index][node_index] => node index for d (node[node_index]) / d (x[variable_index]), -1 if unknown.
+  std::vector<std::vector<int32_t>> df_;
+
+  // A block of RAM to be used as the buffer for externally compiled functions.
+  std::vector<fncas_value_type> ram_for_compiled_evaluations_;
+
   void reset() {
     node_vector_.clear();
-    ram_for_evaluations_.clear();
-    df_by_var_.clear();
+    df_.clear();
+    ram_for_compiled_evaluations_.clear();
   }
 };
 
@@ -85,9 +94,9 @@ struct node_impl {
   type_t& type() {
     return *reinterpret_cast<type_t*>(&data_[0]);
   }
-  uint32_t& variable() {
+  int32_t& variable() {
     assert(type() == type_t::variable);
-    return *reinterpret_cast<uint32_t*>(&data_[2]);
+    return *reinterpret_cast<int32_t*>(&data_[2]);
   }
   fncas_value_type& value() {
     assert(type() == type_t::value);
@@ -97,68 +106,84 @@ struct node_impl {
     assert(type() == type_t::operation);
     return *reinterpret_cast<operation_t*>(&data_[1]);
   }
-  uint32_t& lhs_index() {
+  int32_t& lhs_index() {
     assert(type() == type_t::operation);
-    return *reinterpret_cast<uint32_t*>(&data_[2]);
+    return *reinterpret_cast<int32_t*>(&data_[2]);
   }
-  uint32_t& rhs_index() {
+  int32_t& rhs_index() {
     assert(type() == type_t::operation);
-    return *reinterpret_cast<uint32_t*>(&data_[6]);
+    return *reinterpret_cast<int32_t*>(&data_[6]);
   }
   function_t& function() {
     assert(type() == type_t::function);
     return *reinterpret_cast<function_t*>(&data_[1]);
   }
-  uint32_t& argument_index() {
+  int32_t& argument_index() {
     assert(type() == type_t::function);
-    return *reinterpret_cast<uint32_t*>(&data_[2]);
+    return *reinterpret_cast<int32_t*>(&data_[2]);
   }
 };
 static_assert(sizeof(node_impl) == 10, "sizeof(node_impl) should be 10. Check struct alignment compilation flags.");
 
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
-fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& x) {
-  std::vector<fncas_value_type> cache(node_vector_singleton().size());
-  std::stack<uint32_t> stack;
+enum class reuse_cache : int8_t { invalidate = 0, reuse = 1 };
+fncas_value_type eval_node(int32_t index,
+                           const std::vector<fncas_value_type>& x,
+                           reuse_cache reuse = reuse_cache::invalidate) {
+  std::vector<fncas_value_type>& V = internals_singleton().node_value_;
+  std::vector<int8_t>& B = internals_singleton().node_computed_;
+  if (reuse == reuse_cache::invalidate) {
+    B.clear();
+  }
+  std::stack<int32_t> stack;
   stack.push(index);
   while (!stack.empty()) {
-    const uint32_t i = stack.top();
+    const int32_t i = stack.top();
     stack.pop();
-    const uint32_t dependent_i = ~i;
-    if (i < dependent_i) {
-      node_impl& f = node_vector_singleton()[i];
-      if (f.type() == type_t::variable) {
-        uint32_t v = f.variable();
-        assert(v >= 0 && v < x.size());
-        cache[i] = x[v];
-      } else if (f.type() == type_t::value) {
-        cache[i] = f.value();
-      } else if (f.type() == type_t::operation) {
-        stack.push(~i);
-        stack.push(f.lhs_index());
-        stack.push(f.rhs_index());
-      } else if (f.type() == type_t::function) {
-        stack.push(~i);
-        stack.push(f.argument_index());
-      } else {
-        assert(false);
-        return std::numeric_limits<fncas_value_type>::quiet_NaN();
+    const int32_t dependent_i = ~i;
+    if (i > dependent_i) {
+      if (!growing_vector_access(B, i, static_cast<int8_t>(false))) {
+        node_impl& f = node_vector_singleton()[i];
+        if (f.type() == type_t::variable) {
+          int32_t v = f.variable();
+          assert(v >= 0 && v < static_cast<int32_t>(x.size()));
+          growing_vector_access(V, i, 0.0) = x[v];
+          growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
+
+        } else if (f.type() == type_t::value) {
+          growing_vector_access(V, i, 0.0) = f.value();
+          growing_vector_access(B, i, static_cast<int8_t>(false)) = true;
+        } else if (f.type() == type_t::operation) {
+          stack.push(~i);
+          stack.push(f.lhs_index());
+          stack.push(f.rhs_index());
+        } else if (f.type() == type_t::function) {
+          stack.push(~i);
+          stack.push(f.argument_index());
+        } else {
+          assert(false);
+          return std::numeric_limits<fncas_value_type>::quiet_NaN();
+        }
       }
     } else {
       node_impl& f = node_vector_singleton()[dependent_i];
       if (f.type() == type_t::operation) {
-        cache[dependent_i] =
-            apply_operation<fncas_value_type>(f.operation(), cache[f.lhs_index()], cache[f.rhs_index()]);
+        growing_vector_access(V, dependent_i, 0.0) =
+            apply_operation<fncas_value_type>(f.operation(), V[f.lhs_index()], V[f.rhs_index()]);
+        growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else if (f.type() == type_t::function) {
-        cache[dependent_i] = apply_function<fncas_value_type>(f.function(), cache[f.argument_index()]);
+        growing_vector_access(V, dependent_i, 0.0) =
+            apply_function<fncas_value_type>(f.function(), V[f.argument_index()]);
+        growing_vector_access(B, dependent_i, static_cast<int8_t>(false)) = true;
       } else {
         assert(false);
         return std::numeric_limits<fncas_value_type>::quiet_NaN();
       }
     }
   }
-  return cache[index];
+  assert(B[index]);
+  return V[index];
 }
 
 // The code that deals with nodes directly uses class node as a wrapper to node_impl.
@@ -167,16 +192,16 @@ fncas_value_type eval_node(uint32_t index, const std::vector<fncas_value_type>& 
 // arithmetical and mathematical operations are overloaded for class node.
 
 struct allocate_new {};
-enum class from_index : uint32_t;
+enum class from_index : int32_t;
 
 struct node_index_allocator {
-  uint64_t index_;  // non-const since `node` objects can be modified.
-  explicit inline node_index_allocator(from_index i) : index_(static_cast<uint64_t>(i)) {
+  int32_t index_;  // non-const since `node` objects can be modified.
+  explicit inline node_index_allocator(from_index i) : index_(static_cast<int32_t>(i)) {
   }
   explicit inline node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
     node_vector_singleton().resize(index_ + 1);
   }
-  uint64_t index() const {
+  int32_t index() const {
     return index_;
   }
   node_index_allocator() = delete;
@@ -199,7 +224,7 @@ struct node : node_index_allocator {
   type_t& type() const {
     return node_vector_singleton()[index_].type();
   }
-  uint32_t& variable() const {
+  int32_t& variable() const {
     return node_vector_singleton()[index_].variable();
   }
   fncas_value_type& value() const {
@@ -208,10 +233,10 @@ struct node : node_index_allocator {
   operation_t& operation() const {
     return node_vector_singleton()[index_].operation();
   }
-  uint32_t& lhs_index() const {
+  int32_t& lhs_index() const {
     return node_vector_singleton()[index_].lhs_index();
   }
-  uint32_t& rhs_index() const {
+  int32_t& rhs_index() const {
     return node_vector_singleton()[index_].rhs_index();
   }
   node lhs() const {
@@ -223,13 +248,13 @@ struct node : node_index_allocator {
   function_t& function() const {
     return node_vector_singleton()[index_].function();
   }
-  uint32_t& argument_index() const {
+  int32_t& argument_index() const {
     return node_vector_singleton()[index_].argument_index();
   }
   node argument() const {
     return from_index(node_vector_singleton()[index_].argument_index());
   }
-  static node variable(uint32_t index) {
+  static node variable(int32_t index) {
     node result;
     result.type() = type_t::variable;
     result.variable() = index;
@@ -252,22 +277,24 @@ struct node : node_index_allocator {
       return "?";
     }
   }
-  fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
-    return eval_node(index_, x);
+  fncas_value_type operator()(const std::vector<fncas_value_type>& x,
+                              reuse_cache reuse = reuse_cache::invalidate) const {
+    return eval_node(index_, x, reuse);
   }
-  node differentiate(size_t variable_index) const {
+  node differentiate(int32_t variable_index, int32_t number_of_variables) const {
+    assert(variable_index < number_of_variables);
     // The implemenation of the differentiation operator is in `fncas_differentiate.h`.
-    uint32_t differentiate_node(uint32_t index, uint32_t var_index);
-    return from_index(differentiate_node(index_, variable_index));
+    int32_t differentiate_node(int32_t index, int32_t var_index, int32_t number_of_variables);
+    return from_index(differentiate_node(index_, variable_index, number_of_variables));
   }
 };
-static_assert(sizeof(node) == 8, "sizeof(node) should be 8. Check struct alignment compilation flags.");
+static_assert(sizeof(node) == 4, "sizeof(node) should be 4, as sizeof(uint32_t).");
 
 struct node_with_dim {
   node f;
-  size_t d;
+  int32_t d;
   node_with_dim() = default;
-  node_with_dim(node f, size_t d) : f(f), d(d) {
+  node_with_dim(node f, int32_t d) : f(f), d(d) {
   }
   node_with_dim(fncas_value_type x) : f(x), d(0) {
   }
@@ -277,11 +304,11 @@ struct node_with_dim {
 // to record the computation rather than perform it.
 
 struct x : noncopyable {
-  size_t dim_;
-  explicit x(size_t dim) : dim_(dim) {
-    assert(dim_ < static_cast<size_t>(1e9));  // Defent against negative.
+  int32_t dim_;
+  explicit x(int32_t dim) : dim_(dim) {
+    assert(dim_ > 0);
   }
-  node_with_dim operator[](int i) const {
+  node_with_dim operator[](int32_t i) const {
     assert(i >= 0);
     assert(i < dim_);
     return node_with_dim(node::variable(i), dim_);
@@ -295,18 +322,18 @@ struct x : noncopyable {
 struct f : noncopyable {
   virtual ~f() = default;
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const = 0;
-  virtual size_t dim() const = 0;
+  virtual int32_t dim() const = 0;
 };
 
 struct f_native : f {
   std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
-  size_t d_;
-  f_native(std::function<fncas_value_type(std::vector<fncas_value_type>)> f, size_t d) : f_(f), d_(d) {
+  int32_t d_;
+  f_native(std::function<fncas_value_type(std::vector<fncas_value_type>)> f, int32_t d) : f_(f), d_(d) {
   }
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
     return f_(x);
   }
-  virtual size_t dim() const {
+  virtual int32_t dim() const {
     return d_;
   }
 };
@@ -314,23 +341,26 @@ struct f_native : f {
 struct f_intermediate : f {
   const node_with_dim fd_;
   f_intermediate(const node_with_dim& fd) : fd_(fd) {
-    assert(fd_.d > 0);
-    assert(fd_.d < static_cast<size_t>(1e9));  // To defend against negatives.
   }
   f_intermediate(f_intermediate&& rhs) : fd_(rhs.fd_) {
   }
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
-    assert(x.size() == fd_.d);
+    assert(!fd_.d || static_cast<int32_t>(x.size()) == fd_.d);
     return fd_.f(x);
   }
   std::string debug_as_string() const {
     return fd_.f.debug_as_string();
   }
-  node differentiate(size_t variable_index) const {
-    assert(variable_index < fd_.d);
-    return fd_.f.differentiate(variable_index);
+  node differentiate(int32_t variable_index) const {
+    if (!fd_.d) {
+      return node(0.0);
+    } else {
+      assert(variable_index >= 0);
+      assert(variable_index < fd_.d);
+      return fd_.f.differentiate(variable_index, fd_.d);
+    }
   }
-  virtual size_t dim() const {
+  virtual int32_t dim() const {
     return fd_.d;
   }
 };
