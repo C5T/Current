@@ -34,8 +34,6 @@ int main() {
   std::cout << "Approximate {f, df}(3, 3) = { " << d_3_3_approx.value << ", { " << d_3_3_approx.gradient[0] << ", "
             << d_3_3_approx.gradient[1] << " } }." << std::endl;
 
-  // Both syntaxes compile.
-  // fncas::g_intermediate gi = fncas::g_intermediate(fi);
   fncas::g_intermediate gi = fncas::g_intermediate(f(fncas::x(2)));
   auto d_3_3_intermediate = gi(p_3_3);
   std::cout << "Differentiated {f, df}(3, 3) = { " << d_3_3_intermediate.value << ", { "
