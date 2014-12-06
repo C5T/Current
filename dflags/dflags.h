@@ -120,7 +120,7 @@ class FlagsManager {
               equals_sign ? std::make_pair(std::string(flag, equals_sign), equals_sign + 1)
                           : (++i, std::make_pair(flag, argv[i]));
           if (key_value.first == "help") {
-            PrintHelpAndExit();
+            UserRequestedHelp();
           } else {
             if (i == argc) {
               TerminateExecution(
@@ -147,7 +147,7 @@ class FlagsManager {
     }
 
    private:
-    void PrintHelpAndExit() {
+    void UserRequestedHelp() {
       Singleton().PrintHelpAndExit(flags_);
     }  // LCOV_EXCL_LINE
 
