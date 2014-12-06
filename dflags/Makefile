@@ -1,7 +1,3 @@
-# Default target to build all, then copy and run test script.
-# README to cover our header-only paradigm, indentation style, test style, Makefile targets.
-# COVERAGE!
-
 .PHONY: test all indent clean check coverage
 
 CPP=g++
