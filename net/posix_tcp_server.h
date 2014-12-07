@@ -68,7 +68,7 @@ class GenericConnection {
   }
 
  private:
-  int fd_;  // Non-const for move constructor.
+  int fd_ = -1;  // Non-const for move constructor.
 
   GenericConnection(const GenericConnection&) = delete;
   void operator=(const GenericConnection&) = delete;
