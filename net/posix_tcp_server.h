@@ -34,11 +34,23 @@ class GenericConnection {
 
   template <typename T>
   inline size_t BlockingRead(T* buffer, size_t max_length) const {
-    const ssize_t read_length_or_error = read(fd_, reinterpret_cast<void*>(buffer), max_length * sizeof(T));
-    if (read_length_or_error < 0) {
-      throw SocketReadException();
-    }
-    return static_cast<size_t>(read_length_or_error / sizeof(T));
+    uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
+    uint8_t* raw_ptr = raw_buffer;
+    const size_t max_length_in_bytes = max_length * sizeof(T);
+    do {
+      const ssize_t read_length_or_error = read(fd_, raw_buffer, max_length_in_bytes - (raw_ptr - raw_buffer));
+      if (read_length_or_error < 0) {
+        throw SocketReadException();
+      } else if (read_length_or_error == 0) {
+        if ((raw_ptr - raw_buffer) % sizeof(T)) {
+          throw SocketReadMultibyteRecordEndedPrematurelyException();
+        }
+        break;
+      } else {
+        raw_ptr += read_length_or_error;
+      }
+    } while ((raw_ptr - raw_buffer) % sizeof(T));
+    return (raw_ptr - raw_buffer) / sizeof(T);
   }
 
   inline void BlockingWrite(const void* buffer, size_t write_length) {

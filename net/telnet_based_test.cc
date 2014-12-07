@@ -94,9 +94,9 @@ TEST(Net, TelnetEchoMessageOfTwoUInt16) {
     ::snprintf(s, sizeof(s), "UINT16-s: %04x %04x", data[0], data[1]);
     c.BlockingWrite(s);
   });
-  EXPECT_EQ("UINT16-s: 3252 3244",
-            Telnet(string("(echo R2D2 ; sleep 0.1) | telnet localhost ") + to_string(FLAGS_port) +
-                   " 2>/dev/null"));
+  EXPECT_EQ(
+      "UINT16-s: 3252 3244",
+      Telnet(string("(echo R2D2 ; sleep 0.1) | telnet localhost ") + to_string(FLAGS_port) + " 2>/dev/null"));
   t.join();
 }
 
