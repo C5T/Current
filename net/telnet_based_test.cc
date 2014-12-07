@@ -8,6 +8,7 @@
 // Hear me. Don't. Just don't. It's not worth your karma. Go do something else.
 
 #include <thread>
+#include <cstdio>
 #include <cstring>
 
 #include "posix_tcp_server.h"
@@ -47,6 +48,15 @@ TEST(Net, TelnetReceiveMessage) {
   t.join();
 }
 
+TEST(Net, TelnetReceiveMessageOfTwoUInt16) {
+  thread t([]() {
+    Connection(Socket(FLAGS_port).Accept()).BlockingWrite(std::vector<uint16_t>{0x3031, 0x3233});
+  });
+  // Note: This tests endianness as well -- D.K.
+  EXPECT_EQ("1032", Telnet(string("telnet localhost ") + to_string(FLAGS_port) + " 2>/dev/null"));
+  t.join();
+}
+
 TEST(Net, TelnetEchoMessage) {
   thread t([]() {
     Connection c(Socket(FLAGS_port).Accept());
@@ -63,6 +73,29 @@ TEST(Net, TelnetEchoMessage) {
   });
   EXPECT_EQ("ECHO: TEST OK",
             Telnet(string("(echo TEST OK ; sleep 0.1) | telnet localhost ") + to_string(FLAGS_port) +
+                   " 2>/dev/null"));
+  t.join();
+}
+
+TEST(Net, TelnetEchoMessageOfTwoUInt16) {
+  thread t([]() {
+    Connection c(Socket(FLAGS_port).Accept());
+    const size_t length = 2;
+    std::vector<uint16_t> data(length);
+    size_t offset = 0;
+    while (offset < length) {
+      const size_t bytes_read = c.BlockingRead(&data[offset], length - offset);
+      ASSERT_GT(bytes_read, 0);
+      offset += bytes_read;
+    }
+    ASSERT_EQ(length, data.size());
+    // Note: This tests endianness as well -- D.K.
+    char s[64];
+    ::snprintf(s, sizeof(s), "UINT16-s: %04x %04x", data[0], data[1]);
+    c.BlockingWrite(s);
+  });
+  EXPECT_EQ("UINT16-s: 3252 3244",
+            Telnet(string("(echo R2D2 ; sleep 0.1) | telnet localhost ") + to_string(FLAGS_port) +
                    " 2>/dev/null"));
   t.join();
 }

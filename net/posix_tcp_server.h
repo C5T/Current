@@ -38,7 +38,7 @@ class GenericConnection {
     if (read_length_or_error < 0) {
       throw SocketReadException();
     }
-    return static_cast<size_t>(read_length_or_error);
+    return static_cast<size_t>(read_length_or_error / sizeof(T));
   }
 
   inline void BlockingWrite(const void* buffer, size_t write_length) {
@@ -52,6 +52,11 @@ class GenericConnection {
   }
 
   inline void BlockingWrite(const char* s) {
+    assert(s);
+    BlockingWrite(s, strlen(s));
+  }
+
+  inline void BlockingWrite(char* s) {
     assert(s);
     BlockingWrite(s, strlen(s));
   }
