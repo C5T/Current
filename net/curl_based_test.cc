@@ -1,18 +1,17 @@
-// Linux-specific unit tests for HTTP. Using external utilities.
+// Linux- and Mac- specific unit tests for HTTP server implementation. Using external `curl` from shell.
 //
-// ONLY HERE TO INITIALLY CHECK THE CODE IN. TO BE REPLACED BY C++ HTTP CLIENTS.
-
+// TODO(dkorolev): ONLY HERE TO INITIALLY CHECK THE CODE IN. TO BE REPLACED BY C++ HTTP CLIENTS.
+//
 // Don't write unit tests like this.
 // Please, never write unit tests like this.
 // Every time you write a test like this God kills a kitten.
 // Hear me. Don't. Just don't. It's not worth your karma. Go do something else.
 
 #include <thread>
-#include <chrono>
-
-#include "../dflags/dflags.h"
 
 #include "posix_http_server.h"
+
+#include "../dflags/dflags.h"
 
 #include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
@@ -44,7 +43,7 @@ TEST(Net, HTTPCurlGET) {
 
 TEST(Net, HTTPCurlPOST) {
   std::thread t([]() {
-    Socket s(FLAGS_port + 1);
+    Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
     ASSERT_TRUE(c);
     EXPECT_EQ("POST", c.Method());
@@ -53,14 +52,14 @@ TEST(Net, HTTPCurlPOST) {
     c.SendHTTPResponse("POSTED");
   });
   EXPECT_EQ("POSTED",
-            YesThisIsCurl(std::string("curl -s -d BAZINGA localhost:") + std::to_string(FLAGS_port + 1) +
+            YesThisIsCurl(std::string("curl -s -d BAZINGA localhost:") + std::to_string(FLAGS_port) +
                           "/unittest_post"));
   t.join();
 }
 
 TEST(Net, HTTPCurlNoBodyPost) {
   std::thread t([]() {
-    Socket s(FLAGS_port + 2);
+    Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
     ASSERT_TRUE(c);
     EXPECT_EQ("POST", c.Method());
@@ -70,7 +69,7 @@ TEST(Net, HTTPCurlNoBodyPost) {
     c.SendHTTPResponse("ALMOST_POSTED");
   });
   EXPECT_EQ("ALMOST_POSTED",
-            YesThisIsCurl(std::string("curl -s -X POST localhost:") + std::to_string(FLAGS_port + 2) +
+            YesThisIsCurl(std::string("curl -s -X POST localhost:") + std::to_string(FLAGS_port) +
                           "/unittest_empty_post"));
   t.join();
 }
