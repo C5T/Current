@@ -1,6 +1,6 @@
-// Linux- and Mac- specific unit tests for HTTP server implementation. Using external `curl` from shell.
+// Linux- and Mac-specific unit tests for HTTP server implementation. Using external `curl` from shell.
 //
-// TODO(dkorolev): ONLY HERE TO INITIALLY CHECK THE CODE IN. TO BE REPLACED BY C++ HTTP CLIENTS.
+// TODO(dkorolev): ONLY HERE TO INITIALLY CHECK THE CODE IN. TO BE REPLACED BY C++ HTTP CLIENT.
 //
 // Don't write unit tests like this.
 // Please, never write unit tests like this.
