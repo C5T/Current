@@ -197,7 +197,7 @@ bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
   std::istringstream is(from);
   // Workaronud for a bug in `clang++ -std=c++11` on Mac, clang++ --version `LLVM version 6.0 (clang-600.0.56)`.
   // See: http://www.quora.com/Does-Macs-clang++-have-a-bug-with-return-type-of-templated-functions
-  return !!(is >> to);
+  return static_cast<bool>(is >> to);
 }
 
 template <>
