@@ -13,14 +13,14 @@ TEST(DFlags, DefinesAFlag) {
   DEFINE_uint8(bar, 42, "");
   static_assert(std::is_same<decltype(FLAGS_foo), int8_t>::value, "");
   static_assert(std::is_same<decltype(FLAGS_bar), uint8_t>::value, "");
-  EXPECT_EQ(FLAGS_foo, 42);
-  EXPECT_EQ(FLAGS_bar, 42);
+  EXPECT_EQ(42, FLAGS_foo);
+  EXPECT_EQ(42, FLAGS_bar);
   FLAGS_foo = -1;
   FLAGS_bar = -1;
-  EXPECT_EQ(FLAGS_foo, -1);
-  EXPECT_EQ(FLAGS_bar, 255);
-  EXPECT_NE(FLAGS_foo, 255);
-  EXPECT_NE(FLAGS_bar, -1);
+  EXPECT_EQ(-1, FLAGS_foo);
+  EXPECT_EQ(255, FLAGS_bar);
+  EXPECT_NE(255, FLAGS_foo);
+  EXPECT_NE(-1, FLAGS_bar);
 }
 
 TEST(DFlags, ParsesAFlagUsingSingleDash) {
@@ -28,7 +28,7 @@ TEST(DFlags, ParsesAFlagUsingSingleDash) {
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_int16(foo, 1, "");
   static_assert(std::is_same<decltype(FLAGS_foo), int16_t>::value, "");
-  EXPECT_EQ(FLAGS_foo, 1);
+  EXPECT_EQ(1, FLAGS_foo);
   int argc = 3;
   char p1[] = "./ParsesAFlagUsingSingleDash";
   char p2[] = "-foo";
@@ -36,7 +36,7 @@ TEST(DFlags, ParsesAFlagUsingSingleDash) {
   char* pp[] = {p1, p2, p3};
   char** argv = pp;
   ParseDFlags(&argc, &argv);
-  EXPECT_EQ(FLAGS_foo, 2);
+  EXPECT_EQ(2, FLAGS_foo);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingSingleDash", std::string(argv[0]));
 }
@@ -46,7 +46,7 @@ TEST(DFlags, ParsesAFlagUsingDoubleDash) {
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_uint16(bar, 1, "");
   static_assert(std::is_same<decltype(FLAGS_bar), uint16_t>::value, "");
-  EXPECT_EQ(FLAGS_bar, 1);
+  EXPECT_EQ(1, FLAGS_bar);
   int argc = 3;
   char p1[] = "./ParsesAFlagUsingDoubleDash";
   char p2[] = "--bar";
@@ -54,7 +54,7 @@ TEST(DFlags, ParsesAFlagUsingDoubleDash) {
   char* pp[] = {p1, p2, p3};
   char** argv = pp;
   ParseDFlags(&argc, &argv);
-  EXPECT_EQ(FLAGS_bar, 2);
+  EXPECT_EQ(2, FLAGS_bar);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingDoubleDash", std::string(argv[0]));
 }
@@ -64,14 +64,14 @@ TEST(DFlags, ParsesAFlagUsingSingleDashEquals) {
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_int32(baz, 1, "");
   static_assert(std::is_same<decltype(FLAGS_baz), int32_t>::value, "");
-  EXPECT_EQ(FLAGS_baz, 1);
+  EXPECT_EQ(1, FLAGS_baz);
   int argc = 2;
   char p1[] = "./ParsesAFlagUsingSingleDashEquals";
   char p2[] = "-baz=2";
   char* pp[] = {p1, p2};
   char** argv = pp;
   ParseDFlags(&argc, &argv);
-  EXPECT_EQ(FLAGS_baz, 2);
+  EXPECT_EQ(2, FLAGS_baz);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingSingleDashEquals", std::string(argv[0]));
 }
@@ -81,14 +81,14 @@ TEST(DFlags, ParsesAFlagUsingDoubleDashEquals) {
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_uint32(meh, 1, "");
   static_assert(std::is_same<decltype(FLAGS_meh), uint32_t>::value, "");
-  EXPECT_EQ(FLAGS_meh, 1);
+  EXPECT_EQ(1, FLAGS_meh);
   int argc = 2;
   char p1[] = "./ParsesAFlagUsingDoubleDashEquals";
   char p2[] = "--meh=2";
   char* pp[] = {p1, p2};
   char** argv = pp;
   ParseDFlags(&argc, &argv);
-  EXPECT_EQ(FLAGS_meh, 2);
+  EXPECT_EQ(2, FLAGS_meh);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingDoubleDashEquals", std::string(argv[0]));
 }
@@ -117,11 +117,11 @@ TEST(DFlags, ParsesMultipleFlags) {
   static_assert(std::is_same<decltype(FLAGS_flag_bool2), bool>::value, "");
   static_assert(std::is_same<decltype(FLAGS_flag_int64), int64_t>::value, "");
   static_assert(std::is_same<decltype(FLAGS_flag_uint64), uint64_t>::value, "");
-  EXPECT_EQ(FLAGS_flag_string, "");
-  EXPECT_EQ(FLAGS_flag_bool1, false);
-  EXPECT_EQ(FLAGS_flag_bool2, true);
-  EXPECT_EQ(FLAGS_flag_int64, 0);
-  EXPECT_EQ(FLAGS_flag_uint64, 0);
+  EXPECT_EQ("", FLAGS_flag_string);
+  EXPECT_FALSE(FLAGS_flag_bool1);
+  EXPECT_TRUE(FLAGS_flag_bool2);
+  EXPECT_EQ(0, FLAGS_flag_int64);
+  EXPECT_EQ(0, FLAGS_flag_uint64);
   int argc = 8;
   char p1[] = "./ParsesMultipleFlags";
   char p2[] = "-flag_string";
@@ -134,11 +134,11 @@ TEST(DFlags, ParsesMultipleFlags) {
   char* pp[] = {p1, p2, p3, p4, p5, p6, p7, p8};
   char** argv = pp;
   ParseDFlags(&argc, &argv);
-  EXPECT_EQ(FLAGS_flag_string, "foo bar");
-  EXPECT_EQ(FLAGS_flag_bool1, true);
-  EXPECT_EQ(FLAGS_flag_bool2, false);
-  EXPECT_EQ(FLAGS_flag_int64, static_cast<int64_t>(1e18));
-  EXPECT_EQ(FLAGS_flag_uint64, static_cast<uint64_t>(4e18));
+  EXPECT_EQ("foo bar", FLAGS_flag_string);
+  EXPECT_TRUE(FLAGS_flag_bool1);
+  EXPECT_FALSE(FLAGS_flag_bool2);
+  EXPECT_EQ(static_cast<int64_t>(1e18), FLAGS_flag_int64);
+  EXPECT_EQ(static_cast<uint64_t>(4e18), FLAGS_flag_uint64);
   ASSERT_EQ(2, argc);
   EXPECT_EQ("./ParsesMultipleFlags", std::string(argv[0]));
   EXPECT_EQ("remaining_parameter", std::string(argv[1]));
