@@ -21,7 +21,7 @@ TEST(DFlags, DefinesAFlag) {
   EXPECT_EQ(FLAGS_bar, 255);
   EXPECT_NE(FLAGS_foo, 255);
   EXPECT_NE(FLAGS_bar, -1);
-};
+}
 
 TEST(DFlags, ParsesAFlagUsingSingleDash) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -39,7 +39,7 @@ TEST(DFlags, ParsesAFlagUsingSingleDash) {
   EXPECT_EQ(FLAGS_foo, 2);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingSingleDash", std::string(argv[0]));
-};
+}
 
 TEST(DFlags, ParsesAFlagUsingDoubleDash) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -57,7 +57,7 @@ TEST(DFlags, ParsesAFlagUsingDoubleDash) {
   EXPECT_EQ(FLAGS_bar, 2);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingDoubleDash", std::string(argv[0]));
-};
+}
 
 TEST(DFlags, ParsesAFlagUsingSingleDashEquals) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -74,7 +74,7 @@ TEST(DFlags, ParsesAFlagUsingSingleDashEquals) {
   EXPECT_EQ(FLAGS_baz, 2);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingSingleDashEquals", std::string(argv[0]));
-};
+}
 
 TEST(DFlags, ParsesAFlagUsingDoubleDashEquals) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -91,7 +91,7 @@ TEST(DFlags, ParsesAFlagUsingDoubleDashEquals) {
   EXPECT_EQ(FLAGS_meh, 2);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingDoubleDashEquals", std::string(argv[0]));
-};
+}
 
 TEST(DFlags, MultipleCallsToParseDFlagsDeathTest) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -142,7 +142,7 @@ TEST(DFlags, ParsesMultipleFlags) {
   ASSERT_EQ(2, argc);
   EXPECT_EQ("./ParsesMultipleFlags", std::string(argv[0]));
   EXPECT_EQ("remaining_parameter", std::string(argv[1]));
-};
+}
 
 TEST(DFlags, ParsesEmptyString) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -205,7 +205,7 @@ TEST(DFlags, PrintsHelpDeathTest) {
                "\t--meh , int32_t\n"
                "\t\tMeh\\.\n"
                "\t\tDefault value: 42\n");
-};
+}
 
 TEST(DFlags, UndefinedFlagDeathTest) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
@@ -227,7 +227,7 @@ TEST(DFlags, UndefinedFlagDeathTest) {
     char** argv = pp;
     EXPECT_DEATH(ParseDFlags(&argc, &argv), "Undefined flag: 'another_undefined_flag'\\.");
   }
-};
+}
 
 TEST(DFlags, TooManyDashesDeathTest) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
