@@ -15,7 +15,6 @@
 namespace bricks {
 namespace net {
 
-const size_t kDefaultMaxLengthToReceive = 1024 * 1024;
 const size_t kMaxQueuedConnections = 1024;
 
 class GenericConnection {
@@ -34,7 +33,7 @@ class GenericConnection {
   }
 
   template <typename T>
-  inline size_t BlockingRead(T* buffer, size_t max_length = kDefaultMaxLengthToReceive) const {
+  inline size_t BlockingRead(T* buffer, size_t max_length) const {
     const ssize_t read_length_or_error = read(fd_, reinterpret_cast<void*>(buffer), max_length * sizeof(T));
     if (read_length_or_error < 0) {
       throw SocketReadException();
