@@ -235,7 +235,7 @@ inline std::string ToStringSupportingStringAndBool(T x) {
 
 template <>
 inline std::string ToStringSupportingStringAndBool(std::string s) {
-  return std::string() + "'" + s + "'";
+  return std::string("'") + s + "'";
 }
 
 template <>
@@ -257,7 +257,7 @@ class FlagRegisterer : public FlagRegistererBase {
 
   virtual void ParseValue(const std::string& name, const std::string& value) const override {
     if (!FromStringSupportingStringAndBool(value, ref_)) {
-      TerminateExecution(-1, std::string() + "Can not parse '" + value + "' for flag '" + name + "'.");
+      TerminateExecution(-1, std::string("Can not parse '") + value + "' for flag '" + name + "'.");
     }
   }
 
