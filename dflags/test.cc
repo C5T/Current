@@ -144,6 +144,37 @@ TEST(DFlags, ParsesMultipleFlags) {
   EXPECT_EQ("remaining_parameter", std::string(argv[1]));
 };
 
+TEST(DFlags, ParsesEmptyString) {
+  ::dflags::FlagsManager::DefaultRegisterer local_registerer;
+  auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
+  DEFINE_string(empty_string, "not yet", "");
+  static_assert(std::is_same<decltype(FLAGS_empty_string), std::string>::value, "");
+  EXPECT_EQ("not yet", FLAGS_empty_string);
+  int argc = 3;
+  char p1[] = "./ParsesEmptyString";
+  char p2[] = "--empty_string";
+  char p3[] = "";
+  char* pp[] = {p1, p2, p3};
+  char** argv = pp;
+  ParseDFlags(&argc, &argv);
+  EXPECT_EQ("", FLAGS_empty_string);
+}
+
+TEST(DFlags, ParsesEmptyStringUsingEquals) {
+  ::dflags::FlagsManager::DefaultRegisterer local_registerer;
+  auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
+  DEFINE_string(empty_string, "not yet", "");
+  static_assert(std::is_same<decltype(FLAGS_empty_string), std::string>::value, "");
+  EXPECT_EQ("not yet", FLAGS_empty_string);
+  int argc = 2;
+  char p1[] = "./ParsesEmptyStringUsingEquals";
+  char p2[] = "--empty_string=";
+  char* pp[] = {p1, p2};
+  char** argv = pp;
+  ParseDFlags(&argc, &argv);
+  EXPECT_EQ("", FLAGS_empty_string);
+}
+
 TEST(DFlags, PrintsHelpDeathTest) {
   struct MockCerrHelpPrinter : ::dflags::FlagsManager::DefaultRegisterer {
     virtual std::ostream& HelpPrinterOStream() const override {
@@ -240,5 +271,21 @@ TEST(DFlags, UnparsableValueDeathTest) {
     char* pp[] = {p1, p2};
     char** argv = pp;
     EXPECT_DEATH(ParseDFlags(&argc, &argv), "Can not parse '987654321' for flag 'flag_int16'\\.");
+  }
+  {
+    int argc = 2;
+    char p1[] = "./UnparsableValueDeathTest";
+    char p2[] = "--flag_bool=";
+    char* pp[] = {p1, p2};
+    char** argv = pp;
+    EXPECT_DEATH(ParseDFlags(&argc, &argv), "Can not parse '' for flag 'flag_bool'\\.");
+  }
+  {
+    int argc = 2;
+    char p1[] = "./UnparsableValueDeathTest";
+    char p2[] = "--flag_int16=";
+    char* pp[] = {p1, p2};
+    char** argv = pp;
+    EXPECT_DEATH(ParseDFlags(&argc, &argv), "Can not parse '' for flag 'flag_int16'\\.");
   }
 }
