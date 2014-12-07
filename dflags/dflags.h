@@ -67,7 +67,7 @@ class FlagsRegistererSingleton {
   virtual void ParseFlags(int& argc, char**& argv) = 0;
   virtual void PrintHelpAndExit(const std::map<std::string, FlagRegistererBase*>& flags) const {
     PrintHelp(flags, HelpPrinterOStream());
-    exit(HelpPrinterReturnCode());
+    std::exit(HelpPrinterReturnCode());
   }
 
  protected:
