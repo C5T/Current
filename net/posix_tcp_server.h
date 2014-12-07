@@ -38,10 +38,14 @@ class GenericConnection {
     uint8_t* raw_ptr = raw_buffer;
     const size_t max_length_in_bytes = max_length * sizeof(T);
     do {
-      const ssize_t read_length_or_error = read(fd_, raw_buffer, max_length_in_bytes - (raw_ptr - raw_buffer));
+      const ssize_t read_length_or_error = read(fd_, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
       if (read_length_or_error < 0) {
         throw SocketReadException();
       } else if (read_length_or_error == 0) {
+        // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
+        // and StackOverflow is that a return value of zero from read() from a socket indicates
+        // that the socket has been closed by the peer.
+        // For this implementation, throw an exception if some record was read only partially.
         if ((raw_ptr - raw_buffer) % sizeof(T)) {
           throw SocketReadMultibyteRecordEndedPrematurelyException();
         }

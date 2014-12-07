@@ -35,7 +35,7 @@ string Curl(const string& cmdline) {
   return s;
 }
 
-TEST(Net, HTTPCurlGET) {
+TEST(CurlHTTP, GET) {
   thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
@@ -48,7 +48,7 @@ TEST(Net, HTTPCurlGET) {
   t.join();
 }
 
-TEST(Net, HTTPCurlPOST) {
+TEST(CurlHTTP, POST) {
   thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
@@ -62,7 +62,7 @@ TEST(Net, HTTPCurlPOST) {
   t.join();
 }
 
-TEST(Net, HTTPCurlNoBodyPost) {
+TEST(CurlHTTP, NoBodyPost) {
   thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
