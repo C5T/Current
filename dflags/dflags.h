@@ -79,14 +79,14 @@ class FlagsRegistererSingleton {
          << "Default value: " << cit.second->DefaultValueAsString() << '\n';
     }
   }
-  // LCOV_EXCL_START
+  // LCOV_EXCL_START -- exclude the following lines from unit test line coverage report.
   virtual std::ostream& HelpPrinterOStream() const {
     return std::cout;
   }
   virtual int HelpPrinterReturnCode() const {
     return 0;
   }
-  // LCOV_EXCL_STOP
+  // LCOV_EXCL_STOP -- exclude the above lines from unit test line coverage report.
 };
 
 class FlagsManager {
@@ -150,7 +150,7 @@ class FlagsManager {
    private:
     void UserRequestedHelp() {
       Singleton().PrintHelpAndExit(flags_);
-    }  // LCOV_EXCL_LINE
+    }  // LCOV_EXCL_LINE -- exclude this line from unit test line coverage report.
 
     std::vector<char> VectorCharFromString(const std::string& s) const {
       std::vector<char> v(s.begin(), s.end());
