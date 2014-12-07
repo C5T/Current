@@ -12,6 +12,9 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+namespace bricks {
+namespace net {
+
 const size_t kDefaultMaxLengthToReceive = 1024 * 1024;
 const size_t kMaxQueuedConnections = 1024;
 
@@ -92,7 +95,7 @@ class Socket final {
     int just_one = 1;
     setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(int));
 
-    sockaddr_in addr_server;
+    sockaddr_in addr_server{};
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);
@@ -113,7 +116,7 @@ class Socket final {
   }
 
   inline GenericConnection Accept() const {
-    sockaddr_in addr_client;
+    sockaddr_in addr_client{};
     socklen_t addr_client_length = sizeof(sockaddr_in);
     const int fd = accept(socket_, (struct sockaddr*)&addr_client, &addr_client_length);
     if (fd == -1) {
@@ -130,5 +133,8 @@ class Socket final {
   void operator=(const Socket&) = delete;
   void operator=(Socket&&) = delete;
 };
+
+}  // namespace net
+}  // namespace bricks
 
 #endif  // BRICKS_NET_POSIX_TCP_SERVER_H

@@ -18,7 +18,15 @@
 
 DEFINE_int32(port, 8081, "Port to use for the test.");
 
-std::string YesThisIsCurl(const std::string& cmdline) {
+using std::string;
+using std::thread;
+using std::to_string;
+
+using ::bricks::net::Socket;
+using ::bricks::net::HTTPConnection;
+using ::bricks::net::HTTPNoBodyProvidedException;
+
+string Curl(const string& cmdline) {
   FILE* pipe = ::popen(cmdline.c_str(), "r");
   assert(pipe);
   char s[1024];
@@ -28,7 +36,7 @@ std::string YesThisIsCurl(const std::string& cmdline) {
 }
 
 TEST(Net, HTTPCurlGET) {
-  std::thread t([]() {
+  thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
     ASSERT_TRUE(c);
@@ -36,13 +44,12 @@ TEST(Net, HTTPCurlGET) {
     EXPECT_EQ("/unittest", c.URL());
     c.SendHTTPResponse("PASSED");
   });
-  EXPECT_EQ("PASSED",
-            YesThisIsCurl(std::string("curl -s localhost:") + std::to_string(FLAGS_port) + "/unittest"));
+  EXPECT_EQ("PASSED", Curl(string("curl -s localhost:") + to_string(FLAGS_port) + "/unittest"));
   t.join();
 }
 
 TEST(Net, HTTPCurlPOST) {
-  std::thread t([]() {
+  thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
     ASSERT_TRUE(c);
@@ -51,14 +58,12 @@ TEST(Net, HTTPCurlPOST) {
     EXPECT_EQ("BAZINGA", c.Body());
     c.SendHTTPResponse("POSTED");
   });
-  EXPECT_EQ("POSTED",
-            YesThisIsCurl(std::string("curl -s -d BAZINGA localhost:") + std::to_string(FLAGS_port) +
-                          "/unittest_post"));
+  EXPECT_EQ("POSTED", Curl(string("curl -s -d BAZINGA localhost:") + to_string(FLAGS_port) + "/unittest_post"));
   t.join();
 }
 
 TEST(Net, HTTPCurlNoBodyPost) {
-  std::thread t([]() {
+  thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
     ASSERT_TRUE(c);
@@ -69,7 +74,6 @@ TEST(Net, HTTPCurlNoBodyPost) {
     c.SendHTTPResponse("ALMOST_POSTED");
   });
   EXPECT_EQ("ALMOST_POSTED",
-            YesThisIsCurl(std::string("curl -s -X POST localhost:") + std::to_string(FLAGS_port) +
-                          "/unittest_empty_post"));
+            Curl(string("curl -s -X POST localhost:") + to_string(FLAGS_port) + "/unittest_empty_post"));
   t.join();
 }

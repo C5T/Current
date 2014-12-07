@@ -12,6 +12,9 @@
 #include "posix_tcp_server.h"
 #include "http_response_codes.h"
 
+namespace bricks {
+namespace net {
+
 typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 
 class HTTPHeaderParser {
@@ -233,7 +236,7 @@ class GenericHTTPConnection final : public GenericConnection, public HEADER_PARS
   }
 
  private:
-  bool good_;
+  bool good_ = false;
   bool responded_ = false;
 
   GenericHTTPConnection(const GenericHTTPConnection&) = delete;
@@ -243,5 +246,8 @@ class GenericHTTPConnection final : public GenericConnection, public HEADER_PARS
 
 // Default HTTPConnection parses URL, method, and body for requests with Content-Length.
 typedef GenericHTTPConnection<HTTPHeaderParser> HTTPConnection;
+
+}  // namespace net
+}  // namespace bricks
 
 #endif  // BRICKS_NET_POSIX_HTTP_SERVER_H

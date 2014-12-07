@@ -6,6 +6,9 @@
 #include <map>
 #include <string>
 
+namespace bricks {
+namespace net {
+
 enum class HTTPResponseCode : int {
   Continue = 100,
   SwitchingProtocols = 101,
@@ -102,5 +105,8 @@ class HTTPResponseCodeAsStringGenerator {
     }
   }
 };
+
+}  // namespace net
+}  // namespace bricks
 
 #endif  // BRICKS_NET_HTTP_RESPONSE_CODES_H

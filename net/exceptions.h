@@ -3,6 +3,9 @@
 
 #include <exception>
 
+namespace bricks {
+namespace net {
+
 struct NetworkException : std::exception {};
 
 struct SocketException : NetworkException {};
@@ -20,5 +23,8 @@ struct HTTPException : NetworkException {};
 struct HTTPConnectionClosedByPeerBeforeHeadersWereSentInException : HTTPException {};
 struct HTTPNoBodyProvidedException : HTTPException {};
 struct HTTPAttemptedToRespondTwiceException : HTTPException {};
+
+}  // namespace net
+}  // namespace bricks
 
 #endif  // BRICKS_NET_EXCEPTIONS_H
