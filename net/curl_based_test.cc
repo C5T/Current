@@ -19,70 +19,80 @@
 
 DEFINE_int32(port, 8081, "Port to use for the test.");
 
-TEST(Net, HTTPCurlGET) {
-  std::thread server_thread([]() {
-    Socket s(FLAGS_port);
-    HTTPConnection c(s.Accept());
-    ASSERT_TRUE(c);
-    EXPECT_EQ("GET", c.Method());
-    EXPECT_EQ("/unittest", c.URL());
-    c.SendHTTPResponse("PASSED");
-  });
+struct Servers {
+  struct Impl {
+    Impl() : t1(&Impl::f1, this), t2(&Impl::f2, this), t3(&Impl::f3, this) {
+    }
 
-  FILE* f =
-      ::popen((std::string("curl -s localhost:") + std::to_string(FLAGS_port) + "/unittest").c_str(), "r");
-  ASSERT_TRUE(f);
+    ~Impl() {
+      t1.join();
+      t2.join();
+      t3.join();
+    }
+
+    void f1() {
+      Socket s(FLAGS_port);
+      HTTPConnection c(s.Accept());
+      ASSERT_TRUE(c);
+      EXPECT_EQ("GET", c.Method());
+      EXPECT_EQ("/unittest", c.URL());
+      c.SendHTTPResponse("PASSED");
+    }
+
+    void f2() {
+      Socket s(FLAGS_port + 1);
+      HTTPConnection c(s.Accept());
+      ASSERT_TRUE(c);
+      EXPECT_EQ("POST", c.Method());
+      EXPECT_EQ("/unittest_post", c.URL());
+      EXPECT_EQ("BAZINGA", c.Body());
+      c.SendHTTPResponse("POSTED");
+    }
+
+    void f3() {
+      Socket s(FLAGS_port + 2);
+      HTTPConnection c(s.Accept());
+      ASSERT_TRUE(c);
+      EXPECT_EQ("POST", c.Method());
+      EXPECT_EQ("/unittest_empty_post", c.URL());
+      EXPECT_FALSE(c.HasBody());
+      ASSERT_THROW(c.Body(), HTTPNoBodyProvidedException);
+      c.SendHTTPResponse("ALMOST_POSTED");
+    }
+
+    std::thread t1, t2, t3;
+  };
+
+  static void EnsureSpawned() {
+    static Impl impl;
+  }
+};
+
+std::string YesThisIsCurl(const std::string& cmdline) {
+  FILE* f = ::popen(cmdline.c_str(), "r");
+  assert(f);
   char s[1024];
   fgets(s, sizeof(s), f);
-  EXPECT_EQ("PASSED", std::string(s));
   fclose(f);
+  return s;
+}
 
-  server_thread.join();
+TEST(Net, HTTPCurlGET) {
+  Servers::EnsureSpawned();
+  EXPECT_EQ("PASSED",
+            YesThisIsCurl(std::string("curl -s localhost:") + std::to_string(FLAGS_port) + "/unittest"));
 }
 
 TEST(Net, HTTPCurlPOST) {
-  std::thread server_thread([]() {
-    Socket s(FLAGS_port);
-    HTTPConnection c(s.Accept());
-    ASSERT_TRUE(c);
-    EXPECT_EQ("POST", c.Method());
-    EXPECT_EQ("/unittest_post", c.URL());
-    EXPECT_EQ("BAZINGA", c.Body());
-    c.SendHTTPResponse("POSTED");
-  });
-
-  FILE* f = ::popen(
-      (std::string("curl -s -d BAZINGA localhost:") + std::to_string(FLAGS_port) + "/unittest_post").c_str(),
-      "r");
-  ASSERT_TRUE(f);
-  char s[1024];
-  fgets(s, sizeof(s), f);
-  EXPECT_EQ("POSTED", std::string(s));
-  fclose(f);
-
-  server_thread.join();
+  Servers::EnsureSpawned();
+  EXPECT_EQ("POSTED",
+            YesThisIsCurl(std::string("curl -s -d BAZINGA localhost:") + std::to_string(FLAGS_port + 1) +
+                          "/unittest_post"));
 }
 
 TEST(Net, HTTPCurlNoBodyPost) {
-  std::thread server_thread([]() {
-    Socket s(FLAGS_port);
-    HTTPConnection c(s.Accept());
-    ASSERT_TRUE(c);
-    EXPECT_EQ("POST", c.Method());
-    EXPECT_EQ("/unittest_empty_post", c.URL());
-    EXPECT_FALSE(c.HasBody());
-    ASSERT_THROW(c.Body(), HTTPNoBodyProvidedException);
-    c.SendHTTPResponse("ALMOST_POSTED");
-  });
-
-  FILE* f = ::popen(
-      (std::string("curl -s -X POST localhost:") + std::to_string(FLAGS_port) + "/unittest_empty_post").c_str(),
-      "r");
-  ASSERT_TRUE(f);
-  char s[1024];
-  fgets(s, sizeof(s), f);
-  EXPECT_EQ("ALMOST_POSTED", std::string(s));
-  fclose(f);
-
-  server_thread.join();
+  Servers::EnsureSpawned();
+  EXPECT_EQ("ALMOST_POSTED",
+            YesThisIsCurl(std::string("curl -s -X POST localhost:") + std::to_string(FLAGS_port + 2) +
+                          "/unittest_empty_post"));
 }
