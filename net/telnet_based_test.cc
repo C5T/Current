@@ -125,7 +125,7 @@ TEST(TelnetTCP, EchoTwoMessages) {
     }
   });
   EXPECT_EQ("ECHO2: FOO,BAR",
-            Telnet(string("(echo -n FOO ; sleep 0.1 ; echo -n BAR ; sleep 0.1) | telnet localhost ") +
+            Telnet(string("(bash -c 'echo -n FOO ; sleep 0.1 ; echo -n BAR ; sleep 0.1') | telnet localhost ") +
                    to_string(FLAGS_port) + " 2>/dev/null"));
   t.join();
 }
