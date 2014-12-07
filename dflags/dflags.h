@@ -102,7 +102,7 @@ class FlagsManager {
         TerminateExecution(-1, "ParseDFlags() is called more than once.");
       }
       parse_flags_called_ = true;
-      argv_values_.push_back(VectorCharFromString(argv[0]));
+      argv_.push_back(argv[0]);
 
       for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
@@ -135,15 +135,11 @@ class FlagsManager {
             }
           }
         } else {
-          argv_values_.push_back(VectorCharFromString(argv[i]));
+          argv_.push_back(argv[i]);
         }
       }
 
-      argc = argv_values_.size();
-      argv_.resize(argc);
-      for (int i = 0; i < argc; ++i) {
-        argv_[i] = &(argv_values_[i][0]);
-      }
+      argc = argv_.size();
       argv = &argv_[0];
     }
 
@@ -152,15 +148,8 @@ class FlagsManager {
       Singleton().PrintHelpAndExit(flags_);
     }  // LCOV_EXCL_LINE -- exclude this line from unit test line coverage report.
 
-    std::vector<char> VectorCharFromString(const std::string& s) const {
-      std::vector<char> v(s.begin(), s.end());
-      v.push_back('\0');
-      return v;
-    }
-
     std::map<std::string, FlagRegistererBase*> flags_;
     bool parse_flags_called_ = false;
-    std::vector<std::vector<char>> argv_values_;
     std::vector<char*> argv_;
   };
 
