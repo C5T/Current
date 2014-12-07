@@ -69,11 +69,11 @@ struct Servers {
 };
 
 std::string YesThisIsCurl(const std::string& cmdline) {
-  FILE* f = ::popen(cmdline.c_str(), "r");
-  assert(f);
+  FILE* pipe = ::popen(cmdline.c_str(), "r");
+  assert(pipe);
   char s[1024];
-  fgets(s, sizeof(s), f);
-  fclose(f);
+  ::fgets(s, sizeof(s), pipe);
+  ::pclose(pipe);
   return s;
 }
 
