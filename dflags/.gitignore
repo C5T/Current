@@ -1,0 +1,8 @@
+build
+.tmp
+core
+
+coverage.info
+*.gcov
+*.gcda
+*.gcno
