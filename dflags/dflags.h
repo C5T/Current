@@ -11,6 +11,7 @@ void example() {
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
+  // Alternatively, `google::ParseCommandLineFlags(&argc, &argv);` works for compatibility reasons.
   example();
 }
 
@@ -306,7 +307,17 @@ inline void ParseDFlags(int* argc, char*** argv) {
 }
 
 namespace fake_google {
-inline bool ParseCommandLineFlags(int* argc, char*** argv, bool dummy = true) {
+struct UnambiguousGoogleFriendlyIntPointerWrapper {
+  int* p;
+  inline UnambiguousGoogleFriendlyIntPointerWrapper(int* p) : p(p) {
+  }
+  inline operator int*() {
+    return p;
+  }
+};
+inline bool ParseCommandLineFlags(UnambiguousGoogleFriendlyIntPointerWrapper argc,
+                                  char*** argv,
+                                  bool dummy = true) {
   ParseDFlags(argc, argv);
   return true;
 }
