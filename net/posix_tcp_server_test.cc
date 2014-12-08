@@ -8,6 +8,8 @@
 
 #include "../dflags/dflags.h"
 
+#include "../string/printf.h"
+
 #include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
@@ -18,6 +20,8 @@ using std::vector;
 using std::function;
 using std::thread;
 using std::to_string;
+
+using bricks::string::Printf;
 
 using bricks::net::Socket;
 using bricks::net::Connection;
@@ -83,15 +87,13 @@ TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
   // Note: This tests endianness as well -- D.K.
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
-                         const size_t length = 2;
-                         vector<uint16_t> data = connection.BlockingReadUntilEOF<vector<uint16_t> >();
-                         ASSERT_EQ(length, data.size());
-                         char s[64];
-                         ::snprintf(s, sizeof(s), "UINT16-s: %04x %04x", data[0], data[1]);
-                         connection.BlockingWrite(s);
+                         connection.BlockingWrite("UINT16-s:");
+                         for (const auto value : connection.BlockingReadUntilEOF<vector<uint16_t> >()) {
+                           connection.BlockingWrite(Printf(" %04x", value));
+                         }
                        },
                        std::move(Socket(FLAGS_port)));
-  EXPECT_EQ("UINT16-s: 3252 3244", TypeParam::Run(server_thread, "localhost", FLAGS_port, "R2D2"));
+  EXPECT_EQ("UINT16-s: 3252 2020 3244", TypeParam::Run(server_thread, "localhost", FLAGS_port, "R2  D2"));
 }
 
 TYPED_TEST(TCPTest, EchoTwoMessages) {

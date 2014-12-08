@@ -253,8 +253,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       hints.ai_protocol = IPPROTO_TCP;
       const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &servinfo);
       if (retval) {
-        // TODO(dkorolev): Log this into exception itself; then to a broader log.
-        // fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(retval));
+        // TODO(dkorolev): LOG(somewhere, string::Printf("Error in getaddrinfo: %s\n", gai_strerror(retval)));
         throw SocketResolveAddressException();
       }
       if (!servinfo) {
