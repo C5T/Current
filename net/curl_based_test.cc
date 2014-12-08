@@ -16,7 +16,7 @@
 #include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
-DEFINE_int32(port, 8081, "Port to use for the test.");
+DEFINE_int32(port, 8081, "Local port to use for the test server.");
 
 using std::string;
 using std::thread;

@@ -20,6 +20,8 @@ namespace net {
 
 const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
+const size_t kReadTillEOFInitialBufferSize = 128;
+const double kReadTillEOFBufferGrowthK = 1.95;
 
 class SocketHandle {
  public:
@@ -95,17 +97,24 @@ class Connection : public SocketHandle {
     ::shutdown(socket, SHUT_WR);
   }
 
+  // By default, BlockingRead() will return as soon as some data has been read,
+  // with the exception being multibyte records (sizeof(T) > 1), where it will keep reading
+  // until the boundary of the records, or max_length of them, has been read.
+  // Alternatively, the 3rd parameter can be explicitly set to BlockingReadPolicy::FillFullBuffer,
+  // which will cause BlockingRead() to keep reading more data until all `max_elements` are read or EOF is hit.
+  enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
-  inline size_t BlockingRead(T* buffer, size_t max_length) {
+  inline size_t BlockingRead(T* buffer,
+                             size_t max_length,
+                             BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
     uint8_t* raw_ptr = raw_buffer;
     const size_t max_length_in_bytes = max_length * sizeof(T);
     do {
-      const ssize_t read_length_or_error =
-          ::read(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
-      if (read_length_or_error < 0) {
+      const ssize_t retval = ::read(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
+      if (retval < 0) {
         throw SocketReadException();
-      } else if (read_length_or_error == 0) {
+      } else if (retval == 0) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
         // that the socket has been closed by the peer.
@@ -115,10 +124,36 @@ class Connection : public SocketHandle {
         }
         break;
       } else {
-        raw_ptr += read_length_or_error;
+        raw_ptr += retval;
       }
-    } while ((raw_ptr - raw_buffer) % sizeof(T));
+    } while (policy == BlockingReadPolicy::FillFullBuffer || ((raw_ptr - raw_buffer) % sizeof(T)) > 0);
     return (raw_ptr - raw_buffer) / sizeof(T);
+  }
+
+  template <typename T>
+  inline typename std::enable_if<sizeof(typename T::value_type) != 0, const T&>::type BlockingReadUntilEOF(
+      T& container,
+      const size_t initial_size = kReadTillEOFInitialBufferSize,
+      const double growth_k = kReadTillEOFBufferGrowthK) {
+    container.resize(initial_size);
+    size_t offset = 0;
+    size_t desired;
+    size_t actual;
+    while (desired = container.size() - offset,
+           actual = BlockingRead(&container[offset], desired, BlockingReadPolicy::FillFullBuffer),
+           actual == desired) {
+      offset += desired;
+      container.resize(static_cast<size_t>(container.size() * growth_k));
+    }
+    container.resize(offset + actual);
+    return container;
+  }
+
+  template <typename T = std::string>
+  inline typename std::enable_if<sizeof(typename T::value_type) != 0, T>::type BlockingReadUntilEOF() {
+    T container;
+    BlockingReadUntilEOF(container);
+    return container;
   }
 
   inline void BlockingWrite(const void* buffer, size_t write_length) {
@@ -218,8 +253,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       hints.ai_protocol = IPPROTO_TCP;
       const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &servinfo);
       if (retval) {
-        // TODO(dkorolev): Log this into exception itself; then to a broader log.
-        // fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(retval));
+        // TODO(dkorolev): LOG(somewhere, string::Printf("Error in getaddrinfo: %s\n", gai_strerror(retval)));
         throw SocketResolveAddressException();
       }
       if (!servinfo) {
@@ -234,7 +268,8 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       if (retval2) {
         throw SocketConnectException();
       }
-      freeaddrinfo(servinfo);
+      // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
+      ::freeaddrinfo(servinfo);
     }
   };
 
