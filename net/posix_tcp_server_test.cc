@@ -32,25 +32,34 @@ using bricks::net::BlockingReadPolicy;
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 
 struct TCPClientImplPOSIX {
-  static string Run(std::thread& server_thread,
-                    const string& host,
-                    const uint16_t port,
-                    function<void(Connection&)> f) {
+  static string ReadFromSocket(std::thread& server_thread,
+                               const string& host,
+                               const uint16_t port,
+                               function<void(Connection&)> client_code) {
     Connection connection(ClientSocket(host, port));
-    f(connection);
+    client_code(connection);
     connection.SendEOF();
     server_thread.join();
     return connection.BlockingReadUntilEOF();
   }
-  static string Run(std::thread& server_thread,
-                    const string& host,
-                    const uint16_t port,
-                    const string& message = "") {
-    return Run(server_thread, host, port, [&message](Connection& connection) {
-      if (!message.empty()) {
-        connection.BlockingWrite(message);
+
+  static string ReadFromSocket(std::thread& server_thread,
+                               const string& host,
+                               const uint16_t port,
+                               const string& message_to_send_from_client = "") {
+    return ReadFromSocket(server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
+      if (!message_to_send_from_client.empty()) {
+        connection.BlockingWrite(message_to_send_from_client);
       }
     });
+  }
+
+  static string ReadFromSocket(std::thread& server_thread, function<void(Connection&)> client_code) {
+    return ReadFromSocket(server_thread, "localhost", FLAGS_port, client_code);
+  }
+
+  static string ReadFromSocket(std::thread& server_thread, const string& message_to_send_from_client = "") {
+    return ReadFromSocket(server_thread, "localhost", FLAGS_port, message_to_send_from_client);
   }
 };
 
@@ -62,7 +71,7 @@ TYPED_TEST_CASE(TCPTest, TCPClientImplsTypeList);
 
 TYPED_TEST(TCPTest, ReceiveMessage) {
   thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, std::move(Socket(FLAGS_port)));
-  EXPECT_EQ("BOOM", TypeParam::Run(server, "localhost", FLAGS_port));
+  EXPECT_EQ("BOOM", TypeParam::ReadFromSocket(server));
 }
 
 TYPED_TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
@@ -71,7 +80,7 @@ TYPED_TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
                          socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233});
                        },
                        std::move(Socket(FLAGS_port)));
-  EXPECT_EQ("1032", TypeParam::Run(server_thread, "localhost", FLAGS_port));
+  EXPECT_EQ("1032", TypeParam::ReadFromSocket(server_thread));
 }
 
 TYPED_TEST(TCPTest, EchoMessage) {
@@ -80,7 +89,7 @@ TYPED_TEST(TCPTest, EchoMessage) {
                          connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
                        },
                        std::move(Socket(FLAGS_port)));
-  EXPECT_EQ("ECHO: TEST OK", TypeParam::Run(server_thread, "localhost", FLAGS_port, "TEST OK"));
+  EXPECT_EQ("ECHO: TEST OK", TypeParam::ReadFromSocket(server_thread, "TEST OK"));
 }
 
 TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
@@ -93,7 +102,7 @@ TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
                          }
                        },
                        std::move(Socket(FLAGS_port)));
-  EXPECT_EQ("UINT16-s: 3252 2020 3244", TypeParam::Run(server_thread, "localhost", FLAGS_port, "R2  D2"));
+  EXPECT_EQ("UINT16-s: 3252 2020 3244", TypeParam::ReadFromSocket(server_thread, "R2  D2"));
 }
 
 TYPED_TEST(TCPTest, EchoTwoMessages) {
@@ -115,7 +124,7 @@ TYPED_TEST(TCPTest, EchoTwoMessages) {
                        },
                        std::move(Socket(FLAGS_port)));
   EXPECT_EQ("ECHO: FOO,BAR,BAZ",
-            TypeParam::Run(server_thread, "localhost", FLAGS_port, [](Connection& connection) {
+            TypeParam::ReadFromSocket(server_thread, [](Connection& connection) {
               connection.BlockingWrite("FOOBARB");
               std::this_thread::sleep_for(std::chrono::milliseconds(1));
               connection.BlockingWrite("A");
@@ -138,9 +147,8 @@ TYPED_TEST(TCPTest, PrematureMessageEndingException) {
                        },
                        std::move(Socket(FLAGS_port)));
   EXPECT_EQ("PART",
-            TypeParam::Run(server_thread, "localhost", FLAGS_port, [](Connection& connection) {
-              connection.BlockingWrite("FUUU");
-            }));
+            TypeParam::ReadFromSocket(server_thread,
+                                      [](Connection& connection) { connection.BlockingWrite("FUUU"); }));
   EXPECT_EQ('F', big_struct.first_byte);
   EXPECT_EQ('U', big_struct.second_byte);
 }
