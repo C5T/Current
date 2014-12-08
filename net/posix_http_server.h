@@ -19,8 +19,12 @@ typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 
 class HTTPHeaderParser {
  public:
-  inline HTTPHeaderParser(const int intial_buffer_size = 1600, const double buffer_growth_k = 1.95)
-      : buffer_(intial_buffer_size), buffer_growth_k_(buffer_growth_k) {
+  inline HTTPHeaderParser(const int intial_buffer_size = 1600,
+                          const double buffer_growth_k = 1.95,
+                          const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+      : buffer_(intial_buffer_size),
+        buffer_growth_k_(buffer_growth_k),
+        buffer_max_growth_due_to_content_length_(buffer_max_growth_due_to_content_length) {
   }
 
   inline const std::string& Method() const {
@@ -139,8 +143,17 @@ class HTTPHeaderParser {
             content_offset_ = current_line + kCRLFLength - &buffer_[0];
             // Only accept HTTP body if Content-Length has been set; ignore it otherwise.
             if (content_length_ != static_cast<size_t>(-1)) {
+              // Has HTTP body to parse.
               length_cap = content_offset_ + content_length_;
+              // Resize the buffer to be able to get the contents of HTTP body without extra resizes,
+              // while being careful to not be open to extra-large mistakenly or maliciously set Content-Length.
+              // Keep in mind that `buffer_` should have the size of `length_cap + 1`, to include the `\0'.
+              if (length_cap + 1 > buffer_.size()) {
+                const size_t delta_size = length_cap + 1 - buffer_.size();
+                buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length_));
+              }
             } else {
+              // Indicate we are done parsing the header.
               length_cap = content_offset_;
             }
           }
@@ -163,6 +176,7 @@ class HTTPHeaderParser {
   std::map<std::string, std::string> headers_;
   std::vector<char> buffer_;
   const double buffer_growth_k_;
+  const size_t buffer_max_growth_due_to_content_length_;
   size_t content_offset_ = static_cast<size_t>(-1);
   size_t content_length_ = static_cast<size_t>(-1);
 };
