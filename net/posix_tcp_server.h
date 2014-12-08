@@ -80,7 +80,7 @@ class GenericConnection {
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
   // The `std::enable_if<>` clause is required otherwise invoking `BlockingWrite(char[N])` does not compile.
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type)>::type BlockingWrite(const T& container) {
+  inline typename std::enable_if<sizeof(typename T::value_type) != 0>::type BlockingWrite(const T& container) {
     BlockingWrite(container.begin(), container.end());
   }
 
@@ -117,7 +117,7 @@ class Socket final {
     sockaddr_in addr_server{};
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
-    addr_server.sin_port = ::htons(port);
+    addr_server.sin_port = htons(port);
 
     if (::bind(socket_, (sockaddr*)&addr_server, sizeof(addr_server)) == -1) {
       ::close(socket_);
