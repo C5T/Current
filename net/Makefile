@@ -13,7 +13,7 @@ BIN_FOR_COVERAGE=$(SRC:%.cc=build/coverage/%)
 
 test: all
 	./build/curl_based_test
-	./build/telnet_based_test
+	./build/posix_tcp_server_test
 
 all: build ${BIN}
 
@@ -49,7 +49,7 @@ build/coverage/%: %.cc *.h
 	${CPP} ${CPPFLAGS_FOR_COVERAGE} -o $@ $< ${LDFLAGS_FOR_COVERAGE}
 
 coverage: build/coverage ${BIN_FOR_COVERAGE}
-	rm -rf .tmp; mkdir .tmp; ./build/coverage/curl_based_test && rm -rf .tmp
+	rm -rf .tmp; mkdir .tmp; ./build/coverage/posix_tcp_server_test && rm -rf .tmp
 	gcov curl_based_test.cc
 	geninfo . --output-file coverage.info
 	genhtml coverage.info --output-directory build/coverage | grep -A 2 "^Overall"

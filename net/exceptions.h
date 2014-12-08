@@ -6,14 +6,22 @@
 namespace bricks {
 namespace net {
 
+// TODO(dkorolev): Work with Alex on shortening the names.
+
 struct NetworkException : std::exception {};
 
 struct SocketException : NetworkException {};
-
 struct SocketCreateException : SocketException {};
-struct SocketBindException : SocketException {};
-struct SocketListenException : SocketException {};
-struct SocketAcceptException : SocketException {};
+
+struct ServerSocketException : SocketException {};
+struct SocketBindException : ServerSocketException {};
+struct SocketListenException : ServerSocketException {};
+struct SocketAcceptException : ServerSocketException {};
+
+struct ClientSocketException : SocketException {};
+struct SocketConnectException : ClientSocketException {};
+struct SocketResolveAddressException : ClientSocketException {};
+
 struct SocketFcntlException : SocketException {};
 struct SocketReadException : SocketException {};
 struct SocketReadMultibyteRecordEndedPrematurelyException : SocketReadException {};
