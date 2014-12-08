@@ -72,18 +72,14 @@ class GenericConnection {
     BlockingWrite(s, strlen(s));
   }
 
-  inline void BlockingWrite(char* s) {
-    assert(s);
-    BlockingWrite(s, strlen(s));
-  }
-
   template <typename T>
   inline void BlockingWrite(const T begin, const T end) {
     BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
   }
 
-  template <typename T>
-  inline void BlockingWrite(const T& container) {
+  // Specialization for STL containers.
+  template<typename T>
+  inline typename std::enable_if<sizeof(typename T::value_type)>::type BlockingWrite(const T& container) {
     BlockingWrite(container.begin(), container.end());
   }
 
