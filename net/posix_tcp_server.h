@@ -84,7 +84,6 @@ class SocketHandle {
   void operator=(SocketHandle&&) = delete;
 };
 
-enum class BlockingReadPolicy : bool { JustAvailableData = false, FillFullBuffer = true };
 class Connection : public SocketHandle {
  public:
   inline Connection(SocketHandle&& socket) : SocketHandle(std::move(socket)) {
@@ -103,10 +102,11 @@ class Connection : public SocketHandle {
   // until the boundary of the records, or max_length of them, has been read.
   // Alternatively, the 3rd parameter can be explicitly set to BlockingReadPolicy::FillFullBuffer,
   // which will cause BlockingRead() to keep reading more data until all `max_elements` are read or EOF is hit.
+  enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
   inline size_t BlockingRead(T* buffer,
                              size_t max_length,
-                             BlockingReadPolicy policy = BlockingReadPolicy::JustAvailableData) {
+                             BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
     uint8_t* raw_ptr = raw_buffer;
     const size_t max_length_in_bytes = max_length * sizeof(T);
@@ -151,9 +151,9 @@ class Connection : public SocketHandle {
 
   template <typename T = std::string>
   inline typename std::enable_if<sizeof(typename T::value_type) != 0, T>::type BlockingReadUntilEOF() {
-    T placeholder;
-    BlockingReadUntilEOF(placeholder);
-    return placeholder;
+    T container;
+    BlockingReadUntilEOF(container);
+    return container;
   }
 
   inline void BlockingWrite(const void* buffer, size_t write_length) {
@@ -268,7 +268,8 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       if (retval2) {
         throw SocketConnectException();
       }
-      freeaddrinfo(servinfo);
+      // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
+      ::freeaddrinfo(servinfo);
     }
   };
 

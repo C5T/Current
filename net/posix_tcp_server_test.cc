@@ -27,8 +27,6 @@ using bricks::net::Socket;
 using bricks::net::Connection;
 using bricks::net::ClientSocket;
 
-using bricks::net::BlockingReadPolicy;
-
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 
 struct TCPClientImplPOSIX {
@@ -112,7 +110,7 @@ TYPED_TEST(TCPTest, EchoThreeMessages) {
                          Connection connection(socket.Accept());
                          for (int i = 0;; ++i) {
                            const size_t read_length =
-                               connection.BlockingRead(&s[0], block_length, BlockingReadPolicy::FillFullBuffer);
+                               connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer);
                            if (read_length) {
                              EXPECT_EQ(block_length, read_length);
                              connection.BlockingWrite(i > 0 ? "," : "ECHO: ");
