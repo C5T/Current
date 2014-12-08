@@ -28,7 +28,7 @@ class GenericConnection {
 
   inline ~GenericConnection() {
     if (fd_ != -1) {
-      close(fd_);
+      ::close(fd_);
     }
   }
 
@@ -38,7 +38,7 @@ class GenericConnection {
     uint8_t* raw_ptr = raw_buffer;
     const size_t max_length_in_bytes = max_length * sizeof(T);
     do {
-      const ssize_t read_length_or_error = read(fd_, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
+      const ssize_t read_length_or_error = ::read(fd_, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
       if (read_length_or_error < 0) {
         throw SocketReadException();
       } else if (read_length_or_error == 0) {
@@ -59,7 +59,7 @@ class GenericConnection {
 
   inline void BlockingWrite(const void* buffer, size_t write_length) {
     assert(buffer);
-    const ssize_t result = write(fd_, buffer, write_length);
+    const ssize_t result = ::write(fd_, buffer, write_length);
     if (result < 0) {
       throw SocketWriteException();
     } else if (static_cast<size_t>(result) != write_length) {
@@ -104,38 +104,40 @@ class Connection final : public GenericConnection {
 class Socket final {
  public:
   inline explicit Socket(int port, int max_connections = kMaxQueuedConnections)
-      : socket_(socket(AF_INET, SOCK_STREAM, 0)) {
+      : socket_(::socket(AF_INET, SOCK_STREAM, 0)) {
     if (socket_ < 0) {
       throw SocketCreateException();
     }
 
     int just_one = 1;
-    setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(int));
+    if (::setsockopt(socket_, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(int))) {
+      throw SocketCreateException();
+    }
 
     sockaddr_in addr_server{};
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
-    addr_server.sin_port = htons(port);
+    addr_server.sin_port = ::htons(port);
 
-    if (bind(socket_, (sockaddr*)&addr_server, sizeof(addr_server)) == -1) {
-      close(socket_);
+    if (::bind(socket_, (sockaddr*)&addr_server, sizeof(addr_server)) == -1) {
+      ::close(socket_);
       throw SocketBindException();
     }
 
-    if (listen(socket_, max_connections)) {
-      close(socket_);
+    if (::listen(socket_, max_connections)) {
+      ::close(socket_);
       throw SocketListenException();
     }
   }
 
   inline ~Socket() {
-    close(socket_);
+    ::close(socket_);
   }
 
   inline GenericConnection Accept() const {
     sockaddr_in addr_client{};
     socklen_t addr_client_length = sizeof(sockaddr_in);
-    const int fd = accept(socket_, (struct sockaddr*)&addr_client, &addr_client_length);
+    const int fd = ::accept(socket_, (struct sockaddr*)&addr_client, &addr_client_length);
     if (fd == -1) {
       throw SocketAcceptException();
     }
