@@ -67,6 +67,10 @@ class HTTPHeaderParser {
   // Parses HTTP headers. Extracts method, URL, and, if provided, the body.
   // Can be statically overridden by providing a different template class as a parameter for
   // GenericHTTPConnection.
+  //
+  // Return value:
+  // - False if the headers could not have been parsed due to connection interrupted by peer.
+  // - True in any other case, since almost no header validation is performed by this implementation.
   inline bool ParseHTTPHeader(const GenericConnection& c) {
     // HTTP constants to parse the header and extract method, URL, headers and body.
     const char* const kCRLF = "\r\n";
