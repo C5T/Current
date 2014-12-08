@@ -1,5 +1,4 @@
-// TODO(dkorolev): Add `ReadAll()` or something similar alongside `BlockingRead()`. And use it.
-
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <functional>
@@ -24,6 +23,8 @@ using bricks::net::Socket;
 using bricks::net::Connection;
 using bricks::net::ClientSocket;
 
+using bricks::net::BlockingReadPolicy;
+
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 
 struct TCPClientImplPOSIX {
@@ -35,10 +36,7 @@ struct TCPClientImplPOSIX {
     f(connection);
     connection.SendEOF();
     server_thread.join();
-    const size_t max_size = 1000;
-    vector<uint8_t> buffer(max_size);
-    const size_t length = connection.BlockingRead(&buffer[0], max_size);
-    return string(buffer.begin(), buffer.begin() + length);
+    return connection.BlockingReadUntilEOF();
   }
   static string Run(std::thread& server_thread,
                     const string& host,
@@ -75,16 +73,7 @@ TYPED_TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
 TYPED_TEST(TCPTest, EchoMessage) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
-                         const size_t length = 7;
-                         string s(length, ' ');
-                         size_t offset = 0;
-                         while (offset < length) {
-                           const size_t bytes_read = connection.BlockingRead(&s[offset], length - offset);
-                           ASSERT_GT(bytes_read, 0);
-                           offset += bytes_read;
-                         }
-                         ASSERT_EQ(length, s.length());
-                         connection.BlockingWrite("ECHO: " + s);
+                         connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
                        },
                        std::move(Socket(FLAGS_port)));
   EXPECT_EQ("ECHO: TEST OK", TypeParam::Run(server_thread, "localhost", FLAGS_port, "TEST OK"));
@@ -95,13 +84,7 @@ TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
                          const size_t length = 2;
-                         vector<uint16_t> data(length);
-                         size_t offset = 0;
-                         while (offset < length) {
-                           const size_t bytes_read = connection.BlockingRead(&data[offset], length - offset);
-                           ASSERT_GT(bytes_read, 0);
-                           offset += bytes_read;
-                         }
+                         vector<uint16_t> data = connection.BlockingReadUntilEOF<vector<uint16_t> >();
                          ASSERT_EQ(length, data.size());
                          char s[64];
                          ::snprintf(s, sizeof(s), "UINT16-s: %04x %04x", data[0], data[1]);
@@ -113,26 +96,29 @@ TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
 
 TYPED_TEST(TCPTest, EchoTwoMessages) {
   thread server_thread([](Socket socket) {
+                         const size_t block_length = 3;
+                         string s(block_length, ' ');
                          Connection connection(socket.Accept());
-                         for (int i = 0; i < 2; ++i) {
-                           const size_t length = 3;
-                           string s(length, ' ');
-                           size_t offset = 0;
-                           while (offset < length) {
-                             const size_t bytes_read = connection.BlockingRead(&s[offset], length - offset);
-                             ASSERT_GT(bytes_read, 0);
-                             offset += bytes_read;
+                         for (int i = 0;; ++i) {
+                           const size_t read_length =
+                               connection.BlockingRead(&s[0], block_length, BlockingReadPolicy::FillFullBuffer);
+                           if (read_length) {
+                             EXPECT_EQ(block_length, read_length);
+                             connection.BlockingWrite(i > 0 ? "," : "ECHO: ");
+                             connection.BlockingWrite(s);
+                           } else {
+                             break;
                            }
-                           ASSERT_EQ(length, s.length());
-                           connection.BlockingWrite(i ? "," : "ECHO2: ");
-                           connection.BlockingWrite(s);
                          }
                        },
                        std::move(Socket(FLAGS_port)));
-  EXPECT_EQ("ECHO2: FOO,BAR",
+  EXPECT_EQ("ECHO: FOO,BAR,BAZ",
             TypeParam::Run(server_thread, "localhost", FLAGS_port, [](Connection& connection) {
-              connection.BlockingWrite("FOO");
-              connection.BlockingWrite("BAR");
+              connection.BlockingWrite("FOOBARB");
+              std::this_thread::sleep_for(std::chrono::milliseconds(1));
+              connection.BlockingWrite("A");
+              std::this_thread::sleep_for(std::chrono::milliseconds(1));
+              connection.BlockingWrite("Z");
             }));
 }
 
