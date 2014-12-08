@@ -11,6 +11,8 @@ namespace net {
 struct NetworkException : std::exception {};
 
 struct SocketException : NetworkException {};
+
+struct InvalidSocketException : SocketException {};
 struct SocketCreateException : SocketException {};
 
 struct ServerSocketException : SocketException {};

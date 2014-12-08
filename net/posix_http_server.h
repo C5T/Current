@@ -71,7 +71,7 @@ class HTTPHeaderParser {
   // Return value:
   // - False if the headers could not have been parsed due to connection interrupted by peer.
   // - True in any other case, since almost no header validation is performed by this implementation.
-  inline bool ParseHTTPHeader(const GenericConnection& c) {
+  inline bool ParseHTTPHeader(Connection& c) {
     // HTTP constants to parse the header and extract method, URL, headers and body.
     const char* const kCRLF = "\r\n";
     const size_t kCRLFLength = strlen(kCRLF);
@@ -186,16 +186,16 @@ class HTTPHeaderParser {
 };
 
 template <typename HEADER_PARSER = HTTPHeaderParser>
-class GenericHTTPConnection final : public GenericConnection, public HEADER_PARSER {
+class GenericHTTPConnection final : public Connection, public HEADER_PARSER {
  public:
   typedef HEADER_PARSER T_HEADER_PARSER;
 
-  inline GenericHTTPConnection(GenericConnection&& c)
-      : GenericConnection(std::move(c)), T_HEADER_PARSER(), good_(T_HEADER_PARSER::ParseHTTPHeader(*this)) {
+  inline GenericHTTPConnection(Connection&& c)
+      : Connection(std::move(c)), T_HEADER_PARSER(), good_(T_HEADER_PARSER::ParseHTTPHeader(*this)) {
   }
 
   inline GenericHTTPConnection(GenericHTTPConnection&& c)
-      : GenericConnection(std::move(c)), T_HEADER_PARSER(), good_(T_HEADER_PARSER::ParseHTTPHeader(*this)) {
+      : Connection(std::move(c)), T_HEADER_PARSER(), good_(T_HEADER_PARSER::ParseHTTPHeader(*this)) {
   }
 
   inline operator bool() const {

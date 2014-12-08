@@ -1,7 +1,7 @@
 .PHONY: test all indent clean check coverage
 
 CPP=g++
-CPPFLAGS=-std=c++11 -Wall
+CPPFLAGS=-std=c++11 -g -Wall
 LDFLAGS=-pthread
 CPPFLAGS_FOR_COVERAGE=${CPPFLAGS} -O0 -g -fprofile-arcs -ftest-coverage
 LDFLAGS_FOR_COVERAGE=${LDFLAGS}
