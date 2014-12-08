@@ -22,9 +22,9 @@ using std::string;
 using std::thread;
 using std::to_string;
 
-using ::bricks::net::Socket;
-using ::bricks::net::HTTPConnection;
-using ::bricks::net::HTTPNoBodyProvidedException;
+using bricks::net::Socket;
+using bricks::net::HTTPConnection;
+using bricks::net::HTTPNoBodyProvidedException;
 
 string Curl(const string& cmdline) {
   FILE* pipe = ::popen(cmdline.c_str(), "r");

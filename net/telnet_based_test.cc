@@ -24,10 +24,10 @@ using std::string;
 using std::thread;
 using std::to_string;
 
-using ::bricks::net::Socket;
-using ::bricks::net::Connection;
+using bricks::net::Socket;
+using bricks::net::Connection;
 
-using ::bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
+using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 
 bool HasPrefix(const char* str, const char* prefix) {
   return !strncmp(str, prefix, strlen(prefix));
