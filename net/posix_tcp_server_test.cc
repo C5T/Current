@@ -24,7 +24,7 @@ using bricks::net::ClientSocket;
 
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 
-struct TCPImplTelnet {
+struct TCPClientImplPOSIX {
   static string Run(std::thread& server_thread,
                     const string& host,
                     const uint16_t port,
@@ -33,7 +33,7 @@ struct TCPImplTelnet {
     f(connection);
     connection.SendEOF();
     server_thread.join();
-    // TODO(dkorolev): Talk to Alex here; perhaps we do need some ReadTillEOF() method for Connection.
+    // TODO(dkorolev): Talk to Alex here; perhaps we do need some `ReadTillEOF()` method for `Connection`.
     const size_t max_size = 1000;
     vector<uint8_t> buffer(max_size);
     const size_t length = connection.BlockingRead(&buffer[0], max_size);
@@ -54,8 +54,8 @@ struct TCPImplTelnet {
 template <typename T>
 class TCPTest : public ::testing::Test {};
 
-typedef ::testing::Types<TCPImplTelnet> TestTCPImplsTypeList;
-TYPED_TEST_CASE(TCPTest, TestTCPImplsTypeList);
+typedef ::testing::Types<TCPClientImplPOSIX> TCPClientImplsTypeList;
+TYPED_TEST_CASE(TCPTest, TCPClientImplsTypeList);
 
 TYPED_TEST(TCPTest, ReceiveMessage) {
   thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, std::move(Socket(FLAGS_port)));
