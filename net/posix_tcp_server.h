@@ -77,7 +77,8 @@ class GenericConnection {
     BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
   }
 
-  // Specialization for STL containers.
+  // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
+  // The `std::enable_if<>` clause is required otherwise invoking `BlockingWrite(char[N])` does not compile.
   template<typename T>
   inline typename std::enable_if<sizeof(typename T::value_type)>::type BlockingWrite(const T& container) {
     BlockingWrite(container.begin(), container.end());
