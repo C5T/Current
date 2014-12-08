@@ -92,7 +92,7 @@ TYPED_TEST(TCPTest, EchoMessage) {
   EXPECT_EQ("ECHO: TEST OK", TypeParam::ReadFromSocket(server_thread, "TEST OK"));
 }
 
-TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
+TYPED_TEST(TCPTest, EchoMessageOfThreeUInt16) {
   // Note: This tests endianness as well -- D.K.
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
@@ -105,7 +105,7 @@ TYPED_TEST(TCPTest, EchoMessageOfTwoUInt16) {
   EXPECT_EQ("UINT16-s: 3252 2020 3244", TypeParam::ReadFromSocket(server_thread, "R2  D2"));
 }
 
-TYPED_TEST(TCPTest, EchoTwoMessages) {
+TYPED_TEST(TCPTest, EchoThreeMessages) {
   thread server_thread([](Socket socket) {
                          const size_t block_length = 3;
                          string s(block_length, ' ');
