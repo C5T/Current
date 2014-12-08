@@ -1,3 +1,5 @@
+// TODO(dkorolev): Add `ReadAll()` or something similar alongside `BlockingRead()`. And use it.
+
 #include <cstdio>
 #include <cstring>
 #include <functional>
@@ -33,7 +35,6 @@ struct TCPClientImplPOSIX {
     f(connection);
     connection.SendEOF();
     server_thread.join();
-    // TODO(dkorolev): Talk to Alex here; perhaps we do need some `ReadTillEOF()` method for `Connection`.
     const size_t max_size = 1000;
     vector<uint8_t> buffer(max_size);
     const size_t length = connection.BlockingRead(&buffer[0], max_size);
