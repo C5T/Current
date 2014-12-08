@@ -13,6 +13,7 @@ BIN_FOR_COVERAGE=$(SRC:%.cc=build/coverage/%)
 
 test: all
 	./build/curl_based_test
+	./build/telnet_based_test
 
 all: build ${BIN}
 

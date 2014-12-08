@@ -16,6 +16,7 @@ struct SocketListenException : SocketException {};
 struct SocketAcceptException : SocketException {};
 struct SocketFcntlException : SocketException {};
 struct SocketReadException : SocketException {};
+struct SocketReadMultibyteRecordEndedPrematurelyException : SocketReadException {};
 struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 

@@ -34,11 +34,27 @@ class GenericConnection {
 
   template <typename T>
   inline size_t BlockingRead(T* buffer, size_t max_length) const {
-    const ssize_t read_length_or_error = read(fd_, reinterpret_cast<void*>(buffer), max_length * sizeof(T));
-    if (read_length_or_error < 0) {
-      throw SocketReadException();
-    }
-    return static_cast<size_t>(read_length_or_error);
+    uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
+    uint8_t* raw_ptr = raw_buffer;
+    const size_t max_length_in_bytes = max_length * sizeof(T);
+    do {
+      const ssize_t read_length_or_error = read(fd_, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
+      if (read_length_or_error < 0) {
+        throw SocketReadException();
+      } else if (read_length_or_error == 0) {
+        // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
+        // and StackOverflow is that a return value of zero from read() from a socket indicates
+        // that the socket has been closed by the peer.
+        // For this implementation, throw an exception if some record was read only partially.
+        if ((raw_ptr - raw_buffer) % sizeof(T)) {
+          throw SocketReadMultibyteRecordEndedPrematurelyException();
+        }
+        break;
+      } else {
+        raw_ptr += read_length_or_error;
+      }
+    } while ((raw_ptr - raw_buffer) % sizeof(T));
+    return (raw_ptr - raw_buffer) / sizeof(T);
   }
 
   inline void BlockingWrite(const void* buffer, size_t write_length) {
@@ -61,8 +77,10 @@ class GenericConnection {
     BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
   }
 
-  template <typename T>
-  inline void BlockingWrite(const T& container) {
+  // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
+  // The `std::enable_if<>` clause is required otherwise invoking `BlockingWrite(char[N])` does not compile.
+  template<typename T>
+  inline typename std::enable_if<sizeof(typename T::value_type)>::type BlockingWrite(const T& container) {
     BlockingWrite(container.begin(), container.end());
   }
 
