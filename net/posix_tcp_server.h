@@ -23,8 +23,9 @@ const bool kDisableNagleAlgorithmByDefault = false;
 
 class SocketHandle {
  public:
-  struct NewHandle {};
-  struct FromHandle {
+  // Two ways to construct SocketHandle: via NewHandle() or FromHandle(int handle).
+  struct NewHandle final {};
+  struct FromHandle final {
     int handle;
     FromHandle(int handle) : handle(handle) {
     }
@@ -56,22 +57,23 @@ class SocketHandle {
   int socket_;
 
  public:
-  class SafeSocketAccessor {
+  // The `ReadOnlyIntFieldAccessor socket` members provide simple read-only access to `socket_` via `socket`.
+  class ReadOnlyIntFieldAccessor final {
    public:
-    explicit SafeSocketAccessor(const int* p) : p(p) {
+    explicit ReadOnlyIntFieldAccessor(const int& ref) : ref_(ref) {
     }
     inline operator int() {
-      if (!*p) {
+      if (!ref_) {
         throw InvalidSocketException();
       }
-      return *p;
+      return ref_;
     }
 
    private:
-    SafeSocketAccessor() = delete;
-    const int* p;
+    ReadOnlyIntFieldAccessor() = delete;
+    const int& ref_;
   };
-  SafeSocketAccessor socket = SafeSocketAccessor(&socket_);
+  ReadOnlyIntFieldAccessor socket = ReadOnlyIntFieldAccessor(socket_);
 
  private:
   SocketHandle() = delete;
