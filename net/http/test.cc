@@ -1,12 +1,3 @@
-// Linux- and Mac-specific unit tests for HTTP server implementation. Using external `curl` from shell.
-//
-// TODO(dkorolev): ONLY HERE TO INITIALLY CHECK THE CODE IN. TO BE REPLACED BY C++ HTTP CLIENT.
-//
-// Don't write unit tests like this.
-// Please, never write unit tests like this.
-// Every time you write a test like this God kills a kitten.
-// Hear me. Don't. Just don't. It's not worth your karma. Go do something else.
-
 #include <thread>
 
 #include "posix.h"
@@ -16,26 +7,92 @@
 #include "../../3party/gtest/gtest.h"
 #include "../../3party/gtest/gtest-main.h"
 
-DEFINE_int32(port, 8081, "Local port to use for the test server.");
+#include "../../string/printf.h"
+using namespace bricks::string;
+
+DEFINE_int32(port, 8080, "Local port to use for the test server.");
 
 using std::string;
 using std::thread;
 using std::to_string;
+using std::move;
 
 using bricks::net::Socket;
+using bricks::net::ClientSocket;
+using bricks::net::Connection;
 using bricks::net::HTTPConnection;
+using bricks::net::HTTPHeaderParser;
 using bricks::net::HTTPNoBodyProvidedException;
 
-string Curl(const string& cmdline) {
-  FILE* pipe = ::popen(cmdline.c_str(), "r");
-  assert(pipe);
-  char s[1024];
-  ::fgets(s, sizeof(s), pipe);
-  ::pclose(pipe);
-  return s;
-}
+struct HTTPClientImplCURL {
+  static string Syscall(const string& cmdline) {
+    FILE* pipe = ::popen(cmdline.c_str(), "r");
+    assert(pipe);
+    char s[1024];
+    ::fgets(s, sizeof(s), pipe);
+    ::pclose(pipe);
+    return s;
+  }
 
-TEST(CurlHTTP, GET) {
+  static string Fetch(thread& server_thread, const string& url, const string& method) {
+    const string result =
+        Syscall(Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_port, url.c_str()));
+    server_thread.join();
+    return result;
+  }
+
+  static string FetchWithBody(thread& server_thread,
+                              const string& url,
+                              const string& method,
+                              const string& data) {
+    const string result = Syscall(
+        Printf("curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_port, url.c_str()));
+    server_thread.join();
+    return result;
+  }
+};
+
+struct HTTPClientImplPOSIX : HTTPHeaderParser {
+  struct Impl : HTTPHeaderParser {
+    Impl(thread& server_thread,
+         const string& url,
+         const string& method,
+         bool has_data = false,
+         const string& data = "") {
+      Connection connection(ClientSocket("localhost", FLAGS_port));
+      connection.BlockingWrite(method + ' ' + url + "\r\n");
+      if (has_data) {
+        connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n");
+      }
+      connection.BlockingWrite("\r\n");
+      if (has_data) {
+        connection.BlockingWrite(data);
+      }
+      connection.SendEOF();
+      HTTPHeaderParser::ParseHTTPHeader(connection);
+      server_thread.join();
+    }
+  };
+
+  static string Fetch(thread& server_thread, const string& url, const string& method) {
+    return Impl(server_thread, url, method).Body();
+  }
+
+  static string FetchWithBody(thread& server_thread,
+                              const string& url,
+                              const string& method,
+                              const string& data) {
+    return Impl(server_thread, url, method, true, data).Body();
+  }
+};
+
+template <typename T>
+class HTTPTest : public ::testing::Test {};
+
+typedef ::testing::Types<HTTPClientImplPOSIX, HTTPClientImplCURL> HTTPClientImplsTypeList;
+TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
+
+TYPED_TEST(HTTPTest, GET) {
   thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
@@ -44,11 +101,10 @@ TEST(CurlHTTP, GET) {
     EXPECT_EQ("/unittest", c.URL());
     c.SendHTTPResponse("PASSED");
   });
-  EXPECT_EQ("PASSED", Curl(string("curl -s localhost:") + to_string(FLAGS_port) + "/unittest"));
-  t.join();
+  EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest", "GET"));
 }
 
-TEST(CurlHTTP, POST) {
+TYPED_TEST(HTTPTest, POST) {
   thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
@@ -58,11 +114,10 @@ TEST(CurlHTTP, POST) {
     EXPECT_EQ("BAZINGA", c.Body());
     c.SendHTTPResponse("POSTED");
   });
-  EXPECT_EQ("POSTED", Curl(string("curl -s -d BAZINGA localhost:") + to_string(FLAGS_port) + "/unittest_post"));
-  t.join();
+  EXPECT_EQ("POSTED", TypeParam::FetchWithBody(t, "/unittest_post", "POST", "BAZINGA"));
 }
 
-TEST(CurlHTTP, NoBodyPost) {
+TYPED_TEST(HTTPTest, NoBodyPost) {
   thread t([]() {
     Socket s(FLAGS_port);
     HTTPConnection c(s.Accept());
@@ -73,7 +128,5 @@ TEST(CurlHTTP, NoBodyPost) {
     ASSERT_THROW(c.Body(), HTTPNoBodyProvidedException);
     c.SendHTTPResponse("ALMOST_POSTED");
   });
-  EXPECT_EQ("ALMOST_POSTED",
-            Curl(string("curl -s -X POST localhost:") + to_string(FLAGS_port) + "/unittest_empty_post"));
-  t.join();
+  EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
 }
