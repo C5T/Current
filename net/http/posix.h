@@ -1,5 +1,7 @@
-#ifndef BRICKS_NET_POSIX_HTTP_SERVER_H
-#define BRICKS_NET_POSIX_HTTP_SERVER_H
+// TODO(dkorolev): Add Mac support and find out the right name for this header file.
+
+#ifndef BRICKS_NET_HTTP_POSIX_H
+#define BRICKS_NET_HTTP_POSIX_H
 
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
@@ -8,9 +10,10 @@
 #include <string>
 #include <vector>
 
-#include "exceptions.h"
-#include "posix_tcp_server.h"
-#include "http_response_codes.h"
+#include "codes.h"
+
+#include "../exceptions.h"
+#include "../tcp/posix.h"
 
 namespace bricks {
 namespace net {
@@ -268,4 +271,4 @@ typedef GenericHTTPConnection<HTTPHeaderParser> HTTPConnection;
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_POSIX_HTTP_SERVER_H
+#endif  // BRICKS_NET_HTTP_POSIX_H
