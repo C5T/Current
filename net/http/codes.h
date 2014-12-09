@@ -1,5 +1,5 @@
-#ifndef BRICKS_NET_HTTP_RESPONSE_CODES_H
-#define BRICKS_NET_HTTP_RESPONSE_CODES_H
+#ifndef BRICKS_NET_HTTP_CODES_H
+#define BRICKS_NET_HTTP_CODES_H
 
 // HTTP codes: http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html
 
@@ -109,4 +109,4 @@ class HTTPResponseCodeAsStringGenerator {
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_HTTP_RESPONSE_CODES_H
+#endif  // BRICKS_NET_HTTP_CODES_H

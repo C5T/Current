@@ -1,7 +1,9 @@
-#ifndef BRICKS_NET_POSIX_TCP_SERVER_H
-#define BRICKS_NET_POSIX_TCP_SERVER_H
+// TODO(dkorolev): Add Mac support and find out the right name for this header file.
 
-#include "exceptions.h"
+#ifndef BRICKS_NET_TCP_POSIX_H
+#define BRICKS_NET_TCP_POSIX_H
+
+#include "../exceptions.h"
 
 #include <cassert>
 #include <cstring>
@@ -279,4 +281,4 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_POSIX_TCP_SERVER_H
+#endif  // BRICKS_NET_TCP_POSIX_H

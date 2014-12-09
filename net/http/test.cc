@@ -9,12 +9,12 @@
 
 #include <thread>
 
-#include "posix_http_server.h"
+#include "posix.h"
 
-#include "../dflags/dflags.h"
+#include "../../dflags/dflags.h"
 
-#include "../3party/gtest/gtest.h"
-#include "../3party/gtest/gtest-main.h"
+#include "../../3party/gtest/gtest.h"
+#include "../../3party/gtest/gtest-main.h"
 
 DEFINE_int32(port, 8081, "Local port to use for the test server.");
 

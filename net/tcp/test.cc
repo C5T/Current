@@ -1,17 +1,15 @@
 #include <chrono>
-#include <cstdio>
-#include <cstring>
 #include <functional>
 #include <thread>
 
-#include "posix_tcp_server.h"
+#include "posix.h"
 
-#include "../dflags/dflags.h"
+#include "../../dflags/dflags.h"
 
-#include "../string/printf.h"
+#include "../../string/printf.h"
 
-#include "../3party/gtest/gtest.h"
-#include "../3party/gtest/gtest-main.h"
+#include "../../3party/gtest/gtest.h"
+#include "../../3party/gtest/gtest-main.h"
 
 DEFINE_int32(port, 8081, "Port to use for the test.");
 
