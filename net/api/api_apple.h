@@ -96,7 +96,6 @@ struct HTTPClientTemplatedImpl<HTTPClientApple> {
     output.url = request_params.url;
     output.code = response.error_code;
     output.url_after_redirects = response.url_received;
-    output.was_redirected = (response.url_requested != response.url_received);
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>

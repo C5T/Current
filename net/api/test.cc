@@ -157,7 +157,6 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
   EXPECT_EQ("*******", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(url, response.url_after_redirects);
-  EXPECT_FALSE(response.was_redirected);
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
@@ -170,7 +169,6 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   EXPECT_EQ(file_name, response.body_file_name);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(url, response.url_after_redirects);
-  EXPECT_FALSE(response.was_redirected);
   EXPECT_EQ("*****", ReadFileAsString(response.body_file_name));
 }
 
@@ -243,7 +241,6 @@ TYPED_TEST(HTTPClientTemplatedTest, Https) {
   const auto response = HTTP(GET(url));
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(200, response.code);
-  EXPECT_FALSE(response.was_redirected);
   EXPECT_NE(string::npos, response.body.find("\"Aloha\": \"Mahalo\""));
 }
 
@@ -254,7 +251,6 @@ TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect302) {
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(200, response.code);
   EXPECT_EQ(TypeParam::BaseURL() + "/get", response.url_after_redirects);
-  EXPECT_TRUE(response.was_redirected);
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
@@ -272,7 +268,6 @@ TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect301) {
   if (TypeParam::SupportsExternalURLs()) {
     const auto response = HTTP(GET("http://github.com"));
     EXPECT_EQ(200, response.code);
-    EXPECT_TRUE(response.was_redirected);
     EXPECT_EQ("https://github.com/", response.url_after_redirects);
   }
 }
@@ -281,7 +276,6 @@ TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect307) {
   if (TypeParam::SupportsExternalURLs()) {
     const auto response = HTTP(GET("http://msn.com"));
     EXPECT_EQ(200, response.code);
-    EXPECT_TRUE(response.was_redirected);
     EXPECT_EQ("http://www.msn.com/", response.url_after_redirects);
   }
 }
