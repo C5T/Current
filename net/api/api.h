@@ -106,7 +106,7 @@ HTTPRequestPOSTFromFile POSTFromFile(const string& url, const string& file_name,
 // All responses inherit from `struct HTTPResponse`, that lists common fields.
 
 struct HTTPResponse {
-  string url;                  // Request.
+  string url;                  // The original URL requested by the client.
   int code;                    // Response code. TODO(dkorolev): HTTPResponseCode from ../http/codes.h?
   string url_after_redirects;  // The final URL after all the redirects.
   bool was_redirected;         // Whether there have been any redirects.
