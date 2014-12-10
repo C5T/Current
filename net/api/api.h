@@ -25,6 +25,7 @@
 #define BRICKS_NET_API_H
 
 #include <string>
+
 using std::string;
 
 namespace bricks {
