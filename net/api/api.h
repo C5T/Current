@@ -32,7 +32,7 @@ namespace net {
 namespace api {
 
 // HTTP exceptions.
-// TODO(dkorolev): STructure them.
+// TODO(dkorolev): Structure the exceptions. Make them all inherit from some BricksException.
 
 struct HTTPClientException : std::exception {};
 
@@ -191,8 +191,9 @@ struct HTTPClientImpl {
 #if defined(__APPLE__)
 #include "api_apple.h"
 bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientApple> HTTP;
-// #elif defined(__linux)
-// #include "api_posix.h"
+#elif defined(__linux)
+#include "api_posix.h"
+bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientPOSIX> HTTP;
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif

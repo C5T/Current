@@ -23,9 +23,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Check in the HTTP server here, the one as simple to use as this HTTP client.
-// TODO(dkorolev): Merge exception type(s) into bricks/net.
-
 #ifndef BRICKS_NET_API_APPLE_H
 #define BRICKS_NET_API_APPLE_H
 
@@ -41,6 +38,8 @@ namespace bricks {
 namespace net {
 namespace api {
 
+// TODO(dkorolev)+TODO(deathbaba): Reach the understanding that this class is Apple-only,
+// and remove cross-platform and Android-related comments there.
 class HTTPClientApple {
  public:
   enum {
