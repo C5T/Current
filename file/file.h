@@ -32,7 +32,7 @@ SOFTWARE.
 
 namespace bricks {
 
-std::string ReadFileAsString(std::string const& file_name) {
+inline std::string ReadFileAsString(std::string const& file_name) {
   std::ifstream fstream(file_name, std::ifstream::in | std::ifstream::binary);
   fstream.seekg(0, std::ios::end);
   const size_t size = fstream.tellg();
@@ -43,6 +43,15 @@ std::string ReadFileAsString(std::string const& file_name) {
   } else {
     // TODO(dkorolev): Throw an exception here.
     return "";
+  }
+}
+
+inline void WriteStringToFile(const string& file_name, const string& contents) {
+  std::ofstream file(file_name);
+  file << contents;
+  if (!file.good()) {
+    // TODO(dkorolev): Throw an exception of the proper type.
+    throw std::exception();
   }
 }
 
