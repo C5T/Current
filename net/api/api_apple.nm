@@ -90,5 +90,3 @@ bool bricks::net::api::HTTPClientApple::Go() {
 
   } // @autoreleasepool
 }
-
-} // namespace aloha
