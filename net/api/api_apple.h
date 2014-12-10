@@ -90,10 +90,7 @@ struct HTTPClientTemplatedImpl<HTTPClientApple> {
                                  const T_RESPONSE_PARAMS& response_params,
                                  const HTTPClientApple& response,
                                  HTTPResponse& output) {
-    if (request_params.url != response.url_requested) {
-      throw HTTPClientException();
-    }
-    output.url = request_params.url;
+    output.url = response.url_requested;
     output.code = response.error_code;
     output.url_after_redirects = response.url_received;
   }
