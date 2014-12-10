@@ -81,10 +81,13 @@ bool bricks::net::api::HTTPClientApple::Go() {
     }
 
     if (url_data) {
-      if (received_file.empty())
+      if (received_file.empty()) {
         server_response.assign(reinterpret_cast<char const *>(url_data.bytes), url_data.length);
-      else
-        [url_data writeToFile:[NSString stringWithUTF8String:received_file.c_str()] atomically:YES];
+      } else {
+        if (![url_data writeToFile:[NSString stringWithUTF8String:received_file.c_str()] atomically:YES]) {
+          return false;
+        }
+      }
     }
     return true;  // TODO(dkorolev) + TODO(deathbaba): Figure out something smarter than return (200 == error_code);
 
