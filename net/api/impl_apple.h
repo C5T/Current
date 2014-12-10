@@ -128,7 +128,7 @@ class HTTPClientApple {
 }  // namespace aloha
 
 #if defined(__APPLE__)
-#include "impl_apple.mm"
+#include "impl_apple.nm"
 #else
 // TODO(dkorolev) + TODO(deathbaba): I suggest to only keep Apple implementation in this file.
 // #elif defined(ANDROID)
