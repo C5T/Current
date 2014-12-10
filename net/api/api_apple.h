@@ -30,7 +30,7 @@ SOFTWARE.
 #define BRICKS_NET_API_APPLE_H
 
 #if !defined(__APPLE__)
-// #error "`net/api_apple.h` should only be included in Apple builds."
+#error "`net/api_apple.h` should only be included in Apple builds."
 #endif
 
 #include "api.h"
@@ -201,6 +201,6 @@ struct HTTPClientTemplatedImpl<HTTPClientApple> {
 }  // namespace net
 }  // namespace bricks
 
-// #include "api_apple.nm"
+#include "api_apple.nm"
 
 #endif  // BRICKS_NET_API_APPLE_H

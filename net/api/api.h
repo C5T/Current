@@ -188,11 +188,11 @@ struct HTTPClientImpl {
 // Actual implementations, guarded by preprpocessor directives.
 
 // TODO(dkorolev): Revisit these guards once we go beyond Ubuntu & Mac.
-#if 1  // defined(__APPLE__)
+#if defined(__APPLE__)
 #include "api_apple.h"
 bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientApple> HTTP;
-#elif defined(__linux)
-#include "api_posix.h"
+// #elif defined(__linux)
+// #include "api_posix.h"
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif

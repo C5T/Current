@@ -38,9 +38,7 @@ SOFTWARE.
 
 #define TIMEOUT_IN_SECONDS 30.0
 
-namespace aloha {
-
-bool HTTPClientApple::Go() {
+bool bricks::net::api::HTTPClientApple::Go() {
   @autoreleasepool {
 
     NSMutableURLRequest * request = [NSMutableURLRequest requestWithURL:
