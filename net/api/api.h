@@ -190,7 +190,7 @@ struct HTTPClientImpl {
 // TODO(dkorolev): Revisit these guards once we go beyond Ubuntu & Mac.
 #if 1  // defined(__APPLE__)
 #include "api_apple.h"
-bricks::net::api::HTTPClientImpl<HTTPClientApple> HTTP;
+bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientApple> HTTP;
 #elif defined(__linux)
 #include "api_posix.h"
 #else

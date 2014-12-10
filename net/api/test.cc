@@ -32,6 +32,7 @@ using namespace bricks::net::api;
 
 // TODO(dkorolev): Migrate to a simpler HTTP server implementation that is to be added to api.h soon.
 // This would not require any of these headers.
+#include "../http.h"
 using bricks::net::Socket;
 using bricks::net::HTTPConnection;
 using bricks::net::HTTPHeadersType;
