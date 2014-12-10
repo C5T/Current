@@ -36,14 +36,11 @@ SOFTWARE.
 #import <Foundation/NSError.h>
 #import <Foundation/NSFileManager.h>
 
-#include "http_client.h"
-
-
 #define TIMEOUT_IN_SECONDS 30.0
 
 namespace aloha {
 
-bool HTTPClientImplApple::Go() {
+bool HTTPClientApple::Go() {
   @autoreleasepool {
 
     NSMutableURLRequest * request = [NSMutableURLRequest requestWithURL:
