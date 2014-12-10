@@ -1,5 +1,7 @@
-// TODO (dkorolev) replace with #ifdef when final file name/location will be decided
-#pragma once
+// TODO(dkorolev): A huge TODO on cleaning up this file. Perhaps it could become Objective-C only?
+
+#ifndef BRICKS_NET_API_IMPL_APPLE_H
+#define BRICKS_NET_API_IMPL_APPLE_H
 
 /*******************************************************************************
 The MIT License (MIT)
@@ -30,7 +32,7 @@ SOFTWARE.
 
 namespace aloha {
 
-class HTTPClientPlatformWrapper {
+class HTTPClientApple {
  public:
   enum {
     kNotInitialized = -1,
@@ -50,21 +52,21 @@ class HTTPClientPlatformWrapper {
   std::string user_agent_;
   std::string post_body_;
 
-  HTTPClientPlatformWrapper(const HTTPClientPlatformWrapper&) = delete;
-  HTTPClientPlatformWrapper(HTTPClientPlatformWrapper&&) = delete;
-  HTTPClientPlatformWrapper& operator=(const HTTPClientPlatformWrapper&) = delete;
+  HTTPClientApple(const HTTPClientApple&) = delete;
+  HTTPClientApple(HTTPClientApple&&) = delete;
+  HTTPClientApple& operator=(const HTTPClientApple&) = delete;
 
  public:
-  HTTPClientPlatformWrapper() : error_code_(kNotInitialized) {
+  HTTPClientApple() : error_code_(kNotInitialized) {
   }
-  HTTPClientPlatformWrapper(const std::string& url) : url_requested_(url), error_code_(kNotInitialized) {
+  HTTPClientApple(const std::string& url) : url_requested_(url), error_code_(kNotInitialized) {
   }
-  HTTPClientPlatformWrapper& set_url_requested(const std::string& url) {
+  HTTPClientApple& set_url_requested(const std::string& url) {
     url_requested_ = url;
     return *this;
   }
   // This method is mutually exclusive with set_post_body().
-  HTTPClientPlatformWrapper& set_post_file(const std::string& post_file, const std::string& content_type) {
+  HTTPClientApple& set_post_file(const std::string& post_file, const std::string& content_type) {
     post_file_ = post_file;
     content_type_ = content_type;
     // TODO (dkorolev) replace with exceptions as discussed offline.
@@ -72,16 +74,16 @@ class HTTPClientPlatformWrapper {
     return *this;
   }
   // If set, stores server reply in file specified.
-  HTTPClientPlatformWrapper& set_received_file(const std::string& received_file) {
+  HTTPClientApple& set_received_file(const std::string& received_file) {
     received_file_ = received_file;
     return *this;
   }
-  HTTPClientPlatformWrapper& set_user_agent(const std::string& user_agent) {
+  HTTPClientApple& set_user_agent(const std::string& user_agent) {
     user_agent_ = user_agent;
     return *this;
   }
   // This method is mutually exclusive with set_post_file().
-  HTTPClientPlatformWrapper& set_post_body(const std::string& post_body, const std::string& content_type) {
+  HTTPClientApple& set_post_body(const std::string& post_body, const std::string& content_type) {
     post_body_ = post_body;
     content_type_ = content_type;
     // TODO (dkorolev) replace with exceptions as discussed offline.
@@ -90,7 +92,7 @@ class HTTPClientPlatformWrapper {
   }
   // Move version to avoid string copying.
   // This method is mutually exclusive with set_post_file().
-  HTTPClientPlatformWrapper& set_post_body(std::string&& post_body, const std::string& content_type) {
+  HTTPClientApple& set_post_body(std::string&& post_body, const std::string& content_type) {
     post_body_ = post_body;
     post_file_.clear();
     content_type_ = content_type;
@@ -100,7 +102,7 @@ class HTTPClientPlatformWrapper {
   // Synchronous (blocking) call, should be implemented for each platform
   // @returns true only if server answered with HTTP 200 OK
   // @note Implementations should transparently support all needed HTTP redirects
-  bool RunHTTPRequest();
+  bool Go();
 
   std::string const& url_requested() const {
     return url_requested_;
@@ -121,12 +123,16 @@ class HTTPClientPlatformWrapper {
     return server_response_;
   }
 
-};  // class HTTPClientPlatformWrapper
+};  // class HTTPClientApple
 
 }  // namespace aloha
 
 #if defined(__APPLE__)
 #include "http_client_apple.mm"
-#elif defined(ANDROID)
-#include "http_client_android.cc"
+#else
+// TODO(dkorolev) + TODO(deathbaba): I suggest to only keep Apple implementation in this file.
+// #elif defined(ANDROID)
+// #include "http_client_android.cc"
 #endif
+
+#endif  // BRICKS_NET_API_IMPL_APPLE_H

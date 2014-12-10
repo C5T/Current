@@ -43,7 +43,7 @@ SOFTWARE.
 
 namespace aloha {
 
-bool HTTPClientPlatformWrapper::RunHTTPRequest() {
+bool HTTPClientImplApple::Go() {
   @autoreleasepool {
 
     NSMutableURLRequest * request = [NSMutableURLRequest requestWithURL:

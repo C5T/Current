@@ -46,7 +46,7 @@ inline std::string ReadFileAsString(std::string const& file_name) {
   }
 }
 
-inline void WriteStringToFile(const string& file_name, const string& contents) {
+inline void WriteStringToFile(const std::string& file_name, const std::string& contents) {
   std::ofstream file(file_name);
   file << contents;
   if (!file.good()) {

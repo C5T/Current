@@ -28,6 +28,8 @@ using bricks::MakeScopeGuard;
 using bricks::ReadFileAsString;
 using bricks::WriteStringToFile;
 
+using namespace bricks::net::api;
+
 // TODO(dkorolev): Migrate to a simpler HTTP server implementation that is to be added to api.h soon.
 // This would not require any of these headers.
 using bricks::net::Socket;
