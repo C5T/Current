@@ -29,7 +29,7 @@ SOFTWARE.
 #define BRICKS_NET_API_APPLE_H
 
 #if !defined(__APPLE__)
-#error "`net/api_apple.h` should only be included in Apple builds."
+#error "`net/api/api_apple.h` should only be included in Apple builds."
 #endif
 
 #include "api.h"
