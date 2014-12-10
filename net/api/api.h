@@ -167,7 +167,7 @@ struct HTTPClientImpl {
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS = KeepResponseInMemory>
   inline typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE operator()(
       const T_REQUEST_PARAMS& request_params,
-      const T_RESPONSE_PARAMS& response_params = T_RESPONSE_PARAMS()) {
+      const T_RESPONSE_PARAMS& response_params = T_RESPONSE_PARAMS()) const {
     T_IMPLEMENTATION_TO_USE impl;
     typedef HTTPClientTemplatedImpl<T_IMPLEMENTATION_TO_USE> IMPL_HELPER;
     IMPL_HELPER::PrepareInput(request_params, impl);
