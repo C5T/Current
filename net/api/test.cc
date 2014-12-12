@@ -7,6 +7,7 @@
 #include <functional>
 
 #include "api.h"
+#include "url.h"
 
 #include "../../file/file.h"
 
