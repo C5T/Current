@@ -84,8 +84,8 @@ struct ImplWrapper<HTTPClientApple> {
 
   // Parsing the response from within HTTPClientApple.
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  inline static void ParseOutput(const T_REQUEST_PARAMS&,
+                                 const T_RESPONSE_PARAMS&,
                                  const HTTPClientApple& response,
                                  HTTPResponse& output) {
     output.url = response.url_requested;
@@ -115,7 +115,7 @@ struct ImplWrapper<HTTPClientApple> {
 }  // namespace net
 }  // namespace bricks
 
-#include "api_apple.mm"
+#include "apple.mm"
 
 #endif  // BRICKS_NET_API_APPLE_H
 
