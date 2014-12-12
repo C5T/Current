@@ -30,30 +30,73 @@ SOFTWARE.
 #include <string>
 #include <fstream>
 
+#include "exceptions.h"
+
+using std::string;
+
 namespace bricks {
 
-inline std::string ReadFileAsString(std::string const& file_name) {
-  std::ifstream fstream(file_name, std::ifstream::in | std::ifstream::binary);
-  fstream.seekg(0, std::ios::end);
-  const size_t size = fstream.tellg();
-  std::string buffer(size, '\0');
-  fstream.seekg(0);
-  if (fstream.read(&buffer[0], size).good()) {
-    return buffer;
-  } else {
-    // TODO(dkorolev): Throw an exception here.
-    return "";
+inline string ReadFileAsString(string const& file_name) {
+  try {
+    std::ifstream fi;
+    fi.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    fi.open(file_name, std::ifstream::in | std::ifstream::binary);
+    fi.seekg(0, std::ios::end);
+    const size_t size = fi.tellg();
+    string buffer(size, '\0');
+    fi.seekg(0);
+    if (fi.read(&buffer[0], size).good()) {
+      return buffer;
+    } else {
+      // TODO(dkorolev): Ask Alex whether there's a better way than what I have here with two exceptions.
+      throw FileException();
+    }
+  } catch (const std::ifstream::failure&) {
+    throw FileException();
+  } catch (FileException()) {
+    throw FileException();
   }
 }
 
-inline void WriteStringToFile(const std::string& file_name, const std::string& contents) {
-  std::ofstream file(file_name);
-  file << contents;
-  if (!file.good()) {
-    // TODO(dkorolev): Throw an exception of the proper type.
-    throw std::exception();
+inline void WriteStringToFile(const string& file_name, const string& contents) {
+  try {
+    std::ofstream fo;
+    fo.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    fo.open(file_name);
+    fo << contents;
+  } catch (const std::ofstream::failure&) {
+    throw FileException();
   }
 }
+
+enum class RemoveFileParameters { ThrowExceptionOnError, Silent };
+inline void RemoveFile(const string& file_name, 
+                       RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
+  if (::remove(file_name.c_str())) {
+    if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
+      throw FileException();
+    }
+  }
+}
+
+inline void RemoveFileSilently(const string& file_name) {
+  ::remove(file_name.c_str());
+}
+
+class ScopedFileCleanup final {
+ public:
+  explicit ScopedFileCleanup(const std::string& file_name, bool remove_now_as_well = true) : file_name_(file_name) {
+    if (remove_now_as_well) {
+      RemoveFile(file_name_, RemoveFileParameters::Silent);
+    }
+  }
+  ~ScopedFileCleanup() {
+    RemoveFile(file_name_, RemoveFileParameters::Silent);
+  }
+
+ private:
+  string file_name_;
+};
 
 }  // namespace bricks
 

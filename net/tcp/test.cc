@@ -6,7 +6,7 @@
 
 #include "../../dflags/dflags.h"
 
-#include "../../string/printf.h"
+#include "../../strings/printf.h"
 
 #include "../../3party/gtest/gtest.h"
 #include "../../3party/gtest/gtest-main.h"
@@ -23,8 +23,7 @@ using std::vector;
 using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
-using bricks::string::Printf;
-
+using bricks::strings::Printf;
 using bricks::net::Socket;
 using bricks::net::Connection;
 using bricks::net::ClientSocket;

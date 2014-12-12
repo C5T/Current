@@ -1,3 +1,5 @@
+// TODO(dkorolev): Clean up this file.
+
 #ifndef BRICKS_NET_API_POSIX_H
 #define BRICKS_NET_API_POSIX_H
 
@@ -47,7 +49,7 @@ struct HTTPClientTemplatedImpl<HTTPClientPOSIX> {
   inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientPOSIX&) {
   }
   inline static void PrepareInput(const SaveResponseToFile& save_to_file_request, HTTPClientPOSIX& client) {
-    //client.set_received_file(save_to_file_request.file_name);
+    // client.set_received_file(save_to_file_request.file_name);
   }
 
   // Parsing the response from within HTTPClientPOSIX.
@@ -73,7 +75,7 @@ struct HTTPClientTemplatedImpl<HTTPClientPOSIX> {
                                  const HTTPClientPOSIX& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
-    //output.body = response.server_response();
+    // output.body = response.server_response();
   }
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,

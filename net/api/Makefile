@@ -1,7 +1,7 @@
 .PHONY: test all indent check clean
 
-CPP = clang++
-CPPFLAGS = -std=c++11 -Wall
+CPP = g++
+CPPFLAGS = -std=c++11 -Wall -W
 LDFLAGS = -pthread
 
 SRC=$(wildcard *.cc)
@@ -22,7 +22,7 @@ indent:
 
 check: build build/CHECK_OK
 
-build/CHECK_OK: build *.h
+build/CHECK_OK: build *.h */*.h ../*/*.h
 	for i in *.h ; do \
 		echo -n $(basename $$i)': ' ; \
 		ln -sf ${PWD}/$$i ${PWD}/build/$$i.cc ; \
@@ -39,5 +39,5 @@ clean:
 build:
 	mkdir -p $@
 
-build/%: %.cc *.h
+build/%: %.cc *.h */*.h ../*/*.h
 	${CPP} ${CPPFLAGS} -o $@ $< ${LDFLAGS}

@@ -48,7 +48,7 @@ build/coverage/%: %.cc *.h
 	${CPP} ${CPPFLAGS_FOR_COVERAGE} -o $@ $< ${LDFLAGS_FOR_COVERAGE}
 
 coverage: build/coverage ${BIN_FOR_COVERAGE}
-	rm -rf .tmp; mkdir .tmp; ./build/coverage/posix_tcp_server_test && rm -rf .tmp
+	./build/coverage/test
 	gcov test.cc
 	geninfo . --output-file coverage.info
 	genhtml coverage.info --output-directory build/coverage | grep -A 2 "^Overall"

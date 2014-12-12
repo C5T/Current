@@ -308,7 +308,7 @@ struct UnambiguousGoogleFriendlyIntPointerWrapper {
 };
 inline bool ParseCommandLineFlags(UnambiguousGoogleFriendlyIntPointerWrapper argc,
                                   char*** argv,
-                                  bool dummy = true) {
+                                  bool = true) {
   ParseDFlags(argc, argv);
   return true;
 }
