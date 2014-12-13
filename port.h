@@ -1,7 +1,7 @@
 // Cross-platform portability header.
 //
 // Ensures that one and only one of BRICKS_{POSIX,APPLE,ANDROID} is defined.
-// Keeps the one provided externally. Defaults to environmental setting is none has been defined.
+// Keeps the one provided externally. Defaults to environmental setting if none has been defined.
 
 #ifndef BRICKS_PORT_H
 #define BRICKS_PORT_H
