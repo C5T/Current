@@ -79,14 +79,14 @@ inline void RemoveFile(const string& file_name,
   }
 }
 
-class ScopedFileCleanup final {
+class ScopedRemoveFile final {
  public:
-  explicit ScopedFileCleanup(const std::string& file_name, bool remove_now_as_well = true) : file_name_(file_name) {
+  explicit ScopedRemoveFile(const std::string& file_name, bool remove_now_as_well = true) : file_name_(file_name) {
     if (remove_now_as_well) {
       RemoveFile(file_name_, RemoveFileParameters::Silent);
     }
   }
-  ~ScopedFileCleanup() {
+  ~ScopedRemoveFile() {
     RemoveFile(file_name_, RemoveFileParameters::Silent);
   }
 
