@@ -5,6 +5,7 @@
 
 namespace bricks {
 
+// TODO(dkorolev): Add more detailed exceptions for Read/Write/etc.
 struct FileException : BricksException {};
 
 }  // namespace bricks
