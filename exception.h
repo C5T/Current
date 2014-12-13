@@ -6,7 +6,7 @@
 namespace bricks {
 
 // TODO(dkorolev): Add string descriptions.
-struct BricksException : std::exception {};
+struct Exception : std::exception {};
 
 }  // namespace bricks
 

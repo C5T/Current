@@ -8,7 +8,7 @@ namespace net {
 
 // TODO(dkorolev): Work with Alex on shortening the names.
 
-struct NetworkException : BricksException {};
+struct NetworkException : Exception {};
 
 struct SocketException : NetworkException {};
 

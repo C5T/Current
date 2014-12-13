@@ -38,7 +38,7 @@ namespace net {
 namespace api {
 
 // HTTP exceptions.
-// TODO(dkorolev): Structure the exceptions. Make them all inherit from some BricksException.
+// TODO(dkorolev): Structure the exceptions. Make them all eventually inherit from bricks::Exception.
 
 struct HTTPClientException : std::exception {};
 
