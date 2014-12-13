@@ -55,7 +55,7 @@ class HTTPClientPOSIX final {
       connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n");
       connection.BlockingWrite("\r\n");
       connection.BlockingWrite(request_body_contents_);
-      // Attention! Achtung!
+      // Attention! Achtung! Увага! Внимание!
       // Calling SendEOF() (which is ::shutdown(socket, SHUT_WR);) results in slowly sent data
       // not being received. Tested on local and remote data with "chunked" transfer encoding.
       // Don't uncomment the next line!
