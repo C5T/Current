@@ -16,7 +16,10 @@
 #include "codes.h"
 
 #include "../exceptions.h"
+
 #include "../tcp/posix.h"
+
+#include "../../util/util.h"
 
 using std::string;
 using std::vector;
@@ -35,10 +38,10 @@ typedef vector<pair<string, string>> HTTPHeadersType;
 // HTTP constants to parse the header and extract method, URL, headers and body.
 namespace {
 
-const char* const kCRLF = "\r\n";
-const size_t kCRLFLength = strlen(kCRLF);
-const char* const kHeaderKeyValueSeparator = ": ";
-const size_t kHeaderKeyValueSeparatorLength = strlen(kHeaderKeyValueSeparator);
+const char kCRLF[] = "\r\n";
+const size_t kCRLFLength = CompileTimeStringLength(kCRLF);
+const char kHeaderKeyValueSeparator[] = ": ";
+const size_t kHeaderKeyValueSeparatorLength = CompileTimeStringLength(kHeaderKeyValueSeparator);
 const char* const kContentLengthHeaderKey = "Content-Length";
 const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
 const char* const kTransferEncodingChunkedValue = "chunked";
