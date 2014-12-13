@@ -79,10 +79,6 @@ inline void RemoveFile(const string& file_name,
   }
 }
 
-inline void RemoveFileSilently(const string& file_name) {
-  ::remove(file_name.c_str());
-}
-
 class ScopedFileCleanup final {
  public:
   explicit ScopedFileCleanup(const std::string& file_name, bool remove_now_as_well = true) : file_name_(file_name) {
