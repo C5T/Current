@@ -68,7 +68,7 @@ inline void WriteStringToFile(const std::string& file_name, const std::string& c
 }
 
 enum class RemoveFileParameters { ThrowExceptionOnError, Silent };
-inline void RemoveFile(const std::string& file_name, 
+inline void RemoveFile(const std::string& file_name,
                        RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
   if (::remove(file_name.c_str())) {
     if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
@@ -79,7 +79,8 @@ inline void RemoveFile(const std::string& file_name,
 
 class ScopedRemoveFile final {
  public:
-  explicit ScopedRemoveFile(const std::string& file_name, bool remove_now_as_well = true) : file_name_(file_name) {
+  explicit ScopedRemoveFile(const std::string& file_name, bool remove_now_as_well = true)
+      : file_name_(file_name) {
     if (remove_now_as_well) {
       RemoveFile(file_name_, RemoveFileParameters::Silent);
     }
