@@ -57,6 +57,11 @@ class SocketHandle {
     std::swap(socket_, rhs.socket_);
   }
 
+  void operator=(SocketHandle&& rhs) {
+    socket_ = -1;
+    std::swap(socket_, rhs.socket_);
+  }
+
  private:
   int socket_;
 
@@ -83,15 +88,18 @@ class SocketHandle {
   SocketHandle() = delete;
   SocketHandle(const SocketHandle&) = delete;
   void operator=(const SocketHandle&) = delete;
-  void operator=(SocketHandle&&) = delete;
 };
 
 class Connection : public SocketHandle {
  public:
-  inline Connection(SocketHandle&& socket) : SocketHandle(std::move(socket)) {
+  inline Connection(SocketHandle&& rhs) : SocketHandle(std::move(rhs)) {
   }
 
-  inline Connection(Connection&& rhs) : SocketHandle(std::move(static_cast<SocketHandle&&>(rhs))) {
+  inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {
+  }
+
+  inline void operator=(Connection&& rhs) {
+    SocketHandle::operator=(std::move(rhs));
   }
 
   // Closes the outbound side of the socket and notifies the other party that no more data will be sent.
@@ -189,7 +197,6 @@ class Connection : public SocketHandle {
   Connection() = delete;
   Connection(const Connection&) = delete;
   void operator=(const Connection&) = delete;
-  void operator=(Connection&&) = delete;
 };
 
 class Socket final : public SocketHandle {
@@ -208,7 +215,8 @@ class Socket final : public SocketHandle {
       throw SocketCreateException();
     }
 
-    sockaddr_in addr_server{};
+    sockaddr_in addr_server;
+    memset(&addr_server, 0, sizeof(addr_server));  // Demote the warning.
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);
@@ -225,7 +233,8 @@ class Socket final : public SocketHandle {
   Socket(Socket&&) = default;
 
   inline Connection Accept() {
-    sockaddr_in addr_client{};
+    sockaddr_in addr_client;
+    memset(&addr_client, 0, sizeof(addr_client));
     socklen_t addr_client_length = sizeof(sockaddr_in);
     const int fd = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (fd == -1) {
@@ -248,14 +257,15 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
    public:
     inline explicit ClientSocket(const std::string& host, const std::string& serv)
         : SocketHandle(SocketHandle::NewHandle()) {
-      struct addrinfo hints {};
+      struct addrinfo hints;
+      memset(&hints, 0, sizeof(hints));
       struct addrinfo* servinfo;
       hints.ai_family = AF_INET;
       hints.ai_socktype = SOCK_STREAM;
       hints.ai_protocol = IPPROTO_TCP;
       const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &servinfo);
       if (retval) {
-        // TODO(dkorolev): LOG(somewhere, string::Printf("Error in getaddrinfo: %s\n", gai_strerror(retval)));
+        // TODO(dkorolev): LOG(somewhere, strings::Printf("Error in getaddrinfo: %s\n", gai_strerror(retval)));
         throw SocketResolveAddressException();
       }
       if (!servinfo) {

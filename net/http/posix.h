@@ -1,5 +1,8 @@
 // TODO(dkorolev): Add Mac support and find out the right name for this header file.
 
+// TODO(dkorolev): "If the body was preceded by a Content-Length header, the client MUST close the connection."
+// https://www.ietf.org/rfc/rfc2616.txt
+
 #ifndef BRICKS_NET_HTTP_POSIX_H
 #define BRICKS_NET_HTTP_POSIX_H
 
@@ -13,86 +16,92 @@
 #include "codes.h"
 
 #include "../exceptions.h"
+
 #include "../tcp/posix.h"
+
+#include "../../util/util.h"
 
 namespace bricks {
 namespace net {
 
 typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 
-class HTTPHeaderParser {
- public:
-  inline HTTPHeaderParser(const int intial_buffer_size = 1600,
-                          const double buffer_growth_k = 1.95,
-                          const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
-      : buffer_(intial_buffer_size),
-        buffer_growth_k_(buffer_growth_k),
-        buffer_max_growth_due_to_content_length_(buffer_max_growth_due_to_content_length) {
-  }
+// HTTP constants to parse the header and extract method, URL, headers and body.
+namespace {
 
-  inline const std::string& Method() const {
-    return method_;
-  }
+const char kCRLF[] = "\r\n";
+const size_t kCRLFLength = CompileTimeStringLength(kCRLF);
+const char kHeaderKeyValueSeparator[] = ": ";
+const size_t kHeaderKeyValueSeparatorLength = CompileTimeStringLength(kHeaderKeyValueSeparator);
+const char* const kContentLengthHeaderKey = "Content-Length";
+const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
+const char* const kTransferEncodingChunkedValue = "chunked";
 
-  inline const std::string& URL() const {
-    return url_;
-  }
+}  // namespace constants
 
-  inline bool HasBody() const {
-    return content_offset_ != static_cast<size_t>(-1) && content_length_ != static_cast<size_t>(-1);
-  }
-
-  inline const std::string Body() const {
-    if (HasBody()) {
-      return std::string(&buffer_[content_offset_], &buffer_[content_offset_] + content_length_);
-    } else {
-      throw HTTPNoBodyProvidedException();
-    }
-  }
-
-  inline const char* const BodyAsNonCopiedBuffer() const {
-    if (HasBody()) {
-      return &buffer_[content_offset_];
-    } else {
-      throw HTTPNoBodyProvidedException();
-    }
-  }
-
-  inline const size_t BodyLength() const {
-    if (HasBody()) {
-      return content_length_;
-    } else {
-      throw HTTPNoBodyProvidedException();
-    }
-  }
-
+// HTTPDefaultHelper handles headers and chunked transfers.
+// One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.
+// TODO(dkorolev): This is not yet the case, but will be soon once I fix HTTP parse code.
+class HTTPDefaultHelper {
  protected:
-  // Parses HTTP headers. Extracts method, URL, and, if provided, the body.
-  // Can be statically overridden by providing a different template class as a parameter for
-  // GenericHTTPConnection.
-  //
-  // Return value:
-  // - False if the headers could not have been parsed due to connection interrupted by peer.
-  // - True in any other case, since almost no header validation is performed by this implementation.
-  inline bool ParseHTTPHeader(Connection& c) {
-    // HTTP constants to parse the header and extract method, URL, headers and body.
-    const char* const kCRLF = "\r\n";
-    const size_t kCRLFLength = strlen(kCRLF);
-    const char* const kHeaderKeyValueSeparator = ": ";
-    const size_t kHeaderKeyValueSeparatorLength = strlen(kHeaderKeyValueSeparator);
-    const char* const kContentLengthHeaderKey = "Content-Length";
+  inline void OnHeader(const char* key, const char* value) {
+    headers_[key] = value;
+  }
 
-    // `buffer_` stores all the stream of data read from the socket, headers followed by optional body.
-    size_t current_line_offset = 0;
+  inline void OnChunk(const char* chunk, size_t length) {
+    body_.append(chunk, length);
+  }
 
-    // `first_line_parsed` denotes whether the line being parsed is the first one, with method and URL.
-    bool first_line_parsed = false;
+  inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
+    begin = body_.data();
+    end = begin + body_.length();
+  }
 
-    // `offset` is the number of bytes read so far.
+ private:
+  std::map<std::string, std::string> headers_;
+  std::string body_;
+};
+
+// In constructor, TemplatedHTTPReceivedMessage parses HTTP response from `Connection&` is was provided with.
+// Extracts method, URL, and, if provided, the body.
+//
+// Getters:
+// * std::string URL().
+// * std::string Method().
+// * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
+//
+// Exceptions:
+// * HTTPNoBodyProvidedException         : When attempting to access body when HasBody() is false.
+// * HTTPConnectionClosedByPeerException : When the server is using chunked transfer and doesn't fully send one.
+template <class HELPER>
+class TemplatedHTTPReceivedMessage : public HELPER {
+ public:
+  inline TemplatedHTTPReceivedMessage(Connection& c,
+                                      const int intial_buffer_size = 1600,
+                                      const double buffer_growth_k = 1.95,
+                                      const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+      : buffer_(intial_buffer_size) {
+    // `offset` is the number of bytes read into `buffer_` so far.
     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
     // of the end of HTTP body in the buffer_, once `Content-Length` and two consecutive CRLS have been seen.
     size_t offset = 0;
     size_t length_cap = static_cast<size_t>(-1);
+
+    // `current_line_offset` is the index of the first character after CRLF in `buffer_`.
+    size_t current_line_offset = 0;
+
+    // `body_offset` and `body_length` describe the position of HTTP body, if it's not chunk-encoded.
+    size_t body_offset = static_cast<size_t>(-1);
+    size_t body_length = static_cast<size_t>(-1);
+
+    // `first_line_parsed` denotes whether the line being parsed is the first one, with method and URL.
+    bool first_line_parsed = false;
+
+    // `chunked_transfer_encoding` is set when body should be received in chunks insted of a single read.
+    bool chunked_transfer_encoding = false;
+
+    // `receiving_body_in_chunks` is set to true when the parsing is already in the "receive body" mode.
+    bool receiving_body_in_chunks = false;
 
     while (offset < length_cap) {
       size_t chunk;
@@ -102,24 +111,26 @@ class HTTPHeaderParser {
              read_count = c.BlockingRead(&buffer_[offset], chunk),
              offset += read_count,
              read_count == chunk) {
-        buffer_.resize(buffer_.size() * buffer_growth_k_);
+        buffer_.resize(buffer_.size() * buffer_growth_k);
       }
       if (!read_count) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
-        // that the socket has been closed by the peer. Returning `false` will mark this HTTP session
-        // as unhealthy, attempts to send responses via it will throw.
-        return false;
+        // that the socket has been closed by the peer.
+        throw HTTPConnectionClosedByPeerException();
       }
       buffer_[offset] = '\0';
-      char* p = &buffer_[current_line_offset];
-      char* current_line = p;
-      while ((p = strstr(current_line, kCRLF))) {
-        *p = '\0';
+      char* next_crlf_ptr;
+      while ((body_offset == static_cast<size_t>(-1) || offset < body_offset) &&
+             (next_crlf_ptr = strstr(&buffer_[current_line_offset], kCRLF))) {
+        const bool line_is_blank = (next_crlf_ptr == &buffer_[current_line_offset]);
+        *next_crlf_ptr = '\0';
+        // `next_line_offset` is mutable since reading chunked body will change it.
+        size_t next_line_offset = next_crlf_ptr + kCRLFLength - &buffer_[0];
         if (!first_line_parsed) {
-          if (*current_line) {
+          if (!line_is_blank) {
             // It's recommended by W3 to wait for the first line ignoring prior CRLF-s.
-            char* p1 = current_line;
+            char* p1 = &buffer_[current_line_offset];
             char* p2 = strstr(p1, " ");
             if (p2) {
               *p2 = '\0';
@@ -133,76 +144,153 @@ class HTTPHeaderParser {
             }
             first_line_parsed = true;
           }
-        } else {
-          if (*current_line) {
-            char* p = strstr(current_line, kHeaderKeyValueSeparator);
-            if (p) {
-              *p = '\0';
-              const char* const key = current_line;
-              const char* const value = p + kHeaderKeyValueSeparatorLength;
-              OnHeader(key, value);
-              if (!strcmp(key, kContentLengthHeaderKey)) {
-                content_length_ = static_cast<size_t>(atoi(value));
+        } else if (receiving_body_in_chunks) {
+          // Ignore blank lines.
+          if (!line_is_blank) {
+            const size_t chunk_length = static_cast<size_t>(atoi(&buffer_[current_line_offset]));
+            if (chunk_length == 0) {
+              // Done with the body.
+              HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_end_);
+              return;
+            } else {
+              // A chunk of length `chunk_length` bytes starts right at next_line_offset.
+              const size_t chunk_offset = next_line_offset;
+              // First, make sure it has been read.
+              const size_t next_offset = chunk_offset + chunk_length;
+              if (offset < next_offset) {
+                const size_t bytes_to_read = next_offset - offset;
+                if (buffer_.size() < next_offset) {
+                  buffer_.resize(next_offset);
+                }
+                if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
+                  throw HTTPConnectionClosedByPeerException();
+                }
+                offset = next_offset;
+              }
+              // Then, append this newly parsed or received chunk to the body.
+              HELPER::OnChunk(&buffer_[chunk_offset], chunk_length);
+              // Finally, change `next_line_offset` to force skipping the, possibly binary, body.
+              // There will be an extra CRLF after the chunk, but we don't require it.
+              next_line_offset = next_offset;
+              // TODO(dkorolev): The above code works, but keeps growing memory usage. Shrink it.
+            }
+          }
+        } else if (!line_is_blank) {
+          char* p = strstr(&buffer_[current_line_offset], kHeaderKeyValueSeparator);
+          if (p) {
+            *p = '\0';
+            const char* const key = &buffer_[current_line_offset];
+            const char* const value = p + kHeaderKeyValueSeparatorLength;
+            HELPER::OnHeader(key, value);
+            if (!strcmp(key, kContentLengthHeaderKey)) {
+              body_length = static_cast<size_t>(atoi(value));
+            } else if (!strcmp(key, kTransferEncodingHeaderKey)) {
+              if (!strcmp(value, kTransferEncodingChunkedValue)) {
+                chunked_transfer_encoding = true;
               }
             }
-          } else {
+          }
+        } else {
+          if (!chunked_transfer_encoding) {
             // HTTP body starts right after this last CRLF.
-            content_offset_ = current_line + kCRLFLength - &buffer_[0];
+            body_offset = next_line_offset;
+            // Non-chunked encoding. Assume BODY follows as raw data.
             // Only accept HTTP body if Content-Length has been set; ignore it otherwise.
-            if (content_length_ != static_cast<size_t>(-1)) {
+            if (body_length != static_cast<size_t>(-1)) {
               // Has HTTP body to parse.
-              length_cap = content_offset_ + content_length_;
+              length_cap = body_offset + body_length;
               // Resize the buffer to be able to get the contents of HTTP body without extra resizes,
-              // while being careful to not be open to extra-large mistakenly or maliciously set Content-Length.
+              // while being careful to not be open to extra-large mistakenly or maliciously set
+              // Content-Length.
               // Keep in mind that `buffer_` should have the size of `length_cap + 1`, to include the `\0'.
               if (length_cap + 1 > buffer_.size()) {
                 const size_t delta_size = length_cap + 1 - buffer_.size();
-                buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length_));
+                buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length));
               }
             } else {
               // Indicate we are done parsing the header.
-              length_cap = content_offset_;
+              length_cap = body_offset;
             }
+          } else {
+            receiving_body_in_chunks = true;
           }
         }
-        current_line = p + 2;
+        current_line_offset = next_line_offset;
       }
-      current_line_offset = current_line - &buffer_[0];
     }
-    return true;
+    if (body_length != static_cast<size_t>(-1)) {
+      // Initialize pointers pair to point to the BODY to be read.
+      body_buffer_begin_ = &buffer_[body_offset];
+      body_buffer_end_ = body_buffer_begin_ + body_length;
+    }
   }
 
-  // Non-virtual, but can be statically overridden via template parameter to class GenericHTTPConnection.
-  inline void OnHeader(const char* key, const char* value) {
-    headers_[key] = value;
+  inline const std::string& Method() const {
+    return method_;
+  }
+
+  inline const std::string& URL() const {
+    return url_;
+  }
+
+  // Note that `Body*()` methods assume that the body was fully read into memory.
+  // If other means of reading the body, for example, event-based chunk parsing, is used,
+  // then `HasBody()` will be false and all other `Body*()` methods wil throw.
+  inline bool HasBody() const {
+    return body_buffer_begin_ != nullptr;
+  }
+
+  inline const std::string Body() const {
+    if (body_buffer_begin_) {
+      return std::string(body_buffer_begin_, body_buffer_end_);
+    } else {
+      throw HTTPNoBodyProvidedException();
+    }
+  }
+
+  inline const char* BodyBegin() const {
+    if (body_buffer_begin_) {
+      return body_buffer_begin_;
+    } else {
+      throw HTTPNoBodyProvidedException();
+    }
+  }
+
+  inline const char* BodyEnd() const {
+    if (body_buffer_begin_) {
+      assert(body_buffer_end_);
+      return body_buffer_end_;
+    } else {
+      throw HTTPNoBodyProvidedException();
+    }
+  }
+
+  inline size_t BodyLength() const {
+    if (body_buffer_begin_) {
+      assert(body_buffer_end_);
+      return body_buffer_end_ - body_buffer_begin_;
+    } else {
+      throw HTTPNoBodyProvidedException();
+    }
   }
 
  private:
+  // Fields available to the user via getters.
   std::string method_;
   std::string url_;
-  std::map<std::string, std::string> headers_;
-  std::vector<char> buffer_;
-  const double buffer_growth_k_;
-  const size_t buffer_max_growth_due_to_content_length_;
-  size_t content_offset_ = static_cast<size_t>(-1);
-  size_t content_length_ = static_cast<size_t>(-1);
+
+  // HTTP parsing fields that have to be caried out of the parsing routine.
+  std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
+  const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
+  const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 };
 
-template <typename HEADER_PARSER = HTTPHeaderParser>
-class GenericHTTPConnection final : public Connection, public HEADER_PARSER {
+// The default implementation is exposed under the name HTTPReceivedMessage.
+typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
+
+class HTTPServerConnection {
  public:
-  typedef HEADER_PARSER T_HEADER_PARSER;
-
-  inline GenericHTTPConnection(Connection&& c)
-      : Connection(std::move(c)), T_HEADER_PARSER(), good_(T_HEADER_PARSER::ParseHTTPHeader(*this)) {
-  }
-
-  inline GenericHTTPConnection(GenericHTTPConnection&& c)
-      : Connection(std::move(c)), T_HEADER_PARSER(), good_(T_HEADER_PARSER::ParseHTTPHeader(*this)) {
-  }
-
-  inline operator bool() const {
-    return good_;
+  HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {
   }
 
   inline static const std::string DefaultContentType() {
@@ -216,25 +304,18 @@ class GenericHTTPConnection final : public Connection, public HEADER_PARSER {
       HTTPResponseCode code = HTTPResponseCode::OK,
       const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    if (!good_) {
-      throw HTTPConnectionClosedByPeerBeforeHeadersWereSentInException();
-    }
-    if (responded_) {
-      throw HTTPAttemptedToRespondTwiceException();
-    }
-    responded_ = true;
     std::ostringstream os;
-    os << "HTTP/1.1 " << static_cast<int>(code) << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code)
-       << "\r\n"
-       << "Content-Type: " << content_type << "\r\n"
-       << "Content-Length: " << (end - begin) << "\r\n";
+    os << "HTTP/1.1 " << static_cast<int>(code);
+    os << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code) << kCRLF;
+    os << "Content-Type: " << content_type << kCRLF;
+    os << "Content-Length: " << (end - begin) << kCRLF;
     for (const auto cit : extra_headers) {
-      os << cit.first << ": " << cit.second << "\r\n";
+      os << cit.first << ": " << cit.second << kCRLF;
     }
-    os << "\r\n";
-    BlockingWrite(os.str());
-    BlockingWrite(begin, end);
-    BlockingWrite("\r\n");
+    os << kCRLF;
+    connection_.BlockingWrite(os.str());
+    connection_.BlockingWrite(begin, end);
+    connection_.BlockingWrite(kCRLF);
   }
 
   template <typename T>
@@ -243,9 +324,6 @@ class GenericHTTPConnection final : public Connection, public HEADER_PARSER {
       HTTPResponseCode code = HTTPResponseCode::OK,
       const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    if (!good_) {
-      throw HTTPConnectionClosedByPeerBeforeHeadersWereSentInException();
-    }
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
@@ -256,17 +334,23 @@ class GenericHTTPConnection final : public Connection, public HEADER_PARSER {
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
+  const HTTPReceivedMessage& Message() const {
+    return message_;
+  }
+
+  Connection& RawConnection() {
+    return connection_;
+  }
+
  private:
-  bool good_ = false;
-  bool responded_ = false;
+  Connection connection_;
+  HTTPReceivedMessage message_;
 
-  GenericHTTPConnection(const GenericHTTPConnection&) = delete;
-  void operator=(const GenericHTTPConnection&) = delete;
-  void operator=(GenericHTTPConnection&&) = delete;
+  HTTPServerConnection(const HTTPServerConnection&) = delete;
+  void operator=(const HTTPServerConnection&) = delete;
+  HTTPServerConnection(HTTPServerConnection&&) = delete;
+  void operator=(HTTPServerConnection&&) = delete;
 };
-
-// Default HTTPConnection parses URL, method, and body for requests with Content-Length.
-typedef GenericHTTPConnection<HTTPHeaderParser> HTTPConnection;
 
 }  // namespace net
 }  // namespace bricks

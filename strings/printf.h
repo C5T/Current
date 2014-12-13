@@ -1,11 +1,11 @@
-#ifndef BRICKS_STRING_PRINTF_H
-#define BRICKS_STRING_PRINTF_H
+#ifndef BRICKS_STRINGS_PRINTF_H
+#define BRICKS_STRINGS_PRINTF_H
 
 #include <string>
 #include <cstdarg>
 
 namespace bricks {
-namespace string {
+namespace strings {
 
 std::string Printf(const char *fmt, ...) {
   const int max_formatted_output_length = 1024 * 1024;
@@ -20,4 +20,4 @@ std::string Printf(const char *fmt, ...) {
 }  // namespace string
 }  // namespace bricks
 
-#endif  // BRICKS_STRING_PRINTF_H
+#endif  // BRICKS_STRINGS_PRINTF_H

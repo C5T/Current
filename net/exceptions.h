@@ -1,14 +1,14 @@
 #ifndef BRICKS_NET_EXCEPTIONS_H
 #define BRICKS_NET_EXCEPTIONS_H
 
-#include <exception>
+#include "../exception.h"
 
 namespace bricks {
 namespace net {
 
 // TODO(dkorolev): Work with Alex on shortening the names.
 
-struct NetworkException : std::exception {};
+struct NetworkException : Exception {};
 
 struct SocketException : NetworkException {};
 
@@ -31,9 +31,9 @@ struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
 struct HTTPException : NetworkException {};
-struct HTTPConnectionClosedByPeerBeforeHeadersWereSentInException : HTTPException {};
+struct HTTPConnectionClosedByPeerException : HTTPException {};
 struct HTTPNoBodyProvidedException : HTTPException {};
-struct HTTPAttemptedToRespondTwiceException : HTTPException {};
+struct HTTPRedirectLoopException : HTTPException {};
 
 }  // namespace net
 }  // namespace bricks

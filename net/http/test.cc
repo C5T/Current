@@ -7,8 +7,7 @@
 #include "../../3party/gtest/gtest.h"
 #include "../../3party/gtest/gtest-main.h"
 
-#include "../../string/printf.h"
-using namespace bricks::string;
+#include "../../strings/printf.h"
 
 DEFINE_int32(port, 8080, "Local port to use for the test server.");
 
@@ -17,11 +16,13 @@ using std::thread;
 using std::to_string;
 using std::move;
 
+using namespace bricks;
+
 using bricks::net::Socket;
 using bricks::net::ClientSocket;
 using bricks::net::Connection;
-using bricks::net::HTTPConnection;
-using bricks::net::HTTPHeaderParser;
+using bricks::net::HTTPServerConnection;
+using bricks::net::HTTPReceivedMessage;
 using bricks::net::HTTPNoBodyProvidedException;
 
 struct HTTPClientImplCURL {
@@ -36,7 +37,7 @@ struct HTTPClientImplCURL {
 
   static string Fetch(thread& server_thread, const string& url, const string& method) {
     const string result =
-        Syscall(Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_port, url.c_str()));
+        Syscall(strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_port, url.c_str()));
     server_thread.join();
     return result;
   }
@@ -45,44 +46,47 @@ struct HTTPClientImplCURL {
                               const string& url,
                               const string& method,
                               const string& data) {
-    const string result = Syscall(
-        Printf("curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_port, url.c_str()));
+    const string result = Syscall(strings::Printf(
+        "curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_port, url.c_str()));
     server_thread.join();
     return result;
   }
 };
 
-struct HTTPClientImplPOSIX : HTTPHeaderParser {
-  struct Impl : HTTPHeaderParser {
-    Impl(thread& server_thread,
-         const string& url,
-         const string& method,
-         bool has_data = false,
-         const string& data = "") {
-      Connection connection(ClientSocket("localhost", FLAGS_port));
-      connection.BlockingWrite(method + ' ' + url + "\r\n");
-      if (has_data) {
-        connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n");
-      }
-      connection.BlockingWrite("\r\n");
-      if (has_data) {
-        connection.BlockingWrite(data);
-      }
-      connection.SendEOF();
-      HTTPHeaderParser::ParseHTTPHeader(connection);
-      server_thread.join();
-    }
-  };
-
+class HTTPClientImplPOSIX {
+ public:
   static string Fetch(thread& server_thread, const string& url, const string& method) {
-    return Impl(server_thread, url, method).Body();
+    return Impl(server_thread, url, method);
   }
 
   static string FetchWithBody(thread& server_thread,
                               const string& url,
                               const string& method,
                               const string& data) {
-    return Impl(server_thread, url, method, true, data).Body();
+    return Impl(server_thread, url, method, true, data);
+  }
+
+ private:
+  static string Impl(thread& server_thread,
+                     const string& url,
+                     const string& method,
+                     bool has_data = false,
+                     const string& data = "") {
+    Connection connection(ClientSocket("localhost", FLAGS_port));
+    connection.BlockingWrite(method + ' ' + url + "\r\n");
+    if (has_data) {
+      connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n");
+    }
+    connection.BlockingWrite("\r\n");
+    if (has_data) {
+      connection.BlockingWrite(data);
+    }
+    connection.SendEOF();
+    HTTPReceivedMessage message(connection);
+    assert(message.HasBody());
+    const string body = message.Body();
+    server_thread.join();
+    return body;
   }
 };
 
@@ -93,40 +97,38 @@ typedef ::testing::Types<HTTPClientImplPOSIX, HTTPClientImplCURL> HTTPClientImpl
 TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
 
 TYPED_TEST(HTTPTest, GET) {
-  thread t([]() {
-    Socket s(FLAGS_port);
-    HTTPConnection c(s.Accept());
-    ASSERT_TRUE(c);
-    EXPECT_EQ("GET", c.Method());
-    EXPECT_EQ("/unittest", c.URL());
-    c.SendHTTPResponse("PASSED");
-  });
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("GET", c.Message().Method());
+             EXPECT_EQ("/unittest", c.Message().URL());
+             c.SendHTTPResponse("PASSED");
+           },
+           Socket(FLAGS_port));
   EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest", "GET"));
 }
 
 TYPED_TEST(HTTPTest, POST) {
-  thread t([]() {
-    Socket s(FLAGS_port);
-    HTTPConnection c(s.Accept());
-    ASSERT_TRUE(c);
-    EXPECT_EQ("POST", c.Method());
-    EXPECT_EQ("/unittest_post", c.URL());
-    EXPECT_EQ("BAZINGA", c.Body());
-    c.SendHTTPResponse("POSTED");
-  });
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/unittest_post", c.Message().URL());
+             ASSERT_TRUE(c.Message().HasBody()) << "WTF!";
+             EXPECT_EQ("BAZINGA", c.Message().Body());
+             c.SendHTTPResponse("POSTED");
+           },
+           Socket(FLAGS_port));
   EXPECT_EQ("POSTED", TypeParam::FetchWithBody(t, "/unittest_post", "POST", "BAZINGA"));
 }
 
-TYPED_TEST(HTTPTest, NoBodyPost) {
-  thread t([]() {
-    Socket s(FLAGS_port);
-    HTTPConnection c(s.Accept());
-    ASSERT_TRUE(c);
-    EXPECT_EQ("POST", c.Method());
-    EXPECT_EQ("/unittest_empty_post", c.URL());
-    EXPECT_FALSE(c.HasBody());
-    ASSERT_THROW(c.Body(), HTTPNoBodyProvidedException);
-    c.SendHTTPResponse("ALMOST_POSTED");
-  });
+TYPED_TEST(HTTPTest, NoBodyPOST) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/unittest_empty_post", c.Message().URL());
+             EXPECT_FALSE(c.Message().HasBody());
+             ASSERT_THROW(c.Message().Body(), HTTPNoBodyProvidedException);
+             c.SendHTTPResponse("ALMOST_POSTED");
+           },
+           Socket(FLAGS_port));
   EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
 }
