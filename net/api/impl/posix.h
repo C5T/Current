@@ -24,12 +24,12 @@ namespace api {
 
 struct HTTPClientPOSIX final {
   // Request parameters.
-  string method = "";
-  string url_requested = "";
-  enum { None = 0, BodyFromBuffer, BodyFromFile } request_body_type;
+  string method_ = "";
+  string url_requested_ = "";
+  enum { None = 0, BodyFromBuffer, BodyFromFile } request_body_type_;
   string request_body_content_type = "";
-  string request_body_contents = "";   // If request_body_type == BodyFromBuffer.
-  string request_body_file_name = "";  // If request_body_type == BodyFromFile.
+  string request_body_contents = "";   // If request_body_type_ == BodyFromBuffer.
+  string request_body_file_name = "";  // If request_body_type_ == BodyFromFile.
   enum { DestinationBuffer = 0, DestinationFile } destination_type;
   string destination_file_name;  // If destination_type == DestinationFile.
   unique_ptr<ScopedFileCleanup> file_cleanup_helper;
@@ -44,6 +44,8 @@ struct HTTPClientPOSIX final {
     inline void OnHeader(const char* key, const char* value) {
       if (string("Location") == key) {
         location = value;
+      } else {
+        //        std::cerr << "DIMA: " << key << " = " << value << "\n"; //if (string
       }
     }
   };
@@ -52,8 +54,8 @@ struct HTTPClientPOSIX final {
 
   // The actual implementation.
   bool Go() {
-    url_after_redirects_ = url_requested;
-    URLParser parsed_url(url_requested);
+    url_after_redirects_ = url_requested_;
+    URLParser parsed_url(url_requested_);
     set<string> all_urls;
     bool redirected;
     do {
@@ -63,19 +65,26 @@ struct HTTPClientPOSIX final {
       }
       all_urls.insert(parsed_url.ComposeURL());
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));
-      connection.BlockingWrite(method + ' ' + parsed_url.route + " HTTP/1.1\r\n");
+      connection.BlockingWrite(method_ + ' ' + parsed_url.route + " HTTP/1.1\r\n");
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n");
-      if (request_body_type == BodyFromBuffer) {
+      if (!user_agent.empty()) {
+        connection.BlockingWrite("User-Agent: " + user_agent + "\r\n");
+      }
+      if (request_body_type_ == BodyFromBuffer) {
         if (!request_body_content_type.empty()) {
           connection.BlockingWrite("Content-Type: " + request_body_content_type + "\r\n");
         }
         connection.BlockingWrite("Content-Length: " + to_string(request_body_contents.length()) + "\r\n");
       }
       connection.BlockingWrite("\r\n");
-      if (request_body_type == BodyFromBuffer) {
+      if (request_body_type_ == BodyFromBuffer) {
         connection.BlockingWrite(request_body_contents);
       }
-      connection.SendEOF();
+      // Attention! Achtung!
+      // Calling SendEOF() (which is ::shutdown(socket, SHUT_WR);) results in slowly sent data
+      // not being received. Tested on local and remote data with "chunked" transfer encoding.
+      // Don't uncomment the next line!
+      // connection.SendEOF();
       message.reset(new HTTPRedirectableReceivedMessage(connection));
       code_ = atoi(message->URL().c_str());  // TODO(dkorolev): Rename URL() to a more meaningful thing.
       if (code_ >= 300 && code_ <= 399 && !message->location.empty()) {
@@ -92,33 +101,33 @@ struct HTTPClientPOSIX final {
 template <>
 struct ImplWrapper<HTTPClientPOSIX> {
   inline static void PrepareInput(const HTTPRequestGET& request, HTTPClientPOSIX& client) {
-    client.method = "GET";
-    client.url_requested = request.url;
+    client.method_ = "GET";
+    client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
   }
 
   inline static void PrepareInput(const HTTPRequestPOST& request, HTTPClientPOSIX& client) {
-    client.method = "POST";
-    client.url_requested = request.url;
+    client.method_ = "POST";
+    client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
-    client.request_body_type = HTTPClientPOSIX::BodyFromBuffer;
+    client.request_body_type_ = HTTPClientPOSIX::BodyFromBuffer;
     client.request_body_contents = request.body;
     client.request_body_content_type = request.content_type;
   }
 
   inline static void PrepareInput(const HTTPRequestPOSTFromFile& request, HTTPClientPOSIX& client) {
-    client.method = "POST";
-    client.url_requested = request.url;
+    client.method_ = "POST";
+    client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
-    client.request_body_type = HTTPClientPOSIX::BodyFromFile;
+    client.request_body_type_ = HTTPClientPOSIX::BodyFromFile;
     try {
-      client.request_body_type = HTTPClientPOSIX::BodyFromBuffer;
+      client.request_body_type_ = HTTPClientPOSIX::BodyFromBuffer;
       client.request_body_contents = ReadFileAsString(request.file_name);
       client.request_body_content_type = request.content_type;
     } catch (FileException&) {
@@ -143,7 +152,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const T_RESPONSE_PARAMS& /*response_params*/,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
-    if (request_params.url != response.url_requested) {
+    if (request_params.url != response.url_requested_) {
       throw HTTPClientException();
     }
     output.url = request_params.url;
