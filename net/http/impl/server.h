@@ -3,8 +3,8 @@
 // TODO(dkorolev): "If the body was preceded by a Content-Length header, the client MUST close the connection."
 // https://www.ietf.org/rfc/rfc2616.txt
 
-#ifndef BRICKS_NET_HTTP_IMPL_POSIX_H
-#define BRICKS_NET_HTTP_IMPL_POSIX_H
+#ifndef BRICKS_NET_HTTP_IMPL_SERVER_H
+#define BRICKS_NET_HTTP_IMPL_SERVER_H
 
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
@@ -355,4 +355,4 @@ class HTTPServerConnection {
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_HTTP_IMPL_POSIX_H
+#endif  // BRICKS_NET_HTTP_IMPL_SERVER_H
