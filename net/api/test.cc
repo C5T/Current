@@ -1,5 +1,9 @@
 // TODO(dkorolev): Add a 404 test for downloading into file.
 
+// Test for HTTP clients.
+// Note that this test relies on HTTP server defined in Bricks.
+// Thus, it might have to be tweaked on Windows. TODO(dkorolev): Do it.
+
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -9,6 +13,8 @@
 
 #include "api.h"
 #include "url.h"
+
+#include "../tcp/posix.h"
 
 #include "../../file/file.h"
 
