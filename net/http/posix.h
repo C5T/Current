@@ -315,16 +315,16 @@ class HTTPServerConnection {
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     ostringstream os;
     os << "HTTP/1.1 " << static_cast<int>(code) << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code)
-       << "\r\n"
-       << "Content-Type: " << content_type << "\r\n"
-       << "Content-Length: " << (end - begin) << "\r\n";
+       << kCRLF
+       << "Content-Type: " << content_type << kCRLF
+       << "Content-Length: " << (end - begin) << kCRLF;
     for (const auto cit : extra_headers) {
-      os << cit.first << ": " << cit.second << "\r\n";
+      os << cit.first << ": " << cit.second << kCRLF;
     }
-    os << "\r\n";
+    os << kCRLF;
     connection_.BlockingWrite(os.str());
     connection_.BlockingWrite(begin, end);
-    connection_.BlockingWrite("\r\n");
+    connection_.BlockingWrite(kCRLF);
   }
 
   template <typename T>
