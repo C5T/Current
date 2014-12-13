@@ -55,7 +55,7 @@ class HTTPDefaultHelper {
   }
 
   inline void OnChunk(const char* chunk, size_t length) {
-    body_ += string(chunk, length);
+    body_.append(chunk, length);
   }
 
   inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
