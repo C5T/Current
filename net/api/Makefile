@@ -13,7 +13,7 @@ ifeq ($(OS),Darwin)
 endif
 
 test: all
-	${BIN}
+	${BIN} --expected_arch=${OS}
 
 all: build ${BIN}
 

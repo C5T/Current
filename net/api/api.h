@@ -3,20 +3,21 @@
 //
 // See the header comment in types.h for synopsis.
 
-#ifndef BRICKS_NET_API_H
-#define BRICKS_NET_API_H
+#ifndef BRICKS_NET_API_API_H
+#define BRICKS_NET_API_API_H
+
+#include "../../port.h"
 
 #include "types.h"
 
-// TODO(dkorolev): Revisit these guards once we go beyond Ubuntu & Mac.
-#if defined(__APPLE__)
-#include "impl/apple.h"
-bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientApple> HTTP;
-#elif defined(__linux)
+#if defined(BRICKS_POSIX)
 #include "impl/posix.h"
 bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientPOSIX> HTTP;
+#elif defined(BRICKS_APPLE)
+#include "impl/apple.h"
+bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientApple> HTTP;
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
 
-#endif  // BRICKS_NET_API_H
+#endif  // BRICKS_NET_API_API_H

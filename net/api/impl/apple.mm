@@ -22,8 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "../../../port.h"
+
+#if defined(BRICKS_APPLE)
+
 #if ! __has_feature(objc_arc)
-#error This file must be compiled with ARC. Either turn on ARC for the project or use -fobjc-arc flag
+#error "This file must be compiled with ARC. Either turn on ARC for the project or use -fobjc-arc flag."
 #endif
 
 #import <Foundation/NSString.h>
@@ -93,3 +97,5 @@ bool bricks::net::api::HTTPClientApple::Go() {
 
   } // @autoreleasepool
 }
+
+#endif defined(BRICKS_APPLE)
