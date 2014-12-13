@@ -29,11 +29,11 @@ namespace api {
 namespace {
 
 const char* const kDefaultProtocol = "http";
-const char* const kDefaultHost = "localhost";
+
 }
 
 struct URLParser {
-  string host = kDefaultHost;
+  string host = "";
   string path = "/";
   string protocol = kDefaultProtocol;
   int port = 0;
@@ -43,7 +43,7 @@ struct URLParser {
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
   URLParser(const string& url,
             const string& previous_protocol = kDefaultProtocol,
-            const string& previous_host = kDefaultHost,
+            const string& previous_host = "",
             const int previous_port = 0) {
     protocol = "";  //"http";
     size_t offset_past_protocol = 0;
