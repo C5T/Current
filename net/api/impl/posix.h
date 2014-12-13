@@ -37,6 +37,7 @@ class HTTPClientPOSIX final {
  public:
   // The actual implementation.
   bool Go() {
+    // TODO(dkorolev): Always use the URL returned by the server here.
     response_url_after_redirects_ = request_url_;
     URLParser parsed_url(request_url_);
     set<string> all_urls;
