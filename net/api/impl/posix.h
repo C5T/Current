@@ -49,7 +49,7 @@ class HTTPClientPOSIX final {
       }
       all_urls.insert(parsed_url.ComposeURL());
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));
-      connection.BlockingWrite(request_method_ + ' ' + parsed_url.route + " HTTP/1.1\r\n");
+      connection.BlockingWrite(request_method_ + ' ' + parsed_url.path + " HTTP/1.1\r\n");
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n");
       if (!request_user_agent_.empty()) {
         connection.BlockingWrite("User-Agent: " + request_user_agent_ + "\r\n");

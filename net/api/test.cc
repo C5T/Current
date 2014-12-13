@@ -54,37 +54,37 @@ TEST(URLParserTest, SmokeTest) {
 
   u = URLParser("www.google.com");
   EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/", u.route);
+  EXPECT_EQ("/", u.path);
   EXPECT_EQ("http", u.protocol);
   EXPECT_EQ(80, u.port);
 
   u = URLParser("www.google.com/test");
   EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/test", u.route);
+  EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.protocol);
   EXPECT_EQ(80, u.port);
 
   u = URLParser("www.google.com:8080");
   EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/", u.route);
+  EXPECT_EQ("/", u.path);
   EXPECT_EQ("http", u.protocol);
   EXPECT_EQ(8080, u.port);
 
   u = URLParser("meh://www.google.com:27960");
   EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/", u.route);
+  EXPECT_EQ("/", u.path);
   EXPECT_EQ("meh", u.protocol);
   EXPECT_EQ(27960, u.port);
 
   u = URLParser("meh://www.google.com:27960/bazinga");
   EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/bazinga", u.route);
+  EXPECT_EQ("/bazinga", u.path);
   EXPECT_EQ("meh", u.protocol);
   EXPECT_EQ(27960, u.port);
 
   u = URLParser("localhost:/test");
   EXPECT_EQ("localhost", u.host);
-  EXPECT_EQ("/test", u.route);
+  EXPECT_EQ("/test", u.path);
   EXPECT_EQ("http", u.protocol);
   EXPECT_EQ(80, u.port);
 }

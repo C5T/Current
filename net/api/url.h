@@ -20,7 +20,7 @@ namespace api {
 // Initialize or inherit from URLParser to be able to call `ParseURL(url)` and use:
 //
 // * host (defaults to "localhost", never empty).
-// * route (defaults to "/", never empty).
+// * path (defaults to "/", never empty).
 // * protocol (defaults to "http", never empty).
 // * port (defaults to the default port for supported protocols).
 //
@@ -34,7 +34,7 @@ const char* const kDefaultHost = "localhost";
 
 struct URLParser {
   string host = kDefaultHost;
-  string route = "/";
+  string path = "/";
   string protocol = kDefaultProtocol;
   int port = 0;
 
@@ -67,12 +67,12 @@ struct URLParser {
     }
 
     if (slash != string::npos) {
-      route = url.substr(slash);
+      path = url.substr(slash);
     } else {
-      route = "";
+      path = "";
     }
-    if (route.empty()) {
-      route = "/";
+    if (path.empty()) {
+      path = "/";
     }
 
     if (protocol.empty()) {
@@ -104,7 +104,7 @@ struct URLParser {
     if (port != DefaultPortForProtocol(protocol)) {
       os << ':' << port;
     }
-    os << route;
+    os << path;
     return os.str();
   }
 
