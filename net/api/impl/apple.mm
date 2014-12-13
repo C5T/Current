@@ -98,4 +98,4 @@ bool bricks::net::api::HTTPClientApple::Go() {
   } // @autoreleasepool
 }
 
-#endif defined(BRICKS_APPLE)
+#endif  // defined(BRICKS_APPLE)

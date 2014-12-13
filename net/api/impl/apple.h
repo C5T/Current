@@ -28,7 +28,7 @@ SOFTWARE.
 #ifndef BRICKS_NET_API_APPLE_H
 #define BRICKS_NET_API_APPLE_H
 
-#include "../../port.h"
+#include "../../../port.h"
 
 #if defined(BRICKS_APPLE)
 
