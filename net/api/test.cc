@@ -49,7 +49,7 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              10,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
-TEST(HTTPClientTemplatedTest, URLParsingTest) {
+TEST(URLParserTest, SmokeTest) {
   URLParser u;
 
   u = URLParser("www.google.com");
@@ -89,7 +89,7 @@ TEST(HTTPClientTemplatedTest, URLParsingTest) {
   EXPECT_EQ(80, u.port);
 }
 
-TEST(HTTPClientTemplatedTest, URLCompositionTest) {
+TEST(URLParserTest, CompositionTest) {
   EXPECT_EQ("http://www.google.com/", URLParser("www.google.com").ComposeURL());
   EXPECT_EQ("http://www.google.com/", URLParser("http://www.google.com").ComposeURL());
   EXPECT_EQ("http://www.google.com/", URLParser("www.google.com:80").ComposeURL());
@@ -100,7 +100,7 @@ TEST(HTTPClientTemplatedTest, URLCompositionTest) {
   EXPECT_EQ("meh://www.google.com:8080/", URLParser("meh://www.google.com:8080").ComposeURL());
 }
 
-TEST(HTTPClientTemplatedTest, URLRedirectPreservesProtocolHostAndPortTest) {
+TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
   EXPECT_EQ("http://localhost/foo", URLParser("/foo", URLParser("localhost")).ComposeURL());
   EXPECT_EQ("meh://localhost/foo", URLParser("/foo", URLParser("meh://localhost")).ComposeURL());
   EXPECT_EQ("http://localhost:8080/foo", URLParser("/foo", URLParser("localhost:8080")).ComposeURL());
