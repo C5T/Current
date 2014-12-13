@@ -17,9 +17,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-using std::swap;
-using std::move;
-
 namespace bricks {
 namespace net {
 
@@ -57,12 +54,12 @@ class SocketHandle {
   }
 
   inline explicit SocketHandle(SocketHandle&& rhs) : socket_(-1) {
-    swap(socket_, rhs.socket_);
+    std::swap(socket_, rhs.socket_);
   }
 
   void operator=(SocketHandle&& rhs) {
     socket_ = -1;
-    swap(socket_, rhs.socket_);
+    std::swap(socket_, rhs.socket_);
   }
 
  private:
@@ -95,14 +92,14 @@ class SocketHandle {
 
 class Connection : public SocketHandle {
  public:
-  inline Connection(SocketHandle&& rhs) : SocketHandle(move(rhs)) {
+  inline Connection(SocketHandle&& rhs) : SocketHandle(std::move(rhs)) {
   }
 
-  inline Connection(Connection&& rhs) : SocketHandle(move(rhs)) {
+  inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {
   }
 
   inline void operator=(Connection&& rhs) {
-    SocketHandle::operator=(move(rhs));
+    SocketHandle::operator=(std::move(rhs));
   }
 
   // Closes the outbound side of the socket and notifies the other party that no more data will be sent.

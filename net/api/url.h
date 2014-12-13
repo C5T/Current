@@ -7,12 +7,6 @@
 #include <sstream>
 #include <vector>
 
-using std::max;
-using std::min;
-using std::ostringstream;
-using std::string;
-using std::vector;
-
 namespace bricks {
 namespace net {
 namespace api {
@@ -33,29 +27,29 @@ const char* const kDefaultProtocol = "http";
 }
 
 struct URLParser {
-  string host = "";
-  string path = "/";
-  string protocol = kDefaultProtocol;
+  std::string host = "";
+  std::string path = "/";
+  std::string protocol = kDefaultProtocol;
   int port = 0;
 
   URLParser() = default;
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URLParser(const string& url,
-            const string& previous_protocol = kDefaultProtocol,
-            const string& previous_host = "",
+  URLParser(const std::string& url,
+            const std::string& previous_protocol = kDefaultProtocol,
+            const std::string& previous_host = "",
             const int previous_port = 0) {
     protocol = "";  //"http";
     size_t offset_past_protocol = 0;
     const size_t i = url.find("://");
-    if (i != string::npos) {
+    if (i != std::string::npos) {
       protocol = url.substr(0, i);
       offset_past_protocol = i + 3;
     }
 
     const size_t colon = url.find(':', offset_past_protocol);
     const size_t slash = url.find('/', offset_past_protocol);
-    host = url.substr(offset_past_protocol, min(colon, slash) - offset_past_protocol);
+    host = url.substr(offset_past_protocol, std::min(colon, slash) - offset_past_protocol);
     if (host.empty()) {
       host = previous_host;
     }
@@ -66,7 +60,7 @@ struct URLParser {
       port = previous_port;
     }
 
-    if (slash != string::npos) {
+    if (slash != std::string::npos) {
       path = url.substr(slash);
     } else {
       path = "";
@@ -91,12 +85,12 @@ struct URLParser {
     }
   }
 
-  URLParser(const string& url, const URLParser& previous)
+  URLParser(const std::string& url, const URLParser& previous)
       : URLParser(url, previous.protocol, previous.host, previous.port) {
   }
 
-  string ComposeURL() const {
-    ostringstream os;
+  std::string ComposeURL() const {
+    std::ostringstream os;
     if (!protocol.empty()) {
       os << protocol << "://";
     }
@@ -108,12 +102,12 @@ struct URLParser {
     return os.str();
   }
 
-  static int DefaultPortForProtocol(const string& protocol) {
+  static int DefaultPortForProtocol(const std::string& protocol) {
     // We don't really support HTTPS/SSL or any other protocols yet -- D.K. :-)
     return protocol == "http" ? 80 : 0;
   }
 
-  static string DefaultProtocolForPort(int port) {
+  static std::string DefaultProtocolForPort(int port) {
     return port == 80 ? "http" : "";
   }
 };

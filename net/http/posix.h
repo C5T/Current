@@ -21,19 +21,10 @@
 
 #include "../../util/util.h"
 
-using std::string;
-using std::vector;
-using std::move;
-using std::pair;
-using std::min;
-using std::map;
-using std::ostringstream;
-using std::enable_if;
-
 namespace bricks {
 namespace net {
 
-typedef vector<pair<string, string>> HTTPHeadersType;
+typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 
 // HTTP constants to parse the header and extract method, URL, headers and body.
 namespace {
@@ -67,17 +58,17 @@ class HTTPDefaultHelper {
   }
 
  private:
-  map<string, string> headers_;
-  string body_;
+  std::map<std::string, std::string> headers_;
+  std::string body_;
 };
 
 // In constructor, TemplatedHTTPReceivedMessage parses HTTP response from `Connection&` is was provided with.
 // Extracts method, URL, and, if provided, the body.
 //
 // Getters:
-// * string URL().
-// * string Method().
-// * bool HasBody(), string Body(), size_t BodyLength(), const char* Body{Begin,End}().
+// * std::string URL().
+// * std::string Method().
+// * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
 // Exceptions:
 // * HTTPNoBodyProvidedException         : When attempting to access body when HasBody() is false.
@@ -214,7 +205,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
               // Keep in mind that `buffer_` should have the size of `length_cap + 1`, to include the `\0'.
               if (length_cap + 1 > buffer_.size()) {
                 const size_t delta_size = length_cap + 1 - buffer_.size();
-                buffer_.resize(buffer_.size() + min(delta_size, buffer_max_growth_due_to_content_length));
+                buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length));
               }
             } else {
               // Indicate we are done parsing the header.
@@ -234,11 +225,11 @@ class TemplatedHTTPReceivedMessage : public HELPER {
     }
   }
 
-  inline const string& Method() const {
+  inline const std::string& Method() const {
     return method_;
   }
 
-  inline const string& URL() const {
+  inline const std::string& URL() const {
     return url_;
   }
 
@@ -249,9 +240,9 @@ class TemplatedHTTPReceivedMessage : public HELPER {
     return body_buffer_begin_ != nullptr;
   }
 
-  inline const string Body() const {
+  inline const std::string Body() const {
     if (body_buffer_begin_) {
-      return string(body_buffer_begin_, body_buffer_end_);
+      return std::string(body_buffer_begin_, body_buffer_end_);
     } else {
       throw HTTPNoBodyProvidedException();
     }
@@ -285,11 +276,11 @@ class TemplatedHTTPReceivedMessage : public HELPER {
 
  private:
   // Fields available to the user via getters.
-  string method_;
-  string url_;
+  std::string method_;
+  std::string url_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.
-  vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
+  std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
   const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 };
@@ -299,21 +290,21 @@ typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
 
 class HTTPServerConnection {
  public:
-  HTTPServerConnection(Connection&& c) : connection_(move(c)), message_(connection_) {
+  HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {
   }
 
-  inline static const string DefaultContentType() {
+  inline static const std::string DefaultContentType() {
     return "text/plain";
   }
 
   template <typename T>
-  inline typename enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
+  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
       const T& begin,
       const T& end,
       HTTPResponseCode code = HTTPResponseCode::OK,
-      const string& content_type = DefaultContentType(),
+      const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    ostringstream os;
+    std::ostringstream os;
     os << "HTTP/1.1 " << static_cast<int>(code) << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code)
        << kCRLF
        << "Content-Type: " << content_type << kCRLF
@@ -328,17 +319,17 @@ class HTTPServerConnection {
   }
 
   template <typename T>
-  inline typename enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
+  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
       const T& container,
       HTTPResponseCode code = HTTPResponseCode::OK,
-      const string& content_type = DefaultContentType(),
+      const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
-  inline void SendHTTPResponse(const string& container,
+  inline void SendHTTPResponse(const std::string& container,
                                HTTPResponseCode code = HTTPResponseCode::OK,
-                               const string& content_type = DefaultContentType(),
+                               const std::string& content_type = DefaultContentType(),
                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
   }

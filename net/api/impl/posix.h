@@ -13,11 +13,6 @@
 #include "../../http.h"
 #include "../../../file/file.h"
 
-using std::set;
-using std::string;
-using std::to_string;
-using std::unique_ptr;
-
 namespace bricks {
 namespace net {
 namespace api {
@@ -25,9 +20,9 @@ namespace api {
 class HTTPClientPOSIX final {
  private:
   struct HTTPRedirectHelper : HTTPDefaultHelper {
-    string location = "";
+    std::string location = "";
     inline void OnHeader(const char* key, const char* value) {
-      if (string("Location") == key) {
+      if (std::string("Location") == key) {
         location = value;
       }
     }
@@ -40,7 +35,7 @@ class HTTPClientPOSIX final {
     // TODO(dkorolev): Always use the URL returned by the server here.
     response_url_after_redirects_ = request_url_;
     URLParser parsed_url(request_url_);
-    set<string> all_urls;
+    std::set<std::string> all_urls;
     bool redirected;
     do {
       redirected = false;
@@ -57,7 +52,7 @@ class HTTPClientPOSIX final {
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n");
       }
-      connection.BlockingWrite("Content-Length: " + to_string(request_body_contents_.length()) + "\r\n");
+      connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n");
       connection.BlockingWrite("\r\n");
       connection.BlockingWrite(request_body_contents_);
       // Attention! Achtung!
@@ -84,15 +79,15 @@ class HTTPClientPOSIX final {
 
  public:
   // Request parameters.
-  string request_method_ = "";
-  string request_url_ = "";
-  string request_body_content_type_ = "";
-  string request_body_contents_ = "";
-  string request_user_agent_ = "";
+  std::string request_method_ = "";
+  std::string request_url_ = "";
+  std::string request_body_content_type_ = "";
+  std::string request_body_contents_ = "";
+  std::string request_user_agent_ = "";
 
   // Output parameters.
   int response_code_ = -1;
-  string response_url_after_redirects_ = "";
+  std::string response_url_after_redirects_ = "";
 
  private:
   std::unique_ptr<HTTPRedirectableReceivedMessage> message_;

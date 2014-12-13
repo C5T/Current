@@ -32,18 +32,16 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-using std::string;
-
 namespace bricks {
 
-inline string ReadFileAsString(string const& file_name) {
+inline std::string ReadFileAsString(std::string const& file_name) {
   try {
     std::ifstream fi;
     fi.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     fi.open(file_name, std::ifstream::in | std::ifstream::binary);
     fi.seekg(0, std::ios::end);
     const size_t size = fi.tellg();
-    string buffer(size, '\0');
+    std::string buffer(size, '\0');
     fi.seekg(0);
     if (fi.read(&buffer[0], size).good()) {
       return buffer;
@@ -58,7 +56,7 @@ inline string ReadFileAsString(string const& file_name) {
   }
 }
 
-inline void WriteStringToFile(const string& file_name, const string& contents) {
+inline void WriteStringToFile(const std::string& file_name, const std::string& contents) {
   try {
     std::ofstream fo;
     fo.exceptions(std::ifstream::failbit | std::ifstream::badbit);
@@ -70,7 +68,7 @@ inline void WriteStringToFile(const string& file_name, const string& contents) {
 }
 
 enum class RemoveFileParameters { ThrowExceptionOnError, Silent };
-inline void RemoveFile(const string& file_name, 
+inline void RemoveFile(const std::string& file_name, 
                        RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
   if (::remove(file_name.c_str())) {
     if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
@@ -91,7 +89,7 @@ class ScopedRemoveFile final {
   }
 
  private:
-  string file_name_;
+  std::string file_name_;
 };
 
 }  // namespace bricks

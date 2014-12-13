@@ -12,7 +12,7 @@
 // Synopsis:
 //
 // # CLIENT: Returns template-specialized type depending on its parameters. Best to save into `const auto`.
-// ## const string& s = HTTP(GET(url)).body;
+// ## const std::string& s = HTTP(GET(url)).body;
 // ## const auto r = HTTP(GET(url)); DoWork(r.code, r.body);
 // ## const auto r = HTTP(GET(url), SaveResponseToFile(file_name)); DoWork(r.code, r.body_file_name);
 // ## const auto r = HTTP(POST(url, "data", "text/plain")); DoWork(r.code);
@@ -31,8 +31,6 @@
 
 #include <string>
 
-using std::string;
-
 namespace bricks {
 namespace net {
 namespace api {
@@ -50,59 +48,59 @@ struct HTTPClientException : std::exception {};
 // Both GET and two forms of POST allow `.SetUserAgent(custom_user_agent)`.
 
 struct HTTPRequestGET {
-  string url;
-  string custom_user_agent;
+  std::string url;
+  std::string custom_user_agent;
 
-  explicit HTTPRequestGET(const string& url) : url(url) {
+  explicit HTTPRequestGET(const std::string& url) : url(url) {
   }
 
-  HTTPRequestGET& SetUserAgent(const string& ua) {
+  HTTPRequestGET& SetUserAgent(const std::string& ua) {
     custom_user_agent = ua;
     return *this;
   }
 };
 
 struct HTTPRequestPOST {
-  string url;
-  string custom_user_agent;
-  string body;
-  string content_type;
+  std::string url;
+  std::string custom_user_agent;
+  std::string body;
+  std::string content_type;
 
-  explicit HTTPRequestPOST(const string& url, const string& body, const string& content_type)
+  explicit HTTPRequestPOST(const std::string& url, const std::string& body, const std::string& content_type)
       : url(url), body(body), content_type(content_type) {
   }
 
-  HTTPRequestPOST& SetUserAgent(const string& ua) {
+  HTTPRequestPOST& SetUserAgent(const std::string& ua) {
     custom_user_agent = ua;
     return *this;
   }
 };
 
 struct HTTPRequestPOSTFromFile {
-  string url;
-  string custom_user_agent;
-  string file_name;
-  string content_type;
+  std::string url;
+  std::string custom_user_agent;
+  std::string file_name;
+  std::string content_type;
 
-  explicit HTTPRequestPOSTFromFile(const string& url, const string& file_name, const string& content_type)
+  explicit HTTPRequestPOSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type)
       : url(url), file_name(file_name), content_type(content_type) {
   }
 
-  HTTPRequestPOSTFromFile& SetUserAgent(const string& ua) {
+  HTTPRequestPOSTFromFile& SetUserAgent(const std::string& ua) {
     custom_user_agent = ua;
     return *this;
   }
 };
 
-HTTPRequestGET GET(const string& url) {
+HTTPRequestGET GET(const std::string& url) {
   return HTTPRequestGET(url);
 }
 
-HTTPRequestPOST POST(const string& url, const string& body, const string& content_type) {
+HTTPRequestPOST POST(const std::string& url, const std::string& body, const std::string& content_type) {
   return HTTPRequestPOST(url, body, content_type);
 }
 
-HTTPRequestPOSTFromFile POSTFromFile(const string& url, const string& file_name, const string& content_type) {
+HTTPRequestPOSTFromFile POSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type) {
   return HTTPRequestPOSTFromFile(url, file_name, content_type);
 }
 
@@ -111,17 +109,17 @@ HTTPRequestPOSTFromFile POSTFromFile(const string& url, const string& file_name,
 // All responses inherit from `struct HTTPResponse`, that lists common fields.
 
 struct HTTPResponse {
-  string url;                  // The original URL requested by the client.
-  int code;                    // Response code. TODO(dkorolev): HTTPResponseCode from ../http/codes.h?
-  string url_after_redirects;  // The final URL after all the redirects.
+  std::string url;                  // The original URL requested by the client.
+  int code;                         // Response code. TODO(dkorolev): HTTPResponseCode from ../http/codes.h?
+  std::string url_after_redirects;  // The final URL after all the redirects.
 };
 
 struct HTTPResponseWithBuffer : HTTPResponse {
-  string body;  // Returned HTTP body, saved as an in-memory buffer, stored in std::string.
+  std::string body;  // Returned HTTP body, saved as an in-memory buffer, stored in std::string.
 };
 
 struct HTTPResponseWithResultingFileName : HTTPResponse {
-  string body_file_name;  // The file name into which the returned HTTP body has been saved.
+  std::string body_file_name;  // The file name into which the returned HTTP body has been saved.
 };
 
 // Response storage policy.
@@ -131,8 +129,8 @@ struct HTTPResponseWithResultingFileName : HTTPResponse {
 struct KeepResponseInMemory {};
 
 struct SaveResponseToFile {
-  string file_name;
-  explicit SaveResponseToFile(const string& file_name) : file_name(file_name) {
+  std::string file_name;
+  explicit SaveResponseToFile(const std::string& file_name) : file_name(file_name) {
   }
 };
 
