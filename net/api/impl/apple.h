@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev)+TODO(deathbaba): Agree that empty POST body should throw and exception and throw it.
+// TODO(dkorolev): Here and in other implementations, test sending empty BODY in POST-s.
 
 #if defined(__APPLE__)
 
