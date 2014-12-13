@@ -127,7 +127,7 @@ using bricks::net::HTTPResponseCode;
 DEFINE_int32(port, 8080, "Local port to use for the test HTTP server.");
 DEFINE_string(test_tmpdir, "build", "Local path for the test to create temporary files in.");
 
-class UseHTTPBinTestServer {
+class UseRemoteHTTPBinTestServer_SLOW_TEST_REQIURING_INTERNET_CONNECTION {
  public:
   struct DummyTypeWithNonTrivialDestructor {
     ~DummyTypeWithNonTrivialDestructor() {
@@ -242,7 +242,9 @@ class UseLocalHTTPTestServer {
 template <typename T>
 class HTTPClientTemplatedTest : public ::testing::Test {};
 
-typedef ::testing::Types<UseLocalHTTPTestServer, UseHTTPBinTestServer> HTTPClientTestTypeList;
+typedef ::testing::Types<UseLocalHTTPTestServer,
+                         UseRemoteHTTPBinTestServer_SLOW_TEST_REQIURING_INTERNET_CONNECTION>
+    HTTPClientTestTypeList;
 TYPED_TEST_CASE(HTTPClientTemplatedTest, HTTPClientTestTypeList);
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {

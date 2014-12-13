@@ -305,10 +305,10 @@ class HTTPServerConnection {
       const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     std::ostringstream os;
-    os << "HTTP/1.1 " << static_cast<int>(code) << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code)
-       << kCRLF
-       << "Content-Type: " << content_type << kCRLF
-       << "Content-Length: " << (end - begin) << kCRLF;
+    os << "HTTP/1.1 " << static_cast<int>(code);
+    os << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code) << kCRLF;
+    os << "Content-Type: " << content_type << kCRLF;
+    os << "Content-Length: " << (end - begin) << kCRLF;
     for (const auto cit : extra_headers) {
       os << cit.first << ": " << cit.second << kCRLF;
     }

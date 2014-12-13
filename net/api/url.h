@@ -21,9 +21,7 @@ namespace api {
 // Alternatively, previous URL can be provided to properly handle redirect URLs with omitted fields.
 
 namespace {
-
 const char* const kDefaultProtocol = "http";
-
 }
 
 struct URLParser {

@@ -82,7 +82,9 @@ struct HTTPRequestPOSTFromFile {
   std::string file_name;
   std::string content_type;
 
-  explicit HTTPRequestPOSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type)
+  explicit HTTPRequestPOSTFromFile(const std::string& url,
+                                   const std::string& file_name,
+                                   const std::string& content_type)
       : url(url), file_name(file_name), content_type(content_type) {
   }
 
@@ -100,7 +102,9 @@ HTTPRequestPOST POST(const std::string& url, const std::string& body, const std:
   return HTTPRequestPOST(url, body, content_type);
 }
 
-HTTPRequestPOSTFromFile POSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type) {
+HTTPRequestPOSTFromFile POSTFromFile(const std::string& url,
+                                     const std::string& file_name,
+                                     const std::string& content_type) {
   return HTTPRequestPOSTFromFile(url, file_name, content_type);
 }
 
