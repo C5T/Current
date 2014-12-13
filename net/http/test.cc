@@ -1,11 +1,11 @@
 #include <thread>
 
-#include "posix.h"
+#include "http.h"
 
 #include "../../dflags/dflags.h"
 
 #include "../../3party/gtest/gtest.h"
-#include "../../3party/gtest/gtest-main.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 
 #include "../../strings/printf.h"
 

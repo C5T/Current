@@ -2,14 +2,14 @@
 #include <functional>
 #include <thread>
 
-#include "posix.h"
+#include "tcp.h"
 
 #include "../../dflags/dflags.h"
 
 #include "../../strings/printf.h"
 
 #include "../../3party/gtest/gtest.h"
-#include "../../3party/gtest/gtest-main.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(port, 8081, "Port to use for the test.");
 

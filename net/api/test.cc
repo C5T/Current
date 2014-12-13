@@ -14,16 +14,18 @@
 #include "api.h"
 #include "url.h"
 
-#include "../tcp/posix.h"
+#include "../../port.h"
+
+#include "../tcp/tcp.h"
+
+#include "../../dflags/dflags.h"
 
 #include "../../file/file.h"
 
 #include "../../util/make_scope_guard.h"
 
-#include "../../dflags/dflags.h"
-
 #include "../../3party/gtest/gtest.h"
-#include "../../3party/gtest/gtest-main.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 
 using std::chrono::milliseconds;
 using std::function;
@@ -42,12 +44,21 @@ using bricks::net::Connection;  // To send HTTP response in chunked transfer enc
 
 using namespace bricks::net::api;
 
+DEFINE_string(expected_arch,
+              "",
+              "The expected architecture to run on, `uname` on *nix systems.");
+
 DEFINE_bool(test_chunked_encoding,
             true,
             "Whetner the '/drip?numbytes=7' endpoint should use chunked transfer encoding.");
+
 DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              10,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
+
+TEST(ArchitectureTest, TestingTheRightBuild) {
+  ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch);
+}
 
 TEST(URLParserTest, SmokeTest) {
   URLParser u;
