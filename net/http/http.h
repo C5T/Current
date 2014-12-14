@@ -3,7 +3,7 @@
 
 #include "../../port.h"
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE)
+#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA)
 #include "impl/server.h"
 #else
 #error "No implementation for `net/http.h` is available for your system."
