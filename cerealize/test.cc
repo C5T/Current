@@ -26,18 +26,27 @@
 using namespace bricks;
 using namespace cerealize;
 
-DEFINE_string(filename, "build/data.bin", "File name for the test.");
+DEFINE_string(filename_prefix, "build/data.", "File name for the test.");
+
+static std::string CurrentTestName() {
+  // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name
+  return ::testing::UnitTest::GetInstance()->current_test_info()->name();
+}
+
+static std::string CurrentTestTempFileName() {
+  return FLAGS_filename_prefix + CurrentTestName();
+}
 
 TEST(Cerealize, BinarySerializesAndParses) {
-  RemoveFile(FLAGS_filename, RemoveFileParameters::Silent);
+  RemoveFile(FLAGS_filename_prefix + CurrentTestName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender(FLAGS_filename) << a << b << c;
+  CerealFileAppender(CurrentTestTempFileName()) << a << b << c;
 
-  CerealFileParser<MapsYouEventBase> f(FLAGS_filename);
+  CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
 
   std::ostringstream os;
   while (f.NextLambda([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
@@ -51,14 +60,14 @@ TEST(Cerealize, BinarySerializesAndParses) {
 }
 
 TEST(Cerealize, JSONSerializesAndParses) {
-  RemoveFile(FLAGS_filename, RemoveFileParameters::Silent);
+  RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
   EventAppResume c;
 
-  GenericCerealFileAppender<CerealFormat::JSON>(FLAGS_filename) << a << b;
-  GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(FLAGS_filename);
+  GenericCerealFileAppender<CerealFormat::JSON>(CurrentTestTempFileName()) << a << b;
+  GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(CurrentTestTempFileName());
 
   std::ostringstream os;
   while (f.NextLambda([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
@@ -71,16 +80,16 @@ TEST(Cerealize, JSONSerializesAndParses) {
 }
 
 TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
-  RemoveFile(FLAGS_filename, RemoveFileParameters::Silent);
+  RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender(FLAGS_filename) << a << b;
-  CerealFileAppender(FLAGS_filename) << c;
+  CerealFileAppender(CurrentTestTempFileName()) << a << b;
+  CerealFileAppender(CurrentTestTempFileName()) << c;
 
-  CerealFileParser<MapsYouEventBase> f(FLAGS_filename);
+  CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
 
   std::ostringstream os;
   while (f.NextLambda([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
@@ -94,29 +103,29 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
 }
 
 TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
-  RemoveFile(FLAGS_filename, RemoveFileParameters::Silent);
+  RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
   EventAppResume c;
 
-  GenericCerealFileAppender<CerealFormat::JSON>(FLAGS_filename) << a << b;
-  GenericCerealFileAppender<CerealFormat::JSON>(FLAGS_filename) << c;
-  ASSERT_THROW((GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON>(FLAGS_filename)),
+  GenericCerealFileAppender<CerealFormat::JSON>(CurrentTestTempFileName()) << a << b;
+  GenericCerealFileAppender<CerealFormat::JSON>(CurrentTestTempFileName()) << c;
+  ASSERT_THROW((GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON>(CurrentTestTempFileName())),
                cereal::Exception);
 }
 
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
-  RemoveFile(FLAGS_filename, RemoveFileParameters::Silent);
+  RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender(FLAGS_filename) << a << b;
-  CerealFileAppender(FLAGS_filename) << c;
+  CerealFileAppender(CurrentTestTempFileName()) << a << b;
+  CerealFileAppender(CurrentTestTempFileName()) << c;
 
-  CerealFileParser<MapsYouEventBase> f(FLAGS_filename);
+  CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
 
   struct ExampleConsumer {
     // TODO(dkorolev): Chat with Alex what the best way to handle this would be.
