@@ -30,8 +30,10 @@ struct MapsYouEventBase {
   }
   template <class A>
   void serialize(A& ar) {
-    // The `CEREAL_NVP` syntax is only to have pretty-printed JSON contain field names.
-    // It can be omitted given the fields stay the same, types- and order-wise.
+    // `NVP` below stands for Name-Value-Pair.
+    // The `CEREAL_NVP` syntax is only to have JSON-based serialization contain human-readable field names.
+    // The binary format is identical, no matter whether `uid`, `CEREAL_NVP(uid)` or `cereal::make_nvp("foo", uid)`.
+    // For binary serialization format, the order and types of the fields should stay the same.
     ar(CEREAL_NVP(uid), CEREAL_NVP(uid_facebook), CEREAL_NVP(uid_google), CEREAL_NVP(uid_apple));
   }
 };

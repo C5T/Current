@@ -38,7 +38,7 @@ WithBaseType(const ENTRY& object) {
 }
 
 // Enumeration for compile-time format selection.
-enum class CerealFormat { Default = 0, Binary = 0, JSON, XML };
+enum class CerealFormat { Default = 0, Binary = 0, JSON };
 
 // Templated stream types.
 template <CerealFormat>

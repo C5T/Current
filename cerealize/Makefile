@@ -12,6 +12,7 @@ BIN=$(SRC:%.cc=build/%)
 BIN_FOR_COVERAGE=$(SRC:%.cc=build/coverage/%)
 
 test: all
+	mkdir -p build/example_data
 	./build/test
 
 all: build ${BIN}

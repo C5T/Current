@@ -26,7 +26,7 @@
 using namespace bricks;
 using namespace cerealize;
 
-DEFINE_string(filename_prefix, "build/data.", "File name for the test.");
+DEFINE_string(filename_prefix, "build/example_data/", "Prefix for intermediate output files.");
 
 static std::string CurrentTestName() {
   // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name
