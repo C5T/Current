@@ -56,7 +56,7 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              10,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
-TEST(ArchitectureTest, TestingTheRightBuild) {
+TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch);
 }
 
