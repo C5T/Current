@@ -25,8 +25,8 @@ SOFTWARE.
 
 // TODO(dkorolev): Here and in other implementations, test sending empty BODY in POST-s.
 
-#ifndef BRICKS_NET_API_APPLE_H
-#define BRICKS_NET_API_APPLE_H
+#ifndef BRICKS_NET_API_IMPL_APPLE_H
+#define BRICKS_NET_API_IMPL_APPLE_H
 
 #include "../../../port.h"
 
@@ -121,4 +121,4 @@ struct ImplWrapper<HTTPClientApple> {
 
 #endif  // defined(BRICKS_APPLE)
 
-#endif  // BRICKS_NET_API_APPLE_H
+#endif  // BRICKS_NET_API_IMPL_APPLE_H
