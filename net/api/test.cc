@@ -44,9 +44,7 @@ using bricks::net::Connection;  // To send HTTP response in chunked transfer enc
 
 using namespace bricks::net::api;
 
-DEFINE_string(expected_arch,
-              "",
-              "The expected architecture to run on, `uname` on *nix systems.");
+DEFINE_string(expected_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
 
 DEFINE_bool(test_chunked_encoding,
             true,

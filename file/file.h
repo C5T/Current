@@ -38,7 +38,7 @@ inline std::string ReadFileAsString(std::string const& file_name) {
   try {
     std::ifstream fi;
     fi.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    fi.open(file_name, std::ifstream::in | std::ifstream::binary);
+    fi.open(file_name, std::ifstream::binary);
     fi.seekg(0, std::ios::end);
     const size_t size = fi.tellg();
     std::string buffer(size, '\0');
@@ -56,11 +56,11 @@ inline std::string ReadFileAsString(std::string const& file_name) {
   }
 }
 
-inline void WriteStringToFile(const std::string& file_name, const std::string& contents) {
+inline void WriteStringToFile(const std::string& file_name, const std::string& contents, bool append = false) {
   try {
     std::ofstream fo;
-    fo.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    fo.open(file_name);
+    fo.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    fo.open(file_name, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary);
     fo << contents;
   } catch (const std::ofstream::failure&) {
     throw FileException();
