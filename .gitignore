@@ -1,6 +1,8 @@
 build
 .tmp
 core
+*.h.gch
+.exrc
 
 coverage.info
 *.gcov

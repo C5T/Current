@@ -83,7 +83,7 @@ class HTTPClientPlatformWrapper {
     // Attaching multiple times from the same thread is a no-op, which only gets good env for us.
     JavaVM* jvm = JAVA.jvm;
     JNIEnv* env;
-    if (JNI_OK != jvm->AttachCurrentThread(PLATFORM_SPECIFIC_CAST (& env), nullptr)) {
+    if (JNI_OK != jvm->AttachCurrentThread(PLATFORM_SPECIFIC_CAST(&env), nullptr)) {
       // TODO(AlexZ): throw some critical exception.
       return false;
     }
@@ -119,7 +119,8 @@ class HTTPClientPlatformWrapper {
     const static jfieldID contentTypeField =
         env->GetFieldID(JAVA.httpParamsClass, "contentType", "Ljava/lang/String;");
     if (!content_type_.empty()) {
-      const auto jniContentType = MakePointerScopeGuard(env->NewStringUTF(content_type_.c_str()), deleteLocalRef);
+      const auto jniContentType =
+          MakePointerScopeGuard(env->NewStringUTF(content_type_.c_str()), deleteLocalRef);
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
       env->SetObjectField(httpParamsObject.get(), contentTypeField, jniContentType.get());
@@ -141,7 +142,8 @@ class HTTPClientPlatformWrapper {
       const static jfieldID inputFilePathField =
           env->GetFieldID(JAVA.httpParamsClass, "inputFilePath", "Ljava/lang/String;");
 
-      const auto jniInputFilePath = MakePointerScopeGuard(env->NewStringUTF(post_file_.c_str()), deleteLocalRef);
+      const auto jniInputFilePath =
+          MakePointerScopeGuard(env->NewStringUTF(post_file_.c_str()), deleteLocalRef);
       CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
       env->SetObjectField(httpParamsObject.get(), inputFilePathField, jniInputFilePath.get());
@@ -163,8 +165,8 @@ class HTTPClientPlatformWrapper {
     // DO ALL MAGIC!
     // Current Java implementation simply reuses input params instance, so we don't need to
     // DeleteLocalRef(response).
-    const jobject response =
-        env->CallStaticObjectMethod(JAVA.httpTransportClass, JAVA.httpTransportClass_run, httpParamsObject.get());
+    const jobject response = env->CallStaticObjectMethod(
+        JAVA.httpTransportClass, JAVA.httpTransportClass_run, httpParamsObject.get());
     if (env->ExceptionCheck()) {
       env->ExceptionDescribe();
       // TODO(AlexZ): think about rethrowing corresponding C++ exceptions.
@@ -172,7 +174,8 @@ class HTTPClientPlatformWrapper {
       return false;
     }
 
-    const static jfieldID httpResponseCodeField = env->GetFieldID(JAVA.httpParamsClass, "httpResponseCode", "I");
+    const static jfieldID httpResponseCodeField =
+        env->GetFieldID(JAVA.httpParamsClass, "httpResponseCode", "I");
     error_code_ = env->GetIntField(response, httpResponseCodeField);
     CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
 
@@ -194,8 +197,8 @@ class HTTPClientPlatformWrapper {
     }
 
     // dataField is already cached above.
-    const auto jniData =
-        MakePointerScopeGuard(static_cast<jbyteArray>(env->GetObjectField(response, dataField)), deleteLocalRef);
+    const auto jniData = MakePointerScopeGuard(
+        static_cast<jbyteArray>(env->GetObjectField(response, dataField)), deleteLocalRef);
     CLEAR_AND_RETURN_FALSE_ON_EXCEPTION
     if (jniData) {
       jbyte* buffer = env->GetByteArrayElements(jniData.get(), nullptr);
@@ -253,7 +256,8 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
     client.post_body_ = request.body;
     client.content_type_ = request.content_type;
   }
-  inline static void PrepareInput(const HTTPRequestPOSTFromFile& request, aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const HTTPRequestPOSTFromFile& request,
+                                  aloha::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
@@ -265,7 +269,8 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
   // Populating the fields of aloha::HTTPClientPlatformWrapper given response configuration parameters.
   inline static void PrepareInput(const KeepResponseInMemory&, aloha::HTTPClientPlatformWrapper&) {
   }
-  inline static void PrepareInput(const SaveResponseToFile& save_to_file_request, aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const SaveResponseToFile& save_to_file_request,
+                                  aloha::HTTPClientPlatformWrapper& client) {
     client.received_file_ = save_to_file_request.file_name;
   }
 
