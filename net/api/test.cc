@@ -29,7 +29,6 @@
 
 using std::chrono::milliseconds;
 using std::function;
-using std::move;
 using std::string;
 using std::this_thread::sleep_for;
 using std::thread;
@@ -165,10 +164,10 @@ class UseLocalHTTPTestServer {
   class ThreadForSingleServerRequest {
    public:
     ThreadForSingleServerRequest(function<void(Socket)> server_impl)
-        : server_thread_(server_impl, move(Socket(FLAGS_port))) {
+        : server_thread_(server_impl, Socket(FLAGS_port)) {
     }
     ThreadForSingleServerRequest(ThreadForSingleServerRequest&& rhs)
-        : server_thread_(move(rhs.server_thread_)) {
+        : server_thread_(std::move(rhs.server_thread_)) {
     }
     ~ThreadForSingleServerRequest() {
       server_thread_.join();

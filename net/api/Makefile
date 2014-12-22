@@ -1,6 +1,6 @@
 .PHONY: test all indent check clean
 
-CPP = g++
+CPLUSPLUS ?= g++
 CPPFLAGS = -std=c++11 -Wall -W
 LDFLAGS = -pthread
 
@@ -27,7 +27,7 @@ build/CHECK_OK: build *.h */*.h ../*/*.h
 		echo -n $(basename $$i)': ' ; \
 		ln -sf ${PWD}/$$i ${PWD}/build/$$i.cc ; \
 		if [ ! -f build/$$i.h.o -o build/$$i.h.cc -nt build/$$i.h.o ] ; then \
-			${CPP} -I . ${CPPFLAGS} -c build/$$i.cc -o build/$$i.h.o ${LDFLAGS} || exit 1 ; echo 'OK' ; \
+			${CPLUSPLUS} -I . ${CPPFLAGS} -c build/$$i.cc -o build/$$i.h.o ${LDFLAGS} || exit 1 ; echo 'OK' ; \
 		else \
 			echo 'Already OK' ; \
 		fi \
@@ -40,4 +40,4 @@ build:
 	mkdir -p $@
 
 build/%: %.cc *.h */*.h ../*/*.h
-	${CPP} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
+	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
