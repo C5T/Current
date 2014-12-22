@@ -14,7 +14,6 @@ DEFINE_int32(port, 8080, "Local port to use for the test server.");
 using std::string;
 using std::thread;
 using std::to_string;
-using std::move;
 
 using namespace bricks;
 

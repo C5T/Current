@@ -48,12 +48,19 @@ template <>
 struct CerealStreamType<CerealFormat::Binary> {
   typedef cereal::BinaryInputArchive Input;
   typedef cereal::BinaryOutputArchive Output;
+  template<typename OSTREAM> inline static Output CreateOutputArchive(OSTREAM& os) {
+    return Output(os);
+  }
 };
 
 template <>
 struct CerealStreamType<CerealFormat::JSON> {
   typedef cereal::JSONInputArchive Input;
   typedef cereal::JSONOutputArchive Output;
+  template<typename OSTREAM> inline static Output CreateOutputArchive(OSTREAM& os) {
+    // TODO(dkorolev): Add NoIndent as a policy once that cereal change is merged.
+    return Output(os, cereal::JSONOutputArchive::Options::NoIndent());
+  }
 };
 
 // `CerealFileAppender` appends cereal-ized records to a file.
@@ -64,7 +71,7 @@ template <CerealFormat T_CEREAL_FORMAT>
 class GenericCerealFileAppender {
  public:
   explicit GenericCerealFileAppender(const std::string& filename, bool append = true)
-      : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary), so_(fo_) {
+      : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary), so_(CerealStreamType<T_CEREAL_FORMAT>::CreateOutputArchive(fo_)) {
   }
 
   template <typename T>
