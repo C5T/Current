@@ -7,7 +7,7 @@ LDFLAGS=-pthread
 PWD=$(shell pwd)
 
 all:
-	echo "TODO(dkorolev): Add tests for bricks/file."
+	echo "TODO(dkorolev): Add tests for bricks/time."
 
 check: build/CHECK_OK
 

@@ -14,13 +14,25 @@ using std::tuple;
 template <typename... TYPES>
 struct TypeList;
 
+// Empty constructors required by clang++.
 struct Base {
+  Base() {
+  }
   // Need to define at least one virtual method.
   virtual ~Base() = default;
 };
-struct Foo : Base {};
-struct Bar : Base {};
-struct Baz : Base {};
+struct Foo : Base {
+  Foo() {
+  }
+};
+struct Bar : Base {
+  Bar() {
+  }
+};
+struct Baz : Base {
+  Baz() {
+  }
+};
 
 typedef TypeList<Foo, Bar, Baz> FooBarBazTypeList;
 

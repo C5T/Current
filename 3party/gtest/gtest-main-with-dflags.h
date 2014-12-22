@@ -6,8 +6,8 @@
 #include "gtest.h"
 
 int main(int argc, char** argv) {
-  ParseDFlags(&argc, &argv);
   testing::InitGoogleTest(&argc, argv);
+  ParseDFlags(&argc, &argv);
   // Postpone the `Death tests use fork(), which is unsafe particularly in a threaded context.` warning.
   // Via https://code.google.com/p/googletest/wiki/AdvancedGuide#Death_Test_Styles
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";

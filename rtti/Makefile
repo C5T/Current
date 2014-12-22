@@ -1,6 +1,6 @@
 .PHONY: test all indent clean check coverage
 
-CPP=g++
+CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -g -Wall -W
 LDFLAGS=-pthread
 CPPFLAGS_FOR_COVERAGE=${CPPFLAGS} -O0 -g -fprofile-arcs -ftest-coverage
@@ -29,7 +29,7 @@ build/CHECK_OK: build *.h
 		echo -n $(basename $$i)': ' ; \
 		ln -sf ${PWD}/$$i ${PWD}/build/$$i.cc ; \
 		if [ ! -f build/$$i.h.o -o build/$$i.h.cc -nt build/$$i.h.o ] ; then \
-			${CPP} -I . ${CPPFLAGS} -c build/$$i.cc -o build/$$i.h.o ${LDFLAGS} || exit 1 ; echo 'OK' ; \
+			${CPLUSPLUS} -I . ${CPPFLAGS} -c build/$$i.cc -o build/$$i.h.o ${LDFLAGS} || exit 1 ; echo 'OK' ; \
 		else \
 			echo 'Already OK' ; \
 		fi \
@@ -39,13 +39,13 @@ build:
 	mkdir -p $@
 
 build/%: %.cc *.h
-	${CPP} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
+	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 build/coverage:
 	mkdir -p $@
 
 build/coverage/%: %.cc *.h
-	${CPP} ${CPPFLAGS_FOR_COVERAGE} -o $@ $< ${LDFLAGS_FOR_COVERAGE}
+	${CPLUSPLUS} ${CPPFLAGS_FOR_COVERAGE} -o $@ $< ${LDFLAGS_FOR_COVERAGE}
 
 coverage: build/coverage ${BIN_FOR_COVERAGE}
 	./build/coverage/test

@@ -10,7 +10,7 @@ static const char global_string[] = "magic";
 TEST(Util, CompileTimeStringLength) {
   const char local_string[] = "foo";
   static const char local_static_string[] = "blah";
-  EXPECT_EQ(3u, CompileTimeStringLength(local_string));
-  EXPECT_EQ(4u, CompileTimeStringLength(local_static_string));
-  EXPECT_EQ(5u, CompileTimeStringLength(global_string));
+  EXPECT_EQ(3u, bricks::CompileTimeStringLength(local_string));
+  EXPECT_EQ(4u, bricks::CompileTimeStringLength(local_static_string));
+  EXPECT_EQ(5u, bricks::CompileTimeStringLength(global_string));
 }
