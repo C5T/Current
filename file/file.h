@@ -1,4 +1,5 @@
 // TODO(dkorolev): Add unit tests.
+// TODO(dkorolev): Move everything under bricks::file::FileSystem and have all the tests pass.
 
 #ifndef BRICKS_FILE_FILE_H
 #define BRICKS_FILE_FILE_H
@@ -7,6 +8,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2014 Alexander Zolotarev <me@alex.bio> from Minsk, Belarus
+          (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,10 +29,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include <string>
 #include <fstream>
+#include <string>
+#include <cstring>
+
+#include <dirent.h>
+#include <sys/stat.h>
 
 #include "exceptions.h"
+
+#include "../util/make_scope_guard.h"
 
 namespace bricks {
 
@@ -91,6 +99,68 @@ class ScopedRemoveFile final {
 
  private:
   std::string file_name_;
+};
+
+// Platform-indepenent, injection-friendly filesystem wrapper.
+struct FileSystem {
+  typedef std::ofstream OutputFile;
+
+  static std::string JoinPath(const std::string& path_name, const std::string& base_name) {
+    if (path_name.empty()) {
+      return base_name;
+    } else if (path_name.back() == '/') {
+      return path_name + base_name;
+    } else {
+      return path_name + '/' + base_name;
+    }
+  }
+
+  static void RenameFile(const std::string& old_name, const std::string& new_name) {
+    if (::rename(old_name.c_str(), new_name.c_str())) {
+      // TODO(dkorolev): Throw an exception and analyze errno.
+    }
+  }
+
+  static void RemoveFile(const std::string& file_name,
+                         RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
+    bricks::RemoveFile(file_name, parameters);
+  }
+
+  static void ScanDirUntil(const std::string& directory, std::function<bool(const std::string&)> lambda) {
+    DIR* dir = ::opendir(directory.c_str());
+    const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
+    if (dir) {
+      while (struct dirent* entry = ::readdir(dir)) {
+        if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..")) {
+          if (!lambda(entry->d_name)) {
+            return;
+          }
+        }
+      }
+    }
+  }
+
+  static void ScanDir(const std::string& directory, std::function<void(const std::string&)> lambda) {
+    ScanDirUntil(directory, [lambda](const std::string& filename) {
+      lambda(filename);
+      return true;
+    });
+  }
+
+  static uint64_t GetFileSize(const std::string& file_name) {
+    struct stat info;
+    if (stat(file_name.c_str(), &info)) {
+      // TODO(dkorolev): Throw an exception and analyze errno.
+      return 0;
+    } else {
+      return static_cast<uint64_t>(info.st_size);
+    }
+  }
+
+  static void CreateDirectory(const std::string& directory) {
+    // Hard-code default permissions to avoid cross-platform compatibility issues.
+    ::mkdir(directory.c_str(), 0755);
+  }
 };
 
 }  // namespace bricks
