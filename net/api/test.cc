@@ -53,9 +53,11 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              10,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
+#ifndef BRICKS_COVERAGE_REPORT_MODE
 TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch);
 }
+#endif
 
 TEST(URLParserTest, SmokeTest) {
   URLParser u;
@@ -106,6 +108,13 @@ TEST(URLParserTest, CompositionTest) {
   EXPECT_EQ("http://www.google.com:8080/", URLParser("www.google.com:8080").ComposeURL());
   EXPECT_EQ("http://www.google.com:8080/", URLParser("http://www.google.com:8080").ComposeURL());
   EXPECT_EQ("meh://www.google.com:8080/", URLParser("meh://www.google.com:8080").ComposeURL());
+}
+
+TEST(URLParserTest, DerivesProtocolFromPreviousPort) {
+  EXPECT_EQ("www.google.com/", URLParser("www.google.com", "").ComposeURL());
+  // `url.h` does not have the "23 -> TELNET" rule as of now -- D.K.
+  EXPECT_EQ("www.google.com:23/", URLParser("www.google.com", "", "", 23).ComposeURL());
+  EXPECT_EQ("telnet://www.google.com:23/", URLParser("www.google.com", "telnet", "", 23).ComposeURL());
 }
 
 TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
@@ -201,7 +210,7 @@ class UseLocalHTTPTestServer {
           connection.SendHTTPResponse("DIMA");
         } else if (url == "/drip?numbytes=7") {
           if (!FLAGS_test_chunked_encoding) {
-            connection.SendHTTPResponse("*******");
+            connection.SendHTTPResponse("*******");  // LCOV_EXCL_LINE
           } else {
             Connection& c = connection.RawConnection();
             c.BlockingWrite("HTTP/1.1 200 OK\r\n");
@@ -231,17 +240,17 @@ class UseLocalHTTPTestServer {
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
         } else {
-          ASSERT_TRUE(false) << "GET not implemented for: " << message.URL();
+          ASSERT_TRUE(false) << "GET not implemented for: " << message.URL();  // LCOV_EXCL_LINE
         }
       } else if (method == "POST") {
         if (url == "/post") {
           ASSERT_TRUE(message.HasBody());
           connection.SendHTTPResponse("{\"data\": \"" + message.Body() + "\"}\n");
         } else {
-          ASSERT_TRUE(false) << "POST not implemented for: " << message.URL();
+          ASSERT_TRUE(false) << "POST not implemented for: " << message.URL();  // LCOV_EXCL_LINE
         }
       } else {
-        ASSERT_TRUE(false) << "Method not implemented: " << message.Method();
+        ASSERT_TRUE(false) << "Method not implemented: " << message.Method();  // LCOV_EXCL_LINE
       }
     }
   }
@@ -250,9 +259,12 @@ class UseLocalHTTPTestServer {
 template <typename T>
 class HTTPClientTemplatedTest : public ::testing::Test {};
 
-typedef ::testing::Types<UseLocalHTTPTestServer,
-                         UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION>
-    HTTPClientTestTypeList;
+typedef ::testing::Types<UseLocalHTTPTestServer
+#ifndef BRICKS_COVERAGE_REPORT_MODE
+                         ,
+                         UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION
+#endif
+                         > HTTPClientTestTypeList;
 TYPED_TEST_CASE(HTTPClientTemplatedTest, HTTPClientTestTypeList);
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
@@ -369,6 +381,8 @@ TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
   EXPECT_NE(string::npos, response.body.find(custom_user_agent));
 }
 
+// LCOV_EXCL_START
+
 // TODO(dkorolev): Get rid of the tests involving external URLs.
 // TODO(dkorolev): This test is now failing on my client implementation. Fix it.
 TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect301) {
@@ -399,3 +413,5 @@ TYPED_TEST(HTTPClientTemplatedTest, InvalidUrl) {
     }
   }
 }
+
+// LCOV_EXCL_STOP
