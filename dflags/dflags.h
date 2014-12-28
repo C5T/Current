@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 // Flags can be passed in as "-flag=value", "--flag=value", "-flag value" or "--flag value" parameters.
 //
 // Undefined flag triggers an error message dumped into stderr followed by exit(-1).
-// Same happens if `ParseDFlags()` was not called or was attempted to be called more than once.
+// Same happens if `ParseDFlags()` was called more than once.
 //
 // Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new,
 // updated values, eliminating the ones holding the parsed flags.
