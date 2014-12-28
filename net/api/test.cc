@@ -56,9 +56,7 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
 #ifndef BRICKS_COVERAGE_REPORT_MODE
-TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
-  ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch);
-}
+TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) { ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch); }
 #endif
 
 TEST(URLParserTest, SmokeTest) {
@@ -169,36 +167,24 @@ class UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION {
       // To avoid the `unused variable: server_scope` warning down in the tests.
     }
   };
-  static string BaseURL() {
-    return "http://httpbin.org";
-  }
-  static DummyTypeWithNonTrivialDestructor SpawnServer() {
-    return DummyTypeWithNonTrivialDestructor{};
-  }
+  static string BaseURL() { return "http://httpbin.org"; }
+  static DummyTypeWithNonTrivialDestructor SpawnServer() { return DummyTypeWithNonTrivialDestructor{}; }
 
   // TODO(dkorolev): Get rid of this.
-  static bool SupportsExternalURLs() {
-    return true;
-  }
+  static bool SupportsExternalURLs() { return true; }
 };
 
 class UseLocalHTTPTestServer {
  public:
-  static string BaseURL() {
-    return string("http://localhost:") + to_string(FLAGS_port);
-  }
+  static string BaseURL() { return string("http://localhost:") + to_string(FLAGS_port); }
 
   class ThreadForSingleServerRequest {
    public:
     ThreadForSingleServerRequest(function<void(Socket)> server_impl)
-        : server_thread_(server_impl, Socket(FLAGS_port)) {
-    }
+        : server_thread_(server_impl, Socket(FLAGS_port)) {}
     ThreadForSingleServerRequest(ThreadForSingleServerRequest&& rhs)
-        : server_thread_(std::move(rhs.server_thread_)) {
-    }
-    ~ThreadForSingleServerRequest() {
-      server_thread_.join();
-    }
+        : server_thread_(std::move(rhs.server_thread_)) {}
+    ~ThreadForSingleServerRequest() { server_thread_.join(); }
 
    private:
     thread server_thread_;
@@ -209,9 +195,7 @@ class UseLocalHTTPTestServer {
   }
 
   // TODO(dkorolev): Get rid of this.
-  static bool SupportsExternalURLs() {
-    return false;
-  }
+  static bool SupportsExternalURLs() { return false; }
 
  private:
   // TODO(dkorolev): This code should use our real bricks::HTTPServer, once it's coded.

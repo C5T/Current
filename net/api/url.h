@@ -92,8 +92,7 @@ struct URLParser {
   }
 
   URLParser(const std::string& url, const URLParser& previous)
-      : URLParser(url, previous.protocol, previous.host, previous.port) {
-  }
+      : URLParser(url, previous.protocol, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     std::ostringstream os;
@@ -113,9 +112,7 @@ struct URLParser {
     return protocol == "http" ? 80 : 0;
   }
 
-  static std::string DefaultProtocolForPort(int port) {
-    return port == 80 ? "http" : "";
-  }
+  static std::string DefaultProtocolForPort(int port) { return port == 80 ? "http" : ""; }
 };
 
 }  // namespace api

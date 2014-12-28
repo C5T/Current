@@ -16,52 +16,32 @@ struct TypeList;
 
 // Empty constructors required by clang++.
 struct Base {
-  Base() {
-  }
+  Base() {}
   // Need to define at least one virtual method.
   virtual ~Base() = default;
 };
 struct Foo : Base {
-  Foo() {
-  }
+  Foo() {}
 };
 struct Bar : Base {
-  Bar() {
-  }
+  Bar() {}
 };
 struct Baz : Base {
-  Baz() {
-  }
+  Baz() {}
 };
 
 typedef TypeList<Foo, Bar, Baz> FooBarBazTypeList;
 
 struct Processor {
   string s;
-  void operator()(const Base&) {
-    s = "const Base&";
-  }
-  void operator()(const Foo&) {
-    s = "const Foo&";
-  }
-  void operator()(const Bar&) {
-    s = "const Bar&";
-  }
-  void operator()(const Baz&) {
-    s = "const Baz&";
-  }
-  void operator()(Base&) {
-    s = "Base&";
-  }
-  void operator()(Foo&) {
-    s = "Foo&";
-  }
-  void operator()(Bar&) {
-    s = "Bar&";
-  }
-  void operator()(Baz&) {
-    s = "Baz&";
-  }
+  void operator()(const Base&) { s = "const Base&"; }
+  void operator()(const Foo&) { s = "const Foo&"; }
+  void operator()(const Bar&) { s = "const Bar&"; }
+  void operator()(const Baz&) { s = "const Baz&"; }
+  void operator()(Base&) { s = "Base&"; }
+  void operator()(Foo&) { s = "Foo&"; }
+  void operator()(Bar&) { s = "Bar&"; }
+  void operator()(Baz&) { s = "Baz&"; }
 };
 
 TEST(RuntimeDispatcher, StaticCalls) {
