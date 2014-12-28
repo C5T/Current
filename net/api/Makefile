@@ -24,7 +24,7 @@ check:
 	../../scripts/check-headers.sh
 
 clean:
-	rm -rf build
+	rm -rf build .tmp impl/build impl/.tmp
 
 build:
 	mkdir -p $@

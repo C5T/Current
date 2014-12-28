@@ -7,6 +7,7 @@ indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 clean:
+	rm -rf build .tmp
 	(cd tcp; make clean) && (cd http; make clean) && (cd api; make clean)
 
 check:

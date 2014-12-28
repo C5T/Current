@@ -16,3 +16,4 @@ build:
 	mkdir -p $@
 
 clean:
+	rm -rf build .tmp

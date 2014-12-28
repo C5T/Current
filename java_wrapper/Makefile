@@ -6,3 +6,4 @@ all:
 check:
 
 clean:
+	rm -rf build .tmp
