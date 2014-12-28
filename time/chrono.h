@@ -100,6 +100,4 @@ inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::MILLISECONDS_INT
   return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
 }
 
-// TODO(dkorolev): Add more arithmetic operations on milliseconds here.
-
 #endif

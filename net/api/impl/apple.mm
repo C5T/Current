@@ -93,7 +93,7 @@ bool bricks::net::api::HTTPClientApple::Go() {
         }
       }
     }
-    return true;  // TODO(dkorolev) + TODO(deathbaba): Figure out something smarter than return (200 == error_code);
+    return true;
 
   } // @autoreleasepool
 }

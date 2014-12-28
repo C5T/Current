@@ -54,17 +54,17 @@ inline std::string ReadFileAsString(std::string const& file_name) {
     if (fi.read(&buffer[0], size).good()) {
       return buffer;
     } else {
-      // TODO(dkorolev): Ask Alex whether there's a better way than what I have here with two exceptions.
       throw FileException();
     }
   } catch (const std::ifstream::failure&) {
     throw FileException();
-  } catch (FileException()) {
-    throw FileException();
   }
 }
 
-inline void WriteStringToFile(const std::string& file_name, const std::string& contents, bool append = false) {
+// `file_name` is `const char*` to require users do `.c_str()` on it.
+// This reduces the risk of accidentally passing `file_name` and `contents` in the wrong order,
+// since `contents` should naturally be a C++ string supporting '\0'-s, while `file_name` does not have to.
+inline void WriteStringToFile(const char* file_name, const std::string& contents, bool append = false) {
   try {
     std::ofstream fo;
     fo.exceptions(std::ofstream::failbit | std::ofstream::badbit);
@@ -102,6 +102,7 @@ class ScopedRemoveFile final {
 };
 
 // Platform-indepenent, injection-friendly filesystem wrapper.
+// TODO(dkorolev): Move the above methods under FileSystem.
 struct FileSystem {
   typedef std::ofstream OutputFile;
 
@@ -160,6 +161,7 @@ struct FileSystem {
   static void CreateDirectory(const std::string& directory) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     ::mkdir(directory.c_str(), 0755);
+    // TODO(dkorolev): Throw an exception and analyze errno.
   }
 };
 

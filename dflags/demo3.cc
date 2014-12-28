@@ -8,7 +8,7 @@ void example() {
 }
 
 namespace google {
-void ParseCommandLineFlags(int* argc, char*** argv) {
+void ParseCommandLineFlags(int*, char***) {
   std::cout << "Although another `google::ParseCommandLineFlags()` implementation exists," << std::endl
             << "DFlags still compiles. However, since this another implementation is dummy," << std::endl
             << "this binary is not parsing flags or `--help` from the command line." << std::endl;

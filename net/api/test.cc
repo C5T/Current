@@ -41,6 +41,8 @@ using bricks::WriteStringToFile;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
 
+using bricks::FileException;
+
 using namespace bricks::net::api;
 
 DEFINE_string(expected_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
@@ -53,9 +55,11 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              10,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
+#ifndef BRICKS_COVERAGE_REPORT_MODE
 TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch);
 }
+#endif
 
 TEST(URLParserTest, SmokeTest) {
   URLParser u;
@@ -108,6 +112,18 @@ TEST(URLParserTest, CompositionTest) {
   EXPECT_EQ("meh://www.google.com:8080/", URLParser("meh://www.google.com:8080").ComposeURL());
 }
 
+TEST(URLParserTest, DerivesProtocolFromPreviousPort) {
+  // Smoke tests for non-default protocol, setting the 2nd parameter to the URLParser() constructor.
+  EXPECT_EQ("www.google.com/", URLParser("www.google.com", "").ComposeURL());
+  EXPECT_EQ("telnet://www.google.com:23/", URLParser("www.google.com", "telnet", "", 23).ComposeURL());
+  // Keeps the protocol if it was explicitly specified, even for the port that maps to a different protocol.
+  EXPECT_EQ("foo://www.google.com:80/", URLParser("foo://www.google.com", "", "", 80).ComposeURL());
+  // Maps port 80 into "http://".
+  EXPECT_EQ("http://www.google.com/", URLParser("www.google.com", "", "", 80).ComposeURL());
+  // Since there is no rule from "23" to "telnet", no protocol is specified.
+  EXPECT_EQ("www.google.com:23/", URLParser("www.google.com", "", "", 23).ComposeURL());
+}
+
 TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
   EXPECT_EQ("http://localhost/foo", URLParser("/foo", URLParser("localhost")).ComposeURL());
   EXPECT_EQ("meh://localhost/foo", URLParser("/foo", URLParser("meh://localhost")).ComposeURL());
@@ -124,9 +140,20 @@ TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
             URLParser("blah://new_host:6000/foo", URLParser("meh://localhost:5000")).ComposeURL());
 }
 
+TEST(URLParserTest, EmptyURLException) {
+  // Empty URL or host should throw.
+  ASSERT_THROW(URLParser(""), EmptyURLException);
+  ASSERT_THROW(URLParser("http://"), EmptyURLHostException);
+  ASSERT_THROW(URLParser("http:///foo"), EmptyURLHostException);
+
+  // Empty host is allowed in local links.
+  EXPECT_EQ("foo://www.website.com:321/second",
+            URLParser("/second", URLParser("foo://www.website.com:321/first")).ComposeURL());
+}
+
 // TODO(dkorolev): Migrate to a simpler HTTP server implementation that is to be added to api.h soon.
 // This would not require any of these headers.
-#include "../http.h"
+#include "../http/http.h"
 using bricks::net::Socket;
 using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPHeadersType;
@@ -201,7 +228,7 @@ class UseLocalHTTPTestServer {
           connection.SendHTTPResponse("DIMA");
         } else if (url == "/drip?numbytes=7") {
           if (!FLAGS_test_chunked_encoding) {
-            connection.SendHTTPResponse("*******");
+            connection.SendHTTPResponse("*******");  // LCOV_EXCL_LINE
           } else {
             Connection& c = connection.RawConnection();
             c.BlockingWrite("HTTP/1.1 200 OK\r\n");
@@ -231,17 +258,17 @@ class UseLocalHTTPTestServer {
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
         } else {
-          ASSERT_TRUE(false) << "GET not implemented for: " << message.URL();
+          ASSERT_TRUE(false) << "GET not implemented for: " << message.URL();  // LCOV_EXCL_LINE
         }
       } else if (method == "POST") {
         if (url == "/post") {
           ASSERT_TRUE(message.HasBody());
           connection.SendHTTPResponse("{\"data\": \"" + message.Body() + "\"}\n");
         } else {
-          ASSERT_TRUE(false) << "POST not implemented for: " << message.URL();
+          ASSERT_TRUE(false) << "POST not implemented for: " << message.URL();  // LCOV_EXCL_LINE
         }
       } else {
-        ASSERT_TRUE(false) << "Method not implemented: " << message.Method();
+        ASSERT_TRUE(false) << "Method not implemented: " << message.Method();  // LCOV_EXCL_LINE
       }
     }
   }
@@ -250,9 +277,12 @@ class UseLocalHTTPTestServer {
 template <typename T>
 class HTTPClientTemplatedTest : public ::testing::Test {};
 
-typedef ::testing::Types<UseLocalHTTPTestServer,
-                         UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION>
-    HTTPClientTestTypeList;
+typedef ::testing::Types<UseLocalHTTPTestServer
+#ifndef BRICKS_COVERAGE_REPORT_MODE
+                         ,
+                         UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION
+#endif
+                         > HTTPClientTestTypeList;
 TYPED_TEST_CASE(HTTPClientTemplatedTest, HTTPClientTestTypeList);
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
@@ -291,7 +321,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
   const string url = TypeParam::BaseURL() + "/post";
   const string non_existent_file_name = FLAGS_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = ScopedRemoveFile(non_existent_file_name);
-  ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), HTTPClientException);
+  ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), FileException);
   // Still do one request since local HTTP server is waiting for it.
   EXPECT_EQ(200, HTTP(GET(TypeParam::BaseURL() + "/get")).code);
 }
@@ -301,7 +331,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
   const auto test_file_scope = ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
-  WriteStringToFile(file_name, file_name);
+  WriteStringToFile(file_name.c_str(), file_name);
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
   EXPECT_EQ(200, response.code);
   EXPECT_NE(string::npos, response.body.find(file_name));
@@ -325,7 +355,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
-  WriteStringToFile(request_file_name, post_body);
+  WriteStringToFile(request_file_name.c_str(), post_body);
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
   EXPECT_EQ(200, response.code);
@@ -369,6 +399,8 @@ TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
   EXPECT_NE(string::npos, response.body.find(custom_user_agent));
 }
 
+// LCOV_EXCL_START
+
 // TODO(dkorolev): Get rid of the tests involving external URLs.
 // TODO(dkorolev): This test is now failing on my client implementation. Fix it.
 TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect301) {
@@ -399,3 +431,5 @@ TYPED_TEST(HTTPClientTemplatedTest, InvalidUrl) {
     }
   }
 }
+
+// LCOV_EXCL_STOP

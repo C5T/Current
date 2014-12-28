@@ -1,5 +1,14 @@
+// NOTE: This file is a `.cc`, not `.h`, since all `.h` files
+// are subject to an automated test that verifies they do not violate ODR,
+// while this file does violate it by using Cereal registration macroses via MAPSYOU_EVENT().
+//
+// In practice, this means that the actual uses of Cereal-ization are not header-only,
+// since registering Cereal types is a non-inline global name definition -- D.K.
+
 #ifndef CEREALIZE_TEST_EVENT_DERIVED_H
 #define CEREALIZE_TEST_EVENT_DERIVED_H
+
+#include "test_event_base.h"
 
 MAPSYOU_EVENT(EventAppStart, MapsYouEventBase, "a") {
   std::string foo = "foo";

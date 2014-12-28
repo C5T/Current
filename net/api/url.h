@@ -7,15 +7,20 @@
 #include <sstream>
 #include <vector>
 
+#include "../../exception.h"
+
 namespace bricks {
 namespace net {
 namespace api {
 
+struct EmptyURLException : Exception {};
+struct EmptyURLHostException : Exception {};
+
 // Initialize or inherit from URLParser to be able to call `ParseURL(url)` and use:
 //
-// * host (defaults to "localhost", never empty).
-// * path (defaults to "/", never empty).
-// * protocol (defaults to "http", never empty).
+// * host     (string)
+// * path     (string, defaults to "/", never empty).
+// * protocol (defaults to "http", empty only if set explicitly in constructor).
 // * port (defaults to the default port for supported protocols).
 //
 // Alternatively, previous URL can be provided to properly handle redirect URLs with omitted fields.
@@ -37,7 +42,10 @@ struct URLParser {
             const std::string& previous_protocol = kDefaultProtocol,
             const std::string& previous_host = "",
             const int previous_port = 0) {
-    protocol = "";  //"http";
+    if (url.empty()) {
+      throw EmptyURLException();
+    }
+    protocol = "";
     size_t offset_past_protocol = 0;
     const size_t i = url.find("://");
     if (i != std::string::npos) {
@@ -50,6 +58,9 @@ struct URLParser {
     host = url.substr(offset_past_protocol, std::min(colon, slash) - offset_past_protocol);
     if (host.empty()) {
       host = previous_host;
+      if (host.empty()) {
+        throw EmptyURLHostException();
+      }
     }
 
     if (colon < slash) {
@@ -72,9 +83,6 @@ struct URLParser {
         protocol = previous_protocol;
       } else {
         protocol = DefaultProtocolForPort(port);
-        if (protocol.empty()) {
-          protocol = kDefaultProtocol;
-        }
       }
     }
 

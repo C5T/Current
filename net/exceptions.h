@@ -6,10 +6,10 @@
 namespace bricks {
 namespace net {
 
-// TODO(dkorolev): Work with Alex on shortening the names.
-
+// All exceptions are derived from NetworkException.
 struct NetworkException : Exception {};
 
+// TCP-level exceptions are derived from SocketException.
 struct SocketException : NetworkException {};
 
 struct InvalidSocketException : SocketException {};
@@ -30,7 +30,9 @@ struct SocketReadMultibyteRecordEndedPrematurelyException : SocketReadException 
 struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
+// HTTP-level exceptions are derived from HTTPException.
 struct HTTPException : NetworkException {};
+
 struct HTTPConnectionClosedByPeerException : HTTPException {};
 struct HTTPNoBodyProvidedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};

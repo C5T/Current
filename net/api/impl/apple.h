@@ -54,13 +54,13 @@ struct HTTPClientApple {
 template <>
 struct ImplWrapper<HTTPClientApple> {
   // Populating the fields of HTTPClientApple given request parameters.
-  inline static void PrepareInput(const HTTPRequestGET& request, HTTPClientApple& client) {
+  inline static void PrepareInput(const GET& request, HTTPClientApple& client) {
     client.url_requested = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
   }
-  inline static void PrepareInput(const HTTPRequestPOST& request, HTTPClientApple& client) {
+  inline static void PrepareInput(const POST& request, HTTPClientApple& client) {
     client.url_requested = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
@@ -68,7 +68,7 @@ struct ImplWrapper<HTTPClientApple> {
     client.post_body = request.body;
     client.content_type = request.content_type;
   }
-  inline static void PrepareInput(const HTTPRequestPOSTFromFile& request, HTTPClientApple& client) {
+  inline static void PrepareInput(const POSTFromFile& request, HTTPClientApple& client) {
     client.url_requested = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;

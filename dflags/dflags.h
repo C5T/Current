@@ -23,11 +23,11 @@ int main(int argc, char** argv) {
 // Flags can be passed in as "-flag=value", "--flag=value", "-flag value" or "--flag value" parameters.
 //
 // Undefined flag triggers an error message dumped into stderr followed by exit(-1).
-// Same happens if `ParseDFlags()` was not called or was attempted to be called more than once.
+// Same happens if `ParseDFlags()` was called more than once.
 //
 // Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new,
 // updated values, eliminating the ones holding the parsed flags.
-// In other words ./main foo --flag_bar=bar baz results in argc=2, new argv == { argv[0], "foo", "baz" }.
+// In other words ./main foo --flag_bar=bar baz results in new argc == 2, new argv == { argv[0], "foo", "baz" }.
 //
 // Passing --help will cause ParseDFlags() to print all registered flags with their descriptions and exit(0).
 
@@ -193,21 +193,19 @@ class FlagsManager {
 };
 
 template <typename T>
-bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
+inline bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
   std::istringstream is(from);
-  // Workaronud for a bug in `clang++ -std=c++11` on Mac, clang++ --version `LLVM version 6.0 (clang-600.0.56)`.
-  // See: http://www.quora.com/Does-Macs-clang++-have-a-bug-with-return-type-of-templated-functions
   return static_cast<bool>(is >> to);
 }
 
 template <>
-bool FromStringSupportingStringAndBool(const std::string& from, std::string& to) {
+inline bool FromStringSupportingStringAndBool(const std::string& from, std::string& to) {
   to = from;
   return true;
 }
 
 template <>
-bool FromStringSupportingStringAndBool(const std::string& from, bool& to) {
+inline bool FromStringSupportingStringAndBool(const std::string& from, bool& to) {
   if (from == "0" || from == "false" || from == "False" || from == "no" || from == "No") {
     to = false;
     return true;
@@ -287,8 +285,7 @@ class FlagRegisterer : public FlagRegistererBase {
 #define DEFINE_uint64(name, default_value, description) DEFINE_flag(uint64_t, name, default_value, description)
 #define DEFINE_float(name, default_value, description) DEFINE_flag(float, name, default_value, description)
 #define DEFINE_double(name, default_value, description) DEFINE_flag(double, name, default_value, description)
-#define DEFINE_string(name, default_value, description) \
-  DEFINE_flag(std::string, name, default_value, description)
+#define DEFINE_string(name, dflt_value, description) DEFINE_flag(std::string, name, dflt_value, description)
 #define DEFINE_bool(name, default_value, description) DEFINE_flag(bool, name, default_value, description)
 
 }  // namespace dflags

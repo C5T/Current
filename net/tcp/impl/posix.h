@@ -23,7 +23,23 @@ namespace net {
 const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
 const size_t kReadTillEOFInitialBufferSize = 128;
-const double kReadTillEOFBufferGrowthK = 1.95;
+
+#define kReadTillEOFBufferGrowthK 1.95
+// const double kReadTillEOFBufferGrowthK = 1.95;
+
+// D.K.: I have replaced `const double` by `#define`, since clang++
+// has been giving the following warning when testing headers for integrity.
+//
+// >> The symbol is used, but only within a templated method that is not enabled.
+// >> /home/dima/github/dkorolev/Bricks/net/tcp/impl/.tmp/headers/posix.h.clang++.cc:26:14: warning: variable
+// >>       'kReadTillEOFBufferGrowthK' is not needed and will not be emitted [-Wunneeded-internal-declaration]
+// >> const double kReadTillEOFBufferGrowthK = 1.95;
+// >>              ^
+// >> 1 warning generated.
+//
+// Interestingly, kReadTillEOFInitialBufferSize follows the same story, but does not trigger a warning.
+// Looks like a glitch in clang++ in either direction (warn on both or on none for consistency reasons),
+// but I didn't investigate further -- D.K.
 
 class SocketHandle {
  public:
@@ -67,6 +83,8 @@ class SocketHandle {
 
  public:
   // The `ReadOnlyIntFieldAccessor socket` members provide simple read-only access to `socket_` via `socket`.
+  // It is kept here to aggressively restrict access to `socket_` from the outside,
+  // since debugging move-constructed socket handles has proven to be nontrivial -- D.K.
   class ReadOnlyIntFieldAccessor final {
    public:
     explicit ReadOnlyIntFieldAccessor(const int& ref) : ref_(ref) {
@@ -187,7 +205,7 @@ class Connection : public SocketHandle {
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
-  // The `std::enable_if<>` clause is required otherwise invoking `BlockingWrite(char[N])` does not compile.
+  // The `std::enable_if<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
   inline typename std::enable_if<sizeof(typename T::value_type) != 0>::type BlockingWrite(const T& container) {
     BlockingWrite(container.begin(), container.end());
@@ -216,7 +234,7 @@ class Socket final : public SocketHandle {
     }
 
     sockaddr_in addr_server;
-    memset(&addr_server, 0, sizeof(addr_server));  // Demote the warning.
+    memset(&addr_server, 0, sizeof(addr_server));
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);

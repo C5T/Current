@@ -1,3 +1,5 @@
+// RTTI-based call dispatching to the handler of the appropriate type.
+
 #ifndef BRICKS_RTTI_DISPATCHER_H
 #define BRICKS_RTTI_DISPATCHER_H
 

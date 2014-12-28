@@ -1,4 +1,5 @@
-// TODO(dkorolev)+TODO(deathbaba): Agree that empty POST body should throw and exception and throw it.
+// TODO(dkorolev): Handle empty POST body. Add a test for it.
+// TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
 
 #ifndef BRICKS_NET_API_POSIX_H
 #define BRICKS_NET_API_POSIX_H
@@ -10,7 +11,7 @@
 #include <string>
 #include <set>
 
-#include "../../http.h"
+#include "../../http/http.h"
 #include "../../../file/file.h"
 
 namespace bricks {
@@ -95,7 +96,7 @@ class HTTPClientPOSIX final {
 
 template <>
 struct ImplWrapper<HTTPClientPOSIX> {
-  inline static void PrepareInput(const HTTPRequestGET& request, HTTPClientPOSIX& client) {
+  inline static void PrepareInput(const GET& request, HTTPClientPOSIX& client) {
     client.request_method_ = "GET";
     client.request_url_ = request.url;
     if (!request.custom_user_agent.empty()) {
@@ -103,7 +104,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     }
   }
 
-  inline static void PrepareInput(const HTTPRequestPOST& request, HTTPClientPOSIX& client) {
+  inline static void PrepareInput(const POST& request, HTTPClientPOSIX& client) {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
     if (!request.custom_user_agent.empty()) {
@@ -113,19 +114,13 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_body_content_type_ = request.content_type;
   }
 
-  inline static void PrepareInput(const HTTPRequestPOSTFromFile& request, HTTPClientPOSIX& client) {
+  inline static void PrepareInput(const POSTFromFile& request, HTTPClientPOSIX& client) {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;
     }
-    try {
-      client.request_body_contents_ = ReadFileAsString(request.file_name);
-      client.request_body_content_type_ = request.content_type;
-    } catch (FileException&) {
-      // TODO(dkorolev): Unfix this "fix" once we use proper exceptions in other clients (Apple, Android).
-      throw HTTPClientException();
-    }
+    client.request_body_contents_ = ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
   }
 
@@ -165,9 +160,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const HTTPClientPOSIX& response,
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
-    // TODO(dkorolev): This is doubly inefficient. Gotta write the buffer or write chunks.
+    // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
     const auto& message = response.GetMessage();
-    WriteStringToFile(response_params.file_name, message.HasBody() ? message.Body() : "");
+    WriteStringToFile(response_params.file_name.c_str(), message.HasBody() ? message.Body() : "");
     output.body_file_name = response_params.file_name;
   }
 };

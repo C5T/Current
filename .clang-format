@@ -1,14 +1,6 @@
 BasedOnStyle: Google
+ColumnLimit: 112          # Calibrated by Dima&Alex for GitHub-based code reviews in 2014.
+BinPackParameters: false  # Allow either all parameters on one line or one parameter per line, no packing.
 
-ColumnLimit: 112
-
-AllowAllParametersOfDeclarationOnNextLine: false
-BinPackParameters: false  # Use multiple lines for parameters.
-BreakConstructorInitializersBeforeComma: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: true  # One per line.
-
+# TODO(dkorolev): Looks like it's worth reverting to default. Send Alex a pull request once this one is merged.
 AllowShortFunctionsOnASingleLine: false
-
-Cpp11BracedListStyle: true
-
-IndentCaseLabels: true

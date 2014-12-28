@@ -6,6 +6,7 @@
 namespace bricks {
 namespace rtti {
 
+// TODO(dkorolev): Add a test for it.
 struct UnrecognizedPolymorphicType : Exception {};
 
 }  // namespace rtti

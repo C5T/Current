@@ -20,20 +20,10 @@ indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 clean:
-	rm -rf build
+	rm -rf build .tmp
 
-check: build build/CHECK_OK
-
-build/CHECK_OK: build *.h
-	for i in *.h ; do \
-		echo -n $(basename $$i)': ' ; \
-		ln -sf ${PWD}/$$i ${PWD}/build/$$i.cc ; \
-		if [ ! -f build/$$i.h.o -o build/$$i.h.cc -nt build/$$i.h.o ] ; then \
-			${CPLUSPLUS} -I . ${CPPFLAGS} -c build/$$i.cc -o build/$$i.h.o ${LDFLAGS} || exit 1 ; echo 'OK' ; \
-		else \
-			echo 'Already OK' ; \
-		fi \
-	done && echo OK >$@
+check:
+	../scripts/check-headers.sh
 
 build:
 	mkdir -p $@
@@ -41,16 +31,5 @@ build:
 build/%: %.cc *.h
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
-build/coverage:
-	mkdir -p $@
-
-build/coverage/%: %.cc *.h
-	${CPLUSPLUS} ${CPPFLAGS_FOR_COVERAGE} -o $@ $< ${LDFLAGS_FOR_COVERAGE}
-
-coverage: build/coverage ${BIN_FOR_COVERAGE}
-	./build/coverage/test
-	gcov test.cc
-	geninfo . --output-file coverage.info
-	genhtml coverage.info --output-directory build/coverage | grep -A 2 "^Overall"
-	rm -rf coverage.info *.gcov *.gcda *.gcno
-	echo ${PWD}/build/coverage/index.html
+coverage:
+	../scripts/coverage-report.sh

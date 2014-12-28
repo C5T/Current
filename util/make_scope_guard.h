@@ -42,6 +42,7 @@ class ScopeGuard final {
   void operator=(const ScopeGuard&) = delete;
 
  public:
+  // TODO(dkorolev): Research whether F&& f is a better choice here; add a test.
   explicit ScopeGuard(F f) : f_(f) {
   }
   ScopeGuard(ScopeGuard&& other) : f_(std::forward<F>(other.f_)) {

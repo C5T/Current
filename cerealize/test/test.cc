@@ -18,7 +18,7 @@
 #include "../../dflags/dflags.h"
 
 #include "test_event_base.h"
-#include "test_event_derived.h"
+#include "test_event_derived.cc"
 
 #include "../../3party/gtest/gtest.h"
 #include "../../3party/gtest/gtest-main-with-dflags.h"
