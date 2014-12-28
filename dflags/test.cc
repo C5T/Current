@@ -177,12 +177,8 @@ TEST(DFlags, ParsesEmptyStringUsingEquals) {
 
 TEST(DFlags, PrintsHelpDeathTest) {
   struct MockCerrHelpPrinter : ::dflags::FlagsManager::DefaultRegisterer {
-    virtual std::ostream& HelpPrinterOStream() const override {
-      return std::cerr;
-    }
-    virtual int HelpPrinterReturnCode() const override {
-      return -1;
-    }
+    virtual std::ostream& HelpPrinterOStream() const override { return std::cerr; }
+    virtual int HelpPrinterReturnCode() const override { return -1; }
   };
   MockCerrHelpPrinter local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);

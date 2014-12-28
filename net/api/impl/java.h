@@ -68,10 +68,8 @@ class HTTPClientPlatformWrapper {
   HTTPClientPlatformWrapper& operator=(const HTTPClientPlatformWrapper&) = delete;
 
  public:
-  HTTPClientPlatformWrapper() : error_code_(kNotInitialized) {
-  }
-  HTTPClientPlatformWrapper(const std::string& url) : url_requested_(url), error_code_(kNotInitialized) {
-  }
+  HTTPClientPlatformWrapper() : error_code_(kNotInitialized) {}
+  HTTPClientPlatformWrapper(const std::string& url) : url_requested_(url), error_code_(kNotInitialized) {}
 
   // Synchronous (blocking) call, should be implemented for each platform
   // @returns true only if server answered with HTTP 200 OK
@@ -212,24 +210,14 @@ class HTTPClientPlatformWrapper {
     return true;
   }
 
-  std::string const& url_requested() const {
-    return url_requested_;
-  }
+  std::string const& url_requested() const { return url_requested_; }
   // @returns empty string in the case of error
-  std::string const& url_received() const {
-    return url_received_;
-  }
-  bool was_redirected() const {
-    return url_requested_ != url_received_;
-  }
+  std::string const& url_received() const { return url_received_; }
+  bool was_redirected() const { return url_requested_ != url_received_; }
   // Mix of HTTP errors (in case of successful connection) and system-dependent error codes,
   // in the simplest success case use 'if (200 == client.error_code())' // 200 means OK in HTTP
-  int error_code() const {
-    return error_code_;
-  }
-  std::string const& server_response() const {
-    return server_response_;
-  }
+  int error_code() const { return error_code_; }
+  std::string const& server_response() const { return server_response_; }
 
 };  // class HTTPClientPlatformWrapper
 
@@ -268,8 +256,7 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
   }
 
   // Populating the fields of aloha::HTTPClientPlatformWrapper given response configuration parameters.
-  inline static void PrepareInput(const KeepResponseInMemory&, aloha::HTTPClientPlatformWrapper&) {
-  }
+  inline static void PrepareInput(const KeepResponseInMemory&, aloha::HTTPClientPlatformWrapper&) {}
   inline static void PrepareInput(const SaveResponseToFile& save_to_file_request,
                                   aloha::HTTPClientPlatformWrapper& client) {
     client.received_file_ = save_to_file_request.file_name;

@@ -93,9 +93,7 @@ class ScopedRemoveFile final {
       RemoveFile(file_name_, RemoveFileParameters::Silent);
     }
   }
-  ~ScopedRemoveFile() {
-    RemoveFile(file_name_, RemoveFileParameters::Silent);
-  }
+  ~ScopedRemoveFile() { RemoveFile(file_name_, RemoveFileParameters::Silent); }
 
  private:
   std::string file_name_;

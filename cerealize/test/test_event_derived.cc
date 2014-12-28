@@ -12,9 +12,7 @@
 
 MAPSYOU_EVENT(EventAppStart, MapsYouEventBase, "a") {
   std::string foo = "foo";
-  virtual std::ostream& AppendTo(std::ostream & os) const {
-    return SUPER::AppendTo(os) << ", foo=" << foo;
-  }
+  virtual std::ostream& AppendTo(std::ostream & os) const { return SUPER::AppendTo(os) << ", foo=" << foo; }
   template <class A>
   void serialize(A & ar) {
     SUPER::serialize(ar);
@@ -24,9 +22,7 @@ MAPSYOU_EVENT(EventAppStart, MapsYouEventBase, "a") {
 
 MAPSYOU_EVENT(EventAppSuspend, MapsYouEventBase, "as") {
   std::string bar = "bar";
-  virtual std::ostream& AppendTo(std::ostream & os) const {
-    return SUPER::AppendTo(os) << ", bar=" << bar;
-  }
+  virtual std::ostream& AppendTo(std::ostream & os) const { return SUPER::AppendTo(os) << ", bar=" << bar; }
   template <class A>
   void serialize(A & ar) {
     SUPER::serialize(ar);
@@ -36,9 +32,7 @@ MAPSYOU_EVENT(EventAppSuspend, MapsYouEventBase, "as") {
 
 MAPSYOU_EVENT(EventAppResume, MapsYouEventBase, "ar") {
   std::string baz = "baz";
-  virtual std::ostream& AppendTo(std::ostream & os) const {
-    return SUPER::AppendTo(os) << ", baz=" << baz;
-  }
+  virtual std::ostream& AppendTo(std::ostream & os) const { return SUPER::AppendTo(os) << ", baz=" << baz; }
   template <class A>
   void serialize(A & ar) {
     SUPER::serialize(ar);

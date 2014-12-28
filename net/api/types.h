@@ -26,8 +26,7 @@ struct GET {
   std::string url;
   std::string custom_user_agent;
 
-  explicit GET(const std::string& url) : url(url) {
-  }
+  explicit GET(const std::string& url) : url(url) {}
 
   GET& SetUserAgent(const std::string& new_custom_user_agent) {
     custom_user_agent = new_custom_user_agent;
@@ -42,8 +41,7 @@ struct POST {
   std::string content_type;
 
   explicit POST(const std::string& url, const std::string& body, const std::string& content_type)
-      : url(url), body(body), content_type(content_type) {
-  }
+      : url(url), body(body), content_type(content_type) {}
 
   POST& SetUserAgent(const std::string& new_custom_user_agent) {
     custom_user_agent = new_custom_user_agent;
@@ -58,8 +56,7 @@ struct POSTFromFile {
   std::string content_type;
 
   explicit POSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type)
-      : url(url), file_name(file_name), content_type(content_type) {
-  }
+      : url(url), file_name(file_name), content_type(content_type) {}
 
   POSTFromFile& SetUserAgent(const std::string& new_custom_user_agent) {
     custom_user_agent = new_custom_user_agent;
@@ -91,8 +88,7 @@ struct KeepResponseInMemory {};
 
 struct SaveResponseToFile {
   std::string file_name;
-  explicit SaveResponseToFile(const std::string& file_name) : file_name(file_name) {
-  }
+  explicit SaveResponseToFile(const std::string& file_name) : file_name(file_name) {}
 };
 
 // Template metaprogramming for selecting the right types at compile time,

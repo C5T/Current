@@ -14,12 +14,8 @@ struct MapsYouEventBase {
   std::string uid_apple = "";
   std::string uid_google = "";
   std::string uid_facebook = "";
-  virtual std::string Type() const {
-    return "Base";
-  }
-  virtual std::string ShortType() const {
-    return "";
-  }
+  virtual std::string Type() const { return "Base"; }
+  virtual std::string ShortType() const { return ""; }
   virtual std::ostream& AppendTo(std::ostream& os) const {
     os << "Type=" << Type() << ", ShortType=\"" << ShortType() << '\"';
     os << ", UID=" << uid;
@@ -47,12 +43,8 @@ struct MapsYouEventBase {
   struct M_EVENT_CLASS_NAME##Helper : MapsYouEventBase {                             \
     typedef MapsYouEventBase CEREAL_BASE_TYPE;                                       \
     typedef M_IMMEDIATE_BASE_CLASS_NAME SUPER;                                       \
-    virtual std::string Type() const override {                                      \
-      return #M_EVENT_CLASS_NAME;                                                    \
-    }                                                                                \
-    virtual std::string ShortType() const override {                                 \
-      return M_SHORT_NAME;                                                           \
-    }                                                                                \
+    virtual std::string Type() const override { return #M_EVENT_CLASS_NAME; }        \
+    virtual std::string ShortType() const override { return M_SHORT_NAME; }          \
   };                                                                                 \
   struct M_EVENT_CLASS_NAME : M_EVENT_CLASS_NAME##Helper
 
