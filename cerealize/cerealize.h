@@ -32,7 +32,7 @@ struct EmptyDeleterForAnyType {
 template <typename BASE, typename ENTRY>
 typename std::enable_if<std::is_base_of<BASE, ENTRY>::value,
                         std::unique_ptr<const BASE, EmptyDeleterForAnyType>>::type
-WithBaseType(const ENTRY& object) {
+inline WithBaseType(const ENTRY& object) {
   return std::unique_ptr<const BASE, EmptyDeleterForAnyType>(reinterpret_cast<const BASE*>(&object),
                                                              EmptyDeleterForAnyType());
 }
