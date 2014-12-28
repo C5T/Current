@@ -195,8 +195,6 @@ class FlagsManager {
 template <typename T>
 inline bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
   std::istringstream is(from);
-  // Workaronud for a bug in `clang++ -std=c++11` on Mac, clang++ --version `LLVM version 6.0 (clang-600.0.56)`.
-  // See: http://www.quora.com/Does-Macs-clang++-have-a-bug-with-return-type-of-templated-functions
   return static_cast<bool>(is >> to);
 }
 
@@ -287,8 +285,7 @@ class FlagRegisterer : public FlagRegistererBase {
 #define DEFINE_uint64(name, default_value, description) DEFINE_flag(uint64_t, name, default_value, description)
 #define DEFINE_float(name, default_value, description) DEFINE_flag(float, name, default_value, description)
 #define DEFINE_double(name, default_value, description) DEFINE_flag(double, name, default_value, description)
-#define DEFINE_string(name, default_value, description) \
-  DEFINE_flag(std::string, name, default_value, description)
+#define DEFINE_string(name, dflt_value, description) DEFINE_flag(std::string, name, dflt_value, description)
 #define DEFINE_bool(name, default_value, description) DEFINE_flag(bool, name, default_value, description)
 
 }  // namespace dflags

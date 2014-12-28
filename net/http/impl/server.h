@@ -1,12 +1,5 @@
-// TODO(dkorolev): Add Mac support and find out the right name for this header file.
-
-// TODO(dkorolev): "If the body was preceded by a Content-Length header, the client MUST close the connection."
-// https://www.ietf.org/rfc/rfc2616.txt
-
 #ifndef BRICKS_NET_HTTP_IMPL_SERVER_H
 #define BRICKS_NET_HTTP_IMPL_SERVER_H
-
-// HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 
 #include <map>
 #include <sstream>
@@ -79,6 +72,8 @@ class HTTPDefaultHelper {
 // Exceptions:
 // * HTTPNoBodyProvidedException         : When attempting to access body when HasBody() is false.
 // * HTTPConnectionClosedByPeerException : When the server is using chunked transfer and doesn't fully send one.
+//
+// HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 template <class HELPER>
 class TemplatedHTTPReceivedMessage : public HELPER {
  public:
@@ -291,7 +286,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 };
 
-// The default implementation is exposed under the name HTTPReceivedMessage.
+// The default implementation is exposed as HTTPReceivedMessage.
 typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
 
 class HTTPServerConnection {
@@ -322,6 +317,10 @@ class HTTPServerConnection {
     connection_.BlockingWrite(os.str());
     connection_.BlockingWrite(begin, end);
     connection_.BlockingWrite(kCRLF);
+
+    // TODO(dkorolev): "If the body was preceded by a Content-Length header, the client MUST close the
+    // connection."
+    // https://www.ietf.org/rfc/rfc2616.txt
   }
 
   template <typename T>

@@ -1,3 +1,5 @@
+// TODO(dkorolev): Check in the remaining code and test it.
+
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -242,13 +244,13 @@ namespace api {
 template <>
 struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
   // Populating the fields of aloha::HTTPClientPlatformWrapper given request parameters.
-  inline static void PrepareInput(const HTTPRequestGET& request, aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const GET& request, aloha::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
     }
   }
-  inline static void PrepareInput(const HTTPRequestPOST& request, aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const POST& request, aloha::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
@@ -256,8 +258,7 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
     client.post_body_ = request.body;
     client.content_type_ = request.content_type;
   }
-  inline static void PrepareInput(const HTTPRequestPOSTFromFile& request,
-                                  aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const POSTFromFile& request, aloha::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;

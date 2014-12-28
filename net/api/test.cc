@@ -41,6 +41,8 @@ using bricks::WriteStringToFile;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
 
+using bricks::FileException;
+
 using namespace bricks::net::api;
 
 DEFINE_string(expected_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
@@ -138,9 +140,20 @@ TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
             URLParser("blah://new_host:6000/foo", URLParser("meh://localhost:5000")).ComposeURL());
 }
 
+TEST(URLParserTest, EmptyURLException) {
+  // Empty URL or host should throw.
+  ASSERT_THROW(URLParser(""), EmptyURLException);
+  ASSERT_THROW(URLParser("http://"), EmptyURLHostException);
+  ASSERT_THROW(URLParser("http:///foo"), EmptyURLHostException);
+
+  // Empty host is allowed in local links.
+  EXPECT_EQ("foo://www.website.com:321/second",
+            URLParser("/second", URLParser("foo://www.website.com:321/first")).ComposeURL());
+}
+
 // TODO(dkorolev): Migrate to a simpler HTTP server implementation that is to be added to api.h soon.
 // This would not require any of these headers.
-#include "../http.h"
+#include "../http/http.h"
 using bricks::net::Socket;
 using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPHeadersType;
@@ -308,7 +321,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
   const string url = TypeParam::BaseURL() + "/post";
   const string non_existent_file_name = FLAGS_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = ScopedRemoveFile(non_existent_file_name);
-  ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), HTTPClientException);
+  ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), FileException);
   // Still do one request since local HTTP server is waiting for it.
   EXPECT_EQ(200, HTTP(GET(TypeParam::BaseURL() + "/get")).code);
 }
@@ -318,7 +331,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
   const auto test_file_scope = ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
-  WriteStringToFile(file_name, file_name);
+  WriteStringToFile(file_name.c_str(), file_name);
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
   EXPECT_EQ(200, response.code);
   EXPECT_NE(string::npos, response.body.find(file_name));
@@ -342,7 +355,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
-  WriteStringToFile(request_file_name, post_body);
+  WriteStringToFile(request_file_name.c_str(), post_body);
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
   EXPECT_EQ(200, response.code);

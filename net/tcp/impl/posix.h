@@ -83,6 +83,8 @@ class SocketHandle {
 
  public:
   // The `ReadOnlyIntFieldAccessor socket` members provide simple read-only access to `socket_` via `socket`.
+  // It is kept here to aggressively restrict access to `socket_` from the outside,
+  // since debugging move-constructed socket handles has proven to be nontrivial -- D.K.
   class ReadOnlyIntFieldAccessor final {
    public:
     explicit ReadOnlyIntFieldAccessor(const int& ref) : ref_(ref) {
@@ -203,7 +205,7 @@ class Connection : public SocketHandle {
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
-  // The `std::enable_if<>` clause is required otherwise invoking `BlockingWrite(char[N])` does not compile.
+  // The `std::enable_if<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
   inline typename std::enable_if<sizeof(typename T::value_type) != 0>::type BlockingWrite(const T& container) {
     BlockingWrite(container.begin(), container.end());
@@ -232,7 +234,7 @@ class Socket final : public SocketHandle {
     }
 
     sockaddr_in addr_server;
-    memset(&addr_server, 0, sizeof(addr_server));  // Demote the warning.
+    memset(&addr_server, 0, sizeof(addr_server));
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);
