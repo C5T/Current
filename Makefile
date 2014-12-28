@@ -10,7 +10,7 @@ check:
 	./scripts/check-all-headers.sh
 
 indent:
-	(find . -name "*.cc" ; find . -name "*.h") | grep -v "/build/" | grep -v 3party | xargs clang-format-3.5 -i
+	(find . -name "*.cc" ; find . -name "*.h") | grep -v "/build/" | grep -v "/.tmp/" | grep -v 3party | xargs clang-format-3.5 -i
 
 wc:
-	(find . -iname "*.cc" ; find . -iname "*.h") | grep -v "/build/" | grep -v 3party | xargs wc -l
+	(find . -iname "*.cc" ; find . -iname "*.h") | grep -v "/build/" | grep -v "/.tmp/" | grep -v 3party | xargs wc -l
