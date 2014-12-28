@@ -17,7 +17,7 @@ indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 clean:
-	rm -rf build .tmp
+	rm -rf build .tmp impl/build impl/.tmp
 
 check:
 	../../scripts/check-headers.sh
