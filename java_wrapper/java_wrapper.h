@@ -3,9 +3,7 @@
 
 #include "../port.h"
 
-#if !defined(BRICKS_JAVA) && !defined(BRICKS_ANDROID)
-#error "`java_wrapper.h` should only be compiled on Java and Android."
-#endif
+#if defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
 
 #include <jni.h>
 #include <string>
@@ -65,5 +63,12 @@ inline std::string ToStdString(JNIEnv* env, jstring str) {
 #ifdef LINK_JAVA_ON_LOAD_INTO_SOURCE
 #include "java_wrapper.cc"
 #endif  // LINK_JAVA_ON_LOAD_INTO_SOURCE
+
+#else   // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#ifndef BRICKS_CHECK_HEADERS_MODE
+#error "`java_wrapper.h` should only be compiled on Java and Android."
+#endif  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+
+#endif
 
 #endif  // BRICKS_JAVA_WRAPPER_H
