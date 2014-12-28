@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 //
 // Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new,
 // updated values, eliminating the ones holding the parsed flags.
-// In other words ./main foo --flag_bar=bar baz results in argc=2, new argv == { argv[0], "foo", "baz" }.
+// In other words ./main foo --flag_bar=bar baz results in new argc == 2, new argv == { argv[0], "foo", "baz" }.
 //
 // Passing --help will cause ParseDFlags() to print all registered flags with their descriptions and exit(0).
 
