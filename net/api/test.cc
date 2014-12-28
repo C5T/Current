@@ -111,10 +111,15 @@ TEST(URLParserTest, CompositionTest) {
 }
 
 TEST(URLParserTest, DerivesProtocolFromPreviousPort) {
+  // Smoke tests for non-default protocol, setting the 2nd parameter to the URLParser() constructor.
   EXPECT_EQ("www.google.com/", URLParser("www.google.com", "").ComposeURL());
-  // `url.h` does not have the "23 -> TELNET" rule as of now -- D.K.
-  EXPECT_EQ("www.google.com:23/", URLParser("www.google.com", "", "", 23).ComposeURL());
   EXPECT_EQ("telnet://www.google.com:23/", URLParser("www.google.com", "telnet", "", 23).ComposeURL());
+  // Keeps the protocol if it was explicitly specified, even for the port that maps to a different protocol.
+  EXPECT_EQ("foo://www.google.com:80/", URLParser("foo://www.google.com", "", "", 80).ComposeURL());
+  // Maps port 80 into "http://".
+  EXPECT_EQ("http://www.google.com/", URLParser("www.google.com", "", "", 80).ComposeURL());
+  // Since there is no rule from "23" to "telnet", no protocol is specified.
+  EXPECT_EQ("www.google.com:23/", URLParser("www.google.com", "", "", 23).ComposeURL());
 }
 
 TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
