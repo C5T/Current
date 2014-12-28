@@ -72,9 +72,6 @@ struct URLParser {
         protocol = previous_protocol;
       } else {
         protocol = DefaultProtocolForPort(port);
-        if (protocol.empty()) {
-          protocol = kDefaultProtocol;
-        }
       }
     }
 

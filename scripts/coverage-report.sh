@@ -4,10 +4,10 @@
 
 set -u -e
 
-CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage"
+CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
-TMPDIR=tmp
+TMPDIR=.tmp
 
 mkdir -p $TMPDIR
 
@@ -23,6 +23,6 @@ for i in *.cc ; do
   genhtml coverage.info --output-directory $TMPDIR/coverage/$BINARY >/dev/null
   rm -rf coverage.info *.gcov *.gcda *.gcno
   echo -e -n "\033[0m\033[1m$i\033[0m: \033[36m"
-  echo $PWD/$TMPDIR/coverage/$BINARY/$PWD/index.html
+  find $TMPDIR/coverage/$BINARY/ -print0 | grep -FzZ "/$i.gcov.html" | xargs -0 readlink -e
   echo -e -n "\033[0m"
 done
