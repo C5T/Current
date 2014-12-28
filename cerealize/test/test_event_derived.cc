@@ -1,6 +1,6 @@
-// NOTE: This file is an `.cc`, not `.h`, since all `.h` files
+// NOTE: This file is a `.cc`, not `.h`, since all `.h` files
 // are subject to an automated test that verifies they do not violate ODR,
-// and this file does violate it.
+// while this file does violate it by using Cereal registration macroses via MAPSYOU_EVENT().
 //
 // In practice, this means that the actual uses of Cereal-ization are not header-only,
 // since registering Cereal types is a non-inline global name definition -- D.K.
