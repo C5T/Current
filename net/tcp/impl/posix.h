@@ -23,7 +23,21 @@ namespace net {
 const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
 const size_t kReadTillEOFInitialBufferSize = 128;
-const double kReadTillEOFBufferGrowthK = 1.95;
+
+#define kReadTillEOFBufferGrowthK 1.95
+// const double kReadTillEOFBufferGrowthK = 1.95;
+
+// D.K.: I have replaced the above below line by the above #define,
+// since clang++ has been giving the following warning when testing headers for integrity.
+//
+// The symbol is used, but only within a templated method that is not enabled.
+// Interestingly, kReadTillEOFInitialBufferSize follows the same story, but does not trigger a warning.
+//
+// /home/dima/github/dkorolev/Bricks/net/tcp/impl/.tmp/headers/posix.h.clang++.cc:26:14: warning: variable
+//       'kReadTillEOFBufferGrowthK' is not needed and will not be emitted [-Wunneeded-internal-declaration]
+// const double kReadTillEOFBufferGrowthK = 1.95;
+//              ^
+// 1 warning generated.
 
 class SocketHandle {
  public:

@@ -39,7 +39,7 @@ build/CHECK_OK: build *.h
 build:
 	mkdir -p $@
 
-build/%: %.cc *.h
+build/%: %.cc *.h test/*
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 build/coverage:

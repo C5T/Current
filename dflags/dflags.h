@@ -193,7 +193,7 @@ class FlagsManager {
 };
 
 template <typename T>
-bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
+inline bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
   std::istringstream is(from);
   // Workaronud for a bug in `clang++ -std=c++11` on Mac, clang++ --version `LLVM version 6.0 (clang-600.0.56)`.
   // See: http://www.quora.com/Does-Macs-clang++-have-a-bug-with-return-type-of-templated-functions
@@ -201,13 +201,13 @@ bool FromStringSupportingStringAndBool(const std::string& from, T& to) {
 }
 
 template <>
-bool FromStringSupportingStringAndBool(const std::string& from, std::string& to) {
+inline bool FromStringSupportingStringAndBool(const std::string& from, std::string& to) {
   to = from;
   return true;
 }
 
 template <>
-bool FromStringSupportingStringAndBool(const std::string& from, bool& to) {
+inline bool FromStringSupportingStringAndBool(const std::string& from, bool& to) {
   if (from == "0" || from == "false" || from == "False" || from == "no" || from == "No") {
     to = false;
     return true;
