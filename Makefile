@@ -1,3 +1,5 @@
+# TODO(dkorolev): Revisit the `test` and `all` targets here and in subdirectories.
+
 .PHONY: test all clean check indent wc
 
 test:

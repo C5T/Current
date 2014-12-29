@@ -1,6 +1,10 @@
 #!/bin/bash
 #
 # Compiles all the tests into one binary, runs all the tests and generates the complete coverage report.
+#
+# Currently supports Linux only due to the coverage generation tool used.
+#
+# TODO(dkorolev): Look into making this script run on Mac.
 
 set -u -e
 
