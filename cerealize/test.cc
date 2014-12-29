@@ -1,1 +1,2 @@
-#include "test/test.cc"
+// TODO(dkorolev): Revisit this pattern.
+#include "test/impl.cc"

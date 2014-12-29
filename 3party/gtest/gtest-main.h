@@ -1,4 +1,7 @@
 // This file added by dkorolev.
+// NOTE: The header guard is the same for gtest-main.h and gtest-main-with-dflags.h
+//       This is to allow compiling multiple *.cc tests as a single binary by concatenating them,
+//       while some might use gtest-main.h and others might use gtest-main-with-dflags.h.
 
 #ifndef THIRDPARTY_GTEST_MAIN_H
 #define THIRDPARTY_GTEST_MAIN_H
