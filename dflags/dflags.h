@@ -51,8 +51,7 @@ inline void TerminateExecution(const int code, const std::string& message) {
 
 class FlagRegistererBase {
  public:
-  virtual ~FlagRegistererBase() {
-  }
+  virtual ~FlagRegistererBase() {}
   virtual void ParseValue(const std::string& name, const std::string& value) const = 0;
   virtual std::string TypeAsString() const = 0;
   virtual std::string DefaultValueAsString() const = 0;
@@ -61,8 +60,7 @@ class FlagRegistererBase {
 
 class FlagsRegistererSingleton {
  public:
-  virtual ~FlagsRegistererSingleton() {
-  }
+  virtual ~FlagsRegistererSingleton() {}
   virtual void RegisterFlag(const std::string& name, FlagRegistererBase* impl) = 0;
   virtual void ParseFlags(int& argc, char**& argv) = 0;
   virtual void PrintHelpAndExit(const std::map<std::string, FlagRegistererBase*>& flags) const {
@@ -80,12 +78,8 @@ class FlagsRegistererSingleton {
     }
   }
   // LCOV_EXCL_START -- exclude the following lines from unit test line coverage report.
-  virtual std::ostream& HelpPrinterOStream() const {
-    return std::cout;
-  }
-  virtual int HelpPrinterReturnCode() const {
-    return 0;
-  }
+  virtual std::ostream& HelpPrinterOStream() const { return std::cout; }
+  virtual int HelpPrinterReturnCode() const { return 0; }
   // LCOV_EXCL_STOP -- exclude the above lines from unit test line coverage report.
 };
 
@@ -93,9 +87,7 @@ class FlagsManager {
  public:
   class DefaultRegisterer : public FlagsRegistererSingleton {
    public:
-    void RegisterFlag(const std::string& name, FlagRegistererBase* impl) override {
-      flags_[name] = impl;
-    }
+    void RegisterFlag(const std::string& name, FlagRegistererBase* impl) override { flags_[name] = impl; }
 
     void ParseFlags(int& argc, char**& argv) override {
       if (parse_flags_called_) {
@@ -159,11 +151,8 @@ class FlagsManager {
         : current_ptr_(MockableSingletonGetterAndSetter()) {
       MockableSingletonGetterAndSetter(ptr);
     }
-    ~ScopedSingletonInjector() {
-      MockableSingletonGetterAndSetter(current_ptr_);
-    }
-    explicit ScopedSingletonInjector(FlagsRegistererSingleton& ref) : ScopedSingletonInjector(&ref) {
-    }
+    ~ScopedSingletonInjector() { MockableSingletonGetterAndSetter(current_ptr_); }
+    explicit ScopedSingletonInjector(FlagsRegistererSingleton& ref) : ScopedSingletonInjector(&ref) {}
 
    private:
     FlagsRegistererSingleton* current_ptr_;
@@ -179,17 +168,13 @@ class FlagsManager {
     return ptr;
   }
 
-  static FlagsRegistererSingleton& Singleton() {
-    return *MockableSingletonGetterAndSetter();
-  }
+  static FlagsRegistererSingleton& Singleton() { return *MockableSingletonGetterAndSetter(); }
 
   static void RegisterFlag(const std::string& name, FlagRegistererBase* impl) {
     Singleton().RegisterFlag(name, impl);
   }
 
-  static void ParseFlags(int& argc, char**& argv) {
-    Singleton().ParseFlags(argc, argv);
-  }
+  static void ParseFlags(int& argc, char**& argv) { Singleton().ParseFlags(argc, argv); }
 };
 
 template <typename T>
@@ -250,17 +235,13 @@ class FlagRegisterer : public FlagRegistererBase {
     }
   }
 
-  virtual std::string TypeAsString() const override {
-    return type_;
-  }
+  virtual std::string TypeAsString() const override { return type_; }
 
   virtual std::string DefaultValueAsString() const override {
     return ToStringSupportingStringAndBool(default_value_);
   }
 
-  virtual std::string DescriptionAsString() const override {
-    return description_;
-  }
+  virtual std::string DescriptionAsString() const override { return description_; }
 
  private:
   FLAG_TYPE& ref_;
@@ -290,18 +271,13 @@ class FlagRegisterer : public FlagRegistererBase {
 
 }  // namespace dflags
 
-inline void ParseDFlags(int* argc, char*** argv) {
-  ::dflags::FlagsManager::ParseFlags(*argc, *argv);
-}
+inline void ParseDFlags(int* argc, char*** argv) { ::dflags::FlagsManager::ParseFlags(*argc, *argv); }
 
 namespace fake_google {
 struct UnambiguousGoogleFriendlyIntPointerWrapper {
   int* p;
-  inline UnambiguousGoogleFriendlyIntPointerWrapper(int* p) : p(p) {
-  }
-  inline operator int*() {
-    return p;
-  }
+  inline UnambiguousGoogleFriendlyIntPointerWrapper(int* p) : p(p) {}
+  inline operator int*() { return p; }
 };
 inline bool ParseCommandLineFlags(UnambiguousGoogleFriendlyIntPointerWrapper argc, char*** argv, bool = true) {
   ParseDFlags(argc, argv);

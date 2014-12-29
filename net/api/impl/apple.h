@@ -78,8 +78,7 @@ struct ImplWrapper<HTTPClientApple> {
   }
 
   // Populating the fields of HTTPClientApple given response configuration parameters.
-  inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientApple&) {
-  }
+  inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientApple&) {}
   inline static void PrepareInput(const SaveResponseToFile& save_to_file_request, HTTPClientApple& client) {
     client.received_file = save_to_file_request.file_name;
   }

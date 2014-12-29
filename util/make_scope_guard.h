@@ -43,13 +43,9 @@ class ScopeGuard final {
 
  public:
   // TODO(dkorolev): Research whether F&& f is a better choice here; add a test.
-  explicit ScopeGuard(F f) : f_(f) {
-  }
-  ScopeGuard(ScopeGuard&& other) : f_(std::forward<F>(other.f_)) {
-  }
-  ~ScopeGuard() {
-    f_();
-  }
+  explicit ScopeGuard(F f) : f_(f) {}
+  ScopeGuard(ScopeGuard&& other) : f_(std::forward<F>(other.f_)) {}
+  ~ScopeGuard() { f_(); }
 };
 
 template <typename F>

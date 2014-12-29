@@ -140,18 +140,10 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
     enum FixTypedefDefinedButNotUsedWarning { FOO = sizeof(BASE_TYPE), BAR = sizeof(DERIVED_TYPE_LIST) };
 
     std::ostringstream os;
-    void operator()(const MapsYouEventBase& e) {
-      e.AppendTo(os) << " *** WRONG *** " << std::endl;
-    }
-    void operator()(const EventAppStart& e) {
-      e.AppendTo(os) << " START " << std::endl;
-    }
-    void operator()(const EventAppSuspend& e) {
-      e.AppendTo(os) << " SUSPEND " << std::endl;
-    }
-    void operator()(const EventAppResume& e) {
-      e.AppendTo(os) << " RESUME " << std::endl;
-    }
+    void operator()(const MapsYouEventBase& e) { e.AppendTo(os) << " *** WRONG *** " << std::endl; }
+    void operator()(const EventAppStart& e) { e.AppendTo(os) << " START " << std::endl; }
+    void operator()(const EventAppSuspend& e) { e.AppendTo(os) << " SUSPEND " << std::endl; }
+    void operator()(const EventAppResume& e) { e.AppendTo(os) << " RESUME " << std::endl; }
   };
 
   ExampleConsumer consumer;

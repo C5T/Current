@@ -38,18 +38,12 @@ const char* const kTransferEncodingChunkedValue = "chunked";
 class HTTPDefaultHelper {
  public:
   typedef std::map<std::string, std::string> HeadersType;
-  const HeadersType& headers() const {
-    return headers_;
-  }
+  const HeadersType& headers() const { return headers_; }
 
  protected:
-  inline void OnHeader(const char* key, const char* value) {
-    headers_[key] = value;
-  }
+  inline void OnHeader(const char* key, const char* value) { headers_[key] = value; }
 
-  inline void OnChunk(const char* chunk, size_t length) {
-    body_.append(chunk, length);
-  }
+  inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 
   inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
     begin = body_.data();
@@ -226,20 +220,14 @@ class TemplatedHTTPReceivedMessage : public HELPER {
     }
   }
 
-  inline const std::string& Method() const {
-    return method_;
-  }
+  inline const std::string& Method() const { return method_; }
 
-  inline const std::string& URL() const {
-    return url_;
-  }
+  inline const std::string& URL() const { return url_; }
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
   // then `HasBody()` will be false and all other `Body*()` methods wil throw.
-  inline bool HasBody() const {
-    return body_buffer_begin_ != nullptr;
-  }
+  inline bool HasBody() const { return body_buffer_begin_ != nullptr; }
 
   inline const std::string Body() const {
     if (body_buffer_begin_) {
@@ -291,12 +279,9 @@ typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
 
 class HTTPServerConnection {
  public:
-  HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {
-  }
+  HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {}
 
-  inline static const std::string DefaultContentType() {
-    return "text/plain";
-  }
+  inline static const std::string DefaultContentType() { return "text/plain"; }
 
   template <typename T>
   inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
@@ -339,13 +324,9 @@ class HTTPServerConnection {
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
-  const HTTPReceivedMessage& Message() const {
-    return message_;
-  }
+  const HTTPReceivedMessage& Message() const { return message_; }
 
-  Connection& RawConnection() {
-    return connection_;
-  }
+  Connection& RawConnection() { return connection_; }
 
  private:
   Connection connection_;
