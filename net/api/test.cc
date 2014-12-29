@@ -159,8 +159,8 @@ using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPHeadersType;
 using bricks::net::HTTPResponseCode;
 
-DEFINE_int32(port, 8080, "Local port to use for the test HTTP server.");
-DEFINE_string(test_tmpdir, "build", "Local path for the test to create temporary files in.");
+DEFINE_int32(net_api_test_port, 8080, "Local port to use for the test HTTP server.");
+DEFINE_string(net_api_test_tmpdir, ".tmp", "Local path for the test to create temporary files in.");
 
 class UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION {
  public:
@@ -185,13 +185,13 @@ class UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION {
 class UseLocalHTTPTestServer {
  public:
   static string BaseURL() {
-    return string("http://localhost:") + to_string(FLAGS_port);
+    return string("http://localhost:") + to_string(FLAGS_net_api_test_port);
   }
 
   class ThreadForSingleServerRequest {
    public:
     ThreadForSingleServerRequest(function<void(Socket)> server_impl)
-        : server_thread_(server_impl, Socket(FLAGS_port)) {
+        : server_thread_(server_impl, Socket(FLAGS_net_api_test_port)) {
     }
     ThreadForSingleServerRequest(ThreadForSingleServerRequest&& rhs)
         : server_thread_(std::move(rhs.server_thread_)) {
@@ -296,7 +296,8 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
-  const string file_name = FLAGS_test_tmpdir + "/some_test_file_for_http_get";
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
   const auto test_file_scope = ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/drip?numbytes=5";
@@ -317,9 +318,10 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToBuffer) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
-  const string non_existent_file_name = FLAGS_test_tmpdir + "/non_existent_file";
+  const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = ScopedRemoveFile(non_existent_file_name);
   ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), FileException);
   // Still do one request since local HTTP server is waiting for it.
@@ -327,7 +329,8 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
-  const string file_name = FLAGS_test_tmpdir + "/some_input_test_file_for_http_post";
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
@@ -338,7 +341,8 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
-  const string file_name = FLAGS_test_tmpdir + "/some_output_test_file_for_http_post";
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
   const auto test_file_scope = ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
@@ -348,8 +352,10 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
-  const string request_file_name = FLAGS_test_tmpdir + "/some_complex_request_test_file_for_http_post";
-  const string response_file_name = FLAGS_test_tmpdir + "/some_complex_response_test_file_for_http_post";
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
+  const string response_file_name =
+      FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
   const auto input_file_scope = ScopedRemoveFile(request_file_name);
   const auto output_file_scope = ScopedRemoveFile(response_file_name);
   const auto server_scope = TypeParam::SpawnServer();

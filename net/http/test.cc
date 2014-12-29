@@ -9,7 +9,7 @@
 
 #include "../../strings/printf.h"
 
-DEFINE_int32(port, 8080, "Local port to use for the test server.");
+DEFINE_int32(net_http_test_port, 8082, "Local port to use for the test server.");
 
 using std::string;
 using std::thread;
@@ -35,8 +35,8 @@ struct HTTPClientImplCURL {
   }
 
   static string Fetch(thread& server_thread, const string& url, const string& method) {
-    const string result =
-        Syscall(strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_port, url.c_str()));
+    const string result = Syscall(
+        strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
     server_thread.join();
     return result;
   }
@@ -45,8 +45,11 @@ struct HTTPClientImplCURL {
                               const string& url,
                               const string& method,
                               const string& data) {
-    const string result = Syscall(strings::Printf(
-        "curl -s -X %s -d '%s' localhost:%d%s", method.c_str(), data.c_str(), FLAGS_port, url.c_str()));
+    const string result = Syscall(strings::Printf("curl -s -X %s -d '%s' localhost:%d%s",
+                                                  method.c_str(),
+                                                  data.c_str(),
+                                                  FLAGS_net_http_test_port,
+                                                  url.c_str()));
     server_thread.join();
     return result;
   }
@@ -71,7 +74,7 @@ class HTTPClientImplPOSIX {
                      const string& method,
                      bool has_data = false,
                      const string& data = "") {
-    Connection connection(ClientSocket("localhost", FLAGS_port));
+    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
     connection.BlockingWrite(method + ' ' + url + "\r\n");
     if (has_data) {
       connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n");
@@ -102,7 +105,7 @@ TYPED_TEST(HTTPTest, GET) {
              EXPECT_EQ("/unittest", c.Message().URL());
              c.SendHTTPResponse("PASSED");
            },
-           Socket(FLAGS_port));
+           Socket(FLAGS_net_http_test_port));
   EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest", "GET"));
 }
 
@@ -115,7 +118,7 @@ TYPED_TEST(HTTPTest, POST) {
              EXPECT_EQ("BAZINGA", c.Message().Body());
              c.SendHTTPResponse("POSTED");
            },
-           Socket(FLAGS_port));
+           Socket(FLAGS_net_http_test_port));
   EXPECT_EQ("POSTED", TypeParam::FetchWithBody(t, "/unittest_post", "POST", "BAZINGA"));
 }
 
@@ -128,6 +131,6 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
              ASSERT_THROW(c.Message().Body(), HTTPNoBodyProvidedException);
              c.SendHTTPResponse("ALMOST_POSTED");
            },
-           Socket(FLAGS_port));
+           Socket(FLAGS_net_http_test_port));
   EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
 }

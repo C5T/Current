@@ -26,7 +26,7 @@
 using namespace bricks;
 using namespace cerealize;
 
-DEFINE_string(filename_prefix, "build/example_data/", "Prefix for intermediate output files.");
+DEFINE_string(cerealize_test_tmpdir, ".tmp", "The directory to create temporary files in.");
 
 static std::string CurrentTestName() {
   // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name
@@ -34,11 +34,12 @@ static std::string CurrentTestName() {
 }
 
 static std::string CurrentTestTempFileName() {
-  return FLAGS_filename_prefix + CurrentTestName();
+  return FileSystem::JoinPath(FLAGS_cerealize_test_tmpdir, CurrentTestName());
 }
 
 TEST(Cerealize, BinarySerializesAndParses) {
-  RemoveFile(FLAGS_filename_prefix + CurrentTestName(), RemoveFileParameters::Silent);
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
+  RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
@@ -60,6 +61,7 @@ TEST(Cerealize, BinarySerializesAndParses) {
 }
 
 TEST(Cerealize, JSONSerializesAndParses) {
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
   RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -80,6 +82,7 @@ TEST(Cerealize, JSONSerializesAndParses) {
 }
 
 TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
   RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -103,6 +106,7 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
 }
 
 TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
   RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -116,6 +120,7 @@ TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
 }
 
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
   RemoveFile(CurrentTestTempFileName(), RemoveFileParameters::Silent);
 
   EventAppStart a;
