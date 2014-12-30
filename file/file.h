@@ -1,9 +1,3 @@
-// TODO(dkorolev): Add unit tests.
-// TODO(dkorolev): Move everything under bricks::file::FileSystem and have all the tests pass.
-
-#ifndef BRICKS_FILE_FILE_H
-#define BRICKS_FILE_FILE_H
-
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -28,6 +22,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
+
+// TODO(dkorolev): Add unit tests.
+// TODO(dkorolev): Move everything under bricks::file::FileSystem and have all the tests pass.
+
+#ifndef BRICKS_FILE_FILE_H
+#define BRICKS_FILE_FILE_H
 
 #include <fstream>
 #include <string>
