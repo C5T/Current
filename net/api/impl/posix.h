@@ -118,7 +118,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;
     }
-    client.request_body_contents_ = ReadFileAsString(request.file_name);  // Can throw FileException.
+    client.request_body_contents_ =
+        FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
   }
 
@@ -159,7 +160,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
     const auto& message = response.GetMessage();
-    WriteStringToFile(response_params.file_name.c_str(), message.HasBody() ? message.Body() : "");
+    FileSystem::WriteStringToFile(response_params.file_name.c_str(), message.HasBody() ? message.Body() : "");
     output.body_file_name = response_params.file_name;
   }
 };

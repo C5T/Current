@@ -35,9 +35,8 @@ using std::thread;
 using std::to_string;
 
 using bricks::MakeScopeGuard;
-using bricks::ReadFileAsString;
+using bricks::FileSystem;
 using bricks::ScopedRemoveFile;
-using bricks::WriteStringToFile;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
 
@@ -176,15 +175,12 @@ class UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION {
 
 class UseLocalHTTPTestServer {
  public:
-  static string BaseURL() {
-    return string("http://localhost:") + to_string(FLAGS_net_api_test_port);
-  }
+  static string BaseURL() { return string("http://localhost:") + to_string(FLAGS_net_api_test_port); }
 
   class ThreadForSingleServerRequest {
    public:
     ThreadForSingleServerRequest(function<void(Socket)> server_impl)
-        : server_thread_(server_impl, Socket(FLAGS_net_api_test_port)) {
-    }
+        : server_thread_(server_impl, Socket(FLAGS_net_api_test_port)) {}
     ThreadForSingleServerRequest(ThreadForSingleServerRequest&& rhs)
         : server_thread_(std::move(rhs.server_thread_)) {}
     ~ThreadForSingleServerRequest() { server_thread_.join(); }
@@ -293,7 +289,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   EXPECT_EQ(file_name, response.body_file_name);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(url, response.url_after_redirects);
-  EXPECT_EQ("*****", ReadFileAsString(response.body_file_name));
+  EXPECT_EQ("*****", FileSystem::ReadFileAsString(response.body_file_name));
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToBuffer) {
@@ -321,7 +317,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
   const auto test_file_scope = ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
-  WriteStringToFile(file_name.c_str(), file_name);
+  FileSystem::WriteStringToFile(file_name.c_str(), file_name);
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
   EXPECT_EQ(200, response.code);
   EXPECT_NE(string::npos, response.body.find(file_name));
@@ -335,7 +331,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
   const string url = TypeParam::BaseURL() + "/post";
   const auto response = HTTP(POST(url, "TEST BODY", "text/plain"), SaveResponseToFile(file_name));
   EXPECT_EQ(200, response.code);
-  EXPECT_NE(string::npos, ReadFileAsString(response.body_file_name).find("TEST BODY"));
+  EXPECT_NE(string::npos, FileSystem::ReadFileAsString(response.body_file_name).find("TEST BODY"));
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
@@ -348,12 +344,12 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
-  WriteStringToFile(request_file_name.c_str(), post_body);
+  FileSystem::WriteStringToFile(request_file_name.c_str(), post_body);
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
   EXPECT_EQ(200, response.code);
   {
-    const string received_data = ReadFileAsString(response.body_file_name);
+    const string received_data = FileSystem::ReadFileAsString(response.body_file_name);
     EXPECT_NE(string::npos, received_data.find(post_body)) << received_data << "\n" << post_body;
   }
 }
