@@ -42,35 +42,9 @@ SOFTWARE.
 
 namespace bricks {
 
-enum class RemoveFileParameters { ThrowExceptionOnError, Silent };
-inline void RemoveFile(const std::string& file_name,
-                       RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
-  if (::remove(file_name.c_str())) {
-    if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
-      throw FileException();
-    }
-  }
-}
-
-class ScopedRemoveFile final {
- public:
-  explicit ScopedRemoveFile(const std::string& file_name, bool remove_now_as_well = true)
-      : file_name_(file_name) {
-    if (remove_now_as_well) {
-      RemoveFile(file_name_, RemoveFileParameters::Silent);
-    }
-  }
-  ~ScopedRemoveFile() { RemoveFile(file_name_, RemoveFileParameters::Silent); }
-
- private:
-  std::string file_name_;
-};
-
 // Platform-indepenent, injection-friendly filesystem wrapper.
 // TODO(dkorolev): Move the above methods under FileSystem.
 struct FileSystem {
-  typedef std::ofstream OutputFile;
-
   static inline std::string ReadFileAsString(std::string const& file_name) {
     try {
       std::ifstream fi;
@@ -116,16 +90,30 @@ struct FileSystem {
     }
   }
 
+  static uint64_t GetFileSize(const std::string& file_name) {
+    struct stat info;
+    if (stat(file_name.c_str(), &info)) {
+      // TODO(dkorolev): Throw an exception and analyze errno.
+      return 0;
+    } else {
+      return static_cast<uint64_t>(info.st_size);
+    }
+  }
+
+  static void CreateDirectory(const std::string& directory) {
+    // Hard-code default permissions to avoid cross-platform compatibility issues.
+    ::mkdir(directory.c_str(), 0755);
+    // TODO(dkorolev): Throw an exception and analyze errno.
+  }
+
   static void RenameFile(const std::string& old_name, const std::string& new_name) {
     if (::rename(old_name.c_str(), new_name.c_str())) {
       // TODO(dkorolev): Throw an exception and analyze errno.
     }
   }
 
-  static void RemoveFile(const std::string& file_name,
-                         RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
-    bricks::RemoveFile(file_name, parameters);
-  }
+  // TODO(dkorolev): Make OutputFile not as tightly coupled with std::ofstream as it is now.
+  typedef std::ofstream OutputFile;
 
   static void ScanDirUntil(const std::string& directory, std::function<bool(const std::string&)> lambda) {
     DIR* dir = ::opendir(directory.c_str());
@@ -148,21 +136,29 @@ struct FileSystem {
     });
   }
 
-  static uint64_t GetFileSize(const std::string& file_name) {
-    struct stat info;
-    if (stat(file_name.c_str(), &info)) {
-      // TODO(dkorolev): Throw an exception and analyze errno.
-      return 0;
-    } else {
-      return static_cast<uint64_t>(info.st_size);
+  enum class RemoveFileParameters { ThrowExceptionOnError, Silent };
+  static void RemoveFile(const std::string& file_name,
+                         RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
+    if (::remove(file_name.c_str())) {
+      if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
+        throw FileException();
+      }
     }
   }
 
-  static void CreateDirectory(const std::string& directory) {
-    // Hard-code default permissions to avoid cross-platform compatibility issues.
-    ::mkdir(directory.c_str(), 0755);
-    // TODO(dkorolev): Throw an exception and analyze errno.
-  }
+  class ScopedRemoveFile final {
+   public:
+    explicit ScopedRemoveFile(const std::string& file_name, bool remove_now_as_well = true)
+        : file_name_(file_name) {
+      if (remove_now_as_well) {
+        RemoveFile(file_name_, RemoveFileParameters::Silent);
+      }
+    }
+    ~ScopedRemoveFile() { RemoveFile(file_name_, RemoveFileParameters::Silent); }
+
+   private:
+    std::string file_name_;
+  };
 };
 
 }  // namespace bricks

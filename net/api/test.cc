@@ -34,13 +34,10 @@ using std::this_thread::sleep_for;
 using std::thread;
 using std::to_string;
 
-using bricks::MakeScopeGuard;
 using bricks::FileSystem;
-using bricks::ScopedRemoveFile;
+using bricks::FileException;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
-
-using bricks::FileException;
 
 using namespace bricks::net::api;
 
@@ -281,7 +278,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
 TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
-  const auto test_file_scope = ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/drip?numbytes=5";
   const auto response = HTTP(GET(url), SaveResponseToFile(file_name));
@@ -305,7 +302,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
-  const auto test_file_scope = ScopedRemoveFile(non_existent_file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(non_existent_file_name);
   ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), FileException);
   // Still do one request since local HTTP server is waiting for it.
   EXPECT_EQ(200, HTTP(GET(TypeParam::BaseURL() + "/get")).code);
@@ -314,7 +311,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
-  const auto test_file_scope = ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   FileSystem::WriteStringToFile(file_name.c_str(), file_name);
@@ -326,7 +323,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
 TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
-  const auto test_file_scope = ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const auto response = HTTP(POST(url, "TEST BODY", "text/plain"), SaveResponseToFile(file_name));
@@ -339,8 +336,8 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name =
       FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
-  const auto input_file_scope = ScopedRemoveFile(request_file_name);
-  const auto output_file_scope = ScopedRemoveFile(response_file_name);
+  const auto input_file_scope = FileSystem::ScopedRemoveFile(request_file_name);
+  const auto output_file_scope = FileSystem::ScopedRemoveFile(response_file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
