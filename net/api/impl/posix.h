@@ -1,3 +1,27 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2014 Dmitry "Dima" Korolev, <dmitry.korolev@gmail.com>.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
 // TODO(dkorolev): Handle empty POST body. Add a test for it.
 // TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
 
@@ -118,7 +142,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;
     }
-    client.request_body_contents_ = ReadFileAsString(request.file_name);  // Can throw FileException.
+    client.request_body_contents_ =
+        FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
   }
 
@@ -159,7 +184,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
     const auto& message = response.GetMessage();
-    WriteStringToFile(response_params.file_name.c_str(), message.HasBody() ? message.Body() : "");
+    FileSystem::WriteStringToFile(response_params.file_name.c_str(), message.HasBody() ? message.Body() : "");
     output.body_file_name = response_params.file_name;
   }
 };

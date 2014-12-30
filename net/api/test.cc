@@ -1,3 +1,27 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
 // TODO(dkorolev): Add a 404 test for downloading into file.
 
 // Test for HTTP clients.
@@ -34,14 +58,10 @@ using std::this_thread::sleep_for;
 using std::thread;
 using std::to_string;
 
-using bricks::MakeScopeGuard;
-using bricks::ReadFileAsString;
-using bricks::ScopedRemoveFile;
-using bricks::WriteStringToFile;
+using bricks::FileSystem;
+using bricks::FileException;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
-
-using bricks::FileException;
 
 using namespace bricks::net::api;
 
@@ -176,15 +196,12 @@ class UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION {
 
 class UseLocalHTTPTestServer {
  public:
-  static string BaseURL() {
-    return string("http://localhost:") + to_string(FLAGS_net_api_test_port);
-  }
+  static string BaseURL() { return string("http://localhost:") + to_string(FLAGS_net_api_test_port); }
 
   class ThreadForSingleServerRequest {
    public:
     ThreadForSingleServerRequest(function<void(Socket)> server_impl)
-        : server_thread_(server_impl, Socket(FLAGS_net_api_test_port)) {
-    }
+        : server_thread_(server_impl, Socket(FLAGS_net_api_test_port)) {}
     ThreadForSingleServerRequest(ThreadForSingleServerRequest&& rhs)
         : server_thread_(std::move(rhs.server_thread_)) {}
     ~ThreadForSingleServerRequest() { server_thread_.join(); }
@@ -285,7 +302,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
 TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
-  const auto test_file_scope = ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/drip?numbytes=5";
   const auto response = HTTP(GET(url), SaveResponseToFile(file_name));
@@ -293,7 +310,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   EXPECT_EQ(file_name, response.body_file_name);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(url, response.url_after_redirects);
-  EXPECT_EQ("*****", ReadFileAsString(response.body_file_name));
+  EXPECT_EQ("*****", FileSystem::ReadFileAsString(response.body_file_name));
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToBuffer) {
@@ -309,7 +326,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
-  const auto test_file_scope = ScopedRemoveFile(non_existent_file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(non_existent_file_name);
   ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), FileException);
   // Still do one request since local HTTP server is waiting for it.
   EXPECT_EQ(200, HTTP(GET(TypeParam::BaseURL() + "/get")).code);
@@ -318,10 +335,10 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
-  const auto test_file_scope = ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
-  WriteStringToFile(file_name.c_str(), file_name);
+  FileSystem::WriteStringToFile(file_name.c_str(), file_name);
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
   EXPECT_EQ(200, response.code);
   EXPECT_NE(string::npos, response.body.find(file_name));
@@ -330,12 +347,12 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
 TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
-  const auto test_file_scope = ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const auto response = HTTP(POST(url, "TEST BODY", "text/plain"), SaveResponseToFile(file_name));
   EXPECT_EQ(200, response.code);
-  EXPECT_NE(string::npos, ReadFileAsString(response.body_file_name).find("TEST BODY"));
+  EXPECT_NE(string::npos, FileSystem::ReadFileAsString(response.body_file_name).find("TEST BODY"));
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
@@ -343,17 +360,17 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name =
       FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
-  const auto input_file_scope = ScopedRemoveFile(request_file_name);
-  const auto output_file_scope = ScopedRemoveFile(response_file_name);
+  const auto input_file_scope = FileSystem::ScopedRemoveFile(request_file_name);
+  const auto output_file_scope = FileSystem::ScopedRemoveFile(response_file_name);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
-  WriteStringToFile(request_file_name.c_str(), post_body);
+  FileSystem::WriteStringToFile(request_file_name.c_str(), post_body);
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
   EXPECT_EQ(200, response.code);
   {
-    const string received_data = ReadFileAsString(response.body_file_name);
+    const string received_data = FileSystem::ReadFileAsString(response.body_file_name);
     EXPECT_NE(string::npos, received_data.find(post_body)) << received_data << "\n" << post_body;
   }
 }
