@@ -7,7 +7,7 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
-TMPDIR=.tmp
+TMPDIR=.noshit
 
 mkdir -p $TMPDIR
 

@@ -8,27 +8,27 @@ LDFLAGS_FOR_COVERAGE=${LDFLAGS}
 
 PWD=$(shell pwd)
 SRC=$(wildcard *.cc)
-BIN=$(SRC:%.cc=build/%)
-BIN_FOR_COVERAGE=$(SRC:%.cc=build/coverage/%)
+BIN=$(SRC:%.cc=.noshit/%)
+BIN_FOR_COVERAGE=$(SRC:%.cc=.noshit/coverage/%)
 
 test: all
-	./build/test
+	.noshit/test
 
-all: build ${BIN}
+all: .noshit ${BIN}
 
 indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 clean:
-	rm -rf build .tmp
+	rm -rf .noshit
 
 check:
 	../scripts/check-headers.sh
 
-build:
+.noshit:
 	mkdir -p $@
 
-build/%: %.cc *.h
+.noshit/%: %.cc *.h
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 coverage:

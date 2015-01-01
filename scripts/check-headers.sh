@@ -10,7 +10,7 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -DBRICKS_CHECK_HEADERS_MODE"
 LDFLAGS="-pthread"
 
-TMPDIR=.tmp
+TMPDIR=.noshit
 
 rm -rf $TMPDIR/headers
 mkdir -p $TMPDIR/headers

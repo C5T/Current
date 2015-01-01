@@ -12,8 +12,5 @@ all:
 check:
 	../scripts/check-headers.sh
 
-build:
-	mkdir -p $@
-
 clean:
-	rm -rf build .tmp
+	rm -rf .noshit

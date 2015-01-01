@@ -1,5 +1,5 @@
-build
-.tmp
+.noshit
+
 core
 *.h.gch
 .exrc

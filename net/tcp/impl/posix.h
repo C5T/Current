@@ -55,7 +55,7 @@ const size_t kReadTillEOFInitialBufferSize = 128;
 // has been giving the following warning when testing headers for integrity.
 //
 // >> The symbol is used, but only within a templated method that is not enabled.
-// >> /home/dima/github/dkorolev/Bricks/net/tcp/impl/.tmp/headers/posix.h.clang++.cc:26:14: warning: variable
+// >> /home/dima/github/dkorolev/Bricks/net/tcp/impl/.noshit/headers/posix.h.clang++.cc:26:14: warning: variable
 // >>       'kReadTillEOFBufferGrowthK' is not needed and will not be emitted [-Wunneeded-internal-declaration]
 // >> const double kReadTillEOFBufferGrowthK = 1.95;
 // >>              ^

@@ -11,7 +11,7 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
-TMPDIR=.tmp/fulltest
+TMPDIR=.noshit/fulltest
 
 mkdir -p $TMPDIR
 
@@ -21,7 +21,7 @@ echo "#include \"dflags/dflags.h\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
 echo "#include \"3party/gtest/gtest-main-with-dflags.h\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
 
 echo -n -e "\033[0m\033[1mTests:\033[0m\033[36m"
-for i in $(find . -iname test.cc | grep -v 3party | grep -v "/build/" | grep -v "/.tmp/"); do
+for i in $(find . -iname test.cc | grep -v 3party | grep -v "/.noshit/"); do
   echo "#include \"$i\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
   echo -n " $i"
 done

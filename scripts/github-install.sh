@@ -13,7 +13,7 @@ GITHUB_BRANCH=${3:-master}
 URL=https://github.com/$GITHUB_USER/$GITHUB_REPO/archive/$GITHUB_BRANCH.tar.gz
 
 # A temporary directory, expected to be .gitignore-d.
-TMPDIR=.tmp
+TMPDIR=.noshit
 
 ( 
   mkdir -p $TMPDIR

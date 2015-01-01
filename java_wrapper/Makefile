@@ -6,4 +6,4 @@ all:
 check:
 
 clean:
-	rm -rf build .tmp
+	rm -rf .noshit

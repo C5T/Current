@@ -7,4 +7,4 @@ check:
 	../scripts/check-headers.sh
 
 clean:
-	rm -rf build .tmp
+	rm -rf .noshit
