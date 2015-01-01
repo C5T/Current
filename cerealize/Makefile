@@ -6,28 +6,28 @@ LDFLAGS=-pthread
 
 PWD=$(shell pwd)
 SRC=$(wildcard *.cc)
-BIN=$(SRC:%.cc=build/%)
+BIN=$(SRC:%.cc=.noshit/%)
 
 test: all
-	mkdir -p build/example_data
-	./build/test
+	mkdir -p .noshit/example_data
+	.noshit/test
 
-all: build ${BIN}
+all: .noshit ${BIN}
 
 indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 clean:
-	rm -rf build .tmp test/build test/.tmp
+	rm -rf .noshit test/.noshit
 
 check:
-	../scripts/check-headers.sh
+	../KnowSheet/scripts/check-headers.sh
 
-build:
+.noshit:
 	mkdir -p $@
 
-build/%: %.cc *.h test/*
+.noshit/%: %.cc *.h test/*
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 coverage:
-	../scripts/coverage-report.sh
+	../KnowSheet/scripts/coverage-report.sh

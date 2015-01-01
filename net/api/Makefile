@@ -5,7 +5,7 @@ CPPFLAGS = -std=c++11 -Wall -W
 LDFLAGS = -pthread
 
 SRC=$(wildcard *.cc)
-BIN = $(SRC:%.cc=build/%)
+BIN = $(SRC:%.cc=.noshit/%)
 OS := $(shell uname)
 ifeq ($(OS),Darwin)
   CPPFLAGS += -x objective-c++ -fobjc-arc
@@ -15,22 +15,22 @@ endif
 test: all
 	${BIN} --expected_arch=${OS}
 
-all: build ${BIN}
+all: .noshit ${BIN}
 
 indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 check:
-	../../scripts/check-headers.sh
+	../../KnowSheet/scripts/check-headers.sh
 
 clean:
-	rm -rf build .tmp impl/build impl/.tmp
+	rm -rf .noshit impl/.noshit
 
-build:
+.noshit:
 	mkdir -p $@
 
-build/%: %.cc *.h */*.h ../*/*.h
+.noshit/%: %.cc *.h */*.h ../*/*.h
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 coverage:
-	../../scripts/coverage-report.sh
+	../../KnowSheet/scripts/coverage-report.sh

@@ -4,7 +4,7 @@ all:
 	echo "TODO(dkorolev): Add tests and coverage report make target for bricks/time."
 
 check:
-	../scripts/check-headers.sh
+	../KnowSheet/scripts/check-headers.sh
 
 clean:
-	rm -rf build .tmp
+	rm -rf .noshit

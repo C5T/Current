@@ -178,7 +178,7 @@ using bricks::net::HTTPHeadersType;
 using bricks::net::HTTPResponseCode;
 
 DEFINE_int32(net_api_test_port, 8080, "Local port to use for the test HTTP server.");
-DEFINE_string(net_api_test_tmpdir, ".tmp", "Local path for the test to create temporary files in.");
+DEFINE_string(net_api_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
 
 class UseRemoteHTTPBinTestServer_SLOW_TEST_REQUIRING_INTERNET_CONNECTION {
  public:
