@@ -32,8 +32,6 @@ SOFTWARE.
 #include "../port.h"
 #include "../strings/fixed_size_serializer.h"
 
-// TODO(dkorolev): Add platform-dependent tests comparing Bricks time to UNIX time.
-
 namespace bricks {
 
 namespace time {

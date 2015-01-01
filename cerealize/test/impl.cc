@@ -62,7 +62,7 @@ static std::string CurrentTestTempFileName() {
 }
 
 TEST(Cerealize, BinarySerializesAndParses) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -85,7 +85,7 @@ TEST(Cerealize, BinarySerializesAndParses) {
 }
 
 TEST(Cerealize, JSONSerializesAndParses) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -106,7 +106,7 @@ TEST(Cerealize, JSONSerializesAndParses) {
 }
 
 TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -130,7 +130,7 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
 }
 
 TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -144,7 +144,7 @@ TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
 }
 
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir);
+  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;

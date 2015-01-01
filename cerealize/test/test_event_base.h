@@ -38,7 +38,7 @@ struct MapsYouEventBase {
   std::string uid_apple = "";
   std::string uid_google = "";
   std::string uid_facebook = "";
-  virtual std::string Type() const { throw true; }  // LCOV_EXCL_LINE
+  virtual std::string Type() const { throw true; }       // LCOV_EXCL_LINE
   virtual std::string ShortType() const { throw true; }  // LCOV_EXCL_LINE
   virtual std::ostream& AppendTo(std::ostream& os) const {
     os << "Type=" << Type() << ", ShortType=\"" << ShortType() << '\"';

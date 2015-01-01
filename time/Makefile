@@ -1,10 +1,32 @@
-.PHONY: all check clean
+.PHONY: test all indent clean check coverage
 
-all:
-	echo "TODO(dkorolev): Add tests and coverage report make target for bricks/time."
+CPLUSPLUS?=g++
+CPPFLAGS=-std=c++11 -g -Wall -W
+LDFLAGS=-pthread
+
+PWD=$(shell pwd)
+SRC=$(wildcard *.cc)
+BIN=$(SRC:%.cc=.noshit/%)
+
+test: all
+	.noshit/test
+
+all: .noshit ${BIN}
+
+indent:
+	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
+
+clean:
+	rm -rf .noshit
 
 check:
 	../KnowSheet/scripts/check-headers.sh
 
-clean:
-	rm -rf .noshit
+.noshit:
+	mkdir -p $@
+
+.noshit/%: %.cc *.h
+	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
+
+coverage:
+	../KnowSheet/scripts/coverage-report.sh
