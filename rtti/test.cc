@@ -38,8 +38,8 @@ using std::tuple;
 template <typename... TYPES>
 struct TypeList;
 
-// Empty constructors required by clang++.
 struct Base {
+  // Empty constructor required by clang++.
   Base() {}
   // Need to define at least one virtual method.
   virtual ~Base() = default;
@@ -52,6 +52,13 @@ struct Bar : Base {
 };
 struct Baz : Base {
   Baz() {}
+};
+
+struct OtherBase {
+  // Empty constructor required by clang++.
+  OtherBase() {}
+  // Need to define at least one virtual method.
+  virtual ~OtherBase() = default;
 };
 
 typedef TypeList<Foo, Bar, Baz> FooBarBazTypeList;
@@ -162,10 +169,12 @@ TEST(RuntimeDispatcher, ImmutableWithDispatching) {
   const Foo foo;
   const Bar bar;
   const Baz baz;
+  const OtherBase other;
   const Base& rbase = base;
   const Base& rfoo = foo;
   const Base& rbar = bar;
   const Base& rbaz = baz;
+  const OtherBase& rother = other;
   Processor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
@@ -176,6 +185,8 @@ TEST(RuntimeDispatcher, ImmutableWithDispatching) {
   EXPECT_EQ("const Bar&", p.s);
   bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbaz, p);
   EXPECT_EQ("const Baz&", p.s);
+  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               bricks::rtti::UnrecognizedPolymorphicType);
 }
 
 TEST(RuntimeDispatcher, MutableWithDispatching) {
@@ -183,10 +194,12 @@ TEST(RuntimeDispatcher, MutableWithDispatching) {
   Foo foo;
   Bar bar;
   Baz baz;
+  OtherBase other;
   Base& rbase = base;
   Base& rfoo = foo;
   Base& rbar = bar;
   Base& rbaz = baz;
+  OtherBase& rother = other;
   Processor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
@@ -197,6 +210,8 @@ TEST(RuntimeDispatcher, MutableWithDispatching) {
   EXPECT_EQ("Bar&", p.s);
   bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbaz, p);
   EXPECT_EQ("Baz&", p.s);
+  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               bricks::rtti::UnrecognizedPolymorphicType);
 }
 
 TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
@@ -204,10 +219,12 @@ TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
   const Foo foo;
   const Bar bar;
   const Baz baz;
+  const OtherBase other;
   const Base& rbase = base;
   const Base& rfoo = foo;
   const Base& rbar = bar;
   const Base& rbaz = baz;
+  const OtherBase& rother = other;
   Processor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
@@ -218,6 +235,8 @@ TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
   EXPECT_EQ("const Bar&", p.s);
   bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
   EXPECT_EQ("const Baz&", p.s);
+  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               bricks::rtti::UnrecognizedPolymorphicType);
 }
 
 TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
@@ -225,10 +244,12 @@ TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
   Foo foo;
   Bar bar;
   Baz baz;
+  OtherBase other;
   Base& rbase = base;
   Base& rfoo = foo;
   Base& rbar = bar;
   Base& rbaz = baz;
+  OtherBase& rother = other;
   Processor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
@@ -239,4 +260,6 @@ TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
   EXPECT_EQ("Bar&", p.s);
   bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
   EXPECT_EQ("Baz&", p.s);
+  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               bricks::rtti::UnrecognizedPolymorphicType);
 }
