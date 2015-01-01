@@ -21,7 +21,7 @@ indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
 
 check:
-	../../scripts/check-headers.sh
+	../../KnowSheet/scripts/check-headers.sh
 
 clean:
 	rm -rf .noshit impl/.noshit
@@ -33,4 +33,4 @@ clean:
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 coverage:
-	../../scripts/coverage-report.sh
+	../../KnowSheet/scripts/coverage-report.sh

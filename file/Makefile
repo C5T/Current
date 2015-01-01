@@ -10,7 +10,7 @@ all:
 	echo "TODO(dkorolev): Add tests for bricks/file."
 
 check:
-	../scripts/check-headers.sh
+	../KnowSheet/scripts/check-headers.sh
 
 clean:
 	rm -rf .noshit

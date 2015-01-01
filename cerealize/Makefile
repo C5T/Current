@@ -21,7 +21,7 @@ clean:
 	rm -rf .noshit test/.noshit
 
 check:
-	../scripts/check-headers.sh
+	../KnowSheet/scripts/check-headers.sh
 
 .noshit:
 	mkdir -p $@
@@ -30,4 +30,4 @@ check:
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 coverage:
-	../scripts/coverage-report.sh
+	../KnowSheet/scripts/coverage-report.sh
