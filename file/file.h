@@ -103,11 +103,16 @@ struct FileSystem {
     }
   }
 
-  static inline void CreateDirectory(const std::string& directory) {
+  enum class CreateDirectoryParameters { ThrowExceptionOnError, Silent };
+  static inline void CreateDirectory(
+      const std::string& directory,
+      CreateDirectoryParameters parameters = CreateDirectoryParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     if (::mkdir(directory.c_str(), 0755)) {
-      // TODO(dkorolev): Analyze errno.
-      throw FileException();
+      if (parameters == CreateDirectoryParameters::ThrowExceptionOnError) {
+        // TODO(dkorolev): Analyze errno.
+        throw FileException();
+      }
     }
   }
 

@@ -112,6 +112,8 @@ TEST(File, DirectoryOperations) {
 
   FileSystem::CreateDirectory(dir);
   ASSERT_THROW(FileSystem::CreateDirectory(dir), FileException);
+  FileSystem::CreateDirectory(dir, FileSystem::CreateDirectoryParameters::Silent);
+
   FileSystem::WriteStringToFile(fn.c_str(), "test");
   EXPECT_EQ("test", FileSystem::ReadFileAsString(fn));
 

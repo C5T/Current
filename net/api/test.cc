@@ -300,7 +300,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
-  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
@@ -322,7 +322,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToBuffer) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
-  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
@@ -333,7 +333,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
-  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
@@ -345,7 +345,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
-  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const auto server_scope = TypeParam::SpawnServer();
@@ -356,7 +356,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
-  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir);
+  bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name =
       FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
