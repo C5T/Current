@@ -22,8 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Add a test that throws UnrecognizedPolymorphicTypeException.
-
 #include "dispatcher.h"
 
 #include <string>
