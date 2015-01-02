@@ -7,7 +7,7 @@ dir=$(cd $(dirname $0) && pwd)
 subdir=KnowSheet
 
 while [ ! -d ${dir}/${subdir} ] ; do
-  [ "$dir" == "/" ] && dir="" && break
+  [ "$dir" == "/" ] && break
   dir=$(dirname $dir)
 done
 
