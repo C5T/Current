@@ -23,6 +23,6 @@ for i in *.cc ; do
   genhtml coverage.info --output-directory $TMPDIR/coverage/$BINARY >/dev/null
   rm -rf coverage.info *.gcov *.gcda *.gcno
   echo -e -n "\033[0m\033[1m$i\033[0m: \033[36m"
-  find $TMPDIR/coverage/$BINARY/ -print0 | grep -FzZ "/$i.gcov.html" | xargs -0 readlink -e
+  echo $(readlink -e $TMPDIR/coverage/$BINARY/index.html)
   echo -e -n "\033[0m"
 done

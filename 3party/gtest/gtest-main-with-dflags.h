@@ -10,6 +10,8 @@
 
 #include "gtest.h"
 
+DEFINE_string(bricks_runtime_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   ParseDFlags(&argc, &argv);

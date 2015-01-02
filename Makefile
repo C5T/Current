@@ -16,7 +16,7 @@ check:
 	./KnowSheet/scripts/check-all-headers.sh
 
 indent:
-	(find . -name "*.cc" ; find . -name "*.h") | grep -v "/.noshit/" | grep -v 3party | xargs clang-format-3.5 -i
+	./KnowSheet/scripts/indent.sh
 
 wc:
 	(find . -iname "*.cc" ; find . -iname "*.h") | grep -v "/.noshit/" | grep -v 3party | xargs wc -l
