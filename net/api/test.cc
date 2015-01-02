@@ -65,8 +65,6 @@ using bricks::net::Connection;  // To send HTTP response in chunked transfer enc
 
 using namespace bricks::net::api;
 
-DEFINE_string(expected_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
-
 DEFINE_bool(test_chunked_encoding,
             true,
             "Whetner the '/drip?numbytes=7' endpoint should use chunked transfer encoding.");
@@ -76,7 +74,9 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
 #ifndef BRICKS_COVERAGE_REPORT_MODE
-TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) { ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_expected_arch); }
+TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
+  ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_bricks_runtime_arch);
+}
 #endif
 
 TEST(URLParserTest, SmokeTest) {
