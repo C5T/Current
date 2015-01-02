@@ -1,1 +1,1 @@
-include $(shell ./KnowSheetDir.sh)/scripts/Makefile
+../KnowSheet/scripts/Makefile
