@@ -160,14 +160,17 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
     // TODO(dkorolev): Chat with Alex what the best way to handle this would be.
     // I looked through Cereal, they use a map<k,v> using typeid. It's a bit off what we need here.
     typedef MapsYouEventBase BASE_TYPE;
+    // Note that this tuple does not list `EventAppSuspend`.
     typedef std::tuple<EventAppStart, EventAppResume> DERIVED_TYPE_LIST;
     enum FixTypedefDefinedButNotUsedWarning { FOO = sizeof(BASE_TYPE), BAR = sizeof(DERIVED_TYPE_LIST) };
 
     std::ostringstream os;
     void operator()(const MapsYouEventBase& e) { e.AppendTo(os) << " *** WRONG *** " << std::endl; }
     void operator()(const EventAppStart& e) { e.AppendTo(os) << " START " << std::endl; }
-    void operator()(const EventAppSuspend& e) { e.AppendTo(os) << " SUSPEND " << std::endl; }
     void operator()(const EventAppResume& e) { e.AppendTo(os) << " RESUME " << std::endl; }
+
+    // This function will not be called since the `EventAppSuspend` type is not in `DERIVED_TYPE_LIST` above.
+    void operator()(const EventAppSuspend& e) { e.AppendTo(os) << " *** NOT CALLED SUSPEND *** " << std::endl; }
   };
 
   ExampleConsumer consumer;
