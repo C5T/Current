@@ -30,8 +30,8 @@ SOFTWARE.
 
 namespace bricks {
 
-template <typename POINTER, typename DELETER>
-std::unique_ptr<POINTER, DELETER> MakePointerScopeGuard(POINTER* x, DELETER t) {
+template <typename POINTER, typename DELETER = std::default_delete<POINTER>>
+std::unique_ptr<POINTER, DELETER> MakePointerScopeGuard(POINTER* x, DELETER t = DELETER()) {
   return std::unique_ptr<POINTER, DELETER>(x, t);
 }
 
@@ -42,14 +42,13 @@ class ScopeGuard final {
   void operator=(const ScopeGuard&) = delete;
 
  public:
-  // TODO(dkorolev): Research whether F&& f is a better choice here; add a test.
   explicit ScopeGuard(F f) : f_(f) {}
   ScopeGuard(ScopeGuard&& other) : f_(std::forward<F>(other.f_)) {}
   ~ScopeGuard() { f_(); }
 };
 
 template <typename F>
-ScopeGuard<F> MakeScopeGuard(F f) {
+ScopeGuard<F> MakeScopeGuard(F&& f) {
   return ScopeGuard<F>(f);
 }
 

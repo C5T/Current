@@ -28,7 +28,7 @@ test: all
 all: .noshit ${BIN}
 
 clean:
-	rm -rf .noshit
+	rm -rf .noshit impl/.noshit
 
 .noshit:
 	mkdir -p $@
