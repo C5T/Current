@@ -44,6 +44,12 @@ TEST(Util, MakeScopeGuard) {
   struct Object {
     Object(std::string& story) : story_(story) { story_ += "constructed\n"; }
     ~Object() { story_ += "destructed\n"; }
+
+    Object(const Object&) = delete;
+    Object(Object&&) = delete;
+    void operator=(const Object&) = delete;
+    void operator=(Object&&) = delete;
+
     std::string& story_;
   };
 
@@ -72,12 +78,12 @@ TEST(Util, MakeScopeGuard) {
     EXPECT_EQ("helper_begin\n", story);
     struct Helper {
       Helper(std::string& story) : story_(story), called_(false) {}
-      Helper(const Helper&) : story_(dummy_string_) {
-        assert(false);  // LCOV_EXCL_LINE
-      }
-      void operator=(const Helper&) {
-        assert(false);  // LCOV_EXCL_LINE
-      }
+
+      Helper(const Helper&) = delete;
+      Helper(Helper&&) = delete;
+      void operator=(const Helper&) = delete;
+      void operator=(Helper&&) = delete;
+
       void operator()() {
         if (!called_) {
           story_ += "helper_end\n";
@@ -86,10 +92,12 @@ TEST(Util, MakeScopeGuard) {
           assert(false);  // LCOV_EXCL_LINE
         }
       }
+
       std::string& story_;
       std::string dummy_string_;
       bool called_;
     };
+
     Helper helper(story);
     {
       EXPECT_EQ("helper_begin\n", story);
@@ -106,6 +114,12 @@ TEST(Util, MakePointerScopeGuard) {
   struct Instance {
     Instance(std::string& story) : story_(story) { story_ += "constructed\n"; }
     ~Instance() { story_ += "destructed\n"; }
+
+    Instance(const Instance&) = delete;
+    Instance(Instance&&) = delete;
+    void operator=(const Instance&) = delete;
+    void operator=(Instance&&) = delete;
+
     std::string& story_;
   };
 
