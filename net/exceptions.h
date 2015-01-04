@@ -59,6 +59,7 @@ struct HTTPException : NetworkException {};
 
 struct HTTPConnectionClosedByPeerException : HTTPException {};
 struct HTTPNoBodyProvidedException : HTTPException {};
+struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
 
 }  // namespace net

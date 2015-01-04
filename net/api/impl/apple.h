@@ -89,9 +89,9 @@ struct ImplWrapper<HTTPClientApple> {
                                  const T_RESPONSE_PARAMS&,
                                  const HTTPClientApple& response,
                                  HTTPResponse& output) {
-    output.url = response.url_requested;
+    // TODO(dkorolev): Handle redirects in Apple implementation.
+    output.url = response.url_received;
     output.code = response.error_code;
-    output.url_after_redirects = response.url_received;
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>

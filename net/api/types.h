@@ -30,16 +30,12 @@ SOFTWARE.
 
 #include <string>
 
-#include "../../exception.h"
+#include "../exceptions.h"
 #include "../http/codes.h"
 
 namespace bricks {
 namespace net {
 namespace api {
-
-// HTTP exceptions.
-// TODO(dkorolev): Structure HTTP exceptions.
-struct HTTPClientException : Exception {};
 
 // Structures to define HTTP requests.
 // Support GET and POST.
@@ -47,55 +43,53 @@ struct HTTPClientException : Exception {};
 // The syntax for creating an instance of a POST request is POST is `POST(url, data, content_type)`'.
 // Alternatively, `POSTFromFile(url, file_name, content_type)` is supported.
 // Both GET and two forms of POST allow `.SetUserAgent(custom_user_agent)`.
-struct GET {
+template <typename T>
+struct HTTPRequestBase {
   std::string url;
-  std::string custom_user_agent;
+  std::string custom_user_agent = "";
+  bool allow_redirects = false;
 
-  explicit GET(const std::string& url) : url(url) {}
+  HTTPRequestBase(const std::string& url) : url(url) {}
 
-  GET& SetUserAgent(const std::string& new_custom_user_agent) {
+  T& SetUserAgent(const std::string& new_custom_user_agent) {
     custom_user_agent = new_custom_user_agent;
-    return *this;
+    return static_cast<T&>(*this);
+  }
+
+  T& AllowRedirects(bool allow_redirects_setting = true) {
+    allow_redirects = allow_redirects_setting;
+    return static_cast<T&>(*this);
   }
 };
 
-struct POST {
-  std::string url;
-  std::string custom_user_agent;
+struct GET : HTTPRequestBase<GET> {
+  explicit GET(const std::string& url) : HTTPRequestBase(url) {}
+};
+
+struct POST : HTTPRequestBase<POST> {
   std::string body;
   std::string content_type;
 
   explicit POST(const std::string& url, const std::string& body, const std::string& content_type)
-      : url(url), body(body), content_type(content_type) {}
-
-  POST& SetUserAgent(const std::string& new_custom_user_agent) {
-    custom_user_agent = new_custom_user_agent;
-    return *this;
-  }
+      : HTTPRequestBase(url), body(body), content_type(content_type) {}
 };
 
-struct POSTFromFile {
-  std::string url;
-  std::string custom_user_agent;
+struct POSTFromFile : HTTPRequestBase<POSTFromFile> {
   std::string file_name;
   std::string content_type;
 
   explicit POSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type)
-      : url(url), file_name(file_name), content_type(content_type) {}
-
-  POSTFromFile& SetUserAgent(const std::string& new_custom_user_agent) {
-    custom_user_agent = new_custom_user_agent;
-    return *this;
-  }
+      : HTTPRequestBase(url), file_name(file_name), content_type(content_type) {}
 };
 
 // Structures to define HTTP response.
 // The actual response type is templated and depends on the types of input paramteres.
 // All responses inherit from `struct HTTPResponse`, that lists common fields.
 struct HTTPResponse {
-  std::string url;                  // The original URL requested by the client.
-  HTTPResponseCode code;            // HTTP response code.
-  std::string url_after_redirects;  // The final URL after all the redirects.
+  // The final URL. Will be equal to the original URL, unless redirects have been allowed and took place.
+  std::string url;
+  // HTTP response code.
+  HTTPResponseCode code;
 };
 
 struct HTTPResponseWithBuffer : HTTPResponse {
@@ -150,7 +144,7 @@ struct HTTPClientImpl {
     IMPL_HELPER::PrepareInput(response_params, impl);
     if (!impl.Go()) {
 #ifndef ANDROID
-      throw HTTPClientException();  // LCOV_EXCL_LINE
+      throw HTTPException();  // LCOV_EXCL_LINE
 #else
       // TODO(dkorolev): Chat with Alex. We can overcome the exception here, but should we?
       return typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE();

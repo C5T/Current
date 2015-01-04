@@ -60,6 +60,7 @@ using std::to_string;
 
 using bricks::FileSystem;
 using bricks::FileException;
+using bricks::net::HTTPRedirectNotAllowedException;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
 
@@ -296,7 +297,6 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("*******", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(url, response.url_after_redirects);
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
@@ -309,7 +309,6 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(file_name, response.body_file_name);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(url, response.url_after_redirects);
   EXPECT_EQ("*****", FileSystem::ReadFileAsString(response.body_file_name));
 }
 
@@ -390,13 +389,18 @@ TYPED_TEST(HTTPClientTemplatedTest, SendsURLParameters) {
   EXPECT_NE(string::npos, response.body.find("\"Aloha\": \"Mahalo\""));
 }
 
-TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect302) {
+TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect302NotAllowedByDefault) {
+  const auto server_scope = TypeParam::SpawnServer();
+  ASSERT_THROW(HTTP(GET(TypeParam::BaseURL() + "/redirect-to?url=/get")), HTTPRedirectNotAllowedException);
+}
+
+TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect302Allowed) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/redirect-to?url=/get";
-  const auto response = HTTP(GET(url));
-  EXPECT_EQ(url, response.url);
+  const auto response = HTTP(GET(url).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ(TypeParam::BaseURL() + "/get", response.url_after_redirects);
+  EXPECT_NE(url, response.url);
+  EXPECT_EQ(TypeParam::BaseURL() + "/get", response.url);
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
@@ -417,7 +421,7 @@ TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect301) {
   if (TypeParam::SupportsExternalURLs()) {
     const auto response = HTTP(GET("http://github.com"));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("https://github.com/", response.url_after_redirects);
+    EXPECT_EQ("https://github.com/", response.url);
   }
 }
 
@@ -426,7 +430,7 @@ TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect307) {
   if (TypeParam::SupportsExternalURLs()) {
     const auto response = HTTP(GET("http://msn.com"));
     EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("http://www.msn.com/", response.url_after_redirects);
+    EXPECT_EQ("http://www.msn.com/", response.url);
   }
 }
 
