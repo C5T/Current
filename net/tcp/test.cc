@@ -53,69 +53,62 @@ using bricks::net::ClientSocket;
 
 using bricks::net::SocketBindException;
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
+using bricks::net::SocketCouldNotWriteEverythingException;
 
-struct TCPClientImplPOSIX {
-  static string ReadFromSocket(thread& server_thread,
-                               const string& host,
-                               const uint16_t port,
-                               function<void(Connection&)> client_code) {
-    Connection connection(ClientSocket(host, port));
-    client_code(connection);
-    connection.SendEOF();
-    server_thread.join();
-    return connection.BlockingReadUntilEOF();
-  }
-
-  static string ReadFromSocket(thread& server_thread,
-                               const string& host,
-                               const uint16_t port,
-                               const string& message_to_send_from_client = "") {
-    return ReadFromSocket(server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
-      if (!message_to_send_from_client.empty()) {
-        connection.BlockingWrite(message_to_send_from_client);
-      }
-    });
-  }
-
-  static string ReadFromSocket(thread& server_thread, function<void(Connection&)> client_code) {
-    return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, client_code);
-  }
-
-  static string ReadFromSocket(thread& server_thread, const string& message_to_send_from_client = "") {
-    return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, message_to_send_from_client);
-  }
-};
-
-template <typename T>
-class TCPTest : public ::testing::Test {};
-
-typedef ::testing::Types<TCPClientImplPOSIX> TCPClientImplsTypeList;
-TYPED_TEST_CASE(TCPTest, TCPClientImplsTypeList);
-
-TYPED_TEST(TCPTest, ReceiveMessage) {
-  thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("BOOM", TypeParam::ReadFromSocket(server));
+static string ReadFromSocket(thread& server_thread,
+                             const string& host,
+                             const uint16_t port,
+                             function<void(Connection&)> client_code) {
+  Connection connection(ClientSocket(host, port));
+  client_code(connection);
+  connection.SendEOF();
+  server_thread.join();
+  return connection.BlockingReadUntilEOF();
 }
 
-TYPED_TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
+static string ReadFromSocket(thread& server_thread,
+                             const string& host,
+                             const uint16_t port,
+                             const string& message_to_send_from_client = "") {
+  return ReadFromSocket(server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
+    if (!message_to_send_from_client.empty()) {
+      connection.BlockingWrite(message_to_send_from_client);
+    }
+  });
+}
+
+static string ReadFromSocket(thread& server_thread, function<void(Connection&)> client_code) {
+  return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, client_code);
+}
+
+static string ReadFromSocket(thread& server_thread, const string& message_to_send_from_client = "") {
+  return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, message_to_send_from_client);
+}
+
+TEST(TCPTest, ReceiveMessage) {
+  thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, Socket(FLAGS_net_tcp_test_port));
+  EXPECT_EQ("BOOM", ReadFromSocket(server));
+}
+
+TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
   // Note: This tests endianness as well -- D.K.
   thread server_thread([](Socket socket) {
                          socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233});
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("1032", TypeParam::ReadFromSocket(server_thread));
+  EXPECT_EQ("1032", ReadFromSocket(server_thread));
 }
 
-TYPED_TEST(TCPTest, EchoMessage) {
+TEST(TCPTest, EchoMessage) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
                          connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("ECHO: TEST OK", TypeParam::ReadFromSocket(server_thread, "TEST OK"));
+  EXPECT_EQ("ECHO: TEST OK", ReadFromSocket(server_thread, "TEST OK"));
 }
 
-TYPED_TEST(TCPTest, EchoMessageOfThreeUInt16) {
+TEST(TCPTest, EchoMessageOfThreeUInt16) {
   // Note: This tests endianness as well -- D.K.
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
@@ -125,10 +118,10 @@ TYPED_TEST(TCPTest, EchoMessageOfThreeUInt16) {
                          }
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("UINT16-s: 3252 2020 3244", TypeParam::ReadFromSocket(server_thread, "R2  D2"));
+  EXPECT_EQ("UINT16-s: 3252 2020 3244", ReadFromSocket(server_thread, "R2  D2"));
 }
 
-TYPED_TEST(TCPTest, EchoThreeMessages) {
+TEST(TCPTest, EchoThreeMessages) {
   thread server_thread([](Socket socket) {
                          const size_t block_length = 3;
                          string s(block_length, ' ');
@@ -147,7 +140,7 @@ TYPED_TEST(TCPTest, EchoThreeMessages) {
                        },
                        Socket(FLAGS_net_tcp_test_port));
   EXPECT_EQ("ECHO: FOO,BAR,BAZ",
-            TypeParam::ReadFromSocket(server_thread, [](Connection& connection) {
+            ReadFromSocket(server_thread, [](Connection& connection) {
               connection.BlockingWrite("FOOBARB");
               sleep_for(milliseconds(1));
               connection.BlockingWrite("A");
@@ -156,7 +149,7 @@ TYPED_TEST(TCPTest, EchoThreeMessages) {
             }));
 }
 
-TYPED_TEST(TCPTest, PrematureMessageEndingException) {
+TEST(TCPTest, PrematureMessageEndingException) {
   struct BigStruct {
     char first_byte;
     char second_byte;
@@ -170,19 +163,18 @@ TYPED_TEST(TCPTest, PrematureMessageEndingException) {
                        },
                        Socket(FLAGS_net_tcp_test_port));
   EXPECT_EQ("PART",
-            TypeParam::ReadFromSocket(server_thread,
-                                      [](Connection& connection) { connection.BlockingWrite("FUUU"); }));
+            ReadFromSocket(server_thread, [](Connection& connection) { connection.BlockingWrite("FUUU"); }));
   EXPECT_EQ('F', big_struct.first_byte);
   EXPECT_EQ('U', big_struct.second_byte);
 }
 
-TYPED_TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
+TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
   Socket s1(FLAGS_net_tcp_test_port);
   std::unique_ptr<Socket> s2;
   ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
 }
 
-TYPED_TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
+TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
                          connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
@@ -193,8 +185,23 @@ TYPED_TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
     message += '0' + (i % 10);
   }
   EXPECT_EQ(10000u, message.length());
-  const std::string response = TypeParam::ReadFromSocket(server_thread, message);
+  const std::string response = ReadFromSocket(server_thread, message);
   EXPECT_EQ(10006u, response.length());
   EXPECT_EQ("ECHO: 0123", response.substr(0, 10));
   EXPECT_EQ("56789", response.substr(10006 - 5));
+}
+
+TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
+  thread server_thread([](Socket socket) {
+                         Connection connection(socket.Accept());
+                         char buffer[3];
+                         connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+                         connection.BlockingWrite("Done, thanks.\n");
+                       },
+                       Socket(FLAGS_net_tcp_test_port));
+  // Attempt to send a very long message to ensure it does not fit OS buffers.
+  Connection connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
+  ASSERT_THROW(connection.BlockingWrite(std::vector<char>(10 * 1000 * 1000, '!')),
+               SocketCouldNotWriteEverythingException);
+  server_thread.join();
 }

@@ -202,9 +202,9 @@ class Connection : public SocketHandle {
     assert(buffer);
     const ssize_t result = ::write(socket, buffer, write_length);
     if (result < 0) {
-      throw SocketWriteException();
+      throw SocketWriteException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {
-      throw SocketCouldNotWriteEverythingException();
+      throw SocketCouldNotWriteEverythingException();  // This one is tested though.
     }
   }
 
@@ -272,7 +272,7 @@ class Socket final : public SocketHandle {
     socklen_t addr_client_length = sizeof(sockaddr_in);
     const int fd = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (fd == -1) {
-      throw SocketAcceptException();
+      throw SocketAcceptException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
     return Connection(SocketHandle::FromHandle(fd));
   }
