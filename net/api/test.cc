@@ -293,7 +293,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToBuffer) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/drip?numbytes=7";
   const auto response = HTTP(GET(url));
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("*******", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(url, response.url_after_redirects);
@@ -306,7 +306,7 @@ TYPED_TEST(HTTPClientTemplatedTest, GetToFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/drip?numbytes=5";
   const auto response = HTTP(GET(url), SaveResponseToFile(file_name));
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(file_name, response.body_file_name);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(url, response.url_after_redirects);
@@ -329,7 +329,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromInvalidFile) {
   const auto test_file_scope = FileSystem::ScopedRemoveFile(non_existent_file_name);
   ASSERT_THROW(HTTP(POSTFromFile(url, non_existent_file_name, "text/plain")), FileException);
   // Still do one request since local HTTP server is waiting for it.
-  EXPECT_EQ(200, HTTP(GET(TypeParam::BaseURL() + "/get")).code);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(TypeParam::BaseURL() + "/get")).code));
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
@@ -340,7 +340,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToBuffer) {
   const string url = TypeParam::BaseURL() + "/post";
   FileSystem::WriteStringToFile(file_name.c_str(), file_name);
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_NE(string::npos, response.body.find(file_name));
 }
 
@@ -351,7 +351,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromBufferToFile) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/post";
   const auto response = HTTP(POST(url, "TEST BODY", "text/plain"), SaveResponseToFile(file_name));
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_NE(string::npos, FileSystem::ReadFileAsString(response.body_file_name).find("TEST BODY"));
 }
 
@@ -368,7 +368,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
   FileSystem::WriteStringToFile(request_file_name.c_str(), post_body);
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   {
     const string received_data = FileSystem::ReadFileAsString(response.body_file_name);
     EXPECT_NE(string::npos, received_data.find(post_body)) << received_data << "\n" << post_body;
@@ -378,7 +378,7 @@ TYPED_TEST(HTTPClientTemplatedTest, PostFromFileToFile) {
 TYPED_TEST(HTTPClientTemplatedTest, ErrorCodes) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/status/403";
-  EXPECT_EQ(403, HTTP(GET(url)).code);
+  EXPECT_EQ(403, static_cast<int>(HTTP(GET(url)).code));
 }
 
 TYPED_TEST(HTTPClientTemplatedTest, SendsURLParameters) {
@@ -386,7 +386,7 @@ TYPED_TEST(HTTPClientTemplatedTest, SendsURLParameters) {
   const string url = TypeParam::BaseURL() + "/get?Aloha=Mahalo";
   const auto response = HTTP(GET(url));
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_NE(string::npos, response.body.find("\"Aloha\": \"Mahalo\""));
 }
 
@@ -395,7 +395,7 @@ TYPED_TEST(HTTPClientTemplatedTest, HttpRedirect302) {
   const string url = TypeParam::BaseURL() + "/redirect-to?url=/get";
   const auto response = HTTP(GET(url));
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(TypeParam::BaseURL() + "/get", response.url_after_redirects);
 }
 
@@ -405,7 +405,7 @@ TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
   const string custom_user_agent = "Aloha User Agent";
   const auto response = HTTP(GET(url).SetUserAgent(custom_user_agent));
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(200, response.code);
+  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_NE(string::npos, response.body.find(custom_user_agent));
 }
 
@@ -416,7 +416,7 @@ TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
 TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect301) {
   if (TypeParam::SupportsExternalURLs()) {
     const auto response = HTTP(GET("http://github.com"));
-    EXPECT_EQ(200, response.code);
+    EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("https://github.com/", response.url_after_redirects);
   }
 }
@@ -425,7 +425,7 @@ TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect301) {
 TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect307) {
   if (TypeParam::SupportsExternalURLs()) {
     const auto response = HTTP(GET("http://msn.com"));
-    EXPECT_EQ(200, response.code);
+    EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("http://www.msn.com/", response.url_after_redirects);
   }
 }
@@ -433,10 +433,9 @@ TYPED_TEST(HTTPClientTemplatedTest, DISABLED_HttpRedirect307) {
 TYPED_TEST(HTTPClientTemplatedTest, InvalidUrl) {
   if (TypeParam::SupportsExternalURLs()) {
     try {
-      // TODO(dkorolev): Chat with Alex and unify this behavior.
-      // Likely combine with moving from { int code; } to { HTTPResponseCode code; throws; }
+      // TODO(dkorolev): Change this to ASSERT_THROW().
       const auto response = HTTP(GET("http://very.bad.url/that/will/not/load"));
-      EXPECT_NE(200, response.code);
+      EXPECT_NE(200, static_cast<int>(response.code));
     } catch (bricks::net::SocketResolveAddressException&) {
     }
   }

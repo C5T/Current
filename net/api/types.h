@@ -31,6 +31,7 @@ SOFTWARE.
 #include <string>
 
 #include "../../exception.h"
+#include "../http/codes.h"
 
 namespace bricks {
 namespace net {
@@ -93,7 +94,7 @@ struct POSTFromFile {
 // All responses inherit from `struct HTTPResponse`, that lists common fields.
 struct HTTPResponse {
   std::string url;                  // The original URL requested by the client.
-  int code;                         // Response code. TODO(dkorolev): HTTPResponseCode from ../http/codes.h?
+  HTTPResponseCode code;            // HTTP response code.
   std::string url_after_redirects;  // The final URL after all the redirects.
 };
 

@@ -86,9 +86,10 @@ class HTTPClientPOSIX final {
       // Don't uncomment the next line!
       // connection.SendEOF();
       message_.reset(new HTTPRedirectableReceivedMessage(connection));
-      response_code_ =
-          atoi(message_->URL().c_str());  // TODO(dkorolev): Rename URL() to a more meaningful thing.
-      if (response_code_ >= 300 && response_code_ <= 399 && !message_->location.empty()) {
+      // TODO(dkorolev): Rename `URL()`, it's only called so now because of HTTP request/response format.
+      const int response_code_as_int = atoi(message_->URL().c_str());
+      response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
+      if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
         // TODO(dkorolev): Open at least one manual page about redirects before merging this code.
         redirected = true;
         parsed_url = URLParser(message_->location, parsed_url);
@@ -109,7 +110,7 @@ class HTTPClientPOSIX final {
   std::string request_user_agent_ = "";
 
   // Output parameters.
-  int response_code_ = -1;
+  HTTPResponseCode response_code_ = HTTPResponseCode::InvalidCode;
   std::string response_url_after_redirects_ = "";
 
  private:
