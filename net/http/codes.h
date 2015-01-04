@@ -34,6 +34,7 @@ namespace bricks {
 namespace net {
 
 enum class HTTPResponseCode : int {
+  InvalidCode = -1,
   Continue = 100,
   SwitchingProtocols = 101,
   OK = 200,
