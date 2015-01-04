@@ -155,7 +155,9 @@ class Connection : public SocketHandle {
     do {
       const ssize_t retval = ::read(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
       if (retval < 0) {
-        throw SocketReadException();
+        // TODO(dkorolev): Unit-test this.
+        // I could not find a simple way to reproduce this error in the test -- D.K.
+        throw SocketReadException();  // LCOV_EXCL_LINE
       } else if (retval == 0) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
