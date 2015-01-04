@@ -49,6 +49,80 @@ using bricks::net::HTTPReceivedMessage;
 using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPResponseCodeAsStringGenerator;
 using bricks::net::HTTPNoBodyProvidedException;
+using bricks::net::HTTPConnectionClosedByPeerException;
+
+TEST(PosixHTTPServerTest, Smoke) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/", c.Message().URL());
+             c.SendHTTPResponse("Data: " + c.Message().Body());
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Content-Length: 4\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("BODY");
+  // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: 10\r\n"
+      "\r\n"
+      "Data: BODY\r\n",
+      connection.BlockingReadUntilEOF());
+}
+
+TEST(PosixHTTPServerTest, SmokeNoEOF) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/", c.Message().URL());
+             c.SendHTTPResponse("Data: " + c.Message().Body());
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Content-Length: 5\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("NOEOF");
+  // Do not send the last "\r\n" and EOF. See the test above with them.
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: 11\r\n"
+      "\r\n"
+      "Data: NOEOF\r\n",
+      connection.BlockingReadUntilEOF());
+}
+
+TEST(HTTPServerTest, ConnectionResetByPeerException) {
+  bool connection_was_closed_by_peer = false;
+  thread t([&connection_was_closed_by_peer](Socket s) {
+             try {
+               HTTPServerConnection(s.Accept());
+             } catch (const HTTPConnectionClosedByPeerException&) {
+               connection_was_closed_by_peer = true;
+             }
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Content-Length: 1000000\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("This body message terminates prematurely.\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_TRUE(connection_was_closed_by_peer);
+}
 
 struct HTTPClientImplCURL {
   static string Syscall(const string& cmdline) {
