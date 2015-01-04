@@ -51,6 +51,7 @@ using bricks::net::Socket;
 using bricks::net::Connection;
 using bricks::net::ClientSocket;
 
+using bricks::net::SocketBindException;
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 
 struct TCPClientImplPOSIX {
@@ -173,4 +174,10 @@ TYPED_TEST(TCPTest, PrematureMessageEndingException) {
                                       [](Connection& connection) { connection.BlockingWrite("FUUU"); }));
   EXPECT_EQ('F', big_struct.first_byte);
   EXPECT_EQ('U', big_struct.second_byte);
+}
+
+TYPED_TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
+  Socket s1(FLAGS_net_tcp_test_port);
+  std::unique_ptr<Socket> s2;
+  ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
 }
