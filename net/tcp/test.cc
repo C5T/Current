@@ -181,3 +181,20 @@ TYPED_TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
   std::unique_ptr<Socket> s2;
   ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
 }
+
+TYPED_TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
+  thread server_thread([](Socket socket) {
+                         Connection connection(socket.Accept());
+                         connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
+                       },
+                       Socket(FLAGS_net_tcp_test_port));
+  std::string message;
+  for (size_t i = 0; i < 10000; ++i) {
+    message += '0' + (i % 10);
+  }
+  EXPECT_EQ(10000u, message.length());
+  const std::string response = TypeParam::ReadFromSocket(server_thread, message);
+  EXPECT_EQ(10006u, response.length());
+  EXPECT_EQ("ECHO: 0123", response.substr(0, 10));
+  EXPECT_EQ("56789", response.substr(10006 - 5));
+}
