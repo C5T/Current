@@ -65,7 +65,7 @@ class HTTPClientPOSIX final {
     do {
       redirected = false;
       if (all_urls.count(parsed_url.ComposeURL())) {
-        throw new HTTPRedirectLoopException();
+        throw new HTTPRedirectLoopException();  // LCOV_EXCL_LINE
       }
       all_urls.insert(parsed_url.ComposeURL());
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));
@@ -90,7 +90,7 @@ class HTTPClientPOSIX final {
       const int response_code_as_int = atoi(message_->URL().c_str());
       response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
-        // TODO(dkorolev): Open at least one manual page about redirects before merging this code.
+        // Note: This is by no means a complete redirect implementation.
         redirected = true;
         parsed_url = URLParser(message_->location, parsed_url);
         response_url_after_redirects_ = parsed_url.ComposeURL();
@@ -131,7 +131,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
     if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;
+      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
@@ -141,7 +141,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
     if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;
+      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
     client.request_body_contents_ =
         FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
@@ -159,12 +159,11 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const T_RESPONSE_PARAMS& /*response_params*/,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
-    if (request_params.url != response.request_url_) {
-      throw HTTPClientException();
+    if (!request_params.allow_redirects && request_params.url != response.response_url_after_redirects_) {
+      throw HTTPRedirectNotAllowedException();
     }
-    output.url = request_params.url;
+    output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;
-    output.url_after_redirects = response.response_url_after_redirects_;
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
