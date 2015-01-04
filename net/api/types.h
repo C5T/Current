@@ -42,7 +42,7 @@ namespace api {
 // The syntax for creating an instance of a GET request is GET is `GET(url)`.
 // The syntax for creating an instance of a POST request is POST is `POST(url, data, content_type)`'.
 // Alternatively, `POSTFromFile(url, file_name, content_type)` is supported.
-// Both GET and two forms of POST allow `.SetUserAgent(custom_user_agent)`.
+// Both GET and two forms of POST allow `.UserAgent(custom_user_agent)`.
 template <typename T>
 struct HTTPRequestBase {
   std::string url;
@@ -51,7 +51,7 @@ struct HTTPRequestBase {
 
   HTTPRequestBase(const std::string& url) : url(url) {}
 
-  T& SetUserAgent(const std::string& new_custom_user_agent) {
+  T& UserAgent(const std::string& new_custom_user_agent) {
     custom_user_agent = new_custom_user_agent;
     return static_cast<T&>(*this);
   }

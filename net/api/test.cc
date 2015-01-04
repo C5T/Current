@@ -407,7 +407,7 @@ TYPED_TEST(HTTPClientTemplatedTest, UserAgent) {
   const auto server_scope = TypeParam::SpawnServer();
   const string url = TypeParam::BaseURL() + "/user-agent";
   const string custom_user_agent = "Aloha User Agent";
-  const auto response = HTTP(GET(url).SetUserAgent(custom_user_agent));
+  const auto response = HTTP(GET(url).UserAgent(custom_user_agent));
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_NE(string::npos, response.body.find(custom_user_agent));
