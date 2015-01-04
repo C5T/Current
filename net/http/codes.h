@@ -121,6 +121,7 @@ class HTTPResponseCodeAsStringGenerator {
         {503, "Service Unavailable"},
         {504, "Gateway Time-out"},
         {505, "HTTP Version not supported"},
+        {-1, "<UNINITIALIZED>"}  // `-1` is used internally by Bricks as `uninitialized`.
     };
     const auto cit = codes.find(static_cast<int>(code));
     if (cit != codes.end()) {

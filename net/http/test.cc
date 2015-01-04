@@ -46,6 +46,8 @@ using bricks::net::ClientSocket;
 using bricks::net::Connection;
 using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPReceivedMessage;
+using bricks::net::HTTPResponseCode;
+using bricks::net::HTTPResponseCodeAsStringGenerator;
 using bricks::net::HTTPNoBodyProvidedException;
 
 struct HTTPClientImplCURL {
@@ -157,4 +159,22 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
            },
            Socket(FLAGS_net_http_test_port));
   EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
+}
+
+TEST(HTTPCodesTest, Code200) {
+  EXPECT_EQ("OK", HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(200)));
+}
+
+TEST(HTTPCodesTest, Code404) {
+  EXPECT_EQ("Not Found", HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(404)));
+}
+
+TEST(HTTPCodesTest, CodeUnknown) {
+  EXPECT_EQ("Unknown Code",
+            HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(999)));
+}
+
+TEST(HTTPCodesTest, CodeInternalUninitialized) {
+  EXPECT_EQ("<UNINITIALIZED>",
+            HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(-1)));
 }
