@@ -19,4 +19,5 @@ indent:
 	./KnowSheet/scripts/indent.sh
 
 wc:
-	(find . -iname "*.cc" ; find . -iname "*.h") | grep -v "/.noshit/" | grep -v 3party | xargs wc -l
+	(for i in "*.cc" "*.h" "*.mm" "*.sh" Makefile; do find . -iname "$$i" -type f; done) \
+	| grep -v "/.noshit/" | grep -v "/3party/" | xargs wc -l | sort -g
