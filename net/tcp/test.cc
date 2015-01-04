@@ -54,6 +54,7 @@ using bricks::net::ClientSocket;
 using bricks::net::SocketBindException;
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 using bricks::net::SocketCouldNotWriteEverythingException;
+using bricks::net::SocketResolveAddressException;
 
 static string ReadFromSocket(thread& server_thread,
                              const string& host,
@@ -204,4 +205,8 @@ TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   ASSERT_THROW(connection.BlockingWrite(std::vector<char>(10 * 1000 * 1000, '!')),
                SocketCouldNotWriteEverythingException);
   server_thread.join();
+}
+
+TEST(TCPTest, ResolveAddressException) {
+  ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
 }
