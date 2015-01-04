@@ -65,14 +65,40 @@ typedef bricks::net::api::HTTPClientImpl<aloha::HTTPClientPlatformWrapper> HTTP_
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
 
-// TODO(dkorolev): This allows using HTTP(GET(url)) without violating ODR. Think of a better way.
-struct HTTPSingleton {
-  static HTTP_TYPE& Get() {
+namespace bricks {
+namespace net {
+namespace api {
+
+namespace instance {
+
+struct HTTPHelper {
+  static HTTP_TYPE& Singleton() {
     static HTTP_TYPE instance;
     return instance;
   }
 };
 
-#define HTTP (HTTPSingleton::Get())
+template <typename T>
+inline T TypeHelper() {
+  static T* ptr;
+  return *ptr;
+}
+
+}  // namespace instance
+
+template <typename T1>
+inline decltype(instance::HTTPHelper::Singleton()(instance::TypeHelper<T1>())) HTTP(T1&& p1) {
+  return instance::HTTPHelper::Singleton()(std::forward<T1>(p1));
+}
+
+template <typename T1, typename T2>
+inline decltype(instance::HTTPHelper::Singleton()(instance::TypeHelper<T1>(), instance::TypeHelper<T2>())) HTTP(
+    T1&& p1, T2&& p2) {
+  return instance::HTTPHelper::Singleton()(std::forward<T1>(p1), std::forward<T2>(p2));
+}
+
+}  // namespace api
+}  // namespace net
+}  // namespace bricks
 
 #endif  // BRICKS_NET_API_API_H
