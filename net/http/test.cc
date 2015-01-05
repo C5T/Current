@@ -69,15 +69,13 @@ TEST(PosixHTTPServerTest, Smoke) {
   connection.BlockingWrite("\r\n");
   connection.SendEOF();
   t.join();
-  const std::string golden =
+  EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: 10\r\n"
       "\r\n"
-      "Data: BODY\r\n";
-  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
-  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
-  EXPECT_EQ(golden, &actual[0]);
+      "Data: BODY\r\n",
+      connection.BlockingReadUntilEOF());
 }
 
 TEST(PosixHTTPServerTest, NoEOF) {
@@ -96,15 +94,13 @@ TEST(PosixHTTPServerTest, NoEOF) {
   connection.BlockingWrite("NOEOF");
   // Do not send the last "\r\n" and EOF. See the test above with them.
   t.join();
-  const std::string golden =
+  EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: 11\r\n"
       "\r\n"
-      "Data: NOEOF\r\n";
-  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
-  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
-  EXPECT_EQ(golden, &actual[0]);
+      "Data: NOEOF\r\n",
+      connection.BlockingReadUntilEOF());
 }
 
 TEST(PosixHTTPServerTest, LargeBody) {
@@ -128,16 +124,14 @@ TEST(PosixHTTPServerTest, LargeBody) {
   connection.BlockingWrite("\r\n");
   connection.SendEOF();
   t.join();
-  const std::string golden =
+  EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: 1000006\r\n"
       "\r\n"
       "Data: " +
-      body + "\r\n";
-  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
-  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
-  EXPECT_EQ(golden, &actual[0]);
+          body + "\r\n",
+      connection.BlockingReadUntilEOF());
 }
 
 TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
@@ -166,18 +160,16 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   }
   connection.BlockingWrite("0\r\n");
   t.join();
-  const std::string golden = strings::Printf(
-      "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
-      "Content-Length: %d\r\n"
-      "\r\n"
-      "%s"
-      "\r\n",
-      static_cast<int>(body.length()),
-      body.c_str());
-  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
-  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
-  EXPECT_EQ(golden, &actual[0]);
+  EXPECT_EQ(strings::Printf(
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: %d\r\n"
+                "\r\n"
+                "%s"
+                "\r\n",
+                static_cast<int>(body.length()),
+                body.c_str()),
+            connection.BlockingReadUntilEOF());
 }
 
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
@@ -207,18 +199,16 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   }
   connection.BlockingWrite("0\r\n");
   t.join();
-  const std::string golden = strings::Printf(
-      "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
-      "Content-Length: %d\r\n"
-      "\r\n"
-      "%s"
-      "\r\n",
-      static_cast<int>(body.length()),
-      body.c_str());
-  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
-  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
-  EXPECT_EQ(golden, &actual[0]);
+  EXPECT_EQ(strings::Printf(
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                "Content-Length: %d\r\n"
+                "\r\n"
+                "%s"
+                "\r\n",
+                static_cast<int>(body.length()),
+                body.c_str()),
+            connection.BlockingReadUntilEOF());
 }
 
 TEST(HTTPServerTest, ConnectionResetByPeerException) {
