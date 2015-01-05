@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_API_URL_H
-#define BRICKS_NET_API_URL_H
+#ifndef BRICKS_NET_URL_URL_H
+#define BRICKS_NET_URL_URL_H
 
 #include <algorithm>
 #include <cstring>
@@ -35,37 +35,37 @@ SOFTWARE.
 
 namespace bricks {
 namespace net {
-namespace api {
+namespace url {
 
 struct EmptyURLException : Exception {};
 struct EmptyURLHostException : Exception {};
 
-// Initialize or inherit from URLParser to be able to call `ParseURL(url)` and use:
+// URL manages the mapping between the string and parsed representations of the URL. It manages:
 //
 // * host     (string)
 // * path     (string, defaults to "/", never empty).
 // * protocol (defaults to "http", empty only if set explicitly in constructor).
 // * port (defaults to the default port for supported protocols).
 //
-// Alternatively, previous URL can be provided to properly handle redirect URLs with omitted fields.
+// When handling redirects, the previous URL can be provided to properly handle host/port/protocol.
 
 namespace {
 const char* const kDefaultProtocol = "http";
 }
 
-struct URLParser {
+struct URL {
   std::string host = "";
   std::string path = "/";
   std::string protocol = kDefaultProtocol;
   int port = 0;
 
-  URLParser() = default;
+  URL() = default;
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URLParser(const std::string& url,
-            const std::string& previous_protocol = kDefaultProtocol,
-            const std::string& previous_host = "",
-            const int previous_port = 0) {
+  URL(const std::string& url,
+      const std::string& previous_protocol = kDefaultProtocol,
+      const std::string& previous_host = "",
+      const int previous_port = 0) {
     if (url.empty()) {
       throw EmptyURLException();
     }
@@ -115,8 +115,8 @@ struct URLParser {
     }
   }
 
-  URLParser(const std::string& url, const URLParser& previous)
-      : URLParser(url, previous.protocol, previous.host, previous.port) {}
+  URL(const std::string& url, const URL& previous)
+      : URL(url, previous.protocol, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     std::ostringstream os;
@@ -139,8 +139,8 @@ struct URLParser {
   static std::string DefaultProtocolForPort(int port) { return port == 80 ? "http" : ""; }
 };
 
-}  // namespace api
+}  // namespace url
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_API_URL_H
+#endif  // BRICKS_NET_URL_URL_H

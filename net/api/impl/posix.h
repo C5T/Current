@@ -29,7 +29,7 @@ SOFTWARE.
 #define BRICKS_NET_API_POSIX_H
 
 #include "../types.h"
-#include "../url.h"
+#include "../../url/url.h"
 
 #include <memory>
 #include <string>
@@ -59,7 +59,7 @@ class HTTPClientPOSIX final {
   bool Go() {
     // TODO(dkorolev): Always use the URL returned by the server here.
     response_url_after_redirects_ = request_url_;
-    URLParser parsed_url(request_url_);
+    url::URL parsed_url(request_url_);
     std::set<std::string> all_urls;
     bool redirected;
     do {
@@ -92,7 +92,7 @@ class HTTPClientPOSIX final {
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
         // Note: This is by no means a complete redirect implementation.
         redirected = true;
-        parsed_url = URLParser(message_->location, parsed_url);
+        parsed_url = url::URL(message_->location, parsed_url);
         response_url_after_redirects_ = parsed_url.ComposeURL();
       }
     } while (redirected);
