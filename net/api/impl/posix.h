@@ -65,7 +65,7 @@ class HTTPClientPOSIX final {
     do {
       redirected = false;
       if (all_urls.count(parsed_url.ComposeURL())) {
-        throw new HTTPRedirectLoopException();  // LCOV_EXCL_LINE
+        throw HTTPRedirectLoopException();
       }
       all_urls.insert(parsed_url.ComposeURL());
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));

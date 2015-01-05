@@ -36,16 +36,16 @@ struct NetworkException : Exception {};
 // TCP-level exceptions are derived from SocketException.
 struct SocketException : NetworkException {};
 
-struct InvalidSocketException : SocketException {};
-struct SocketCreateException : SocketException {};
+struct InvalidSocketException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
+struct SocketCreateException : SocketException {};   // LCOV_EXCL_LINE -- not covered by unit tests.
 
 struct ServerSocketException : SocketException {};
 struct SocketBindException : ServerSocketException {};
-struct SocketListenException : ServerSocketException {};
-struct SocketAcceptException : ServerSocketException {};
+struct SocketListenException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
+struct SocketAcceptException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 
 struct ClientSocketException : SocketException {};
-struct SocketConnectException : ClientSocketException {};
+struct SocketConnectException : ClientSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketResolveAddressException : ClientSocketException {};
 
 struct SocketFcntlException : SocketException {};

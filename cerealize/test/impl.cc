@@ -74,7 +74,7 @@ TEST(Cerealize, BinarySerializesAndParses) {
   CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
 
   std::ostringstream os;
-  while (f.NextLambda([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
+  while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
     ;
 
   EXPECT_EQ(
@@ -96,7 +96,7 @@ TEST(Cerealize, JSONSerializesAndParses) {
   GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(CurrentTestTempFileName());
 
   std::ostringstream os;
-  while (f.NextLambda([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
+  while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
     ;
 
   EXPECT_EQ(
@@ -119,7 +119,7 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
   CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
 
   std::ostringstream os;
-  while (f.NextLambda([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
+  while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
     ;
 
   EXPECT_EQ(

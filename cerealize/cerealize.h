@@ -125,7 +125,7 @@ class GenericCerealFileParser {
 
   // `Next` calls `T_PROCESSOR::operator()(const T_ENTRY&)` for the next entry, or returns false.
   template <typename T_PROCESSOR>
-  bool Next(T_PROCESSOR& processor) {
+  bool Next(T_PROCESSOR&& processor) {
     try {
       std::unique_ptr<T_ENTRY> entry;
       si_(entry);
@@ -137,16 +137,6 @@ class GenericCerealFileParser {
       // pain in the ass.
       return false;
     }
-  }
-
-  // `NextLambda` calls `lambda(const T_ENTRY&)` for the next entry, or returns false.
-  // TODO(dkorolev): Chat with Alex -- I did not find a way to support lambdas (which are passed by value)
-  // and user-defined classes (which are passed by reference) under the same method name.
-  // Since copying user-defined objects is not only inefficient but plain wrong,
-  // I went with two methods instead.
-  template <typename T_PROCESSOR>
-  bool NextLambda(T_PROCESSOR processor) {
-    return Next(processor);
   }
 
   // `Next` calls `T_PROCESSOR::operator()(const T_ACTUAL_ENTRY_TYPE&)` for the next entry, or returns false.

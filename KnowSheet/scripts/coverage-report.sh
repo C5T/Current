@@ -19,9 +19,10 @@ for i in *.cc ; do
   g++ $CPPFLAGS $i -o $TMPDIR/coverage/$BINARY/binary $LDFLAGS
   ./$TMPDIR/coverage/$BINARY/binary || exit 1
   gcov $i >/dev/null
-  geninfo . --output-file coverage.info >/dev/null
+  geninfo . --output-file coverage0.info >/dev/null
+  lcov -r coverage0.info /usr/include/\* \*/gtest/\* \*/3party/\* -o coverage.info >/dev/null
   genhtml coverage.info --output-directory $TMPDIR/coverage/$BINARY >/dev/null
-  rm -rf coverage.info *.gcov *.gcda *.gcno
+  rm -rf coverage.info coverage0.info *.gcov *.gcda *.gcno
   echo -e -n "\033[0m\033[1m$i\033[0m: \033[36m"
   echo $(readlink -e $TMPDIR/coverage/$BINARY/index.html)
   echo -e -n "\033[0m"
