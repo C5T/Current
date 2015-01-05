@@ -152,23 +152,43 @@ class Connection : public SocketHandle {
     uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
     uint8_t* raw_ptr = raw_buffer;
     const size_t max_length_in_bytes = max_length * sizeof(T);
+    bool alive = true;
     do {
       const ssize_t retval = ::read(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
       if (retval < 0) {
-        // TODO(dkorolev): Unit-test this.
-        // I could not find a simple way to reproduce this error in the test -- D.K.
-        throw SocketReadException();  // LCOV_EXCL_LINE
-      } else if (retval == 0) {
-        // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
-        // and StackOverflow is that a return value of zero from read() from a socket indicates
-        // that the socket has been closed by the peer.
-        // For this implementation, throw an exception if some record was read only partially.
-        if ((raw_ptr - raw_buffer) % sizeof(T)) {
-          throw SocketReadMultibyteRecordEndedPrematurelyException();
+        // TODO(dkorolev): Unit-test this logic.
+        // I could not find a simple way to reproduce it for the test. -- D.K.
+        // LCOV_EXCL_START
+        if (errno == EAGAIN) {
+          continue;
+        } else if (errno == ECONNRESET) {
+          // Allow one "Connection reset by peer" error to happen.
+          // Tested that this makes load test pass 1000/1000, while w/o this
+          // the test fails on some iteration with ECONNRESET on Ubuntu 12.04 -- D.K.
+          if (alive) {
+            alive = false;
+            continue;
+          } else {
+            throw ConnectionResetByPeer();
+          }
+        } else {
+          throw SocketReadException();
         }
-        break;
+        // LCOV_EXCL_STOP
       } else {
-        raw_ptr += retval;
+        alive = true;
+        if (retval == 0) {
+          // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
+          // and StackOverflow is that a return value of zero from read() from a socket indicates
+          // that the socket has been closed by the peer.
+          // For this implementation, throw an exception if some record was read only partially.
+          if ((raw_ptr - raw_buffer) % sizeof(T)) {
+            throw SocketReadMultibyteRecordEndedPrematurelyException();
+          }
+          break;
+        } else {
+          raw_ptr += retval;
+        }
       }
     } while (policy == BlockingReadPolicy::FillFullBuffer || ((raw_ptr - raw_buffer) % sizeof(T)) > 0);
     return (raw_ptr - raw_buffer) / sizeof(T);

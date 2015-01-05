@@ -88,8 +88,8 @@ class HTTPDefaultHelper {
 // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
 // Exceptions:
-// * HTTPNoBodyProvidedException         : When attempting to access body when HasBody() is false.
-// * HTTPConnectionClosedByPeerException : When the server is using chunked transfer and doesn't fully send one.
+// * HTTPNoBodyProvidedException : When attempting to access body when HasBody() is false.
+// * ConnectionResetByPeer       : When the server is using chunked transfer and doesn't fully send one.
 //
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 template <class HELPER>
@@ -136,7 +136,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
         // that the socket has been closed by the peer.
-        throw HTTPConnectionClosedByPeerException();
+        throw ConnectionResetByPeer();
       }
       buffer_[offset] = '\0';
       char* next_crlf_ptr;
@@ -184,7 +184,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
                   buffer_.resize(std::max<size_t>(buffer_.size() * buffer_growth_k, next_offset + 1));
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
-                  throw HTTPConnectionClosedByPeerException();
+                  throw ConnectionResetByPeer();
                 }
                 offset = next_offset;
               }

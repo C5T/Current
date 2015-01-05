@@ -44,6 +44,8 @@ struct SocketBindException : ServerSocketException {};
 struct SocketListenException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketAcceptException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 
+struct ConnectionResetByPeer : SocketException {};
+
 struct ClientSocketException : SocketException {};
 struct SocketConnectException : ClientSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketResolveAddressException : ClientSocketException {};
@@ -57,7 +59,6 @@ struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 // HTTP-level exceptions are derived from HTTPException.
 struct HTTPException : NetworkException {};
 
-struct HTTPConnectionClosedByPeerException : HTTPException {};
 struct HTTPNoBodyProvidedException : HTTPException {};
 struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
