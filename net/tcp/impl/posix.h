@@ -76,13 +76,13 @@ class SocketHandle {
 
   inline SocketHandle(NewHandle) : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
-      throw SocketCreateException();
+      throw SocketCreateException();  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {
     if (socket_ < 0) {
-      throw InvalidSocketException();
+      throw InvalidSocketException();  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
   }
 
@@ -111,7 +111,7 @@ class SocketHandle {
     explicit ReadOnlyIntFieldAccessor(const int& ref) : ref_(ref) {}
     inline operator int() {
       if (!ref_) {
-        throw InvalidSocketException();
+        throw InvalidSocketException();  // LCOV_EXCL_LINE -- Not covered by unit tests.
       }
       return ref_;
     }
@@ -155,7 +155,9 @@ class Connection : public SocketHandle {
     do {
       const ssize_t retval = ::read(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
       if (retval < 0) {
-        throw SocketReadException();
+        // TODO(dkorolev): Unit-test this.
+        // I could not find a simple way to reproduce this error in the test -- D.K.
+        throw SocketReadException();  // LCOV_EXCL_LINE
       } else if (retval == 0) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
@@ -202,9 +204,9 @@ class Connection : public SocketHandle {
     assert(buffer);
     const ssize_t result = ::write(socket, buffer, write_length);
     if (result < 0) {
-      throw SocketWriteException();
+      throw SocketWriteException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {
-      throw SocketCouldNotWriteEverythingException();
+      throw SocketCouldNotWriteEverythingException();  // This one is tested though.
     }
   }
 
@@ -239,12 +241,14 @@ class Socket final : public SocketHandle {
       : SocketHandle(SocketHandle::NewHandle()) {
     int just_one = 1;
     if (disable_nagle_algorithm) {
+      // LCOV_EXCL_START
       if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(int))) {
         throw SocketCreateException();
       }
+      // LCOV_EXCL_STOP
     }
     if (::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(int))) {
-      throw SocketCreateException();
+      throw SocketCreateException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
     sockaddr_in addr_server;
@@ -258,7 +262,7 @@ class Socket final : public SocketHandle {
     }
 
     if (::listen(socket, max_connections)) {
-      throw SocketListenException();
+      throw SocketListenException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
   }
 
@@ -270,7 +274,7 @@ class Socket final : public SocketHandle {
     socklen_t addr_client_length = sizeof(sockaddr_in);
     const int fd = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (fd == -1) {
-      throw SocketAcceptException();
+      throw SocketAcceptException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
     return Connection(SocketHandle::FromHandle(fd));
   }
@@ -296,11 +300,11 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       hints.ai_socktype = SOCK_STREAM;
       hints.ai_protocol = IPPROTO_TCP;
       const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &servinfo);
-      if (retval) {
-        // TODO(dkorolev): LOG(somewhere, strings::Printf("Error in getaddrinfo: %s\n", gai_strerror(retval)));
-        throw SocketResolveAddressException();
-      }
-      if (!servinfo) {
+      if (retval || !servinfo) {
+        if (retval) {
+          // TODO(dkorolev): LOG(somewhere, strings::Printf("Error in getaddrinfo: %s\n",
+          // gai_strerror(retval)));
+        }
         throw SocketResolveAddressException();
       }
       struct sockaddr* p_addr = servinfo->ai_addr;
@@ -310,7 +314,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       // }
       const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval2) {
-        throw SocketConnectException();
+        throw SocketConnectException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
       // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
       ::freeaddrinfo(servinfo);
