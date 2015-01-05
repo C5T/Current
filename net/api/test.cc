@@ -31,25 +31,21 @@ SOFTWARE.
 #include <chrono>
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <string>
 #include <thread>
 
-#include "api.h"
-#include "url.h"
-
-#include "../../port.h"
-
-#include "../tcp/tcp.h"
-
-#include "../../dflags/dflags.h"
-
-#include "../../file/file.h"
-
-#include "../../util/make_scope_guard.h"
-
 #include "../../3party/gtest/gtest.h"
 #include "../../3party/gtest/gtest-main-with-dflags.h"
+
+#include "api.h"
+
+#include "../tcp/tcp.h"
+#include "../url/url.h"
+
+#include "../../dflags/dflags.h"
+#include "../../file/file.h"
+#include "../../port.h"
+#include "../../util/make_scope_guard.h"
 
 using std::chrono::milliseconds;
 using std::function;
@@ -81,96 +77,6 @@ TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_bricks_runtime_arch);
 }
 #endif
-
-TEST(URLParserTest, SmokeTest) {
-  URLParser u;
-
-  u = URLParser("www.google.com");
-  EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/", u.path);
-  EXPECT_EQ("http", u.protocol);
-  EXPECT_EQ(80, u.port);
-
-  u = URLParser("www.google.com/test");
-  EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/test", u.path);
-  EXPECT_EQ("http", u.protocol);
-  EXPECT_EQ(80, u.port);
-
-  u = URLParser("www.google.com:8080");
-  EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/", u.path);
-  EXPECT_EQ("http", u.protocol);
-  EXPECT_EQ(8080, u.port);
-
-  u = URLParser("meh://www.google.com:27960");
-  EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/", u.path);
-  EXPECT_EQ("meh", u.protocol);
-  EXPECT_EQ(27960, u.port);
-
-  u = URLParser("meh://www.google.com:27960/bazinga");
-  EXPECT_EQ("www.google.com", u.host);
-  EXPECT_EQ("/bazinga", u.path);
-  EXPECT_EQ("meh", u.protocol);
-  EXPECT_EQ(27960, u.port);
-
-  u = URLParser("localhost:/test");
-  EXPECT_EQ("localhost", u.host);
-  EXPECT_EQ("/test", u.path);
-  EXPECT_EQ("http", u.protocol);
-  EXPECT_EQ(80, u.port);
-}
-
-TEST(URLParserTest, CompositionTest) {
-  EXPECT_EQ("http://www.google.com/", URLParser("www.google.com").ComposeURL());
-  EXPECT_EQ("http://www.google.com/", URLParser("http://www.google.com").ComposeURL());
-  EXPECT_EQ("http://www.google.com/", URLParser("www.google.com:80").ComposeURL());
-  EXPECT_EQ("http://www.google.com/", URLParser("http://www.google.com").ComposeURL());
-  EXPECT_EQ("http://www.google.com/", URLParser("http://www.google.com:80").ComposeURL());
-  EXPECT_EQ("http://www.google.com:8080/", URLParser("www.google.com:8080").ComposeURL());
-  EXPECT_EQ("http://www.google.com:8080/", URLParser("http://www.google.com:8080").ComposeURL());
-  EXPECT_EQ("meh://www.google.com:8080/", URLParser("meh://www.google.com:8080").ComposeURL());
-}
-
-TEST(URLParserTest, DerivesProtocolFromPreviousPort) {
-  // Smoke tests for non-default protocol, setting the 2nd parameter to the URLParser() constructor.
-  EXPECT_EQ("www.google.com/", URLParser("www.google.com", "").ComposeURL());
-  EXPECT_EQ("telnet://www.google.com:23/", URLParser("www.google.com", "telnet", "", 23).ComposeURL());
-  // Keeps the protocol if it was explicitly specified, even for the port that maps to a different protocol.
-  EXPECT_EQ("foo://www.google.com:80/", URLParser("foo://www.google.com", "", "", 80).ComposeURL());
-  // Maps port 80 into "http://".
-  EXPECT_EQ("http://www.google.com/", URLParser("www.google.com", "", "", 80).ComposeURL());
-  // Since there is no rule from "23" to "telnet", no protocol is specified.
-  EXPECT_EQ("www.google.com:23/", URLParser("www.google.com", "", "", 23).ComposeURL());
-}
-
-TEST(URLParserTest, RedirectPreservesProtocolHostAndPortTest) {
-  EXPECT_EQ("http://localhost/foo", URLParser("/foo", URLParser("localhost")).ComposeURL());
-  EXPECT_EQ("meh://localhost/foo", URLParser("/foo", URLParser("meh://localhost")).ComposeURL());
-  EXPECT_EQ("http://localhost:8080/foo", URLParser("/foo", URLParser("localhost:8080")).ComposeURL());
-  EXPECT_EQ("meh://localhost:8080/foo", URLParser("/foo", URLParser("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("meh://localhost:27960/foo",
-            URLParser(":27960/foo", URLParser("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("ftp://foo:8080/", URLParser("ftp://foo", URLParser("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("ftp://localhost:8080/bar",
-            URLParser("ftp:///bar", URLParser("meh://localhost:8080")).ComposeURL());
-  EXPECT_EQ("blah://new_host:5000/foo",
-            URLParser("blah://new_host/foo", URLParser("meh://localhost:5000")).ComposeURL());
-  EXPECT_EQ("blah://new_host:6000/foo",
-            URLParser("blah://new_host:6000/foo", URLParser("meh://localhost:5000")).ComposeURL());
-}
-
-TEST(URLParserTest, EmptyURLException) {
-  // Empty URL or host should throw.
-  ASSERT_THROW(URLParser(""), EmptyURLException);
-  ASSERT_THROW(URLParser("http://"), EmptyURLHostException);
-  ASSERT_THROW(URLParser("http:///foo"), EmptyURLHostException);
-
-  // Empty host is allowed in local links.
-  EXPECT_EQ("foo://www.website.com:321/second",
-            URLParser("/second", URLParser("foo://www.website.com:321/first")).ComposeURL());
-}
 
 // TODO(dkorolev): Migrate to a simpler HTTP server implementation that is to be added to api.h soon.
 // This would not require any of these headers.
