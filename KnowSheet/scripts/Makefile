@@ -12,7 +12,7 @@
 KNOWSHEET_SCRIPTS_DIR=$(dir $(shell readlink -e $(lastword $(MAKEFILE_LIST))))
 
 CPLUSPLUS?=g++
-CPPFLAGS=-std=c++11 -g -Wall -W
+CPPFLAGS=-std=c++11 -Wall -W
 LDFLAGS=-pthread
 
 PWD=$(shell pwd)
@@ -31,7 +31,7 @@ test: all
 all: .noshit ${BIN}
 
 clean:
-	rm -rf .noshit impl/.noshit
+	rm -rf .noshit core impl/.noshit impl/core
 
 .noshit:
 	mkdir -p $@
