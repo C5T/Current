@@ -35,7 +35,7 @@ TEST(Time, SmokeTest) {
   const bricks::time::EPOCH_MILLISECONDS a = bricks::time::Now();
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   const bricks::time::EPOCH_MILLISECONDS b = bricks::time::Now();
-  const uint64_t dt = static_cast<uint64_t>(b) - static_cast<uint64_t>(a);
+  const int64_t dt = static_cast<int64_t>(b - a);
   EXPECT_GE(dt, 47);
   EXPECT_LE(dt, 53);
 }

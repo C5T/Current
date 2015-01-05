@@ -36,7 +36,7 @@ clean:
 .noshit:
 	mkdir -p $@
 
-.noshit/%: %.cc *.h */*.h
+.noshit/%: %.cc *.h
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 indent:
