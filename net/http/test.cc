@@ -69,16 +69,18 @@ TEST(PosixHTTPServerTest, Smoke) {
   connection.BlockingWrite("\r\n");
   connection.SendEOF();
   t.join();
-  EXPECT_EQ(
+  const std::string golden =
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: 10\r\n"
       "\r\n"
-      "Data: BODY\r\n",
-      connection.BlockingReadUntilEOF());
+      "Data: BODY\r\n";
+  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
+  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
+  EXPECT_EQ(golden, &actual[0]);
 }
 
-TEST(PosixHTTPServerTest, SmokeNoEOF) {
+TEST(PosixHTTPServerTest, NoEOF) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
@@ -94,13 +96,129 @@ TEST(PosixHTTPServerTest, SmokeNoEOF) {
   connection.BlockingWrite("NOEOF");
   // Do not send the last "\r\n" and EOF. See the test above with them.
   t.join();
-  EXPECT_EQ(
+  const std::string golden =
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Content-Length: 11\r\n"
       "\r\n"
-      "Data: NOEOF\r\n",
-      connection.BlockingReadUntilEOF());
+      "Data: NOEOF\r\n";
+  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
+  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
+  EXPECT_EQ(golden, &actual[0]);
+}
+
+TEST(PosixHTTPServerTest, LargeBody) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/", c.Message().URL());
+             c.SendHTTPResponse("Data: " + c.Message().Body());
+           },
+           Socket(FLAGS_net_http_test_port));
+  string body(1000000, '.');
+  for (size_t i = 0; i < 1000000; ++i) {
+    body[i] = 'A' + (i % 26);
+  }
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Content-Length: 1000000\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite(body);
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  const std::string golden =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: 1000006\r\n"
+      "\r\n"
+      "Data: " +
+      body + "\r\n";
+  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
+  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
+  EXPECT_EQ(golden, &actual[0]);
+}
+
+TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/", c.Message().URL());
+             c.SendHTTPResponse(c.Message().Body());
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n");
+  connection.BlockingWrite("\r\n");
+  string chunk(10, '.');
+  string body = "";
+  for (size_t i = 0; i < 10000; ++i) {
+    connection.BlockingWrite("10\r\n");
+    for (size_t j = 0; j < 10; ++j) {
+      chunk[j] = 'A' + ((i + j) % 26);
+    }
+    connection.BlockingWrite(chunk);
+    body += chunk;
+    connection.BlockingWrite("\r\n");
+  }
+  connection.BlockingWrite("0\r\n");
+  t.join();
+  const std::string golden = strings::Printf(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: %d\r\n"
+      "\r\n"
+      "%s"
+      "\r\n",
+      static_cast<int>(body.length()),
+      body.c_str());
+  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
+  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
+  EXPECT_EQ(golden, &actual[0]);
+}
+
+// A dedicated test to cover buffer resize after the size of the next chunk has been received.
+TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("POST", c.Message().Method());
+             EXPECT_EQ("/", c.Message().URL());
+             c.SendHTTPResponse(c.Message().Body());
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n");
+  connection.BlockingWrite("\r\n");
+  string chunk(10000, '.');
+  string body = "";
+  for (size_t i = 0; i < 10; ++i) {
+    connection.BlockingWrite("10000\r\n");
+    for (size_t j = 0; j < 10000; ++j) {
+      chunk[j] = 'a' + ((i + j) % 26);
+    }
+    connection.BlockingWrite(chunk);
+    body += chunk;
+    connection.BlockingWrite("\r\n");
+  }
+  connection.BlockingWrite("0\r\n");
+  t.join();
+  const std::string golden = strings::Printf(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: %d\r\n"
+      "\r\n"
+      "%s"
+      "\r\n",
+      static_cast<int>(body.length()),
+      body.c_str());
+  std::vector<char> actual(golden.size() + 1);  // actual.back() == '\0'.
+  EXPECT_EQ(golden.size(), connection.BlockingRead(&actual[0], golden.size(), Connection::FillFullBuffer));
+  EXPECT_EQ(golden, &actual[0]);
 }
 
 TEST(HTTPServerTest, ConnectionResetByPeerException) {
@@ -124,12 +242,36 @@ TEST(HTTPServerTest, ConnectionResetByPeerException) {
   EXPECT_TRUE(connection_was_closed_by_peer);
 }
 
+// A dedicated test to cover the `HTTPConnectionClosedByPeerException` case while receiving a chunk.
+TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
+  bool connection_was_closed_by_peer = false;
+  thread t([&connection_was_closed_by_peer](Socket s) {
+             try {
+               HTTPServerConnection(s.Accept());
+             } catch (const HTTPConnectionClosedByPeerException&) {
+               connection_was_closed_by_peer = true;
+             }
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("10000\r\n");
+  connection.BlockingWrite("This body message terminates prematurely.\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_TRUE(connection_was_closed_by_peer);
+}
+
 struct HTTPClientImplCURL {
   static string Syscall(const string& cmdline) {
     FILE* pipe = ::popen(cmdline.c_str(), "r");
     assert(pipe);
     char s[1024];
-    ::fgets(s, sizeof(s), pipe);
+    const auto warn_unused_result_catch_warning = ::fgets(s, sizeof(s), pipe);
+    static_cast<void>(warn_unused_result_catch_warning);
     ::pclose(pipe);
     return s;
   }
