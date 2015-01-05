@@ -60,9 +60,11 @@ using std::to_string;
 
 using bricks::FileSystem;
 using bricks::FileException;
-using bricks::net::HTTPRedirectNotAllowedException;
 
 using bricks::net::Connection;  // To send HTTP response in chunked transfer encoding.
+
+using bricks::net::HTTPRedirectNotAllowedException;
+using bricks::net::HTTPRedirectLoopException;
 
 using namespace bricks::net::api;
 
@@ -262,6 +264,21 @@ class UseLocalHTTPTestServer {
           headers.push_back(std::make_pair("Location", "/get"));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
+        } else if (url == "/redirect-loop") {
+          HTTPHeadersType headers;
+          headers.push_back(std::make_pair("Location", "/redirect-loop-2"));
+          connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
+          serve_more_requests = true;
+        } else if (url == "/redirect-loop-2") {
+          HTTPHeadersType headers;
+          headers.push_back(std::make_pair("Location", "/redirect-loop-3"));
+          connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
+          serve_more_requests = true;
+        } else if (url == "/redirect-loop-3") {
+          HTTPHeadersType headers;
+          headers.push_back(std::make_pair("Location", "/redirect-loop"));
+          connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
+          serve_more_requests = true;
         } else {
           ASSERT_TRUE(false) << "GET not implemented for: " << message.URL();  // LCOV_EXCL_LINE
         }
@@ -446,3 +463,11 @@ TYPED_TEST(HTTPClientTemplatedTest, InvalidUrl) {
 }
 
 // LCOV_EXCL_STOP
+
+TEST(HTTPClientTest, RedirectLoop) {
+  const auto server_scope = UseLocalHTTPTestServer::SpawnServer();
+  ASSERT_THROW(HTTP(GET(UseLocalHTTPTestServer::BaseURL() + "/redirect-loop").AllowRedirects()),
+               HTTPRedirectLoopException);
+  // Still do one request since local HTTP server is waiting for it.
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(UseLocalHTTPTestServer::BaseURL() + "/get")).code));
+}
