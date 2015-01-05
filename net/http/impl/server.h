@@ -166,7 +166,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
         } else if (receiving_body_in_chunks) {
           // Ignore blank lines.
           if (!line_is_blank) {
-            const size_t chunk_length = static_cast<size_t>(atoi(&buffer_[current_line_offset]));
+            const size_t chunk_length =
+                static_cast<size_t>(std::stoi(&buffer_[current_line_offset], nullptr, 16));
             if (chunk_length == 0) {
               // Done with the body.
               HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_end_);

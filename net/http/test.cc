@@ -156,7 +156,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   string chunk(10, '.');
   string body = "";
   for (size_t i = 0; i < 10000; ++i) {
-    connection.BlockingWrite("10\r\n");
+    connection.BlockingWrite("A\r\n");  // "A" is hexadecimal for 10.
     for (size_t j = 0; j < 10; ++j) {
       chunk[j] = 'A' + ((i + j) % 26);
     }
@@ -197,7 +197,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   string chunk(10000, '.');
   string body = "";
   for (size_t i = 0; i < 10; ++i) {
-    connection.BlockingWrite("10000\r\n");
+    connection.BlockingWrite(strings::Printf("%X\r\n", 10000));
     for (size_t j = 0; j < 10000; ++j) {
       chunk[j] = 'a' + ((i + j) % 26);
     }
