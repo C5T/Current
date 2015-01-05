@@ -49,7 +49,7 @@ using bricks::net::HTTPReceivedMessage;
 using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPResponseCodeAsStringGenerator;
 using bricks::net::HTTPNoBodyProvidedException;
-using bricks::net::HTTPConnectionClosedByPeerException;
+using bricks::net::ConnectionResetByPeer;
 
 TEST(PosixHTTPServerTest, Smoke) {
   thread t([](Socket s) {
@@ -212,12 +212,12 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
 }
 
 TEST(HTTPServerTest, ConnectionResetByPeerException) {
-  bool connection_was_closed_by_peer = false;
-  thread t([&connection_was_closed_by_peer](Socket s) {
+  bool connection_reset_by_peer = false;
+  thread t([&connection_reset_by_peer](Socket s) {
              try {
                HTTPServerConnection(s.Accept());
-             } catch (const HTTPConnectionClosedByPeerException&) {
-               connection_was_closed_by_peer = true;
+             } catch (const ConnectionResetByPeer&) {
+               connection_reset_by_peer = true;
              }
            },
            Socket(FLAGS_net_http_test_port));
@@ -229,17 +229,17 @@ TEST(HTTPServerTest, ConnectionResetByPeerException) {
   connection.BlockingWrite("This body message terminates prematurely.\r\n");
   connection.SendEOF();
   t.join();
-  EXPECT_TRUE(connection_was_closed_by_peer);
+  EXPECT_TRUE(connection_reset_by_peer);
 }
 
-// A dedicated test to cover the `HTTPConnectionClosedByPeerException` case while receiving a chunk.
+// A dedicated test to cover the `ConnectionResetByPeer` case while receiving a chunk.
 TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
-  bool connection_was_closed_by_peer = false;
-  thread t([&connection_was_closed_by_peer](Socket s) {
+  bool connection_reset_by_peer = false;
+  thread t([&connection_reset_by_peer](Socket s) {
              try {
                HTTPServerConnection(s.Accept());
-             } catch (const HTTPConnectionClosedByPeerException&) {
-               connection_was_closed_by_peer = true;
+             } catch (const ConnectionResetByPeer&) {
+               connection_reset_by_peer = true;
              }
            },
            Socket(FLAGS_net_http_test_port));
@@ -252,7 +252,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
   connection.BlockingWrite("This body message terminates prematurely.\r\n");
   connection.SendEOF();
   t.join();
-  EXPECT_TRUE(connection_was_closed_by_peer);
+  EXPECT_TRUE(connection_reset_by_peer);
 }
 
 struct HTTPClientImplCURL {
