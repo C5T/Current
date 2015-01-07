@@ -115,6 +115,7 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("", u.fragment);
     EXPECT_EQ("", u["key"]);
     EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("http://www.google.com/", u.ComposeURL());
   }
   {
     URL u("www.google.com/a#fragment");
