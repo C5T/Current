@@ -49,23 +49,25 @@ struct EmptyURLHostException : Exception {};
 //
 // When handling redirects, the previous URL can be provided to properly handle host/port/protocol.
 
+namespace impl {
+
 namespace {
 const char* const kDefaultProtocol = "http";
 }
 
-struct URL {
+struct URLWithoutParameters {
   std::string host = "";
   std::string path = "/";
   std::string protocol = kDefaultProtocol;
   int port = 0;
 
-  URL() = default;
+  URLWithoutParameters() = default;
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URL(const std::string& url,
-      const std::string& previous_protocol = kDefaultProtocol,
-      const std::string& previous_host = "",
-      const int previous_port = 0) {
+  URLWithoutParameters(const std::string& url,
+                       const std::string& previous_protocol = kDefaultProtocol,
+                       const std::string& previous_host = "",
+                       const int previous_port = 0) {
     if (url.empty()) {
       throw EmptyURLException();
     }
@@ -115,8 +117,8 @@ struct URL {
     }
   }
 
-  URL(const std::string& url, const URL& previous)
-      : URL(url, previous.protocol, previous.host, previous.port) {}
+  URLWithoutParameters(const std::string& url, const URLWithoutParameters& previous)
+      : URLWithoutParameters(url, previous.protocol, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     std::ostringstream os;
@@ -138,6 +140,32 @@ struct URL {
 
   static std::string DefaultProtocolForPort(int port) { return port == 80 ? "http" : ""; }
 };
+
+struct URLParameters {
+  URLParameters() = default;
+  URLParameters(const std::string& url_string) : url_without_parameters_(url_string) {}
+  std::string url_without_parameters_;
+};
+
+struct URL : URLParameters, URLWithoutParameters {
+  URL() = default;
+
+  // Extra parameters for previous host and port are provided in the constructor to handle redirects.
+  URL(const std::string& url,
+      const std::string& previous_protocol = kDefaultProtocol,
+      const std::string& previous_host = "",
+      const int previous_port = 0)
+      : URLParameters(url),
+        URLWithoutParameters(
+            URLParameters::url_without_parameters_, previous_protocol, previous_host, previous_port) {}
+
+  URL(const std::string& url, const URLWithoutParameters& previous)
+      : URLParameters(url), URLWithoutParameters(URLParameters::url_without_parameters_, previous) {}
+};
+
+}  // namespace impl
+
+typedef impl::URL URL;
 
 }  // namespace url
 }  // namespace net
