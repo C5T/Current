@@ -71,10 +71,10 @@ struct KeyValueNoValueException : Exception {};
 struct KeyValueMultipleValuesException : Exception {};
 
 template <typename T_SEPARATOR, typename T_PROCESSOR>
-size_t Split(const std::string& s,
-             T_SEPARATOR&& separator,
-             T_PROCESSOR&& processor,
-             TrimMode trim = TrimMode::Trim) {
+inline size_t Split(const std::string& s,
+                    T_SEPARATOR&& separator,
+                    T_PROCESSOR&& processor,
+                    TrimMode trim = TrimMode::Trim) {
   size_t i = 0;
   size_t j = 0;
   size_t n = 0;
