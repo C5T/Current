@@ -26,10 +26,7 @@ SOFTWARE.
 #include <string>
 #include <set>
 
-#include "printf.h"
-#include "fixed_size_serializer.h"
-#include "join.h"
-#include "split.h"
+#include "util.h"
 
 #include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
@@ -38,6 +35,7 @@ using bricks::strings::Printf;
 using bricks::strings::FixedSizeSerializer;
 using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
+using bricks::strings::CompileTimeStringLength;
 using bricks::strings::Join;
 using bricks::strings::Split;
 using bricks::strings::SplitIntoKeyValuePairs;
@@ -90,6 +88,16 @@ TEST(FixedSizeSerializer, ImplicitSyntax) {
     uint64_t x = static_cast<int64_t>(1e18);
     EXPECT_EQ("01000000000000000000", PackToString(x));
   }
+}
+
+static const char global_string[] = "magic";
+
+TEST(Util, CompileTimeStringLength) {
+  const char local_string[] = "foo";
+  static const char local_static_string[] = "blah";
+  EXPECT_EQ(3u, CompileTimeStringLength(local_string));
+  EXPECT_EQ(4u, CompileTimeStringLength(local_static_string));
+  EXPECT_EQ(5u, CompileTimeStringLength(global_string));
 }
 
 TEST(JoinAndSplit, Join) {

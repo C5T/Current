@@ -36,7 +36,7 @@ SOFTWARE.
 
 #include "../../tcp/tcp.h"
 
-#include "../../../util/util.h"
+#include "../../../strings/util.h"
 
 namespace bricks {
 namespace net {
@@ -47,9 +47,9 @@ typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 namespace {
 
 const char kCRLF[] = "\r\n";
-const size_t kCRLFLength = CompileTimeStringLength(kCRLF);
+const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
 const char kHeaderKeyValueSeparator[] = ": ";
-const size_t kHeaderKeyValueSeparatorLength = CompileTimeStringLength(kHeaderKeyValueSeparator);
+const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
 const char* const kContentLengthHeaderKey = "Content-Length";
 const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
 const char* const kTransferEncodingChunkedValue = "chunked";
