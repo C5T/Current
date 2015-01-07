@@ -122,16 +122,21 @@ struct URLWithoutParameters {
       : URLWithoutParameters(url, previous.protocol, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
-    std::ostringstream os;
-    if (!protocol.empty()) {
-      os << protocol << "://";
+    if (!host.empty()) {
+      std::ostringstream os;
+      if (!protocol.empty()) {
+        os << protocol << "://";
+      }
+      os << host;
+      if (port != DefaultPortForProtocol(protocol)) {
+        os << ':' << port;
+      }
+      os << path;
+      return os.str();
+    } else {
+      // If no host is specified, it's just the path: No need to put protocol and port.
+      return path;
     }
-    os << host;
-    if (port != DefaultPortForProtocol(protocol)) {
-      os << ':' << port;
-    }
-    os << path;
-    return os.str();
   }
 
   static int DefaultPortForProtocol(const std::string& protocol) {

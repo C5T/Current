@@ -117,12 +117,14 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("fragment", u.fragment);
     EXPECT_EQ("", u["key"]);
     EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("http://www.google.com/a#fragment", u.ComposeURL());
   }
   {
     URL u("www.google.com/b#fragment#foo");
     EXPECT_EQ("fragment#foo", u.fragment);
     EXPECT_EQ("", u["key"]);
     EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("http://www.google.com/b#fragment#foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?key=value&key2=value2#fragment#foo");
@@ -131,11 +133,13 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("value", u("key", "default_value"));
     EXPECT_EQ("value2", u["key2"]);
     EXPECT_EQ("value2", u("key2", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?key=value&key2=value2#fragment#foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/a?k=a%3Db%26s%3D%25s%23#foo");
     EXPECT_EQ("foo", u.fragment);
     EXPECT_EQ("a=b&s=%s#", u["k"]);
+    EXPECT_EQ("http://www.google.com/a?k=a%3Db%26s%3D%25s%23#foo", u.ComposeURL());
   }
   {
     URL u("/q?key=value&key2=value2#fragment#foo");
@@ -144,11 +148,13 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("value", u("key", "default_value"));
     EXPECT_EQ("value2", u["key2"]);
     EXPECT_EQ("value2", u("key2", "default_value"));
+    EXPECT_EQ("/q?key=value&key2=value2#fragment#foo", u.ComposeURL());
   }
   {
     URL u("/a?k=a%3Db%26s%3D%25s%23#foo");
     EXPECT_EQ("foo", u.fragment);
     EXPECT_EQ("a=b&s=%s#", u["k"]);
+    EXPECT_EQ("/a?k=a%3Db%26s%3D%25s%23#foo", u.ComposeURL());
   }
 }
 
