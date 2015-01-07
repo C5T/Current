@@ -83,6 +83,7 @@ struct URLWithoutParameters {
       offset_past_scheme = i + 3;
     }
 
+    // TODO(dkorolev): Support `http://user:pass@host:80/` in the future.
     const size_t colon = url.find(':', offset_past_scheme);
     const size_t slash = url.find('/', offset_past_scheme);
     host = url.substr(offset_past_scheme, std::min(colon, slash) - offset_past_scheme);
