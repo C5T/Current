@@ -30,6 +30,8 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
+#include "../exception.h"
+
 namespace bricks {
 namespace strings {
 
@@ -63,6 +65,10 @@ inline bool Match(char a, T&& b) {
 }  // namespace impl
 
 enum class TrimMode { Trim, NoTrim };
+enum class KeyValueThrowMode { Silent, Throw };
+
+struct KeyValueNoValueException : Exception {};
+struct KeyValueMultipleValuesException : Exception {};
 
 template <typename T_SEPARATOR, typename T_PROCESSOR>
 size_t Split(const std::string& s,
@@ -94,6 +100,32 @@ inline std::vector<std::string> Split(const std::string& s,
                                       TrimMode trim = TrimMode::Trim) {
   std::vector<std::string> result;
   Split(s, separator, [&result](std::string&& chunk) { result.emplace_back(std::move(chunk)); }, trim);
+  return result;
+}
+
+template <typename T_FIELDS_SEPARATOR, typename T_KEY_VALUE_SEPARATOR>
+inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
+    const std::string& s,
+    T_FIELDS_SEPARATOR&& fields_separator,
+    T_KEY_VALUE_SEPARATOR&& key_value_separator,
+    KeyValueThrowMode throw_mode = KeyValueThrowMode::Silent) {
+  std::vector<std::pair<std::string, std::string>> result;
+  Split(s,
+        fields_separator,
+        [&result, &key_value_separator, &throw_mode](std::string&& key_and_value_as_one_string) {
+    const std::vector<std::string> key_and_value = Split(key_and_value_as_one_string, key_value_separator);
+    if (key_and_value.size() >= 2) {
+      if (key_and_value.size() == 2) {
+        result.emplace_back(key_and_value[0], key_and_value[1]);
+      } else if (throw_mode == KeyValueThrowMode::Throw) {
+        throw KeyValueMultipleValuesException();
+      }
+    } else {
+      if (throw_mode == KeyValueThrowMode::Throw) {
+        throw KeyValueNoValueException();
+      }
+    }
+  });
   return result;
 }
 
