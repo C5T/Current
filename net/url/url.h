@@ -47,9 +47,9 @@ struct EmptyURLException : Exception {};
 // URL manages the mapping between the string and parsed representations of the URL. It manages:
 //
 // * host    (string)
-// * path    (string, defaults to "/", never empty).
-// * scheme  (defaults to "http", empty only if set explicitly in constructor).
-// * port    (defaults to the default port for supported schemes).
+// * path    (string, defaults to "/", never empty.)
+// * scheme  (defaults to "http", empty only if set explicitly in constructor.)
+// * port    (defaults to the default port for supported schemes, zero/unset for unknown ones.)
 //
 // When handling redirects, the previous URL can be provided to properly handle host/port/scheme.
 
