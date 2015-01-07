@@ -88,7 +88,7 @@ class HTTPClientPOSIX final {
       // Don't uncomment the next line!
       // connection.SendEOF();
       message_.reset(new HTTPRedirectableReceivedMessage(connection));
-      // TODO(dkorolev): Rename `URL()`, it's only called so now because of HTTP request/response format.
+      // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       const int response_code_as_int = atoi(message_->Path().c_str());
       response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
