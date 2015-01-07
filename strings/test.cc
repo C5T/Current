@@ -28,7 +28,6 @@ SOFTWARE.
 
 #include "util.h"
 
-#include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
 using bricks::strings::Printf;

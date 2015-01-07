@@ -27,7 +27,6 @@ SOFTWARE.
 
 #include "chrono.h"
 
-#include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
 // This smoke test is flaky, but it does the job of comparing bricks::time::Now() to wall time.

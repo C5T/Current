@@ -24,7 +24,6 @@ SOFTWARE.
 
 #include "make_scope_guard.h"
 
-#include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
 TEST(Util, MakeScopeGuard) {

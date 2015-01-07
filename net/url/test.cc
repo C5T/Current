@@ -24,7 +24,6 @@ SOFTWARE.
 
 #include "url.h"
 
-#include "../../3party/gtest/gtest.h"
 #include "../../3party/gtest/gtest-main.h"
 
 using namespace bricks::net::url;
