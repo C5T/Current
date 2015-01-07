@@ -46,46 +46,46 @@ struct EmptyURLException : Exception {};
 
 // URL manages the mapping between the string and parsed representations of the URL. It manages:
 //
-// * host     (string)
-// * path     (string, defaults to "/", never empty).
-// * protocol (defaults to "http", empty only if set explicitly in constructor).
-// * port (defaults to the default port for supported protocols).
+// * host    (string)
+// * path    (string, defaults to "/", never empty).
+// * scheme  (defaults to "http", empty only if set explicitly in constructor).
+// * port    (defaults to the default port for supported schemes).
 //
-// When handling redirects, the previous URL can be provided to properly handle host/port/protocol.
+// When handling redirects, the previous URL can be provided to properly handle host/port/scheme.
 
 namespace impl {
 
 namespace {
-const char* const kDefaultProtocol = "http";
+const char* const kDefaultScheme = "http";
 }
 
 struct URLWithoutParameters {
   std::string host = "";
   std::string path = "/";
-  std::string protocol = kDefaultProtocol;
+  std::string scheme = kDefaultScheme;
   int port = 0;
 
   URLWithoutParameters() = default;
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
   URLWithoutParameters(const std::string& url,
-                       const std::string& previous_protocol = kDefaultProtocol,
+                       const std::string& previous_scheme = kDefaultScheme,
                        const std::string& previous_host = "",
                        const int previous_port = 0) {
     if (url.empty()) {
       throw EmptyURLException();
     }
-    protocol = "";
-    size_t offset_past_protocol = 0;
+    scheme = "";
+    size_t offset_past_scheme = 0;
     const size_t i = url.find("://");
     if (i != std::string::npos) {
-      protocol = url.substr(0, i);
-      offset_past_protocol = i + 3;
+      scheme = url.substr(0, i);
+      offset_past_scheme = i + 3;
     }
 
-    const size_t colon = url.find(':', offset_past_protocol);
-    const size_t slash = url.find('/', offset_past_protocol);
-    host = url.substr(offset_past_protocol, std::min(colon, slash) - offset_past_protocol);
+    const size_t colon = url.find(':', offset_past_scheme);
+    const size_t slash = url.find('/', offset_past_scheme);
+    host = url.substr(offset_past_scheme, std::min(colon, slash) - offset_past_scheme);
     if (host.empty()) {
       host = previous_host;
     }
@@ -105,52 +105,52 @@ struct URLWithoutParameters {
       path = "/";
     }
 
-    if (protocol.empty()) {
-      if (!previous_protocol.empty()) {
-        protocol = previous_protocol;
+    if (scheme.empty()) {
+      if (!previous_scheme.empty()) {
+        scheme = previous_scheme;
       } else {
-        protocol = DefaultProtocolForPort(port);
+        scheme = DefaultSchemeForPort(port);
       }
     }
 
     if (port == 0) {
-      port = DefaultPortForProtocol(protocol);
+      port = DefaultPortForScheme(scheme);
     }
   }
 
   URLWithoutParameters(const std::string& url, const URLWithoutParameters& previous)
-      : URLWithoutParameters(url, previous.protocol, previous.host, previous.port) {}
+      : URLWithoutParameters(url, previous.scheme, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     if (!host.empty()) {
       std::ostringstream os;
-      if (!protocol.empty()) {
-        os << protocol << "://";
+      if (!scheme.empty()) {
+        os << scheme << "://";
       }
       os << host;
-      if (port != DefaultPortForProtocol(protocol)) {
+      if (port != DefaultPortForScheme(scheme)) {
         os << ':' << port;
       }
       os << path;
       return os.str();
     } else {
-      // If no host is specified, it's just the path: No need to put protocol and port.
+      // If no host is specified, it's just the path: No need to put scheme and port.
       return path;
     }
   }
 
-  static int DefaultPortForProtocol(const std::string& protocol) {
-    // We don't really "support" other protocols yet -- D.K.
-    if (protocol == "http") {
+  static int DefaultPortForScheme(const std::string& scheme) {
+    // We don't really "support" other schemes yet -- D.K.
+    if (scheme == "http") {
       return 80;
-    } else if (protocol == "https") {
+    } else if (scheme == "https") {
       return 443;
     } else {
       return 0;
     }
   }
 
-  static std::string DefaultProtocolForPort(int port) { return port == 80 ? "http" : ""; }
+  static std::string DefaultSchemeForPort(int port) { return port == 80 ? "http" : ""; }
 };
 
 struct URLParameters {
@@ -237,12 +237,12 @@ struct URL : URLParameters, URLWithoutParameters {
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
   URL(const std::string& url,
-      const std::string& previous_protocol = kDefaultProtocol,
+      const std::string& previous_scheme = kDefaultScheme,
       const std::string& previous_host = "",
       const int previous_port = 0)
       : URLParameters(url),
         URLWithoutParameters(
-            URLParameters::url_without_parameters, previous_protocol, previous_host, previous_port) {}
+            URLParameters::url_without_parameters, previous_scheme, previous_host, previous_port) {}
 
   URL(const std::string& url, const URLWithoutParameters& previous)
       : URLParameters(url), URLWithoutParameters(URLParameters::url_without_parameters, previous) {}

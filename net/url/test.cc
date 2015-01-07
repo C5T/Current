@@ -35,37 +35,37 @@ TEST(URLTest, SmokeTest) {
   u = URL("www.google.com");
   EXPECT_EQ("www.google.com", u.host);
   EXPECT_EQ("/", u.path);
-  EXPECT_EQ("http", u.protocol);
+  EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
 
   u = URL("www.google.com/test");
   EXPECT_EQ("www.google.com", u.host);
   EXPECT_EQ("/test", u.path);
-  EXPECT_EQ("http", u.protocol);
+  EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
 
   u = URL("www.google.com:8080");
   EXPECT_EQ("www.google.com", u.host);
   EXPECT_EQ("/", u.path);
-  EXPECT_EQ("http", u.protocol);
+  EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(8080, u.port);
 
   u = URL("meh://www.google.com:27960");
   EXPECT_EQ("www.google.com", u.host);
   EXPECT_EQ("/", u.path);
-  EXPECT_EQ("meh", u.protocol);
+  EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
 
   u = URL("meh://www.google.com:27960/bazinga");
   EXPECT_EQ("www.google.com", u.host);
   EXPECT_EQ("/bazinga", u.path);
-  EXPECT_EQ("meh", u.protocol);
+  EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
 
   u = URL("localhost:/test");
   EXPECT_EQ("localhost", u.host);
   EXPECT_EQ("/test", u.path);
-  EXPECT_EQ("http", u.protocol);
+  EXPECT_EQ("http", u.scheme);
   EXPECT_EQ(80, u.port);
 }
 
@@ -80,11 +80,11 @@ TEST(URLTest, CompositionTest) {
   EXPECT_EQ("meh://www.google.com:8080/", URL("meh://www.google.com:8080").ComposeURL());
 }
 
-TEST(URLTest, DerivesProtocolFromPreviousPort) {
-  // Smoke tests for non-default protocol, setting the 2nd parameter to the URL() constructor.
+TEST(URLTest, DerivesSchemeFromPreviousPort) {
+  // Smoke tests for non-default scheme, setting the 2nd parameter to the URL() constructor.
   EXPECT_EQ("www.google.com/", URL("www.google.com", "").ComposeURL());
   EXPECT_EQ("telnet://www.google.com:23/", URL("www.google.com", "telnet", "", 23).ComposeURL());
-  // Keeps the protocol if it was explicitly specified, even for the port that maps to a different protocol.
+  // Keeps the scheme if it was explicitly specified, even for the port that maps to a different scheme.
   EXPECT_EQ("foo://www.google.com:80/", URL("foo://www.google.com", "", "", 80).ComposeURL());
   // Maps port 80 into "http://".
   EXPECT_EQ("http://www.google.com/", URL("www.google.com", "", "", 80).ComposeURL());
@@ -92,11 +92,11 @@ TEST(URLTest, DerivesProtocolFromPreviousPort) {
   EXPECT_EQ("https://www.google.com:442/", URL("www.google.com", "https", "", 442).ComposeURL());
   EXPECT_EQ("https://www.google.com/", URL("www.google.com", "https", "", 443).ComposeURL());
   EXPECT_EQ("https://www.google.com:444/", URL("www.google.com", "https", "", 444).ComposeURL());
-  // Since there is no rule from "23" to "telnet", no protocol is specified.
+  // Since there is no rule from "23" to "telnet", no scheme is specified.
   EXPECT_EQ("www.google.com:23/", URL("www.google.com", "", "", 23).ComposeURL());
 }
 
-TEST(URLTest, RedirectPreservesProtocolHostAndPortTest) {
+TEST(URLTest, RedirectPreservesSchemeHostAndPortTest) {
   EXPECT_EQ("http://localhost/foo", URL("/foo", URL("localhost")).ComposeURL());
   EXPECT_EQ("meh://localhost/foo", URL("/foo", URL("meh://localhost")).ComposeURL());
   EXPECT_EQ("http://localhost:8080/foo", URL("/foo", URL("localhost:8080")).ComposeURL());
