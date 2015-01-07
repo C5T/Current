@@ -22,8 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include <vector>
+#include <string>
+#include <set>
+
 #include "printf.h"
 #include "fixed_size_serializer.h"
+#include "join.h"
+#include "split.h"
 
 #include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
@@ -32,6 +38,10 @@ using bricks::strings::Printf;
 using bricks::strings::FixedSizeSerializer;
 using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
+using bricks::strings::Join;
+using bricks::strings::Split;
+using bricks::strings::TrimMode;
+// using bricks::strings::SplitIntoKeyValuePairs;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -77,4 +87,29 @@ TEST(FixedSizeSerializer, ImplicitSyntax) {
     uint64_t x = static_cast<int64_t>(1e18);
     EXPECT_EQ("01000000000000000000", PackToString(x));
   }
+}
+
+TEST(Split, Join) {
+  EXPECT_EQ("one,two,three", Join({"one", "two", "three"}, ','));
+  EXPECT_EQ("onetwothree", Join({"one", "two", "three"}, ""));
+  EXPECT_EQ("one, two, three", Join({"one", "two", "three"}, ", "));
+  EXPECT_EQ("one, two, three", Join({"one", "two", "three"}, std::string(", ")));
+  EXPECT_EQ("", Join({}, ' '));
+  EXPECT_EQ("", Join({}, " "));
+
+  EXPECT_EQ("a,b,c,b", Join(std::vector<std::string>({"a", "b", "c", "b"}), ','));
+  EXPECT_EQ("a,b,c", Join(std::set<std::string>({"a", "b", "c", "b"}), ','));
+  EXPECT_EQ("a,b,b,c", Join(std::multiset<std::string>({"a", "b", "c", "b"}), ','));
+}
+
+TEST(Split, Split) {
+  EXPECT_EQ("one two three", Join(Split("one,two,three", ','), ' '));
+  EXPECT_EQ("one two three four", Join(Split("one,two|three,four", ",|"), ' '));
+  EXPECT_EQ("one two three four", Join(Split("one,two|three,four", std::string(",|")), ' '));
+  EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", '|'), ' '));
+  EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", "|"), ' '));
+  EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", std::string("|")), ' '));
+
+  EXPECT_EQ("one two three", Join(Split(",,one,,,two,,,three,,", ','), ' '));
+  EXPECT_EQ("  one   two   three  ", Join(Split(",,one,,,two,,,three,,", ',', TrimMode::NoTrim), ' '));
 }

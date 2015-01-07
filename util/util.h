@@ -26,11 +26,12 @@ SOFTWARE.
 #define BRICKS_UTIL_UTIL_H
 
 #include <cstddef>
+#include <type_traits>
 
 namespace bricks {
 
 template <size_t N>
-constexpr size_t CompileTimeStringLength(char const (&)[N]) {
+constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const (&)[N]) {
   return N - 1;
 }
 
