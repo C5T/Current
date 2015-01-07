@@ -88,6 +88,10 @@ TEST(URLTest, DerivesProtocolFromPreviousPort) {
   EXPECT_EQ("foo://www.google.com:80/", URL("foo://www.google.com", "", "", 80).ComposeURL());
   // Maps port 80 into "http://".
   EXPECT_EQ("http://www.google.com/", URL("www.google.com", "", "", 80).ComposeURL());
+  // Assumes port 443 for "https://".
+  EXPECT_EQ("https://www.google.com:442/", URL("www.google.com", "https", "", 442).ComposeURL());
+  EXPECT_EQ("https://www.google.com/", URL("www.google.com", "https", "", 443).ComposeURL());
+  EXPECT_EQ("https://www.google.com:444/", URL("www.google.com", "https", "", 444).ComposeURL());
   // Since there is no rule from "23" to "telnet", no protocol is specified.
   EXPECT_EQ("www.google.com:23/", URL("www.google.com", "", "", 23).ComposeURL());
 }

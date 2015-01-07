@@ -140,8 +140,14 @@ struct URLWithoutParameters {
   }
 
   static int DefaultPortForProtocol(const std::string& protocol) {
-    // We don't really support HTTPS/SSL or any other protocols yet -- D.K. :-)
-    return protocol == "http" ? 80 : 0;
+    // We don't really "support" other protocols yet -- D.K.
+    if (protocol == "http") {
+      return 80;
+    } else if (protocol == "https") {
+      return 443;
+    } else {
+      return 0;
+    }
   }
 
   static std::string DefaultProtocolForPort(int port) { return port == 80 ? "http" : ""; }
