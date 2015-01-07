@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_STRINGS_SPLIT_H
 
 #include <algorithm>
+#include <cctype>
 #include <vector>
 #include <string>
 #include <type_traits>
@@ -35,6 +36,13 @@ SOFTWARE.
 namespace bricks {
 namespace strings {
 
+enum class TrimMode { Trim, NoTrim };
+enum class KeyValueThrowMode { Silent, Throw };
+enum class ByWhitespace { UseIsSpace };
+
+struct KeyValueNoValueException : Exception {};
+struct KeyValueMultipleValuesException : Exception {};
+
 namespace impl {
 
 template <typename T>
@@ -43,6 +51,11 @@ struct MatchImpl {};
 template <>
 struct MatchImpl<char> {
   inline static bool Match(char a, char b) { return a == b; }
+};
+
+template <>
+struct MatchImpl<ByWhitespace> {
+  inline static bool Match(char a, ByWhitespace) { return ::isspace(a); }
 };
 
 template <>
@@ -62,13 +75,14 @@ inline bool Match(char a, T&& b) {
   return MatchImpl<typename std::remove_reference<T>::type>::Match(a, b);
 }
 
+template <typename T>
+struct DefaultSeparator {};
+template <>
+struct DefaultSeparator<ByWhitespace> {
+  static inline ByWhitespace value() { return ByWhitespace::UseIsSpace; }
+};
+
 }  // namespace impl
-
-enum class TrimMode { Trim, NoTrim };
-enum class KeyValueThrowMode { Silent, Throw };
-
-struct KeyValueNoValueException : Exception {};
-struct KeyValueMultipleValuesException : Exception {};
 
 template <typename T_SEPARATOR, typename T_PROCESSOR>
 inline size_t Split(const std::string& s,
@@ -96,18 +110,18 @@ inline size_t Split(const std::string& s,
 
 template <typename T_SEPARATOR>
 inline std::vector<std::string> Split(const std::string& s,
-                                      T_SEPARATOR&& separator,
+                                      T_SEPARATOR&& separator = impl::DefaultSeparator<T_SEPARATOR>::value(),
                                       TrimMode trim = TrimMode::Trim) {
   std::vector<std::string> result;
   Split(s, separator, [&result](std::string&& chunk) { result.emplace_back(std::move(chunk)); }, trim);
   return result;
 }
 
-template <typename T_FIELDS_SEPARATOR, typename T_KEY_VALUE_SEPARATOR>
+template <typename T_KEY_VALUE_SEPARATOR, typename T_FIELDS_SEPARATOR>
 inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
     const std::string& s,
-    T_FIELDS_SEPARATOR&& fields_separator,
     T_KEY_VALUE_SEPARATOR&& key_value_separator,
+    T_FIELDS_SEPARATOR&& fields_separator = impl::DefaultSeparator<T_FIELDS_SEPARATOR>::value(),
     KeyValueThrowMode throw_mode = KeyValueThrowMode::Silent) {
   std::vector<std::pair<std::string, std::string>> result;
   Split(s,
@@ -127,6 +141,14 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
     }
   });
   return result;
+}
+
+template <typename T_KEY_VALUE_SEPARATOR>
+inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
+    const std::string& s,
+    T_KEY_VALUE_SEPARATOR&& key_value_separator,
+    KeyValueThrowMode throw_mode = KeyValueThrowMode::Silent) {
+  return SplitIntoKeyValuePairs(s, key_value_separator, ByWhitespace::UseIsSpace, throw_mode);
 }
 
 }  // namespace strings

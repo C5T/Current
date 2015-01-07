@@ -42,6 +42,7 @@ using bricks::strings::TrimMode;
 using bricks::strings::KeyValueThrowMode;
 using bricks::strings::KeyValueNoValueException;
 using bricks::strings::KeyValueMultipleValuesException;
+using bricks::strings::ByWhitespace;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -122,6 +123,9 @@ TEST(JoinAndSplit, Split) {
 
   EXPECT_EQ("one two three", Join(Split(",,one,,,two,,,three,,", ','), ' '));
   EXPECT_EQ("  one   two   three  ", Join(Split(",,one,,,two,,,three,,", ',', TrimMode::NoTrim), ' '));
+
+  EXPECT_EQ("one two three", Join(Split<ByWhitespace>("one two three"), ' '));
+  EXPECT_EQ("one two three", Join(Split<ByWhitespace>("\t \tone\t \ttwo\t \tthree\t \t"), ' '));
 }
 
 TEST(JoinAndSplit, FunctionalSplit) {
@@ -168,7 +172,16 @@ TEST(JoinAndSplit, FunctionalSplit) {
 }
 
 TEST(JoinAndSplit, SplitIntoKeyValuePairs) {
-  const auto result = SplitIntoKeyValuePairs("one=1,two=2", ',', '=');
+  const auto result = SplitIntoKeyValuePairs("one=1,two=2", '=', ',');
+  ASSERT_EQ(2u, result.size());
+  EXPECT_EQ("one", result[0].first);
+  EXPECT_EQ("1", result[0].second);
+  EXPECT_EQ("two", result[1].first);
+  EXPECT_EQ("2", result[1].second);
+}
+
+TEST(JoinAndSplit, SplitIntoKeyValuePairsWithWhitespaceBetweenPairs) {
+  const auto result = SplitIntoKeyValuePairs("\t\n \tone=1\t\n \ttwo=2\t\n \t", '=');
   ASSERT_EQ(2u, result.size());
   EXPECT_EQ("one", result[0].first);
   EXPECT_EQ("1", result[0].second);
@@ -177,19 +190,22 @@ TEST(JoinAndSplit, SplitIntoKeyValuePairs) {
 }
 
 TEST(JoinAndSplit, SplitIntoKeyValuePairsExceptions) {
-  const auto default_is_to_not_throw = SplitIntoKeyValuePairs("test,foo=bar=baz,one=1,two=2,passed", ',', '=');
+  const auto default_is_to_not_throw = SplitIntoKeyValuePairs("test,foo=bar=baz,one=1,two=2,passed", '=', ',');
   ASSERT_EQ(2u, default_is_to_not_throw.size());
   EXPECT_EQ("one", default_is_to_not_throw[0].first);
   EXPECT_EQ("1", default_is_to_not_throw[0].second);
   EXPECT_EQ("two", default_is_to_not_throw[1].first);
   EXPECT_EQ("2", default_is_to_not_throw[1].second);
-  const auto correct_case = SplitIntoKeyValuePairs("one=1,two=2", ',', '=', KeyValueThrowMode::Throw);
+  const auto correct_case = SplitIntoKeyValuePairs("one=1,two=2", '=', ',', KeyValueThrowMode::Throw);
   ASSERT_EQ(2u, correct_case.size());
   EXPECT_EQ("one", correct_case[0].first);
   EXPECT_EQ("1", correct_case[0].second);
   EXPECT_EQ("two", correct_case[1].first);
   EXPECT_EQ("2", correct_case[1].second);
-  ASSERT_THROW(SplitIntoKeyValuePairs("foo", ',', '=', KeyValueThrowMode::Throw), KeyValueNoValueException);
-  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", ',', '=', KeyValueThrowMode::Throw),
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', ',', KeyValueThrowMode::Throw), KeyValueNoValueException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', ',', KeyValueThrowMode::Throw),
+               KeyValueMultipleValuesException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', KeyValueThrowMode::Throw), KeyValueNoValueException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', KeyValueThrowMode::Throw),
                KeyValueMultipleValuesException);
 }
