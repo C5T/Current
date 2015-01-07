@@ -163,7 +163,7 @@ struct URLParameters {
     }
     const size_t question_mark_index = url.find('?');
     if (question_mark_index != std::string::npos) {
-      parameters_vector = strings::SplitIntoKeyValuePairs(url.substr(question_mark_index + 1), '&', '=');
+      parameters_vector = strings::SplitIntoKeyValuePairs(url.substr(question_mark_index + 1), '=', '&');
       for (auto& it : parameters_vector) {
         it.second = DecodeURIComponent(it.second);
       }

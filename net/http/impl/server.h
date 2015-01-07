@@ -149,17 +149,13 @@ class TemplatedHTTPReceivedMessage : public HELPER {
         if (!first_line_parsed) {
           if (!line_is_blank) {
             // It's recommended by W3 to wait for the first line ignoring prior CRLF-s.
-            char* p1 = &buffer_[current_line_offset];
-            char* p2 = strstr(p1, " ");
-            if (p2) {
-              *p2 = '\0';
-              ++p2;
-              method_ = p1;
-              char* p3 = strstr(p2, " ");
-              if (p3) {
-                *p3 = '\0';
-              }
-              path_ = p2;
+            const std::vector<std::string> pieces =
+                strings::Split<strings::ByWhitespace>(&buffer_[current_line_offset]);
+            if (pieces.size() >= 1) {
+              method_ = pieces[0];
+            }
+            if (pieces.size() >= 2) {
+              path_ = pieces[1];
             }
             first_line_parsed = true;
           }

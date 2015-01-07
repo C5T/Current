@@ -73,6 +73,11 @@ DEFINE_int32(chunked_transfer_delay_between_bytes_ms,
              10,
              "Number of milliseconds to wait between bytes when using chunked encoding.");
 
+DEFINE_bool(
+    extra_whitespace_in_chunked_http_header,
+    true,
+    "Introduce more than one space between `HTTP/1.1` and `200` in manually constructed chunked response.");
+
 #ifndef BRICKS_COVERAGE_REPORT_MODE
 TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_bricks_runtime_arch);
@@ -144,7 +149,11 @@ class UseLocalHTTPTestServer {
             connection.SendHTTPResponse(std::string(numbytes, '*'));  // LCOV_EXCL_LINE
           } else {
             Connection& c = connection.RawConnection();
-            c.BlockingWrite("HTTP/1.1 200 OK\r\n");
+            if (FLAGS_extra_whitespace_in_chunked_http_header) {
+              c.BlockingWrite("HTTP/1.1  \t  \t\t  200\t    \t\t\t\t  OK\r\n");
+            } else {
+              c.BlockingWrite("HTTP/1.1 200 OK\r\n");  // LCOV_EXCL_LINE
+            }
             c.BlockingWrite("Transfer-Encoding: chunked\r\n");
             c.BlockingWrite("Content-Type: application/octet-stream\r\n");
             c.BlockingWrite("\r\n");
