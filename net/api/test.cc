@@ -165,7 +165,7 @@ class UseLocalHTTPTestServer {
           connection.SendHTTPResponse("Aloha User Agent");
         } else if (url.path == "/redirect-to") {
           HTTPHeadersType headers;
-          headers.push_back(std::make_pair("Location", url["url"]));  // "/get"));
+          headers.push_back(std::make_pair("Location", url["url"]));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
         } else if (url.path == "/redirect-loop") {
