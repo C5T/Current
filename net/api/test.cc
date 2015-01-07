@@ -34,6 +34,7 @@ SOFTWARE.
 #include <string>
 #include <thread>
 
+#include "../../dflags/dflags.h"
 #include "../../3party/gtest/gtest-main-with-dflags.h"
 
 #include "api.h"
@@ -41,7 +42,6 @@ SOFTWARE.
 #include "../tcp/tcp.h"
 #include "../url/url.h"
 
-#include "../../dflags/dflags.h"
 #include "../../file/file.h"
 #include "../../port.h"
 #include "../../util/make_scope_guard.h"
@@ -60,6 +60,8 @@ using bricks::net::Connection;  // To send HTTP response in chunked transfer enc
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
+
+using bricks::net::url::URL;
 
 using namespace bricks::net::api;
 
@@ -134,13 +136,12 @@ class UseLocalHTTPTestServer {
       HTTPServerConnection connection(socket.Accept());
       const auto& message = connection.Message();
       const string method = message.Method();
-      const string url = message.URL();
+      const URL url = URL(message.Path());
       if (method == "GET") {
-        if (url == "/get") {
-          connection.SendHTTPResponse("DIMA");
-        } else if (url == "/drip?numbytes=7") {
+        if (url.path == "/drip") {
+          const size_t numbytes = atoi(url["numbytes"].c_str());
           if (!FLAGS_test_chunked_encoding) {
-            connection.SendHTTPResponse("*******");  // LCOV_EXCL_LINE
+            connection.SendHTTPResponse(std::string(numbytes, '*'));  // LCOV_EXCL_LINE
           } else {
             Connection& c = connection.RawConnection();
             c.BlockingWrite("HTTP/1.1 200 OK\r\n");
@@ -148,51 +149,49 @@ class UseLocalHTTPTestServer {
             c.BlockingWrite("Content-Type: application/octet-stream\r\n");
             c.BlockingWrite("\r\n");
             sleep_for(milliseconds(FLAGS_chunked_transfer_delay_between_bytes_ms));
-            for (int i = 0; i < 7; ++i) {
+            for (size_t i = 0; i < numbytes; ++i) {
               c.BlockingWrite("1\r\n*\r\n");
               sleep_for(milliseconds(FLAGS_chunked_transfer_delay_between_bytes_ms));
             }
             c.BlockingWrite("0\r\n\r\n");  // Line ending as httpbin.org seems to do it. -- D.K.
           }
           connection.RawConnection().SendEOF();
-        } else if (url == "/drip?numbytes=5") {
-          connection.SendHTTPResponse("*****");
-        } else if (url == "/status/403") {
+        } else if (url.path == "/status/403") {
           connection.SendHTTPResponse("", HTTPResponseCode::Forbidden);
-        } else if (url == "/get?Aloha=Mahalo") {
-          connection.SendHTTPResponse("{\"Aloha\": \"Mahalo\"}\n");
-        } else if (url == "/user-agent") {
+        } else if (url.path == "/get") {
+          connection.SendHTTPResponse("{\"Aloha\": \"" + url["Aloha"] + "\"}\n");
+        } else if (url.path == "/user-agent") {
           // TODO(dkorolev): Add parsing User-Agent to Bricks' HTTP headers parser.
           connection.SendHTTPResponse("Aloha User Agent");
-        } else if (url == "/redirect-to?url=/get") {
+        } else if (url.path == "/redirect-to") {
           HTTPHeadersType headers;
-          headers.push_back(std::make_pair("Location", "/get"));
+          headers.push_back(std::make_pair("Location", url["url"]));  // "/get"));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
-        } else if (url == "/redirect-loop") {
+        } else if (url.path == "/redirect-loop") {
           HTTPHeadersType headers;
           headers.push_back(std::make_pair("Location", "/redirect-loop-2"));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
-        } else if (url == "/redirect-loop-2") {
+        } else if (url.path == "/redirect-loop-2") {
           HTTPHeadersType headers;
           headers.push_back(std::make_pair("Location", "/redirect-loop-3"));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
-        } else if (url == "/redirect-loop-3") {
+        } else if (url.path == "/redirect-loop-3") {
           HTTPHeadersType headers;
           headers.push_back(std::make_pair("Location", "/redirect-loop"));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
         } else {
-          ASSERT_TRUE(false) << "GET not implemented for: " << message.URL();  // LCOV_EXCL_LINE
+          ASSERT_TRUE(false) << "GET not implemented for: " << message.Path();  // LCOV_EXCL_LINE
         }
       } else if (method == "POST") {
-        if (url == "/post") {
+        if (url.path == "/post") {
           ASSERT_TRUE(message.HasBody());
           connection.SendHTTPResponse("{\"data\": \"" + message.Body() + "\"}\n");
         } else {
-          ASSERT_TRUE(false) << "POST not implemented for: " << message.URL();  // LCOV_EXCL_LINE
+          ASSERT_TRUE(false) << "POST not implemented for: " << message.Path();  // LCOV_EXCL_LINE
         }
       } else {
         ASSERT_TRUE(false) << "Method not implemented: " << message.Method();  // LCOV_EXCL_LINE

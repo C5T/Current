@@ -80,10 +80,10 @@ class HTTPDefaultHelper {
 };
 
 // In constructor, TemplatedHTTPReceivedMessage parses HTTP response from `Connection&` is was provided with.
-// Extracts method, URL, and, if provided, the body.
+// Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
-// * std::string URL().
+// * std::string Path().
 // * std::string Method().
 // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
@@ -159,7 +159,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
               if (p3) {
                 *p3 = '\0';
               }
-              url_ = p2;
+              path_ = p2;
             }
             first_line_parsed = true;
           }
@@ -248,7 +248,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
 
   inline const std::string& Method() const { return method_; }
 
-  inline const std::string& URL() const { return url_; }
+  inline const std::string& Path() const { return path_; }
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
@@ -292,7 +292,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
  private:
   // Fields available to the user via getters.
   std::string method_;
-  std::string url_;
+  std::string path_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.
   std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.

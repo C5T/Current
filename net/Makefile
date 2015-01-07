@@ -8,7 +8,7 @@ indent:
 
 clean:
 	rm -rf build .noshit
-	(cd url; make test) && (cd tcp; make clean) && (cd http; make clean) && (cd api; make clean)
+	(cd url; make clean) && (cd tcp; make clean) && (cd http; make clean) && (cd api; make clean)
 
 check:
 	(cd url; make check) && (cd tcp; make check) && (cd http; make check) && (cd api; make check)

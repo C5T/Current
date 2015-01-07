@@ -24,7 +24,8 @@ SOFTWARE.
 
 #include "url.h"
 
-#include "../../3party/gtest/gtest-main.h"
+#include "../../dflags/dflags.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 
 using namespace bricks::net::url;
 
@@ -104,11 +105,67 @@ TEST(URLTest, RedirectPreservesProtocolHostAndPortTest) {
             URL("blah://new_host:6000/foo", URL("meh://localhost:5000")).ComposeURL());
 }
 
+TEST(URLTest, ExtractsURLParameters) {
+  {
+    URL u("www.google.com");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("", u["key"]);
+    EXPECT_EQ("default_value", u("key", "default_value"));
+  }
+  {
+    URL u("www.google.com/a#fragment");
+    EXPECT_EQ("fragment", u.fragment);
+    EXPECT_EQ("", u["key"]);
+    EXPECT_EQ("default_value", u("key", "default_value"));
+  }
+  {
+    URL u("www.google.com/b#fragment#foo");
+    EXPECT_EQ("fragment#foo", u.fragment);
+    EXPECT_EQ("", u["key"]);
+    EXPECT_EQ("default_value", u("key", "default_value"));
+  }
+  {
+    URL u("www.google.com/q?key=value&key2=value2#fragment#foo");
+    EXPECT_EQ("fragment#foo", u.fragment);
+    EXPECT_EQ("value", u["key"]);
+    EXPECT_EQ("value", u("key", "default_value"));
+    EXPECT_EQ("value2", u["key2"]);
+    EXPECT_EQ("value2", u("key2", "default_value"));
+  }
+  {
+    URL u("www.google.com/a?k=a%3Db%26s%3D%25s%23#foo");
+    EXPECT_EQ("foo", u.fragment);
+    EXPECT_EQ("a=b&s=%s#", u["k"]);
+  }
+  {
+    URL u("/q?key=value&key2=value2#fragment#foo");
+    EXPECT_EQ("fragment#foo", u.fragment);
+    EXPECT_EQ("value", u["key"]);
+    EXPECT_EQ("value", u("key", "default_value"));
+    EXPECT_EQ("value2", u["key2"]);
+    EXPECT_EQ("value2", u("key2", "default_value"));
+  }
+  {
+    URL u("/a?k=a%3Db%26s%3D%25s%23#foo");
+    EXPECT_EQ("foo", u.fragment);
+    EXPECT_EQ("a=b&s=%s#", u["k"]);
+  }
+}
+
+TEST(URLTest, URLParametersCompositionTest) {
+  EXPECT_EQ("http://www.google.com/search", URL("www.google.com/search").ComposeURL());
+  EXPECT_EQ("http://www.google.com/search?q=foo#fragment",
+            URL("www.google.com/search?q=foo#fragment").ComposeURL());
+  EXPECT_EQ("http://www.google.com/search?q=foo&q2=bar",
+            URL("www.google.com/search?q=foo&q2=bar").ComposeURL());
+  EXPECT_EQ("http://www.google.com/search?q=foo&q2=bar#fragment",
+            URL("www.google.com/search?q=foo&q2=bar#fragment").ComposeURL());
+  EXPECT_EQ("http://www.google.com/search#fragment", URL("www.google.com/search#fragment").ComposeURL());
+}
+
 TEST(URLTest, EmptyURLException) {
-  // Empty URL or host should throw.
+  // Empty URL should throw.
   ASSERT_THROW(URL(""), EmptyURLException);
-  ASSERT_THROW(URL("http://"), EmptyURLHostException);
-  ASSERT_THROW(URL("http:///foo"), EmptyURLHostException);
 
   // Empty host is allowed in local links.
   EXPECT_EQ("foo://www.website.com:321/second",
