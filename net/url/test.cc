@@ -185,7 +185,7 @@ TEST(URLTest, EmptyURLException) {
   // Empty URL should throw.
   ASSERT_THROW(URL(""), EmptyURLException);
 
-  // Empty host is allowed in local links.
+  // Empty host is allowed in relative links.
   EXPECT_EQ("foo://www.website.com:321/second",
             URL("/second", URL("foo://www.website.com:321/first")).ComposeURL());
 }
