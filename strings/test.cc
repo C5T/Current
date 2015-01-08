@@ -151,7 +151,7 @@ TEST(JoinAndSplit, FunctionalSplit) {
       void operator=(Helper&&) = delete;
     };
     Helper helper(result);
-    Split("one,two,three", ',', [&result](const std::string& s) { result += s + '\n'; });
+    Split("one,two,three", ',', helper);
     EXPECT_EQ("one\ntwo\nthree\n", result);
   }
   {
@@ -166,7 +166,7 @@ TEST(JoinAndSplit, FunctionalSplit) {
       void operator=(Helper&&) = delete;
     };
     Helper helper(result);
-    Split("one,two,three", ',', [&result](const std::string& s) { result += s + '\n'; });
+    Split("one,two,three", ',', helper);
     EXPECT_EQ("one\ntwo\nthree\n", result);
   }
 }
