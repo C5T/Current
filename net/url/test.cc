@@ -62,6 +62,12 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
 
+  u = URL("localhost/test");
+  EXPECT_EQ("localhost", u.host);
+  EXPECT_EQ("/test", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
+
   u = URL("localhost:/test");
   EXPECT_EQ("localhost", u.host);
   EXPECT_EQ("/test", u.path);
