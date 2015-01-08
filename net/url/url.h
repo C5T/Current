@@ -164,7 +164,15 @@ struct URLParameters {
     }
     const size_t question_mark_index = url.find('?');
     if (question_mark_index != std::string::npos) {
-      parameters_vector = strings::SplitIntoKeyValuePairs(url.substr(question_mark_index + 1), '=', '&');
+      auto& v = parameters_vector;
+      strings::Split(url.substr(question_mark_index + 1), '&', [&v](const std::string& chunk) {
+        const size_t i = chunk.find('=');
+        if (i != std::string::npos) {
+          v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
+        } else {
+          v.emplace_back(chunk, "");
+        }
+      });
       for (auto& it : parameters_vector) {
         it.second = DecodeURIComponent(it.second);
       }
@@ -193,6 +201,8 @@ struct URLParameters {
       if (i + 3 <= encoded.length() && encoded[i] == '%') {
         decoded += static_cast<char>(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));
         i += 2;
+      } else if (encoded[i] == '+') {
+        decoded += ' ';
       } else {
         decoded += encoded[i];
       }
@@ -214,12 +224,10 @@ struct URLParameters {
 
   std::string ComposeParameters() const {
     std::string composed_parameters;
-    if (!parameters_vector.empty()) {
-      for (size_t i = 0; i < parameters_vector.size(); ++i) {
-        composed_parameters += "?&"[i];
-        composed_parameters += EncodeURIComponent(parameters_vector[i].first) + '=' +
-                               EncodeURIComponent(parameters_vector[i].second);
-      }
+    for (size_t i = 0; i < parameters_vector.size(); ++i) {
+      composed_parameters += "?&"[i > 0];
+      composed_parameters += EncodeURIComponent(parameters_vector[i].first) + '=' +
+                             EncodeURIComponent(parameters_vector[i].second);
     }
     if (!fragment.empty()) {
       composed_parameters += "#" + fragment;

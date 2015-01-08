@@ -168,6 +168,45 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("a=b&s=%s#", u["k"]);
     EXPECT_EQ("/a?k=a%3Db%26s%3D%25s%23#foo", u.ComposeURL());
   }
+  {
+    URL u("www.google.com/q?foo=&bar&baz=");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("", u["foo"]);
+    EXPECT_EQ("", u("foo", "default_value"));
+    EXPECT_EQ("", u["bar"]);
+    EXPECT_EQ("", u("bar", "default_value"));
+    EXPECT_EQ("", u["baz"]);
+    EXPECT_EQ("", u("baz", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?foo=&bar=&baz=", u.ComposeURL());
+  }
+  {
+    URL u("www.google.com/q?foo=bar=baz");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("bar=baz", u["foo"]);
+    EXPECT_EQ("bar=baz", u("foo", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?foo=bar%3Dbaz", u.ComposeURL());
+  }
+  {
+    URL u("www.google.com/q? foo = bar = baz ");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ(" bar = baz ", u[" foo "]);
+    EXPECT_EQ(" bar = baz ", u(" foo ", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?%20foo%20=%20bar%20%3D%20baz%20", u.ComposeURL());
+  }
+  {
+    URL u("www.google.com/q?1=foo");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("foo", u["1"]);
+    EXPECT_EQ("foo", u("1", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?1=foo", u.ComposeURL());
+  }
+  {
+    URL u("www.google.com/q?question=forty+two");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("forty two", u["question"]);
+    EXPECT_EQ("forty two", u("question", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?question=forty%20two", u.ComposeURL());
+  }
 }
 
 TEST(URLTest, URLParametersCompositionTest) {

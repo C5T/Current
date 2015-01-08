@@ -36,8 +36,12 @@ SOFTWARE.
 namespace bricks {
 namespace strings {
 
-enum class TrimMode { Trim, NoTrim };
-enum class KeyValueThrowMode { Silent, Throw };
+// Skip: Skip empty chunks, Keep: Keep empty fields.
+enum class EmptyFields { Skip, Keep };
+
+// Silent:  Silently ignore the key-value pairs that can not be parsed.
+// Throw:   Throw an exception if the input string is malfomed.
+enum class KeyValueParsing { Silent, Throw };
 enum class ByWhitespace { UseIsSpace };
 
 struct KeyValueNoValueException : Exception {};
@@ -88,12 +92,12 @@ template <typename T_SEPARATOR, typename T_PROCESSOR>
 inline size_t Split(const std::string& s,
                     T_SEPARATOR&& separator,
                     T_PROCESSOR&& processor,
-                    TrimMode trim = TrimMode::Trim) {
+                    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   size_t i = 0;
   size_t j = 0;
   size_t n = 0;
   const auto emit = [&]() {
-    if (trim == TrimMode::NoTrim || i != j) {
+    if (empty_fields_strategy == EmptyFields::Keep || i != j) {
       ++n;
       processor(s.substr(j, i - j));
     }
@@ -111,9 +115,12 @@ inline size_t Split(const std::string& s,
 template <typename T_SEPARATOR>
 inline std::vector<std::string> Split(const std::string& s,
                                       T_SEPARATOR&& separator = impl::DefaultSeparator<T_SEPARATOR>::value(),
-                                      TrimMode trim = TrimMode::Trim) {
+                                      EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   std::vector<std::string> result;
-  Split(s, separator, [&result](std::string&& chunk) { result.emplace_back(std::move(chunk)); }, trim);
+  Split(s,
+        separator,
+        [&result](std::string&& chunk) { result.emplace_back(std::move(chunk)); },
+        empty_fields_strategy);
   return result;
 }
 
@@ -122,7 +129,7 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
     const std::string& s,
     T_KEY_VALUE_SEPARATOR&& key_value_separator,
     T_FIELDS_SEPARATOR&& fields_separator = impl::DefaultSeparator<T_FIELDS_SEPARATOR>::value(),
-    KeyValueThrowMode throw_mode = KeyValueThrowMode::Silent) {
+    KeyValueParsing throw_mode = KeyValueParsing::Silent) {
   std::vector<std::pair<std::string, std::string>> result;
   Split(s,
         fields_separator,
@@ -131,11 +138,11 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
     if (key_and_value.size() >= 2) {
       if (key_and_value.size() == 2) {
         result.emplace_back(key_and_value[0], key_and_value[1]);
-      } else if (throw_mode == KeyValueThrowMode::Throw) {
+      } else if (throw_mode == KeyValueParsing::Throw) {
         throw KeyValueMultipleValuesException();
       }
     } else {
-      if (throw_mode == KeyValueThrowMode::Throw) {
+      if (throw_mode == KeyValueParsing::Throw) {
         throw KeyValueNoValueException();
       }
     }
@@ -147,7 +154,7 @@ template <typename T_KEY_VALUE_SEPARATOR>
 inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
     const std::string& s,
     T_KEY_VALUE_SEPARATOR&& key_value_separator,
-    KeyValueThrowMode throw_mode = KeyValueThrowMode::Silent) {
+    KeyValueParsing throw_mode = KeyValueParsing::Silent) {
   return SplitIntoKeyValuePairs(s, key_value_separator, ByWhitespace::UseIsSpace, throw_mode);
 }
 

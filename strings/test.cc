@@ -38,8 +38,8 @@ using bricks::strings::CompileTimeStringLength;
 using bricks::strings::Join;
 using bricks::strings::Split;
 using bricks::strings::SplitIntoKeyValuePairs;
-using bricks::strings::TrimMode;
-using bricks::strings::KeyValueThrowMode;
+using bricks::strings::EmptyFields;
+using bricks::strings::KeyValueParsing;
 using bricks::strings::KeyValueNoValueException;
 using bricks::strings::KeyValueMultipleValuesException;
 using bricks::strings::ByWhitespace;
@@ -122,7 +122,7 @@ TEST(JoinAndSplit, Split) {
   EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", std::string("|")), ' '));
 
   EXPECT_EQ("one two three", Join(Split(",,one,,,two,,,three,,", ','), ' '));
-  EXPECT_EQ("  one   two   three  ", Join(Split(",,one,,,two,,,three,,", ',', TrimMode::NoTrim), ' '));
+  EXPECT_EQ("  one   two   three  ", Join(Split(",,one,,,two,,,three,,", ',', EmptyFields::Keep), ' '));
 
   EXPECT_EQ("one two three", Join(Split<ByWhitespace>("one two three"), ' '));
   EXPECT_EQ("one two three", Join(Split<ByWhitespace>("\t \tone\t \ttwo\t \tthree\t \t"), ' '));
@@ -196,16 +196,16 @@ TEST(JoinAndSplit, SplitIntoKeyValuePairsExceptions) {
   EXPECT_EQ("1", default_is_to_not_throw[0].second);
   EXPECT_EQ("two", default_is_to_not_throw[1].first);
   EXPECT_EQ("2", default_is_to_not_throw[1].second);
-  const auto correct_case = SplitIntoKeyValuePairs("one=1,two=2", '=', ',', KeyValueThrowMode::Throw);
+  const auto correct_case = SplitIntoKeyValuePairs("one=1,two=2", '=', ',', KeyValueParsing::Throw);
   ASSERT_EQ(2u, correct_case.size());
   EXPECT_EQ("one", correct_case[0].first);
   EXPECT_EQ("1", correct_case[0].second);
   EXPECT_EQ("two", correct_case[1].first);
   EXPECT_EQ("2", correct_case[1].second);
-  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', ',', KeyValueThrowMode::Throw), KeyValueNoValueException);
-  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', ',', KeyValueThrowMode::Throw),
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', ',', KeyValueParsing::Throw), KeyValueNoValueException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', ',', KeyValueParsing::Throw),
                KeyValueMultipleValuesException);
-  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', KeyValueThrowMode::Throw), KeyValueNoValueException);
-  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', KeyValueThrowMode::Throw),
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', KeyValueParsing::Throw), KeyValueNoValueException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', KeyValueParsing::Throw),
                KeyValueMultipleValuesException);
 }
