@@ -22,18 +22,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_UTIL_UTIL_H
-#define BRICKS_UTIL_UTIL_H
+#ifndef BRICKS_STRINGS_UTIL_H
+#define BRICKS_STRINGS_UTIL_H
 
 #include <cstddef>
+#include <type_traits>
+
+// These are small headers, and #include "bricks/strings/util.h" should be enough.
+#include "printf.h"
+#include "fixed_size_serializer.h"
+#include "join.h"
+#include "split.h"
 
 namespace bricks {
+namespace strings {
 
 template <size_t N>
-constexpr size_t CompileTimeStringLength(char const (&)[N]) {
+constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const (&)[N]) {
   return N - 1;
 }
 
+}  // namespace strings
 }  // namespace bricks
 
-#endif  // BRICKS_UTIL_UTIL_H
+#endif  // BRICKS_STRINGS_UTIL_H

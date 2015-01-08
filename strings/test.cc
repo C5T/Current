@@ -22,16 +22,27 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "printf.h"
-#include "fixed_size_serializer.h"
+#include <vector>
+#include <string>
+#include <set>
 
-#include "../3party/gtest/gtest.h"
+#include "util.h"
+
 #include "../3party/gtest/gtest-main.h"
 
 using bricks::strings::Printf;
 using bricks::strings::FixedSizeSerializer;
 using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
+using bricks::strings::CompileTimeStringLength;
+using bricks::strings::Join;
+using bricks::strings::Split;
+using bricks::strings::SplitIntoKeyValuePairs;
+using bricks::strings::EmptyFields;
+using bricks::strings::KeyValueParsing;
+using bricks::strings::KeyValueNoValueException;
+using bricks::strings::KeyValueMultipleValuesException;
+using bricks::strings::ByWhitespace;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -77,4 +88,124 @@ TEST(FixedSizeSerializer, ImplicitSyntax) {
     uint64_t x = static_cast<int64_t>(1e18);
     EXPECT_EQ("01000000000000000000", PackToString(x));
   }
+}
+
+static const char global_string[] = "magic";
+
+TEST(Util, CompileTimeStringLength) {
+  const char local_string[] = "foo";
+  static const char local_static_string[] = "blah";
+  EXPECT_EQ(3u, CompileTimeStringLength(local_string));
+  EXPECT_EQ(4u, CompileTimeStringLength(local_static_string));
+  EXPECT_EQ(5u, CompileTimeStringLength(global_string));
+}
+
+TEST(JoinAndSplit, Join) {
+  EXPECT_EQ("one,two,three", Join({"one", "two", "three"}, ','));
+  EXPECT_EQ("onetwothree", Join({"one", "two", "three"}, ""));
+  EXPECT_EQ("one, two, three", Join({"one", "two", "three"}, ", "));
+  EXPECT_EQ("one, two, three", Join({"one", "two", "three"}, std::string(", ")));
+  EXPECT_EQ("", Join({}, ' '));
+  EXPECT_EQ("", Join({}, " "));
+
+  EXPECT_EQ("a,b,c,b", Join(std::vector<std::string>({"a", "b", "c", "b"}), ','));
+  EXPECT_EQ("a,b,c", Join(std::set<std::string>({"a", "b", "c", "b"}), ','));
+  EXPECT_EQ("a,b,b,c", Join(std::multiset<std::string>({"a", "b", "c", "b"}), ','));
+}
+
+TEST(JoinAndSplit, Split) {
+  EXPECT_EQ("one two three", Join(Split("one,two,three", ','), ' '));
+  EXPECT_EQ("one two three four", Join(Split("one,two|three,four", ",|"), ' '));
+  EXPECT_EQ("one two three four", Join(Split("one,two|three,four", std::string(",|")), ' '));
+  EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", '|'), ' '));
+  EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", "|"), ' '));
+  EXPECT_EQ("one,two three,four", Join(Split("one,two|three,four", std::string("|")), ' '));
+
+  EXPECT_EQ("one two three", Join(Split(",,one,,,two,,,three,,", ','), ' '));
+  EXPECT_EQ("  one   two   three  ", Join(Split(",,one,,,two,,,three,,", ',', EmptyFields::Keep), ' '));
+
+  EXPECT_EQ("one two three", Join(Split<ByWhitespace>("one two three"), ' '));
+  EXPECT_EQ("one two three", Join(Split<ByWhitespace>("\t \tone\t \ttwo\t \tthree\t \t"), ' '));
+}
+
+TEST(JoinAndSplit, FunctionalSplit) {
+  {
+    std::string result;
+    Split("one,two,three", ',', [&result](const std::string& s) { result += s + '\n'; });
+    EXPECT_EQ("one\ntwo\nthree\n", result);
+  }
+  {
+    std::string result;
+    Split("one,two,three", ',', [&result](std::string&& s) { result += s + '\n'; });
+    EXPECT_EQ("one\ntwo\nthree\n", result);
+  }
+  {
+    std::string result;
+    struct Helper {
+      std::string& result_;
+      explicit Helper(std::string& result) : result_(result) {}
+      void operator()(const std::string& s) const { result_ += s + '\n'; }
+      Helper(Helper&) = delete;
+      Helper(Helper&&) = delete;
+      void operator=(const Helper&) = delete;
+      void operator=(Helper&&) = delete;
+    };
+    Helper helper(result);
+    Split("one,two,three", ',', [&result](const std::string& s) { result += s + '\n'; });
+    EXPECT_EQ("one\ntwo\nthree\n", result);
+  }
+  {
+    std::string result;
+    struct Helper {
+      std::string& result_;
+      explicit Helper(std::string& result) : result_(result) {}
+      void operator()(std::string&& s) const { result_ += s + '\n'; }
+      Helper(Helper&) = delete;
+      Helper(Helper&&) = delete;
+      void operator=(const Helper&) = delete;
+      void operator=(Helper&&) = delete;
+    };
+    Helper helper(result);
+    Split("one,two,three", ',', [&result](const std::string& s) { result += s + '\n'; });
+    EXPECT_EQ("one\ntwo\nthree\n", result);
+  }
+}
+
+TEST(JoinAndSplit, SplitIntoKeyValuePairs) {
+  const auto result = SplitIntoKeyValuePairs("one=1,two=2", '=', ',');
+  ASSERT_EQ(2u, result.size());
+  EXPECT_EQ("one", result[0].first);
+  EXPECT_EQ("1", result[0].second);
+  EXPECT_EQ("two", result[1].first);
+  EXPECT_EQ("2", result[1].second);
+}
+
+TEST(JoinAndSplit, SplitIntoKeyValuePairsWithWhitespaceBetweenPairs) {
+  const auto result = SplitIntoKeyValuePairs("\t\n \tone=1\t\n \ttwo=2\t\n \t", '=');
+  ASSERT_EQ(2u, result.size());
+  EXPECT_EQ("one", result[0].first);
+  EXPECT_EQ("1", result[0].second);
+  EXPECT_EQ("two", result[1].first);
+  EXPECT_EQ("2", result[1].second);
+}
+
+TEST(JoinAndSplit, SplitIntoKeyValuePairsExceptions) {
+  const auto default_is_to_not_throw = SplitIntoKeyValuePairs("test,foo=bar=baz,one=1,two=2,passed", '=', ',');
+  ASSERT_EQ(2u, default_is_to_not_throw.size());
+  EXPECT_EQ("one", default_is_to_not_throw[0].first);
+  EXPECT_EQ("1", default_is_to_not_throw[0].second);
+  EXPECT_EQ("two", default_is_to_not_throw[1].first);
+  EXPECT_EQ("2", default_is_to_not_throw[1].second);
+  const auto correct_case = SplitIntoKeyValuePairs("one=1,two=2", '=', ',', KeyValueParsing::Throw);
+  ASSERT_EQ(2u, correct_case.size());
+  EXPECT_EQ("one", correct_case[0].first);
+  EXPECT_EQ("1", correct_case[0].second);
+  EXPECT_EQ("two", correct_case[1].first);
+  EXPECT_EQ("2", correct_case[1].second);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', ',', KeyValueParsing::Throw), KeyValueNoValueException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', ',', KeyValueParsing::Throw),
+               KeyValueMultipleValuesException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', KeyValueParsing::Throw), KeyValueNoValueException);
+  ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', KeyValueParsing::Throw),
+               KeyValueMultipleValuesException);
 }

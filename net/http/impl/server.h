@@ -36,7 +36,7 @@ SOFTWARE.
 
 #include "../../tcp/tcp.h"
 
-#include "../../../util/util.h"
+#include "../../../strings/util.h"
 
 namespace bricks {
 namespace net {
@@ -47,9 +47,9 @@ typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 namespace {
 
 const char kCRLF[] = "\r\n";
-const size_t kCRLFLength = CompileTimeStringLength(kCRLF);
+const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
 const char kHeaderKeyValueSeparator[] = ": ";
-const size_t kHeaderKeyValueSeparatorLength = CompileTimeStringLength(kHeaderKeyValueSeparator);
+const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
 const char* const kContentLengthHeaderKey = "Content-Length";
 const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
 const char* const kTransferEncodingChunkedValue = "chunked";
@@ -80,10 +80,10 @@ class HTTPDefaultHelper {
 };
 
 // In constructor, TemplatedHTTPReceivedMessage parses HTTP response from `Connection&` is was provided with.
-// Extracts method, URL, and, if provided, the body.
+// Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
-// * std::string URL().
+// * std::string Path().
 // * std::string Method().
 // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
@@ -149,17 +149,13 @@ class TemplatedHTTPReceivedMessage : public HELPER {
         if (!first_line_parsed) {
           if (!line_is_blank) {
             // It's recommended by W3 to wait for the first line ignoring prior CRLF-s.
-            char* p1 = &buffer_[current_line_offset];
-            char* p2 = strstr(p1, " ");
-            if (p2) {
-              *p2 = '\0';
-              ++p2;
-              method_ = p1;
-              char* p3 = strstr(p2, " ");
-              if (p3) {
-                *p3 = '\0';
-              }
-              url_ = p2;
+            const std::vector<std::string> pieces =
+                strings::Split<strings::ByWhitespace>(&buffer_[current_line_offset]);
+            if (pieces.size() >= 1) {
+              method_ = pieces[0];
+            }
+            if (pieces.size() >= 2) {
+              path_ = pieces[1];
             }
             first_line_parsed = true;
           }
@@ -248,7 +244,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
 
   inline const std::string& Method() const { return method_; }
 
-  inline const std::string& URL() const { return url_; }
+  inline const std::string& Path() const { return path_; }
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
@@ -292,7 +288,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
  private:
   // Fields available to the user via getters.
   std::string method_;
-  std::string url_;
+  std::string path_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.
   std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.

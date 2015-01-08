@@ -24,7 +24,6 @@ SOFTWARE.
 
 #include "dflags.h"
 
-#include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
 #include <string>

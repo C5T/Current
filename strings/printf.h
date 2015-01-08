@@ -41,7 +41,7 @@ inline std::string Printf(const char *fmt, ...) {
   return buf;
 }
 
-}  // namespace string
+}  // namespace strings
 }  // namespace bricks
 
 #endif  // BRICKS_STRINGS_PRINTF_H

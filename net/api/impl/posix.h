@@ -64,12 +64,14 @@ class HTTPClientPOSIX final {
     bool redirected;
     do {
       redirected = false;
-      if (all_urls.count(parsed_url.ComposeURL())) {
+      const std::string composed_url = parsed_url.ComposeURL();
+      if (all_urls.count(composed_url)) {
         throw HTTPRedirectLoopException();
       }
-      all_urls.insert(parsed_url.ComposeURL());
+      all_urls.insert(composed_url);
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));
-      connection.BlockingWrite(request_method_ + ' ' + parsed_url.path + " HTTP/1.1\r\n");
+      connection.BlockingWrite(request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() +
+                               " HTTP/1.1\r\n");
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n");
       if (!request_user_agent_.empty()) {
         connection.BlockingWrite("User-Agent: " + request_user_agent_ + "\r\n");
@@ -86,8 +88,13 @@ class HTTPClientPOSIX final {
       // Don't uncomment the next line!
       // connection.SendEOF();
       message_.reset(new HTTPRedirectableReceivedMessage(connection));
-      // TODO(dkorolev): Rename `URL()`, it's only called so now because of HTTP request/response format.
-      const int response_code_as_int = atoi(message_->URL().c_str());
+      // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
+      // Elaboration:
+      // HTTP request  message is: `GET /path HTTP/1.1`, "/path" is the second component of it.
+      // HTTP response message is: `HTTP/1.1 200 OK`, "200" is the second component of it.
+      // Thus, since the same code is used for request and response parsing as of now,
+      // the numerical response code "200" can be accessed with the same method as the "/path".
+      const int response_code_as_int = atoi(message_->Path().c_str());
       response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
         // Note: This is by no means a complete redirect implementation.

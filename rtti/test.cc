@@ -27,7 +27,6 @@ SOFTWARE.
 #include <string>
 #include <tuple>
 
-#include "../3party/gtest/gtest.h"
 #include "../3party/gtest/gtest-main.h"
 
 using std::string;
