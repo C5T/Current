@@ -16,7 +16,7 @@ rm -rf $TMPDIR/headers
 mkdir -p $TMPDIR/headers
 
 echo -e -n "\033[1mCompiling\033[0m: "
-for i in *.h ; do
+for i in $(ls *.h | grep -v ".cc.h$") ; do
   echo -e -n "\033[36m"
   echo -n "$i "
   echo -e -n "\033[31m"

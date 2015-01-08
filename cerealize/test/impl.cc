@@ -39,7 +39,7 @@ SOFTWARE.
 #include "../cerealize.h"
 
 #include "test_event_base.h"
-#include "test_event_derived.cc"
+#include "test_event_derived.cc.h"
 
 #include "../../file/file.h"
 

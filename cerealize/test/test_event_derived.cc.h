@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// NOTE: This file is a `.cc`, not `.h`, since all `.h` files
+// NOTE: This file is a `.cc.h`, not `.h`, since all `.h` files
 // are subject to an automated test that verifies they do not violate ODR,
 // while this file does violate it by using Cereal registration macroses via MAPSYOU_EVENT().
 //

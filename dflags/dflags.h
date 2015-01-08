@@ -293,6 +293,21 @@ class FlagRegisterer : public FlagRegistererBase {
 #define DEFINE_string(name, dflt_value, description) DEFINE_flag(std::string, name, dflt_value, description)
 #define DEFINE_bool(name, default_value, description) DEFINE_flag(bool, name, default_value, description)
 
+#define DECLARE_flag(type, name) extern type FLAGS_##name;
+
+#define DECLARE_int8(name) DECLARE_flag(int8_t, name)
+#define DECLARE_uint8(name) DECLARE_flag(uint8_t, name)
+#define DECLARE_int16(name) DECLARE_flag(int16_t, name)
+#define DECLARE_uint16(name) DECLARE_flag(uint16_t, name)
+#define DECLARE_int32(name) DECLARE_flag(int32_t, name)
+#define DECLARE_uint32(name) DECLARE_flag(uint32_t, name)
+#define DECLARE_int64(name) DECLARE_flag(int64_t, name)
+#define DECLARE_uint64(name) DECLARE_flag(uint64_t, name)
+#define DECLARE_float(name) DECLARE_flag(float, name)
+#define DECLARE_double(name) DECLARE_flag(double, name)
+#define DECLARE_string(name) DECLARE_flag(std::string, name)
+#define DECLARE_bool(name) DECLARE_flag(bool, name, default_value, description)
+
 }  // namespace dflags
 
 inline void ParseDFlags(int* argc, char*** argv) { ::dflags::FlagsManager::ParseFlags(*argc, *argv); }

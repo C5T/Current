@@ -137,7 +137,10 @@ class Connection : public SocketHandle {
   inline void operator=(Connection&& rhs) { SocketHandle::operator=(std::move(rhs)); }
 
   // Closes the outbound side of the socket and notifies the other party that no more data will be sent.
-  inline void SendEOF() { ::shutdown(socket, SHUT_WR); }
+  inline Connection& SendEOF() {
+    ::shutdown(socket, SHUT_WR);
+    return *this;
+  }
 
   // By default, BlockingRead() will return as soon as some data has been read,
   // with the exception being multibyte records (sizeof(T) > 1), where it will keep reading
@@ -220,7 +223,7 @@ class Connection : public SocketHandle {
     return container;
   }
 
-  inline void BlockingWrite(const void* buffer, size_t write_length) {
+  inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
     assert(buffer);
     const ssize_t result = ::write(socket, buffer, write_length);
     if (result < 0) {
@@ -228,16 +231,17 @@ class Connection : public SocketHandle {
     } else if (static_cast<size_t>(result) != write_length) {
       throw SocketCouldNotWriteEverythingException();  // This one is tested though.
     }
+    return *this;
   }
 
-  inline void BlockingWrite(const char* s) {
+  inline Connection& BlockingWrite(const char* s) {
     assert(s);
-    BlockingWrite(s, strlen(s));
+    return BlockingWrite(s, strlen(s));
   }
 
   template <typename T>
-  inline void BlockingWrite(const T begin, const T end) {
-    BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
+  inline Connection& BlockingWrite(const T begin, const T end) {
+    return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
