@@ -151,7 +151,15 @@ struct URLWithoutParameters {
     }
   }
 
-  static std::string DefaultSchemeForPort(int port) { return port == 80 ? "http" : ""; }
+  static std::string DefaultSchemeForPort(int port) {
+    if (port == 80) {
+      return "http";
+    } else if (port == 443) {
+      return "https";
+    } else {
+      return "";
+    }
+  }
 };
 
 struct URLParameters {
