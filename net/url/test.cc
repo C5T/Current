@@ -119,105 +119,105 @@ TEST(URLTest, ExtractsURLParameters) {
   {
     URL u("www.google.com");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ("", u["key"]);
-    EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("", u.query["key"]);
+    EXPECT_EQ("default_value", u.query.get("key", "default_value"));
     EXPECT_EQ("http://www.google.com/", u.ComposeURL());
   }
   {
     URL u("www.google.com/a#fragment");
     EXPECT_EQ("fragment", u.fragment);
-    EXPECT_EQ("", u["key"]);
-    EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("", u.query["key"]);
+    EXPECT_EQ("default_value", u.query.get("key", "default_value"));
     EXPECT_EQ("http://www.google.com/a#fragment", u.ComposeURL());
   }
   {
     URL u("www.google.com/a#fragment?foo=bar&baz=meh");
     EXPECT_EQ("fragment?foo=bar&baz=meh", u.fragment);
-    EXPECT_EQ("", u["key"]);
-    EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("", u.query["key"]);
+    EXPECT_EQ("default_value", u.query.get("key", "default_value"));
     EXPECT_EQ("http://www.google.com/a#fragment?foo=bar&baz=meh", u.ComposeURL());
   }
   {
     URL u("www.google.com/b#fragment#foo");
     EXPECT_EQ("fragment#foo", u.fragment);
-    EXPECT_EQ("", u["key"]);
-    EXPECT_EQ("default_value", u("key", "default_value"));
+    EXPECT_EQ("", u.query["key"]);
+    EXPECT_EQ("default_value", u.query.get("key", "default_value"));
     EXPECT_EQ("http://www.google.com/b#fragment#foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?key=value&key2=value2#fragment#foo");
     EXPECT_EQ("fragment#foo", u.fragment);
-    EXPECT_EQ("value", u["key"]);
-    EXPECT_EQ("value", u("key", "default_value"));
-    EXPECT_EQ("value2", u["key2"]);
-    EXPECT_EQ("value2", u("key2", "default_value"));
+    EXPECT_EQ("value", u.query["key"]);
+    EXPECT_EQ("value", u.query.get("key", "default_value"));
+    EXPECT_EQ("value2", u.query["key2"]);
+    EXPECT_EQ("value2", u.query.get("key2", "default_value"));
     EXPECT_EQ("http://www.google.com/q?key=value&key2=value2#fragment#foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/a?k=a%3Db%26s%3D%25s%23#foo");
     EXPECT_EQ("foo", u.fragment);
-    EXPECT_EQ("a=b&s=%s#", u["k"]);
+    EXPECT_EQ("a=b&s=%s#", u.query["k"]);
     EXPECT_EQ("http://www.google.com/a?k=a%3Db%26s%3D%25s%23#foo", u.ComposeURL());
   }
   {
     URL u("/q?key=value&key2=value2#fragment#foo");
     EXPECT_EQ("fragment#foo", u.fragment);
-    EXPECT_EQ("value", u["key"]);
-    EXPECT_EQ("value", u("key", "default_value"));
-    EXPECT_EQ("value2", u["key2"]);
-    EXPECT_EQ("value2", u("key2", "default_value"));
+    EXPECT_EQ("value", u.query["key"]);
+    EXPECT_EQ("value", u.query.get("key", "default_value"));
+    EXPECT_EQ("value2", u.query["key2"]);
+    EXPECT_EQ("value2", u.query.get("key2", "default_value"));
     EXPECT_EQ("/q?key=value&key2=value2#fragment#foo", u.ComposeURL());
   }
   {
     URL u("/a?k=a%3Db%26s%3D%25s%23#foo");
     EXPECT_EQ("foo", u.fragment);
-    EXPECT_EQ("a=b&s=%s#", u["k"]);
+    EXPECT_EQ("a=b&s=%s#", u.query["k"]);
     EXPECT_EQ("/a?k=a%3Db%26s%3D%25s%23#foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?foo=&bar&baz=");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ("", u["foo"]);
-    EXPECT_EQ("", u("foo", "default_value"));
-    EXPECT_EQ("", u["bar"]);
-    EXPECT_EQ("", u("bar", "default_value"));
-    EXPECT_EQ("", u["baz"]);
-    EXPECT_EQ("", u("baz", "default_value"));
+    EXPECT_EQ("", u.query["foo"]);
+    EXPECT_EQ("", u.query.get("foo", "default_value"));
+    EXPECT_EQ("", u.query["bar"]);
+    EXPECT_EQ("", u.query.get("bar", "default_value"));
+    EXPECT_EQ("", u.query["baz"]);
+    EXPECT_EQ("", u.query.get("baz", "default_value"));
     EXPECT_EQ("http://www.google.com/q?foo=&bar=&baz=", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?foo=bar=baz");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ("bar=baz", u["foo"]);
-    EXPECT_EQ("bar=baz", u("foo", "default_value"));
+    EXPECT_EQ("bar=baz", u.query["foo"]);
+    EXPECT_EQ("bar=baz", u.query.get("foo", "default_value"));
     EXPECT_EQ("http://www.google.com/q?foo=bar%3Dbaz", u.ComposeURL());
   }
   {
     URL u("www.google.com/q? foo = bar = baz ");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ(" bar = baz ", u[" foo "]);
-    EXPECT_EQ(" bar = baz ", u(" foo ", "default_value"));
+    EXPECT_EQ(" bar = baz ", u.query[" foo "]);
+    EXPECT_EQ(" bar = baz ", u.query.get(" foo ", "default_value"));
     EXPECT_EQ("http://www.google.com/q?%20foo%20=%20bar%20%3D%20baz%20", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?1=foo");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ("foo", u["1"]);
-    EXPECT_EQ("foo", u("1", "default_value"));
+    EXPECT_EQ("foo", u.query["1"]);
+    EXPECT_EQ("foo", u.query.get("1", "default_value"));
     EXPECT_EQ("http://www.google.com/q?1=foo", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?question=forty+two");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ("forty two", u["question"]);
-    EXPECT_EQ("forty two", u("question", "default_value"));
+    EXPECT_EQ("forty two", u.query["question"]);
+    EXPECT_EQ("forty two", u.query.get("question", "default_value"));
     EXPECT_EQ("http://www.google.com/q?question=forty%20two", u.ComposeURL());
   }
   {
     URL u("www.google.com/q?%3D+%3D=%3D%3D");
     EXPECT_EQ("", u.fragment);
-    EXPECT_EQ("==", u["= ="]);
-    EXPECT_EQ("==", u("= =", "default_value"));
+    EXPECT_EQ("==", u.query["= ="]);
+    EXPECT_EQ("==", u.query.get("= =", "default_value"));
     EXPECT_EQ("http://www.google.com/q?%3D%20%3D=%3D%3D", u.ComposeURL());
   }
 }

@@ -177,24 +177,11 @@ struct URLParameters {
         it.first = DecodeURIComponent(it.first);
         it.second = DecodeURIComponent(it.second);
       }
-      parameters.insert(parameters_vector.begin(), parameters_vector.end());
+      query = QueryParameters(parameters_vector);
       url = url.substr(0, question_mark_index);
     }
     url_without_parameters = url;
   }
-
-  std::string operator()(const std::string& key, const std::string& default_value) const {
-    const auto cit = parameters.find(key);
-    if (cit != parameters.end()) {
-      return cit->second;
-    } else {
-      return default_value;
-    }
-  }
-
-  std::string operator[](const std::string& key) const { return operator()(key, ""); }
-
-  bool HasParameter(const std::string& key) const { return parameters.find(key) != parameters.end(); }
 
   static std::string DecodeURIComponent(const std::string& encoded) {
     std::string decoded;
@@ -236,8 +223,25 @@ struct URLParameters {
     return composed_parameters;
   }
 
+  struct QueryParameters {
+    QueryParameters() = default;
+    QueryParameters(const std::vector<std::pair<std::string, std::string>>& parameters_vector)
+        : parameters_(parameters_vector.begin(), parameters_vector.end()) {}
+    inline std::string operator[](const std::string& key) const { return get(key, ""); }
+    inline bool has(const std::string& key) const { return parameters_.find(key) != parameters_.end(); }
+    inline const std::string& get(const std::string& key, const std::string& default_value) const {
+      const auto cit = parameters_.find(key);
+      if (cit != parameters_.end()) {
+        return cit->second;
+      } else {
+        return default_value;
+      }
+    }
+    std::map<std::string, std::string> parameters_;
+  };
+
   std::vector<std::pair<std::string, std::string>> parameters_vector;
-  std::map<std::string, std::string> parameters;
+  QueryParameters query;
   std::string fragment;
   std::string url_without_parameters;
 };

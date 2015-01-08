@@ -144,7 +144,7 @@ class UseLocalHTTPTestServer {
       const URL url = URL(message.Path());
       if (method == "GET") {
         if (url.path == "/drip") {
-          const size_t numbytes = atoi(url["numbytes"].c_str());
+          const size_t numbytes = atoi(url.query["numbytes"].c_str());
           if (!FLAGS_test_chunked_encoding) {
             connection.SendHTTPResponse(std::string(numbytes, '*'));  // LCOV_EXCL_LINE
           } else {
@@ -168,13 +168,13 @@ class UseLocalHTTPTestServer {
         } else if (url.path == "/status/403") {
           connection.SendHTTPResponse("", HTTPResponseCode::Forbidden);
         } else if (url.path == "/get") {
-          connection.SendHTTPResponse("{\"Aloha\": \"" + url["Aloha"] + "\"}\n");
+          connection.SendHTTPResponse("{\"Aloha\": \"" + url.query["Aloha"] + "\"}\n");
         } else if (url.path == "/user-agent") {
           // TODO(dkorolev): Add parsing User-Agent to Bricks' HTTP headers parser.
           connection.SendHTTPResponse("Aloha User Agent");
         } else if (url.path == "/redirect-to") {
           HTTPHeadersType headers;
-          headers.push_back(std::make_pair("Location", url["url"]));
+          headers.push_back(std::make_pair("Location", url.query["url"]));
           connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", headers);
           serve_more_requests = true;
         } else if (url.path == "/redirect-loop") {
