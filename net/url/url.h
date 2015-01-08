@@ -174,6 +174,7 @@ struct URLParameters {
         }
       });
       for (auto& it : parameters_vector) {
+        it.first = DecodeURIComponent(it.first);
         it.second = DecodeURIComponent(it.second);
       }
       parameters.insert(parameters_vector.begin(), parameters_vector.end());

@@ -207,6 +207,13 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("forty two", u("question", "default_value"));
     EXPECT_EQ("http://www.google.com/q?question=forty%20two", u.ComposeURL());
   }
+  {
+    URL u("www.google.com/q?%3D+%3D=%3D%3D");
+    EXPECT_EQ("", u.fragment);
+    EXPECT_EQ("==", u["= ="]);
+    EXPECT_EQ("==", u("= =", "default_value"));
+    EXPECT_EQ("http://www.google.com/q?%3D%20%3D=%3D%3D", u.ComposeURL());
+  }
 }
 
 TEST(URLTest, URLParametersCompositionTest) {
