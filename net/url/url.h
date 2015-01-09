@@ -59,19 +59,19 @@ namespace {
 const char* const kDefaultScheme = "http";
 }
 
-struct URLWithoutParameters {
+struct URLWithoutParametersParser {
   std::string host = "";
   std::string path = "/";
   std::string scheme = kDefaultScheme;
   int port = 0;
 
-  URLWithoutParameters() = default;
+  URLWithoutParametersParser() = default;
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
-  URLWithoutParameters(const std::string& url,
-                       const std::string& previous_scheme = kDefaultScheme,
-                       const std::string& previous_host = "",
-                       const int previous_port = 0) {
+  URLWithoutParametersParser(const std::string& url,
+                             const std::string& previous_scheme = kDefaultScheme,
+                             const std::string& previous_host = "",
+                             const int previous_port = 0) {
     if (url.empty()) {
       throw EmptyURLException();
     }
@@ -119,8 +119,8 @@ struct URLWithoutParameters {
     }
   }
 
-  URLWithoutParameters(const std::string& url, const URLWithoutParameters& previous)
-      : URLWithoutParameters(url, previous.scheme, previous.host, previous.port) {}
+  URLWithoutParametersParser(const std::string& url, const URLWithoutParametersParser& previous)
+      : URLWithoutParametersParser(url, previous.scheme, previous.host, previous.port) {}
 
   std::string ComposeURL() const {
     if (!host.empty()) {
@@ -151,12 +151,20 @@ struct URLWithoutParameters {
     }
   }
 
-  static std::string DefaultSchemeForPort(int port) { return port == 80 ? "http" : ""; }
+  static std::string DefaultSchemeForPort(int port) {
+    if (port == 80) {
+      return "http";
+    } else if (port == 443) {
+      return "https";
+    } else {
+      return "";
+    }
+  }
 };
 
-struct URLParameters {
-  URLParameters() = default;
-  URLParameters(std::string url) {
+struct URLParametersExtractor {
+  URLParametersExtractor() = default;
+  URLParametersExtractor(std::string url) {
     const size_t pound_sign_index = url.find('#');
     if (pound_sign_index != std::string::npos) {
       fragment = url.substr(pound_sign_index + 1);
@@ -246,7 +254,7 @@ struct URLParameters {
   std::string url_without_parameters;
 };
 
-struct URL : URLParameters, URLWithoutParameters {
+struct URL : URLParametersExtractor, URLWithoutParametersParser {
   URL() = default;
 
   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
@@ -254,15 +262,16 @@ struct URL : URLParameters, URLWithoutParameters {
       const std::string& previous_scheme = kDefaultScheme,
       const std::string& previous_host = "",
       const int previous_port = 0)
-      : URLParameters(url),
-        URLWithoutParameters(
-            URLParameters::url_without_parameters, previous_scheme, previous_host, previous_port) {}
+      : URLParametersExtractor(url),
+        URLWithoutParametersParser(
+            URLParametersExtractor::url_without_parameters, previous_scheme, previous_host, previous_port) {}
 
-  URL(const std::string& url, const URLWithoutParameters& previous)
-      : URLParameters(url), URLWithoutParameters(URLParameters::url_without_parameters, previous) {}
+  URL(const std::string& url, const URLWithoutParametersParser& previous)
+      : URLParametersExtractor(url),
+        URLWithoutParametersParser(URLParametersExtractor::url_without_parameters, previous) {}
 
   std::string ComposeURL() const {
-    return URLWithoutParameters::ComposeURL() + URLParameters::ComposeParameters();
+    return URLWithoutParametersParser::ComposeURL() + URLParametersExtractor::ComposeParameters();
   }
 };
 

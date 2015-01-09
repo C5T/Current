@@ -62,6 +62,18 @@ TEST(URLTest, SmokeTest) {
   EXPECT_EQ("meh", u.scheme);
   EXPECT_EQ(27960, u.port);
 
+  u = URL("localhost/");
+  EXPECT_EQ("localhost", u.host);
+  EXPECT_EQ("/", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
+
+  u = URL("localhost:/");
+  EXPECT_EQ("localhost", u.host);
+  EXPECT_EQ("/", u.path);
+  EXPECT_EQ("http", u.scheme);
+  EXPECT_EQ(80, u.port);
+
   u = URL("localhost/test");
   EXPECT_EQ("localhost", u.host);
   EXPECT_EQ("/test", u.path);
@@ -94,6 +106,12 @@ TEST(URLTest, DerivesSchemeFromPreviousPort) {
   EXPECT_EQ("foo://www.google.com:80/", URL("foo://www.google.com", "", "", 80).ComposeURL());
   // Maps port 80 into "http://".
   EXPECT_EQ("http://www.google.com/", URL("www.google.com", "", "", 80).ComposeURL());
+  // Maps port 443 into "https://".
+  EXPECT_EQ("https://www.google.com/", URL("www.google.com", "", "", 443).ComposeURL());
+  // Assumes port 80 for "http://".
+  EXPECT_EQ("http://www.google.com:79/", URL("www.google.com", "http", "", 79).ComposeURL());
+  EXPECT_EQ("http://www.google.com/", URL("www.google.com", "http", "", 80).ComposeURL());
+  EXPECT_EQ("http://www.google.com:81/", URL("www.google.com", "http", "", 81).ComposeURL());
   // Assumes port 443 for "https://".
   EXPECT_EQ("https://www.google.com:442/", URL("www.google.com", "https", "", 442).ComposeURL());
   EXPECT_EQ("https://www.google.com/", URL("www.google.com", "https", "", 443).ComposeURL());
