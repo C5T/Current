@@ -120,7 +120,10 @@ class Server {
         routes_(routes),
         thread_(&Server::Code, this, Socket(port_)) {}
 
-  ~Server() { HTTP(GET(strings::Printf("localhost:%d/killtestserver", port_))); }
+  ~Server() {
+    HTTP(GET(strings::Printf("localhost:%d/killtestserver", port_)));
+    thread_.join();
+  }
 
  private:
   void Code(Socket socket) {
