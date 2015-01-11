@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef BRICKS_FILE_FILE_H
 #define BRICKS_FILE_FILE_H
 
+#include <cstdio>
 #include <fstream>
 #include <string>
 #include <cstring>
@@ -76,6 +77,17 @@ struct FileSystem {
     } catch (const std::ofstream::failure&) {
       throw FileException();
     }
+  }
+
+  static inline std::string GenTmpFileName() {
+    char buffer[L_tmpnam];
+    return std::string(::tmpnam(buffer));
+  }
+
+  static inline std::string WriteStringToTmpFile(const std::string& contents) {
+    const std::string file_name = std::move(GenTmpFileName());
+    WriteStringToFile(file_name.c_str(), contents);
+    return file_name;
   }
 
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {

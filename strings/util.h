@@ -37,6 +37,16 @@ SOFTWARE.
 namespace bricks {
 namespace strings {
 
+template <typename T>
+inline std::string to_string(T&& something) {
+  return std::to_string(something);
+}
+
+template <>
+inline std::string to_string<std::string>(std::string&& shame_std_to_string_does_not_support_string) {
+  return shame_std_to_string_does_not_support_string;
+}
+
 template <size_t N>
 constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const (&)[N]) {
   return N - 1;

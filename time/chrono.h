@@ -122,4 +122,4 @@ inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::MILLISECONDS_INT
   return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
 }
 
-#endif
+#endif  // BRICKS_TIME_CHRONO_H
