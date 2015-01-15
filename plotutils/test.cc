@@ -44,6 +44,7 @@ TEST(Graph, Line) {
                                  .GridStyle(GridStyle::Full)
                                  .Label("Imagine all the people ...")
                                  .X("... living life in peace")
+                                 .Y("John Lennon, \"Imagine\"")
                                  .LineWidth(0.015)
                                  .OutputFormat("svg");
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.svg"));
@@ -62,7 +63,6 @@ TEST(Graph, Points) {
   const std::string result = Graph(flakes)
                                  .LineMode(LineMode::None)
                                  .GridStyle(GridStyle::None)
-                                 .Label("Show Flakes")
                                  .Symbol(Symbol::Asterisk, 0.1)
                                  .OutputFormat("svg");
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.svg"));
