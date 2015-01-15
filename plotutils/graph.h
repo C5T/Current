@@ -140,7 +140,7 @@ class Graph {
     }
     std::string cmdline = "graph -C";
     if (parameters_.find("-T") == parameters_.end()) {
-      cmdline += " -T png";
+      cmdline += " -T png";  // LCOV_EXCL_LINE
     }
     for (const auto& cit : parameters_) {
       cmdline += ' ' + cit.first;

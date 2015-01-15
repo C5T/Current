@@ -12,9 +12,13 @@ CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAG
 LDFLAGS="-pthread"
 
 TMPDIR=.noshit/fulltest
+TMPDIR_FULL_PATH=$(readlink -e .)/.noshit/fulltest
 
+GOLDEN_SUBDIR_NAME=golden
+GOLDEN_FULL_PATH=$TMPDIR_FULL_PATH/$GOLDEN_SUBDIR_NAME
+
+# Concatenate all `test.cc` files in the right way, creating one test to rule them all.
 mkdir -p $TMPDIR
-
 echo "// Magic. Watch." > $TMPDIR/ALL_TESTS_TOGETHER.cc
 
 echo "#include \"dflags/dflags.h\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
@@ -26,7 +30,14 @@ for i in $(find . -iname test.cc | grep -v 3party | grep -v "/.noshit/"); do
   echo -n " $i"
 done
 
+# Allow this one test to rule them all to access all the `golden/` files.
+mkdir -p $GOLDEN_FULL_PATH
+for dirname in $(find . -iname $GOLDEN_SUBDIR_NAME -type d | grep -v 3party | grep -v "/.noshit/"); do
+  (cd $dirname; for filename in * ; do ln -sf $PWD/$filename $GOLDEN_FULL_PATH ; done)
+done
+
 (
+  # Compile and run The Big Test.
   cd $TMPDIR
 
   echo -e "\033[0m"
@@ -38,6 +49,7 @@ done
   ./ALL_TESTS_TOGETHER || exit 1
   echo -e "\033[32m\033[1mALL TESTS PASS.\033[0m"
 
+  # Generate the resulting code coverage report.
   gcov ALL_TESTS_TOGETHER.cc >/dev/null
   geninfo . --output-file coverage0.info >/dev/null
   lcov -r coverage0.info /usr/include/\* \*/gtest/\* \*/3party/\* -o coverage.info >/dev/null
