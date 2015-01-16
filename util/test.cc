@@ -23,6 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "make_scope_guard.h"
+#include "singleton.h"
 
 #include "../3party/gtest/gtest-main.h"
 
@@ -154,4 +155,22 @@ TEST(Util, MakePointerScopeGuard) {
     }
     EXPECT_EQ("custom_guarded_pointer\nconstructed\nguarded_delete\ndestructed\n", story);
   }
+}
+
+TEST(Util, Singleton) {
+  struct Foo {
+    size_t bar = 0;
+    void baz() {
+      ++bar;
+    }
+  };
+  EXPECT_EQ(0u, bricks::Singleton<Foo>().bar);
+  bricks::Singleton<Foo>().baz();
+  EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
+  const auto lambda = []() {
+    bricks::Singleton<Foo>().baz();
+  };
+  EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
+  lambda();
+  EXPECT_EQ(2u, bricks::Singleton<Foo>().bar);
 }
