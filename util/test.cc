@@ -25,7 +25,31 @@ SOFTWARE.
 #include "make_scope_guard.h"
 #include "singleton.h"
 
+#include "../exception.h"
+
 #include "../3party/gtest/gtest-main.h"
+
+TEST(Util, BasicException) {
+  try {
+    BRICKS_THROW(bricks::Exception("Foo"));
+    ASSERT_TRUE(false);
+  } catch (bricks::Exception& e) {
+    EXPECT_EQ("test.cc:34\tbricks::Exception(\"Foo\")\tFoo", e.What());
+  }
+}
+
+struct TestException : bricks::Exception {
+  TestException(const std::string& a, const std::string& b) : bricks::Exception(a + "&" + b) {}
+};
+
+TEST(Util, CustomException) {
+  try {
+    BRICKS_THROW(TestException("Bar", "Baz"));
+    ASSERT_TRUE(false);
+  } catch (bricks::Exception& e) {
+    EXPECT_EQ("test.cc:47\tTestException(\"Bar\", \"Baz\")\tBar&Baz", e.What());
+  }
+}
 
 TEST(Util, MakeScopeGuard) {
   struct Object {
@@ -160,16 +184,12 @@ TEST(Util, MakePointerScopeGuard) {
 TEST(Util, Singleton) {
   struct Foo {
     size_t bar = 0;
-    void baz() {
-      ++bar;
-    }
+    void baz() { ++bar; }
   };
   EXPECT_EQ(0u, bricks::Singleton<Foo>().bar);
   bricks::Singleton<Foo>().baz();
   EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
-  const auto lambda = []() {
-    bricks::Singleton<Foo>().baz();
-  };
+  const auto lambda = []() { bricks::Singleton<Foo>().baz(); };
   EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
   lambda();
   EXPECT_EQ(2u, bricks::Singleton<Foo>().bar);

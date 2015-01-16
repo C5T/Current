@@ -26,11 +26,38 @@ SOFTWARE.
 #define BRICKS_EXCEPTIONS_H
 
 #include <exception>
+#include <string>
+
+#include "strings/printf.h"
 
 namespace bricks {
 
-// TODO(dkorolev): Add string descriptions.
-struct Exception : std::exception {};
+class Exception : public std::exception {
+ public:
+  Exception(const std::string& what = "") : what_(what) {}
+  virtual ~Exception() = default;
+
+  // LCOV_EXCL_START
+  virtual const char* what() const noexcept override { return what_.c_str(); }
+  // LCOV_EXCL_STOP
+
+  virtual const std::string& What() const noexcept { return what_; }
+
+  Exception& SetCaller(const std::string& caller) {
+    what_ = caller + '\t' + what_;
+    return *this;
+  }
+
+  Exception& SetOrigin(const char* file, int line) {
+    what_ = strings::Printf("%s:%d\t", file, line) + what_;
+    return *this;
+  }
+
+ private:
+  std::string what_;
+};
+
+#define BRICKS_THROW(E) throw(E.SetCaller(#E).SetOrigin(__FILE__, __LINE__))
 
 }  // namespace bricks
 
