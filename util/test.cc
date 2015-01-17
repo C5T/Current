@@ -34,7 +34,11 @@ TEST(Util, BasicException) {
     BRICKS_THROW(bricks::Exception("Foo"));
     ASSERT_TRUE(false);
   } catch (bricks::Exception& e) {
-    EXPECT_EQ("test.cc:34\tbricks::Exception(\"Foo\")\tFoo", e.What());
+    // Relative path prefix will be here when measuring code coverage, take it out.
+    const std::string actual = e.What();
+    const std::string golden = "test.cc:34\tbricks::Exception(\"Foo\")\tFoo";
+    ASSERT_GE(actual.length(), golden.length());
+    EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
 }
 
@@ -47,7 +51,11 @@ TEST(Util, CustomException) {
     BRICKS_THROW(TestException("Bar", "Baz"));
     ASSERT_TRUE(false);
   } catch (bricks::Exception& e) {
-    EXPECT_EQ("test.cc:47\tTestException(\"Bar\", \"Baz\")\tBar&Baz", e.What());
+    // Relative path prefix will be here when measuring code coverage, take it out.
+    const std::string actual = e.What();
+    const std::string golden = "test.cc:51\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    ASSERT_GE(actual.length(), golden.length());
+    EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
 }
 

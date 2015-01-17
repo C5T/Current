@@ -37,27 +37,30 @@ class Exception : public std::exception {
   Exception(const std::string& what = "") : what_(what) {}
   virtual ~Exception() = default;
 
+  void SetWhat(const std::string& what) { what_ = what; }
+
   // LCOV_EXCL_START
   virtual const char* what() const noexcept override { return what_.c_str(); }
   // LCOV_EXCL_STOP
 
   virtual const std::string& What() const noexcept { return what_; }
 
-  Exception& SetCaller(const std::string& caller) {
-    what_ = caller + '\t' + what_;
-    return *this;
-  }
+  void SetCaller(const std::string& caller) { what_ = caller + '\t' + what_; }
 
-  Exception& SetOrigin(const char* file, int line) {
-    what_ = strings::Printf("%s:%d\t", file, line) + what_;
-    return *this;
-  }
+  void SetOrigin(const char* file, int line) { what_ = strings::Printf("%s:%d\t", file, line) + what_; }
 
  private:
   std::string what_;
 };
 
-#define BRICKS_THROW(E) throw(E.SetCaller(#E).SetOrigin(__FILE__, __LINE__))
+// Extra parenthesis around `e((E))` are essential to not make it a function declaration.
+#define BRICKS_THROW(E)              \
+  {                                  \
+    auto e((E));                     \
+    e.SetCaller(#E);                 \
+    e.SetOrigin(__FILE__, __LINE__); \
+    throw e;                         \
+  }
 
 }  // namespace bricks
 

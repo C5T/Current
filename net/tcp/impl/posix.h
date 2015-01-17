@@ -76,13 +76,13 @@ class SocketHandle {
 
   inline SocketHandle(NewHandle) : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
-      throw SocketCreateException();  // LCOV_EXCL_LINE -- Not covered by unit tests.
+      BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {
     if (socket_ < 0) {
-      throw InvalidSocketException();  // LCOV_EXCL_LINE -- Not covered by unit tests.
+      BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
   }
 
@@ -111,7 +111,7 @@ class SocketHandle {
     explicit ReadOnlyIntFieldAccessor(const int& ref) : ref_(ref) {}
     inline operator int() {
       if (!ref_) {
-        throw InvalidSocketException();  // LCOV_EXCL_LINE -- Not covered by unit tests.
+        BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
       }
       return ref_;
     }
@@ -172,10 +172,10 @@ class Connection : public SocketHandle {
             alive = false;
             continue;
           } else {
-            throw ConnectionResetByPeer();
+            BRICKS_THROW(ConnectionResetByPeer());
           }
         } else {
-          throw SocketReadException();
+          BRICKS_THROW(SocketReadException());
         }
         // LCOV_EXCL_STOP
       } else {
@@ -186,7 +186,7 @@ class Connection : public SocketHandle {
           // that the socket has been closed by the peer.
           // For this implementation, throw an exception if some record was read only partially.
           if ((raw_ptr - raw_buffer) % sizeof(T)) {
-            throw SocketReadMultibyteRecordEndedPrematurelyException();
+            BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
           }
           break;
         } else {
@@ -227,9 +227,9 @@ class Connection : public SocketHandle {
     assert(buffer);
     const ssize_t result = ::write(socket, buffer, write_length);
     if (result < 0) {
-      throw SocketWriteException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      BRICKS_THROW(SocketWriteException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {
-      throw SocketCouldNotWriteEverythingException();  // This one is tested though.
+      BRICKS_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
     }
     return *this;
   }
@@ -267,12 +267,12 @@ class Socket final : public SocketHandle {
     if (disable_nagle_algorithm) {
       // LCOV_EXCL_START
       if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(int))) {
-        throw SocketCreateException();
+        BRICKS_THROW(SocketCreateException());
       }
       // LCOV_EXCL_STOP
     }
     if (::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(int))) {
-      throw SocketCreateException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
     sockaddr_in addr_server;
@@ -282,11 +282,11 @@ class Socket final : public SocketHandle {
     addr_server.sin_port = htons(port);
 
     if (::bind(socket, (sockaddr*)&addr_server, sizeof(addr_server)) == -1) {
-      throw SocketBindException();
+      BRICKS_THROW(SocketBindException());
     }
 
     if (::listen(socket, max_connections)) {
-      throw SocketListenException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      BRICKS_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
   }
 
@@ -298,7 +298,7 @@ class Socket final : public SocketHandle {
     socklen_t addr_client_length = sizeof(sockaddr_in);
     const int fd = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (fd == -1) {
-      throw SocketAcceptException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
     return Connection(SocketHandle::FromHandle(fd));
   }
@@ -329,7 +329,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
           // TODO(dkorolev): LOG(somewhere, strings::Printf("Error in getaddrinfo: %s\n",
           // gai_strerror(retval)));
         }
-        throw SocketResolveAddressException();
+        BRICKS_THROW(SocketResolveAddressException());
       }
       struct sockaddr* p_addr = servinfo->ai_addr;
       // TODO(dkorolev): Use a random address, not the first one. Ref. iteration:
@@ -338,7 +338,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       // }
       const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval2) {
-        throw SocketConnectException();  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+        BRICKS_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
       // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
       ::freeaddrinfo(servinfo);

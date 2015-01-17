@@ -56,10 +56,10 @@ struct FileSystem {
       if (fi.read(&buffer[0], size).good()) {
         return buffer;
       } else {
-        throw FileException();  // LCOV_EXCL_LINE: This line not unit tested.
+        BRICKS_THROW(FileException());  // LCOV_EXCL_LINE: This line not unit tested.
       }
     } catch (const std::ifstream::failure&) {
-      throw FileException();
+      BRICKS_THROW(FileException());
     }
   }
 
@@ -75,7 +75,7 @@ struct FileSystem {
       fo.open(file_name, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary);
       fo << contents;
     } catch (const std::ofstream::failure&) {
-      throw FileException();
+      BRICKS_THROW(FileException());
     }
   }
 
@@ -92,7 +92,7 @@ struct FileSystem {
 
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {
     if (base_name.empty()) {
-      throw FileException();
+      BRICKS_THROW(FileException());
     } else if (path_name.empty() || base_name.front() == '/') {
       return base_name;
     } else if (path_name.back() == '/') {
@@ -105,10 +105,10 @@ struct FileSystem {
   static inline uint64_t GetFileSize(const std::string& file_name) {
     struct stat info;
     if (stat(file_name.c_str(), &info)) {
-      throw FileException();
+      BRICKS_THROW(FileException());
     } else {
       if (S_ISDIR(info.st_mode)) {
-        throw FileException();
+        BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
       }
@@ -123,7 +123,7 @@ struct FileSystem {
     if (::mkdir(directory.c_str(), 0755)) {
       if (parameters == CreateDirectoryParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
-        throw FileException();
+        BRICKS_THROW(FileException());
       }
     }
   }
@@ -131,7 +131,7 @@ struct FileSystem {
   static inline void RenameFile(const std::string& old_name, const std::string& new_name) {
     if (::rename(old_name.c_str(), new_name.c_str())) {
       // TODO(dkorolev): Analyze errno.
-      throw FileException();
+      BRICKS_THROW(FileException());
     }
   }
 
@@ -152,7 +152,7 @@ struct FileSystem {
       }
     } else {
       // TODO(dkorolev): Analyze errno.
-      throw FileException();
+      BRICKS_THROW(FileException());
     }
   }
 
@@ -169,7 +169,7 @@ struct FileSystem {
                                 RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
     if (::remove(file_name.c_str())) {
       if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
-        throw FileException();
+        BRICKS_THROW(FileException());
       }
     }
   }
@@ -195,7 +195,7 @@ struct FileSystem {
     if (::rmdir(directory.c_str())) {
       if (parameters == RemoveDirectoryParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
-        throw FileException();
+        BRICKS_THROW(FileException());
       }
     }
   }

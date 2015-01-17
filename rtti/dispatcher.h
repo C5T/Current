@@ -69,7 +69,7 @@ struct RuntimeDispatcher<BASE, DERIVED> {
       if (b) {
         c(*b);
       } else {
-        throw UnrecognizedPolymorphicType();
+        BRICKS_THROW(UnrecognizedPolymorphicType());
       }
     }
   }
@@ -82,7 +82,7 @@ struct RuntimeDispatcher<BASE, DERIVED> {
       if (b) {
         c(*b);
       } else {
-        throw UnrecognizedPolymorphicType();
+        BRICKS_THROW(UnrecognizedPolymorphicType());
       }
     }
   }

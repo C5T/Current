@@ -27,7 +27,8 @@ SOFTWARE.
 
 namespace bricks {
 
-template<typename T> inline T& Singleton() {
+template <typename T>
+inline T& Singleton() {
   static T instance;
   return instance;
 }
