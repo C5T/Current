@@ -116,7 +116,7 @@ struct ImplWrapper<HTTPClientApple> {
 }  // namespace net
 }  // namespace bricks
 
-#include "apple.mm"
+#include "apple_client.mm"
 
 #endif  // defined(BRICKS_APPLE)
 

@@ -198,7 +198,6 @@ class Graph {
   std::map<std::string, std::string> parameters_;
 };
 
-  
 }  // namespace plotutils
 }  // namespace bricks
 

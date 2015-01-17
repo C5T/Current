@@ -136,7 +136,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
         // that the socket has been closed by the peer.
-        throw ConnectionResetByPeer();
+        BRICKS_THROW(ConnectionResetByPeer());
       }
       buffer_[offset] = '\0';
       char* next_crlf_ptr;
@@ -180,7 +180,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
                   buffer_.resize(std::max<size_t>(buffer_.size() * buffer_growth_k, next_offset + 1));
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
-                  throw ConnectionResetByPeer();
+                  BRICKS_THROW(ConnectionResetByPeer());
                 }
                 offset = next_offset;
               }
@@ -248,14 +248,14 @@ class TemplatedHTTPReceivedMessage : public HELPER {
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
-  // then `HasBody()` will be false and all other `Body*()` methods wil throw.
+  // then `HasBody()` will be false and all other `Body*()` methods will throw.
   inline bool HasBody() const { return body_buffer_begin_ != nullptr; }
 
   inline const std::string Body() const {
     if (body_buffer_begin_) {
       return std::string(body_buffer_begin_, body_buffer_end_);
     } else {
-      throw HTTPNoBodyProvidedException();
+      BRICKS_THROW(HTTPNoBodyProvidedException());
     }
   }
 
@@ -263,7 +263,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
     if (body_buffer_begin_) {
       return body_buffer_begin_;
     } else {
-      throw HTTPNoBodyProvidedException();
+      BRICKS_THROW(HTTPNoBodyProvidedException());
     }
   }
 
@@ -272,7 +272,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
       assert(body_buffer_end_);
       return body_buffer_end_;
     } else {
-      throw HTTPNoBodyProvidedException();
+      BRICKS_THROW(HTTPNoBodyProvidedException());
     }
   }
 
@@ -281,7 +281,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
       assert(body_buffer_end_);
       return body_buffer_end_ - body_buffer_begin_;
     } else {
-      throw HTTPNoBodyProvidedException();
+      BRICKS_THROW(HTTPNoBodyProvidedException());
     }
   }
 

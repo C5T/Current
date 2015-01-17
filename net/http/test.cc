@@ -26,11 +26,6 @@ SOFTWARE.
 
 #include "http.h"
 
-// Include two server implementations: The one from this directory, using pure HTTP implementation,
-// and the one using the API.
-#include "test_server.cc.h"
-#include "../api/test_server.cc.h"
-
 #include "../../dflags/dflags.h"
 
 #include "../../3party/gtest/gtest-main-with-dflags.h"
@@ -387,21 +382,4 @@ TEST(HTTPCodesTest, CodeUnknown) {
 TEST(HTTPCodesTest, CodeInternalUninitialized) {
   EXPECT_EQ("<UNINITIALIZED>",
             HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(-1)));
-}
-
-// And a templated test to test boilerplate HTTP GET call against this and API's server implementation.
-template <typename T>
-class HTTPPrimitiveClientTemplatedTest : public ::testing::Test {};
-
-typedef ::testing::Types<bricks::net::http::test::TestHTTPServer_HTTPImpl,
-                         bricks::net::api::test::TestHTTPServer_APIImpl> TestHTTPServerTypesList;
-TYPED_TEST_CASE(HTTPPrimitiveClientTemplatedTest, TestHTTPServerTypesList);
-
-TYPED_TEST(HTTPPrimitiveClientTemplatedTest, SmokeTest) {
-  const auto server_scope = TypeParam::Spawn(FLAGS_net_http_test_port);
-  EXPECT_EQ("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 14\r\n\r\n{\"Aloha\": \"\"}\n\r\n",
-            Connection(ClientSocket("localhost", FLAGS_net_http_test_port))
-                .BlockingWrite("GET /get HTTP/1.1\r\n\r\n")
-                .SendEOF()
-                .BlockingReadUntilEOF());
 }

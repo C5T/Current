@@ -25,8 +25,8 @@ SOFTWARE.
 // TODO(dkorolev): Handle empty POST body. Add a test for it.
 // TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
 
-#ifndef BRICKS_NET_API_POSIX_H
-#define BRICKS_NET_API_POSIX_H
+#ifndef BRICKS_NET_API_POSIX_CLIENT_H
+#define BRICKS_NET_API_POSIX_CLIENT_H
 
 #include "../types.h"
 #include "../../url/url.h"
@@ -66,7 +66,7 @@ class HTTPClientPOSIX final {
       redirected = false;
       const std::string composed_url = parsed_url.ComposeURL();
       if (all_urls.count(composed_url)) {
-        throw HTTPRedirectLoopException();
+        BRICKS_THROW(HTTPRedirectLoopException());
       }
       all_urls.insert(composed_url);
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));
@@ -167,7 +167,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
     if (!request_params.allow_redirects && request_params.url != response.response_url_after_redirects_) {
-      throw HTTPRedirectNotAllowedException();
+      BRICKS_THROW(HTTPRedirectNotAllowedException());
     }
     output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;
@@ -200,4 +200,4 @@ struct ImplWrapper<HTTPClientPOSIX> {
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_API_POSIX_H
+#endif  // BRICKS_NET_API_POSIX_CLIENT_H

@@ -28,6 +28,9 @@ SOFTWARE.
 #ifndef BRICKS_NET_API_TYPES_H
 #define BRICKS_NET_API_TYPES_H
 
+#include <mutex>
+#include <memory>
+#include <map>
 #include <string>
 
 #include "../exceptions.h"
@@ -132,19 +135,33 @@ class ImplWrapper {};
 
 // The main implementation of what `HTTP` actually is.
 // The real work is done by templated implementations.
-template <typename T_IMPLEMENTATION_TO_USE>
-struct HTTPClientImpl {
+template <typename CLIENT_IMPL, class SERVER_IMPL>
+struct HTTPImpl {
+  typedef CLIENT_IMPL T_CLIENT_IMPL;
+  typedef SERVER_IMPL T_SERVER_IMPL;
+
+  T_SERVER_IMPL& operator()(int port) {
+    static std::mutex mutex;
+    static std::map<size_t, std::unique_ptr<T_SERVER_IMPL>> servers;
+    std::lock_guard<std::mutex> lock(mutex);
+    std::unique_ptr<T_SERVER_IMPL>& server = servers[port];
+    if (!server) {
+      server.reset(new T_SERVER_IMPL(port));
+    }
+    return *server;
+  }
+
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS = KeepResponseInMemory>
   inline typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE operator()(
       const T_REQUEST_PARAMS& request_params,
       const T_RESPONSE_PARAMS& response_params = T_RESPONSE_PARAMS()) const {
-    T_IMPLEMENTATION_TO_USE impl;
-    typedef ImplWrapper<T_IMPLEMENTATION_TO_USE> IMPL_HELPER;
+    T_CLIENT_IMPL impl;
+    typedef ImplWrapper<T_CLIENT_IMPL> IMPL_HELPER;
     IMPL_HELPER::PrepareInput(request_params, impl);
     IMPL_HELPER::PrepareInput(response_params, impl);
     if (!impl.Go()) {
 #ifndef ANDROID
-      throw HTTPException();  // LCOV_EXCL_LINE
+      BRICKS_THROW(HTTPException());  // LCOV_EXCL_LINE
 #else
       // TODO(dkorolev): Chat with Alex. We can overcome the exception here, but should we?
       return typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE();

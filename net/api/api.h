@@ -48,53 +48,52 @@ SOFTWARE.
 #ifndef BRICKS_NET_API_API_H
 #define BRICKS_NET_API_API_H
 
-#include "../../port.h"
-
 #include "types.h"
 
+#include "../../port.h"
+#include "../../util/singleton.h"
+
 #if defined(BRICKS_POSIX)
-#include "impl/posix.h"
-typedef bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientPOSIX> HTTP_TYPE;
+#include "impl/posix_client.h"
+#include "impl/posix_server.h"
+typedef bricks::net::api::HTTPClientPOSIX HTTP_CLIENT;
 #elif defined(BRICKS_APPLE)
-#include "impl/apple.h"
-typedef bricks::net::api::HTTPClientImpl<bricks::net::api::HTTPClientApple> HTTP_TYPE;
+#include "impl/apple_client.h"
+#include "impl/posix_server.h"
+typedef bricks::net::api::HTTPClientApple HTTP_CLIENT;
 #elif defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
-#include "impl/java.h"
-typedef bricks::net::api::HTTPClientImpl<aloha::HTTPClientPlatformWrapper> HTTP_TYPE;
+#include "impl/java_client.h"
+#include "impl/posix_server.h"
+typedef bricks::net::api::aloha::HTTPClientPlatformWrapper HTTP_CLIENT;
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
+
+typedef bricks::net::api::HTTPImpl<HTTP_CLIENT, bricks::net::api::HTTPServerPOSIX> HTTP_TYPE;
 
 namespace bricks {
 namespace net {
 namespace api {
 
-namespace instance {
-
-struct HTTPHelper {
-  static HTTP_TYPE& Singleton() {
-    static HTTP_TYPE instance;
-    return instance;
-  }
-};
-
+// A small helper to hint compiler which type to deduce in the `decltype`-s below.
+namespace impl {
 template <typename T>
 inline T TypeHelper() {
   static T* ptr;
   return *ptr;
 }
+}  // namespace impl
 
-}  // namespace instance
-
+// Allow `HTTP(GET(url))` and other `HTTP(...)` syntaxes, assuming `using bricks::net::api`.
 template <typename T1>
-inline decltype(instance::HTTPHelper::Singleton()(instance::TypeHelper<T1>())) HTTP(T1&& p1) {
-  return instance::HTTPHelper::Singleton()(std::forward<T1>(p1));
+inline decltype(Singleton<HTTP_TYPE>()(impl::TypeHelper<T1>())) HTTP(T1&& p1) {
+  return Singleton<HTTP_TYPE>()(std::forward<T1>(p1));
 }
 
+// Allow `HTTP(POST(url, data))` and other `HTTP(..., ...)` syntaxes, assuming `using bricks::net::api`.
 template <typename T1, typename T2>
-inline decltype(instance::HTTPHelper::Singleton()(instance::TypeHelper<T1>(), instance::TypeHelper<T2>())) HTTP(
-    T1&& p1, T2&& p2) {
-  return instance::HTTPHelper::Singleton()(std::forward<T1>(p1), std::forward<T2>(p2));
+inline decltype(Singleton<HTTP_TYPE>()(impl::TypeHelper<T1>(), impl::TypeHelper<T2>())) HTTP(T1&& p1, T2&& p2) {
+  return Singleton<HTTP_TYPE>()(std::forward<T1>(p1), std::forward<T2>(p2));
 }
 
 }  // namespace api
