@@ -69,7 +69,7 @@ typedef bricks::net::api::aloha::HTTPClientPlatformWrapper HTTP_CLIENT;
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
 
-typedef bricks::net::api::HTTPImpl<HTTP_CLIENT, bricks::net::api::HTTPServerPOSIX> HTTP_TYPE;
+typedef bricks::net::api::HTTPImpl<HTTP_CLIENT, bricks::net::api::HTTPServerPOSIX> HTTP_IMPL;
 
 namespace bricks {
 namespace net {
@@ -86,14 +86,14 @@ inline T TypeHelper() {
 
 // Allow `HTTP(GET(url))` and other `HTTP(...)` syntaxes, assuming `using bricks::net::api`.
 template <typename T1>
-inline decltype(Singleton<HTTP_TYPE>()(impl::TypeHelper<T1>())) HTTP(T1&& p1) {
-  return Singleton<HTTP_TYPE>()(std::forward<T1>(p1));
+inline decltype(Singleton<HTTP_IMPL>()(impl::TypeHelper<T1>())) HTTP(T1&& p1) {
+  return Singleton<HTTP_IMPL>()(std::forward<T1>(p1));
 }
 
 // Allow `HTTP(POST(url, data))` and other `HTTP(..., ...)` syntaxes, assuming `using bricks::net::api`.
 template <typename T1, typename T2>
-inline decltype(Singleton<HTTP_TYPE>()(impl::TypeHelper<T1>(), impl::TypeHelper<T2>())) HTTP(T1&& p1, T2&& p2) {
-  return Singleton<HTTP_TYPE>()(std::forward<T1>(p1), std::forward<T2>(p2));
+inline decltype(Singleton<HTTP_IMPL>()(impl::TypeHelper<T1>(), impl::TypeHelper<T2>())) HTTP(T1&& p1, T2&& p2) {
+  return Singleton<HTTP_IMPL>()(std::forward<T1>(p1), std::forward<T2>(p2));
 }
 
 }  // namespace api
