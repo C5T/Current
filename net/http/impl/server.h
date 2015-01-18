@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_NET_HTTP_IMPL_SERVER_H
 #define BRICKS_NET_HTTP_IMPL_SERVER_H
 
+#include <iostream>  // TODO(dkorolev): Remove it.
+
 #include <map>
 #include <sstream>
 #include <string>
@@ -358,8 +360,14 @@ class HTTPServerConnection {
       explicit Impl(Connection& connection) : connection_(connection) {}
 
       ~Impl() {
-        connection_.BlockingWrite("0");
-        connection_.BlockingWrite(kCRLF);
+        try {
+          connection_.BlockingWrite("0");
+          connection_.BlockingWrite(kCRLF);
+          connection_.BlockingWrite(kCRLF);
+        } catch (std::exception& e) {  // LCOV_EXCL_LINE
+          // TODO(dkorolev): More reliable logging.
+          std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
+        }
       }
 
       // Only support containers of chars and bytes, this does not cover std::string.
@@ -406,7 +414,7 @@ class HTTPServerConnection {
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     std::ostringstream os;
     PrepareHTTPResponseHeader(os, code, content_type, extra_headers);
-    os << "Transfer-Encoding: chunked\r\n" << kCRLF << kCRLF;
+    os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
     connection_.BlockingWrite(os.str());
     return ChunkedResponseSender(connection_);
   }
