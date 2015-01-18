@@ -146,16 +146,20 @@ class HTTPServerPOSIX final {
         const std::string& path = message.Path();
         const url::URL url(path);
         Request request{url, connection, message};
+        std::function<void(Request && )> handler;
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
           const auto cit = handlers_.find(url.path);
           if (cit != handlers_.end()) {
-            // TODO(dkorolev): Properly handle the shutdown case when the handler spawns another thread.
-            cit->second(std::move(request));
-          } else {
-            connection.SendHTTPResponse("", HTTPResponseCode::NotFound);
+            handler = cit->second;
           }
+        }
+        if (handler) {
+          // TODO(dkorolev): Properly handle the shutdown case when the handler spawns another thread.
+          handler(std::move(request));
+        } else {
+          connection.SendHTTPResponse("", HTTPResponseCode::NotFound);
         }
       } catch (std::exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.
