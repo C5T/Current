@@ -33,6 +33,7 @@ SOFTWARE.
 #include <map>
 #include <memory>
 #include <thread>
+#include <iostream>  // TODO(dkorolev): More robust logging here.
 
 #include "../types.h"
 
@@ -89,8 +90,18 @@ class HTTPServerPOSIX final {
     }
     // LCOV_EXCL_STOP
     // Wait for the thread to terminate.
-    thread_.join();
+    if (thread_.joinable()) {
+      thread_.join();
+    }
   }
+
+  // The bare `Join()` method is only used by small scripts to run the server indefinitely,
+  // instead of `while(true)`
+  // LCOV_EXCL_START
+  void Join() {
+    thread_.join();  // May throw.
+  }
+  // LCOV_EXCL_STOP
 
   // NOTE: Should not pass in `std::function<void(Request&&)>` here, since it would copy the handler,
   // while a better design is to keep using the reference when the reference is passed in.
@@ -126,24 +137,33 @@ class HTTPServerPOSIX final {
   void Thread(Socket socket) {
     // TODO(dkorolev): Benchmark QPS.
     while (!terminating_) {
-      HTTPServerConnection connection(socket.Accept());
-      if (terminating_) {
-        break;
-      }
-      const HTTPReceivedMessage& message = connection.Message();
-      const std::string& path = message.Path();
-      const url::URL url(path);
-      Request request{url, connection, message};
-      {
-        // TODO(dkorolev): Read-write lock for performance?
-        std::lock_guard<std::mutex> lock(mutex_);
-        const auto cit = handlers_.find(url.path);
-        if (cit != handlers_.end()) {
-          // TODO(dkorolev): Properl handle the shutdown case when the handler spawns another thread.
-          cit->second(std::move(request));
+      try {
+        HTTPServerConnection connection(socket.Accept());
+        if (terminating_) {
+          break;
+        }
+        const HTTPReceivedMessage& message = connection.Message();
+        const std::string& path = message.Path();
+        const url::URL url(path);
+        Request request{url, connection, message};
+        std::function<void(Request && )> handler;
+        {
+          // TODO(dkorolev): Read-write lock for performance?
+          std::lock_guard<std::mutex> lock(mutex_);
+          const auto cit = handlers_.find(url.path);
+          if (cit != handlers_.end()) {
+            handler = cit->second;
+          }
+        }
+        if (handler) {
+          // TODO(dkorolev): Properly handle the shutdown case when the handler spawns another thread.
+          handler(std::move(request));
         } else {
           connection.SendHTTPResponse("", HTTPResponseCode::NotFound);
         }
+      } catch (std::exception& e) {  // LCOV_EXCL_LINE
+        // TODO(dkorolev): More reliable logging.
+        std::cerr << "HTTP route failed: " << e.what() << "\n";  // LCOV_EXCL_LINE
       }
     }
   }

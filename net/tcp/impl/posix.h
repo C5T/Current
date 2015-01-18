@@ -157,7 +157,7 @@ class Connection : public SocketHandle {
     const size_t max_length_in_bytes = max_length * sizeof(T);
     bool alive = true;
     do {
-      const ssize_t retval = ::read(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer));
+      const ssize_t retval = ::recv(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer), 0);
       if (retval < 0) {
         // TODO(dkorolev): Unit-test this logic.
         // I could not find a simple way to reproduce it for the test. -- D.K.
@@ -225,7 +225,7 @@ class Connection : public SocketHandle {
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
     assert(buffer);
-    const ssize_t result = ::write(socket, buffer, write_length);
+    const ssize_t result = ::send(socket, buffer, write_length, MSG_NOSIGNAL);
     if (result < 0) {
       BRICKS_THROW(SocketWriteException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {

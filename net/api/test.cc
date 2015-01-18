@@ -65,6 +65,7 @@ TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
 }
 #endif
 
+// Test the features of HTTP server.
 TEST(HTTPAPI, Register) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/get", [](Request&& r) { r.connection.SendHTTPResponse("OK"); });
@@ -168,25 +169,25 @@ TEST(HTTPAPI, HandlerPreservesObject) {
   EXPECT_EQ(1u, copy.counter);
 }
 
+// Test various HTTP client modes.
 TEST(HTTPAPI, GetToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/stars", [](Request&& r) {
-    const uint64_t kDelayBetweenChunksInMilliseconds = 10;
     const size_t n = atoi(r.url.query["n"].c_str());
-    // TODO(dkorolev): Refactor chunked response generation as a method of HTTPConnection.
-    Connection& c = r.connection.RawConnection();
-    // Send in some extra, RFC-allowed, whitespaces.
-    c.BlockingWrite("HTTP/1.1  \t  \t\t  200\t    \t\t\t\t  OK\r\n");
-    c.BlockingWrite("Transfer-Encoding: chunked\r\n");
-    c.BlockingWrite("Content-Type: application/octet-stream\r\n");
-    c.BlockingWrite("\r\n");
-    std::this_thread::sleep_for(std::chrono::milliseconds(kDelayBetweenChunksInMilliseconds));
-    for (size_t i = 0; i < n; ++i) {
-      c.BlockingWrite("1\r\n*\r\n");
+    auto response = r.connection.SendChunkedHTTPResponse();
+    const auto sleep = []() {
+      const uint64_t kDelayBetweenChunksInMilliseconds = 10;
       std::this_thread::sleep_for(std::chrono::milliseconds(kDelayBetweenChunksInMilliseconds));
+    };
+    sleep();
+    for (size_t i = 0; i < n; ++i) {
+      response.Send("*");
+      sleep();
+      response.Send(std::vector<char>({'a', 'b'}));
+      sleep();
+      response.Send(std::vector<uint8_t>({0x31, 0x32}));
+      sleep();
     }
-    c.BlockingWrite("0\r\n\r\n");  // Line ending as httpbin.org seems to do it. -- D.K.
-    c.SendEOF();
   });
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
@@ -196,7 +197,7 @@ TEST(HTTPAPI, GetToFile) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ(file_name, response.body_file_name);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ("***", FileSystem::ReadFileAsString(response.body_file_name));
+  EXPECT_EQ("*ab12*ab12*ab12", FileSystem::ReadFileAsString(response.body_file_name));
 }
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {
