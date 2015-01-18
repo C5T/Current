@@ -29,6 +29,7 @@ SOFTWARE.
 #include <sstream>
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "../codes.h"
 
@@ -305,6 +306,18 @@ class HTTPServerConnection {
 
   inline static const std::string DefaultContentType() { return "text/plain"; }
 
+  inline static void PrepareHTTPResponseHeader(std::ostream& os,
+                                               HTTPResponseCode code = HTTPResponseCode::OK,
+                                               const std::string& content_type = DefaultContentType(),
+                                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    os << "HTTP/1.1 " << static_cast<int>(code);
+    os << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code) << kCRLF;
+    os << "Content-Type: " << content_type << kCRLF;
+    for (const auto cit : extra_headers) {
+      os << cit.first << ": " << cit.second << kCRLF;
+    }
+  }
+
   template <typename T>
   inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
       const T& begin,
@@ -313,37 +326,89 @@ class HTTPServerConnection {
       const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     std::ostringstream os;
-    os << "HTTP/1.1 " << static_cast<int>(code);
-    os << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code) << kCRLF;
-    os << "Content-Type: " << content_type << kCRLF;
-    os << "Content-Length: " << (end - begin) << kCRLF;
-    for (const auto cit : extra_headers) {
-      os << cit.first << ": " << cit.second << kCRLF;
-    }
-    os << kCRLF;
+    PrepareHTTPResponseHeader(os, code, content_type, extra_headers);
+    os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
     connection_.BlockingWrite(os.str());
     connection_.BlockingWrite(begin, end);
     connection_.BlockingWrite(kCRLF);
-
-    // TODO(dkorolev): "If the body was preceded by a Content-Length header, the client MUST close the
-    // connection."
-    // https://www.ietf.org/rfc/rfc2616.txt
   }
 
+  // Only support containers of chars and bytes, this does not cover std::string.
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
-      const T& container,
-      HTTPResponseCode code = HTTPResponseCode::OK,
-      const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+  inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
+  SendHTTPResponse(T&& container,
+                   HTTPResponseCode code = HTTPResponseCode::OK,
+                   const std::string& content_type = DefaultContentType(),
+                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
+  // Special case to handle std::string.
   inline void SendHTTPResponse(const std::string& container,
                                HTTPResponseCode code = HTTPResponseCode::OK,
                                const std::string& content_type = DefaultContentType(),
                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
+  }
+
+  // The wrapper to send HTTP response in chunks.
+  struct ChunkedResponseSender final {
+    // `struct Impl` is the logic wrapped into an `std::unique_ptr<>` to call the destructor only once.
+    struct Impl final {
+      explicit Impl(Connection& connection) : connection_(connection) {}
+
+      ~Impl() {
+        connection_.BlockingWrite("0");
+        connection_.BlockingWrite(kCRLF);
+      }
+
+      // Only support containers of chars and bytes, this does not cover std::string.
+      template <typename T>
+      inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
+      Send(T&& data) {
+        connection_.BlockingWrite(strings::Printf("%X", data.size()));
+        connection_.BlockingWrite(kCRLF);
+        connection_.BlockingWrite(data);
+        connection_.BlockingWrite(kCRLF);
+      }
+
+      // Special case to handle std::string.
+      inline void Send(const std::string& data) {
+        connection_.BlockingWrite(strings::Printf("%X", data.length()));
+        connection_.BlockingWrite(kCRLF);
+        connection_.BlockingWrite(data);
+        connection_.BlockingWrite(kCRLF);
+      }
+
+      Connection& connection_;
+
+      Impl() = delete;
+      Impl(const Impl&) = delete;
+      Impl(Impl&&) = delete;
+      void operator=(const Impl&) = delete;
+      void operator=(Impl&&) = delete;
+    };
+
+    explicit ChunkedResponseSender(Connection& connection) : impl_(new Impl(connection)) {}
+
+    template <typename T>
+    inline ChunkedResponseSender& Send(T&& data) {
+      impl_->Send(data);
+      return *this;
+    }
+
+    std::unique_ptr<Impl> impl_;
+  };
+
+  inline ChunkedResponseSender SendChunkedHTTPResponse(
+      HTTPResponseCode code = HTTPResponseCode::OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    std::ostringstream os;
+    PrepareHTTPResponseHeader(os, code, content_type, extra_headers);
+    os << "Transfer-Encoding: chunked\r\n" << kCRLF << kCRLF;
+    connection_.BlockingWrite(os.str());
+    return ChunkedResponseSender(connection_);
   }
 
   const HTTPReceivedMessage& Message() const { return message_; }
