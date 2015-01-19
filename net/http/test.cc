@@ -132,9 +132,9 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
-      "Content-Length: 56\r\n"
+      "Content-Length: 54\r\n"
       "\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n",
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}",
       connection.BlockingReadUntilEOF());
 }
 
@@ -166,8 +166,8 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "onetwothree\r\n"
       "3\r\n"
       "foo\r\n"
-      "38\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n\r\n"
+      "36\r\n"
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n"
       "0\r\n",
       connection.BlockingReadUntilEOF());
 }

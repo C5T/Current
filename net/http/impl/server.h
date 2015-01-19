@@ -370,7 +370,7 @@ class HTTPServerConnection {
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(object) + kCRLF;
+    const std::string s = cerealize::JSON(object);
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -414,7 +414,7 @@ class HTTPServerConnection {
       inline typename std::enable_if<
           (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
       Send(T&& object) {
-        SendImpl(cerealize::JSON(object) + kCRLF);
+        SendImpl(cerealize::JSON(object));
       }
 
       Connection& connection_;
