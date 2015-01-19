@@ -101,20 +101,48 @@ y:0.183947}
 #include "api.h"
 
 #include "../../dflags/dflags.h"
+#include "../../cerealize/cerealize.h"
 #include "../../strings/printf.h"
 #include "../../time/chrono.h"
 
 using namespace bricks::net::api;
+using namespace bricks::cerealize;
 using bricks::time::Now;
 using bricks::strings::Printf;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
+
+struct ExampleMeta {
+  struct Options {
+    std::string header_text = "Header Text";
+    std::string color = "blue";
+    double min = 0;
+    double max = 1;
+    double time_interval = 10000;
+    template <typename A>
+    void serialize(A& ar) {
+      ar(CEREAL_NVP(header_text),
+         CEREAL_NVP(color),
+         CEREAL_NVP(min),
+         CEREAL_NVP(max),
+         CEREAL_NVP(time_interval));
+    }
+  };
+  std::string data_url = "/data";
+  std::string visualizer_name = "plot-visualizer";
+  Options visualizer_options;
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(data_url), CEREAL_NVP(visualizer_name), CEREAL_NVP(visualizer_options));
+  }
+};
 
 // TODO(dkorolev): Add multithreading. This implies two features:
 // 1) Allow std::move<Request> to actually not close the connection from the original one, and
 // 2) Register the client so that the server can be gracefully terminated.
 // Right now, the `std::thread()` part is just commented out.
 int main() {
+  HTTP(FLAGS_port).Register("/meta", [](Request&& r) { r.connection.SendHTTPResponse(ExampleMeta()); });
   HTTP(FLAGS_port).Register("/", [](Request&& r) {
     //    std::thread([](Request&& r) {
     auto response = r.connection.SendChunkedHTTPResponse();
