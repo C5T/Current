@@ -60,6 +60,33 @@ static std::string CurrentTestTempFileName() {
   return FileSystem::JoinPath(FLAGS_cerealize_test_tmpdir, CurrentTestName());
 }
 
+struct No {};
+struct Yes {
+  template <class A>
+  void serialize(A&) {}
+};
+
+TEST(Cerealize, CompileTimeTest) {
+  EXPECT_FALSE(is_cerealizeable<int>::value);
+  EXPECT_FALSE(is_cerealizeable<std::string>::value);
+  EXPECT_FALSE(is_cerealizeable<No>::value);
+  EXPECT_TRUE(is_cerealizeable<Yes>::value);
+};
+
+struct CerealTestObject {
+  int number = 42;
+  std::string text = "text";
+  std::vector<int> array = {1, 2, 3};
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
+  }
+};
+
+TEST(Cerealize, JSON) {
+  EXPECT_EQ("{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}", JSON(CerealTestObject()));
+};
+
 TEST(Cerealize, BinarySerializesAndParses) {
   FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);

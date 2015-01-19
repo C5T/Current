@@ -26,6 +26,8 @@ SOFTWARE.
 #define BRICKS_CEREALIZE_H
 
 #include <fstream>
+#include <string>
+#include <sstream>
 
 #include "../3party/cereal/include/types/string.hpp"
 #include "../3party/cereal/include/types/vector.hpp"
@@ -41,6 +43,24 @@ SOFTWARE.
 
 namespace bricks {
 namespace cerealize {
+
+// Helper compile-time test that certain type can be serialized via cereal.
+template <typename T>
+class is_cerealizeable {
+ private:
+  struct DummyArchive {
+    void operator()(...);
+  };
+  typedef char Yes;
+  typedef long No;
+  template <typename C>
+  static Yes YesOrNo(decltype(&C::template serialize<DummyArchive>));
+  template <typename C>
+  static No YesOrNo(...);
+
+ public:
+  enum { value = sizeof(YesOrNo<T>(0)) == sizeof(Yes) };
+};
 
 // Helper code to simplify wrapping objects into `unique_ptr`-s of their base types
 // for Cereal to serialize them as polymorphic types.
@@ -174,6 +194,19 @@ class GenericCerealFileParser {
 };
 template <typename T_ENTRY>
 using CerealFileParser = GenericCerealFileParser<T_ENTRY, CerealFormat::Default>;
+
+template <typename OSTREAM, typename T>
+inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {
+  cerealize::CerealStreamType<cerealize::CerealFormat::JSON>::CreateOutputArchive(os)(object);
+  return os;
+}
+
+template <typename T>
+inline std::string JSON(T&& object) {
+  std::ostringstream os;
+  AppendAsJSON(os, object);
+  return os.str();
+}
 
 }  // namespace cerealize
 }  // namespace bricks

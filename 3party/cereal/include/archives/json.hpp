@@ -46,7 +46,7 @@ namespace cereal
   throw ::cereal::RapidJSONException("rapidjson internal assertion failure: " #x); }
 #endif // RAPIDJSON_ASSERT
 
-#include "../external/rapidjson/prettywriter.h"
+#include "../external/rapidjson/writer.h"  // D.K. -- was #include "../external/rapidjson/prettywriter.h"
 #include "../external/rapidjson/genericstream.h"
 #include "../external/rapidjson/reader.h"
 #include "../external/rapidjson/document.h"
@@ -90,7 +90,7 @@ namespace cereal
     enum class NodeType { StartObject, InObject, StartArray, InArray };
 
     typedef rapidjson::GenericWriteStream WriteStream;
-    typedef rapidjson::PrettyWriter<WriteStream> JSONWriter;
+    typedef rapidjson::Writer<WriteStream> JSONWriter;  // D.K. -- was typedef rapidjson::PrettyWriter<WriteStream> JSONWriter;
 
     public:
       /*! @name Common Functionality
@@ -145,7 +145,7 @@ namespace cereal
         itsWriter(itsWriteStream, options.itsPrecision),
         itsNextName(nullptr)
       {
-        itsWriter.SetIndent( options.itsIndentChar, options.itsIndentLength );
+        // D.K. -- was itsWriter.SetIndent( options.itsIndentChar, options.itsIndentLength );
         itsNameCounter.push(0);
         itsNodeStack.push(NodeType::StartObject);
       }
