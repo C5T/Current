@@ -298,6 +298,13 @@ class TemplatedHTTPReceivedMessage : public HELPER {
   std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
   const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
+
+  // Disable any copy/move support since this class uses pointers.
+  TemplatedHTTPReceivedMessage() = delete;
+  TemplatedHTTPReceivedMessage(const TemplatedHTTPReceivedMessage&) = delete;
+  TemplatedHTTPReceivedMessage(TemplatedHTTPReceivedMessage&&) = delete;
+  void operator=(const TemplatedHTTPReceivedMessage&) = delete;
+  void operator=(TemplatedHTTPReceivedMessage&&) = delete;
 };
 
 // The default implementation is exposed as HTTPReceivedMessage.
@@ -305,6 +312,8 @@ typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
 
 class HTTPServerConnection {
  public:
+  // The only constructor parses HTTP headers coming from the socket
+  // in the constructor of `message_(connection_)`.
   HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {}
 
   inline static const std::string DefaultContentType() { return "text/plain"; }
@@ -371,7 +380,7 @@ class HTTPServerConnection {
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(object) + kCRLF;
+    const std::string s = cerealize::JSON(std::forward<T>(object)) + kCRLF;
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -386,7 +395,7 @@ class HTTPServerConnection {
           connection_.BlockingWrite("0");
           connection_.BlockingWrite(kCRLF);
           connection_.BlockingWrite(kCRLF);
-        } catch (std::exception& e) {  // LCOV_EXCL_LINE
+        } catch (const std::exception& e) {  // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
         }
@@ -397,7 +406,7 @@ class HTTPServerConnection {
       void SendImpl(T&& data) {
         connection_.BlockingWrite(strings::Printf("%X", data.size()));
         connection_.BlockingWrite(kCRLF);
-        connection_.BlockingWrite(data);
+        connection_.BlockingWrite(std::forward<T>(data));
         connection_.BlockingWrite(kCRLF);
       }
 
@@ -405,7 +414,7 @@ class HTTPServerConnection {
       template <typename T>
       inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
       Send(T&& data) {
-        SendImpl(data);
+        SendImpl(std::forward<T>(data));
       }
 
       // Special case to handle std::string.
@@ -416,7 +425,7 @@ class HTTPServerConnection {
       inline typename std::enable_if<
           (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
       Send(T&& object) {
-        SendImpl(cerealize::JSON(object) + kCRLF);
+        SendImpl(cerealize::JSON(std::forward<T>(object)) + kCRLF);
       }
 
       Connection& connection_;
@@ -432,7 +441,7 @@ class HTTPServerConnection {
 
     template <typename T>
     inline ChunkedResponseSender& Send(T&& data) {
-      impl_->Send(data);
+      impl_->Send(std::forward<T>(data));
       return *this;
     }
 
@@ -458,9 +467,14 @@ class HTTPServerConnection {
   Connection connection_;
   HTTPReceivedMessage message_;
 
+  // Disable any copy/move support for extra safety.
   HTTPServerConnection(const HTTPServerConnection&) = delete;
-  void operator=(const HTTPServerConnection&) = delete;
+  HTTPServerConnection(const Connection&) = delete;
   HTTPServerConnection(HTTPServerConnection&&) = delete;
+  // The only legit constructor is `HTTPServerConnection(Connection&&)`.
+  void operator=(const Connection&) = delete;
+  void operator=(const HTTPServerConnection&) = delete;
+  void operator=(Connection&&) = delete;
   void operator=(HTTPServerConnection&&) = delete;
 };
 

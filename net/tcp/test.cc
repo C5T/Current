@@ -50,6 +50,7 @@ using bricks::net::Socket;
 using bricks::net::Connection;
 using bricks::net::ClientSocket;
 
+using bricks::net::AttemptedToUseMovedAwayConnection;
 using bricks::net::SocketBindException;
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 using bricks::net::SocketCouldNotWriteEverythingException;
@@ -88,6 +89,19 @@ static string ReadFromSocket(thread& server_thread, const string& message_to_sen
 TEST(TCPTest, ReceiveMessage) {
   thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, Socket(FLAGS_net_tcp_test_port));
   EXPECT_EQ("BOOM", ReadFromSocket(server));
+}
+
+TEST(TCPTest, CanNotUseMovedAwayConnection) {
+  thread server([](Socket socket) { socket.Accept().BlockingWrite("OK"); }, Socket(FLAGS_net_tcp_test_port));
+  Connection old_connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
+  old_connection.BlockingWrite("foo\n");
+  Connection new_connection(std::move(old_connection));
+  new_connection.BlockingWrite("bar\n");
+  ASSERT_THROW(old_connection.BlockingWrite("baz\n"), AttemptedToUseMovedAwayConnection);
+  ASSERT_THROW(old_connection.BlockingReadUntilEOF(), AttemptedToUseMovedAwayConnection);
+  new_connection.SendEOF();
+  server.join();
+  EXPECT_EQ("OK", new_connection.BlockingReadUntilEOF());
 }
 
 TEST(TCPTest, ReceiveMessageOfTwoUInt16) {

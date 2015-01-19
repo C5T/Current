@@ -57,9 +57,28 @@ struct HandlerDoesNotExistException : HTTPException {
 
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
+  std::unique_ptr<HTTPServerConnection> connection_placeholder;
   const url::URL& url;
   HTTPServerConnection& connection;
   const HTTPReceivedMessage& message;
+
+  Request(const url::URL& url, std::unique_ptr<HTTPServerConnection>&& connection)
+      : connection_placeholder(std::move(connection)),
+        url(url),
+        connection(*connection_placeholder.get()),
+        message(connection_placeholder->Message()) {}
+
+  // It is essential to move `connection_placeholder` so that the socket outlives the destruction of `rhs`.
+  Request(Request&& rhs)
+      : connection_placeholder(std::move(rhs.connection_placeholder)),
+        url(rhs.url),
+        connection(*connection_placeholder.get()),
+        message(connection_placeholder->Message()) {}
+
+  Request() = delete;
+  Request(const Request&) = delete;
+  void operator=(const Request&) = delete;
+  void operator=(Request&&) = delete;
 };
 
 // HTTP server bound to a specific port.
@@ -83,7 +102,7 @@ class HTTPServerPOSIX final {
       // TODO(dkorolev): This should always use the POSIX implemenation of the client, nothing fancier.
       // It is a safe call, since the server itself is POSIX, so the architecture we are on is POSIX-friendly.
       Connection(ClientSocket("localhost", port_)).BlockingWrite("GET /healthz HTTP/1.1\r\n\r\n").SendEOF();
-    } catch (bricks::Exception&) {
+    } catch (const bricks::Exception&) {
       // It is guaranteed that after `terminated_` is set the server will be terminated on the next request,
       // but it might so happen that that terminating request will happen between `terminating_ = true`
       // and the consecutive request. Which is perfectly fine, since it implies that the server has terminated.
@@ -138,14 +157,12 @@ class HTTPServerPOSIX final {
     // TODO(dkorolev): Benchmark QPS.
     while (!terminating_) {
       try {
-        HTTPServerConnection connection(socket.Accept());
+        std::unique_ptr<HTTPServerConnection> connection(new HTTPServerConnection(socket.Accept()));
         if (terminating_) {
           break;
         }
-        const HTTPReceivedMessage& message = connection.Message();
-        const std::string& path = message.Path();
+        const std::string& path = connection->Message().Path();
         const url::URL url(path);
-        Request request{url, connection, message};
         std::function<void(Request && )> handler;
         {
           // TODO(dkorolev): Read-write lock for performance?
@@ -157,11 +174,11 @@ class HTTPServerPOSIX final {
         }
         if (handler) {
           // TODO(dkorolev): Properly handle the shutdown case when the handler spawns another thread.
-          handler(std::move(request));
+          handler(Request(url, std::move(connection)));
         } else {
-          connection.SendHTTPResponse("", HTTPResponseCode::NotFound);
+          connection->SendHTTPResponse("", HTTPResponseCode::NotFound);
         }
-      } catch (std::exception& e) {  // LCOV_EXCL_LINE
+      } catch (const std::exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.
         std::cerr << "HTTP route failed: " << e.what() << "\n";  // LCOV_EXCL_LINE
       }

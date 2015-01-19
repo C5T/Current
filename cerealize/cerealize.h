@@ -204,7 +204,7 @@ inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {
 template <typename T>
 inline std::string JSON(T&& object) {
   std::ostringstream os;
-  AppendAsJSON(os, object);
+  AppendAsJSON(os, std::forward<T>(object));
   return os.str();
 }
 

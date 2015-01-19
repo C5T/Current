@@ -79,8 +79,8 @@ namespace api {
 namespace impl {
 template <typename T>
 inline T TypeHelper() {
-  static T* ptr;
-  return *ptr;
+  static T* never_used_helper_ptr;
+  return *never_used_helper_ptr;
 }
 }  // namespace impl
 
