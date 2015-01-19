@@ -133,7 +133,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
       while (chunk = buffer_.size() - offset - 1,
              read_count = c.BlockingRead(&buffer_[offset], chunk),
              offset += read_count,
-             read_count == chunk) {
+             read_count == chunk && offset < length_cap) {
         buffer_.resize(buffer_.size() * buffer_growth_k);
       }
       if (!read_count) {
@@ -333,7 +333,6 @@ class HTTPServerConnection {
     os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
     connection_.BlockingWrite(os.str());
     connection_.BlockingWrite(begin, end);
-    connection_.BlockingWrite(kCRLF);
   }
 
   // Only support STL containers of chars and bytes, this does not yet cover std::string.
@@ -384,7 +383,6 @@ class HTTPServerConnection {
       ~Impl() {
         try {
           connection_.BlockingWrite("0");
-          connection_.BlockingWrite(kCRLF);
           connection_.BlockingWrite(kCRLF);
         } catch (std::exception& e) {  // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.

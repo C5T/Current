@@ -84,8 +84,7 @@ TEST(PosixHTTPServerTest, Smoke) {
       "Content-Type: text/plain\r\n"
       "Content-Length: 10\r\n"
       "\r\n"
-      "Data: BODY"
-      "\r\n",
+      "Data: BODY",
       connection.BlockingReadUntilEOF());
 }
 
@@ -110,8 +109,7 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
       "Content-Type: text/plain\r\n"
       "Content-Length: 5\r\n"
       "\r\n"
-      "Aloha"
-      "\r\n",
+      "Aloha",
       connection.BlockingReadUntilEOF());
 }
 
@@ -136,8 +134,7 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "Content-Type: text/plain\r\n"
       "Content-Length: 56\r\n"
       "\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n"
-      "\r\n",
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n",
       connection.BlockingReadUntilEOF());
 }
 
@@ -171,8 +168,7 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "foo\r\n"
       "38\r\n"
       "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n\r\n"
-      "0\r\n"
-      "\r\n",
+      "0\r\n",
       connection.BlockingReadUntilEOF());
 }
 
@@ -197,7 +193,7 @@ TEST(PosixHTTPServerTest, NoEOF) {
       "Content-Type: text/plain\r\n"
       "Content-Length: 11\r\n"
       "\r\n"
-      "Data: NOEOF\r\n",
+      "Data: NOEOF",
       connection.BlockingReadUntilEOF());
 }
 
@@ -210,16 +206,15 @@ TEST(PosixHTTPServerTest, LargeBody) {
            },
            Socket(FLAGS_net_http_test_port));
   string body(1000000, '.');
-  for (size_t i = 0; i < 1000000; ++i) {
+  for (size_t i = 0; i < body.length(); ++i) {
     body[i] = 'A' + (i % 26);
   }
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("POST / HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Content-Length: 1000000\r\n");
+  connection.BlockingWrite(strings::Printf("Content-Length: %d\r\n", static_cast<int>(body.length())));
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite(body);
-  connection.BlockingWrite("\r\n");
   connection.SendEOF();
   t.join();
   EXPECT_EQ(
@@ -228,7 +223,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
       "Content-Length: 1000006\r\n"
       "\r\n"
       "Data: " +
-          body + "\r\n",
+          body,
       connection.BlockingReadUntilEOF());
 }
 
@@ -263,8 +258,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
                 "Content-Type: text/plain\r\n"
                 "Content-Length: %d\r\n"
                 "\r\n"
-                "%s"
-                "\r\n",
+                "%s",
                 static_cast<int>(body.length()),
                 body.c_str()),
             connection.BlockingReadUntilEOF());
@@ -293,7 +287,6 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
     }
     connection.BlockingWrite(chunk);
     body += chunk;
-    connection.BlockingWrite("\r\n");
   }
   connection.BlockingWrite("0\r\n");
   t.join();
@@ -302,8 +295,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
                 "Content-Type: text/plain\r\n"
                 "Content-Length: %d\r\n"
                 "\r\n"
-                "%s"
-                "\r\n",
+                "%s",
                 static_cast<int>(body.length()),
                 body.c_str()),
             connection.BlockingReadUntilEOF());
