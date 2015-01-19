@@ -1,5 +1,7 @@
 Header-only Cereal with no dependencies and no extra ```-I``` flags required.
 
+**NOTE:** Cereal has been patched by @dkorolev to pack JSON-s into a single one. It happened after a discussion we had on ```cerealcpp@googlegroups.com```, with the conclusion being that there is no easier way to make it happen.
+
 See [examples/cereal/message.h](https://github.com/KnowSheet/3party/blob/master/examples/cereal/message.h) for example usage.
 
 Ported by Dmitry "Dima" Korolev.
