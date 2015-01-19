@@ -40,6 +40,7 @@ SOFTWARE.
 #include "../../tcp/tcp.h"
 
 #include "../../../strings/util.h"
+#include "../../../cerealize/cerealize.h"
 
 namespace bricks {
 namespace net {
@@ -320,13 +321,13 @@ class HTTPServerConnection {
     }
   }
 
+  // The actual implementation of sending the HTTP response.
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
-      const T& begin,
-      const T& end,
-      HTTPResponseCode code = HTTPResponseCode::OK,
-      const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+  inline void SendHTTPResponseImpl(const T& begin,
+                                   const T& end,
+                                   HTTPResponseCode code,
+                                   const std::string& content_type,
+                                   const HTTPHeadersType& extra_headers) {
     std::ostringstream os;
     PrepareHTTPResponseHeader(os, code, content_type, extra_headers);
     os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
@@ -335,14 +336,23 @@ class HTTPServerConnection {
     connection_.BlockingWrite(kCRLF);
   }
 
-  // Only support containers of chars and bytes, this does not cover std::string.
+  // Only support STL containers of chars and bytes, this does not yet cover std::string.
+  template <typename T>
+  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
+      const T& begin,
+      const T& end,
+      HTTPResponseCode code = HTTPResponseCode::OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
+  }
   template <typename T>
   inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
   SendHTTPResponse(T&& container,
                    HTTPResponseCode code = HTTPResponseCode::OK,
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
+    SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
   // Special case to handle std::string.
@@ -350,7 +360,19 @@ class HTTPServerConnection {
                                HTTPResponseCode code = HTTPResponseCode::OK,
                                const std::string& content_type = DefaultContentType(),
                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    SendHTTPResponse(container.begin(), container.end(), code, content_type, extra_headers);
+    SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
+  }
+  // Support objects that can be serialized as JSON-s via Cereal.
+  template <class T>
+  inline typename std::enable_if<
+      (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+  SendHTTPResponse(T&& object,
+                   HTTPResponseCode code = HTTPResponseCode::OK,
+                   const std::string& content_type = DefaultContentType(),
+                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = cerealize::JSON(object) + kCRLF;
+    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
   // The wrapper to send HTTP response in chunks.
@@ -370,22 +392,31 @@ class HTTPServerConnection {
         }
       }
 
-      // Only support containers of chars and bytes, this does not cover std::string.
+      // The actual implementation of sending HTTP chunk data.
       template <typename T>
-      inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
-      Send(T&& data) {
+      void SendImpl(T&& data) {
         connection_.BlockingWrite(strings::Printf("%X", data.size()));
         connection_.BlockingWrite(kCRLF);
         connection_.BlockingWrite(data);
         connection_.BlockingWrite(kCRLF);
       }
 
+      // Only support STL containers of chars and bytes, this does not yet cover std::string.
+      template <typename T>
+      inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
+      Send(T&& data) {
+        SendImpl(data);
+      }
+
       // Special case to handle std::string.
-      inline void Send(const std::string& data) {
-        connection_.BlockingWrite(strings::Printf("%X", data.length()));
-        connection_.BlockingWrite(kCRLF);
-        connection_.BlockingWrite(data);
-        connection_.BlockingWrite(kCRLF);
+      inline void Send(const std::string& data) { SendImpl(data); }
+
+      // Support objects that can be serialized as JSON-s via Cereal.
+      template <class T>
+      inline typename std::enable_if<
+          (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+      Send(T&& object) {
+        SendImpl(cerealize::JSON(object) + kCRLF);
       }
 
       Connection& connection_;

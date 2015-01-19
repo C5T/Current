@@ -31,6 +31,7 @@ SOFTWARE.
 #include "../../3party/gtest/gtest-main-with-dflags.h"
 
 #include "../../strings/printf.h"
+#include "../../cerealize/cerealize.h"
 
 DEFINE_int32(net_http_test_port, 8080, "Local port to use for the test HTTP server.");
 
@@ -49,6 +50,16 @@ using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPResponseCodeAsStringGenerator;
 using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
+
+struct HTTPTestObject {
+  int number = 42;
+  std::string text = "text";
+  std::vector<int> array = {1, 2, 3};
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
+  }
+};
 
 TEST(PosixHTTPServerTest, Smoke) {
   thread t([](Socket s) {
@@ -73,7 +84,95 @@ TEST(PosixHTTPServerTest, Smoke) {
       "Content-Type: text/plain\r\n"
       "Content-Length: 10\r\n"
       "\r\n"
-      "Data: BODY\r\n",
+      "Data: BODY"
+      "\r\n",
+      connection.BlockingReadUntilEOF());
+}
+
+TEST(PosixHTTPServerTest, SmokeWithArray) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("GET", c.Message().Method());
+             EXPECT_EQ("/aloha", c.Message().Path());
+             c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /aloha HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("\r\n");
+  // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: 5\r\n"
+      "\r\n"
+      "Aloha"
+      "\r\n",
+      connection.BlockingReadUntilEOF());
+}
+
+TEST(PosixHTTPServerTest, SmokeWithObject) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("GET", c.Message().Method());
+             EXPECT_EQ("/mahalo", c.Message().Path());
+             c.SendHTTPResponse(HTTPTestObject());
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("\r\n");
+  // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: 56\r\n"
+      "\r\n"
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n"
+      "\r\n",
+      connection.BlockingReadUntilEOF());
+}
+
+TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("GET", c.Message().Method());
+             EXPECT_EQ("/chunked", c.Message().Path());
+             auto r = c.SendChunkedHTTPResponse();
+             r.Send("onetwothree");
+             r.Send(std::vector<char>({'f', 'o', 'o'}));
+             r.Send(HTTPTestObject());
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /chunked HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("\r\n");
+  // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Transfer-Encoding: chunked\r\n"
+      "\r\n"
+      "B\r\n"
+      "onetwothree\r\n"
+      "3\r\n"
+      "foo\r\n"
+      "38\r\n"
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n\r\n"
+      "0\r\n"
+      "\r\n",
       connection.BlockingReadUntilEOF());
 }
 
