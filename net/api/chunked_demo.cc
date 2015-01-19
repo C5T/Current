@@ -137,33 +137,36 @@ struct ExampleMeta {
   }
 };
 
-// TODO(dkorolev): Add multithreading. This implies two features:
-// 1) Allow std::move<Request> to actually not close the connection from the original one, and
-// 2) Register the client so that the server can be gracefully terminated.
-// Right now, the `std::thread()` part is just commented out.
+// TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
 int main() {
   HTTP(FLAGS_port).Register("/meta", [](Request&& r) { r.connection.SendHTTPResponse(ExampleMeta()); });
   HTTP(FLAGS_port).Register("/", [](Request&& r) {
-    //    std::thread([](Request&& r) {
-    auto response = r.connection.SendChunkedHTTPResponse();
-    std::string data;
-    const double begin = static_cast<double>(Now());
-    const double t = atof(r.url.query["t"].c_str());
-    const double end = (t > 0) ? (begin + t * 1e3) : 1e18;
-    double current;
-    while ((current = static_cast<double>(Now())) < end) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 10));
-      const double x = 5e-3 * (current - begin);
-      const double y = sin(x);
-      data += Printf("{x:%lf,y:%lf}\n", x, y);
-      const double f = (rand() % 101) * (rand() % 101) * (rand() % 101) * 1e-6;
-      const size_t n = static_cast<size_t>(data.length() * f);
-      if (n) {
-        response.Send(data.substr(0, n));
-        data = data.substr(n);
-      }
-    }
-    //   }, std::move(r)).detach();
+    std::thread([](Request&& r) {
+                  // Since we are in another thread, need to catch exceptions ourselves.
+                  try {
+                    auto response = r.connection.SendChunkedHTTPResponse();
+                    std::string data;
+                    const double begin = static_cast<double>(Now());
+                    const double t = atof(r.url.query["t"].c_str());
+                    const double end = (t > 0) ? (begin + t * 1e3) : 1e18;
+                    double current;
+                    while ((current = static_cast<double>(Now())) < end) {
+                      std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 10));
+                      const double x = 5e-3 * (current - begin);
+                      const double y = sin(x);
+                      data += Printf("{x:%lf,y:%lf}\n", x, y);
+                      const double f = (rand() % 101) * (rand() % 101) * (rand() % 101) * 1e-6;
+                      const size_t n = static_cast<size_t>(data.length() * f);
+                      if (n) {
+                        response.Send(data.substr(0, n));
+                        data = data.substr(n);
+                      }
+                    }
+                  } catch (const std::exception& e) {
+                    std::cerr << "Exception in data serving thread: " << e.what() << std::endl;
+                  }
+                },
+                std::move(r)).detach();
   });
   HTTP(FLAGS_port).Join();
 }

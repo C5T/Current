@@ -94,38 +94,37 @@ class SocketHandle {
 
   inline explicit SocketHandle(SocketHandle&& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
 
-  void operator=(SocketHandle&& rhs) {
-    socket_ = -1;
-    std::swap(socket_, rhs.socket_);
-  }
-
  private:
   int socket_;
 
  public:
-  // The `ReadOnlyIntFieldAccessor socket` members provide simple read-only access to `socket_` via `socket`.
+  // The `ReadOnlyValidSocketAccessor socket` members provide simple read-only access to `socket_` via `socket`.
   // It is kept here to aggressively restrict access to `socket_` from the outside,
   // since debugging move-constructed socket handles has proven to be nontrivial -- D.K.
-  class ReadOnlyIntFieldAccessor final {
+  class ReadOnlyValidSocketAccessor final {
    public:
-    explicit ReadOnlyIntFieldAccessor(const int& ref) : ref_(ref) {}
+    explicit ReadOnlyValidSocketAccessor(const int& ref) : ref_(ref) {}
     inline operator int() {
       if (!ref_) {
         BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
+      }
+      if (ref_ == -1) {
+        BRICKS_THROW(AttemptedToUseMovedAwayConnection());
       }
       return ref_;
     }
 
    private:
-    ReadOnlyIntFieldAccessor() = delete;
+    ReadOnlyValidSocketAccessor() = delete;
     const int& ref_;
   };
-  ReadOnlyIntFieldAccessor socket = ReadOnlyIntFieldAccessor(socket_);
+  ReadOnlyValidSocketAccessor socket = ReadOnlyValidSocketAccessor(socket_);
 
  private:
   SocketHandle() = delete;
   SocketHandle(const SocketHandle&) = delete;
   void operator=(const SocketHandle&) = delete;
+  void operator=(SocketHandle&&) = delete;
 };
 
 class Connection : public SocketHandle {
@@ -133,8 +132,6 @@ class Connection : public SocketHandle {
   inline Connection(SocketHandle&& rhs) : SocketHandle(std::move(rhs)) {}
 
   inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {}
-
-  inline void operator=(Connection&& rhs) { SocketHandle::operator=(std::move(rhs)); }
 
   // Closes the outbound side of the socket and notifies the other party that no more data will be sent.
   inline Connection& SendEOF() {
@@ -255,6 +252,7 @@ class Connection : public SocketHandle {
   Connection() = delete;
   Connection(const Connection&) = delete;
   void operator=(const Connection&) = delete;
+  void operator=(Connection&& rhs) = delete;
 };
 
 class Socket final : public SocketHandle {
