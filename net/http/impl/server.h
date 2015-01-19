@@ -133,7 +133,7 @@ class TemplatedHTTPReceivedMessage : public HELPER {
       while (chunk = buffer_.size() - offset - 1,
              read_count = c.BlockingRead(&buffer_[offset], chunk),
              offset += read_count,
-             read_count == chunk) {
+             read_count == chunk && offset < length_cap) {
         buffer_.resize(buffer_.size() * buffer_growth_k);
       }
       if (!read_count) {
@@ -342,7 +342,6 @@ class HTTPServerConnection {
     os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
     connection_.BlockingWrite(os.str());
     connection_.BlockingWrite(begin, end);
-    connection_.BlockingWrite(kCRLF);
   }
 
   // Only support STL containers of chars and bytes, this does not yet cover std::string.
@@ -380,7 +379,7 @@ class HTTPServerConnection {
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(std::forward<T>(object)) + kCRLF;
+    const std::string s = cerealize::JSON(object);
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -393,7 +392,6 @@ class HTTPServerConnection {
       ~Impl() {
         try {
           connection_.BlockingWrite("0");
-          connection_.BlockingWrite(kCRLF);
           connection_.BlockingWrite(kCRLF);
         } catch (const std::exception& e) {  // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
@@ -425,7 +423,7 @@ class HTTPServerConnection {
       inline typename std::enable_if<
           (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
       Send(T&& object) {
-        SendImpl(cerealize::JSON(std::forward<T>(object)) + kCRLF);
+        SendImpl(cerealize::JSON(object));
       }
 
       Connection& connection_;

@@ -38,7 +38,7 @@ struct SocketException : NetworkException {};
 
 struct InvalidSocketException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct AttemptedToUseMovedAwayConnection : SocketException {};
-struct SocketCreateException : SocketException {};   // LCOV_EXCL_LINE -- not covered by unit tests.
+struct SocketCreateException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 
 struct ServerSocketException : SocketException {};
 struct SocketBindException : ServerSocketException {};
