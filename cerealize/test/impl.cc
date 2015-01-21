@@ -87,6 +87,11 @@ TEST(Cerealize, JSON) {
   EXPECT_EQ("{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}", JSON(CerealTestObject()));
 };
 
+TEST(Cerealize, NamedJSON) {
+  EXPECT_EQ("{\"BAZINGA\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}",
+            JSON(CerealTestObject(), "BAZINGA"));
+};
+
 TEST(Cerealize, BinarySerializesAndParses) {
   FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
