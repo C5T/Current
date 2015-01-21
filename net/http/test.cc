@@ -65,7 +65,7 @@ TEST(PosixHTTPServerTest, Smoke) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/", c.Message().Path());
+             EXPECT_EQ("/", c.Message().RawPath());
              c.SendHTTPResponse("Data: " + c.Message().Body());
            },
            Socket(FLAGS_net_http_test_port));
@@ -92,7 +92,7 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("GET", c.Message().Method());
-             EXPECT_EQ("/aloha", c.Message().Path());
+             EXPECT_EQ("/aloha", c.Message().RawPath());
              c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
            },
            Socket(FLAGS_net_http_test_port));
@@ -117,7 +117,7 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("GET", c.Message().Method());
-             EXPECT_EQ("/mahalo", c.Message().Path());
+             EXPECT_EQ("/mahalo", c.Message().RawPath());
              c.SendHTTPResponse(HTTPTestObject());
            },
            Socket(FLAGS_net_http_test_port));
@@ -142,7 +142,7 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("GET", c.Message().Method());
-             EXPECT_EQ("/mahalo", c.Message().Path());
+             EXPECT_EQ("/mahalo", c.Message().RawPath());
              c.SendHTTPResponse(HTTPTestObject(), "epic_object");
            },
            Socket(FLAGS_net_http_test_port));
@@ -165,7 +165,7 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("GET", c.Message().Method());
-             EXPECT_EQ("/chunked", c.Message().Path());
+             EXPECT_EQ("/chunked", c.Message().RawPath());
              auto r = c.SendChunkedHTTPResponse();
              r.Send("onetwothree");
              r.Send(std::vector<char>({'f', 'o', 'o'}));
@@ -200,7 +200,7 @@ TEST(PosixHTTPServerTest, NoEOF) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/", c.Message().Path());
+             EXPECT_EQ("/", c.Message().RawPath());
              c.SendHTTPResponse("Data: " + c.Message().Body());
            },
            Socket(FLAGS_net_http_test_port));
@@ -225,7 +225,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/", c.Message().Path());
+             EXPECT_EQ("/", c.Message().RawPath());
              c.SendHTTPResponse("Data: " + c.Message().Body());
            },
            Socket(FLAGS_net_http_test_port));
@@ -255,7 +255,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/", c.Message().Path());
+             EXPECT_EQ("/", c.Message().RawPath());
              c.SendHTTPResponse(c.Message().Body());
            },
            Socket(FLAGS_net_http_test_port));
@@ -293,7 +293,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/", c.Message().Path());
+             EXPECT_EQ("/", c.Message().RawPath());
              c.SendHTTPResponse(c.Message().Body());
            },
            Socket(FLAGS_net_http_test_port));
@@ -448,18 +448,20 @@ TYPED_TEST(HTTPTest, GET) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("GET", c.Message().Method());
-             EXPECT_EQ("/unittest", c.Message().Path());
+             EXPECT_EQ("/unittest?foo=bar", c.Message().RawPath());
+             EXPECT_EQ("/unittest", c.Message().URL().path);
+             EXPECT_EQ("bar", c.Message().URL().query["foo"]);
              c.SendHTTPResponse("PASSED");
            },
            Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest", "GET"));
+  EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest?foo=bar", "GET"));
 }
 
 TYPED_TEST(HTTPTest, POST) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/unittest_post", c.Message().Path());
+             EXPECT_EQ("/unittest_post", c.Message().RawPath());
              ASSERT_TRUE(c.Message().HasBody()) << "WTF!";
              EXPECT_EQ("BAZINGA", c.Message().Body());
              c.SendHTTPResponse("POSTED");
@@ -472,7 +474,7 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.Message().Method());
-             EXPECT_EQ("/unittest_empty_post", c.Message().Path());
+             EXPECT_EQ("/unittest_empty_post", c.Message().RawPath());
              EXPECT_FALSE(c.Message().HasBody());
              ASSERT_THROW(c.Message().Body(), HTTPNoBodyProvidedException);
              c.SendHTTPResponse("ALMOST_POSTED");

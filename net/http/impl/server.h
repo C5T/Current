@@ -38,6 +38,7 @@ SOFTWARE.
 #include "../../exceptions.h"
 
 #include "../../tcp/tcp.h"
+#include "../../url/url.h"
 
 #include "../../../strings/util.h"
 #include "../../../cerealize/cerealize.h"
@@ -87,7 +88,8 @@ class HTTPDefaultHelper {
 // Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
-// * std::string Path().
+// * url::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
+// * std::string RawPath() (the URL before parsing).
 // * std::string Method().
 // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
@@ -159,7 +161,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
               method_ = pieces[0];
             }
             if (pieces.size() >= 2) {
-              path_ = pieces[1];
+              raw_path_ = pieces[1];
+              url_ = url::URL(raw_path_);
             }
             first_line_parsed = true;
           }
@@ -247,8 +250,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
   }
 
   inline const std::string& Method() const { return method_; }
-
-  inline const std::string& Path() const { return path_; }
+  inline const url::URL& URL() const { return url_; }
+  inline const std::string& RawPath() const { return raw_path_; }
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
@@ -292,7 +295,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
  private:
   // Fields available to the user via getters.
   std::string method_;
-  std::string path_;
+  url::URL url_;
+  std::string raw_path_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.
   std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
