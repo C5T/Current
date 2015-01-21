@@ -33,10 +33,8 @@ all: .noshit ${BIN}
 clean:
 	rm -rf .noshit core impl/.noshit impl/core
 
-.noshit:
-	mkdir -p $@
-
-.noshit/%: %.cc *.h .noshit
+.noshit/%: %.cc *.h
+	mkdir -p .noshit
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 indent:
