@@ -139,7 +139,7 @@ struct ExampleMeta {
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
 int main() {
-  HTTP(FLAGS_port).Register("/meta", [](Request&& r) { r.connection.SendHTTPResponse(ExampleMeta()); });
+  HTTP(FLAGS_port).Register("/meta", [](Request&& r) { r.connection.SendHTTPResponse(ExampleMeta(), "meta"); });
   HTTP(FLAGS_port).Register("/", [](Request&& r) {
     std::thread([](Request&& r) {
                   // Since we are in another thread, need to catch exceptions ourselves.
