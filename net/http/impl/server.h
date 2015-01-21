@@ -379,7 +379,20 @@ class HTTPServerConnection {
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(object);
+    const std::string s = cerealize::JSON(object) + '\n';
+    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
+  }
+
+  template <class T, typename S>
+  inline typename std::enable_if<
+      (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+  SendHTTPResponse(T&& object,
+                   S&& name,
+                   HTTPResponseCode code = HTTPResponseCode::OK,
+                   const std::string& content_type = DefaultContentType(),
+                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -423,7 +436,13 @@ class HTTPServerConnection {
       inline typename std::enable_if<
           (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
       Send(T&& object) {
-        SendImpl(cerealize::JSON(object));
+        SendImpl(cerealize::JSON(object) + '\n');
+      }
+      template <class T, typename S>
+      inline typename std::enable_if<
+          (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+      Send(T&& object, S&& name) {
+        SendImpl(cerealize::JSON(object, name) + '\n');
       }
 
       Connection& connection_;
@@ -440,6 +459,12 @@ class HTTPServerConnection {
     template <typename T>
     inline ChunkedResponseSender& Send(T&& data) {
       impl_->Send(std::forward<T>(data));
+      return *this;
+    }
+
+    template <typename T1, typename T2>
+    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2) {
+      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2));
       return *this;
     }
 

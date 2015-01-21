@@ -132,9 +132,32 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
-      "Content-Length: 54\r\n"
+      "Content-Length: 55\r\n"
       "\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}",
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
+      connection.BlockingReadUntilEOF());
+}
+
+TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             EXPECT_EQ("GET", c.Message().Method());
+             EXPECT_EQ("/mahalo", c.Message().Path());
+             c.SendHTTPResponse(HTTPTestObject(), "epic_object");
+           },
+           Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Content-Length: 60\r\n"
+      "\r\n"
+      "{\"epic_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection.BlockingReadUntilEOF());
 }
 
@@ -147,13 +170,12 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
              r.Send("onetwothree");
              r.Send(std::vector<char>({'f', 'o', 'o'}));
              r.Send(HTTPTestObject());
+             r.Send(HTTPTestObject(), "epic_chunk");
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /chunked HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("\r\n");
-  // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
   connection.BlockingWrite("\r\n");
   connection.SendEOF();
   t.join();
@@ -166,8 +188,10 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "onetwothree\r\n"
       "3\r\n"
       "foo\r\n"
-      "36\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\r\n"
+      "37\r\n"
+      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
+      "3B\r\n"
+      "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",
       connection.BlockingReadUntilEOF());
 }
