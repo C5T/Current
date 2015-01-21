@@ -28,7 +28,7 @@ endif
 test: all
 	.noshit/test --bricks_runtime_arch=${OS}
 
-all: .noshit ${BIN}
+all: ${BIN}
 
 clean:
 	rm -rf .noshit core impl/.noshit impl/core
