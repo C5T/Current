@@ -52,7 +52,7 @@ class HTTPClientPOSIX final {
       }
     }
   };
-  typedef TemplatedHTTPReceivedMessage<HTTPRedirectHelper> HTTPRedirectableReceivedMessage;
+  typedef TemplatedHTTPRequestData<HTTPRedirectHelper> HTTPRedirectableRequestData;
 
  public:
   // The actual implementation.
@@ -87,14 +87,14 @@ class HTTPClientPOSIX final {
       // not being received. Tested on local and remote data with "chunked" transfer encoding.
       // Don't uncomment the next line!
       // connection.SendEOF();
-      message_.reset(new HTTPRedirectableReceivedMessage(connection));
+      message_.reset(new HTTPRedirectableRequestData(connection));
       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       // Elaboration:
       // HTTP request  message is: `GET /path HTTP/1.1`, "/path" is the second component of it.
       // HTTP response message is: `HTTP/1.1 200 OK`, "200" is the second component of it.
       // Thus, since the same code is used for request and response parsing as of now,
       // the numerical response code "200" can be accessed with the same method as the "/path".
-      const int response_code_as_int = atoi(message_->Path().c_str());
+      const int response_code_as_int = atoi(message_->RawPath().c_str());
       response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
         // Note: This is by no means a complete redirect implementation.
@@ -106,7 +106,7 @@ class HTTPClientPOSIX final {
     return true;
   }
 
-  const HTTPRedirectableReceivedMessage& GetMessage() const { return *message_.get(); }
+  const HTTPRedirectableRequestData& GetMessage() const { return *message_.get(); }
 
  public:
   // Request parameters.
@@ -121,7 +121,7 @@ class HTTPClientPOSIX final {
   std::string response_url_after_redirects_ = "";
 
  private:
-  std::unique_ptr<HTTPRedirectableReceivedMessage> message_;
+  std::unique_ptr<HTTPRedirectableRequestData> message_;
 };
 
 template <>

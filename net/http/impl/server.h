@@ -38,6 +38,7 @@ SOFTWARE.
 #include "../../exceptions.h"
 
 #include "../../tcp/tcp.h"
+#include "../../url/url.h"
 
 #include "../../../strings/util.h"
 #include "../../../cerealize/cerealize.h"
@@ -83,11 +84,12 @@ class HTTPDefaultHelper {
   std::string body_;
 };
 
-// In constructor, TemplatedHTTPReceivedMessage parses HTTP response from `Connection&` is was provided with.
+// In constructor, TemplatedHTTPRequestData parses HTTP response from `Connection&` is was provided with.
 // Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
-// * std::string Path().
+// * url::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
+// * std::string RawPath() (the URL before parsing).
 // * std::string Method().
 // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
@@ -97,12 +99,12 @@ class HTTPDefaultHelper {
 //
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 template <class HELPER>
-class TemplatedHTTPReceivedMessage : public HELPER {
+class TemplatedHTTPRequestData : public HELPER {
  public:
-  inline TemplatedHTTPReceivedMessage(Connection& c,
-                                      const int intial_buffer_size = 1600,
-                                      const double buffer_growth_k = 1.95,
-                                      const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+  inline TemplatedHTTPRequestData(Connection& c,
+                                  const int intial_buffer_size = 1600,
+                                  const double buffer_growth_k = 1.95,
+                                  const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
       : buffer_(intial_buffer_size) {
     // `offset` is the number of bytes read into `buffer_` so far.
     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
@@ -159,7 +161,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
               method_ = pieces[0];
             }
             if (pieces.size() >= 2) {
-              path_ = pieces[1];
+              raw_path_ = pieces[1];
+              url_ = url::URL(raw_path_);
             }
             first_line_parsed = true;
           }
@@ -247,8 +250,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
   }
 
   inline const std::string& Method() const { return method_; }
-
-  inline const std::string& Path() const { return path_; }
+  inline const url::URL& URL() const { return url_; }
+  inline const std::string& RawPath() const { return raw_path_; }
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
@@ -292,7 +295,8 @@ class TemplatedHTTPReceivedMessage : public HELPER {
  private:
   // Fields available to the user via getters.
   std::string method_;
-  std::string path_;
+  url::URL url_;
+  std::string raw_path_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.
   std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
@@ -300,15 +304,15 @@ class TemplatedHTTPReceivedMessage : public HELPER {
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 
   // Disable any copy/move support since this class uses pointers.
-  TemplatedHTTPReceivedMessage() = delete;
-  TemplatedHTTPReceivedMessage(const TemplatedHTTPReceivedMessage&) = delete;
-  TemplatedHTTPReceivedMessage(TemplatedHTTPReceivedMessage&&) = delete;
-  void operator=(const TemplatedHTTPReceivedMessage&) = delete;
-  void operator=(TemplatedHTTPReceivedMessage&&) = delete;
+  TemplatedHTTPRequestData() = delete;
+  TemplatedHTTPRequestData(const TemplatedHTTPRequestData&) = delete;
+  TemplatedHTTPRequestData(TemplatedHTTPRequestData&&) = delete;
+  void operator=(const TemplatedHTTPRequestData&) = delete;
+  void operator=(TemplatedHTTPRequestData&&) = delete;
 };
 
-// The default implementation is exposed as HTTPReceivedMessage.
-typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
+// The default implementation is exposed as HTTPRequestData.
+typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
 class HTTPServerConnection {
  public:
@@ -379,7 +383,20 @@ class HTTPServerConnection {
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(object);
+    const std::string s = cerealize::JSON(object) + '\n';
+    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
+  }
+
+  template <class T, typename S>
+  inline typename std::enable_if<
+      (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+  SendHTTPResponse(T&& object,
+                   S&& name,
+                   HTTPResponseCode code = HTTPResponseCode::OK,
+                   const std::string& content_type = DefaultContentType(),
+                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -423,7 +440,13 @@ class HTTPServerConnection {
       inline typename std::enable_if<
           (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
       Send(T&& object) {
-        SendImpl(cerealize::JSON(object));
+        SendImpl(cerealize::JSON(object) + '\n');
+      }
+      template <class T, typename S>
+      inline typename std::enable_if<
+          (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+      Send(T&& object, S&& name) {
+        SendImpl(cerealize::JSON(object, name) + '\n');
       }
 
       Connection& connection_;
@@ -443,6 +466,12 @@ class HTTPServerConnection {
       return *this;
     }
 
+    template <typename T1, typename T2>
+    inline ChunkedResponseSender& Send(T1&& data1, T2&& data2) {
+      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2));
+      return *this;
+    }
+
     std::unique_ptr<Impl> impl_;
   };
 
@@ -457,13 +486,13 @@ class HTTPServerConnection {
     return std::move(ChunkedResponseSender(connection_));
   }
 
-  const HTTPReceivedMessage& Message() const { return message_; }
+  const HTTPRequestData& HTTPRequest() const { return message_; }
 
   Connection& RawConnection() { return connection_; }
 
  private:
   Connection connection_;
-  HTTPReceivedMessage message_;
+  HTTPRequestData message_;
 
   // Disable any copy/move support for extra safety.
   HTTPServerConnection(const HTTPServerConnection&) = delete;

@@ -57,23 +57,24 @@ struct HandlerDoesNotExistException : HTTPException {
 
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
-  std::unique_ptr<HTTPServerConnection> connection_placeholder;
-  const url::URL& url;
+  std::unique_ptr<HTTPServerConnection> unique_connection;
+
   HTTPServerConnection& connection;
-  const HTTPReceivedMessage& message;
+  const HTTPRequestData& http;  // To keep the syntax as clean as `request.http.HasBody()`, etc.
+  const url::URL& url;
 
-  Request(const url::URL& url, std::unique_ptr<HTTPServerConnection>&& connection)
-      : connection_placeholder(std::move(connection)),
-        url(url),
-        connection(*connection_placeholder.get()),
-        message(connection_placeholder->Message()) {}
+  explicit Request(std::unique_ptr<HTTPServerConnection>&& connection)
+      : unique_connection(std::move(connection)),
+        connection(*unique_connection.get()),
+        http(unique_connection->HTTPRequest()),
+        url(http.URL()) {}
 
-  // It is essential to move `connection_placeholder` so that the socket outlives the destruction of `rhs`.
+  // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
   Request(Request&& rhs)
-      : connection_placeholder(std::move(rhs.connection_placeholder)),
-        url(rhs.url),
-        connection(*connection_placeholder.get()),
-        message(connection_placeholder->Message()) {}
+      : unique_connection(std::move(rhs.unique_connection)),
+        connection(*unique_connection.get()),
+        http(unique_connection->HTTPRequest()),
+        url(http.URL()) {}
 
   Request() = delete;
   Request(const Request&) = delete;
@@ -161,20 +162,18 @@ class HTTPServerPOSIX final {
         if (terminating_) {
           break;
         }
-        const std::string& path = connection->Message().Path();
-        const url::URL url(path);
         std::function<void(Request && )> handler;
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
-          const auto cit = handlers_.find(url.path);
+          const auto cit = handlers_.find(connection->HTTPRequest().URL().path);
           if (cit != handlers_.end()) {
             handler = cit->second;
           }
         }
         if (handler) {
           // TODO(dkorolev): Properly handle the shutdown case when the handler spawns another thread.
-          handler(Request(url, std::move(connection)));
+          handler(Request(std::move(connection)));
         } else {
           connection->SendHTTPResponse("", HTTPResponseCode::NotFound);
         }

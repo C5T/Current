@@ -28,15 +28,13 @@ endif
 test: all
 	.noshit/test --bricks_runtime_arch=${OS}
 
-all: .noshit ${BIN}
+all: ${BIN}
 
 clean:
 	rm -rf .noshit core impl/.noshit impl/core
 
-.noshit:
-	mkdir -p $@
-
-.noshit/%: %.cc *.h .noshit
+.noshit/%: %.cc *.h
+	mkdir -p .noshit
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 indent:

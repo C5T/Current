@@ -203,8 +203,8 @@ TEST(HTTPAPI, GetToFile) {
 TEST(HTTPAPI, PostFromBufferToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request&& r) {
-    ASSERT_TRUE(r.message.HasBody());
-    r.connection.SendHTTPResponse("Data: " + r.message.Body());
+    ASSERT_TRUE(r.http.HasBody());
+    r.connection.SendHTTPResponse("Data: " + r.http.Body());
   });
   const auto response =
       HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
@@ -224,8 +224,8 @@ TEST(HTTPAPI, PostFromInvalidFile) {
 TEST(HTTPAPI, PostFromFileToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request&& r) {
-    ASSERT_TRUE(r.message.HasBody());
-    r.connection.SendHTTPResponse("Voila: " + r.message.Body());
+    ASSERT_TRUE(r.http.HasBody());
+    r.connection.SendHTTPResponse("Voila: " + r.http.Body());
   });
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
@@ -240,8 +240,8 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
 TEST(HTTPAPI, PostFromBufferToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request&& r) {
-    ASSERT_TRUE(r.message.HasBody());
-    r.connection.SendHTTPResponse("Meh: " + r.message.Body());
+    ASSERT_TRUE(r.http.HasBody());
+    r.connection.SendHTTPResponse("Meh: " + r.http.Body());
   });
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
@@ -255,8 +255,8 @@ TEST(HTTPAPI, PostFromBufferToFile) {
 TEST(HTTPAPI, PostFromFileToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request&& r) {
-    ASSERT_TRUE(r.message.HasBody());
-    r.connection.SendHTTPResponse("Phew: " + r.message.Body());
+    ASSERT_TRUE(r.http.HasBody());
+    r.connection.SendHTTPResponse("Phew: " + r.http.Body());
   });
   bricks::FileSystem::CreateDirectory(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";

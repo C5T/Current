@@ -201,10 +201,29 @@ inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {
   return os;
 }
 
+struct AsConstCharPtr {
+  static inline const char* Run(const char* s) { return s; }
+  static inline const char* Run(const std::string& s) { return s.c_str(); }
+};
+
+template <typename OSTREAM, typename T, typename S>
+inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object, S&& name) {
+  cerealize::CerealStreamType<cerealize::CerealFormat::JSON>::CreateOutputArchive(os)(
+      cereal::make_nvp<typename std::remove_reference<T>::type>(AsConstCharPtr::Run(name), object));
+  return os;
+}
+
 template <typename T>
 inline std::string JSON(T&& object) {
   std::ostringstream os;
   AppendAsJSON(os, std::forward<T>(object));
+  return os.str();
+}
+
+template <typename T, typename S>
+inline std::string JSON(T&& object, S&& name) {
+  std::ostringstream os;
+  AppendAsJSON(os, std::forward<T>(object), name);
   return os.str();
 }
 
