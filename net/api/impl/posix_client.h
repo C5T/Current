@@ -87,26 +87,26 @@ class HTTPClientPOSIX final {
       // not being received. Tested on local and remote data with "chunked" transfer encoding.
       // Don't uncomment the next line!
       // connection.SendEOF();
-      message_.reset(new HTTPRedirectableRequestData(connection));
+      http_request_.reset(new HTTPRedirectableRequestData(connection));
       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       // Elaboration:
       // HTTP request  message is: `GET /path HTTP/1.1`, "/path" is the second component of it.
       // HTTP response message is: `HTTP/1.1 200 OK`, "200" is the second component of it.
       // Thus, since the same code is used for request and response parsing as of now,
       // the numerical response code "200" can be accessed with the same method as the "/path".
-      const int response_code_as_int = atoi(message_->RawPath().c_str());
+      const int response_code_as_int = atoi(http_request_->RawPath().c_str());
       response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
-      if (response_code_as_int >= 300 && response_code_as_int <= 399 && !message_->location.empty()) {
+      if (response_code_as_int >= 300 && response_code_as_int <= 399 && !http_request_->location.empty()) {
         // Note: This is by no means a complete redirect implementation.
         redirected = true;
-        parsed_url = url::URL(message_->location, parsed_url);
+        parsed_url = url::URL(http_request_->location, parsed_url);
         response_url_after_redirects_ = parsed_url.ComposeURL();
       }
     } while (redirected);
     return true;
   }
 
-  const HTTPRedirectableRequestData& GetMessage() const { return *message_.get(); }
+  const HTTPRedirectableRequestData& HTTPRequest() const { return *http_request_.get(); }
 
  public:
   // Request parameters.
@@ -121,7 +121,7 @@ class HTTPClientPOSIX final {
   std::string response_url_after_redirects_ = "";
 
  private:
-  std::unique_ptr<HTTPRedirectableRequestData> message_;
+  std::unique_ptr<HTTPRedirectableRequestData> http_request_;
 };
 
 template <>
@@ -179,8 +179,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const HTTPClientPOSIX& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
-    const auto& message = response.GetMessage();
-    output.body = message.HasBody() ? message.Body() : "";
+    const auto& http_request = response.HTTPRequest();
+    output.body = http_request.HasBody() ? http_request.Body() : "";
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
@@ -190,8 +190,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
-    const auto& message = response.GetMessage();
-    FileSystem::WriteStringToFile(response_params.file_name.c_str(), message.HasBody() ? message.Body() : "");
+    const auto& http_request = response.HTTPRequest();
+    FileSystem::WriteStringToFile(response_params.file_name.c_str(),
+                                  http_request.HasBody() ? http_request.Body() : "");
     output.body_file_name = response_params.file_name;
   }
 };
