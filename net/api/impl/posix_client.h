@@ -52,7 +52,7 @@ class HTTPClientPOSIX final {
       }
     }
   };
-  typedef TemplatedHTTPReceivedMessage<HTTPRedirectHelper> HTTPRedirectableReceivedMessage;
+  typedef TemplatedHTTPRequestData<HTTPRedirectHelper> HTTPRedirectableRequestData;
 
  public:
   // The actual implementation.
@@ -87,7 +87,7 @@ class HTTPClientPOSIX final {
       // not being received. Tested on local and remote data with "chunked" transfer encoding.
       // Don't uncomment the next line!
       // connection.SendEOF();
-      message_.reset(new HTTPRedirectableReceivedMessage(connection));
+      message_.reset(new HTTPRedirectableRequestData(connection));
       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       // Elaboration:
       // HTTP request  message is: `GET /path HTTP/1.1`, "/path" is the second component of it.
@@ -106,7 +106,7 @@ class HTTPClientPOSIX final {
     return true;
   }
 
-  const HTTPRedirectableReceivedMessage& GetMessage() const { return *message_.get(); }
+  const HTTPRedirectableRequestData& GetMessage() const { return *message_.get(); }
 
  public:
   // Request parameters.
@@ -121,7 +121,7 @@ class HTTPClientPOSIX final {
   std::string response_url_after_redirects_ = "";
 
  private:
-  std::unique_ptr<HTTPRedirectableReceivedMessage> message_;
+  std::unique_ptr<HTTPRedirectableRequestData> message_;
 };
 
 template <>

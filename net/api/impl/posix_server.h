@@ -60,21 +60,21 @@ struct Request final {
   std::unique_ptr<HTTPServerConnection> unique_connection;
 
   HTTPServerConnection& connection;
-  const HTTPReceivedMessage& message;
+  const HTTPRequestData& http;  // To keep the syntax as clean as `request.http.HasBody()`, etc.
   const url::URL& url;
 
   explicit Request(std::unique_ptr<HTTPServerConnection>&& connection)
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
-        message(unique_connection->Message()),
-        url(message.URL()) {}
+        http(unique_connection->HTTPRequest()),
+        url(http.URL()) {}
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
   Request(Request&& rhs)
       : unique_connection(std::move(rhs.unique_connection)),
         connection(*unique_connection.get()),
-        message(unique_connection->Message()),
-        url(message.URL()) {}
+        http(unique_connection->HTTPRequest()),
+        url(http.URL()) {}
 
   Request() = delete;
   Request(const Request&) = delete;
@@ -166,7 +166,7 @@ class HTTPServerPOSIX final {
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
-          const auto cit = handlers_.find(connection->Message().URL().path);
+          const auto cit = handlers_.find(connection->HTTPRequest().URL().path);
           if (cit != handlers_.end()) {
             handler = cit->second;
           }

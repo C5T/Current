@@ -84,7 +84,7 @@ class HTTPDefaultHelper {
   std::string body_;
 };
 
-// In constructor, TemplatedHTTPReceivedMessage parses HTTP response from `Connection&` is was provided with.
+// In constructor, TemplatedHTTPRequestData parses HTTP response from `Connection&` is was provided with.
 // Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
@@ -99,12 +99,12 @@ class HTTPDefaultHelper {
 //
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 template <class HELPER>
-class TemplatedHTTPReceivedMessage : public HELPER {
+class TemplatedHTTPRequestData : public HELPER {
  public:
-  inline TemplatedHTTPReceivedMessage(Connection& c,
-                                      const int intial_buffer_size = 1600,
-                                      const double buffer_growth_k = 1.95,
-                                      const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+  inline TemplatedHTTPRequestData(Connection& c,
+                                  const int intial_buffer_size = 1600,
+                                  const double buffer_growth_k = 1.95,
+                                  const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
       : buffer_(intial_buffer_size) {
     // `offset` is the number of bytes read into `buffer_` so far.
     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
@@ -304,15 +304,15 @@ class TemplatedHTTPReceivedMessage : public HELPER {
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 
   // Disable any copy/move support since this class uses pointers.
-  TemplatedHTTPReceivedMessage() = delete;
-  TemplatedHTTPReceivedMessage(const TemplatedHTTPReceivedMessage&) = delete;
-  TemplatedHTTPReceivedMessage(TemplatedHTTPReceivedMessage&&) = delete;
-  void operator=(const TemplatedHTTPReceivedMessage&) = delete;
-  void operator=(TemplatedHTTPReceivedMessage&&) = delete;
+  TemplatedHTTPRequestData() = delete;
+  TemplatedHTTPRequestData(const TemplatedHTTPRequestData&) = delete;
+  TemplatedHTTPRequestData(TemplatedHTTPRequestData&&) = delete;
+  void operator=(const TemplatedHTTPRequestData&) = delete;
+  void operator=(TemplatedHTTPRequestData&&) = delete;
 };
 
-// The default implementation is exposed as HTTPReceivedMessage.
-typedef TemplatedHTTPReceivedMessage<HTTPDefaultHelper> HTTPReceivedMessage;
+// The default implementation is exposed as HTTPRequestData.
+typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
 class HTTPServerConnection {
  public:
@@ -486,13 +486,13 @@ class HTTPServerConnection {
     return std::move(ChunkedResponseSender(connection_));
   }
 
-  const HTTPReceivedMessage& Message() const { return message_; }
+  const HTTPRequestData& HTTPRequest() const { return message_; }
 
   Connection& RawConnection() { return connection_; }
 
  private:
   Connection connection_;
-  HTTPReceivedMessage message_;
+  HTTPRequestData message_;
 
   // Disable any copy/move support for extra safety.
   HTTPServerConnection(const HTTPServerConnection&) = delete;
