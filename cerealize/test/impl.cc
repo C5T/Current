@@ -202,6 +202,9 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
 
     // This function will not be called since the `EventAppSuspend` type is not in `DERIVED_TYPE_LIST` above.
     void operator()(const EventAppSuspend& e) { e.AppendTo(os) << " *** NOT CALLED SUSPEND *** " << std::endl; }
+
+    ExampleConsumer() {}
+    ExampleConsumer(const ExampleConsumer& rhs) = delete;
   };
 
   ExampleConsumer consumer;
