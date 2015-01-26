@@ -123,16 +123,30 @@ class HTTPServerPOSIX final {
   }
   // LCOV_EXCL_STOP
 
-  // NOTE: Should not pass in `std::function<void(Request&&)>` here, since it would copy the handler,
-  // while a better design is to keep using the reference when the reference is passed in.
-  // TODO(dkorolev): Change string into proper URL-fragment-matching handler in Register() and UnRegister().
-  template <typename F>
-  void Register(const std::string& path, F&& handler) {
+  // The philosophy of Register(path, handler):
+  // * Pass `handler` by value to make its copy.
+  //   This is done for lambdas and std::function<>-s.
+  //   The lifetime of a copy is thus governed by the API.
+  // * Pass `handler` by pointer to use the handler via pointer.
+  //   This allows using passed in objects without making a copy of them.
+  //   The lifetime of the object is then up to the user.
+  // Justification: `Register("/foo", InstanceOfFoo())` has no way of knowing for long should `InstanceOfFoo`
+  // live.
+  void Register(const std::string& path, std::function<void(Request&&)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {
       BRICKS_THROW(HandlerAlreadyExistsException(path));
     }
-    handlers_[path] = [&handler](Request&& request) { handler(std::forward<Request>(request)); };
+    handlers_[path] = handler;
+  }
+  template <typename F>
+  void Register(const std::string& path, F* ptr_to_handler) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (handlers_.find(path) != handlers_.end()) {
+      BRICKS_THROW(HandlerAlreadyExistsException(path));
+    }
+    handlers_[path] =
+        [ptr_to_handler](Request&& request) { (*ptr_to_handler)(std::forward<Request>(request)); };
   }
 
   void UnRegister(const std::string& path) {
