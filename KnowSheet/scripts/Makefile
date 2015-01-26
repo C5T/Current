@@ -1,6 +1,6 @@
 # A universal Makefile for C++ modules of KnowSheet.
 #
-# Compiles and runs test.cc as the default target called `test`.
+# By default, runs the test (compiled from `test.cc`) if present, or just runs all the binaries one after another.
 #
 # Also supports `all` (build *.cc), `clean`, `indent` (via clang-format), `check` and `coverage`.
 
@@ -13,6 +13,11 @@ KNOWSHEET_SCRIPTS_DIR=$(dir $(shell readlink -e $(lastword $(MAKEFILE_LIST))))
 
 CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
+ifeq ($(NDEBUG),1)
+CPPFLAGS+= -O3
+else
+CPPFLAGS+= -g
+endif
 LDFLAGS=-pthread
 
 PWD=$(shell pwd)
@@ -25,8 +30,15 @@ ifeq ($(OS),Darwin)
   LDFLAGS+= -framework Foundation
 endif
 
-test: all
-	.noshit/test --bricks_runtime_arch=${OS}
+default: all
+	if [ -f test.cc ] ; then \
+		.noshit/test --bricks_runtime_arch=${OS} ; \
+	else \
+		find .noshit/ -executable -type f -exec "{}" ";" ; \
+	fi
+
+debug:
+	ulimit -c unlimited && touch test.cc && rm -f core && make ./.noshit/test && (./.noshit/test && echo OK || gdb ./.noshit/test core)
 
 all: ${BIN}
 
