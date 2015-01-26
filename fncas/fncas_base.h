@@ -20,7 +20,8 @@ class noncopyable {
   noncopyable& operator=(const noncopyable&) = default;
 };
 
-template <typename T> T& growing_vector_access(std::vector<T>& vector, node_index_type index, const T& fill) {
+template <typename T>
+T& growing_vector_access(std::vector<T>& vector, node_index_type index, const T& fill) {
   if (static_cast<node_index_type>(vector.size()) <= index) {
     vector.resize(static_cast<size_t>(index + 1), fill);
   }

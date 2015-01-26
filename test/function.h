@@ -30,14 +30,10 @@ class F {
   std::vector<std::function<double(std::mt19937&)>> p_;
 
  protected:
-  void add_var(std::function<double(std::mt19937&)> p) {
-    p_.push_back(p);
-  }
+  void add_var(std::function<double(std::mt19937&)> p) { p_.push_back(p); }
 
  public:
-  size_t dim() const {
-    return p_.size();
-  }
+  size_t dim() const { return p_.size(); }
 
   void gen(std::vector<double>& x) {
     assert(x.size() == p_.size());
@@ -52,25 +48,20 @@ class F {
 };
 
 std::map<std::string, F*> registered_functions;
-template <typename T> void register_function(const char* name, T* impl) {
+template <typename T>
+void register_function(const char* name, T* impl) {
   registered_functions[name] = impl;
 }
 
 // To support registration macros.
-#define REGISTER_FUNCTION(F)                                                            \
-  struct enhanced_##F : F {                                                             \
-    virtual double eval_as_double(const std::vector<double>& x) const {                 \
-      return F::f(x);                                                                   \
-    }                                                                                   \
-    virtual fncas::output<fncas::x>::type eval_as_expression(const fncas::x& x) const { \
-      return F::f(x);                                                                   \
-    }                                                                                   \
-  };                                                                                    \
-  static enhanced_##F F##_impl;                                                         \
-  static struct F##_registerer {                                                        \
-    F##_registerer() {                                                                  \
-      register_function<enhanced_##F>(#F, &F##_impl);                                   \
-    }                                                                                   \
+#define REGISTER_FUNCTION(F)                                                                              \
+  struct enhanced_##F : F {                                                                               \
+    virtual double eval_as_double(const std::vector<double>& x) const { return F::f(x); }                 \
+    virtual fncas::output<fncas::x>::type eval_as_expression(const fncas::x& x) const { return F::f(x); } \
+  };                                                                                                      \
+  static enhanced_##F F##_impl;                                                                           \
+  static struct F##_registerer {                                                                          \
+    F##_registerer() { register_function<enhanced_##F>(#F, &F##_impl); }                                  \
   } F##_impl_registerer
 
 #define INCLUDE_IN_SMOKE_TEST const bool INCLUDE_IN_SMOKE_TEST_ = true

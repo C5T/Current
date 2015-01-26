@@ -1,14 +1,11 @@
-# TODO(dkorolev): Add more make targets here.
+include KnowSheet/scripts/Makefile
 
-.PHONY: all demo test indent
+.PHONY: all demo unittest
 
-all: demo test
+all: demo unittest
 
 demo:
 	(cd demo; make)
 
-test:
+unittest:
 	(cd test; make)
-
-indent:
-	find . -regextype posix-egrep -regex ".*\.(cc|h)" | xargs clang-format-3.5 -i

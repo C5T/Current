@@ -49,7 +49,8 @@ node_index_type d_op(operation_t operation, const node& a, const node& b, const 
       [](const node& a, const node& b, const node& da, const node& db) { return da - db; },
       [](const node& a, const node& b, const node& da, const node& db) { return a * db + b * da; },
       [](const node& a, const node& b, const node& da, const node& db) { return (b * da - a * db) / (b * b); }};
-  return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index() : 0;
+  return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index()
+                                      : 0;
 }
 
 node_index_type d_f(function_t function, const node& original, const node& x, const node& dx) {
@@ -74,11 +75,14 @@ node_index_type d_f(function_t function, const node& original, const node& x, co
       // asin().
       [](const node& original, const node& x, const node& dx) { return dx / sqrt(node(1.0) - x * x); },
       // acos().
-      [](const node& original, const node& x, const node& dx) { return node(-1.0) * dx / sqrt(node(1.0) - x * x); },
+      [](const node& original, const node& x, const node& dx) {
+        return node(-1.0) * dx / sqrt(node(1.0) - x * x);
+      },
       // atan().
       [](const node& original, const node& x, const node& dx) { return dx / (x * x + 1); },
   };
-  return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index() : 0;
+  return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index()
+                                    : 0;
 }
 
 // differentiate_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
@@ -151,8 +155,7 @@ struct g : noncopyable {
     fncas_value_type value;
     std::vector<fncas_value_type> gradient;
   };
-  virtual ~g() {
-  }
+  virtual ~g() {}
   virtual result operator()(const std::vector<fncas_value_type>& x) const = 0;
   virtual int32_t dim() const = 0;
 };
@@ -160,10 +163,9 @@ struct g : noncopyable {
 struct g_approximate : g {
   std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f_;
   int32_t d_;
-  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, int32_t d) : f_(f), d_(d) {
-  }
-  g_approximate(g_approximate&& rhs) : f_(rhs.f_) {
-  }
+  g_approximate(std::function<fncas_value_type(const std::vector<fncas_value_type>&)> f, int32_t d)
+      : f_(f), d_(d) {}
+  g_approximate(g_approximate&& rhs) : f_(rhs.f_) {}
   g_approximate() = default;
   g_approximate(const g_approximate&) = default;
   void operator=(const g_approximate& rhs) {
@@ -176,9 +178,7 @@ struct g_approximate : g {
     r.gradient = approximate_gradient(f_, x);
     return r;
   }
-  virtual int32_t dim() const {
-    return d_;
-  }
+  virtual int32_t dim() const { return d_; }
 };
 
 struct g_intermediate : g {
@@ -192,10 +192,8 @@ struct g_intermediate : g {
       g_[i] = f_.differentiate(x_ref, i);
     }
   }
-  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {
-  }
-  g_intermediate(g_intermediate&& rhs) {
-  }
+  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
+  g_intermediate(g_intermediate&& rhs) {}
   g_intermediate() = default;
   g_intermediate(const g_intermediate&) = default;
   void operator=(const g_intermediate& rhs) {
@@ -211,9 +209,7 @@ struct g_intermediate : g {
     }
     return r;
   }
-  virtual int32_t dim() const {
-    return g_.size();
-  }
+  virtual int32_t dim() const { return g_.size(); }
 };
 
 }  // namespace fncas
