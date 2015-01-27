@@ -23,23 +23,19 @@ namespace fncas {
 // Each node_impl refers to a value, an input variable, an operation or math function invocation.
 // Singleton vector<node_impl> is the allocator, therefore the code is single-threaded.
 
-enum type_t : uint8_t { variable, value, operation, function };
-enum struct operation_t : uint8_t { add, subtract, multiply, divide, end };
-enum struct function_t : uint8_t { sqrt, exp, log, sin, cos, tan, asin, acos, atan, end };
-
-const char* const operation_as_string(operation_t operation) {
+inline const char* operation_as_string(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {"+", "-", "*", "/"};
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
 
-const char* const function_as_string(function_t function) {
+inline const char* function_as_string(function_t function) {
   static const char* representation[static_cast<size_t>(function_t::end)] = {
       "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
 }
 
 template <typename T>
-T apply_operation(operation_t operation, T lhs, T rhs) {
+inline T apply_operation(operation_t operation, T lhs, T rhs) {
   static std::function<T(T, T)> evaluator[static_cast<size_t>(operation_t::end)] = {
       std::plus<T>(), std::minus<T>(), std::multiplies<T>(), std::divides<T>(),
   };
@@ -48,7 +44,7 @@ T apply_operation(operation_t operation, T lhs, T rhs) {
 }
 
 template <typename T>
-T apply_function(function_t function, T argument) {
+inline T apply_function(function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
       sqrt, exp, log, sin, cos, tan, asin, acos, atan};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
@@ -132,9 +128,9 @@ static_assert(sizeof(node_impl) == 18,
 // eval_node() should use manual stack implementation to avoid SEGFAULT. Using plain recursion
 // will overflow the stack for every formula containing repeated operation on the top level.
 enum class reuse_cache : int8_t { invalidate = 0, reuse = 1 };
-fncas_value_type eval_node(node_index_type index,
-                           const std::vector<fncas_value_type>& x,
-                           reuse_cache reuse = reuse_cache::invalidate) {
+inline fncas_value_type eval_node(node_index_type index,
+                                  const std::vector<fncas_value_type>& x,
+                                  reuse_cache reuse = reuse_cache::invalidate) {
   std::vector<fncas_value_type>& V = internals_singleton().node_value_;
   std::vector<int8_t>& B = internals_singleton().node_computed_;
   if (reuse == reuse_cache::invalidate) {
@@ -208,6 +204,13 @@ struct node_index_allocator {
   node_index_allocator() = delete;
 };
 
+// Template used as a header-only way to move implemneation to another source file.
+struct node;
+template <typename T>
+struct node_differentiate_impl {
+  //  node differentiate(const x& x_ref, int32_t variable_index) const;
+};
+
 struct node : node_index_allocator {
  private:
   node(const node_index_allocator& instance) : node_index_allocator(instance) {}
@@ -257,34 +260,21 @@ struct node : node_index_allocator {
                               reuse_cache reuse = reuse_cache::invalidate) const {
     return eval_node(index_, x, reuse);
   }
-  node differentiate(const x& x_ref, int32_t variable_index) const {
-    assert(&x_ref == internals_singleton().x_ptr_);
-    assert(variable_index < internals_singleton().dim_);
-    // The implemenation of the differentiation operator is in `fncas_differentiate.h`.
-    node_index_type differentiate_node(node_index_type index, int32_t var_index, int32_t number_of_variables);
-    return from_index(differentiate_node(index_, variable_index, internals_singleton().dim_));
+  // Template is used here as a form of forward declaration.
+  template <typename X>
+  node differentiate(const X& x_ref, int32_t variable_index) const {
+    static_assert(std::is_same<X, x>::value, "node::differentiate(const x& x, int32_t variable_index);");
+    // Note: This method will not build unless `fncas_differentiate.h` is included.
+    return node_differentiate_impl<X>::differentiate(x_ref, index_, variable_index);
   }
 };
-static_assert(sizeof(node) == 8, "sizeof(node) should be 8, as sizeof(unode_index_type).");
-
-/*
-struct node_with_dim {
-  node f;
-  int32_t d;
-  node_with_dim() = default;
-  node_with_dim(node f, int32_t d) : f(f), d(d) {
-  }
-  node_with_dim(fncas_value_type x) : f(x), d(0) {
-  }
-};
-*/
+static_assert(sizeof(node) == 8, "sizeof(node) should be 8, as sizeof(node_index_type).");
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
 struct x : noncopyable {
-  //  int32_t dim_;
-  explicit x(int32_t dim) {  //: dim_(dim) {
+  explicit x(int32_t dim) {
     assert(dim > 0);
     auto& meta = internals_singleton();
     assert(!meta.x_ptr_);
@@ -302,13 +292,6 @@ struct x : noncopyable {
     assert(meta.x_ptr_ == this);
     return static_cast<size_t>(meta.dim_);
   }
-  /*
-  node_with_dim operator[](int32_t i) const {
-    assert(i >= 0);
-    assert(i < dim_);
-    return node_with_dim(node::variable(i), dim_);
-  }
-  */
 };
 
 // Class "f" is the placeholder for function evaluators.
@@ -338,11 +321,15 @@ struct f_intermediate : f {
     return f_(x);
   }
   std::string debug_as_string() const { return f_.debug_as_string(); }
-  node differentiate(const x& x_ref, int32_t variable_index) const {
+  // Template is used here as a form of forward declaration.
+  template <typename X>
+  node differentiate(const X& x_ref, int32_t variable_index) const {
+    static_assert(std::is_same<X, x>::value,
+                  "f_intermediate::differentiate(const x& x, int32_t variable_index);");
     assert(&x_ref == internals_singleton().x_ptr_);
     assert(variable_index >= 0);
     assert(variable_index < dim());
-    return f_.differentiate(x_ref, variable_index);
+    return f_.template differentiate<X>(x_ref, variable_index);
   }
   virtual int32_t dim() const { return internals_singleton().dim_; }
 };
@@ -356,7 +343,6 @@ template <>
 struct output<std::vector<fncas_value_type>> {
   typedef fncas_value_type type;
 };
-// template <> struct output<x> { typedef fncas::node_with_dim type; };
 template <>
 struct output<x> {
   typedef fncas::node type;
@@ -380,17 +366,7 @@ struct output<x> {
     return lhs;                                                                      \
   }
 
-/*
-inline fncas::node_with_dim operator OP(const fncas::node_with_dim& lhs, const fncas::node_with_dim& rhs) {   \
-  assert(!lhs.d || !rhs.d || lhs.d == rhs.d);                                                                 \
-  return fncas::node_with_dim({lhs.f OP rhs.f, std::max(lhs.d, rhs.d)});                                      \
-}                                                                                                             \
-inline const fncas::node_with_dim& operator OP2(fncas::node_with_dim& lhs, const fncas::node_with_dim& rhs) { \
-  lhs = lhs OP rhs;                                                                                           \
-  return lhs;                                                                                                 \
-}
-*/
-
+// TODO(dkorolev): Support unary minus as well.
 DECLARE_OP(+, +=, add);
 DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
@@ -405,11 +381,6 @@ DECLARE_OP(/, /=, divide);
     return result;                                    \
   }
 
-/*
-inline fncas::node_with_dim F(const fncas::node_with_dim& argument) { \
-  return fncas::node_with_dim({F(argument.f), argument.d});           \
-}
-*/
 DECLARE_FUNCTION(sqrt);
 DECLARE_FUNCTION(exp);
 DECLARE_FUNCTION(log);
