@@ -69,7 +69,9 @@ TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
 TEST(HTTPAPI, Register) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/get", [](Request&& r) { r.connection.SendHTTPResponse("OK"); });
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", [](Request&&) {}), HandlerAlreadyExistsException);
+  auto tmp_handler = [](Request&&) {};  // LCOV_EXCL_LINE
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", tmp_handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", &tmp_handler), HandlerAlreadyExistsException);
   const string url = Printf("localhost:%d/get", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -81,7 +83,9 @@ TEST(HTTPAPI, Register) {
 TEST(HTTPAPI, UnRegister) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request&& r) { r.connection.SendHTTPResponse("bar"); });
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request&&) {}), HandlerAlreadyExistsException);
+  auto tmp_handler = [](Request&&) {};  // LCOV_EXCL_LINE
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", tmp_handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", &tmp_handler), HandlerAlreadyExistsException);
   const string url = Printf("localhost:%d/foo", FLAGS_net_api_test_port);
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
@@ -140,9 +144,7 @@ TEST(HTTPAPI, FourOhFour) {
   EXPECT_EQ(url, response.url);
 }
 
-TEST(HTTPAPI, HandlerPreservesObject) {
-  // Ensures that handler preserves the passed in object and does not make a copy of it.
-  // It would be undesired if the handler object is copied, hence this test.
+TEST(HTTPAPI, HandlerByValuePerformsACopy) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   struct Helper {
     size_t counter = 0u;
@@ -152,21 +154,53 @@ TEST(HTTPAPI, HandlerPreservesObject) {
     }
   };
   Helper helper;
+  EXPECT_EQ(0u, helper.counter);
+  HTTP(FLAGS_net_api_test_port).Register("/incr", helper);
+  EXPECT_EQ("Incremented.", HTTP(GET(Printf("localhost:%d/incr", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(0u, helper.counter);
+}
+
+TEST(HTTPAPI, HandlerByPointerPreservesObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  struct Helper {
+    size_t counter = 0u;
+    void operator()(Request&& r) {
+      ++counter;
+      r.connection.SendHTTPResponse("Incremented two.");
+    }
+  };
+  Helper helper;
   Helper copy(helper);
   EXPECT_EQ(0u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  HTTP(FLAGS_net_api_test_port).Register("/incr", helper);
-  HTTP(FLAGS_net_api_test_port).Register("/incr_same", helper);
-  HTTP(FLAGS_net_api_test_port).Register("/incr_copy", copy);
-  EXPECT_EQ("Incremented.", HTTP(GET(Printf("localhost:%d/incr", FLAGS_net_api_test_port))).body);
+  HTTP(FLAGS_net_api_test_port).Register("/incr", &helper);
+  HTTP(FLAGS_net_api_test_port).Register("/incr_same", &helper);
+  HTTP(FLAGS_net_api_test_port).Register("/incr_copy", &copy);
+  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("localhost:%d/incr", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(1u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  EXPECT_EQ("Incremented.", HTTP(GET(Printf("localhost:%d/incr_same", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("localhost:%d/incr_same", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(2u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  EXPECT_EQ("Incremented.", HTTP(GET(Printf("localhost:%d/incr_copy", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("localhost:%d/incr_copy", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(2u, helper.counter);
   EXPECT_EQ(1u, copy.counter);
+}
+
+TEST(HTTPAPI, HandlerSupportsStaticMethodsBothWays) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  struct Static {
+    static void Foo(Request&& r) { r.connection.SendHTTPResponse("foo"); }
+    static void Bar(Request&& r) { r.connection.SendHTTPResponse("bar"); }
+  };
+  HTTP(FLAGS_net_api_test_port).Register("/foo", Static::Foo);
+  HTTP(FLAGS_net_api_test_port).Register("/bar", Static::Bar);
+  HTTP(FLAGS_net_api_test_port).Register("/fooptr", &Static::Foo);
+  HTTP(FLAGS_net_api_test_port).Register("/barptr", &Static::Bar);
+  EXPECT_EQ("foo", HTTP(GET(Printf("localhost:%d/foo", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("bar", HTTP(GET(Printf("localhost:%d/bar", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("foo", HTTP(GET(Printf("localhost:%d/fooptr", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("bar", HTTP(GET(Printf("localhost:%d/barptr", FLAGS_net_api_test_port))).body);
 }
 
 // Test various HTTP client modes.
