@@ -73,8 +73,7 @@ struct generic_action : action {
     } while (iteration < limit_iterations && duration < limit_seconds);
     return done();
   }
-  virtual void start() {
-  }
+  virtual void start() {}
   virtual bool step() = 0;
   virtual bool done() {
     (*sout) << iteration / duration;
@@ -84,16 +83,15 @@ struct generic_action : action {
 
 struct action_gen : generic_action {
   std::vector<double> x;
-  void start() {
-    x = std::vector<double>(f->dim());
-  }
+  void start() { x = std::vector<double>(f->dim()); }
   bool step() {
     f->gen(x);
     return true;
   }
 };
 
-template <typename X> struct action_gen_eval_Xeval : generic_action, X {
+template <typename X>
+struct action_gen_eval_Xeval : generic_action, X {
   std::vector<double> x;
   std::unique_ptr<fncas::f> fncas_f;
   double compile_time;
@@ -122,9 +120,7 @@ template <typename X> struct action_gen_eval_Xeval : generic_action, X {
 struct eval {
   // Baseline code.
   struct base {
-    virtual bool steps_done(std::ostream& os) {
-      return true;
-    }
+    virtual bool steps_done(std::ostream& os) { return true; }
   };
   // Native implementation calls the function natively compiled as part of the binary being run.
   struct native : base {
@@ -171,9 +167,7 @@ struct action_test_gradient : generic_action {
   static double error_between(double a, double b) {
     return fabs(b - a) / std::max(1.0, std::max(fabs(a), fabs(b)));
   }
-  static bool approximate_compare(double a, double b, double eps = 0.03) {
-    return error_between(a, b) < eps;
-  }
+  static bool approximate_compare(double a, double b, double eps = 0.03) { return error_between(a, b) < eps; }
   void start() {
     x = std::vector<double>(f->dim());
     ga = fncas::g_approximate(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());

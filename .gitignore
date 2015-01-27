@@ -1,3 +1,14 @@
+.noshit
+
+core
+*.h.gch
+.exrc
+
+coverage.info
+*.gcov
+*.gcda
+*.gcno
+
 */*~
 */*.o
 */*.a

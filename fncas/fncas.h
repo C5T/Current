@@ -2,7 +2,7 @@
 
 // Requires:
 // * c++11, use g++ --std=c++11
-// * Boost, sudo apt-get install libboost-dev
+// * Boost, sudo apt-get install libboost-dev -- TODO(dkorolev): Get rid of Boost here.
 // * -fno-strict-aliasing, to avoid warnings when compiling with g++.
 
 #ifndef FNCAS_H

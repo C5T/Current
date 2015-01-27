@@ -6,7 +6,8 @@
 
 #include "../fncas/fncas.h"
 
-template <typename T> typename fncas::output<T>::type f(const T& x) {
+template <typename T>
+typename fncas::output<T>::type f(const T& x) {
   return (x[0] + x[1] * 2) * (x[0] + x[1] * 2);
 }
 
@@ -32,8 +33,8 @@ int main() {
 
   fncas::g_approximate ga = fncas::g_approximate(f<std::vector<double>>, 2);
   auto d_3_3_approx = ga(p_3_3);
-  std::cout << "Approximate {f, df}(3, 3) = { " << d_3_3_approx.value << ", { " << d_3_3_approx.gradient[0] << ", "
-            << d_3_3_approx.gradient[1] << " } }." << std::endl;
+  std::cout << "Approximate {f, df}(3, 3) = { " << d_3_3_approx.value << ", { " << d_3_3_approx.gradient[0]
+            << ", " << d_3_3_approx.gradient[1] << " } }." << std::endl;
 
   fncas::g_intermediate gi = fncas::g_intermediate(x, f(x));
   auto d_3_3_intermediate = gi(p_3_3);

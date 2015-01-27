@@ -62,12 +62,8 @@ struct compiled_expression : noncopyable {
     }
     return eval_(x, &tmp[0]);
   }
-  double operator()(const std::vector<double>& x) const {
-    return operator()(&x[0]);
-  }
-  node_index_type dim() const {
-    return dim_ ? static_cast<node_index_type>(dim_()) : 0;
-  }
+  double operator()(const std::vector<double>& x) const { return operator()(&x[0]); }
+  node_index_type dim() const { return dim_ ? static_cast<node_index_type>(dim_()) : 0; }
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
     if (retval) {
@@ -75,9 +71,7 @@ struct compiled_expression : noncopyable {
       exit(-1);
     }
   }
-  const std::string& lib_filename() const {
-    return lib_filename_;
-  }
+  const std::string& lib_filename() const { return lib_filename_; }
 };
 
 // generate_c_code_for_node() writes C code to evaluate the expression to the file.
@@ -98,8 +92,10 @@ void generate_c_code_for_node(node_index_type index, FILE* f) {
         int32_t v = node.variable();
         fprintf(f, "  a[%lld] = x[%d];\n", static_cast<long long>(i), v);
       } else if (node.type() == type_t::value) {
-        fprintf(
-            f, "  a[%lld] = %a;\n", static_cast<long long>(i), node.value());  // "%a" is hexadecimal full precision.
+        fprintf(f,
+                "  a[%lld] = %a;\n",
+                static_cast<long long>(i),
+                node.value());  // "%a" is hexadecimal full precision.
       } else if (node.type() == type_t::operation) {
         stack.push(~i);
         stack.push(node.lhs_index());
@@ -277,29 +273,18 @@ compiled_expression compile(node_index_type index) {
   return compiled_expression(filename_so);
 }
 
-compiled_expression compile(const node& node) {
-  return compile(node.index_);
-}
+compiled_expression compile(const node& node) { return compile(node.index_); }
 
 struct f_compiled : f {
   fncas::compiled_expression c_;
-  explicit f_compiled(const node& node) : c_(compile(node)) {
-  }
-  explicit f_compiled(const f_intermediate& f) : c_(compile(f.f_)) {
-  }
+  explicit f_compiled(const node& node) : c_(compile(node)) {}
+  explicit f_compiled(const f_intermediate& f) : c_(compile(f.f_)) {}
   f_compiled(const f_compiled&) = delete;
   void operator=(const f_compiled&) = delete;
-  f_compiled(f_compiled&& rhs) : c_(std::move(rhs.c_)) {
-  }
-  virtual double operator()(const std::vector<double>& x) const {
-    return c_(x);
-  }
-  virtual int32_t dim() const {
-    return c_.dim();
-  }
-  const std::string& lib_filename() const {
-    return c_.lib_filename();
-  }
+  f_compiled(f_compiled&& rhs) : c_(std::move(rhs.c_)) {}
+  virtual double operator()(const std::vector<double>& x) const { return c_(x); }
+  virtual int32_t dim() const { return c_.dim(); }
+  const std::string& lib_filename() const { return c_.lib_filename(); }
 };
 
 }  // namespace fncas
