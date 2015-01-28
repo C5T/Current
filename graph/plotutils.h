@@ -24,8 +24,8 @@ SOFTWARE.
 
 // TODO(dkorolev): Platform-specific implementation and guards.
 
-#ifndef BRICKS_PLOTUTILS_GRAPH_H
-#define BRICKS_PLOTUTILS_GRAPH_H
+#ifndef BRICKS_GRAPH_PLOTUTILS_H
+#define BRICKS_GRAPH_PLOTUTILS_H
 
 #include <cassert>
 #include <vector>
@@ -74,49 +74,49 @@ inline LineMode CustomLineMode(LineColor color, LineStyle style) {
 // 5: cross
 enum class Symbol : int { No = 0, Dot = 1, Plus = 2, Asterisk = 3, Circle = 4, Cross = 5 };
 
-class Graph {
+class Plotutils {
  public:
-  Graph(const std::vector<std::pair<double, double>>& data) : data_(new SinglePlot(data)) {}
-  Graph(const std::vector<std::vector<std::pair<double, double>>>& data) : data_(new MultiPlot(data)) {}
+  Plotutils(const std::vector<std::pair<double, double>>& data) : data_(new SinglePlot(data)) {}
+  Plotutils(const std::vector<std::vector<std::pair<double, double>>>& data) : data_(new MultiPlot(data)) {}
 
-  Graph& X(const std::string& x_label) {
+  Plotutils& X(const std::string& x_label) {
     parameters_["-X"] = SomewhatEscape(x_label);
     return *this;
   }
 
-  Graph& Y(const std::string& y_label) {
+  Plotutils& Y(const std::string& y_label) {
     parameters_["-Y"] = SomewhatEscape(y_label);
     return *this;
   }
 
-  Graph& Label(const std::string& label) {
+  Plotutils& Label(const std::string& label) {
     parameters_["-L"] = SomewhatEscape(label);
     return *this;
   }
 
-  Graph& LineWidth(double w) {
+  Plotutils& LineWidth(double w) {
     parameters_["-W"] = bricks::strings::to_string(w);
     return *this;
   }
 
-  Graph& BitmapSize(int x, int y = 0) {
+  Plotutils& BitmapSize(int x, int y = 0) {
     assert(x > 0);
     assert(y >= 0);
     parameters_["--bitmap-size"] = bricks::strings::Printf("%dx%d", x, y ? y : x);
     return *this;
   }
 
-  Graph& GridStyle(GridStyle grid_style) {
+  Plotutils& GridStyle(GridStyle grid_style) {
     parameters_["-g"] = bricks::strings::to_string(static_cast<int>(grid_style));
     return *this;
   }
 
-  Graph& LineMode(LineMode line_mode) {
+  Plotutils& LineMode(LineMode line_mode) {
     parameters_["-m"] = bricks::strings::to_string(static_cast<int>(line_mode));
     return *this;
   }
 
-  Graph& Symbol(Symbol symbol, double size = 0) {
+  Plotutils& Symbol(Symbol symbol, double size = 0) {
     parameters_["-S"] = bricks::strings::to_string(static_cast<int>(symbol));
     if (size) {
       parameters_["-S"] += ' ' + bricks::strings::to_string(size);
@@ -124,7 +124,7 @@ class Graph {
     return *this;
   }
 
-  Graph& OutputFormat(const std::string& output_format) {
+  Plotutils& OutputFormat(const std::string& output_format) {
     parameters_["-T"] = output_format;
     return *this;
   }
@@ -201,4 +201,4 @@ class Graph {
 }  // namespace plotutils
 }  // namespace bricks
 
-#endif  // BRICKS_PLOTUTILS_GRAPH_H
+#endif  // BRICKS_GRAPH_PLOTUTILS_H

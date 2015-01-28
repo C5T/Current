@@ -25,13 +25,36 @@ SOFTWARE.
 #include <vector>
 #include <string>
 
-#include "graph.h"
+#include "gnuplot.h"
+#include "plotutils.h"
 
 #include "../3party/gtest/gtest-main.h"
 
+using namespace bricks::gnuplot;
 using namespace bricks::plotutils;
 
-TEST(Graph, Line) {
+TEST(Graph, GNUPlotSmokeTest) {
+  const std::string result = GNUPlot()
+                                 .Title("Foo 'bar' \"baz\"")
+                                 .KeyTitle("Meh 'in' \"quotes\"")
+                                 .XRange(-42, 42)
+                                 .YRange(-2.5, +2.5)
+                                 .Grid("back")
+                                 .Plot([](Plotter& p) {
+                                   for (int i = -100; i <= +100; ++i) {
+                                     p(i, ::sin(0.1 * i));
+                                   }
+                                 })
+                                 .Plot(WithMeta([](Plotter& p) {
+                                                  for (int i = -100; i <= +100; ++i) {
+                                                    p(i, ::cos(0.1 * i));
+                                                  }
+                                                }).Name("\"Cosine\" as 'points'"))
+                                 .OutputFormat("svg");
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.svg"));
+}
+
+TEST(Graph, PlotutilsLine) {
   const size_t N = 1000;
   std::vector<std::pair<double, double>> line(N);
   for (size_t i = 0; i < N; ++i) {
@@ -39,7 +62,7 @@ TEST(Graph, Line) {
     line[i] =
         std::make_pair(16 * pow(sin(t), 3), -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
   }
-  const std::string result = Graph(line)
+  const std::string result = Plotutils(line)
                                  .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
                                  .GridStyle(GridStyle::Full)
                                  .Label("Imagine all the people ...")
@@ -50,7 +73,7 @@ TEST(Graph, Line) {
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.svg"));
 }
 
-TEST(Graph, Points) {
+TEST(Graph, PlotutilsPoints) {
   const int p1 = 27733;
   const int p2 = 27791;
   const double k = 1.0 / (p2 - 1);
@@ -60,7 +83,7 @@ TEST(Graph, Points) {
     xy.first = k*(tmp = (tmp * p1) % p2);
     xy.second = k*(tmp = (tmp * p1) % p2);
   }
-  const std::string result = Graph(flakes)
+  const std::string result = Plotutils(flakes)
                                  .LineMode(LineMode::None)
                                  .GridStyle(GridStyle::None)
                                  .Symbol(Symbol::Asterisk, 0.1)
@@ -68,7 +91,7 @@ TEST(Graph, Points) {
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.svg"));
 }
 
-TEST(Graph, Multiplot) {
+TEST(Graph, PlotutilsMultiplot) {
   auto gen = [](int phi) {
     std::vector<std::pair<double, double>> xy(4);
     for (int i = 0; i <= 3; ++i) {
@@ -78,6 +101,6 @@ TEST(Graph, Multiplot) {
     return xy;
   };
   const std::string result =
-      Graph({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("svg");
+      Plotutils({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("svg");
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.svg"));
 }
