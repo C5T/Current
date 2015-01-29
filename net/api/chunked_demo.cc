@@ -109,8 +109,38 @@ using namespace bricks::net::api;
 using namespace bricks::cerealize;
 using bricks::time::Now;
 using bricks::strings::Printf;
+using bricks::net::HTTPResponseCode;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
+
+struct LayoutCell {
+  std::string meta_url = "/meta";
+  
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(meta_url));
+  }
+};
+
+struct LayoutItem {
+  std::vector<LayoutItem> row;
+  std::vector<LayoutItem> col;
+  LayoutCell cell;
+
+  template <typename A>
+  void serialize(A& ar) {
+    if (!row.empty()) {
+      ar(CEREAL_NVP(row));
+    }
+    else if (!col.empty()) {
+      ar(CEREAL_NVP(col));
+    }
+    else {
+      ar(CEREAL_NVP(cell));
+    }
+  }
+};
+
 
 struct ExampleMeta {
   struct Options {
@@ -139,22 +169,55 @@ struct ExampleMeta {
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
 int main() {
-  HTTP(FLAGS_port).Register("/meta", [](Request&& r) { r.connection.SendHTTPResponse(ExampleMeta(), "meta"); });
-  HTTP(FLAGS_port).Register("/", [](Request&& r) {
+  HTTP(FLAGS_port).Register("/layout", [](Request&& r) {
+    LayoutItem layout;
+    LayoutItem row;
+    layout.col.push_back(row);
+    r.connection.SendHTTPResponse(
+      layout,
+      "layout",
+      HTTPResponseCode::OK,
+      "application/json; charset=utf-8",
+      {
+        {"Connection", "close"},
+        {"Access-Control-Allow-Origin", "*"}
+      }
+    );
+  });
+  HTTP(FLAGS_port).Register("/meta", [](Request&& r) {
+    r.connection.SendHTTPResponse(
+      ExampleMeta(),
+      "meta",
+      HTTPResponseCode::OK,
+      "application/json; charset=utf-8",
+      {
+        {"Connection", "close"},
+        {"Access-Control-Allow-Origin", "*"}
+      }
+    );
+  });
+  HTTP(FLAGS_port).Register("/data", [](Request&& r) {
     std::thread([](Request&& r) {
                   // Since we are in another thread, need to catch exceptions ourselves.
                   try {
-                    auto response = r.connection.SendChunkedHTTPResponse();
+                    auto response = r.connection.SendChunkedHTTPResponse(
+                      HTTPResponseCode::OK,
+                      "application/json; charset=utf-8",
+                      {
+                        {"Connection", "keep-alive"},
+                        {"Access-Control-Allow-Origin", "*"}
+                      }
+                    );
                     std::string data;
                     const double begin = static_cast<double>(Now());
                     const double t = atof(r.url.query["t"].c_str());
                     const double end = (t > 0) ? (begin + t * 1e3) : 1e18;
                     double current;
                     while ((current = static_cast<double>(Now())) < end) {
-                      std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 10));
-                      const double x = 5e-3 * (current - begin);
-                      const double y = sin(x);
-                      data += Printf("{x:%lf,y:%lf}\n", x, y);
+                      std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 100 + 100));
+                      const double x = current;
+                      const double y = sin(5e-3 * (current - begin));
+                      data += Printf("{\"x\":%lf,\"y\":%lf}\n", x, y);
                       const double f = (rand() % 101) * (rand() % 101) * (rand() % 101) * 1e-6;
                       const size_t n = static_cast<size_t>(data.length() * f);
                       if (n) {
