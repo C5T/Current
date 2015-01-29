@@ -115,7 +115,7 @@ DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
 struct LayoutCell {
   std::string meta_url = "/meta";
-  
+
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(meta_url));
@@ -131,16 +131,13 @@ struct LayoutItem {
   void serialize(A& ar) {
     if (!row.empty()) {
       ar(CEREAL_NVP(row));
-    }
-    else if (!col.empty()) {
+    } else if (!col.empty()) {
       ar(CEREAL_NVP(col));
-    }
-    else {
+    } else {
       ar(CEREAL_NVP(cell));
     }
   }
 };
-
 
 struct ExampleMeta {
   struct Options {
@@ -173,41 +170,27 @@ int main() {
     LayoutItem layout;
     LayoutItem row;
     layout.col.push_back(row);
-    r.connection.SendHTTPResponse(
-      layout,
-      "layout",
-      HTTPResponseCode::OK,
-      "application/json; charset=utf-8",
-      {
-        {"Connection", "close"},
-        {"Access-Control-Allow-Origin", "*"}
-      }
-    );
+    r.connection.SendHTTPResponse(layout,
+                                  "layout",
+                                  HTTPResponseCode::OK,
+                                  "application/json; charset=utf-8",
+                                  {{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}});
   });
   HTTP(FLAGS_port).Register("/meta", [](Request&& r) {
-    r.connection.SendHTTPResponse(
-      ExampleMeta(),
-      "meta",
-      HTTPResponseCode::OK,
-      "application/json; charset=utf-8",
-      {
-        {"Connection", "close"},
-        {"Access-Control-Allow-Origin", "*"}
-      }
-    );
+    r.connection.SendHTTPResponse(ExampleMeta(),
+                                  "meta",
+                                  HTTPResponseCode::OK,
+                                  "application/json; charset=utf-8",
+                                  {{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}});
   });
   HTTP(FLAGS_port).Register("/data", [](Request&& r) {
     std::thread([](Request&& r) {
                   // Since we are in another thread, need to catch exceptions ourselves.
                   try {
                     auto response = r.connection.SendChunkedHTTPResponse(
-                      HTTPResponseCode::OK,
-                      "application/json; charset=utf-8",
-                      {
-                        {"Connection", "keep-alive"},
-                        {"Access-Control-Allow-Origin", "*"}
-                      }
-                    );
+                        HTTPResponseCode::OK,
+                        "application/json; charset=utf-8",
+                        {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}});
                     std::string data;
                     const double begin = static_cast<double>(Now());
                     const double t = atof(r.url.query["t"].c_str());
