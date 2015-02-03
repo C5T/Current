@@ -132,7 +132,7 @@ class HTTPServerPOSIX final {
   //   The lifetime of the object is then up to the user.
   // Justification: `Register("/foo", InstanceOfFoo())` has no way of knowing for long should `InstanceOfFoo`
   // live.
-  void Register(const std::string& path, std::function<void(Request&&)> handler) {
+  void Register(const std::string& path, std::function<void(Request)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {
       BRICKS_THROW(HandlerAlreadyExistsException(path));
@@ -146,7 +146,7 @@ class HTTPServerPOSIX final {
       BRICKS_THROW(HandlerAlreadyExistsException(path));
     }
     handlers_[path] =
-        [ptr_to_handler](Request&& request) { (*ptr_to_handler)(std::forward<Request>(request)); };
+        [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
   }
 
   void UnRegister(const std::string& path) {
@@ -176,7 +176,7 @@ class HTTPServerPOSIX final {
         if (terminating_) {
           break;
         }
-        std::function<void(Request && )> handler;
+        std::function<void(Request)> handler;
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
@@ -207,7 +207,7 @@ class HTTPServerPOSIX final {
   // TODO(dkorolev): Look into read-write mutexes here.
   mutable std::mutex mutex_;
 
-  std::map<std::string, std::function<void(Request&&)>> handlers_;
+  std::map<std::string, std::function<void(Request)>> handlers_;
 };
 
 }  // namespace api
