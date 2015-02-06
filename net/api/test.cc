@@ -44,7 +44,6 @@ using bricks::FileException;
 
 using bricks::net::Connection;
 using bricks::net::HTTPResponseCode;
-using bricks::net::HTTPHeadersType;
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;

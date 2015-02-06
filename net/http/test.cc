@@ -196,6 +196,35 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       connection.BlockingReadUntilEOF());
 }
 
+TEST(PosixHTTPServerTest, SmokeWithHeaders) {
+  thread
+  t([](Socket s) {
+      HTTPServerConnection c(s.Accept());
+      EXPECT_EQ("GET", c.HTTPRequest().Method());
+      EXPECT_EQ("/header", c.HTTPRequest().RawPath());
+      c.SendHTTPResponse("OK", HTTPResponseCode::OK, c.HTTPRequest().Body(), {{"foo", "bar"}, {"baz", "meh"}});
+    },
+    Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("GET /header HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Content-Length: 19\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("custom_content_type");
+  connection.BlockingWrite("\r\n");
+  connection.SendEOF();
+  t.join();
+  EXPECT_EQ(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: custom_content_type\r\n"
+      "foo: bar\r\n"
+      "baz: meh\r\n"
+      "Content-Length: 2\r\n"
+      "\r\n"
+      "OK",
+      connection.BlockingReadUntilEOF());
+}
+
 TEST(PosixHTTPServerTest, NoEOF) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
