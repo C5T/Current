@@ -45,16 +45,13 @@ namespace bricks {
 namespace cerealize {
 
 // Helper compile-time test that certain type can be serialized via cereal.
-template <typename T>
+template <typename T, typename A = cereal::JSONOutputArchive>
 class is_cerealizeable {
  private:
-  struct DummyArchive {
-    void operator()(...);
-  };
   typedef char Yes;
   typedef long No;
   template <typename C>
-  static Yes YesOrNo(decltype(&C::template serialize<DummyArchive>));
+  static Yes YesOrNo(decltype(&C::template serialize<A>));
   template <typename C>
   static No YesOrNo(...);
 
