@@ -97,6 +97,7 @@ y:0.183947}
 */
 
 #include <string>
+#include <type_traits>
 
 #include "api.h"
 
@@ -127,8 +128,9 @@ struct LayoutItem {
   std::vector<LayoutItem> col;
   LayoutCell cell;
 
+  // Define only output serialization (`JSON.stringify()`), forbid input serialization (`JSON.parse()`).
   template <typename A>
-  void serialize(A& ar) {
+  typename std::enable_if<std::is_base_of<typename cereal::OutputArchive<A>, A>::value>::type serialize(A& ar) {
     if (!row.empty()) {
       ar(CEREAL_NVP(row));
     } else if (!col.empty()) {

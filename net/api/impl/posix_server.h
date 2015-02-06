@@ -145,8 +145,7 @@ class HTTPServerPOSIX final {
     if (handlers_.find(path) != handlers_.end()) {
       BRICKS_THROW(HandlerAlreadyExistsException(path));
     }
-    handlers_[path] =
-        [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
+    handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
   }
 
   void UnRegister(const std::string& path) {
