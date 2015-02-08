@@ -49,7 +49,9 @@ TEST(Graph, GNUPlotSmokeTest) {
                                                   for (int i = -100; i <= +100; ++i) {
                                                     p(i, ::cos(0.1 * i));
                                                   }
-                                                }).Name("\"Cosine\" as 'points'"))
+                                                })
+                                           .Name("\"Cosine\" as 'points'")
+                                           .AsPoints())
                                  .OutputFormat("svg");
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.svg"));
 }
