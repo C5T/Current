@@ -77,16 +77,35 @@ struct PlotDataFromFunction : PlotDataBase {
   }
 };
 
-struct WithMeta {
-  std::function<void(Plotter&)> f_;
-  std::string type_ = "lines";
-  std::string meta_;
+class WithMeta {
+ public:
   explicit WithMeta(std::function<void(Plotter&)> f) : f_(f) {}
+
   WithMeta& Name(const std::string& name) {
-    meta_ += " t " + Escape(name);
+    proto_meta_ += " t " + Escape(name);
     return *this;
   }
-  // TODO(dkorolev): Add more setters here.
+  WithMeta& Color(const std::string& color) {
+    proto_meta_ += " lt " + color;
+    return *this;
+  }
+  WithMeta& LineWidth(double lw) {
+    type_ = "lines";
+    proto_meta_ += strings::Printf(" lw %lf ", lw);
+    return *this;
+  }
+  WithMeta& AsPoints() {
+    type_ = "points";
+    return *this;
+  }
+
+  std::function<void(Plotter&)> GetFunction() const { return f_; }
+  std::string ComposeMeta() const { return "with " + type_ + proto_meta_; }
+
+ private:
+  std::function<void(Plotter&)> f_;
+  std::string type_ = "lines";
+  std::string proto_meta_ = "";
 };
 
 struct GNUPlot {
@@ -146,7 +165,7 @@ struct GNUPlot {
   }
 
   GNUPlot& Plot(const WithMeta& plot) {
-    plots_.emplace_back(new PlotDataFromFunction(plot.f_, plot.meta_));
+    plots_.emplace_back(new PlotDataFromFunction(plot.GetFunction(), plot.ComposeMeta()));
     return *this;
   }
 
