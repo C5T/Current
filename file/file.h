@@ -92,9 +92,8 @@ struct FileSystem {
 #ifndef BRICKS_WINDOWS
     return std::string(::tmpnam(buffer));
 #else
-	// TODO(dkorolev): See if Linux/Apple/Posix has ::tmpnam_s(). Or get rid of it.
-	assert(!(::tmpnam_s(buffer)));
-	return buffer;
+    assert(!(::tmpnam_s(buffer)));
+    return buffer;
 #endif
   }
 
@@ -123,11 +122,11 @@ struct FileSystem {
     } else {
       if (
 #ifndef BRICKS_WINDOWS
-		  S_ISDIR(info.st_mode)
+          S_ISDIR(info.st_mode)
 #else
-		  info.st_mode &_S_IFDIR
+          info.st_mode & _S_IFDIR
 #endif
-	  ) {
+          ) {
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -136,15 +135,16 @@ struct FileSystem {
   }
 
   enum class CreateDirParameters { ThrowExceptionOnError, Silent };
-  static inline void CreateDir(
-      const std::string& Dir,
-      CreateDirParameters parameters = CreateDirParameters::ThrowExceptionOnError) {
+  static inline void CreateDir(const std::string& Dir,
+                               CreateDirParameters parameters = CreateDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
-    if (::_mkdir(Dir.c_str()
+    if (
 #ifndef BRICKS_WINDOWS
-		, 0755
+        ::mkdir(Dir.c_str(), 0755)
+#else
+        ::_mkdir(Dir.c_str())
 #endif
-		)) {
+        ) {
       if (parameters == CreateDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
@@ -213,10 +213,15 @@ struct FileSystem {
   };
 
   enum class RemoveDirParameters { ThrowExceptionOnError, Silent };
-  static inline void RemoveDir(
-      const std::string& Dir,
-      RemoveDirParameters parameters = RemoveDirParameters::ThrowExceptionOnError) {
-    if (::_rmdir(Dir.c_str())) {
+  static inline void RemoveDir(const std::string& Dir,
+                               RemoveDirParameters parameters = RemoveDirParameters::ThrowExceptionOnError) {
+    if (
+#ifndef BRICKS_WINDOWS
+        ::rmdir(Dir.c_str())
+#else
+        ::_rmdir(Dir.c_str())
+#endif
+        ) {
       if (parameters == RemoveDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());

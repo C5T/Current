@@ -20,8 +20,8 @@ int main(int argc, char** argv) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   const auto result = RUN_ALL_TESTS();
 #ifdef _WIN32
-  // It's easier for the developers to just press Enter after the tests are done compared to configuring
-  // Visual Studio to not close the application terminal by default.
+  // It's easier for the developers to just press Enter after the tests are done compared to
+  // configuring Visual Studio to not close the application terminal by default.
   {
 	  std::string s;
 	  std::cout << std::endl << "Done executing, press Enter to terminate.";

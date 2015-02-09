@@ -181,5 +181,6 @@ TEST(File, ScanDir) {
   FileSystem::ScanDirUntil(dir, scanner_after_until);
   ASSERT_EQ(1u, scanner_after_until.files_.size());
   EXPECT_TRUE(scanner_after_until.files_[0].first == "one" || scanner_after_until.files_[0].first == "two");
-  EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"), scanner_after.files_[0].second);
+  EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"),
+            scanner_after_until.files_[0].second);
 }

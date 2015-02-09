@@ -87,32 +87,28 @@ static string ReadFromSocket(thread& server_thread, const string& message_to_sen
   return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, message_to_send_from_client);
 }
 
-using bricks::net::SocketWSAStartupException;
 TEST(TCPTest, ReceiveMessage) {
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
-		BRICKS_THROW(SocketWSAStartupException());
-	}
-	//	Socket s(FLAGS_net_tcp_test_port);
-	thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, Socket(FLAGS_net_tcp_test_port));
+  thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, Socket(FLAGS_net_tcp_test_port));
   EXPECT_EQ("BOOM", ReadFromSocket(server));
 }
 
-/*
+#ifndef BRICKS_WINDOWS
+// This test fails on Windows, even in a dramatically simplified version.
+// TODO(dkorolev): Investigate. Looks like on Windows writes never throw errors.
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
   thread server([](Socket socket) { socket.Accept().BlockingWrite("OK"); }, Socket(FLAGS_net_tcp_test_port));
   Connection old_connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   old_connection.BlockingWrite("foo\n");
-//  Connection new_connection(std::move(old_connection));
-  Connection& new_connection(old_connection);
-  ///new_connection.BlockingWrite("bar\n");
-//  ASSERT_THROW(old_connection.BlockingWrite("baz\n"), AttemptedToUseMovedAwayConnection);
-//  ASSERT_THROW(old_connection.BlockingReadUntilEOF(), AttemptedToUseMovedAwayConnection);
+  Connection new_connection(std::move(old_connection));
+  // Connection& new_connection(old_connection);  // Debugging Windows usecase -- D.K.
+  new_connection.BlockingWrite("bar\n");
+  ASSERT_THROW(old_connection.BlockingWrite("baz\n"), AttemptedToUseMovedAwayConnection);
+  ASSERT_THROW(old_connection.BlockingReadUntilEOF(), AttemptedToUseMovedAwayConnection);
   new_connection.SendEOF();
   server.join();
   EXPECT_EQ("OK", new_connection.BlockingReadUntilEOF());
 }
-*/
+#endif
 
 TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
   // Note: This tests endianness as well -- D.K.

@@ -62,9 +62,8 @@ static std::string CurrentTestTempFileName() {
 
 struct No {};
 struct Yes {
-  //template <class A>
-  //void serialize(A&) {}
-	void serialize(cereal::JSONOutputArchive&) {}
+  template <class A>
+  void serialize(A&) {}
 };
 
 TEST(Cerealize, CompileTimeTest) {
@@ -80,8 +79,7 @@ struct CerealTestObject {
   int number;
   std::string text;
   std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
-  CerealTestObject() : number(42), text("text"), array({ 1, 2, 3 }) {
-  }
+  CerealTestObject() : number(42), text("text"), array({1, 2, 3}) {}
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
