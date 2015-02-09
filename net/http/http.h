@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA)
+#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
 #include "impl/server.h"
 #else
 #error "No implementation for `net/http.h` is available for your system."

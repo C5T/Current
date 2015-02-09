@@ -26,14 +26,22 @@ SOFTWARE.
 #ifndef BRICKS_FILE_FILE_H
 #define BRICKS_FILE_FILE_H
 
+#include <cassert>
 #include <cstdio>
 #include <fstream>
 #include <string>
 #include <cstring>
 
+#include "../port.h"
+
+#ifndef BRICKS_WINDOWS
 #include <dirent.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <direct.h>
+#endif
+
+#include <sys/stat.h>
 
 #include "exceptions.h"
 
@@ -50,7 +58,7 @@ struct FileSystem {
       fi.exceptions(std::ifstream::failbit | std::ifstream::badbit);
       fi.open(file_name, std::ifstream::binary);
       fi.seekg(0, std::ios::end);
-      const size_t size = fi.tellg();
+      const size_t size = static_cast<size_t>(fi.tellg());
       std::string buffer(size, '\0');
       fi.seekg(0);
       if (fi.read(&buffer[0], size).good()) {
@@ -81,7 +89,13 @@ struct FileSystem {
 
   static inline std::string GenTmpFileName() {
     char buffer[L_tmpnam];
+#ifndef BRICKS_WINDOWS
     return std::string(::tmpnam(buffer));
+#else
+	// TODO(dkorolev): See if Linux/Apple/Posix has ::tmpnam_s(). Or get rid of it.
+	assert(!(::tmpnam_s(buffer)));
+	return buffer;
+#endif
   }
 
   static inline std::string WriteStringToTmpFile(const std::string& contents) {
@@ -104,10 +118,16 @@ struct FileSystem {
 
   static inline uint64_t GetFileSize(const std::string& file_name) {
     struct stat info;
-    if (stat(file_name.c_str(), &info)) {
+    if (::stat(file_name.c_str(), &info)) {
       BRICKS_THROW(FileException());
     } else {
-      if (S_ISDIR(info.st_mode)) {
+      if (
+#ifndef BRICKS_WINDOWS
+		  S_ISDIR(info.st_mode)
+#else
+		  info.st_mode &_S_IFDIR
+#endif
+	  ) {
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -115,13 +135,17 @@ struct FileSystem {
     }
   }
 
-  enum class CreateDirectoryParameters { ThrowExceptionOnError, Silent };
-  static inline void CreateDirectory(
-      const std::string& directory,
-      CreateDirectoryParameters parameters = CreateDirectoryParameters::ThrowExceptionOnError) {
+  enum class CreateDirParameters { ThrowExceptionOnError, Silent };
+  static inline void CreateDir(
+      const std::string& Dir,
+      CreateDirParameters parameters = CreateDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
-    if (::mkdir(directory.c_str(), 0755)) {
-      if (parameters == CreateDirectoryParameters::ThrowExceptionOnError) {
+    if (::_mkdir(Dir.c_str()
+#ifndef BRICKS_WINDOWS
+		, 0755
+#endif
+		)) {
+      if (parameters == CreateDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
       }
@@ -139,8 +163,8 @@ struct FileSystem {
   typedef std::ofstream OutputFile;
 
   template <typename F>
-  static inline void ScanDirUntil(const std::string& directory, F&& f) {
-    DIR* dir = ::opendir(directory.c_str());
+  static inline void ScanDirUntil(const std::string& Dir, F&& f) {
+    DIR* dir = ::opendir(Dir.c_str());
     const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
@@ -157,8 +181,8 @@ struct FileSystem {
   }
 
   template <typename F>
-  static inline void ScanDir(const std::string& directory, F&& f) {
-    ScanDirUntil(directory, [&f](const std::string& filename) {
+  static inline void ScanDir(const std::string& Dir, F&& f) {
+    ScanDirUntil(Dir, [&f](const std::string& filename) {
       f(filename);
       return true;
     });
@@ -188,12 +212,12 @@ struct FileSystem {
     std::string file_name_;
   };
 
-  enum class RemoveDirectoryParameters { ThrowExceptionOnError, Silent };
-  static inline void RemoveDirectory(
-      const std::string& directory,
-      RemoveDirectoryParameters parameters = RemoveDirectoryParameters::ThrowExceptionOnError) {
-    if (::rmdir(directory.c_str())) {
-      if (parameters == RemoveDirectoryParameters::ThrowExceptionOnError) {
+  enum class RemoveDirParameters { ThrowExceptionOnError, Silent };
+  static inline void RemoveDir(
+      const std::string& Dir,
+      RemoveDirParameters parameters = RemoveDirParameters::ThrowExceptionOnError) {
+    if (::_rmdir(Dir.c_str())) {
+      if (parameters == RemoveDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
       }

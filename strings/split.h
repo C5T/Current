@@ -59,7 +59,7 @@ struct MatchImpl<char> {
 
 template <>
 struct MatchImpl<ByWhitespace> {
-  inline static bool Match(char a, ByWhitespace) { return ::isspace(a); }
+  inline static bool Match(char a, ByWhitespace) { return !!(::isspace(a)); }
 };
 
 template <>

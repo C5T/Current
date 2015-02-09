@@ -64,9 +64,9 @@ TEST(File, FileStringOperations) {
   EXPECT_EQ("ANOTHER TEST", FileSystem::ReadFileAsString(fn));
 
   FileSystem::RemoveFile(fn);
-  FileSystem::CreateDirectory(fn);
+  FileSystem::CreateDir(fn);
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "not so fast"), FileException);
-  FileSystem::RemoveDirectory(fn);
+  FileSystem::RemoveDir(fn);
 }
 
 TEST(File, GetFileSize) {
@@ -100,27 +100,27 @@ TEST(File, RenameFile) {
   ASSERT_THROW(FileSystem::RenameFile(fn1, fn2), FileException);
 }
 
-TEST(File, DirectoryOperations) {
+TEST(File, DirOperations) {
   const std::string& dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir");
   const std::string fn = FileSystem::JoinPath(dir, "file");
 
   FileSystem::RemoveFile(fn, FileSystem::RemoveFileParameters::Silent);
-  FileSystem::RemoveDirectory(dir, FileSystem::RemoveDirectoryParameters::Silent);
+  FileSystem::RemoveDir(dir, FileSystem::RemoveDirParameters::Silent);
 
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "test"), FileException);
 
-  FileSystem::CreateDirectory(dir);
-  ASSERT_THROW(FileSystem::CreateDirectory(dir), FileException);
-  FileSystem::CreateDirectory(dir, FileSystem::CreateDirectoryParameters::Silent);
+  FileSystem::CreateDir(dir);
+  ASSERT_THROW(FileSystem::CreateDir(dir), FileException);
+  FileSystem::CreateDir(dir, FileSystem::CreateDirParameters::Silent);
 
   FileSystem::WriteStringToFile(fn.c_str(), "test");
   EXPECT_EQ("test", FileSystem::ReadFileAsString(fn));
 
   ASSERT_THROW(FileSystem::GetFileSize(dir), FileException);
 
-  ASSERT_THROW(FileSystem::RemoveDirectory(dir), FileException);
+  ASSERT_THROW(FileSystem::RemoveDir(dir), FileException);
   FileSystem::RemoveFile(fn);
-  FileSystem::RemoveDirectory(dir);
+  FileSystem::RemoveDir(dir);
 
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "dir does not exist"), FileException);
 }
@@ -145,7 +145,7 @@ TEST(File, ScanDir) {
 
   FileSystem::RemoveFile(fn1, FileSystem::RemoveFileParameters::Silent);
   FileSystem::RemoveFile(fn2, FileSystem::RemoveFileParameters::Silent);
-  FileSystem::RemoveDirectory(dir, FileSystem::RemoveDirectoryParameters::Silent);
+  FileSystem::RemoveDir(dir, FileSystem::RemoveDirParameters::Silent);
 
   struct Scanner {
     explicit Scanner(const std::string& dir, bool return_code = true) : dir_(dir), return_code_(return_code) {}
@@ -164,7 +164,7 @@ TEST(File, ScanDir) {
   ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), FileException);
   ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), FileException);
 
-  FileSystem::CreateDirectory(dir);
+  FileSystem::CreateDir(dir);
   FileSystem::WriteStringToFile(fn1.c_str(), "foo");
   FileSystem::WriteStringToFile(fn2.c_str(), "bar");
 

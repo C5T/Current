@@ -49,7 +49,7 @@ SOFTWARE.
 using namespace bricks;
 using namespace cerealize;
 
-DEFINE_string(cerealize_test_tmpdir, ".noshit", "The directory to create temporary files in.");
+DEFINE_string(cerealize_test_tmpdir, ".noshit", "The Dir to create temporary files in.");
 
 static std::string CurrentTestName() {
   // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name
@@ -62,21 +62,26 @@ static std::string CurrentTestTempFileName() {
 
 struct No {};
 struct Yes {
-  template <class A>
-  void serialize(A&) {}
+  //template <class A>
+  //void serialize(A&) {}
+	void serialize(cereal::JSONOutputArchive&) {}
 };
 
 TEST(Cerealize, CompileTimeTest) {
   EXPECT_FALSE(is_cerealizeable<int>::value);
   EXPECT_FALSE(is_cerealizeable<std::string>::value);
   EXPECT_FALSE(is_cerealizeable<No>::value);
+  // TODO(dkorolev): Fix this test.
+  // auto lambda = &Yes::template serialize<bool>;
   EXPECT_TRUE(is_cerealizeable<Yes>::value);
 };
 
 struct CerealTestObject {
-  int number = 42;
-  std::string text = "text";
-  std::vector<int> array = {1, 2, 3};
+  int number;
+  std::string text;
+  std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
+  CerealTestObject() : number(42), text("text"), array({ 1, 2, 3 }) {
+  }
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
@@ -93,7 +98,7 @@ TEST(Cerealize, NamedJSON) {
 };
 
 TEST(Cerealize, BinarySerializesAndParses) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
+  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -116,7 +121,7 @@ TEST(Cerealize, BinarySerializesAndParses) {
 }
 
 TEST(Cerealize, JSONSerializesAndParses) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
+  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -137,7 +142,7 @@ TEST(Cerealize, JSONSerializesAndParses) {
 }
 
 TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
+  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -161,7 +166,7 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
 }
 
 TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
+  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -175,7 +180,7 @@ TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
 }
 
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
-  FileSystem::CreateDirectory(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirectoryParameters::Silent);
+  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
