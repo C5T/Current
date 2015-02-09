@@ -96,7 +96,7 @@ TEST(Cerealize, NamedJSON) {
 };
 
 TEST(Cerealize, BinarySerializesAndParses) {
-  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -119,7 +119,7 @@ TEST(Cerealize, BinarySerializesAndParses) {
 }
 
 TEST(Cerealize, JSONSerializesAndParses) {
-  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -140,7 +140,7 @@ TEST(Cerealize, JSONSerializesAndParses) {
 }
 
 TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
-  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -164,7 +164,7 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
 }
 
 TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
-  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;
@@ -178,7 +178,7 @@ TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
 }
 
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
-  FileSystem::CreateDir(FLAGS_cerealize_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
   FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
 
   EventAppStart a;

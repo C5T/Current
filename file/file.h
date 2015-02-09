@@ -134,11 +134,11 @@ struct FileSystem {
     }
   }
 
-  // Please keep the short `CreateDir` name instead of the long `CreateDirectory`,
+  // Please keep the short `MkDir` name instead of the long `CreateDirectory`,
   // since the latter is `#define`-d into `CreateDirectoryA` on Windows.
-  enum class CreateDirParameters { ThrowExceptionOnError, Silent };
-  static inline void CreateDir(const std::string& directory,
-                               CreateDirParameters parameters = CreateDirParameters::ThrowExceptionOnError) {
+  enum class MkDirParameters { ThrowExceptionOnError, Silent };
+  static inline void MkDir(const std::string& directory,
+                           MkDirParameters parameters = MkDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     if (
 #ifndef BRICKS_WINDOWS
@@ -147,7 +147,7 @@ struct FileSystem {
         ::_mkdir(directory.c_str())
 #endif
         ) {
-      if (parameters == CreateDirParameters::ThrowExceptionOnError) {
+      if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
       }

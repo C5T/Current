@@ -64,7 +64,7 @@ TEST(File, FileStringOperations) {
   EXPECT_EQ("ANOTHER TEST", FileSystem::ReadFileAsString(fn));
 
   FileSystem::RemoveFile(fn);
-  FileSystem::CreateDir(fn);
+  FileSystem::MkDir(fn);
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "not so fast"), FileException);
   FileSystem::RemoveDir(fn);
 }
@@ -109,9 +109,9 @@ TEST(File, DirOperations) {
 
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "test"), FileException);
 
-  FileSystem::CreateDir(dir);
-  ASSERT_THROW(FileSystem::CreateDir(dir), FileException);
-  FileSystem::CreateDir(dir, FileSystem::CreateDirParameters::Silent);
+  FileSystem::MkDir(dir);
+  ASSERT_THROW(FileSystem::MkDir(dir), FileException);
+  FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
 
   FileSystem::WriteStringToFile(fn.c_str(), "test");
   EXPECT_EQ("test", FileSystem::ReadFileAsString(fn));
@@ -164,7 +164,7 @@ TEST(File, ScanDir) {
   ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), FileException);
   ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), FileException);
 
-  FileSystem::CreateDir(dir);
+  FileSystem::MkDir(dir);
   FileSystem::WriteStringToFile(fn1.c_str(), "foo");
   FileSystem::WriteStringToFile(fn2.c_str(), "bar");
 
