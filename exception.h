@@ -34,7 +34,8 @@ namespace bricks {
 
 class Exception : public std::exception {
  public:
-  Exception(const std::string& what = "") : what_(what) {}
+  Exception() {}  // For Visual Studio's IntelliSense.
+  Exception(const std::string& what) : what_(what) {}
   virtual ~Exception() = default;
 
   void SetWhat(const std::string& what) { what_ = what; }

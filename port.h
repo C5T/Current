@@ -36,7 +36,8 @@ SOFTWARE.
 #error "`BRICKS_PORT_COUNT` should not be defined for port.h"
 #endif
 
-#define BRICKS_PORT_COUNT (defined(BRICKS_POSIX) + defined(BRICKS_APPLE) + defined(BRICKS_JAVA))
+#define BRICKS_PORT_COUNT \
+  (defined(BRICKS_POSIX) + defined(BRICKS_APPLE) + defined(BRICKS_JAVA) + defined(BRICKS_WINDOWS))
 
 #if defined(ANDROID)
 
@@ -56,6 +57,8 @@ SOFTWARE.
 #define BRICKS_POSIX
 #elif defined(__APPLE__)
 #define BRICKS_APPLE
+#elif defined(_WIN32)
+#define BRICKS_WINDOWS
 #else
 #error "Could not detect architecture. Please define one of the `BRICKS_*` macros explicitly."
 #endif
@@ -78,6 +81,9 @@ SOFTWARE.
 #elif defined(BRICKS_ANDROID)
 #define BRICKS_ARCH_UNAME std::string("Android")
 #define BRICKS_ARCH_UNAME_AS_IDENTIFIER Android
+#elif defined(BRICKS_WINDOWS)
+#define BRICKS_ARCH_UNAME std::string("Windows")
+#define BRICKS_ARCH_UNAME_AS_IDENTIFIER Windows
 #else
 #error "Unknown architecture."
 #endif

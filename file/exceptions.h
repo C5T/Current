@@ -30,7 +30,9 @@ SOFTWARE.
 namespace bricks {
 
 // TODO(dkorolev): Add more detailed exceptions for Read/Write/etc.
-struct FileException : Exception {};
+struct FileException : Exception {
+  FileException() : Exception() {}
+};
 
 }  // namespace bricks
 

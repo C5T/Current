@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_NET_EXCEPTIONS_H
 #define BRICKS_NET_EXCEPTIONS_H
 
+#include "../port.h"
 #include "../exception.h"
 
 namespace bricks {
@@ -35,6 +36,10 @@ struct NetworkException : Exception {};
 
 // TCP-level exceptions are derived from SocketException.
 struct SocketException : NetworkException {};
+
+#ifdef BRICKS_WINDOWS
+struct SocketWSAStartupException : SocketException {};
+#endif
 
 struct InvalidSocketException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct AttemptedToUseMovedAwayConnection : SocketException {};
