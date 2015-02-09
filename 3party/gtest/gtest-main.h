@@ -18,9 +18,9 @@ int main(int argc, char** argv) {
   // It's easier for the developers to just press Enter after the tests are done compared to
   // configuring Visual Studio to not close the application terminal by default.
   {
-	std::string s;
-	std::cout << std::endl << "Done executing, press Enter to terminate.";
-	std::getline(std::cin, s);
+    std::string s;
+    std::cout << std::endl << "Done executing, press Enter to terminate.";
+    std::getline(std::cin, s);
   }
 #endif
   return result;
