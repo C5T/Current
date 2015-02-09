@@ -134,6 +134,8 @@ struct FileSystem {
     }
   }
 
+  // Please keep the short `CreateDir` name instead of the long `CreateDirectory`,
+  // since the latter is `#define`-d into `CreateDirectoryA` on Windows.
   enum class CreateDirParameters { ThrowExceptionOnError, Silent };
   static inline void CreateDir(const std::string& directory,
                                CreateDirParameters parameters = CreateDirParameters::ThrowExceptionOnError) {
