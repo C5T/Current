@@ -49,7 +49,7 @@ SOFTWARE.
 using namespace bricks;
 using namespace cerealize;
 
-DEFINE_string(cerealize_test_tmpdir, ".noshit", "The Dir to create temporary files in.");
+DEFINE_string(cerealize_test_tmpdir, ".noshit", "The directory to create temporary files in.");
 
 static std::string CurrentTestName() {
   // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name

@@ -123,10 +123,11 @@ class SocketHandle : private SocketSystemInitializer {
   // SocketHandle does not expose copy constructor and assignment operator. It should only be moved.
 
  private:
-#ifdef BRICKS_WINDOWS
-  mutable  // Need to support taking the handle away from a non-move constructor.
+#ifndef BRICKS_WINDOWS
+  int socket_;
+#else
+  mutable int socket_;  // Need to support taking the handle away from a non-move constructor.
 #endif
-      int socket_;
 
  public:
   // The `ReadOnlyValidSocketAccessor socket` members provide simple read-only access to `socket_` via `socket`.
@@ -161,6 +162,8 @@ class SocketHandle : private SocketSystemInitializer {
 #else
  public:
   SocketHandle(const SocketHandle& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
+
+ private:
 #endif
 };
 
@@ -324,8 +327,8 @@ class Socket final : public SocketHandle {
                          const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
       : SocketHandle(SocketHandle::NewHandle()) {
     int just_one = 1;
+    // LCOV_EXCL_START
     if (disable_nagle_algorithm) {
-// LCOV_EXCL_START
 #ifndef BRICKS_WINDOWS
       if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(int)))
 #else
@@ -334,8 +337,8 @@ class Socket final : public SocketHandle {
       {
         BRICKS_THROW(SocketCreateException());
       }
-      // LCOV_EXCL_STOP
     }
+    // LCOV_EXCL_STOP
     if (::setsockopt(socket,
                      SOL_SOCKET,
                      SO_REUSEADDR,

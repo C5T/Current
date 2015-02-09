@@ -90,11 +90,11 @@ struct FileSystem {
   static inline std::string GenTmpFileName() {
     char buffer[L_tmpnam];
 #ifndef BRICKS_WINDOWS
-    return std::string(::tmpnam(buffer));
+    assert(buffer == ::tmpnam(buffer));
 #else
     assert(!(::tmpnam_s(buffer)));
-    return buffer;
 #endif
+    return buffer;
   }
 
   static inline std::string WriteStringToTmpFile(const std::string& contents) {
@@ -135,14 +135,14 @@ struct FileSystem {
   }
 
   enum class CreateDirParameters { ThrowExceptionOnError, Silent };
-  static inline void CreateDir(const std::string& Dir,
+  static inline void CreateDir(const std::string& directory,
                                CreateDirParameters parameters = CreateDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     if (
 #ifndef BRICKS_WINDOWS
-        ::mkdir(Dir.c_str(), 0755)
+        ::mkdir(directory.c_str(), 0755)
 #else
-        ::_mkdir(Dir.c_str())
+        ::_mkdir(directory.c_str())
 #endif
         ) {
       if (parameters == CreateDirParameters::ThrowExceptionOnError) {
@@ -163,8 +163,8 @@ struct FileSystem {
   typedef std::ofstream OutputFile;
 
   template <typename F>
-  static inline void ScanDirUntil(const std::string& Dir, F&& f) {
-    DIR* dir = ::opendir(Dir.c_str());
+  static inline void ScanDirUntil(const std::string& directory, F&& f) {
+    DIR* dir = ::opendir(directory.c_str());
     const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
@@ -181,8 +181,8 @@ struct FileSystem {
   }
 
   template <typename F>
-  static inline void ScanDir(const std::string& Dir, F&& f) {
-    ScanDirUntil(Dir, [&f](const std::string& filename) {
+  static inline void ScanDir(const std::string& directory, F&& f) {
+    ScanDirUntil(directory, [&f](const std::string& filename) {
       f(filename);
       return true;
     });
@@ -213,13 +213,13 @@ struct FileSystem {
   };
 
   enum class RemoveDirParameters { ThrowExceptionOnError, Silent };
-  static inline void RemoveDir(const std::string& Dir,
+  static inline void RemoveDir(const std::string& directory,
                                RemoveDirParameters parameters = RemoveDirParameters::ThrowExceptionOnError) {
     if (
 #ifndef BRICKS_WINDOWS
-        ::rmdir(Dir.c_str())
+        ::rmdir(directory.c_str())
 #else
-        ::_rmdir(Dir.c_str())
+        ::_rmdir(directory.c_str())
 #endif
         ) {
       if (parameters == RemoveDirParameters::ThrowExceptionOnError) {
