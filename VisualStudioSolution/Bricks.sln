@@ -15,6 +15,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "time", "..\time\time.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_url", "..\net\url\net_url.vcxproj", "{2845C793-827A-4F05-83A4-EC400E25B8DA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "file", "..\file\file.vcxproj", "{3C30A84C-326D-4878-99C9-5C07E7E76074}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_tcp", "..\net\tcp\net_tcp.vcxproj", "{113032DF-5117-4519-8787-CA22F376C096}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -45,6 +49,14 @@ Global
 		{2845C793-827A-4F05-83A4-EC400E25B8DA}.Debug|Win32.Build.0 = Debug|Win32
 		{2845C793-827A-4F05-83A4-EC400E25B8DA}.Release|Win32.ActiveCfg = Release|Win32
 		{2845C793-827A-4F05-83A4-EC400E25B8DA}.Release|Win32.Build.0 = Release|Win32
+		{3C30A84C-326D-4878-99C9-5C07E7E76074}.Debug|Win32.ActiveCfg = Debug|Win32
+		{3C30A84C-326D-4878-99C9-5C07E7E76074}.Debug|Win32.Build.0 = Debug|Win32
+		{3C30A84C-326D-4878-99C9-5C07E7E76074}.Release|Win32.ActiveCfg = Release|Win32
+		{3C30A84C-326D-4878-99C9-5C07E7E76074}.Release|Win32.Build.0 = Release|Win32
+		{113032DF-5117-4519-8787-CA22F376C096}.Debug|Win32.ActiveCfg = Debug|Win32
+		{113032DF-5117-4519-8787-CA22F376C096}.Debug|Win32.Build.0 = Debug|Win32
+		{113032DF-5117-4519-8787-CA22F376C096}.Release|Win32.ActiveCfg = Release|Win32
+		{113032DF-5117-4519-8787-CA22F376C096}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

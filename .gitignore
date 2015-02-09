@@ -13,6 +13,7 @@ coverage.info
 
 *.suo
 *.sdf
+*.opensdf
 *.filters
 
 Debug
