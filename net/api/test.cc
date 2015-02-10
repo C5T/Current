@@ -222,7 +222,7 @@ TEST(HTTPAPI, GetToFile) {
       sleep();
     }
   });
-  bricks::FileSystem::CreateDir(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const string url = Printf("localhost:%d/stars?n=3", FLAGS_net_api_test_port);
@@ -246,7 +246,7 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
 
 TEST(HTTPAPI, PostFromInvalidFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  bricks::FileSystem::CreateDir(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(non_existent_file_name);
   ASSERT_THROW(HTTP(POSTFromFile(
@@ -260,7 +260,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
     ASSERT_TRUE(r.http.HasBody());
     r.connection.SendHTTPResponse("Voila: " + r.http.Body());
   });
-  bricks::FileSystem::CreateDir(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
@@ -276,7 +276,7 @@ TEST(HTTPAPI, PostFromBufferToFile) {
     ASSERT_TRUE(r.http.HasBody());
     r.connection.SendHTTPResponse("Meh: " + r.http.Body());
   });
-  bricks::FileSystem::CreateDir(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
@@ -291,7 +291,7 @@ TEST(HTTPAPI, PostFromFileToFile) {
     ASSERT_TRUE(r.http.HasBody());
     r.connection.SendHTTPResponse("Phew: " + r.http.Body());
   });
-  bricks::FileSystem::CreateDir(FLAGS_net_api_test_tmpdir, FileSystem::CreateDirParameters::Silent);
+  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name =
       FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
