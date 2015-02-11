@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_STRINGS_PRINTF_H
 #define BRICKS_STRINGS_PRINTF_H
 
+#include "../port.h"
+
 #include <string>
 #include <cstdarg>
 
@@ -36,7 +38,11 @@ inline std::string Printf(const char *fmt, ...) {
   static char buf[max_formatted_output_length + 1];
   va_list ap;
   va_start(ap, fmt);
+#ifndef BRICKS_WINDOWS
   vsnprintf(buf, max_formatted_output_length, fmt, ap);
+#else
+  _vsnprintf_s(buf, max_formatted_output_length, fmt, ap);
+#endif
   va_end(ap);
   return buf;
 }

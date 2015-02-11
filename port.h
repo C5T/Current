@@ -30,6 +30,8 @@ SOFTWARE.
 #ifndef BRICKS_PORT_H
 #define BRICKS_PORT_H
 
+#define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
+
 #include <string>
 
 #ifdef BRICKS_PORT_COUNT

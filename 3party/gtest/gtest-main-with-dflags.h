@@ -8,6 +8,8 @@
 #ifndef THIRDPARTY_GTEST_MAIN_H
 #define THIRDPARTY_GTEST_MAIN_H
 
+#define _WINSOCKAPI_  // `gtest` includes `windows.h` on Windows, and this macro has to be defined before it.
+
 #include "gtest.h"
 
 DEFINE_string(bricks_runtime_arch, "", "The expected architecture to run on, `uname` on *nix systems.");

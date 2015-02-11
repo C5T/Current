@@ -21,6 +21,10 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_tcp", "..\net\tcp\net_t
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cerealize", "..\cerealize\cerealize.vcxproj", "{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_http", "..\net\http\net_http.vcxproj", "{9FC2310C-944E-4425-869D-7C2A61DC8A55}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_api", "..\net\api\net_api.vcxproj", "{48AC2552-330F-42E2-BE8C-321C7649FD70}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -63,6 +67,14 @@ Global
 		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|Win32.Build.0 = Debug|Win32
 		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|Win32.ActiveCfg = Release|Win32
 		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|Win32.Build.0 = Release|Win32
+		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Debug|Win32.Build.0 = Debug|Win32
+		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Release|Win32.ActiveCfg = Release|Win32
+		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Release|Win32.Build.0 = Release|Win32
+		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Debug|Win32.ActiveCfg = Debug|Win32
+		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Debug|Win32.Build.0 = Debug|Win32
+		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Release|Win32.ActiveCfg = Release|Win32
+		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
