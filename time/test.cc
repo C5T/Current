@@ -35,6 +35,11 @@ TEST(Time, SmokeTest) {
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   const bricks::time::EPOCH_MILLISECONDS b = bricks::time::Now();
   const int64_t dt = static_cast<int64_t>(b - a);
-  EXPECT_GE(dt, 47);
-  EXPECT_LE(dt, 53);
+#ifndef BRICKS_WINDOWS
+  const int64_t allowed_skew = 3;
+#else
+  const int64_t allowed_skew = 10;  // Visual Studio is slower in regard to this test.
+#endif
+  EXPECT_GE(dt, 50 - allowed_skew);
+  EXPECT_LE(dt, 50 + allowed_skew);
 }

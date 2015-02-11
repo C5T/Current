@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Add code and test for the "/id/:id/value" type of URL.
+#include "../../port.h"
 
 #include <string>
 
@@ -58,7 +58,7 @@ DEFINE_int32(net_api_test_port,
              "lifetime of the binary.");
 DEFINE_string(net_api_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
 
-#ifndef BRICKS_COVERAGE_REPORT_MODE
+#if !defined(BRICKS_COVERAGE_REPORT_MODE) && !defined(BRICKS_WINDOWS)
 TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_bricks_runtime_arch);
 }

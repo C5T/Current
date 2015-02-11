@@ -24,6 +24,8 @@ SOFTWARE.
 
 #include <thread>
 
+#include "../../port.h"
+
 #include "http.h"
 
 #include "../../dflags/dflags.h"
@@ -231,7 +233,7 @@ TEST(PosixHTTPServerTest, NoEOF) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+             c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -256,7 +258,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+             c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
            },
            Socket(FLAGS_net_http_test_port));
   string body(1000000, '.');
@@ -399,6 +401,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
   EXPECT_TRUE(connection_reset_by_peer);
 }
 
+#ifndef BRICKS_WINDOWS
 struct HTTPClientImplCURL {
   static string Syscall(const string& cmdline) {
     FILE* pipe = ::popen(cmdline.c_str(), "r");
@@ -430,6 +433,7 @@ struct HTTPClientImplCURL {
     return result;
   }
 };
+#endif
 
 class HTTPClientImplPOSIX {
  public:
@@ -471,7 +475,11 @@ class HTTPClientImplPOSIX {
 template <typename T>
 class HTTPTest : public ::testing::Test {};
 
+#ifndef BRICKS_WINDOWS
 typedef ::testing::Types<HTTPClientImplPOSIX, HTTPClientImplCURL> HTTPClientImplsTypeList;
+#else
+typedef ::testing::Types<HTTPClientImplPOSIX> HTTPClientImplsTypeList;
+#endif
 TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
 
 TYPED_TEST(HTTPTest, GET) {

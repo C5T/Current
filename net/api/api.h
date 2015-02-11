@@ -53,7 +53,7 @@ SOFTWARE.
 #include "../../port.h"
 #include "../../util/singleton.h"
 
-#if defined(BRICKS_POSIX)
+#if defined(BRICKS_POSIX) || defined(BRICKS_WINDOWS)
 #include "impl/posix_client.h"
 #include "impl/posix_server.h"
 typedef bricks::net::api::HTTPClientPOSIX HTTP_CLIENT;

@@ -45,18 +45,11 @@ namespace bricks {
 namespace cerealize {
 
 // Helper compile-time test that certain type can be serialized via cereal.
-template <typename T, typename A = cereal::JSONOutputArchive>
-class is_cerealizeable {
- private:
-  typedef char Yes;
-  typedef long No;
-  template <typename C>
-  static Yes YesOrNo(decltype(&C::template serialize<A>));
-  template <typename C>
-  static No YesOrNo(...);
+template<typename T> using is_read_cerealizable = cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>;
+template<typename T> using is_write_cerealizable = cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>;
 
- public:
-  enum { value = sizeof(YesOrNo<T>(0)) == sizeof(Yes) };
+template <typename T> struct is_cerealizable {
+  constexpr static bool value = is_read_cerealizable<T>::value && is_write_cerealizable<T>::value;
 };
 
 // Helper code to simplify wrapping objects into `unique_ptr`-s of their base types
