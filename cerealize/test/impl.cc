@@ -67,12 +67,8 @@ struct Yes {
 };
 
 TEST(Cerealize, CompileTimeTest) {
-  EXPECT_FALSE(is_cerealizeable<int>::value);
-  EXPECT_FALSE(is_cerealizeable<std::string>::value);
-  EXPECT_FALSE(is_cerealizeable<No>::value);
-  // TODO(dkorolev): Fix this test.
-  // auto lambda = &Yes::template serialize<bool>;
-  EXPECT_TRUE(is_cerealizeable<Yes>::value);
+  EXPECT_FALSE(is_cerealizable<No>::value);
+  EXPECT_TRUE(is_cerealizable<Yes>::value);
 };
 
 struct CerealTestObject {

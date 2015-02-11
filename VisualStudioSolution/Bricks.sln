@@ -19,6 +19,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "file", "..\file\file.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_tcp", "..\net\tcp\net_tcp.vcxproj", "{113032DF-5117-4519-8787-CA22F376C096}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cerealize", "..\cerealize\cerealize.vcxproj", "{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -57,6 +59,10 @@ Global
 		{113032DF-5117-4519-8787-CA22F376C096}.Debug|Win32.Build.0 = Debug|Win32
 		{113032DF-5117-4519-8787-CA22F376C096}.Release|Win32.ActiveCfg = Release|Win32
 		{113032DF-5117-4519-8787-CA22F376C096}.Release|Win32.Build.0 = Release|Win32
+		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|Win32.Build.0 = Debug|Win32
+		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|Win32.ActiveCfg = Release|Win32
+		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
