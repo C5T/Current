@@ -186,7 +186,7 @@ class TemplatedHTTPRequestData : public HELPER {
                 const size_t bytes_to_read = next_offset - offset;
                 // The `+1` is required for the '\0'.
                 if (buffer_.size() < next_offset + 1) {
-                  buffer_.resize(static_cast<size_t>(buffer_.size() * buffer_growth_k, next_offset + 1));
+                  buffer_.resize(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1);
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
                   BRICKS_THROW(ConnectionResetByPeer());
@@ -316,34 +316,34 @@ class TemplatedHTTPRequestData : public HELPER {
 // The default implementation is exposed as HTTPRequestData.
 typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
-class HTTPServerConnection {
- private:
-  // Microsoft Visual Studio compiler is strict with overloads,
-  // explicitly exclude string-related types from cereal-based implementations.
-  template<typename T> struct is_not_string {
-	  template<typename T> struct impl {
+	  template<typename T> struct is_not_string_impl {
 		  constexpr static bool value = true;
 	  };
-	  template<> struct impl<const std::string> {
+	  template<> struct is_not_string_impl<const std::string> {
 		  constexpr static bool value = false;
 	  };
-	  template<> struct impl<const std::vector<char>> {
+	  template<> struct is_not_string_impl<const std::vector<char>> {
 		  constexpr static bool value = false;
 	  };
-	  template<> struct impl<const std::vector<int8_t>> {
+	  template<> struct is_not_string_impl<const std::vector<int8_t>> {
 		  constexpr static bool value = false;
 	  };
-	  template<> struct impl<const std::vector<uint8_t>> {
+	  template<> struct is_not_string_impl<const std::vector<uint8_t>> {
 		  constexpr static bool value = false;
 	  };
-	  template<> struct impl<const char*> {
+	  template<> struct is_not_string_impl<const char*> {
 		  constexpr static bool value = false;
 	  };
-	  template<size_t N> struct impl<const char[N]> {
+	  template<size_t N> struct is_not_string_impl<const char[N]> {
 		  constexpr static bool value = false;
 	  };
-	  constexpr static bool value = impl<const typename std::remove_reference<T>::type>::value;
+  // Microsoft Visual Studio compiler is strict with overloads,
+  // explicitly exclude string-related types from cereal-based implementations.
+  template<typename TOP_LEVEL_T> struct is_not_string {
+	  constexpr static bool value = is_not_string_impl<const typename std::remove_reference<TOP_LEVEL_T>::type>::value;
   };
+
+class HTTPServerConnection {
  public:
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
