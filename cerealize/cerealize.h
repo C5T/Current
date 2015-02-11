@@ -45,10 +45,13 @@ namespace bricks {
 namespace cerealize {
 
 // Helper compile-time test that certain type can be serialized via cereal.
-template<typename T> using is_read_cerealizable = cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>;
-template<typename T> using is_write_cerealizable = cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>;
+template <typename T>
+using is_read_cerealizable = cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>;
+template <typename T>
+using is_write_cerealizable = cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>;
 
-template <typename T> struct is_cerealizable {
+template <typename T>
+struct is_cerealizable {
   constexpr static bool value = is_read_cerealizable<T>::value && is_write_cerealizable<T>::value;
 };
 

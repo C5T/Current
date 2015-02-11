@@ -303,11 +303,11 @@ class Connection : public SocketHandle {
 
   template <typename T>
   inline Connection& BlockingWrite(const T begin, const T end) {
-	if (begin != end) {
+    if (begin != end) {
       return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
-	} else {
-	  return *this;
-	}
+    } else {
+      return *this;
+    }
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
