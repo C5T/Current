@@ -186,7 +186,8 @@ class TemplatedHTTPRequestData : public HELPER {
                 const size_t bytes_to_read = next_offset - offset;
                 // The `+1` is required for the '\0'.
                 if (buffer_.size() < next_offset + 1) {
-                  buffer_.resize(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1);
+                  buffer_.resize(
+                      std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
                   BRICKS_THROW(ConnectionResetByPeer());
