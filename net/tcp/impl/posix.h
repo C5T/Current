@@ -29,17 +29,25 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
+#include "../../../util/singleton.h"
+
 #include <cassert>
 #include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
 
+#ifndef BRICKS_WINDOWS
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#else
+#include <WS2tcpip.h>
+#include <corecrt_io.h>
+#pragma comment(lib, "Ws2_32.lib")
+#endif
 
 namespace bricks {
 namespace net {
@@ -65,7 +73,21 @@ const size_t kReadTillEOFInitialBufferSize = 128;
 // Looks like a glitch in clang++ in either direction (warn on both or on none for consistency reasons),
 // but I didn't investigate further -- D.K.
 
-class SocketHandle {
+struct SocketSystemInitializer {
+#ifdef BRICKS_WINDOWS
+  struct OneTimeInitializer {
+    OneTimeInitializer() {
+      WSADATA wsaData;
+      if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
+        BRICKS_THROW(SocketWSAStartupException());
+      }
+    }
+  };
+  SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
+#endif
+};
+
+class SocketHandle : private SocketSystemInitializer {
  public:
   // Two ways to construct SocketHandle: via NewHandle() or FromHandle(int handle).
   struct NewHandle final {};
@@ -88,14 +110,24 @@ class SocketHandle {
 
   inline ~SocketHandle() {
     if (socket_ != -1) {
+#ifndef BRICKS_WINDOWS
       ::close(socket_);
+#else
+      ::closesocket(socket_);
+#endif
     }
   }
 
   inline explicit SocketHandle(SocketHandle&& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
 
+  // SocketHandle does not expose copy constructor and assignment operator. It should only be moved.
+
  private:
+#ifndef BRICKS_WINDOWS
   int socket_;
+#else
+  mutable int socket_;  // Need to support taking the handle away from a non-move constructor.
+#endif
 
  public:
   // The `ReadOnlyValidSocketAccessor socket` members provide simple read-only access to `socket_` via `socket`.
@@ -122,9 +154,17 @@ class SocketHandle {
 
  private:
   SocketHandle() = delete;
-  SocketHandle(const SocketHandle&) = delete;
   void operator=(const SocketHandle&) = delete;
   void operator=(SocketHandle&&) = delete;
+
+#ifndef BRICKS_WINDOWS
+  SocketHandle(const SocketHandle&) = delete;
+#else
+ public:
+  SocketHandle(const SocketHandle& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
+
+ private:
+#endif
 };
 
 class Connection : public SocketHandle {
@@ -135,7 +175,13 @@ class Connection : public SocketHandle {
 
   // Closes the outbound side of the socket and notifies the other party that no more data will be sent.
   inline Connection& SendEOF() {
-    ::shutdown(socket, SHUT_WR);
+    ::shutdown(socket,
+#ifndef BRICKS_WINDOWS
+               SHUT_WR
+#else
+               SD_SEND
+#endif
+               );
     return *this;
   }
 
@@ -154,7 +200,12 @@ class Connection : public SocketHandle {
     const size_t max_length_in_bytes = max_length * sizeof(T);
     bool alive = true;
     do {
+#ifndef BRICKS_WINDOWS
       const ssize_t retval = ::recv(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer), 0);
+#else
+      const int retval =
+          ::recv(socket, reinterpret_cast<char*>(raw_ptr), max_length_in_bytes - (raw_ptr - raw_buffer), 0);
+#endif
       if (retval < 0) {
         // TODO(dkorolev): Unit-test this logic.
         // I could not find a simple way to reproduce it for the test. -- D.K.
@@ -169,10 +220,18 @@ class Connection : public SocketHandle {
             alive = false;
             continue;
           } else {
-            BRICKS_THROW(ConnectionResetByPeer());
+            if ((raw_ptr - raw_buffer) % sizeof(T)) {
+              BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
+            } else {
+              BRICKS_THROW(ConnectionResetByPeer());
+            }
           }
         } else {
-          BRICKS_THROW(SocketReadException());
+          if ((raw_ptr - raw_buffer) % sizeof(T)) {
+            BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
+          } else {
+            BRICKS_THROW(SocketReadException());
+          }
         }
         // LCOV_EXCL_STOP
       } else {
@@ -222,7 +281,13 @@ class Connection : public SocketHandle {
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
     assert(buffer);
-    const ssize_t result = ::send(socket, buffer, write_length, MSG_NOSIGNAL);
+#ifndef BRICKS_WINDOWS
+    const int result = static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL));
+#else
+    // No `MSG_NOSIGNAL` and extra cast for Visual Studio.
+    // (As I understand, Windows sockets would not result in pipe-related issues. -- D.K.)
+    const int result = static_cast<int>(::send(socket, static_cast<const char*>(buffer), write_length, 0));
+#endif
     if (result < 0) {
       BRICKS_THROW(SocketWriteException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {
@@ -238,7 +303,11 @@ class Connection : public SocketHandle {
 
   template <typename T>
   inline Connection& BlockingWrite(const T begin, const T end) {
-    return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
+    if (begin != end) {
+      return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
+    } else {
+      return *this;
+    }
   }
 
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
@@ -262,14 +331,27 @@ class Socket final : public SocketHandle {
                          const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
       : SocketHandle(SocketHandle::NewHandle()) {
     int just_one = 1;
+    // LCOV_EXCL_START
     if (disable_nagle_algorithm) {
-      // LCOV_EXCL_START
-      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(int))) {
+#ifndef BRICKS_WINDOWS
+      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(int)))
+#else
+      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(int)))
+#endif
+      {
         BRICKS_THROW(SocketCreateException());
       }
-      // LCOV_EXCL_STOP
     }
-    if (::setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &just_one, sizeof(int))) {
+    // LCOV_EXCL_STOP
+    if (::setsockopt(socket,
+                     SOL_SOCKET,
+                     SO_REUSEADDR,
+#ifndef BRICKS_WINDOWS
+                     &just_one,
+#else
+                     reinterpret_cast<const char*>(&just_one),
+#endif
+                     sizeof(int))) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
@@ -293,17 +375,31 @@ class Socket final : public SocketHandle {
   inline Connection Accept() {
     sockaddr_in addr_client;
     memset(&addr_client, 0, sizeof(addr_client));
-    socklen_t addr_client_length = sizeof(sockaddr_in);
-    const int fd = ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
+    // TODO(dkorolev): Type socklen_t ?
+    auto addr_client_length = sizeof(sockaddr_in);
+    const int fd = ::accept(socket,
+                            reinterpret_cast<struct sockaddr*>(&addr_client),
+#ifndef BRICKS_WINDOWS
+                            reinterpret_cast<socklen_t*>(&addr_client_length)
+#else
+                            reinterpret_cast<int*>(&addr_client_length)
+#endif
+                            );
     if (fd == -1) {
       BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
     return Connection(SocketHandle::FromHandle(fd));
   }
 
+  // Note: The copy constructor is left public and default.
+  // On Windows builds, it's implemented as a clone of a move constructor for the base class.
+  // This turned out to be required since the `std::thread t([](Socket s) { ... }, Socket(port))` construct
+  // works fine in g++/clang++ but does not compile in Visual Studio
+  // I'll have to investigate it further one day -- D.K.
+  Socket(const Socket& rhs) = default;
+
  private:
   Socket() = delete;
-  Socket(const Socket&) = delete;
   void operator=(const Socket&) = delete;
   void operator=(Socket&&) = delete;
 };

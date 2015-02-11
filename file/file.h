@@ -26,14 +26,22 @@ SOFTWARE.
 #ifndef BRICKS_FILE_FILE_H
 #define BRICKS_FILE_FILE_H
 
+#include <cassert>
 #include <cstdio>
 #include <fstream>
 #include <string>
 #include <cstring>
 
+#include "../port.h"
+
+#ifndef BRICKS_WINDOWS
 #include <dirent.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <direct.h>
+#endif
+
+#include <sys/stat.h>
 
 #include "exceptions.h"
 
@@ -50,7 +58,7 @@ struct FileSystem {
       fi.exceptions(std::ifstream::failbit | std::ifstream::badbit);
       fi.open(file_name, std::ifstream::binary);
       fi.seekg(0, std::ios::end);
-      const size_t size = fi.tellg();
+      const size_t size = static_cast<size_t>(fi.tellg());
       std::string buffer(size, '\0');
       fi.seekg(0);
       if (fi.read(&buffer[0], size).good()) {
@@ -81,7 +89,12 @@ struct FileSystem {
 
   static inline std::string GenTmpFileName() {
     char buffer[L_tmpnam];
-    return std::string(::tmpnam(buffer));
+#ifndef BRICKS_WINDOWS
+    assert(buffer == ::tmpnam(buffer));
+#else
+    assert(!(::tmpnam_s(buffer)));
+#endif
+    return buffer;
   }
 
   static inline std::string WriteStringToTmpFile(const std::string& contents) {
@@ -104,10 +117,16 @@ struct FileSystem {
 
   static inline uint64_t GetFileSize(const std::string& file_name) {
     struct stat info;
-    if (stat(file_name.c_str(), &info)) {
+    if (::stat(file_name.c_str(), &info)) {
       BRICKS_THROW(FileException());
     } else {
-      if (S_ISDIR(info.st_mode)) {
+      if (
+#ifndef BRICKS_WINDOWS
+          S_ISDIR(info.st_mode)
+#else
+          info.st_mode & _S_IFDIR
+#endif
+          ) {
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -115,13 +134,20 @@ struct FileSystem {
     }
   }
 
-  enum class CreateDirectoryParameters { ThrowExceptionOnError, Silent };
-  static inline void CreateDirectory(
-      const std::string& directory,
-      CreateDirectoryParameters parameters = CreateDirectoryParameters::ThrowExceptionOnError) {
+  // Please keep the short `MkDir` name instead of the long `CreateDirectory`,
+  // since the latter is `#define`-d into `CreateDirectoryA` on Windows.
+  enum class MkDirParameters { ThrowExceptionOnError, Silent };
+  static inline void MkDir(const std::string& directory,
+                           MkDirParameters parameters = MkDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
-    if (::mkdir(directory.c_str(), 0755)) {
-      if (parameters == CreateDirectoryParameters::ThrowExceptionOnError) {
+    if (
+#ifndef BRICKS_WINDOWS
+        ::mkdir(directory.c_str(), 0755)
+#else
+        ::_mkdir(directory.c_str())
+#endif
+        ) {
+      if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
       }
@@ -188,12 +214,17 @@ struct FileSystem {
     std::string file_name_;
   };
 
-  enum class RemoveDirectoryParameters { ThrowExceptionOnError, Silent };
-  static inline void RemoveDirectory(
-      const std::string& directory,
-      RemoveDirectoryParameters parameters = RemoveDirectoryParameters::ThrowExceptionOnError) {
-    if (::rmdir(directory.c_str())) {
-      if (parameters == RemoveDirectoryParameters::ThrowExceptionOnError) {
+  enum class RemoveDirParameters { ThrowExceptionOnError, Silent };
+  static inline void RemoveDir(const std::string& directory,
+                               RemoveDirParameters parameters = RemoveDirParameters::ThrowExceptionOnError) {
+    if (
+#ifndef BRICKS_WINDOWS
+        ::rmdir(directory.c_str())
+#else
+        ::_rmdir(directory.c_str())
+#endif
+        ) {
+      if (parameters == RemoveDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
       }

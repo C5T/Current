@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_NET_URL_URL_H
 #define BRICKS_NET_URL_URL_H
 
+#include "../../port.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstring>

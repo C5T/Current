@@ -1,3 +1,5 @@
+// TODO(dkorolev): Move is_not_string under strings:: as is_string. And test it.
+
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -136,7 +138,7 @@ class TemplatedHTTPRequestData : public HELPER {
              read_count = c.BlockingRead(&buffer_[offset], chunk),
              offset += read_count,
              read_count == chunk && offset < length_cap) {
-        buffer_.resize(buffer_.size() * buffer_growth_k);
+        buffer_.resize(static_cast<size_t>(buffer_.size() * buffer_growth_k));
       }
       if (!read_count) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
@@ -184,7 +186,8 @@ class TemplatedHTTPRequestData : public HELPER {
                 const size_t bytes_to_read = next_offset - offset;
                 // The `+1` is required for the '\0'.
                 if (buffer_.size() < next_offset + 1) {
-                  buffer_.resize(std::max<size_t>(buffer_.size() * buffer_growth_k, next_offset + 1));
+                  buffer_.resize(
+                      std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
                   BRICKS_THROW(ConnectionResetByPeer());
@@ -314,6 +317,42 @@ class TemplatedHTTPRequestData : public HELPER {
 // The default implementation is exposed as HTTPRequestData.
 typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
+template <typename T>
+struct is_not_string_impl {
+  constexpr static bool value = true;
+};
+template <>
+struct is_not_string_impl<const std::string> {
+  constexpr static bool value = false;
+};
+template <>
+struct is_not_string_impl<const std::vector<char>> {
+  constexpr static bool value = false;
+};
+template <>
+struct is_not_string_impl<const std::vector<int8_t>> {
+  constexpr static bool value = false;
+};
+template <>
+struct is_not_string_impl<const std::vector<uint8_t>> {
+  constexpr static bool value = false;
+};
+template <>
+struct is_not_string_impl<const char*> {
+  constexpr static bool value = false;
+};
+template <size_t N>
+struct is_not_string_impl<const char[N]> {
+  constexpr static bool value = false;
+};
+// Microsoft Visual Studio compiler is strict with overloads,
+// explicitly exclude string-related types from cereal-based implementations.
+template <typename TOP_LEVEL_T>
+struct is_not_string {
+  constexpr static bool value =
+      is_not_string_impl<const typename std::remove_reference<TOP_LEVEL_T>::type>::value;
+};
+
 class HTTPServerConnection {
  public:
   // The only constructor parses HTTP headers coming from the socket
@@ -368,16 +407,15 @@ class HTTPServerConnection {
   }
 
   // Special case to handle std::string.
-  inline void SendHTTPResponse(const std::string& container,
+  inline void SendHTTPResponse(const std::string& string,
                                HTTPResponseCode code = HTTPResponseCode::OK,
                                const std::string& content_type = DefaultContentType(),
                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
+    SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
   // Support objects that can be serialized as JSON-s via Cereal.
   template <class T>
-  inline typename std::enable_if<
-      (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+  inline typename std::enable_if<is_not_string<T>::value && cerealize::is_write_cerealizable<T>::value>::type
   SendHTTPResponse(T&& object,
                    HTTPResponseCode code = HTTPResponseCode::OK,
                    const std::string& content_type = DefaultContentType(),
@@ -387,9 +425,10 @@ class HTTPServerConnection {
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
+  // Microsoft Visual Studio compiler is strict with overloads,
+  // explicitly forbid std::string and std::vector<char> from this one.
   template <class T, typename S>
-  inline typename std::enable_if<
-      (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+  inline typename std::enable_if<is_not_string<T>::value && cerealize::is_write_cerealizable<T>::value>::type
   SendHTTPResponse(T&& object,
                    S&& name,
                    HTTPResponseCode code = HTTPResponseCode::OK,
@@ -437,15 +476,12 @@ class HTTPServerConnection {
 
       // Support objects that can be serialized as JSON-s via Cereal.
       template <class T>
-      inline typename std::enable_if<
-          (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
+      inline typename std::enable_if<is_not_string<T>::value && cerealize::is_cerealizable<T>::value>::type
       Send(T&& object) {
         SendImpl(cerealize::JSON(object) + '\n');
       }
       template <class T, typename S>
-      inline typename std::enable_if<
-          (cerealize::is_cerealizeable<typename std::remove_reference<T>::type>::value)>::type
-      Send(T&& object, S&& name) {
+      inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object, S&& name) {
         SendImpl(cerealize::JSON(object, name) + '\n');
       }
 

@@ -8,3 +8,13 @@ coverage.info
 *.gcov
 *.gcda
 *.gcno
+
+# Microsoft Visual Studio files.
+
+*.suo
+*.sdf
+*.opensdf
+*.filters
+
+Debug
+Release

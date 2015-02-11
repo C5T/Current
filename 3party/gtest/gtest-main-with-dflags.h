@@ -8,6 +8,8 @@
 #ifndef THIRDPARTY_GTEST_MAIN_H
 #define THIRDPARTY_GTEST_MAIN_H
 
+#define _WINSOCKAPI_  // `gtest` includes `windows.h` on Windows, and this macro has to be defined before it.
+
 #include "gtest.h"
 
 DEFINE_string(bricks_runtime_arch, "", "The expected architecture to run on, `uname` on *nix systems.");
@@ -18,7 +20,17 @@ int main(int argc, char** argv) {
   // Postpone the `Death tests use fork(), which is unsafe particularly in a threaded context.` warning.
   // Via https://code.google.com/p/googletest/wiki/AdvancedGuide#Death_Test_Styles
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
-  return RUN_ALL_TESTS();
+  const auto result = RUN_ALL_TESTS();
+#ifdef _WIN32
+  // It's easier for the developers to just press Enter after the tests are done compared to
+  // configuring Visual Studio to not close the application terminal by default.
+  {
+    std::string s;
+    std::cout << std::endl << "Done executing, press Enter to terminate.";
+    std::getline(std::cin, s);
+  }
+#endif
+  return result;
 }
 
 #endif  // THIRDPARTY_GTEST_MAIN_WITH_DFLAGS_H

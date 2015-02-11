@@ -24,6 +24,8 @@ SOFTWARE.
 
 #include <thread>
 
+#include "../../port.h"
+
 #include "http.h"
 
 #include "../../dflags/dflags.h"
@@ -52,9 +54,10 @@ using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
 
 struct HTTPTestObject {
-  int number = 42;
-  std::string text = "text";
-  std::vector<int> array = {1, 2, 3};
+  int number;
+  std::string text;
+  std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
+  HTTPTestObject() : number(42), text("text"), array({1, 2, 3}) {}
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
@@ -230,7 +233,7 @@ TEST(PosixHTTPServerTest, NoEOF) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+             c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -255,7 +258,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+             c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
            },
            Socket(FLAGS_net_http_test_port));
   string body(1000000, '.');
@@ -398,6 +401,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
   EXPECT_TRUE(connection_reset_by_peer);
 }
 
+#ifndef BRICKS_WINDOWS
 struct HTTPClientImplCURL {
   static string Syscall(const string& cmdline) {
     FILE* pipe = ::popen(cmdline.c_str(), "r");
@@ -429,6 +433,7 @@ struct HTTPClientImplCURL {
     return result;
   }
 };
+#endif
 
 class HTTPClientImplPOSIX {
  public:
@@ -470,7 +475,11 @@ class HTTPClientImplPOSIX {
 template <typename T>
 class HTTPTest : public ::testing::Test {};
 
+#ifndef BRICKS_WINDOWS
 typedef ::testing::Types<HTTPClientImplPOSIX, HTTPClientImplCURL> HTTPClientImplsTypeList;
+#else
+typedef ::testing::Types<HTTPClientImplPOSIX> HTTPClientImplsTypeList;
+#endif
 TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
 
 TYPED_TEST(HTTPTest, GET) {

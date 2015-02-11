@@ -27,6 +27,7 @@ SOFTWARE.
 #ifndef BRICKS_TIME_CHRONO_H
 #define BRICKS_TIME_CHRONO_H
 
+#include <algorithm>
 #include <chrono>
 
 #include "../port.h"
