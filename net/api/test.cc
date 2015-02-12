@@ -224,7 +224,7 @@ TEST(HTTPAPI, GetToFile) {
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
-  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("localhost:%d/stars?n=3", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url), SaveResponseToFile(file_name));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -248,7 +248,7 @@ TEST(HTTPAPI, PostFromInvalidFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
-  const auto test_file_scope = FileSystem::ScopedRemoveFile(non_existent_file_name);
+  const auto test_file_scope = FileSystem::ScopedRmFile(non_existent_file_name);
   ASSERT_THROW(HTTP(POSTFromFile(
                    Printf("localhost:%d/foo", FLAGS_net_api_test_port), non_existent_file_name, "text/plain")),
                FileException);
@@ -262,7 +262,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
-  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
   FileSystem::WriteStringToFile(file_name.c_str(), "No shit detected.");
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
@@ -278,7 +278,7 @@ TEST(HTTPAPI, PostFromBufferToFile) {
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
-  const auto test_file_scope = FileSystem::ScopedRemoveFile(file_name);
+  const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
   const auto response = HTTP(POST(url, "TEST BODY", "text/plain"), SaveResponseToFile(file_name));
   EXPECT_EQ(200, static_cast<int>(response.code));
@@ -295,8 +295,8 @@ TEST(HTTPAPI, PostFromFileToFile) {
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name =
       FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";
-  const auto input_file_scope = FileSystem::ScopedRemoveFile(request_file_name);
-  const auto output_file_scope = FileSystem::ScopedRemoveFile(response_file_name);
+  const auto input_file_scope = FileSystem::ScopedRmFile(request_file_name);
+  const auto output_file_scope = FileSystem::ScopedRmFile(response_file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
   FileSystem::WriteStringToFile(request_file_name.c_str(), post_body);

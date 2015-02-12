@@ -1,5 +1,3 @@
-// TODO(dkorolev): Move is_not_string under strings:: as is_string. And test it.
-
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -317,42 +315,6 @@ class TemplatedHTTPRequestData : public HELPER {
 // The default implementation is exposed as HTTPRequestData.
 typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
-template <typename T>
-struct is_not_string_impl {
-  constexpr static bool value = true;
-};
-template <>
-struct is_not_string_impl<const std::string> {
-  constexpr static bool value = false;
-};
-template <>
-struct is_not_string_impl<const std::vector<char>> {
-  constexpr static bool value = false;
-};
-template <>
-struct is_not_string_impl<const std::vector<int8_t>> {
-  constexpr static bool value = false;
-};
-template <>
-struct is_not_string_impl<const std::vector<uint8_t>> {
-  constexpr static bool value = false;
-};
-template <>
-struct is_not_string_impl<const char*> {
-  constexpr static bool value = false;
-};
-template <size_t N>
-struct is_not_string_impl<const char[N]> {
-  constexpr static bool value = false;
-};
-// Microsoft Visual Studio compiler is strict with overloads,
-// explicitly exclude string-related types from cereal-based implementations.
-template <typename TOP_LEVEL_T>
-struct is_not_string {
-  constexpr static bool value =
-      is_not_string_impl<const typename std::remove_reference<TOP_LEVEL_T>::type>::value;
-};
-
 class HTTPServerConnection {
  public:
   // The only constructor parses HTTP headers coming from the socket
@@ -415,11 +377,11 @@ class HTTPServerConnection {
   }
   // Support objects that can be serialized as JSON-s via Cereal.
   template <class T>
-  inline typename std::enable_if<is_not_string<T>::value && cerealize::is_write_cerealizable<T>::value>::type
-  SendHTTPResponse(T&& object,
-                   HTTPResponseCode code = HTTPResponseCode::OK,
-                   const std::string& content_type = DefaultContentType(),
-                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+  inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
+      T&& object,
+      HTTPResponseCode code = HTTPResponseCode::OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -428,12 +390,12 @@ class HTTPServerConnection {
   // Microsoft Visual Studio compiler is strict with overloads,
   // explicitly forbid std::string and std::vector<char> from this one.
   template <class T, typename S>
-  inline typename std::enable_if<is_not_string<T>::value && cerealize::is_write_cerealizable<T>::value>::type
-  SendHTTPResponse(T&& object,
-                   S&& name,
-                   HTTPResponseCode code = HTTPResponseCode::OK,
-                   const std::string& content_type = DefaultContentType(),
-                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+  inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
+      T&& object,
+      S&& name,
+      HTTPResponseCode code = HTTPResponseCode::OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -476,8 +438,7 @@ class HTTPServerConnection {
 
       // Support objects that can be serialized as JSON-s via Cereal.
       template <class T>
-      inline typename std::enable_if<is_not_string<T>::value && cerealize::is_cerealizable<T>::value>::type
-      Send(T&& object) {
+      inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object) {
         SendImpl(cerealize::JSON(object) + '\n');
       }
       template <class T, typename S>
