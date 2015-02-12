@@ -53,11 +53,15 @@ using bricks::net::ClientSocket;
 
 using bricks::net::AttemptedToUseMovedAwayConnection;
 using bricks::net::SocketBindException;
-using bricks::net::SocketReadException;
 using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 using bricks::net::SocketCouldNotWriteEverythingException;
 using bricks::net::SocketResolveAddressException;
+
+#ifdef BRICKS_WINDOWS
+// TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
+using bricks::net::SocketReadException;
 using bricks::net::ConnectionResetByPeer;
+#endif
 
 static string ReadFromSocket(thread& server_thread,
                              const string& host,
@@ -70,14 +74,15 @@ static string ReadFromSocket(thread& server_thread,
 #ifndef BRICKS_WINDOWS
   return connection.BlockingReadUntilEOF();
 #else
+  // TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
   // Windows test failure is localized down to here.
-  // Steps to reproduce: Remove this try-catch block and see the error apppear with --gtest_repeat=1000000.
-  // TODO(dkorolev): Investigate or delegate.
+  // Steps to reproduce:
+  // 1) Remove this try-catch block,
+  // 2) Observe the error to show up with --gtest_repeat=1000000 --gtest_break_on_failure.
   try {
-	  return connection.BlockingReadUntilEOF();
-  }
-  catch (const SocketReadException&) {
-	  return "SOCKET_READ_EXCEPTION";
+    return connection.BlockingReadUntilEOF();
+  } catch (const SocketReadException&) {
+    return "SOCKET_READ_EXCEPTION";
   }
 #endif
 }
@@ -194,37 +199,39 @@ TEST(TCPTest, PrematureMessageEndingException) {
 #ifndef BRICKS_WINDOWS
                          ASSERT_THROW(connection.BlockingRead(&big_struct, sizeof(big_struct)),
                                       SocketReadMultibyteRecordEndedPrematurelyException);
+                         connection.BlockingWrite("PART");
 #else
-						 try {
-							 connection.BlockingRead(&big_struct, sizeof(big_struct));
-							 ASSERT_TRUE(false);  // This should never happen.
-						 }
-						 catch (const SocketReadMultibyteRecordEndedPrematurelyException&) {
-							 connection.BlockingWrite("PART");
-							 return;
-						 }
-						 catch (const SocketReadException&) {
-							 connection.BlockingWrite("ERROR");  // Sometimes on Windows no message goes through.
-							 return;
-						 }
-						 catch (const ConnectionResetByPeer&) {
-							 connection.BlockingWrite("NONE");  // Sometimes on Windows no message goes through.
-							 return;
-						 }
-						 ASSERT_TRUE(false);  // This should never happen.
+                         // TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
+                         try {
+                           connection.BlockingRead(&big_struct, sizeof(big_struct));
+                           ASSERT_TRUE(false);  // This should never happen.
+                         } catch (const SocketReadMultibyteRecordEndedPrematurelyException&) {
+                           connection.BlockingWrite("PART_AS_IT_SHOULD_BE");
+                           return;
+                         } catch (const SocketReadException&) {
+                           connection.BlockingWrite("ERROR");  // Sometimes on Windows no message goes through.
+                           return;
+                         } catch (const ConnectionResetByPeer&) {
+                           connection.BlockingWrite("NONE");  // Sometimes on Windows no message goes through.
+                           return;
+                         }
+                         ASSERT_TRUE(false);  // This should never happen.
 #endif
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  std::string result = ReadFromSocket(server_thread, [](Connection& connection) { connection.BlockingWrite("FUUU"); });
+  std::string result =
+      ReadFromSocket(server_thread, [](Connection& connection) { connection.BlockingWrite("FUUU"); });
 #ifndef BRICKS_WINDOWS
-	  EXPECT_EQ("PART", result);
+  EXPECT_EQ("PART", result);
   EXPECT_EQ('F', big_struct.first_byte);
   EXPECT_EQ('U', big_struct.second_byte);
 #else
-	  EXPECT_TRUE(result == "PART" || result == "NONE" || result == "ERROR" || result == "SOCKET_READ_EXCEPTION");
-  if (result == "PART") {
-	  EXPECT_EQ('F', big_struct.first_byte);
-	  EXPECT_EQ('U', big_struct.second_byte);
+  // TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
+  EXPECT_TRUE(result == "PART_AS_IT_SHOULD_BE" || result == "NONE" || result == "ERROR" ||
+              result == "SOCKET_READ_EXCEPTION");
+  if (result == "PART_AS_IT_SHOULD_BE") {
+    EXPECT_EQ('F', big_struct.first_byte);
+    EXPECT_EQ('U', big_struct.second_byte);
   }
 #endif
 }
