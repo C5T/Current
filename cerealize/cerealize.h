@@ -44,11 +44,55 @@ SOFTWARE.
 namespace bricks {
 namespace cerealize {
 
+// Helper compile-type test to tell string-like types from cerealizable types.
+template <typename T>
+struct is_string_type_impl {
+  constexpr static bool value = false;
+};
+template <>
+struct is_string_type_impl<const std::string> {
+  constexpr static bool value = true;
+};
+template <>
+struct is_string_type_impl<const std::vector<char>> {
+  constexpr static bool value = true;
+};
+template <>
+struct is_string_type_impl<const std::vector<int8_t>> {
+  constexpr static bool value = true;
+};
+template <>
+struct is_string_type_impl<const std::vector<uint8_t>> {
+  constexpr static bool value = true;
+};
+template <>
+struct is_string_type_impl<const char*> {
+  constexpr static bool value = true;
+};
+template <size_t N>
+struct is_string_type_impl<const char[N]> {
+  constexpr static bool value = true;
+};
+// Microsoft Visual Studio compiler is strict with overloads,
+// explicitly exclude string-related types from cereal-based implementations.
+template <typename TOP_LEVEL_T>
+struct is_string_type {
+  constexpr static bool value =
+      is_string_type_impl<const typename std::remove_reference<TOP_LEVEL_T>::type>::value;
+};
+
 // Helper compile-time test that certain type can be serialized via cereal.
 template <typename T>
-using is_read_cerealizable = cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>;
+struct is_read_cerealizable {
+  constexpr static bool value =
+      !is_string_type<T>::value && cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>::value;
+};
+
 template <typename T>
-using is_write_cerealizable = cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>;
+struct is_write_cerealizable {
+  constexpr static bool value =
+      !is_string_type<T>::value && cereal::traits::is_input_serializable<T, cereal::JSONOutputArchive>::value;
+};
 
 template <typename T>
 struct is_cerealizable {
