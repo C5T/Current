@@ -190,33 +190,33 @@ struct FileSystem {
     });
   }
 
-  enum class RemoveFileParameters { ThrowExceptionOnError, Silent };
-  static inline void RemoveFile(const std::string& file_name,
-                                RemoveFileParameters parameters = RemoveFileParameters::ThrowExceptionOnError) {
+  enum class RmFileParameters { ThrowExceptionOnError, Silent };
+  static inline void RmFile(const std::string& file_name,
+                            RmFileParameters parameters = RmFileParameters::ThrowExceptionOnError) {
     if (::remove(file_name.c_str())) {
-      if (parameters == RemoveFileParameters::ThrowExceptionOnError) {
+      if (parameters == RmFileParameters::ThrowExceptionOnError) {
         BRICKS_THROW(FileException());
       }
     }
   }
 
-  class ScopedRemoveFile final {
+  class ScopedRmFile final {
    public:
-    explicit ScopedRemoveFile(const std::string& file_name, bool remove_now_as_well = true)
+    explicit ScopedRmFile(const std::string& file_name, bool remove_now_as_well = true)
         : file_name_(file_name) {
       if (remove_now_as_well) {
-        RemoveFile(file_name_, RemoveFileParameters::Silent);
+        RmFile(file_name_, RmFileParameters::Silent);
       }
     }
-    ~ScopedRemoveFile() { RemoveFile(file_name_, RemoveFileParameters::Silent); }
+    ~ScopedRmFile() { RmFile(file_name_, RmFileParameters::Silent); }
 
    private:
     std::string file_name_;
   };
 
-  enum class RemoveDirParameters { ThrowExceptionOnError, Silent };
-  static inline void RemoveDir(const std::string& directory,
-                               RemoveDirParameters parameters = RemoveDirParameters::ThrowExceptionOnError) {
+  enum class RmDirParameters { ThrowExceptionOnError, Silent };
+  static inline void RmDir(const std::string& directory,
+                           RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError) {
     if (
 #ifndef BRICKS_WINDOWS
         ::rmdir(directory.c_str())
@@ -224,7 +224,7 @@ struct FileSystem {
         ::_rmdir(directory.c_str())
 #endif
         ) {
-      if (parameters == RemoveDirParameters::ThrowExceptionOnError) {
+      if (parameters == RmDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
       }

@@ -174,8 +174,8 @@ struct GNUPlot {
 
     const std::string input_file_name = bricks::FileSystem::GenTmpFileName();
     const std::string output_file_name = bricks::FileSystem::GenTmpFileName();
-    const auto input_deleter = bricks::FileSystem::ScopedRemoveFile(input_file_name);
-    const auto output_file_deleter = bricks::FileSystem::ScopedRemoveFile(output_file_name);
+    const auto input_deleter = bricks::FileSystem::ScopedRmFile(input_file_name);
+    const auto output_file_deleter = bricks::FileSystem::ScopedRmFile(output_file_name);
     {
       bricks::FileSystem::OutputFile f(input_file_name);
       f << "set term " << output_format_ << " size " << x_ << ',' << y_ << std::endl;

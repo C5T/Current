@@ -93,7 +93,7 @@ TEST(Cerealize, NamedJSON) {
 
 TEST(Cerealize, BinarySerializesAndParses) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
@@ -116,7 +116,7 @@ TEST(Cerealize, BinarySerializesAndParses) {
 
 TEST(Cerealize, JSONSerializesAndParses) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
@@ -137,7 +137,7 @@ TEST(Cerealize, JSONSerializesAndParses) {
 
 TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
@@ -161,7 +161,7 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
 
 TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;
@@ -175,7 +175,7 @@ TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
 
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RemoveFile(CurrentTestTempFileName(), FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
 
   EventAppStart a;
   EventAppSuspend b;

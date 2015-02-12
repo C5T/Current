@@ -52,8 +52,8 @@ TEST(File, JoinPath) {
 TEST(File, FileStringOperations) {
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "tmp");
 
-  FileSystem::RemoveFile(fn, FileSystem::RemoveFileParameters::Silent);
-  ASSERT_THROW(FileSystem::RemoveFile(fn), FileException);
+  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
+  ASSERT_THROW(FileSystem::RmFile(fn), FileException);
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
 
   FileSystem::WriteStringToFile(fn.c_str(), "PASSED");
@@ -63,16 +63,16 @@ TEST(File, FileStringOperations) {
   FileSystem::WriteStringToFile(fn.c_str(), " TEST", true);
   EXPECT_EQ("ANOTHER TEST", FileSystem::ReadFileAsString(fn));
 
-  FileSystem::RemoveFile(fn);
+  FileSystem::RmFile(fn);
   FileSystem::MkDir(fn);
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "not so fast"), FileException);
-  FileSystem::RemoveDir(fn);
+  FileSystem::RmDir(fn);
 }
 
 TEST(File, GetFileSize) {
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "size");
 
-  FileSystem::RemoveFile(fn, FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::GetFileSize(fn), FileException);
 
   FileSystem::WriteStringToFile(fn.c_str(), "four");
@@ -83,8 +83,8 @@ TEST(File, RenameFile) {
   const std::string fn1 = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "one");
   const std::string fn2 = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "two");
 
-  FileSystem::RemoveFile(fn1, FileSystem::RemoveFileParameters::Silent);
-  FileSystem::RemoveFile(fn2, FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::RenameFile(fn1, fn2), FileException);
 
   FileSystem::WriteStringToFile(fn1.c_str(), "data");
@@ -104,8 +104,8 @@ TEST(File, DirOperations) {
   const std::string& dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir");
   const std::string fn = FileSystem::JoinPath(dir, "file");
 
-  FileSystem::RemoveFile(fn, FileSystem::RemoveFileParameters::Silent);
-  FileSystem::RemoveDir(dir, FileSystem::RemoveDirParameters::Silent);
+  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "test"), FileException);
 
@@ -118,20 +118,20 @@ TEST(File, DirOperations) {
 
   ASSERT_THROW(FileSystem::GetFileSize(dir), FileException);
 
-  ASSERT_THROW(FileSystem::RemoveDir(dir), FileException);
-  FileSystem::RemoveFile(fn);
-  FileSystem::RemoveDir(dir);
+  ASSERT_THROW(FileSystem::RmDir(dir), FileException);
+  FileSystem::RmFile(fn);
+  FileSystem::RmDir(dir);
 
   ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "dir does not exist"), FileException);
 }
 
-TEST(File, ScopedRemoveFile) {
+TEST(File, ScopedRmFile) {
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "tmp");
 
-  FileSystem::RemoveFile(fn, FileSystem::RemoveFileParameters::Silent);
+  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
   {
-    const auto file_remover = FileSystem::ScopedRemoveFile(fn);
+    const auto file_remover = FileSystem::ScopedRmFile(fn);
     FileSystem::WriteStringToFile(fn.c_str(), "PASSED");
     EXPECT_EQ("PASSED", FileSystem::ReadFileAsString(fn));
   }
@@ -143,9 +143,9 @@ TEST(File, ScanDir) {
   const std::string fn1 = FileSystem::JoinPath(dir, "one");
   const std::string fn2 = FileSystem::JoinPath(dir, "two");
 
-  FileSystem::RemoveFile(fn1, FileSystem::RemoveFileParameters::Silent);
-  FileSystem::RemoveFile(fn2, FileSystem::RemoveFileParameters::Silent);
-  FileSystem::RemoveDir(dir, FileSystem::RemoveDirParameters::Silent);
+  FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
   struct Scanner {
     explicit Scanner(const std::string& dir, bool return_code = true) : dir_(dir), return_code_(return_code) {}
