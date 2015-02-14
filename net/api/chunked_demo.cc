@@ -117,11 +117,14 @@ DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 struct LayoutCell {
   std::string meta_url = "/meta";
 
+  // Define only output serialization (`JSON.stringify()`), forbid input serialization (`JSON.parse()`).
   template <typename A>
-  void serialize(A& ar) {
+  void save(A& ar) const {
     ar(CEREAL_NVP(meta_url));
   }
 };
+static_assert(is_write_cerealizable<LayoutCell>::value, "");
+static_assert(!is_read_cerealizable<LayoutCell>::value, "");
 
 struct LayoutItem {
   std::vector<LayoutItem> row;
@@ -130,7 +133,7 @@ struct LayoutItem {
 
   // Define only output serialization (`JSON.stringify()`), forbid input serialization (`JSON.parse()`).
   template <typename A>
-  typename std::enable_if<std::is_base_of<typename cereal::OutputArchive<A>, A>::value>::type serialize(A& ar) {
+  void save(A& ar) const {
     if (!row.empty()) {
       ar(CEREAL_NVP(row));
     } else if (!col.empty()) {
@@ -140,6 +143,9 @@ struct LayoutItem {
     }
   }
 };
+
+static_assert(is_write_cerealizable<LayoutItem>::value, "");
+static_assert(!is_read_cerealizable<LayoutItem>::value, "");
 
 struct ExampleMeta {
   struct Options {

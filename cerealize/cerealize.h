@@ -91,7 +91,7 @@ struct is_read_cerealizable {
 template <typename T>
 struct is_write_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_input_serializable<T, cereal::JSONOutputArchive>::value;
+      !is_string_type<T>::value && cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>::value;
 };
 
 template <typename T>
