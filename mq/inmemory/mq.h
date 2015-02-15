@@ -4,7 +4,7 @@
 // MMQ is an efficient in-memory FIFO buffer.
 //
 // Messages can be pushed into it via `PushMessage()`.
-// The consumer in run in a separate thread, and is fed one message at a time via `OnMessage()`.
+// The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
 // The order of messages is preserved.
 //
 // One of the objectives of MMQ is to minimize the time for which the message pushing thread is blocked for.
