@@ -84,14 +84,20 @@ struct is_string_type {
 // Helper compile-time test that certain type can be serialized via cereal.
 template <typename T>
 struct is_read_cerealizable {
-  constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>::value;
+  // Cereal _might_ have an issue with `<T&>` not being treated as input-serealizable.
+  // (I'd assume no const is expected for input serialization -- D.K.)
+  constexpr static bool value = !is_string_type<T>::value &&
+                                cereal::traits::is_input_serializable<typename std::remove_reference<T>::type,
+                                                                      cereal::JSONInputArchive>::value;
 };
 
 template <typename T>
 struct is_write_cerealizable {
-  constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>::value;
+  // Cereal has an issue with `<const T&>` not being treated as output-serealizable.
+  constexpr static bool value = !is_string_type<T>::value &&
+                                cereal::traits::is_output_serializable<
+                                    typename std::remove_const<typename std::remove_reference<T>::type>::type,
+                                    cereal::JSONOutputArchive>::value;
 };
 
 template <typename T>
