@@ -474,10 +474,9 @@ class HTTPServerConnection {
     std::unique_ptr<Impl> impl_;
   };
 
-  inline ChunkedResponseSender SendChunkedHTTPResponse(
-      HTTPResponseCode code = HTTPResponseCode::OK,
-      const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+  inline ChunkedResponseSender SendChunkedHTTPResponse(HTTPResponseCode code = HTTPResponseCode::OK,
+                                                       const std::string& content_type = DefaultContentType(),
+                                                       const HTTPHeaders& extra_headers = HTTPHeaders()) {
     std::ostringstream os;
     PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
     os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
