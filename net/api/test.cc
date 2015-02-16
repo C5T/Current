@@ -244,6 +244,15 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
   EXPECT_EQ("Data: No shit!", response.body);
 }
 
+TEST(HTTPAPI, PostWithEmptyBody) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_FALSE(r.http.HasBody());
+    r.connection.SendHTTPResponse("Empty POST.");
+  });
+  EXPECT_EQ("Empty POST.", HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port))).body);
+}
+
 TEST(HTTPAPI, PostFromInvalidFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);

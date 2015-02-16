@@ -70,11 +70,14 @@ struct GET : HTTPRequestBase<GET> {
 };
 
 struct POST : HTTPRequestBase<POST> {
+  bool has_body;
   std::string body;
   std::string content_type;
 
+  explicit POST(const std::string& url) : HTTPRequestBase(url), has_body(false) {}
+
   explicit POST(const std::string& url, const std::string& body, const std::string& content_type)
-      : HTTPRequestBase(url), body(body), content_type(content_type) {}
+      : HTTPRequestBase(url), has_body(true), body(body), content_type(content_type) {}
 };
 
 struct POSTFromFile : HTTPRequestBase<POSTFromFile> {
