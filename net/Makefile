@@ -1,7 +1,7 @@
-.PHONY: test indent clean check coverage
+.PHONY: default indent clean check coverage
 
-test:
-	(cd url; make test) && (cd tcp; make test) && (cd http; make test) && (cd api; make test) && echo "ALL TESTS PASS"
+default:
+	(cd url; make default) && (cd tcp; make default) && (cd http; make default) && (cd api; make default) && echo "ALL TESTS PASS"
 
 indent:
 	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
