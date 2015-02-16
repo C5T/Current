@@ -80,23 +80,23 @@ struct Request final {
   // TODO(dkorolev): I could not make <typename... ARGS> work here. Investigate further?
   // TODO(dkorolev): I could not make these calls support initializer lists. Investigate further?
   template <typename T1>
-  void operator()(const T1& p1) {
+  void operator()(T1&& p1) {
     connection.SendHTTPResponse(p1);
   }
   template <typename T1, typename T2>
-  void operator()(const T1& p1, const T2& p2) {
+  void operator()(T1&& p1, T2&& p2) {
     connection.SendHTTPResponse(p1, p2);
   }
   template <typename T1, typename T2, typename T3>
-  void operator()(const T1& p1, const T2& p2, const T3& p3) {
+  void operator()(T1&& p1, T2&& p2, T3&& p3) {
     connection.SendHTTPResponse(p1, p2, p3);
   }
   template <typename T1, typename T2, typename T3, typename T4>
-  void operator()(const T1& p1, const T2& p2, const T3& p3, const T4& p4) {
+  void operator()(T1&& p1, T2&& p2, T3&& p3, T4&& p4) {
     connection.SendHTTPResponse(p1, p2, p3, p4);
   }
   template <typename T1, typename T2, typename T3, typename T4, typename T5>
-  void operator()(const T1& p1, const T2& p2, const T3& p3, const T4& p4, const T5& p5) {
+  void operator()(T1&& p1, T2&& p2, T3&& p3, T4&& p4, T5&& p5) {
     connection.SendHTTPResponse(p1, p2, p3, p4, p5);
   }
 
