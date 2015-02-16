@@ -75,24 +75,15 @@ namespace bricks {
 namespace net {
 namespace api {
 
-// A small helper to hint compiler which type to deduce in the `decltype`-s below.
-namespace impl {
-template <typename T>
-inline T TypeHelper() {
-  static T* never_used_helper_ptr;
-  return *never_used_helper_ptr;
-}
-}  // namespace impl
-
 // Allow `HTTP(GET(url))` and other `HTTP(...)` syntaxes, assuming `using bricks::net::api`.
 template <typename T1>
-inline decltype(Singleton<HTTP_IMPL>()(impl::TypeHelper<T1>())) HTTP(T1&& p1) {
+inline decltype(Singleton<HTTP_IMPL>()(std::declval<T1>())) HTTP(T1&& p1) {
   return Singleton<HTTP_IMPL>()(std::forward<T1>(p1));
 }
 
 // Allow `HTTP(POST(url, data))` and other `HTTP(..., ...)` syntaxes, assuming `using bricks::net::api`.
 template <typename T1, typename T2>
-inline decltype(Singleton<HTTP_IMPL>()(impl::TypeHelper<T1>(), impl::TypeHelper<T2>())) HTTP(T1&& p1, T2&& p2) {
+inline decltype(Singleton<HTTP_IMPL>()(std::declval<T1>(), std::declval<T2>())) HTTP(T1&& p1, T2&& p2) {
   return Singleton<HTTP_IMPL>()(std::forward<T1>(p1), std::forward<T2>(p2));
 }
 
