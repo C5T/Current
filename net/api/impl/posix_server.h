@@ -76,6 +76,30 @@ struct Request final {
         http(unique_connection->HTTPRequest()),
         url(http.URL()) {}
 
+  // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
+  // TODO(dkorolev): I could not make <typename... ARGS> work here. Investigate further?
+  // TODO(dkorolev): I could not make these calls support initilizer lists. Investigate further?
+  template <typename T1>
+  void operator()(const T1& p1) {
+    connection.SendHTTPResponse(p1);
+  }
+  template <typename T1, typename T2>
+  void operator()(const T1& p1, const T2& p2) {
+    connection.SendHTTPResponse(p1, p2);
+  }
+  template <typename T1, typename T2, typename T3>
+  void operator()(const T1& p1, const T2& p2, const T3& p3) {
+    connection.SendHTTPResponse(p1, p2, p3);
+  }
+  template <typename T1, typename T2, typename T3, typename T4>
+  void operator()(const T1& p1, const T2& p2, const T3& p3, const T4& p4) {
+    connection.SendHTTPResponse(p1, p2, p3, p4);
+  }
+  template <typename T1, typename T2, typename T3, typename T4, typename T5>
+  void operator()(const T1& p1, const T2& p2, const T3& p3, const T4& p4, const T5& p5) {
+    connection.SendHTTPResponse(p1, p2, p3, p4, p5);
+  }
+
   Request() = delete;
   Request(const Request&) = delete;
   void operator=(const Request&) = delete;

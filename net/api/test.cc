@@ -44,6 +44,7 @@ using bricks::FileException;
 
 using bricks::net::Connection;
 using bricks::net::HTTPResponseCode;
+using bricks::net::HTTPHeadersType;
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
@@ -67,7 +68,7 @@ TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
 // Test the features of HTTP server.
 TEST(HTTPAPI, Register) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port).Register("/get", [](Request r) { r.connection.SendHTTPResponse("OK"); });
+  HTTP(FLAGS_net_api_test_port).Register("/get", [](Request r) { r("OK"); });
   auto tmp_handler = [](Request) {};  // LCOV_EXCL_LINE
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", tmp_handler), HandlerAlreadyExistsException);
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", &tmp_handler), HandlerAlreadyExistsException);
@@ -81,7 +82,7 @@ TEST(HTTPAPI, Register) {
 
 TEST(HTTPAPI, UnRegister) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r.connection.SendHTTPResponse("bar"); });
+  HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("bar"); });
   auto tmp_handler = [](Request) {};  // LCOV_EXCL_LINE
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", tmp_handler), HandlerAlreadyExistsException);
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", &tmp_handler), HandlerAlreadyExistsException);
@@ -96,8 +97,7 @@ TEST(HTTPAPI, UnRegister) {
 
 TEST(HTTPAPI, URLParameters) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port)
-      .Register("/query", [](Request r) { r.connection.SendHTTPResponse("x=" + r.url.query["x"]); });
+  HTTP(FLAGS_net_api_test_port).Register("/query", [](Request r) { r("x=" + r.url.query["x"]); });
   EXPECT_EQ("x=", HTTP(GET(Printf("localhost:%d/query", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("x=42", HTTP(GET(Printf("localhost:%d/query?x=42", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("x=test passed",
@@ -107,9 +107,9 @@ TEST(HTTPAPI, URLParameters) {
 TEST(HTTPAPI, Redirect) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/from", [](Request r) {
-    r.connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", {{"Location", "/to"}});
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/to"}}));
   });
-  HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r.connection.SendHTTPResponse("Done."); });
+  HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
   ASSERT_THROW(HTTP(GET(Printf("localhost:%d/from", FLAGS_net_api_test_port))),
                HTTPRedirectNotAllowedException);
@@ -123,13 +123,13 @@ TEST(HTTPAPI, Redirect) {
 TEST(HTTPAPI, RedirectLoop) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/p1", [](Request r) {
-    r.connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", {{"Location", "/p2"}});
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/p2"}}));
   });
   HTTP(FLAGS_net_api_test_port).Register("/p2", [](Request r) {
-    r.connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", {{"Location", "/p3"}});
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/p3"}}));
   });
   HTTP(FLAGS_net_api_test_port).Register("/p3", [](Request r) {
-    r.connection.SendHTTPResponse("", HTTPResponseCode::Found, "text/html", {{"Location", "/p1"}});
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/p1"}}));
   });
   ASSERT_THROW(HTTP(GET(Printf("localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
 }
@@ -149,7 +149,7 @@ TEST(HTTPAPI, HandlerByValuePerformsACopy) {
     size_t counter = 0u;
     void operator()(Request r) {
       ++counter;
-      r.connection.SendHTTPResponse("Incremented.");
+      r("Incremented.");
     }
   };
   Helper helper;
@@ -165,7 +165,7 @@ TEST(HTTPAPI, HandlerByPointerPreservesObject) {
     size_t counter = 0u;
     void operator()(Request r) {
       ++counter;
-      r.connection.SendHTTPResponse("Incremented two.");
+      r("Incremented two.");
     }
   };
   Helper helper;
@@ -189,8 +189,8 @@ TEST(HTTPAPI, HandlerByPointerPreservesObject) {
 TEST(HTTPAPI, HandlerSupportsStaticMethodsBothWays) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   struct Static {
-    static void Foo(Request r) { r.connection.SendHTTPResponse("foo"); }
-    static void Bar(Request r) { r.connection.SendHTTPResponse("bar"); }
+    static void Foo(Request r) { r("foo"); }
+    static void Bar(Request r) { r("bar"); }
   };
   HTTP(FLAGS_net_api_test_port).Register("/foo", Static::Foo);
   HTTP(FLAGS_net_api_test_port).Register("/bar", Static::Bar);
@@ -237,7 +237,7 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());
-    r.connection.SendHTTPResponse("Data: " + r.http.Body());
+    r("Data: " + r.http.Body());
   });
   const auto response =
       HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
@@ -248,7 +248,7 @@ TEST(HTTPAPI, PostWithEmptyBody) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_FALSE(r.http.HasBody());
-    r.connection.SendHTTPResponse("Empty POST.");
+    r("Empty POST.");
   });
   EXPECT_EQ("Empty POST.", HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port))).body);
 }
@@ -266,7 +266,7 @@ TEST(HTTPAPI, PostCerealizableObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());
-    r.connection.SendHTTPResponse("Data: " + r.http.Body());
+    r("Data: " + r.http.Body());
   });
   EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
@@ -286,7 +286,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());
-    r.connection.SendHTTPResponse("Voila: " + r.http.Body());
+    r("Voila: " + r.http.Body());
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
@@ -302,7 +302,7 @@ TEST(HTTPAPI, PostFromBufferToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());
-    r.connection.SendHTTPResponse("Meh: " + r.http.Body());
+    r("Meh: " + r.http.Body());
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
@@ -317,7 +317,7 @@ TEST(HTTPAPI, PostFromFileToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());
-    r.connection.SendHTTPResponse("Phew: " + r.http.Body());
+    r("Phew: " + r.http.Body());
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
@@ -337,9 +337,8 @@ TEST(HTTPAPI, PostFromFileToFile) {
 
 TEST(HTTPAPI, UserAgent) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port).Register("/ua", [](Request r) {
-    r.connection.SendHTTPResponse("TODO(dkorolev): Actually get passed in user agent.");
-  });
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/ua", [](Request r) { r("TODO(dkorolev): Actually get passed in user agent."); });
   const string url = Printf("localhost:%d/ua", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url).UserAgent("Aloha"));
   EXPECT_EQ(url, response.url);
