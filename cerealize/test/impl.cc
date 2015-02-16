@@ -43,14 +43,19 @@ SOFTWARE.
 
 #include "../../file/file.h"
 
+#include "../../strings/printf.h"
+
 #include "../../dflags/dflags.h"
 #include "../../3party/gtest/gtest-main-with-dflags.h"
 
 using namespace bricks;
 using namespace cerealize;
 
+using strings::Printf;
+
 DEFINE_string(cerealize_test_tmpdir, ".noshit", "The directory to create temporary files in.");
 
+// TODO(dkorolev): Move this helper into 3party/gtest/ ?
 static std::string CurrentTestName() {
   // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name
   return ::testing::UnitTest::GetInstance()->current_test_info()->name();
@@ -218,4 +223,111 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
       "Type=EventAppResume, ShortType=\"ar\","
       " UID=, UID_Google=, UID_Apple=, UID_Facebook=, baz=baz RESUME \n",
       consumer.os.str());
+}
+
+// CT stands for CerealizeTest.
+// Global symbol names should be unique since all the tests are compiled together for the coverage report.
+struct CTBase {
+  int number = 0;
+  template <class A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(number));
+  }
+  virtual std::string AsString() const = 0;
+};
+
+struct CTDerived1 : CTBase {
+  std::string foo;
+  template <class A>
+  void serialize(A& ar) {
+    CTBase::serialize(ar);
+    ar(CEREAL_NVP(foo));
+  }
+  virtual std::string AsString() const override { return Printf("Derived1(%d,'%s')", number, foo.c_str()); }
+};
+CEREAL_REGISTER_TYPE(CTDerived1);
+
+struct CTDerived2 : CTBase {
+  std::string bar;
+  template <class A>
+  void serialize(A& ar) {
+    CTBase::serialize(ar);
+    ar(CEREAL_NVP(bar));
+  }
+  virtual std::string AsString() const override { return Printf("Derived2(%d,'%s')", number, bar.c_str()); }
+  void FromInvalidJSON(const std::string& input_json) {
+    number = -1;
+    bar = "Invalid JSON: " + input_json;
+  }
+};
+CEREAL_REGISTER_TYPE(CTDerived2);
+
+static_assert(!HasFromInvalidJSON<CTDerived1>::value, "");
+static_assert(HasFromInvalidJSON<CTDerived2>::value, "");
+
+TEST(Cerealize, JSONStringifyWithBase) {
+  CTDerived1 d1;
+  d1.foo = "fffuuuuu";
+  EXPECT_EQ("{\"value0\":{\"number\":0,\"foo\":\"fffuuuuu\"}}", JSON(d1));
+  EXPECT_EQ(
+      "{\"value0\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived1\","
+      "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"number\":0,\"foo\":\"fffuuuuu\"}}}}",
+      JSON(WithBaseType<CTBase>(d1)));
+
+  CTDerived2 d2;
+  d2.bar = "bwahaha";
+  EXPECT_EQ("{\"value0\":{\"number\":0,\"bar\":\"bwahaha\"}}", JSON(d2));
+  EXPECT_EQ(
+      "{\"value0\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived2\","
+      "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"number\":0,\"bar\":\"bwahaha\"}}}}",
+      JSON(WithBaseType<CTBase>(d2)));
+}
+
+TEST(Cerealize, ParseJSONReturnValueSyntax) {
+  CTDerived1 input;
+  input.number = 42;
+  input.foo = "string";
+  CTDerived1 output = JSONParse<CTDerived1>(JSON(input));
+  EXPECT_EQ(42, output.number);
+  EXPECT_EQ("string", output.foo);
+}
+
+TEST(Cerealize, ParseJSONReferenceSyntax) {
+  CTDerived1 input;
+  input.number = 42;
+  input.foo = "string";
+  CTDerived1 output;
+  JSONParse(JSON(input), output);
+  EXPECT_EQ(42, output.number);
+  EXPECT_EQ("string", output.foo);
+}
+
+TEST(Cerealize, ParseJSONSupportsPolymorphicTypes) {
+  CTDerived1 d1;
+  d1.number = 1;
+  d1.foo = "foo";
+  CTDerived2 d2;
+  d2.number = 2;
+  d2.bar = "bar";
+
+  {
+    EXPECT_EQ("Derived1(1,'foo')",
+              JSONParse<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d1)))->AsString());
+    EXPECT_EQ("Derived2(2,'bar')",
+              JSONParse<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d2)))->AsString());
+  }
+
+  {
+    std::unique_ptr<CTBase> placeholder;
+    EXPECT_EQ("Derived1(1,'foo')", JSONParse(JSON(WithBaseType<CTBase>(d1)), placeholder)->AsString());
+    EXPECT_EQ("Derived2(2,'bar')", JSONParse(JSON(WithBaseType<CTBase>(d2)), placeholder)->AsString());
+  }
+}
+
+TEST(Cerealize, ParseJSONThrowsOnError) {
+  ASSERT_THROW(JSONParse<CTDerived1>("surely not a valid JSON"), JSONParseException);
+}
+
+TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
+  EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", JSONParse<CTDerived2>("BAZINGA").AsString());
 }
