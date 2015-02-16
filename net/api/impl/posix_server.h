@@ -78,7 +78,7 @@ struct Request final {
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   // TODO(dkorolev): I could not make <typename... ARGS> work here. Investigate further?
-  // TODO(dkorolev): I could not make these calls support initilizer lists. Investigate further?
+  // TODO(dkorolev): I could not make these calls support initializer lists. Investigate further?
   template <typename T1>
   void operator()(const T1& p1) {
     connection.SendHTTPResponse(p1);
