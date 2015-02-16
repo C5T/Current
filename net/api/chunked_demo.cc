@@ -111,7 +111,7 @@ using namespace bricks::cerealize;
 using bricks::time::Now;
 using bricks::strings::Printf;
 using bricks::net::HTTPResponseCode;
-using bricks::net::HTTPHeadersType;
+using bricks::net::HTTPHeaders;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
@@ -183,14 +183,14 @@ int main() {
       "layout",
       HTTPResponseCode::OK,
       "application/json; charset=utf-8",
-      HTTPHeadersType({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
+      HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
   });
   HTTP(FLAGS_port).Register("/meta", [](Request r) {
     r(ExampleMeta(),
       "meta",
       HTTPResponseCode::OK,
       "application/json; charset=utf-8",
-      HTTPHeadersType({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
+      HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
   });
   HTTP(FLAGS_port).Register("/data", [](Request r) {
     std::thread([](Request&& r) {

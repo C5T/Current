@@ -45,7 +45,7 @@ SOFTWARE.
 namespace bricks {
 namespace net {
 
-typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
+typedef std::vector<std::pair<std::string, std::string>> HTTPHeaders;
 
 // HTTP constants to parse the header and extract method, URL, headers and body.
 namespace {
@@ -327,7 +327,7 @@ class HTTPServerConnection {
                                                ConnectionType connection_type,
                                                HTTPResponseCode code = HTTPResponseCode::OK,
                                                const std::string& content_type = DefaultContentType(),
-                                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+                                               const HTTPHeaders& extra_headers = HTTPHeaders()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
@@ -343,7 +343,7 @@ class HTTPServerConnection {
                                    const T& end,
                                    HTTPResponseCode code,
                                    const std::string& content_type,
-                                   const HTTPHeadersType& extra_headers) {
+                                   const HTTPHeaders& extra_headers) {
     std::ostringstream os;
     PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
     os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
@@ -358,7 +358,7 @@ class HTTPServerConnection {
       const T& end,
       HTTPResponseCode code = HTTPResponseCode::OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const HTTPHeaders& extra_headers = HTTPHeaders()) {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
@@ -366,7 +366,7 @@ class HTTPServerConnection {
   SendHTTPResponse(T&& container,
                    HTTPResponseCode code = HTTPResponseCode::OK,
                    const std::string& content_type = DefaultContentType(),
-                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+                   const HTTPHeaders& extra_headers = HTTPHeaders()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
@@ -374,7 +374,7 @@ class HTTPServerConnection {
   inline void SendHTTPResponse(const std::string& string,
                                HTTPResponseCode code = HTTPResponseCode::OK,
                                const std::string& content_type = DefaultContentType(),
-                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+                               const HTTPHeaders& extra_headers = HTTPHeaders()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
   // Support objects that can be serialized as JSON-s via Cereal.
@@ -383,7 +383,7 @@ class HTTPServerConnection {
       T&& object,
       HTTPResponseCode code = HTTPResponseCode::OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const HTTPHeaders& extra_headers = HTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -397,7 +397,7 @@ class HTTPServerConnection {
       S&& name,
       HTTPResponseCode code = HTTPResponseCode::OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const HTTPHeaders& extra_headers = HTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -477,7 +477,7 @@ class HTTPServerConnection {
   inline ChunkedResponseSender SendChunkedHTTPResponse(
       HTTPResponseCode code = HTTPResponseCode::OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const HTTPHeaders& extra_headers = HTTPHeaders()) {
     std::ostringstream os;
     PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
     os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;

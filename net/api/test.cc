@@ -44,7 +44,7 @@ using bricks::FileException;
 
 using bricks::net::Connection;
 using bricks::net::HTTPResponseCode;
-using bricks::net::HTTPHeadersType;
+using bricks::net::HTTPHeaders;
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
@@ -107,7 +107,7 @@ TEST(HTTPAPI, URLParameters) {
 TEST(HTTPAPI, Redirect) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/from", [](Request r) {
-    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/to"}}));
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeaders({{"Location", "/to"}}));
   });
   HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
@@ -123,13 +123,13 @@ TEST(HTTPAPI, Redirect) {
 TEST(HTTPAPI, RedirectLoop) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/p1", [](Request r) {
-    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/p2"}}));
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeaders({{"Location", "/p2"}}));
   });
   HTTP(FLAGS_net_api_test_port).Register("/p2", [](Request r) {
-    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/p3"}}));
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeaders({{"Location", "/p3"}}));
   });
   HTTP(FLAGS_net_api_test_port).Register("/p3", [](Request r) {
-    r("", HTTPResponseCode::Found, "text/html", HTTPHeadersType({{"Location", "/p1"}}));
+    r("", HTTPResponseCode::Found, "text/html", HTTPHeaders({{"Location", "/p1"}}));
   });
   ASSERT_THROW(HTTP(GET(Printf("localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
 }
