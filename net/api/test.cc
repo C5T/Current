@@ -59,6 +59,17 @@ DEFINE_int32(net_api_test_port,
              "lifetime of the binary.");
 DEFINE_string(net_api_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
 
+struct HTTPAPITestObject {
+  int number;
+  std::string text;
+  std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
+  HTTPAPITestObject() : number(42), text("text"), array({1, 2, 3}) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
+  }
+};
+
 #if !defined(BRICKS_COVERAGE_REPORT_MODE) && !defined(BRICKS_WINDOWS)
 TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
   ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_bricks_runtime_arch);
@@ -102,6 +113,36 @@ TEST(HTTPAPI, URLParameters) {
   EXPECT_EQ("x=42", HTTP(GET(Printf("localhost:%d/query?x=42", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("x=test passed",
             HTTP(GET(Printf("localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
+}
+
+TEST(HTTPAPI, RespondsWithString) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/responds_with_string", [](Request r) {
+    r("test_string", HTTPResponseCode::OK, "application/json", HTTPHeaders({{"foo", "bar"}}));
+  });
+  const string url = Printf("localhost:%d/responds_with_string", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("test_string", response.body);
+  EXPECT_EQ(url, response.url);
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+}
+
+TEST(HTTPAPI, RespondsWithObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/responds_with_object", [](Request r) {
+    r(HTTPAPITestObject(),
+      "test_object",
+      HTTPResponseCode::OK,
+      "application/json",
+      HTTPHeaders({{"foo", "bar"}}));
+  });
+  const string url = Printf("localhost:%d/responds_with_object", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("{\"test_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n", response.body);
+  EXPECT_EQ(url, response.url);
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
 }
 
 TEST(HTTPAPI, Redirect) {
