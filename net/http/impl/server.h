@@ -317,6 +317,7 @@ typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
 class HTTPServerConnection {
  public:
+  typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
   HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {}
@@ -324,12 +325,14 @@ class HTTPServerConnection {
   inline static const std::string DefaultContentType() { return "text/plain"; }
 
   inline static void PrepareHTTPResponseHeader(std::ostream& os,
+                                               ConnectionType connection_type,
                                                HTTPResponseCode code = HTTPResponseCode::OK,
                                                const std::string& content_type = DefaultContentType(),
                                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
+    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << kCRLF;
     for (const auto cit : extra_headers) {
       os << cit.first << ": " << cit.second << kCRLF;
     }
@@ -343,7 +346,7 @@ class HTTPServerConnection {
                                    const std::string& content_type,
                                    const HTTPHeadersType& extra_headers) {
     std::ostringstream os;
-    PrepareHTTPResponseHeader(os, code, content_type, extra_headers);
+    PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
     os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
     connection_.BlockingWrite(os.str());
     connection_.BlockingWrite(begin, end);
@@ -477,7 +480,7 @@ class HTTPServerConnection {
       const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     std::ostringstream os;
-    PrepareHTTPResponseHeader(os, code, content_type, extra_headers);
+    PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
     os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
     connection_.BlockingWrite(os.str());
     return std::move(ChunkedResponseSender(connection_));
