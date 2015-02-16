@@ -545,4 +545,7 @@ TEST(HTTPMimeTypeTest, SmokeTest) {
   EXPECT_EQ("image/png", GetFileMimeType("file.png"));
   EXPECT_EQ("text/html", GetFileMimeType("dir.png/file.html"));
   EXPECT_EQ("text/plain", GetFileMimeType("dir.html/"));
+  EXPECT_EQ("text/plain", GetFileMimeType("file.FOO"));
+  EXPECT_EQ("text/html", GetFileMimeType("file.hTmL"));
+  EXPECT_EQ("image/png", GetFileMimeType("file.PNG"));
 }

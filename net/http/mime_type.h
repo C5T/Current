@@ -28,6 +28,8 @@ SOFTWARE.
 #ifndef BRICKS_NET_HTTP_MIME_TYPE_H
 #define BRICKS_NET_HTTP_MIME_TYPE_H
 
+#include <algorithm>
+#include <cctype>
 #include <map>
 #include <string>
 
@@ -51,7 +53,9 @@ inline std::string GetFileMimeType(const std::string& file_name) {
       {"svg", "image/svg+xml"}  // TODO(sompylasar): Is this the right MIME for svg?
   };
 
-  const auto cit = file_extension_to_mime_type_map.find(bricks::FileSystem::GetFileExtension(file_name));
+  std::string extension = bricks::FileSystem::GetFileExtension(file_name);
+  std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+  const auto cit = file_extension_to_mime_type_map.find(extension);
   if (cit != file_extension_to_mime_type_map.end()) {
     return cit->second;
   } else {
