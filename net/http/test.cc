@@ -49,7 +49,8 @@ using bricks::net::Connection;
 using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPRequestData;
 using bricks::net::HTTPResponseCode;
-using bricks::net::HTTPResponseCodeAsStringGenerator;
+using bricks::net::HTTPResponseCodeAsString;
+using bricks::net::GetFileMimeType;
 using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
 
@@ -531,20 +532,17 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
   EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
 }
 
-TEST(HTTPCodesTest, Code200) {
-  EXPECT_EQ("OK", HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(200)));
+TEST(HTTPCodesTest, SmokeTest) {
+  EXPECT_EQ("OK", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(200)));
+  EXPECT_EQ("Not Found", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(404)));
+  EXPECT_EQ("Unknown Code", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(999)));
+  EXPECT_EQ("<UNINITIALIZED>", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(-1)));
 }
 
-TEST(HTTPCodesTest, Code404) {
-  EXPECT_EQ("Not Found", HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(404)));
-}
-
-TEST(HTTPCodesTest, CodeUnknown) {
-  EXPECT_EQ("Unknown Code",
-            HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(999)));
-}
-
-TEST(HTTPCodesTest, CodeInternalUninitialized) {
-  EXPECT_EQ("<UNINITIALIZED>",
-            HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(-1)));
+TEST(HTTPMimeTypeTest, SmokeTest) {
+  EXPECT_EQ("text/plain", GetFileMimeType("file.foo"));
+  EXPECT_EQ("text/html", GetFileMimeType("file.html"));
+  EXPECT_EQ("image/png", GetFileMimeType("file.png"));
+  EXPECT_EQ("text/html", GetFileMimeType("dir.png/file.html"));
+  EXPECT_EQ("text/plain", GetFileMimeType("dir.html/"));
 }

@@ -25,8 +25,6 @@ SOFTWARE.
 #ifndef BRICKS_NET_HTTP_IMPL_SERVER_H
 #define BRICKS_NET_HTTP_IMPL_SERVER_H
 
-#include <iostream>  // TODO(dkorolev): Remove it.
-
 #include <map>
 #include <sstream>
 #include <string>
@@ -34,6 +32,7 @@ SOFTWARE.
 #include <memory>
 
 #include "../codes.h"
+#include "../mime_type.h"
 
 #include "../../exceptions.h"
 
@@ -330,7 +329,7 @@ class HTTPServerConnection {
                                                const std::string& content_type = DefaultContentType(),
                                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
-    os << " " << HTTPResponseCodeAsStringGenerator::CodeAsString(code) << kCRLF;
+    os << " " << HTTPResponseCodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
     os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << kCRLF;
     for (const auto cit : extra_headers) {

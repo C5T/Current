@@ -1,7 +1,8 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Ivan "John" Babak
+                   Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,18 +23,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_HTTP_HTTP_H
-#define BRICKS_NET_HTTP_HTTP_H
+// TODO(sompylasar): Your name and e-mail spelling in the header?
 
-#include "../../port.h"
+#ifndef BRICKS_NET_HTTP_MIME_TYPE_H
+#define BRICKS_NET_HTTP_MIME_TYPE_H
 
-#include "codes.h"
-#include "mime_type.h"
+#include <map>
+#include <string>
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
-#include "impl/server.h"
-#else
-#error "No implementation for `net/http.h` is available for your system."
-#endif
+#include "../../file/file.h"
 
-#endif  // BRICKS_NET_HTTP_HTTP_H
+namespace bricks {
+namespace net {
+
+inline std::string GetFileMimeType(const std::string& file_name) {
+  static const std::map<std::string, std::string> file_extension_to_mime_type_map = {
+      {"js", "application/javascript"},
+      {"json", "application/json"},
+      {"css", "text/css"},
+      {"html", "text/html"},
+      {"htm", "text/html"},
+      {"txt", "text/plain"},
+      {"png", "image/png"},
+      {"jpg", "image/jpeg"},
+      {"jpeg", "image/jpeg"},
+      {"gif", "image/gif"},
+      {"svg", "image/svg+xml"}  // TODO(sompylasar): Is this the right MIME for svg?
+  };
+
+  const auto cit = file_extension_to_mime_type_map.find(bricks::FileSystem::GetFileExtension(file_name));
+  if (cit != file_extension_to_mime_type_map.end()) {
+    return cit->second;
+  } else {
+    return "text/plain";
+  }
+}
+
+}  // namespace net
+}  // namespace bricks
+
+#endif  // BRICKS_NET_HTTP_MIME_TYPE_H
