@@ -86,8 +86,8 @@ struct is_string_type {
 // Helper compile-time test that certain type can be serialized via cereal.
 template <typename T>
 struct is_read_cerealizable {
-  constexpr static bool value = !is_string_type<T>::value &&
-                                cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>::value;
+  constexpr static bool value =
+      !is_string_type<T>::value && cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>::value;
 };
 
 template <typename T>
