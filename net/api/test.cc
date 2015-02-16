@@ -26,15 +26,15 @@ SOFTWARE.
 
 #include <string>
 
-#include "../../dflags/dflags.h"
-#include "../../3party/gtest/gtest-main-with-dflags.h"
-
 #include "api.h"
+
 #include "../url/url.h"
 
-#include "../../port.h"
+#include "../../dflags/dflags.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 #include "../../strings/printf.h"
 #include "../../file/file.h"
+#include "../../cerealize/cerealize.h"
 
 using std::string;
 
@@ -251,6 +251,25 @@ TEST(HTTPAPI, PostWithEmptyBody) {
     r.connection.SendHTTPResponse("Empty POST.");
   });
   EXPECT_EQ("Empty POST.", HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port))).body);
+}
+
+struct ObjectToPOST {
+  int x = 42;
+  std::string s = "foo";
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(x), CEREAL_NVP(s));
+  }
+};
+
+TEST(HTTPAPI, PostCerealizableObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_TRUE(r.http.HasBody());
+    r.connection.SendHTTPResponse("Data: " + r.http.Body());
+  });
+  EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
+            HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
 }
 
 TEST(HTTPAPI, PostFromInvalidFile) {
