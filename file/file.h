@@ -52,7 +52,7 @@ namespace bricks {
 // Platform-indepenent, injection-friendly filesystem wrapper.
 // TODO(dkorolev): Move the above methods under FileSystem.
 struct FileSystem {
-  static std::string GetFileExtension(const std::string& file_name) {
+  static inline std::string GetFileExtension(const std::string& file_name) {
     const static auto get_extension_from_basename = [](const std::string& fn) {
       const size_t i = fn.find_last_of('.');
       return i == std::string::npos ? "" : fn.substr(i + 1);
