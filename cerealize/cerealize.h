@@ -96,6 +96,7 @@ struct is_read_cerealizable {
 template <typename T>
 struct is_write_cerealizable {
   // Cereal has an issue with `<const T&>` not being treated as output-serealizable.
+  // I reported it as https://github.com/USCiLab/cereal/issues/171 -- D.K.
   constexpr static bool value = !is_string_type<T>::value &&
                                 cereal::traits::is_output_serializable<
                                     typename std::remove_const<typename std::remove_reference<T>::type>::type,
