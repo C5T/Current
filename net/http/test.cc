@@ -53,6 +53,7 @@ using bricks::net::HTTPResponseCodeAsString;
 using bricks::net::GetFileMimeType;
 using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
+using bricks::net::AttemptedToSendHTTPResponseMoreThanOnce;
 
 struct HTTPTestObject {
   int number;
@@ -530,6 +531,22 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
            },
            Socket(FLAGS_net_http_test_port));
   EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
+}
+
+TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
+  thread t([](Socket s) {
+             HTTPServerConnection c(s.Accept());
+             c.SendHTTPResponse("one");
+             ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
+             ASSERT_THROW(c.SendChunkedHTTPResponse().Send("three"), AttemptedToSendHTTPResponseMoreThanOnce);
+           },
+           Socket(FLAGS_net_http_test_port));
+  EXPECT_EQ("one", TypeParam::Fetch(t, "/", "GET"));
+}
+
+TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
+  thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", TypeParam::Fetch(t, "/", "GET"));
 }
 
 TEST(HTTPCodesTest, SmokeTest) {

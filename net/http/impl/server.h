@@ -314,12 +314,37 @@ class TemplatedHTTPRequestData : public HELPER {
 // The default implementation is exposed as HTTPRequestData.
 typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
 
-class HTTPServerConnection {
+class HTTPServerConnection final {
  public:
   typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
   HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {}
+  ~HTTPServerConnection() {
+    if (!responded_) {
+      // If a user code throws an exception in a different thread, it will not be caught.
+      // But, at least, capitalized "INTERNAL SERVER ERROR" will be returned.
+      // It's also a good place for a breakpoint to tell the source of that exception.
+      try {
+        SendHTTPResponse(
+            "<h1>INTERNAL SERVER ERROR</h1>\n", HTTPResponseCode::InternalServerError, "text/html");
+      } catch (const std::exception& e) {
+        // LCOV_EXCL_START
+        // No exception should ever leave the destructor.
+        if (message_.RawPath() == "/healthz") {
+          // Report nothing for "/healthz", since it's an internal URL, also used by the tests
+          // to poke the serving thread before shutting down the server. There is nothing exceptional
+          // with not responding to "/healthz", really -- it just means that the server is not healthy, duh. --
+          // D.K.
+        } else {
+          std::cerr << "An exception occurred while trying to send \"INTERNAL SERVER ERROR\"\n";
+          std::cerr << "In: " << message_.Method() << ' ' << message_.RawPath() << std::endl;
+          std::cerr << e.what() << std::endl;
+        }
+        // LCOV_EXCL_STOP
+      }
+    }
+  }
 
   inline static const std::string DefaultContentType() { return "text/plain"; }
 
@@ -344,11 +369,16 @@ class HTTPServerConnection {
                                    HTTPResponseCode code,
                                    const std::string& content_type,
                                    const HTTPHeaders& extra_headers) {
-    std::ostringstream os;
-    PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
-    os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
-    connection_.BlockingWrite(os.str());
-    connection_.BlockingWrite(begin, end);
+    if (responded_) {
+      throw AttemptedToSendHTTPResponseMoreThanOnce();
+    } else {
+      responded_ = true;
+      std::ostringstream os;
+      PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
+      os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
+      connection_.BlockingWrite(os.str());
+      connection_.BlockingWrite(begin, end);
+    }
   }
 
   // Only support STL containers of chars and bytes, this does not yet cover std::string.
@@ -477,11 +507,16 @@ class HTTPServerConnection {
   inline ChunkedResponseSender SendChunkedHTTPResponse(HTTPResponseCode code = HTTPResponseCode::OK,
                                                        const std::string& content_type = DefaultContentType(),
                                                        const HTTPHeaders& extra_headers = HTTPHeaders()) {
-    std::ostringstream os;
-    PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
-    os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
-    connection_.BlockingWrite(os.str());
-    return std::move(ChunkedResponseSender(connection_));
+    if (responded_) {
+      throw AttemptedToSendHTTPResponseMoreThanOnce();
+    } else {
+      responded_ = true;
+      std::ostringstream os;
+      PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
+      os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
+      connection_.BlockingWrite(os.str());
+      return std::move(ChunkedResponseSender(connection_));
+    }
   }
 
   const HTTPRequestData& HTTPRequest() const { return message_; }
@@ -489,6 +524,7 @@ class HTTPServerConnection {
   Connection& RawConnection() { return connection_; }
 
  private:
+  bool responded_ = false;
   Connection connection_;
   HTTPRequestData message_;
 

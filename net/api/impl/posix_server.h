@@ -209,8 +209,36 @@ class HTTPServerPOSIX final {
           }
         }
         if (handler) {
-          // TODO(dkorolev): Properly handle the shutdown case when the handler spawns another thread.
-          handler(Request(std::move(connection)));
+          // OK, here's the tricky part with error handling and exceptions in this multithreaded world.
+          // * On the one hand, connection should be std::move-d into the request,
+          //   since it might end up being served in another thread, via a message queue, etc..
+          //   Thus, the user code is responsible for closing the connection.
+          //   Not to mention that the std::move-d away connection can easily outlive this scope.
+          // * On the other hand, if an exception occurs in user code, we need to return a 500,
+          //   which should obviously happen before the connection object is destructed.
+          //   This seems like a good reason to not std::move it away, or move it away with some flag,
+          //   but I thought hard of it, and don't think it's a good choice -- D.K.
+          //
+          // Solution: Do nothing here. No matter how tempting it is, it won't work across threads. Period.
+          //
+          // The implementation of HTTP connection will return an "INTERNAL SERVER ERROR" if no response was
+          // sent.
+          // That's what the user gets. In debugger, they can put a breakpoint there and see what caused the
+          // error.
+          //
+          // It is the job of the user of this library to ensure no exceptions leave their code.
+          //
+          // In practice, a top-level try-catch for `conts bricks::Exception& e`, or even `const std::exception&
+          // e`,
+          // with logging of `e.what()` is a good enough solution.
+          try {
+            handler(Request(std::move(connection)));
+          } catch (const std::exception& e) {  // LCOV_EXCL_LINE
+            // WARNING: This `catch` is really not sufficient, it just logs a message
+            // if a user exception occurred in the same thread that ran the handler.
+            // DO NOT COUNT ON IT.
+            std::cerr << "HTTP route failed in user code: " << e.what() << "\n";  // LCOV_EXCL_LINE
+          }
         } else {
           connection->SendHTTPResponse("", HTTPResponseCode::NotFound);
         }
