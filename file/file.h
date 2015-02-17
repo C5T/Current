@@ -53,19 +53,11 @@ namespace bricks {
 // TODO(dkorolev): Move the above methods under FileSystem.
 struct FileSystem {
   static inline std::string GetFileExtension(const std::string& file_name) {
-    const static auto get_extension_from_basename = [](const std::string& fn) {
-      const size_t i = fn.find_last_of('.');
-      return i == std::string::npos ? "" : fn.substr(i + 1);
-    };  // LCOV_EXCL_LINE
-
-    static_assert(std::string::npos + 1 == 0, "This invariant is used in the next line.");
-    const size_t basename_offset = file_name.find_last_of("/\\") + 1;
-
-    if (!basename_offset) {
-      return get_extension_from_basename(file_name);
+    const size_t i = file_name.find_last_of("/\\.");
+    if (i == std::string::npos || file_name[i] != '.') {
+      return "";
     } else {
-      // Unfortunately, `std::string::find_last_of()` accepts index to stop at, not index to start form.
-      return get_extension_from_basename(file_name.substr(basename_offset));
+      return file_name.substr(i + 1);
     }
   }
 
