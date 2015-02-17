@@ -49,7 +49,8 @@ using bricks::net::Connection;
 using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPRequestData;
 using bricks::net::HTTPResponseCode;
-using bricks::net::HTTPResponseCodeAsStringGenerator;
+using bricks::net::HTTPResponseCodeAsString;
+using bricks::net::GetFileMimeType;
 using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
 
@@ -85,6 +86,7 @@ TEST(PosixHTTPServerTest, Smoke) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
       "Content-Length: 10\r\n"
       "\r\n"
       "Data: BODY",
@@ -110,6 +112,7 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
       "Content-Length: 5\r\n"
       "\r\n"
       "Aloha",
@@ -135,6 +138,7 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
       "Content-Length: 55\r\n"
       "\r\n"
       "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
@@ -158,6 +162,7 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
       "Content-Length: 60\r\n"
       "\r\n"
       "{\"epic_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
@@ -185,6 +190,7 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: keep-alive\r\n"
       "Transfer-Encoding: chunked\r\n"
       "\r\n"
       "B\r\n"
@@ -220,6 +226,7 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: custom_content_type\r\n"
+      "Connection: close\r\n"
       "foo: bar\r\n"
       "baz: meh\r\n"
       "Content-Length: 2\r\n"
@@ -247,6 +254,7 @@ TEST(PosixHTTPServerTest, NoEOF) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
       "Content-Length: 11\r\n"
       "\r\n"
       "Data: NOEOF",
@@ -276,6 +284,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
   EXPECT_EQ(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
       "Content-Length: 1000006\r\n"
       "\r\n"
       "Data: " +
@@ -312,6 +321,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
   EXPECT_EQ(strings::Printf(
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
+                "Connection: close\r\n"
                 "Content-Length: %d\r\n"
                 "\r\n"
                 "%s",
@@ -349,6 +359,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   EXPECT_EQ(strings::Printf(
                 "HTTP/1.1 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
+                "Connection: close\r\n"
                 "Content-Length: %d\r\n"
                 "\r\n"
                 "%s",
@@ -521,20 +532,20 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
   EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
 }
 
-TEST(HTTPCodesTest, Code200) {
-  EXPECT_EQ("OK", HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(200)));
+TEST(HTTPCodesTest, SmokeTest) {
+  EXPECT_EQ("OK", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(200)));
+  EXPECT_EQ("Not Found", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(404)));
+  EXPECT_EQ("Unknown Code", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(999)));
+  EXPECT_EQ("<UNINITIALIZED>", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(-1)));
 }
 
-TEST(HTTPCodesTest, Code404) {
-  EXPECT_EQ("Not Found", HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(404)));
-}
-
-TEST(HTTPCodesTest, CodeUnknown) {
-  EXPECT_EQ("Unknown Code",
-            HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(999)));
-}
-
-TEST(HTTPCodesTest, CodeInternalUninitialized) {
-  EXPECT_EQ("<UNINITIALIZED>",
-            HTTPResponseCodeAsStringGenerator::CodeAsString(static_cast<HTTPResponseCode>(-1)));
+TEST(HTTPMimeTypeTest, SmokeTest) {
+  EXPECT_EQ("text/plain", GetFileMimeType("file.foo"));
+  EXPECT_EQ("text/html", GetFileMimeType("file.html"));
+  EXPECT_EQ("image/png", GetFileMimeType("file.png"));
+  EXPECT_EQ("text/html", GetFileMimeType("dir.png/file.html"));
+  EXPECT_EQ("text/plain", GetFileMimeType("dir.html/"));
+  EXPECT_EQ("text/plain", GetFileMimeType("file.FOO"));
+  EXPECT_EQ("text/html", GetFileMimeType("file.hTmL"));
+  EXPECT_EQ("image/png", GetFileMimeType("file.PNG"));
 }

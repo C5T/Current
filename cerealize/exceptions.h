@@ -22,18 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_HTTP_HTTP_H
-#define BRICKS_NET_HTTP_HTTP_H
+#ifndef BRICKS_CEREALIZE_EXCEPTIONS_H
+#define BRICKS_CEREALIZE_EXCEPTIONS_H
 
-#include "../../port.h"
+#include "../exception.h"
 
-#include "codes.h"
-#include "mime_type.h"
+namespace bricks {
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
-#include "impl/server.h"
-#else
-#error "No implementation for `net/http.h` is available for your system."
-#endif
+struct JSONParseException : Exception {
+  explicit JSONParseException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
+};
 
-#endif  // BRICKS_NET_HTTP_HTTP_H
+}  // namespace bricks
+
+#endif  // BRICKS_CEREALIZE_EXCEPTIONS_H

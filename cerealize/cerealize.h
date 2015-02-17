@@ -29,6 +29,8 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 
+#include "exceptions.h"
+
 #include "../3party/cereal/include/types/string.hpp"
 #include "../3party/cereal/include/types/vector.hpp"
 #include "../3party/cereal/include/types/map.hpp"
@@ -50,19 +52,27 @@ struct is_string_type_impl {
   constexpr static bool value = false;
 };
 template <>
-struct is_string_type_impl<const std::string> {
+struct is_string_type_impl<std::string> {
   constexpr static bool value = true;
 };
 template <>
-struct is_string_type_impl<const std::vector<char>> {
+struct is_string_type_impl<std::vector<char>> {
   constexpr static bool value = true;
 };
 template <>
-struct is_string_type_impl<const std::vector<int8_t>> {
+struct is_string_type_impl<std::vector<int8_t>> {
   constexpr static bool value = true;
 };
 template <>
-struct is_string_type_impl<const std::vector<uint8_t>> {
+struct is_string_type_impl<std::vector<uint8_t>> {
+  constexpr static bool value = true;
+};
+template <>
+struct is_string_type_impl<char*> {
+  constexpr static bool value = true;
+};
+template <size_t N>
+struct is_string_type_impl<char[N]> {
   constexpr static bool value = true;
 };
 template <>
@@ -77,8 +87,8 @@ struct is_string_type_impl<const char[N]> {
 // explicitly exclude string-related types from cereal-based implementations.
 template <typename TOP_LEVEL_T>
 struct is_string_type {
-  constexpr static bool value =
-      is_string_type_impl<const typename std::remove_reference<TOP_LEVEL_T>::type>::value;
+  constexpr static bool value = is_string_type_impl<
+      typename std::remove_cv<typename std::remove_reference<TOP_LEVEL_T>::type>::type>::value;
 };
 
 // Helper compile-time test that certain type can be serialized via cereal.
@@ -262,6 +272,62 @@ inline std::string JSON(T&& object, S&& name) {
   std::ostringstream os;
   AppendAsJSON(os, std::forward<T>(object), name);
   return os.str();
+}
+
+// JSON parse error handling logic.
+// By default, an exception is thrown.
+// If a user class defines the `FromInvalidJSON()` method, JSONParse() is a non-throwing call,
+// and that method will be called instead.
+
+template <typename T>
+struct HasFromInvalidJSON {
+  typedef char one;
+  typedef long two;
+
+  template <typename C>
+  static one test(decltype(&C::FromInvalidJSON));
+  template <typename C>
+  static two test(...);
+
+  constexpr static bool value = (sizeof(test<T>(0)) == sizeof(one));
+};
+
+template <typename T, bool B>
+struct BricksJSONParseError {};
+
+template <typename T>
+struct BricksJSONParseError<T, false> {
+  static void HandleJSONParseError(const std::string& input_json, T&) {
+    throw bricks::JSONParseException(input_json);
+  }
+};
+
+template <typename T>
+struct BricksJSONParseError<T, true> {
+  static void HandleJSONParseError(const std::string& input_json, T& output_object) {
+    output_object.FromInvalidJSON(input_json);
+  }
+};
+
+template <typename T>
+inline const T& JSONParse(const std::string& input_json, T& output_object) {
+  try {
+    std::istringstream is(input_json);
+    cereal::JSONInputArchive ar(is);
+    ar(output_object);
+  } catch (cereal::Exception&) {
+    BricksJSONParseError<T, HasFromInvalidJSON<typename std::remove_reference<T>::type>::value>::
+        HandleJSONParseError(input_json, output_object);
+  }
+  return output_object;
+}
+
+template <typename T>
+inline T JSONParse(const std::string& input_json) {
+  T placeholder;
+  JSONParse(input_json, placeholder);
+  // Can not just do `return JSONParse()`, since it would not handle ownership transfer for `std::unique_ptr<>`.
+  return placeholder;
 }
 
 }  // namespace cerealize

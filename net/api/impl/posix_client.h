@@ -79,9 +79,13 @@ class HTTPClientPOSIX final {
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n");
       }
-      connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n");
-      connection.BlockingWrite("\r\n");
-      connection.BlockingWrite(request_body_contents_);
+      if (request_has_body_) {
+        connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n");
+        connection.BlockingWrite("\r\n");
+        connection.BlockingWrite(request_body_contents_);
+      } else {
+        connection.BlockingWrite("\r\n");
+      }
       // Attention! Achtung! Увага! Внимание!
       // Calling SendEOF() (which is ::shutdown(socket, SHUT_WR);) results in slowly sent data
       // not being received. Tested on local and remote data with "chunked" transfer encoding.
@@ -113,6 +117,7 @@ class HTTPClientPOSIX final {
   std::string request_method_ = "";
   std::string request_url_ = "";
   std::string request_body_content_type_ = "";
+  bool request_has_body_ = false;  // TODO(dkorolev): Support this in ObjectiveC and Java code as well.
   std::string request_body_contents_ = "";
   std::string request_user_agent_ = "";
 
@@ -140,8 +145,11 @@ struct ImplWrapper<HTTPClientPOSIX> {
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
-    client.request_body_contents_ = request.body;
-    client.request_body_content_type_ = request.content_type;
+    client.request_has_body_ = request.has_body;
+    if (request.has_body) {
+      client.request_body_contents_ = request.body;
+      client.request_body_content_type_ = request.content_type;
+    }
   }
 
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientPOSIX& client) {
@@ -150,6 +158,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
+    client.request_has_body_ = true;
     client.request_body_contents_ =
         FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;

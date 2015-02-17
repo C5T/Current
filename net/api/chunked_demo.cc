@@ -111,6 +111,7 @@ using namespace bricks::cerealize;
 using bricks::time::Now;
 using bricks::strings::Printf;
 using bricks::net::HTTPResponseCode;
+using bricks::net::HTTPHeaders;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
@@ -174,24 +175,24 @@ struct ExampleMeta {
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.
 int main() {
-  HTTP(FLAGS_port).Register("/layout", [](Request&& r) {
+  HTTP(FLAGS_port).Register("/layout", [](Request r) {
     LayoutItem layout;
     LayoutItem row;
     layout.col.push_back(row);
-    r.connection.SendHTTPResponse(layout,
-                                  "layout",
-                                  HTTPResponseCode::OK,
-                                  "application/json; charset=utf-8",
-                                  {{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}});
+    r(layout,
+      "layout",
+      HTTPResponseCode::OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
   });
-  HTTP(FLAGS_port).Register("/meta", [](Request&& r) {
-    r.connection.SendHTTPResponse(ExampleMeta(),
-                                  "meta",
-                                  HTTPResponseCode::OK,
-                                  "application/json; charset=utf-8",
-                                  {{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}});
+  HTTP(FLAGS_port).Register("/meta", [](Request r) {
+    r(ExampleMeta(),
+      "meta",
+      HTTPResponseCode::OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
   });
-  HTTP(FLAGS_port).Register("/data", [](Request&& r) {
+  HTTP(FLAGS_port).Register("/data", [](Request r) {
     std::thread([](Request&& r) {
                   // Since we are in another thread, need to catch exceptions ourselves.
                   try {

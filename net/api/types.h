@@ -36,6 +36,8 @@ SOFTWARE.
 #include "../exceptions.h"
 #include "../http/codes.h"
 
+#include "../../cerealize/cerealize.h"
+
 namespace bricks {
 namespace net {
 namespace api {
@@ -70,11 +72,24 @@ struct GET : HTTPRequestBase<GET> {
 };
 
 struct POST : HTTPRequestBase<POST> {
+  bool has_body;
   std::string body;
   std::string content_type;
 
+  explicit POST(const std::string& url) : HTTPRequestBase(url), has_body(false) {}
+
   explicit POST(const std::string& url, const std::string& body, const std::string& content_type)
-      : HTTPRequestBase(url), body(body), content_type(content_type) {}
+      : HTTPRequestBase(url), has_body(true), body(body), content_type(content_type) {}
+
+  template <typename T>
+  explicit POST(const std::string& url, const T& object)
+      : HTTPRequestBase(url),
+        has_body(true),
+        body(cerealize::JSON(object, "data")),
+        content_type("application/json") {
+    static_assert(cerealize::is_write_cerealizable<T>::value,
+                  "This form of POST() requires a cerealizable object as the second parameter.");
+  }
 };
 
 struct POSTFromFile : HTTPRequestBase<POSTFromFile> {

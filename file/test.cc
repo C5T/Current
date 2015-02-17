@@ -49,6 +49,24 @@ TEST(File, JoinPath) {
   ASSERT_THROW(FileSystem::JoinPath("/foo/", ""), FileException);
 }
 
+TEST(File, GetFileExtension) {
+  EXPECT_EQ("", FileSystem::GetFileExtension(""));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a"));
+  EXPECT_EQ("b", FileSystem::GetFileExtension("a.b"));
+  EXPECT_EQ("c", FileSystem::GetFileExtension("a.b.c"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension("..a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a/b"));
+  EXPECT_EQ("b", FileSystem::GetFileExtension("a/.b"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a/b/c"));
+  EXPECT_EQ("c", FileSystem::GetFileExtension("a/b/.c"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("./a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("../a"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension("../.a"));
+  EXPECT_EQ("long_extension", FileSystem::GetFileExtension("long_name.long_extension"));
+}
+
 TEST(File, FileStringOperations) {
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "tmp");
 
