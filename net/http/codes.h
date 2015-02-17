@@ -129,6 +129,7 @@ inline std::string HTTPResponseCodeAsString(HTTPResponseCode code) {
   }
 }
 
+inline std::string DefaultFourOhFourMessage() { return "<h2>Not found</h2>\n"; }
 inline std::string DefaultInternalServerErrorMessage() { return "<h2>Internal server error</h2>\n"; }
 
 }  // namespace net

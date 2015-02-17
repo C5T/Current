@@ -49,6 +49,7 @@ using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPHeaders;
 
 using bricks::net::DefaultInternalServerErrorMessage;
+using bricks::net::DefaultFourOhFourMessage;
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
@@ -180,11 +181,12 @@ TEST(HTTPAPI, RedirectLoop) {
 }
 
 TEST(HTTPAPI, FourOhFour) {
+  EXPECT_EQ("<h2>Not found</h2>\n", DefaultFourOhFourMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   const string url = Printf("localhost:%d/ORLY", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(404, static_cast<int>(response.code));
-  EXPECT_EQ("", response.body);
+  EXPECT_EQ(DefaultFourOhFourMessage(), response.body);
   EXPECT_EQ(url, response.url);
 }
 
