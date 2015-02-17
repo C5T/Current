@@ -52,19 +52,27 @@ struct is_string_type_impl {
   constexpr static bool value = false;
 };
 template <>
-struct is_string_type_impl<const std::string> {
+struct is_string_type_impl<std::string> {
   constexpr static bool value = true;
 };
 template <>
-struct is_string_type_impl<const std::vector<char>> {
+struct is_string_type_impl<std::vector<char>> {
   constexpr static bool value = true;
 };
 template <>
-struct is_string_type_impl<const std::vector<int8_t>> {
+struct is_string_type_impl<std::vector<int8_t>> {
   constexpr static bool value = true;
 };
 template <>
-struct is_string_type_impl<const std::vector<uint8_t>> {
+struct is_string_type_impl<std::vector<uint8_t>> {
+  constexpr static bool value = true;
+};
+template <>
+struct is_string_type_impl<char*> {
+  constexpr static bool value = true;
+};
+template <size_t N>
+struct is_string_type_impl<char[N]> {
   constexpr static bool value = true;
 };
 template <>
@@ -79,8 +87,8 @@ struct is_string_type_impl<const char[N]> {
 // explicitly exclude string-related types from cereal-based implementations.
 template <typename TOP_LEVEL_T>
 struct is_string_type {
-  constexpr static bool value =
-      is_string_type_impl<const typename std::remove_reference<TOP_LEVEL_T>::type>::value;
+  constexpr static bool value = is_string_type_impl<
+      typename std::remove_cv<typename std::remove_reference<TOP_LEVEL_T>::type>::type>::value;
 };
 
 // Helper compile-time test that certain type can be serialized via cereal.

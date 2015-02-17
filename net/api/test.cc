@@ -294,6 +294,73 @@ TEST(HTTPAPI, PostWithEmptyBody) {
   EXPECT_EQ("Empty POST.", HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port))).body);
 }
 
+TEST(HTTPAPI, PostAStringAsString) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/post_string", [](Request r) {
+    ASSERT_TRUE(r.http.HasBody());
+    r(r.http.Body());
+  });
+  EXPECT_EQ("std::string",
+            HTTP(POST(Printf("localhost:%d/post_string", FLAGS_net_api_test_port),
+                      std::string("std::string"),
+                      "text/plain")).body);
+}
+
+TEST(HTTPAPI, PostAStringAsConstCharPtr) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/post_const_char_ptr", [](Request r) {
+    ASSERT_TRUE(r.http.HasBody());
+    r(r.http.Body());
+  });
+  EXPECT_EQ("const char*",
+            HTTP(POST(Printf("localhost:%d/post_const_char_ptr", FLAGS_net_api_test_port),
+                      static_cast<const char*>("const char*"),
+                      "text/plain")).body);
+}
+
+TEST(HTTPAPI, RespondWithStringAsString) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string", [](Request r) {
+    ASSERT_FALSE(r.http.HasBody());
+    r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode::InternalServerError);
+  });
+  EXPECT_EQ("std::string",
+            HTTP(POST(Printf("localhost:%d/respond_with_std_string", FLAGS_net_api_test_port))).body);
+}
+
+TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
+    ASSERT_FALSE(r.http.HasBody());
+    r.connection.SendHTTPResponse(static_cast<const char*>("const char*"),
+                                  HTTPResponseCode::InternalServerError);
+  });
+  EXPECT_EQ("const char*",
+            HTTP(POST(Printf("localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port))).body);
+}
+
+TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string_via_request_directly", [](Request r) {
+    ASSERT_FALSE(r.http.HasBody());
+    r(std::string("std::string"), HTTPResponseCode::InternalServerError);
+  });
+  EXPECT_EQ("std::string",
+            HTTP(POST(Printf("localhost:%d/respond_with_std_string_via_request_directly",
+                             FLAGS_net_api_test_port))).body);
+}
+
+TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr_via_request_directly", [](Request r) {
+    ASSERT_FALSE(r.http.HasBody());
+    r(static_cast<const char*>("const char*"), HTTPResponseCode::InternalServerError);
+  });
+  EXPECT_EQ("const char*",
+            HTTP(POST(Printf("localhost:%d/respond_with_const_char_ptr_via_request_directly",
+                             FLAGS_net_api_test_port))).body);
+}
+
 struct ObjectToPOST {
   int x = 42;
   std::string s = "foo";

@@ -71,10 +71,39 @@ struct Yes {
   void serialize(A&) {}
 };
 
-TEST(Cerealize, CompileTimeTest) {
-  EXPECT_FALSE(is_cerealizable<No>::value);
-  EXPECT_TRUE(is_cerealizable<Yes>::value);
-};
+TEST(Cerealize, CompileTimeTests) {
+  static_assert(!is_cerealizable<No>::value, "");
+  static_assert(is_cerealizable<Yes>::value, "");
+
+  static_assert(!is_string_type<int>::value, "");
+
+  static_assert(is_string_type<char*>::value, "");
+
+  static_assert(is_string_type<const char*>::value, "");
+  static_assert(is_string_type<const char*&>::value, "");
+  static_assert(is_string_type<const char*&&>::value, "");
+  static_assert(is_string_type<char*&&>::value, "");
+
+  static_assert(is_string_type<std::string>::value, "");
+  static_assert(is_string_type<const std::string&>::value, "");
+  static_assert(is_string_type<std::string&&>::value, "");
+
+  static_assert(is_string_type<std::vector<char>>::value, "");
+  static_assert(is_string_type<const std::vector<char>&>::value, "");
+  static_assert(is_string_type<std::vector<char>&&>::value, "");
+
+  static_assert(!is_write_cerealizable<const char*>::value, "");
+  static_assert(!is_write_cerealizable<const char*&>::value, "");
+  static_assert(!is_write_cerealizable<const char*&&>::value, "");
+
+  static_assert(!is_write_cerealizable<char*>::value, "");
+  static_assert(!is_write_cerealizable<char*&>::value, "");
+  static_assert(!is_write_cerealizable<char*&&>::value, "");
+
+  static_assert(!is_write_cerealizable<std::vector<char>>::value, "");
+  static_assert(!is_write_cerealizable<const std::vector<char>&>::value, "");
+  static_assert(!is_write_cerealizable<std::vector<char>&&>::value, "");
+}
 
 struct CerealTestObject {
   int number;
@@ -89,12 +118,12 @@ struct CerealTestObject {
 
 TEST(Cerealize, JSON) {
   EXPECT_EQ("{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}", JSON(CerealTestObject()));
-};
+}
 
 TEST(Cerealize, NamedJSON) {
   EXPECT_EQ("{\"BAZINGA\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}",
             JSON(CerealTestObject(), "BAZINGA"));
-};
+}
 
 TEST(Cerealize, BinarySerializesAndParses) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
