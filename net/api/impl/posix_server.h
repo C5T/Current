@@ -221,16 +221,14 @@ class HTTPServerPOSIX final {
           //
           // Solution: Do nothing here. No matter how tempting it is, it won't work across threads. Period.
           //
-          // The implementation of HTTP connection will return an "INTERNAL SERVER ERROR" if no response was
-          // sent.
-          // That's what the user gets. In debugger, they can put a breakpoint there and see what caused the
-          // error.
+          // The implementation of HTTP connection will return an "INTERNAL SERVER ERROR"
+          // if no response was sent. That's what the user gets. In debugger, they can put a breakpoint there
+          // and see what caused the error.
           //
           // It is the job of the user of this library to ensure no exceptions leave their code.
           //
-          // In practice, a top-level try-catch for `conts bricks::Exception& e`, or even `const std::exception&
-          // e`,
-          // with logging of `e.what()` is a good enough solution.
+          // In practice, a top-level try-catch for `const bricks::Exception& e`,
+          // or even `const std::exception& e`, with logging of `e.what()` is a good enough solution.
           try {
             handler(Request(std::move(connection)));
           } catch (const std::exception& e) {  // LCOV_EXCL_LINE
