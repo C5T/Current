@@ -38,7 +38,8 @@ SOFTWARE.
 namespace bricks {
 namespace net {
 
-inline std::string GetFileMimeType(const std::string& file_name) {
+inline std::string GetFileMimeType(const std::string& file_name,
+                                   const std::string& default_type = "text/plain") {
   static const std::map<std::string, std::string> file_extension_to_mime_type_map = {
       {"js", "application/javascript"},
       {"json", "application/json"},
@@ -50,8 +51,7 @@ inline std::string GetFileMimeType(const std::string& file_name) {
       {"jpg", "image/jpeg"},
       {"jpeg", "image/jpeg"},
       {"gif", "image/gif"},
-      {"svg", "image/svg+xml"}  // TODO(sompylasar): Is this the right MIME for svg?
-  };
+      {"svg", "image/svg+xml"}};
 
   std::string extension = bricks::FileSystem::GetFileExtension(file_name);
   std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
@@ -59,7 +59,7 @@ inline std::string GetFileMimeType(const std::string& file_name) {
   if (cit != file_extension_to_mime_type_map.end()) {
     return cit->second;
   } else {
-    return "text/plain";
+    return default_type;
   }
 }
 
