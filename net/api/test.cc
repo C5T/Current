@@ -48,6 +48,8 @@ using bricks::net::Connection;
 using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPHeaders;
 
+using bricks::net::DefaultInternalServerErrorMessage;
+
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
 using bricks::net::SocketResolveAddressException;
@@ -394,6 +396,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
+  EXPECT_EQ("<h2>Internal server error</h2>\n", DefaultInternalServerErrorMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());
@@ -403,7 +406,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }
   });
-  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n",
+  EXPECT_EQ(DefaultInternalServerErrorMessage(),
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), "fffuuuuu", "text/plain")).body);
 }
 

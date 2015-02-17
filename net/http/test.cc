@@ -51,6 +51,7 @@ using bricks::net::HTTPRequestData;
 using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPResponseCodeAsString;
 using bricks::net::GetFileMimeType;
+using bricks::net::DefaultInternalServerErrorMessage;
 using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
 using bricks::net::AttemptedToSendHTTPResponseMoreThanOnce;
@@ -545,8 +546,9 @@ TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
 }
 
 TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
+  EXPECT_EQ("<h2>Internal server error</h2>\n", DefaultInternalServerErrorMessage());
   thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", TypeParam::Fetch(t, "/", "GET"));
+  EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::Fetch(t, "/", "GET"));
 }
 
 TEST(HTTPCodesTest, SmokeTest) {

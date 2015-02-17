@@ -327,7 +327,7 @@ class HTTPServerConnection final {
       // It's also a good place for a breakpoint to tell the source of that exception.
       try {
         SendHTTPResponse(
-            "<h1>INTERNAL SERVER ERROR</h1>\n", HTTPResponseCode::InternalServerError, "text/html");
+            DefaultInternalServerErrorMessage(), HTTPResponseCode::InternalServerError, "text/html");
       } catch (const std::exception& e) {
         // LCOV_EXCL_START
         // No exception should ever leave the destructor.
