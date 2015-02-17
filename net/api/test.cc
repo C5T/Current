@@ -322,7 +322,7 @@ TEST(HTTPAPI, RespondWithStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string", [](Request r) {
     ASSERT_FALSE(r.http.HasBody());
-    r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode::InternalServerError);
+    r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode::OK);
   });
   EXPECT_EQ("std::string",
             HTTP(POST(Printf("localhost:%d/respond_with_std_string", FLAGS_net_api_test_port))).body);
@@ -333,7 +333,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
     ASSERT_FALSE(r.http.HasBody());
     r.connection.SendHTTPResponse(static_cast<const char*>("const char*"),
-                                  HTTPResponseCode::InternalServerError);
+                                  HTTPResponseCode::OK);
   });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port))).body);
@@ -343,7 +343,7 @@ TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string_via_request_directly", [](Request r) {
     ASSERT_FALSE(r.http.HasBody());
-    r(std::string("std::string"), HTTPResponseCode::InternalServerError);
+    r(std::string("std::string"), HTTPResponseCode::OK);
   });
   EXPECT_EQ("std::string",
             HTTP(POST(Printf("localhost:%d/respond_with_std_string_via_request_directly",
@@ -354,7 +354,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr_via_request_directly", [](Request r) {
     ASSERT_FALSE(r.http.HasBody());
-    r(static_cast<const char*>("const char*"), HTTPResponseCode::InternalServerError);
+    r(static_cast<const char*>("const char*"), HTTPResponseCode::OK);
   });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("localhost:%d/respond_with_const_char_ptr_via_request_directly",
