@@ -181,7 +181,7 @@ TEST(HTTPAPI, RedirectLoop) {
 }
 
 TEST(HTTPAPI, FourOhFour) {
-  EXPECT_EQ("<h2>Not found</h2>\n", DefaultFourOhFourMessage());
+  EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultFourOhFourMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   const string url = Printf("localhost:%d/ORLY", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
@@ -398,7 +398,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
-  EXPECT_EQ("<h2>Internal server error</h2>\n", DefaultInternalServerErrorMessage());
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.http.HasBody());

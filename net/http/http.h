@@ -30,6 +30,19 @@ SOFTWARE.
 #include "codes.h"
 #include "mime_type.h"
 
+namespace bricks {
+namespace net {
+
+// Looks plausible to keep error messages capitalized, with a newline at and end, and wrapped into an <h1>.
+// Even though Bricks is mostly for backends, if we make them appear as JSON-s,
+// along the lines of `{"error":404}`, our JSON-s are based on schemas, so that won't add much value.
+// Thus, just keep them simple, unambiguous, curl- and browser-friendy for now -- D.K.
+inline std::string DefaultFourOhFourMessage() { return "<h1>NOT FOUND</h1>\n"; }
+inline std::string DefaultInternalServerErrorMessage() { return "<h1>INTERNAL SERVER ERROR</h1>\n"; }
+
+}  // namespace net
+}  // namespace bricks
+
 #if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
 #include "impl/server.h"
 #else

@@ -546,7 +546,7 @@ TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
 }
 
 TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
-  EXPECT_EQ("<h2>Internal server error</h2>\n", DefaultInternalServerErrorMessage());
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
   thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
   EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::Fetch(t, "/", "GET"));
 }
