@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,19 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_HTTP_HTTP_H
-#define BRICKS_NET_HTTP_HTTP_H
+#ifndef BRICKS_NET_HTTP_DEFAULT_MESSAGES_H
+#define BRICKS_NET_HTTP_DEFAULT_MESSAGES_H
 
 #include "../../port.h"
 
-#include "codes.h"
-#include "mime_type.h"
-#include "default_messages.h"
+#include <string>
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
-#include "impl/server.h"
-#else
-#error "No implementation for `net/http.h` is available for your system."
-#endif
+namespace bricks {
+namespace net {
 
-#endif  // BRICKS_NET_HTTP_HTTP_H
+// Looks plausible to keep error messages capitalized, with a newline at and end, and wrapped into an <h1>.
+// Even though Bricks is mostly for backends, if we make them appear as JSON-s,
+// along the lines of `{"error":404}`, our JSON-s are based on schemas, so that won't add much value.
+// Thus, just keep them simple, unambiguous, curl- and browser-friendy for now -- D.K.
+inline std::string DefaultFourOhFourMessage() { return "<h1>NOT FOUND</h1>\n"; }
+inline std::string DefaultInternalServerErrorMessage() { return "<h1>INTERNAL SERVER ERROR</h1>\n"; }
+
+}  // namespace net
+}  // namespace bricks
+
+#endif  // BRICKS_NET_HTTP_DEFAULT_MESSAGES_H

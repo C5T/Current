@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../codes.h"
 #include "../mime_type.h"
+#include "../default_messages.h"
 
 #include "../../exceptions.h"
 
