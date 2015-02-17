@@ -183,7 +183,7 @@ struct GNUPlot {
         if (!p.second.empty()) {
           f << "set " << p.first << ' ' << p.second << std::endl;
         } else {
-          f << "unset " << p.first << std::endl;
+          f << "unset " << p.first << std::endl;  // LCOV_EXCL_LINE
         }
       }
       for (size_t i = 0; i < plots_.size(); ++i) {

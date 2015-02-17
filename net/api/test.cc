@@ -42,9 +42,14 @@ using bricks::strings::Printf;
 using bricks::FileSystem;
 using bricks::FileException;
 
+using bricks::cerealize::JSONParse;
+
 using bricks::net::Connection;
 using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPHeaders;
+
+using bricks::net::DefaultInternalServerErrorMessage;
+using bricks::net::DefaultFourOhFourMessage;
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
@@ -176,11 +181,12 @@ TEST(HTTPAPI, RedirectLoop) {
 }
 
 TEST(HTTPAPI, FourOhFour) {
+  EXPECT_EQ("<h1>NOT FOUND</h1>\n", DefaultFourOhFourMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   const string url = Printf("localhost:%d/ORLY", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(404, static_cast<int>(response.code));
-  EXPECT_EQ("", response.body);
+  EXPECT_EQ(DefaultFourOhFourMessage(), response.body);
   EXPECT_EQ(url, response.url);
 }
 
@@ -364,6 +370,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
 struct ObjectToPOST {
   int x = 42;
   std::string s = "foo";
+  std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(x), CEREAL_NVP(s));
@@ -378,6 +385,31 @@ TEST(HTTPAPI, PostCerealizableObject) {
   });
   EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
+}
+
+TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_TRUE(r.http.HasBody());
+    r("Data: " + JSONParse<ObjectToPOST>(r.http.Body()).AsString());
+  });
+  EXPECT_EQ("Data: 42:foo",
+            HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
+}
+
+TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
+    ASSERT_TRUE(r.http.HasBody());
+    try {
+      r("Data: " + JSONParse<ObjectToPOST>(r.http.Body()).AsString());
+    } catch (const std::exception&) {
+      // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
+    }
+  });
+  EXPECT_EQ(DefaultInternalServerErrorMessage(),
+            HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), "fffuuuuu", "text/plain")).body);
 }
 
 TEST(HTTPAPI, PostFromInvalidFile) {

@@ -69,6 +69,9 @@ struct HTTPNoBodyProvidedException : HTTPException {};
 struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
 
+// AttemptedToSendHTTPResponseMoreThanOnce is a user code exception; not really an HTTP one.
+struct AttemptedToSendHTTPResponseMoreThanOnce : Exception {};
+
 }  // namespace net
 }  // namespace bricks
 
