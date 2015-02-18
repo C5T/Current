@@ -21,21 +21,21 @@
 
 set -u -e
 
-for i in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit"); do
+for fn in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit"); do
              echo -e $(basename $i)"\t"$i;
            done | sort | cut -f2) ; do
-  echo $i >/dev/stderr
-  case ${i##*.} in
+  echo $fn >/dev/stderr
+  case ${fn##*.} in
   cc)
     echo '```c++'
-    (grep '^  ' $i | sed "s/^  //g") || echo "// No documentation data in '$i'."
+    (grep '^  ' $fn | sed "s/^  //g") || echo "// No documentation data in '$fn'."
     echo '```'
     ;;
   md)
-    cat $i
+    cat $fn
     ;;
   *)
-    echo "Unrecognized extension for file '$i'."
+    echo "Unrecognized extension for file '$fn'."
     exit 1
     ;;
   esac
