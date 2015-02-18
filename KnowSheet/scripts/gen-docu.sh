@@ -21,7 +21,9 @@
 
 set -u -e
 
-for i in $(for i in $(find . -type f -iname "docu_*.*"); do echo -e $(basename $i)"\t"$i; done | sort | cut -f2) ; do
+for i in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit"); do
+             echo -e $(basename $i)"\t"$i;
+           done | sort | cut -f2) ; do
   echo $i >/dev/stderr
   case ${i##*.} in
   cc)

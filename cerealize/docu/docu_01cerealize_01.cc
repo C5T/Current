@@ -42,9 +42,9 @@ namespace docu {  // Should keep the indent for docu autogeneration.
     std::string string;
     std::vector<int> vector_int;
     std::map<int, std::string> map_int_string;
-    // And add a templated `serialize()` method to make it serializable to and from JSON and binary.
+    // Add a templated `serialize()` method to make it serializable to and from JSON and binary.
     template <typename A> void serialize(A& ar) {
-      // Use the `CEREAL_NVP` syntax to keep field names in JSON format.
+      // Use the `CEREAL_NVP(member)` syntax to keep member names in JSON format.
       ar(CEREAL_NVP(number), CEREAL_NVP(string), CEREAL_NVP(vector_int), CEREAL_NVP(map_int_string));
     }
   };

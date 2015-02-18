@@ -13,9 +13,9 @@ struct SimpleType {
   std::string string;
   std::vector<int> vector_int;
   std::map<int, std::string> map_int_string;
-  // And add a templated `serialize()` method to make it serializable to and from JSON and binary.
+  // Add a templated `serialize()` method to make it serializable to and from JSON and binary.
   template <typename A> void serialize(A& ar) {
-    // Use the `CEREAL_NVP` syntax to keep field names in JSON format.
+    // Use the `CEREAL_NVP(member)` syntax to keep member names in JSON format.
     ar(CEREAL_NVP(number), CEREAL_NVP(string), CEREAL_NVP(vector_int), CEREAL_NVP(map_int_string));
   }
 };
@@ -32,9 +32,9 @@ x.map_int_string[1] = "one";
 x.map_int_string[42] = "the question";
 // Use `JSON(object)` to convert a cerealize-able object into a JSON string.
 const std::string json = JSON(x);
-// Use `JSONParse<T>(json)` to parse a JSON object into a cerealize-able type T.
+// Use `JSONParse<T>(json)` to create an instance of a cerializable type T from its JSON representation.
 const SimpleType y = JSONParse<SimpleType>(json);
-// `JSONParse` also has a two-parameters form that enables omitting the template type.
+// `JSONParse(json, T&)` is an alternate two-parameters form that enables omitting the template type.
 SimpleType z;
 JSONParse(json, z);
 ```

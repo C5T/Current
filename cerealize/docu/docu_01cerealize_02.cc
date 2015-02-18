@@ -54,13 +54,13 @@ EXPECT_EQ("{\"value0\":{"
 "\"vector_int\":[1,2,3],"
 "\"map_int_string\":[{\"key\":1,\"value\":\"one\"},{\"key\":42,\"value\":\"the question\"}]}"
 "}", json);
-  // Use `JSONParse<T>(json)` to parse a JSON object into a cerealize-able type T.
+  // Use `JSONParse<T>(json)` to create an instance of a cerializable type T from its JSON representation.
   const SimpleType y = JSONParse<SimpleType>(json);
 EXPECT_EQ(42, y.number);
 EXPECT_EQ("test passed", y.string);
 EXPECT_EQ(3u, y.vector_int.size());
 EXPECT_EQ(2u, y.map_int_string.size());
-  // `JSONParse` also has a two-parameters form that enables omitting the template type.
+  // `JSONParse(json, T&)` is an alternate two-parameters form that enables omitting the template type.
   SimpleType z;
   JSONParse(json, z);
 EXPECT_EQ(42, z.number);
