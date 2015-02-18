@@ -25,13 +25,13 @@ for fn in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit"); do
              echo -e $(basename $i)"\t"$i;
            done | sort | cut -f2) ; do
   echo $fn >/dev/stderr
-  case ${fn##*.} in
-  cc)
+  case $fn in
+  *.cc)
     echo '```c++'
     (grep '^  ' $fn | sed "s/^  //g") || echo "// No documentation data in '$fn'."
     echo '```'
     ;;
-  md)
+  *.md)
     cat $fn
     ;;
   *)
