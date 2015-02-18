@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 John Babak <babak.john@gmail.com>
-                   Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,47 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(sompylasar): Your name and e-mail spelling in the header?
+#ifndef BRICKS_NET_HTTP_DEFAULT_MESSAGES_H
+#define BRICKS_NET_HTTP_DEFAULT_MESSAGES_H
 
-#ifndef BRICKS_NET_HTTP_MIME_TYPE_H
-#define BRICKS_NET_HTTP_MIME_TYPE_H
+#include "../../port.h"
 
-#include <algorithm>
-#include <cctype>
-#include <map>
 #include <string>
-
-#include "../../file/file.h"
 
 namespace bricks {
 namespace net {
 
-inline std::string GetFileMimeType(const std::string& file_name,
-                                   const std::string& default_type = "text/plain") {
-  static const std::map<std::string, std::string> file_extension_to_mime_type_map = {
-      {"js", "application/javascript"},
-      {"json", "application/json"},
-      {"css", "text/css"},
-      {"html", "text/html"},
-      {"htm", "text/html"},
-      {"txt", "text/plain"},
-      {"png", "image/png"},
-      {"jpg", "image/jpeg"},
-      {"jpeg", "image/jpeg"},
-      {"gif", "image/gif"},
-      {"svg", "image/svg+xml"}};
-
-  std::string extension = bricks::FileSystem::GetFileExtension(file_name);
-  std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-  const auto cit = file_extension_to_mime_type_map.find(extension);
-  if (cit != file_extension_to_mime_type_map.end()) {
-    return cit->second;
-  } else {
-    return default_type;
-  }
-}
+// Looks plausible to keep error messages capitalized, with a newline at and end, and wrapped into an <h1>.
+// Even though Bricks is mostly for backends, if we make them appear as JSON-s,
+// along the lines of `{"error":404}`, our JSON-s are based on schemas, so that won't add much value.
+// Thus, just keep them simple, unambiguous, curl- and browser-friendy for now -- D.K.
+inline std::string DefaultFourOhFourMessage() { return "<h1>NOT FOUND</h1>\n"; }
+inline std::string DefaultInternalServerErrorMessage() { return "<h1>INTERNAL SERVER ERROR</h1>\n"; }
 
 }  // namespace net
 }  // namespace bricks
 
-#endif  // BRICKS_NET_HTTP_MIME_TYPE_H
+#endif  // BRICKS_NET_HTTP_DEFAULT_MESSAGES_H

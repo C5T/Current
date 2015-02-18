@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include "codes.h"
 #include "mime_type.h"
+#include "default_messages.h"
 
 #if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
 #include "impl/server.h"
