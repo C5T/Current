@@ -1,9 +1,16 @@
 # TODO(dkorolev): Revisit the `test` and `all` targets here and in subdirectories.
 
-.PHONY: test all clean check indent wc
+.PHONY: default docu README.md test all clean check indent wc
+
+default: test docu
 
 test:
 	./KnowSheet/scripts/full-test.sh
+
+docu: README.md
+
+README.md:
+	./KnowSheet/scripts/gen-docu.sh >$@
 
 all:
 	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd $$i; make) ; done
