@@ -133,6 +133,58 @@ EXPECT_EQ("int, 42",
 EXPECT_EQ("double, 3.141593",
           JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
+## Run-time Type Dispatching
+
+Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
+
+This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
+
+Use `#include "Bricks/rtti/dispatcher.h"` and `using namespace bricks::rtti;` to run the cose snippets below.
+
+`TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
+```cpp
+struct ExampleBase {
+  virtual ~ExampleBase() = default;
+};
+
+struct ExampleInt : ExampleBase {
+  int i;
+  explicit ExampleInt(int i) : i(i) {}
+};
+
+struct ExampleString : ExampleBase {
+  std::string s;
+  explicit ExampleString(const std::string& s) : s(s) {}
+};
+
+struct ExampleMoo : ExampleBase {
+};
+
+struct ExampleProcessor {
+  std::string result;
+  void operator()(const ExampleBase&) { result = "unknown"; }
+  void operator()(const ExampleInt& x) { result = Printf("int %d", x.i); }
+  void operator()(const ExampleString& x) { result = Printf("string '%s'", x.s.c_str()); }
+  void operator()(const ExampleMoo&) { result = "moo!"; }
+};
+  
+typedef RuntimeTupleDispatcher<ExampleBase,
+                               tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
+
+ExampleProcessor processor;
+
+Dispatcher::DispatchCall(ExampleBase(), processor);
+EXPECT_EQ(processor.result, "unknown");
+  
+Dispatcher::DispatchCall(ExampleInt(42), processor);
+EXPECT_EQ(processor.result, "int 42");
+  
+Dispatcher::DispatchCall(ExampleString("foo"), processor);
+EXPECT_EQ(processor.result, "string 'foo'");
+  
+Dispatcher::DispatchCall(ExampleMoo(), processor);
+EXPECT_EQ(processor.result, "moo!");
+```
 ## Extras
 
 Other useful bits include chart visualization, file system, string and system clock utilities.

@@ -25,9 +25,6 @@ SOFTWARE.
 #ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
 #define BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
 
-#include <vector>
-#include <map>
-
 #include "../cerealize.h"
 
 #include "../../3party/gtest/gtest-main.h"
