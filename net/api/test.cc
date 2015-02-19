@@ -338,8 +338,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
     ASSERT_FALSE(r.http.HasBody());
-    r.connection.SendHTTPResponse(static_cast<const char*>("const char*"),
-                                  HTTPResponseCode::OK);
+    r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode::OK);
   });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port))).body);

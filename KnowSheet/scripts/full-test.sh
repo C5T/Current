@@ -25,7 +25,7 @@ echo "#include \"dflags/dflags.h\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
 echo "#include \"3party/gtest/gtest-main-with-dflags.h\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
 
 echo -n -e "\033[0m\033[1mTests:\033[0m\033[36m"
-for i in $(find . -iname test.cc | grep -v 3party | grep -v "/.noshit/"); do
+for i in $(find . -iname "*test.cc" | grep -v 3party | grep -v "/.noshit/"); do
   echo "#include \"$i\"" >> $TMPDIR/ALL_TESTS_TOGETHER.cc
   echo -n " $i"
 done

@@ -32,10 +32,13 @@ endif
 
 default: all
 	if [ -f test.cc ] ; then \
-		.noshit/test --bricks_runtime_arch=${OS} ; \
+		make test ;\
 	else \
 		find .noshit/ -executable -type f -exec "{}" ";" ; \
 	fi
+
+test: .noshit/test
+	.noshit/test --bricks_runtime_arch=${OS}
 
 debug:
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.noshit/test && (./.noshit/test && echo OK || gdb ./.noshit/test core)

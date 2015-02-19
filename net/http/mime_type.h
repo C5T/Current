@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Ivan "John" Babak
+Copyright (c) 2015 John Babak <babak.john@gmail.com>
                    Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
