@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_CC
-#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_CC
+#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
+#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
 
 #include <vector>
 #include <map>
@@ -36,22 +36,31 @@ using namespace bricks;
 using namespace cerealize;
 
 namespace docu {  // Should keep the indent for docu autogeneration.
-  // A C++ structure is "cerealizable" if it implements a way to serialize itself.
-  struct SimpleType {
-    int number;
-    std::string string;
-    std::vector<int> vector_int;
-    std::map<int, std::string> map_int_string;
+  // Use `load()/save()` instead of `serialize()` to customize serialization.
+  struct LoadSaveType {
+    int a;
+    int b;
+    int sum;
     
-    // Add a templated `serialize()` method that lists all the fields to be serialized.
-    template <typename A> void serialize(A& ar) {
-      // Use the `CEREAL_NVP(member)` syntax to keep member names in JSON format.
-      ar(CEREAL_NVP(number),
-         CEREAL_NVP(string),
-         CEREAL_NVP(vector_int),
-         CEREAL_NVP(map_int_string));
+    template <typename A> void save(A& ar) const {
+      ar(CEREAL_NVP(a), CEREAL_NVP(b));
+    }
+  
+    template <typename A> void load(A& ar) {
+      ar(CEREAL_NVP(a), CEREAL_NVP(b));
+      sum = a + b;
     }
   };
+  
 }  // namespace docu
 
-#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_CC
+using docu::LoadSaveType;
+
+TEST(CerealDocu, Docu03) {
+  LoadSaveType x;
+  x.a = 2;
+  x.b = 3;
+  EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+}
+
+#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC

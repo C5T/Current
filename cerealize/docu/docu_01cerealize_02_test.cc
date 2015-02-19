@@ -22,15 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_CC
-#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_CC
+#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_TEST_CC
+#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_TEST_CC
 
-#include <vector>
-#include <map>
-
-#include "../cerealize.h"
-
-#include "../../3party/gtest/gtest-main.h"
+#include "docu_01cerealize_01_test.cc"
 
 using namespace bricks;
 using namespace cerealize;
@@ -38,7 +33,7 @@ using namespace cerealize;
 using docu::SimpleType;
 
 TEST(CerealDocu, Docu02) {
-  // Cerealizable types can be serialized and de-serialized into JSON and binary formats.
+  // Use `JSON()` and `JSONParse()` to create and parse JSON-s.
   SimpleType x;
   x.number = 42;
   x.string = "test passed";
@@ -48,7 +43,7 @@ TEST(CerealDocu, Docu02) {
   x.map_int_string[1] = "one";
   x.map_int_string[42] = "the question";
   
-  // Use `JSON(object)` to convert a cerealize-able object into a JSON string.
+  // `JSON(object)` converts a cerealize-able object into a JSON string.
   const std::string json = JSON(x);
 EXPECT_EQ("{\"value0\":{"
 "\"number\":42,\"string\":\"test passed\","
@@ -56,16 +51,14 @@ EXPECT_EQ("{\"value0\":{"
 "\"map_int_string\":[{\"key\":1,\"value\":\"one\"},{\"key\":42,\"value\":\"the question\"}]}"
 "}", json);
   
-  // Use `JSONParse<T>(json)` to create an instance of a cerializable
-  // type T from its JSON representation.
+  // `JSONParse<T>(json)` creates an instance of T from a JSON.
   const SimpleType y = JSONParse<SimpleType>(json);
 EXPECT_EQ(42, y.number);
 EXPECT_EQ("test passed", y.string);
 EXPECT_EQ(3u, y.vector_int.size());
 EXPECT_EQ(2u, y.map_int_string.size());
   
-  // `JSONParse(json, T&)` is an alternate two-parameters form
-  // that enables omitting the template type.
+  // `JSONParse(json, T& out)` allows omitting the type.
   SimpleType z;
   JSONParse(json, z);
 EXPECT_EQ(42, z.number);
@@ -74,4 +67,4 @@ EXPECT_EQ(3u, z.vector_int.size());
 EXPECT_EQ(2u, z.map_int_string.size());
 }
 
-#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_CC
+#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_TEST_CC

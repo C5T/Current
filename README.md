@@ -15,16 +15,15 @@ Bricks uses the **Cereal** library for JSON and Binary serialization of C++ obje
 
 Use `#include "Bricks/cerealize/cerealize.h"` and `using namespace bricks::cerealize;` to run the cose snippets below.
 ```cpp
-// A C++ structure is "cerealizable" if it implements a way to serialize itself.
+// Add a `serialize()` method to make a C++ structure "cerealizable".
 struct SimpleType {
   int number;
   std::string string;
   std::vector<int> vector_int;
   std::map<int, std::string> map_int_string;
   
-  // Add a templated `serialize()` method that lists all the fields to be serialized.
   template <typename A> void serialize(A& ar) {
-    // Use the `CEREAL_NVP(member)` syntax to keep member names in JSON format.
+    // Use `CEREAL_NVP(member)` to keep member names when using JSON.
     ar(CEREAL_NVP(number),
        CEREAL_NVP(string),
        CEREAL_NVP(vector_int),
@@ -33,7 +32,7 @@ struct SimpleType {
 };
 ```
 ```cpp
-// Cerealizable types can be serialized and de-serialized into JSON and binary formats.
+// Use `JSON()` and `JSONParse()` to create and parse JSON-s.
 SimpleType x;
 x.number = 42;
 x.string = "test passed";
@@ -43,15 +42,97 @@ x.vector_int.push_back(3);
 x.map_int_string[1] = "one";
 x.map_int_string[42] = "the question";
 
-// Use `JSON(object)` to convert a cerealize-able object into a JSON string.
+// `JSON(object)` converts a cerealize-able object into a JSON string.
 const std::string json = JSON(x);
 
-// Use `JSONParse<T>(json)` to create an instance of a cerializable
-// type T from its JSON representation.
+// `JSONParse<T>(json)` creates an instance of T from a JSON.
 const SimpleType y = JSONParse<SimpleType>(json);
 
-// `JSONParse(json, T&)` is an alternate two-parameters form
-// that enables omitting the template type.
+// `JSONParse(json, T& out)` allows omitting the type.
 SimpleType z;
 JSONParse(json, z);
 ```
+```cpp
+// Use `load()/save()` instead of `serialize()` to customize serialization.
+struct LoadSaveType {
+  int a;
+  int b;
+  int sum;
+  
+  template <typename A> void save(A& ar) const {
+    ar(CEREAL_NVP(a), CEREAL_NVP(b));
+  }
+
+  template <typename A> void load(A& ar) {
+    ar(CEREAL_NVP(a), CEREAL_NVP(b));
+    sum = a + b;
+  }
+};
+
+LoadSaveType x;
+x.a = 2;
+x.b = 3;
+EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+```
+```cpp
+// Polymorphic types are supported with some caution.
+struct ExamplePolymorphicType {
+  std::string base;
+  explicit ExamplePolymorphicType(const std::string& base = "") : base(base) {}
+
+  virtual std::string AsString() const = 0;
+  
+  template <typename A> void serialize(A& ar) const {
+    ar(CEREAL_NVP(base));
+  }
+};
+
+struct ExamplePolymorphicInt : ExamplePolymorphicType {
+  int i;
+  explicit ExamplePolymorphicInt(int i = 0)
+      : ExamplePolymorphicType("int"), i(i) {}
+
+  virtual std::string AsString() const override {
+    return Printf("%s, %d", base.c_str(), i);
+  }
+  
+  template <typename A> void serialize(A& ar) const {
+    ExamplePolymorphicType::serialize(ar);
+    ar(CEREAL_NVP(i));
+  }
+};
+// Need to register the derived type.
+CEREAL_REGISTER_TYPE(ExamplePolymorphicInt);
+
+struct ExamplePolymorphicDouble : ExamplePolymorphicType {
+  double d;
+  explicit ExamplePolymorphicDouble(double d = 0)
+      : ExamplePolymorphicType("double"), d(d) {}
+
+  virtual std::string AsString() const override {
+    return Printf("%s, %lf", base.c_str(), d);
+  }
+  
+  template <typename A> void serialize(A& ar) const {
+    ExamplePolymorphicType::serialize(ar);
+    ar(CEREAL_NVP(d));
+  }
+};
+// Need to register the derived type.
+CEREAL_REGISTER_TYPE(ExamplePolymorphicDouble);
+
+const std::string json_int =
+  JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
+
+const std::string json_double =
+  JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
+
+EXPECT_EQ("int, 42",
+          JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+  
+EXPECT_EQ("double, 3.141593",
+          JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+```
+## Extras
+
+Other useful bits include chart visualization, file system, string and system clock utilities.

@@ -34,8 +34,10 @@ SOFTWARE.
 // * Non-polymorphic types, JSON and binary, success and failure.
 
 // It's probably best to put docu-based headers first.
-#include "docu/docu_01cerealize_01.cc"
-#include "docu/docu_01cerealize_02.cc"
+#include "docu/docu_01cerealize_01_test.cc"
+#include "docu/docu_01cerealize_02_test.cc"
+#include "docu/docu_01cerealize_03_test.cc"
+#include "docu/docu_01cerealize_04_test.cc"
 
 #include <iostream>
 #include <tuple>
