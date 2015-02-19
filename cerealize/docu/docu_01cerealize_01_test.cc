@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_CC
-#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_CC
+#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_TEST_CC
+#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_TEST_CC
 
 #include <vector>
 #include <map>
@@ -35,38 +35,22 @@ SOFTWARE.
 using namespace bricks;
 using namespace cerealize;
 
-using docu::SimpleType;
+namespace docu {  // Should keep the indent for docu autogeneration.
+  // Add a `serialize()` method to make a C++ structure "cerealizable".
+  struct SimpleType {
+    int number;
+    std::string string;
+    std::vector<int> vector_int;
+    std::map<int, std::string> map_int_string;
+    
+    template <typename A> void serialize(A& ar) {
+      // Use `CEREAL_NVP(member)` to keep member names when using JSON.
+      ar(CEREAL_NVP(number),
+         CEREAL_NVP(string),
+         CEREAL_NVP(vector_int),
+         CEREAL_NVP(map_int_string));
+    }
+  };
+}  // namespace docu
 
-TEST(CerealDocu, Docu02) {
-  // Cerealize-able types can be serialized and de-serialized into JSON and binary formats.
-  SimpleType x;
-  x.number = 42;
-  x.string = "test passed";
-  x.vector_int.push_back(1);
-  x.vector_int.push_back(2);
-  x.vector_int.push_back(3);
-  x.map_int_string[1] = "one";
-  x.map_int_string[42] = "the question";
-  // Use `JSON(object)` to convert a cerealize-able object into a JSON string.
-  const std::string json = JSON(x);
-EXPECT_EQ("{\"value0\":{"
-"\"number\":42,\"string\":\"test passed\","
-"\"vector_int\":[1,2,3],"
-"\"map_int_string\":[{\"key\":1,\"value\":\"one\"},{\"key\":42,\"value\":\"the question\"}]}"
-"}", json);
-  // Use `JSONParse<T>(json)` to create an instance of a cerializable type T from its JSON representation.
-  const SimpleType y = JSONParse<SimpleType>(json);
-EXPECT_EQ(42, y.number);
-EXPECT_EQ("test passed", y.string);
-EXPECT_EQ(3u, y.vector_int.size());
-EXPECT_EQ(2u, y.map_int_string.size());
-  // `JSONParse(json, T&)` is an alternate two-parameters form that enables omitting the template type.
-  SimpleType z;
-  JSONParse(json, z);
-EXPECT_EQ(42, z.number);
-EXPECT_EQ("test passed", z.string);
-EXPECT_EQ(3u, z.vector_int.size());
-EXPECT_EQ(2u, z.map_int_string.size());
-}
-
-#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_02_CC
+#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_TEST_CC

@@ -1,0 +1,3 @@
+HTTP server also has support for several other features, check out the `bricks/net/api/test.cc` unit test.
+
+**TODO(dkorolev)**: Chunked response example, with a note that it goes to Sherlock.

@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "docu/docu_02rtti_01_test.cc"
+
 #include "dispatcher.h"
 
 #include <string>

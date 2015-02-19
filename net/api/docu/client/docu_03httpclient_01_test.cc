@@ -22,32 +22,41 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_CC
-#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_CC
+#ifndef BRICKS_NET_API_DOCU_CLIENT_01_TEST_CC
+#define BRICKS_NET_API_DOCU_CLIENT_01_TEST_CC
 
-#include <vector>
-#include <map>
+#include "../../api.h"
+#include "../../../../strings/printf.h"
+#include "../../../../dflags/dflags.h"
+#include "../../../../3party/gtest/gtest-main-with-dflags.h"
 
-#include "../cerealize.h"
+DEFINE_int32(docu_net_client_port_01, 8082, "Okay to keep the same as in net/api/test.cc");
 
-#include "../../3party/gtest/gtest-main.h"
+using namespace bricks::net::api;
+using bricks::strings::Printf;
 
-using namespace bricks;
-using namespace cerealize;
+TEST(Docu, HTTPClient01A) {
+HTTP(FLAGS_docu_net_client_port_01).ResetAllHandlers();
+HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
+#if 1
+EXPECT_EQ("OK", HTTP(GET(Printf("localhost:%d/ok", FLAGS_docu_net_client_port_01))).body);
+#else
+  // Simple GET.
+  EXPECT_EQ("OK", HTTP(GET("test.tailproduce.org/ok")).body);
+#endif
+}
+  
+TEST(Docu, HTTPClient01B) {
+HTTP(FLAGS_docu_net_client_port_01).ResetAllHandlers();
+HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
+  // More fields.
+#if 1
+const auto response = HTTP(GET(Printf("localhost:%d/ok", FLAGS_docu_net_client_port_01)));
+#else
+  const auto response = HTTP(GET("test.tailproduce.org/ok"));
+#endif
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("OK", response.body);
+}
 
-namespace docu {  // Should keep the indent for docu autogeneration.
-  // A C++ structure is "cerealize"-able if it can be serialized.
-  struct SimpleType {
-    int number;
-    std::string string;
-    std::vector<int> vector_int;
-    std::map<int, std::string> map_int_string;
-    // Add a templated `serialize()` method to make it serializable to and from JSON and binary.
-    template <typename A> void serialize(A& ar) {
-      // Use the `CEREAL_NVP(member)` syntax to keep member names in JSON format.
-      ar(CEREAL_NVP(number), CEREAL_NVP(string), CEREAL_NVP(vector_int), CEREAL_NVP(map_int_string));
-    }
-  };
-}  // namespace docu
-
-#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_01_CC
+#endif  // BRICKS_NET_API_DOCU_CLIENT_01_TEST_CC

@@ -4,6 +4,8 @@ core
 *.h.gch
 .exrc
 
+*.swp
+
 coverage.info
 *.gcov
 *.gcda
