@@ -28,7 +28,7 @@ for fn in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit"); do
   case $fn in
   *.cc)
     echo '```cpp'
-    (grep '^  ' $fn | sed "s/^  //g") || echo "// No documentation data in '$fn'."
+    (grep '^  ' $fn || echo "  // No documentation data in '$fn'.") | sed "s/^  //g"
     echo '```'
     ;;
   *.md)
