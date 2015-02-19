@@ -85,7 +85,7 @@ using strings::Printf;
   // Need to register the derived type.
   CEREAL_REGISTER_TYPE(ExamplePolymorphicDouble);
   
-TEST(CerealDocu, Docu04) {
+TEST(Docu, Cereal04) {
   const std::string json_int =
     JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
   

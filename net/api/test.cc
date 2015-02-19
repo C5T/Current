@@ -24,6 +24,14 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include "docu/client/docu_03httpclient_01_test.cc"
+#include "docu/client/docu_03httpclient_02_test.cc"
+
+#include "docu/server/docu_04httpserver_01_test.cc"
+#include "docu/server/docu_04httpserver_02_test.cc"
+#include "docu/server/docu_04httpserver_03_test.cc"
+#include "docu/server/docu_04httpserver_04_test.cc"
+
 #include <string>
 
 #include "api.h"

@@ -22,42 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
-#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
+#ifndef BRICKS_NET_API_DOCU_SERVER_02_TEST_CC
+#define BRICKS_NET_API_DOCU_SERVER_02_TEST_CC
 
-#include "../cerealize.h"
+#include "../../api.h"
+#include "../../../../strings/printf.h"
+#include "../../../../dflags/dflags.h"
+#include "../../../../3party/gtest/gtest-main-with-dflags.h"
 
-#include "../../3party/gtest/gtest-main.h"
+DEFINE_int32(docu_net_server_port_02, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using namespace bricks;
-using namespace cerealize;
+using namespace bricks::net::api;
+using bricks::strings::Printf;
+using bricks::net::HTTPHeaders;
+using bricks::net::HTTPResponseCode;
 
-namespace docu {  // Should keep the indent for docu autogeneration.
-  // Use `load()/save()` instead of `serialize()` to customize serialization.
-  struct LoadSaveType {
-    int a;
-    int b;
-    int sum;
-    
-    template <typename A> void save(A& ar) const {
-      ar(CEREAL_NVP(a), CEREAL_NVP(b));
-    }
-  
-    template <typename A> void load(A& ar) {
-      ar(CEREAL_NVP(a), CEREAL_NVP(b));
-      sum = a + b;
-    }
-  };
-  
-}  // namespace docu
-
-using docu::LoadSaveType;
-
-TEST(Docu, Cereal03) {
-  LoadSaveType x;
-  x.a = 2;
-  x.b = 3;
-  EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+TEST(Docu, HTTPServer02) {
+const auto port = FLAGS_docu_net_server_port_02;
+HTTP(port).ResetAllHandlers();
+  // Accessing input fields.
+  HTTP(port).Register("/demo", [](Request r) {
+    // TODO(dkorolev): `r.method`.
+    // TODO(dkorolev): `r.body`.
+    r(r.url.query["q"] + ' ' + r.http.Method() + ' ' + r.http.Body());
+  });
+EXPECT_EQ("A POST body", HTTP(POST(Printf("localhost:%d/demo?q=A", port), "body", "text/plain")).body);
 }
-
-#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
+  
+#endif  // BRICKS_NET_API_DOCU_SERVER_02_TEST_CC

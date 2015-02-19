@@ -32,7 +32,7 @@ using namespace cerealize;
 
 using docu::SimpleType;
 
-TEST(CerealDocu, Docu02) {
+TEST(Docu, Cereal02) {
   // Use `JSON()` and `JSONParse()` to create and parse JSON-s.
   SimpleType x;
   x.number = 42;

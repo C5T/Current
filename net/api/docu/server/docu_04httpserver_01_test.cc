@@ -22,42 +22,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
-#define BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
+#ifndef BRICKS_NET_API_DOCU_SERVER_01_TEST_CC
+#define BRICKS_NET_API_DOCU_SERVER_01_TEST_CC
 
-#include "../cerealize.h"
+#include "../../api.h"
+#include "../../../../strings/printf.h"
+#include "../../../../dflags/dflags.h"
+#include "../../../../3party/gtest/gtest-main-with-dflags.h"
 
-#include "../../3party/gtest/gtest-main.h"
+DEFINE_int32(docu_net_server_port_01, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using namespace bricks;
-using namespace cerealize;
+using namespace bricks::net::api;
+using bricks::strings::Printf;
+using bricks::net::HTTPHeaders;
+using bricks::net::HTTPResponseCode;
 
-namespace docu {  // Should keep the indent for docu autogeneration.
-  // Use `load()/save()` instead of `serialize()` to customize serialization.
-  struct LoadSaveType {
-    int a;
-    int b;
-    int sum;
-    
-    template <typename A> void save(A& ar) const {
-      ar(CEREAL_NVP(a), CEREAL_NVP(b));
-    }
-  
-    template <typename A> void load(A& ar) {
-      ar(CEREAL_NVP(a), CEREAL_NVP(b));
-      sum = a + b;
-    }
-  };
-  
-}  // namespace docu
-
-using docu::LoadSaveType;
-
-TEST(Docu, Cereal03) {
-  LoadSaveType x;
-  x.a = 2;
-  x.b = 3;
-  EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+TEST(Docu, HTTPServer01) {
+const auto port = FLAGS_docu_net_server_port_01;
+HTTP(port).ResetAllHandlers();
+  // Simple "OK" endpoint.
+  HTTP(port).Register("/ok", [](Request r) {
+    r("OK");
+  });
+EXPECT_EQ("OK", HTTP(GET(Printf("localhost:%d/ok", port))).body);
 }
 
-#endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC
+#endif  // BRICKS_NET_API_DOCU_SERVER_01_TEST_CC
