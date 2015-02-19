@@ -36,16 +36,20 @@ using namespace bricks;
 using namespace cerealize;
 
 namespace docu {  // Should keep the indent for docu autogeneration.
-  // A C++ structure is "cerealize"-able if it can be serialized.
+  // A C++ structure is "cerealizable" if it implements a way to serialize itself.
   struct SimpleType {
     int number;
     std::string string;
     std::vector<int> vector_int;
     std::map<int, std::string> map_int_string;
-    // Add a templated `serialize()` method to make it serializable to and from JSON and binary.
+    
+    // Add a templated `serialize()` method that lists all the fields to be serialized.
     template <typename A> void serialize(A& ar) {
       // Use the `CEREAL_NVP(member)` syntax to keep member names in JSON format.
-      ar(CEREAL_NVP(number), CEREAL_NVP(string), CEREAL_NVP(vector_int), CEREAL_NVP(map_int_string));
+      ar(CEREAL_NVP(number),
+         CEREAL_NVP(string),
+         CEREAL_NVP(vector_int),
+         CEREAL_NVP(map_int_string));
     }
   };
 }  // namespace docu
