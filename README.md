@@ -13,7 +13,7 @@ Our own core pieces to reuse.
 Bricks uses the **Cereal** library for JSON and Binary serialization of C++ objects:
 [Cereal Website](http://uscilab.github.io/cereal/), [Cereal GitHub](http://uscilab.github.io/cereal/).
 
-Use `#include "Bricks/cerealize/cerealize.h"` and `using namespace bricks::cerealize;` to run the code snippets below.
+Use [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) and `using namespace bricks::cerealize;` to run the code snippets below.
 ```cpp
 // Add a `serialize()` method to make a C++ structure "cerealizable".
 struct SimpleType {
@@ -135,7 +135,7 @@ EXPECT_EQ("double, 3.141593",
 ```
 ## HTTP
 
-Use `#include "Bricks/net/api/api.h"` and `using namespace bricks::net::api;` to run the code snippets below.
+Use [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob/master/net/api/api.h) and `using namespace bricks::net::api;` to run the code snippets below.
 
 ### Client
 
@@ -229,7 +229,7 @@ Bricks can dispatch calls to the right implementation at runtime, with user code
 
 This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
 
-Use `#include "Bricks/rtti/dispatcher.h"` and `using namespace bricks::rtti;` to run the code snippets below.
+Use [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/KnowSheet/Bricks/blob/master/rtti/dispatcher.h) and `using namespace bricks::rtti;` to run the code snippets below.
 
 `TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
 ```cpp
