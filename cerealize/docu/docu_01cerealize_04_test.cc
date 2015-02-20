@@ -43,7 +43,7 @@ using strings::Printf;
     explicit ExamplePolymorphicType(const std::string& base = "") : base(base) {}
   
     virtual std::string AsString() const = 0;
-    
+
     template <typename A> void serialize(A& ar) const {
       ar(CEREAL_NVP(base));
     }
@@ -58,7 +58,7 @@ using strings::Printf;
     virtual std::string AsString() const override {
       return Printf("%s, %d", base.c_str(), i);
     }
-    
+  
     template <typename A> void serialize(A& ar) const {
       ExamplePolymorphicType::serialize(ar);
       ar(CEREAL_NVP(i));
@@ -76,7 +76,7 @@ using strings::Printf;
     virtual std::string AsString() const override {
       return Printf("%s, %lf", base.c_str(), d);
     }
-    
+  
     template <typename A> void serialize(A& ar) const {
       ExamplePolymorphicType::serialize(ar);
       ar(CEREAL_NVP(d));
@@ -94,7 +94,7 @@ TEST(Docu, Cereal04) {
   
   EXPECT_EQ("int, 42",
             JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
-    
+  
   EXPECT_EQ("double, 3.141593",
             JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 }

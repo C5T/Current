@@ -45,7 +45,7 @@ using bricks::net::HTTPHeaders;
     std::vector<int> x;
     template <typename A> void serialize(A& ar) {
       ar(CEREAL_NVP(op), CEREAL_NVP(x));
-    } 
+    }
     void FromInvalidJSON(const std::string& input_json) {
       op = "JSON parse error: " + input_json;
       x.clear();
@@ -58,8 +58,8 @@ using bricks::net::HTTPHeaders;
     int result;
     template <typename A> void serialize(A& ar) {
       ar(CEREAL_NVP(error), CEREAL_NVP(result));
-    }   
-  };  
+    }
+  }; 
   
 TEST(Docu, HTTPServer04) {
 const auto port = FLAGS_docu_net_server_port_04;

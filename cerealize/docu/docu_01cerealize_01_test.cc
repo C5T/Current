@@ -42,7 +42,7 @@ namespace docu {  // Should keep the indent for docu autogeneration.
     std::string string;
     std::vector<int> vector_int;
     std::map<int, std::string> map_int_string;
-    
+
     template <typename A> void serialize(A& ar) {
       // Use `CEREAL_NVP(member)` to keep member names when using JSON.
       ar(CEREAL_NVP(number),

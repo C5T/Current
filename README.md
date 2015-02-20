@@ -21,7 +21,6 @@ struct SimpleType {
   std::string string;
   std::vector<int> vector_int;
   std::map<int, std::string> map_int_string;
-  
   template <typename A> void serialize(A& ar) {
     // Use `CEREAL_NVP(member)` to keep member names when using JSON.
     ar(CEREAL_NVP(number),
@@ -58,7 +57,7 @@ struct LoadSaveType {
   int a;
   int b;
   int sum;
-  
+
   template <typename A> void save(A& ar) const {
     ar(CEREAL_NVP(a), CEREAL_NVP(b));
   }
@@ -81,7 +80,6 @@ struct ExamplePolymorphicType {
   explicit ExamplePolymorphicType(const std::string& base = "") : base(base) {}
 
   virtual std::string AsString() const = 0;
-  
   template <typename A> void serialize(A& ar) const {
     ar(CEREAL_NVP(base));
   }
@@ -95,7 +93,7 @@ struct ExamplePolymorphicInt : ExamplePolymorphicType {
   virtual std::string AsString() const override {
     return Printf("%s, %d", base.c_str(), i);
   }
-  
+
   template <typename A> void serialize(A& ar) const {
     ExamplePolymorphicType::serialize(ar);
     ar(CEREAL_NVP(i));
@@ -112,7 +110,7 @@ struct ExamplePolymorphicDouble : ExamplePolymorphicType {
   virtual std::string AsString() const override {
     return Printf("%s, %lf", base.c_str(), d);
   }
-  
+
   template <typename A> void serialize(A& ar) const {
     ExamplePolymorphicType::serialize(ar);
     ar(CEREAL_NVP(d));
@@ -129,7 +127,7 @@ const std::string json_double =
 
 EXPECT_EQ("int, 42",
           JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
-  
+
 EXPECT_EQ("double, 3.141593",
           JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
@@ -151,7 +149,7 @@ EXPECT_EQ("OK", response.body);
 ```cpp
 // POST is supported as well.
 EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), "BODY", "text/plain").body);
-  
+
 // Beyond plain strings, cerealizable objects can be passed in.
 // JSON will be sent, as "application/json" content type.
 EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
@@ -170,7 +168,6 @@ HTTP(port).Register("/ok", [](Request r) {
 HTTP(port).Register("/demo", [](Request r) {
   r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
 });
-
 ```
 ```cpp
 // Constructing a more complex response.
@@ -188,7 +185,7 @@ struct PennyInput {
   std::vector<int> x;
   template <typename A> void serialize(A& ar) {
     ar(CEREAL_NVP(op), CEREAL_NVP(x));
-  } 
+  }
   void FromInvalidJSON(const std::string& input_json) {
     op = "JSON parse error: " + input_json;
     x.clear();
@@ -201,8 +198,8 @@ struct PennyOutput {
   int result;
   template <typename A> void serialize(A& ar) {
     ar(CEREAL_NVP(error), CEREAL_NVP(result));
-  }   
-};  
+  }
+}; 
 
 // Doing Penny-level arithmetics for fun and performance testing.
 HTTP(port).Register("/penny", [](Request r) {
@@ -260,7 +257,7 @@ struct ExampleProcessor {
   void operator()(const ExampleString& x) { result = Printf("string '%s'", x.s.c_str()); }
   void operator()(const ExampleMoo&) { result = "moo!"; }
 };
-  
+
 typedef RuntimeTupleDispatcher<ExampleBase,
                                tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
 
@@ -268,13 +265,13 @@ ExampleProcessor processor;
 
 Dispatcher::DispatchCall(ExampleBase(), processor);
 EXPECT_EQ(processor.result, "unknown");
-  
+
 Dispatcher::DispatchCall(ExampleInt(42), processor);
 EXPECT_EQ(processor.result, "int 42");
-  
+
 Dispatcher::DispatchCall(ExampleString("foo"), processor);
 EXPECT_EQ(processor.result, "string 'foo'");
-  
+
 Dispatcher::DispatchCall(ExampleMoo(), processor);
 EXPECT_EQ(processor.result, "moo!");
 ```
