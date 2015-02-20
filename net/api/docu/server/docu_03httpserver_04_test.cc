@@ -45,15 +45,19 @@ using bricks::net::HTTPHeaders;
     std::vector<int> x;
     template <typename A> void serialize(A& ar) {
       ar(CEREAL_NVP(op), CEREAL_NVP(x));
-    }   
-    // TODO(dkorolev): Safe mode wrt parsing malformed JSON.
+    } 
+    void FromInvalidJSON(const std::string& input_json) {
+      op = "JSON parse error: " + input_json;
+      x.clear();
+    }
   };
   
   // An output record that would be sent back as a JSON.
   struct PennyOutput {
+    std::string error;
     int result;
     template <typename A> void serialize(A& ar) {
-      ar(CEREAL_NVP(result));
+      ar(CEREAL_NVP(error), CEREAL_NVP(result));
     }   
   };  
   
@@ -62,23 +66,25 @@ const auto port = FLAGS_docu_net_server_port_04;
 HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
   HTTP(port).Register("/penny", [](Request r) {
-    // TODO(dkorolev): `r.body`, and its safe mode.
-    const auto input = JSONParse<PennyInput>(r.http.Body());
-    int result = 0;
+    const auto input = JSONParse<PennyInput>(r.body);
+    PennyOutput result{"", 0};
     if (input.op == "add") {
       for (const auto v : input.x) {
-        result += v;
+        result.result += v;
       }
     } else if (input.op == "mul") {
-      result = 1;
+      result.result = 1;
       for (const auto v : input.x) {
-        result *= v;
+        result.result *= v;
       }
+    } else {
+      result.error = input.op;
     }
-    r(PennyOutput{result});
+    r(result);
   });
-EXPECT_EQ("{\"value0\":{\"result\":5}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"add",{2,3}})).body);
-EXPECT_EQ("{\"value0\":{\"result\":6}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"mul",{2,3}})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"\",\"result\":5}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"add",{2,3}})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"\",\"result\":6}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"mul",{2,3}})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"JSON parse error: FFFUUUUU\",\"result\":0}}\n", HTTP(POST(Printf("localhost:%d/penny", port), "FFFUUUUU", "text/plain")).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_04_TEST_CC

@@ -259,12 +259,15 @@ class TemplatedHTTPRequestData : public HELPER {
   // then `HasBody()` will be false and all other `Body*()` methods will throw.
   inline bool HasBody() const { return body_buffer_begin_ != nullptr; }
 
-  inline const std::string Body() const {
-    if (body_buffer_begin_) {
-      return std::string(body_buffer_begin_, body_buffer_end_);
-    } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
+  inline const std::string& Body() const {
+    if (!prepared_body_) {
+      if (body_buffer_begin_) {
+        prepared_body_.reset(new std::string(body_buffer_begin_, body_buffer_end_));
+      } else {
+        BRICKS_THROW(HTTPNoBodyProvidedException());
+      }
     }
+    return *prepared_body_.get();
   }
 
   inline const char* BodyBegin() const {
@@ -303,6 +306,10 @@ class TemplatedHTTPRequestData : public HELPER {
   std::vector<char> buffer_;  // The buffer into which data has been read, except for chunked case.
   const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
+
+  // HTTP body gets converted to an std::string representation as it's first requested.
+  // TODO(dkorolev): This pattern is worth revisiting. StringPiece?
+  mutable std::unique_ptr<std::string> prepared_body_;
 
   // Disable any copy/move support since this class uses pointers.
   TemplatedHTTPRequestData() = delete;

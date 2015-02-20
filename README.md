@@ -168,9 +168,7 @@ HTTP(port).Register("/ok", [](Request r) {
 ```cpp
 // Accessing input fields.
 HTTP(port).Register("/demo", [](Request r) {
-  // TODO(dkorolev): `r.method`.
-  // TODO(dkorolev): `r.body`.
-  r(r.url.query["q"] + ' ' + r.http.Method() + ' ' + r.http.Body());
+  r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
 });
 
 ```
@@ -190,34 +188,39 @@ struct PennyInput {
   std::vector<int> x;
   template <typename A> void serialize(A& ar) {
     ar(CEREAL_NVP(op), CEREAL_NVP(x));
-  }   
-  // TODO(dkorolev): Safe mode wrt parsing malformed JSON.
+  } 
+  void FromInvalidJSON(const std::string& input_json) {
+    op = "JSON parse error: " + input_json;
+    x.clear();
+  }
 };
 
 // An output record that would be sent back as a JSON.
 struct PennyOutput {
+  std::string error;
   int result;
   template <typename A> void serialize(A& ar) {
-    ar(CEREAL_NVP(result));
+    ar(CEREAL_NVP(error), CEREAL_NVP(result));
   }   
 };  
 
 // Doing Penny-level arithmetics for fun and performance testing.
 HTTP(port).Register("/penny", [](Request r) {
-  // TODO(dkorolev): `r.body`, and its safe mode.
-  const auto input = JSONParse<PennyInput>(r.http.Body());
-  int result = 0;
+  const auto input = JSONParse<PennyInput>(r.body);
+  PennyOutput result{"", 0};
   if (input.op == "add") {
     for (const auto v : input.x) {
-      result += v;
+      result.result += v;
     }
   } else if (input.op == "mul") {
-    result = 1;
+    result.result = 1;
     for (const auto v : input.x) {
-      result *= v;
+      result.result *= v;
     }
+  } else {
+    result.error = input.op;
   }
-  r(PennyOutput{result});
+  r(result);
 });
 ```
 HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.

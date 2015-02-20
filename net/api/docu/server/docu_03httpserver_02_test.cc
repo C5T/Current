@@ -41,9 +41,7 @@ const auto port = FLAGS_docu_net_server_port_02;
 HTTP(port).ResetAllHandlers();
   // Accessing input fields.
   HTTP(port).Register("/demo", [](Request r) {
-    // TODO(dkorolev): `r.method`.
-    // TODO(dkorolev): `r.body`.
-    r(r.url.query["q"] + ' ' + r.http.Method() + ' ' + r.http.Body());
+    r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
   });
 EXPECT_EQ("A POST body", HTTP(POST(Printf("localhost:%d/demo?q=A", port), "body", "text/plain")).body);
 }

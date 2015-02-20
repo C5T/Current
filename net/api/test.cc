@@ -291,8 +291,8 @@ TEST(HTTPAPI, GetToFile) {
 TEST(HTTPAPI, PostFromBufferToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r("Data: " + r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r("Data: " + r.body);
   });
   const auto response =
       HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
@@ -302,7 +302,7 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
 TEST(HTTPAPI, PostWithEmptyBody) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_FALSE(r.http.HasBody());
+    ASSERT_FALSE(r.has_body);
     r("Empty POST.");
   });
   EXPECT_EQ("Empty POST.", HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port))).body);
@@ -311,8 +311,8 @@ TEST(HTTPAPI, PostWithEmptyBody) {
 TEST(HTTPAPI, PostAStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post_string", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r(r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r(r.body);
   });
   EXPECT_EQ("std::string",
             HTTP(POST(Printf("localhost:%d/post_string", FLAGS_net_api_test_port),
@@ -323,8 +323,8 @@ TEST(HTTPAPI, PostAStringAsString) {
 TEST(HTTPAPI, PostAStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post_const_char_ptr", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r(r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r(r.body);
   });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("localhost:%d/post_const_char_ptr", FLAGS_net_api_test_port),
@@ -335,7 +335,7 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
 TEST(HTTPAPI, RespondWithStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string", [](Request r) {
-    ASSERT_FALSE(r.http.HasBody());
+    ASSERT_FALSE(r.has_body);
     r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
   });
   EXPECT_EQ("std::string",
@@ -345,7 +345,7 @@ TEST(HTTPAPI, RespondWithStringAsString) {
 TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
-    ASSERT_FALSE(r.http.HasBody());
+    ASSERT_FALSE(r.has_body);
     r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
   EXPECT_EQ("const char*",
@@ -355,7 +355,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
 TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string_via_request_directly", [](Request r) {
-    ASSERT_FALSE(r.http.HasBody());
+    ASSERT_FALSE(r.has_body);
     r(std::string("std::string"), HTTPResponseCode.OK);
   });
   EXPECT_EQ("std::string",
@@ -366,7 +366,7 @@ TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
 TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr_via_request_directly", [](Request r) {
-    ASSERT_FALSE(r.http.HasBody());
+    ASSERT_FALSE(r.has_body);
     r(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
   EXPECT_EQ("const char*",
@@ -387,8 +387,8 @@ struct ObjectToPOST {
 TEST(HTTPAPI, PostCerealizableObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r("Data: " + r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r("Data: " + r.body);
   });
   EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
@@ -397,8 +397,8 @@ TEST(HTTPAPI, PostCerealizableObject) {
 TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r("Data: " + JSONParse<ObjectToPOST>(r.http.Body()).AsString());
+    ASSERT_TRUE(r.has_body);
+    r("Data: " + JSONParse<ObjectToPOST>(r.body).AsString());
   });
   EXPECT_EQ("Data: 42:foo",
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
@@ -408,9 +408,9 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
+    ASSERT_TRUE(r.has_body);
     try {
-      r("Data: " + JSONParse<ObjectToPOST>(r.http.Body()).AsString());
+      r("Data: " + JSONParse<ObjectToPOST>(r.body).AsString());
     } catch (const std::exception&) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }
@@ -432,8 +432,8 @@ TEST(HTTPAPI, PostFromInvalidFile) {
 TEST(HTTPAPI, PostFromFileToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r("Voila: " + r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r("Voila: " + r.body);
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
@@ -448,8 +448,8 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
 TEST(HTTPAPI, PostFromBufferToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r("Meh: " + r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r("Meh: " + r.body);
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
@@ -463,8 +463,8 @@ TEST(HTTPAPI, PostFromBufferToFile) {
 TEST(HTTPAPI, PostFromFileToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.http.HasBody());
-    r("Phew: " + r.http.Body());
+    ASSERT_TRUE(r.has_body);
+    r("Phew: " + r.body);
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
