@@ -209,7 +209,7 @@ EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), "BODY", "text/plain").body
 EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
 
 ```
-HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in `bricks/net/api/test.cc` for more details.
+HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) for more details.
 ### Server
 ```cpp
 // Simple "OK" endpoint.
@@ -272,7 +272,7 @@ HTTP(port).Register("/penny", [](Request r) {
   r(PennyOutput{result});
 });
 ```
-HTTP server also has support for several other features, check out the `bricks/net/api/test.cc` unit test.
+HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
 
 **TODO(dkorolev)**: Chunked response example, with a note that it goes to Sherlock.
 ## Extras
