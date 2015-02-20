@@ -46,8 +46,6 @@ SOFTWARE.
 namespace bricks {
 namespace net {
 
-typedef std::vector<std::pair<std::string, std::string>> HTTPHeaders;
-
 // HTTP constants to parse the header and extract method, URL, headers and body.
 namespace {
 
@@ -60,6 +58,19 @@ const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
 const char* const kTransferEncodingChunkedValue = "chunked";
 
 }  // namespace constants
+
+typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
+
+struct HTTPHeaders {
+  HTTPHeadersType headers;
+  HTTPHeaders() : headers() {}
+  HTTPHeaders(std::initializer_list<std::pair<std::string, std::string>> list) : headers(list) {}
+  HTTPHeaders& Set(const std::string& key, const std::string& value) {
+    headers.emplace_back(key, value);
+    return *this;
+  }
+  operator const HTTPHeadersType&() const { return headers; }
+};
 
 // HTTPDefaultHelper handles headers and chunked transfers.
 // One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.
@@ -360,7 +371,7 @@ class HTTPServerConnection final {
                                                ConnectionType connection_type,
                                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                                const std::string& content_type = DefaultContentType(),
-                                               const HTTPHeaders& extra_headers = HTTPHeaders()) {
+                                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
@@ -376,7 +387,7 @@ class HTTPServerConnection final {
                                    const T& end,
                                    HTTPResponseCodeValue code,
                                    const std::string& content_type,
-                                   const HTTPHeaders& extra_headers) {
+                                   const HTTPHeadersType& extra_headers) {
     if (responded_) {
       throw AttemptedToSendHTTPResponseMoreThanOnce();
     } else {
@@ -396,7 +407,7 @@ class HTTPServerConnection final {
       const T& end,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
@@ -404,7 +415,7 @@ class HTTPServerConnection final {
   SendHTTPResponse(T&& container,
                    HTTPResponseCodeValue code = HTTPResponseCode.OK,
                    const std::string& content_type = DefaultContentType(),
-                   const HTTPHeaders& extra_headers = HTTPHeaders()) {
+                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
@@ -412,7 +423,7 @@ class HTTPServerConnection final {
   inline void SendHTTPResponse(const std::string& string,
                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                const std::string& content_type = DefaultContentType(),
-                               const HTTPHeaders& extra_headers = HTTPHeaders()) {
+                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
   // Support objects that can be serialized as JSON-s via Cereal.
@@ -421,7 +432,7 @@ class HTTPServerConnection final {
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -435,7 +446,7 @@ class HTTPServerConnection final {
       S&& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -512,9 +523,10 @@ class HTTPServerConnection final {
     std::unique_ptr<Impl> impl_;
   };
 
-  inline ChunkedResponseSender SendChunkedHTTPResponse(HTTPResponseCodeValue code = HTTPResponseCodeValue::OK,
-                                                       const std::string& content_type = DefaultContentType(),
-                                                       const HTTPHeaders& extra_headers = HTTPHeaders()) {
+  inline ChunkedResponseSender SendChunkedHTTPResponse(
+      HTTPResponseCodeValue code = HTTPResponseCodeValue::OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     if (responded_) {
       throw AttemptedToSendHTTPResponseMoreThanOnce();
     } else {

@@ -44,7 +44,7 @@ HTTP(port).ResetAllHandlers();
     r("Yes.",
       HTTPResponseCode.Accepted,
       "text/html",
-      HTTPHeaders({{"custom", "header"}}));  // TODO(dkorolev): Dot notation.
+      HTTPHeaders().Set("custom", "header").Set("another", "one"));
   });
 EXPECT_EQ("Yes.", HTTP(GET(Printf("localhost:%d/found", port))).body);
 }

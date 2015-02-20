@@ -178,7 +178,7 @@ HTTP(port).Register("/found", [](Request r) {
   r("Yes.",
     HTTPResponseCode.Accepted,
     "text/html",
-    HTTPHeaders({{"custom", "header"}}));  // TODO(dkorolev): Dot notation.
+    HTTPHeaders().Set("custom", "header").Set("another", "one"));
 });
 ```
 ```cpp
