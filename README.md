@@ -133,58 +133,6 @@ EXPECT_EQ("int, 42",
 EXPECT_EQ("double, 3.141593",
           JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
-## Run-Time Type Dispatching
-
-Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
-
-This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
-
-Use `#include "Bricks/rtti/dispatcher.h"` and `using namespace bricks::rtti;` to run the code snippets below.
-
-`TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
-```cpp
-struct ExampleBase {
-  virtual ~ExampleBase() = default;
-};
-
-struct ExampleInt : ExampleBase {
-  int i;
-  explicit ExampleInt(int i) : i(i) {}
-};
-
-struct ExampleString : ExampleBase {
-  std::string s;
-  explicit ExampleString(const std::string& s) : s(s) {}
-};
-
-struct ExampleMoo : ExampleBase {
-};
-
-struct ExampleProcessor {
-  std::string result;
-  void operator()(const ExampleBase&) { result = "unknown"; }
-  void operator()(const ExampleInt& x) { result = Printf("int %d", x.i); }
-  void operator()(const ExampleString& x) { result = Printf("string '%s'", x.s.c_str()); }
-  void operator()(const ExampleMoo&) { result = "moo!"; }
-};
-  
-typedef RuntimeTupleDispatcher<ExampleBase,
-                               tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
-
-ExampleProcessor processor;
-
-Dispatcher::DispatchCall(ExampleBase(), processor);
-EXPECT_EQ(processor.result, "unknown");
-  
-Dispatcher::DispatchCall(ExampleInt(42), processor);
-EXPECT_EQ(processor.result, "int 42");
-  
-Dispatcher::DispatchCall(ExampleString("foo"), processor);
-EXPECT_EQ(processor.result, "string 'foo'");
-  
-Dispatcher::DispatchCall(ExampleMoo(), processor);
-EXPECT_EQ(processor.result, "moo!");
-```
 ## HTTP
 
 Use `#include "Bricks/net/api/api.h"` and `using namespace bricks::net::api;` to run the code snippets below.
@@ -275,6 +223,58 @@ HTTP(port).Register("/penny", [](Request r) {
 HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
 
 **TODO(dkorolev)**: Chunked response example, with a note that it goes to Sherlock.
+## Run-Time Type Dispatching
+
+Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
+
+This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
+
+Use `#include "Bricks/rtti/dispatcher.h"` and `using namespace bricks::rtti;` to run the code snippets below.
+
+`TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
+```cpp
+struct ExampleBase {
+  virtual ~ExampleBase() = default;
+};
+
+struct ExampleInt : ExampleBase {
+  int i;
+  explicit ExampleInt(int i) : i(i) {}
+};
+
+struct ExampleString : ExampleBase {
+  std::string s;
+  explicit ExampleString(const std::string& s) : s(s) {}
+};
+
+struct ExampleMoo : ExampleBase {
+};
+
+struct ExampleProcessor {
+  std::string result;
+  void operator()(const ExampleBase&) { result = "unknown"; }
+  void operator()(const ExampleInt& x) { result = Printf("int %d", x.i); }
+  void operator()(const ExampleString& x) { result = Printf("string '%s'", x.s.c_str()); }
+  void operator()(const ExampleMoo&) { result = "moo!"; }
+};
+  
+typedef RuntimeTupleDispatcher<ExampleBase,
+                               tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
+
+ExampleProcessor processor;
+
+Dispatcher::DispatchCall(ExampleBase(), processor);
+EXPECT_EQ(processor.result, "unknown");
+  
+Dispatcher::DispatchCall(ExampleInt(42), processor);
+EXPECT_EQ(processor.result, "int 42");
+  
+Dispatcher::DispatchCall(ExampleString("foo"), processor);
+EXPECT_EQ(processor.result, "string 'foo'");
+  
+Dispatcher::DispatchCall(ExampleMoo(), processor);
+EXPECT_EQ(processor.result, "moo!");
+```
 ## Extras
 
 Other useful bits include chart visualization, file system, string and system clock utilities.
