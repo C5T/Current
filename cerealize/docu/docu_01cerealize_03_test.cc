@@ -38,7 +38,7 @@ namespace docu {  // Should keep the indent for docu autogeneration.
     int a;
     int b;
     int sum;
-    
+  
     template <typename A> void save(A& ar) const {
       ar(CEREAL_NVP(a), CEREAL_NVP(b));
     }

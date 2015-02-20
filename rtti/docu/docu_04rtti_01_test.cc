@@ -58,7 +58,7 @@ using bricks::rtti::RuntimeTupleDispatcher;
     void operator()(const ExampleString& x) { result = Printf("string '%s'", x.s.c_str()); }
     void operator()(const ExampleMoo&) { result = "moo!"; }
   };
-    
+  
 
 TEST(RTTIDocu, Docu01) {
   typedef RuntimeTupleDispatcher<ExampleBase,
@@ -68,13 +68,13 @@ TEST(RTTIDocu, Docu01) {
   
   Dispatcher::DispatchCall(ExampleBase(), processor);
   EXPECT_EQ(processor.result, "unknown");
-    
+  
   Dispatcher::DispatchCall(ExampleInt(42), processor);
   EXPECT_EQ(processor.result, "int 42");
-    
+  
   Dispatcher::DispatchCall(ExampleString("foo"), processor);
   EXPECT_EQ(processor.result, "string 'foo'");
-    
+  
   Dispatcher::DispatchCall(ExampleMoo(), processor);
   EXPECT_EQ(processor.result, "moo!");
 }

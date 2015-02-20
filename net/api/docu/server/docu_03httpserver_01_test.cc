@@ -22,32 +22,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
-#define BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#ifndef BRICKS_NET_API_DOCU_SERVER_01_TEST_CC
+#define BRICKS_NET_API_DOCU_SERVER_01_TEST_CC
 
 #include "../../api.h"
 #include "../../../../strings/printf.h"
 #include "../../../../dflags/dflags.h"
 #include "../../../../3party/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_server_port_03, 8082, "Okay to keep the same as in net/api/test.cc");
+DEFINE_int32(docu_net_server_port_01, 8082, "Okay to keep the same as in net/api/test.cc");
 
 using namespace bricks::net::api;
 using bricks::strings::Printf;
 using bricks::net::HTTPHeaders;
-using bricks::net::HTTPResponseCode;
 
-TEST(Docu, HTTPServer03) {
-const auto port = FLAGS_docu_net_server_port_03;
+TEST(Docu, HTTPServer01) {
+const auto port = FLAGS_docu_net_server_port_01;
 HTTP(port).ResetAllHandlers();
-  // Constructing a more complex response.
-  HTTP(port).Register("/found", [](Request r) {
-    r("Yes.",
-      HTTPResponseCode::Accepted,            // TODO(dkorolev): Dot notation.
-      "text/html",
-      HTTPHeaders({{"custom", "header"}}));  // TODO(dkorolev): Dot notation.
+  // Simple "OK" endpoint.
+  HTTP(port).Register("/ok", [](Request r) {
+    r("OK");
   });
-EXPECT_EQ("Yes.", HTTP(GET(Printf("localhost:%d/found", port))).body);
+EXPECT_EQ("OK", HTTP(GET(Printf("localhost:%d/ok", port))).body);
 }
 
-#endif  // BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#endif  // BRICKS_NET_API_DOCU_SERVER_01_TEST_CC

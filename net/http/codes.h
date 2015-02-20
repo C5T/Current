@@ -30,10 +30,12 @@ SOFTWARE.
 #include <map>
 #include <string>
 
+#include "../../util/singleton.h"
+
 namespace bricks {
 namespace net {
 
-enum class HTTPResponseCode : int {
+enum class HTTPResponseCodeValue : int {
   InvalidCode = -1,
   Continue = 100,
   SwitchingProtocols = 101,
@@ -77,7 +79,56 @@ enum class HTTPResponseCode : int {
   HTTPVersionNotSupported = 505,
 };
 
-inline std::string HTTPResponseCodeAsString(HTTPResponseCode code) {
+// Dot notation to allow node.js-friendly syntax of `HTTPResponseCode.OK`, etc.
+struct HTTPResponseCodeDotNotation {
+  const HTTPResponseCodeValue InvalidCode = HTTPResponseCodeValue::InvalidCode;
+  const HTTPResponseCodeValue Continue = HTTPResponseCodeValue::Continue;
+  const HTTPResponseCodeValue SwitchingProtocols = HTTPResponseCodeValue::SwitchingProtocols;
+  const HTTPResponseCodeValue OK = HTTPResponseCodeValue::OK;
+  const HTTPResponseCodeValue Created = HTTPResponseCodeValue::Created;
+  const HTTPResponseCodeValue Accepted = HTTPResponseCodeValue::Accepted;
+  const HTTPResponseCodeValue NonAuthoritativeInformation = HTTPResponseCodeValue::NonAuthoritativeInformation;
+  const HTTPResponseCodeValue NoContent = HTTPResponseCodeValue::NoContent;
+  const HTTPResponseCodeValue ResetContent = HTTPResponseCodeValue::ResetContent;
+  const HTTPResponseCodeValue PartialContent = HTTPResponseCodeValue::PartialContent;
+  const HTTPResponseCodeValue MultipleChoices = HTTPResponseCodeValue::MultipleChoices;
+  const HTTPResponseCodeValue MovedPermanently = HTTPResponseCodeValue::MovedPermanently;
+  const HTTPResponseCodeValue Found = HTTPResponseCodeValue::Found;
+  const HTTPResponseCodeValue SeeOther = HTTPResponseCodeValue::SeeOther;
+  const HTTPResponseCodeValue NotModified = HTTPResponseCodeValue::NotModified;
+  const HTTPResponseCodeValue UseProxy = HTTPResponseCodeValue::UseProxy;
+  const HTTPResponseCodeValue TemporaryRedirect = HTTPResponseCodeValue::TemporaryRedirect;
+  const HTTPResponseCodeValue BadRequest = HTTPResponseCodeValue::BadRequest;
+  const HTTPResponseCodeValue Unauthorized = HTTPResponseCodeValue::Unauthorized;
+  const HTTPResponseCodeValue PaymentRequired = HTTPResponseCodeValue::PaymentRequired;
+  const HTTPResponseCodeValue Forbidden = HTTPResponseCodeValue::Forbidden;
+  const HTTPResponseCodeValue NotFound = HTTPResponseCodeValue::NotFound;
+  const HTTPResponseCodeValue MethodNotAllowed = HTTPResponseCodeValue::MethodNotAllowed;
+  const HTTPResponseCodeValue NotAcceptable = HTTPResponseCodeValue::NotAcceptable;
+  const HTTPResponseCodeValue ProxyAuthenticationRequired = HTTPResponseCodeValue::ProxyAuthenticationRequired;
+  const HTTPResponseCodeValue RequestTimeout = HTTPResponseCodeValue::RequestTimeout;
+  const HTTPResponseCodeValue Conflict = HTTPResponseCodeValue::Conflict;
+  const HTTPResponseCodeValue Gone = HTTPResponseCodeValue::Gone;
+  const HTTPResponseCodeValue LengthRequired = HTTPResponseCodeValue::LengthRequired;
+  const HTTPResponseCodeValue PreconditionFailed = HTTPResponseCodeValue::PreconditionFailed;
+  const HTTPResponseCodeValue RequestEntityTooLarge = HTTPResponseCodeValue::RequestEntityTooLarge;
+  const HTTPResponseCodeValue RequestURITooLarge = HTTPResponseCodeValue::RequestURITooLarge;
+  const HTTPResponseCodeValue UnsupportedMediaType = HTTPResponseCodeValue::UnsupportedMediaType;
+  const HTTPResponseCodeValue RequestedRangeNotSatisfiable =
+      HTTPResponseCodeValue::RequestedRangeNotSatisfiable;
+  const HTTPResponseCodeValue ExpectationFailed = HTTPResponseCodeValue::ExpectationFailed;
+  const HTTPResponseCodeValue InternalServerError = HTTPResponseCodeValue::InternalServerError;
+  const HTTPResponseCodeValue NotImplemented = HTTPResponseCodeValue::NotImplemented;
+  const HTTPResponseCodeValue BadGateway = HTTPResponseCodeValue::BadGateway;
+  const HTTPResponseCodeValue ServiceUnavailable = HTTPResponseCodeValue::ServiceUnavailable;
+  const HTTPResponseCodeValue GatewayTimeout = HTTPResponseCodeValue::GatewayTimeout;
+  const HTTPResponseCodeValue HTTPVersionNotSupported = HTTPResponseCodeValue::HTTPVersionNotSupported;
+  inline HTTPResponseCodeValue operator()(int code) { return static_cast<HTTPResponseCodeValue>(code); }
+};
+
+#define HTTPResponseCode (bricks::Singleton<bricks::net::HTTPResponseCodeDotNotation>())
+
+inline std::string HTTPResponseCodeAsString(HTTPResponseCodeValue code) {
   static const std::map<int, std::string> codes = {
       {100, "Continue"},
       {101, "Switching Protocols"},

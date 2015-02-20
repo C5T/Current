@@ -22,37 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_API_DOCU_CLIENT_02_TEST_CC
-#define BRICKS_NET_API_DOCU_CLIENT_02_TEST_CC
-
-#include "../../../../cerealize/docu/docu_01cerealize_01_test.cc"  // SimpleType.
+#ifndef BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#define BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
 
 #include "../../api.h"
 #include "../../../../strings/printf.h"
 #include "../../../../dflags/dflags.h"
 #include "../../../../3party/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_client_port_02, 8082, "Okay to keep the same as in net/api/test.cc");
+DEFINE_int32(docu_net_server_port_03, 8082, "Okay to keep the same as in net/api/test.cc");
 
 using namespace bricks::net::api;
 using bricks::strings::Printf;
+using bricks::net::HTTPHeaders;
 
-using docu::SimpleType;
-
-TEST(Docu, HTTPClient02) {
-HTTP(FLAGS_docu_net_client_port_02).ResetAllHandlers();
-HTTP(FLAGS_docu_net_client_port_02).Register("/ok", [](Request r) { r("OK"); });
-#if 1
-EXPECT_EQ("OK", HTTP(POST(Printf("localhost:%d/ok", FLAGS_docu_net_client_port_02), "BODY", "text/plain")).body);
-EXPECT_EQ("OK", HTTP(POST(Printf("localhost:%d/ok", FLAGS_docu_net_client_port_02), SimpleType())).body);
-#else
-  // POST is supported as well.
-  EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), "BODY", "text/plain").body);
-    
-  // Beyond plain strings, cerealizable objects can be passed in.
-  // JSON will be sent, as "application/json" content type.
-  EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
-#endif
+TEST(Docu, HTTPServer03) {
+const auto port = FLAGS_docu_net_server_port_03;
+HTTP(port).ResetAllHandlers();
+  // Constructing a more complex response.
+  HTTP(port).Register("/found", [](Request r) {
+    r("Yes.",
+      HTTPResponseCode.Accepted,
+      "text/html",
+      HTTPHeaders().Set("custom", "header").Set("another", "one"));
+  });
+EXPECT_EQ("Yes.", HTTP(GET(Printf("localhost:%d/found", port))).body);
 }
-  
-#endif  // BRICKS_NET_API_DOCU_CLIENT_02_TEST_CC
+
+#endif  // BRICKS_NET_API_DOCU_SERVER_03_TEST_CC

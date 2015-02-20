@@ -99,7 +99,7 @@ class HTTPClientPOSIX final {
       // Thus, since the same code is used for request and response parsing as of now,
       // the numerical response code "200" can be accessed with the same method as the "/path".
       const int response_code_as_int = atoi(http_request_->RawPath().c_str());
-      response_code_ = static_cast<HTTPResponseCode>(response_code_as_int);
+      response_code_ = HTTPResponseCode(response_code_as_int);
       if (response_code_as_int >= 300 && response_code_as_int <= 399 && !http_request_->location.empty()) {
         // Note: This is by no means a complete redirect implementation.
         redirected = true;
@@ -122,7 +122,7 @@ class HTTPClientPOSIX final {
   std::string request_user_agent_ = "";
 
   // Output parameters.
-  HTTPResponseCode response_code_ = HTTPResponseCode::InvalidCode;
+  HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;
   std::string response_url_after_redirects_ = "";
 
  private:

@@ -1,1 +1,0 @@
-HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in `bricks/net/api/test.cc` for more details.

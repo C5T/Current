@@ -110,7 +110,6 @@ using namespace bricks::net::api;
 using namespace bricks::cerealize;
 using bricks::time::Now;
 using bricks::strings::Printf;
-using bricks::net::HTTPResponseCode;
 using bricks::net::HTTPHeaders;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
@@ -181,14 +180,14 @@ int main() {
     layout.col.push_back(row);
     r(layout,
       "layout",
-      HTTPResponseCode::OK,
+      HTTPResponseCode.OK,
       "application/json; charset=utf-8",
       HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
   });
   HTTP(FLAGS_port).Register("/meta", [](Request r) {
     r(ExampleMeta(),
       "meta",
-      HTTPResponseCode::OK,
+      HTTPResponseCode.OK,
       "application/json; charset=utf-8",
       HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
   });
@@ -197,7 +196,7 @@ int main() {
                   // Since we are in another thread, need to catch exceptions ourselves.
                   try {
                     auto response = r.connection.SendChunkedHTTPResponse(
-                        HTTPResponseCode::OK,
+                        HTTPResponseCode.OK,
                         "application/json; charset=utf-8",
                         {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}});
                     std::string data;

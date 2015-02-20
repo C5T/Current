@@ -60,21 +60,31 @@ struct Request final {
   std::unique_ptr<HTTPServerConnection> unique_connection;
 
   HTTPServerConnection& connection;
-  const HTTPRequestData& http;  // To keep the syntax as clean as `request.http.HasBody()`, etc.
+  const HTTPRequestData& http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const url::URL& url;
+  const std::string method;
+  const bool has_body;
+  const std::string empty_string = "";
+  const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
 
   explicit Request(std::unique_ptr<HTTPServerConnection>&& connection)
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
-        http(unique_connection->HTTPRequest()),
-        url(http.URL()) {}
+        http_data(unique_connection->HTTPRequest()),
+        url(http_data.URL()),
+        method(http_data.Method()),
+        has_body(http_data.HasBody()),
+        body(has_body ? http_data.Body() : empty_string) {}
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
   Request(Request&& rhs)
       : unique_connection(std::move(rhs.unique_connection)),
         connection(*unique_connection.get()),
-        http(unique_connection->HTTPRequest()),
-        url(http.URL()) {}
+        http_data(unique_connection->HTTPRequest()),
+        url(http_data.URL()),
+        method(http_data.Method()),
+        has_body(http_data.HasBody()),
+        body(has_body ? http_data.Body() : empty_string) {}
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   // TODO(dkorolev): I could not make <typename... ARGS> work here. Investigate further?
@@ -238,7 +248,7 @@ class HTTPServerPOSIX final {
             std::cerr << "HTTP route failed in user code: " << e.what() << "\n";  // LCOV_EXCL_LINE
           }
         } else {
-          connection->SendHTTPResponse(DefaultFourOhFourMessage(), HTTPResponseCode::NotFound);
+          connection->SendHTTPResponse(DefaultFourOhFourMessage(), HTTPResponseCode.NotFound);
         }
       } catch (const std::exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.

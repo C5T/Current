@@ -46,8 +46,6 @@ SOFTWARE.
 namespace bricks {
 namespace net {
 
-typedef std::vector<std::pair<std::string, std::string>> HTTPHeaders;
-
 // HTTP constants to parse the header and extract method, URL, headers and body.
 namespace {
 
@@ -60,6 +58,19 @@ const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
 const char* const kTransferEncodingChunkedValue = "chunked";
 
 }  // namespace constants
+
+typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
+
+struct HTTPHeaders {
+  HTTPHeadersType headers;
+  HTTPHeaders() : headers() {}
+  HTTPHeaders(std::initializer_list<std::pair<std::string, std::string>> list) : headers(list) {}
+  HTTPHeaders& Set(const std::string& key, const std::string& value) {
+    headers.emplace_back(key, value);
+    return *this;
+  }
+  operator const HTTPHeadersType&() const { return headers; }
+};
 
 // HTTPDefaultHelper handles headers and chunked transfers.
 // One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.
@@ -259,12 +270,15 @@ class TemplatedHTTPRequestData : public HELPER {
   // then `HasBody()` will be false and all other `Body*()` methods will throw.
   inline bool HasBody() const { return body_buffer_begin_ != nullptr; }
 
-  inline const std::string Body() const {
-    if (body_buffer_begin_) {
-      return std::string(body_buffer_begin_, body_buffer_end_);
-    } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
+  inline const std::string& Body() const {
+    if (!prepared_body_) {
+      if (body_buffer_begin_) {
+        prepared_body_.reset(new std::string(body_buffer_begin_, body_buffer_end_));
+      } else {
+        BRICKS_THROW(HTTPNoBodyProvidedException());
+      }
     }
+    return *prepared_body_.get();
   }
 
   inline const char* BodyBegin() const {
@@ -304,6 +318,10 @@ class TemplatedHTTPRequestData : public HELPER {
   const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
 
+  // HTTP body gets converted to an std::string representation as it's first requested.
+  // TODO(dkorolev): This pattern is worth revisiting. StringPiece?
+  mutable std::unique_ptr<std::string> prepared_body_;
+
   // Disable any copy/move support since this class uses pointers.
   TemplatedHTTPRequestData() = delete;
   TemplatedHTTPRequestData(const TemplatedHTTPRequestData&) = delete;
@@ -328,7 +346,7 @@ class HTTPServerConnection final {
       // It's also a good place for a breakpoint to tell the source of that exception.
       try {
         SendHTTPResponse(
-            DefaultInternalServerErrorMessage(), HTTPResponseCode::InternalServerError, "text/html");
+            DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
       } catch (const std::exception& e) {
         // LCOV_EXCL_START
         // No exception should ever leave the destructor.
@@ -351,9 +369,9 @@ class HTTPServerConnection final {
 
   inline static void PrepareHTTPResponseHeader(std::ostream& os,
                                                ConnectionType connection_type,
-                                               HTTPResponseCode code = HTTPResponseCode::OK,
+                                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                                const std::string& content_type = DefaultContentType(),
-                                               const HTTPHeaders& extra_headers = HTTPHeaders()) {
+                                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
@@ -367,9 +385,9 @@ class HTTPServerConnection final {
   template <typename T>
   inline void SendHTTPResponseImpl(const T& begin,
                                    const T& end,
-                                   HTTPResponseCode code,
+                                   HTTPResponseCodeValue code,
                                    const std::string& content_type,
-                                   const HTTPHeaders& extra_headers) {
+                                   const HTTPHeadersType& extra_headers) {
     if (responded_) {
       throw AttemptedToSendHTTPResponseMoreThanOnce();
     } else {
@@ -387,34 +405,34 @@ class HTTPServerConnection final {
   inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
       const T& begin,
       const T& end,
-      HTTPResponseCode code = HTTPResponseCode::OK,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
   inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
   SendHTTPResponse(T&& container,
-                   HTTPResponseCode code = HTTPResponseCode::OK,
+                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
                    const std::string& content_type = DefaultContentType(),
-                   const HTTPHeaders& extra_headers = HTTPHeaders()) {
+                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
   // Special case to handle std::string.
   inline void SendHTTPResponse(const std::string& string,
-                               HTTPResponseCode code = HTTPResponseCode::OK,
+                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                const std::string& content_type = DefaultContentType(),
-                               const HTTPHeaders& extra_headers = HTTPHeaders()) {
+                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
   // Support objects that can be serialized as JSON-s via Cereal.
   template <class T>
   inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
       T&& object,
-      HTTPResponseCode code = HTTPResponseCode::OK,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -426,9 +444,9 @@ class HTTPServerConnection final {
   inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
       T&& object,
       S&& name,
-      HTTPResponseCode code = HTTPResponseCode::OK,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeaders& extra_headers = HTTPHeaders()) {
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -505,9 +523,10 @@ class HTTPServerConnection final {
     std::unique_ptr<Impl> impl_;
   };
 
-  inline ChunkedResponseSender SendChunkedHTTPResponse(HTTPResponseCode code = HTTPResponseCode::OK,
-                                                       const std::string& content_type = DefaultContentType(),
-                                                       const HTTPHeaders& extra_headers = HTTPHeaders()) {
+  inline ChunkedResponseSender SendChunkedHTTPResponse(
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     if (responded_) {
       throw AttemptedToSendHTTPResponseMoreThanOnce();
     } else {

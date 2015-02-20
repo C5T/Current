@@ -38,48 +38,69 @@ DEFINE_int32(docu_net_server_port_04, 8082, "Okay to keep the same as in net/api
 using namespace bricks::net::api;
 using bricks::strings::Printf;
 using bricks::net::HTTPHeaders;
-using bricks::net::HTTPResponseCode;
 
   // An input record that would be passed in as a JSON.
   struct PennyInput {
     std::string op;
     std::vector<int> x;
+    std::string error;  // Not serialized.
     template <typename A> void serialize(A& ar) {
       ar(CEREAL_NVP(op), CEREAL_NVP(x));
-    }   
-    // TODO(dkorolev): Safe mode wrt parsing malformed JSON.
+    }
+    void FromInvalidJSON(const std::string& input_json) {
+      error = "JSON parse error: " + input_json;
+    }
   };
   
   // An output record that would be sent back as a JSON.
   struct PennyOutput {
+    std::string error;
     int result;
     template <typename A> void serialize(A& ar) {
-      ar(CEREAL_NVP(result));
-    }   
-  };  
+      ar(CEREAL_NVP(error), CEREAL_NVP(result));
+    }
+  }; 
   
 TEST(Docu, HTTPServer04) {
 const auto port = FLAGS_docu_net_server_port_04;
 HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
   HTTP(port).Register("/penny", [](Request r) {
-    // TODO(dkorolev): `r.body`, and its safe mode.
-    const auto input = JSONParse<PennyInput>(r.http.Body());
-    int result = 0;
-    if (input.op == "add") {
-      for (const auto v : input.x) {
-        result += v;
-      }
-    } else if (input.op == "mul") {
-      result = 1;
-      for (const auto v : input.x) {
-        result *= v;
+    const auto input = JSONParse<PennyInput>(r.body);
+    if (!input.error.empty()) {
+      r(PennyOutput{input.error, 0});
+    } else {
+      if (input.op == "add") {
+        if (!input.x.empty()) {
+          int result = 0;
+          for (const auto v : input.x) {
+            result += v;
+          }
+          r(PennyOutput{"", result});
+        } else {
+          r(PennyOutput{"Not enough arguments for 'add'.", 0});
+        }
+      } else if (input.op == "mul") {
+        if (!input.x.empty()) {
+          int result = 1;
+          for (const auto v : input.x) {
+            result *= v;
+          }
+          r(PennyOutput{"", result});
+        } else {
+          r(PennyOutput{"Not enough arguments for 'mul'.", 0});
+        }
+      } else {
+        r(PennyOutput{"Unknown operation: " + input.op, 0});
       }
     }
-    r(PennyOutput{result});
   });
-EXPECT_EQ("{\"value0\":{\"result\":5}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"add",{2,3}})).body);
-EXPECT_EQ("{\"value0\":{\"result\":6}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"mul",{2,3}})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"\",\"result\":5}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"add",{2,3},""})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"\",\"result\":6}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"mul",{2,3},""})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"Unknown operation: sqrt\",\"result\":0}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"sqrt",{},""})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"Not enough arguments for 'add'.\",\"result\":0}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"add",{},""})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"Not enough arguments for 'mul'.\",\"result\":0}}\n", HTTP(POST(Printf("localhost:%d/penny", port), PennyInput{"mul",{},""})).body);
+EXPECT_EQ("{\"value0\":{\"error\":\"JSON parse error: FFFUUUUU\",\"result\":0}}\n", HTTP(POST(Printf("localhost:%d/penny", port), "FFFUUUUU", "text/plain")).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_04_TEST_CC

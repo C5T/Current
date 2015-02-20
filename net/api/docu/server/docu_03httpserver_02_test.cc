@@ -35,18 +35,15 @@ DEFINE_int32(docu_net_server_port_02, 8082, "Okay to keep the same as in net/api
 using namespace bricks::net::api;
 using bricks::strings::Printf;
 using bricks::net::HTTPHeaders;
-using bricks::net::HTTPResponseCode;
 
 TEST(Docu, HTTPServer02) {
 const auto port = FLAGS_docu_net_server_port_02;
 HTTP(port).ResetAllHandlers();
   // Accessing input fields.
   HTTP(port).Register("/demo", [](Request r) {
-    // TODO(dkorolev): `r.method`.
-    // TODO(dkorolev): `r.body`.
-    r(r.url.query["q"] + ' ' + r.http.Method() + ' ' + r.http.Body());
+    r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
   });
 EXPECT_EQ("A POST body", HTTP(POST(Printf("localhost:%d/demo?q=A", port), "body", "text/plain")).body);
 }
-  
+
 #endif  // BRICKS_NET_API_DOCU_SERVER_02_TEST_CC
