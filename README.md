@@ -183,12 +183,12 @@ HTTP(port).Register("/found", [](Request r) {
 struct PennyInput {
   std::string op;
   std::vector<int> x;
+  std::string error;  // Not serialized.
   template <typename A> void serialize(A& ar) {
     ar(CEREAL_NVP(op), CEREAL_NVP(x));
   }
   void FromInvalidJSON(const std::string& input_json) {
-    op = "JSON parse error: " + input_json;
-    x.clear();
+    error = "JSON parse error: " + input_json;
   }
 };
 
@@ -204,20 +204,33 @@ struct PennyOutput {
 // Doing Penny-level arithmetics for fun and performance testing.
 HTTP(port).Register("/penny", [](Request r) {
   const auto input = JSONParse<PennyInput>(r.body);
-  PennyOutput result{"", 0};
-  if (input.op == "add") {
-    for (const auto v : input.x) {
-      result.result += v;
-    }
-  } else if (input.op == "mul") {
-    result.result = 1;
-    for (const auto v : input.x) {
-      result.result *= v;
-    }
+  if (!input.error.empty()) {
+    r(PennyOutput{input.error, 0});
   } else {
-    result.error = input.op;
+    if (input.op == "add") {
+      if (!input.x.empty()) {
+        int result = 0;
+        for (const auto v : input.x) {
+          result += v;
+        }
+        r(PennyOutput{"", result});
+      } else {
+        r(PennyOutput{"Not enough arguments for 'add'.", 0});
+      }
+    } else if (input.op == "mul") {
+      if (!input.x.empty()) {
+        int result = 1;
+        for (const auto v : input.x) {
+          result *= v;
+        }
+        r(PennyOutput{"", result});
+      } else {
+        r(PennyOutput{"Not enough arguments for 'mul'.", 0});
+      }
+    } else {
+      r(PennyOutput{"Unknown operation: " + input.op, 0});
+    }
   }
-  r(result);
 });
 ```
 HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
