@@ -178,7 +178,7 @@ HTTP(port).Register("/demo", [](Request r) {
 // Constructing a more complex response.
 HTTP(port).Register("/found", [](Request r) {
   r("Yes.",
-    HTTPResponseCode::Accepted,            // TODO(dkorolev): Dot notation.
+    HTTPResponseCode.Accepted,
     "text/html",
     HTTPHeaders({{"custom", "header"}}));  // TODO(dkorolev): Dot notation.
 });

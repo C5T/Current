@@ -107,7 +107,7 @@ struct HTTPResponse {
   // The final URL. Will be equal to the original URL, unless redirects have been allowed and took place.
   std::string url;
   // HTTP response code.
-  HTTPResponseCode code;
+  HTTPResponseCodeValue code;
 };
 
 struct HTTPResponseWithBuffer : HTTPResponse {

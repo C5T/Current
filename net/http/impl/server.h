@@ -328,7 +328,7 @@ class HTTPServerConnection final {
       // It's also a good place for a breakpoint to tell the source of that exception.
       try {
         SendHTTPResponse(
-            DefaultInternalServerErrorMessage(), HTTPResponseCode::InternalServerError, "text/html");
+            DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
       } catch (const std::exception& e) {
         // LCOV_EXCL_START
         // No exception should ever leave the destructor.
@@ -351,7 +351,7 @@ class HTTPServerConnection final {
 
   inline static void PrepareHTTPResponseHeader(std::ostream& os,
                                                ConnectionType connection_type,
-                                               HTTPResponseCode code = HTTPResponseCode::OK,
+                                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                                const std::string& content_type = DefaultContentType(),
                                                const HTTPHeaders& extra_headers = HTTPHeaders()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
@@ -367,7 +367,7 @@ class HTTPServerConnection final {
   template <typename T>
   inline void SendHTTPResponseImpl(const T& begin,
                                    const T& end,
-                                   HTTPResponseCode code,
+                                   HTTPResponseCodeValue code,
                                    const std::string& content_type,
                                    const HTTPHeaders& extra_headers) {
     if (responded_) {
@@ -387,7 +387,7 @@ class HTTPServerConnection final {
   inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
       const T& begin,
       const T& end,
-      HTTPResponseCode code = HTTPResponseCode::OK,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
       const HTTPHeaders& extra_headers = HTTPHeaders()) {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
@@ -395,7 +395,7 @@ class HTTPServerConnection final {
   template <typename T>
   inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
   SendHTTPResponse(T&& container,
-                   HTTPResponseCode code = HTTPResponseCode::OK,
+                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
                    const std::string& content_type = DefaultContentType(),
                    const HTTPHeaders& extra_headers = HTTPHeaders()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
@@ -403,7 +403,7 @@ class HTTPServerConnection final {
 
   // Special case to handle std::string.
   inline void SendHTTPResponse(const std::string& string,
-                               HTTPResponseCode code = HTTPResponseCode::OK,
+                               HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                const std::string& content_type = DefaultContentType(),
                                const HTTPHeaders& extra_headers = HTTPHeaders()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
@@ -412,7 +412,7 @@ class HTTPServerConnection final {
   template <class T>
   inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
       T&& object,
-      HTTPResponseCode code = HTTPResponseCode::OK,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
       const HTTPHeaders& extra_headers = HTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
@@ -426,7 +426,7 @@ class HTTPServerConnection final {
   inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
       T&& object,
       S&& name,
-      HTTPResponseCode code = HTTPResponseCode::OK,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
       const HTTPHeaders& extra_headers = HTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
@@ -505,7 +505,7 @@ class HTTPServerConnection final {
     std::unique_ptr<Impl> impl_;
   };
 
-  inline ChunkedResponseSender SendChunkedHTTPResponse(HTTPResponseCode code = HTTPResponseCode::OK,
+  inline ChunkedResponseSender SendChunkedHTTPResponse(HTTPResponseCodeValue code = HTTPResponseCodeValue::OK,
                                                        const std::string& content_type = DefaultContentType(),
                                                        const HTTPHeaders& extra_headers = HTTPHeaders()) {
     if (responded_) {

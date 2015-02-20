@@ -48,7 +48,7 @@ using bricks::net::ClientSocket;
 using bricks::net::Connection;
 using bricks::net::HTTPServerConnection;
 using bricks::net::HTTPRequestData;
-using bricks::net::HTTPResponseCode;
+using bricks::net::HTTPResponseCodeValue;
 using bricks::net::HTTPResponseCodeAsString;
 using bricks::net::GetFileMimeType;
 using bricks::net::DefaultInternalServerErrorMessage;
@@ -208,14 +208,14 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
 }
 
 TEST(PosixHTTPServerTest, SmokeWithHeaders) {
-  thread
-  t([](Socket s) {
-      HTTPServerConnection c(s.Accept());
-      EXPECT_EQ("GET", c.HTTPRequest().Method());
-      EXPECT_EQ("/header", c.HTTPRequest().RawPath());
-      c.SendHTTPResponse("OK", HTTPResponseCode::OK, c.HTTPRequest().Body(), {{"foo", "bar"}, {"baz", "meh"}});
-    },
-    Socket(FLAGS_net_http_test_port));
+  thread t(
+      [](Socket s) {
+        HTTPServerConnection c(s.Accept());
+        EXPECT_EQ("GET", c.HTTPRequest().Method());
+        EXPECT_EQ("/header", c.HTTPRequest().RawPath());
+        c.SendHTTPResponse("OK", HTTPResponseCode.OK, c.HTTPRequest().Body(), {{"foo", "bar"}, {"baz", "meh"}});
+      },
+      Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /header HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
@@ -552,10 +552,10 @@ TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
 }
 
 TEST(HTTPCodesTest, SmokeTest) {
-  EXPECT_EQ("OK", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(200)));
-  EXPECT_EQ("Not Found", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(404)));
-  EXPECT_EQ("Unknown Code", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(999)));
-  EXPECT_EQ("<UNINITIALIZED>", HTTPResponseCodeAsString(static_cast<HTTPResponseCode>(-1)));
+  EXPECT_EQ("OK", HTTPResponseCodeAsString(HTTPResponseCode(200)));
+  EXPECT_EQ("Not Found", HTTPResponseCodeAsString(HTTPResponseCode(404)));
+  EXPECT_EQ("Unknown Code", HTTPResponseCodeAsString(HTTPResponseCode(999)));
+  EXPECT_EQ("<UNINITIALIZED>", HTTPResponseCodeAsString(HTTPResponseCode(-1)));
 }
 
 TEST(HTTPMimeTypeTest, SmokeTest) {

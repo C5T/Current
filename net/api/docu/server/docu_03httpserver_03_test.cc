@@ -35,7 +35,6 @@ DEFINE_int32(docu_net_server_port_03, 8082, "Okay to keep the same as in net/api
 using namespace bricks::net::api;
 using bricks::strings::Printf;
 using bricks::net::HTTPHeaders;
-using bricks::net::HTTPResponseCode;
 
 TEST(Docu, HTTPServer03) {
 const auto port = FLAGS_docu_net_server_port_03;
@@ -43,7 +42,7 @@ HTTP(port).ResetAllHandlers();
   // Constructing a more complex response.
   HTTP(port).Register("/found", [](Request r) {
     r("Yes.",
-      HTTPResponseCode::Accepted,            // TODO(dkorolev): Dot notation.
+      HTTPResponseCode.Accepted,
       "text/html",
       HTTPHeaders({{"custom", "header"}}));  // TODO(dkorolev): Dot notation.
   });

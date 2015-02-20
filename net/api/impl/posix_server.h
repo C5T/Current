@@ -238,7 +238,7 @@ class HTTPServerPOSIX final {
             std::cerr << "HTTP route failed in user code: " << e.what() << "\n";  // LCOV_EXCL_LINE
           }
         } else {
-          connection->SendHTTPResponse(DefaultFourOhFourMessage(), HTTPResponseCode::NotFound);
+          connection->SendHTTPResponse(DefaultFourOhFourMessage(), HTTPResponseCode.NotFound);
         }
       } catch (const std::exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.

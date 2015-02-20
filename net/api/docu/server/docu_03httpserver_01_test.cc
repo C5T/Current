@@ -35,7 +35,6 @@ DEFINE_int32(docu_net_server_port_01, 8082, "Okay to keep the same as in net/api
 using namespace bricks::net::api;
 using bricks::strings::Printf;
 using bricks::net::HTTPHeaders;
-using bricks::net::HTTPResponseCode;
 
 TEST(Docu, HTTPServer01) {
 const auto port = FLAGS_docu_net_server_port_01;
