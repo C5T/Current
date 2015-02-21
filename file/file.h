@@ -84,8 +84,8 @@ struct FileSystem {
   // `file_name` is `const char*` to require users do `.c_str()` on it.
   // This reduces the risk of accidentally passing `file_name` and `contents` in the wrong order,
   // since `contents` should naturally be a C++ string supporting '\0'-s, while `file_name` does not have to.
-  static inline void WriteStringToFile(const char* file_name,
-                                       const std::string& contents,
+  static inline void WriteStringToFile(const std::string& contents,
+                                       const char* file_name,
                                        bool append = false) {
     try {
       std::ofstream fo;
@@ -109,7 +109,7 @@ struct FileSystem {
 
   static inline std::string WriteStringToTmpFile(const std::string& contents) {
     const std::string file_name = std::move(GenTmpFileName());
-    WriteStringToFile(file_name.c_str(), contents);
+    WriteStringToFile(contents, file_name.c_str());
     return file_name;
   }
 

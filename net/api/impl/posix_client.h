@@ -200,8 +200,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
     const auto& http_request = response.HTTPRequest();
-    FileSystem::WriteStringToFile(response_params.file_name.c_str(),
-                                  http_request.HasBody() ? http_request.Body() : "");
+    FileSystem::WriteStringToFile(http_request.HasBody() ? http_request.Body() : "",
+                                  response_params.file_name.c_str());
     output.body_file_name = response_params.file_name;
   }
 };
