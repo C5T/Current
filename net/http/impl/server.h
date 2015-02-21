@@ -562,4 +562,6 @@ class HTTPServerConnection final {
 }  // namespace net
 }  // namespace bricks
 
+using bricks::net::HTTPHeaders;
+
 #endif  // BRICKS_NET_HTTP_IMPL_SERVER_H

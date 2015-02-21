@@ -19,7 +19,7 @@ Bricks uses [**Cereal**](http://uscilab.github.io/cereal/) for JSON and Binary s
 
 <sub>Personal thanks for a well-designed C++11 serialization library! — @dkorolev</sub>
 
-Use [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) and `using namespace bricks::cerealize;` to run the code snippets below.
+The [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) header makes the below code snippets complete.
 ```cpp
 // Add a `serialize()` method to make a C++ structure "cerealizable".
 struct SimpleType {
@@ -139,7 +139,7 @@ EXPECT_EQ("double, 3.141593",
 ```
 ## HTTP
 
-Use [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob/master/net/api/api.h) and `using namespace bricks::net::api;` to run the code snippets below.
+The [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob/master/net/api/api.h) header enables to run the code snippets below.
 
 ### Client
 
@@ -249,7 +249,7 @@ Bricks can dispatch calls to the right implementation at runtime, with user code
 
 This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
 
-Use [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/KnowSheet/Bricks/blob/master/rtti/dispatcher.h) and `using namespace bricks::rtti;` to run the code snippets below.
+Use the [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/KnowSheet/Bricks/blob/master/rtti/dispatcher.h) header to run the code snippets below.
 
 `TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
 ```cpp
@@ -278,6 +278,7 @@ struct ExampleProcessor {
   void operator()(const ExampleMoo&) { result = "moo!"; }
 };
 
+using bricks::rtti::RuntimeTupleDispatcher;
 typedef RuntimeTupleDispatcher<ExampleBase,
                                tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
 

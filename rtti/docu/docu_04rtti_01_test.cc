@@ -32,7 +32,6 @@ SOFTWARE.
 
 using std::tuple;
 using bricks::strings::Printf;
-using bricks::rtti::RuntimeTupleDispatcher;
 
   struct ExampleBase {
     virtual ~ExampleBase() = default;
@@ -61,6 +60,7 @@ using bricks::rtti::RuntimeTupleDispatcher;
   
 
 TEST(RTTIDocu, Docu01) {
+  using bricks::rtti::RuntimeTupleDispatcher;
   typedef RuntimeTupleDispatcher<ExampleBase,
                                  tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
   

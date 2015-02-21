@@ -7,4 +7,4 @@ Bricks uses [**Cereal**](http://uscilab.github.io/cereal/) for JSON and Binary s
 
 <sub>Personal thanks for a well-designed C++11 serialization library! — @dkorolev</sub>
 
-Use [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) and `using namespace bricks::cerealize;` to run the code snippets below.
+The [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) header makes the below code snippets complete.

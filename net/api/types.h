@@ -192,4 +192,8 @@ struct HTTPImpl {
 }  // namespace net
 }  // namespace bricks
 
+using bricks::net::api::GET;
+using bricks::net::api::POST;
+using bricks::net::api::POSTFromFile;
+
 #endif  // BRICKS_NET_API_TYPES_H

@@ -91,4 +91,6 @@ inline decltype(Singleton<HTTP_IMPL>()(std::declval<T1>(), std::declval<T2>())) 
 }  // namespace net
 }  // namespace bricks
 
+using bricks::net::api::HTTP;
+
 #endif  // BRICKS_NET_API_API_H

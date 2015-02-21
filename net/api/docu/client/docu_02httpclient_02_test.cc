@@ -34,7 +34,6 @@ SOFTWARE.
 
 DEFINE_int32(docu_net_client_port_02, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using namespace bricks::net::api;
 using bricks::strings::Printf;
 
 using docu::SimpleType;
