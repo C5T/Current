@@ -34,6 +34,12 @@ using namespace bricks;
 using strings::Printf;
 
 // Should keep the indent for docu autogeneration.
+#if 0
+  // The example below uses `Printf()`, include it.
+  #include "strings/printf.h"
+  using bricks::strings::Printf;
+   
+#endif
 
   // Polymorphic types are supported with some caution.
   struct ExamplePolymorphicType {

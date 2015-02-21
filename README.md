@@ -1,6 +1,6 @@
 # Bricks
 
-The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains the core pieces to be reused across multiple [`KnowSheet`](https://github.com/KnowSheet/) projects.
+The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains core pieces to be reused across [`KnowSheet`](https://github.com/KnowSheet/) projects.
 
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/master/holy_bricks.jpg)
 
@@ -80,6 +80,10 @@ x.b = 3;
 EXPECT_EQ(5, ParseJSON<LoadSaveType>(JSON(x)).sum);
 ```
 ```cpp
+// The example below uses `Printf()`, include it.
+#include "strings/printf.h"
+using bricks::strings::Printf;
+ 
 // Polymorphic types are supported with some caution.
 struct ExamplePolymorphicType {
   std::string base;
@@ -311,6 +315,10 @@ Use the [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/KnowSheet/Bri
 
 `TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
 ```cpp
+// The example below uses `Printf()`, include it.
+#include "strings/printf.h"
+using bricks::strings::Printf;
+ 
 struct ExampleBase {
   virtual ~ExampleBase() = default;
 };

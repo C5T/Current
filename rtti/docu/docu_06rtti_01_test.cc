@@ -33,6 +33,13 @@ SOFTWARE.
 using std::tuple;
 using bricks::strings::Printf;
 
+#if 0
+  // The example below uses `Printf()`, include it.
+  #include "strings/printf.h"
+  using bricks::strings::Printf;
+   
+#endif
+
   struct ExampleBase {
     virtual ~ExampleBase() = default;
   };
