@@ -1,8 +1,10 @@
 # Bricks
 
+The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains the core pieces to be reused across multiple projects.
+
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/master/holy_bricks.jpg)
 
-Our own core pieces to reuse.
+<sub>Image credit: Bing image search.</sub>
 
 # Documentation
 
