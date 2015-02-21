@@ -154,8 +154,7 @@ EXPECT_EQ("OK", HTTP(GET("test.tailproduce.org/ok")).body);
 // More fields.
 const auto response = HTTP(GET("test.tailproduce.org/ok"));
 EXPECT_EQ("OK", response.body);
-EXPECT_EQ(200, static_cast<int>(response.code));    // Show the code as a number if wrong.
-EXPECT_TRUE(response.code == HTTPResponseCode.OK);  // Or use the constant if you prefer.
+EXPECT_TRUE(response.code == HTTPResponseCode.OK);
 ```
 ```cpp
 // POST is supported as well.
