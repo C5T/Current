@@ -1,6 +1,6 @@
 # Bricks
 
-The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains the core pieces to be reused across multiple projects.
+The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains the core pieces to be reused across multiple [`KnowSheet`](https://github.com/KnowSheet/) projects.
 
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/master/holy_bricks.jpg)
 
@@ -137,11 +137,11 @@ EXPECT_EQ("int, 42",
 EXPECT_EQ("double, 3.141593",
           ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
-## HTTP
+## REST API Toolkit
 
 The [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob/master/net/api/api.h) header enables to run the code snippets below.
 
-### Client
+### HTTP Client
 
 ```cpp
 // Simple GET.
@@ -163,7 +163,7 @@ EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
 
 ```
 HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) for more details.
-### Server
+### HTTP Server
 ```cpp
 // Simple "OK" endpoint.
 HTTP(port).Register("/ok", [](Request r) {
@@ -243,6 +243,64 @@ HTTP(port).Register("/penny", [](Request r) {
 HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
 
 **TODO(dkorolev)**: Chunked response example, with a note that it goes to Sherlock.
+## Visualization Library
+
+Bricks has C++ bindings for [`plotutils`](http://www.gnu.org/software/plotutils/) and [`gnuplot`](http://www.gnuplot.info/). Use [`#include "Bricks/graph/plotutils.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/plotutils.h) and [`#include "Bricks/graph/gnuplot.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/gnuplot.h).
+
+The [`plotutils`](http://www.gnu.org/software/plotutils/) tool is somewhat simpler and lighter. The [`gnuplot`](http://www.gnuplot.info/) one is more scientific and offers a wider range of features.
+
+Both libraries are invoked as external system calls. Make sure they are installed in the system that runs your code.
+### Using `plotutils`
+```cpp
+// Where visualization meets love.
+const size_t N = 1000;
+std::vector<std::pair<double, double>> line(N);
+  
+for (size_t i = 0; i < N; ++i) {
+  const double t = M_PI * 2 * i / (N - 1);
+  line[i] = std::make_pair(
+    16 * pow(sin(t), 3),
+    -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
+}
+
+// Pull Plotutils, LineColor, GridStyle and more plotutils-related symbols.
+using namespace bricks::plotutils;
+
+const std::string result = Plotutils(line)
+  .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
+  .GridStyle(GridStyle::Full)
+  .Label("Imagine all the people ...")
+  .X("... living life in peace")
+  .Y("John Lennon, \"Imagine\"")
+  .LineWidth(0.015)
+  .OutputFormat("svg");
+```
+![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/love.png)
+### Using `gnuplot`
+```cpp
+// Where visualization meets science.
+using namespace bricks::gnuplot;
+const std::string result = GNUPlot()
+  .Title("Foo 'bar' \"baz\"")
+  .KeyTitle("Meh 'in' \"quotes\"")
+  .XRange(-42, 42)
+  .YRange(-2.5, +2.5)
+  .Grid("back")
+  .Plot([](Plotter& p) {
+    for (int i = -100; i <= +100; ++i) {
+      p(i, ::sin(0.1 * i));
+    }
+  })
+  .Plot(WithMeta([](Plotter& p) {
+                   for (int i = -100; i <= +100; ++i) {
+                     p(i, ::cos(0.1 * i));
+                   }
+                 })
+            .Name("\"Cosine\" as 'points'")
+            .AsPoints())
+  .OutputFormat("svg");
+```
+![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/gnuplot.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
@@ -298,4 +356,4 @@ EXPECT_EQ(processor.result, "moo!");
 ```
 ## Extras
 
-Other useful bits include chart visualization, file system, in-memory message queue, string and system clock utilities.
+[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.

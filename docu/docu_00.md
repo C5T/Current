@@ -1,6 +1,6 @@
 # Bricks
 
-The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains the core pieces to be reused across multiple projects.
+The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains core pieces to be reused across [`KnowSheet`](https://github.com/KnowSheet/) projects.
 
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/master/holy_bricks.jpg)
 

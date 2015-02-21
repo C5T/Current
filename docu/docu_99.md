@@ -1,3 +1,3 @@
 ## Extras
 
-Other useful bits include chart visualization, file system, in-memory message queue, string and system clock utilities.
+[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.
