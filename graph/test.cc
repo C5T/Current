@@ -52,8 +52,8 @@ TEST(Graph, GNUPlotSmokeTest) {
                                                 })
                                            .Name("\"Cosine\" as 'points'")
                                            .AsPoints())
-                                 .OutputFormat("svg");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.svg"));
+                                 .OutputFormat("png");
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.png"));
 }
 
 TEST(Graph, PlotutilsLine) {
@@ -71,8 +71,8 @@ TEST(Graph, PlotutilsLine) {
                                  .X("... living life in peace")
                                  .Y("John Lennon, \"Imagine\"")
                                  .LineWidth(0.015)
-                                 .OutputFormat("svg");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.svg"));
+                                 .OutputFormat("png");
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.png"));
 }
 
 TEST(Graph, PlotutilsPoints) {
@@ -89,8 +89,8 @@ TEST(Graph, PlotutilsPoints) {
                                  .LineMode(LineMode::None)
                                  .GridStyle(GridStyle::None)
                                  .Symbol(Symbol::Asterisk, 0.1)
-                                 .OutputFormat("svg");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.svg"));
+                                 .OutputFormat("png");
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.png"));
 }
 
 TEST(Graph, PlotutilsMultiplot) {
@@ -103,6 +103,6 @@ TEST(Graph, PlotutilsMultiplot) {
     return xy;
   };
   const std::string result =
-      Plotutils({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("svg");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.svg"));
+      Plotutils({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("png");
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.png"));
 }
