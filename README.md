@@ -298,4 +298,4 @@ EXPECT_EQ(processor.result, "moo!");
 ```
 ## Extras
 
-Other useful bits include chart visualization, file system, string and system clock utilities.
+Other useful bits include chart visualization, file system, in-memory message queue, string and system clock utilities.
