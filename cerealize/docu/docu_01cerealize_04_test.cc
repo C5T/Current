@@ -31,7 +31,6 @@ SOFTWARE.
 #include "../../3party/gtest/gtest-main.h"
 
 using namespace bricks;
-using namespace cerealize;
 using strings::Printf;
 
 // Should keep the indent for docu autogeneration.

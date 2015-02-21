@@ -28,7 +28,6 @@ SOFTWARE.
 #include "docu_01cerealize_01_test.cc"
 
 using namespace bricks;
-using namespace cerealize;
 
 using docu::SimpleType;
 

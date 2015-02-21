@@ -333,4 +333,8 @@ inline T ParseJSON(const std::string& input_json) {
 }  // namespace cerealize
 }  // namespace bricks
 
+using bricks::cerealize::JSON;
+using bricks::cerealize::ParseJSON;
+using bricks::cerealize::WithBaseType;
+
 #endif  // BRICKS_CEREALIZE_H
