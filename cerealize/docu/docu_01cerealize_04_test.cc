@@ -93,10 +93,10 @@ TEST(Docu, Cereal04) {
     JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
   
   EXPECT_EQ("int, 42",
-            JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+            ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
   
   EXPECT_EQ("double, 3.141593",
-            JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+            ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 }
 
 #endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_04_TEST_CC

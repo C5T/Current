@@ -276,7 +276,7 @@ inline std::string JSON(T&& object, S&& name) {
 
 // JSON parse error handling logic.
 // By default, an exception is thrown.
-// If a user class defines the `FromInvalidJSON()` method, JSONParse() is a non-throwing call,
+// If a user class defines the `FromInvalidJSON()` method, ParseJSON() is a non-throwing call,
 // and that method will be called instead.
 
 template <typename T>
@@ -293,40 +293,40 @@ struct HasFromInvalidJSON {
 };
 
 template <typename T, bool B>
-struct BricksJSONParseError {};
+struct BricksParseJSONError {};
 
 template <typename T>
-struct BricksJSONParseError<T, false> {
-  static void HandleJSONParseError(const std::string& input_json, T&) {
-    throw bricks::JSONParseException(input_json);
+struct BricksParseJSONError<T, false> {
+  static void HandleParseJSONError(const std::string& input_json, T&) {
+    throw bricks::ParseJSONException(input_json);
   }
 };
 
 template <typename T>
-struct BricksJSONParseError<T, true> {
-  static void HandleJSONParseError(const std::string& input_json, T& output_object) {
+struct BricksParseJSONError<T, true> {
+  static void HandleParseJSONError(const std::string& input_json, T& output_object) {
     output_object.FromInvalidJSON(input_json);
   }
 };
 
 template <typename T>
-inline const T& JSONParse(const std::string& input_json, T& output_object) {
+inline const T& ParseJSON(const std::string& input_json, T& output_object) {
   try {
     std::istringstream is(input_json);
     cereal::JSONInputArchive ar(is);
     ar(output_object);
   } catch (cereal::Exception&) {
-    BricksJSONParseError<T, HasFromInvalidJSON<typename std::remove_reference<T>::type>::value>::
-        HandleJSONParseError(input_json, output_object);
+    BricksParseJSONError<T, HasFromInvalidJSON<typename std::remove_reference<T>::type>::value>::
+        HandleParseJSONError(input_json, output_object);
   }
   return output_object;
 }
 
 template <typename T>
-inline T JSONParse(const std::string& input_json) {
+inline T ParseJSON(const std::string& input_json) {
   T placeholder;
-  JSONParse(input_json, placeholder);
-  // Can not just do `return JSONParse()`, since it would not handle ownership transfer for `std::unique_ptr<>`.
+  ParseJSON(input_json, placeholder);
+  // Can not just do `return ParseJSON()`, since it would not handle ownership transfer for `std::unique_ptr<>`.
   return placeholder;
 }
 

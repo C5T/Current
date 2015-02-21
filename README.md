@@ -31,7 +31,7 @@ struct SimpleType {
 };
 ```
 ```cpp
-// Use `JSON()` and `JSONParse()` to create and parse JSON-s.
+// Use `JSON()` and `ParseJSON()` to create and parse JSON-s.
 SimpleType x;
 x.number = 42;
 x.string = "test passed";
@@ -44,12 +44,12 @@ x.map_int_string[42] = "the question";
 // `JSON(object)` converts a cerealize-able object into a JSON string.
 const std::string json = JSON(x);
 
-// `JSONParse<T>(json)` creates an instance of T from a JSON.
-const SimpleType y = JSONParse<SimpleType>(json);
+// `ParseJSON<T>(json)` creates an instance of T from a JSON.
+const SimpleType y = ParseJSON<SimpleType>(json);
 
-// `JSONParse(json, T& out)` allows omitting the type.
+// `ParseJSON(json, T& out)` allows omitting the type.
 SimpleType z;
-JSONParse(json, z);
+ParseJSON(json, z);
 ```
 ```cpp
 // Use `load()/save()` instead of `serialize()` to customize serialization.
@@ -71,7 +71,7 @@ struct LoadSaveType {
 LoadSaveType x;
 x.a = 2;
 x.b = 3;
-EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+EXPECT_EQ(5, ParseJSON<LoadSaveType>(JSON(x)).sum);
 ```
 ```cpp
 // Polymorphic types are supported with some caution.
@@ -126,10 +126,10 @@ const std::string json_double =
   JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
 
 EXPECT_EQ("int, 42",
-          JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+          ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
 
 EXPECT_EQ("double, 3.141593",
-          JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+          ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
 ## HTTP
 
@@ -204,7 +204,7 @@ struct PennyOutput {
 
 // Doing Penny-level arithmetics for fun and performance testing.
 HTTP(port).Register("/penny", [](Request r) {
-  const auto input = JSONParse<PennyInput>(r.body);
+  const auto input = ParseJSON<PennyInput>(r.body);
   if (!input.error.empty()) {
     r(PennyOutput{input.error, 0});
   } else {

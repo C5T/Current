@@ -50,7 +50,7 @@ using bricks::strings::Printf;
 using bricks::FileSystem;
 using bricks::FileException;
 
-using bricks::cerealize::JSONParse;
+using bricks::cerealize::ParseJSON;
 
 using bricks::net::Connection;
 using bricks::net::HTTPResponseCodeValue;
@@ -398,7 +398,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.has_body);
-    r("Data: " + JSONParse<ObjectToPOST>(r.body).AsString());
+    r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
   });
   EXPECT_EQ("Data: 42:foo",
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
@@ -410,7 +410,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.has_body);
     try {
-      r("Data: " + JSONParse<ObjectToPOST>(r.body).AsString());
+      r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
     } catch (const std::exception&) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }

@@ -66,7 +66,7 @@ const auto port = FLAGS_docu_net_server_port_04;
 HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
   HTTP(port).Register("/penny", [](Request r) {
-    const auto input = JSONParse<PennyInput>(r.body);
+    const auto input = ParseJSON<PennyInput>(r.body);
     if (!input.error.empty()) {
       r(PennyOutput{input.error, 0});
     } else {
