@@ -55,8 +55,7 @@ const auto response = HTTP(GET(Printf("localhost:%d/ok", FLAGS_docu_net_client_p
   const auto response = HTTP(GET("test.tailproduce.org/ok"));
 #endif
   EXPECT_EQ("OK", response.body);
-  EXPECT_EQ(200, static_cast<int>(response.code));    // Show the code as a number if wrong.
-  EXPECT_TRUE(response.code == HTTPResponseCode.OK);  // Or use the constant if you prefer.
+  EXPECT_TRUE(response.code == HTTPResponseCode.OK);
 }
 
 #endif  // BRICKS_NET_API_DOCU_CLIENT_01_TEST_CC
