@@ -396,7 +396,9 @@ Passing `--help` will cause `ParseDFlags()` to print all registered flags with t
 [`dflags`](https://github.com/KnowSheet/Bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
 ## Unit Testing: `gtest`
 
-Bricks constains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
+Bricks contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
+
+Check out [`Bricks/file/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/file/test.cc), or most of other `test.cc` files in `Bricks` for exampl usage.
 
 A three-minute intro:
 
@@ -430,10 +432,12 @@ A three-minute intro:
    `ASSERT_THROW(statement, exception_type);` ensures the exception is thrown.
 
 6. **Death Tests**
+
+   The following contsruct:
   
    `ASSERT_DEATH(function(), "Expected regex for the last line of standard error.");`
   
-   can be used to ensure certain call fails. The convention is to use the `"DeathTest"` suffix for those tests and to not mix functional tests with death tests.
+   can be used to ensure certain call fails. The failure implies the binary terminating with a non-zero exit code. The convention is to use the `"DeathTest"` suffix for those tests and to not mix functional tests with death tests.
 
 7. **Templated Tests**
   
