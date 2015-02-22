@@ -39,7 +39,7 @@ DEFINE_int32(docu_net_server_port_05, 8082, "Okay to keep the same as in net/api
 TEST(Docu, HTTPServer05) {
 const auto port = FLAGS_docu_net_server_port_05;
 HTTP(port).ResetAllHandlers();
-  // Returning a potentially indefinite response chunk by chunk.
+  // Returning a potentially unlimited response chunk by chunk.
   HTTP(port).Register("/chunked", [](Request r) {
     const size_t n = atoi(r.url.query["n"].c_str());
     const size_t delay_ms = atoi(r.url.query["delay_ms"].c_str());
@@ -61,7 +61,7 @@ HTTP(port).ResetAllHandlers();
   
   EXPECT_EQ(".....\n", HTTP(GET("test.tailproduce.org/chunked?n=5&delay_ms=2")).body);
   
-  // NOTE: For most legitimate practical usecases of returning indefinite
+  // NOTE: For most legitimate practical usecases of returning unlimited
   // amounts of data, consider Sherlock's stream data replication mechanisms.
   // TODO(dkorolev): Check in Sherlock into KnowSheet.
 #endif
