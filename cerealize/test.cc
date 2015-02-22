@@ -83,6 +83,8 @@ TEST(Cerealize, CompileTimeTests) {
 
   static_assert(!is_string_type<int>::value, "");
 
+  static_assert(is_string_type<char>::value, "");
+
   static_assert(is_string_type<char*>::value, "");
 
   static_assert(is_string_type<const char*>::value, "");
