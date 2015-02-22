@@ -61,7 +61,7 @@ for (size_t e = 0; e < 2; ++e) {
 #else
     .OutputFormat("svg");
 #endif
-if (e || FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/gnuplot.") + extensions[e]).c_str());
+if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/gnuplot.") + extensions[e]).c_str());
 if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string("golden/gnuplot.") + extensions[e]));
 }
 }
