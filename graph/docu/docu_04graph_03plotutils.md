@@ -1,1 +1,1 @@
-![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/love.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/docu/graph/golden/love.png)

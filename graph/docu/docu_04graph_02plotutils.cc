@@ -25,9 +25,12 @@ SOFTWARE.
 #ifndef BRICKS_GRAPH_DOCU_02
 #define BRICKS_GRAPH_DOCU_02
 
+#include "../regenerate_flag.cc"
+
 #include "../plotutils.h"
 
-#include "../../3party/gtest/gtest-main.h"
+#include "../../dflags/dflags.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 
 TEST(Graph, PlotutilsLove) {
   // Where visualization meets love.
@@ -44,6 +47,8 @@ TEST(Graph, PlotutilsLove) {
   // Pull Plotutils, LineColor, GridStyle and more plotutils-related symbols.
   using namespace bricks::plotutils;
   
+const char* const extensions[2] = { "svg", "png" };
+for (size_t e = 0; e < 2; ++e) {
   const std::string result = Plotutils(line)
     .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
     .GridStyle(GridStyle::Full)
@@ -51,9 +56,15 @@ TEST(Graph, PlotutilsLove) {
     .X("... living life in peace")
     .Y("John Lennon, \"Imagine\"")
     .LineWidth(0.015)
-    .OutputFormat("png");
-
-ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.png"));
+    .BitmapSize(800, 800)
+#if 1      
+.OutputFormat(extensions[e]);
+#else
+    .OutputFormat("svg");
+#endif
+if (e || FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/love.") + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string("golden/love.") + extensions[e]));
+}
 }
 
 #endif  // BRICKS_GRAPH_DOCU_02

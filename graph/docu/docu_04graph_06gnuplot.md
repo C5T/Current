@@ -1,1 +1,1 @@
-![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/gnuplot.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/docu/graph/golden/gnuplot.png)

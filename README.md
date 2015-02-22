@@ -276,34 +276,36 @@ const std::string result = Plotutils(line)
   .X("... living life in peace")
   .Y("John Lennon, \"Imagine\"")
   .LineWidth(0.015)
+  .BitmapSize(800, 800)
   .OutputFormat("svg");
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/love.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/docu/graph/golden/love.png)
 ### Using `gnuplot`
 ```cpp
 // Where visualization meets science.
 using namespace bricks::gnuplot;
 const std::string result = GNUPlot()
-  .Title("Foo 'bar' \"baz\"")
-  .KeyTitle("Meh 'in' \"quotes\"")
-  .XRange(-42, 42)
-  .YRange(-2.5, +2.5)
+  .Title("Graph 'title' with various \"quotes\"")
+  .KeyTitle("'Legend', also known as the \"key\"")
+  .XRange(-5, +5)
+  .YRange(-2, +2)
   .Grid("back")
   .Plot([](Plotter& p) {
-    for (int i = -100; i <= +100; ++i) {
-      p(i, ::sin(0.1 * i));
+    for (int i = -50; i <= +50; ++i) {
+      p(0.1 * i, ::sin(0.1 * i));
     }
   })
   .Plot(WithMeta([](Plotter& p) {
-                   for (int i = -100; i <= +100; ++i) {
-                     p(i, ::cos(0.1 * i));
+                   for (int i = -50; i <= +50; ++i) {
+                     p(0.1 * i, ::cos(0.1 * i));
                    }
                  })
-            .Name("\"Cosine\" as 'points'")
-            .AsPoints())
+            .AsPoints()
+            .Color("rgb 'blue'")
+            .Name("\"cos(x)\", '.AsPoints().Color(\"rgb 'blue'\")'"))
   .OutputFormat("svg");
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/gnuplot.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/docu/graph/golden/gnuplot.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.

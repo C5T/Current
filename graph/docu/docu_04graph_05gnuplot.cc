@@ -25,33 +25,45 @@ SOFTWARE.
 #ifndef BRICKS_GRAPH_DOCU_05
 #define BRICKS_GRAPH_DOCU_05
 
+#include "../regenerate_flag.cc"
+
 #include "../gnuplot.h"
 
-#include "../../3party/gtest/gtest-main.h"
+#include "../../dflags/dflags.h"
+#include "../../3party/gtest/gtest-main-with-dflags.h"
 
 TEST(Graph, GNUPlotScience) {
   // Where visualization meets science.
   using namespace bricks::gnuplot;
+const char* const extensions[2] = { "svg", "png" };
+for (size_t e = 0; e < 2; ++e) {
   const std::string result = GNUPlot()
-    .Title("Foo 'bar' \"baz\"")
-    .KeyTitle("Meh 'in' \"quotes\"")
-    .XRange(-42, 42)
-    .YRange(-2.5, +2.5)
+    .Title("Graph 'title' with various \"quotes\"")
+    .KeyTitle("'Legend', also known as the \"key\"")
+    .XRange(-5, +5)
+    .YRange(-2, +2)
     .Grid("back")
     .Plot([](Plotter& p) {
-      for (int i = -100; i <= +100; ++i) {
-        p(i, ::sin(0.1 * i));
+      for (int i = -50; i <= +50; ++i) {
+        p(0.1 * i, ::sin(0.1 * i));
       }
     })
     .Plot(WithMeta([](Plotter& p) {
-                     for (int i = -100; i <= +100; ++i) {
-                       p(i, ::cos(0.1 * i));
+                     for (int i = -50; i <= +50; ++i) {
+                       p(0.1 * i, ::cos(0.1 * i));
                      }
                    })
-              .Name("\"Cosine\" as 'points'")
-              .AsPoints())
-    .OutputFormat("png");
-ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.png"));
+              .AsPoints()
+              .Color("rgb 'blue'")
+              .Name("\"cos(x)\", '.AsPoints().Color(\"rgb 'blue'\")'"))
+#if 1      
+.OutputFormat(extensions[e]);
+#else
+    .OutputFormat("svg");
+#endif
+if (e || FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/gnuplot.") + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string("golden/gnuplot.") + extensions[e]));
+}
 }
 
 #endif  // BRICKS_GRAPH_DOCU_05

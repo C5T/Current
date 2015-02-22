@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "regenerate_flag.cc"
 #include "docu/docu_04graph_02plotutils.cc"
 #include "docu/docu_04graph_05gnuplot.cc"
 
@@ -31,7 +32,7 @@ SOFTWARE.
 #include "gnuplot.h"
 #include "plotutils.h"
 
-#include "../3party/gtest/gtest-main.h"
+#include "../3party/gtest/gtest-main-with-dflags.h"
 
 using namespace bricks::plotutils;
 
@@ -49,8 +50,11 @@ TEST(Graph, PlotutilsPoints) {
                                  .LineMode(LineMode::None)
                                  .GridStyle(GridStyle::None)
                                  .Symbol(Symbol::Asterisk, 0.1)
-                                 .OutputFormat("png");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.png"));
+                                 .OutputFormat("svg");
+  if (FLAGS_regenerate_golden_graphs) {
+    bricks::FileSystem::WriteStringToFile(result, "golden/flakes.svg");  // LCOV_EXCL_LINE
+  }
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.svg"));
 }
 
 TEST(Graph, PlotutilsMultiplot) {
@@ -63,6 +67,9 @@ TEST(Graph, PlotutilsMultiplot) {
     return xy;
   };
   const std::string result =
-      Plotutils({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("png");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.png"));
+      Plotutils({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("svg");
+  if (FLAGS_regenerate_golden_graphs) {
+    bricks::FileSystem::WriteStringToFile(result, "golden/david.svg");  // LCOV_EXCL_LINE
+  }
+  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.svg"));
 }
