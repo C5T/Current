@@ -2,7 +2,7 @@
 
 Bricks contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
 
-Check out [`Bricks/file/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/file/test.cc), or most of other `test.cc` files in `Bricks` for exampl usage.
+Check out [`Bricks/file/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/file/test.cc), or most of other `test.cc` files in `Bricks` for example usage.
 
 A three-minute intro:
 
