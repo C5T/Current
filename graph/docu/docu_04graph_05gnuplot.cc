@@ -50,8 +50,8 @@ TEST(Graph, GNUPlotScience) {
                    })
               .Name("\"Cosine\" as 'points'")
               .AsPoints())
-    .OutputFormat("svg");
-ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.svg"));
+    .OutputFormat("png");
+ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.png"));
 }
 
 #endif  // BRICKS_GRAPH_DOCU_05

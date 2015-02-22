@@ -51,9 +51,9 @@ TEST(Graph, PlotutilsLove) {
     .X("... living life in peace")
     .Y("John Lennon, \"Imagine\"")
     .LineWidth(0.015)
-    .OutputFormat("svg");
+    .OutputFormat("png");
 
-ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.svg"));
+ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.png"));
 }
 
 #endif  // BRICKS_GRAPH_DOCU_02
