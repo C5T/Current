@@ -363,6 +363,93 @@ EXPECT_EQ(processor.result, "string 'foo'");
 Dispatcher::DispatchCall(ExampleMoo(), processor);
 EXPECT_EQ(processor.result, "moo!");
 ```
+## Command Line Parsing: `dflags`
+
+Bricks has [`dflags`](https://github.com/KnowSheet/Bricks/blob/master/dflags/dflags.h): a C++ library to parse command-line flags.
+
+```cpp
+DEFINE_int32(answer, 42, "Human-readable flag description.");
+DEFINE_string(question, "six by nine", "Another human-readable flag description.");
+
+void example() {
+  std::cout << FLAGS_question.length() << ' ' << FLAGS_answer * FLAGS_answer << std::endl;
+}
+
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
+  // `google::ParseCommandLineFlags(&argc, &argv);`
+  // is supported as well for compatibility reasons.
+  example();
+}
+```
+
+Supported types are `string` as `std::string`, `int32`, `uint32`, `int64`, `uint64`, `float`, `double` and `bool`. Booleans accept `0`/`1` and lowercase or capitalized `true`/`false`/`yes`/`no`.
+
+Flags can be passed in as `-flag=value`, `--flag=value`, `-flag value` or `--flag value` parameters.
+
+Undefined flag triggers an error message dumped into stderr followed by exit(-1).  Same happens if `ParseDFlags()` was called more than once.
+
+Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new, updated values, eliminating the ones holding the parsed flags. In other words `./main foo --flag_bar=bar baz` results in new `argc == 2`, new `argv == { argv[0], "foo", "baz" }`.
+
+Passing `--help` will cause `ParseDFlags()` to print all registered flags with their descriptions and `exit(0)`.
+
+[`dflags`](https://github.com/KnowSheet/Bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
+## Unit Testing: `gtest`
+
+Bricks constains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
+
+A three-minute intro:
+
+1. **Logic**
+  
+  `ASSERT_*` interrupts the `TEST() { .. }` if failing,
+  
+   `EXPECT_*` considers the `TEST()` failed, but continues to execute it.
+
+2. **Debug Output**
+  
+   `ASSERT`-s and `EXPECT`-s can be used as output streams. No newline needed.
+  
+   `EXPECT_EQ(4, 2 * 2) << "Something is wrong with multiplication.";`
+
+3. **Conditions**
+  
+   `ASSERT`-s and `EXPECT`-s can use {`EQ`,`NE`,`LT`,`GT`,`LE`,`NE`,`TRUE`} after the underscore.
+  
+   This results in more meaningful human-readable test failure messages.
+
+4. **Parameters Order**
+  
+   For `{ASSERT,EXPECT}_{EQ,NE}`, put the expected value as the first parameter.
+  
+   For clean error messages wrt `expected` vs. `actual`.
+   
+
+5. **Exceptions**
+  
+   `ASSERT_THROW(statement, exception_type);` ensures the exception is thrown.
+
+6. **Death Tests**
+  
+   `ASSERT_DEATH(function(), "Expected regex for the last line of standard error.");`
+  
+   can be used to ensure certain call fails. The convention is to use the `"DeathTest"` suffix for those tests and to not mix functional tests with death tests.
+
+7. **Templated Tests**
+  
+   `gtest` supports templated tests, where objects of various tests are passed to the same test method.
+  
+   Each type results in the whole new statically compiled test.
+
+8. **Disabled Tests**
+  
+   Prefix a test name with `"DISABLED_"` to exclude it from being run.
+  
+   Use sparingly and try to keep master clean from disabled tests.
+
+For more details please refer to the original [`GoogleTest` documentation](http://code.google.com/p/googletest/wiki/Documentation).
+
+The code in Bricks is a header-only port of the code originally released by Google. It requires no linker dependencies.
 ## Extras
 
 [`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.
