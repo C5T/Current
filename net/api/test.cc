@@ -31,6 +31,7 @@ SOFTWARE.
 #include "docu/server/docu_03httpserver_02_test.cc"
 #include "docu/server/docu_03httpserver_03_test.cc"
 #include "docu/server/docu_03httpserver_04_test.cc"
+#include "docu/server/docu_03httpserver_05_test.cc"
 
 #include <string>
 

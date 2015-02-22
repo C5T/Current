@@ -243,9 +243,33 @@ HTTP(port).Register("/penny", [](Request r) {
   }
 });
 ```
-HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
+```cpp
+// Returning a potentially indefinite response chunk by chunk.
+HTTP(port).Register("/chunked", [](Request r) {
+  const size_t n = atoi(r.url.query["n"].c_str());
+  const size_t delay_ms = atoi(r.url.query["delay_ms"].c_str());
+    
+  const auto sleep = [&delay_ms]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+  };
+    
+  auto response = r.SendChunkedResponse();
 
-**TODO(dkorolev)**: Chunked response example, with a note that it goes to Sherlock.
+  sleep();
+  for (size_t i = 0; n && i < n; ++i) {
+    response(".");  // Use double quotes for a string, not single quotes for a char.
+    sleep();
+  }
+  response("\n");
+});
+
+EXPECT_EQ(".....\n", HTTP(GET("test.tailproduce.org/chunked?n=5&delay_ms=2")).body);
+
+// NOTE: For most legitimate practical usecases of returning indefinite
+// amounts of data, consider Sherlock's stream data replication mechanisms.
+// TODO(dkorolev): Check in Sherlock into KnowSheet.
+```
+HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
 ## Visualization Library
 
 Bricks has C++ bindings for [`plotutils`](http://www.gnu.org/software/plotutils/) and [`gnuplot`](http://www.gnuplot.info/). Use [`#include "Bricks/graph/plotutils.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/plotutils.h) and [`#include "Bricks/graph/gnuplot.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/gnuplot.h).
