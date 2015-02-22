@@ -22,29 +22,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
-#define BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#ifndef BRICKS_GRAPH_DOCU_05
+#define BRICKS_GRAPH_DOCU_05
 
-#include "../../api.h"
-#include "../../../../strings/printf.h"
-#include "../../../../dflags/dflags.h"
-#include "../../../../3party/gtest/gtest-main-with-dflags.h"
+#include "../gnuplot.h"
 
-DEFINE_int32(docu_net_server_port_03, 8082, "Okay to keep the same as in net/api/test.cc");
+#include "../../3party/gtest/gtest-main.h"
 
-using bricks::strings::Printf;
-
-TEST(Docu, HTTPServer03) {
-const auto port = FLAGS_docu_net_server_port_03;
-HTTP(port).ResetAllHandlers();
-  // Constructing a more complex response.
-  HTTP(port).Register("/found", [](Request r) {
-    r("Yes.",
-      HTTPResponseCode.Accepted,
-      "text/html",
-      HTTPHeaders().Set("custom", "header").Set("another", "one"));
-  });
-EXPECT_EQ("Yes.", HTTP(GET(Printf("localhost:%d/found", port))).body);
+TEST(Graph, GNUPlotScience) {
+  // Where visualization meets science.
+  using namespace bricks::gnuplot;
+  const std::string result = GNUPlot()
+    .Title("Foo 'bar' \"baz\"")
+    .KeyTitle("Meh 'in' \"quotes\"")
+    .XRange(-42, 42)
+    .YRange(-2.5, +2.5)
+    .Grid("back")
+    .Plot([](Plotter& p) {
+      for (int i = -100; i <= +100; ++i) {
+        p(i, ::sin(0.1 * i));
+      }
+    })
+    .Plot(WithMeta([](Plotter& p) {
+                     for (int i = -100; i <= +100; ++i) {
+                       p(i, ::cos(0.1 * i));
+                     }
+                   })
+              .Name("\"Cosine\" as 'points'")
+              .AsPoints())
+    .OutputFormat("png");
+ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.png"));
 }
 
-#endif  // BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#endif  // BRICKS_GRAPH_DOCU_05

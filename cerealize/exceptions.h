@@ -29,8 +29,8 @@ SOFTWARE.
 
 namespace bricks {
 
-struct JSONParseException : Exception {
-  explicit JSONParseException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
+struct ParseJSONException : Exception {
+  explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
 };
 
 }  // namespace bricks

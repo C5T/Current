@@ -28,12 +28,11 @@ SOFTWARE.
 #include "docu_01cerealize_01_test.cc"
 
 using namespace bricks;
-using namespace cerealize;
 
 using docu::SimpleType;
 
 TEST(Docu, Cereal02) {
-  // Use `JSON()` and `JSONParse()` to create and parse JSON-s.
+  // Use `JSON()` and `ParseJSON()` to create and parse JSON-s.
   SimpleType x;
   x.number = 42;
   x.string = "test passed";
@@ -51,16 +50,16 @@ EXPECT_EQ("{\"value0\":{"
 "\"map_int_string\":[{\"key\":1,\"value\":\"one\"},{\"key\":42,\"value\":\"the question\"}]}"
 "}", json);
   
-  // `JSONParse<T>(json)` creates an instance of T from a JSON.
-  const SimpleType y = JSONParse<SimpleType>(json);
+  // `ParseJSON<T>(json)` creates an instance of T from a JSON.
+  const SimpleType y = ParseJSON<SimpleType>(json);
 EXPECT_EQ(42, y.number);
 EXPECT_EQ("test passed", y.string);
 EXPECT_EQ(3u, y.vector_int.size());
 EXPECT_EQ(2u, y.map_int_string.size());
   
-  // `JSONParse(json, T& out)` allows omitting the type.
+  // `ParseJSON(json, T& out)` allows omitting the type.
   SimpleType z;
-  JSONParse(json, z);
+  ParseJSON(json, z);
 EXPECT_EQ(42, z.number);
 EXPECT_EQ("test passed", z.string);
 EXPECT_EQ(3u, z.vector_int.size());

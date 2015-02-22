@@ -35,9 +35,7 @@ SOFTWARE.
 
 DEFINE_int32(docu_net_server_port_04, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using namespace bricks::net::api;
 using bricks::strings::Printf;
-using bricks::net::HTTPHeaders;
 
   // An input record that would be passed in as a JSON.
   struct PennyInput {
@@ -66,7 +64,7 @@ const auto port = FLAGS_docu_net_server_port_04;
 HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
   HTTP(port).Register("/penny", [](Request r) {
-    const auto input = JSONParse<PennyInput>(r.body);
+    const auto input = ParseJSON<PennyInput>(r.body);
     if (!input.error.empty()) {
       r(PennyOutput{input.error, 0});
     } else {

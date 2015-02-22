@@ -30,7 +30,6 @@ SOFTWARE.
 #include "../../3party/gtest/gtest-main.h"
 
 using namespace bricks;
-using namespace cerealize;
 
 namespace docu {  // Should keep the indent for docu autogeneration.
   // Use `load()/save()` instead of `serialize()` to customize serialization.
@@ -57,7 +56,7 @@ TEST(Docu, Cereal03) {
   LoadSaveType x;
   x.a = 2;
   x.b = 3;
-  EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+  EXPECT_EQ(5, ParseJSON<LoadSaveType>(JSON(x)).sum);
 }
 
 #endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_03_TEST_CC

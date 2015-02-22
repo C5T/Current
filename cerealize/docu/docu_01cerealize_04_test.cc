@@ -31,10 +31,15 @@ SOFTWARE.
 #include "../../3party/gtest/gtest-main.h"
 
 using namespace bricks;
-using namespace cerealize;
 using strings::Printf;
 
 // Should keep the indent for docu autogeneration.
+#if 0
+  // The example below uses `Printf()`, include it.
+  #include "strings/printf.h"
+  using bricks::strings::Printf;
+   
+#endif
 
   // Polymorphic types are supported with some caution.
   struct ExamplePolymorphicType {
@@ -93,10 +98,10 @@ TEST(Docu, Cereal04) {
     JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
   
   EXPECT_EQ("int, 42",
-            JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+            ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
   
   EXPECT_EQ("double, 3.141593",
-            JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+            ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 }
 
 #endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_04_TEST_CC

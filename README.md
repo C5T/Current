@@ -1,8 +1,10 @@
 # Bricks
 
+The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains core pieces to be reused across [`KnowSheet`](https://github.com/KnowSheet/) projects.
+
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/master/holy_bricks.jpg)
 
-Our own core pieces to reuse.
+<sub>Image credit: Bing image search.</sub>
 
 # Documentation
 
@@ -10,10 +12,14 @@ Our own core pieces to reuse.
 
 ## Cerealize
 
-Bricks uses the **Cereal** library for JSON and Binary serialization of C++ objects:
-[Cereal Website](http://uscilab.github.io/cereal/), [Cereal GitHub](http://uscilab.github.io/cereal/).
+Bricks uses [**Cereal**](http://uscilab.github.io/cereal/) for JSON and Binary serialization of C++ objects:
 
-Use [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) and `using namespace bricks::cerealize;` to run the code snippets below.
+* [Cereal Website](http://uscilab.github.io/cereal/): Cereal is a header-only C++11 serialization library.
+* [Cereal GitHub](https://github.com/USCiLab/cereal): A C++11 library for serialization.
+
+<sub>Personal thanks for a well-designed C++11 serialization library! — @dkorolev</sub>
+
+The [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/KnowSheet/Bricks/blob/master/cerealize/cerealize.h) header makes the below code snippets complete.
 ```cpp
 // Add a `serialize()` method to make a C++ structure "cerealizable".
 struct SimpleType {
@@ -31,7 +37,7 @@ struct SimpleType {
 };
 ```
 ```cpp
-// Use `JSON()` and `JSONParse()` to create and parse JSON-s.
+// Use `JSON()` and `ParseJSON()` to create and parse JSON-s.
 SimpleType x;
 x.number = 42;
 x.string = "test passed";
@@ -44,12 +50,12 @@ x.map_int_string[42] = "the question";
 // `JSON(object)` converts a cerealize-able object into a JSON string.
 const std::string json = JSON(x);
 
-// `JSONParse<T>(json)` creates an instance of T from a JSON.
-const SimpleType y = JSONParse<SimpleType>(json);
+// `ParseJSON<T>(json)` creates an instance of T from a JSON.
+const SimpleType y = ParseJSON<SimpleType>(json);
 
-// `JSONParse(json, T& out)` allows omitting the type.
+// `ParseJSON(json, T& out)` allows omitting the type.
 SimpleType z;
-JSONParse(json, z);
+ParseJSON(json, z);
 ```
 ```cpp
 // Use `load()/save()` instead of `serialize()` to customize serialization.
@@ -71,9 +77,13 @@ struct LoadSaveType {
 LoadSaveType x;
 x.a = 2;
 x.b = 3;
-EXPECT_EQ(5, JSONParse<LoadSaveType>(JSON(x)).sum);
+EXPECT_EQ(5, ParseJSON<LoadSaveType>(JSON(x)).sum);
 ```
 ```cpp
+// The example below uses `Printf()`, include it.
+#include "strings/printf.h"
+using bricks::strings::Printf;
+ 
 // Polymorphic types are supported with some caution.
 struct ExamplePolymorphicType {
   std::string base;
@@ -126,16 +136,16 @@ const std::string json_double =
   JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
 
 EXPECT_EQ("int, 42",
-          JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+          ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
 
 EXPECT_EQ("double, 3.141593",
-          JSONParse<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+          ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
-## HTTP
+## REST API Toolkit
 
-Use [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob/master/net/api/api.h) and `using namespace bricks::net::api;` to run the code snippets below.
+The [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob/master/net/api/api.h) header enables to run the code snippets below.
 
-### Client
+### HTTP Client
 
 ```cpp
 // Simple GET.
@@ -143,8 +153,8 @@ EXPECT_EQ("OK", HTTP(GET("test.tailproduce.org/ok")).body);
 
 // More fields.
 const auto response = HTTP(GET("test.tailproduce.org/ok"));
-EXPECT_EQ(200, static_cast<int>(response.code));
 EXPECT_EQ("OK", response.body);
+EXPECT_TRUE(response.code == HTTPResponseCode.OK);
 ```
 ```cpp
 // POST is supported as well.
@@ -156,7 +166,7 @@ EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
 
 ```
 HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) for more details.
-### Server
+### HTTP Server
 ```cpp
 // Simple "OK" endpoint.
 HTTP(port).Register("/ok", [](Request r) {
@@ -203,7 +213,7 @@ struct PennyOutput {
 
 // Doing Penny-level arithmetics for fun and performance testing.
 HTTP(port).Register("/penny", [](Request r) {
-  const auto input = JSONParse<PennyInput>(r.body);
+  const auto input = ParseJSON<PennyInput>(r.body);
   if (!input.error.empty()) {
     r(PennyOutput{input.error, 0});
   } else {
@@ -236,16 +246,78 @@ HTTP(port).Register("/penny", [](Request r) {
 HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
 
 **TODO(dkorolev)**: Chunked response example, with a note that it goes to Sherlock.
+## Visualization Library
+
+Bricks has C++ bindings for [`plotutils`](http://www.gnu.org/software/plotutils/) and [`gnuplot`](http://www.gnuplot.info/). Use [`#include "Bricks/graph/plotutils.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/plotutils.h) and [`#include "Bricks/graph/gnuplot.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/gnuplot.h).
+
+The [`plotutils`](http://www.gnu.org/software/plotutils/) tool is somewhat simpler and lighter. The [`gnuplot`](http://www.gnuplot.info/) one is more scientific and offers a wider range of features.
+
+Both libraries are invoked as external system calls. Make sure they are installed in the system that runs your code.
+### Using `plotutils`
+```cpp
+// Where visualization meets love.
+const size_t N = 1000;
+std::vector<std::pair<double, double>> line(N);
+  
+for (size_t i = 0; i < N; ++i) {
+  const double t = M_PI * 2 * i / (N - 1);
+  line[i] = std::make_pair(
+    16 * pow(sin(t), 3),
+    -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
+}
+
+// Pull Plotutils, LineColor, GridStyle and more plotutils-related symbols.
+using namespace bricks::plotutils;
+
+const std::string result = Plotutils(line)
+  .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
+  .GridStyle(GridStyle::Full)
+  .Label("Imagine all the people ...")
+  .X("... living life in peace")
+  .Y("John Lennon, \"Imagine\"")
+  .LineWidth(0.015)
+  .OutputFormat("svg");
+```
+![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/love.png)
+### Using `gnuplot`
+```cpp
+// Where visualization meets science.
+using namespace bricks::gnuplot;
+const std::string result = GNUPlot()
+  .Title("Foo 'bar' \"baz\"")
+  .KeyTitle("Meh 'in' \"quotes\"")
+  .XRange(-42, 42)
+  .YRange(-2.5, +2.5)
+  .Grid("back")
+  .Plot([](Plotter& p) {
+    for (int i = -100; i <= +100; ++i) {
+      p(i, ::sin(0.1 * i));
+    }
+  })
+  .Plot(WithMeta([](Plotter& p) {
+                   for (int i = -100; i <= +100; ++i) {
+                     p(i, ::cos(0.1 * i));
+                   }
+                 })
+            .Name("\"Cosine\" as 'points'")
+            .AsPoints())
+  .OutputFormat("svg");
+```
+![](https://raw.githubusercontent.com/dkorolev/Bricks/png/graph/golden/gnuplot.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
 
 This comes especially handy when processing log entries from a large stream of data, where only a few types are of immediate interest.
 
-Use [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/KnowSheet/Bricks/blob/master/rtti/dispatcher.h) and `using namespace bricks::rtti;` to run the code snippets below.
+Use the [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/KnowSheet/Bricks/blob/master/rtti/dispatcher.h) header to run the code snippets below.
 
 `TODO(dkorolev)` a wiser way for the end user to leverage the above is by means of `Sherlock` once it's checked in.
 ```cpp
+// The example below uses `Printf()`, include it.
+#include "strings/printf.h"
+using bricks::strings::Printf;
+ 
 struct ExampleBase {
   virtual ~ExampleBase() = default;
 };
@@ -271,6 +343,7 @@ struct ExampleProcessor {
   void operator()(const ExampleMoo&) { result = "moo!"; }
 };
 
+using bricks::rtti::RuntimeTupleDispatcher;
 typedef RuntimeTupleDispatcher<ExampleBase,
                                tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
 
@@ -290,4 +363,4 @@ EXPECT_EQ(processor.result, "moo!");
 ```
 ## Extras
 
-Other useful bits include chart visualization, file system, string and system clock utilities.
+[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.

@@ -32,7 +32,6 @@ SOFTWARE.
 
 DEFINE_int32(docu_net_client_port_01, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using namespace bricks::net::api;
 using bricks::strings::Printf;
 
 TEST(Docu, HTTPClient01A) {
@@ -55,8 +54,8 @@ const auto response = HTTP(GET(Printf("localhost:%d/ok", FLAGS_docu_net_client_p
 #else
   const auto response = HTTP(GET("test.tailproduce.org/ok"));
 #endif
-  EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
+  EXPECT_TRUE(response.code == HTTPResponseCode.OK);
 }
 
 #endif  // BRICKS_NET_API_DOCU_CLIENT_01_TEST_CC

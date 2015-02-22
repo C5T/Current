@@ -50,7 +50,7 @@ using bricks::strings::Printf;
 using bricks::FileSystem;
 using bricks::FileException;
 
-using bricks::cerealize::JSONParse;
+using bricks::cerealize::ParseJSON;
 
 using bricks::net::Connection;
 using bricks::net::HTTPResponseCodeValue;
@@ -398,7 +398,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.has_body);
-    r("Data: " + JSONParse<ObjectToPOST>(r.body).AsString());
+    r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
   });
   EXPECT_EQ("Data: 42:foo",
             HTTP(POST(Printf("localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
@@ -410,7 +410,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.has_body);
     try {
-      r("Data: " + JSONParse<ObjectToPOST>(r.body).AsString());
+      r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
     } catch (const std::exception&) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }
@@ -439,7 +439,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
-  FileSystem::WriteStringToFile(file_name.c_str(), "No shit detected.");
+  FileSystem::WriteStringToFile("No shit detected.", file_name.c_str());
   const auto response = HTTP(POSTFromFile(url, file_name, "application/octet-stream"));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Voila: No shit detected.", response.body);
@@ -474,7 +474,7 @@ TEST(HTTPAPI, PostFromFileToFile) {
   const auto output_file_scope = FileSystem::ScopedRmFile(response_file_name);
   const string url = Printf("localhost:%d/post", FLAGS_net_api_test_port);
   const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
-  FileSystem::WriteStringToFile(request_file_name.c_str(), post_body);
+  FileSystem::WriteStringToFile(post_body, request_file_name.c_str());
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
   EXPECT_EQ(200, static_cast<int>(response.code));

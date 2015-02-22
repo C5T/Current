@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "docu/docu_04graph_02plotutils.cc"
+#include "docu/docu_04graph_05gnuplot.cc"
+
 #include <vector>
 #include <string>
 
@@ -30,50 +33,7 @@ SOFTWARE.
 
 #include "../3party/gtest/gtest-main.h"
 
-using namespace bricks::gnuplot;
 using namespace bricks::plotutils;
-
-TEST(Graph, GNUPlotSmokeTest) {
-  const std::string result = GNUPlot()
-                                 .Title("Foo 'bar' \"baz\"")
-                                 .KeyTitle("Meh 'in' \"quotes\"")
-                                 .XRange(-42, 42)
-                                 .YRange(-2.5, +2.5)
-                                 .Grid("back")
-                                 .Plot([](Plotter& p) {
-                                   for (int i = -100; i <= +100; ++i) {
-                                     p(i, ::sin(0.1 * i));
-                                   }
-                                 })
-                                 .Plot(WithMeta([](Plotter& p) {
-                                                  for (int i = -100; i <= +100; ++i) {
-                                                    p(i, ::cos(0.1 * i));
-                                                  }
-                                                })
-                                           .Name("\"Cosine\" as 'points'")
-                                           .AsPoints())
-                                 .OutputFormat("png");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/gnuplot.png"));
-}
-
-TEST(Graph, PlotutilsLine) {
-  const size_t N = 1000;
-  std::vector<std::pair<double, double>> line(N);
-  for (size_t i = 0; i < N; ++i) {
-    const double t = M_PI * 2 * i / (N - 1);
-    line[i] =
-        std::make_pair(16 * pow(sin(t), 3), -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
-  }
-  const std::string result = Plotutils(line)
-                                 .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
-                                 .GridStyle(GridStyle::Full)
-                                 .Label("Imagine all the people ...")
-                                 .X("... living life in peace")
-                                 .Y("John Lennon, \"Imagine\"")
-                                 .LineWidth(0.015)
-                                 .OutputFormat("png");
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.png"));
-}
 
 TEST(Graph, PlotutilsPoints) {
   const int p1 = 27733;

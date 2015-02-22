@@ -322,7 +322,7 @@ TEST(Cerealize, ParseJSONReturnValueSyntax) {
   CTDerived1 input;
   input.number = 42;
   input.foo = "string";
-  CTDerived1 output = JSONParse<CTDerived1>(JSON(input));
+  CTDerived1 output = ParseJSON<CTDerived1>(JSON(input));
   EXPECT_EQ(42, output.number);
   EXPECT_EQ("string", output.foo);
 }
@@ -332,7 +332,7 @@ TEST(Cerealize, ParseJSONReferenceSyntax) {
   input.number = 42;
   input.foo = "string";
   CTDerived1 output;
-  JSONParse(JSON(input), output);
+  ParseJSON(JSON(input), output);
   EXPECT_EQ(42, output.number);
   EXPECT_EQ("string", output.foo);
 }
@@ -347,22 +347,22 @@ TEST(Cerealize, ParseJSONSupportsPolymorphicTypes) {
 
   {
     EXPECT_EQ("Derived1(1,'foo')",
-              JSONParse<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d1)))->AsString());
+              ParseJSON<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d1)))->AsString());
     EXPECT_EQ("Derived2(2,'bar')",
-              JSONParse<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d2)))->AsString());
+              ParseJSON<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d2)))->AsString());
   }
 
   {
     std::unique_ptr<CTBase> placeholder;
-    EXPECT_EQ("Derived1(1,'foo')", JSONParse(JSON(WithBaseType<CTBase>(d1)), placeholder)->AsString());
-    EXPECT_EQ("Derived2(2,'bar')", JSONParse(JSON(WithBaseType<CTBase>(d2)), placeholder)->AsString());
+    EXPECT_EQ("Derived1(1,'foo')", ParseJSON(JSON(WithBaseType<CTBase>(d1)), placeholder)->AsString());
+    EXPECT_EQ("Derived2(2,'bar')", ParseJSON(JSON(WithBaseType<CTBase>(d2)), placeholder)->AsString());
   }
 }
 
 TEST(Cerealize, ParseJSONThrowsOnError) {
-  ASSERT_THROW(JSONParse<CTDerived1>("surely not a valid JSON"), JSONParseException);
+  ASSERT_THROW(ParseJSON<CTDerived1>("surely not a valid JSON"), ParseJSONException);
 }
 
 TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
-  EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", JSONParse<CTDerived2>("BAZINGA").AsString());
+  EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
 }

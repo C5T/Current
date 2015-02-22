@@ -74,16 +74,16 @@ TEST(File, FileStringOperations) {
   ASSERT_THROW(FileSystem::RmFile(fn), FileException);
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
 
-  FileSystem::WriteStringToFile(fn.c_str(), "PASSED");
+  FileSystem::WriteStringToFile("PASSED", fn.c_str());
   EXPECT_EQ("PASSED", FileSystem::ReadFileAsString(fn));
 
-  FileSystem::WriteStringToFile(fn.c_str(), "ANOTHER");
-  FileSystem::WriteStringToFile(fn.c_str(), " TEST", true);
+  FileSystem::WriteStringToFile("ANOTHER", fn.c_str());
+  FileSystem::WriteStringToFile(" TEST", fn.c_str(), true);
   EXPECT_EQ("ANOTHER TEST", FileSystem::ReadFileAsString(fn));
 
   FileSystem::RmFile(fn);
   FileSystem::MkDir(fn);
-  ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "not so fast"), FileException);
+  ASSERT_THROW(FileSystem::WriteStringToFile("not so fast", fn.c_str()), FileException);
   FileSystem::RmDir(fn);
 }
 
@@ -93,7 +93,7 @@ TEST(File, GetFileSize) {
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::GetFileSize(fn), FileException);
 
-  FileSystem::WriteStringToFile(fn.c_str(), "four");
+  FileSystem::WriteStringToFile("four", fn.c_str());
   EXPECT_EQ(4, FileSystem::GetFileSize(fn));
 }
 
@@ -105,7 +105,7 @@ TEST(File, RenameFile) {
   FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::RenameFile(fn1, fn2), FileException);
 
-  FileSystem::WriteStringToFile(fn1.c_str(), "data");
+  FileSystem::WriteStringToFile("data", fn1.c_str());
 
   EXPECT_EQ("data", FileSystem::ReadFileAsString(fn1));
   ASSERT_THROW(FileSystem::ReadFileAsString(fn2), FileException);
@@ -125,13 +125,13 @@ TEST(File, DirOperations) {
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
-  ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "test"), FileException);
+  ASSERT_THROW(FileSystem::WriteStringToFile("test", fn.c_str()), FileException);
 
   FileSystem::MkDir(dir);
   ASSERT_THROW(FileSystem::MkDir(dir), FileException);
   FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
 
-  FileSystem::WriteStringToFile(fn.c_str(), "test");
+  FileSystem::WriteStringToFile("test", fn.c_str());
   EXPECT_EQ("test", FileSystem::ReadFileAsString(fn));
 
   ASSERT_THROW(FileSystem::GetFileSize(dir), FileException);
@@ -140,7 +140,7 @@ TEST(File, DirOperations) {
   FileSystem::RmFile(fn);
   FileSystem::RmDir(dir);
 
-  ASSERT_THROW(FileSystem::WriteStringToFile(fn.c_str(), "dir does not exist"), FileException);
+  ASSERT_THROW(FileSystem::WriteStringToFile("dir does not exist", fn.c_str()), FileException);
 }
 
 TEST(File, ScopedRmFile) {
@@ -150,7 +150,7 @@ TEST(File, ScopedRmFile) {
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
   {
     const auto file_remover = FileSystem::ScopedRmFile(fn);
-    FileSystem::WriteStringToFile(fn.c_str(), "PASSED");
+    FileSystem::WriteStringToFile("PASSED", fn.c_str());
     EXPECT_EQ("PASSED", FileSystem::ReadFileAsString(fn));
   }
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
@@ -183,8 +183,8 @@ TEST(File, ScanDir) {
   ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), FileException);
 
   FileSystem::MkDir(dir);
-  FileSystem::WriteStringToFile(fn1.c_str(), "foo");
-  FileSystem::WriteStringToFile(fn2.c_str(), "bar");
+  FileSystem::WriteStringToFile("foo", fn1.c_str());
+  FileSystem::WriteStringToFile("bar", fn2.c_str());
 
   Scanner scanner_after(dir);
   FileSystem::ScanDir(dir, scanner_after);

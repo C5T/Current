@@ -22,29 +22,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
-#define BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#ifndef BRICKS_GRAPH_DOCU_02
+#define BRICKS_GRAPH_DOCU_02
 
-#include "../../api.h"
-#include "../../../../strings/printf.h"
-#include "../../../../dflags/dflags.h"
-#include "../../../../3party/gtest/gtest-main-with-dflags.h"
+#include "../plotutils.h"
 
-DEFINE_int32(docu_net_server_port_03, 8082, "Okay to keep the same as in net/api/test.cc");
+#include "../../3party/gtest/gtest-main.h"
 
-using bricks::strings::Printf;
+TEST(Graph, PlotutilsLove) {
+  // Where visualization meets love.
+  const size_t N = 1000;
+  std::vector<std::pair<double, double>> line(N);
+    
+  for (size_t i = 0; i < N; ++i) {
+    const double t = M_PI * 2 * i / (N - 1);
+    line[i] = std::make_pair(
+      16 * pow(sin(t), 3),
+      -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
+  }
+  
+  // Pull Plotutils, LineColor, GridStyle and more plotutils-related symbols.
+  using namespace bricks::plotutils;
+  
+  const std::string result = Plotutils(line)
+    .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
+    .GridStyle(GridStyle::Full)
+    .Label("Imagine all the people ...")
+    .X("... living life in peace")
+    .Y("John Lennon, \"Imagine\"")
+    .LineWidth(0.015)
+    .OutputFormat("png");
 
-TEST(Docu, HTTPServer03) {
-const auto port = FLAGS_docu_net_server_port_03;
-HTTP(port).ResetAllHandlers();
-  // Constructing a more complex response.
-  HTTP(port).Register("/found", [](Request r) {
-    r("Yes.",
-      HTTPResponseCode.Accepted,
-      "text/html",
-      HTTPHeaders().Set("custom", "header").Set("another", "one"));
-  });
-EXPECT_EQ("Yes.", HTTP(GET(Printf("localhost:%d/found", port))).body);
+ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love.png"));
 }
 
-#endif  // BRICKS_NET_API_DOCU_SERVER_03_TEST_CC
+#endif  // BRICKS_GRAPH_DOCU_02

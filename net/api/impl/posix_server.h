@@ -273,4 +273,6 @@ class HTTPServerPOSIX final {
 }  // namespace net
 }  // namespace bricks
 
+using bricks::net::api::Request;
+
 #endif  // BRICKS_NET_API_POSIX_SERVER_H
