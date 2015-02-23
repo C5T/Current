@@ -34,6 +34,14 @@ struct FileException : Exception {
   FileException() : Exception() {}
 };
 
+struct DirDoesNotExistException : FileException {
+  DirDoesNotExistException() : FileException() {}
+};
+
+struct PathIsNotADirectoryException : FileException {
+  PathIsNotADirectoryException() : FileException() {}
+};
+
 }  // namespace bricks
 
 #endif  // BRICKS_FILE_EXCEPTIONS_H
