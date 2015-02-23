@@ -110,6 +110,10 @@ struct Request final {
     connection.SendHTTPResponse(p1, p2, p3, p4, p5);
   }
 
+  HTTPServerConnection::ChunkedResponseSender SendChunkedResponse() {
+    return connection.SendChunkedHTTPResponse();
+  }
+
   Request() = delete;
   Request(const Request&) = delete;
   void operator=(const Request&) = delete;
