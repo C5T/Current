@@ -62,6 +62,7 @@ using bricks::net::DefaultFourOhFourMessage;
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
 using bricks::net::SocketResolveAddressException;
+using bricks::net::CannotServeStaticFilesOfUnknownMIMEType;
 
 using namespace bricks::net::api;
 
@@ -494,3 +495,32 @@ TEST(HTTPAPI, UserAgent) {
 }
 
 TEST(HTTPAPI, InvalidUrl) { ASSERT_THROW(HTTP(GET("http://999.999.999.999/")), SocketResolveAddressException); }
+
+TEST(HTTPAPI, ServeDir) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  const std::string dir = FLAGS_net_api_test_tmpdir + "/static";
+  FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::WriteStringToFile("<h1>HTML</h1>", FileSystem::JoinPath(dir, "file.html").c_str());
+  FileSystem::WriteStringToFile("This is text.", FileSystem::JoinPath(dir, "file.txt").c_str());
+  FileSystem::WriteStringToFile("And this: PNG", FileSystem::JoinPath(dir, "file.png").c_str());
+  FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir_to_ignore"), FileSystem::MkDirParameters::Silent);
+  HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir);
+  EXPECT_EQ("<h1>HTML</h1>", HTTP(POST(Printf("localhost:%d/file.html", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("This is text.", HTTP(POST(Printf("localhost:%d/file.txt", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("And this: PNG", HTTP(POST(Printf("localhost:%d/file.png", FLAGS_net_api_test_port))).body);
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir_to_ignore"), FileSystem::RmDirParameters::Silent);
+  FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
+}
+
+TEST(HTTPAPI, ServeDirOnlyServesFilesOfKnownMIMEType) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  const std::string dir = FLAGS_net_api_test_tmpdir + "/wrong_static_files";
+  FileSystem::MkDir(dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::WriteStringToFile("TXT is okay.", FileSystem::JoinPath(dir, "file.txt").c_str());
+  FileSystem::WriteStringToFile("FOO is not! ", FileSystem::JoinPath(dir, "file.foo").c_str());
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir),
+               CannotServeStaticFilesOfUnknownMIMEType);
+  FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
+}
