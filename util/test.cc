@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include "make_scope_guard.h"
 #include "singleton.h"
+#include "sha256.h"
 
 #include "../exception.h"
 
@@ -36,7 +37,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:34\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:35\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -53,7 +54,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:51\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:52\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -201,4 +202,9 @@ TEST(Util, Singleton) {
   EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
   lambda();
   EXPECT_EQ(2u, bricks::Singleton<Foo>().bar);
+}
+
+TEST(Util, SHA256) {
+  EXPECT_EQ("a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
+            static_cast<std::string>(bricks::SHA256("Hello World")));
 }
