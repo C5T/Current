@@ -10,14 +10,14 @@ test:
 docu: README.md
 
 README.md:
-	./KnowSheet/scripts/gen-docu.sh >$@
+	./KnowSheet/scripts/gen-docu.sh >"$@"
 
 all:
-	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd $$i; make) ; done
+	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd "$$i"; make) ; done
 
 clean:
 	rm -rf .noshit
-	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd $$i; make clean) ; done
+	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd "$$i"; make clean) ; done
 
 check:
 	./KnowSheet/scripts/check-all-headers.sh
