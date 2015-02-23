@@ -33,6 +33,8 @@ SOFTWARE.
 
 using bricks::FileSystem;
 using bricks::FileException;
+using bricks::DirDoesNotExistException;
+using bricks::PathIsNotADirectoryException;
 
 DEFINE_string(file_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
 
@@ -163,6 +165,7 @@ TEST(File, ScanDir) {
 
   FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
   FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmFile(dir, FileSystem::RmFileParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
   struct Scanner {
@@ -179,8 +182,15 @@ TEST(File, ScanDir) {
   };
 
   Scanner scanner_before(dir);
-  ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), FileException);
-  ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), FileException);
+  ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), DirDoesNotExistException);
+  ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), DirDoesNotExistException);
+
+  {
+    const auto file_remover = FileSystem::ScopedRmFile(dir);
+    FileSystem::WriteStringToFile("This is a file, not a directory!", dir.c_str());
+    ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), PathIsNotADirectoryException);
+    ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), PathIsNotADirectoryException);
+  }
 
   FileSystem::MkDir(dir);
   FileSystem::WriteStringToFile("foo", fn1.c_str());
