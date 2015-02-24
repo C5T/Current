@@ -25,6 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_http", "..\net\http\net
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_api", "..\net\api\net_api.vcxproj", "{48AC2552-330F-42E2-BE8C-321C7649FD70}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zzz_full_test", "..\zzz_full_test\zzz_full_test.vcxproj", "{C6F9851F-C5CD-474B-862A-44E97D5B27F7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -75,6 +77,10 @@ Global
 		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Debug|Win32.Build.0 = Debug|Win32
 		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Release|Win32.ActiveCfg = Release|Win32
 		{48AC2552-330F-42E2-BE8C-321C7649FD70}.Release|Win32.Build.0 = Release|Win32
+		{C6F9851F-C5CD-474B-862A-44E97D5B27F7}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C6F9851F-C5CD-474B-862A-44E97D5B27F7}.Debug|Win32.Build.0 = Debug|Win32
+		{C6F9851F-C5CD-474B-862A-44E97D5B27F7}.Release|Win32.ActiveCfg = Release|Win32
+		{C6F9851F-C5CD-474B-862A-44E97D5B27F7}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
