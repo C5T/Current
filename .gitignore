@@ -11,8 +11,8 @@ coverage.info
 *.gcda
 *.gcno
 
-zzz_full_test/everything  # The binary.
-zzz_full_test/coverage    # The directory.
+everything  # The binary in zzz_full_test/
+coverage    # The directory in zzz_full_test/
 
 # Microsoft Visual Studio files.
 
