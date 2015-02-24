@@ -82,7 +82,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
   // Wait until at least two messages are processed by the consumer.
   // The second one will get its `dropped_messages_` count set.
   // (The first one might too, but that's uncertain.
-  while (c.processed_messages_ != 2) {
+  while (c.processed_messages_ < 2) {
     ;  // Spin lock;
   }
   // Confirm that some messages were indeed dropped.

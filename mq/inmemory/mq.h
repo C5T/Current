@@ -162,9 +162,6 @@ class MMQ final {
   // The number of messages that have been overwritten due to buffer overflow.
   size_t number_of_dropped_messages_ = 0;
 
-  // The thread in which the consuming process is running.
-  std::thread consumer_thread_;
-
   // To minimize the time for which the message emitting thread is blocked for,
   // the buffer uses three "pointers":
   // 1) `tail_`: The index of the next element to be exported and removed from the buffer.
@@ -184,6 +181,9 @@ class MMQ final {
 
   // For safe thread destruction.
   bool destructing_ = false;
+
+  // The thread in which the consuming process is running.
+  std::thread consumer_thread_;
 };
 
 #endif  // BRICKS_MQ_INMEMORY_MQ_H
