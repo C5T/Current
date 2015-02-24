@@ -178,6 +178,27 @@ struct FileSystem {
 
   template <typename F>
   static inline void ScanDirUntil(const std::string& directory, F&& f) {
+#ifdef BRICKS_WINDOWS
+    WIN32_FIND_DATAA find_data;
+    HANDLE handle = ::FindFirstFileA(directory.c_str(), &find_data);
+    if (handle == INVALID_HANDLE_VALUE) {
+      BRICKS_THROW(DirDoesNotExistException());
+    } else {
+      struct ScopedCloseFindFileHandle {
+        HANDLE handle_;
+        ScopedCloseFindFileHandle(HANDLE handle) : handle_(handle) {}
+        ~ScopedCloseFindFileHandle() { ::FindClose(handle_); }
+      };
+      const ScopedCloseFindFileHandle closer(handle);
+      do {
+        if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+          if (!lambda(find_data.cFileName)) {
+            return;
+          }
+        }
+      } while (::FindNextFileA(handle, &find_data) != 0);
+    }
+#else
     DIR* dir = ::opendir(directory.c_str());
     const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
     if (dir) {
@@ -198,6 +219,7 @@ struct FileSystem {
         BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
       }
     }
+#endif
   }
 
   template <typename F>
