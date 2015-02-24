@@ -1,0 +1,123 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/net/api/docu/server/docu_03httpserver_02_test.cc</title>
+  <link rel="stylesheet" type="text/css" href="../../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../../index.html">top level</a> - <a href="index.html">Bricks/net/api/docu/server</a> - docu_03httpserver_02_test.cc<span style="font-size: 80%;"> (source / <a href="docu_03httpserver_02_test.cc.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntry">9</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr><td><img src="../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2015 Dmitry &quot;Dima&quot; Korolev &lt;dmitry.korolev@gmail.com&gt;
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #ifndef BRICKS_NET_API_DOCU_SERVER_02_TEST_CC
+<span class="lineNum">      26 </span>            : #define BRICKS_NET_API_DOCU_SERVER_02_TEST_CC
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : #include &quot;../../api.h&quot;
+<span class="lineNum">      29 </span>            : #include &quot;../../../../strings/printf.h&quot;
+<span class="lineNum">      30 </span>            : #include &quot;../../../../dflags/dflags.h&quot;
+<span class="lineNum">      31 </span>            : #include &quot;../../../../3party/gtest/gtest-main-with-dflags.h&quot;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span><span class="lineCov">         22 : DEFINE_int32(docu_net_server_port_02, 8082, &quot;Okay to keep the same as in net/api/test.cc&quot;);</span>
+<span class="lineNum">      34 </span>            : 
+<a name="35"><span class="lineNum">      35 </span>            : using bricks::strings::Printf;</a>
+<span class="lineNum">      36 </span>            : 
+<span class="lineNum">      37 </span><span class="lineCov">         30 : TEST(Docu, HTTPServer02) {</span>
+<span class="lineNum">      38 </span><span class="lineCov">          2 : const auto port = FLAGS_docu_net_server_port_02;</span>
+<a name="39"><span class="lineNum">      39 </span><span class="lineCov">          2 : HTTP(port).ResetAllHandlers();</span></a>
+<span class="lineNum">      40 </span>            :   // Accessing input fields.
+<span class="lineNum">      41 </span><span class="lineCov">          4 :   HTTP(port).Register(&quot;/demo&quot;, [](Request r) {</span>
+<span class="lineNum">      42 </span><span class="lineCov">          2 :     r(r.url.query[&quot;q&quot;] + ' ' + r.method + ' ' + r.body);</span>
+<span class="lineNum">      43 </span><span class="lineCov">          6 :   });</span>
+<span class="lineNum">      44 </span><span class="lineCov">          2 : EXPECT_EQ(&quot;A POST body&quot;, HTTP(POST(Printf(&quot;localhost:%d/demo?q=A&quot;, port), &quot;body&quot;, &quot;text/plain&quot;)).body);</span>
+<span class="lineNum">      45 </span><span class="lineCov">          2 : }</span>
+<span class="lineNum">      46 </span>            : 
+<span class="lineNum">      47 </span>            : #endif  // BRICKS_NET_API_DOCU_SERVER_02_TEST_CC
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

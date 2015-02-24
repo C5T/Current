@@ -1,0 +1,289 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/net/api/impl/posix_client.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">Bricks/net/api/impl</a> - posix_client.h<span style="font-size: 80%;"> (source / <a href="posix_client.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">86</td>
+            <td class="headerCovTableEntry">86</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">24</td>
+            <td class="headerCovTableEntry">24</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2014 Dmitry &quot;Dima&quot; Korolev, &lt;dmitry.korolev@gmail.com&gt;.
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : // TODO(dkorolev): Handle empty POST body. Add a test for it.
+<span class="lineNum">      26 </span>            : // TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : #ifndef BRICKS_NET_API_POSIX_CLIENT_H
+<span class="lineNum">      29 </span>            : #define BRICKS_NET_API_POSIX_CLIENT_H
+<span class="lineNum">      30 </span>            : 
+<span class="lineNum">      31 </span>            : #include &quot;../types.h&quot;
+<span class="lineNum">      32 </span>            : #include &quot;../../url/url.h&quot;
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &lt;memory&gt;
+<span class="lineNum">      35 </span>            : #include &lt;string&gt;
+<span class="lineNum">      36 </span>            : #include &lt;set&gt;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : #include &quot;../../http/http.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;../../../file/file.h&quot;
+<span class="lineNum">      40 </span>            : 
+<span class="lineNum">      41 </span>            : namespace bricks {
+<span class="lineNum">      42 </span>            : namespace net {
+<a name="43"><span class="lineNum">      43 </span>            : namespace api {</a>
+<span class="lineNum">      44 </span>            : 
+<a name="45"><span class="lineNum">      45 </span><span class="lineCov">        372 : class HTTPClientPOSIX final {</span></a>
+<span class="lineNum">      46 </span>            :  private:
+<a name="47"><span class="lineNum">      47 </span><span class="lineCov">        256 :   struct HTTPRedirectHelper : HTTPDefaultHelper {</span></a>
+<span class="lineNum">      48 </span>            :     std::string location = &quot;&quot;;
+<span class="lineNum">      49 </span><span class="lineCov">        402 :     inline void OnHeader(const char* key, const char* value) {</span>
+<span class="lineNum">      50 </span><span class="lineCov">        402 :       if (std::string(&quot;Location&quot;) == key) {</span>
+<span class="lineNum">      51 </span><span class="lineCov">         10 :         location = value;</span>
+<span class="lineNum">      52 </span>            :       }
+<span class="lineNum">      53 </span><span class="lineCov">        402 :     }</span>
+<span class="lineNum">      54 </span>            :   };
+<span class="lineNum">      55 </span>            :   typedef TemplatedHTTPRequestData&lt;HTTPRedirectHelper&gt; HTTPRedirectableRequestData;
+<span class="lineNum">      56 </span>            : 
+<a name="57"><span class="lineNum">      57 </span>            :  public:</a>
+<span class="lineNum">      58 </span>            :   // The actual implementation.
+<span class="lineNum">      59 </span><span class="lineCov">        122 :   bool Go() {</span>
+<span class="lineNum">      60 </span>            :     // TODO(dkorolev): Always use the URL returned by the server here.
+<span class="lineNum">      61 </span><span class="lineCov">        122 :     response_url_after_redirects_ = request_url_;</span>
+<span class="lineNum">      62 </span><span class="lineCov">        122 :     url::URL parsed_url(request_url_);</span>
+<span class="lineNum">      63 </span><span class="lineCov">        244 :     std::set&lt;std::string&gt; all_urls;</span>
+<span class="lineNum">      64 </span>            :     bool redirected;
+<span class="lineNum">      65 </span><span class="lineCov">        128 :     do {</span>
+<span class="lineNum">      66 </span><span class="lineCov">        132 :       redirected = false;</span>
+<span class="lineNum">      67 </span><span class="lineCov">        132 :       const std::string composed_url = parsed_url.ComposeURL();</span>
+<span class="lineNum">      68 </span><span class="lineCov">        132 :       if (all_urls.count(composed_url)) {</span>
+<span class="lineNum">      69 </span><span class="lineCov">          2 :         BRICKS_THROW(HTTPRedirectLoopException());</span>
+<span class="lineNum">      70 </span>            :       }
+<span class="lineNum">      71 </span><span class="lineCov">        130 :       all_urls.insert(composed_url);</span>
+<span class="lineNum">      72 </span><span class="lineCov">        258 :       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));</span>
+<span class="lineNum">      73 </span><span class="lineCov">        256 :       connection.BlockingWrite(request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() +</span>
+<span class="lineNum">      74 </span><span class="lineCov">        128 :                                &quot; HTTP/1.1\r\n&quot;);</span>
+<span class="lineNum">      75 </span><span class="lineCov">        128 :       connection.BlockingWrite(&quot;Host: &quot; + parsed_url.host + &quot;\r\n&quot;);</span>
+<span class="lineNum">      76 </span><span class="lineCov">        128 :       if (!request_user_agent_.empty()) {</span>
+<span class="lineNum">      77 </span><span class="lineCov">          2 :         connection.BlockingWrite(&quot;User-Agent: &quot; + request_user_agent_ + &quot;\r\n&quot;);</span>
+<span class="lineNum">      78 </span>            :       }
+<span class="lineNum">      79 </span><span class="lineCov">        128 :       if (!request_body_content_type_.empty()) {</span>
+<span class="lineNum">      80 </span><span class="lineCov">         36 :         connection.BlockingWrite(&quot;Content-Type: &quot; + request_body_content_type_ + &quot;\r\n&quot;);</span>
+<span class="lineNum">      81 </span>            :       }
+<span class="lineNum">      82 </span><span class="lineCov">        128 :       if (request_has_body_) {</span>
+<span class="lineNum">      83 </span><span class="lineCov">         36 :         connection.BlockingWrite(&quot;Content-Length: &quot; + std::to_string(request_body_contents_.length()) + &quot;\r\n&quot;);</span>
+<span class="lineNum">      84 </span><span class="lineCov">         36 :         connection.BlockingWrite(&quot;\r\n&quot;);</span>
+<span class="lineNum">      85 </span><span class="lineCov">         36 :         connection.BlockingWrite(request_body_contents_);</span>
+<span class="lineNum">      86 </span>            :       } else {
+<span class="lineNum">      87 </span><span class="lineCov">         92 :         connection.BlockingWrite(&quot;\r\n&quot;);</span>
+<span class="lineNum">      88 </span>            :       }
+<span class="lineNum">      89 </span>            :       // Attention! Achtung! Увага! Внимание!
+<span class="lineNum">      90 </span>            :       // Calling SendEOF() (which is ::shutdown(socket, SHUT_WR);) results in slowly sent data
+<span class="lineNum">      91 </span>            :       // not being received. Tested on local and remote data with &quot;chunked&quot; transfer encoding.
+<span class="lineNum">      92 </span>            :       // Don't uncomment the next line!
+<span class="lineNum">      93 </span>            :       // connection.SendEOF();
+<span class="lineNum">      94 </span><span class="lineCov">        128 :       http_request_.reset(new HTTPRedirectableRequestData(connection));</span>
+<span class="lineNum">      95 </span>            :       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
+<span class="lineNum">      96 </span>            :       // Elaboration:
+<span class="lineNum">      97 </span>            :       // HTTP request  message is: `GET /path HTTP/1.1`, &quot;/path&quot; is the second component of it.
+<span class="lineNum">      98 </span>            :       // HTTP response message is: `HTTP/1.1 200 OK`, &quot;200&quot; is the second component of it.
+<span class="lineNum">      99 </span>            :       // Thus, since the same code is used for request and response parsing as of now,
+<span class="lineNum">     100 </span>            :       // the numerical response code &quot;200&quot; can be accessed with the same method as the &quot;/path&quot;.
+<span class="lineNum">     101 </span><span class="lineCov">        128 :       const int response_code_as_int = atoi(http_request_-&gt;RawPath().c_str());</span>
+<span class="lineNum">     102 </span><span class="lineCov">        128 :       response_code_ = HTTPResponseCode(response_code_as_int);</span>
+<span class="lineNum">     103 </span><span class="lineCov">        128 :       if (response_code_as_int &gt;= 300 &amp;&amp; response_code_as_int &lt;= 399 &amp;&amp; !http_request_-&gt;location.empty()) {</span>
+<span class="lineNum">     104 </span>            :         // Note: This is by no means a complete redirect implementation.
+<span class="lineNum">     105 </span><span class="lineCov">         10 :         redirected = true;</span>
+<span class="lineNum">     106 </span><span class="lineCov">         10 :         parsed_url = url::URL(http_request_-&gt;location, parsed_url);</span>
+<span class="lineNum">     107 </span><span class="lineCov">         10 :         response_url_after_redirects_ = parsed_url.ComposeURL();</span>
+<span class="lineNum">     108 </span><span class="lineCov">        132 :       }</span>
+<span class="lineNum">     109 </span>            :     } while (redirected);
+<span class="lineNum">     110 </span><span class="lineCov">        240 :     return true;</span>
+<a name="111"><span class="lineNum">     111 </span>            :   }</a>
+<span class="lineNum">     112 </span>            : 
+<span class="lineNum">     113 </span><span class="lineCov">        116 :   const HTTPRedirectableRequestData&amp; HTTPRequest() const { return *http_request_.get(); }</span>
+<span class="lineNum">     114 </span>            : 
+<span class="lineNum">     115 </span>            :  public:
+<span class="lineNum">     116 </span>            :   // Request parameters.
+<span class="lineNum">     117 </span>            :   std::string request_method_ = &quot;&quot;;
+<span class="lineNum">     118 </span>            :   std::string request_url_ = &quot;&quot;;
+<span class="lineNum">     119 </span>            :   std::string request_body_content_type_ = &quot;&quot;;
+<span class="lineNum">     120 </span>            :   bool request_has_body_ = false;  // TODO(dkorolev): Support this in ObjectiveC and Java code as well.
+<span class="lineNum">     121 </span>            :   std::string request_body_contents_ = &quot;&quot;;
+<span class="lineNum">     122 </span>            :   std::string request_user_agent_ = &quot;&quot;;
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span>            :   // Output parameters.
+<span class="lineNum">     125 </span><span class="lineCov">        124 :   HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;</span>
+<span class="lineNum">     126 </span>            :   std::string response_url_after_redirects_ = &quot;&quot;;
+<span class="lineNum">     127 </span>            : 
+<span class="lineNum">     128 </span>            :  private:
+<span class="lineNum">     129 </span>            :   std::unique_ptr&lt;HTTPRedirectableRequestData&gt; http_request_;
+<span class="lineNum">     130 </span>            : };
+<span class="lineNum">     131 </span>            : 
+<a name="132"><span class="lineNum">     132 </span>            : template &lt;&gt;</a>
+<span class="lineNum">     133 </span>            : struct ImplWrapper&lt;HTTPClientPOSIX&gt; {
+<span class="lineNum">     134 </span><span class="lineCov">         68 :   inline static void PrepareInput(const GET&amp; request, HTTPClientPOSIX&amp; client) {</span>
+<span class="lineNum">     135 </span><span class="lineCov">         68 :     client.request_method_ = &quot;GET&quot;;</span>
+<span class="lineNum">     136 </span><span class="lineCov">         68 :     client.request_url_ = request.url;</span>
+<span class="lineNum">     137 </span><span class="lineCov">         68 :     if (!request.custom_user_agent.empty()) {</span>
+<span class="lineNum">     138 </span><span class="lineCov">          2 :       client.request_user_agent_ = request.custom_user_agent;</span>
+<span class="lineNum">     139 </span>            :     }
+<a name="140"><span class="lineNum">     140 </span><span class="lineCov">         68 :   }</span></a>
+<span class="lineNum">     141 </span>            : 
+<span class="lineNum">     142 </span><span class="lineCov">         50 :   inline static void PrepareInput(const POST&amp; request, HTTPClientPOSIX&amp; client) {</span>
+<span class="lineNum">     143 </span><span class="lineCov">         50 :     client.request_method_ = &quot;POST&quot;;</span>
+<span class="lineNum">     144 </span><span class="lineCov">         50 :     client.request_url_ = request.url;</span>
+<span class="lineNum">     145 </span><span class="lineCov">         50 :     if (!request.custom_user_agent.empty()) {</span>
+<span class="lineNum">     146 </span>            :       client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+<span class="lineNum">     147 </span>            :     }
+<span class="lineNum">     148 </span><span class="lineCov">         50 :     client.request_has_body_ = request.has_body;</span>
+<span class="lineNum">     149 </span><span class="lineCov">         50 :     if (request.has_body) {</span>
+<span class="lineNum">     150 </span><span class="lineCov">         32 :       client.request_body_contents_ = request.body;</span>
+<span class="lineNum">     151 </span><span class="lineCov">         32 :       client.request_body_content_type_ = request.content_type;</span>
+<span class="lineNum">     152 </span>            :     }
+<a name="153"><span class="lineNum">     153 </span><span class="lineCov">         50 :   }</span></a>
+<span class="lineNum">     154 </span>            : 
+<span class="lineNum">     155 </span><span class="lineCov">          6 :   inline static void PrepareInput(const POSTFromFile&amp; request, HTTPClientPOSIX&amp; client) {</span>
+<span class="lineNum">     156 </span><span class="lineCov">          6 :     client.request_method_ = &quot;POST&quot;;</span>
+<span class="lineNum">     157 </span><span class="lineCov">          6 :     client.request_url_ = request.url;</span>
+<span class="lineNum">     158 </span><span class="lineCov">          6 :     if (!request.custom_user_agent.empty()) {</span>
+<span class="lineNum">     159 </span>            :       client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+<span class="lineNum">     160 </span>            :     }
+<span class="lineNum">     161 </span><span class="lineCov">          6 :     client.request_has_body_ = true;</span>
+<span class="lineNum">     162 </span><span class="lineCov">         10 :     client.request_body_contents_ =</span>
+<span class="lineNum">     163 </span><span class="lineCov">          4 :         FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.</span>
+<span class="lineNum">     164 </span><span class="lineCov">          4 :     client.request_body_content_type_ = request.content_type;</span>
+<a name="165"><span class="lineNum">     165 </span><span class="lineCov">          4 :   }</span></a>
+<span class="lineNum">     166 </span>            : 
+<a name="167"><span class="lineNum">     167 </span><span class="lineCov">        116 :   inline static void PrepareInput(const KeepResponseInMemory&amp;, HTTPClientPOSIX&amp;) {}</span></a>
+<span class="lineNum">     168 </span>            : 
+<span class="lineNum">     169 </span><span class="lineCov">          6 :   inline static void PrepareInput(const SaveResponseToFile&amp; save_to_file_request, HTTPClientPOSIX&amp;) {</span>
+<span class="lineNum">     170 </span><span class="lineCov">          6 :     assert(!save_to_file_request.file_name.empty());</span>
+<span class="lineNum">     171 </span><span class="lineCov">          6 :   }</span>
+<a name="172"><span class="lineNum">     172 </span>            : </a>
+<span class="lineNum">     173 </span>            :   template &lt;typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS&gt;
+<span class="lineNum">     174 </span><span class="lineCov">        118 :   inline static void ParseOutput(const T_REQUEST_PARAMS&amp; request_params,</span>
+<span class="lineNum">     175 </span>            :                                  const T_RESPONSE_PARAMS&amp; /*response_params*/,
+<span class="lineNum">     176 </span>            :                                  const HTTPClientPOSIX&amp; response,
+<span class="lineNum">     177 </span>            :                                  HTTPResponse&amp; output) {
+<span class="lineNum">     178 </span><span class="lineCov">        118 :     if (!request_params.allow_redirects &amp;&amp; request_params.url != response.response_url_after_redirects_) {</span>
+<span class="lineNum">     179 </span><span class="lineCov">          2 :       BRICKS_THROW(HTTPRedirectNotAllowedException());</span>
+<span class="lineNum">     180 </span>            :     }
+<span class="lineNum">     181 </span><span class="lineCov">        116 :     output.url = response.response_url_after_redirects_;</span>
+<span class="lineNum">     182 </span><span class="lineCov">        116 :     output.code = response.response_code_;</span>
+<span class="lineNum">     183 </span><span class="lineCov">        116 :   }</span>
+<a name="184"><span class="lineNum">     184 </span>            : </a>
+<span class="lineNum">     185 </span>            :   template &lt;typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS&gt;
+<span class="lineNum">     186 </span><span class="lineCov">        112 :   inline static void ParseOutput(const T_REQUEST_PARAMS&amp; request_params,</span>
+<span class="lineNum">     187 </span>            :                                  const T_RESPONSE_PARAMS&amp; response_params,
+<span class="lineNum">     188 </span>            :                                  const HTTPClientPOSIX&amp; response,
+<span class="lineNum">     189 </span>            :                                  HTTPResponseWithBuffer&amp; output) {
+<span class="lineNum">     190 </span><span class="lineCov">        112 :     ParseOutput(request_params, response_params, response, static_cast&lt;HTTPResponse&amp;&gt;(output));</span>
+<span class="lineNum">     191 </span><span class="lineCov">        110 :     const auto&amp; http_request = response.HTTPRequest();</span>
+<span class="lineNum">     192 </span><span class="lineCov">        110 :     output.body = http_request.HasBody() ? http_request.Body() : &quot;&quot;;</span>
+<span class="lineNum">     193 </span><span class="lineCov">        110 :   }</span>
+<a name="194"><span class="lineNum">     194 </span>            : </a>
+<span class="lineNum">     195 </span>            :   template &lt;typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS&gt;
+<span class="lineNum">     196 </span><span class="lineCov">          6 :   inline static void ParseOutput(const T_REQUEST_PARAMS&amp; request_params,</span>
+<span class="lineNum">     197 </span>            :                                  const T_RESPONSE_PARAMS&amp; response_params,
+<span class="lineNum">     198 </span>            :                                  const HTTPClientPOSIX&amp; response,
+<span class="lineNum">     199 </span>            :                                  HTTPResponseWithResultingFileName&amp; output) {
+<span class="lineNum">     200 </span><span class="lineCov">          6 :     ParseOutput(request_params, response_params, response, static_cast&lt;HTTPResponse&amp;&gt;(output));</span>
+<span class="lineNum">     201 </span>            :     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
+<span class="lineNum">     202 </span><span class="lineCov">          6 :     const auto&amp; http_request = response.HTTPRequest();</span>
+<span class="lineNum">     203 </span><span class="lineCov">         24 :     FileSystem::WriteStringToFile(http_request.HasBody() ? http_request.Body() : &quot;&quot;,</span>
+<span class="lineNum">     204 </span><span class="lineCov">         24 :                                   response_params.file_name.c_str());</span>
+<span class="lineNum">     205 </span><span class="lineCov">          6 :     output.body_file_name = response_params.file_name;</span>
+<span class="lineNum">     206 </span><span class="lineCov">          6 :   }</span>
+<span class="lineNum">     207 </span>            : };
+<span class="lineNum">     208 </span>            : 
+<span class="lineNum">     209 </span>            : }  // namespace api
+<span class="lineNum">     210 </span>            : }  // namespace net
+<span class="lineNum">     211 </span>            : }  // namespace bricks
+<span class="lineNum">     212 </span>            : 
+<span class="lineNum">     213 </span>            : #endif  // BRICKS_NET_API_POSIX_CLIENT_H
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

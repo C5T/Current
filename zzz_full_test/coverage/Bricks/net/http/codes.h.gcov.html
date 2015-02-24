@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/net/http/codes.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">Bricks/net/http</a> - codes.h<span style="font-size: 80%;"> (source / <a href="codes.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntry">7</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntry">2</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2014 Dmitry &quot;Dima&quot; Korolev &lt;dmitry.korolev@gmail.com&gt;
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #ifndef BRICKS_NET_HTTP_CODES_H
+<span class="lineNum">      26 </span>            : #define BRICKS_NET_HTTP_CODES_H
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : // HTTP codes: http://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;map&gt;
+<span class="lineNum">      31 </span>            : #include &lt;string&gt;
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span>            : #include &quot;../../util/singleton.h&quot;
+<span class="lineNum">      34 </span>            : 
+<span class="lineNum">      35 </span>            : namespace bricks {
+<span class="lineNum">      36 </span>            : namespace net {
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : enum class HTTPResponseCodeValue : int {
+<span class="lineNum">      39 </span>            :   InvalidCode = -1,
+<span class="lineNum">      40 </span>            :   Continue = 100,
+<span class="lineNum">      41 </span>            :   SwitchingProtocols = 101,
+<span class="lineNum">      42 </span>            :   OK = 200,
+<span class="lineNum">      43 </span>            :   Created = 201,
+<span class="lineNum">      44 </span>            :   Accepted = 202,
+<span class="lineNum">      45 </span>            :   NonAuthoritativeInformation = 203,
+<span class="lineNum">      46 </span>            :   NoContent = 204,
+<span class="lineNum">      47 </span>            :   ResetContent = 205,
+<span class="lineNum">      48 </span>            :   PartialContent = 206,
+<span class="lineNum">      49 </span>            :   MultipleChoices = 300,
+<span class="lineNum">      50 </span>            :   MovedPermanently = 301,
+<span class="lineNum">      51 </span>            :   Found = 302,
+<span class="lineNum">      52 </span>            :   SeeOther = 303,
+<span class="lineNum">      53 </span>            :   NotModified = 304,
+<span class="lineNum">      54 </span>            :   UseProxy = 305,
+<span class="lineNum">      55 </span>            :   TemporaryRedirect = 307,
+<span class="lineNum">      56 </span>            :   BadRequest = 400,
+<span class="lineNum">      57 </span>            :   Unauthorized = 401,
+<span class="lineNum">      58 </span>            :   PaymentRequired = 402,
+<span class="lineNum">      59 </span>            :   Forbidden = 403,
+<span class="lineNum">      60 </span>            :   NotFound = 404,
+<span class="lineNum">      61 </span>            :   MethodNotAllowed = 405,
+<span class="lineNum">      62 </span>            :   NotAcceptable = 406,
+<span class="lineNum">      63 </span>            :   ProxyAuthenticationRequired = 407,
+<span class="lineNum">      64 </span>            :   RequestTimeout = 408,
+<span class="lineNum">      65 </span>            :   Conflict = 409,
+<span class="lineNum">      66 </span>            :   Gone = 410,
+<span class="lineNum">      67 </span>            :   LengthRequired = 411,
+<span class="lineNum">      68 </span>            :   PreconditionFailed = 412,
+<span class="lineNum">      69 </span>            :   RequestEntityTooLarge = 413,
+<span class="lineNum">      70 </span>            :   RequestURITooLarge = 414,
+<span class="lineNum">      71 </span>            :   UnsupportedMediaType = 415,
+<span class="lineNum">      72 </span>            :   RequestedRangeNotSatisfiable = 416,
+<span class="lineNum">      73 </span>            :   ExpectationFailed = 417,
+<span class="lineNum">      74 </span>            :   InternalServerError = 500,
+<span class="lineNum">      75 </span>            :   NotImplemented = 501,
+<span class="lineNum">      76 </span>            :   BadGateway = 502,
+<span class="lineNum">      77 </span>            :   ServiceUnavailable = 503,
+<span class="lineNum">      78 </span>            :   GatewayTimeout = 504,
+<span class="lineNum">      79 </span>            :   HTTPVersionNotSupported = 505,
+<span class="lineNum">      80 </span>            : };
+<span class="lineNum">      81 </span>            : 
+<span class="lineNum">      82 </span>            : // Dot notation to allow node.js-friendly syntax of `HTTPResponseCode.OK`, etc.
+<span class="lineNum">      83 </span>            : struct HTTPResponseCodeDotNotation {
+<span class="lineNum">      84 </span>            :   const HTTPResponseCodeValue InvalidCode = HTTPResponseCodeValue::InvalidCode;
+<span class="lineNum">      85 </span>            :   const HTTPResponseCodeValue Continue = HTTPResponseCodeValue::Continue;
+<span class="lineNum">      86 </span>            :   const HTTPResponseCodeValue SwitchingProtocols = HTTPResponseCodeValue::SwitchingProtocols;
+<span class="lineNum">      87 </span>            :   const HTTPResponseCodeValue OK = HTTPResponseCodeValue::OK;
+<span class="lineNum">      88 </span>            :   const HTTPResponseCodeValue Created = HTTPResponseCodeValue::Created;
+<span class="lineNum">      89 </span>            :   const HTTPResponseCodeValue Accepted = HTTPResponseCodeValue::Accepted;
+<span class="lineNum">      90 </span>            :   const HTTPResponseCodeValue NonAuthoritativeInformation = HTTPResponseCodeValue::NonAuthoritativeInformation;
+<span class="lineNum">      91 </span>            :   const HTTPResponseCodeValue NoContent = HTTPResponseCodeValue::NoContent;
+<span class="lineNum">      92 </span>            :   const HTTPResponseCodeValue ResetContent = HTTPResponseCodeValue::ResetContent;
+<span class="lineNum">      93 </span>            :   const HTTPResponseCodeValue PartialContent = HTTPResponseCodeValue::PartialContent;
+<span class="lineNum">      94 </span>            :   const HTTPResponseCodeValue MultipleChoices = HTTPResponseCodeValue::MultipleChoices;
+<span class="lineNum">      95 </span>            :   const HTTPResponseCodeValue MovedPermanently = HTTPResponseCodeValue::MovedPermanently;
+<span class="lineNum">      96 </span>            :   const HTTPResponseCodeValue Found = HTTPResponseCodeValue::Found;
+<span class="lineNum">      97 </span>            :   const HTTPResponseCodeValue SeeOther = HTTPResponseCodeValue::SeeOther;
+<span class="lineNum">      98 </span>            :   const HTTPResponseCodeValue NotModified = HTTPResponseCodeValue::NotModified;
+<span class="lineNum">      99 </span>            :   const HTTPResponseCodeValue UseProxy = HTTPResponseCodeValue::UseProxy;
+<span class="lineNum">     100 </span>            :   const HTTPResponseCodeValue TemporaryRedirect = HTTPResponseCodeValue::TemporaryRedirect;
+<span class="lineNum">     101 </span>            :   const HTTPResponseCodeValue BadRequest = HTTPResponseCodeValue::BadRequest;
+<span class="lineNum">     102 </span>            :   const HTTPResponseCodeValue Unauthorized = HTTPResponseCodeValue::Unauthorized;
+<span class="lineNum">     103 </span>            :   const HTTPResponseCodeValue PaymentRequired = HTTPResponseCodeValue::PaymentRequired;
+<span class="lineNum">     104 </span>            :   const HTTPResponseCodeValue Forbidden = HTTPResponseCodeValue::Forbidden;
+<span class="lineNum">     105 </span>            :   const HTTPResponseCodeValue NotFound = HTTPResponseCodeValue::NotFound;
+<span class="lineNum">     106 </span>            :   const HTTPResponseCodeValue MethodNotAllowed = HTTPResponseCodeValue::MethodNotAllowed;
+<span class="lineNum">     107 </span>            :   const HTTPResponseCodeValue NotAcceptable = HTTPResponseCodeValue::NotAcceptable;
+<span class="lineNum">     108 </span>            :   const HTTPResponseCodeValue ProxyAuthenticationRequired = HTTPResponseCodeValue::ProxyAuthenticationRequired;
+<span class="lineNum">     109 </span>            :   const HTTPResponseCodeValue RequestTimeout = HTTPResponseCodeValue::RequestTimeout;
+<span class="lineNum">     110 </span>            :   const HTTPResponseCodeValue Conflict = HTTPResponseCodeValue::Conflict;
+<span class="lineNum">     111 </span>            :   const HTTPResponseCodeValue Gone = HTTPResponseCodeValue::Gone;
+<span class="lineNum">     112 </span>            :   const HTTPResponseCodeValue LengthRequired = HTTPResponseCodeValue::LengthRequired;
+<span class="lineNum">     113 </span>            :   const HTTPResponseCodeValue PreconditionFailed = HTTPResponseCodeValue::PreconditionFailed;
+<span class="lineNum">     114 </span>            :   const HTTPResponseCodeValue RequestEntityTooLarge = HTTPResponseCodeValue::RequestEntityTooLarge;
+<span class="lineNum">     115 </span>            :   const HTTPResponseCodeValue RequestURITooLarge = HTTPResponseCodeValue::RequestURITooLarge;
+<span class="lineNum">     116 </span>            :   const HTTPResponseCodeValue UnsupportedMediaType = HTTPResponseCodeValue::UnsupportedMediaType;
+<span class="lineNum">     117 </span>            :   const HTTPResponseCodeValue RequestedRangeNotSatisfiable =
+<span class="lineNum">     118 </span>            :       HTTPResponseCodeValue::RequestedRangeNotSatisfiable;
+<span class="lineNum">     119 </span>            :   const HTTPResponseCodeValue ExpectationFailed = HTTPResponseCodeValue::ExpectationFailed;
+<span class="lineNum">     120 </span>            :   const HTTPResponseCodeValue InternalServerError = HTTPResponseCodeValue::InternalServerError;
+<span class="lineNum">     121 </span>            :   const HTTPResponseCodeValue NotImplemented = HTTPResponseCodeValue::NotImplemented;
+<span class="lineNum">     122 </span>            :   const HTTPResponseCodeValue BadGateway = HTTPResponseCodeValue::BadGateway;
+<span class="lineNum">     123 </span>            :   const HTTPResponseCodeValue ServiceUnavailable = HTTPResponseCodeValue::ServiceUnavailable;
+<a name="124"><span class="lineNum">     124 </span>            :   const HTTPResponseCodeValue GatewayTimeout = HTTPResponseCodeValue::GatewayTimeout;</a>
+<span class="lineNum">     125 </span>            :   const HTTPResponseCodeValue HTTPVersionNotSupported = HTTPResponseCodeValue::HTTPVersionNotSupported;
+<span class="lineNum">     126 </span><span class="lineCov">        136 :   inline HTTPResponseCodeValue operator()(int code) { return static_cast&lt;HTTPResponseCodeValue&gt;(code); }</span>
+<span class="lineNum">     127 </span>            : };
+<span class="lineNum">     128 </span>            : 
+<a name="129"><span class="lineNum">     129 </span>            : #define HTTPResponseCode (bricks::Singleton&lt;bricks::net::HTTPResponseCodeDotNotation&gt;())</a>
+<span class="lineNum">     130 </span>            : 
+<span class="lineNum">     131 </span><span class="lineCov">        178 : inline std::string HTTPResponseCodeAsString(HTTPResponseCodeValue code) {</span>
+<span class="lineNum">     132 </span>            :   static const std::map&lt;int, std::string&gt; codes = {
+<span class="lineNum">     133 </span>            :       {100, &quot;Continue&quot;},
+<span class="lineNum">     134 </span>            :       {101, &quot;Switching Protocols&quot;},
+<span class="lineNum">     135 </span>            :       {200, &quot;OK&quot;},
+<span class="lineNum">     136 </span>            :       {201, &quot;Created&quot;},
+<span class="lineNum">     137 </span>            :       {202, &quot;Accepted&quot;},
+<span class="lineNum">     138 </span>            :       {203, &quot;Non-Authoritative Information&quot;},
+<span class="lineNum">     139 </span>            :       {204, &quot;No Content&quot;},
+<span class="lineNum">     140 </span>            :       {205, &quot;Reset Content&quot;},
+<span class="lineNum">     141 </span>            :       {206, &quot;Partial Content&quot;},
+<span class="lineNum">     142 </span>            :       {300, &quot;Multiple Choices&quot;},
+<span class="lineNum">     143 </span>            :       {301, &quot;Moved Permanently&quot;},
+<span class="lineNum">     144 </span>            :       {302, &quot;Found&quot;},
+<span class="lineNum">     145 </span>            :       {303, &quot;See Other&quot;},
+<span class="lineNum">     146 </span>            :       {304, &quot;Not Modified&quot;},
+<span class="lineNum">     147 </span>            :       {305, &quot;Use Proxy&quot;},
+<span class="lineNum">     148 </span>            :       {307, &quot;Temporary Redirect&quot;},
+<span class="lineNum">     149 </span>            :       {400, &quot;Bad Request&quot;},
+<span class="lineNum">     150 </span>            :       {401, &quot;Unauthorized&quot;},
+<span class="lineNum">     151 </span>            :       {402, &quot;Payment Required&quot;},
+<span class="lineNum">     152 </span>            :       {403, &quot;Forbidden&quot;},
+<span class="lineNum">     153 </span>            :       {404, &quot;Not Found&quot;},
+<span class="lineNum">     154 </span>            :       {405, &quot;Method Not Allowed&quot;},
+<span class="lineNum">     155 </span>            :       {406, &quot;Not Acceptable&quot;},
+<span class="lineNum">     156 </span>            :       {407, &quot;Proxy Authentication Required&quot;},
+<span class="lineNum">     157 </span>            :       {408, &quot;Request Time-out&quot;},
+<span class="lineNum">     158 </span>            :       {409, &quot;Conflict&quot;},
+<span class="lineNum">     159 </span>            :       {410, &quot;Gone&quot;},
+<span class="lineNum">     160 </span>            :       {411, &quot;Length Required&quot;},
+<span class="lineNum">     161 </span>            :       {412, &quot;Precondition Failed&quot;},
+<span class="lineNum">     162 </span>            :       {413, &quot;Request Entity Too Large&quot;},
+<span class="lineNum">     163 </span>            :       {414, &quot;Request-URI Too Large&quot;},
+<span class="lineNum">     164 </span>            :       {415, &quot;Unsupported Media Type&quot;},
+<span class="lineNum">     165 </span>            :       {416, &quot;Requested range not satisfiable&quot;},
+<span class="lineNum">     166 </span>            :       {417, &quot;Expectation Failed&quot;},
+<span class="lineNum">     167 </span>            :       {500, &quot;Internal Server Error&quot;},
+<span class="lineNum">     168 </span>            :       {501, &quot;Not Implemented&quot;},
+<span class="lineNum">     169 </span>            :       {502, &quot;Bad Gateway&quot;},
+<span class="lineNum">     170 </span>            :       {503, &quot;Service Unavailable&quot;},
+<span class="lineNum">     171 </span>            :       {504, &quot;Gateway Time-out&quot;},
+<span class="lineNum">     172 </span>            :       {505, &quot;HTTP Version not supported&quot;},
+<span class="lineNum">     173 </span>            :       {-1, &quot;&lt;UNINITIALIZED&gt;&quot;}  // `-1` is used internally by Bricks as `uninitialized`.
+<span class="lineNum">     174 </span><span class="lineCov">        178 :   };</span>
+<span class="lineNum">     175 </span><span class="lineCov">        178 :   const auto cit = codes.find(static_cast&lt;int&gt;(code));</span>
+<span class="lineNum">     176 </span><span class="lineCov">        178 :   if (cit != codes.end()) {</span>
+<span class="lineNum">     177 </span><span class="lineCov">        176 :     return cit-&gt;second;</span>
+<span class="lineNum">     178 </span>            :   } else {
+<span class="lineNum">     179 </span><span class="lineCov">          2 :     return &quot;Unknown Code&quot;;</span>
+<span class="lineNum">     180 </span>            :   }
+<span class="lineNum">     181 </span>            : }
+<span class="lineNum">     182 </span>            : 
+<span class="lineNum">     183 </span>            : }  // namespace net
+<span class="lineNum">     184 </span>            : }  // namespace bricks
+<span class="lineNum">     185 </span>            : 
+<span class="lineNum">     186 </span>            : #endif  // BRICKS_NET_HTTP_CODES_H
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

@@ -1,0 +1,655 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/net/http/impl/server.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../../index.html">top level</a> - <a href="index.html">Bricks/net/http/impl</a> - server.h<span style="font-size: 80%;"> (source / <a href="server.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">186</td>
+            <td class="headerCovTableEntry">186</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">60</td>
+            <td class="headerCovTableEntry">61</td>
+            <td class="headerCovTableEntryHi">98.4 %</td>
+          </tr>
+          <tr><td><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2014 Dmitry &quot;Dima&quot; Korolev &lt;dmitry.korolev@gmail.com&gt;
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #ifndef BRICKS_NET_HTTP_IMPL_SERVER_H
+<span class="lineNum">      26 </span>            : #define BRICKS_NET_HTTP_IMPL_SERVER_H
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : #include &lt;map&gt;
+<span class="lineNum">      29 </span>            : #include &lt;sstream&gt;
+<span class="lineNum">      30 </span>            : #include &lt;string&gt;
+<span class="lineNum">      31 </span>            : #include &lt;vector&gt;
+<span class="lineNum">      32 </span>            : #include &lt;memory&gt;
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &quot;../codes.h&quot;
+<span class="lineNum">      35 </span>            : #include &quot;../mime_type.h&quot;
+<span class="lineNum">      36 </span>            : #include &quot;../default_messages.h&quot;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : #include &quot;../../exceptions.h&quot;
+<span class="lineNum">      39 </span>            : 
+<span class="lineNum">      40 </span>            : #include &quot;../../tcp/tcp.h&quot;
+<span class="lineNum">      41 </span>            : #include &quot;../../url/url.h&quot;
+<span class="lineNum">      42 </span>            : 
+<span class="lineNum">      43 </span>            : #include &quot;../../../strings/util.h&quot;
+<span class="lineNum">      44 </span>            : #include &quot;../../../cerealize/cerealize.h&quot;
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span>            : namespace bricks {
+<span class="lineNum">      47 </span>            : namespace net {
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : // HTTP constants to parse the header and extract method, URL, headers and body.
+<span class="lineNum">      50 </span>            : namespace {
+<span class="lineNum">      51 </span>            : 
+<span class="lineNum">      52 </span>            : const char kCRLF[] = &quot;\r\n&quot;;
+<span class="lineNum">      53 </span>            : const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
+<span class="lineNum">      54 </span>            : const char kHeaderKeyValueSeparator[] = &quot;: &quot;;
+<span class="lineNum">      55 </span>            : const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
+<span class="lineNum">      56 </span>            : const char* const kContentLengthHeaderKey = &quot;Content-Length&quot;;
+<span class="lineNum">      57 </span>            : const char* const kTransferEncodingHeaderKey = &quot;Transfer-Encoding&quot;;
+<span class="lineNum">      58 </span>            : const char* const kTransferEncodingChunkedValue = &quot;chunked&quot;;
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : }  // namespace constants
+<span class="lineNum">      61 </span>            : 
+<a name="62"><span class="lineNum">      62 </span>            : typedef std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; HTTPHeadersType;</a>
+<span class="lineNum">      63 </span>            : 
+<a name="64"><span class="lineNum">      64 </span><span class="lineCov">         16 : struct HTTPHeaders {</span></a>
+<a name="65"><span class="lineNum">      65 </span>            :   HTTPHeadersType headers;</a>
+<a name="66"><span class="lineNum">      66 </span><span class="lineCov">          2 :   HTTPHeaders() : headers() {}</span></a>
+<span class="lineNum">      67 </span><span class="lineCov">         14 :   HTTPHeaders(std::initializer_list&lt;std::pair&lt;std::string, std::string&gt;&gt; list) : headers(list) {}</span>
+<span class="lineNum">      68 </span><span class="lineCov">          4 :   HTTPHeaders&amp; Set(const std::string&amp; key, const std::string&amp; value) {</span>
+<span class="lineNum">      69 </span><span class="lineCov">          4 :     headers.emplace_back(key, value);</span>
+<a name="70"><span class="lineNum">      70 </span><span class="lineCov">          4 :     return *this;</span></a>
+<span class="lineNum">      71 </span>            :   }
+<span class="lineNum">      72 </span><span class="lineCov">         16 :   operator const HTTPHeadersType&amp;() const { return headers; }</span>
+<span class="lineNum">      73 </span>            : };
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : // HTTPDefaultHelper handles headers and chunked transfers.
+<a name="76"><span class="lineNum">      76 </span>            : // One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.</a>
+<span class="lineNum">      77 </span>            : // TODO(dkorolev): This is not yet the case, but will be soon once I fix HTTP parse code.
+<span class="lineNum">      78 </span><span class="lineCov">        624 : class HTTPDefaultHelper {</span>
+<span class="lineNum">      79 </span>            :  public:
+<span class="lineNum">      80 </span>            :   typedef std::map&lt;std::string, std::string&gt; HeadersType;
+<span class="lineNum">      81 </span>            :   const HeadersType&amp; headers() const { return headers_; }
+<a name="82"><span class="lineNum">      82 </span>            : </a>
+<span class="lineNum">      83 </span>            :  protected:
+<a name="84"><span class="lineNum">      84 </span><span class="lineCov">        308 :   inline void OnHeader(const char* key, const char* value) { headers_[key] = value; }</span></a>
+<span class="lineNum">      85 </span>            : 
+<a name="86"><span class="lineNum">      86 </span><span class="lineCov">      20050 :   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }</span></a>
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span><span class="lineCov">          8 :   inline void OnChunkedBodyDone(const char*&amp; begin, const char*&amp; end) {</span>
+<span class="lineNum">      89 </span><span class="lineCov">          8 :     begin = body_.data();</span>
+<span class="lineNum">      90 </span><span class="lineCov">          8 :     end = begin + body_.length();</span>
+<span class="lineNum">      91 </span><span class="lineCov">          8 :   }</span>
+<span class="lineNum">      92 </span>            : 
+<span class="lineNum">      93 </span>            :  private:
+<span class="lineNum">      94 </span>            :   HeadersType headers_;
+<span class="lineNum">      95 </span>            :   std::string body_;
+<span class="lineNum">      96 </span>            : };
+<span class="lineNum">      97 </span>            : 
+<span class="lineNum">      98 </span>            : // In constructor, TemplatedHTTPRequestData parses HTTP response from `Connection&amp;` is was provided with.
+<span class="lineNum">      99 </span>            : // Extracts method, path (URL + parameters), and, if provided, the body.
+<span class="lineNum">     100 </span>            : //
+<span class="lineNum">     101 </span>            : // Getters:
+<span class="lineNum">     102 </span>            : // * url::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
+<span class="lineNum">     103 </span>            : // * std::string RawPath() (the URL before parsing).
+<span class="lineNum">     104 </span>            : // * std::string Method().
+<span class="lineNum">     105 </span>            : // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
+<span class="lineNum">     106 </span>            : //
+<span class="lineNum">     107 </span>            : // Exceptions:
+<span class="lineNum">     108 </span>            : // * HTTPNoBodyProvidedException : When attempting to access body when HasBody() is false.
+<span class="lineNum">     109 </span>            : // * ConnectionResetByPeer       : When the server is using chunked transfer and doesn't fully send one.
+<span class="lineNum">     110 </span>            : //
+<a name="111"><span class="lineNum">     111 </span>            : // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html</a>
+<span class="lineNum">     112 </span>            : template &lt;class HELPER&gt;
+<a name="113"><span class="lineNum">     113 </span><span class="lineCov">        308 : class TemplatedHTTPRequestData : public HELPER {</span></a>
+<span class="lineNum">     114 </span>            :  public:
+<span class="lineNum">     115 </span><span class="lineCov">        312 :   inline TemplatedHTTPRequestData(Connection&amp; c,</span>
+<span class="lineNum">     116 </span>            :                                   const int intial_buffer_size = 1600,
+<span class="lineNum">     117 </span>            :                                   const double buffer_growth_k = 1.95,
+<span class="lineNum">     118 </span>            :                                   const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+<span class="lineNum">     119 </span><span class="lineCov">        316 :       : buffer_(intial_buffer_size) {</span>
+<span class="lineNum">     120 </span>            :     // `offset` is the number of bytes read into `buffer_` so far.
+<span class="lineNum">     121 </span>            :     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
+<span class="lineNum">     122 </span>            :     // of the end of HTTP body in the buffer_, once `Content-Length` and two consecutive CRLS have been seen.
+<span class="lineNum">     123 </span><span class="lineCov">        312 :     size_t offset = 0;</span>
+<span class="lineNum">     124 </span><span class="lineCov">        312 :     size_t length_cap = static_cast&lt;size_t&gt;(-1);</span>
+<span class="lineNum">     125 </span>            : 
+<span class="lineNum">     126 </span>            :     // `current_line_offset` is the index of the first character after CRLF in `buffer_`.
+<span class="lineNum">     127 </span><span class="lineCov">        312 :     size_t current_line_offset = 0;</span>
+<span class="lineNum">     128 </span>            : 
+<span class="lineNum">     129 </span>            :     // `body_offset` and `body_length` describe the position of HTTP body, if it's not chunk-encoded.
+<span class="lineNum">     130 </span><span class="lineCov">        312 :     size_t body_offset = static_cast&lt;size_t&gt;(-1);</span>
+<span class="lineNum">     131 </span><span class="lineCov">        312 :     size_t body_length = static_cast&lt;size_t&gt;(-1);</span>
+<span class="lineNum">     132 </span>            : 
+<span class="lineNum">     133 </span>            :     // `first_line_parsed` denotes whether the line being parsed is the first one, with method and URL.
+<span class="lineNum">     134 </span><span class="lineCov">        312 :     bool first_line_parsed = false;</span>
+<span class="lineNum">     135 </span>            : 
+<span class="lineNum">     136 </span>            :     // `chunked_transfer_encoding` is set when body should be received in chunks insted of a single read.
+<span class="lineNum">     137 </span><span class="lineCov">        312 :     bool chunked_transfer_encoding = false;</span>
+<span class="lineNum">     138 </span>            : 
+<span class="lineNum">     139 </span>            :     // `receiving_body_in_chunks` is set to true when the parsing is already in the &quot;receive body&quot; mode.
+<span class="lineNum">     140 </span><span class="lineCov">        312 :     bool receiving_body_in_chunks = false;</span>
+<span class="lineNum">     141 </span>            : 
+<span class="lineNum">     142 </span><span class="lineCov">       8838 :     while (offset &lt; length_cap) {</span>
+<span class="lineNum">     143 </span>            :       size_t chunk;
+<span class="lineNum">     144 </span>            :       size_t read_count;
+<span class="lineNum">     145 </span>            :       // Use `- offset - 1` instead of just `- offset` to leave room for the '\0'.
+<span class="lineNum">     146 </span><span class="lineCov">      24726 :       while (chunk = buffer_.size() - offset - 1,</span>
+<span class="lineNum">     147 </span><span class="lineCov">       8250 :              read_count = c.BlockingRead(&amp;buffer_[offset], chunk),</span>
+<span class="lineNum">     148 </span>            :              offset += read_count,
+<span class="lineNum">     149 </span>            :              read_count == chunk &amp;&amp; offset &lt; length_cap) {
+<span class="lineNum">     150 </span><span class="lineCov">         24 :         buffer_.resize(static_cast&lt;size_t&gt;(buffer_.size() * buffer_growth_k));</span>
+<span class="lineNum">     151 </span>            :       }
+<span class="lineNum">     152 </span><span class="lineCov">       8226 :       if (!read_count) {</span>
+<span class="lineNum">     153 </span>            :         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
+<span class="lineNum">     154 </span>            :         // and StackOverflow is that a return value of zero from read() from a socket indicates
+<span class="lineNum">     155 </span>            :         // that the socket has been closed by the peer.
+<span class="lineNum">     156 </span><span class="lineCov">          2 :         BRICKS_THROW(ConnectionResetByPeer());</span>
+<span class="lineNum">     157 </span>            :       }
+<span class="lineNum">     158 </span><span class="lineCov">       8224 :       buffer_[offset] = '\0';</span>
+<span class="lineNum">     159 </span>            :       char* next_crlf_ptr;
+<span class="lineNum">     160 </span><span class="lineCov">     107184 :       while ((body_offset == static_cast&lt;size_t&gt;(-1) || offset &lt; body_offset) &amp;&amp;</span>
+<span class="lineNum">     161 </span><span class="lineCov">      49322 :              (next_crlf_ptr = strstr(&amp;buffer_[current_line_offset], kCRLF))) {</span>
+<span class="lineNum">     162 </span><span class="lineCov">      41424 :         const bool line_is_blank = (next_crlf_ptr == &amp;buffer_[current_line_offset]);</span>
+<span class="lineNum">     163 </span><span class="lineCov">      41424 :         *next_crlf_ptr = '\0';</span>
+<span class="lineNum">     164 </span>            :         // `next_line_offset` is mutable since reading chunked body will change it.
+<span class="lineNum">     165 </span><span class="lineCov">      41424 :         size_t next_line_offset = next_crlf_ptr + kCRLFLength - &amp;buffer_[0];</span>
+<span class="lineNum">     166 </span><span class="lineCov">      41424 :         if (!first_line_parsed) {</span>
+<span class="lineNum">     167 </span><span class="lineCov">        312 :           if (!line_is_blank) {</span>
+<span class="lineNum">     168 </span>            :             // It's recommended by W3 to wait for the first line ignoring prior CRLF-s.
+<span class="lineNum">     169 </span>            :             const std::vector&lt;std::string&gt; pieces =
+<span class="lineNum">     170 </span><span class="lineCov">        312 :                 strings::Split&lt;strings::ByWhitespace&gt;(&amp;buffer_[current_line_offset]);</span>
+<span class="lineNum">     171 </span><span class="lineCov">        312 :             if (pieces.size() &gt;= 1) {</span>
+<span class="lineNum">     172 </span><span class="lineCov">        312 :               method_ = pieces[0];</span>
+<span class="lineNum">     173 </span>            :             }
+<span class="lineNum">     174 </span><span class="lineCov">        312 :             if (pieces.size() &gt;= 2) {</span>
+<span class="lineNum">     175 </span><span class="lineCov">        312 :               raw_path_ = pieces[1];</span>
+<span class="lineNum">     176 </span><span class="lineCov">        312 :               url_ = url::URL(raw_path_);</span>
+<span class="lineNum">     177 </span>            :             }
+<span class="lineNum">     178 </span><span class="lineCov">        312 :             first_line_parsed = true;</span>
+<span class="lineNum">     179 </span>            :           }
+<span class="lineNum">     180 </span><span class="lineCov">      41112 :         } else if (receiving_body_in_chunks) {</span>
+<span class="lineNum">     181 </span>            :           // Ignore blank lines.
+<span class="lineNum">     182 </span><span class="lineCov">      40090 :           if (!line_is_blank) {</span>
+<span class="lineNum">     183 </span>            :             const size_t chunk_length =
+<span class="lineNum">     184 </span><span class="lineCov">      20060 :                 static_cast&lt;size_t&gt;(std::stoi(&amp;buffer_[current_line_offset], nullptr, 16));</span>
+<span class="lineNum">     185 </span><span class="lineCov">      20060 :             if (chunk_length == 0) {</span>
+<span class="lineNum">     186 </span>            :               // Done with the body.
+<span class="lineNum">     187 </span><span class="lineCov">          8 :               HELPER::OnChunkedBodyDone(body_buffer_begin_, body_buffer_end_);</span>
+<span class="lineNum">     188 </span><span class="lineCov">        316 :               return;</span>
+<span class="lineNum">     189 </span>            :             } else {
+<span class="lineNum">     190 </span>            :               // A chunk of length `chunk_length` bytes starts right at next_line_offset.
+<span class="lineNum">     191 </span><span class="lineCov">      20052 :               const size_t chunk_offset = next_line_offset;</span>
+<span class="lineNum">     192 </span>            :               // First, make sure it has been read.
+<span class="lineNum">     193 </span><span class="lineCov">      20052 :               const size_t next_offset = chunk_offset + chunk_length;</span>
+<span class="lineNum">     194 </span><span class="lineCov">      20052 :               if (offset &lt; next_offset) {</span>
+<span class="lineNum">     195 </span><span class="lineCov">       2658 :                 const size_t bytes_to_read = next_offset - offset;</span>
+<span class="lineNum">     196 </span>            :                 // The `+1` is required for the '\0'.
+<span class="lineNum">     197 </span><span class="lineCov">       2658 :                 if (buffer_.size() &lt; next_offset + 1) {</span>
+<span class="lineNum">     198 </span><span class="lineCov">         12 :                   buffer_.resize(</span>
+<span class="lineNum">     199 </span><span class="lineCov">         24 :                       std::max(static_cast&lt;size_t&gt;(buffer_.size() * buffer_growth_k), next_offset + 1));</span>
+<span class="lineNum">     200 </span>            :                 }
+<span class="lineNum">     201 </span><span class="lineCov">       2658 :                 if (bytes_to_read != c.BlockingRead(&amp;buffer_[offset], bytes_to_read)) {</span>
+<span class="lineNum">     202 </span><span class="lineCov">          2 :                   BRICKS_THROW(ConnectionResetByPeer());</span>
+<span class="lineNum">     203 </span>            :                 }
+<span class="lineNum">     204 </span><span class="lineCov">       2656 :                 offset = next_offset;</span>
+<span class="lineNum">     205 </span>            :               }
+<span class="lineNum">     206 </span>            :               // Then, append this newly parsed or received chunk to the body.
+<span class="lineNum">     207 </span><span class="lineCov">      20050 :               HELPER::OnChunk(&amp;buffer_[chunk_offset], chunk_length);</span>
+<span class="lineNum">     208 </span>            :               // Finally, change `next_line_offset` to force skipping the, possibly binary, body.
+<span class="lineNum">     209 </span>            :               // There will be an extra CRLF after the chunk, but we don't require it.
+<span class="lineNum">     210 </span><span class="lineCov">      20050 :               next_line_offset = next_offset;</span>
+<span class="lineNum">     211 </span>            :               // TODO(dkorolev): The above code works, but keeps growing memory usage. Shrink it.
+<span class="lineNum">     212 </span>            :             }
+<span class="lineNum">     213 </span>            :           }
+<span class="lineNum">     214 </span><span class="lineCov">       1022 :         } else if (!line_is_blank) {</span>
+<span class="lineNum">     215 </span><span class="lineCov">        710 :           char* p = strstr(&amp;buffer_[current_line_offset], kHeaderKeyValueSeparator);</span>
+<span class="lineNum">     216 </span><span class="lineCov">        710 :           if (p) {</span>
+<span class="lineNum">     217 </span><span class="lineCov">        710 :             *p = '\0';</span>
+<span class="lineNum">     218 </span><span class="lineCov">        710 :             const char* const key = &amp;buffer_[current_line_offset];</span>
+<span class="lineNum">     219 </span><span class="lineCov">        710 :             const char* const value = p + kHeaderKeyValueSeparatorLength;</span>
+<span class="lineNum">     220 </span><span class="lineCov">        710 :             HELPER::OnHeader(key, value);</span>
+<span class="lineNum">     221 </span><span class="lineCov">        710 :             if (!strcmp(key, kContentLengthHeaderKey)) {</span>
+<span class="lineNum">     222 </span><span class="lineCov">        184 :               body_length = static_cast&lt;size_t&gt;(atoi(value));</span>
+<span class="lineNum">     223 </span><span class="lineCov">        526 :             } else if (!strcmp(key, kTransferEncodingHeaderKey)) {</span>
+<span class="lineNum">     224 </span><span class="lineCov">         10 :               if (!strcmp(value, kTransferEncodingChunkedValue)) {</span>
+<span class="lineNum">     225 </span><span class="lineCov">         10 :                 chunked_transfer_encoding = true;</span>
+<span class="lineNum">     226 </span>            :               }
+<span class="lineNum">     227 </span>            :             }
+<span class="lineNum">     228 </span>            :           }
+<span class="lineNum">     229 </span>            :         } else {
+<span class="lineNum">     230 </span><span class="lineCov">        312 :           if (!chunked_transfer_encoding) {</span>
+<span class="lineNum">     231 </span>            :             // HTTP body starts right after this last CRLF.
+<span class="lineNum">     232 </span><span class="lineCov">        302 :             body_offset = next_line_offset;</span>
+<span class="lineNum">     233 </span>            :             // Non-chunked encoding. Assume BODY follows as raw data.
+<span class="lineNum">     234 </span>            :             // Only accept HTTP body if Content-Length has been set; ignore it otherwise.
+<span class="lineNum">     235 </span><span class="lineCov">        302 :             if (body_length != static_cast&lt;size_t&gt;(-1)) {</span>
+<span class="lineNum">     236 </span>            :               // Has HTTP body to parse.
+<span class="lineNum">     237 </span><span class="lineCov">        184 :               length_cap = body_offset + body_length;</span>
+<span class="lineNum">     238 </span>            :               // Resize the buffer to be able to get the contents of HTTP body without extra resizes,
+<span class="lineNum">     239 </span>            :               // while being careful to not be open to extra-large mistakenly or maliciously set
+<span class="lineNum">     240 </span>            :               // Content-Length.
+<span class="lineNum">     241 </span>            :               // Keep in mind that `buffer_` should have the size of `length_cap + 1`, to include the `\0'.
+<span class="lineNum">     242 </span><span class="lineCov">        184 :               if (length_cap + 1 &gt; buffer_.size()) {</span>
+<span class="lineNum">     243 </span><span class="lineCov">          4 :                 const size_t delta_size = length_cap + 1 - buffer_.size();</span>
+<span class="lineNum">     244 </span><span class="lineCov">          4 :                 buffer_.resize(buffer_.size() + std::min(delta_size, buffer_max_growth_due_to_content_length));</span>
+<span class="lineNum">     245 </span>            :               }
+<span class="lineNum">     246 </span>            :             } else {
+<span class="lineNum">     247 </span>            :               // Indicate we are done parsing the header.
+<span class="lineNum">     248 </span><span class="lineCov">        118 :               length_cap = body_offset;</span>
+<span class="lineNum">     249 </span>            :             }
+<span class="lineNum">     250 </span>            :           } else {
+<span class="lineNum">     251 </span><span class="lineCov">         10 :             receiving_body_in_chunks = true;</span>
+<span class="lineNum">     252 </span>            :           }
+<span class="lineNum">     253 </span>            :         }
+<span class="lineNum">     254 </span><span class="lineCov">      41414 :         current_line_offset = next_line_offset;</span>
+<span class="lineNum">     255 </span>            :       }
+<span class="lineNum">     256 </span>            :     }
+<span class="lineNum">     257 </span><span class="lineCov">        300 :     if (body_length != static_cast&lt;size_t&gt;(-1)) {</span>
+<span class="lineNum">     258 </span>            :       // Initialize pointers pair to point to the BODY to be read.
+<span class="lineNum">     259 </span><span class="lineCov">        182 :       body_buffer_begin_ = &amp;buffer_[body_offset];</span>
+<span class="lineNum">     260 </span><span class="lineCov">        182 :       body_buffer_end_ = body_buffer_begin_ + body_length;</span>
+<span class="lineNum">     261 </span>            :     }
+<a name="262"><span class="lineNum">     262 </span>            :   }</a>
+<a name="263"><span class="lineNum">     263 </span>            : </a>
+<a name="264"><span class="lineNum">     264 </span><span class="lineCov">        406 :   inline const std::string&amp; Method() const { return method_; }</span></a>
+<span class="lineNum">     265 </span><span class="lineCov">        510 :   inline const url::URL&amp; URL() const { return url_; }</span>
+<span class="lineNum">     266 </span><span class="lineCov">        162 :   inline const std::string&amp; RawPath() const { return raw_path_; }</span>
+<span class="lineNum">     267 </span>            : 
+<span class="lineNum">     268 </span>            :   // Note that `Body*()` methods assume that the body was fully read into memory.
+<a name="269"><span class="lineNum">     269 </span>            :   // If other means of reading the body, for example, event-based chunk parsing, is used,</a>
+<span class="lineNum">     270 </span>            :   // then `HasBody()` will be false and all other `Body*()` methods will throw.
+<a name="271"><span class="lineNum">     271 </span><span class="lineCov">        508 :   inline bool HasBody() const { return body_buffer_begin_ != nullptr; }</span></a>
+<span class="lineNum">     272 </span>            : 
+<span class="lineNum">     273 </span><span class="lineCov">        254 :   inline const std::string&amp; Body() const {</span>
+<span class="lineNum">     274 </span><span class="lineCov">        254 :     if (!prepared_body_) {</span>
+<span class="lineNum">     275 </span><span class="lineCov">        182 :       if (body_buffer_begin_) {</span>
+<span class="lineNum">     276 </span><span class="lineCov">        178 :         prepared_body_.reset(new std::string(body_buffer_begin_, body_buffer_end_));</span>
+<span class="lineNum">     277 </span>            :       } else {
+<span class="lineNum">     278 </span><span class="lineCov">          4 :         BRICKS_THROW(HTTPNoBodyProvidedException());</span>
+<span class="lineNum">     279 </span>            :       }
+<span class="lineNum">     280 </span>            :     }
+<span class="lineNum">     281 </span><span class="lineCov">        250 :     return *prepared_body_.get();</span>
+<span class="lineNum">     282 </span>            :   }
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            :   inline const char* BodyBegin() const {
+<span class="lineNum">     285 </span>            :     if (body_buffer_begin_) {
+<span class="lineNum">     286 </span>            :       return body_buffer_begin_;
+<span class="lineNum">     287 </span>            :     } else {
+<span class="lineNum">     288 </span>            :       BRICKS_THROW(HTTPNoBodyProvidedException());
+<span class="lineNum">     289 </span>            :     }
+<span class="lineNum">     290 </span>            :   }
+<span class="lineNum">     291 </span>            : 
+<span class="lineNum">     292 </span>            :   inline const char* BodyEnd() const {
+<span class="lineNum">     293 </span>            :     if (body_buffer_begin_) {
+<span class="lineNum">     294 </span>            :       assert(body_buffer_end_);
+<span class="lineNum">     295 </span>            :       return body_buffer_end_;
+<span class="lineNum">     296 </span>            :     } else {
+<span class="lineNum">     297 </span>            :       BRICKS_THROW(HTTPNoBodyProvidedException());
+<span class="lineNum">     298 </span>            :     }
+<span class="lineNum">     299 </span>            :   }
+<span class="lineNum">     300 </span>            : 
+<span class="lineNum">     301 </span>            :   inline size_t BodyLength() const {
+<span class="lineNum">     302 </span>            :     if (body_buffer_begin_) {
+<span class="lineNum">     303 </span>            :       assert(body_buffer_end_);
+<span class="lineNum">     304 </span>            :       return body_buffer_end_ - body_buffer_begin_;
+<span class="lineNum">     305 </span>            :     } else {
+<span class="lineNum">     306 </span>            :       BRICKS_THROW(HTTPNoBodyProvidedException());
+<span class="lineNum">     307 </span>            :     }
+<span class="lineNum">     308 </span>            :   }
+<span class="lineNum">     309 </span>            : 
+<span class="lineNum">     310 </span>            :  private:
+<span class="lineNum">     311 </span>            :   // Fields available to the user via getters.
+<span class="lineNum">     312 </span>            :   std::string method_;
+<span class="lineNum">     313 </span>            :   url::URL url_;
+<span class="lineNum">     314 </span>            :   std::string raw_path_;
+<span class="lineNum">     315 </span>            : 
+<span class="lineNum">     316 </span>            :   // HTTP parsing fields that have to be caried out of the parsing routine.
+<span class="lineNum">     317 </span>            :   std::vector&lt;char&gt; buffer_;  // The buffer into which data has been read, except for chunked case.
+<span class="lineNum">     318 </span>            :   const char* body_buffer_begin_ = nullptr;  // If BODY has been provided, pointer pair to it.
+<span class="lineNum">     319 </span>            :   const char* body_buffer_end_ = nullptr;    // Will not be nullptr if body_buffer_begin_ is not nullptr.
+<span class="lineNum">     320 </span>            : 
+<span class="lineNum">     321 </span>            :   // HTTP body gets converted to an std::string representation as it's first requested.
+<span class="lineNum">     322 </span>            :   // TODO(dkorolev): This pattern is worth revisiting. StringPiece?
+<span class="lineNum">     323 </span>            :   mutable std::unique_ptr&lt;std::string&gt; prepared_body_;
+<span class="lineNum">     324 </span>            : 
+<span class="lineNum">     325 </span>            :   // Disable any copy/move support since this class uses pointers.
+<span class="lineNum">     326 </span>            :   TemplatedHTTPRequestData() = delete;
+<span class="lineNum">     327 </span>            :   TemplatedHTTPRequestData(const TemplatedHTTPRequestData&amp;) = delete;
+<span class="lineNum">     328 </span>            :   TemplatedHTTPRequestData(TemplatedHTTPRequestData&amp;&amp;) = delete;
+<span class="lineNum">     329 </span>            :   void operator=(const TemplatedHTTPRequestData&amp;) = delete;
+<span class="lineNum">     330 </span>            :   void operator=(TemplatedHTTPRequestData&amp;&amp;) = delete;
+<span class="lineNum">     331 </span>            : };
+<span class="lineNum">     332 </span>            : 
+<span class="lineNum">     333 </span>            : // The default implementation is exposed as HTTPRequestData.
+<span class="lineNum">     334 </span>            : typedef TemplatedHTTPRequestData&lt;HTTPDefaultHelper&gt; HTTPRequestData;
+<span class="lineNum">     335 </span>            : 
+<span class="lineNum">     336 </span>            : class HTTPServerConnection final {
+<span class="lineNum">     337 </span>            :  public:
+<span class="lineNum">     338 </span>            :   typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
+<a name="339"><span class="lineNum">     339 </span>            :   // The only constructor parses HTTP headers coming from the socket</a>
+<a name="340"><span class="lineNum">     340 </span>            :   // in the constructor of `message_(connection_)`.</a>
+<span class="lineNum">     341 </span><span class="lineCov">        174 :   HTTPServerConnection(Connection&amp;&amp; c) : connection_(std::move(c)), message_(connection_) {}</span>
+<span class="lineNum">     342 </span><span class="lineCov">        340 :   ~HTTPServerConnection() {</span>
+<span class="lineNum">     343 </span><span class="lineCov">        170 :     if (!responded_) {</span>
+<span class="lineNum">     344 </span>            :       // If a user code throws an exception in a different thread, it will not be caught.
+<span class="lineNum">     345 </span>            :       // But, at least, capitalized &quot;INTERNAL SERVER ERROR&quot; will be returned.
+<span class="lineNum">     346 </span>            :       // It's also a good place for a breakpoint to tell the source of that exception.
+<span class="lineNum">     347 </span>            :       try {
+<span class="lineNum">     348 </span>            :         SendHTTPResponse(
+<span class="lineNum">     349 </span><span class="lineCov">         10 :             DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, &quot;text/html&quot;);</span>
+<span class="lineNum">     350 </span><span class="lineCov">          4 :       } catch (const std::exception&amp; e) {</span>
+<span class="lineNum">     351 </span>            :         // LCOV_EXCL_START
+<span class="lineNum">     352 </span>            :         // No exception should ever leave the destructor.
+<span class="lineNum">     353 </span>            :         if (message_.RawPath() == &quot;/healthz&quot;) {
+<span class="lineNum">     354 </span>            :           // Report nothing for &quot;/healthz&quot;, since it's an internal URL, also used by the tests
+<span class="lineNum">     355 </span>            :           // to poke the serving thread before shutting down the server. There is nothing exceptional
+<span class="lineNum">     356 </span>            :           // with not responding to &quot;/healthz&quot;, really -- it just means that the server is not healthy, duh. --
+<span class="lineNum">     357 </span>            :           // D.K.
+<span class="lineNum">     358 </span>            :         } else {
+<span class="lineNum">     359 </span>            :           std::cerr &lt;&lt; &quot;An exception occurred while trying to send \&quot;INTERNAL SERVER ERROR\&quot;\n&quot;;
+<span class="lineNum">     360 </span>            :           std::cerr &lt;&lt; &quot;In: &quot; &lt;&lt; message_.Method() &lt;&lt; ' ' &lt;&lt; message_.RawPath() &lt;&lt; std::endl;
+<span class="lineNum">     361 </span>            :           std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+<span class="lineNum">     362 </span>            :         }
+<span class="lineNum">     363 </span>            :         // LCOV_EXCL_STOP
+<span class="lineNum">     364 </span>            :       }
+<span class="lineNum">     365 </span>            :     }
+<a name="366"><span class="lineNum">     366 </span><span class="lineCov">        170 :   }</span></a>
+<span class="lineNum">     367 </span>            : 
+<a name="368"><span class="lineNum">     368 </span><span class="lineCov">        140 :   inline static const std::string DefaultContentType() { return &quot;text/plain&quot;; }</span></a>
+<span class="lineNum">     369 </span>            : 
+<span class="lineNum">     370 </span><span class="lineCov">        170 :   inline static void PrepareHTTPResponseHeader(std::ostream&amp; os,</span>
+<span class="lineNum">     371 </span>            :                                                ConnectionType connection_type,
+<span class="lineNum">     372 </span>            :                                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
+<span class="lineNum">     373 </span>            :                                                const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     374 </span>            :                                                const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     375 </span><span class="lineCov">        170 :     os &lt;&lt; &quot;HTTP/1.1 &quot; &lt;&lt; static_cast&lt;int&gt;(code);</span>
+<span class="lineNum">     376 </span><span class="lineCov">        170 :     os &lt;&lt; &quot; &quot; &lt;&lt; HTTPResponseCodeAsString(code) &lt;&lt; kCRLF;</span>
+<span class="lineNum">     377 </span><span class="lineCov">        168 :     os &lt;&lt; &quot;Content-Type: &quot; &lt;&lt; content_type &lt;&lt; kCRLF;</span>
+<span class="lineNum">     378 </span><span class="lineCov">        168 :     os &lt;&lt; &quot;Connection: &quot; &lt;&lt; (connection_type == ConnectionKeepAlive ? &quot;keep-alive&quot; : &quot;close&quot;) &lt;&lt; kCRLF;</span>
+<span class="lineNum">     379 </span><span class="lineCov">        190 :     for (const auto cit : extra_headers) {</span>
+<span class="lineNum">     380 </span><span class="lineCov">         22 :       os &lt;&lt; cit.first &lt;&lt; &quot;: &quot; &lt;&lt; cit.second &lt;&lt; kCRLF;</span>
+<span class="lineNum">     381 </span><span class="lineCov">         22 :     }</span>
+<span class="lineNum">     382 </span><span class="lineCov">        168 :   }</span>
+<span class="lineNum">     383 </span>            : 
+<a name="384"><span class="lineNum">     384 </span>            :   // The actual implementation of sending the HTTP response.</a>
+<span class="lineNum">     385 </span>            :   template &lt;typename T&gt;
+<span class="lineNum">     386 </span><span class="lineCov">        168 :   inline void SendHTTPResponseImpl(const T&amp; begin,</span>
+<span class="lineNum">     387 </span>            :                                    const T&amp; end,
+<span class="lineNum">     388 </span>            :                                    HTTPResponseCodeValue code,
+<span class="lineNum">     389 </span>            :                                    const std::string&amp; content_type,
+<span class="lineNum">     390 </span>            :                                    const HTTPHeadersType&amp; extra_headers) {
+<span class="lineNum">     391 </span><span class="lineCov">        168 :     if (responded_) {</span>
+<span class="lineNum">     392 </span><span class="lineCov">          4 :       throw AttemptedToSendHTTPResponseMoreThanOnce();</span>
+<span class="lineNum">     393 </span>            :     } else {
+<span class="lineNum">     394 </span><span class="lineCov">        164 :       responded_ = true;</span>
+<span class="lineNum">     395 </span><span class="lineCov">        164 :       std::ostringstream os;</span>
+<span class="lineNum">     396 </span><span class="lineCov">        164 :       PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);</span>
+<span class="lineNum">     397 </span><span class="lineCov">        162 :       os &lt;&lt; &quot;Content-Length: &quot; &lt;&lt; (end - begin) &lt;&lt; kCRLF &lt;&lt; kCRLF;</span>
+<span class="lineNum">     398 </span><span class="lineCov">        162 :       connection_.BlockingWrite(os.str());</span>
+<span class="lineNum">     399 </span><span class="lineCov">        164 :       connection_.BlockingWrite(begin, end);</span>
+<span class="lineNum">     400 </span>            :     }
+<span class="lineNum">     401 </span><span class="lineCov">        162 :   }</span>
+<span class="lineNum">     402 </span>            : 
+<span class="lineNum">     403 </span>            :   // Only support STL containers of chars and bytes, this does not yet cover std::string.
+<span class="lineNum">     404 </span>            :   template &lt;typename T&gt;
+<span class="lineNum">     405 </span>            :   inline typename std::enable_if&lt;sizeof(typename T::value_type) == 1&gt;::type SendHTTPResponse(
+<span class="lineNum">     406 </span>            :       const T&amp; begin,
+<span class="lineNum">     407 </span>            :       const T&amp; end,
+<span class="lineNum">     408 </span>            :       HTTPResponseCodeValue code = HTTPResponseCode.OK,
+<span class="lineNum">     409 </span>            :       const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     410 </span>            :       const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     411 </span>            :     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
+<span class="lineNum">     412 </span>            :   }
+<a name="413"><span class="lineNum">     413 </span>            :   template &lt;typename T&gt;</a>
+<span class="lineNum">     414 </span>            :   inline typename std::enable_if&lt;sizeof(typename std::remove_reference&lt;T&gt;::type::value_type) == 1&gt;::type
+<span class="lineNum">     415 </span><span class="lineCov">         64 :   SendHTTPResponse(T&amp;&amp; container,</span>
+<span class="lineNum">     416 </span><span class="lineCov">         28 :                    HTTPResponseCodeValue code = HTTPResponseCode.OK,</span>
+<span class="lineNum">     417 </span>            :                    const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     418 </span>            :                    const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     419 </span><span class="lineCov">         66 :     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);</span>
+<span class="lineNum">     420 </span><span class="lineCov">         62 :   }</span>
+<a name="421"><span class="lineNum">     421 </span>            : </a>
+<span class="lineNum">     422 </span>            :   // Special case to handle std::string.
+<span class="lineNum">     423 </span><span class="lineCov">         86 :   inline void SendHTTPResponse(const std::string&amp; string,</span>
+<span class="lineNum">     424 </span><span class="lineCov">         66 :                                HTTPResponseCodeValue code = HTTPResponseCode.OK,</span>
+<span class="lineNum">     425 </span>            :                                const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     426 </span>            :                                const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     427 </span><span class="lineCov">         90 :     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);</span>
+<span class="lineNum">     428 </span><span class="lineCov">         82 :   }</span>
+<a name="429"><span class="lineNum">     429 </span>            :   // Support objects that can be serialized as JSON-s via Cereal.</a>
+<span class="lineNum">     430 </span>            :   template &lt;class T&gt;
+<span class="lineNum">     431 </span><span class="lineCov">         14 :   inline typename std::enable_if&lt;cerealize::is_write_cerealizable&lt;T&gt;::value&gt;::type SendHTTPResponse(</span>
+<span class="lineNum">     432 </span>            :       T&amp;&amp; object,
+<span class="lineNum">     433 </span><span class="lineCov">         14 :       HTTPResponseCodeValue code = HTTPResponseCode.OK,</span>
+<span class="lineNum">     434 </span>            :       const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     435 </span>            :       const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     436 </span>            :     // TODO(dkorolev): We should probably make this not only correct but also efficient.
+<span class="lineNum">     437 </span><span class="lineCov">         14 :     const std::string s = cerealize::JSON(object) + '\n';</span>
+<span class="lineNum">     438 </span><span class="lineCov">         14 :     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);</span>
+<span class="lineNum">     439 </span><span class="lineCov">         14 :   }</span>
+<span class="lineNum">     440 </span>            : 
+<span class="lineNum">     441 </span>            :   // Microsoft Visual Studio compiler is strict with overloads,
+<a name="442"><span class="lineNum">     442 </span>            :   // explicitly forbid std::string and std::vector&lt;char&gt; from this one.</a>
+<span class="lineNum">     443 </span>            :   template &lt;class T, typename S&gt;
+<span class="lineNum">     444 </span><span class="lineCov">          4 :   inline typename std::enable_if&lt;cerealize::is_write_cerealizable&lt;T&gt;::value&gt;::type SendHTTPResponse(</span>
+<span class="lineNum">     445 </span>            :       T&amp;&amp; object,
+<span class="lineNum">     446 </span>            :       S&amp;&amp; name,
+<span class="lineNum">     447 </span><span class="lineCov">          2 :       HTTPResponseCodeValue code = HTTPResponseCode.OK,</span>
+<span class="lineNum">     448 </span>            :       const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     449 </span>            :       const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     450 </span>            :     // TODO(dkorolev): We should probably make this not only correct but also efficient.
+<span class="lineNum">     451 </span><span class="lineCov">          4 :     const std::string s = cerealize::JSON(object, name) + '\n';</span>
+<span class="lineNum">     452 </span><span class="lineCov">          4 :     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);</span>
+<span class="lineNum">     453 </span><span class="lineCov">          4 :   }</span>
+<a name="454"><span class="lineNum">     454 </span>            : </a>
+<span class="lineNum">     455 </span>            :   // The wrapper to send HTTP response in chunks.
+<span class="lineNum">     456 </span><span class="lineCov">         18 :   struct ChunkedResponseSender final {</span>
+<a name="457"><span class="lineNum">     457 </span>            :     // `struct Impl` is the logic wrapped into an `std::unique_ptr&lt;&gt;` to call the destructor only once.</a>
+<span class="lineNum">     458 </span>            :     struct Impl final {
+<a name="459"><span class="lineNum">     459 </span><span class="lineCov">          6 :       explicit Impl(Connection&amp; connection) : connection_(connection) {}</span></a>
+<span class="lineNum">     460 </span>            : 
+<span class="lineNum">     461 </span><span class="lineCov">          6 :       ~Impl() {</span>
+<span class="lineNum">     462 </span>            :         try {
+<span class="lineNum">     463 </span><span class="lineCov">          6 :           connection_.BlockingWrite(&quot;0&quot;);</span>
+<span class="lineNum">     464 </span><span class="lineCov">          6 :           connection_.BlockingWrite(kCRLF);</span>
+<span class="lineNum">     465 </span>            :         } catch (const std::exception&amp; e) {  // LCOV_EXCL_LINE
+<span class="lineNum">     466 </span>            :           // TODO(dkorolev): More reliable logging.
+<span class="lineNum">     467 </span>            :           std::cerr &lt;&lt; &quot;Chunked response closure failed: &quot; &lt;&lt; e.what() &lt;&lt; std::endl;  // LCOV_EXCL_LINE
+<span class="lineNum">     468 </span>            :         }
+<span class="lineNum">     469 </span><span class="lineCov">          6 :       }</span>
+<span class="lineNum">     470 </span>            : 
+<a name="471"><span class="lineNum">     471 </span>            :       // The actual implementation of sending HTTP chunk data.</a>
+<span class="lineNum">     472 </span>            :       template &lt;typename T&gt;
+<span class="lineNum">     473 </span><span class="lineCov">         38 :       void SendImpl(T&amp;&amp; data) {</span>
+<span class="lineNum">     474 </span><span class="lineCov">         38 :         connection_.BlockingWrite(strings::Printf(&quot;%X&quot;, data.size()));</span>
+<span class="lineNum">     475 </span><span class="lineCov">         38 :         connection_.BlockingWrite(kCRLF);</span>
+<span class="lineNum">     476 </span><span class="lineCov">         38 :         connection_.BlockingWrite(std::forward&lt;T&gt;(data));</span>
+<span class="lineNum">     477 </span><span class="lineCov">         38 :         connection_.BlockingWrite(kCRLF);</span>
+<span class="lineNum">     478 </span><span class="lineCov">         38 :       }</span>
+<span class="lineNum">     479 </span>            : 
+<span class="lineNum">     480 </span>            :       // Only support STL containers of chars and bytes, this does not yet cover std::string.
+<a name="481"><span class="lineNum">     481 </span>            :       template &lt;typename T&gt;</a>
+<span class="lineNum">     482 </span>            :       inline typename std::enable_if&lt;sizeof(typename std::remove_reference&lt;T&gt;::type::value_type) == 1&gt;::type
+<span class="lineNum">     483 </span><span class="lineCov">         14 :       Send(T&amp;&amp; data) {</span>
+<span class="lineNum">     484 </span><span class="lineCov">         14 :         SendImpl(std::forward&lt;T&gt;(data));</span>
+<span class="lineNum">     485 </span><span class="lineCov">         14 :       }</span>
+<a name="486"><span class="lineNum">     486 </span>            : </a>
+<span class="lineNum">     487 </span>            :       // Special case to handle std::string.
+<span class="lineNum">     488 </span><span class="lineCov">         20 :       inline void Send(const std::string&amp; data) { SendImpl(data); }</span>
+<span class="lineNum">     489 </span>            : 
+<a name="490"><span class="lineNum">     490 </span>            :       // Support objects that can be serialized as JSON-s via Cereal.</a>
+<span class="lineNum">     491 </span>            :       template &lt;class T&gt;
+<span class="lineNum">     492 </span><span class="lineCov">          2 :       inline typename std::enable_if&lt;cerealize::is_cerealizable&lt;T&gt;::value&gt;::type Send(T&amp;&amp; object) {</span>
+<span class="lineNum">     493 </span><span class="lineCov">          2 :         SendImpl(cerealize::JSON(object) + '\n');</span>
+<a name="494"><span class="lineNum">     494 </span><span class="lineCov">          2 :       }</span></a>
+<span class="lineNum">     495 </span>            :       template &lt;class T, typename S&gt;
+<span class="lineNum">     496 </span><span class="lineCov">          2 :       inline typename std::enable_if&lt;cerealize::is_cerealizable&lt;T&gt;::value&gt;::type Send(T&amp;&amp; object, S&amp;&amp; name) {</span>
+<span class="lineNum">     497 </span><span class="lineCov">          2 :         SendImpl(cerealize::JSON(object, name) + '\n');</span>
+<span class="lineNum">     498 </span><span class="lineCov">          2 :       }</span>
+<span class="lineNum">     499 </span>            : 
+<span class="lineNum">     500 </span>            :       Connection&amp; connection_;
+<span class="lineNum">     501 </span>            : 
+<span class="lineNum">     502 </span>            :       Impl() = delete;
+<span class="lineNum">     503 </span>            :       Impl(const Impl&amp;) = delete;
+<span class="lineNum">     504 </span>            :       Impl(Impl&amp;&amp;) = delete;
+<span class="lineNum">     505 </span>            :       void operator=(const Impl&amp;) = delete;
+<span class="lineNum">     506 </span>            :       void operator=(Impl&amp;&amp;) = delete;
+<a name="507"><span class="lineNum">     507 </span>            :     };</a>
+<span class="lineNum">     508 </span>            : 
+<span class="lineNum">     509 </span><span class="lineCov">          6 :     explicit ChunkedResponseSender(Connection&amp; connection) : impl_(new Impl(connection)) {}</span>
+<a name="510"><span class="lineNum">     510 </span>            : </a>
+<span class="lineNum">     511 </span>            :     template &lt;typename T&gt;
+<span class="lineNum">     512 </span><span class="lineCov">         24 :     inline ChunkedResponseSender&amp; Send(T&amp;&amp; data) {</span>
+<span class="lineNum">     513 </span><span class="lineCov">         24 :       impl_-&gt;Send(std::forward&lt;T&gt;(data));</span>
+<span class="lineNum">     514 </span><span class="lineCov">         24 :       return *this;</span>
+<span class="lineNum">     515 </span>            :     }
+<a name="516"><span class="lineNum">     516 </span>            : </a>
+<span class="lineNum">     517 </span>            :     template &lt;typename T1, typename T2&gt;
+<span class="lineNum">     518 </span><span class="lineCov">          2 :     inline ChunkedResponseSender&amp; Send(T1&amp;&amp; data1, T2&amp;&amp; data2) {</span>
+<span class="lineNum">     519 </span><span class="lineCov">          2 :       impl_-&gt;Send(std::forward&lt;T1&gt;(data1), std::forward&lt;T2&gt;(data2));</span>
+<span class="lineNum">     520 </span><span class="lineCov">          2 :       return *this;</span>
+<span class="lineNum">     521 </span>            :     }
+<a name="522"><span class="lineNum">     522 </span>            : </a>
+<span class="lineNum">     523 </span>            :     template &lt;typename T&gt;
+<span class="lineNum">     524 </span><span class="lineCov">         12 :     inline ChunkedResponseSender&amp; operator()(T&amp;&amp; data) {</span>
+<span class="lineNum">     525 </span><span class="lineCov">         12 :       impl_-&gt;Send(std::forward&lt;T&gt;(data));</span>
+<span class="lineNum">     526 </span><span class="lineCov">         12 :       return *this;</span>
+<span class="lineNum">     527 </span>            :     }
+<span class="lineNum">     528 </span>            : 
+<span class="lineNum">     529 </span>            :     template &lt;typename T1, typename T2&gt;
+<span class="lineNum">     530 </span>            :     inline ChunkedResponseSender&amp; operator()(T1&amp;&amp; data1, T2&amp;&amp; data2) {
+<span class="lineNum">     531 </span>            :       impl_-&gt;Send(std::forward&lt;T1&gt;(data1), std::forward&lt;T2&gt;(data2));
+<span class="lineNum">     532 </span>            :       return *this;
+<span class="lineNum">     533 </span>            :     }
+<span class="lineNum">     534 </span>            : 
+<span class="lineNum">     535 </span>            :     std::unique_ptr&lt;Impl&gt; impl_;
+<a name="536"><span class="lineNum">     536 </span>            :   };</a>
+<span class="lineNum">     537 </span>            : 
+<span class="lineNum">     538 </span><span class="lineCov">         10 :   inline ChunkedResponseSender SendChunkedHTTPResponse(</span>
+<span class="lineNum">     539 </span><span class="lineCov">         10 :       HTTPResponseCodeValue code = HTTPResponseCode.OK,</span>
+<span class="lineNum">     540 </span>            :       const std::string&amp; content_type = DefaultContentType(),
+<span class="lineNum">     541 </span>            :       const HTTPHeadersType&amp; extra_headers = HTTPHeadersType()) {
+<span class="lineNum">     542 </span><span class="lineCov">         10 :     if (responded_) {</span>
+<span class="lineNum">     543 </span><span class="lineCov">          4 :       throw AttemptedToSendHTTPResponseMoreThanOnce();</span>
+<span class="lineNum">     544 </span>            :     } else {
+<span class="lineNum">     545 </span><span class="lineCov">          6 :       responded_ = true;</span>
+<span class="lineNum">     546 </span><span class="lineCov">          6 :       std::ostringstream os;</span>
+<span class="lineNum">     547 </span><span class="lineCov">          6 :       PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);</span>
+<span class="lineNum">     548 </span><span class="lineCov">          6 :       os &lt;&lt; &quot;Transfer-Encoding: chunked&quot; &lt;&lt; kCRLF &lt;&lt; kCRLF;</span>
+<span class="lineNum">     549 </span><span class="lineCov">          6 :       connection_.BlockingWrite(os.str());</span>
+<span class="lineNum">     550 </span><span class="lineCov">          6 :       return std::move(ChunkedResponseSender(connection_));</span>
+<span class="lineNum">     551 </span>            :     }
+<a name="552"><span class="lineNum">     552 </span>            :   }</a>
+<span class="lineNum">     553 </span>            : 
+<span class="lineNum">     554 </span><span class="lineCov">        602 :   const HTTPRequestData&amp; HTTPRequest() const { return message_; }</span>
+<span class="lineNum">     555 </span>            : 
+<span class="lineNum">     556 </span>            :   Connection&amp; RawConnection() { return connection_; }
+<span class="lineNum">     557 </span>            : 
+<span class="lineNum">     558 </span>            :  private:
+<span class="lineNum">     559 </span>            :   bool responded_ = false;
+<span class="lineNum">     560 </span>            :   Connection connection_;
+<span class="lineNum">     561 </span>            :   HTTPRequestData message_;
+<span class="lineNum">     562 </span>            : 
+<span class="lineNum">     563 </span>            :   // Disable any copy/move support for extra safety.
+<span class="lineNum">     564 </span>            :   HTTPServerConnection(const HTTPServerConnection&amp;) = delete;
+<span class="lineNum">     565 </span>            :   HTTPServerConnection(const Connection&amp;) = delete;
+<span class="lineNum">     566 </span>            :   HTTPServerConnection(HTTPServerConnection&amp;&amp;) = delete;
+<span class="lineNum">     567 </span>            :   // The only legit constructor is `HTTPServerConnection(Connection&amp;&amp;)`.
+<span class="lineNum">     568 </span>            :   void operator=(const Connection&amp;) = delete;
+<span class="lineNum">     569 </span>            :   void operator=(const HTTPServerConnection&amp;) = delete;
+<span class="lineNum">     570 </span>            :   void operator=(Connection&amp;&amp;) = delete;
+<span class="lineNum">     571 </span>            :   void operator=(HTTPServerConnection&amp;&amp;) = delete;
+<span class="lineNum">     572 </span>            : };
+<span class="lineNum">     573 </span>            : 
+<span class="lineNum">     574 </span>            : }  // namespace net
+<span class="lineNum">     575 </span>            : }  // namespace bricks
+<span class="lineNum">     576 </span>            : 
+<span class="lineNum">     577 </span>            : using bricks::net::HTTPHeaders;
+<span class="lineNum">     578 </span>            : 
+<span class="lineNum">     579 </span>            : #endif  // BRICKS_NET_HTTP_IMPL_SERVER_H
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

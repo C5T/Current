@@ -1,0 +1,151 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/graph/docu/docu_04graph_05gnuplot.cc</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">Bricks/graph/docu</a> - docu_04graph_05gnuplot.cc<span style="font-size: 80%;"> (source / <a href="docu_04graph_05gnuplot.cc.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">23</td>
+            <td class="headerCovTableEntry">23</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntry">6</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2015 Dmitry &quot;Dima&quot; Korolev &lt;dmitry.korolev@gmail.com&gt;
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #ifndef BRICKS_GRAPH_DOCU_05
+<span class="lineNum">      26 </span>            : #define BRICKS_GRAPH_DOCU_05
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : #include &quot;../../port.h&quot;
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #ifndef BRICKS_WINDOWS
+<span class="lineNum">      31 </span>            : 
+<span class="lineNum">      32 </span>            : #include &quot;../regenerate_flag.cc&quot;
+<span class="lineNum">      33 </span>            : 
+<span class="lineNum">      34 </span>            : #include &quot;../gnuplot.h&quot;
+<span class="lineNum">      35 </span>            : 
+<span class="lineNum">      36 </span>            : #include &quot;../../dflags/dflags.h&quot;
+<a name="37"><span class="lineNum">      37 </span>            : #include &quot;../../3party/gtest/gtest-main-with-dflags.h&quot;</a>
+<span class="lineNum">      38 </span>            : 
+<span class="lineNum">      39 </span><span class="lineCov">         30 : TEST(Graph, GNUPlotScience) {</span>
+<span class="lineNum">      40 </span>            :   // Where visualization meets science.
+<span class="lineNum">      41 </span>            :   using namespace bricks::gnuplot;
+<span class="lineNum">      42 </span><span class="lineCov">          2 : const char* const extensions[2] = { &quot;svg&quot;, &quot;png&quot; };</span>
+<span class="lineNum">      43 </span><span class="lineCov">          6 : for (size_t e = 0; e &lt; 2; ++e) {</span>
+<span class="lineNum">      44 </span>            :   const std::string result = GNUPlot()
+<span class="lineNum">      45 </span><span class="lineCov">          8 :     .Title(&quot;Graph 'title' with various \&quot;quotes\&quot;&quot;)</span>
+<span class="lineNum">      46 </span><span class="lineCov">         12 :     .KeyTitle(&quot;'Legend', also known as the \&quot;key\&quot;&quot;)</span>
+<span class="lineNum">      47 </span><span class="lineCov">          4 :     .XRange(-5, +5)</span>
+<a name="48"><span class="lineNum">      48 </span><span class="lineCov">          4 :     .YRange(-2, +2)</span></a>
+<span class="lineNum">      49 </span><span class="lineCov">         12 :     .Grid(&quot;back&quot;)</span>
+<span class="lineNum">      50 </span><span class="lineCov">          4 :     .Plot([](Plotter&amp; p) {</span>
+<span class="lineNum">      51 </span><span class="lineCov">        408 :       for (int i = -50; i &lt;= +50; ++i) {</span>
+<span class="lineNum">      52 </span><span class="lineCov">        404 :         p(0.1 * i, ::sin(0.1 * i));</span>
+<a name="53"><span class="lineNum">      53 </span>            :       }</a>
+<span class="lineNum">      54 </span><span class="lineCov">         16 :     })</span>
+<span class="lineNum">      55 </span><span class="lineCov">          4 :     .Plot(WithMeta([](Plotter&amp; p) {</span>
+<span class="lineNum">      56 </span><span class="lineCov">        408 :                      for (int i = -50; i &lt;= +50; ++i) {</span>
+<span class="lineNum">      57 </span><span class="lineCov">        404 :                        p(0.1 * i, ::cos(0.1 * i));</span>
+<span class="lineNum">      58 </span>            :                      }
+<span class="lineNum">      59 </span><span class="lineCov">          4 :                    })</span>
+<span class="lineNum">      60 </span><span class="lineCov">          8 :               .AsPoints()</span>
+<span class="lineNum">      61 </span><span class="lineCov">         12 :               .Color(&quot;rgb 'blue'&quot;)</span>
+<span class="lineNum">      62 </span><span class="lineCov">         16 :               .Name(&quot;\&quot;cos(x)\&quot;, '.AsPoints().Color(\&quot;rgb 'blue'\&quot;)'&quot;))</span>
+<span class="lineNum">      63 </span>            : #if 1      
+<span class="lineNum">      64 </span><span class="lineCov">         12 : .OutputFormat(extensions[e]);</span>
+<span class="lineNum">      65 </span>            : #else
+<span class="lineNum">      66 </span>            :     .OutputFormat(&quot;svg&quot;);
+<span class="lineNum">      67 </span>            : #endif
+<span class="lineNum">      68 </span><span class="lineCov">          4 : if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string(&quot;golden/gnuplot.&quot;) + extensions[e]).c_str());</span>
+<span class="lineNum">      69 </span><span class="lineCov">          6 : if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string(&quot;golden/gnuplot.&quot;) + extensions[e]));</span>
+<span class="lineNum">      70 </span><span class="lineCov">          4 : }</span>
+<span class="lineNum">      71 </span>            : }
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span>            : #endif  // BRICKS_WINDOWS
+<span class="lineNum">      74 </span>            : 
+<span class="lineNum">      75 </span>            : #endif  // BRICKS_GRAPH_DOCU_05
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

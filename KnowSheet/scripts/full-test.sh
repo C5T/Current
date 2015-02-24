@@ -35,7 +35,7 @@ echo
 
 
 echo -n -e "\033[0m\033[1mTests:\033[0m\033[36m"
-for i in $(find . -iname "*test.cc" | grep -v 3party | grep -v "/.noshit/"); do
+for i in $(find . -iname "*test.cc" | grep -v 3party | grep -v "/.noshit/" | sort -g); do
   echo "#include \"$i\"" >> $FULLTESTDIR/$ALL_TESTS_TOGETHER.cc
   echo -n " $i"
 done

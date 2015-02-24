@@ -1,0 +1,364 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/net/url/url.h</title>
+  <link rel="stylesheet" type="text/css" href="../../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../../index.html">top level</a> - <a href="index.html">Bricks/net/url</a> - url.h<span style="font-size: 80%;"> (source / <a href="url.h.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">125</td>
+            <td class="headerCovTableEntry">125</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">31</td>
+            <td class="headerCovTableEntry">32</td>
+            <td class="headerCovTableEntryHi">96.9 %</td>
+          </tr>
+          <tr><td><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2014 Dmitry &quot;Dima&quot; Korolev, &lt;dmitry.korolev@gmail.com&gt;.
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #ifndef BRICKS_NET_URL_URL_H
+<span class="lineNum">      26 </span>            : #define BRICKS_NET_URL_URL_H
+<span class="lineNum">      27 </span>            : 
+<span class="lineNum">      28 </span>            : #include &quot;../../port.h&quot;
+<span class="lineNum">      29 </span>            : 
+<span class="lineNum">      30 </span>            : #include &lt;algorithm&gt;
+<span class="lineNum">      31 </span>            : #include &lt;cctype&gt;
+<span class="lineNum">      32 </span>            : #include &lt;cstring&gt;
+<span class="lineNum">      33 </span>            : #include &lt;map&gt;
+<span class="lineNum">      34 </span>            : #include &lt;sstream&gt;
+<span class="lineNum">      35 </span>            : #include &lt;string&gt;
+<span class="lineNum">      36 </span>            : #include &lt;vector&gt;
+<span class="lineNum">      37 </span>            : 
+<span class="lineNum">      38 </span>            : #include &quot;../../exception.h&quot;
+<span class="lineNum">      39 </span>            : #include &quot;../../strings/printf.h&quot;
+<span class="lineNum">      40 </span>            : #include &quot;../../strings/split.h&quot;
+<span class="lineNum">      41 </span>            : 
+<span class="lineNum">      42 </span>            : namespace bricks {
+<span class="lineNum">      43 </span>            : namespace net {
+<a name="44"><span class="lineNum">      44 </span>            : namespace url {</a>
+<span class="lineNum">      45 </span>            : 
+<span class="lineNum">      46 </span><span class="lineCov">          8 : struct EmptyURLException : Exception {};</span>
+<span class="lineNum">      47 </span>            : // struct EmptyURLHostException : Exception {};
+<span class="lineNum">      48 </span>            : 
+<span class="lineNum">      49 </span>            : // URL manages the mapping between the string and parsed representations of the URL. It manages:
+<span class="lineNum">      50 </span>            : //
+<span class="lineNum">      51 </span>            : // * host    (string)
+<span class="lineNum">      52 </span>            : // * path    (string, defaults to &quot;/&quot;, never empty.)
+<span class="lineNum">      53 </span>            : // * scheme  (defaults to &quot;http&quot;, empty only if set explicitly in constructor.)
+<span class="lineNum">      54 </span>            : // * port    (defaults to the default port for supported schemes, zero/unset for unknown ones.)
+<span class="lineNum">      55 </span>            : //
+<span class="lineNum">      56 </span>            : // When handling redirects, the previous URL can be provided to properly handle host/port/scheme.
+<span class="lineNum">      57 </span>            : 
+<span class="lineNum">      58 </span>            : namespace impl {
+<span class="lineNum">      59 </span>            : 
+<span class="lineNum">      60 </span>            : namespace {
+<span class="lineNum">      61 </span>            : const char* const kDefaultScheme = &quot;http&quot;;
+<a name="62"><span class="lineNum">      62 </span>            : }</a>
+<span class="lineNum">      63 </span>            : 
+<span class="lineNum">      64 </span><span class="lineCov">       1234 : struct URLWithoutParametersParser {</span>
+<span class="lineNum">      65 </span>            :   std::string host = &quot;&quot;;
+<span class="lineNum">      66 </span>            :   std::string path = &quot;/&quot;;
+<span class="lineNum">      67 </span>            :   std::string scheme = kDefaultScheme;
+<a name="68"><span class="lineNum">      68 </span>            :   int port = 0;</a>
+<span class="lineNum">      69 </span>            : 
+<span class="lineNum">      70 </span><span class="lineCov">        314 :   URLWithoutParametersParser() = default;</span>
+<a name="71"><span class="lineNum">      71 </span>            : </a>
+<span class="lineNum">      72 </span>            :   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
+<span class="lineNum">      73 </span><span class="lineCov">        582 :   URLWithoutParametersParser(const std::string&amp; url,</span>
+<span class="lineNum">      74 </span>            :                              const std::string&amp; previous_scheme = kDefaultScheme,
+<span class="lineNum">      75 </span>            :                              const std::string&amp; previous_host = &quot;&quot;,
+<span class="lineNum">      76 </span><span class="lineCov">        584 :                              const int previous_port = 0) {</span>
+<span class="lineNum">      77 </span><span class="lineCov">        582 :     if (url.empty()) {</span>
+<span class="lineNum">      78 </span><span class="lineCov">          2 :       BRICKS_THROW(EmptyURLException());</span>
+<span class="lineNum">      79 </span>            :     }
+<span class="lineNum">      80 </span><span class="lineCov">        580 :     scheme = &quot;&quot;;</span>
+<span class="lineNum">      81 </span><span class="lineCov">        580 :     size_t offset_past_scheme = 0;</span>
+<span class="lineNum">      82 </span><span class="lineCov">        580 :     const size_t i = url.find(&quot;://&quot;);</span>
+<span class="lineNum">      83 </span><span class="lineCov">        580 :     if (i != std::string::npos) {</span>
+<span class="lineNum">      84 </span><span class="lineCov">         42 :       scheme = url.substr(0, i);</span>
+<span class="lineNum">      85 </span><span class="lineCov">         42 :       offset_past_scheme = i + 3;</span>
+<span class="lineNum">      86 </span>            :     }
+<span class="lineNum">      87 </span>            : 
+<span class="lineNum">      88 </span>            :     // TODO(dkorolev): Support `http://user:pass@host:80/` in the future.
+<span class="lineNum">      89 </span><span class="lineCov">        580 :     const size_t colon = url.find(':', offset_past_scheme);</span>
+<span class="lineNum">      90 </span><span class="lineCov">        580 :     const size_t slash = url.find('/', offset_past_scheme);</span>
+<span class="lineNum">      91 </span><span class="lineCov">        580 :     host = url.substr(offset_past_scheme, std::min(colon, slash) - offset_past_scheme);</span>
+<span class="lineNum">      92 </span><span class="lineCov">        580 :     if (host.empty()) {</span>
+<span class="lineNum">      93 </span><span class="lineCov">        202 :       host = previous_host;</span>
+<span class="lineNum">      94 </span>            :     }
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span><span class="lineCov">        580 :     if (colon &lt; slash) {</span>
+<span class="lineNum">      97 </span><span class="lineCov">        160 :       port = atoi(url.c_str() + colon + 1);</span>
+<span class="lineNum">      98 </span>            :     } else {
+<span class="lineNum">      99 </span><span class="lineCov">        420 :       port = previous_port;</span>
+<span class="lineNum">     100 </span>            :     }
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span><span class="lineCov">        580 :     if (slash != std::string::npos) {</span>
+<span class="lineNum">     103 </span><span class="lineCov">        374 :       path = url.substr(slash);</span>
+<span class="lineNum">     104 </span>            :     } else {
+<span class="lineNum">     105 </span><span class="lineCov">        206 :       path = &quot;&quot;;</span>
+<span class="lineNum">     106 </span>            :     }
+<span class="lineNum">     107 </span><span class="lineCov">        580 :     if (path.empty()) {</span>
+<span class="lineNum">     108 </span><span class="lineCov">        206 :       path = &quot;/&quot;;</span>
+<span class="lineNum">     109 </span>            :     }
+<span class="lineNum">     110 </span>            : 
+<span class="lineNum">     111 </span><span class="lineCov">        580 :     if (scheme.empty()) {</span>
+<span class="lineNum">     112 </span><span class="lineCov">        538 :       if (!previous_scheme.empty()) {</span>
+<span class="lineNum">     113 </span><span class="lineCov">        530 :         scheme = previous_scheme;</span>
+<span class="lineNum">     114 </span>            :       } else {
+<span class="lineNum">     115 </span><span class="lineCov">          8 :         scheme = DefaultSchemeForPort(port);</span>
+<span class="lineNum">     116 </span>            :       }
+<span class="lineNum">     117 </span>            :     }
+<span class="lineNum">     118 </span>            : 
+<span class="lineNum">     119 </span><span class="lineCov">        580 :     if (port == 0) {</span>
+<span class="lineNum">     120 </span><span class="lineCov">        378 :       port = DefaultPortForScheme(scheme);</span>
+<span class="lineNum">     121 </span>            :     }
+<a name="122"><span class="lineNum">     122 </span><span class="lineCov">        580 :   }</span></a>
+<span class="lineNum">     123 </span>            : 
+<span class="lineNum">     124 </span><span class="lineCov">         30 :   URLWithoutParametersParser(const std::string&amp; url, const URLWithoutParametersParser&amp; previous)</span>
+<a name="125"><span class="lineNum">     125 </span><span class="lineCov">         30 :       : URLWithoutParametersParser(url, previous.scheme, previous.host, previous.port) {}</span></a>
+<span class="lineNum">     126 </span>            : 
+<span class="lineNum">     127 </span><span class="lineCov">        240 :   std::string ComposeURL() const {</span>
+<span class="lineNum">     128 </span><span class="lineCov">        240 :     if (!host.empty()) {</span>
+<span class="lineNum">     129 </span><span class="lineCov">        236 :       std::ostringstream os;</span>
+<span class="lineNum">     130 </span><span class="lineCov">        236 :       if (!scheme.empty()) {</span>
+<span class="lineNum">     131 </span><span class="lineCov">        232 :         os &lt;&lt; scheme &lt;&lt; &quot;://&quot;;</span>
+<span class="lineNum">     132 </span>            :       }
+<span class="lineNum">     133 </span><span class="lineCov">        236 :       os &lt;&lt; host;</span>
+<span class="lineNum">     134 </span><span class="lineCov">        236 :       if (port != DefaultPortForScheme(scheme)) {</span>
+<span class="lineNum">     135 </span><span class="lineCov">        176 :         os &lt;&lt; ':' &lt;&lt; port;</span>
+<span class="lineNum">     136 </span>            :       }
+<span class="lineNum">     137 </span><span class="lineCov">        236 :       os &lt;&lt; path;</span>
+<span class="lineNum">     138 </span><span class="lineCov">        236 :       return os.str();</span>
+<span class="lineNum">     139 </span>            :     } else {
+<span class="lineNum">     140 </span>            :       // If no host is specified, it's just the path: No need to put scheme and port.
+<span class="lineNum">     141 </span><span class="lineCov">          4 :       return path;</span>
+<span class="lineNum">     142 </span>            :     }
+<a name="143"><span class="lineNum">     143 </span>            :   }</a>
+<span class="lineNum">     144 </span>            : 
+<span class="lineNum">     145 </span><span class="lineCov">        614 :   static int DefaultPortForScheme(const std::string&amp; scheme) {</span>
+<span class="lineNum">     146 </span>            :     // We don't really &quot;support&quot; other schemes yet -- D.K.
+<span class="lineNum">     147 </span><span class="lineCov">        614 :     if (scheme == &quot;http&quot;) {</span>
+<span class="lineNum">     148 </span><span class="lineCov">        574 :       return 80;</span>
+<span class="lineNum">     149 </span><span class="lineCov">         40 :     } else if (scheme == &quot;https&quot;) {</span>
+<span class="lineNum">     150 </span><span class="lineCov">          8 :       return 443;</span>
+<span class="lineNum">     151 </span>            :     } else {
+<span class="lineNum">     152 </span><span class="lineCov">         32 :       return 0;</span>
+<span class="lineNum">     153 </span>            :     }
+<a name="154"><span class="lineNum">     154 </span>            :   }</a>
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span><span class="lineCov">          8 :   static std::string DefaultSchemeForPort(int port) {</span>
+<span class="lineNum">     157 </span><span class="lineCov">          8 :     if (port == 80) {</span>
+<span class="lineNum">     158 </span><span class="lineCov">          2 :       return &quot;http&quot;;</span>
+<span class="lineNum">     159 </span><span class="lineCov">          6 :     } else if (port == 443) {</span>
+<span class="lineNum">     160 </span><span class="lineCov">          2 :       return &quot;https&quot;;</span>
+<span class="lineNum">     161 </span>            :     } else {
+<span class="lineNum">     162 </span><span class="lineCov">          4 :       return &quot;&quot;;</span>
+<span class="lineNum">     163 </span>            :     }
+<span class="lineNum">     164 </span>            :   }
+<a name="165"><span class="lineNum">     165 </span>            : };</a>
+<a name="166"><span class="lineNum">     166 </span>            : </a>
+<a name="167"><span class="lineNum">     167 </span><span class="lineCov">       1236 : struct URLParametersExtractor {</span></a>
+<span class="lineNum">     168 </span><span class="lineCov">        314 :   URLParametersExtractor() = default;</span>
+<span class="lineNum">     169 </span><span class="lineCov">        582 :   URLParametersExtractor(std::string url) {</span>
+<span class="lineNum">     170 </span><span class="lineCov">        582 :     const size_t pound_sign_index = url.find('#');</span>
+<span class="lineNum">     171 </span><span class="lineCov">        582 :     if (pound_sign_index != std::string::npos) {</span>
+<span class="lineNum">     172 </span><span class="lineCov">         20 :       fragment = url.substr(pound_sign_index + 1);</span>
+<span class="lineNum">     173 </span><span class="lineCov">         20 :       url = url.substr(0, pound_sign_index);</span>
+<span class="lineNum">     174 </span>            :     }
+<span class="lineNum">     175 </span><span class="lineCov">        582 :     const size_t question_mark_index = url.find('?');</span>
+<a name="176"><span class="lineNum">     176 </span><span class="lineCov">        582 :     if (question_mark_index != std::string::npos) {</span></a>
+<span class="lineNum">     177 </span><span class="lineCov">         50 :       auto&amp; v = parameters_vector;</span>
+<span class="lineNum">     178 </span><span class="lineCov">         66 :       strings::Split(url.substr(question_mark_index + 1), '&amp;', [&amp;v](const std::string&amp; chunk) {</span>
+<span class="lineNum">     179 </span><span class="lineCov">         66 :         const size_t i = chunk.find('=');</span>
+<span class="lineNum">     180 </span><span class="lineCov">         66 :         if (i != std::string::npos) {</span>
+<span class="lineNum">     181 </span><span class="lineCov">         64 :           v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));</span>
+<span class="lineNum">     182 </span>            :         } else {
+<span class="lineNum">     183 </span><span class="lineCov">          2 :           v.emplace_back(chunk, &quot;&quot;);</span>
+<span class="lineNum">     184 </span>            :         }
+<span class="lineNum">     185 </span><span class="lineCov">        116 :       });</span>
+<span class="lineNum">     186 </span><span class="lineCov">        116 :       for (auto&amp; it : parameters_vector) {</span>
+<span class="lineNum">     187 </span><span class="lineCov">         66 :         it.first = DecodeURIComponent(it.first);</span>
+<span class="lineNum">     188 </span><span class="lineCov">         66 :         it.second = DecodeURIComponent(it.second);</span>
+<span class="lineNum">     189 </span>            :       }
+<span class="lineNum">     190 </span><span class="lineCov">         50 :       query = QueryParameters(parameters_vector);</span>
+<span class="lineNum">     191 </span><span class="lineCov">         50 :       url = url.substr(0, question_mark_index);</span>
+<span class="lineNum">     192 </span>            :     }
+<span class="lineNum">     193 </span><span class="lineCov">        582 :     url_without_parameters = url;</span>
+<a name="194"><span class="lineNum">     194 </span><span class="lineCov">        582 :   }</span></a>
+<span class="lineNum">     195 </span>            : 
+<span class="lineNum">     196 </span><span class="lineCov">        132 :   static std::string DecodeURIComponent(const std::string&amp; encoded) {</span>
+<span class="lineNum">     197 </span><span class="lineCov">        132 :     std::string decoded;</span>
+<span class="lineNum">     198 </span><span class="lineCov">        554 :     for (size_t i = 0; i &lt; encoded.length(); ++i) {</span>
+<span class="lineNum">     199 </span><span class="lineCov">        422 :       if (i + 3 &lt;= encoded.length() &amp;&amp; encoded[i] == '%') {</span>
+<span class="lineNum">     200 </span><span class="lineCov">         32 :         decoded += static_cast&lt;char&gt;(std::stoi(encoded.substr(i + 1, 2).c_str(), nullptr, 16));</span>
+<span class="lineNum">     201 </span><span class="lineCov">         32 :         i += 2;</span>
+<span class="lineNum">     202 </span><span class="lineCov">        390 :       } else if (encoded[i] == '+') {</span>
+<span class="lineNum">     203 </span><span class="lineCov">          6 :         decoded += ' ';</span>
+<span class="lineNum">     204 </span>            :       } else {
+<span class="lineNum">     205 </span><span class="lineCov">        384 :         decoded += encoded[i];</span>
+<span class="lineNum">     206 </span>            :       }
+<span class="lineNum">     207 </span>            :     }
+<span class="lineNum">     208 </span><span class="lineCov">        132 :     return decoded;</span>
+<a name="209"><span class="lineNum">     209 </span>            :   }</a>
+<span class="lineNum">     210 </span>            : 
+<span class="lineNum">     211 </span><span class="lineCov">        124 :   static std::string EncodeURIComponent(const std::string&amp; decoded) {</span>
+<span class="lineNum">     212 </span><span class="lineCov">        124 :     std::string encoded;</span>
+<span class="lineNum">     213 </span><span class="lineCov">        522 :     for (const char c : decoded) {</span>
+<span class="lineNum">     214 </span><span class="lineCov">        398 :       if (::isalpha(c) || ::isdigit(c)) {</span>
+<span class="lineNum">     215 </span><span class="lineCov">        342 :         encoded += c;</span>
+<span class="lineNum">     216 </span>            :       } else {
+<span class="lineNum">     217 </span><span class="lineCov">         56 :         encoded += strings::Printf(&quot;%%%02X&quot;, static_cast&lt;int&gt;(c));</span>
+<span class="lineNum">     218 </span>            :       }
+<span class="lineNum">     219 </span>            :     }
+<span class="lineNum">     220 </span><span class="lineCov">        124 :     return encoded;</span>
+<a name="221"><span class="lineNum">     221 </span>            :   }</a>
+<span class="lineNum">     222 </span>            : 
+<span class="lineNum">     223 </span><span class="lineCov">        368 :   std::string ComposeParameters() const {</span>
+<span class="lineNum">     224 </span><span class="lineCov">        368 :     std::string composed_parameters;</span>
+<span class="lineNum">     225 </span><span class="lineCov">        430 :     for (size_t i = 0; i &lt; parameters_vector.size(); ++i) {</span>
+<span class="lineNum">     226 </span><span class="lineCov">         62 :       composed_parameters += &quot;?&amp;&quot;[i &gt; 0];</span>
+<span class="lineNum">     227 </span><span class="lineCov">        124 :       composed_parameters += EncodeURIComponent(parameters_vector[i].first) + '=' +</span>
+<span class="lineNum">     228 </span><span class="lineCov">        124 :                              EncodeURIComponent(parameters_vector[i].second);</span>
+<span class="lineNum">     229 </span>            :     }
+<span class="lineNum">     230 </span><span class="lineCov">        368 :     if (!fragment.empty()) {</span>
+<span class="lineNum">     231 </span><span class="lineCov">         20 :       composed_parameters += &quot;#&quot; + fragment;</span>
+<span class="lineNum">     232 </span>            :     }
+<span class="lineNum">     233 </span><span class="lineCov">        368 :     return composed_parameters;</span>
+<a name="234"><span class="lineNum">     234 </span>            :   }</a>
+<a name="235"><span class="lineNum">     235 </span>            : </a>
+<a name="236"><span class="lineNum">     236 </span><span class="lineCov">       1336 :   struct QueryParameters {</span></a>
+<span class="lineNum">     237 </span><span class="lineCov">        896 :     QueryParameters() = default;</span>
+<a name="238"><span class="lineNum">     238 </span><span class="lineCov">         50 :     QueryParameters(const std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt;&amp; parameters_vector)</span></a>
+<span class="lineNum">     239 </span><span class="lineCov">         50 :         : parameters_(parameters_vector.begin(), parameters_vector.end()) {}</span>
+<a name="240"><span class="lineNum">     240 </span><span class="lineCov">         54 :     inline std::string operator[](const std::string&amp; key) const { return get(key, &quot;&quot;); }</span></a>
+<span class="lineNum">     241 </span>            :     inline bool has(const std::string&amp; key) const { return parameters_.find(key) != parameters_.end(); }
+<span class="lineNum">     242 </span><span class="lineCov">         86 :     inline const std::string&amp; get(const std::string&amp; key, const std::string&amp; default_value) const {</span>
+<span class="lineNum">     243 </span><span class="lineCov">         86 :       const auto cit = parameters_.find(key);</span>
+<span class="lineNum">     244 </span><span class="lineCov">         86 :       if (cit != parameters_.end()) {</span>
+<span class="lineNum">     245 </span><span class="lineCov">         68 :         return cit-&gt;second;</span>
+<span class="lineNum">     246 </span>            :       } else {
+<span class="lineNum">     247 </span><span class="lineCov">         18 :         return default_value;</span>
+<span class="lineNum">     248 </span>            :       }
+<span class="lineNum">     249 </span>            :     }
+<span class="lineNum">     250 </span>            :     std::map&lt;std::string, std::string&gt; parameters_;
+<span class="lineNum">     251 </span>            :   };
+<span class="lineNum">     252 </span>            : 
+<span class="lineNum">     253 </span>            :   std::vector&lt;std::pair&lt;std::string, std::string&gt;&gt; parameters_vector;
+<span class="lineNum">     254 </span>            :   QueryParameters query;
+<span class="lineNum">     255 </span>            :   std::string fragment;
+<span class="lineNum">     256 </span>            :   std::string url_without_parameters;
+<a name="257"><span class="lineNum">     257 </span>            : };</a>
+<a name="258"><span class="lineNum">     258 </span>            : </a>
+<span class="lineNum">     259 </span><span class="lineCov">       1234 : struct URL : URLParametersExtractor, URLWithoutParametersParser {</span>
+<span class="lineNum">     260 </span><span class="lineCov">        314 :   URL() = default;</span>
+<a name="261"><span class="lineNum">     261 </span>            : </a>
+<span class="lineNum">     262 </span>            :   // Extra parameters for previous host and port are provided in the constructor to handle redirects.
+<span class="lineNum">     263 </span><span class="lineCov">        552 :   URL(const std::string&amp; url,</span>
+<span class="lineNum">     264 </span>            :       const std::string&amp; previous_scheme = kDefaultScheme,
+<span class="lineNum">     265 </span>            :       const std::string&amp; previous_host = &quot;&quot;,
+<span class="lineNum">     266 </span>            :       const int previous_port = 0)
+<span class="lineNum">     267 </span>            :       : URLParametersExtractor(url),
+<span class="lineNum">     268 </span>            :         URLWithoutParametersParser(
+<a name="269"><span class="lineNum">     269 </span><span class="lineCov">        552 :             URLParametersExtractor::url_without_parameters, previous_scheme, previous_host, previous_port) {}</span></a>
+<span class="lineNum">     270 </span>            : 
+<span class="lineNum">     271 </span><span class="lineCov">         30 :   URL(const std::string&amp; url, const URLWithoutParametersParser&amp; previous)</span>
+<span class="lineNum">     272 </span>            :       : URLParametersExtractor(url),
+<a name="273"><span class="lineNum">     273 </span><span class="lineCov">         30 :         URLWithoutParametersParser(URLParametersExtractor::url_without_parameters, previous) {}</span></a>
+<span class="lineNum">     274 </span>            : 
+<span class="lineNum">     275 </span><span class="lineCov">        240 :   std::string ComposeURL() const {</span>
+<span class="lineNum">     276 </span><span class="lineCov">        240 :     return URLWithoutParametersParser::ComposeURL() + URLParametersExtractor::ComposeParameters();</span>
+<span class="lineNum">     277 </span>            :   }
+<span class="lineNum">     278 </span>            : };
+<span class="lineNum">     279 </span>            : 
+<span class="lineNum">     280 </span>            : }  // namespace impl
+<span class="lineNum">     281 </span>            : 
+<span class="lineNum">     282 </span>            : typedef impl::URL URL;
+<span class="lineNum">     283 </span>            : 
+<span class="lineNum">     284 </span>            : }  // namespace url
+<span class="lineNum">     285 </span>            : }  // namespace net
+<span class="lineNum">     286 </span>            : }  // namespace bricks
+<span class="lineNum">     287 </span>            : 
+<span class="lineNum">     288 </span>            : #endif  // BRICKS_NET_URL_URL_H
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>

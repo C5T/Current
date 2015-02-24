@@ -1,0 +1,286 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>LCOV - coverage.info - Bricks/util/test.cc</title>
+  <link rel="stylesheet" type="text/css" href="../../gcov.css">
+</head>
+
+<body>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="title">LCOV - code coverage report</td></tr>
+    <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+
+    <tr>
+      <td width="100%">
+        <table cellpadding=1 border=0 width="100%">
+          <tr>
+            <td width="10%" class="headerItem">Current view:</td>
+            <td width="35%" class="headerValue"><a href="../../index.html">top level</a> - <a href="index.html">Bricks/util</a> - test.cc<span style="font-size: 80%;"> (source / <a href="test.cc.func-sort-c.html">functions</a>)</span></td>
+            <td width="5%"></td>
+            <td width="15%"></td>
+            <td width="10%" class="headerCovTableHead">Hit</td>
+            <td width="10%" class="headerCovTableHead">Total</td>
+            <td width="15%" class="headerCovTableHead">Coverage</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Test:</td>
+            <td class="headerValue">coverage.info</td>
+            <td></td>
+            <td class="headerItem">Lines:</td>
+            <td class="headerCovTableEntry">92</td>
+            <td class="headerCovTableEntry">92</td>
+            <td class="headerCovTableEntryHi">100.0 %</td>
+          </tr>
+          <tr>
+            <td class="headerItem">Date:</td>
+            <td class="headerValue">2015-02-24 12:16:30</td>
+            <td></td>
+            <td class="headerItem">Functions:</td>
+            <td class="headerCovTableEntry">38</td>
+            <td class="headerCovTableEntry">39</td>
+            <td class="headerCovTableEntryHi">97.4 %</td>
+          </tr>
+          <tr><td><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+  </table>
+
+  <table cellpadding=0 cellspacing=0 border=0>
+    <tr>
+      <td><br></td>
+    </tr>
+    <tr>
+      <td>
+<pre class="sourceHeading">          Line data    Source code</pre>
+<pre class="source">
+<a name="1"><span class="lineNum">       1 </span>            : /*******************************************************************************</a>
+<span class="lineNum">       2 </span>            : The MIT License (MIT)
+<span class="lineNum">       3 </span>            : 
+<span class="lineNum">       4 </span>            : Copyright (c) 2014 Dmitry &quot;Dima&quot; Korolev &lt;dmitry.korolev@gmail.com&gt;
+<span class="lineNum">       5 </span>            : 
+<span class="lineNum">       6 </span>            : Permission is hereby granted, free of charge, to any person obtaining a copy
+<span class="lineNum">       7 </span>            : of this software and associated documentation files (the &quot;Software&quot;), to deal
+<span class="lineNum">       8 </span>            : in the Software without restriction, including without limitation the rights
+<span class="lineNum">       9 </span>            : to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+<span class="lineNum">      10 </span>            : copies of the Software, and to permit persons to whom the Software is
+<span class="lineNum">      11 </span>            : furnished to do so, subject to the following conditions:
+<span class="lineNum">      12 </span>            : 
+<span class="lineNum">      13 </span>            : The above copyright notice and this permission notice shall be included in all
+<span class="lineNum">      14 </span>            : copies or substantial portions of the Software.
+<span class="lineNum">      15 </span>            : 
+<span class="lineNum">      16 </span>            : THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+<span class="lineNum">      17 </span>            : IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+<span class="lineNum">      18 </span>            : FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+<span class="lineNum">      19 </span>            : AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+<span class="lineNum">      20 </span>            : LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+<span class="lineNum">      21 </span>            : OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+<span class="lineNum">      22 </span>            : SOFTWARE.
+<span class="lineNum">      23 </span>            : *******************************************************************************/
+<span class="lineNum">      24 </span>            : 
+<span class="lineNum">      25 </span>            : #include &quot;make_scope_guard.h&quot;
+<span class="lineNum">      26 </span>            : #include &quot;singleton.h&quot;
+<span class="lineNum">      27 </span>            : #include &quot;sha256.h&quot;
+<span class="lineNum">      28 </span>            : 
+<span class="lineNum">      29 </span>            : #include &quot;../exception.h&quot;
+<span class="lineNum">      30 </span>            : 
+<a name="31"><span class="lineNum">      31 </span>            : #include &quot;../3party/gtest/gtest-main.h&quot;</a>
+<span class="lineNum">      32 </span>            : 
+<span class="lineNum">      33 </span><span class="lineCov">         15 : TEST(Util, BasicException) {</span>
+<span class="lineNum">      34 </span>            :   try {
+<span class="lineNum">      35 </span><span class="lineCov">          1 :     BRICKS_THROW(bricks::Exception(&quot;Foo&quot;));</span>
+<span class="lineNum">      36 </span>            :     ASSERT_TRUE(false);
+<span class="lineNum">      37 </span><span class="lineCov">          1 :   } catch (bricks::Exception&amp; e) {</span>
+<span class="lineNum">      38 </span>            :     // Relative path prefix will be here when measuring code coverage, take it out.
+<span class="lineNum">      39 </span><span class="lineCov">          1 :     const std::string actual = e.What();</span>
+<span class="lineNum">      40 </span><span class="lineCov">          2 :     const std::string golden = &quot;test.cc:35\tbricks::Exception(\&quot;Foo\&quot;)\tFoo&quot;;</span>
+<span class="lineNum">      41 </span><span class="lineCov">          1 :     ASSERT_GE(actual.length(), golden.length());</span>
+<span class="lineNum">      42 </span><span class="lineCov">          2 :     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));</span>
+<span class="lineNum">      43 </span><span class="lineCov">          1 :   }</span>
+<a name="44"><span class="lineNum">      44 </span>            : }</a>
+<a name="45"><span class="lineNum">      45 </span>            : </a>
+<span class="lineNum">      46 </span><span class="lineCov">          3 : struct TestException : bricks::Exception {</span>
+<span class="lineNum">      47 </span><span class="lineCov">          1 :   TestException(const std::string&amp; a, const std::string&amp; b) : bricks::Exception(a + &quot;&amp;&quot; + b) {}</span>
+<a name="48"><span class="lineNum">      48 </span>            : };</a>
+<span class="lineNum">      49 </span>            : 
+<span class="lineNum">      50 </span><span class="lineCov">         15 : TEST(Util, CustomException) {</span>
+<span class="lineNum">      51 </span>            :   try {
+<span class="lineNum">      52 </span><span class="lineCov">          1 :     BRICKS_THROW(TestException(&quot;Bar&quot;, &quot;Baz&quot;));</span>
+<span class="lineNum">      53 </span>            :     ASSERT_TRUE(false);
+<span class="lineNum">      54 </span><span class="lineCov">          1 :   } catch (bricks::Exception&amp; e) {</span>
+<span class="lineNum">      55 </span>            :     // Relative path prefix will be here when measuring code coverage, take it out.
+<span class="lineNum">      56 </span><span class="lineCov">          1 :     const std::string actual = e.What();</span>
+<span class="lineNum">      57 </span><span class="lineCov">          2 :     const std::string golden = &quot;test.cc:52\tTestException(\&quot;Bar\&quot;, \&quot;Baz\&quot;)\tBar&amp;Baz&quot;;</span>
+<span class="lineNum">      58 </span><span class="lineCov">          1 :     ASSERT_GE(actual.length(), golden.length());</span>
+<span class="lineNum">      59 </span><span class="lineCov">          2 :     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));</span>
+<span class="lineNum">      60 </span><span class="lineCov">          1 :   }</span>
+<a name="61"><span class="lineNum">      61 </span>            : }</a>
+<span class="lineNum">      62 </span>            : 
+<a name="63"><span class="lineNum">      63 </span><span class="lineCov">         15 : TEST(Util, MakeScopeGuard) {</span></a>
+<a name="64"><span class="lineNum">      64 </span>            :   struct Object {</a>
+<span class="lineNum">      65 </span><span class="lineCov">          1 :     Object(std::string&amp; story) : story_(story) { story_ += &quot;constructed\n&quot;; }</span>
+<span class="lineNum">      66 </span><span class="lineCov">          1 :     ~Object() { story_ += &quot;destructed\n&quot;; }</span>
+<span class="lineNum">      67 </span>            : 
+<span class="lineNum">      68 </span>            :     Object(const Object&amp;) = delete;
+<span class="lineNum">      69 </span>            :     Object(Object&amp;&amp;) = delete;
+<span class="lineNum">      70 </span>            :     void operator=(const Object&amp;) = delete;
+<span class="lineNum">      71 </span>            :     void operator=(Object&amp;&amp;) = delete;
+<span class="lineNum">      72 </span>            : 
+<span class="lineNum">      73 </span>            :     std::string&amp; story_;
+<span class="lineNum">      74 </span>            :   };
+<span class="lineNum">      75 </span>            : 
+<span class="lineNum">      76 </span>            :   {
+<span class="lineNum">      77 </span><span class="lineCov">          1 :     std::string story;</span>
+<span class="lineNum">      78 </span>            :     {
+<span class="lineNum">      79 </span><span class="lineCov">          1 :       Object object(story);</span>
+<span class="lineNum">      80 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;constructed\n&quot;, story);</span>
+<span class="lineNum">      81 </span>            :     }
+<span class="lineNum">      82 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;constructed\ndestructed\n&quot;, story);</span>
+<span class="lineNum">      83 </span>            :   }
+<span class="lineNum">      84 </span>            : 
+<span class="lineNum">      85 </span>            :   {
+<span class="lineNum">      86 </span><span class="lineCov">          1 :     std::string story = &quot;lambda_begin\n&quot;;</span>
+<span class="lineNum">      87 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;lambda_begin\n&quot;, story);</span>
+<a name="88"><span class="lineNum">      88 </span>            :     {</a>
+<span class="lineNum">      89 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;lambda_begin\n&quot;, story);</span>
+<span class="lineNum">      90 </span><span class="lineCov">          2 :       const auto guard = bricks::MakeScopeGuard([&amp;story]() { story += &quot;lambda_end\n&quot;; });</span>
+<span class="lineNum">      91 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;lambda_begin\n&quot;, story);</span>
+<span class="lineNum">      92 </span>            :     }
+<span class="lineNum">      93 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;lambda_begin\nlambda_end\n&quot;, story);</span>
+<span class="lineNum">      94 </span>            :   }
+<span class="lineNum">      95 </span>            : 
+<span class="lineNum">      96 </span>            :   {
+<a name="97"><span class="lineNum">      97 </span><span class="lineCov">          1 :     std::string story = &quot;helper_begin\n&quot;;</span></a>
+<a name="98"><span class="lineNum">      98 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;helper_begin\n&quot;, story);</span></a>
+<span class="lineNum">      99 </span><span class="lineCov">          1 :     struct Helper {</span>
+<span class="lineNum">     100 </span><span class="lineCov">          1 :       Helper(std::string&amp; story) : story_(story), called_(false) {}</span>
+<span class="lineNum">     101 </span>            : 
+<span class="lineNum">     102 </span>            :       Helper(const Helper&amp;) = delete;
+<span class="lineNum">     103 </span>            :       Helper(Helper&amp;&amp;) = delete;
+<span class="lineNum">     104 </span>            :       void operator=(const Helper&amp;) = delete;
+<a name="105"><span class="lineNum">     105 </span>            :       void operator=(Helper&amp;&amp;) = delete;</a>
+<span class="lineNum">     106 </span>            : 
+<span class="lineNum">     107 </span><span class="lineCov">          1 :       void operator()() {</span>
+<span class="lineNum">     108 </span><span class="lineCov">          1 :         if (!called_) {</span>
+<span class="lineNum">     109 </span><span class="lineCov">          1 :           story_ += &quot;helper_end\n&quot;;</span>
+<span class="lineNum">     110 </span><span class="lineCov">          1 :           called_ = true;</span>
+<span class="lineNum">     111 </span>            :         } else {
+<span class="lineNum">     112 </span>            :           assert(false);  // LCOV_EXCL_LINE
+<span class="lineNum">     113 </span>            :         }
+<span class="lineNum">     114 </span><span class="lineCov">          1 :       }</span>
+<span class="lineNum">     115 </span>            : 
+<span class="lineNum">     116 </span>            :       std::string&amp; story_;
+<span class="lineNum">     117 </span>            :       std::string dummy_string_;
+<span class="lineNum">     118 </span>            :       bool called_;
+<span class="lineNum">     119 </span>            :     };
+<span class="lineNum">     120 </span>            : 
+<span class="lineNum">     121 </span><span class="lineCov">          1 :     Helper helper(story);</span>
+<span class="lineNum">     122 </span>            :     {
+<span class="lineNum">     123 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;helper_begin\n&quot;, story);</span>
+<span class="lineNum">     124 </span><span class="lineCov">          1 :       const auto guard = bricks::MakeScopeGuard(helper);</span>
+<span class="lineNum">     125 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;helper_begin\n&quot;, story);</span>
+<span class="lineNum">     126 </span><span class="lineCov">          1 :       EXPECT_FALSE(helper.called_);</span>
+<span class="lineNum">     127 </span>            :     }
+<span class="lineNum">     128 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;helper_begin\nhelper_end\n&quot;, story);</span>
+<span class="lineNum">     129 </span><span class="lineCov">          1 :     EXPECT_TRUE(helper.called_);</span>
+<span class="lineNum">     130 </span>            :   }
+<a name="131"><span class="lineNum">     131 </span><span class="lineCov">          1 : }</span></a>
+<span class="lineNum">     132 </span>            : 
+<a name="133"><span class="lineNum">     133 </span><span class="lineCov">         15 : TEST(Util, MakePointerScopeGuard) {</span></a>
+<a name="134"><span class="lineNum">     134 </span>            :   struct Instance {</a>
+<span class="lineNum">     135 </span><span class="lineCov">          4 :     Instance(std::string&amp; story) : story_(story) { story_ += &quot;constructed\n&quot;; }</span>
+<span class="lineNum">     136 </span><span class="lineCov">          4 :     ~Instance() { story_ += &quot;destructed\n&quot;; }</span>
+<span class="lineNum">     137 </span>            : 
+<span class="lineNum">     138 </span>            :     Instance(const Instance&amp;) = delete;
+<span class="lineNum">     139 </span>            :     Instance(Instance&amp;&amp;) = delete;
+<span class="lineNum">     140 </span>            :     void operator=(const Instance&amp;) = delete;
+<span class="lineNum">     141 </span>            :     void operator=(Instance&amp;&amp;) = delete;
+<span class="lineNum">     142 </span>            : 
+<span class="lineNum">     143 </span>            :     std::string&amp; story_;
+<span class="lineNum">     144 </span>            :   };
+<span class="lineNum">     145 </span>            : 
+<span class="lineNum">     146 </span>            :   {
+<span class="lineNum">     147 </span><span class="lineCov">          1 :     std::string story = &quot;object\n&quot;;</span>
+<span class="lineNum">     148 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;object\n&quot;, story);</span>
+<span class="lineNum">     149 </span>            :     {
+<span class="lineNum">     150 </span><span class="lineCov">          1 :       Instance instance(story);</span>
+<span class="lineNum">     151 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;object\nconstructed\n&quot;, story);</span>
+<span class="lineNum">     152 </span>            :     }
+<span class="lineNum">     153 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;object\nconstructed\ndestructed\n&quot;, story);</span>
+<span class="lineNum">     154 </span>            :   }
+<span class="lineNum">     155 </span>            : 
+<span class="lineNum">     156 </span>            :   {
+<span class="lineNum">     157 </span><span class="lineCov">          1 :     std::string story = &quot;pointer\n&quot;;</span>
+<span class="lineNum">     158 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;pointer\n&quot;, story);</span>
+<span class="lineNum">     159 </span>            :     {
+<span class="lineNum">     160 </span><span class="lineCov">          1 :       Instance* pointer = new Instance(story);</span>
+<span class="lineNum">     161 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;pointer\nconstructed\n&quot;, story);</span>
+<span class="lineNum">     162 </span><span class="lineCov">          1 :       delete pointer;</span>
+<span class="lineNum">     163 </span>            :     }
+<span class="lineNum">     164 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;pointer\nconstructed\ndestructed\n&quot;, story);</span>
+<span class="lineNum">     165 </span>            :   }
+<span class="lineNum">     166 </span>            : 
+<span class="lineNum">     167 </span>            :   {
+<span class="lineNum">     168 </span><span class="lineCov">          1 :     std::string story = &quot;guarded_pointer\n&quot;;</span>
+<span class="lineNum">     169 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;guarded_pointer\n&quot;, story);</span>
+<span class="lineNum">     170 </span>            :     {
+<span class="lineNum">     171 </span><span class="lineCov">          1 :       Instance* pointer = new Instance(story);</span>
+<span class="lineNum">     172 </span><span class="lineCov">          1 :       const auto guard = bricks::MakePointerScopeGuard(pointer);</span>
+<span class="lineNum">     173 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;guarded_pointer\nconstructed\n&quot;, story);</span>
+<span class="lineNum">     174 </span>            :     }
+<span class="lineNum">     175 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;guarded_pointer\nconstructed\ndestructed\n&quot;, story);</span>
+<span class="lineNum">     176 </span>            :   }
+<span class="lineNum">     177 </span>            : 
+<span class="lineNum">     178 </span>            :   {
+<span class="lineNum">     179 </span><span class="lineCov">          1 :     std::string story = &quot;custom_guarded_pointer\n&quot;;</span>
+<span class="lineNum">     180 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;custom_guarded_pointer\n&quot;, story);</span>
+<a name="181"><span class="lineNum">     181 </span>            :     {</a>
+<span class="lineNum">     182 </span><span class="lineCov">          1 :       Instance* pointer = new Instance(story);</span>
+<span class="lineNum">     183 </span><span class="lineCov">          1 :       const auto guard = bricks::MakePointerScopeGuard(pointer, [&amp;story](Instance* p) {</span>
+<span class="lineNum">     184 </span><span class="lineCov">          1 :         story += &quot;guarded_delete\n&quot;;</span>
+<span class="lineNum">     185 </span><span class="lineCov">          1 :         delete p;</span>
+<span class="lineNum">     186 </span><span class="lineCov">          2 :       });</span>
+<span class="lineNum">     187 </span><span class="lineCov">          1 :       EXPECT_EQ(&quot;custom_guarded_pointer\nconstructed\n&quot;, story);</span>
+<span class="lineNum">     188 </span>            :     }
+<span class="lineNum">     189 </span><span class="lineCov">          1 :     EXPECT_EQ(&quot;custom_guarded_pointer\nconstructed\nguarded_delete\ndestructed\n&quot;, story);</span>
+<span class="lineNum">     190 </span>            :   }
+<a name="191"><span class="lineNum">     191 </span><span class="lineCov">          1 : }</span></a>
+<span class="lineNum">     192 </span>            : 
+<span class="lineNum">     193 </span><span class="lineCov">         15 : TEST(Util, Singleton) {</span>
+<a name="194"><span class="lineNum">     194 </span>            :   struct Foo {</a>
+<span class="lineNum">     195 </span>            :     size_t bar = 0;
+<span class="lineNum">     196 </span><span class="lineCov">          2 :     void baz() { ++bar; }</span>
+<span class="lineNum">     197 </span>            :   };
+<span class="lineNum">     198 </span><span class="lineCov">          1 :   EXPECT_EQ(0u, bricks::Singleton&lt;Foo&gt;().bar);</span>
+<a name="199"><span class="lineNum">     199 </span><span class="lineCov">          1 :   bricks::Singleton&lt;Foo&gt;().baz();</span></a>
+<span class="lineNum">     200 </span><span class="lineCov">          1 :   EXPECT_EQ(1u, bricks::Singleton&lt;Foo&gt;().bar);</span>
+<span class="lineNum">     201 </span><span class="lineCov">          1 :   const auto lambda = []() { bricks::Singleton&lt;Foo&gt;().baz(); };</span>
+<span class="lineNum">     202 </span><span class="lineCov">          1 :   EXPECT_EQ(1u, bricks::Singleton&lt;Foo&gt;().bar);</span>
+<span class="lineNum">     203 </span><span class="lineCov">          1 :   lambda();</span>
+<span class="lineNum">     204 </span><span class="lineCov">          1 :   EXPECT_EQ(2u, bricks::Singleton&lt;Foo&gt;().bar);</span>
+<a name="205"><span class="lineNum">     205 </span><span class="lineCov">          1 : }</span></a>
+<span class="lineNum">     206 </span>            : 
+<span class="lineNum">     207 </span><span class="lineCov">         15 : TEST(Util, SHA256) {</span>
+<span class="lineNum">     208 </span><span class="lineCov">          1 :   EXPECT_EQ(&quot;a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e&quot;,</span>
+<span class="lineNum">     209 </span><span class="lineCov">          1 :             static_cast&lt;std::string&gt;(bricks::SHA256(&quot;Hello World&quot;)));</span>
+<span class="lineNum">     210 </span><span class="lineCov">          1 : }</span>
+</pre>
+      </td>
+    </tr>
+  </table>
+  <br>
+
+  <table width="100%" border=0 cellspacing=0 cellpadding=0>
+    <tr><td class="ruler"><img src="../../glass.png" width=3 height=3 alt=""></td></tr>
+    <tr><td class="versionInfo">Generated by: <a href="http://ltp.sourceforge.net/coverage/lcov.php" target="_parent">LCOV version 1.11</a></td></tr>
+  </table>
+  <br>
+
+</body>
+</html>
