@@ -197,7 +197,14 @@ class HTTPServerPOSIX final {
     std::string content_type;
     explicit StaticFileServer(const std::string& body, const std::string& content_type)
         : body(body), content_type(content_type) {}
-    void operator()(Request r) { r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type); }
+    void operator()(Request r) {
+      if (r.method == "GET") {
+        r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
+      } else {
+        r.connection.SendHTTPResponse(
+            DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/plain");
+      }
+    }
   };
 
   void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {

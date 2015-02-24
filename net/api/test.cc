@@ -58,6 +58,7 @@ using bricks::net::HTTPHeaders;
 
 using bricks::net::DefaultInternalServerErrorMessage;
 using bricks::net::DefaultFourOhFourMessage;
+using bricks::net::DefaultMethodNotAllowedMessage;
 
 using bricks::net::HTTPRedirectNotAllowedException;
 using bricks::net::HTTPRedirectLoopException;
@@ -497,6 +498,7 @@ TEST(HTTPAPI, UserAgent) {
 TEST(HTTPAPI, InvalidUrl) { ASSERT_THROW(HTTP(GET("http://999.999.999.999/")), SocketResolveAddressException); }
 
 TEST(HTTPAPI, ServeDir) {
+  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n", DefaultMethodNotAllowedMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const std::string dir = FLAGS_net_api_test_tmpdir + "/static";
@@ -506,9 +508,21 @@ TEST(HTTPAPI, ServeDir) {
   FileSystem::WriteStringToFile("And this: PNG", FileSystem::JoinPath(dir, "file.png").c_str());
   FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir_to_ignore"), FileSystem::MkDirParameters::Silent);
   HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir);
-  EXPECT_EQ("<h1>HTML</h1>", HTTP(POST(Printf("localhost:%d/file.html", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("This is text.", HTTP(POST(Printf("localhost:%d/file.txt", FLAGS_net_api_test_port))).body);
-  EXPECT_EQ("And this: PNG", HTTP(POST(Printf("localhost:%d/file.png", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("<h1>HTML</h1>", HTTP(GET(Printf("localhost:%d/file.html", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("This is text.", HTTP(GET(Printf("localhost:%d/file.txt", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("And this: PNG", HTTP(GET(Printf("localhost:%d/file.png", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+            HTTP(GET(Printf("localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
+            HTTP(POST(Printf("localhost:%d/file.html", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("<h1>NOT FOUND</h1>\n",
+            HTTP(POST(Printf("localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+  EXPECT_EQ(404,
+            static_cast<int>(HTTP(GET(Printf("localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
+  EXPECT_EQ(405, static_cast<int>(HTTP(POST(Printf("localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+  EXPECT_EQ(
+      404, static_cast<int>(HTTP(POST(Printf("localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
   FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir_to_ignore"), FileSystem::RmDirParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 }
