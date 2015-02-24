@@ -62,7 +62,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
     size_t dropped_messages_ = 0u;
     std::atomic_size_t processed_messages_;
     std::atomic_size_t processing_time_ms_;
-    SlowConsumer() : processed_messages_(0u), processing_time_ms_(0u) {}
+    SlowConsumer() : processed_messages_(0u), processing_time_ms_(5u) {}
     void OnMessage(const std::string& s, size_t dropped_messages) {
       messages_ += s + '\n';
       dropped_messages_ += dropped_messages;

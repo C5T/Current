@@ -92,7 +92,11 @@ SOFTWARE.
 
 #ifdef BRICKS_WINDOWS
 
-#include <Windows.h>
+// #include <windows.h>  -- `#include <windows.h>` does not play well with WSA -- D.K.
+
+// These two headers seem to work fine for both WSA and `FindFirst*` files.
+#include <WS2tcpip.h>
+#include <corecrt_io.h>
 
 // Visual Studio does not define `M_PI`.
 #ifndef M_PI

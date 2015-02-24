@@ -25,6 +25,10 @@ SOFTWARE.
 #ifndef BRICKS_GRAPH_DOCU_05
 #define BRICKS_GRAPH_DOCU_05
 
+#include "../../port.h"
+
+#ifndef BRICKS_WINDOWS
+
 #include "../regenerate_flag.cc"
 
 #include "../gnuplot.h"
@@ -65,5 +69,7 @@ if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result
 if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string("golden/gnuplot.") + extensions[e]));
 }
 }
+
+#endif  // BRICKS_WINDOWS
 
 #endif  // BRICKS_GRAPH_DOCU_05
