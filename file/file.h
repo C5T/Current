@@ -192,7 +192,7 @@ struct FileSystem {
       const ScopedCloseFindFileHandle closer(handle);
       do {
         if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-          if (!lambda(find_data.cFileName)) {
+          if (!f(find_data.cFileName)) {
             return;
           }
         }
