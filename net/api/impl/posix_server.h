@@ -110,6 +110,10 @@ struct Request final {
     connection.SendHTTPResponse(p1, p2, p3, p4, p5);
   }
 
+  HTTPServerConnection::ChunkedResponseSender SendChunkedResponse() {
+    return connection.SendChunkedHTTPResponse();
+  }
+
   Request() = delete;
   Request(const Request&) = delete;
   void operator=(const Request&) = delete;
@@ -175,6 +179,7 @@ class HTTPServerPOSIX final {
   }
   template <typename F>
   void Register(const std::string& path, F* ptr_to_handler) {
+    // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {
       BRICKS_THROW(HandlerAlreadyExistsException(path));
@@ -183,11 +188,43 @@ class HTTPServerPOSIX final {
   }
 
   void UnRegister(const std::string& path) {
+    // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) == handlers_.end()) {
       BRICKS_THROW(HandlerDoesNotExistException(path));
     }
     handlers_.erase(path);
+  }
+
+  struct StaticFileServer {
+    std::string body;
+    std::string content_type;
+    explicit StaticFileServer(const std::string& body, const std::string& content_type)
+        : body(body), content_type(content_type) {}
+    void operator()(Request r) {
+      if (r.method == "GET") {
+        r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
+      } else {
+        r.connection.SendHTTPResponse(
+            DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/plain");
+      }
+    }
+  };
+
+  void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
+    // TODO(dkorolev): Add a scoped version of registerers.
+    FileSystem::ScanDir(dir, [this, &dir, &route_prefix](const std::string& file) {
+      const std::string content_type(GetFileMimeType(file, ""));
+      if (!content_type.empty()) {
+        // TODO(dkorolev): Wrap keeping file contents into a singleton
+        // that keeps a map from a (SHA256) hash to the contents.
+        Register(
+            route_prefix + file,
+            new StaticFileServer(FileSystem::ReadFileAsString(FileSystem::JoinPath(dir, file)), content_type));
+      } else {
+        BRICKS_THROW(CannotServeStaticFilesOfUnknownMIMEType(file));
+      }
+    });
   }
 
   void ResetAllHandlers() {

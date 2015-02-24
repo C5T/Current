@@ -56,6 +56,10 @@ struct is_string_type_impl<std::string> {
   constexpr static bool value = true;
 };
 template <>
+struct is_string_type_impl<char> {
+  constexpr static bool value = true;
+};
+template <>
 struct is_string_type_impl<std::vector<char>> {
   constexpr static bool value = true;
 };

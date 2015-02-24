@@ -32,7 +32,10 @@ namespace bricks {
 namespace net {
 
 // All exceptions are derived from NetworkException.
-struct NetworkException : Exception {};
+struct NetworkException : Exception {
+  NetworkException() {}
+  NetworkException(const std::string& what) : Exception(what) {}
+};
 
 // TCP-level exceptions are derived from SocketException.
 struct SocketException : NetworkException {};
@@ -63,11 +66,17 @@ struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
 // HTTP-level exceptions are derived from HTTPException.
-struct HTTPException : NetworkException {};
+struct HTTPException : NetworkException {
+  HTTPException() {}
+  HTTPException(const std::string& what) : NetworkException(what) {}
+};
 
 struct HTTPNoBodyProvidedException : HTTPException {};
 struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
+struct CannotServeStaticFilesOfUnknownMIMEType : HTTPException {
+  CannotServeStaticFilesOfUnknownMIMEType(const std::string& what) : HTTPException(what) {}
+};
 
 // AttemptedToSendHTTPResponseMoreThanOnce is a user code exception; not really an HTTP one.
 struct AttemptedToSendHTTPResponseMoreThanOnce : Exception {};

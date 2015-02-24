@@ -33,6 +33,8 @@ SOFTWARE.
 
 using bricks::FileSystem;
 using bricks::FileException;
+using bricks::DirDoesNotExistException;
+using bricks::PathIsNotADirectoryException;
 
 DEFINE_string(file_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
 
@@ -163,6 +165,8 @@ TEST(File, ScanDir) {
 
   FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
   FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
+  FileSystem::RmFile(dir, FileSystem::RmFileParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
   struct Scanner {
@@ -179,12 +183,20 @@ TEST(File, ScanDir) {
   };
 
   Scanner scanner_before(dir);
-  ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), FileException);
-  ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), FileException);
+  ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), DirDoesNotExistException);
+  ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), DirDoesNotExistException);
+
+  {
+    const auto file_remover = FileSystem::ScopedRmFile(dir);
+    FileSystem::WriteStringToFile("This is a file, not a directory!", dir.c_str());
+    ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), PathIsNotADirectoryException);
+    ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), PathIsNotADirectoryException);
+  }
 
   FileSystem::MkDir(dir);
   FileSystem::WriteStringToFile("foo", fn1.c_str());
   FileSystem::WriteStringToFile("bar", fn2.c_str());
+  FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir"));
 
   Scanner scanner_after(dir);
   FileSystem::ScanDir(dir, scanner_after);
@@ -201,4 +213,6 @@ TEST(File, ScanDir) {
   EXPECT_TRUE(scanner_after_until.files_[0].first == "one" || scanner_after_until.files_[0].first == "two");
   EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"),
             scanner_after_until.files_[0].second);
+
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
 }
