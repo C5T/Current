@@ -520,6 +520,18 @@ class HTTPServerConnection final {
       return *this;
     }
 
+    template <typename T>
+    inline ChunkedResponseSender& operator()(T&& data) {
+      impl_->Send(std::forward<T>(data));
+      return *this;
+    }
+
+    template <typename T1, typename T2>
+    inline ChunkedResponseSender& operator()(T1&& data1, T2&& data2) {
+      impl_->Send(std::forward<T1>(data1), std::forward<T2>(data2));
+      return *this;
+    }
+
     std::unique_ptr<Impl> impl_;
   };
 

@@ -33,6 +33,8 @@ SOFTWARE.
 #include <string>
 #include <cstring>
 
+#include <errno.h>
+
 #include "../port.h"
 
 #ifndef BRICKS_WINDOWS
@@ -188,8 +190,13 @@ struct FileSystem {
         }
       }
     } else {
-      // TODO(dkorolev): Analyze errno.
-      BRICKS_THROW(FileException());
+      if (errno == ENOENT) {
+        BRICKS_THROW(DirDoesNotExistException());
+      } else if (errno == ENOTDIR) {
+        BRICKS_THROW(PathIsNotADirectoryException());
+      } else {
+        BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
+      }
     }
   }
 

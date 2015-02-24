@@ -22,31 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_FILE_EXCEPTIONS_H
-#define BRICKS_FILE_EXCEPTIONS_H
+#ifndef BRICKS_UTIL_SHA256_H
+#define BRICKS_UTIL_SHA256_H
 
-#include "../exception.h"
+#include "../3party/stephan-brumme/sha256.h"
 
 namespace bricks {
 
-// TODO(dkorolev): Add more detailed exceptions for Read/Write/etc.
-struct FileException : Exception {
-  FileException() : Exception() {}
-  FileException(const std::string& what) : Exception(what) {}
-};
-
-struct CannotReadFileException : FileException {
-  CannotReadFileException(const std::string& what) : FileException(what) {}
-};
-
-struct DirDoesNotExistException : FileException {
-  DirDoesNotExistException() : FileException() {}
-};
-
-struct PathIsNotADirectoryException : FileException {
-  PathIsNotADirectoryException() : FileException() {}
-};
+std::string SHA256(const std::string& input) {
+  return static_cast<std::string>(sha256_impl_by_StephanBrumme::SHA256(input));
+}
 
 }  // namespace bricks
 
-#endif  // BRICKS_FILE_EXCEPTIONS_H
+#endif  // BRICKS_UTIL_SHA256_H
