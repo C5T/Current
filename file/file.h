@@ -120,7 +120,7 @@ struct FileSystem {
   }
 
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {
-	if (base_name.empty()) {
+    if (base_name.empty()) {
       BRICKS_THROW(FileException());
     } else if (path_name.empty() || base_name.front() == PathSeparatingSlash) {
       return base_name;
@@ -184,8 +184,8 @@ struct FileSystem {
   static inline void ScanDirUntil(const std::string& directory, F&& f) {
 #ifdef BRICKS_WINDOWS
     WIN32_FIND_DATAA find_data;
-	HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
-	if (handle == INVALID_HANDLE_VALUE) {
+    HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
+    if (handle == INVALID_HANDLE_VALUE) {
       BRICKS_THROW(DirDoesNotExistException());
     } else {
       struct ScopedCloseFindFileHandle {

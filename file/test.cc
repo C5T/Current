@@ -51,16 +51,16 @@ TEST(File, JoinPath) {
   EXPECT_EQ("bar", FileSystem::JoinPath("", "bar"));
   ASSERT_THROW(FileSystem::JoinPath("/foo/", ""), FileException);
 #else
-	EXPECT_EQ("foo\\bar", FileSystem::JoinPath("foo", "bar"));
-	EXPECT_EQ("foo\\bar", FileSystem::JoinPath("foo\\", "bar"));
-	EXPECT_EQ("\\foo\\bar", FileSystem::JoinPath("\\foo", "bar"));
-	EXPECT_EQ("\\foo\\bar", FileSystem::JoinPath("\\foo\\", "bar"));
-	EXPECT_EQ("\\bar", FileSystem::JoinPath("foo", "\\bar"));
-	EXPECT_EQ("\\bar", FileSystem::JoinPath("\\foo", "\\bar"));
-	EXPECT_EQ("\\bar", FileSystem::JoinPath("\\", "bar"));
-	EXPECT_EQ("\\bar", FileSystem::JoinPath("\\", "\\bar"));
-	EXPECT_EQ("bar", FileSystem::JoinPath("", "bar"));
-	ASSERT_THROW(FileSystem::JoinPath("\\foo\\", ""), FileException);
+  EXPECT_EQ("foo\\bar", FileSystem::JoinPath("foo", "bar"));
+  EXPECT_EQ("foo\\bar", FileSystem::JoinPath("foo\\", "bar"));
+  EXPECT_EQ("\\foo\\bar", FileSystem::JoinPath("\\foo", "bar"));
+  EXPECT_EQ("\\foo\\bar", FileSystem::JoinPath("\\foo\\", "bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("foo", "\\bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("\\foo", "\\bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("\\", "bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("\\", "\\bar"));
+  EXPECT_EQ("bar", FileSystem::JoinPath("", "bar"));
+  ASSERT_THROW(FileSystem::JoinPath("\\foo\\", ""), FileException);
 #endif
 }
 
@@ -82,21 +82,21 @@ TEST(File, GetFileExtension) {
   EXPECT_EQ("a", FileSystem::GetFileExtension("../.a"));
   EXPECT_EQ("long_extension", FileSystem::GetFileExtension("long_name.long_extension"));
 #else
-	EXPECT_EQ("", FileSystem::GetFileExtension(""));
-	EXPECT_EQ("", FileSystem::GetFileExtension("a"));
-	EXPECT_EQ("b", FileSystem::GetFileExtension("a.b"));
-	EXPECT_EQ("c", FileSystem::GetFileExtension("a.b.c"));
-	EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
-	EXPECT_EQ("a", FileSystem::GetFileExtension("..a"));
-	EXPECT_EQ("", FileSystem::GetFileExtension("a\\b"));
-	EXPECT_EQ("b", FileSystem::GetFileExtension("a\\.b"));
-	EXPECT_EQ("", FileSystem::GetFileExtension("a\\b\\c"));
-	EXPECT_EQ("c", FileSystem::GetFileExtension("a\\b\\.c"));
-	EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
-	EXPECT_EQ("", FileSystem::GetFileExtension(".\\a"));
-	EXPECT_EQ("", FileSystem::GetFileExtension("..\\a"));
-	EXPECT_EQ("a", FileSystem::GetFileExtension("..\\.a"));
-	EXPECT_EQ("long_extension", FileSystem::GetFileExtension("long_name.long_extension"));
+  EXPECT_EQ("", FileSystem::GetFileExtension(""));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a"));
+  EXPECT_EQ("b", FileSystem::GetFileExtension("a.b"));
+  EXPECT_EQ("c", FileSystem::GetFileExtension("a.b.c"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension("..a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a\\b"));
+  EXPECT_EQ("b", FileSystem::GetFileExtension("a\\.b"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a\\b\\c"));
+  EXPECT_EQ("c", FileSystem::GetFileExtension("a\\b\\.c"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension(".\\a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("..\\a"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension("..\\.a"));
+  EXPECT_EQ("long_extension", FileSystem::GetFileExtension("long_name.long_extension"));
 #endif
 }
 
@@ -237,7 +237,7 @@ TEST(File, ScanDir) {
 
 #ifndef BRICKS_WINDOWS
   {
-	// TODO(dkorolev): Perhaps support this exception type on Windows as well.
+    // TODO(dkorolev): Perhaps support this exception type on Windows as well.
     const auto file_remover = FileSystem::ScopedRmFile(dir);
     FileSystem::WriteStringToFile("This is a file, not a directory!", dir.c_str());
     ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), PathIsNotADirectoryException);
