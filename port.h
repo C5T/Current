@@ -90,4 +90,9 @@ SOFTWARE.
 #error "Unknown architecture."
 #endif
 
+// Visual Studio does not define `M_PI`.
+#ifndef M_PI
+#define M_PI 3.14159265359
+#endif
+
 #endif
