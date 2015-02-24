@@ -14,6 +14,7 @@
 #include "./net/api/docu/server/docu_03httpserver_02_test.cc"
 #include "./net/api/docu/server/docu_03httpserver_04_test.cc"
 #include "./net/api/docu/server/docu_03httpserver_01_test.cc"
+#include "./net/api/docu/server/docu_03httpserver_05_test.cc"
 #include "./net/api/test.cc"
 #include "./net/url/test.cc"
 #include "./net/http/test.cc"
