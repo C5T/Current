@@ -90,9 +90,15 @@ SOFTWARE.
 #error "Unknown architecture."
 #endif
 
+#ifdef BRICKS_WINDOWS
+
+#include <Windows.h>
+
 // Visual Studio does not define `M_PI`.
 #ifndef M_PI
 #define M_PI 3.14159265359
+#endif
+
 #endif
 
 #endif
