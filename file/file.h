@@ -79,7 +79,7 @@ struct FileSystem {
         BRICKS_THROW(FileException());  // LCOV_EXCL_LINE: This line not unit tested.
       }
     } catch (const std::ifstream::failure&) {
-      BRICKS_THROW(FileException());
+      BRICKS_THROW(CannotReadFileException(file_name));
     }
   }
 
@@ -182,7 +182,8 @@ struct FileSystem {
     const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
-        if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..")) {
+        if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..") &&
+            entry->d_type != DT_DIR) {
           if (!f(entry->d_name)) {
             return;
           }

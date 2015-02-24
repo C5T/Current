@@ -27,8 +27,6 @@ Altered source versions must be plainly marked as such, and must not be misrepre
 
 #include <cstdint>
 
-namespace sha256_impl_by_StephanBrumme {
-
 // File structure adjusted slightly to be header only -- D.K.
 
 ///////////////////////////////////////////////////////////
@@ -42,6 +40,8 @@ namespace sha256_impl_by_StephanBrumme {
 #ifndef _MSC_VER
 #include <endian.h>
 #endif
+
+namespace sha256_impl_by_StephanBrumme {
 
 namespace
 {

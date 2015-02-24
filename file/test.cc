@@ -165,6 +165,7 @@ TEST(File, ScanDir) {
 
   FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
   FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
   FileSystem::RmFile(dir, FileSystem::RmFileParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
@@ -195,6 +196,7 @@ TEST(File, ScanDir) {
   FileSystem::MkDir(dir);
   FileSystem::WriteStringToFile("foo", fn1.c_str());
   FileSystem::WriteStringToFile("bar", fn2.c_str());
+  FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir"));
 
   Scanner scanner_after(dir);
   FileSystem::ScanDir(dir, scanner_after);
@@ -211,4 +213,6 @@ TEST(File, ScanDir) {
   EXPECT_TRUE(scanner_after_until.files_[0].first == "one" || scanner_after_until.files_[0].first == "two");
   EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"),
             scanner_after_until.files_[0].second);
+
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
 }
