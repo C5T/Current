@@ -155,7 +155,7 @@ class FlagsManager {
         }
       }
 
-      argc = argv_.size();
+      argc = static_cast<int>(argv_.size());
       argv = &argv_[0];
     }
 

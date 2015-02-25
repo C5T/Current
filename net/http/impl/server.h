@@ -389,7 +389,7 @@ class HTTPServerConnection final {
                                    const std::string& content_type,
                                    const HTTPHeadersType& extra_headers) {
     if (responded_) {
-      throw AttemptedToSendHTTPResponseMoreThanOnce();
+		BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
@@ -540,7 +540,7 @@ class HTTPServerConnection final {
       const std::string& content_type = DefaultContentType(),
       const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     if (responded_) {
-      throw AttemptedToSendHTTPResponseMoreThanOnce();
+      BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
@@ -549,6 +549,14 @@ class HTTPServerConnection final {
       connection_.BlockingWrite(os.str());
       return std::move(ChunkedResponseSender(connection_));
     }
+  }
+
+  // To allow for a clean shutdown.
+  inline void DoNotSendAnyResponse() {
+	  if (responded_) {
+		  BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
+	  }
+	  responded_ = true;
   }
 
   const HTTPRequestData& HTTPRequest() const { return message_; }
