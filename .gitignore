@@ -11,15 +11,16 @@ coverage.info
 *.gcda
 *.gcno
 
-everything  # The binary in zzz_full_test/
-coverage    # The directory in zzz_full_test/
+# Just `.gitignore`-ing full paths does not work; this syntax seems to do it -- D.K.
+everything
+zzz_full_test/everything
+coverage
+zzz_full_test/coverage
 
 # Microsoft Visual Studio files.
-
 *.suo
 *.sdf
 *.opensdf
 *.filters
-
 Debug
 Release
