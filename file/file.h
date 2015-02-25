@@ -53,8 +53,12 @@ SOFTWARE.
 namespace bricks {
 
 // Platform-indepenent, injection-friendly filesystem wrapper.
-// TODO(dkorolev): Move the above methods under FileSystem.
 struct FileSystem {
+#ifndef BRICKS_WINDOWS
+  static constexpr char PathSeparatingSlash = '/';
+#else
+  static constexpr char PathSeparatingSlash = '\\';
+#endif
   static inline std::string GetFileExtension(const std::string& file_name) {
     const size_t i = file_name.find_last_of("/\\.");
     if (i == std::string::npos || file_name[i] != '.') {
@@ -118,12 +122,12 @@ struct FileSystem {
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {
     if (base_name.empty()) {
       BRICKS_THROW(FileException());
-    } else if (path_name.empty() || base_name.front() == '/') {
+    } else if (path_name.empty() || base_name.front() == PathSeparatingSlash) {
       return base_name;
-    } else if (path_name.back() == '/') {
+    } else if (path_name.back() == PathSeparatingSlash) {
       return path_name + base_name;
     } else {
-      return path_name + '/' + base_name;
+      return path_name + PathSeparatingSlash + base_name;
     }
   }
 
@@ -178,6 +182,27 @@ struct FileSystem {
 
   template <typename F>
   static inline void ScanDirUntil(const std::string& directory, F&& f) {
+#ifdef BRICKS_WINDOWS
+    WIN32_FIND_DATAA find_data;
+    HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
+    if (handle == INVALID_HANDLE_VALUE) {
+      BRICKS_THROW(DirDoesNotExistException());
+    } else {
+      struct ScopedCloseFindFileHandle {
+        HANDLE handle_;
+        ScopedCloseFindFileHandle(HANDLE handle) : handle_(handle) {}
+        ~ScopedCloseFindFileHandle() { ::FindClose(handle_); }
+      };
+      const ScopedCloseFindFileHandle closer(handle);
+      do {
+        if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+          if (!f(find_data.cFileName)) {
+            return;
+          }
+        }
+      } while (::FindNextFileA(handle, &find_data) != 0);
+    }
+#else
     DIR* dir = ::opendir(directory.c_str());
     const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
     if (dir) {
@@ -198,6 +223,7 @@ struct FileSystem {
         BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
       }
     }
+#endif
   }
 
   template <typename F>
