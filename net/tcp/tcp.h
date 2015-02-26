@@ -29,6 +29,7 @@ SOFTWARE.
 
 #ifndef BRICKS_DEBUG_NET
 
+// If `BRICKS_DEBUG_NET` is not defined, all `BRICKS_DEBUG_LOG` statements are plain ignored.
 #define BRICKS_DEBUG_LOG(...)
 
 #else

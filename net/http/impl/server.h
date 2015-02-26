@@ -153,7 +153,7 @@ class TemplatedHTTPRequestData : public HELPER {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
         // that the socket has been closed by the peer.
-        BRICKS_THROW(ConnectionResetByPeer());
+        BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
       }
       buffer_[offset] = '\0';
       char* next_crlf_ptr;
@@ -199,7 +199,7 @@ class TemplatedHTTPRequestData : public HELPER {
                       std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
-                  BRICKS_THROW(ConnectionResetByPeer());
+                  BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
               }

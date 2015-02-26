@@ -140,7 +140,7 @@ class HTTPServerPOSIX final {
     try {
       // TODO(dkorolev): This should always use the POSIX implemenation of the client, nothing fancier.
       // It is a safe call, since the server itself is POSIX, so the architecture we are on is POSIX-friendly.
-      Connection(ClientSocket("localhost", port_)).BlockingWrite("GET /healthz HTTP/1.1\r\n\r\n").SendEOF();
+      Connection(ClientSocket("localhost", port_)).BlockingWrite("GET /healthz HTTP/1.1\r\n\r\n");
     } catch (const bricks::Exception&) {
       // It is guaranteed that after `terminated_` is set the server will be terminated on the next request,
       // but it might so happen that that terminating request will happen between `terminating_ = true`

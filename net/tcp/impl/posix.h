@@ -193,20 +193,6 @@ class Connection : public SocketHandle {
 
   inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {}
 
-  // Closes the outbound side of the socket and notifies the other party that no more data will be sent.
-  inline Connection& SendEOF() {
-    BRICKS_DEBUG_LOG("S%05d shutdown(SHUT_WR) ...\n", static_cast<SOCKET>(socket));
-    ::shutdown(socket,
-#ifndef BRICKS_WINDOWS
-               SHUT_WR
-#else
-               SD_SEND
-#endif
-               );
-    BRICKS_DEBUG_LOG("S%05d shutdown(SHUT_WR) : OK\n", static_cast<SOCKET>(socket));
-    return *this;
-  }
-
   // By default, BlockingRead() will return as soon as some data has been read,
   // with the exception being multibyte records (sizeof(T) > 1), where it will keep reading
   // until the boundary of the records, or max_length of them, has been read.
@@ -214,120 +200,64 @@ class Connection : public SocketHandle {
   // which will cause BlockingRead() to keep reading more data until all `max_elements` are read or EOF is hit.
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
-  inline size_t BlockingRead(T* buffer,
-                             size_t max_length,
-                             BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
+  inline typename std::enable_if<sizeof(T) == 1, size_t>::type BlockingRead(
+      T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     BRICKS_DEBUG_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
-    uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
-    uint8_t* raw_ptr = raw_buffer;
-    const size_t max_length_in_bytes = max_length * sizeof(T);
-    bool alive = true;
-    do {
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(output_buffer);
+    uint8_t* ptr = buffer;
+    size_t remaining_bytes_to_read;
+    while ((remaining_bytes_to_read = (max_length - (ptr - buffer))) > 0) {
+      BRICKS_DEBUG_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
+                       static_cast<SOCKET>(socket),
+                       int(remaining_bytes_to_read));
 #ifndef BRICKS_WINDOWS
-      const ssize_t retval = ::recv(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer), 0);
+      const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, 0);
 #else
-      const int retval = ::recv(socket,
-                                reinterpret_cast<char*>(raw_ptr),
-                                static_cast<int>(max_length_in_bytes - (raw_ptr - raw_buffer)),
-                                0);
+      const int retval =
+          ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(max_length - (ptr - buffer)), 0);
 #endif
-      if (retval < 0) {
-        // TODO(dkorolev): Unit-test this logic.
-        // I could not find a simple way to reproduce it for the test. -- D.K.
+      BRICKS_DEBUG_LOG("S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), int(retval));
+      if (retval > 0) {
+        ptr += retval;
+        if (policy == BlockingReadPolicy::ReturnASAP) {
+          return (ptr - buffer);
+        }
+      } else {
         // LCOV_EXCL_START
-        if (errno == EAGAIN) {
-          continue;
-        } else if (errno == ECONNRESET) {
-          // Allow one "Connection reset by peer" error to happen.
-          // Tested that this makes load test pass 1000/1000, while w/o this
-          // the test fails on some iteration with ECONNRESET on Ubuntu 12.04 -- D.K.
-          if (alive) {
-            alive = false;
-            continue;
+        if (retval < 0) {
+          if (policy == BlockingReadPolicy::ReturnASAP && ptr != buffer) {
+            return (ptr - buffer);
           } else {
-            if ((raw_ptr - raw_buffer) % sizeof(T)) {
-              BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
-            } else {
+            if (errno == EAGAIN) {
+              continue;
+            } else if (errno == ECONNRESET) {
+              BRICKS_DEBUG_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                               static_cast<SOCKET>(socket),
+                               static_cast<int>(ptr - buffer));
               BRICKS_THROW(ConnectionResetByPeer());
+            } else {
+              BRICKS_DEBUG_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                               static_cast<SOCKET>(socket),
+                               static_cast<int>(ptr - buffer),
+                               errno);
+              BRICKS_THROW(SocketReadException());
             }
           }
         } else {
-          BRICKS_DEBUG_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
-                           static_cast<SOCKET>(socket),
-                           static_cast<int>(raw_ptr - raw_buffer),
-                           errno);
-#ifndef BRICKS_WINDOWS
-          if ((raw_ptr - raw_buffer) % sizeof(T)) {
-            BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
+          BRICKS_DEBUG_LOG("S%05d BlockingRead() : retval == 0 ...\n", static_cast<SOCKET>(socket));
+          if (policy == BlockingReadPolicy::ReturnASAP) {
+            return ptr - buffer;
           } else {
             BRICKS_THROW(SocketReadException());
           }
-#else
-          // In Windows, the best we can do is to return here assuming that the data read is all the data
-          // that can be read from this socket.
-          break;
-#endif
-        }
-        // LCOV_EXCL_STOP
-      } else {
-        alive = true;
-        if (retval == 0) {
-          // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
-          // and StackOverflow is that a return value of zero from read() from a socket indicates
-          // that the socket has been closed by the peer.
-          // For this implementation, throw an exception if some record was read only partially.
-          if ((raw_ptr - raw_buffer) % sizeof(T)) {
-            BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
-          }
-          break;
-        } else {
-          raw_ptr += retval;
         }
       }
-    } while (policy == BlockingReadPolicy::FillFullBuffer || ((raw_ptr - raw_buffer) % sizeof(T)) > 0);
+      // LCOV_EXCL_STOP
+    }
     BRICKS_DEBUG_LOG("S%05d BlockingRead() : OK, read %d bytes.\n",
                      static_cast<SOCKET>(socket),
-                     static_cast<int>(raw_ptr - raw_buffer));
-    return (raw_ptr - raw_buffer) / sizeof(T);
-  }
-
-  template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) != 0, const T&>::type BlockingReadUntilEOF(
-      T& container,
-      const size_t initial_size = kReadTillEOFInitialBufferSize,
-      const double growth_k = kReadTillEOFBufferGrowthK) {
-    static_cast<void>(static_cast<SOCKET>(socket));  // Throw if `this` is no longer a valid socket.
-    BRICKS_DEBUG_LOG("S%05d BlockingReadUntilEOF() ...\n", static_cast<SOCKET>(socket));
-    container.resize(initial_size);
-    size_t offset = 0;
-    size_t desired;
-    size_t actual;
-    // try {
-    while (desired = container.size() - offset,
-           actual = BlockingRead(&container[offset], desired, BlockingReadPolicy::FillFullBuffer),
-           actual == desired) {
-      offset += desired;
-      container.resize(static_cast<size_t>(container.size() * growth_k));
-    }
-    // } catch (const bricks::net::SocketException& e) {
-    //#ifdef BRICKS_DEBUG_NET
-    //   BRICKS_DEBUG_LOG("S%05d BlockingReadUntilEOF() : %s\n", static_cast<SOCKET>(socket), e.What().c_str());
-    //#else
-    //   static_cast<void>(e);  // Catch the unused var warning.
-    //#endif
-    // }
-    container.resize(offset + actual);
-    BRICKS_DEBUG_LOG("S%05d BlockingReadUntilEOF() : OK, read %d bytes.\n",
-                     static_cast<SOCKET>(socket),
-                     static_cast<int>(offset + actual));
-    return container;
-  }
-
-  template <typename T = std::string>
-  inline typename std::enable_if<sizeof(typename T::value_type) != 0, T>::type BlockingReadUntilEOF() {
-    T container;
-    BlockingReadUntilEOF(container);
-    return container;
+                     static_cast<int>(ptr - buffer));
+    return ptr - buffer;
   }
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
