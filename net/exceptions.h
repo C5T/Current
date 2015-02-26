@@ -61,7 +61,6 @@ struct SocketResolveAddressException : ClientSocketException {};
 
 struct SocketFcntlException : SocketException {};
 struct SocketReadException : SocketException {};  // LCOV_EXCL_LINE -- TODO(dkorolev): We might want to test it.
-/// struct SocketReadMultibyteRecordEndedPrematurelyException : SocketReadException {};
 struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
