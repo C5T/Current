@@ -58,10 +58,6 @@ typedef int SOCKET;
 
 #endif
 
-#ifdef BRICKS_DEBUG_NET
-#include <iostream>
-#endif
-
 namespace bricks {
 namespace net {
 
@@ -90,16 +86,12 @@ struct SocketSystemInitializer {
 #ifdef BRICKS_WINDOWS
   struct OneTimeInitializer {
     OneTimeInitializer() {
-#ifdef BRICKS_DEBUG_NET
-      std::cerr << "WSAStartup().\n";
-#endif
+      BRICKS_DEBUG_LOG("WSAStartup().\n");
       WSADATA wsaData;
       if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
         BRICKS_THROW(SocketWSAStartupException());
       }
-#ifdef BRICKS_DEBUG_NET
-      std::cerr << "WSAStartup(): OK\n";
-#endif
+      BRICKS_DEBUG_LOG("WSAStartup(): OK\n");
     }
   };
   SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
@@ -124,9 +116,7 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ < 0) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
-#ifdef BRICKS_DEBUG_NET
-    std::cerr << "SocketHandle::NewHandle() = " << socket_ << "\n";
-#endif
+    BRICKS_DEBUG_LOG("%05d SocketHadle::NewHandle().\n", socket_);
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {

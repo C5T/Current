@@ -27,6 +27,19 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#ifdef BRICKS_DEBUG_NET
+
+#define BRICKS_DEBUG_LOG(...)
+
+#else
+
+#include <cstdio>
+#include <iostream>
+#define BRICKS_DEBUG_LOG(...) \
+  ([=]{std::cout << 'T' << std::this_thread::get_id() << ' '; printf(__VA_ARGS__); fflush(stdout);})()
+
+#endif
+
 #if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
 #include "impl/posix.h"
 #elif defined(BRICKS_ANDROID)
