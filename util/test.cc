@@ -192,8 +192,9 @@ TEST(Util, MakePointerScopeGuard) {
 
 TEST(Util, Singleton) {
   struct Foo {
-    size_t bar = 0;
+    size_t bar = 0u;
     void baz() { ++bar; }
+    void reset() { bar = 0u; }
   };
   EXPECT_EQ(0u, bricks::Singleton<Foo>().bar);
   bricks::Singleton<Foo>().baz();
@@ -202,6 +203,8 @@ TEST(Util, Singleton) {
   EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
   lambda();
   EXPECT_EQ(2u, bricks::Singleton<Foo>().bar);
+  // Allow running the test multiple times, via --gtest_repeat.
+  bricks::Singleton<Foo>().reset();
 }
 
 TEST(Util, SHA256) {

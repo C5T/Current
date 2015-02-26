@@ -302,7 +302,7 @@ struct BricksParseJSONError {};
 template <typename T>
 struct BricksParseJSONError<T, false> {
   static void HandleParseJSONError(const std::string& input_json, T&) {
-    throw bricks::ParseJSONException(input_json);
+    BRICKS_THROW(bricks::ParseJSONException(input_json));
   }
 };
 
