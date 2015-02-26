@@ -76,8 +76,8 @@ struct HTTPTestObject {
 };
 
 TEST(PosixHTTPServerTest, Smoke) {
-  //  std::atomic_bool test_done(false);
-  thread t([](Socket s) {
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
              {
                HTTPServerConnection c(s.Accept());
                EXPECT_EQ("POST", c.HTTPRequest().Method());
@@ -91,44 +91,42 @@ TEST(PosixHTTPServerTest, Smoke) {
              // This issue does not appear in `net/api` since the serving threads per port run forever,
              // however, extra logic is required to have this `net/http` test pass safely.
              // TODO(dkorolev): Use `WaitableAtomic` here.
-             //             while (!test_done) {
-             //;  // Spin lock.
-             //}
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
-  {
-    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-    connection.BlockingWrite("POST / HTTP/1.1\r\n");
-    connection.BlockingWrite("Host: localhost\r\n");
-    connection.BlockingWrite("Content-Length: 4\r\n");
-    connection.BlockingWrite("\r\n");
-    connection.BlockingWrite("BODY");
-    connection.BlockingWrite("\r\n");
-    ExpectToReceive(
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Connection: close\r\n"
-        "Content-Length: 10\r\n"
-        "\r\n"
-        "Data: BODY",
-        connection);
-  }
-  // test_done = true;
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n");
+  connection.BlockingWrite("Host: localhost\r\n");
+  connection.BlockingWrite("Content-Length: 4\r\n");
+  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("BODY");
+  connection.BlockingWrite("\r\n");
+  ExpectToReceive(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 10\r\n"
+      "\r\n"
+      "Data: BODY",
+      connection);
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithArray) {
-  // std::atomic_bool test_done(false);
-  thread t([](Socket s) {
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
              {
                HTTPServerConnection c(s.Accept());
                EXPECT_EQ("GET", c.HTTPRequest().Method());
                EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
                c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
              }
-             // while (!test_done) {
-             //               ;  // Spin lock.
-             //           }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -144,16 +142,22 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
       "\r\n"
       "Aloha",
       connection);
-  // test_done = true;
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithObject) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("GET", c.HTTPRequest().Method());
-             EXPECT_EQ("/mahalo", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse(HTTPTestObject());
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("GET", c.HTTPRequest().Method());
+               EXPECT_EQ("/mahalo", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse(HTTPTestObject());
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -169,15 +173,22 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "\r\n"
       "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection);
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("GET", c.HTTPRequest().Method());
-             EXPECT_EQ("/mahalo", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse(HTTPTestObject(), "epic_object");
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("GET", c.HTTPRequest().Method());
+               EXPECT_EQ("/mahalo", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse(HTTPTestObject(), "epic_object");
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -192,19 +203,26 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
       "\r\n"
       "{\"epic_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection);
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("GET", c.HTTPRequest().Method());
-             EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
-             auto r = c.SendChunkedHTTPResponse();
-             r.Send("onetwothree");
-             r.Send(std::vector<char>({'f', 'o', 'o'}));
-             r.Send(HTTPTestObject());
-             r.Send(HTTPTestObject(), "epic_chunk");
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("GET", c.HTTPRequest().Method());
+               EXPECT_EQ("/chunked", c.HTTPRequest().RawPath());
+               auto r = c.SendChunkedHTTPResponse();
+               r.Send("onetwothree");
+               r.Send(std::vector<char>({'f', 'o', 'o'}));
+               r.Send(HTTPTestObject());
+               r.Send(HTTPTestObject(), "epic_chunk");
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -227,18 +245,25 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",
       connection);
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithHeaders) {
-  thread t(
-      [](Socket s) {
+  std::atomic_bool test_done(false);
+  thread
+  t([&test_done](Socket s) {
+      {
         HTTPServerConnection c(s.Accept());
         EXPECT_EQ("GET", c.HTTPRequest().Method());
         EXPECT_EQ("/header", c.HTTPRequest().RawPath());
         c.SendHTTPResponse("OK", HTTPResponseCode.OK, c.HTTPRequest().Body(), {{"foo", "bar"}, {"baz", "meh"}});
-      },
-      Socket(FLAGS_net_http_test_port));
+      }
+      while (!test_done) {
+        ;  // Spin lock.
+      }
+    },
+    Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /header HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
@@ -256,15 +281,22 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
       "\r\n"
       "OK",
       connection);
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, LargeBody) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("POST", c.HTTPRequest().Method());
-             EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("POST", c.HTTPRequest().Method());
+               EXPECT_EQ("/", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse(std::string("Data: ") + c.HTTPRequest().Body());
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   string body(1000000, '.');
@@ -286,15 +318,22 @@ TEST(PosixHTTPServerTest, LargeBody) {
       "Data: " +
           body,
       connection);
+  test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("POST", c.HTTPRequest().Method());
-             EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse(c.HTTPRequest().Body());
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("POST", c.HTTPRequest().Method());
+               EXPECT_EQ("/", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse(c.HTTPRequest().Body());
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -324,16 +363,23 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
                       static_cast<int>(body.length()),
                       body.c_str()),
                   connection);
+  test_done = true;
   t.join();
 }
 
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
 TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("POST", c.HTTPRequest().Method());
-             EXPECT_EQ("/", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse(c.HTTPRequest().Body());
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("POST", c.HTTPRequest().Method());
+               EXPECT_EQ("/", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse(c.HTTPRequest().Body());
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -362,6 +408,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
                       static_cast<int>(body.length()),
                       body.c_str()),
                   connection);
+  test_done = true;
   t.join();
 }
 
@@ -377,14 +424,19 @@ struct HTTPClientImplCURL {
     return s;
   }
 
-  static string Fetch(thread& server_thread, const string& url, const string& method) {
+  static string Fetch(thread& server_thread,
+                      std::atomic_bool& test_done,
+                      const string& url,
+                      const string& method) {
     const string result = Syscall(
         strings::Printf("curl -s -X %s localhost:%d%s", method.c_str(), FLAGS_net_http_test_port, url.c_str()));
+    test_done = true;
     server_thread.join();
     return result;
   }
 
   static string FetchWithBody(thread& server_thread,
+                              std::atomic_bool& test_done,
                               const string& url,
                               const string& method,
                               const string& data) {
@@ -393,6 +445,7 @@ struct HTTPClientImplCURL {
                                                   data.c_str(),
                                                   FLAGS_net_http_test_port,
                                                   url.c_str()));
+    test_done = true;
     server_thread.join();
     return result;
   }
@@ -401,19 +454,24 @@ struct HTTPClientImplCURL {
 
 class HTTPClientImplPOSIX {
  public:
-  static string Fetch(thread& server_thread, const string& url, const string& method) {
-    return Impl(server_thread, url, method);
+  static string Fetch(thread& server_thread,
+                      std::atomic_bool& test_done,
+                      const string& url,
+                      const string& method) {
+    return Impl(server_thread, test_done, url, method);
   }
 
   static string FetchWithBody(thread& server_thread,
+                              std::atomic_bool& test_done,
                               const string& url,
                               const string& method,
                               const string& data) {
-    return Impl(server_thread, url, method, true, data);
+    return Impl(server_thread, test_done, url, method, true, data);
   }
 
  private:
   static string Impl(thread& server_thread,
+                     std::atomic_bool& test_done,
                      const string& url,
                      const string& method,
                      bool has_data = false,
@@ -430,6 +488,7 @@ class HTTPClientImplPOSIX {
     HTTPRequestData http_request(connection);
     assert(http_request.HasBody());
     const string body = http_request.Body();
+    test_done = true;
     server_thread.join();
     return body;
   }
@@ -446,59 +505,90 @@ typedef ::testing::Types<HTTPClientImplPOSIX> HTTPClientImplsTypeList;
 TYPED_TEST_CASE(HTTPTest, HTTPClientImplsTypeList);
 
 TYPED_TEST(HTTPTest, GET) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("GET", c.HTTPRequest().Method());
-             EXPECT_EQ("/unittest?foo=bar", c.HTTPRequest().RawPath());
-             EXPECT_EQ("/unittest", c.HTTPRequest().URL().path);
-             EXPECT_EQ("bar", c.HTTPRequest().URL().query["foo"]);
-             c.SendHTTPResponse("PASSED");
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("GET", c.HTTPRequest().Method());
+               EXPECT_EQ("/unittest?foo=bar", c.HTTPRequest().RawPath());
+               EXPECT_EQ("/unittest", c.HTTPRequest().URL().path);
+               EXPECT_EQ("bar", c.HTTPRequest().URL().query["foo"]);
+               c.SendHTTPResponse("PASSED");
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("PASSED", TypeParam::Fetch(t, "/unittest?foo=bar", "GET"));
+  EXPECT_EQ("PASSED", TypeParam::Fetch(t, test_done, "/unittest?foo=bar", "GET"));
 }
 
 TYPED_TEST(HTTPTest, POST) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("POST", c.HTTPRequest().Method());
-             EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
-             ASSERT_TRUE(c.HTTPRequest().HasBody()) << "WTF!";
-             EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
-             c.SendHTTPResponse("POSTED");
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("POST", c.HTTPRequest().Method());
+               EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
+               ASSERT_TRUE(c.HTTPRequest().HasBody()) << "WTF!";
+               EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
+               c.SendHTTPResponse("POSTED");
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("POSTED", TypeParam::FetchWithBody(t, "/unittest_post", "POST", "BAZINGA"));
+  EXPECT_EQ("POSTED", TypeParam::FetchWithBody(t, test_done, "/unittest_post", "POST", "BAZINGA"));
 }
 
 TYPED_TEST(HTTPTest, NoBodyPOST) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("POST", c.HTTPRequest().Method());
-             EXPECT_EQ("/unittest_empty_post", c.HTTPRequest().RawPath());
-             EXPECT_FALSE(c.HTTPRequest().HasBody());
-             ASSERT_THROW(c.HTTPRequest().Body(), HTTPNoBodyProvidedException);
-             c.SendHTTPResponse("ALMOST_POSTED");
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("POST", c.HTTPRequest().Method());
+               EXPECT_EQ("/unittest_empty_post", c.HTTPRequest().RawPath());
+               EXPECT_FALSE(c.HTTPRequest().HasBody());
+               ASSERT_THROW(c.HTTPRequest().Body(), HTTPNoBodyProvidedException);
+               c.SendHTTPResponse("ALMOST_POSTED");
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, "/unittest_empty_post", "POST"));
+  EXPECT_EQ("ALMOST_POSTED", TypeParam::Fetch(t, test_done, "/unittest_empty_post", "POST"));
 }
 
 TYPED_TEST(HTTPTest, AttemptsToSendResponseTwice) {
-  thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             c.SendHTTPResponse("one");
-             ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
-             ASSERT_THROW(c.SendChunkedHTTPResponse().Send("three"), AttemptedToSendHTTPResponseMoreThanOnce);
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             {
+               HTTPServerConnection c(s.Accept());
+               c.SendHTTPResponse("one");
+               ASSERT_THROW(c.SendHTTPResponse("two"), AttemptedToSendHTTPResponseMoreThanOnce);
+               ASSERT_THROW(c.SendChunkedHTTPResponse().Send("three"), AttemptedToSendHTTPResponseMoreThanOnce);
+             }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ("one", TypeParam::Fetch(t, "/", "GET"));
+  EXPECT_EQ("one", TypeParam::Fetch(t, test_done, "/", "GET"));
 }
 
 TYPED_TEST(HTTPTest, DoesNotSendResponseAtAll) {
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
-  thread t([](Socket s) { HTTPServerConnection c(s.Accept()); }, Socket(FLAGS_net_http_test_port));
-  EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::Fetch(t, "/", "GET"));
+  std::atomic_bool test_done(false);
+  thread t([&test_done](Socket s) {
+             { HTTPServerConnection c(s.Accept()); }
+             while (!test_done) {
+               ;  // Spin lock.
+             }
+           },
+           Socket(FLAGS_net_http_test_port));
+  EXPECT_EQ(DefaultInternalServerErrorMessage(), TypeParam::Fetch(t, test_done, "/", "GET"));
 }
 
 TEST(HTTPCodesTest, SmokeTest) {
