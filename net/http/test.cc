@@ -76,7 +76,7 @@ struct HTTPTestObject {
 };
 
 TEST(PosixHTTPServerTest, Smoke) {
-//  std::atomic_bool test_done(false);
+  //  std::atomic_bool test_done(false);
   thread t([](Socket s) {
              {
                HTTPServerConnection c(s.Accept());
@@ -91,8 +91,8 @@ TEST(PosixHTTPServerTest, Smoke) {
              // This issue does not appear in `net/api` since the serving threads per port run forever,
              // however, extra logic is required to have this `net/http` test pass safely.
              // TODO(dkorolev): Use `WaitableAtomic` here.
-//             while (!test_done) {
-               //;  // Spin lock.
+             //             while (!test_done) {
+             //;  // Spin lock.
              //}
            },
            Socket(FLAGS_net_http_test_port));
@@ -113,23 +113,23 @@ TEST(PosixHTTPServerTest, Smoke) {
         "Data: BODY",
         connection);
   }
- // test_done = true;
+  // test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithArray) {
-  //std::atomic_bool test_done(false);
+  // std::atomic_bool test_done(false);
   thread t([](Socket s) {
-    {
-    HTTPServerConnection c(s.Accept());
-    EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(std::vector<char>({ 'A', 'l', 'o', 'h', 'a' }));
-  }
-             //while (!test_done) {
-//               ;  // Spin lock.
-  //           }
-  },
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("GET", c.HTTPRequest().Method());
+               EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
+             }
+             // while (!test_done) {
+             //               ;  // Spin lock.
+             //           }
+           },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /aloha HTTP/1.1\r\n");
@@ -144,7 +144,7 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
       "\r\n"
       "Aloha",
       connection);
-  //test_done = true;
+  // test_done = true;
   t.join();
 }
 

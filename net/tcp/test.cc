@@ -199,17 +199,16 @@ TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
 // Tested on Visual Studio 2015 Preview.
 TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   thread server_thread([](Socket socket) {
-    Connection connection(socket.Accept());
-    char buffer[3];
-    connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
-    connection.BlockingWrite("Done, thanks.\n");
-  },
-    Socket(FLAGS_net_tcp_test_port));
+                         Connection connection(socket.Accept());
+                         char buffer[3];
+                         connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+                         connection.BlockingWrite("Done, thanks.\n");
+                       },
+                       Socket(FLAGS_net_tcp_test_port));
   // Attempt to send a very long message to ensure it does not fit OS buffers.
   Connection connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   ASSERT_THROW(connection.BlockingWrite(std::vector<char>(10 * 1000 * 1000, '!')),
-    SocketCouldNotWriteEverythingException);
+               SocketCouldNotWriteEverythingException);
   server_thread.join();
-  }
+}
 #endif
-
