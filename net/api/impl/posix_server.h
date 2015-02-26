@@ -244,7 +244,9 @@ class HTTPServerPOSIX final {
       try {
         std::unique_ptr<HTTPServerConnection> connection(new HTTPServerConnection(socket.Accept()));
         if (terminating_) {
-			connection->DoNotSendAnyResponse();
+          // Already terminating. Will not send the response, and this
+          // lack of response should not result in an exception.
+          connection->DoNotSendAnyResponse();
           break;
         }
         std::function<void(Request)> handler;

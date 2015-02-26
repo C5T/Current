@@ -119,7 +119,6 @@ TEST(TCPTest, CanNotUseMovedAwayConnection) {
   Connection old_connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   old_connection.BlockingWrite("foo\n");
   Connection new_connection(std::move(old_connection));
-  // Connection& new_connection(old_connection);  // Debugging Windows usecase -- D.K.
   new_connection.BlockingWrite("bar\n");
   ASSERT_THROW(old_connection.BlockingWrite("baz\n"), AttemptedToUseMovedAwayConnection);
   ASSERT_THROW(old_connection.BlockingReadUntilEOF(), AttemptedToUseMovedAwayConnection);

@@ -344,11 +344,11 @@ class HTTPServerConnection final {
       // If a user code throws an exception in a different thread, it will not be caught.
       // But, at least, capitalized "INTERNAL SERVER ERROR" will be returned.
       // It's also a good place for a breakpoint to tell the source of that exception.
+      // LCOV_EXCL_START
       try {
         SendHTTPResponse(
             DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
       } catch (const std::exception& e) {
-        // LCOV_EXCL_START
         // No exception should ever leave the destructor.
         if (message_.RawPath() == "/healthz") {
           // Report nothing for "/healthz", since it's an internal URL, also used by the tests
@@ -360,8 +360,8 @@ class HTTPServerConnection final {
           std::cerr << "In: " << message_.Method() << ' ' << message_.RawPath() << std::endl;
           std::cerr << e.what() << std::endl;
         }
-        // LCOV_EXCL_STOP
       }
+      // LCOV_EXCL_STOP
     }
   }
 
@@ -389,7 +389,7 @@ class HTTPServerConnection final {
                                    const std::string& content_type,
                                    const HTTPHeadersType& extra_headers) {
     if (responded_) {
-		BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
+      BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
@@ -551,12 +551,13 @@ class HTTPServerConnection final {
     }
   }
 
-  // To allow for a clean shutdown.
+  // To allow for a clean shutdown, without throwing an exception
+  // that a response, that does not have to be sent, was really not sent.
   inline void DoNotSendAnyResponse() {
-	  if (responded_) {
-		  BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
-	  }
-	  responded_ = true;
+    if (responded_) {
+      BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());  // LCOV_EXCL_LINE
+    }
+    responded_ = true;
   }
 
   const HTTPRequestData& HTTPRequest() const { return message_; }

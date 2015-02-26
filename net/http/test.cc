@@ -69,58 +69,60 @@ struct HTTPTestObject {
 };
 
 TEST(PosixHTTPServerTest, Smoke) {
-	std::atomic_bool test_done(false);
+  std::atomic_bool test_done(false);
   thread t([&test_done](Socket s) {
-	  {
-		  HTTPServerConnection c(s.Accept());
-		  EXPECT_EQ("POST", c.HTTPRequest().Method());
-		  EXPECT_EQ("/", c.HTTPRequest().RawPath());
-		  c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
-	  }
+             {
+               HTTPServerConnection c(s.Accept());
+               EXPECT_EQ("POST", c.HTTPRequest().Method());
+               EXPECT_EQ("/", c.HTTPRequest().RawPath());
+               c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+             }
 
-		  // The `test_done` magic is required since the top-level HTTP-listening socket that accepts connections
-		  // should not be closed until all the clients have finished reading their data.
-		  // This issue does not appear in `net/api` since the serving threads per port run forever,
-		  // however, extra logic is required to have this `net/http` test pass safely.
-		  // TODO(dkorolev): Use `WaitableAtomic` here.
-		  while (!test_done) {
-			  ;  // Spin lock.
-		  }
+             // The `test_done` magic is required since the top-level HTTP-listening socket that accepts
+             // connections
+             // should not be closed until all the clients have finished reading their data.
+             // This issue does not appear in `net/api` since the serving threads per port run forever,
+             // however, extra logic is required to have this `net/http` test pass safely.
+             // TODO(dkorolev): Use `WaitableAtomic` here.
+             while (!test_done) {
+               ;  // Spin lock.
+             }
            },
            Socket(FLAGS_net_http_test_port));
   {
-	  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-	  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-	  connection.BlockingWrite("Host: localhost\r\n");
-	  connection.BlockingWrite("Content-Length: 4\r\n");
-	  connection.BlockingWrite("\r\n");
-	  connection.BlockingWrite("BODY");
-	  // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
-	  connection.BlockingWrite("\r\n");
-//	  connection.SendEOF();
-	  //t.join();
-	  EXPECT_EQ(
-		  "HTTP/1.1 200 OK\r\n"
-		  "Content-Type: text/plain\r\n"
-		  "Connection: close\r\n"
-		  "Content-Length: 10\r\n"
-		  "\r\n"
-		  "Data: BODY",
-		  connection.BlockingReadUntilEOF());
+    Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+    connection.BlockingWrite("POST / HTTP/1.1\r\n");
+    connection.BlockingWrite("Host: localhost\r\n");
+    connection.BlockingWrite("Content-Length: 4\r\n");
+    connection.BlockingWrite("\r\n");
+    connection.BlockingWrite("BODY");
+    // The last "\r\n" and EOF are unnecessary, but conventional here. See the test below w/o them.
+    connection.BlockingWrite("\r\n");
+    //	  connection.SendEOF();
+    // t.join();
+    EXPECT_EQ(
+        "HTTP/1.1 200 OK\r\n"
+        "Content-Type: text/plain\r\n"
+        "Connection: close\r\n"
+        "Content-Length: 10\r\n"
+        "\r\n"
+        "Data: BODY",
+        connection.BlockingReadUntilEOF());
   }
   test_done = true;
   t.join();
 }
 
-/*
+#ifndef BRICKS_WINDOWS
+
 TEST(PosixHTTPServerTest, SmokeWithArray) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("GET", c.HTTPRequest().Method());
              EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
-			 std::cerr << "Sending response.\n";
+             std::cerr << "Sending response.\n";
              c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
-			 std::cerr << "Sending response: Done.\n";
+             std::cerr << "Sending response: Done.\n";
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
@@ -143,7 +145,6 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
   std::cerr << "Verifying response: Done.\n";
 }
 
-/*
 TEST(PosixHTTPServerTest, SmokeWithObject) {
   thread t([](Socket s) {
              HTTPServerConnection c(s.Accept());
@@ -592,4 +593,4 @@ TEST(HTTPMimeTypeTest, SmokeTest) {
   EXPECT_EQ("image/png", GetFileMimeType("file.PNG"));
 }
 
-*/
+#endif
