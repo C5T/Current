@@ -223,7 +223,7 @@ class Connection : public SocketHandle {
                              static_cast<int>(ptr - buffer),
                              errno);
               // Windows!
-              continue; // BRICKS_THROW(SocketReadException());
+              continue;  // BRICKS_THROW(SocketReadException());
             }
           }
         } else {

@@ -199,7 +199,8 @@ class TemplatedHTTPRequestData : public HELPER {
                       std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
                 }
                 if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read)) {
-                  // TODO(dkorolev): Note to self: the PosixHTTPServerTest.ChunkedBodyLargeFirstChunk test was failing here as Release x64.
+                  // TODO(dkorolev): Note to self: the PosixHTTPServerTest.ChunkedBodyLargeFirstChunk test was
+                  // failing here as Release x64.
                   BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
