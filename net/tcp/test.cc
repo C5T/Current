@@ -53,81 +53,72 @@ using bricks::net::ClientSocket;
 
 using bricks::net::AttemptedToUseMovedAwayConnection;
 using bricks::net::SocketBindException;
-using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 using bricks::net::SocketCouldNotWriteEverythingException;
 using bricks::net::SocketResolveAddressException;
 
-#ifdef BRICKS_WINDOWS
-// TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
-using bricks::net::SocketReadException;
-using bricks::net::ConnectionResetByPeer;
-#endif
-
-static string ReadFromSocket(thread& server_thread,
+static void ExpectFromSocket(const std::string& golden,
+                             thread& server_thread,
                              const string& host,
                              const uint16_t port,
                              function<void(Connection&)> client_code) {
   Connection connection(ClientSocket(host, port));
   client_code(connection);
-  connection.SendEOF();
+  std::vector<char> response(golden.length());
+  ASSERT_EQ(
+      golden.length(),
+      connection.BlockingRead(&response[0], golden.length(), Connection::BlockingReadPolicy::FillFullBuffer));
+  EXPECT_EQ(golden, std::string(response.begin(), response.end()));
   server_thread.join();
-#ifndef BRICKS_WINDOWS
-  return connection.BlockingReadUntilEOF();
-#else
-  // TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
-  // Windows test failure is localized down to here.
-  // Steps to reproduce:
-  // 1) Remove this try-catch block,
-  // 2) Observe the error to show up with --gtest_repeat=1000000 --gtest_break_on_failure.
-  try {
-    return connection.BlockingReadUntilEOF();
-  } catch (const SocketReadException&) {
-    return "SOCKET_READ_EXCEPTION";
-  }
-#endif
 }
 
-static string ReadFromSocket(thread& server_thread,
+static void ExpectFromSocket(const std::string& golden,
+                             thread& server_thread,
                              const string& host,
                              const uint16_t port,
                              const string& message_to_send_from_client = "") {
-  return ReadFromSocket(server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
+  ExpectFromSocket(golden, server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
     if (!message_to_send_from_client.empty()) {
       connection.BlockingWrite(message_to_send_from_client);
     }
   });
 }
 
-static string ReadFromSocket(thread& server_thread, function<void(Connection&)> client_code) {
-  return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, client_code);
+static void ExpectFromSocket(const std::string& golden,
+                             thread& server_thread,
+                             function<void(Connection&)> client_code) {
+  ExpectFromSocket(golden, server_thread, "localhost", FLAGS_net_tcp_test_port, client_code);
 }
 
-static string ReadFromSocket(thread& server_thread, const string& message_to_send_from_client = "") {
-  return ReadFromSocket(server_thread, "localhost", FLAGS_net_tcp_test_port, message_to_send_from_client);
+static void ExpectFromSocket(const std::string& golden,
+                             thread& server_thread,
+                             const string& message_to_send_from_client = "") {
+  ExpectFromSocket(golden, server_thread, "localhost", FLAGS_net_tcp_test_port, message_to_send_from_client);
 }
 
 TEST(TCPTest, ReceiveMessage) {
   thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM"); }, Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("BOOM", ReadFromSocket(server));
+  ExpectFromSocket("BOOM", server);
 }
 
-#ifndef BRICKS_WINDOWS
-// This test fails on Windows, even in a dramatically simplified version.
-// TODO(dkorolev): Investigate. Looks like on Windows writes never throw errors.
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
-  thread server([](Socket socket) { socket.Accept().BlockingWrite("OK"); }, Socket(FLAGS_net_tcp_test_port));
+  thread server([](Socket socket) {
+                  Connection connection = socket.Accept();
+                  char buffer[3];  // Wait for three incoming bytes before sending data out.
+                  connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+                  connection.BlockingWrite("OK");
+                },
+                Socket(FLAGS_net_tcp_test_port));
   Connection old_connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
-  old_connection.BlockingWrite("foo\n");
+  old_connection.BlockingWrite("1");
   Connection new_connection(std::move(old_connection));
-  // Connection& new_connection(old_connection);  // Debugging Windows usecase -- D.K.
-  new_connection.BlockingWrite("bar\n");
-  ASSERT_THROW(old_connection.BlockingWrite("baz\n"), AttemptedToUseMovedAwayConnection);
-  ASSERT_THROW(old_connection.BlockingReadUntilEOF(), AttemptedToUseMovedAwayConnection);
-  new_connection.SendEOF();
+  new_connection.BlockingWrite("22");
+  ASSERT_THROW(old_connection.BlockingWrite("333"), AttemptedToUseMovedAwayConnection);
+  char response[3] = "WA";
+  ASSERT_THROW(old_connection.BlockingRead(response, 3), AttemptedToUseMovedAwayConnection);
   server.join();
-  EXPECT_EQ("OK", new_connection.BlockingReadUntilEOF());
+  ASSERT_EQ(2u, new_connection.BlockingRead(response, 2, Connection::FillFullBuffer));
+  EXPECT_EQ("OK", std::string(response));
 }
-#endif
 
 TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
   // Note: This tests endianness as well -- D.K.
@@ -135,29 +126,19 @@ TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
                          socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233});
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("1032", ReadFromSocket(server_thread));
+  ExpectFromSocket("1032", server_thread);
 }
 
 TEST(TCPTest, EchoMessage) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
-                         connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
+                         std::vector<char> s(7);
+                         ASSERT_EQ(s.size(),
+                                   connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
+                         connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()));
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("ECHO: TEST OK", ReadFromSocket(server_thread, std::string("TEST OK")));
-}
-
-TEST(TCPTest, EchoMessageOfThreeUInt16) {
-  // Note: This tests endianness as well -- D.K.
-  thread server_thread([](Socket socket) {
-                         Connection connection(socket.Accept());
-                         connection.BlockingWrite("UINT16-s:");
-                         for (const auto value : connection.BlockingReadUntilEOF<vector<uint16_t> >()) {
-                           connection.BlockingWrite(Printf(" %04x", value));
-                         }
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("UINT16-s: 3252 2020 3244", ReadFromSocket(server_thread, std::string("R2  D2")));
+  ExpectFromSocket("ECHO: TEST OK", server_thread, std::string("TEST OK"));
 }
 
 TEST(TCPTest, EchoThreeMessages) {
@@ -165,90 +146,30 @@ TEST(TCPTest, EchoThreeMessages) {
                          const size_t block_length = 3;
                          string s(block_length, ' ');
                          Connection connection(socket.Accept());
-                         for (int i = 0;; ++i) {
-                           const size_t read_length =
-                               connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer);
-                           if (read_length) {
-                             EXPECT_EQ(block_length, read_length);
-                             connection.BlockingWrite(i > 0 ? "," : "ECHO: ");
-                             connection.BlockingWrite(s);
-                           } else {
-                             break;
-                           }
+                         for (int i = 0; i < 3; ++i) {
+                           ASSERT_EQ(block_length,
+                                     connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer));
+                           connection.BlockingWrite(i > 0 ? "," : "ECHO: ");
+                           connection.BlockingWrite(s);
                          }
                        },
                        Socket(FLAGS_net_tcp_test_port));
-  EXPECT_EQ("ECHO: FOO,BAR,BAZ",
-            ReadFromSocket(server_thread, [](Connection& connection) {
-              connection.BlockingWrite("FOOBARB");
-              sleep_for(milliseconds(1));
-              connection.BlockingWrite("A");
-              sleep_for(milliseconds(1));
-              connection.BlockingWrite("Z");
-            }));
+  ExpectFromSocket("ECHO: FOO,BAR,BAZ", server_thread, [](Connection& connection) {
+    connection.BlockingWrite("FOOBARB");
+    sleep_for(milliseconds(1));
+    connection.BlockingWrite("A");
+    sleep_for(milliseconds(1));
+    connection.BlockingWrite("Z");
+  });
 }
-
-TEST(TCPTest, PrematureMessageEndingException) {
-  struct BigStruct {
-    char first_byte;
-    char second_byte;
-    int x[1000];
-  } big_struct;
-  thread server_thread([&big_struct](Socket socket) {
-                         Connection connection(socket.Accept());
-#ifndef BRICKS_WINDOWS
-                         ASSERT_THROW(connection.BlockingRead(&big_struct, sizeof(big_struct)),
-                                      SocketReadMultibyteRecordEndedPrematurelyException);
-                         connection.BlockingWrite("PART");
-#else
-                         // TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
-                         try {
-                           connection.BlockingRead(&big_struct, sizeof(big_struct));
-                           ASSERT_TRUE(false);  // This should never happen.
-                         } catch (const SocketReadMultibyteRecordEndedPrematurelyException&) {
-                           connection.BlockingWrite("PART_AS_IT_SHOULD_BE");
-                           return;
-                         } catch (const SocketReadException&) {
-                           connection.BlockingWrite("ERROR");  // Sometimes on Windows no message goes through.
-                           return;
-                         } catch (const ConnectionResetByPeer&) {
-                           connection.BlockingWrite("NONE");  // Sometimes on Windows no message goes through.
-                           return;
-                         }
-                         ASSERT_TRUE(false);  // This should never happen.
-#endif
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
-  std::string result =
-      ReadFromSocket(server_thread, [](Connection& connection) { connection.BlockingWrite("FUUU"); });
-#ifndef BRICKS_WINDOWS
-  EXPECT_EQ("PART", result);
-  EXPECT_EQ('F', big_struct.first_byte);
-  EXPECT_EQ('U', big_struct.second_byte);
-#else
-  // TODO(dkorolev): Special handling for one test on Windows, investigate or delegate.
-  EXPECT_TRUE(result == "PART_AS_IT_SHOULD_BE" || result == "NONE" || result == "ERROR" ||
-              result == "SOCKET_READ_EXCEPTION");
-  if (result == "PART_AS_IT_SHOULD_BE") {
-    EXPECT_EQ('F', big_struct.first_byte);
-    EXPECT_EQ('U', big_struct.second_byte);
-  }
-#endif
-}
-
-#ifndef BRICKS_WINDOWS
-// Two sockets on the same port somehow get created on Windows. TODO(dkorolev): Investigate.
-TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
-  Socket s1(FLAGS_net_tcp_test_port);
-  std::unique_ptr<Socket> s2;
-  ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
-}
-#endif
 
 TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
-                         connection.BlockingWrite("ECHO: " + connection.BlockingReadUntilEOF());
+                         std::vector<char> s(10000);
+                         ASSERT_EQ(s.size(),
+                                   connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
+                         connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()));
                        },
                        Socket(FLAGS_net_tcp_test_port));
   std::string message;
@@ -256,14 +177,26 @@ TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
     message += '0' + (i % 10);
   }
   EXPECT_EQ(10000u, message.length());
-  const std::string response = ReadFromSocket(server_thread, message);
-  EXPECT_EQ(10006u, response.length());
-  EXPECT_EQ("ECHO: 0123", response.substr(0, 10));
-  EXPECT_EQ("56789", response.substr(10006 - 5));
+  ExpectFromSocket("ECHO: " + message, server_thread, message);
+}
+
+TEST(TCPTest, ResolveAddressException) {
+  ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
 }
 
 #ifndef BRICKS_WINDOWS
-// Large write passes on Windows. TODO(dkorolev): Investigate.
+// Apparently, Windows has no problems opening two sockets on the same port -- D.K.
+// Tested on Visual Studio 2015 Preview.
+TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
+  Socket s1(FLAGS_net_tcp_test_port);
+  std::unique_ptr<Socket> s2;
+  ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
+}
+#endif
+
+#ifndef BRICKS_WINDOWS
+// Apparently, Windows has no problems sending a 10MiB message -- D.K.
+// Tested on Visual Studio 2015 Preview.
 TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
@@ -279,7 +212,3 @@ TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   server_thread.join();
 }
 #endif
-
-TEST(TCPTest, ResolveAddressException) {
-  ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
-}

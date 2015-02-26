@@ -38,7 +38,7 @@ TEST(Time, SmokeTest) {
 #ifndef BRICKS_WINDOWS
   const int64_t allowed_skew = 3;
 #else
-  const int64_t allowed_skew = 10;  // Visual Studio is slower in regard to this test.
+  const int64_t allowed_skew = 25;  // Visual Studio is slower in regard to this test.
 #endif
   EXPECT_GE(dt, 50 - allowed_skew);
   EXPECT_LE(dt, 50 + allowed_skew);
