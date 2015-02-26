@@ -101,16 +101,11 @@ struct SocketSystemInitializer {
 
 class SocketHandle : private SocketSystemInitializer {
  public:
-  // Two ways to construct SocketHandle: via NewHandle() or FromHandle(int handle).
+  // Two ways to construct SocketHandle: via NewHandle() or FromHandle(SOCKET handle).
   struct NewHandle final {};
   struct FromHandle final {
-#ifndef BRICKS_WINDOWS
-    int handle;
-    FromHandle(int handle) : handle(handle) {}
-#else
     SOCKET handle;
     FromHandle(SOCKET handle) : handle(handle) {}
-#endif
   };
 
   inline SocketHandle(NewHandle) : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
@@ -182,6 +177,8 @@ class SocketHandle : private SocketSystemInitializer {
   SocketHandle(const SocketHandle&) = delete;
 #else
  public:
+  // Visual Studio seem to require this constructor, since std::move()-ing away `SocketHandle`-s
+  // as part of `Connection` objects doesn't seem to work. TODO(dkorolev): Investigate this.
   SocketHandle(const SocketHandle& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
 
  private:
@@ -210,14 +207,15 @@ class Connection : public SocketHandle {
     while ((remaining_bytes_to_read = (max_length - (ptr - buffer))) > 0) {
       BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
                      static_cast<SOCKET>(socket),
-                     int(remaining_bytes_to_read));
+                     static_cast<int>(remaining_bytes_to_read));
 #ifndef BRICKS_WINDOWS
       const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, 0);
 #else
       const int retval =
           ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(max_length - (ptr - buffer)), 0);
 #endif
-      BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), int(retval));
+      BRICKS_NET_LOG(
+          "S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), static_cast<int>(retval));
       if (retval > 0) {
         ptr += retval;
         if (policy == BlockingReadPolicy::ReturnASAP) {
@@ -322,11 +320,13 @@ class Socket final : public SocketHandle {
 #else
     u_long just_one = 1;
 #endif
+
 #ifdef BRICKS_WINDOWS
     if (::ioctlsocket(socket, FIONBIO, &just_one) != NO_ERROR) {
       BRICKS_THROW(SocketCreateException());
     }
 #endif
+
     // LCOV_EXCL_START
     if (disable_nagle_algorithm) {
 #ifndef BRICKS_WINDOWS
@@ -382,21 +382,21 @@ class Socket final : public SocketHandle {
     // TODO(dkorolev): Type socklen_t ?
     auto addr_client_length = sizeof(sockaddr_in);
 #ifndef BRICKS_WINDOWS
-    const int fd = ::accept(socket,
-                            reinterpret_cast<struct sockaddr*>(&addr_client),
-                            reinterpret_cast<socklen_t*>(&addr_client_length));
-    if (fd == -1) {
+    const SOCKET handle = ::accept(socket,
+                                   reinterpret_cast<struct sockaddr*>(&addr_client),
+                                   reinterpret_cast<socklen_t*>(&addr_client_length));
+    if (handle == -1) {
       BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #else
-    const SOCKET fd = ::accept(
+    const SOCKET handle = ::accept(
         socket, reinterpret_cast<struct sockaddr*>(&addr_client), reinterpret_cast<int*>(&addr_client_length));
-    if (fd == INVALID_SOCKET) {
+    if (handle == INVALID_SOCKET) {
       BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #endif
-    BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), fd);
-    return Connection(SocketHandle::FromHandle(fd));
+    BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
+    return Connection(SocketHandle::FromHandle(handle));
   }
 
   // Note: The copy constructor is left public and default.

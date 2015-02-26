@@ -141,23 +141,6 @@ TEST(TCPTest, EchoMessage) {
   ExpectFromSocket("ECHO: TEST OK", server_thread, std::string("TEST OK"));
 }
 
-/*
-TEST(TCPTest, EchoMessageOfThreeUInt16) {
-  // Note: This tests endianness as well -- D.K.
-  thread server_thread([](Socket socket) {
-                         Connection connection(socket.Accept());
-                         connection.BlockingWrite("UINT16-s:");
-                         std::vector<uint16_t> buffer(3);
-                         ASSERT_EQ(3, connection.BlockingRead(&buffer[0], 3, Connection::FillFullBuffer));
-                         for (const uint16_t value : buffer) {
-                           connection.BlockingWrite(Printf(" %04x", value));
-                         }
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
-  ExpectFromSocket("UINT16-s: 3252 2020 3244", server_thread, std::string("R2  D2"));
-}
-*/
-
 TEST(TCPTest, EchoThreeMessages) {
   thread server_thread([](Socket socket) {
                          const size_t block_length = 3;
