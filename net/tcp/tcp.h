@@ -27,8 +27,6 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include "../debug_log.h"
-
 #if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
 #include "impl/posix.h"
 #elif defined(BRICKS_ANDROID)
