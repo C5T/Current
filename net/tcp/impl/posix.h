@@ -66,23 +66,6 @@ namespace net {
 const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
 
-#define kReadTillEOFBufferGrowthK 1.95
-// const double kReadTillEOFBufferGrowthK = 1.95;
-
-// D.K.: I have replaced `const double` by `#define`, since clang++
-// has been giving the following warning when testing headers for integrity.
-//
-// >> The symbol is used, but only within a templated method that is not enabled.
-// >> /home/dima/github/dkorolev/Bricks/net/tcp/impl/.noshit/headers/posix.h.clang++.cc:26:14: warning: variable
-// >>       'kReadTillEOFBufferGrowthK' is not needed and will not be emitted [-Wunneeded-internal-declaration]
-// >> const double kReadTillEOFBufferGrowthK = 1.95;
-// >>              ^
-// >> 1 warning generated.
-//
-// Interestingly, kReadTillEOFInitialBufferSize follows the same story, but does not trigger a warning.
-// Looks like a glitch in clang++ in either direction (warn on both or on none for consistency reasons),
-// but I didn't investigate further -- D.K.
-
 struct SocketSystemInitializer {
 #ifdef BRICKS_WINDOWS
   struct OneTimeInitializer {
@@ -212,7 +195,7 @@ class Connection : public SocketHandle {
       const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, 0);
 #else
       const int retval =
-          ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(max_length - (ptr - buffer)), 0);
+          ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), 0);
 #endif
       BRICKS_NET_LOG(
           "S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), static_cast<int>(retval));
@@ -386,6 +369,7 @@ class Socket final : public SocketHandle {
                                    reinterpret_cast<struct sockaddr*>(&addr_client),
                                    reinterpret_cast<socklen_t*>(&addr_client_length));
     if (handle == -1) {
+      BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #else
