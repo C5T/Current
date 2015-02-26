@@ -198,7 +198,8 @@ class TemplatedHTTPRequestData : public HELPER {
                   buffer_.resize(
                       std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
                 }
-                if (bytes_to_read != c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
+                if (bytes_to_read !=
+                    c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
                   BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
