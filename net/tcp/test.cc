@@ -163,12 +163,6 @@ TEST(TCPTest, EchoThreeMessages) {
   });
 }
 
-TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
-  Socket s1(FLAGS_net_tcp_test_port);
-  std::unique_ptr<Socket> s2;
-  ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
-}
-
 TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
@@ -186,21 +180,36 @@ TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   ExpectFromSocket("ECHO: " + message, server_thread, message);
 }
 
-TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
-  thread server_thread([](Socket socket) {
-                         Connection connection(socket.Accept());
-                         char buffer[3];
-                         connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
-                         connection.BlockingWrite("Done, thanks.\n");
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
-  // Attempt to send a very long message to ensure it does not fit OS buffers.
-  Connection connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
-  ASSERT_THROW(connection.BlockingWrite(std::vector<char>(10 * 1000 * 1000, '!')),
-               SocketCouldNotWriteEverythingException);
-  server_thread.join();
-}
-
 TEST(TCPTest, ResolveAddressException) {
   ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
 }
+
+#ifndef BRICKS_WINDOWS
+// Apparently, Windows has no problems opening two sockets on the same port -- D.K.
+// Tested on Visual Studio 2015 Preview.
+TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
+  Socket s1(FLAGS_net_tcp_test_port);
+  std::unique_ptr<Socket> s2;
+  ASSERT_THROW(s2.reset(new Socket(FLAGS_net_tcp_test_port)), SocketBindException);
+}
+#endif
+
+#ifndef BRICKS_WINDOWS
+// Apparently, Windows has no problems sending a 10MiB message -- D.K.
+// Tested on Visual Studio 2015 Preview.
+TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
+  thread server_thread([](Socket socket) {
+    Connection connection(socket.Accept());
+    char buffer[3];
+    connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+    connection.BlockingWrite("Done, thanks.\n");
+  },
+    Socket(FLAGS_net_tcp_test_port));
+  // Attempt to send a very long message to ensure it does not fit OS buffers.
+  Connection connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
+  ASSERT_THROW(connection.BlockingWrite(std::vector<char>(10 * 1000 * 1000, '!')),
+    SocketCouldNotWriteEverythingException);
+  server_thread.join();
+  }
+#endif
+

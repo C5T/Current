@@ -76,8 +76,8 @@ struct HTTPTestObject {
 };
 
 TEST(PosixHTTPServerTest, Smoke) {
-  std::atomic_bool test_done(false);
-  thread t([&test_done](Socket s) {
+//  std::atomic_bool test_done(false);
+  thread t([](Socket s) {
              {
                HTTPServerConnection c(s.Accept());
                EXPECT_EQ("POST", c.HTTPRequest().Method());
@@ -91,9 +91,9 @@ TEST(PosixHTTPServerTest, Smoke) {
              // This issue does not appear in `net/api` since the serving threads per port run forever,
              // however, extra logic is required to have this `net/http` test pass safely.
              // TODO(dkorolev): Use `WaitableAtomic` here.
-             while (!test_done) {
-               ;  // Spin lock.
-             }
+//             while (!test_done) {
+               //;  // Spin lock.
+             //}
            },
            Socket(FLAGS_net_http_test_port));
   {
@@ -113,24 +113,29 @@ TEST(PosixHTTPServerTest, Smoke) {
         "Data: BODY",
         connection);
   }
-  test_done = true;
+ // test_done = true;
   t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithArray) {
+  //std::atomic_bool test_done(false);
   thread t([](Socket s) {
-             HTTPServerConnection c(s.Accept());
-             EXPECT_EQ("GET", c.HTTPRequest().Method());
-             EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
-             c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
-           },
+    {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("GET", c.HTTPRequest().Method());
+    EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse(std::vector<char>({ 'A', 'l', 'o', 'h', 'a' }));
+  }
+             //while (!test_done) {
+//               ;  // Spin lock.
+  //           }
+  },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
   connection.BlockingWrite("GET /aloha HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite("\r\n");
-  t.join();
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -139,6 +144,8 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
       "\r\n"
       "Aloha",
       connection);
+  //test_done = true;
+  t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithObject) {
@@ -154,7 +161,6 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   connection.BlockingWrite("Host: localhost\r\n");
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite("\r\n");
-  t.join();
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -163,6 +169,7 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "\r\n"
       "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection);
+  t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
@@ -177,7 +184,6 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
   connection.BlockingWrite("\r\n");
-  t.join();
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -186,6 +192,7 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
       "\r\n"
       "{\"epic_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection);
+  t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
@@ -204,7 +211,6 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   connection.BlockingWrite("GET /chunked HTTP/1.1\r\n");
   connection.BlockingWrite("Host: localhost\r\n");
   connection.BlockingWrite("\r\n");
-  t.join();
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -221,6 +227,7 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",
       connection);
+  t.join();
 }
 
 TEST(PosixHTTPServerTest, SmokeWithHeaders) {
@@ -239,7 +246,6 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite("custom_content_type");
   connection.BlockingWrite("\r\n");
-  t.join();
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: custom_content_type\r\n"
@@ -250,6 +256,7 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
       "\r\n"
       "OK",
       connection);
+  t.join();
 }
 
 TEST(PosixHTTPServerTest, LargeBody) {
@@ -270,7 +277,6 @@ TEST(PosixHTTPServerTest, LargeBody) {
   connection.BlockingWrite(strings::Printf("Content-Length: %d\r\n", static_cast<int>(body.length())));
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite(body);
-  t.join();
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -280,6 +286,7 @@ TEST(PosixHTTPServerTest, LargeBody) {
       "Data: " +
           body,
       connection);
+  t.join();
 }
 
 TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
@@ -307,7 +314,6 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
     connection.BlockingWrite("\r\n");
   }
   connection.BlockingWrite("0\r\n");
-  t.join();
   ExpectToReceive(strings::Printf(
                       "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
@@ -318,6 +324,7 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
                       static_cast<int>(body.length()),
                       body.c_str()),
                   connection);
+  t.join();
 }
 
 // A dedicated test to cover buffer resize after the size of the next chunk has been received.
@@ -345,7 +352,6 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
     body += chunk;
   }
   connection.BlockingWrite("0\r\n");
-  t.join();
   ExpectToReceive(strings::Printf(
                       "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
@@ -356,6 +362,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
                       static_cast<int>(body.length()),
                       body.c_str()),
                   connection);
+  t.join();
 }
 
 #ifndef BRICKS_WINDOWS
@@ -532,8 +539,8 @@ TEST(HTTPServerTest, ConnectionResetByPeerException) {
   connection.BlockingWrite("Content-Length: 1000000\r\n");
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite("This body message terminates prematurely.\r\n");
-  t.join();
   EXPECT_TRUE(connection_reset_by_peer);
+  t.join();
 }
 
 // A dedicated test to cover the `ConnectionResetByPeer` case while receiving a chunk.
@@ -554,8 +561,8 @@ TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
   connection.BlockingWrite("\r\n");
   connection.BlockingWrite("10000\r\n");
   connection.BlockingWrite("This body message terminates prematurely.\r\n");
-  t.join();
   EXPECT_TRUE(connection_reset_by_peer);
+  t.join();
 }
 
 #endif

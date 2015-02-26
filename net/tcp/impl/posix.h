@@ -207,7 +207,7 @@ class Connection : public SocketHandle {
       } else {
         // LCOV_EXCL_START
         if (retval < 0) {
-          if (policy == BlockingReadPolicy::ReturnASAP && ptr != buffer) {
+          if (policy == BlockingReadPolicy::ReturnASAP) {
             return (ptr - buffer);
           } else {
             if (errno == EAGAIN) {
@@ -222,13 +222,14 @@ class Connection : public SocketHandle {
                              static_cast<SOCKET>(socket),
                              static_cast<int>(ptr - buffer),
                              errno);
-              BRICKS_THROW(SocketReadException());
+              // Windows!
+              continue; // BRICKS_THROW(SocketReadException());
             }
           }
         } else {
           BRICKS_NET_LOG("S%05d BlockingRead() : retval == 0 ...\n", static_cast<SOCKET>(socket));
           if (policy == BlockingReadPolicy::ReturnASAP) {
-            return ptr - buffer;
+            return (ptr - buffer);
           } else {
             BRICKS_THROW(SocketReadException());
           }
@@ -302,12 +303,6 @@ class Socket final : public SocketHandle {
     int just_one = 1;
 #else
     u_long just_one = 1;
-#endif
-
-#ifdef BRICKS_WINDOWS
-    if (::ioctlsocket(socket, FIONBIO, &just_one) != NO_ERROR) {
-      BRICKS_THROW(SocketCreateException());
-    }
 #endif
 
     // LCOV_EXCL_START
