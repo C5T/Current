@@ -53,15 +53,14 @@ struct SocketBindException : ServerSocketException {};
 struct SocketListenException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketAcceptException : ServerSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 
-struct ConnectionResetByPeer : SocketException {};
+struct ConnectionResetByPeer : SocketException {};  // LCOV_EXCL_LINE
 
 struct ClientSocketException : SocketException {};
 struct SocketConnectException : ClientSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct SocketResolveAddressException : ClientSocketException {};
 
 struct SocketFcntlException : SocketException {};
-struct SocketReadException : SocketException {};
-struct SocketReadMultibyteRecordEndedPrematurelyException : SocketReadException {};
+struct SocketReadException : SocketException {};  // LCOV_EXCL_LINE -- TODO(dkorolev): We might want to test it.
 struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
