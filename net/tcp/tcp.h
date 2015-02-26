@@ -27,16 +27,28 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#ifdef BRICKS_DEBUG_NET
+#ifndef BRICKS_DEBUG_NET
 
 #define BRICKS_DEBUG_LOG(...)
 
 #else
 
+// A somewhat dirty yet safe implementation of a thread-safe logger that can be enabled via a #define.
 #include <cstdio>
 #include <iostream>
-#define BRICKS_DEBUG_LOG(...) \
-  ([=]{std::cout << 'T' << std::this_thread::get_id() << ' '; printf(__VA_ARGS__); fflush(stdout);})()
+#include <thread>
+#include <mutex>
+#include "../../util/singleton.h"
+struct DebugLogMutex {
+  std::mutex mutex;
+};
+#define BRICKS_DEBUG_LOG(...)                                                      \
+  ([=] {                                                                           \
+    std::unique_lock<std::mutex> lock(::bricks::Singleton<DebugLogMutex>().mutex); \
+    std::cout << 'T' << std::this_thread::get_id() << ' ';                         \
+    printf(__VA_ARGS__);                                                           \
+    fflush(stdout);                                                                \
+  }())
 
 #endif
 

@@ -111,22 +111,24 @@ TEST(TCPTest, ReceiveMessage) {
   EXPECT_EQ("BOOM", ReadFromSocket(server));
 }
 
-#ifndef BRICKS_WINDOWS
-// This test fails on Windows, even in a dramatically simplified version.
-// TODO(dkorolev): Investigate. Looks like on Windows writes never throw errors.
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
-  thread server([](Socket socket) { socket.Accept().BlockingWrite("OK"); }, Socket(FLAGS_net_tcp_test_port));
+  thread server([](Socket socket) {
+                  Connection connection = socket.Accept();
+                  char buffer[3];  // Wait for three incoming bytes before sending data out.
+                  connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+                  connection.BlockingWrite("OK");
+                },
+                Socket(FLAGS_net_tcp_test_port));
   Connection old_connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
-  old_connection.BlockingWrite("foo\n");
+  old_connection.BlockingWrite("1");
   Connection new_connection(std::move(old_connection));
-  new_connection.BlockingWrite("bar\n");
-  ASSERT_THROW(old_connection.BlockingWrite("baz\n"), AttemptedToUseMovedAwayConnection);
+  new_connection.BlockingWrite("22");
+  ASSERT_THROW(old_connection.BlockingWrite("333"), AttemptedToUseMovedAwayConnection);
   ASSERT_THROW(old_connection.BlockingReadUntilEOF(), AttemptedToUseMovedAwayConnection);
   new_connection.SendEOF();
   server.join();
   EXPECT_EQ("OK", new_connection.BlockingReadUntilEOF());
 }
-#endif
 
 TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
   // Note: This tests endianness as well -- D.K.
