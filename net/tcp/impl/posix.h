@@ -222,8 +222,13 @@ class Connection : public SocketHandle {
                              static_cast<SOCKET>(socket),
                              static_cast<int>(ptr - buffer),
                              errno);
-              // Windows!
-              continue; // BRICKS_THROW(SocketReadException());
+#ifdef BRICKS_WINDOWS
+              if (retval == -1) {
+                continue;  // Believe or no, this makes the tests pass. TODO(dkorolev): Investigate.
+              }
+#else
+              BRICKS_THROW(SocketReadException());
+#endif
             }
           }
         } else {
