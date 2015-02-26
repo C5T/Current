@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,19 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_NET_TCP_TCP_H
-#define BRICKS_NET_TCP_TCP_H
+#ifndef BRICKS_NET_DEBUG_LOG_H
+#define BRICKS_NET_DEBUG_LOG_H
 
-#include "../../port.h"
+#include "../port.h"
 
-#include "../debug_log.h"
+#ifndef BRICKS_DEBUG_NET
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
-#include "impl/posix.h"
-#elif defined(BRICKS_ANDROID)
-#error "tcp.h should not be included in ANDROID builds."
+// If `BRICKS_DEBUG_NET` is not defined, all `BRICKS_NET_LOG` statements are plain ignored.
+#define BRICKS_NET_LOG(...)
+
 #else
-#error "No implementation for `net/tcp.h` is available for your system."
+
+// A somewhat dirty yet safe implementation of a thread-safe logger that can be enabled via a #define.
+#include <cstdio>
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include "../../util/singleton.h"
+struct DebugLogMutex {
+  std::mutex mutex;
+};
+#define BRICKS_NET_LOG(...)                                                        \
+  ([=] {                                                                           \
+    std::unique_lock<std::mutex> lock(::bricks::Singleton<DebugLogMutex>().mutex); \
+    std::cout << 'T' << std::this_thread::get_id() << ' ';                         \
+    printf(__VA_ARGS__);                                                           \
+    fflush(stdout);                                                                \
+  }())
+
 #endif
 
-#endif  // BRICKS_NET_TCP_TCP_H
+#endif  // BRICKS_NET_DEBUG_LOG_H

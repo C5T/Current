@@ -53,7 +53,6 @@ using bricks::net::ClientSocket;
 
 using bricks::net::AttemptedToUseMovedAwayConnection;
 using bricks::net::SocketBindException;
-using bricks::net::SocketReadMultibyteRecordEndedPrematurelyException;
 using bricks::net::SocketCouldNotWriteEverythingException;
 using bricks::net::SocketResolveAddressException;
 
@@ -68,7 +67,6 @@ static void ExpectFromSocket(const std::string& golden,
   ASSERT_EQ(
       golden.length(),
       connection.BlockingRead(&response[0], golden.length(), Connection::BlockingReadPolicy::FillFullBuffer));
-  std::cerr << "DATA: " << std::string(response.begin(), response.end()) << "\n";
   EXPECT_EQ(golden, std::string(response.begin(), response.end()));
   server_thread.join();
 }

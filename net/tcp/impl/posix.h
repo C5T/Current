@@ -29,6 +29,8 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
+#include "../../debug_log.h"
+
 #include "../../../util/singleton.h"
 
 #include <cassert>
@@ -63,7 +65,6 @@ namespace net {
 
 const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
-const size_t kReadTillEOFInitialBufferSize = 128;
 
 #define kReadTillEOFBufferGrowthK 1.95
 // const double kReadTillEOFBufferGrowthK = 1.95;
@@ -86,12 +87,12 @@ struct SocketSystemInitializer {
 #ifdef BRICKS_WINDOWS
   struct OneTimeInitializer {
     OneTimeInitializer() {
-      BRICKS_DEBUG_LOG("WSAStartup() ...\n");
+      BRICKS_NET_LOG("WSAStartup() ...\n");
       WSADATA wsaData;
       if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
         BRICKS_THROW(SocketWSAStartupException());
       }
-      BRICKS_DEBUG_LOG("WSAStartup() : OK\n");
+      BRICKS_NET_LOG("WSAStartup() : OK\n");
     }
   };
   SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
@@ -116,25 +117,25 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ < 0) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
-    BRICKS_DEBUG_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
+    BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {
     if (socket_ < 0) {
       BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
-    BRICKS_DEBUG_LOG("S%05d == initialized externally.\n", socket_);
+    BRICKS_NET_LOG("S%05d == initialized externally.\n", socket_);
   }
 
   inline ~SocketHandle() {
     if (socket_ != -1) {
-      BRICKS_DEBUG_LOG("S%05d close() ...\n", socket_);
+      BRICKS_NET_LOG("S%05d close() ...\n", socket_);
 #ifndef BRICKS_WINDOWS
       ::close(socket_);
 #else
       ::closesocket(socket_);
 #endif
-      BRICKS_DEBUG_LOG("S%05d close() : OK\n", socket_);
+      BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
     }
   }
 
@@ -202,21 +203,21 @@ class Connection : public SocketHandle {
   template <typename T>
   inline typename std::enable_if<sizeof(T) == 1, size_t>::type BlockingRead(
       T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
-    BRICKS_DEBUG_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
+    BRICKS_NET_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
     uint8_t* buffer = reinterpret_cast<uint8_t*>(output_buffer);
     uint8_t* ptr = buffer;
     size_t remaining_bytes_to_read;
     while ((remaining_bytes_to_read = (max_length - (ptr - buffer))) > 0) {
-      BRICKS_DEBUG_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
-                       static_cast<SOCKET>(socket),
-                       int(remaining_bytes_to_read));
+      BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
+                     static_cast<SOCKET>(socket),
+                     int(remaining_bytes_to_read));
 #ifndef BRICKS_WINDOWS
       const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, 0);
 #else
       const int retval =
           ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(max_length - (ptr - buffer)), 0);
 #endif
-      BRICKS_DEBUG_LOG("S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), int(retval));
+      BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), int(retval));
       if (retval > 0) {
         ptr += retval;
         if (policy == BlockingReadPolicy::ReturnASAP) {
@@ -231,20 +232,20 @@ class Connection : public SocketHandle {
             if (errno == EAGAIN) {
               continue;
             } else if (errno == ECONNRESET) {
-              BRICKS_DEBUG_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
-                               static_cast<SOCKET>(socket),
-                               static_cast<int>(ptr - buffer));
+              BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                             static_cast<SOCKET>(socket),
+                             static_cast<int>(ptr - buffer));
               BRICKS_THROW(ConnectionResetByPeer());
             } else {
-              BRICKS_DEBUG_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
-                               static_cast<SOCKET>(socket),
-                               static_cast<int>(ptr - buffer),
-                               errno);
+              BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                             static_cast<SOCKET>(socket),
+                             static_cast<int>(ptr - buffer),
+                             errno);
               BRICKS_THROW(SocketReadException());
             }
           }
         } else {
-          BRICKS_DEBUG_LOG("S%05d BlockingRead() : retval == 0 ...\n", static_cast<SOCKET>(socket));
+          BRICKS_NET_LOG("S%05d BlockingRead() : retval == 0 ...\n", static_cast<SOCKET>(socket));
           if (policy == BlockingReadPolicy::ReturnASAP) {
             return ptr - buffer;
           } else {
@@ -254,15 +255,15 @@ class Connection : public SocketHandle {
       }
       // LCOV_EXCL_STOP
     }
-    BRICKS_DEBUG_LOG("S%05d BlockingRead() : OK, read %d bytes.\n",
-                     static_cast<SOCKET>(socket),
-                     static_cast<int>(ptr - buffer));
+    BRICKS_NET_LOG("S%05d BlockingRead() : OK, read %d bytes.\n",
+                   static_cast<SOCKET>(socket),
+                   static_cast<int>(ptr - buffer));
     return ptr - buffer;
   }
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
     assert(buffer);
-    BRICKS_DEBUG_LOG(
+    BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
 #ifndef BRICKS_WINDOWS
     const int result = static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL));
@@ -277,7 +278,7 @@ class Connection : public SocketHandle {
     } else if (static_cast<size_t>(result) != write_length) {
       BRICKS_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
     }
-    BRICKS_DEBUG_LOG(
+    BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
     return *this;
   }
@@ -357,25 +358,25 @@ class Socket final : public SocketHandle {
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);
 
-    BRICKS_DEBUG_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
+    BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
 
     if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == -1) {
       BRICKS_THROW(SocketBindException());
     }
 
-    BRICKS_DEBUG_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
+    BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
 
     if (::listen(socket, max_connections)) {
       BRICKS_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
-    BRICKS_DEBUG_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
+    BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
   }
 
   Socket(Socket&&) = default;
 
   inline Connection Accept() {
-    BRICKS_DEBUG_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
+    BRICKS_NET_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
     sockaddr_in addr_client;
     memset(&addr_client, 0, sizeof(addr_client));
     // TODO(dkorolev): Type socklen_t ?
@@ -394,7 +395,7 @@ class Socket final : public SocketHandle {
       BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #endif
-    BRICKS_DEBUG_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), fd);
+    BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), fd);
     return Connection(SocketHandle::FromHandle(fd));
   }
 
@@ -418,8 +419,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
    public:
     inline explicit ClientSocket(const std::string& host, const std::string& serv)
         : SocketHandle(SocketHandle::NewHandle()) {
-      BRICKS_DEBUG_LOG(
-          "S%05d getaddrinfo(%s@%s) ...\n", static_cast<SOCKET>(socket), host.c_str(), serv.c_str());
+      BRICKS_NET_LOG("S%05d getaddrinfo(%s@%s) ...\n", static_cast<SOCKET>(socket), host.c_str(), serv.c_str());
       struct addrinfo hints;
       memset(&hints, 0, sizeof(hints));
       struct addrinfo* servinfo;
@@ -439,14 +439,14 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       // for (struct addrinfo* p = servinfo; p != NULL; p = p->ai_next) {
       //   p->ai_addr;
       // }
-      BRICKS_DEBUG_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
+      BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
       const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval2) {
         BRICKS_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
       // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
       ::freeaddrinfo(servinfo);
-      BRICKS_DEBUG_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
+      BRICKS_NET_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
     }
   };
 
