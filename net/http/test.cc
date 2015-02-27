@@ -52,15 +52,21 @@ using bricks::net::HTTPResponseCodeValue;
 using bricks::net::HTTPResponseCodeAsString;
 using bricks::net::GetFileMimeType;
 using bricks::net::DefaultInternalServerErrorMessage;
+using bricks::net::SocketException;
 using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
 using bricks::net::AttemptedToSendHTTPResponseMoreThanOnce;
 
 static void ExpectToReceive(const std::string& golden, Connection& connection) {
   std::vector<char> response(golden.length());
-  ASSERT_EQ(golden.length(),
-            connection.BlockingRead(&response[0], golden.length(), Connection::FillFullBuffer));
-  EXPECT_EQ(golden, std::string(response.begin(), response.end()));
+  try {
+    ASSERT_EQ(golden.length(),
+              connection.BlockingRead(&response[0], golden.length(), Connection::FillFullBuffer));
+    EXPECT_EQ(golden, std::string(response.begin(), response.end()));
+  }
+  catch (const SocketException& e) {
+    ASSERT_TRUE(false) << e.What();
+  }
 }
 
 struct HTTPTestObject {
