@@ -4,7 +4,7 @@ default:
 	(cd url; make default) && (cd tcp; make default) && (cd http; make default) && (cd api; make default) && echo "ALL TESTS PASS"
 
 indent:
-	(find . -name "*.cc" ; find . -name "*.h") | xargs clang-format-3.5 -i
+	../KnowSheet/scripts/indent.sh
 
 clean:
 	rm -rf build .noshit
