@@ -278,8 +278,7 @@ TEST(HTTPAPI, GetToFile) {
         if (!reduce) {
           reduce = true;
           return 10;
-        }
-        else {
+        } else {
           return 1;
         }
       }();

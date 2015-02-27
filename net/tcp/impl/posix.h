@@ -169,7 +169,7 @@ class SocketHandle : private SocketSystemInitializer {
 };
 
 class Connection : public SocketHandle {
-public:
+ public:
   inline Connection(SocketHandle&& rhs) : SocketHandle(std::move(rhs)) {}
 
   inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {}
@@ -185,8 +185,7 @@ public:
       T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     if (max_length == 0) {
       return 0;
-    }
-    else {
+    } else {
       uint8_t* buffer = reinterpret_cast<uint8_t*>(output_buffer);
       uint8_t* ptr = buffer;
       const uint8_t* end = (buffer + max_length);
@@ -200,12 +199,13 @@ public:
       do {
         const size_t remaining_bytes_to_read = (max_length - (ptr - buffer));
         BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
-                        static_cast<SOCKET>(socket),
-                        static_cast<int>(remaining_bytes_to_read));
+                       static_cast<SOCKET>(socket),
+                       static_cast<int>(remaining_bytes_to_read));
 #ifndef BRICKS_WINDOWS
         const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, flags);
 #else
-        const int retval = ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), flags);
+        const int retval =
+            ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), flags);
 #endif
         BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d, errno = %d.\n",
                        static_cast<SOCKET>(socket),
@@ -215,8 +215,7 @@ public:
           ptr += retval;
           if ((policy == BlockingReadPolicy::ReturnASAP) || (ptr == end)) {
             return (ptr - buffer);
-          }
-          else {
+          } else {
             continue;
           }
         }
@@ -230,7 +229,8 @@ public:
           continue;
         }
 #else
-        if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS || wsa_last_error == WSAENETDOWN) {
+        if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS ||
+            wsa_last_error == WSAENETDOWN) {
           // Effectively, `errno == EAGAIN`.
           continue;
         }
@@ -248,8 +248,7 @@ public:
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer));
         BRICKS_THROW(ConnectionResetByPeer());
-      }
-      else {
+      } else {
         BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer),
@@ -263,8 +262,7 @@ public:
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer));
         BRICKS_THROW(ConnectionResetByPeer());
-      }
-      else {
+      } else {
         BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer),
