@@ -405,7 +405,7 @@ class HTTPClientImplPOSIX {
       connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n", true);
       connection.BlockingWrite("\r\n", true);
       connection.BlockingWrite(data, false);
-    else {
+    } else {
       connection.BlockingWrite("\r\n", false);
     }
     HTTPRequestData http_request(connection);
