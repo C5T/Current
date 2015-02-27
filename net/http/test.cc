@@ -97,12 +97,12 @@ TEST(PosixHTTPServerTest, Smoke) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Content-Length: 4\r\n");
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite("BODY");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Content-Length: 4\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("BODY", true);
+  connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -130,10 +130,10 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /aloha HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("GET /aloha HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -161,10 +161,10 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -192,9 +192,9 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -226,9 +226,9 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /chunked HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("GET /chunked HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -265,12 +265,12 @@ TEST(PosixHTTPServerTest, SmokeWithHeaders) {
     },
     Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /header HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Content-Length: 19\r\n");
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite("custom_content_type");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("GET /header HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Content-Length: 19\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("custom_content_type", true);
+  connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: custom_content_type\r\n"
@@ -304,11 +304,11 @@ TEST(PosixHTTPServerTest, LargeBody) {
     body[i] = 'A' + (i % 26);
   }
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite(strings::Printf("Content-Length: %d\r\n", static_cast<int>(body.length())));
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite(body);
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite(strings::Printf("Content-Length: %d\r\n", static_cast<int>(body.length())), true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite(body, false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
@@ -337,22 +337,22 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Transfer-Encoding: chunked\r\n");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+  connection.BlockingWrite("\r\n", true);
   string chunk(10, '.');
   string body = "";
   for (size_t i = 0; i < 10000; ++i) {
-    connection.BlockingWrite("A\r\n");  // "A" is hexadecimal for 10.
+    connection.BlockingWrite("A\r\n", true);  // "A" is hexadecimal for 10.
     for (size_t j = 0; j < 10; ++j) {
       chunk[j] = 'A' + ((i + j) % 26);
     }
-    connection.BlockingWrite(chunk);
+    connection.BlockingWrite(chunk, true);
     body += chunk;
-    connection.BlockingWrite("\r\n");
+    connection.BlockingWrite("\r\n", true);
   }
-  connection.BlockingWrite("0\r\n");
+  connection.BlockingWrite("0\r\n", false);
   ExpectToReceive(strings::Printf(
                       "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
@@ -383,21 +383,21 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Transfer-Encoding: chunked\r\n");
-  connection.BlockingWrite("\r\n");
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+  connection.BlockingWrite("\r\n", true);
   string chunk(10000, '.');
   string body = "";
   for (size_t i = 0; i < 10; ++i) {
-    connection.BlockingWrite(strings::Printf("%X\r\n", 10000));
+    connection.BlockingWrite(strings::Printf("%X\r\n", 10000), true);
     for (size_t j = 0; j < 10000; ++j) {
       chunk[j] = 'a' + ((i + j) % 26);
     }
-    connection.BlockingWrite(chunk);
+    connection.BlockingWrite(chunk, true);
     body += chunk;
   }
-  connection.BlockingWrite("0\r\n");
+  connection.BlockingWrite("0\r\n", false);
   ExpectToReceive(strings::Printf(
                       "HTTP/1.1 200 OK\r\n"
                       "Content-Type: text/plain\r\n"
@@ -477,13 +477,15 @@ class HTTPClientImplPOSIX {
                      bool has_data = false,
                      const string& data = "") {
     Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-    connection.BlockingWrite(method + ' ' + url + "\r\n");
+    connection.BlockingWrite(method + ' ' + url + "\r\n", true);
     if (has_data) {
-      connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n");
+      connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n", true);
     }
-    connection.BlockingWrite("\r\n");
-    if (has_data) {
-      connection.BlockingWrite(data);
+    if (!has_data) {
+      connection.BlockingWrite("\r\n", false);
+    } else {
+      connection.BlockingWrite("\r\n", true);
+      connection.BlockingWrite(data, false);
     }
     HTTPRequestData http_request(connection);
     assert(http_request.HasBody());
@@ -624,11 +626,11 @@ TEST(HTTPServerTest, ConnectionResetByPeerException) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Content-Length: 1000000\r\n");
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite("This body message terminates prematurely.\r\n");
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Content-Length: 1000000\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("This body message terminates prematurely.\r\n", false);
   EXPECT_TRUE(connection_reset_by_peer);
   t.join();
 }
@@ -645,12 +647,12 @@ TEST(PosixHTTPServerTest, ChunkedBodyConnectionResetByPeerException) {
            },
            Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("POST / HTTP/1.1\r\n");
-  connection.BlockingWrite("Host: localhost\r\n");
-  connection.BlockingWrite("Transfer-Encoding: chunked\r\n");
-  connection.BlockingWrite("\r\n");
-  connection.BlockingWrite("10000\r\n");
-  connection.BlockingWrite("This body message terminates prematurely.\r\n");
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("Transfer-Encoding: chunked\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("10000\r\n, true");
+  connection.BlockingWrite("This body message terminates prematurely.\r\n", false);
   EXPECT_TRUE(connection_reset_by_peer);
   t.join();
 }

@@ -192,13 +192,18 @@ class Connection : public SocketHandle {
                      static_cast<SOCKET>(socket),
                      static_cast<int>(remaining_bytes_to_read));
 #ifndef BRICKS_WINDOWS
-      const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, 0);
+      const ssize_t retval = ::recv(
+          socket, ptr, remaining_bytes_to_read, policy == BlockingReadPolicy::ReturnASAP ? 0 : MSG_WAITALL);
 #else
-      const int retval =
-          ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), 0);
+      const int retval = ::recv(socket,
+                                reinterpret_cast<char*>(ptr),
+                                static_cast<int>(remaining_bytes_to_read),
+                                policy == BlockingReadPolicy::ReturnASAP ? 0 : MSG_WAITALL);
 #endif
-      BRICKS_NET_LOG(
-          "S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), static_cast<int>(retval));
+      BRICKS_NET_LOG("S%05d BlockingRead() ... retval = %d, errno = %d.\n",
+                     static_cast<SOCKET>(socket),
+                     static_cast<int>(retval),
+                     errno);
       if (retval > 0) {
         ptr += retval;
         if (policy == BlockingReadPolicy::ReturnASAP) {
@@ -210,6 +215,7 @@ class Connection : public SocketHandle {
           if (policy == BlockingReadPolicy::ReturnASAP) {
             return (ptr - buffer);
           } else {
+#ifndef BRICKS_WINDOWS
             if (errno == EAGAIN) {
               continue;
             } else if (errno == ECONNRESET) {
@@ -222,14 +228,27 @@ class Connection : public SocketHandle {
                              static_cast<SOCKET>(socket),
                              static_cast<int>(ptr - buffer),
                              errno);
-#ifdef BRICKS_WINDOWS
-              if (retval == -1) {
-                continue;  // Believe or no, this makes the tests pass. TODO(dkorolev): Investigate.
-              }
-#else
               BRICKS_THROW(SocketReadException());
-#endif
             }
+#else
+            const auto error = ::WSAGetLastError();
+            if (error == WSAEWOULDBLOCK || error == WSAEINPROGRESS || error == WSAENETDOWN) {
+              // Effectively, `errno == EAGAIN`.
+              continue;
+            } else if (error == WSAECONNRESET) {
+              // Effectively, `errno == ECONNRESET`.
+              BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                             static_cast<SOCKET>(socket),
+                             static_cast<int>(ptr - buffer));
+              BRICKS_THROW(ConnectionResetByPeer());
+            } else {
+              BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                             static_cast<SOCKET>(socket),
+                             static_cast<int>(ptr - buffer),
+                             errno);
+              BRICKS_THROW(SocketReadException());
+            }
+#endif
           }
         } else {
           BRICKS_NET_LOG("S%05d BlockingRead() : retval == 0 ...\n", static_cast<SOCKET>(socket));
@@ -248,12 +267,13 @@ class Connection : public SocketHandle {
     return ptr - buffer;
   }
 
-  inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
+  inline Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
     assert(buffer);
     BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
 #ifndef BRICKS_WINDOWS
-    const int result = static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL));
+    const int result =
+        static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL | (more ? MSG_MORE : 0)));
 #else
     // No `MSG_NOSIGNAL` and extra cast for Visual Studio.
     // (As I understand, Windows sockets would not result in pipe-related issues. -- D.K.)
@@ -270,15 +290,15 @@ class Connection : public SocketHandle {
     return *this;
   }
 
-  inline Connection& BlockingWrite(const char* s) {
+  inline Connection& BlockingWrite(const char* s, bool more) {
     assert(s);
-    return BlockingWrite(s, strlen(s));
+    return BlockingWrite(s, strlen(s), more);
   }
 
   template <typename T>
-  inline Connection& BlockingWrite(const T begin, const T end) {
+  inline Connection& BlockingWrite(const T begin, const T end, bool more) {
     if (begin != end) {
-      return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type));
+      return BlockingWrite(&(*begin), (end - begin) * sizeof(typename T::value_type), more);
     } else {
       return *this;
     }
@@ -287,8 +307,9 @@ class Connection : public SocketHandle {
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
   // The `std::enable_if<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) != 0>::type BlockingWrite(const T& container) {
-    BlockingWrite(container.begin(), container.end());
+  inline typename std::enable_if<sizeof(typename T::value_type) != 0>::type BlockingWrite(const T& container,
+                                                                                          bool more) {
+    BlockingWrite(container.begin(), container.end(), more);
   }
 
  private:

@@ -70,21 +70,22 @@ class HTTPClientPOSIX final {
       }
       all_urls.insert(composed_url);
       Connection connection(Connection(ClientSocket(parsed_url.host, parsed_url.port)));
-      connection.BlockingWrite(request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() +
-                               " HTTP/1.1\r\n");
-      connection.BlockingWrite("Host: " + parsed_url.host + "\r\n");
+      connection.BlockingWrite(
+          request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() + " HTTP/1.1\r\n", true);
+      connection.BlockingWrite("Host: " + parsed_url.host + "\r\n", true);
       if (!request_user_agent_.empty()) {
-        connection.BlockingWrite("User-Agent: " + request_user_agent_ + "\r\n");
+        connection.BlockingWrite("User-Agent: " + request_user_agent_ + "\r\n", true);
       }
       if (!request_body_content_type_.empty()) {
-        connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n");
+        connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
       if (request_has_body_) {
-        connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n");
-        connection.BlockingWrite("\r\n");
-        connection.BlockingWrite(request_body_contents_);
+        connection.BlockingWrite("Content-Length: " + std::to_string(request_body_contents_.length()) + "\r\n",
+                                 true);
+        connection.BlockingWrite("\r\n", true);
+        connection.BlockingWrite(request_body_contents_, false);
       } else {
-        connection.BlockingWrite("\r\n");
+        connection.BlockingWrite("\r\n", false);
       }
       // Attention! Achtung! Увага! Внимание!
       // Calling SendEOF() (which is ::shutdown(socket, SHUT_WR);) results in slowly sent data

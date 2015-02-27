@@ -195,8 +195,11 @@ class TemplatedHTTPRequestData : public HELPER {
                 const size_t bytes_to_read = next_offset - offset;
                 // The `+1` is required for the '\0'.
                 if (buffer_.size() < next_offset + 1) {
+                  // LCOV_EXCL_BEGIN
+                  // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
                   buffer_.resize(
                       std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
+                  // LCOV_EXCL_END
                 }
                 if (bytes_to_read !=
                     c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
@@ -396,8 +399,8 @@ class HTTPServerConnection final {
       std::ostringstream os;
       PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
       os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
-      connection_.BlockingWrite(os.str());
-      connection_.BlockingWrite(begin, end);
+      connection_.BlockingWrite(os.str(), true);
+      connection_.BlockingWrite(begin, end, false);
     }
   }
 
@@ -461,8 +464,8 @@ class HTTPServerConnection final {
 
       ~Impl() {
         try {
-          connection_.BlockingWrite("0");
-          connection_.BlockingWrite(kCRLF);
+          connection_.BlockingWrite("0", true);
+          connection_.BlockingWrite(kCRLF, false);
         } catch (const std::exception& e) {  // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
@@ -472,10 +475,12 @@ class HTTPServerConnection final {
       // The actual implementation of sending HTTP chunk data.
       template <typename T>
       void SendImpl(T&& data) {
-        connection_.BlockingWrite(strings::Printf("%X", data.size()));
-        connection_.BlockingWrite(kCRLF);
-        connection_.BlockingWrite(std::forward<T>(data));
-        connection_.BlockingWrite(kCRLF);
+        if (!data.empty()) {
+          connection_.BlockingWrite(strings::Printf("%X", data.size()), true);
+          connection_.BlockingWrite(kCRLF, true);
+          connection_.BlockingWrite(std::forward<T>(data), true);
+          connection_.BlockingWrite(kCRLF, true);
+        }
       }
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
@@ -547,7 +552,7 @@ class HTTPServerConnection final {
       std::ostringstream os;
       PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
       os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
-      connection_.BlockingWrite(os.str());
+      connection_.BlockingWrite(os.str(), true);
       return std::move(ChunkedResponseSender(connection_));
     }
   }
