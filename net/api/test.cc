@@ -42,12 +42,14 @@ SOFTWARE.
 #include "../../dflags/dflags.h"
 #include "../../3party/gtest/gtest-main-with-dflags.h"
 #include "../../strings/printf.h"
+#include "../../util/singleton.h"
 #include "../../file/file.h"
 #include "../../cerealize/cerealize.h"
 
 using std::string;
 
 using bricks::strings::Printf;
+using bricks::Singleton;
 using bricks::FileSystem;
 using bricks::FileException;
 
@@ -260,6 +262,10 @@ TEST(HTTPAPI, HandlerSupportsStaticMethodsBothWays) {
   EXPECT_EQ("bar", HTTP(GET(Printf("localhost:%d/barptr", FLAGS_net_api_test_port))).body);
 }
 
+// Don't wait 10 x 10ms beyond the 1st run when running tests in a loop.
+struct ShouldReduceDelayBetweenChunksSingleton {
+  bool yes = false;
+};
 // Test various HTTP client modes.
 TEST(HTTPAPI, GetToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
@@ -267,8 +273,17 @@ TEST(HTTPAPI, GetToFile) {
     const size_t n = atoi(r.url.query["n"].c_str());
     auto response = r.connection.SendChunkedHTTPResponse();
     const auto sleep = []() {
-      const uint64_t kDelayBetweenChunksInMilliseconds = 10;
-      std::this_thread::sleep_for(std::chrono::milliseconds(kDelayBetweenChunksInMilliseconds));
+      const uint64_t delay_between_chunks = []() {
+        bool& reduce = Singleton<ShouldReduceDelayBetweenChunksSingleton>().yes;
+        if (!reduce) {
+          reduce = true;
+          return 10;
+        }
+        else {
+          return 1;
+        }
+      }();
+      std::this_thread::sleep_for(std::chrono::milliseconds(delay_between_chunks));
     };
     sleep();
     for (size_t i = 0; i < n; ++i) {
@@ -496,7 +511,18 @@ TEST(HTTPAPI, UserAgent) {
   EXPECT_EQ("TODO(dkorolev): Actually get passed in user agent.", response.body);
 }
 
-TEST(HTTPAPI, InvalidUrl) { ASSERT_THROW(HTTP(GET("http://999.999.999.999/")), SocketResolveAddressException); }
+// Don't run this ~1s test more than once in a loop.
+struct OnlyCheckForInvalidURLOnceSingleton {
+  bool done = false;
+};
+
+TEST(HTTPAPI, InvalidUrl) {
+  bool& done = Singleton<OnlyCheckForInvalidURLOnceSingleton>().done;
+  if (!done) {
+    ASSERT_THROW(HTTP(GET("http://999.999.999.999/")), SocketResolveAddressException);
+    done = true;
+  }
+}
 
 TEST(HTTPAPI, ServeDir) {
   EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n", DefaultMethodNotAllowedMessage());

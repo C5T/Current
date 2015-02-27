@@ -32,6 +32,7 @@ SOFTWARE.
 #include "../../dflags/dflags.h"
 
 #include "../../strings/printf.h"
+#include "../../util/singleton.h"
 
 #include "../../3party/gtest/gtest-main-with-dflags.h"
 
@@ -47,6 +48,7 @@ using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
 using bricks::strings::Printf;
+using bricks::Singleton;
 using bricks::net::Socket;
 using bricks::net::Connection;
 using bricks::net::ClientSocket;
@@ -223,8 +225,17 @@ TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   ExpectFromSocket("ECHO: " + message, server_thread, message);
 }
 
+// Don't run this ~1s test more than once in a loop.
+struct OnlyCheckForUnresolvableURLOnceSingleton {
+  bool done = false;
+};
+
 TEST(TCPTest, ResolveAddressException) {
-  ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
+  bool& done = Singleton<OnlyCheckForUnresolvableURLOnceSingleton>().done;
+  if (!done) {
+    ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
+    done = true;
+  }
 }
 
 #ifndef BRICKS_WINDOWS
