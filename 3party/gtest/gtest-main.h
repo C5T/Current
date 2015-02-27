@@ -15,6 +15,9 @@ int main(int argc, char** argv) {
   // Postpone the `Death tests use fork(), which is unsafe particularly in a threaded context.` warning.
   // Via https://code.google.com/p/googletest/wiki/AdvancedGuide#Death_Test_Styles
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
+  // Very useful when using `--gtest_repeat=N`.
+  // I have no clue why doesn't it default to true -- D.K.
+  ::testing::FLAGS_gtest_break_on_failure = true;
   const auto result = RUN_ALL_TESTS();
 #ifdef _WIN32
   // It's easier for the developers to just press Enter after the tests are done compared to
