@@ -403,12 +403,10 @@ class HTTPClientImplPOSIX {
     connection.BlockingWrite(method + ' ' + url + "\r\n", true);
     if (has_data) {
       connection.BlockingWrite("Content-Length: " + to_string(data.length()) + "\r\n", true);
-    }
-    if (!has_data) {
-      connection.BlockingWrite("\r\n", false);
-    } else {
       connection.BlockingWrite("\r\n", true);
       connection.BlockingWrite(data, false);
+    else {
+      connection.BlockingWrite("\r\n", false);
     }
     HTTPRequestData http_request(connection);
     assert(http_request.HasBody());
