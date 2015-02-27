@@ -142,7 +142,6 @@ TEST(TCPTest, ReceiveMessageAsResponse) {
   server.join();
 }
 
-// TODO(dkorolev): Sometimes this test takes 200ms, figure out why.
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
   thread server([](Socket socket) {
                   Connection connection = socket.Accept();
@@ -173,7 +172,6 @@ TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
   ExpectFromSocket("1032", server_thread);
 }
 
-// TODO(dkorolev): Sometimes this test takes 200ms, figure out why.
 TEST(TCPTest, EchoMessage) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());
