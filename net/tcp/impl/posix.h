@@ -184,7 +184,7 @@ class Connection : public SocketHandle {
   inline typename std::enable_if<sizeof(T) == 1, size_t>::type BlockingRead(
       T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     if (max_length == 0) {
-      return 0;
+      return 0;  // LCOV_EXCL_LINE
     } else {
       uint8_t* buffer = reinterpret_cast<uint8_t*>(output_buffer);
       uint8_t* ptr = buffer;
@@ -216,7 +216,7 @@ class Connection : public SocketHandle {
           if ((policy == BlockingReadPolicy::ReturnASAP) || (ptr == end)) {
             return (ptr - buffer);
           } else {
-            continue;
+            continue;  // LCOV_EXCL_LINE
           }
         }
 
@@ -225,8 +225,8 @@ class Connection : public SocketHandle {
 #endif
 
 #ifndef BRICKS_WINDOWS
-        if (errno == EAGAIN) {
-          continue;
+        if (errno == EAGAIN) {  // LCOV_EXCL_LINE
+          continue;             // LCOV_EXCL_LINE
         }
 #else
         if (wsa_last_error == WSAEWOULDBLOCK || wsa_last_error == WSAEINPROGRESS ||
@@ -243,17 +243,17 @@ class Connection : public SocketHandle {
       } while (false);
 
 #ifndef BRICKS_WINDOWS
-      if (errno == ECONNRESET) {
+      if (errno == ECONNRESET) {  // LCOV_EXCL_LINE
         BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer));
-        BRICKS_THROW(ConnectionResetByPeer());
+        BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
       } else {
-        BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+        BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",  // LCOV_EXCL_LINE
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer),
                        errno);
-        BRICKS_THROW(SocketReadException());
+        BRICKS_THROW(SocketReadException());  // LCOV_EXCL_LINE
       }
 #else
       if (wsa_last_error == WSAECONNRESET) {
