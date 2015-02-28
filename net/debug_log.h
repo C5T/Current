@@ -39,7 +39,7 @@ SOFTWARE.
 #include <iostream>
 #include <thread>
 #include <mutex>
-#include "../../util/singleton.h"
+#include "../util/singleton.h"
 struct DebugLogMutex {
   std::mutex mutex;
 };
