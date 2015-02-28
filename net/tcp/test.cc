@@ -145,8 +145,8 @@ TEST(TCPTest, ReceiveMessageAsResponse) {
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
   thread server([](Socket socket) {
                   Connection connection = socket.Accept();
-                  char buffer[2];  // Wait for three incoming bytes before sending data out.
-                  ASSERT_EQ(2u, connection.BlockingRead(buffer, 2, Connection::FillFullBuffer));
+                  char buffer[3];  // Wait for three incoming bytes before sending data out.
+                  ASSERT_EQ(3u, connection.BlockingRead(buffer, 3, Connection::FillFullBuffer));
                   connection.BlockingWrite("OK", false);
                 },
                 Socket(FLAGS_net_tcp_test_port));
@@ -156,7 +156,7 @@ TEST(TCPTest, CanNotUseMovedAwayConnection) {
   ASSERT_THROW(old_connection.BlockingWrite("333", true), AttemptedToUseMovedAwayConnection);
   char tmp[3];
   ASSERT_THROW(old_connection.BlockingRead(tmp, 3), AttemptedToUseMovedAwayConnection);
-  new_connection.BlockingWrite("2", false);
+  new_connection.BlockingWrite("22", false);
   char response[3] = "WA";
   ASSERT_EQ(2u, new_connection.BlockingRead(response, 2, Connection::FillFullBuffer));
   EXPECT_EQ("OK", std::string(response));

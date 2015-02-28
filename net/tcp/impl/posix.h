@@ -178,7 +178,7 @@ class Connection : public SocketHandle {
   // with the exception being multibyte records (sizeof(T) > 1), where it will keep reading
   // until the boundary of the records, or max_length of them, has been read.
   // Alternatively, the 3rd parameter can be explicitly set to BlockingReadPolicy::FillFullBuffer,
-  // which will cause BlockingRead() to keep reading more data until all `max_elements` are read or EOF is hit.
+  // which will cause BlockingRead() to keep reading more data until all `max_elements` are read.
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
   inline typename std::enable_if<sizeof(T) == 1, size_t>::type BlockingRead(

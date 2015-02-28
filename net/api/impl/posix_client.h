@@ -87,11 +87,6 @@ class HTTPClientPOSIX final {
       } else {
         connection.BlockingWrite("\r\n", false);
       }
-      // Attention! Achtung! Увага! Внимание!
-      // Calling SendEOF() (which is ::shutdown(socket, SHUT_WR);) results in slowly sent data
-      // not being received. Tested on local and remote data with "chunked" transfer encoding.
-      // Don't uncomment the next line!
-      // connection.SendEOF();
       http_request_.reset(new HTTPRedirectableRequestData(connection));
       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       // Elaboration:
