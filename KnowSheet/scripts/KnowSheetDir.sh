@@ -8,7 +8,7 @@ subdir="KnowSheet"
 
 while [ ! -d "${dir}/${subdir}" ] ; do
   [ "$dir" == "/" ] && break
-  dir=$(dirname $dir)
+  dir=$(dirname "$dir")
 done
 
-[ -d "$dir/${subdir}" ] && echo "${dir}/${subdir}" || exit 1
+[ -d "${dir}/${subdir}" ] && echo "${dir}/${subdir}" || exit 1

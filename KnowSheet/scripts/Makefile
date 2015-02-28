@@ -9,7 +9,8 @@
 .PHONY: test all indent clean check coverage
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
-KNOWSHEET_SCRIPTS_DIR=$(dir $(shell readlink -e $(lastword $(MAKEFILE_LIST))))
+KNOWSHEET_SCRIPTS_DIR=$(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink $(lastword $(MAKEFILE_LIST))))))
+KNOWSHEET_SCRIPTS_DIR_FULL_PATH := $(shell "$(KNOWSHEET_SCRIPTS_DIR)/KnowSheetReadlink.sh" "$(KNOWSHEET_SCRIPTS_DIR)" )
 
 CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
@@ -53,10 +54,10 @@ clean:
 	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
 
 indent:
-	${KNOWSHEET_SCRIPTS_DIR}/indent.sh
+	${KNOWSHEET_SCRIPTS_DIR_FULL_PATH}/indent.sh
 
 check:
-	${KNOWSHEET_SCRIPTS_DIR}/check-headers.sh
+	${KNOWSHEET_SCRIPTS_DIR_FULL_PATH}/check-headers.sh
 
 coverage:
-	${KNOWSHEET_SCRIPTS_DIR}/coverage-report.sh
+	${KNOWSHEET_SCRIPTS_DIR_FULL_PATH}/coverage-report.sh
