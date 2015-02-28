@@ -9,7 +9,7 @@ LDFLAGS="-pthread"
 
 # WARNING: TMP_DIR must be resolved from the current working directory.
 
-KNOWSHEET_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0KNOWSHEET_SCRIPTS_DIR]}" )
+KNOWSHEET_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
 RUN_DIR_FULL_PATH=$( "$KNOWSHEET_SCRIPTS_DIR/KnowSheetReadlink.sh" "$PWD" )
 
 TMP_DIR_NAME=".noshit"
