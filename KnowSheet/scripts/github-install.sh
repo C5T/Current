@@ -15,7 +15,7 @@ URL=https://github.com/$GITHUB_USER/$GITHUB_REPO/archive/$GITHUB_BRANCH.tar.gz
 # A temporary directory, expected to be .gitignore-d.
 TMPDIR=.noshit
 
-( 
+(
   mkdir -p $TMPDIR
   cd $TMPDIR
   rm -rf $GITHUB_REPO $GITHUB_REPO-$GITHUB_BRANCH
