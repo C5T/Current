@@ -277,7 +277,7 @@ class Connection : public SocketHandle {
     assert(buffer);
     BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
-#ifndef BRICKS_WINDOWS
+#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
     const int result =
         static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL | (more ? MSG_MORE : 0)));
 #else
