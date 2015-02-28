@@ -9,7 +9,7 @@
 .PHONY: test all indent clean check coverage
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
-KNOWSHEET_SCRIPTS_DIR=$(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink $(lastword $(MAKEFILE_LIST))))))
+KNOWSHEET_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink $(lastword $(MAKEFILE_LIST))))))
 KNOWSHEET_SCRIPTS_DIR_FULL_PATH := $(shell "$(KNOWSHEET_SCRIPTS_DIR)/KnowSheetReadlink.sh" "$(KNOWSHEET_SCRIPTS_DIR)" )
 
 CPLUSPLUS?=g++
