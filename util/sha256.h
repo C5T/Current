@@ -29,7 +29,7 @@ SOFTWARE.
 
 namespace bricks {
 
-std::string SHA256(const std::string& input) {
+inline std::string SHA256(const std::string& input) {
   return static_cast<std::string>(sha256_impl_by_StephanBrumme::SHA256(input));
 }
 

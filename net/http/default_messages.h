@@ -38,6 +38,7 @@ namespace net {
 // Thus, just keep them simple, unambiguous, curl- and browser-friendy for now -- D.K.
 inline std::string DefaultFourOhFourMessage() { return "<h1>NOT FOUND</h1>\n"; }
 inline std::string DefaultInternalServerErrorMessage() { return "<h1>INTERNAL SERVER ERROR</h1>\n"; }
+inline std::string DefaultMethodNotAllowedMessage() { return "<h1>METHOD NOT ALLOWED</h1>\n"; }
 
 }  // namespace net
 }  // namespace bricks

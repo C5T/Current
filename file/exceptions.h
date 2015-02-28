@@ -32,6 +32,11 @@ namespace bricks {
 // TODO(dkorolev): Add more detailed exceptions for Read/Write/etc.
 struct FileException : Exception {
   FileException() : Exception() {}
+  FileException(const std::string& what) : Exception(what) {}
+};
+
+struct CannotReadFileException : FileException {
+  CannotReadFileException(const std::string& what) : FileException(what) {}
 };
 
 struct DirDoesNotExistException : FileException {

@@ -22,6 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "../port.h"
+
+#ifndef BRICKS_WINDOWS
+
 #include "regenerate_flag.cc"
 #include "docu/docu_04graph_02plotutils.cc"
 #include "docu/docu_04graph_05gnuplot.cc"
@@ -73,3 +77,5 @@ TEST(Graph, PlotutilsMultiplot) {
   }
   ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.svg"));
 }
+
+#endif  // BRICKS_WINDOWS

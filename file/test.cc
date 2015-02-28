@@ -39,6 +39,7 @@ using bricks::PathIsNotADirectoryException;
 DEFINE_string(file_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
 
 TEST(File, JoinPath) {
+#ifndef BRICKS_WINDOWS
   EXPECT_EQ("foo/bar", FileSystem::JoinPath("foo", "bar"));
   EXPECT_EQ("foo/bar", FileSystem::JoinPath("foo/", "bar"));
   EXPECT_EQ("/foo/bar", FileSystem::JoinPath("/foo", "bar"));
@@ -49,9 +50,22 @@ TEST(File, JoinPath) {
   EXPECT_EQ("/bar", FileSystem::JoinPath("/", "/bar"));
   EXPECT_EQ("bar", FileSystem::JoinPath("", "bar"));
   ASSERT_THROW(FileSystem::JoinPath("/foo/", ""), FileException);
+#else
+  EXPECT_EQ("foo\\bar", FileSystem::JoinPath("foo", "bar"));
+  EXPECT_EQ("foo\\bar", FileSystem::JoinPath("foo\\", "bar"));
+  EXPECT_EQ("\\foo\\bar", FileSystem::JoinPath("\\foo", "bar"));
+  EXPECT_EQ("\\foo\\bar", FileSystem::JoinPath("\\foo\\", "bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("foo", "\\bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("\\foo", "\\bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("\\", "bar"));
+  EXPECT_EQ("\\bar", FileSystem::JoinPath("\\", "\\bar"));
+  EXPECT_EQ("bar", FileSystem::JoinPath("", "bar"));
+  ASSERT_THROW(FileSystem::JoinPath("\\foo\\", ""), FileException);
+#endif
 }
 
 TEST(File, GetFileExtension) {
+#ifndef BRICKS_WINDOWS
   EXPECT_EQ("", FileSystem::GetFileExtension(""));
   EXPECT_EQ("", FileSystem::GetFileExtension("a"));
   EXPECT_EQ("b", FileSystem::GetFileExtension("a.b"));
@@ -67,9 +81,29 @@ TEST(File, GetFileExtension) {
   EXPECT_EQ("", FileSystem::GetFileExtension("../a"));
   EXPECT_EQ("a", FileSystem::GetFileExtension("../.a"));
   EXPECT_EQ("long_extension", FileSystem::GetFileExtension("long_name.long_extension"));
+#else
+  EXPECT_EQ("", FileSystem::GetFileExtension(""));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a"));
+  EXPECT_EQ("b", FileSystem::GetFileExtension("a.b"));
+  EXPECT_EQ("c", FileSystem::GetFileExtension("a.b.c"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension("..a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a\\b"));
+  EXPECT_EQ("b", FileSystem::GetFileExtension("a\\.b"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("a\\b\\c"));
+  EXPECT_EQ("c", FileSystem::GetFileExtension("a\\b\\.c"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension(".a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension(".\\a"));
+  EXPECT_EQ("", FileSystem::GetFileExtension("..\\a"));
+  EXPECT_EQ("a", FileSystem::GetFileExtension("..\\.a"));
+  EXPECT_EQ("long_extension", FileSystem::GetFileExtension("long_name.long_extension"));
+#endif
 }
 
 TEST(File, FileStringOperations) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "tmp");
 
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
@@ -90,6 +124,9 @@ TEST(File, FileStringOperations) {
 }
 
 TEST(File, GetFileSize) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "size");
 
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
@@ -100,6 +137,9 @@ TEST(File, GetFileSize) {
 }
 
 TEST(File, RenameFile) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
   const std::string fn1 = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "one");
   const std::string fn2 = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "two");
 
@@ -121,6 +161,9 @@ TEST(File, RenameFile) {
 }
 
 TEST(File, DirOperations) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
   const std::string& dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir");
   const std::string fn = FileSystem::JoinPath(dir, "file");
 
@@ -146,6 +189,9 @@ TEST(File, DirOperations) {
 }
 
 TEST(File, ScopedRmFile) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
   const std::string fn = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "tmp");
 
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
@@ -159,12 +205,16 @@ TEST(File, ScopedRmFile) {
 }
 
 TEST(File, ScanDir) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
   const std::string& dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir_to_scan");
   const std::string fn1 = FileSystem::JoinPath(dir, "one");
   const std::string fn2 = FileSystem::JoinPath(dir, "two");
 
   FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
   FileSystem::RmFile(fn2, FileSystem::RmFileParameters::Silent);
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
   FileSystem::RmFile(dir, FileSystem::RmFileParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
@@ -185,16 +235,23 @@ TEST(File, ScanDir) {
   ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), DirDoesNotExistException);
   ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), DirDoesNotExistException);
 
+#ifndef BRICKS_WINDOWS
   {
+    // TODO(dkorolev): Perhaps support this exception type on Windows as well.
     const auto file_remover = FileSystem::ScopedRmFile(dir);
     FileSystem::WriteStringToFile("This is a file, not a directory!", dir.c_str());
     ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), PathIsNotADirectoryException);
     ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), PathIsNotADirectoryException);
   }
+#endif
 
   FileSystem::MkDir(dir);
   FileSystem::WriteStringToFile("foo", fn1.c_str());
   FileSystem::WriteStringToFile("bar", fn2.c_str());
+#ifndef BRICKS_WINDOWS
+  // Windows is not friendly with subdirectories.
+  FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir"));
+#endif
 
   Scanner scanner_after(dir);
   FileSystem::ScanDir(dir, scanner_after);
@@ -211,4 +268,6 @@ TEST(File, ScanDir) {
   EXPECT_TRUE(scanner_after_until.files_[0].first == "one" || scanner_after_until.files_[0].first == "two");
   EXPECT_EQ((scanner_after_until.files_[0].first == "one" ? "foo" : "bar"),
             scanner_after_until.files_[0].second);
+
+  FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
 }

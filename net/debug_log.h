@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,24 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include <thread>
-#include <chrono>
+#ifndef BRICKS_NET_DEBUG_LOG_H
+#define BRICKS_NET_DEBUG_LOG_H
 
-#include "chrono.h"
+#include "../port.h"
 
-#include "../3party/gtest/gtest-main.h"
+#ifndef BRICKS_DEBUG_NET
 
-// This smoke test is flaky, but it does the job of comparing bricks::time::Now() to wall time.
-TEST(Time, SmokeTest) {
-  const bricks::time::EPOCH_MILLISECONDS a = bricks::time::Now();
-  std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  const bricks::time::EPOCH_MILLISECONDS b = bricks::time::Now();
-  const int64_t dt = static_cast<int64_t>(b - a);
-#ifndef BRICKS_WINDOWS
-  const int64_t allowed_skew = 3;
+// If `BRICKS_DEBUG_NET` is not defined, all `BRICKS_NET_LOG` statements are plain ignored.
+#define BRICKS_NET_LOG(...)
+
 #else
-  const int64_t allowed_skew = 25;  // Visual Studio is slower in regard to this test.
+
+// A somewhat dirty yet safe implementation of a thread-safe logger that can be enabled via a #define.
+#include <cstdio>
+#include <iostream>
+#include <thread>
+#include <mutex>
+#include "../../util/singleton.h"
+struct DebugLogMutex {
+  std::mutex mutex;
+};
+#define BRICKS_NET_LOG(...)                                                        \
+  ([=] {                                                                           \
+    std::unique_lock<std::mutex> lock(::bricks::Singleton<DebugLogMutex>().mutex); \
+    std::cout << 'T' << std::this_thread::get_id() << ' ';                         \
+    printf(__VA_ARGS__);                                                           \
+    fflush(stdout);                                                                \
+  }())
+
 #endif
-  EXPECT_GE(dt, 50 - allowed_skew);
-  EXPECT_LE(dt, 50 + allowed_skew);
-}
+
+#endif  // BRICKS_NET_DEBUG_LOG_H

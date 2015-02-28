@@ -140,7 +140,7 @@ class HTTPServerPOSIX final {
     try {
       // TODO(dkorolev): This should always use the POSIX implemenation of the client, nothing fancier.
       // It is a safe call, since the server itself is POSIX, so the architecture we are on is POSIX-friendly.
-      Connection(ClientSocket("localhost", port_)).BlockingWrite("GET /healthz HTTP/1.1\r\n\r\n").SendEOF();
+      Connection(ClientSocket("localhost", port_)).BlockingWrite("GET /healthz HTTP/1.1\r\n\r\n");
     } catch (const bricks::Exception&) {
       // It is guaranteed that after `terminated_` is set the server will be terminated on the next request,
       // but it might so happen that that terminating request will happen between `terminating_ = true`
@@ -179,6 +179,7 @@ class HTTPServerPOSIX final {
   }
   template <typename F>
   void Register(const std::string& path, F* ptr_to_handler) {
+    // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {
       BRICKS_THROW(HandlerAlreadyExistsException(path));
@@ -187,11 +188,43 @@ class HTTPServerPOSIX final {
   }
 
   void UnRegister(const std::string& path) {
+    // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) == handlers_.end()) {
       BRICKS_THROW(HandlerDoesNotExistException(path));
     }
     handlers_.erase(path);
+  }
+
+  struct StaticFileServer {
+    std::string body;
+    std::string content_type;
+    explicit StaticFileServer(const std::string& body, const std::string& content_type)
+        : body(body), content_type(content_type) {}
+    void operator()(Request r) {
+      if (r.method == "GET") {
+        r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
+      } else {
+        r.connection.SendHTTPResponse(
+            DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/plain");
+      }
+    }
+  };
+
+  void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
+    // TODO(dkorolev): Add a scoped version of registerers.
+    FileSystem::ScanDir(dir, [this, &dir, &route_prefix](const std::string& file) {
+      const std::string content_type(GetFileMimeType(file, ""));
+      if (!content_type.empty()) {
+        // TODO(dkorolev): Wrap keeping file contents into a singleton
+        // that keeps a map from a (SHA256) hash to the contents.
+        Register(
+            route_prefix + file,
+            new StaticFileServer(FileSystem::ReadFileAsString(FileSystem::JoinPath(dir, file)), content_type));
+      } else {
+        BRICKS_THROW(CannotServeStaticFilesOfUnknownMIMEType(file));
+      }
+    });
   }
 
   void ResetAllHandlers() {
@@ -211,6 +244,9 @@ class HTTPServerPOSIX final {
       try {
         std::unique_ptr<HTTPServerConnection> connection(new HTTPServerConnection(socket.Accept()));
         if (terminating_) {
+          // Already terminating. Will not send the response, and this
+          // lack of response should not result in an exception.
+          connection->DoNotSendAnyResponse();
           break;
         }
         std::function<void(Request)> handler;

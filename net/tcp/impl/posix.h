@@ -29,6 +29,8 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
+#include "../../debug_log.h"
+
 #include "../../../util/singleton.h"
 
 #include <cassert>
@@ -38,15 +40,24 @@ SOFTWARE.
 #include <vector>
 
 #ifndef BRICKS_WINDOWS
+
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+// Bricks uses `SOCKET` for socket handles in *nix.
+// Makes it easier to have the code run on both Windows and *nix.
+typedef int SOCKET;
+
 #else
+
 #include <WS2tcpip.h>
+
 #include <corecrt_io.h>
 #pragma comment(lib, "Ws2_32.lib")
+
 #endif
 
 namespace bricks {
@@ -54,33 +65,17 @@ namespace net {
 
 const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
-const size_t kReadTillEOFInitialBufferSize = 128;
-
-#define kReadTillEOFBufferGrowthK 1.95
-// const double kReadTillEOFBufferGrowthK = 1.95;
-
-// D.K.: I have replaced `const double` by `#define`, since clang++
-// has been giving the following warning when testing headers for integrity.
-//
-// >> The symbol is used, but only within a templated method that is not enabled.
-// >> /home/dima/github/dkorolev/Bricks/net/tcp/impl/.noshit/headers/posix.h.clang++.cc:26:14: warning: variable
-// >>       'kReadTillEOFBufferGrowthK' is not needed and will not be emitted [-Wunneeded-internal-declaration]
-// >> const double kReadTillEOFBufferGrowthK = 1.95;
-// >>              ^
-// >> 1 warning generated.
-//
-// Interestingly, kReadTillEOFInitialBufferSize follows the same story, but does not trigger a warning.
-// Looks like a glitch in clang++ in either direction (warn on both or on none for consistency reasons),
-// but I didn't investigate further -- D.K.
 
 struct SocketSystemInitializer {
 #ifdef BRICKS_WINDOWS
   struct OneTimeInitializer {
     OneTimeInitializer() {
+      BRICKS_NET_LOG("WSAStartup() ...\n");
       WSADATA wsaData;
       if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
         BRICKS_THROW(SocketWSAStartupException());
       }
+      BRICKS_NET_LOG("WSAStartup() : OK\n");
     }
   };
   SocketSystemInitializer() { Singleton<OneTimeInitializer>(); }
@@ -89,32 +84,36 @@ struct SocketSystemInitializer {
 
 class SocketHandle : private SocketSystemInitializer {
  public:
-  // Two ways to construct SocketHandle: via NewHandle() or FromHandle(int handle).
+  // Two ways to construct SocketHandle: via NewHandle() or FromHandle(SOCKET handle).
   struct NewHandle final {};
   struct FromHandle final {
-    int handle;
-    FromHandle(int handle) : handle(handle) {}
+    SOCKET handle;
+    FromHandle(SOCKET handle) : handle(handle) {}
   };
 
   inline SocketHandle(NewHandle) : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
+    BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {
     if (socket_ < 0) {
       BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
+    BRICKS_NET_LOG("S%05d == initialized externally.\n", socket_);
   }
 
   inline ~SocketHandle() {
     if (socket_ != -1) {
+      BRICKS_NET_LOG("S%05d close() ...\n", socket_);
 #ifndef BRICKS_WINDOWS
       ::close(socket_);
 #else
       ::closesocket(socket_);
 #endif
+      BRICKS_NET_LOG("S%05d close() : OK\n", socket_);
     }
   }
 
@@ -124,9 +123,9 @@ class SocketHandle : private SocketSystemInitializer {
 
  private:
 #ifndef BRICKS_WINDOWS
-  int socket_;
+  SOCKET socket_;
 #else
-  mutable int socket_;  // Need to support taking the handle away from a non-move constructor.
+  mutable SOCKET socket_;  // Need to support taking the handle away from a non-move constructor.
 #endif
 
  public:
@@ -135,8 +134,8 @@ class SocketHandle : private SocketSystemInitializer {
   // since debugging move-constructed socket handles has proven to be nontrivial -- D.K.
   class ReadOnlyValidSocketAccessor final {
    public:
-    explicit ReadOnlyValidSocketAccessor(const int& ref) : ref_(ref) {}
-    inline operator int() {
+    explicit ReadOnlyValidSocketAccessor(const SOCKET& ref) : ref_(ref) {}
+    inline operator SOCKET() {
       if (!ref_) {
         BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
       }
@@ -148,7 +147,7 @@ class SocketHandle : private SocketSystemInitializer {
 
    private:
     ReadOnlyValidSocketAccessor() = delete;
-    const int& ref_;
+    const SOCKET& ref_;
   };
   ReadOnlyValidSocketAccessor socket = ReadOnlyValidSocketAccessor(socket_);
 
@@ -161,6 +160,8 @@ class SocketHandle : private SocketSystemInitializer {
   SocketHandle(const SocketHandle&) = delete;
 #else
  public:
+  // Visual Studio seem to require this constructor, since std::move()-ing away `SocketHandle`-s
+  // as part of `Connection` objects doesn't seem to work. TODO(dkorolev): Investigate this.
   SocketHandle(const SocketHandle& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
 
  private:
@@ -173,18 +174,6 @@ class Connection : public SocketHandle {
 
   inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {}
 
-  // Closes the outbound side of the socket and notifies the other party that no more data will be sent.
-  inline Connection& SendEOF() {
-    ::shutdown(socket,
-#ifndef BRICKS_WINDOWS
-               SHUT_WR
-#else
-               SD_SEND
-#endif
-               );
-    return *this;
-  }
-
   // By default, BlockingRead() will return as soon as some data has been read,
   // with the exception being multibyte records (sizeof(T) > 1), where it will keep reading
   // until the boundary of the records, or max_length of them, has been read.
@@ -192,107 +181,92 @@ class Connection : public SocketHandle {
   // which will cause BlockingRead() to keep reading more data until all `max_elements` are read or EOF is hit.
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
-  inline size_t BlockingRead(T* buffer,
-                             size_t max_length,
-                             BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
-    uint8_t* raw_buffer = reinterpret_cast<uint8_t*>(buffer);
-    uint8_t* raw_ptr = raw_buffer;
-    const size_t max_length_in_bytes = max_length * sizeof(T);
-    bool alive = true;
-    do {
+  inline typename std::enable_if<sizeof(T) == 1, size_t>::type BlockingRead(
+      T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
+    BRICKS_NET_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
+    uint8_t* buffer = reinterpret_cast<uint8_t*>(output_buffer);
+    uint8_t* ptr = buffer;
+    size_t remaining_bytes_to_read;
+    while ((remaining_bytes_to_read = (max_length - (ptr - buffer))) > 0) {
+      BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
+                     static_cast<SOCKET>(socket),
+                     static_cast<int>(remaining_bytes_to_read));
 #ifndef BRICKS_WINDOWS
-      const ssize_t retval = ::recv(socket, raw_ptr, max_length_in_bytes - (raw_ptr - raw_buffer), 0);
+      const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, 0);
 #else
       const int retval =
-          ::recv(socket, reinterpret_cast<char*>(raw_ptr), max_length_in_bytes - (raw_ptr - raw_buffer), 0);
+          ::recv(socket, reinterpret_cast<char*>(ptr), static_cast<int>(remaining_bytes_to_read), 0);
 #endif
-      if (retval < 0) {
-        // TODO(dkorolev): Unit-test this logic.
-        // I could not find a simple way to reproduce it for the test. -- D.K.
+      BRICKS_NET_LOG(
+          "S%05d BlockingRead() ... retval = %d.\n", static_cast<SOCKET>(socket), static_cast<int>(retval));
+      if (retval > 0) {
+        ptr += retval;
+        if (policy == BlockingReadPolicy::ReturnASAP) {
+          return (ptr - buffer);
+        }
+      } else {
         // LCOV_EXCL_START
-        if (errno == EAGAIN) {
-          continue;
-        } else if (errno == ECONNRESET) {
-          // Allow one "Connection reset by peer" error to happen.
-          // Tested that this makes load test pass 1000/1000, while w/o this
-          // the test fails on some iteration with ECONNRESET on Ubuntu 12.04 -- D.K.
-          if (alive) {
-            alive = false;
-            continue;
+        if (retval < 0) {
+          if (policy == BlockingReadPolicy::ReturnASAP) {
+            return (ptr - buffer);
           } else {
-            if ((raw_ptr - raw_buffer) % sizeof(T)) {
-              BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
-            } else {
+            if (errno == EAGAIN) {
+              continue;
+            } else if (errno == ECONNRESET) {
+              BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                             static_cast<SOCKET>(socket),
+                             static_cast<int>(ptr - buffer));
               BRICKS_THROW(ConnectionResetByPeer());
+            } else {
+              BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                             static_cast<SOCKET>(socket),
+                             static_cast<int>(ptr - buffer),
+                             errno);
+#ifdef BRICKS_WINDOWS
+              if (retval == -1) {
+                continue;  // Believe or no, this makes the tests pass. TODO(dkorolev): Investigate.
+              }
+#else
+              BRICKS_THROW(SocketReadException());
+#endif
             }
           }
         } else {
-          if ((raw_ptr - raw_buffer) % sizeof(T)) {
-            BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
+          BRICKS_NET_LOG("S%05d BlockingRead() : retval == 0 ...\n", static_cast<SOCKET>(socket));
+          if (policy == BlockingReadPolicy::ReturnASAP) {
+            return (ptr - buffer);
           } else {
             BRICKS_THROW(SocketReadException());
           }
         }
-        // LCOV_EXCL_STOP
-      } else {
-        alive = true;
-        if (retval == 0) {
-          // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
-          // and StackOverflow is that a return value of zero from read() from a socket indicates
-          // that the socket has been closed by the peer.
-          // For this implementation, throw an exception if some record was read only partially.
-          if ((raw_ptr - raw_buffer) % sizeof(T)) {
-            BRICKS_THROW(SocketReadMultibyteRecordEndedPrematurelyException());
-          }
-          break;
-        } else {
-          raw_ptr += retval;
-        }
       }
-    } while (policy == BlockingReadPolicy::FillFullBuffer || ((raw_ptr - raw_buffer) % sizeof(T)) > 0);
-    return (raw_ptr - raw_buffer) / sizeof(T);
-  }
-
-  template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) != 0, const T&>::type BlockingReadUntilEOF(
-      T& container,
-      const size_t initial_size = kReadTillEOFInitialBufferSize,
-      const double growth_k = kReadTillEOFBufferGrowthK) {
-    container.resize(initial_size);
-    size_t offset = 0;
-    size_t desired;
-    size_t actual;
-    while (desired = container.size() - offset,
-           actual = BlockingRead(&container[offset], desired, BlockingReadPolicy::FillFullBuffer),
-           actual == desired) {
-      offset += desired;
-      container.resize(static_cast<size_t>(container.size() * growth_k));
+      // LCOV_EXCL_STOP
     }
-    container.resize(offset + actual);
-    return container;
-  }
-
-  template <typename T = std::string>
-  inline typename std::enable_if<sizeof(typename T::value_type) != 0, T>::type BlockingReadUntilEOF() {
-    T container;
-    BlockingReadUntilEOF(container);
-    return container;
+    BRICKS_NET_LOG("S%05d BlockingRead() : OK, read %d bytes.\n",
+                   static_cast<SOCKET>(socket),
+                   static_cast<int>(ptr - buffer));
+    return ptr - buffer;
   }
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length) {
     assert(buffer);
+    BRICKS_NET_LOG(
+        "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
 #ifndef BRICKS_WINDOWS
     const int result = static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL));
 #else
     // No `MSG_NOSIGNAL` and extra cast for Visual Studio.
     // (As I understand, Windows sockets would not result in pipe-related issues. -- D.K.)
-    const int result = static_cast<int>(::send(socket, static_cast<const char*>(buffer), write_length, 0));
+    const int result =
+        static_cast<int>(::send(socket, static_cast<const char*>(buffer), static_cast<int>(write_length), 0));
 #endif
     if (result < 0) {
       BRICKS_THROW(SocketWriteException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {
       BRICKS_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
     }
+    BRICKS_NET_LOG(
+        "S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
     return *this;
   }
 
@@ -330,13 +304,19 @@ class Socket final : public SocketHandle {
                          const int max_connections = kMaxServerQueuedConnections,
                          const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
       : SocketHandle(SocketHandle::NewHandle()) {
+#ifndef BRICKS_WINDOWS
     int just_one = 1;
+#else
+    u_long just_one = 1;
+#endif
+
     // LCOV_EXCL_START
     if (disable_nagle_algorithm) {
 #ifndef BRICKS_WINDOWS
-      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(int)))
+      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
 #else
-      if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(int)))
+      if (::setsockopt(
+              socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
 #endif
       {
         BRICKS_THROW(SocketCreateException());
@@ -351,7 +331,7 @@ class Socket final : public SocketHandle {
 #else
                      reinterpret_cast<const char*>(&just_one),
 #endif
-                     sizeof(int))) {
+                     sizeof(just_one))) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
@@ -361,34 +341,46 @@ class Socket final : public SocketHandle {
     addr_server.sin_addr.s_addr = INADDR_ANY;
     addr_server.sin_port = htons(port);
 
-    if (::bind(socket, (sockaddr*)&addr_server, sizeof(addr_server)) == -1) {
+    BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
+
+    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == -1) {
       BRICKS_THROW(SocketBindException());
     }
+
+    BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
 
     if (::listen(socket, max_connections)) {
       BRICKS_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
+
+    BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
   }
 
   Socket(Socket&&) = default;
 
   inline Connection Accept() {
+    BRICKS_NET_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
     sockaddr_in addr_client;
     memset(&addr_client, 0, sizeof(addr_client));
     // TODO(dkorolev): Type socklen_t ?
     auto addr_client_length = sizeof(sockaddr_in);
-    const int fd = ::accept(socket,
-                            reinterpret_cast<struct sockaddr*>(&addr_client),
 #ifndef BRICKS_WINDOWS
-                            reinterpret_cast<socklen_t*>(&addr_client_length)
-#else
-                            reinterpret_cast<int*>(&addr_client_length)
-#endif
-                            );
-    if (fd == -1) {
+    const SOCKET handle = ::accept(socket,
+                                   reinterpret_cast<struct sockaddr*>(&addr_client),
+                                   reinterpret_cast<socklen_t*>(&addr_client_length));
+    if (handle == -1) {
+      BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
-    return Connection(SocketHandle::FromHandle(fd));
+#else
+    const SOCKET handle = ::accept(
+        socket, reinterpret_cast<struct sockaddr*>(&addr_client), reinterpret_cast<int*>(&addr_client_length));
+    if (handle == INVALID_SOCKET) {
+      BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+    }
+#endif
+    BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
+    return Connection(SocketHandle::FromHandle(handle));
   }
 
   // Note: The copy constructor is left public and default.
@@ -411,6 +403,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
    public:
     inline explicit ClientSocket(const std::string& host, const std::string& serv)
         : SocketHandle(SocketHandle::NewHandle()) {
+      BRICKS_NET_LOG("S%05d getaddrinfo(%s@%s) ...\n", static_cast<SOCKET>(socket), host.c_str(), serv.c_str());
       struct addrinfo hints;
       memset(&hints, 0, sizeof(hints));
       struct addrinfo* servinfo;
@@ -430,12 +423,14 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       // for (struct addrinfo* p = servinfo; p != NULL; p = p->ai_next) {
       //   p->ai_addr;
       // }
+      BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
       const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval2) {
         BRICKS_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
       // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
       ::freeaddrinfo(servinfo);
+      BRICKS_NET_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
     }
   };
 

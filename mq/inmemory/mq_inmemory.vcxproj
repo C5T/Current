@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{BC21003C-3EE5-422E-BCAB-A970F98DA2DA}</ProjectGuid>
+    <ProjectGuid>{065E91AC-94A0-4411-83FB-48EFD1A4C091}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -131,7 +131,7 @@
     <ClCompile Include="test.cc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="dflags.h" />
+    <ClInclude Include="mq.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

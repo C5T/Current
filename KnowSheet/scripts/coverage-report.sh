@@ -7,10 +7,10 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
-SCRIPT_DIR=$( $( dirname "${BASH_SOURCE[0]}" )/KnowSheetReadlinkDir.sh "$PWD" )
+READLINK_PWD=$( $( dirname "${BASH_SOURCE[0]}" )/KnowSheetReadlinkDir.sh "$PWD" )
 
 TMPDIR=".noshit"
-TMPDIR_FULL_PATH="$SCRIPT_DIR/.noshit"
+TMPDIR_FULL_PATH="$READLINK_PWD/.noshit"
 
 mkdir -p "$TMPDIR"
 

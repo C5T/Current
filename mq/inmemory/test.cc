@@ -62,7 +62,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
     size_t dropped_messages_ = 0u;
     std::atomic_size_t processed_messages_;
     std::atomic_size_t processing_time_ms_;
-    SlowConsumer() : processed_messages_(0u), processing_time_ms_(0u) {}
+    SlowConsumer() : processed_messages_(0u), processing_time_ms_(5u) {}
     void OnMessage(const std::string& s, size_t dropped_messages) {
       messages_ += s + '\n';
       dropped_messages_ += dropped_messages;
@@ -82,7 +82,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
   // Wait until at least two messages are processed by the consumer.
   // The second one will get its `dropped_messages_` count set.
   // (The first one might too, but that's uncertain.
-  while (c.processed_messages_ != 2) {
+  while (c.processed_messages_ < 2) {
     ;  // Spin lock;
   }
   // Confirm that some messages were indeed dropped.

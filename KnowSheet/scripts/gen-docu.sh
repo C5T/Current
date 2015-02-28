@@ -21,8 +21,8 @@
 
 set -u -e
 
-for fn in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit"); do
-             echo -e $(basename "$i")"\t"$i;
+for fn in $(for i in $(find . -type f -iname "docu_*.*" | grep -v ".noshit" | grep -v "zzz_full_test"); do
+             echo -e "$(basename "$i")\t$i";
            done | sort | cut -f2) ; do
   echo $fn >/dev/stderr
   case $fn in
