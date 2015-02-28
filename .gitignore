@@ -20,3 +20,7 @@ coverage.info
 **/*~
 
 demo/binary
+
+# In the `fncas` repository, Bricks are installed/updated from GitHub.
+# To avoid conflicts, KnowSheet/Bricks should not be checked in.
+Bricks

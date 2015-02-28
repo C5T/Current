@@ -1,11 +1,10 @@
 include KnowSheet/scripts/Makefile
+LDFLAGS+=-ldl
 
-.PHONY: all demo unittest
+.PHONY: install deprecated_test
 
-all: demo unittest
+install:
+	./KnowSheet/scripts/github-install.sh
 
-demo:
-	(cd demo; make)
-
-unittest:
-	(cd test; make)
+deprecated_test:
+	(cd deprecated_test; make)
