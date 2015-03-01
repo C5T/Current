@@ -41,7 +41,7 @@ HTTP(port).ResetAllHandlers();
   HTTP(port).Register("/ok", [](Request r) {
     r("OK");
   });
-EXPECT_EQ("OK", HTTP(GET(Printf("localhost:%d/ok", port))).body);
+EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", port))).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_01_TEST_CC

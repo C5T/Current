@@ -27,7 +27,7 @@ BIN=$(SRC:%.cc=.noshit/%)
 
 OS=$(shell uname)
 ifeq ($(OS),Darwin)
-  CPPFLAGS+= -x objective-c++ -fobjc-arc
+  CPPFLAGS+= -stdlib=libc++ -x objective-c++ -fobjc-arc
   LDFLAGS+= -framework Foundation
 endif
 

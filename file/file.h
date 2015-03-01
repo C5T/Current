@@ -105,10 +105,13 @@ struct FileSystem {
 
   static inline std::string GenTmpFileName() {
     char buffer[L_tmpnam];
-#ifndef BRICKS_WINDOWS
-    assert(buffer == ::tmpnam(buffer));
-#else
+#if defined(BRICKS_WINDOWS)
     assert(!(::tmpnam_s(buffer)));
+#elif defined(BRICKS_APPLE)
+    // TODO(dkorolev): Fix temporary file names generation.
+    return strings::Printf("/tmp/.noshit-%08x", rand());
+#else
+    assert(buffer == ::tmpnam(buffer));
 #endif
     return buffer;
   }
@@ -204,7 +207,7 @@ struct FileSystem {
     }
 #else
     DIR* dir = ::opendir(directory.c_str());
-    const auto closedir_guard = MakeScopeGuard([dir]() { ::closedir(dir); });
+    const auto closedir_guard = MakeScopeGuard([dir]() { if (dir) ::closedir(dir); });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
         if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..") &&

@@ -65,7 +65,7 @@ HTTP(port).ResetAllHandlers();
   // amounts of data, consider Sherlock's stream data replication mechanisms.
   // TODO(dkorolev): Check in Sherlock into KnowSheet.
 #endif
-EXPECT_EQ(".....\n", HTTP(GET(Printf("localhost:%d/chunked?n=5&delay_ms=2", port))).body);
+EXPECT_EQ(".....\n", HTTP(GET(Printf("http://localhost:%d/chunked?n=5&delay_ms=2", port))).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_05_TEST_CC

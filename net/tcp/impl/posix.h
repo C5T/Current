@@ -95,6 +95,12 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ < 0) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
+#ifdef BRICKS_APPLE
+    int value = 1;
+    if (setsockopt(socket_, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&value), sizeof(value))) {
+      BRICKS_THROW(SocketCreateException());
+    }
+#endif
     BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
   }
 
