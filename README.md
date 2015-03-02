@@ -418,9 +418,6 @@ Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new, upd
 Passing `--help` will cause `ParseDFlags()` to print all registered flags with their descriptions and `exit(0)`.
 
 [`dflags`](https://github.com/KnowSheet/Bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
-## Extras
-
-[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.
 ## Unit Testing: `gtest`
 
 Bricks contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
@@ -481,3 +478,6 @@ A three-minute intro:
 For more details please refer to the original [`GoogleTest` documentation](http://code.google.com/p/googletest/wiki/Documentation).
 
 The code in Bricks is a header-only port of the code originally released by Google. It requires no linker dependencies.
+## Extras
+
+[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.

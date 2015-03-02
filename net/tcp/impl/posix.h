@@ -363,7 +363,7 @@ class Socket final : public SocketHandle {
     }
 
 #ifdef BRICKS_APPLE
-    // Emulate MSG_NOSIGNAL behavior
+    // Emulate MSG_NOSIGNAL behavior.
     if (::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&just_one), sizeof(just_one))) {
       BRICKS_THROW(SocketCreateException());
     }

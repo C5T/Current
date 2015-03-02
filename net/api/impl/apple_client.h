@@ -92,7 +92,7 @@ struct ImplWrapper<HTTPClientApple> {
                                  HTTPResponse& output) {
     // TODO(dkorolev): Handle redirects in Apple implementation.
     output.url = response.url_received;
-    output.code = HTTPResponseCodeValue(response.http_response_code);
+    output.code = HTTPResponseCode(response.http_response_code);
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
