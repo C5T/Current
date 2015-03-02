@@ -144,7 +144,7 @@ TEST(DFlags, ParsesMultipleFlags) {
   EXPECT_FALSE(FLAGS_flag_bool1);
   EXPECT_TRUE(FLAGS_flag_bool2);
   EXPECT_EQ(0, FLAGS_flag_int64);
-  EXPECT_EQ(static_cast<uint64_t>(0), FLAGS_flag_uint64);
+  EXPECT_EQ(0ull, FLAGS_flag_uint64);
   int argc = 8;
   char p1[] = "./ParsesMultipleFlags";
   char p2[] = "-flag_string";

@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(mzhurovich): Add support of chuncked response and redirection control.
+// TODO(mzhurovich): Add support of chunked response and redirection control.
 // TODO(mzhurovich): Throw proper exceptions to pass the temporary disabled tests.
 
 #include "../../../port.h"
