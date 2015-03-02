@@ -178,7 +178,7 @@ TEST(HTTPAPI, Redirect) {
   const auto response = HTTP(GET(Printf("http://localhost:%d/from", FLAGS_net_api_test_port)).AllowRedirects());
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Done.", response.body);
-  EXPECT_EQ(Printf("http://http://localhost:%d/to", FLAGS_net_api_test_port), response.url);
+  EXPECT_EQ(Printf("http://localhost:%d/to", FLAGS_net_api_test_port), response.url);
 }
 
 TEST(HTTPAPI, RedirectLoop) {
