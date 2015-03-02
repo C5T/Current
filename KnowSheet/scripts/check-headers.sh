@@ -10,7 +10,7 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -DBRICKS_CHECK_HEADERS_MODE"
 LDFLAGS="-pthread"
 
-# WARNING: TMP_DIR must be resolved from the current working directory.
+# NOTE: TMP_DIR must be resolved from the current working directory.
 
 TMP_DIR_NAME=".noshit"
 

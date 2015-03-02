@@ -41,7 +41,7 @@ HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
 EXPECT_EQ("OK", HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_01))).body);
 #else
   // Simple GET.
-  EXPECT_EQ("OK", HTTP(GET("test.tailproduce.org/ok")).body);
+  EXPECT_EQ("OK", HTTP(GET("http://test.tailproduce.org/ok")).body);
 #endif
 }
   
@@ -52,7 +52,7 @@ HTTP(FLAGS_docu_net_client_port_01).Register("/ok", [](Request r) { r("OK"); });
 #if 1
 const auto response = HTTP(GET(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_01)));
 #else
-  const auto response = HTTP(GET("test.tailproduce.org/ok"));
+  const auto response = HTTP(GET("http://test.tailproduce.org/ok"));
 #endif
   EXPECT_EQ("OK", response.body);
   EXPECT_TRUE(response.code == HTTPResponseCode.OK);

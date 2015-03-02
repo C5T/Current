@@ -149,20 +149,20 @@ The [`#include "Bricks/net/api/api.h"`](https://github.com/KnowSheet/Bricks/blob
 
 ```cpp
 // Simple GET.
-EXPECT_EQ("OK", HTTP(GET("test.tailproduce.org/ok")).body);
+EXPECT_EQ("OK", HTTP(GET("http://test.tailproduce.org/ok")).body);
 
 // More fields.
-const auto response = HTTP(GET("test.tailproduce.org/ok"));
+const auto response = HTTP(GET("http://test.tailproduce.org/ok"));
 EXPECT_EQ("OK", response.body);
 EXPECT_TRUE(response.code == HTTPResponseCode.OK);
 ```
 ```cpp
 // POST is supported as well.
-EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), "BODY", "text/plain").body);
+EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), "BODY", "text/plain").body);
 
 // Beyond plain strings, cerealizable objects can be passed in.
 // JSON will be sent, as "application/json" content type.
-EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
+EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), SimpleType()).body);
 
 ```
 HTTP client supports headers, POST-ing data to and from files, and many other features as well. Check the unit test in [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) for more details.
@@ -263,7 +263,7 @@ HTTP(port).Register("/chunked", [](Request r) {
   response("\n");
 });
 
-EXPECT_EQ(".....\n", HTTP(GET("test.tailproduce.org/chunked?n=5&delay_ms=2")).body);
+EXPECT_EQ(".....\n", HTTP(GET("http://test.tailproduce.org/chunked?n=5&delay_ms=2")).body);
 
 // NOTE: For most legitimate practical usecases of returning unlimited
 // amounts of data, consider Sherlock's stream data replication mechanisms.
@@ -418,6 +418,9 @@ Non-flag parameters are kept; ParseDFlags() replaces argc/argv with the new, upd
 Passing `--help` will cause `ParseDFlags()` to print all registered flags with their descriptions and `exit(0)`.
 
 [`dflags`](https://github.com/KnowSheet/Bricks/blob/master/dflags/dflags.h) is a simplified header-only version of Google's [`gflags`](https://code.google.com/p/gflags/). It requires no linker dependencies and largely is backwards-compatible.
+## Extras
+
+[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.
 ## Unit Testing: `gtest`
 
 Bricks contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
@@ -478,6 +481,3 @@ A three-minute intro:
 For more details please refer to the original [`GoogleTest` documentation](http://code.google.com/p/googletest/wiki/Documentation).
 
 The code in Bricks is a header-only port of the code originally released by Google. It requires no linker dependencies.
-## Extras
-
-[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.

@@ -46,11 +46,11 @@ EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client
 EXPECT_EQ("OK", HTTP(POST(Printf("http://localhost:%d/ok", FLAGS_docu_net_client_port_02), SimpleType())).body);
 #else
   // POST is supported as well.
-  EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), "BODY", "text/plain").body);
+  EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), "BODY", "text/plain").body);
   
   // Beyond plain strings, cerealizable objects can be passed in.
   // JSON will be sent, as "application/json" content type.
-  EXPECT_EQ("OK", HTTP(POST("test.tailproduce.org/ok"), SimpleType()).body);
+  EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), SimpleType()).body);
 #endif
 }
   

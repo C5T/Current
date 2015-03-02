@@ -95,12 +95,6 @@ class SocketHandle : private SocketSystemInitializer {
     if (socket_ < 0) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
-#ifdef BRICKS_APPLE
-    int value = 1;
-    if (setsockopt(socket_, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&value), sizeof(value))) {
-      BRICKS_THROW(SocketCreateException());
-    }
-#endif
     BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
   }
 
@@ -367,6 +361,13 @@ class Socket final : public SocketHandle {
                      sizeof(just_one))) {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
+
+#ifdef BRICKS_APPLE
+    // Emulate MSG_NOSIGNAL behavior
+    if (::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&just_one), sizeof(just_one))) {
+      BRICKS_THROW(SocketCreateException());
+    }
+#endif
 
     sockaddr_in addr_server;
     memset(&addr_server, 0, sizeof(addr_server));

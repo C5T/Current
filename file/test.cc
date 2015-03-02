@@ -133,7 +133,7 @@ TEST(File, GetFileSize) {
   ASSERT_THROW(FileSystem::GetFileSize(fn), FileException);
 
   FileSystem::WriteStringToFile("four", fn.c_str());
-  EXPECT_EQ(static_cast<const unsigned long long>(4), FileSystem::GetFileSize(fn));
+  EXPECT_EQ(4ull, FileSystem::GetFileSize(fn));
 }
 
 TEST(File, RenameFile) {

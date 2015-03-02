@@ -7,7 +7,7 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
-# WARNING: TMP_DIR must be resolved from the current working directory.
+# NOTE: TMP_DIR must be resolved from the current working directory.
 
 KNOWSHEET_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
 RUN_DIR_FULL_PATH=$( "$KNOWSHEET_SCRIPTS_DIR/KnowSheetReadlink.sh" "$PWD" )

@@ -104,14 +104,14 @@ TEST(DFlags, ParsesAFlagUsingDoubleDashEquals) {
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
   DEFINE_uint32(meh, 1, "");
   static_assert(std::is_same<decltype(FLAGS_meh), uint32_t>::value, "");
-  EXPECT_EQ(static_cast<uint32_t>(1), FLAGS_meh);
+  EXPECT_EQ(1u, FLAGS_meh);
   int argc = 2;
   char p1[] = "./ParsesAFlagUsingDoubleDashEquals";
   char p2[] = "--meh=2";
   char* pp[] = {p1, p2};
   char** argv = pp;
   ParseDFlags(&argc, &argv);
-  EXPECT_EQ(static_cast<uint32_t>(2), FLAGS_meh);
+  EXPECT_EQ(2u, FLAGS_meh);
   ASSERT_EQ(1, argc);
   EXPECT_EQ("./ParsesAFlagUsingDoubleDashEquals", std::string(argv[0]));
 }

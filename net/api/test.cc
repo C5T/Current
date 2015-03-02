@@ -31,10 +31,7 @@ SOFTWARE.
 #include "docu/server/docu_03httpserver_02_test.cc"
 #include "docu/server/docu_03httpserver_03_test.cc"
 #include "docu/server/docu_03httpserver_04_test.cc"
-#ifndef BRICKS_APPLE 
-// Temporary disabled chunked-transfer test for Apple -- M.Z.
 #include "docu/server/docu_03httpserver_05_test.cc"
-#endif
 
 #include <string>
 
@@ -273,8 +270,8 @@ struct ShouldReduceDelayBetweenChunksSingleton {
   bool yes = false;
 };
 // Test various HTTP client modes.
-// Temporary disabled for Apple (not supporting chunk-transfer) -- M.Z.
 #ifndef BRICKS_APPLE
+// Temporary disabled chunked-transfer test for Apple -- M.Z.
 TEST(HTTPAPI, GetToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/stars", [](Request r) {
@@ -528,6 +525,7 @@ struct OnlyCheckForInvalidURLOnceSingleton {
 };
 
 #ifndef BRICKS_APPLE
+// Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, InvalidUrl) {
   bool& done = Singleton<OnlyCheckForInvalidURLOnceSingleton>().done;
   if (!done) {

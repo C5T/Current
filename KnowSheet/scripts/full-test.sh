@@ -11,7 +11,7 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread"
 
-# WARNING: FULL_TEST_DIR must be resolved from the current working directory.
+# NOTE: FULL_TEST_DIR must be resolved from the current working directory.
 
 KNOWSHEET_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
 RUN_DIR_FULL_PATH=$( "$KNOWSHEET_SCRIPTS_DIR/KnowSheetReadlink.sh" "$PWD" )
@@ -74,6 +74,6 @@ echo -e -n "\033[0m"
   rm -rf coverage.info coverage0.info *.gcov *.gcda *.gcno
   echo
   echo -e -n "\033[0m\033[1mCoverage report\033[0m: \033[36m"
-  echo -n "$TMPDIR_FULL_PATH/coverage/index.html"
+  echo -n "$FULL_TEST_DIR_FULL_PATH/coverage/index.html"
   echo -e -n "\033[0m"
 )

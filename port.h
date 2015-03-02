@@ -105,7 +105,7 @@ SOFTWARE.
 
 #endif
 
-// Check for 'thread_local' specifier support
+// Check for 'thread_local' specifier support.
 #ifdef __clang__
 #if __has_feature(cxx_thread_local)
 #define BRICKS_HAS_THREAD_LOCAL

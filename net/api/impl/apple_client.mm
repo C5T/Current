@@ -62,8 +62,7 @@ bool bricks::net::api::HTTPClientApple::Go() {
       NSString * path = [NSString stringWithUTF8String:post_file.c_str()];
       const unsigned long long file_size = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:&err].fileSize;
       if (err) {
-        error_code = err.code;
-        NSLog(@"Error %d %@", error_code, err.localizedDescription);
+        NSLog(@"Error %ld %@", err.code, err.localizedDescription);
         return false;
       }
       request.HTTPBodyStream = [NSInputStream inputStreamWithFileAtPath:path];
@@ -76,11 +75,10 @@ bool bricks::net::api::HTTPClientApple::Go() {
     NSData * url_data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&err];
 
     if (response) {
-      error_code = response.statusCode;
+      http_response_code = response.statusCode;
       url_received = [response.URL.absoluteString UTF8String];
     }
     else {
-      error_code = err.code;
       NSLog(@"ERROR while connecting to %s: %@", url_requested.c_str(), err.localizedDescription);
     }
 
