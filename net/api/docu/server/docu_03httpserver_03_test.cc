@@ -44,7 +44,7 @@ HTTP(port).ResetAllHandlers();
       "text/html",
       HTTPHeaders().Set("custom", "header").Set("another", "one"));
   });
-EXPECT_EQ("Yes.", HTTP(GET(Printf("localhost:%d/found", port))).body);
+EXPECT_EQ("Yes.", HTTP(GET(Printf("http://localhost:%d/found", port))).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_03_TEST_CC

@@ -362,6 +362,13 @@ class Socket final : public SocketHandle {
       BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
+#ifdef BRICKS_APPLE
+    // Emulate MSG_NOSIGNAL behavior.
+    if (::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&just_one), sizeof(just_one))) {
+      BRICKS_THROW(SocketCreateException());
+    }
+#endif
+
     sockaddr_in addr_server;
     memset(&addr_server, 0, sizeof(addr_server));
     addr_server.sin_family = AF_INET;

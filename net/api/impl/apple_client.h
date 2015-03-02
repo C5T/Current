@@ -41,13 +41,14 @@ namespace api {
 struct HTTPClientApple {
   std::string url_requested = "";
   std::string url_received = "";
-  int error_code = -1;
+  int http_response_code = -1;
   std::string post_file = "";
   std::string received_file = "";
   std::string server_response = "";
   std::string content_type = "";
   std::string user_agent = "";
   std::string post_body = "";
+
   bool Go();
 };
 
@@ -91,7 +92,7 @@ struct ImplWrapper<HTTPClientApple> {
                                  HTTPResponse& output) {
     // TODO(dkorolev): Handle redirects in Apple implementation.
     output.url = response.url_received;
-    output.code = response.error_code;
+    output.code = HTTPResponseCode(response.http_response_code);
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>

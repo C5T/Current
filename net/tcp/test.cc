@@ -246,9 +246,10 @@ TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
 }
 #endif
 
-#ifndef BRICKS_WINDOWS
+#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
 // Apparently, Windows has no problems sending a 10MiB message -- D.K.
 // Tested on Visual Studio 2015 Preview.
+// Temporary disabled for Apple -- M.Z.
 TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   thread server_thread([](Socket socket) {
                          Connection connection(socket.Accept());

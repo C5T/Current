@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Handle empty POST body. Add a test for it.
+// TODO(dkorolev): Refactor the code to disallow BODY-less POST requests.
 // TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
 
 #ifndef BRICKS_NET_API_POSIX_SERVER_H

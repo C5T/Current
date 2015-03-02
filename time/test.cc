@@ -35,7 +35,7 @@ TEST(Time, SmokeTest) {
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   const bricks::time::EPOCH_MILLISECONDS b = bricks::time::Now();
   const int64_t dt = static_cast<int64_t>(b - a);
-#ifndef BRICKS_WINDOWS
+#if !defined(BRICKS_WINDOWS) && defined(BRICKS_HAS_THREAD_LOCAL)
   const int64_t allowed_skew = 3;
 #else
   const int64_t allowed_skew = 25;  // Visual Studio is slower in regard to this test.

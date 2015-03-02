@@ -37,7 +37,7 @@ Altered source versions must be plainly marked as such, and must not be misrepre
 #include <string>
 
 // big endian architectures need #define __BYTE_ORDER __BIG_ENDIAN
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(__APPLE__)
 #include <endian.h>
 #endif
 

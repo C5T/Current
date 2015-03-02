@@ -41,7 +41,7 @@ HTTP(port).ResetAllHandlers();
   HTTP(port).Register("/demo", [](Request r) {
     r(r.url.query["q"] + ' ' + r.method + ' ' + r.body);
   });
-EXPECT_EQ("A POST body", HTTP(POST(Printf("localhost:%d/demo?q=A", port), "body", "text/plain")).body);
+EXPECT_EQ("A POST body", HTTP(POST(Printf("http://localhost:%d/demo?q=A", port), "body", "text/plain")).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_02_TEST_CC

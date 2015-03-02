@@ -419,7 +419,8 @@ class HTTPClientImplPOSIX {
 template <typename T>
 class HTTPTest : public ::testing::Test {};
 
-#ifndef BRICKS_WINDOWS
+#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
+// Temporary disabled CURL tests for Apple - M.Z.
 typedef ::testing::Types<HTTPClientImplPOSIX, HTTPClientImplCURL> HTTPClientImplsTypeList;
 #else
 typedef ::testing::Types<HTTPClientImplPOSIX> HTTPClientImplsTypeList;
