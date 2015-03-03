@@ -67,7 +67,7 @@ inline EPOCH_MILLISECONDS Now() {
 #else
 
 #ifndef BRICKS_SUPRESS_UNSUPPORTED_THREAD_LOCAL_WARNING
-#warning "Falling back to a nive implementation of `Now()`, since `thread_local is not supported by the compiler."
+#warning "Falling back to a naive `Now()`, since `thread_local is not supported by the compiler."
 #endif
 
 inline EPOCH_MILLISECONDS Now() {
