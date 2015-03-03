@@ -18,7 +18,8 @@ fi
 # NOTE: TMP_DIR must be resolved from the current working directory.
 
 TMP_DIR_NAME=".noshit"
-TMP_ERROR_FILE_NAME=$TMP_DIR_NAME/error.log
+TMP_STDOUT=$TMP_DIR_NAME/stdout.log
+TMP_STDERR=$TMP_DIR_NAME/stderr.log
 
 rm -rf "$TMP_DIR_NAME/headers"
 mkdir -p "$TMP_DIR_NAME/headers"
@@ -33,11 +34,11 @@ for i in $(ls *.h | grep -v ".cc.h$") ; do
   g++ -I . $CPPFLAGS \
     -c "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc" \
     -o "$PWD/$TMP_DIR_NAME/headers/$i.g++.o" $LDFLAGS \
-    2>&1 >$TMP_ERROR_FILE_NAME || (cat $TMP_ERROR_FILE_NAME && exit 1)
+    >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
   clang++ -I . $CPPFLAGS \
     -c "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc" \
     -o "$PWD/$TMP_DIR_NAME/headers/$i.clang++.o" $LDFLAGS \
-    2>&1 >$TMP_ERROR_FILE_NAME || (cat $TMP_ERROR_FILE_NAME && exit 1)
+    >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
 done
 echo
 
@@ -45,9 +46,9 @@ echo -e -n "\033[0m\033[1mLinking\033[0m:\033[0m\033[31m "
 echo -e '#include <cstdio>\nint main() { printf("OK\\n"); }\n' >"$TMP_DIR_NAME/headers/main.cc"
 g++ -c $CPPFLAGS \
   -o "$TMP_DIR_NAME/headers/main.o" "$TMP_DIR_NAME/headers/main.cc" $LDFLAGS \
-  2>&1 >$TMP_ERROR_FILE_NAME || (cat $TMP_ERROR_FILE_NAME && exit 1)
+  >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
 g++ -o "$TMP_DIR_NAME/headers/main" $TMP_DIR_NAME/headers/*.o $LDFLAGS \
-  2>&1 >$TMP_ERROR_FILE_NAME || (cat $TMP_ERROR_FILE_NAME && exit 1)
+  >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
 echo -e -n "\033[1m\033[32m"
 "$TMP_DIR_NAME/headers/main"
 
