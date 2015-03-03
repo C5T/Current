@@ -6,7 +6,7 @@
 
 # TODO(dkorolev): Add a top-level 'make update' target to update KnowSheet from GitHub.
 
-.PHONY: test all indent clean check coverage
+.PHONY: test all indent clean check coverage readlink
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 KNOWSHEET_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink $(lastword $(MAKEFILE_LIST))))))
@@ -61,3 +61,7 @@ check:
 
 coverage:
 	${KNOWSHEET_SCRIPTS_DIR_FULL_PATH}/coverage-report.sh
+
+# For Linux vs. Mac debugging purposes.
+readlink:
+	echo ${KNOWSHEET_SCRIPTS_DIR}
