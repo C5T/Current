@@ -29,15 +29,24 @@ for i in $(ls *.h | grep -v ".cc.h$") ; do
   echo -e -n "\033[31m"
   ln -sf "$PWD/$i" "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc"
   ln -sf "$PWD/$i" "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc"
-  g++ -I . $CPPFLAGS -c "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc" -o "$PWD/$TMP_DIR_NAME/headers/$i.g++.o" $LDFLAGS
-  clang++ -I . $CPPFLAGS -c "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc" -o "$PWD/$TMP_DIR_NAME/headers/$i.clang++.o" $LDFLAGS
+  g++ -I . $CPPFLAGS \
+    -c "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc" \
+    -o "$PWD/$TMP_DIR_NAME/headers/$i.g++.o" $LDFLAGS \
+    >/dev/null 2>/dev/null
+  clang++ -I . $CPPFLAGS \
+    -c "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc" \
+    -o "$PWD/$TMP_DIR_NAME/headers/$i.clang++.o" $LDFLAGS \
+    >/dev/null 2>/dev/null
 done
 echo
 
 echo -e -n "\033[0m\033[1mLinking\033[0m:\033[0m\033[31m "
 echo -e '#include <cstdio>\nint main() { printf("OK\\n"); }\n' >"$TMP_DIR_NAME/headers/main.cc"
-g++ -c $CPPFLAGS -o "$TMP_DIR_NAME/headers/main.o" "$TMP_DIR_NAME/headers/main.cc" $LDFLAGS
-g++ -o "$TMP_DIR_NAME/headers/main" $TMP_DIR_NAME/headers/*.o $LDFLAGS
+g++ -c $CPPFLAGS \
+  -o "$TMP_DIR_NAME/headers/main.o" "$TMP_DIR_NAME/headers/main.cc" $LDFLAGS \
+  >/dev/null 2>/dev/null
+g++ -o "$TMP_DIR_NAME/headers/main" $TMP_DIR_NAME/headers/*.o $LDFLAGS \
+  >/dev/null 2>/dev/null
 echo -e -n "\033[1m\033[32m"
 "$TMP_DIR_NAME/headers/main"
 
