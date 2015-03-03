@@ -128,8 +128,8 @@ struct GNUPlot {
     return *this;
   }
 
-  GNUPlot& Grid(const std::string& title) {
-    parameters_["grid"] = Escape(title);
+  GNUPlot& Grid(const std::string& grid) {
+    parameters_["grid"] = grid;
     return *this;
   }
 
