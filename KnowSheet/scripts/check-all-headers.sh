@@ -6,14 +6,15 @@
 
 set -u -e
 
-SCRIPT_DIR=$(dirname $(readlink -e "$BASH_SOURCE"))
-RUN_DIR=$PWD
+KNOWSHEET_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
+KNOWSHEET_SCRIPTS_DIR_FULL_PATH=$( "$KNOWSHEET_SCRIPTS_DIR/KnowSheetReadlink.sh" "$KNOWSHEET_SCRIPTS_DIR" )
+RUN_DIR_FULL_PATH=$( "$KNOWSHEET_SCRIPTS_DIR/KnowSheetReadlink.sh" "$PWD" )
 
 echo -e "\033[1m\033[34mTesting all headers to comply with the header-only paradigm.\033[0m"
 
-for i in $(for i in $(find . -iname "*.h" | grep -v 3party) ; do dirname $i ; done | sort -u) ; do
+for i in $(for i in $(find . -iname "*.h" | grep -v 3party) ; do dirname "$i" ; done | sort -u) ; do
   echo -e "\033[1mDirectory\033[0m: $i"
-  cd $i && $SCRIPT_DIR/check-headers.sh && cd $RUN_DIR && continue
+  cd "$i" && "$KNOWSHEET_SCRIPTS_DIR_FULL_PATH/check-headers.sh" && cd "$RUN_DIR_FULL_PATH" && continue
   echo -e "\033[1m\033[31mTerminating.\033[0m" && exit 1
 done
 
