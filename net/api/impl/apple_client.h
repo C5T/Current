@@ -49,7 +49,7 @@ struct HTTPClientApple {
   std::string user_agent = "";
   std::string post_body = "";
 
-  bool Go();
+  inline bool Go();
 };
 
 template <>

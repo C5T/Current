@@ -41,6 +41,7 @@ SOFTWARE.
 
 #ifndef BRICKS_WINDOWS
 
+#include <errno.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/tcp.h>

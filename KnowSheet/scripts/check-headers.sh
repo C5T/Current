@@ -10,6 +10,11 @@ set -u -e
 CPPFLAGS="-std=c++11 -g -Wall -W -DBRICKS_CHECK_HEADERS_MODE"
 LDFLAGS="-pthread"
 
+if [ $(uname) = "Darwin" ] ; then
+  CPPFLAGS+=" -stdlib=libc++ -x objective-c++ -fobjc-arc"
+  LDFLAGS+=" -framework Foundation"
+fi
+
 # NOTE: TMP_DIR must be resolved from the current working directory.
 
 TMP_DIR_NAME=".noshit"
