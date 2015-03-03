@@ -79,5 +79,5 @@ echo -e -n "\033[0m"
   echo
   echo -e -n "\033[0m\033[1mCoverage report\033[0m: \033[36m"
   echo -n "$FULL_TEST_DIR_FULL_PATH/coverage/index.html"
-  echo -e -n "\033[0m"
+  echo -e "\033[0m"
 )
