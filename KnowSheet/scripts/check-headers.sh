@@ -18,8 +18,8 @@ fi
 # NOTE: TMP_DIR must be resolved from the current working directory.
 
 TMP_DIR_NAME=".noshit"
-TMP_STDOUT=$TMP_DIR_NAME/stdout.log
-TMP_STDERR=$TMP_DIR_NAME/stderr.log
+TMP_STDOUT="$TMP_DIR_NAME/stdout.log"
+TMP_STDERR="$TMP_DIR_NAME/stderr.log"
 
 rm -rf "$TMP_DIR_NAME/headers"
 mkdir -p "$TMP_DIR_NAME/headers"
