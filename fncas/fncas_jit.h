@@ -6,6 +6,13 @@
 #ifndef FNCAS_JIT_H
 #define FNCAS_JIT_H
 
+// Do include this header in the `make test` target for checking there are no leaked symbols.
+#ifdef BRICKS_CHECK_HEADERS_MODE
+#ifndef FNCAS_JIT
+#define FNCAS_JIT CLANG
+#endif
+#endif
+
 #ifdef FNCAS_JIT
 
 #include <sstream>
@@ -57,7 +64,7 @@ struct compiled_expression : noncopyable {
   double operator()(const double* x) const {
     std::vector<double>& tmp = internals_singleton().ram_for_compiled_evaluations_;
     node_index_type dim = static_cast<node_index_type>(dim_());
-    if (tmp.size() < dim) {
+    if (tmp.size() < static_cast<size_t>(dim)) {
       tmp.resize(dim);
     }
     return eval_(x, &tmp[0]);
@@ -75,7 +82,7 @@ struct compiled_expression : noncopyable {
 };
 
 // generate_c_code_for_node() writes C code to evaluate the expression to the file.
-void generate_c_code_for_node(node_index_type index, FILE* f) {
+inline void generate_c_code_for_node(node_index_type index, FILE* f) {
   fprintf(f, "#include <math.h>\n");
   fprintf(f, "double eval(const double* x, double* a) {\n");
   node_index_type max_dim = index;
@@ -132,13 +139,14 @@ void generate_c_code_for_node(node_index_type index, FILE* f) {
 }
 
 // generate_asm_code_for_node() writes NASM code to evaluate the expression to the file.
-const char* const operation_as_nasm_instruction(operation_t operation) {
+inline const char* operation_as_nasm_instruction(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {
       "addpd", "subpd", "mulpd", "divpd",
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
-void generate_asm_code_for_node(node_index_type index, FILE* f) {
+
+inline void generate_asm_code_for_node(node_index_type index, FILE* f) {
   fprintf(f, "[bits 64]\n");
   fprintf(f, "\n");
   fprintf(f, "global eval, dim\n");
@@ -261,7 +269,7 @@ struct compile_impl {
   typedef FNCAS_JIT selected;
 };
 
-compiled_expression compile(node_index_type index) {
+inline compiled_expression compile(node_index_type index) {
   std::random_device random;
   std::uniform_int_distribution<int> distribution(1000000, 9999999);
   std::ostringstream os;
@@ -273,7 +281,7 @@ compiled_expression compile(node_index_type index) {
   return compiled_expression(filename_so);
 }
 
-compiled_expression compile(const node& node) { return compile(node.index_); }
+inline compiled_expression compile(const node& node) { return compile(node.index_); }
 
 struct f_compiled : f {
   fncas::compiled_expression c_;
