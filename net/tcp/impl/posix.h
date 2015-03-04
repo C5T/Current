@@ -41,6 +41,7 @@ SOFTWARE.
 
 #ifndef BRICKS_WINDOWS
 
+#include <errno.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/tcp.h>
@@ -274,6 +275,9 @@ class Connection : public SocketHandle {
   }
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
+#ifdef BRICKS_APPLE
+    static_cast<void>(more);  // Supress the 'unused parameter' warning on Apple.
+#endif
     assert(buffer);
     BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));

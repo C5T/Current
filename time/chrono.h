@@ -65,7 +65,8 @@ inline EPOCH_MILLISECONDS Now() {
 }
 
 #else
-#warning 'thread_local' is not supported by compiler
+
+#warning "Falling back to a naive `Now()`, since `thread_local` is not supported by the compiler."
 
 inline EPOCH_MILLISECONDS Now() {
   return static_cast<EPOCH_MILLISECONDS>(std::chrono::duration_cast<std::chrono::milliseconds>(
