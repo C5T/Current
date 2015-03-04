@@ -4,7 +4,7 @@ The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains core pi
 
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/master/holy_bricks.jpg)
 
-<sub>Image credit: Bing image search.</sub>
+<sub>Image credit: [Bender](http://en.wikipedia.org/wiki/Bender_(Futurama)#cite_note-BWBB-5) from [Futurama](http://en.wikipedia.org/wiki/Futurama). Found via Bing image search.</sub>
 
 # Documentation
 
