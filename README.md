@@ -316,7 +316,7 @@ const std::string result = Plotutils(line)
   .BitmapSize(800, 800)
   .OutputFormat("svg");
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/docu/graph/golden/love.png)
+![](https://raw.githubusercontent.com/KnowSheet/Bricks/v1.0/graph/golden/love.png)
 ### Using `gnuplot`
 ```cpp
 // Where visualization meets science.
@@ -342,7 +342,7 @@ const std::string result = GNUPlot()
             .Name("\"cos(x)\", '.AsPoints().Color(\"rgb 'blue'\")'"))
   .OutputFormat("svg");
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/docu/graph/golden/gnuplot.png)
+![](https://raw.githubusercontent.com/KnowSheet/Bricks/v1.0/graph/golden/gnuplot.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
