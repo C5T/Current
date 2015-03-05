@@ -241,10 +241,12 @@ TEST(HTTPAPI, HandlerByPointerPreservesObject) {
   EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(1u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr_same", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("Incremented two.",
+            HTTP(GET(Printf("http://localhost:%d/incr_same", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(2u, helper.counter);
   EXPECT_EQ(0u, copy.counter);
-  EXPECT_EQ("Incremented two.", HTTP(GET(Printf("http://localhost:%d/incr_copy", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("Incremented two.",
+            HTTP(GET(Printf("http://localhost:%d/incr_copy", FLAGS_net_api_test_port))).body);
   EXPECT_EQ(2u, helper.counter);
   EXPECT_EQ(1u, copy.counter);
 }
@@ -317,8 +319,8 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
     ASSERT_TRUE(r.has_body);
     r("Data: " + r.body);
   });
-  const auto response =
-      HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
+  const auto response = HTTP(POST(
+      Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "No shit!", "application/octet-stream"));
   EXPECT_EQ("Data: No shit!", response.body);
 }
 
@@ -328,7 +330,8 @@ TEST(HTTPAPI, PostWithNoBodyProvided) {
     ASSERT_FALSE(r.has_body);
     r("POST with no body passed in.");
   });
-  EXPECT_EQ("POST with no body passed in.", HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ("POST with no body passed in.",
+            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port))).body);
 }
 
 TEST(HTTPAPI, PostAStringAsString) {
@@ -371,8 +374,9 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
     ASSERT_FALSE(r.has_body);
     r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
-  EXPECT_EQ("const char*",
-            HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(
+      "const char*",
+      HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port))).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
@@ -438,8 +442,9 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }
   });
-  EXPECT_EQ(DefaultInternalServerErrorMessage(),
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "fffuuuuu", "text/plain")).body);
+  EXPECT_EQ(
+      DefaultInternalServerErrorMessage(),
+      HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "fffuuuuu", "text/plain")).body);
 }
 
 #ifndef BRICKS_APPLE
@@ -449,9 +454,10 @@ TEST(HTTPAPI, PostFromInvalidFile) {
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = FileSystem::ScopedRmFile(non_existent_file_name);
-  ASSERT_THROW(HTTP(POSTFromFile(
-                   Printf("http://localhost:%d/foo", FLAGS_net_api_test_port), non_existent_file_name, "text/plain")),
-               FileException);
+  ASSERT_THROW(
+      HTTP(POSTFromFile(
+          Printf("http://localhost:%d/foo", FLAGS_net_api_test_port), non_existent_file_name, "text/plain")),
+      FileException);
 }
 #endif
 
@@ -552,21 +558,25 @@ TEST(HTTPAPI, ServeDir) {
   EXPECT_EQ("<h1>NOT FOUND</h1>\n",
             HTTP(GET(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).body);
 #ifndef BRICKS_APPLE
-// Temporary disabled - post with no body is not supported -- M.Z.  
+  // Temporary disabled - post with no body is not supported -- M.Z.
   EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
             HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("<h1>NOT FOUND</h1>\n",
             HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).body);
 #endif
-  EXPECT_EQ(200, static_cast<int>(HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+  EXPECT_EQ(200,
+            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
   EXPECT_EQ(404,
-            static_cast<int>(HTTP(GET(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
+            static_cast<int>(
+                HTTP(GET(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
 #ifndef BRICKS_APPLE
-// Temporary disabled - post with no body is not supported -- M.Z.  
-  EXPECT_EQ(405, static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+  // Temporary disabled - post with no body is not supported -- M.Z.
   EXPECT_EQ(
-      404, static_cast<int>(HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
-#endif 
+      405, static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+  EXPECT_EQ(404,
+            static_cast<int>(
+                HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
+#endif
   FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir_to_ignore"), FileSystem::RmDirParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 }
