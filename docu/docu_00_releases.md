@@ -2,7 +2,7 @@
 
 * *3/4/2015* : **1.0, Initial public release.**
 
-  [README](https://github.com/KnowSheet/Bricks/tree/v1.0#release-notes),
+  [README](https://github.com/KnowSheet/Bricks/tree/v1.0#documentation),
   [tar.gz](https://github.com/KnowSheet/Bricks/archive/v1.0.tar.gz),
   [zip](https://github.com/KnowSheet/Bricks/archive/v1.0.zip).
 
@@ -12,3 +12,4 @@
 
   Header-only C++11 with no external library dependencies.
 
+# Documentation
