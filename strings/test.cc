@@ -35,6 +35,9 @@ using bricks::strings::FixedSizeSerializer;
 using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
 using bricks::strings::CompileTimeStringLength;
+using bricks::strings::Trim;
+using bricks::strings::ToLower;
+using bricks::strings::ToUpper;
 using bricks::strings::Join;
 using bricks::strings::Split;
 using bricks::strings::SplitIntoKeyValuePairs;
@@ -98,6 +101,24 @@ TEST(Util, CompileTimeStringLength) {
   EXPECT_EQ(3u, CompileTimeStringLength(local_string));
   EXPECT_EQ(4u, CompileTimeStringLength(local_static_string));
   EXPECT_EQ(5u, CompileTimeStringLength(global_string));
+}
+
+TEST(Util, Trim) {
+  EXPECT_EQ("one", Trim(" one "));
+  EXPECT_EQ("one", Trim(std::string(" one ")));
+  EXPECT_EQ("two", Trim("   \t\n\t\n\t\r\n   two   \t\n\t\n\t\r\n   "));
+  EXPECT_EQ("two", Trim(std::string("   \t\n\t\n\t\r\n   two   \t\n\t\n\t\r\n   ")));
+  EXPECT_EQ("3 \t\r\n 4", Trim("   \t\n\t\n\t\r\n   3 \t\r\n 4   \t\n\t\n\t\r\n   "));
+  EXPECT_EQ("3 \t\r\n 4", Trim(std::string("   \t\n\t\n\t\r\n   3 \t\r\n 4   \t\n\t\n\t\r\n   ")));
+  EXPECT_EQ("", Trim(""));
+  EXPECT_EQ("", Trim(std::string("")));
+  EXPECT_EQ("", Trim(" \t\r\n\t "));
+  EXPECT_EQ("", Trim(std::string(" \t\r\n\t ")));
+}
+
+TEST(Util, ToUpperAndToLower) {
+  EXPECT_EQ("test passed", ToLower("TeSt pAsSeD"));
+  EXPECT_EQ("TEST PASSED", ToUpper("TeSt pAsSeD"));
 }
 
 TEST(JoinAndSplit, Join) {
