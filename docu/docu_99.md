@@ -1,3 +1,3 @@
 ## Extras
 
-[`Bricks`](https://github.com/KnowSheet/Bricks/) contains a few other useful bits, such as threading primitives, in-memory message queue and system clock utilities.
+[`Bricks`](https://github.com/KnowSheet/Bricks/) contains several other useful bits, including cross-platform file system wrapper, string manipulation functions, in-memory message queue and system clock utilities.
