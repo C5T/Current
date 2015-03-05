@@ -248,10 +248,7 @@ TEST(File, ScanDir) {
   FileSystem::MkDir(dir);
   FileSystem::WriteStringToFile("foo", fn1.c_str());
   FileSystem::WriteStringToFile("bar", fn2.c_str());
-#ifndef BRICKS_WINDOWS
-  // Windows is not friendly with subdirectories.
   FileSystem::MkDir(FileSystem::JoinPath(dir, "subdir"));
-#endif
 
   Scanner scanner_after(dir);
   FileSystem::ScanDir(dir, scanner_after);
