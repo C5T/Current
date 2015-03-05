@@ -12,7 +12,7 @@ The [`Bricks`](https://github.com/KnowSheet/Bricks/) repository contains core pi
 
 * *3/4/2015* : **1.0, Initial public release.**
 
-  [README](https://github.com/dkorolev/Bricks/tree/v1.0#documentation),
+  [README](https://github.com/dkorolev/Bricks/tree/v1.0#release-notes),
   [tar.gz](https://github.com/dkorolev/Bricks/archive/v1.0.tar.gz),
   [zip](https://github.com/dkorolev/Bricks/archive/v1.0.zip).
 
