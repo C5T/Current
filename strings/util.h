@@ -77,39 +77,35 @@ inline std::string Trim(const char* input, const size_t length) {
   return std::string(output_begin, output_end);
 }
 
-inline std::string Trim(const char* s) {
-  return Trim(s, ::strlen(s));
-}
+inline std::string Trim(const char* s) { return Trim(s, ::strlen(s)); }
 
-inline std::string Trim(const std::string& s) {
-  return Trim(s.c_str(), s.length());
-}
+inline std::string Trim(const std::string& s) { return Trim(s.c_str(), s.length()); }
 
-template<typename T> inline std::string ToLower(T begin, T end) {
+template <typename T>
+inline std::string ToLower(T begin, T end) {
   std::string result;
   std::transform(begin, end, std::back_inserter(result), ::tolower);
   return result;
 }
 
-inline std::string ToLower(const char* s) {
-  return ToLower(s, s + ::strlen(s));
-}
+inline std::string ToLower(const char* s) { return ToLower(s, s + ::strlen(s)); }
 
-template<typename T> inline std::string ToLower(const T& input) {
+template <typename T>
+inline std::string ToLower(const T& input) {
   return ToLower(std::begin(input), std::end(input));
 }
 
-template<typename T> inline std::string ToUpper(T begin, T end) {
+template <typename T>
+inline std::string ToUpper(T begin, T end) {
   std::string result;
   std::transform(begin, end, std::back_inserter(result), ::toupper);
   return result;
 }
 
-inline std::string ToUpper(const char* s) {
-  return ToUpper(s, s + ::strlen(s));
-}
+inline std::string ToUpper(const char* s) { return ToUpper(s, s + ::strlen(s)); }
 
-template<typename T> inline std::string ToUpper(const T& input) {
+template <typename T>
+inline std::string ToUpper(const T& input) {
   return ToUpper(std::begin(input), std::end(input));
 }
 

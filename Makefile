@@ -1,16 +1,23 @@
 # TODO(dkorolev): Revisit the `test` and `all` targets here and in subdirectories.
 
-.PHONY: default docu README.md test all clean check indent wc
+.PHONY: default docu docu_impl README.md test all clean check indent wc
 
 KNOWSHEET_SCRIPTS_DIR := ./KnowSheet/scripts
 KNOWSHEET_SCRIPTS_DIR_FULL_PATH := $(shell "$(KNOWSHEET_SCRIPTS_DIR)/KnowSheetReadlink.sh" "$(KNOWSHEET_SCRIPTS_DIR)" )
 
-default: test docu
+default: test docu_impl
 
 test:
 	${KNOWSHEET_SCRIPTS_DIR_FULL_PATH}/full-test.sh
 
-docu: README.md
+docu: docu_impl
+	# On Linux, `make docu` copies the freshly regenerated README.md into clipboard right away.
+	# TODO(dkorolev): Perhaps condition on the existence of `xclip` is a better idea?
+ifeq ($(shell uname), Linux)
+	cat README.md | xclip -selection c
+endif
+
+docu_impl: README.md
 
 README.md:
 	${KNOWSHEET_SCRIPTS_DIR_FULL_PATH}/gen-docu.sh >"$@"
