@@ -208,7 +208,9 @@ struct FileSystem {
 #else
     DIR* dir = ::opendir(directory.c_str());
     const auto closedir_guard = MakeScopeGuard([dir]() {
-      if (dir) ::closedir(dir);
+      if (dir) {
+        ::closedir(dir);
+      }
     });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
