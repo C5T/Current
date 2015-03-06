@@ -76,9 +76,11 @@
 // The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
 // an instance of a handle, the scope of which will define the lifetime of the listener.
 //
-// If the subscribing thread would like the to run forever, it can use use `.Join()` or `.Detach()` on the handle.
-// `Join()` will block the calling thread unconditionally, until the listener itself decides to stop listening.
-// `Detach()` will 
+// If the subscribing thread would like the listener to run forever, it can
+// use use `.Join()` or `.Detach()` on the handle. `Join()` will block the calling thread unconditionally,
+// until the listener itself decides to stop listening. `Detach()` will ensure
+// that the ownership of the listener object has been transferred to the thread running the listener,
+// and detach this thread to run in the background.
 //
 // TODO(dkorolev): I should probably just remove the return value of `TerminationRequest()`,
 // and keep it a mere notification.
