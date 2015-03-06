@@ -25,9 +25,10 @@
 //
 // New streams are registred as `auto my_stream = sherlock::Stream<MyType>("my_stream");`.
 //
-// Sherlock runs as a singleton. The stream of a specific name can only added once.
-// A user of C++ Sherlock interface should keep the return value of `my_stream`, as it provides the only
-// access point to this stream's data.
+// Sherlock runs as a singleton. The stream of a specific name can only be added once.
+// TODO(dkorolev): Implement it this way. :-)
+// A user of C++ Sherlock interface should keep the return value of `sherlock::Stream<T>`,
+// as it is later used as the proxy to publish and subscribe to the data from this stream.
 //
 // Sherlock streams can be published into and subscribed to.
 // At any given point of time a stream can have zero or one publisher and any number of listeners.
@@ -53,6 +54,7 @@
 //      terminated.
 //
 //   2) `void CaughtUp()`:
+//      TODO(dkorolev): Implement it.
 //      This method will be called as soon as the "historical data replay" phase is completed,
 //      and the listener has entered the mode of serving the new entires coming in the real time.
 //      This method is designed to flip some external variable or endpoint to the "healthy" state,
@@ -65,20 +67,26 @@
 //      Much like with `Entry()`, if `TerminationRequest()` returns `false`,
 //      no more methods of this listener object will be called and the listener thread will be terminated.
 //      If it returns `true`, the calling thread of the `Subscribe()` call that started this listening process
-//      will be blocked until this particular instance of the listener returns.
-//      No further calls to `TerminationRequest()` will take place after the one and only call signaling
-//      that the thread that initiated
+//      will be blocked until this particular instance of the listener stops listening itself,
+//      by returning `false` from a consecutive call to `Entry()`.
+//      No further calls to `TerminationRequest()` will take place after the one and only call,
+//      signaling that the thread that subscribed this listener to the data from this stream,
+//      is taking the subscription handle out of scope and thus requests the termination of this listener.
 //
-// The call to `my_stream.Subscribe(my_listener);` launches the listener returns a handle object,
-// the scope of which will define the lifetime of the listener.
+// The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
+// an instance of a handle, the scope of which will define the lifetime of the listener.
 //
-// If the listener should run forever, use `my_stream.Subscribe().Join();`.
-// It will block the calling thread unconditionally, until the listener itself decides to stop listening.
-
-// An alternate solution is for the listener object to return `false` from `TerminationRequest()`.
-// This will block the thread that created the listener at the exit of the scope that kept
-// the return value of `Subscribe()`. This is a good solution for running local "jobs", i.e. "process 1000
-// entries".
+// If the subscribing thread would like the to run forever, it can use use `.Join()` or `.Detach()` on the handle.
+// `Join()` will block the calling thread unconditionally, until the listener itself decides to stop listening.
+// `Detach()` will 
+//
+// TODO(dkorolev): I should probably just remove the return value of `TerminationRequest()`,
+// and keep it a mere notification.
+//
+// ?? An alternate solution is for the listener object to return `false` from `TerminationRequest()`.
+// ?? This will block the thread that created the listener at the exit of the scope that kept
+// ?? the return value of `Subscribe()`. This is a good solution for running local "jobs", i.e. "process 1000
+// ?? entries".
 //
 // TODO(dkorolev): Data persistence and tests.
 // TODO(dkorolev): Add timestamps support and tests.

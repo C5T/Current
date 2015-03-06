@@ -79,7 +79,8 @@ int main() {
     }
   });
   HTTP(FLAGS_port).Register("/time_series", [&time_series](Request r) {
-    // Spawn a new thread since we have too, for the sake of this demo. Yes, it's a hack -- D.K.
+    // Spawn a new thread since we have to, for the sake of this demo. Yes, it's a hack -- D.K.
+    // TODO(dkorolev): This is to go away as soon as I resolve the handler ownership issue.
     std::thread([&time_series](Request r) {
       // TODO(dkorolev): Figure out how to best handle ownership of the parameter wrt destruction.
       // For now it's a hack.
