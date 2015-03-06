@@ -1,0 +1,22 @@
+.noshit
+
+core
+*.h.gch
+.exrc
+
+*.swp
+
+coverage.info
+*.gcov
+*.gcda
+*.gcno
+
+# Microsoft Visual Studio files.
+*.suo
+*.sdf
+*.opensdf
+*.filters
+*.user
+Debug
+Release
+x64
