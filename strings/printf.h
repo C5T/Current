@@ -35,7 +35,14 @@ namespace strings {
 
 inline std::string Printf(const char *fmt, ...) {
   const int max_formatted_output_length = 1024 * 1024;
-  static char buf[max_formatted_output_length + 1];
+
+#ifdef BRICKS_HAS_THREAD_LOCAL
+  thread_local static char buf[max_formatted_output_length + 1];
+#else
+  // Slow but safe.
+  char buf[max_formatted_output_length + 1];
+#endif
+
   va_list ap;
   va_start(ap, fmt);
 #ifndef BRICKS_WINDOWS
@@ -44,6 +51,7 @@ inline std::string Printf(const char *fmt, ...) {
   _vsnprintf_s(buf, max_formatted_output_length, fmt, ap);
 #endif
   va_end(ap);
+
   return buf;
 }
 
