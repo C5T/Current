@@ -124,7 +124,9 @@ struct ExampleMeta {
 
 struct LayoutCell {
   // The `meta_url` is relative to the `layout_url`.
-  std::string meta_url = "/meta";
+  std::string meta_url;
+  
+  LayoutCell(const std::string& meta_url = "") : meta_url(meta_url) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -136,6 +138,9 @@ struct LayoutItem {
   std::vector<LayoutItem> row;
   std::vector<LayoutItem> col;
   LayoutCell cell;
+
+  LayoutItem() {}
+  LayoutItem(const LayoutCell& cell) : cell(cell) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -182,8 +187,8 @@ int main() {
   });
   HTTP(port).Register("/layout", [](Request r) {
     LayoutItem layout;
-    LayoutItem row;
-    layout.col.push_back(row);
+    layout.col.emplace_back(LayoutCell("/meta"));
+    layout.col.emplace_back(LayoutCell("/meta"));
     r.connection.SendHTTPResponse(layout,
                                   "layout",
                                   HTTPResponseCode.OK,
