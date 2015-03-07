@@ -80,9 +80,16 @@ struct ExampleConfig {
   // a domain from this array for every new connection via a simple round-robin.
   std::vector<std::string> data_hostnames;
 
+  // The static template.
+  std::string dashboard_template;
+
+  ExampleConfig()
+      : dashboard_template(bricks::FileSystem::ReadFileAsString(
+            bricks::FileSystem::JoinPath("static", "knowsheet-demo.html"))) {}
+
   template <typename A>
   void save(A& ar) const {
-    ar(CEREAL_NVP(layout_url), CEREAL_NVP(data_hostnames));
+    ar(CEREAL_NVP(layout_url), CEREAL_NVP(data_hostnames), CEREAL_NVP(dashboard_template));
   }
 };
 

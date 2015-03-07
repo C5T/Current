@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+	<meta charset="utf-8"/>
+	<title>KnowSheet Demo</title>
+	<link href="http://fonts.googleapis.com/css?family=Open+Sans:300italic,300,600&amp;subset=latin,cyrillic-ext" rel="stylesheet" type="text/css">
+	<style>
+		.knsh-sticky-footer {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.knsh-sticky-footer__frame {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+			display: table;
+			table-layout: fixed;
+			margin: 0;
+			padding: 0;
+			width: 100%;
+			height: 100%;
+		}
+		.knsh-sticky-footer__row {
+			display: table-row;
+			height: 1px;
+		}
+		.knsh-sticky-footer__row.knsh-sticky-footer__row__m-expand {
+			height: auto;
+		}
+		
+		
+		.knsh-columns {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+			display: table;
+			margin: 0;
+			padding: 0;
+			width: 100%;
+		}
+		.knsh-columns__item {
+			display: table-cell;
+		}
+		
+		
+		.knsh-body {
+			margin: 0;
+			padding: 0;
+			
+			position: relative;
+			
+			background: #eee;
+			
+			font: 14px 'Open Sans', Arial, sans-serif;
+		}
+		
+		.knsh-theme .knsh-header {
+			padding: 10px 30px 18px;
+			background: #D84315;
+			color: #FFFFFF;
+		}
+		.knsh-theme .knsh-header a {
+			color: #EEEEEE;
+		}
+		.knsh-theme .knsh-header a:hover,
+		.knsh-theme .knsh-header a:focus,
+		.knsh-theme .knsh-header a:active {
+			color: #FFFFFF;
+		}
+		
+		.knsh-theme .knsh-header-logo {
+		}
+		.knsh-theme .knsh-header-logo__link {
+			display: inline-block;
+			text-decoration: none;
+			color: #FFFFFF;
+		}
+		.knsh-theme .knsh-header-logo__image {
+			font-size: 30px;
+			white-space: nowrap;
+		}
+		.knsh-theme .knsh-header-logo__alpha {
+			font-size: 14px;
+			margin-left: 2px;
+			position: relative;
+			top: -4px;
+		}
+		.knsh-theme .knsh-header-logo__caption {
+			font-size: 14px;
+			white-space: nowrap;
+		}
+		
+		.knsh-theme .knsh-footer {
+			padding: 20px 30px 20px;
+			background: #212121;
+			color: #E0E0E0;
+		}
+		.knsh-theme .knsh-footer a {
+			color: #EEEEEE;
+		}
+		.knsh-theme .knsh-footer a:hover,
+		.knsh-theme .knsh-footer a:focus,
+		.knsh-theme .knsh-footer a:active {
+			color: #FFFFFF;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout {
+			padding: 20px;
+			
+			background: #FFFFFF;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout-card {
+			border: 1px solid #FFFFFF;
+			background: #FFFFFF;
+			color: #000000;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout-card.knsh-theme-popout {
+			-webkit-box-shadow: 0 0 0 0 rgba(0,0,0,0);
+			box-shadow: 0 0 0 0 rgba(0,0,0,0);
+			
+			-webkit-transform: scale(1);
+			-moz-transform: scale(1);
+			-ms-transform: scale(1);
+			transform: scale(1);
+			
+			-webkit-transition: all 0.3s ease-in;
+			-moz-transition: all 0.3s ease-in;
+			-ms-transition: all 0.3s ease-in;
+			-o-transition: all 0.3s ease-in;
+			transition: all 0.3s ease-in;
+			
+			-webkit-transition-delay: 0s;
+			-moz-transition-delay: 0s;
+			-ms-transition-delay: 0s;
+			-o-transition-delay: 0s;
+			transition-delay: 0s;
+			
+			-webkit-border-radius: 0px;
+			border-radius: 0px;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout-card.knsh-theme-popout:hover {
+			z-index: 1;
+			
+			border-color: #EDEDED;
+			background: #FFFFFF;
+			color: #000000;
+			
+			-webkit-transform: scale(1.03);
+			-moz-transform: scale(1.03);
+			-ms-transform: scale(1.03);
+			transform: scale(1.03);
+			
+			-webkit-box-shadow: 0 0 80px -10px rgba(0,0,0,0.5);
+			box-shadow: 0 0 80px -10px rgba(0,0,0,0.5);
+			
+			-webkit-border-radius: 2px;
+			border-radius: 2px;
+			
+			-webkit-transition-delay: 0.3s;
+			-moz-transition-delay: 0.3s;
+			-ms-transition-delay: 0.3s;
+			-o-transition-delay: 0.3s;
+			transition-delay: 0.3s;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout-group.knsh-theme-accented .knsh-dashboard-layout-card {
+			border-color: #263238;
+			background: #263238;
+			color: #FFFFFF;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout-card.knsh-theme-accented,
+		.knsh-theme .knsh-dashboard-layout-card.knsh-theme-accented:hover {
+			border-color: #263238;
+			background: #263238;
+			color: #FFFFFF;
+		}
+		
+		.knsh-theme .knsh-dashboard-layout-group.knsh-theme-accented .knsh-dashboard-layout-card .knsh-value-visualizer__figure,
+		.knsh-theme .knsh-dashboard-layout-card.knsh-theme-accented .knsh-value-visualizer__figure {
+			text-shadow: 
+				1px 0px 0px #FFFFFF,
+				-1px 0px 0px #FFFFFF,
+				0px 1px 0px #FFFFFF,
+				0px -1px 0px #FFFFFF;
+		}
+		
+		.knsh-theme .knsh-image-visualizer__wrapper {
+			min-height: 200px;
+		}
+	</style>
+</head>
+<body class="knsh-body knsh-sticky-footer knsh-theme">
+	<div class="knsh-sticky-footer__frame">
+		<div class="knsh-sticky-footer__row">
+			<div class="knsh-header-wrapper">
+				<header class="knsh-header">
+					<div class="knsh-columns">
+						<div class="knsh-columns__item">
+							<div class="knsh-header-logo">
+								<a href="/" class="knsh-header-logo__link"><span class="knsh-header-logo__image">KnowSheet<sup class="knsh-header-logo__alpha" title="Alpha">&alpha;lpha</sup></span></a>
+								<div class="knsh-header-logo__caption">The real-time data insights made easy.</div>
+							</div>
+						</div>
+						<div class="knsh-columns__item" style="text-align: right;">
+							<a href="https://github.com/KnowSheet/KnowSheet" class="knsh-footer-link"><span>GitHub</span></a>
+						</div>
+					</div>
+				</header>
+			</div>
+		</div>
+		<div class="knsh-sticky-footer__row knsh-sticky-footer__row__m-expand">
+			<div class="knsh-dashboard-root"></div>
+		</div>
+		<div class="knsh-sticky-footer__row">
+			<div class="knsh-footer-wrapper">
+				<footer class="knsh-footer">
+					<div class="knsh-columns">
+						<div class="knsh-columns__item">
+							<div class="knsh-footer-copyright">&copy; 2015 The KnowSheet Team</div>
+						</div>
+						<div class="knsh-columns__item" style="text-align: right;">
+							<div class="knsh-footer-links">
+								<div class="knsh-footer-links__item">
+									<a href="https://github.com/KnowSheet/KnowSheet" class="knsh-footer-link"><span>GitHub</span></a>
+								</div>
+							</div>
+						</div>
+					</div>
+				</footer>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
