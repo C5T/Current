@@ -34,7 +34,8 @@ namespace bricks {
 namespace strings {
 
 inline std::string Printf(const char *fmt, ...) {
-  const int max_formatted_output_length = 1024 * 1024;
+  // `Printf()` crops the output to five KiB.
+  const int max_formatted_output_length = 5 * 1024;
 
 #ifdef BRICKS_HAS_THREAD_LOCAL
   thread_local static char buf[max_formatted_output_length + 1];
@@ -46,9 +47,9 @@ inline std::string Printf(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 #ifndef BRICKS_WINDOWS
-  vsnprintf(buf, max_formatted_output_length, fmt, ap);
+  vsnprintf(buf, max_formatted_output_length + 1, fmt, ap);
 #else
-  _vsnprintf_s(buf, max_formatted_output_length, fmt, ap);
+  _vsnprintf_s(buf, max_formatted_output_length + 1, fmt, ap);
 #endif
   va_end(ap);
 
