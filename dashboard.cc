@@ -31,14 +31,17 @@ SOFTWARE.
 
 DEFINE_int32(port, 8191, "Local port to use.");
 
-struct Point {
+template<typename Y> struct Point {
   double x;
-  double y;
+  Y y;
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(x), CEREAL_NVP(y));
   }
 };
+
+typedef Point<double> DoublePoint;
+typedef Point<std::string> StringPoint;
 
 // TODO(dkorolev): This class should be moved into `sherlock.h`.
 template <typename T>
@@ -93,13 +96,13 @@ struct ExampleConfig {
   }
 };
 
-struct ExampleMeta {
+struct PlotMeta {
   struct Options {
     std::string header_text = "Real-time Data Made Easy";
     std::string color = "blue";
     double min = -1;
     double max = 1;
-    double time_interval = 10000;
+    double time_interval = 1000;
     template <typename A>
     void save(A& ar) const {
       // TODO(sompylasar): Make a meta that tells the frontend to use auto-min and max.
@@ -112,8 +115,32 @@ struct ExampleMeta {
   };
 
   // The `data_url` is relative to the `layout_url`.
-  std::string data_url = "/data";
+  std::string data_url = "/plot_data";
   std::string visualizer_name = "plot-visualizer";
+  Options visualizer_options;
+
+  template <typename A>
+  void save(A& ar) const {
+    ar(CEREAL_NVP(data_url), CEREAL_NVP(visualizer_name), CEREAL_NVP(visualizer_options));
+  }
+};
+
+struct PicMeta {
+  struct Options {
+    std::string header_text = "Header";
+    std::string empty_text = "Empty";
+    double time_interval = 10000;
+    template <typename A>
+    void save(A& ar) const {
+      ar(CEREAL_NVP(header_text),
+         CEREAL_NVP(empty_text),
+         CEREAL_NVP(time_interval));
+    }
+  };
+
+  // The `data_url` is relative to the `layout_url`.
+  std::string data_url = "/pic_data";
+  std::string visualizer_name = "image-visualizer";
   Options visualizer_options;
 
   template <typename A>
@@ -155,12 +182,15 @@ struct LayoutItem {
 };
 
 int main() {
-  auto time_series = sherlock::Stream<Point>("time_series");
-  std::thread delayed_publishing_thread([&time_series]() {
+  auto time_series = sherlock::Stream<DoublePoint>("time_series");
+  auto pic_series = sherlock::Stream<StringPoint>("pic_series");
+
+  std::thread delayed_publishing_thread([&time_series, &pic_series]() {
     while (true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(250));
       double x = static_cast<double>(bricks::time::Now());
-      time_series.Publish(Point{x, 0.5 * (1.0 + sin(0.003 * x))});
+      pic_series.Publish(StringPoint{x, "http://lorempixel.com/400/200/"});
+      time_series.Publish(DoublePoint{x, 0.5 * (1.0 + sin(0.003 * x))});
     }
   });
 
@@ -174,21 +204,34 @@ int main() {
                                   HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
-  HTTP(port).Register("/layout/data", [&time_series](Request r) {
-    time_series.Subscribe(new ServeJSONOverHTTP<Point>(std::move(r))).Detach();
+  HTTP(port).Register("/layout/plot_data", [&time_series](Request r) {
+    time_series.Subscribe(new ServeJSONOverHTTP<DoublePoint>(std::move(r))).Detach();
   });
 
-  HTTP(port).Register("/layout/meta", [](Request r) {
-    r.connection.SendHTTPResponse(ExampleMeta(),
+  HTTP(port).Register("/layout/pic_data", [&pic_series](Request r) {
+    pic_series.Subscribe(new ServeJSONOverHTTP<StringPoint>(std::move(r))).Detach();
+  });
+
+  HTTP(port).Register("/layout/plot_meta", [](Request r) {
+    r.connection.SendHTTPResponse(PlotMeta(),
                                   "meta",
                                   HTTPResponseCode.OK,
                                   "application/json; charset=utf-8",
                                   HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
+
+  HTTP(port).Register("/layout/pic_meta", [](Request r) {
+    r.connection.SendHTTPResponse(PicMeta(),
+                                  "meta",
+                                  HTTPResponseCode.OK,
+                                  "application/json; charset=utf-8",
+                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+  });
+
   HTTP(port).Register("/layout", [](Request r) {
     LayoutItem layout;
-    layout.col.emplace_back(LayoutCell("/meta"));
-    layout.col.emplace_back(LayoutCell("/meta"));
+    layout.row.emplace_back(LayoutCell("/plot_meta"));
+    layout.row.emplace_back(LayoutCell("/pic_meta"));
     r.connection.SendHTTPResponse(layout,
                                   "layout",
                                   HTTPResponseCode.OK,
