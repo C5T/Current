@@ -103,7 +103,7 @@ struct PlotMeta {
     std::string color = "blue";
     double min = -1;
     double max = 1;
-    double time_interval = 1000;
+    double time_interval = 5000;
     template <typename A>
     void save(A& ar) const {
       // TODO(sompylasar): Make a meta that tells the frontend to use auto-min and max.
@@ -188,7 +188,7 @@ int main() {
     while (true) {
       const double x = static_cast<double>(bricks::time::Now());
       time_series.Publish(DoublePoint{x, 0.5 * (1.0 + sin(0.003 * x))});
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
   });
 
