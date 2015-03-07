@@ -120,6 +120,23 @@ struct Request final {
   void operator=(Request&&) = delete;
 };
 
+// Helper to serve a static file.
+// TODO(dkorolev): Expose it externally under a better name, and add a comment/example.
+struct StaticFileServer {
+  std::string body;
+  std::string content_type;
+  explicit StaticFileServer(const std::string& body, const std::string& content_type)
+      : body(body), content_type(content_type) {}
+  void operator()(Request r) {
+    if (r.method == "GET") {
+      r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
+    } else {
+      r.connection.SendHTTPResponse(
+          DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/plain");
+    }
+  }
+};
+
 // HTTP server bound to a specific port.
 class HTTPServerPOSIX final {
  public:
@@ -195,21 +212,6 @@ class HTTPServerPOSIX final {
     }
     handlers_.erase(path);
   }
-
-  struct StaticFileServer {
-    std::string body;
-    std::string content_type;
-    explicit StaticFileServer(const std::string& body, const std::string& content_type)
-        : body(body), content_type(content_type) {}
-    void operator()(Request r) {
-      if (r.method == "GET") {
-        r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
-      } else {
-        r.connection.SendHTTPResponse(
-            DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/plain");
-      }
-    }
-  };
 
   void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
     // TODO(dkorolev): Add a scoped version of registerers.
