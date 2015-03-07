@@ -31,7 +31,8 @@ SOFTWARE.
 
 DEFINE_int32(port, 8191, "Local port to use.");
 
-template<typename Y> struct Point {
+template <typename Y>
+struct Point {
   double x;
   Y y;
   template <typename A>
@@ -132,9 +133,7 @@ struct PicMeta {
     double time_interval = 10000;
     template <typename A>
     void save(A& ar) const {
-      ar(CEREAL_NVP(header_text),
-         CEREAL_NVP(empty_text),
-         CEREAL_NVP(time_interval));
+      ar(CEREAL_NVP(header_text), CEREAL_NVP(empty_text), CEREAL_NVP(time_interval));
     }
   };
 
@@ -152,7 +151,7 @@ struct PicMeta {
 struct LayoutCell {
   // The `meta_url` is relative to the `layout_url`.
   std::string meta_url;
-  
+
   LayoutCell(const std::string& meta_url = "") : meta_url(meta_url) {}
 
   template <typename A>
@@ -185,12 +184,22 @@ int main() {
   auto time_series = sherlock::Stream<DoublePoint>("time_series");
   auto pic_series = sherlock::Stream<StringPoint>("pic_series");
 
-  std::thread delayed_publishing_thread([&time_series, &pic_series]() {
+  std::thread points_populator([&time_series, &pic_series]() {
     while (true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(250));
-      double x = static_cast<double>(bricks::time::Now());
-      pic_series.Publish(StringPoint{x, "http://lorempixel.com/400/200/"});
+      const double x = static_cast<double>(bricks::time::Now());
       time_series.Publish(DoublePoint{x, 0.5 * (1.0 + sin(0.003 * x))});
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+  });
+
+  std::thread pics_populator([&time_series, &pic_series]() {
+    int index = 0;
+    while (true) {
+      const double x = static_cast<double>(bricks::time::Now());
+      pic_series.Publish(
+          StringPoint{x, bricks::strings::Printf("http://lorempixel.com/400/200/nature/%d/", index + 1)});
+      index = (index + 1) % 10;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
   });
 
@@ -230,8 +239,12 @@ int main() {
 
   HTTP(port).Register("/layout", [](Request r) {
     LayoutItem layout;
-    layout.row.emplace_back(LayoutCell("/plot_meta"));
-    layout.row.emplace_back(LayoutCell("/pic_meta"));
+    layout.row.resize(2);
+    layout.row[0].col.emplace_back(LayoutCell("/plot_meta"));
+    layout.row[0].col.emplace_back(LayoutCell("/pic_meta"));
+    layout.row[1].col.emplace_back(LayoutCell("/pic_meta"));
+    layout.row[1].col.emplace_back(LayoutCell("/pic_meta"));
+    layout.row[1].col.emplace_back(LayoutCell("/pic_meta"));
     r.connection.SendHTTPResponse(layout,
                                   "layout",
                                   HTTPResponseCode.OK,
