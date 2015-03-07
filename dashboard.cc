@@ -31,14 +31,18 @@ SOFTWARE.
 
 DEFINE_int32(port, 8191, "Local port to use.");
 
+template <typename Y>
 struct Point {
   double x;
-  double y;
+  Y y;
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(x), CEREAL_NVP(y));
   }
 };
+
+typedef Point<double> DoublePoint;
+typedef Point<std::string> StringPoint;
 
 // TODO(dkorolev): This class should be moved into `sherlock.h`.
 template <typename T>
@@ -93,13 +97,13 @@ struct ExampleConfig {
   }
 };
 
-struct ExampleMeta {
+struct PlotMeta {
   struct Options {
     std::string header_text = "Real-time Data Made Easy";
     std::string color = "blue";
     double min = -1;
     double max = 1;
-    double time_interval = 10000;
+    double time_interval = 5000;
     template <typename A>
     void save(A& ar) const {
       // TODO(sompylasar): Make a meta that tells the frontend to use auto-min and max.
@@ -112,7 +116,7 @@ struct ExampleMeta {
   };
 
   // The `data_url` is relative to the `layout_url`.
-  std::string data_url = "/data";
+  std::string data_url = "/plot_data";
   std::string visualizer_name = "plot-visualizer";
   Options visualizer_options;
 
@@ -122,9 +126,37 @@ struct ExampleMeta {
   }
 };
 
-struct LayoutCell {
+struct PicMeta {
+  struct Options {
+    std::string header_text = "Header";
+    std::string empty_text = "Empty";
+    double time_interval = 10000;
+    template <typename A>
+    void save(A& ar) const {
+      ar(CEREAL_NVP(header_text), CEREAL_NVP(empty_text), CEREAL_NVP(time_interval));
+    }
+  };
+
+  // The `data_url` is relative to the `layout_url`.
+  std::string data_url = "/pic_data";
+  std::string visualizer_name = "image-visualizer";
+  Options visualizer_options;
+
+  template <typename A>
+  void save(A& ar) const {
+    ar(CEREAL_NVP(data_url), CEREAL_NVP(visualizer_name), CEREAL_NVP(visualizer_options));
+  }
+};
+
+namespace layout {
+
+// TODO(dkorolev): Think of making it impossible to create a row or rows or a col of cols.
+
+struct Cell {
   // The `meta_url` is relative to the `layout_url`.
-  std::string meta_url = "/meta";
+  std::string meta_url;
+
+  Cell(const std::string& meta_url = "") : meta_url(meta_url) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -132,10 +164,27 @@ struct LayoutCell {
   }
 };
 
-struct LayoutItem {
-  std::vector<LayoutItem> row;
-  std::vector<LayoutItem> col;
-  LayoutCell cell;
+struct Layout;
+
+struct Row {
+  std::vector<Layout> data;
+  Row(std::initializer_list<Layout> data) : data(data) {}
+};
+
+struct Col {
+  std::vector<Layout> data;
+  Col(std::initializer_list<Layout> data) : data(data) {}
+};
+
+struct Layout {
+  std::vector<Layout> row;
+  std::vector<Layout> col;
+  Cell cell;
+
+  Layout() {}
+  Layout(const Row& row) : row(row.data) {}
+  Layout(const Col& col) : col(col.data) {}
+  Layout(const Cell& cell) : cell(cell) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -149,46 +198,75 @@ struct LayoutItem {
   }
 };
 
+}  // namespace layout
+
+using layout::Layout;
+
 int main() {
-  auto time_series = sherlock::Stream<Point>("time_series");
-  std::thread delayed_publishing_thread([&time_series]() {
+  auto time_series = sherlock::Stream<DoublePoint>("time_series");
+  auto pic_series = sherlock::Stream<StringPoint>("pic_series");
+
+  std::thread points_populator([&time_series, &pic_series]() {
     while (true) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      double x = static_cast<double>(bricks::time::Now());
-      time_series.Publish(Point{x, 0.5 * (1.0 + sin(0.003 * x))});
+      const double x = static_cast<double>(bricks::time::Now());
+      time_series.Publish(DoublePoint{x, 0.5 * (1.0 + sin(0.003 * x))});
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+  });
+
+  std::thread pics_populator([&time_series, &pic_series]() {
+    int index = 0;
+    while (true) {
+      const double x = static_cast<double>(bricks::time::Now());
+      pic_series.Publish(
+          StringPoint{x, bricks::strings::Printf("http://lorempixel.com/400/200/nature/%d/", index + 1)});
+      index = (index + 1) % 10;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
   });
 
   const int port = FLAGS_port;
 
   HTTP(port).Register("/config", [](Request r) {
-    r.connection.SendHTTPResponse(ExampleConfig(),
-                                  "config",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+    r(ExampleConfig(),
+      "config",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
-  HTTP(port).Register("/layout/data", [&time_series](Request r) {
-    time_series.Subscribe(new ServeJSONOverHTTP<Point>(std::move(r))).Detach();
+  HTTP(port).Register("/layout/plot_data", [&time_series](Request r) {
+    time_series.Subscribe(new ServeJSONOverHTTP<DoublePoint>(std::move(r))).Detach();
   });
 
-  HTTP(port).Register("/layout/meta", [](Request r) {
-    r.connection.SendHTTPResponse(ExampleMeta(),
-                                  "meta",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+  HTTP(port).Register("/layout/pic_data", [&pic_series](Request r) {
+    pic_series.Subscribe(new ServeJSONOverHTTP<StringPoint>(std::move(r))).Detach();
   });
+
+  HTTP(port).Register("/layout/plot_meta", [](Request r) {
+    r(PlotMeta(),
+      "meta",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+  });
+
+  HTTP(port).Register("/layout/pic_meta", [](Request r) {
+    r(PicMeta(),
+      "meta",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+  });
+
   HTTP(port).Register("/layout", [](Request r) {
-    LayoutItem layout;
-    LayoutItem row;
-    layout.col.push_back(row);
-    r.connection.SendHTTPResponse(layout,
-                                  "layout",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+    using namespace layout;
+    r(Layout(Col({Row({Cell("/plot_meta"), Cell("/pic_meta")}),
+                  Row({Cell("/pic_meta"), Cell("/pic_meta"), Cell("/pic_meta")})})),
+      "layout",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
   const std::string dir = "Dashboard";  // Does not matter if it has a trailing slash or no here.
