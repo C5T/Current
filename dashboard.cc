@@ -252,10 +252,9 @@ int main() {
   });
 
   HTTP(port).Register("/layout", [](Request r) {
-    LayoutItem layout(
-        LayoutCol({LayoutRow({LayoutCell("/plot_meta"), LayoutCell("/pic_meta")}),
-                   LayoutRow({LayoutCell("/pic_meta"), LayoutCell("/pic_meta"), LayoutCell("/pic_meta")})}));
-    r(layout,
+    r(LayoutItem(
+          LayoutCol({LayoutRow({LayoutCell("/plot_meta"), LayoutCell("/pic_meta")}),
+                     LayoutRow({LayoutCell("/pic_meta"), LayoutCell("/pic_meta"), LayoutCell("/pic_meta")})})),
       "layout",
       HTTPResponseCode.OK,
       "application/json; charset=utf-8",
