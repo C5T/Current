@@ -29,25 +29,24 @@ SOFTWARE.
 
 namespace bricks {
 
-// Class `OptionallyOwned<T>` can be constructed from `T&` or from a `std::unique_ptr<T>&&`.
+// Class `OptionallyOwned<T>` can be constructed from `T&` or from an `std::unique_ptr<T>`.
 // It provides identical access to the underlying object, and can be move-constructed away,
 // into another `OptionallyOwned<T>` object, with a common usecase being sharing an object with another thread.
 //
-// If `OptionallyOwned<T>` has been constructed from an `std::unique_ptr<T>&&`, the instance of
-// `OptionallyOwned<T>`
+// If `OptionallyOwned<T>` has been constructed from a `unique_ptr<T>`, the instance of `OptionallyOwned<T>`
 // that this object has been passed to last owns the destruction of this particular instance of `T`.
 // This makes `OptionallyOwned<T>` an ideal case for an `std::thread` what needs to `.detach()` itself
 // from the caller thread, while keeping ownership of the object originally passed in.
 //
 // A `bool IsDetachable();` method is thus provided, which returns `true`
-// for `std::unique_ptr<T>&&`-constructed, and `false` for `T&`-constructed instances of `OptionallyOwned<T>`.
+// for `std::unique_ptr<T>`-constructed, and `false` for `T&`-constructed instances of `OptionallyOwned<T>`.
 
 template <typename T>
 class OptionallyOwned {
  public:
   explicit OptionallyOwned(T& ref) : instance_(ref), unique_ptr_(nullptr), valid_(true) {}
 
-  explicit OptionallyOwned(std::unique_ptr<T>&& ptr)
+  explicit OptionallyOwned(std::unique_ptr<T> ptr)
       : instance_(*ptr.get()), unique_ptr_(std::move(ptr)), valid_(true) {}
 
   OptionallyOwned(OptionallyOwned&& rhs)
@@ -104,9 +103,8 @@ class OptionallyOwned {
   T& instance_;
 
   // Ownership handle.
-  // Non-`nullptr` if the original `OptionallyOwned<T>` object
-  // has been constructed from an `std::unique_ptr<T>&&`.
-  // Null otherwise.
+  // Non-`nullptr` if the `owned` original object has been constructed from a `unique_ptr<T>`.
+  // Nullptr if the original object has been constructed from a `T&`.
   std::unique_ptr<T> unique_ptr_;
 
   // Extra safety check. TODO(dkorolev): Perhaps enable these checks in debug mode only?
