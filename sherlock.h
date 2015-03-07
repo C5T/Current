@@ -3,9 +3,12 @@
 
 #include <vector>
 #include <string>
+#include <mutex>
+#include <memory>
 #include <thread>
 
 #include "waitable_atomic/waitable_atomic.h"
+#include "optionally_owned/optionally_owned.h"
 
 // Sherlock is the overlord of data storage and processing in KnowSheet.
 // Its primary entity is the stream of data.
@@ -61,17 +64,9 @@
 //      when the listener is considered eligible to serve incoming data requests.
 //      TODO(dkorolev): Discuss the case if the listener falls behind again.
 //
-//   3) `bool TerminationRequest()`:
+//   3) `void TerminationRequest()`:
 //      This member function will be called if the listener has to be terminated externally,
 //      which happens when the handler returned by `Subscribe()` goes out of scope.
-//      Much like with `Entry()`, if `TerminationRequest()` returns `false`,
-//      no more methods of this listener object will be called and the listener thread will be terminated.
-//      If it returns `true`, the calling thread of the `Subscribe()` call that started this listening process
-//      will be blocked until this particular instance of the listener stops listening itself,
-//      by returning `false` from a consecutive call to `Entry()`.
-//      No further calls to `TerminationRequest()` will take place after the one and only call,
-//      signaling that the thread that subscribed this listener to the data from this stream,
-//      is taking the subscription handle out of scope and thus requests the termination of this listener.
 //
 // The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
 // an instance of a handle, the scope of which will define the lifetime of the listener.
@@ -82,21 +77,12 @@
 // that the ownership of the listener object has been transferred to the thread running the listener,
 // and detach this thread to run in the background.
 //
-// TODO(dkorolev): I should probably just remove the return value of `TerminationRequest()`,
-// and keep it a mere notification.
-//
-// ?? An alternate solution is for the listener object to return `false` from `TerminationRequest()`.
-// ?? This will block the thread that created the listener at the exit of the scope that kept
-// ?? the return value of `Subscribe()`. This is a good solution for running local "jobs", i.e. "process 1000
-// ?? entries".
-//
 // TODO(dkorolev): Data persistence and tests.
 // TODO(dkorolev): Add timestamps support and tests.
 // TODO(dkorolev): Ensure the timestamps always come in a non-decreasing order.
 
 namespace sherlock {
 
-// FTR: This is really an inefficient reference implementatoin -- D.K.
 template <typename T>
 class StreamInstanceImpl {
  public:
@@ -112,101 +98,134 @@ class StreamInstanceImpl {
   template <typename F>
   class ListenerScope {
    public:
-    struct Internals {
-      WaitableAtomic<std::vector<T>>& data;
-      F&& listener;
-      bool& flag;
-      Internals(WaitableAtomic<std::vector<T>>& data, F&& listener, bool& flag)
-          : data(data), listener(std::forward<F>(listener)), flag(flag) {}
-      Internals() = delete;
-      Internals(const Internals&) = delete;
-      void operator=(const Internals&) = delete;
-      Internals(Internals&&) = delete;
-      void operator=(Internals&&) = delete;
-    };
-    inline ListenerScope(WaitableAtomic<std::vector<T>>& data, F&& listener)
-        : data_(data),
-          listener_thread_(&ListenerScope::ListenerThread,
-                           new Internals(data, std::forward<F>(listener), external_terminate_flag_)) {}
+    inline explicit ListenerScope(WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
+        : impl_(new Impl(data, std::move(listener))) {}
 
-    inline ~ListenerScope() {
-      // Only do the extra termination work if the thread is not done and has not been joined or detached.
-      // No extra action is required in either of three cases outlined above.
-      if (listener_thread_.joinable()) {
-        external_terminate_flag_ = true;
-        data_.Notify();  // Buzz all active listeners. Ineffective, but does the right thing semantically.
-        listener_thread_.join();
-      }
-    }
+    // TODO(dkorolev): Think whether it's worth it to transfer the scope.
+    // ListenerScope(ListenerScope&&) = delete;
+    inline ListenerScope(ListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {}
 
-    inline void Join() {
-      if (listener_thread_.joinable()) {
-        listener_thread_.join();
-      }
-    }
-
-    inline void Detach() {
-      if (listener_thread_.joinable()) {
-        listener_thread_.detach();
-      }
-    }
+    inline void Join() { impl_->Join(); }
+    inline void Detach() { impl_->Detach(); }
 
    private:
-    inline static void ListenerThread(Internals* p_raw_internals) {
-      std::unique_ptr<Internals> now_owned_internals(p_raw_internals);
-      WaitableAtomic<std::vector<T>>& data = now_owned_internals->data;
-      F&& listener = std::forward<F>(now_owned_internals->listener);
-      bool& external_terminate_flag = now_owned_internals->flag;
-      size_t cursor = 0;
-      bool external_terminate_signal_sent = false;
-      while (true) {
-        bool internal_terminate_1 = false;
-        data.Wait([&cursor, &internal_terminate_1, &external_terminate_flag, &external_terminate_signal_sent](
-            const std::vector<T>& data) {
-          if (external_terminate_flag) {
-            if (!external_terminate_signal_sent) {
-              internal_terminate_1 = true;
-            }
+    struct ReallyAtomicFlag {
+      // TODO(dkorolev): I couldn't figure out shared_ptr + atomic + memory orders at 3am.
+      bool value_ = false;
+      mutable std::mutex mutex_;
+      bool Get() const {
+        std::unique_lock<std::mutex> lock(mutex_);
+        return value_;
+      }
+      void Set() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        value_ = true;
+      }
+    };
+
+    class Impl {
+     public:
+      inline Impl(WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
+          : listener_is_detachable_(listener.IsDetachable()),
+            data_(data),
+            terminate_flag_(new ReallyAtomicFlag()),
+            listener_thread_(
+                &Impl::StaticListenerThread, terminate_flag_, std::ref(data), std::move(listener)) {}
+
+      inline ~Impl() {
+        // Indicate to the listener thread that the listener handle is going out of scope.
+        if (listener_thread_.joinable()) {
+          // Buzz all active listeners. Ineffective, but does the right thing semantically, and passes the test.
+          terminate_flag_->Set();
+          data_.Notify();
+          // Wait for the thread to terminate.
+          // Note that this code will only be executed if neither `Join()` nor `Detach()` has been done before.
+          listener_thread_.join();
+        }
+      }
+
+      inline void Join() {
+        if (listener_thread_.joinable()) {
+          listener_thread_.join();
+        }
+      }
+
+      inline void Detach() {
+        if (listener_is_detachable_) {
+          if (listener_thread_.joinable()) {
+            listener_thread_.detach();
           }
-          return data.size() > cursor;
-        });
-        if (internal_terminate_1) {
-          external_terminate_signal_sent = true;
-          if (!listener.TerminationRequest()) {
+        } else {
+          // TODO(dkorolev): Custom exception type here.
+          throw std::logic_error("Can not detach a non-unique_ptr-created listener.");
+        }
+      }
+
+      inline static void StaticListenerThread(std::shared_ptr<ReallyAtomicFlag> terminate,
+                                              WaitableAtomic<std::vector<T>>& data,
+                                              OptionallyOwned<F> listener) {
+        size_t cursor = 0;
+        while (true) {
+          data.Wait([&cursor, &terminate](const std::vector<T>& data) {
+            return terminate->Get() || data.size() > cursor;
+          });
+          if (terminate->Get()) {
+            listener->Terminate();
+            break;
+          }
+          bool user_initiated_terminate = false;
+          data.ImmutableUse([&listener, &cursor, &user_initiated_terminate](const std::vector<T>& data) {
+            // TODO(dkorolev): RTTI dispatching here.
+            if (!listener->Entry(data[cursor])) {
+              user_initiated_terminate = true;
+            }
+            ++cursor;
+          });
+          if (user_initiated_terminate) {
             break;
           }
         }
-        // TODO(dkorolev): RTTI dispatching here.
-        bool internal_terminate_2 = false;
-        data.ImmutableUse([&listener, &cursor, &internal_terminate_2](const std::vector<T>& data) {
-          if (!listener.Entry(data[cursor])) {
-            internal_terminate_2 = true;
-          }
-          ++cursor;
-        });
-        if (internal_terminate_2) {
-          break;
-        }
       }
-    }
 
-    WaitableAtomic<std::vector<T>>& data_;
-    bool external_terminate_flag_ = false;
-    std::thread listener_thread_;
+      const bool listener_is_detachable_;     // Indicates whether `Detach()` is legal.
+      WaitableAtomic<std::vector<T>>& data_;  // Just to `.Notify()` when terminating.
+
+      // A termination flag that outlives both the `Impl` and its thread.
+      std::shared_ptr<ReallyAtomicFlag> terminate_flag_;
+
+      // The thread that runs the listener. It owns the actual `OptionallyOwned<F>` handler;
+      std::thread listener_thread_;
+
+      Impl() = delete;
+      Impl(const Impl&) = delete;
+      Impl(Impl&&) = delete;
+      void operator=(const Impl&) = delete;
+      void operator=(Impl&&) = delete;
+    };
+
+    std::unique_ptr<Impl> impl_;
 
     ListenerScope() = delete;
     ListenerScope(const ListenerScope&) = delete;
     void operator=(const ListenerScope&) = delete;
-    ListenerScope(ListenerScope&&) = delete;
     void operator=(ListenerScope&&) = delete;
   };
 
+  // There are two forms of `Subscribe()`: One takes a reference to the listener, and one takes a `unique_ptr`.
+  // They both go through `OptionallyOwned<F>`, with the one taking a `unique_ptr` being detachable,
+  // while the one taking a reference to the listener being scoped-only.
+  // I'd rather implement them as two separate methods to avoid any confusions. - D.K.
   template <typename F>
-  inline std::unique_ptr<ListenerScope<F>> Subscribe(F&& listener) {
-    return std::unique_ptr<ListenerScope<F>>(new ListenerScope<F>(data_, std::forward<F>(listener)));
+  inline ListenerScope<F> Subscribe(F& listener) {
+    return std::move(ListenerScope<F>(data_, OptionallyOwned<F>(listener)));
+  }
+  template <typename F>
+  inline ListenerScope<F> Subscribe(std::unique_ptr<F>&& listener) {
+    return std::move(ListenerScope<F>(data_, OptionallyOwned<F>(std::move(listener))));
   }
 
  private:
+  // FTR: This is really an inefficient reference implementation. TODO(dkorolev): Revisit it.
   WaitableAtomic<std::vector<T>> data_;
 
   StreamInstanceImpl() = delete;
@@ -222,8 +241,12 @@ struct StreamInstance {
   inline explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
   inline void Publish(const T& entry) { impl_->Publish(entry); }
   template <typename F>
-  inline std::unique_ptr<typename StreamInstanceImpl<T>::template ListenerScope<F>> Subscribe(F&& listener) {
-    return impl_->Subscribe(std::forward<F>(listener));
+  inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(F& listener) {
+    return std::move(impl_->Subscribe(listener));
+  }
+  template <typename F>
+  inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(std::unique_ptr<F> listener) {
+    return std::move(impl_->Subscribe(std::move(listener)));
   }
 };
 
@@ -237,4 +260,5 @@ inline StreamInstance<T> Stream(const std::string& name) {
 }
 
 }  // namespace sherlock
+
 #endif  // SHERLOCK_H

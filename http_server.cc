@@ -56,7 +56,7 @@ class ServeJSONOverHTTP {
     }
   }
 
-  inline bool TerminationRequest() { return true; }
+  inline void Terminate() { http_response_("TERMINATED!\n"); }
 
  private:
   Request http_request_scope_;  // Need to keep `Request` in scope, for the lifetime of the chunked response.
@@ -79,18 +79,8 @@ int main() {
     }
   });
   HTTP(FLAGS_port).Register("/time_series", [&time_series](Request r) {
-    // Spawn a new thread since we have to, for the sake of this demo. Yes, it's a hack -- D.K.
-    // TODO(dkorolev): This is to go away as soon as I resolve the handler ownership issue.
-    std::thread([&time_series](Request r) {
-      // TODO(dkorolev): Figure out how to best handle ownership of the parameter wrt destruction.
-      // For now it's a hack.
-      try {
-        ServeJSONOverHTTP<Point> server(std::move(r));
-        auto tmp = time_series.Subscribe(server);
-        tmp->Join();  // TODO(dkorolev): It's not going to be `.Join()` in prod here.
-      } catch (const bricks::net::NetworkException&) {
-      }
-    }, std::move(r)).detach();
+    time_series.Subscribe(std::unique_ptr<ServeJSONOverHTTP<Point> >(
+                              new ServeJSONOverHTTP<Point>(std::move(r)))).Detach();
   });
   HTTP(FLAGS_port).Join();
 }
