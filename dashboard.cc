@@ -206,11 +206,11 @@ int main() {
   const int port = FLAGS_port;
 
   HTTP(port).Register("/config", [](Request r) {
-    r.connection.SendHTTPResponse(ExampleConfig(),
-                                  "config",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+    r(ExampleConfig(),
+      "config",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
   HTTP(port).Register("/layout/plot_data", [&time_series](Request r) {
@@ -222,34 +222,31 @@ int main() {
   });
 
   HTTP(port).Register("/layout/plot_meta", [](Request r) {
-    r.connection.SendHTTPResponse(PlotMeta(),
-                                  "meta",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+    r(PlotMeta(),
+      "meta",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
   HTTP(port).Register("/layout/pic_meta", [](Request r) {
-    r.connection.SendHTTPResponse(PicMeta(),
-                                  "meta",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+    r(PicMeta(),
+      "meta",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
   HTTP(port).Register("/layout", [](Request r) {
     LayoutItem layout;
-    layout.row.resize(2);
-    layout.row[0].col.emplace_back(LayoutCell("/plot_meta"));
-    layout.row[0].col.emplace_back(LayoutCell("/pic_meta"));
-    layout.row[1].col.emplace_back(LayoutCell("/pic_meta"));
-    layout.row[1].col.emplace_back(LayoutCell("/pic_meta"));
-    layout.row[1].col.emplace_back(LayoutCell("/pic_meta"));
-    r.connection.SendHTTPResponse(layout,
-                                  "layout",
-                                  HTTPResponseCode.OK,
-                                  "application/json; charset=utf-8",
-                                  HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+    layout.col.resize(2);
+    layout.col[0].row = {LayoutCell("/plot_meta"), LayoutCell("/pic_meta")};
+    layout.col[1].row = {LayoutCell("/pic_meta"), LayoutCell("/pic_meta"), LayoutCell("/pic_meta")};
+    r(layout,
+      "layout",
+      HTTPResponseCode.OK,
+      "application/json; charset=utf-8",
+      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
   });
 
   const std::string dir = "Dashboard";  // Does not matter if it has a trailing slash or no here.
