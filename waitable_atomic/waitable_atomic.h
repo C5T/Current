@@ -32,14 +32,14 @@ SOFTWARE.
 // 3) WaitableAtomic will wait for all the clients to gracefully terminate (go out of scope)
 //    before destructing the data object contained within this WaitableAtomic.
 
-#ifndef SHERLOCK_WAITABLE_ATOMIC_H
-#define SHERLOCK_WAITABLE_ATOMIC_H
+#ifndef BRICKS_WAITABLE_ATOMIC_H
+#define BRICKS_WAITABLE_ATOMIC_H
 
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 
-namespace sherlock {
+namespace bricks {
 
 class CustomWaitableAtomicDestructor {
  public:
@@ -319,6 +319,6 @@ class WaitableAtomicImpl {
 template <typename DATA, bool INTRUSIVE = false>
 using WaitableAtomic = typename WaitableAtomicImpl<DATA, INTRUSIVE>::type;
 
-}  // namespace sherlock
+}  // namespace bricks
 
-#endif  // SHERLOCK_WAITABLE_ATOMIC_H
+#endif  // BRICKS_WAITABLE_ATOMIC_H
