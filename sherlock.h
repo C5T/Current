@@ -248,6 +248,10 @@ struct StreamInstance {
   inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(std::unique_ptr<F> listener) {
     return std::move(impl_->Subscribe(std::move(listener)));
   }
+  template <typename F>
+  inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(F* listener) {
+    return std::move(Subscribe(std::unique_ptr<F>(listener)));
+  }
 };
 
 template <typename T>
