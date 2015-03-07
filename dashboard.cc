@@ -148,11 +148,15 @@ struct PicMeta {
   }
 };
 
-struct LayoutCell {
+namespace layout {
+
+// TODO(dkorolev): Think of making it impossible to create a row or rows or a col of cols.
+
+struct Cell {
   // The `meta_url` is relative to the `layout_url`.
   std::string meta_url;
 
-  LayoutCell(const std::string& meta_url = "") : meta_url(meta_url) {}
+  Cell(const std::string& meta_url = "") : meta_url(meta_url) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -160,27 +164,27 @@ struct LayoutCell {
   }
 };
 
-struct LayoutItem;
+struct Layout;
 
-struct LayoutRow {
-  std::vector<LayoutItem> data;
-  LayoutRow(std::initializer_list<LayoutItem> data) : data(data) {}
+struct Row {
+  std::vector<Layout> data;
+  Row(std::initializer_list<Layout> data) : data(data) {}
 };
 
-struct LayoutCol {
-  std::vector<LayoutItem> data;
-  LayoutCol(std::initializer_list<LayoutItem> data) : data(data) {}
+struct Col {
+  std::vector<Layout> data;
+  Col(std::initializer_list<Layout> data) : data(data) {}
 };
 
-struct LayoutItem {
-  std::vector<LayoutItem> row;
-  std::vector<LayoutItem> col;
-  LayoutCell cell;
+struct Layout {
+  std::vector<Layout> row;
+  std::vector<Layout> col;
+  Cell cell;
 
-  LayoutItem() {}
-  LayoutItem(const LayoutRow& row) : row(row.data) {}
-  LayoutItem(const LayoutCol& col) : col(col.data) {}
-  LayoutItem(const LayoutCell& cell) : cell(cell) {}
+  Layout() {}
+  Layout(const Row& row) : row(row.data) {}
+  Layout(const Col& col) : col(col.data) {}
+  Layout(const Cell& cell) : cell(cell) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -193,6 +197,10 @@ struct LayoutItem {
     }
   }
 };
+
+}  // namespace layout
+
+using layout::Layout;
 
 int main() {
   auto time_series = sherlock::Stream<DoublePoint>("time_series");
@@ -252,9 +260,9 @@ int main() {
   });
 
   HTTP(port).Register("/layout", [](Request r) {
-    r(LayoutItem(
-          LayoutCol({LayoutRow({LayoutCell("/plot_meta"), LayoutCell("/pic_meta")}),
-                     LayoutRow({LayoutCell("/pic_meta"), LayoutCell("/pic_meta"), LayoutCell("/pic_meta")})})),
+    using namespace layout;
+    r(Layout(Col({Row({Cell("/plot_meta"), Cell("/pic_meta")}),
+                  Row({Cell("/pic_meta"), Cell("/pic_meta"), Cell("/pic_meta")})})),
       "layout",
       HTTPResponseCode.OK,
       "application/json; charset=utf-8",
