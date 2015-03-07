@@ -160,12 +160,26 @@ struct LayoutCell {
   }
 };
 
+struct LayoutItem;
+
+struct LayoutRow {
+  std::vector<LayoutItem> data;
+  LayoutRow(std::initializer_list<LayoutItem> data) : data(data) {}
+};
+
+struct LayoutCol {
+  std::vector<LayoutItem> data;
+  LayoutCol(std::initializer_list<LayoutItem> data) : data(data) {}
+};
+
 struct LayoutItem {
   std::vector<LayoutItem> row;
   std::vector<LayoutItem> col;
   LayoutCell cell;
 
   LayoutItem() {}
+  LayoutItem(const LayoutRow& row) : row(row.data) {}
+  LayoutItem(const LayoutCol& col) : col(col.data) {}
   LayoutItem(const LayoutCell& cell) : cell(cell) {}
 
   template <typename A>
@@ -238,10 +252,9 @@ int main() {
   });
 
   HTTP(port).Register("/layout", [](Request r) {
-    LayoutItem layout;
-    layout.col.resize(2);
-    layout.col[0].row = {LayoutCell("/plot_meta"), LayoutCell("/pic_meta")};
-    layout.col[1].row = {LayoutCell("/pic_meta"), LayoutCell("/pic_meta"), LayoutCell("/pic_meta")};
+    LayoutItem layout(
+        LayoutCol({LayoutRow({LayoutCell("/plot_meta"), LayoutCell("/pic_meta")}),
+                   LayoutRow({LayoutCell("/pic_meta"), LayoutCell("/pic_meta"), LayoutCell("/pic_meta")})}));
     r(layout,
       "layout",
       HTTPResponseCode.OK,
