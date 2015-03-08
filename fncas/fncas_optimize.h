@@ -40,20 +40,23 @@ struct OptimizationResult {
 };
 
 class OptimizerParameters {
-public:
-  template<typename T> void SetValue(std::string name, T value);
-  template<typename T> const T GetValue(std::string name, T default_value);
-private:
+ public:
+  template <typename T>
+  void SetValue(std::string name, T value);
+  template <typename T>
+  const T GetValue(std::string name, T default_value);
+
+ private:
   std::map<std::string, double> params_;
 };
 
-template<typename T> 
-void OptimizerParameters::SetValue(std::string name, T value) { 
+template <typename T>
+void OptimizerParameters::SetValue(std::string name, T value) {
   static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
-  params_[name] = value; 
+  params_[name] = value;
 }
 
-template<typename T> 
+template <typename T>
 const T OptimizerParameters::GetValue(std::string name, T default_value) {
   static_assert(std::is_arithmetic<T>::value, "Value must be numeric");
   if (params_.count(name)) {
@@ -66,60 +69,70 @@ const T OptimizerParameters::GetValue(std::string name, T default_value) {
 // TODO(mzhurovich+dkorolev): Make different implementation to use functors.
 template <class F>
 class GradientDescentOptimizer : noncopyable {
-public:
-  GradientDescentOptimizer() { }
+ public:
+  GradientDescentOptimizer() {}
   GradientDescentOptimizer(OptimizerParameters &params) {
     max_steps_ = params.GetValue("max_steps", max_steps_);
+    step_factor_ = params.GetValue("step_factor", step_factor_);
   }
-  OptimizationResult Optimize(const std::vector<double>& starting_point);
-private:
-  size_t max_steps_ = 5000;
+  OptimizationResult Optimize(const std::vector<double> &starting_point);
+
+ private:
+  size_t max_steps_ = 5000;   // Maximum number of optimization steps.
+  double step_factor_ = 1.0;  // Gradient is multiplied by this factor.
 };
 
+// Simple gradient descent optimizer using backtracking algorithm.
 template <class F>
 class GradientDescentOptimizerBT : noncopyable {
-public:
-  GradientDescentOptimizerBT() { }
+ public:
+  GradientDescentOptimizerBT() {}
   GradientDescentOptimizerBT(OptimizerParameters &params) {
+    min_steps_ = params.GetValue("min_steps", min_steps_);
     max_steps_ = params.GetValue("max_steps", max_steps_);
     bt_alpha_ = params.GetValue("bt_alpha", bt_alpha_);
     bt_beta_ = params.GetValue("bt_beta", bt_beta_);
     bt_max_steps_ = params.GetValue("bt_max_steps", bt_max_steps_);
     grad_eps_ = params.GetValue("grad_eps", grad_eps_);
   }
-  OptimizationResult Optimize(const std::vector<double>& starting_point);
-private:
-  size_t max_steps_ = 5000;
-  double bt_alpha_ = 0.5;
-  double bt_beta_ = 0.8;
-  size_t bt_max_steps_ = 100;
-  double grad_eps_ = 1e-8;
+  OptimizationResult Optimize(const std::vector<double> &starting_point);
+
+ private:
+  size_t min_steps_ = 3;       // Minimum number of optimization steps (ignoring early stopping).
+  size_t max_steps_ = 5000;    // Maximum number of optimization steps.
+  double bt_alpha_ = 0.5;      // Alpha parameter for backtracking algorithm.
+  double bt_beta_ = 0.8;       // Beta parameter for backtracking algorithm.
+  size_t bt_max_steps_ = 100;  // Maximum number of backtracking steps.
+  double grad_eps_ = 1e-8;     // Magnitude of gradient for early stopping.
+};
+
+// Optimizer that uses a combination of conjugate gradient method and
+// backtracking line search.
+template <class F>
+class ConjugateGradientOptimizer : noncopyable {
+ public:
+  ConjugateGradientOptimizer() {}
+  ConjugateGradientOptimizer(OptimizerParameters &params) {
+    min_steps_ = params.GetValue("min_steps", min_steps_);
+    max_steps_ = params.GetValue("max_steps", max_steps_);
+    bt_alpha_ = params.GetValue("bt_alpha", bt_alpha_);
+    bt_beta_ = params.GetValue("bt_beta", bt_beta_);
+    bt_max_steps_ = params.GetValue("bt_max_steps", bt_max_steps_);
+    grad_eps_ = params.GetValue("grad_eps", grad_eps_);
+  }
+  OptimizationResult Optimize(const std::vector<double> &starting_point);
+
+ private:
+  size_t min_steps_ = 3;       // Minimum number of optimization steps (ignoring early stopping).
+  size_t max_steps_ = 5000;    // Maximum number of optimization steps.
+  double bt_alpha_ = 0.5;      // Alpha parameter for backtracking algorithm.
+  double bt_beta_ = 0.8;       // Beta parameter for backtracking algorithm.
+  size_t bt_max_steps_ = 100;  // Maximum number of backtracking steps.
+  double grad_eps_ = 1e-8;     // Magnitude of gradient for early stopping.
 };
 
 template <class F>
-class ConjugateGradientOptimizer : noncopyable {
-public:
-  ConjugateGradientOptimizer() { }
-  ConjugateGradientOptimizer(OptimizerParameters &params) {
-    max_steps_ = params.GetValue("max_steps", max_steps_);
-    bt_alpha_ = params.GetValue("bt_alpha", bt_alpha_);
-    bt_beta_ = params.GetValue("bt_beta", bt_beta_);
-    bt_max_steps_ = params.GetValue("bt_max_steps", bt_max_steps_);
-    grad_eps_ = params.GetValue("grad_eps", grad_eps_);
-  }
-  OptimizationResult Optimize(const std::vector<double>& starting_point);
-private:
-  size_t max_steps_ = 5000;
-  double bt_alpha_ = 0.5;
-  double bt_beta_ = 0.8;
-  size_t bt_max_steps_ = 100;
-  double grad_eps_ = 1e-8;
-
-  double PolakRibiere(const std::vector<double> &g, const std::vector<double> &g_prev);
-};
-
-template<class F> 
-OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<double>& starting_point) {
+OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<double> &starting_point) {
   fncas::reset_internals_singleton();
   const size_t dim = starting_point.size();
   const fncas::x gradient_helper(dim);
@@ -129,7 +142,8 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
     const auto g = gi(current_point);
-    const auto try_step = [&dim, &current_point, &fi, &g](double step) -> std::pair<double, std::vector<double>> {
+    const auto try_step = [&dim, &current_point, &fi, &g ](double step)
+        -> std::pair<double, std::vector<double>> {
       std::vector<double> candidate(dim);
       for (size_t i = 0; i < dim; ++i) {
         candidate[i] = current_point[i] - g.gradient[i] * step;
@@ -137,15 +151,15 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
       const double value = fi(candidate);
       return std::make_pair(value, candidate);
     };
-    current_point = std::min(try_step(0.01), std::min(try_step(0.05), try_step(0.2))).second;
+    current_point = std::min(try_step(0.01 * step_factor_),
+                             std::min(try_step(0.05 * step_factor_), try_step(0.2 * step_factor_))).second;
   }
 
   return OptimizationResult{fi(current_point), current_point};
 }
 
-
-template<class F> 
-OptimizationResult GradientDescentOptimizerBT<F>::Optimize(const std::vector<double>& starting_point) {
+template <class F>
+OptimizationResult GradientDescentOptimizerBT<F>::Optimize(const std::vector<double> &starting_point) {
   fncas::reset_internals_singleton();
   const size_t dim = starting_point.size();
   const fncas::x gradient_helper(dim);
@@ -154,56 +168,23 @@ OptimizationResult GradientDescentOptimizerBT<F>::Optimize(const std::vector<dou
   std::vector<double> current_point(starting_point);
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
-    const auto current_f_gradf = gi(current_point);
-    const double current_f_value = current_f_gradf.value;
-    double squared_gradient = 0.0;
-    std::vector<double> test_point(dim);
-
-    for (size_t i = 0; i < dim; ++i) {
-      test_point[i] = current_point[i] - current_f_gradf.gradient[i];
-      squared_gradient += current_f_gradf.gradient[i] * current_f_gradf.gradient[i];
-    }
-
-    double t = 1.0;
-    double test_f_value = fi(test_point);
-    
-    // Naive backtracking with strict limit on the number of steps.
-    size_t bt_iteration = 0;
-    while (test_f_value > (current_f_value - bt_alpha_ * t * squared_gradient)) {
-      t *= bt_beta_;
-      for (size_t i = 0; i < dim; ++i) {
-        test_point[i] = current_point[i] - t * current_f_gradf.gradient[i];
-      }
-      test_f_value = fi(test_point);
-      if (bt_iteration++ == bt_max_steps_) {
-        break;
-      }
-    }
-    current_point = test_point;
+    auto direction = gi(current_point).gradient;
+    fncas::FlipSign(direction);  // Direction = negative gradient.
+    auto new_point = BackTracking(fi, gi, current_point, direction, bt_alpha_, bt_beta_, bt_max_steps_);
+    current_point = new_point;
 
     // Simple early stopping by the norm of gradient.
-    if (std::sqrt(squared_gradient) < grad_eps_) {
+    if (std::sqrt(fncas::L2Norm(direction)) < grad_eps_ && iteration >= min_steps_) {
       break;
     }
   }
 
- return OptimizationResult{fi(current_point), current_point};
+  return OptimizationResult{fi(current_point), current_point};
 }
 
-template<class F>
-double ConjugateGradientOptimizer<F>::PolakRibiere(const std::vector<double> &g,
-                                                   const std::vector<double> &g_prev) {
-  double beta = (fncas::L2Norm(g) - fncas::DotProduct(g, g_prev)) / fncas::L2Norm(g_prev);
-  if (!std::isinf(beta) && !std::isnan(beta)) {
-    return std::max(0.0, beta);
-  } else {
-    return 0.0;
-  }
-}
-
-// TODO(mazhurovich): Implement more sophisticated version.
-template<class F> 
-OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<double>& starting_point) {
+// TODO(mzhurovich): Implement more sophisticated version.
+template <class F>
+OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<double> &starting_point) {
   fncas::reset_internals_singleton();
   const size_t dim = starting_point.size();
   const fncas::x gradient_helper(dim);
@@ -212,55 +193,33 @@ OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<dou
   std::vector<double> current_point(starting_point);
 
   const auto initial_f_gradf = gi(current_point);
-  double current_f_value = initial_f_gradf.value;
   std::vector<double> current_grad = initial_f_gradf.gradient;
   std::vector<double> s(current_grad);
-  FlipSign(s);
+  fncas::FlipSign(s);  // Initial direction = negative gradient.
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
-    double squared_gradient = 0.0;
-    std::vector<double> test_point(dim);
+    // Backtracking line search.
+    auto new_point = fncas::BackTracking(fi, gi, current_point, s, bt_alpha_, bt_beta_, bt_max_steps_);
+    const auto new_f_gradf = gi(new_point);
 
+    // Calculating direction for the next step.
+    const double omega = std::max(fncas::PolakRibiere(new_f_gradf.gradient, current_grad), 0.0);
     for (size_t i = 0; i < dim; ++i) {
-      test_point[i] = current_point[i] + s[i];
-      squared_gradient += current_grad[i] * current_grad[i];
+      s[i] = omega * s[i] - new_f_gradf.gradient[i];
     }
 
-    double t = 1.0;
-    double test_f_value = fi(test_point);
-    
-    // Naive backtracking with strict limit on the number of steps.
-    size_t bt_iteration = 0;
-    while (test_f_value > (current_f_value - bt_alpha_ * t * squared_gradient)) {
-      t *= bt_beta_;
-      for (size_t i = 0; i < dim; ++i) {
-        test_point[i] = current_point[i] + t * s[i];
-      }
-      test_f_value = fi(test_point);
-      if (bt_iteration++ == bt_max_steps_) {
-        break;
-      }
-    }
-
-    const auto new_f_gradf = gi(test_point);
-    const std::vector<double> new_grad = new_f_gradf.gradient;
-    const double omega = PolakRibiere(new_grad, current_grad);
-    for (size_t i = 0; i < dim; ++i) {
-      s[i] = omega * s[i] - new_grad[i];
-    }
-    current_point = test_point;
-    current_grad = new_grad;
-    current_f_value = new_f_gradf.value;
+    current_grad = new_f_gradf.gradient;
+    current_point = new_point;
 
     // Simple early stopping by the norm of gradient.
-    if (std::sqrt(L2Norm(s)) < grad_eps_) {
+    if (std::sqrt(L2Norm(s)) < grad_eps_ && iteration >= min_steps_) {
       break;
     }
   }
 
- return OptimizationResult{fi(current_point), current_point};
+  return OptimizationResult{fi(current_point), current_point};
 }
 
 }  // namespace fncas
 
-#endif
+#endif  // #ifndef FNCAS_OPTIMIZE_H

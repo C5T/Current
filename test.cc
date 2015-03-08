@@ -103,7 +103,7 @@ struct MemberFunctionToOptimize {
 };
 
 struct PolynomialFunctionToOptimize {
- template <typename T>
+  template <typename T>
   static typename fncas::output<T>::type compute(const T& x) {
     // An obviously convex function with a single minimum `f(0, 0) == 0`.
     const double a = 10.0;
@@ -113,8 +113,9 @@ struct PolynomialFunctionToOptimize {
 };
 
 struct RosenbrockFunctionToOptimize {
- template <typename T>
+  template <typename T>
   static typename fncas::output<T>::type compute(const T& x) {
+    // http://en.wikipedia.org/wiki/Rosenbrock_function
     // Non-convex function with global minimum `f(a, a^2) == 0`.
     const double a = 1.0;
     const double b = 100.0;
@@ -127,6 +128,7 @@ struct RosenbrockFunctionToOptimize {
 struct HimmelblauFunctionToOptimize {
   template <typename T>
   static typename fncas::output<T>::type compute(const T& x) {
+    // http://en.wikipedia.org/wiki/Himmelblau%27s_function
     // Non-convex function with four local minima:
     // f(3.0, 2.0) = 0.0
     // f(-2.805118, 3.131312) = 0.0
@@ -139,8 +141,8 @@ struct HimmelblauFunctionToOptimize {
 };
 
 TEST(FNCAS, OptimizationOfAStaticFunction) {
- const auto result = 
-    fncas::GradientDescentOptimizer<StaticFunctionToOptimize>().Optimize(std::vector<double>({0, 0}));
+  const auto result =
+      fncas::GradientDescentOptimizer<StaticFunctionToOptimize>().Optimize(std::vector<double>({0, 0}));
   EXPECT_NEAR(1.0, result.value, 1e-3);
   ASSERT_EQ(2u, result.point.size());
   EXPECT_NEAR(3.0, result.point[0], 1e-3);
@@ -163,8 +165,8 @@ TEST(FNCAS, OptimizationOfAMemberFunction) {
 */
 
 TEST(FNCAS, OptimizationOfAPolynomialMemberFunction) {
-  const auto result = 
-    fncas::GradientDescentOptimizer<PolynomialFunctionToOptimize>().Optimize(std::vector<double>({5.0, 20.0}));
+  const auto result = fncas::GradientDescentOptimizer<PolynomialFunctionToOptimize>().Optimize(
+      std::vector<double>({5.0, 20.0}));
   EXPECT_NEAR(0.0, result.value, 1e-3);
   ASSERT_EQ(2u, result.point.size());
   EXPECT_NEAR(0.0, result.point[0], 1e-3);
@@ -172,8 +174,8 @@ TEST(FNCAS, OptimizationOfAPolynomialMemberFunction) {
 }
 
 TEST(FNCAS, OptimizationOfAPolynomialUsingBacktrackingGD) {
-  const auto result = 
-    fncas::GradientDescentOptimizerBT<PolynomialFunctionToOptimize>().Optimize(std::vector<double>({5.0, 20.0}));
+  const auto result = fncas::GradientDescentOptimizerBT<PolynomialFunctionToOptimize>().Optimize(
+      std::vector<double>({5.0, 20.0}));
   EXPECT_NEAR(0.0, result.value, 1e-3);
   ASSERT_EQ(2u, result.point.size());
   EXPECT_NEAR(0.0, result.point[0], 1e-3);
@@ -181,8 +183,8 @@ TEST(FNCAS, OptimizationOfAPolynomialUsingBacktrackingGD) {
 }
 
 TEST(FNCAS, OptimizationOfAPolynomialUsingConjugateGradient) {
-  const auto result = 
-    fncas::ConjugateGradientOptimizer<PolynomialFunctionToOptimize>().Optimize(std::vector<double>({5.0, 20.0}));
+  const auto result = fncas::ConjugateGradientOptimizer<PolynomialFunctionToOptimize>().Optimize(
+      std::vector<double>({5.0, 20.0}));
   EXPECT_NEAR(0.0, result.value, 1e-6);
   ASSERT_EQ(2u, result.point.size());
   EXPECT_NEAR(0.0, result.point[0], 1e-6);
@@ -190,8 +192,8 @@ TEST(FNCAS, OptimizationOfAPolynomialUsingConjugateGradient) {
 }
 
 TEST(FNCAS, OptimizationOfRosenbrockUsingConjugateGradient) {
-  const auto result = 
-    fncas::ConjugateGradientOptimizer<RosenbrockFunctionToOptimize>().Optimize(std::vector<double>({-3.0, -4.0}));
+  const auto result = fncas::ConjugateGradientOptimizer<RosenbrockFunctionToOptimize>().Optimize(
+      std::vector<double>({-3.0, -4.0}));
   EXPECT_NEAR(0.0, result.value, 1e-6);
   ASSERT_EQ(2u, result.point.size());
   EXPECT_NEAR(1.0, result.point[0], 1e-6);
@@ -225,40 +227,47 @@ TEST(FNCAS, OptimizationOfHimmelbaluUsingCojugateGradient) {
   EXPECT_NEAR(-1.848126, min4.point[1], 1e-6);
 }
 
+// Check that gradient descent optimizer with backtracking performs better than
+// naive optimizer on Rosenbrock function, when maximum step count = 1000.
 TEST(FNCAS, NaiveGDvsBacktrackingGDOnRosenbrockFunction1000Steps) {
   fncas::OptimizerParameters params;
   params.SetValue("max_steps", 1000);
-  const auto result_naive = 
-    fncas::GradientDescentOptimizer<RosenbrockFunctionToOptimize>(params).Optimize(std::vector<double>({-3.0, -4.0}));
-  const auto result_bt = 
-    fncas::GradientDescentOptimizerBT<RosenbrockFunctionToOptimize>(params).Optimize(std::vector<double>({-3.0, -4.0}));
+  params.SetValue("step_factor", 0.001);  // Used only by naive optimizer. Prevents it from moving to infinity.
+  const auto result_naive = fncas::GradientDescentOptimizer<RosenbrockFunctionToOptimize>(params)
+                                .Optimize(std::vector<double>({-3.0, -4.0}));
+  const auto result_bt = fncas::GradientDescentOptimizerBT<RosenbrockFunctionToOptimize>(params)
+                             .Optimize(std::vector<double>({-3.0, -4.0}));
   const double x0_err_n = std::abs(result_naive.point[0] - 1.0);
   const double x0_err_bt = std::abs(result_bt.point[0] - 1.0);
   const double x1_err_n = std::abs(result_naive.point[1] - 1.0);
   const double x1_err_bt = std::abs(result_bt.point[1] - 1.0);
-  EXPECT_TRUE(!std::isnan(x0_err_bt) && !std::isinf(x0_err_bt));
-  EXPECT_TRUE(!std::isnan(x1_err_bt) && !std::isinf(x1_err_bt));
-  EXPECT_TRUE(std::isnan(x0_err_n) || std::isinf(x0_err_n) || x0_err_bt < x0_err_n);
-  EXPECT_TRUE(std::isnan(x1_err_n) || std::isinf(x1_err_n) || x1_err_bt < x1_err_n);
+  EXPECT_TRUE(fncas::IsNormal(x0_err_n));
+  EXPECT_TRUE(fncas::IsNormal(x1_err_n));
+  EXPECT_TRUE(fncas::IsNormal(x0_err_bt));
+  EXPECT_TRUE(fncas::IsNormal(x1_err_bt));
+  EXPECT_TRUE(x0_err_bt < x0_err_n);
+  EXPECT_TRUE(x1_err_bt < x1_err_n);
   EXPECT_NEAR(1.0, result_bt.point[0], 1e-6);
   EXPECT_NEAR(1.0, result_bt.point[1], 1e-6);
 }
 
+// Check that conjugate gradient optimizer performs better than gradient descent
+// optimizer with backtracking on Rosenbrock function, when maximum step count = 100.
 TEST(FNCAS, ConjugateGDvsBacktrackingGDOnRosenbrockFunction100Steps) {
   fncas::OptimizerParameters params;
   params.SetValue("max_steps", 100);
-  const auto result_cg = 
-    fncas::ConjugateGradientOptimizer<RosenbrockFunctionToOptimize>(params).Optimize(std::vector<double>({-3.0, -4.0}));
-  const auto result_bt = 
-    fncas::GradientDescentOptimizerBT<RosenbrockFunctionToOptimize>(params).Optimize(std::vector<double>({-3.0, -4.0}));
+  const auto result_cg = fncas::ConjugateGradientOptimizer<RosenbrockFunctionToOptimize>(params)
+                             .Optimize(std::vector<double>({-3.0, -4.0}));
+  const auto result_bt = fncas::GradientDescentOptimizerBT<RosenbrockFunctionToOptimize>(params)
+                             .Optimize(std::vector<double>({-3.0, -4.0}));
   const double x0_err_cg = std::abs(result_cg.point[0] - 1.0);
   const double x0_err_bt = std::abs(result_bt.point[0] - 1.0);
   const double x1_err_cg = std::abs(result_cg.point[1] - 1.0);
   const double x1_err_bt = std::abs(result_bt.point[1] - 1.0);
-  EXPECT_TRUE(!std::isnan(x0_err_cg) && !std::isinf(x0_err_cg));
-  EXPECT_TRUE(!std::isnan(x1_err_cg) && !std::isinf(x1_err_cg));
-  EXPECT_TRUE(!std::isnan(x0_err_bt) && !std::isinf(x0_err_bt));
-  EXPECT_TRUE(!std::isnan(x1_err_bt) && !std::isinf(x1_err_bt));
+  EXPECT_TRUE(fncas::IsNormal(x0_err_cg));
+  EXPECT_TRUE(fncas::IsNormal(x1_err_cg));
+  EXPECT_TRUE(fncas::IsNormal(x0_err_bt));
+  EXPECT_TRUE(fncas::IsNormal(x1_err_bt));
   EXPECT_TRUE(x0_err_cg < x0_err_bt);
   EXPECT_TRUE(x1_err_cg < x1_err_bt);
   EXPECT_NEAR(1.0, result_cg.point[0], 1e-6);
