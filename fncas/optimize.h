@@ -145,9 +145,9 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
     const auto g = gi(current_point);
-    const auto try_step = [&dim, &current_point, &fi, &g ](double step) {
+    const auto try_step = [&dim, &current_point, &fi, &g](double step) {
       const auto candidate_point(SumVectors(current_point, g.gradient, -step));
-      return std::pair<double, std::vector<double>>(fi(candidate_point), candidate_point);
+      return std::make_pair(fi(candidate_point), candidate_point);
     };
     current_point = std::min(try_step(0.01 * step_factor_),
                              std::min(try_step(0.05 * step_factor_), try_step(0.2 * step_factor_))).second;
