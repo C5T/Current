@@ -26,6 +26,7 @@
 #ifndef FNCAS_MATHUTIL_H
 #define FNCAS_MATHUTIL_H
 
+#include <cassert>
 #include <vector>
 #include <numeric>
 
