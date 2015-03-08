@@ -1,4 +1,27 @@
-// https://github.com/dkorolev/fncas
+/*******************************************************************************
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * *******************************************************************************/
 
 // FNCAS on-the-fly compilation logic.
 // FNCAS_JIT must be defined to enable, supported values are 'NASM' and 'CLANG'.
@@ -6,19 +29,29 @@
 #ifndef FNCAS_JIT_H
 #define FNCAS_JIT_H
 
+// Do include this header in the `make test` target for checking there are no leaked symbols.
+#ifdef BRICKS_CHECK_HEADERS_MODE
+#ifndef FNCAS_JIT
+#define FNCAS_JIT CLANG
+#endif
+#endif
+
 #ifdef FNCAS_JIT
 
 #include <sstream>
 #include <stack>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include <dlfcn.h>
 
-#include <boost/format.hpp>
-
+#include "../../Bricks/strings/printf.h"
+#include "../../Bricks/file/file.h"
 #include "fncas_base.h"
 #include "fncas_node.h"
+
+using namespace bricks;
 
 namespace fncas {
 
@@ -57,7 +90,7 @@ struct compiled_expression : noncopyable {
   double operator()(const double* x) const {
     std::vector<double>& tmp = internals_singleton().ram_for_compiled_evaluations_;
     node_index_type dim = static_cast<node_index_type>(dim_());
-    if (tmp.size() < dim) {
+    if (tmp.size() < static_cast<size_t>(dim)) {
       tmp.resize(dim);
     }
     return eval_(x, &tmp[0]);
@@ -75,7 +108,7 @@ struct compiled_expression : noncopyable {
 };
 
 // generate_c_code_for_node() writes C code to evaluate the expression to the file.
-void generate_c_code_for_node(node_index_type index, FILE* f) {
+inline void generate_c_code_for_node(node_index_type index, FILE* f) {
   fprintf(f, "#include <math.h>\n");
   fprintf(f, "double eval(const double* x, double* a) {\n");
   node_index_type max_dim = index;
@@ -132,13 +165,14 @@ void generate_c_code_for_node(node_index_type index, FILE* f) {
 }
 
 // generate_asm_code_for_node() writes NASM code to evaluate the expression to the file.
-const char* const operation_as_nasm_instruction(operation_t operation) {
+inline const char* operation_as_nasm_instruction(operation_t operation) {
   static const char* representation[static_cast<size_t>(operation_t::end)] = {
       "addpd", "subpd", "mulpd", "divpd",
   };
   return operation < operation_t::end ? representation[static_cast<size_t>(operation)] : "?";
 }
-void generate_asm_code_for_node(node_index_type index, FILE* f) {
+
+inline void generate_asm_code_for_node(node_index_type index, FILE* f) {
   fprintf(f, "[bits 64]\n");
   fprintf(f, "\n");
   fprintf(f, "global eval, dim\n");
@@ -235,11 +269,11 @@ struct compile_impl {
       generate_asm_code_for_node(index, f);
       fclose(f);
 
-      const char* compile_cmdline = "nasm -f elf64 %1%.asm -o %1%.o";
-      const char* link_cmdline = "ld -lm -shared -o %1%.so %1%.o";
+      const char* compile_cmdline = "nasm -f elf64 %s.asm -o %s.o";
+      const char* link_cmdline = "ld -lm -shared -o %s.so %s.o";
 
-      compiled_expression::syscall((boost::format(compile_cmdline) % filebase).str());
-      compiled_expression::syscall((boost::format(link_cmdline) % filebase).str());
+      compiled_expression::syscall(strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str()));
+      compiled_expression::syscall(strings::Printf(link_cmdline, filebase.c_str(), filebase.c_str()));
     }
   };
   struct CLANG {
@@ -249,8 +283,8 @@ struct compile_impl {
       generate_c_code_for_node(index, f);
       fclose(f);
 
-      const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %1%.c -o %1%.so";
-      std::string cmdline = (boost::format(compile_cmdline) % filebase).str();
+      const char* compile_cmdline = "clang -fPIC -shared -nostartfiles %s.c -o %s.so";
+      std::string cmdline = strings::Printf(compile_cmdline, filebase.c_str(), filebase.c_str());
       compiled_expression::syscall(cmdline);
     }
   };
@@ -261,19 +295,15 @@ struct compile_impl {
   typedef FNCAS_JIT selected;
 };
 
-compiled_expression compile(node_index_type index) {
-  std::random_device random;
-  std::uniform_int_distribution<int> distribution(1000000, 9999999);
-  std::ostringstream os;
-  os << "/tmp/" << distribution(random);
-  const std::string filebase = os.str();
+inline compiled_expression compile(node_index_type index) {
+  const std::string filebase(FileSystem::GenTmpFileName());
   const std::string filename_so = filebase + ".so";
-  unlink(filename_so.c_str());
+  FileSystem::RmFile(filename_so, FileSystem::RmFileParameters::Silent);
   compile_impl::selected::compile(filebase, index);
   return compiled_expression(filename_so);
 }
 
-compiled_expression compile(const node& node) { return compile(node.index_); }
+inline compiled_expression compile(const node& node) { return compile(node.index_); }
 
 struct f_compiled : f {
   fncas::compiled_expression c_;
