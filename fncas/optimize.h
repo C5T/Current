@@ -30,7 +30,7 @@ SOFTWARE.
 #include <numeric>
 #include <string>
 
-#include "fncas_mathutil.h"
+#include "mathutil.h"
 
 namespace fncas {
 

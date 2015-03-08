@@ -48,8 +48,9 @@
 
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/file/file.h"
-#include "fncas_base.h"
-#include "fncas_node.h"
+
+#include "base.h"
+#include "node.h"
 
 using namespace bricks;
 
