@@ -145,14 +145,9 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
     const auto g = gi(current_point);
-    const auto try_step = [&dim, &current_point, &fi, &g ](double step)
-        -> std::pair<double, std::vector<double>> {
-      std::vector<double> candidate(dim);
-      for (size_t i = 0; i < dim; ++i) {
-        candidate[i] = current_point[i] - g.gradient[i] * step;
-      }
-      const double value = fi(candidate);
-      return std::make_pair(value, candidate);
+    const auto try_step = [&dim, &current_point, &fi, &g ](double step) {
+      const auto candidate_point(SumVectors(current_point, g.gradient, -step));
+      return std::pair<double, std::vector<double>>(fi(candidate_point), candidate_point);
     };
     current_point = std::min(try_step(0.01 * step_factor_),
                              std::min(try_step(0.05 * step_factor_), try_step(0.2 * step_factor_))).second;
@@ -206,9 +201,7 @@ OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<dou
 
     // Calculating direction for the next step.
     const double omega = std::max(fncas::PolakRibiere(new_f_gradf.gradient, current_grad), 0.0);
-    for (size_t i = 0; i < dim; ++i) {
-      s[i] = omega * s[i] - new_f_gradf.gradient[i];
-    }
+    s = SumVectors(s, new_f_gradf.gradient, omega, -1.0);
 
     current_grad = new_f_gradf.gradient;
     current_point = new_point;
