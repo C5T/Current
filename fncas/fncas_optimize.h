@@ -196,8 +196,8 @@ OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<dou
 
   const auto initial_f_gradf = gi(current_point);
   std::vector<double> current_grad = initial_f_gradf.gradient;
-  std::vector<double> s(current_grad); // Direction to search for a minimum.
-  fncas::FlipSign(s);  // Trying first step against the gradient to minimize the function.
+  std::vector<double> s(current_grad);  // Direction to search for a minimum.
+  fncas::FlipSign(s);                   // Trying first step against the gradient to minimize the function.
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
     // Backtracking line search.
