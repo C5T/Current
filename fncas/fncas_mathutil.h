@@ -31,27 +31,30 @@
 
 namespace fncas {
 
-bool IsNormal(double arg) { return (std::isnormal(arg) || arg == 0.0); }
+inline bool IsNormal(double arg) { return (std::isnormal(arg) || arg == 0.0); }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T> &v1,
-                                                                                 const std::vector<T> &v2) {
+inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
+                                                                                 const std::vector<T>& v2) {
+#ifndef NDEBUG
+  assert(v1.size() == v2.size());
+#endif
   return std::inner_product(std::begin(v1), std::end(v1), std::begin(v2), static_cast<T>(0));
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T> &v) {
+inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(const std::vector<T>& v) {
   return DotProduct(v, v);
 }
 
 template <typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-inline void FlipSign(std::vector<T> &v) {
+inline void FlipSign(std::vector<T>& v) {
   std::transform(std::begin(v), std::end(v), std::begin(v), std::negate<T>());
 }
 
 // Polak-Ribiere formula for conjugate gradient method
 // http://en.wikipedia.org/wiki/Nonlinear_conjugate_gradient_method
-inline double PolakRibiere(const std::vector<double> &g, const std::vector<double> &g_prev) {
+inline double PolakRibiere(const std::vector<double>& g, const std::vector<double>& g_prev) {
   const double beta = (L2Norm(g) - DotProduct(g, g_prev)) / L2Norm(g_prev);
   if (IsNormal(beta)) {
     return beta;
@@ -63,12 +66,12 @@ inline double PolakRibiere(const std::vector<double> &g, const std::vector<doubl
 // Simplified backtracking line search algorithm with limited number of steps.
 // Starts in `current_point` and searches for minimum in `direction`
 // sequentially shrinking the step size. Returns new optimal point.
-// Algorithm parameters: 0 < alpha < 1, 0 < beta < 1
+// Algorithm parameters: 0 < alpha < 1, 0 < beta < 1.
 template <class F, class G>
-inline std::vector<double> BackTracking(F &&eval_function,
-                                        G &&eval_gradient,
-                                        const std::vector<double> &current_point,
-                                        const std::vector<double> &direction,
+inline std::vector<double> BackTracking(F&& eval_function,
+                                        G&& eval_gradient,
+                                        const std::vector<double>& current_point,
+                                        const std::vector<double>& direction,
                                         const double alpha = 0.5,
                                         const double beta = 0.8,
                                         const size_t max_steps = 100) {
