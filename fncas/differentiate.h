@@ -26,8 +26,8 @@
 #ifndef FNCAS_DIFFERENTIATE_H
 #define FNCAS_DIFFERENTIATE_H
 
-#include "fncas_base.h"
-#include "fncas_node.h"
+#include "base.h"
+#include "node.h"
 
 namespace fncas {
 

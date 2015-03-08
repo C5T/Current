@@ -26,10 +26,10 @@
 #ifndef FNCAS_H
 #define FNCAS_H
 
-#include "fncas_base.h"
-#include "fncas_node.h"
-#include "fncas_differentiate.h"
-#include "fncas_optimize.h"
-#include "fncas_jit.h"
+#include "base.h"
+#include "node.h"
+#include "differentiate.h"
+#include "optimize.h"
+#include "jit.h"
 
 #endif

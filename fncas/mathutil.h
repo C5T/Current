@@ -26,12 +26,49 @@
 #ifndef FNCAS_MATHUTIL_H
 #define FNCAS_MATHUTIL_H
 
+#include <cassert>
 #include <vector>
 #include <numeric>
 
 namespace fncas {
 
 inline bool IsNormal(double arg) { return (std::isnormal(arg) || arg == 0.0); }
+
+template <typename T>
+inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
+    std::vector<T> a, const std::vector<T>& b) {
+#ifndef NDEBUG
+  assert(a.size() == b.size());
+#endif
+  for (size_t i = 0; i < a.size(); ++i) {
+    a[i] += b[i];
+  }
+  return std::move(a);
+}
+
+template <typename T>
+inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
+    std::vector<T> a, const std::vector<T>& b, double kb) {
+#ifndef NDEBUG
+  assert(a.size() == b.size());
+#endif
+  for (size_t i = 0; i < a.size(); ++i) {
+    a[i] += kb * b[i];
+  }
+  return std::move(a);
+}
+
+template <typename T>
+inline typename std::enable_if<std::is_arithmetic<T>::value, std::vector<T>>::type SumVectors(
+    std::vector<T> a, const std::vector<T>& b, double ka, double kb) {
+#ifndef NDEBUG
+  assert(a.size() == b.size());
+#endif
+  for (size_t i = 0; i < a.size(); ++i) {
+    a[i] = ka * a[i] + kb * b[i];
+  }
+  return std::move(a);
+}
 
 template <typename T>
 inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type DotProduct(const std::vector<T>& v1,
@@ -47,8 +84,8 @@ inline typename std::enable_if<std::is_arithmetic<T>::value, T>::type L2Norm(con
   return DotProduct(v, v);
 }
 
-template <typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value, T>::type>
-inline void FlipSign(std::vector<T>& v) {
+template <typename T>
+inline typename std::enable_if<std::is_arithmetic<T>::value>::type FlipSign(std::vector<T>& v) {
   std::transform(std::begin(v), std::end(v), std::begin(v), std::negate<T>());
 }
 
@@ -77,10 +114,7 @@ inline std::vector<double> BackTracking(F&& eval_function,
                                         const size_t max_steps = 100) {
   const double current_f_value = eval_function(current_point);
   const std::vector<double> current_gradient = eval_gradient(current_point).gradient;
-  std::vector<double> test_point(current_point.size());
-  for (size_t i = 0; i < current_point.size(); ++i) {
-    test_point[i] = current_point[i] + direction[i];
-  }
+  std::vector<double> test_point = SumVectors(current_point, direction);
   double test_f_value = eval_function(test_point);
   const double gradient_l2norm = L2Norm(current_gradient);
   double t = 1.0;
@@ -88,9 +122,7 @@ inline std::vector<double> BackTracking(F&& eval_function,
   size_t bt_iteration = 0;
   while (test_f_value > (current_f_value - alpha * t * gradient_l2norm) || !IsNormal(test_f_value)) {
     t *= beta;
-    for (size_t i = 0; i < test_point.size(); ++i) {
-      test_point[i] = current_point[i] + t * direction[i];
-    }
+    test_point = SumVectors(current_point, direction, t);
     test_f_value = eval_function(test_point);
     if (bt_iteration++ == max_steps) {
       break;
