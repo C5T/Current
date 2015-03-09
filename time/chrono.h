@@ -51,13 +51,9 @@ inline MockNowImpl& MockNow() {
   return impl;
 }
 
-inline EPOCH_MILLISECONDS Now() {
-  return MockNow().mock_now_value;
-}
+inline EPOCH_MILLISECONDS Now() { return MockNow().mock_now_value; }
 
-inline void SetNow(EPOCH_MILLISECONDS new_mock_now_value) {
-  MockNow().mock_now_value = new_mock_now_value;
-}
+inline void SetNow(EPOCH_MILLISECONDS new_mock_now_value) { MockNow().mock_now_value = new_mock_now_value; }
 
 #else
 
