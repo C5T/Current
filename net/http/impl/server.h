@@ -479,7 +479,7 @@ class HTTPServerConnection final {
           connection_.BlockingWrite(strings::Printf("%X", data.size()), true);
           connection_.BlockingWrite(kCRLF, true);
           connection_.BlockingWrite(std::forward<T>(data), true);
-          // Force every chunk to be sent out. This makes the demo dashboads smoother.
+          // Force every chunk to be sent out. This makes the demo dashboard smoother.
           // TODO(dkorolev): Revisit `MSG_MORE`,
           connection_.BlockingWrite(kCRLF, false);
         }
