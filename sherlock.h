@@ -242,13 +242,13 @@ class StreamInstanceImpl {
 };
 
 // TODO(dkorolev): Move into Bricks/util/ ?
-template <typename E, typename B>
-struct is_derived_from_unique_ptr {
+template <typename B, typename E>
+struct can_be_stored_in_unique_ptr {
   static constexpr bool value = false;
 };
 
-template <typename E, typename B>
-struct is_derived_from_unique_ptr<E, std::unique_ptr<B>> {
+template <typename B, typename E>
+struct can_be_stored_in_unique_ptr<std::unique_ptr<B>, E> {
   static constexpr bool value = std::is_same<B, E>::value || std::is_base_of<B, E>::value;
 };
 
@@ -256,14 +256,16 @@ template <typename T>
 struct StreamInstance {
   StreamInstanceImpl<T>* impl_;
   inline explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
+
   inline void Publish(const T& entry) { impl_->Publish(entry); }
 
   // TODO(dkorolev): Add a test for this code.
   // TODO(dkorolev): Perhaps eliminate the copy.
   template <typename E>
-  typename std::enable_if<is_derived_from_unique_ptr<E, T>::value>::type Publish(const E& polymorphic_entry) {
+  typename std::enable_if<can_be_stored_in_unique_ptr<T, E>::value>::type Publish(const E& polymorphic_entry) {
     impl_->PublishPolymorphic(new E(polymorphic_entry));
   }
+
   template <typename F>
   inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(F& listener) {
     return std::move(impl_->Subscribe(listener));
