@@ -53,7 +53,7 @@ class ServeJSONOverHTTP {
 
   inline bool Entry(const T& entry) {
     try {
-      http_response_(JSON(entry, "point") + "\n");  // TODO(dkorolev): WTF do I have to say JSON() here?
+      http_response_(entry, "point");
       return true;
     } catch (const bricks::net::NetworkException&) {
       return false;
