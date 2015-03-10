@@ -1,12 +1,17 @@
 #ifndef SHERLOCK_H
 #define SHERLOCK_H
 
+#include "../Bricks/port.h"
+
 #include <vector>
 #include <string>
 #include <mutex>
 #include <memory>
 #include <thread>
 #include <type_traits>
+#include <iostream>  // TODO(dkorolev): Remove it from here.
+
+#include "../Bricks/net/api/api.h"
 
 #include "waitable_atomic/waitable_atomic.h"
 #include "optionally_owned/optionally_owned.h"
@@ -84,12 +89,44 @@
 
 namespace sherlock {
 
+// TODO(dkorolev): Test this code.
+template <typename E>
+class PubSubHTTPEndpoint {
+ public:
+  PubSubHTTPEndpoint(const std::string& value_name, Request r)
+      : value_name_(value_name),
+        http_request_scope_(std::move(r)),
+        http_response_(http_request_scope_.SendChunkedResponse()) {}
+
+  inline bool Entry(E& entry) {
+    try {
+      http_response_(entry, value_name_);
+      return true;
+    } catch (const bricks::net::NetworkException&) {
+      return false;
+    }
+  }
+
+  inline void Terminate() { http_response_("{\"error\":\"Done.\"}\n"); }
+
+ private:
+  const std::string& value_name_;  // Top-level JSON object name for Cereal.
+  Request http_request_scope_;     // Need to keep `Request` in scope, for the lifetime of the chunked response.
+  bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+
+  PubSubHTTPEndpoint() = delete;
+  PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
+  void operator=(const PubSubHTTPEndpoint&) = delete;
+  PubSubHTTPEndpoint(PubSubHTTPEndpoint&&) = delete;
+  void operator=(PubSubHTTPEndpoint&&) = delete;
+};
+
 template <typename T>
 class StreamInstanceImpl {
  public:
-  inline explicit StreamInstanceImpl(const std::string& name) {
+  inline explicit StreamInstanceImpl(const std::string& name, const std::string& value_name)
+      : name_(name), value_name_(value_name) {
     // TODO(dkorolev): Register this stream under this name.
-    static_cast<void>(name);
   }
 
   inline void Publish(const T& entry) {
@@ -181,8 +218,28 @@ class StreamInstanceImpl {
           }
           bool user_initiated_terminate = false;
           data.ImmutableUse([&listener, &cursor, &user_initiated_terminate](const std::vector<T>& data) {
-            // TODO(dkorolev): RTTI dispatching here.
-            if (!listener->Entry(data[cursor])) {
+            // Entries are often instances of polymorphic types, that make it into various message queues.
+            // The most straightforward way to store them is a `unique_ptr`, and the most straightforward
+            // way to pass `unique_ptr`-s between threads is via `Emplace*(ptr.release())`.
+            // If `Entry()` is being passed immutable records, the pain of cloning data from `unique_ptr`-s
+            // becomes the user's pain. This shall not be allowed.
+            //
+            // Thus, here we need to make a copy.
+            // The below implementation is imperfect, but it serves the purpose semantically.
+            // TODO(dkorolev): Fix it.
+
+            const std::string json = JSON(data[cursor]);
+            T copy_of_entry;
+            try {
+              ParseJSON(json, copy_of_entry);
+            } catch (const std::exception& e) {
+              std::cerr << "Something went terribly wrong." << std::endl;
+              std::cerr << e.what();
+              ::exit(-1);
+            }
+
+            // TODO(dkorolev): Perhaps RTTI dispatching here.
+            if (!listener->Entry(copy_of_entry)) {
               user_initiated_terminate = true;
             }
             ++cursor;
@@ -230,7 +287,13 @@ class StreamInstanceImpl {
     return std::move(ListenerScope<F>(data_, OptionallyOwned<F>(std::move(listener))));
   }
 
+  void ServeDataViaHTTP(Request r) {
+    Subscribe(make_unique(new PubSubHTTPEndpoint<T>(value_name_, std::move(r)))).Detach();
+  }
+
  private:
+  const std::string name_;
+  const std::string value_name_;
   // FTR: This is really an inefficient reference implementation. TODO(dkorolev): Revisit it.
   WaitableAtomic<std::vector<T>> data_;
 
@@ -274,19 +337,20 @@ struct StreamInstance {
   inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(std::unique_ptr<F> listener) {
     return std::move(impl_->Subscribe(std::move(listener)));
   }
+
+  void operator()(Request r) { impl_->ServeDataViaHTTP(std::move(r)); }
+
   template <typename F>
-  inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(F* listener) {
-    return std::move(Subscribe(std::unique_ptr<F>(listener)));
-  }
+  using ListenerScope = typename StreamInstanceImpl<T>::template ListenerScope<F>;
 };
 
 template <typename T>
-inline StreamInstance<T> Stream(const std::string& name) {
+inline StreamInstance<T> Stream(const std::string& name, const std::string& value_name = "entry") {
   // TODO(dkorolev): Validate stream name, add exceptions and tests for it.
   // TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
   // TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
   // TODO(dkorolev): Add the persistence layer.
-  return StreamInstance<T>(new StreamInstanceImpl<T>(name));
+  return StreamInstance<T>(new StreamInstanceImpl<T>(name, value_name));
 }
 
 }  // namespace sherlock

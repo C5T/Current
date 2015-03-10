@@ -236,11 +236,11 @@ int main() {
   });
 
   HTTP(port).Register("/layout/plot_data", [&time_series](Request r) {
-    time_series.Subscribe(new ServeJSONOverHTTP<DoublePoint>(std::move(r))).Detach();
+    time_series.Subscribe(make_unique(new ServeJSONOverHTTP<DoublePoint>(std::move(r)))).Detach();
   });
 
   HTTP(port).Register("/layout/pic_data", [&pic_series](Request r) {
-    pic_series.Subscribe(new ServeJSONOverHTTP<StringPoint>(std::move(r))).Detach();
+    pic_series.Subscribe(make_unique(new ServeJSONOverHTTP<StringPoint>(std::move(r)))).Detach();
   });
 
   HTTP(port).Register("/layout/plot_meta", [](Request r) {
