@@ -40,6 +40,23 @@ namespace time {
 enum class EPOCH_MILLISECONDS : uint64_t {};
 enum class MILLISECONDS_INTERVAL : uint64_t {};
 
+#ifdef BRICKS_MOCK_TIME
+
+struct MockNowImpl {
+  EPOCH_MILLISECONDS mock_now_value = static_cast<EPOCH_MILLISECONDS>(0);
+};
+
+inline MockNowImpl& MockNow() {
+  static MockNowImpl impl;
+  return impl;
+}
+
+inline EPOCH_MILLISECONDS Now() { return MockNow().mock_now_value; }
+
+inline void SetNow(EPOCH_MILLISECONDS new_mock_now_value) { MockNow().mock_now_value = new_mock_now_value; }
+
+#else
+
 #ifdef BRICKS_HAS_THREAD_LOCAL
 
 // Since chrono::system_clock is not monotonic, and chrono::steady_clock is not guaranteed to be Epoch,
@@ -64,7 +81,7 @@ inline EPOCH_MILLISECONDS Now() {
   return static_cast<EPOCH_MILLISECONDS>(EpochClockGuaranteeingMonotonicity::Singleton().Now());
 }
 
-#else
+#else  // BRICKS_HAS_THREAD_LOCAL
 
 #warning "Falling back to a naive `Now()`, since `thread_local` is not supported by the compiler."
 
@@ -73,7 +90,9 @@ inline EPOCH_MILLISECONDS Now() {
                                              std::chrono::system_clock::now().time_since_epoch()).count());
 }
 
-#endif
+#endif  // BRICKS_HAS_THREAD_LOCAL
+
+#endif  // BRICKS_MOCK_TIME
 
 }  // namespace time
 
