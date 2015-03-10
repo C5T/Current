@@ -25,7 +25,7 @@ class MMQ final {
   typedef MESSAGE T_MESSAGE;
 
   // Type of the processor of the entries.
-  // It should expose one method, void OnMessage(const T_MESSAGE&, size_t number_of_dropped_messages_if_any);
+  // It should expose one method, void OnMessage(T_MESSAGE&, size_t number_of_dropped_messages_if_any);
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
   typedef CONSUMER T_CONSUMER;
 
@@ -58,6 +58,13 @@ class MMQ final {
   void PushMessage(T_MESSAGE&& message) {
     const size_t index = PushMessageAllocate();
     circular_buffer_[index].message_body = std::move(message);
+    PushMessageCommit(index);
+  }
+
+  template <typename... ARGS>
+  void EmplaceMessage(ARGS&&... args) {
+    const size_t index = PushMessageAllocate();
+    circular_buffer_[index].message_body = T_MESSAGE(args...);
     PushMessageCommit(index);
   }
 
@@ -96,7 +103,7 @@ class MMQ final {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        consumer_.OnMessage(circular_buffer_[index].message_body, this_time_dropped_messages);
+        consumer_.OnMessage(std::ref(circular_buffer_[index].message_body), this_time_dropped_messages);
       }
 
       {

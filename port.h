@@ -32,7 +32,8 @@ SOFTWARE.
 
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 
-#include <string>
+#include <string>  // For architecture names.
+#include <memory>  // For `std::unique_ptr` and the mimic of `make_unique`.
 
 #ifdef BRICKS_PORT_COUNT
 #error "`BRICKS_PORT_COUNT` should not be defined for port.h"
@@ -113,5 +114,14 @@ SOFTWARE.
 #elif !defined(BRICKS_ANDROID)
 #define BRICKS_HAS_THREAD_LOCAL
 #endif
+
+// `std::make_unique` exists in C++14, but for Bricks we'd like to see it "supported" in C++11. -- D.K.
+namespace make_unique_for_poor_cpp11_users_impl {
+template <typename T>
+std::unique_ptr<T> make_unique(T* ptr) {
+  return std::unique_ptr<T>(ptr);
+}
+}  // namespace make_unique_for_poor_cpp11_users_impl
+using namespace make_unique_for_poor_cpp11_users_impl;
 
 #endif

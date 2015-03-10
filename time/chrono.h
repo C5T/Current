@@ -28,20 +28,52 @@ SOFTWARE.
 #define BRICKS_TIME_CHRONO_H
 
 #include <algorithm>
+#include <thread>
 #include <chrono>
 
 #include "../port.h"
 #include "../strings/fixed_size_serializer.h"
 
 namespace bricks {
-
 namespace time {
 
 enum class EPOCH_MILLISECONDS : uint64_t {};
 enum class MILLISECONDS_INTERVAL : uint64_t {};
 
+}  // namespace bricks::time
+}  // namespace bricks
+
+inline bricks::time::MILLISECONDS_INTERVAL operator-(bricks::time::EPOCH_MILLISECONDS lhs,
+                                                     bricks::time::EPOCH_MILLISECONDS rhs) {
+  return static_cast<bricks::time::MILLISECONDS_INTERVAL>(static_cast<int64_t>(lhs) -
+                                                          static_cast<int64_t>(rhs));
+}
+
+inline bricks::time::MILLISECONDS_INTERVAL operator-(bricks::time::EPOCH_MILLISECONDS x) {
+  return static_cast<bricks::time::MILLISECONDS_INTERVAL>(-static_cast<int64_t>(x));
+}
+
+inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::EPOCH_MILLISECONDS lhs,
+                                                  bricks::time::MILLISECONDS_INTERVAL rhs) {
+  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
+}
+
+inline bricks::time::EPOCH_MILLISECONDS operator-(bricks::time::EPOCH_MILLISECONDS lhs,
+                                                  bricks::time::MILLISECONDS_INTERVAL rhs) {
+  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs));
+}
+
+inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::MILLISECONDS_INTERVAL lhs,
+                                                  bricks::time::EPOCH_MILLISECONDS rhs) {
+  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
+}
+
+namespace bricks {
+namespace time {
+
 #ifdef BRICKS_MOCK_TIME
 
+// TODO(dkorolev): Mock time is worth a simple test.
 struct MockNowImpl {
   EPOCH_MILLISECONDS mock_now_value = static_cast<EPOCH_MILLISECONDS>(0);
 };
@@ -54,6 +86,11 @@ inline MockNowImpl& MockNow() {
 inline EPOCH_MILLISECONDS Now() { return MockNow().mock_now_value; }
 
 inline void SetNow(EPOCH_MILLISECONDS new_mock_now_value) { MockNow().mock_now_value = new_mock_now_value; }
+
+inline void SleepUntil(EPOCH_MILLISECONDS moment) {
+  static_cast<void>(moment);
+  // Ignore `SleepUntil` when time is mocked.
+}
 
 #else
 
@@ -81,6 +118,13 @@ inline EPOCH_MILLISECONDS Now() {
   return static_cast<EPOCH_MILLISECONDS>(EpochClockGuaranteeingMonotonicity::Singleton().Now());
 }
 
+inline void SleepUntil(EPOCH_MILLISECONDS moment) {
+  const EPOCH_MILLISECONDS now = Now();
+  if (now < moment) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int64_t>(moment - now)));
+  }
+}
+
 #else  // BRICKS_HAS_THREAD_LOCAL
 
 #warning "Falling back to a naive `Now()`, since `thread_local` is not supported by the compiler."
@@ -94,7 +138,7 @@ inline EPOCH_MILLISECONDS Now() {
 
 #endif  // BRICKS_MOCK_TIME
 
-}  // namespace time
+}  // namespace bricks::time
 
 namespace strings {
 
@@ -114,33 +158,8 @@ struct FixedSizeSerializer<bricks::time::EPOCH_MILLISECONDS> {
   }
 };
 
-}  // namespace strings
+}  // namespace bricks::strings
 
 }  // namespace bricks
-
-inline bricks::time::MILLISECONDS_INTERVAL operator-(bricks::time::EPOCH_MILLISECONDS lhs,
-                                                     bricks::time::EPOCH_MILLISECONDS rhs) {
-  return static_cast<bricks::time::MILLISECONDS_INTERVAL>(static_cast<int64_t>(lhs) -
-                                                          static_cast<int64_t>(rhs));
-}
-
-inline bricks::time::MILLISECONDS_INTERVAL operator-(bricks::time::EPOCH_MILLISECONDS x) {
-  return static_cast<bricks::time::MILLISECONDS_INTERVAL>(-static_cast<int64_t>(x));
-}
-
-inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::EPOCH_MILLISECONDS lhs,
-                                                  bricks::time::MILLISECONDS_INTERVAL rhs) {
-  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
-}
-
-inline bricks::time::EPOCH_MILLISECONDS operator-(bricks::time::EPOCH_MILLISECONDS lhs,
-                                                  bricks::time::MILLISECONDS_INTERVAL rhs) {
-  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs));
-}
-
-inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::MILLISECONDS_INTERVAL lhs,
-                                                  bricks::time::EPOCH_MILLISECONDS rhs) {
-  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
-}
 
 #endif  // BRICKS_TIME_CHRONO_H
