@@ -115,21 +115,23 @@ TEST(Cerealize, CompileTimeTests) {
 
 struct CerealTestObject {
   int number;
+  size_t unsigned_number;
   std::string text;
   std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
-  CerealTestObject() : number(42), text("text"), array({1, 2, 3}) {}
+  CerealTestObject() : number(42), unsigned_number(100), text("text"), array({1, 2, 3}) {}
   template <typename A>
   void serialize(A& ar) {
-    ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
+    ar(CEREAL_NVP(number), CEREAL_NVP(unsigned_number), CEREAL_NVP(text), CEREAL_NVP(array));
   }
 };
 
 TEST(Cerealize, JSON) {
-  EXPECT_EQ("{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}", JSON(CerealTestObject()));
+  EXPECT_EQ("{\"value0\":{\"number\":42,\"unsigned_number\":100,\"text\":\"text\",\"array\":[1,2,3]}}",
+            JSON(CerealTestObject()));
 }
 
 TEST(Cerealize, NamedJSON) {
-  EXPECT_EQ("{\"BAZINGA\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}",
+  EXPECT_EQ("{\"BAZINGA\":{\"number\":42,\"unsigned_number\":100,\"text\":\"text\",\"array\":[1,2,3]}}",
             JSON(CerealTestObject(), "BAZINGA"));
 }
 
