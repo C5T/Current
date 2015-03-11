@@ -1,6 +1,9 @@
 Header-only Cereal with no dependencies and no extra ```-I``` flags required.
 
-**NOTE:** Cereal has been patched by @dkorolev to pack JSON-s into a single one. It happened after a discussion we had on ```cerealcpp@googlegroups.com```, with the conclusion being that there is no easier way to make it happen. Reference change: [GitHub commit](https://github.com/dkorolev/Bricks/commit/82b7c08bad1c9ea86addd5535e4fc204c05fe3ff).
+**NOTE:** Cereal has been patched by @dkorolev to pack JSON-s into a single line.
+It happened after a discussion we had on ```cerealcpp@googlegroups.com```, with the conclusion being that there is no easier way to make it happen.
+This is required to implement one-JSON-per-line protocol for streams of JSON-s flying over the network with `'\n'` being the separator.
+Reference change: [GitHub commit](https://github.com/dkorolev/Bricks/commit/82b7c08bad1c9ea86addd5535e4fc204c05fe3ff).
 
 See [examples/cereal/message.h](https://github.com/KnowSheet/3party/blob/master/examples/cereal/message.h) for example usage.
 
