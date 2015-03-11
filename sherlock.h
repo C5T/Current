@@ -107,7 +107,7 @@ class PubSubHTTPEndpoint {
     }
   }
 
-  inline void Terminate() { http_response_("{\"error\":\"Done.\"}\n"); }
+  inline void Terminate() { http_response_("{\"error\":\"The subscriber has terminated.\"}\n"); }
 
  private:
   const std::string& value_name_;  // Top-level JSON object name for Cereal.
