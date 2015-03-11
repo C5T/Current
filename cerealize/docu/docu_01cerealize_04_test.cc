@@ -49,7 +49,7 @@ using strings::Printf;
   
     virtual std::string AsString() const = 0;
 
-    template <typename A> void serialize(A& ar) const {
+    template <typename A> void serialize(A& ar) {
       ar(CEREAL_NVP(base));
     }
   };
@@ -64,7 +64,7 @@ using strings::Printf;
       return Printf("%s, %d", base.c_str(), i);
     }
   
-    template <typename A> void serialize(A& ar) const {
+    template <typename A> void serialize(A& ar) {
       ExamplePolymorphicType::serialize(ar);
       ar(CEREAL_NVP(i));
     }
@@ -82,7 +82,7 @@ using strings::Printf;
       return Printf("%s, %lf", base.c_str(), d);
     }
   
-    template <typename A> void serialize(A& ar) const {
+    template <typename A> void serialize(A& ar) {
       ExamplePolymorphicType::serialize(ar);
       ar(CEREAL_NVP(d));
     }
