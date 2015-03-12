@@ -103,7 +103,7 @@ struct ExamplePolymorphicType {
   explicit ExamplePolymorphicType(const std::string& base = "") : base(base) {}
 
   virtual std::string AsString() const = 0;
-  template <typename A> void serialize(A& ar) const {
+  template <typename A> void serialize(A& ar) {
     ar(CEREAL_NVP(base));
   }
 };
@@ -117,7 +117,7 @@ struct ExamplePolymorphicInt : ExamplePolymorphicType {
     return Printf("%s, %d", base.c_str(), i);
   }
 
-  template <typename A> void serialize(A& ar) const {
+  template <typename A> void serialize(A& ar) {
     ExamplePolymorphicType::serialize(ar);
     ar(CEREAL_NVP(i));
   }
@@ -134,7 +134,7 @@ struct ExamplePolymorphicDouble : ExamplePolymorphicType {
     return Printf("%s, %lf", base.c_str(), d);
   }
 
-  template <typename A> void serialize(A& ar) const {
+  template <typename A> void serialize(A& ar) {
     ExamplePolymorphicType::serialize(ar);
     ar(CEREAL_NVP(d));
   }
