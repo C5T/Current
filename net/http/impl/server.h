@@ -370,6 +370,10 @@ class HTTPServerConnection final {
   }
 
   inline static const std::string DefaultContentType() { return "text/plain"; }
+  inline static const std::string DefaultJSONContentType() { return "application/json; charset=utf-8"; }
+  inline static const HTTPHeaders DefaultJSONHTTPHeaders() {
+    return HTTPHeaders().Set("Access-Control-Allow-Origin", "*");
+  }
 
   inline static void PrepareHTTPResponseHeader(std::ostream& os,
                                                ConnectionType connection_type,
@@ -435,8 +439,8 @@ class HTTPServerConnection final {
   inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const std::string& content_type = DefaultJSONContentType(),
+      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -449,8 +453,8 @@ class HTTPServerConnection final {
       T&& object,
       S&& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const std::string& content_type = DefaultJSONContentType(),
+      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = cerealize::JSON(object, name) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
