@@ -549,8 +549,8 @@ class HTTPServerConnection final {
 
   inline ChunkedResponseSender SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const std::string& content_type = DefaultJSONContentType(),
+      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     if (responded_) {
       BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {

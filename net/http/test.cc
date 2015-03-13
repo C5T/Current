@@ -196,8 +196,9 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: keep-alive\r\n"
+      "Access-Control-Allow-Origin: *\r\n"
       "Transfer-Encoding: chunked\r\n"
       "\r\n"
       "B\r\n"
