@@ -134,6 +134,19 @@ struct FileSystem {
     }
   }
 
+  static inline bool IsDir(const std::string& file_or_directory_name) {
+    struct stat info;
+    if (::stat(file_or_directory_name.c_str(), &info)) {
+      BRICKS_THROW(FileException());
+    } else {
+#ifndef BRICKS_WINDOWS
+      return !!(S_ISDIR(info.st_mode));
+#else
+      return !!(info.st_mode & _S_IFDIR);
+#endif
+    }
+  }
+
   static inline uint64_t GetFileSize(const std::string& file_name) {
     struct stat info;
     if (::stat(file_name.c_str(), &info)) {
@@ -214,10 +227,15 @@ struct FileSystem {
     });
     if (dir) {
       while (struct dirent* entry = ::readdir(dir)) {
-        if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..") &&
-            entry->d_type != DT_DIR) {
-          if (!f(entry->d_name)) {
-            return;
+        if (*entry->d_name && ::strcmp(entry->d_name, ".") && ::strcmp(entry->d_name, "..")) {
+          const char* const filename = entry->d_name;
+          // Proved to be required on Ubuntu running in Parallels on a Mac,
+          // with Bricks' directory mounted from Mac's filesystem.
+          // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
+          if (!IsDir(JoinPath(directory, filename))) {
+            if (!f(filename)) {
+              return;
+            }
           }
         }
       }
