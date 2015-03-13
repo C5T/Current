@@ -17,6 +17,7 @@ zzz_full_test/everything
 coverage
 zzz_full_test/coverage
 zzz_full_test/coverage0.info  # A temporary file, appears for a while during `make`, ignore to be safe.
+zzz_full_test/everything.dSYM
 
 # Microsoft Visual Studio files.
 *.suo

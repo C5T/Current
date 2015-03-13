@@ -32,6 +32,10 @@ SOFTWARE.
 
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 
+// TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
+// I have not enconutered those yet. Uncomment once we confirm them. -- D.K.
+// #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
+
 #include <string>  // For architecture names.
 #include <memory>  // For `std::unique_ptr` and the mimic of `make_unique`.
 
