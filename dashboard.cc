@@ -32,7 +32,7 @@ SOFTWARE.
 DEFINE_int32(port, 8191, "Local port to use.");
 
 template <typename Y>
-struct Point {
+struct VizPoint {
   double x;
   Y y;
   template <typename A>
@@ -41,8 +41,8 @@ struct Point {
   }
 };
 
-typedef Point<double> DoublePoint;
-typedef Point<std::string> StringPoint;
+typedef VizPoint<double> DoublePoint;
+typedef VizPoint<std::string> StringPoint;
 
 // TODO(dkorolev): This class should be moved into `sherlock.h`.
 template <typename T>
