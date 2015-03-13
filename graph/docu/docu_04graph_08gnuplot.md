@@ -1,1 +1,1 @@
-![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/plot_labels/graph/golden/labels.png)

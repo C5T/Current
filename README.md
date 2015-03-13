@@ -361,7 +361,7 @@ const std::string result = GNUPlot()
   }).AsLabels())
   .OutputFormat("svg");
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/plot_labels/graph/golden/labels.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
