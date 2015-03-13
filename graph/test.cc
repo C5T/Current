@@ -29,6 +29,7 @@ SOFTWARE.
 #include "regenerate_flag.cc"
 #include "docu/docu_04graph_02plotutils.cc"
 #include "docu/docu_04graph_05gnuplot.cc"
+#include "docu/docu_04graph_07gnuplot.cc"
 
 #include <vector>
 #include <string>
