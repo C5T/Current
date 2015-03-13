@@ -118,13 +118,6 @@ inline EPOCH_MILLISECONDS Now() {
   return static_cast<EPOCH_MILLISECONDS>(EpochClockGuaranteeingMonotonicity::Singleton().Now());
 }
 
-inline void SleepUntil(EPOCH_MILLISECONDS moment) {
-  const EPOCH_MILLISECONDS now = Now();
-  if (now < moment) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int64_t>(moment - now)));
-  }
-}
-
 #else  // BRICKS_HAS_THREAD_LOCAL
 
 #warning "Falling back to a naive `Now()`, since `thread_local` is not supported by the compiler."
@@ -135,6 +128,13 @@ inline EPOCH_MILLISECONDS Now() {
 }
 
 #endif  // BRICKS_HAS_THREAD_LOCAL
+
+inline void SleepUntil(EPOCH_MILLISECONDS moment) {
+  const EPOCH_MILLISECONDS now = Now();
+  if (now < moment) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int64_t>(moment - now)));
+  }
+}
 
 #endif  // BRICKS_MOCK_TIME
 
