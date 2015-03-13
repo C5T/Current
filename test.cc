@@ -53,6 +53,10 @@ struct Record {
   // TODO(dkorolev): Support and test timestamps.
   int x_;
   Record(int x = 0) : x_(x) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(cereal::make_nvp("x", x_));
+  }
 };
 
 // Struct `Data` should be outside struct `Processor`, since the latter is `std::move`-d away in some tests.
