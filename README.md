@@ -343,6 +343,25 @@ const std::string result = GNUPlot()
   .OutputFormat("svg");
 ```
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/v1.0/graph/golden/gnuplot.png)
+```cpp
+#include "../../strings/printf.h"
+
+// Show labels on the plane.
+using namespace bricks::gnuplot;
+const std::string result = GNUPlot()
+  .Title("Labeled Points")
+  .NoKey()
+  .Grid("back")
+  .Plot(WithMeta([](Plotter& p) {
+    const int N = 7;
+    for (int i = 0; i < N; ++i) {
+      const double phi = M_PI * 2 * i / N;
+      p(cos(phi), sin(phi), bricks::strings::Printf("P%d", i));
+    }
+  }).AsLabels())
+  .OutputFormat("svg");
+```
+![](https://raw.githubusercontent.com/dkorolev/Bricks/plot_labels/graph/golden/labels.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
