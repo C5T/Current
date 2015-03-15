@@ -42,12 +42,22 @@ SOFTWARE.
 TEST(Graph, GNUPlotLabels) {
   // Show labels on the plane.
   using namespace bricks::gnuplot;
-const char* const extensions[2] = { "svg", "png" };
+const char* const formats[2] = { "dumb", "pngcairo" };
+const char* const extensions[2] = { "txt", "png" };
 for (size_t e = 0; e < 2; ++e) {
+#if 1      
+  const size_t image_dim = e ? 800 : 112;
+#else
+  const size_t image_dim = 800;
+#endif
   const std::string result = GNUPlot()
     .Title("Labeled Points")
     .NoKey()
+    .NoTics()
+    .NoBorder()
     .Grid("back")
+    .XRange(-1.5, +1.5)
+    .YRange(-1.5, +1.5)
     .Plot(WithMeta([](Plotter& p) {
       const int N = 7;
       for (int i = 0; i < N; ++i) {
@@ -55,10 +65,11 @@ for (size_t e = 0; e < 2; ++e) {
         p(cos(phi), sin(phi), bricks::strings::Printf("P%d", i));
       }
     }).AsLabels())
+    .ImageSize(image_dim)
 #if 1      
-.OutputFormat(extensions[e]);
+.OutputFormat(formats[e]);
 #else
-    .OutputFormat("svg");
+    .OutputFormat("svg");  // Although the one below is actually a "png".
 #endif
 if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/labels.") + extensions[e]).c_str());
 #ifndef BRICKS_APPLE // TODO(dkorolev): Figure out how to run this test on Apple.
