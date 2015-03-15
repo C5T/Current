@@ -47,10 +47,11 @@ class CustomWaitableAtomicDestructor {
   virtual ~CustomWaitableAtomicDestructor() = default;
 };
 
+// A wrapper around `std::unique_lock<std::mutex>` that allows being inherited from itself.
 class ScopedUniqueLock {
  public:
-  inline explicit ScopedUniqueLock(std::mutex& mutex) : lock_(mutex) {}
-  inline ~ScopedUniqueLock() {}
+  explicit ScopedUniqueLock(std::mutex& mutex) : lock_(mutex) {}
+  ~ScopedUniqueLock() {}
   ScopedUniqueLock(ScopedUniqueLock&& rhs) { lock_ = std::move(rhs.lock_); }
 
  private:
@@ -69,11 +70,11 @@ class IntrusiveClient {
    private:
     virtual bool RefCounterTryIncrease() = 0;
     virtual void RefCounterDecrease() = 0;
-    virtual bool IsNotDestructing() const = 0;
+    virtual bool IsDestructing() const = 0;
     friend class IntrusiveClient;
   };
 
-  inline explicit IntrusiveClient(Interface* object) : intrusive_object_(object) {
+  explicit IntrusiveClient(Interface* object) : intrusive_object_(object) {
     if (intrusive_object_) {
       if (!intrusive_object_->RefCounterTryIncrease()) {
         intrusive_object_ = nullptr;
@@ -85,13 +86,13 @@ class IntrusiveClient {
     std::swap(intrusive_object_, rhs.intrusive_object_);
   }
 
-  inline ~IntrusiveClient() {
+  ~IntrusiveClient() {
     if (intrusive_object_) {
       intrusive_object_->RefCounterDecrease();
     }
   }
 
-  inline operator bool() const { return intrusive_object_ && intrusive_object_->IsNotDestructing(); }
+  operator bool() const { return intrusive_object_ && !intrusive_object_->IsDestructing(); }
 
  private:
   IntrusiveClient(const IntrusiveClient&) = delete;
@@ -108,9 +109,9 @@ class WaitableAtomicImpl {
     typedef DATA T_DATA;
     enum { IS_INTRUSIVE = false };
 
-    inline BasicImpl() : data_() {}
+    BasicImpl() : data_() {}
 
-    inline explicit BasicImpl(const T_DATA& data) : data_(data) {}
+    explicit BasicImpl(const T_DATA& data) : data_(data) {}
 
     template <typename POINTER>
     struct NotifyIfMutable {
@@ -137,8 +138,9 @@ class WaitableAtomicImpl {
                                         MutableAccessorDoesNotify>::type type;
     };
 
+    // A generic implementation for both mutable and immutable scoped accessors.
     template <class PARENT>
-    class TemplatedScopedAccessor : private ScopedUniqueLock, public NotifyIfMutable<PARENT>::type {
+    class ScopedAccessorImpl : private ScopedUniqueLock, public NotifyIfMutable<PARENT>::type {
      public:
       typedef PARENT T_PARENT;
       typedef typename NotifyIfMutable<PARENT>::type T_OPTIONAL_NOTIFIER;
@@ -147,43 +149,43 @@ class WaitableAtomicImpl {
                                         const typename T_PARENT::T_DATA,
                                         typename T_PARENT::T_DATA>::type T_DATA;
 
-      explicit inline TemplatedScopedAccessor(T_PARENT* parent)
+      explicit ScopedAccessorImpl(T_PARENT* parent)
           : ScopedUniqueLock(parent->data_mutex_), T_OPTIONAL_NOTIFIER(parent), pdata_(&parent->data_) {}
 
-      inline TemplatedScopedAccessor(TemplatedScopedAccessor&& rhs)
+      ScopedAccessorImpl(ScopedAccessorImpl&& rhs)
           : ScopedUniqueLock(std::move(rhs)), T_OPTIONAL_NOTIFIER(rhs), pdata_(rhs.pdata_) {}
 
-      inline ~TemplatedScopedAccessor() {}
+      ~ScopedAccessorImpl() {}
 
-      TemplatedScopedAccessor() = delete;
-      TemplatedScopedAccessor(const TemplatedScopedAccessor&) = delete;
-      void operator=(const TemplatedScopedAccessor&) = delete;
+      ScopedAccessorImpl() = delete;
+      ScopedAccessorImpl(const ScopedAccessorImpl&) = delete;
+      void operator=(const ScopedAccessorImpl&) = delete;
 
-      inline T_DATA* operator->() { return pdata_; }
-      inline T_DATA& operator*() { return *pdata_; }
+      T_DATA* operator->() { return pdata_; }
+      T_DATA& operator*() { return *pdata_; }
 
      private:
       T_DATA* pdata_;
     };
 
-    typedef TemplatedScopedAccessor<BasicImpl> MutableAccessor;
-    typedef TemplatedScopedAccessor<const BasicImpl> ImmutableAccessor;
+    typedef ScopedAccessorImpl<BasicImpl> MutableAccessor;
+    typedef ScopedAccessorImpl<const BasicImpl> ImmutableAccessor;
 
-    friend class TemplatedScopedAccessor<BasicImpl>;
-    friend class TemplatedScopedAccessor<const BasicImpl>;
+    friend class ScopedAccessorImpl<BasicImpl>;
+    friend class ScopedAccessorImpl<const BasicImpl>;
 
-    inline ImmutableAccessor ImmutableScopedAccessor() const { return ImmutableAccessor(this); }
+    ImmutableAccessor ImmutableScopedAccessor() const { return ImmutableAccessor(this); }
 
-    inline MutableAccessor MutableScopedAccessor() { return MutableAccessor(this); }
+    MutableAccessor MutableScopedAccessor() { return MutableAccessor(this); }
 
-    inline void Notify() { data_condition_variable_.notify_all(); }
+    void Notify() { data_condition_variable_.notify_all(); }
 
-    inline void UseAsLock(std::function<void()> f) const {
+    void UseAsLock(std::function<void()> f) const {
       std::unique_lock<std::mutex> lock(T_DATA::data_mutex_);
       f();
     }
 
-    inline bool Wait(std::function<bool(const T_DATA&)> predicate) const {
+    bool Wait(std::function<bool(const T_DATA&)> predicate) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
       if (!predicate(data_)) {
         const T_DATA& data = std::ref(data_);
@@ -192,28 +194,28 @@ class WaitableAtomicImpl {
       return true;
     }
 
-    inline void ImmutableUse(std::function<void(const T_DATA&)> f) const {
+    void ImmutableUse(std::function<void(const T_DATA&)> f) const {
       auto scope = ImmutableScopedAccessor();
       f(*scope);
     }
 
-    inline void MutableUse(std::function<void(T_DATA&)> f) {
+    void MutableUse(std::function<void(T_DATA&)> f) {
       auto scope = MutableScopedAccessor();
       f(*scope);
     }
 
-    inline void PotentiallyMutableUse(std::function<bool(T_DATA&)> f) {
+    void PotentiallyMutableUse(std::function<bool(T_DATA&)> f) {
       auto scope = MutableScopedAccessor();
       if (!f(*scope)) {
         scope.MarkAsUnmodified();
       }
     }
 
-    inline T_DATA GetValue() const { return *ImmutableScopedAccessor(); }
+    T_DATA GetValue() const { return *ImmutableScopedAccessor(); }
 
-    inline void SetValue(const T_DATA& data) { *MutableScopedAccessor() = data; }
+    void SetValue(const T_DATA& data) { *MutableScopedAccessor() = data; }
 
-    inline void SetValueIf(std::function<bool(const T_DATA&)> predicate, const T_DATA& data) {
+    void SetValueIf(std::function<bool(const T_DATA&)> predicate, const T_DATA& data) {
       auto a = MutableScopedAccessor();
       if (predicate(*a)) {
         *a = data;
@@ -243,35 +245,36 @@ class WaitableAtomicImpl {
       RefCounterTryIncrease();
     }
 
-    inline explicit IntrusiveImpl(const T_DATA& data, CustomWaitableAtomicDestructor* destructor_ptr = nullptr)
+    explicit IntrusiveImpl(const T_DATA& data, CustomWaitableAtomicDestructor* destructor_ptr = nullptr)
         : BasicImpl(data), destructor_ptr_(destructor_ptr) {
       RefCounterTryIncrease();
     }
 
-    inline virtual ~IntrusiveImpl() {
+    virtual ~IntrusiveImpl() {
       {
         std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
-        not_destructing_ = false;
+        destructing_ = true;
         BasicImpl::Notify();
       }
       RefCounterDecrease();
       if (destructor_ptr_) {
         destructor_ptr_->WaitableAtomicDestructing();
       }
+      // Wait for the registered scoped clients to leave their respective scopes.
       ref_count_is_nonzero_mutex_.lock();
     }
 
-    inline bool Wait(std::function<bool(const T_DATA&)> predicate) const {
+    bool Wait(std::function<bool(const T_DATA&)> predicate) const {
       std::unique_lock<std::mutex> lock(BasicImpl::data_mutex_);
-      if (!not_destructing_) {
+      if (destructing_) {
         return false;
       } else {
         if (!predicate(BasicImpl::data_)) {
           const T_DATA& data = std::ref(BasicImpl::data_);
           BasicImpl::data_condition_variable_.wait(
-              lock, [this, &predicate, &data] { return !not_destructing_ || predicate(data); });
+              lock, [this, &predicate, &data] { return destructing_ || predicate(data); });
         }
-        return not_destructing_;
+        return !destructing_;
       }
     }
 
@@ -279,7 +282,7 @@ class WaitableAtomicImpl {
 
     virtual bool RefCounterTryIncrease() override {
       std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
-      if (!not_destructing_) {
+      if (destructing_) {
         return false;
       } else {
         if (!ref_count_++) {
@@ -296,14 +299,14 @@ class WaitableAtomicImpl {
       }
     }
 
-    virtual bool IsNotDestructing() const override {
+    virtual bool IsDestructing() const override {
       std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
-      return not_destructing_;
+      return destructing_;
     }
 
    protected:
     size_t ref_count_ = 0;
-    bool not_destructing_ = true;
+    bool destructing_ = false;
     std::mutex ref_count_is_nonzero_mutex_;
     CustomWaitableAtomicDestructor* destructor_ptr_ = nullptr;
 
