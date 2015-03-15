@@ -39,7 +39,11 @@ SOFTWARE.
 TEST(Graph, Love) {
   // Where visualization meets love.
   using namespace bricks::gnuplot;
+#ifndef BRICKS_APPLE
 const char* const formats[2] = { "dumb", "pngcairo" };
+#else
+const char* const formats[2] = { "dumb", "png" };
+#endif
 const char* const extensions[2] = { "txt", "png" };
 for (size_t e = 0; e < 2; ++e) {
 #if 1      
@@ -67,10 +71,8 @@ for (size_t e = 0; e < 2; ++e) {
 #else
     .OutputFormat("svg");  // Although the one below is actually a "png".
 #endif
-if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/love.") + extensions[e]).c_str());
-#ifndef BRICKS_APPLE // TODO(dkorolev): Figure out how to run this test on Apple.
-if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string("golden/love.") + extensions[e]));
-#endif
+if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, ("golden/love-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
 }
 }
 
