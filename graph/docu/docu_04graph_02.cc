@@ -47,7 +47,7 @@ const char* const formats[2] = { "dumb", "png" };
 const char* const extensions[2] = { "txt", "png" };
 for (size_t e = 0; e < 2; ++e) {
 #if 1      
-  const size_t image_dim = e ? 800 : 112;
+const size_t image_dim = e ? 800 : 112;
 #else
   const size_t image_dim = 800;
 #endif

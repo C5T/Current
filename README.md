@@ -291,7 +291,6 @@ External [`gnuplot`](http://www.gnuplot.info/) binary is invoked. The requiremen
 ```cpp
 // Where visualization meets love.
 using namespace bricks::gnuplot;
-const size_t image_dim = e ? 800 : 112;
 const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Imagine all the people ...")
@@ -310,11 +309,10 @@ const std::string result = GNUPlot()
   .ImageSize(image_dim)
   .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/love.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/love-Linux.png)
 ```cpp
 // Where visualization meets science.
 using namespace bricks::gnuplot;
-const size_t image_dim = e ? 800 : 112;
 const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Graph 'title' with various \"quotes\"")
@@ -338,13 +336,12 @@ const std::string result = GNUPlot()
   .ImageSize(image_dim)
   .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/science.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/science-Linux.png)
 ```cpp
 #include "../../strings/printf.h"
 
 // Show labels on the plane.
 using namespace bricks::gnuplot;
-const size_t image_dim = e ? 800 : 112;
 const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Labeled Points")
@@ -364,7 +361,7 @@ const std::string result = GNUPlot()
   .ImageSize(image_dim)
   .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels-Linux.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.
