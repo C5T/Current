@@ -103,7 +103,7 @@ struct ExamplePolymorphicType {
   explicit ExamplePolymorphicType(const std::string& base = "") : base(base) {}
 
   virtual std::string AsString() const = 0;
-  template <typename A> void serialize(A& ar) const {
+  template <typename A> void serialize(A& ar) {
     ar(CEREAL_NVP(base));
   }
 };
@@ -117,7 +117,7 @@ struct ExamplePolymorphicInt : ExamplePolymorphicType {
     return Printf("%s, %d", base.c_str(), i);
   }
 
-  template <typename A> void serialize(A& ar) const {
+  template <typename A> void serialize(A& ar) {
     ExamplePolymorphicType::serialize(ar);
     ar(CEREAL_NVP(i));
   }
@@ -134,7 +134,7 @@ struct ExamplePolymorphicDouble : ExamplePolymorphicType {
     return Printf("%s, %lf", base.c_str(), d);
   }
 
-  template <typename A> void serialize(A& ar) const {
+  template <typename A> void serialize(A& ar) {
     ExamplePolymorphicType::serialize(ar);
     ar(CEREAL_NVP(d));
   }
@@ -343,6 +343,25 @@ const std::string result = GNUPlot()
   .OutputFormat("svg");
 ```
 ![](https://raw.githubusercontent.com/KnowSheet/Bricks/v1.0/graph/golden/gnuplot.png)
+```cpp
+#include "../../strings/printf.h"
+
+// Show labels on the plane.
+using namespace bricks::gnuplot;
+const std::string result = GNUPlot()
+  .Title("Labeled Points")
+  .NoKey()
+  .Grid("back")
+  .Plot(WithMeta([](Plotter& p) {
+    const int N = 7;
+    for (int i = 0; i < N; ++i) {
+      const double phi = M_PI * 2 * i / N;
+      p(cos(phi), sin(phi), bricks::strings::Printf("P%d", i));
+    }
+  }).AsLabels())
+  .OutputFormat("svg");
+```
+![](https://raw.githubusercontent.com/dkorolev/Bricks/plot_labels/graph/golden/labels.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.

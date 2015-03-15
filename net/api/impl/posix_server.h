@@ -41,6 +41,7 @@ SOFTWARE.
 #include "../../http/http.h"
 #include "../../url/url.h"
 
+#include "../../../time/chrono.h"
 #include "../../../strings/printf.h"
 
 namespace bricks {
@@ -66,6 +67,7 @@ struct Request final {
   const bool has_body;
   const std::string empty_string = "";
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
+  const bricks::time::EPOCH_MILLISECONDS timestamp;
 
   explicit Request(std::unique_ptr<HTTPServerConnection>&& connection)
       : unique_connection(std::move(connection)),
@@ -74,7 +76,8 @@ struct Request final {
         url(http_data.URL()),
         method(http_data.Method()),
         has_body(http_data.HasBody()),
-        body(has_body ? http_data.Body() : empty_string) {}
+        body(has_body ? http_data.Body() : empty_string),
+        timestamp(bricks::time::Now()) {}
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
   Request(Request&& rhs)
@@ -84,7 +87,8 @@ struct Request final {
         url(http_data.URL()),
         method(http_data.Method()),
         has_body(http_data.HasBody()),
-        body(has_body ? http_data.Body() : empty_string) {}
+        body(has_body ? http_data.Body() : empty_string),
+        timestamp(rhs.timestamp) {}
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   // TODO(dkorolev): I could not make <typename... ARGS> work here. Investigate further?
@@ -118,6 +122,23 @@ struct Request final {
   Request(const Request&) = delete;
   void operator=(const Request&) = delete;
   void operator=(Request&&) = delete;
+};
+
+// Helper to serve a static file.
+// TODO(dkorolev): Expose it externally under a better name, and add a comment/example.
+struct StaticFileServer {
+  std::string body;
+  std::string content_type;
+  explicit StaticFileServer(const std::string& body, const std::string& content_type)
+      : body(body), content_type(content_type) {}
+  void operator()(Request r) {
+    if (r.method == "GET") {
+      r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
+    } else {
+      r.connection.SendHTTPResponse(
+          DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
+    }
+  }
 };
 
 // HTTP server bound to a specific port.
@@ -196,21 +217,6 @@ class HTTPServerPOSIX final {
     handlers_.erase(path);
   }
 
-  struct StaticFileServer {
-    std::string body;
-    std::string content_type;
-    explicit StaticFileServer(const std::string& body, const std::string& content_type)
-        : body(body), content_type(content_type) {}
-    void operator()(Request r) {
-      if (r.method == "GET") {
-        r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
-      } else {
-        r.connection.SendHTTPResponse(
-            DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/plain");
-      }
-    }
-  };
-
   void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
     // TODO(dkorolev): Add a scoped version of registerers.
     FileSystem::ScanDir(dir, [this, &dir, &route_prefix](const std::string& file) {
@@ -288,7 +294,7 @@ class HTTPServerPOSIX final {
             std::cerr << "HTTP route failed in user code: " << e.what() << "\n";  // LCOV_EXCL_LINE
           }
         } else {
-          connection->SendHTTPResponse(DefaultFourOhFourMessage(), HTTPResponseCode.NotFound);
+          connection->SendHTTPResponse(DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
         }
       } catch (const std::exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.

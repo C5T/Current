@@ -49,6 +49,7 @@ using bricks::strings::ByWhitespace;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
+  EXPECT_EQ(1024u * 5, Printf("%s", std::string(10000, 'A').c_str()).length());
 }
 
 TEST(FixedSizeSerializer, UInt16) {

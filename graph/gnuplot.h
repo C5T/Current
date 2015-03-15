@@ -56,6 +56,11 @@ struct Plotter {
   void operator()(T1&& x, T2&& y) {
     of_ << x << ' ' << y << std::endl;
   }
+  template <typename T1, typename T2, typename T3>
+  void operator()(T1&& x, T2&& y, T3&& z) {
+    // `z` is usually `label`. But it can go places.
+    of_ << x << ' ' << y << ' ' << z << std::endl;
+  }
 };
 
 struct PlotDataBase {
@@ -70,7 +75,7 @@ struct PlotDataFromFunction : PlotDataBase {
   explicit PlotDataFromFunction(std::function<void(Plotter&)> f,
                                 const std::string& meta = " t 'Graph' with lines lw 5")
       : f_(f), meta_(meta) {}
-  virtual void AppendMetadata(bricks::FileSystem::OutputFile& of) const override { of << meta_; }
+  virtual void AppendMetadata(bricks::FileSystem::OutputFile& of) const override { of << ' ' << meta_; }
   virtual void AppendData(bricks::FileSystem::OutputFile& of) const override {
     Plotter p(of);
     f_(p);
@@ -96,6 +101,10 @@ class WithMeta {
   }
   WithMeta& AsPoints() {
     type_ = "points";
+    return *this;
+  }
+  WithMeta& AsLabels() {
+    type_ = "labels";
     return *this;
   }
 
@@ -128,6 +137,11 @@ struct GNUPlot {
     return *this;
   }
 
+  GNUPlot& NoTitle() {
+    parameters_["title"] = "";
+    return *this;
+  }
+
   GNUPlot& Grid(const std::string& grid) {
     parameters_["grid"] = grid;
     return *this;
@@ -140,6 +154,16 @@ struct GNUPlot {
 
   GNUPlot& KeyTitle(const std::string& key_title) {
     parameters_["key"] = "title " + Escape(key_title);
+    return *this;
+  }
+
+  GNUPlot& NoTics() {
+    parameters_["tics"] = "";
+    return *this;
+  }
+
+  GNUPlot& NoBorder() {
+    parameters_["border"] = "";
     return *this;
   }
 
