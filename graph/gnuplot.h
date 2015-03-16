@@ -91,7 +91,7 @@ class WithMeta {
     return *this;
   }
   WithMeta& Color(const std::string& color) {
-    proto_meta_ += " lt " + color;
+    proto_meta_ += " lc " + color;
     return *this;
   }
   WithMeta& LineWidth(double lw) {
@@ -126,9 +126,9 @@ struct GNUPlot {
 
   GNUPlot() = default;
 
-  GNUPlot& TermSize(size_t x, size_t y) {
+  GNUPlot& ImageSize(size_t x, size_t y = 0) {
     x_ = x;
-    y_ = y;
+    y_ = y ? y : x;  // Square by default.
     return *this;
   }
 
@@ -139,6 +139,16 @@ struct GNUPlot {
 
   GNUPlot& NoTitle() {
     parameters_["title"] = "";
+    return *this;
+  }
+
+  GNUPlot& XLabel(const std::string& label) {
+    parameters_["xlabel"] = Escape(label);
+    return *this;
+  }
+
+  GNUPlot& YLabel(const std::string& label) {
+    parameters_["ylabel"] = Escape(label);
     return *this;
   }
 

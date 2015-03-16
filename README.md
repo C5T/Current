@@ -285,42 +285,35 @@ EXPECT_EQ(".....\n", HTTP(GET("http://test.tailproduce.org/chunked?n=5&delay_ms=
 HTTP server also has support for several other features, check out the [`bricks/net/api/test.cc`](https://github.com/KnowSheet/Bricks/blob/master/net/api/test.cc) unit test.
 ## Visualization Library
 
-Bricks has C++ bindings for [`plotutils`](http://www.gnu.org/software/plotutils/) and [`gnuplot`](http://www.gnuplot.info/). Use [`#include "Bricks/graph/plotutils.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/plotutils.h) and [`#include "Bricks/graph/gnuplot.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/gnuplot.h).
+Bricks has C++ bindings for [`gnuplot`](http://www.gnuplot.info/), [`#include "Bricks/graph/gnuplot.h"`](https://github.com/KnowSheet/Bricks/blob/master/graph/gnuplot.h) to use it.
 
-The [`plotutils`](http://www.gnu.org/software/plotutils/) tool is somewhat simpler and lighter. The [`gnuplot`](http://www.gnuplot.info/) one is more scientific and offers a wider range of features.
-
-Both libraries are invoked as external system calls. Make sure they are installed in the system that runs your code.
-### Using `plotutils`
+External [`gnuplot`](http://www.gnuplot.info/) binary is invoked. The requirement is that it should be installed in the system and accessible in the `$PATH`.
 ```cpp
 // Where visualization meets love.
-const size_t N = 1000;
-std::vector<std::pair<double, double>> line(N);
-  
-for (size_t i = 0; i < N; ++i) {
-  const double t = M_PI * 2 * i / (N - 1);
-  line[i] = std::make_pair(
-    16 * pow(sin(t), 3),
-    -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
-}
-
-// Pull Plotutils, LineColor, GridStyle and more plotutils-related symbols.
-using namespace bricks::plotutils;
-
-const std::string result = Plotutils(line)
-  .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
-  .GridStyle(GridStyle::Full)
-  .Label("Imagine all the people ...")
-  .X("... living life in peace")
-  .Y("John Lennon, \"Imagine\"")
-  .LineWidth(0.015)
-  .BitmapSize(800, 800)
-  .OutputFormat("svg");
+using namespace bricks::gnuplot;
+const size_t image_dim = 800;
+const std::string result = GNUPlot()
+  .Title("Imagine all the people ...")
+  .NoKey()
+  .Grid("back")
+  .XLabel("... living life in peace")
+  .YLabel("John Lennon, \"Imagine\"")
+  .Plot(WithMeta([](Plotter p) {
+    const size_t N = 1000;
+    for (size_t i = 0; i < N; ++i) {
+      const double t = M_PI * 2 * i / (N - 1);
+      p(16 * pow(sin(t), 3),
+        -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
+    }
+  }).LineWidth(5).Color("rgb '#FF0080'"))
+  .ImageSize(image_dim)
+  .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/KnowSheet/Bricks/v1.0/graph/golden/love.png)
-### Using `gnuplot`
+![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/love-Linux.png)
 ```cpp
 // Where visualization meets science.
 using namespace bricks::gnuplot;
+const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Graph 'title' with various \"quotes\"")
   .KeyTitle("'Legend', also known as the \"key\"")
@@ -340,18 +333,24 @@ const std::string result = GNUPlot()
             .AsPoints()
             .Color("rgb 'blue'")
             .Name("\"cos(x)\", '.AsPoints().Color(\"rgb 'blue'\")'"))
-  .OutputFormat("svg");
+  .ImageSize(image_dim)
+  .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/KnowSheet/Bricks/v1.0/graph/golden/gnuplot.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/science-Linux.png)
 ```cpp
 #include "../../strings/printf.h"
 
 // Show labels on the plane.
 using namespace bricks::gnuplot;
+const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Labeled Points")
   .NoKey()
+  .NoTics()
+  .NoBorder()
   .Grid("back")
+  .XRange(-1.5, +1.5)
+  .YRange(-1.5, +1.5)
   .Plot(WithMeta([](Plotter& p) {
     const int N = 7;
     for (int i = 0; i < N; ++i) {
@@ -359,9 +358,10 @@ const std::string result = GNUPlot()
       p(cos(phi), sin(phi), bricks::strings::Printf("P%d", i));
     }
   }).AsLabels())
-  .OutputFormat("svg");
+  .ImageSize(image_dim)
+  .OutputFormat("svg");  // Although the one below is actually a "png".
 ```
-![](https://raw.githubusercontent.com/dkorolev/Bricks/plot_labels/graph/golden/labels.png)
+![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels-Linux.png)
 ## Run-Time Type Dispatching
 
 Bricks can dispatch calls to the right implementation at runtime, with user code being free of virtual functions.

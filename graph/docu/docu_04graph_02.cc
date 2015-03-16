@@ -31,45 +31,48 @@ SOFTWARE.
 
 #include "../regenerate_flag.cc"
 
-#include "../plotutils.h"
+#include "../gnuplot.h"
 
 #include "../../dflags/dflags.h"
 #include "../../3party/gtest/gtest-main-with-dflags.h"
 
-TEST(Graph, PlotutilsLove) {
+TEST(Graph, Love) {
   // Where visualization meets love.
-  const size_t N = 1000;
-  std::vector<std::pair<double, double>> line(N);
-    
-  for (size_t i = 0; i < N; ++i) {
-    const double t = M_PI * 2 * i / (N - 1);
-    line[i] = std::make_pair(
-      16 * pow(sin(t), 3),
-      -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
-  }
-  
-  // Pull Plotutils, LineColor, GridStyle and more plotutils-related symbols.
-  using namespace bricks::plotutils;
-  
-const char* const extensions[2] = { "svg", "png" };
-for (size_t e = 0; e < 2; ++e) {
-  const std::string result = Plotutils(line)
-    .LineMode(CustomLineMode(LineColor::Red, LineStyle::LongDashed))
-    .GridStyle(GridStyle::Full)
-    .Label("Imagine all the people ...")
-    .X("... living life in peace")
-    .Y("John Lennon, \"Imagine\"")
-    .LineWidth(0.015)
-    .BitmapSize(800, 800)
-#if 1      
-.OutputFormat(extensions[e]);
+  using namespace bricks::gnuplot;
+#ifndef BRICKS_APPLE
+const char* const formats[2] = { "dumb", "pngcairo" };
 #else
-    .OutputFormat("svg");
+const char* const formats[2] = { "dumb", "png" };
 #endif
-if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, (std::string("golden/love.") + extensions[e]).c_str());
-#ifndef BRICKS_APPLE // TODO(dkorolev): Figure out how to run this test on Apple.
-if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString(std::string("golden/love.") + extensions[e]));
+const char* const extensions[2] = { "txt", "png" };
+for (size_t e = 0; e < 2; ++e) {
+#if 1      
+const size_t image_dim = e ? 800 : 112;
+#else
+  const size_t image_dim = 800;
 #endif
+  const std::string result = GNUPlot()
+    .Title("Imagine all the people ...")
+    .NoKey()
+    .Grid("back")
+    .XLabel("... living life in peace")
+    .YLabel("John Lennon, \"Imagine\"")
+    .Plot(WithMeta([](Plotter p) {
+      const size_t N = 1000;
+      for (size_t i = 0; i < N; ++i) {
+        const double t = M_PI * 2 * i / (N - 1);
+        p(16 * pow(sin(t), 3),
+          -(13 * cos(t) + 5 * cos(t * 2) - 2 * cos(t * 3) - cos(t * 4)));
+      }
+    }).LineWidth(5).Color("rgb '#FF0080'"))
+    .ImageSize(image_dim)
+#if 1      
+.OutputFormat(formats[e]);
+#else
+    .OutputFormat("svg");  // Although the one below is actually a "png".
+#endif
+if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, ("golden/love-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/love-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
 }
 }
 
