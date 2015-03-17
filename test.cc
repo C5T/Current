@@ -31,6 +31,7 @@ SOFTWARE.
 #include "../Bricks/strings/util.h"
 #include "../Bricks/cerealize/cerealize.h"
 #include "../Bricks/net/api/api.h"
+#include "../Bricks/time/chrono.h"
 
 #include "../Bricks/dflags/dflags.h"
 #include "../Bricks/3party/gtest/gtest-main-with-dflags.h"
@@ -47,16 +48,32 @@ using std::chrono::milliseconds;
 using bricks::strings::Printf;
 using bricks::strings::ToString;
 
+using bricks::time::EPOCH_MILLISECONDS;
+using bricks::time::MILLISECONDS_INTERVAL;
+
 // The records we work with.
 // TODO(dkorolev): Support and test polymorphic types.
 struct Record {
-  // TODO(dkorolev): Support and test timestamps.
   int x_;
   Record(int x = 0) : x_(x) {}
   template <typename A>
   void serialize(A& ar) {
     ar(cereal::make_nvp("x", x_));
   }
+};
+
+struct RecordWithTimestamp {
+  // TODO(dkorolev): Make the `EPOCH_MILLISECONDS` type serializable.
+  std::string s_;
+  uint64_t timestamp_;
+  RecordWithTimestamp(std::string s = "", EPOCH_MILLISECONDS timestamp = EPOCH_MILLISECONDS(0))
+      : s_(s), timestamp_(static_cast<uint64_t>(timestamp)) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(cereal::make_nvp("s", s_), cereal::make_nvp("t", timestamp_));
+  }
+
+  EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp_); }
 };
 
 // Struct `Data` should be outside struct `Processor`, since the latter is `std::move`-d away in some tests.
@@ -160,4 +177,81 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   }
   EXPECT_EQ(d.seen_, 3u);
   EXPECT_EQ("10,11,12,DONE", d.results_);
+}
+
+TEST(Sherlock, SubscribeToStreamViaHTTP) {
+  // Publish four records.
+  // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 seconds ago respectively.
+  auto exposed_stream = sherlock::Stream<RecordWithTimestamp>("exposed");
+  const EPOCH_MILLISECONDS now = bricks::time::Now();
+  exposed_stream.Emplace("s[0]", now - MILLISECONDS_INTERVAL(40000));
+  exposed_stream.Emplace("s[1]", now - MILLISECONDS_INTERVAL(30000));
+  exposed_stream.Emplace("s[2]", now - MILLISECONDS_INTERVAL(20000));
+  exposed_stream.Emplace("s[3]", now - MILLISECONDS_INTERVAL(10000));
+
+  // Collect them and store as strings.
+  // Required since we don't mock time for this test, and therefore can't do exact match.
+  struct RecordsCollector {
+    atomic_size_t count_;
+    std::vector<std::string>& data_;
+
+    RecordsCollector() = delete;
+    explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
+
+    inline bool Entry(const RecordWithTimestamp& entry) {
+      data_.push_back(JSON(entry, "entry") + '\n');
+      ++count_;
+      return true;
+    }
+    inline void Terminate() {}
+  };
+  std::vector<std::string> s;
+  RecordsCollector collector(s);
+  {
+    auto scope = exposed_stream.Subscribe(collector);
+    while (collector.count_ < 4u) {
+      ;  // Spin lock.
+    }
+  }
+  EXPECT_EQ(s.size(), 4u);
+
+  HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
+  HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
+            HTTP(GET(Printf("http://localhost:%d/exposed?n=4", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[0] + s[1],
+            HTTP(GET(Printf("http://localhost:%d/exposed?n=2", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[0], HTTP(GET(Printf("http://localhost:%d/exposed?n=1", FLAGS_sherlock_http_test_port))).body);
+
+  EXPECT_EQ(
+      s[3],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=15000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(
+      s[2],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=25000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(
+      s[1],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=35000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(
+      s[0],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=45000", FLAGS_sherlock_http_test_port))).body);
+
+  EXPECT_EQ(
+      s[2] + s[3],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=2&recent=25000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(
+      s[1] + s[2],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=2&recent=35000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(
+      s[0] + s[1],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=2&recent=45000", FLAGS_sherlock_http_test_port))).body);
+
+  EXPECT_EQ(
+      s[1] + s[2] + s[3],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=3&recent=35000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(
+      s[0] + s[1] + s[2],
+      HTTP(GET(Printf("http://localhost:%d/exposed?n=3&recent=45000", FLAGS_sherlock_http_test_port))).body);
+
+  // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
 }

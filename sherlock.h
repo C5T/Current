@@ -12,6 +12,7 @@
 #include <iostream>  // TODO(dkorolev): Remove it from here.
 
 #include "../Bricks/net/api/api.h"
+#include "../Bricks/time/chrono.h"
 
 #include "waitable_atomic/waitable_atomic.h"
 #include "optionally_owned/optionally_owned.h"
@@ -89,18 +90,63 @@
 
 namespace sherlock {
 
-// TODO(dkorolev): Test this code.
+template <typename E>
+struct ExtractTimestampImpl {
+  static bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(const E& entry) { return entry.ExtractTimestamp(); }
+};
+
+template <typename E>
+struct ExtractTimestampImpl<std::unique_ptr<E>> {
+  static bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(const std::unique_ptr<E>& entry) {
+    return entry->ExtractTimestamp();
+  }
+};
+
+template <typename E>
+bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
+  return ExtractTimestampImpl<typename std::remove_reference<E>::type>::ExtractTimestamp(
+      std::forward<E>(entry));
+}
+
 template <typename E>
 class PubSubHTTPEndpoint {
  public:
   PubSubHTTPEndpoint(const std::string& value_name, Request r)
       : value_name_(value_name),
-        http_request_scope_(std::move(r)),
-        http_response_(http_request_scope_.SendChunkedResponse()) {}
+        http_request_(std::move(r)),
+        http_response_(http_request_.SendChunkedResponse()) {
+    // TODO(dkorolev): `"from"`, etc.
+    if (http_request_.url.query.has("recent")) {
+      serving_ = false;
+      from_timestamp_ =
+          r.timestamp - static_cast<bricks::time::MILLISECONDS_INTERVAL>(
+                            bricks::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
+    } else {
+      serving_ = true;
+    }
+    n_ = http_request_.url.query.has("n") ? bricks::strings::FromString<size_t>(http_request_.url.query["n"])
+                                          : 0;
+  }
 
   inline bool Entry(E& entry) {
+    // TODO(dkorolev): Should we always extract the timestamp and throw an exception is there is a mismatch?
     try {
-      http_response_(entry, value_name_);
+      if (!serving_) {
+        // The only condition we have now to not serve the entries via HTTP is the `from` URL parameter.
+        const bricks::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
+        if (timestamp >= from_timestamp_) {
+          serving_ = true;
+        }
+      }
+      if (serving_) {
+        http_response_(entry, value_name_);
+        if (n_) {
+          --n_;
+          if (!n_) {
+            return false;
+          }
+        }
+      }
       return true;
     } catch (const bricks::net::NetworkException&) {
       return false;
@@ -110,9 +156,18 @@ class PubSubHTTPEndpoint {
   inline void Terminate() { http_response_("{\"error\":\"The subscriber has terminated.\"}\n"); }
 
  private:
-  const std::string& value_name_;  // Top-level JSON object name for Cereal.
-  Request http_request_scope_;     // Need to keep `Request` in scope, for the lifetime of the chunked response.
+  // Top-level JSON object name for Cereal.
+  const std::string& value_name_;
+
+  // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
+  // `http_response_`: the instance of the chunked response object to use.
+  Request http_request_;
   bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+
+  // The logic to serve the stream starting from certain timestamp.
+  bool serving_;
+  bricks::time::EPOCH_MILLISECONDS from_timestamp_;
+  size_t n_;
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
@@ -131,6 +186,14 @@ class StreamInstanceImpl {
 
   inline void Publish(const T& entry) {
     data_.MutableUse([&entry](std::vector<T>& data) { data.emplace_back(entry); });
+  }
+
+  template <typename... ARGS>
+  inline void Emplace(const ARGS&... entry_params) {
+    // TODO(dkorolev): Am I not doing this C++11 thing right, or is it not yet supported?
+    // data_.MutableUse([&entry_params](std::vector<T>& data) { data.emplace_back(entry_params...); });
+    auto scope = data_.MutableScopedAccessor();
+    scope->emplace_back(entry_params...);
   }
 
   template <typename E>
@@ -321,6 +384,10 @@ struct StreamInstance {
   inline explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
 
   inline void Publish(const T& entry) { impl_->Publish(entry); }
+  template <typename... ARGS>
+  inline void Emplace(const ARGS&... entry_params) {
+    impl_->Emplace(entry_params...);
+  }
 
   // TODO(dkorolev): Add a test for this code.
   // TODO(dkorolev): Perhaps eliminate the copy.
