@@ -58,6 +58,16 @@ inline std::string ToString(T&& something) {
   return bricks::strings::to_string(something);
 }
 
+// TODO(dkorolev): I recall there was a C++11 way to do it, but am offline now ...
+// TODO(dkorolev): Add tests.
+template <typename T_OUTPUT, typename T_INPUT = std::string>
+inline T_OUTPUT FromString(T_INPUT&& input) {
+  std::istringstream is(input);
+  T_OUTPUT output;
+  is >> output;
+  return output;
+}
+
 template <size_t N>
 constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const (&)[N]) {
   return N - 1;
