@@ -36,6 +36,7 @@ using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
 using bricks::strings::CompileTimeStringLength;
 using bricks::strings::Trim;
+using bricks::strings::FromString;
 using bricks::strings::ToLower;
 using bricks::strings::ToUpper;
 using bricks::strings::Join;
@@ -115,6 +116,17 @@ TEST(Util, Trim) {
   EXPECT_EQ("", Trim(std::string("")));
   EXPECT_EQ("", Trim(" \t\r\n\t "));
   EXPECT_EQ("", Trim(std::string(" \t\r\n\t ")));
+}
+
+TEST(Util, FromString) {
+  EXPECT_EQ(1, FromString<int>("1"));
+
+  EXPECT_EQ(32767, static_cast<int>(FromString<int16_t>("32767")));
+  EXPECT_EQ(65535, static_cast<int>(FromString<uint16_t>("65535")));
+
+  double tmp;
+  EXPECT_EQ(0.5, FromString("0.5", tmp));
+  EXPECT_EQ(0.5, tmp);
 }
 
 TEST(Util, ToUpperAndToLower) {

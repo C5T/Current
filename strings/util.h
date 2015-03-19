@@ -58,13 +58,17 @@ inline std::string ToString(T&& something) {
   return bricks::strings::to_string(something);
 }
 
-// TODO(dkorolev): I recall there was a C++11 way to do it, but am offline now ...
-// TODO(dkorolev): Add tests.
+template <typename T_OUTPUT, typename T_INPUT = std::string>
+inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
+  std::istringstream is(input);
+  is >> output;
+  return output;
+}
+
 template <typename T_OUTPUT, typename T_INPUT = std::string>
 inline T_OUTPUT FromString(T_INPUT&& input) {
-  std::istringstream is(input);
   T_OUTPUT output;
-  is >> output;
+  FromString(std::forward<T_INPUT>(input), output);
   return output;
 }
 
