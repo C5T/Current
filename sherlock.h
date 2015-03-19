@@ -129,7 +129,7 @@ class PubSubHTTPEndpoint {
   }
 
   inline bool Entry(E& entry) {
-    // TODO(dkorolev): Should we always extract the timestamp and throw an exception is there is a mismatch?
+    // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
         // The only condition we have now to not serve the entries via HTTP is the `from` URL parameter.
@@ -160,8 +160,9 @@ class PubSubHTTPEndpoint {
   const std::string& value_name_;
 
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
-  // `http_response_`: the instance of the chunked response object to use.
   Request http_request_;
+
+  // `http_response_`: the instance of the chunked response object to use.
   bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
 
   // The logic to serve the stream starting from certain timestamp.
@@ -384,6 +385,7 @@ struct StreamInstance {
   inline explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
 
   inline void Publish(const T& entry) { impl_->Publish(entry); }
+
   template <typename... ARGS>
   inline void Emplace(const ARGS&... entry_params) {
     impl_->Emplace(entry_params...);

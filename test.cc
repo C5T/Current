@@ -205,6 +205,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     }
     inline void Terminate() {}
   };
+
   std::vector<std::string> s;
   RecordsCollector collector(s);
   {
