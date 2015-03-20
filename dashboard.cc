@@ -51,7 +51,9 @@ class ServeJSONOverHTTP {
   ServeJSONOverHTTP(Request r)
       : http_request_scope_(std::move(r)), http_response_(http_request_scope_.SendChunkedResponse()) {}
 
-  inline bool Entry(const T& entry) {
+  inline bool Entry(const T& entry, size_t index, size_t total) {
+    static_cast<void>(index);
+    static_cast<void>(total);
     try {
       http_response_(entry, "point");
       return true;
