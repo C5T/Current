@@ -13,8 +13,8 @@
 
 #include "../Bricks/net/api/api.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/waitable_atomic/waitable_atomic.h"
 
-#include "waitable_atomic/waitable_atomic.h"
 #include "optionally_owned/optionally_owned.h"
 
 // Sherlock is the overlord of data storage and processing in KnowSheet.
@@ -205,7 +205,7 @@ class StreamInstanceImpl {
   template <typename F>
   class ListenerScope {
    public:
-    inline explicit ListenerScope(WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
+    inline explicit ListenerScope(bricks::WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
         : impl_(new Impl(data, std::move(listener))) {}
 
     // TODO(dkorolev): Think whether it's worth it to transfer the scope.
@@ -232,7 +232,7 @@ class StreamInstanceImpl {
 
     class Impl {
      public:
-      inline Impl(WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
+      inline Impl(bricks::WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
           : listener_is_detachable_(listener.IsDetachable()),
             data_(data),
             terminate_flag_(new ReallyAtomicFlag()),
@@ -269,7 +269,7 @@ class StreamInstanceImpl {
       }
 
       inline static void StaticListenerThread(std::shared_ptr<ReallyAtomicFlag> terminate,
-                                              WaitableAtomic<std::vector<T>>& data,
+                                              bricks::WaitableAtomic<std::vector<T>>& data,
                                               OptionallyOwned<F> listener) {
         size_t cursor = 0;
         while (true) {
@@ -314,8 +314,8 @@ class StreamInstanceImpl {
         }
       }
 
-      const bool listener_is_detachable_;     // Indicates whether `Detach()` is legal.
-      WaitableAtomic<std::vector<T>>& data_;  // Just to `.Notify()` when terminating.
+      const bool listener_is_detachable_;             // Indicates whether `Detach()` is legal.
+      bricks::WaitableAtomic<std::vector<T>>& data_;  // Just to `.Notify()` when terminating.
 
       // A termination flag that outlives both the `Impl` and its thread.
       std::shared_ptr<ReallyAtomicFlag> terminate_flag_;
@@ -359,7 +359,7 @@ class StreamInstanceImpl {
   const std::string name_;
   const std::string value_name_;
   // FTR: This is really an inefficient reference implementation. TODO(dkorolev): Revisit it.
-  WaitableAtomic<std::vector<T>> data_;
+  bricks::WaitableAtomic<std::vector<T>> data_;
 
   StreamInstanceImpl() = delete;
   StreamInstanceImpl(const StreamInstanceImpl&) = delete;
