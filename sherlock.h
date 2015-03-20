@@ -126,6 +126,11 @@ class PubSubHTTPEndpoint {
       bricks::strings::FromString(http_request_.url.query["n"], n_);
       cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
     }
+    if (http_request_.url.query.has("n_min")) {
+      // `n_min` is same as `n`, but it does not set the cap; just the lower bound for `recent`.
+      serving_ = false;  // Start in 'non-serving' mode when `n_min` is set.
+      bricks::strings::FromString(http_request_.url.query["n_min"], n_);
+    }
     if (http_request_.url.query.has("cap")) {
       bricks::strings::FromString(http_request_.url.query["cap"], cap_);
     }
