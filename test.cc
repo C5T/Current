@@ -96,7 +96,9 @@ struct Processor {
     return *this;
   }
 
-  inline bool Entry(const Record& entry) {
+  inline bool Entry(const Record& entry, size_t index, size_t total) {
+    static_cast<void>(total);
+    static_cast<void>(total);
     if (data_.seen_) {
       data_.results_ += ",";
     }
@@ -198,7 +200,9 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     RecordsCollector() = delete;
     explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
 
-    inline bool Entry(const RecordWithTimestamp& entry) {
+    inline bool Entry(const RecordWithTimestamp& entry, size_t index, size_t total) {
+      static_cast<void>(index);
+      static_cast<void>(total);
       data_.push_back(JSON(entry, "entry") + '\n');
       ++count_;
       return true;
@@ -218,12 +222,25 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+
+  // Test `?n=...`.
+  EXPECT_EQ(s[3], HTTP(GET(Printf("http://localhost:%d/exposed?n=1", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[2] + s[3],
+            HTTP(GET(Printf("http://localhost:%d/exposed?n=2", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[1] + s[2] + s[3],
+            HTTP(GET(Printf("http://localhost:%d/exposed?n=3", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
+            HTTP(GET(Printf("http://localhost:%d/exposed?n=4", FLAGS_sherlock_http_test_port))).body);
+  // `?n={>4}` will block forever.
+
+  // Test `?cap=...`.
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
             HTTP(GET(Printf("http://localhost:%d/exposed?cap=4", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(s[0] + s[1],
             HTTP(GET(Printf("http://localhost:%d/exposed?cap=2", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(s[0], HTTP(GET(Printf("http://localhost:%d/exposed?cap=1", FLAGS_sherlock_http_test_port))).body);
 
+  // Test `?recent=...`, have to use `?cap=...`.
   EXPECT_EQ(
       s[3],
       HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=15000", FLAGS_sherlock_http_test_port))).body);
@@ -254,5 +271,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
       s[0] + s[1] + s[2],
       HTTP(GET(Printf("http://localhost:%d/exposed?cap=3&recent=45000", FLAGS_sherlock_http_test_port))).body);
 
+  // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
+  // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }

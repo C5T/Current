@@ -56,7 +56,7 @@
 //
 //   The `my_listener` object should expose the following member functions:
 //
-//   1) `bool Entry(const T_ENTRY& entry)`:
+//   1) `bool Entry(const T_ENTRY& entry, size_t index, size_t total)`:
 //      The `T_ENTRY` type is RTTI-dispatched against the supplied type list.
 //      As long as `my_listener` returns `true`, it will keep receiving new entries,
 //      which may end up blocking the thread until new, yet unseen, entries have been published.
@@ -115,27 +115,34 @@ class PubSubHTTPEndpoint {
       : value_name_(value_name),
         http_request_(std::move(r)),
         http_response_(http_request_.SendChunkedResponse()) {
-    // TODO(dkorolev): `"from"`, etc.
     if (http_request_.url.query.has("recent")) {
-      serving_ = false;
+      serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
           r.timestamp - static_cast<bricks::time::MILLISECONDS_INTERVAL>(
                             bricks::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
-    } else {
-      serving_ = true;
     }
-    cap_ = http_request_.url.query.has("cap")
-               ? bricks::strings::FromString<size_t>(http_request_.url.query["cap"])
-               : 0;
+    if (http_request_.url.query.has("n")) {
+      serving_ = false;  // Start in 'non-serving' mode when `n` is set.
+      bricks::strings::FromString(http_request_.url.query["n"], n_);
+      cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
+    }
+    if (http_request_.url.query.has("cap")) {
+      bricks::strings::FromString(http_request_.url.query["cap"], cap_);
+    }
   }
 
-  inline bool Entry(E& entry) {
+  inline bool Entry(E& entry, size_t index, size_t total) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        // The only condition we have now to not serve the entries via HTTP is the `from` URL parameter.
         const bricks::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
-        if (timestamp >= from_timestamp_) {
+        // Respect `n`.
+        if (total - index <= n_) {
+          serving_ = true;
+        }
+        // Respect `recent`.
+        if (from_timestamp_ != static_cast<bricks::time::EPOCH_MILLISECONDS>(-1) &&
+            timestamp >= from_timestamp_) {
           serving_ = true;
         }
       }
@@ -166,10 +173,14 @@ class PubSubHTTPEndpoint {
   // `http_response_`: the instance of the chunked response object to use.
   bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
 
-  // The logic to serve the stream starting from certain timestamp.
-  bool serving_;
-  bricks::time::EPOCH_MILLISECONDS from_timestamp_;
-  size_t cap_;
+  // Conditions on which parts of the stream to serve.
+  bool serving_ = true;
+  // If set, the number of "last" entries to output.
+  size_t n_ = 0;
+  // If set, the hard limit on the maximum number of entries to output.
+  size_t cap_ = 0;
+  // If set, the timestamp from which the output should start.
+  bricks::time::EPOCH_MILLISECONDS from_timestamp_ = static_cast<bricks::time::EPOCH_MILLISECONDS>(-1);
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
@@ -304,7 +315,7 @@ class StreamInstanceImpl {
             }
 
             // TODO(dkorolev): Perhaps RTTI dispatching here.
-            if (!listener->Entry(copy_of_entry)) {
+            if (!listener->Entry(copy_of_entry, cursor, data.size())) {
               user_initiated_terminate = true;
             }
             ++cursor;
