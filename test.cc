@@ -219,40 +219,40 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
-            HTTP(GET(Printf("http://localhost:%d/exposed?n=4", FLAGS_sherlock_http_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/exposed?cap=4", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(s[0] + s[1],
-            HTTP(GET(Printf("http://localhost:%d/exposed?n=2", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(s[0], HTTP(GET(Printf("http://localhost:%d/exposed?n=1", FLAGS_sherlock_http_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/exposed?cap=2", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[0], HTTP(GET(Printf("http://localhost:%d/exposed?cap=1", FLAGS_sherlock_http_test_port))).body);
 
   EXPECT_EQ(
       s[3],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=15000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=15000", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(
       s[2],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=25000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=25000", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(
       s[1],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=35000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=35000", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(
       s[0],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=1&recent=45000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=45000", FLAGS_sherlock_http_test_port))).body);
 
   EXPECT_EQ(
       s[2] + s[3],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=2&recent=25000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=2&recent=25000", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(
       s[1] + s[2],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=2&recent=35000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=2&recent=35000", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(
       s[0] + s[1],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=2&recent=45000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=2&recent=45000", FLAGS_sherlock_http_test_port))).body);
 
   EXPECT_EQ(
       s[1] + s[2] + s[3],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=3&recent=35000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=3&recent=35000", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(
       s[0] + s[1] + s[2],
-      HTTP(GET(Printf("http://localhost:%d/exposed?n=3&recent=45000", FLAGS_sherlock_http_test_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/exposed?cap=3&recent=45000", FLAGS_sherlock_http_test_port))).body);
 
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
 }

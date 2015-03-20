@@ -124,8 +124,9 @@ class PubSubHTTPEndpoint {
     } else {
       serving_ = true;
     }
-    n_ = http_request_.url.query.has("n") ? bricks::strings::FromString<size_t>(http_request_.url.query["n"])
-                                          : 0;
+    cap_ = http_request_.url.query.has("cap")
+               ? bricks::strings::FromString<size_t>(http_request_.url.query["cap"])
+               : 0;
   }
 
   inline bool Entry(E& entry) {
@@ -140,9 +141,9 @@ class PubSubHTTPEndpoint {
       }
       if (serving_) {
         http_response_(entry, value_name_);
-        if (n_) {
-          --n_;
-          if (!n_) {
+        if (cap_) {
+          --cap_;
+          if (!cap_) {
             return false;
           }
         }
@@ -168,7 +169,7 @@ class PubSubHTTPEndpoint {
   // The logic to serve the stream starting from certain timestamp.
   bool serving_;
   bricks::time::EPOCH_MILLISECONDS from_timestamp_;
-  size_t n_;
+  size_t cap_;
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
