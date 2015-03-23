@@ -34,17 +34,24 @@ SOFTWARE.
 #include <functional>
 #include <thread>
 
-// TODO(dkorolev)+TODO(mzhurovich): Chat about this `typename fncas::output<T>::type` syntax. We can do better.
-template <typename T>
-typename fncas::output<T>::type parametrized_f(const T& x, size_t c) {
+template <typename X>
+X2V<X> parametrized_f(const X& x, size_t c) {
   return (x[0] + x[1] * c) * (x[0] + x[1] * c);
 }
 
 // Need an explicit specialization, not a default parameter, since `f` itself is used as a parameter later on.
-template <typename T>
-typename fncas::output<T>::type f(const T& x) {
+template <typename X>
+X2V<X> f(const X& x) {
   return parametrized_f(x, 2u);
 }
+
+static_assert(std::is_same<double, fncas::fncas_value_type>::value, "");
+
+static_assert(std::is_same<std::vector<double>, V2X<double>>::value, "");
+static_assert(std::is_same<X2V<std::vector<double>>, double>::value, "");
+
+static_assert(std::is_same<fncas::node, X2V<fncas::x>>::value, "");
+static_assert(std::is_same<fncas::x, V2X<fncas::node>>::value, "");
 
 TEST(FNCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
 
@@ -107,8 +114,8 @@ TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
 
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
 struct StaticFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const auto dx = x[0] - 3;
     const auto dy = x[1] - 4;
     return exp(0.01 * (dx * dx + dy * dy));
@@ -132,8 +139,8 @@ struct MemberFunction {
 
 // An obviously convex function with a single minimum `f(0, 0) == 0`.
 struct PolynomialFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const double a = 10.0;
     const double b = 0.5;
     return (a * x[0] * x[0] + b * x[1] * x[1]);
@@ -143,8 +150,8 @@ struct PolynomialFunction {
 // http://en.wikipedia.org/wiki/Rosenbrock_function
 // Non-convex function with global minimum `f(a, a^2) == 0`.
 struct RosenbrockFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const double a = 1.0;
     const double b = 100.0;
     const auto d1 = (a - x[0]);
@@ -160,8 +167,8 @@ struct RosenbrockFunction {
 // f(-3.779310, -3.283186) = 0.0
 // f(3.584428, -1.848126) = 0.0
 struct HimmelblauFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const auto d1 = (x[0] * x[0] + x[1] - 11);
     const auto d2 = (x[0] + x[1] * x[1] - 7);
     return (d1 * d1 + d2 * d2);
