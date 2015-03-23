@@ -57,21 +57,23 @@ bool bricks::net::api::HTTPClientApple::Go() {
     if (!user_agent.empty())
       [request setValue:[NSString stringWithUTF8String:user_agent.c_str()] forHTTPHeaderField:@"User-Agent"];
 
-    if (!post_body.empty()) {
-      request.HTTPBody = [NSData dataWithBytes:post_body.data() length:post_body.size()];
+    if (is_post) {
       request.HTTPMethod = @"POST";
-    } else if (!post_file.empty()) {
-      NSError * err = nil;
-      NSString * path = [NSString stringWithUTF8String:post_file.c_str()];
-      const unsigned long long file_size = [[NSFileManager defaultManager] attributesOfItemAtPath:path error:&err].fileSize;
-      if (err) {
-        http_response_code = -1;
-        NSLog(@"Error %d %@", static_cast<int>(err.code), err.localizedDescription);
-        return false;
+      if (!post_file.empty()) {
+        NSError * err = nil;
+        NSString * path = [NSString stringWithUTF8String:post_file.c_str()];
+        const unsigned long long file_size =
+          [[NSFileManager defaultManager] attributesOfItemAtPath:path error:&err].fileSize;
+        if (err) {
+          http_response_code = -1;
+          NSLog(@"Error %d %@", static_cast<int>(err.code), err.localizedDescription);
+          return false;
+        }
+        request.HTTPBodyStream = [NSInputStream inputStreamWithFileAtPath:path];
+        [request setValue:[NSString stringWithFormat:@"%llu", file_size] forHTTPHeaderField:@"Content-Length"];
+      } else {
+        request.HTTPBody = [NSData dataWithBytes:post_body.data() length:post_body.size()];
       }
-      request.HTTPBodyStream = [NSInputStream inputStreamWithFileAtPath:path];
-      request.HTTPMethod = @"POST";
-      [request setValue:[NSString stringWithFormat:@"%llu", file_size] forHTTPHeaderField:@"Content-Length"];
     }
 
     NSHTTPURLResponse * response = nil;

@@ -324,16 +324,6 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
   EXPECT_EQ("Data: No shit!", response.body);
 }
 
-TEST(HTTPAPI, PostWithNoBodyProvided) {
-  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_FALSE(r.has_body);
-    r("POST with no body passed in.");
-  });
-  EXPECT_EQ("POST with no body passed in.",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port))).body);
-}
-
 TEST(HTTPAPI, PostAStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post_string", [](Request r) {
@@ -361,44 +351,51 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
 TEST(HTTPAPI, RespondWithStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string", [](Request r) {
-    ASSERT_FALSE(r.has_body);
+    ASSERT_TRUE(r.has_body);
+    EXPECT_EQ("", r.body);
     r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
   });
-  EXPECT_EQ("std::string",
-            HTTP(POST(Printf("http://localhost:%d/respond_with_std_string", FLAGS_net_api_test_port))).body);
+  EXPECT_EQ(
+      "std::string",
+      HTTP(POST(Printf("http://localhost:%d/respond_with_std_string", FLAGS_net_api_test_port), "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
-    ASSERT_FALSE(r.has_body);
+    ASSERT_TRUE(r.has_body);
+    EXPECT_EQ("", r.body);
     r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
   EXPECT_EQ(
       "const char*",
-      HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port))).body);
+      HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr", FLAGS_net_api_test_port), "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string_via_request_directly", [](Request r) {
-    ASSERT_FALSE(r.has_body);
+    ASSERT_TRUE(r.has_body);
+    EXPECT_EQ("", r.body);
     r(std::string("std::string"), HTTPResponseCode.OK);
   });
   EXPECT_EQ("std::string",
             HTTP(POST(Printf("http://localhost:%d/respond_with_std_string_via_request_directly",
-                             FLAGS_net_api_test_port))).body);
+                             FLAGS_net_api_test_port),
+                      "")).body);
 }
 
 TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr_via_request_directly", [](Request r) {
-    ASSERT_FALSE(r.has_body);
+    ASSERT_TRUE(r.has_body);
+    EXPECT_EQ("", r.body);
     r(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
   EXPECT_EQ("const char*",
             HTTP(POST(Printf("http://localhost:%d/respond_with_const_char_ptr_via_request_directly",
-                             FLAGS_net_api_test_port))).body);
+                             FLAGS_net_api_test_port),
+                      "")).body);
 }
 
 struct ObjectToPOST {
@@ -557,26 +554,22 @@ TEST(HTTPAPI, ServeDir) {
   EXPECT_EQ("And this: PNG", HTTP(GET(Printf("http://localhost:%d/file.png", FLAGS_net_api_test_port))).body);
   EXPECT_EQ("<h1>NOT FOUND</h1>\n",
             HTTP(GET(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).body);
-#ifndef BRICKS_APPLE
-  // Temporary disabled - post with no body is not supported -- M.Z.
   EXPECT_EQ("<h1>METHOD NOT ALLOWED</h1>\n",
-            HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).body);
+            HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).body);
   EXPECT_EQ("<h1>NOT FOUND</h1>\n",
-            HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).body);
-#endif
+            HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port), "")).body);
   EXPECT_EQ(200,
             static_cast<int>(HTTP(GET(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
   EXPECT_EQ(404,
             static_cast<int>(
                 HTTP(GET(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
-#ifndef BRICKS_APPLE
   // Temporary disabled - post with no body is not supported -- M.Z.
   EXPECT_EQ(
-      405, static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port))).code));
+      405,
+      static_cast<int>(HTTP(POST(Printf("http://localhost:%d/file.html", FLAGS_net_api_test_port), "")).code));
   EXPECT_EQ(404,
             static_cast<int>(
-                HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port))).code));
-#endif
+                HTTP(POST(Printf("http://localhost:%d/subdir_to_ignore", FLAGS_net_api_test_port), "")).code));
   FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir_to_ignore"), FileSystem::RmDirParameters::Silent);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 }
