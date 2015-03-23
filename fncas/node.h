@@ -34,6 +34,7 @@
 #include <stack>
 #include <string>
 #include <vector>
+#include <exception>
 
 #include "base.h"
 
@@ -43,6 +44,12 @@ inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) {
 }
 
 namespace fncas {
+
+// This exception is thrown when more than one expression per thread
+// is attempted to be being evaluated concurrently under FNCAS.
+// This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
+struct FNCASConcurrentEvaluationAttemptException : std::exception {
+};
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.
@@ -110,9 +117,6 @@ inline internals_impl& internals_singleton() {
   thread_local static internals_impl storage;
   return storage;
 }
-
-// Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
-inline void reset_internals_singleton() { internals_singleton().reset(); }
 
 inline std::vector<node_impl>& node_vector_singleton() { return internals_singleton().node_vector_; }
 
@@ -303,10 +307,22 @@ struct X : noncopyable {
   explicit X(int32_t dim) {
     assert(dim > 0);
     auto& meta = internals_singleton();
-    assert(!meta.x_ptr_);
+    if (meta.x_ptr_) {
+      throw FNCASConcurrentEvaluationAttemptException();
+    }
     assert(!meta.dim_);
+    // Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
+    meta.reset();
     meta.x_ptr_ = this;
     meta.dim_ = dim;
+  }
+  ~X() {
+    auto& meta = internals_singleton();
+    if (meta.x_ptr_ == this) {
+      // The condition is required to correctly handle the case when the constructor did `throw`.
+      meta.x_ptr_ = nullptr;
+      meta.dim_ = 0;
+    }
   }
   V operator[](int32_t i) const {
     assert(i >= 0);

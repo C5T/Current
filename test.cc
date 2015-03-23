@@ -56,13 +56,11 @@ static_assert(std::is_same<fncas::X, V2X<fncas::V>>::value, "");
 TEST(FNCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
 
 TEST(FNCAS, NativeWrapper) {
-  fncas::reset_internals_singleton();
   fncas::f_native fn(f<std::vector<double>>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
 TEST(FNCAS, IntermediateWrapper) {
-  fncas::reset_internals_singleton();
   fncas::X x(2);
   fncas::f_intermediate fi = f(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
@@ -70,7 +68,6 @@ TEST(FNCAS, IntermediateWrapper) {
 }
 
 TEST(FNCAS, CompilingWrapper) {
-  fncas::reset_internals_singleton();
   fncas::X x(2);
   fncas::f_intermediate fi = f(x);
   fncas::f_compiled fc = fncas::f_compiled(fi);
@@ -78,7 +75,6 @@ TEST(FNCAS, CompilingWrapper) {
 }
 
 TEST(FNCAS, GradientsWrapper) {
-  fncas::reset_internals_singleton();
   std::vector<double> p_3_3({3.0, 3.0});
 
   fncas::g_approximate ga = fncas::g_approximate(f<std::vector<double>>, 2);
@@ -98,7 +94,6 @@ TEST(FNCAS, GradientsWrapper) {
 TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = [](){
     for (size_t i = 0; i < 1000; ++i) {
-      fncas::reset_internals_singleton();
       fncas::X x(2);
       fncas::f_intermediate fi = parametrized_f(x, i + 1);
       EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
@@ -110,6 +105,12 @@ TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
   t1.join();
   t2.join();
   t3.join();
+}
+
+TEST(FNCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
+  // An instance of `X` is instantiated before the call to `instantiate_x()`.
+  fncas::X x(1);
+  ASSERT_THROW(fncas::X x(2), fncas::FNCASConcurrentEvaluationAttemptException);
 }
 
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
