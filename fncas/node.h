@@ -107,7 +107,7 @@ struct internals_impl {
 };
 
 inline internals_impl& internals_singleton() {
-  static internals_impl storage;
+  thread_local static internals_impl storage;
   return storage;
 }
 

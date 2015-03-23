@@ -30,12 +30,20 @@ SOFTWARE.
 #endif
 
 #include "fncas/fncas.h"
+
 #include <functional>
+#include <thread>
 
 // TODO(dkorolev)+TODO(mzhurovich): Chat about this `typename fncas::output<T>::type` syntax. We can do better.
 template <typename T>
+typename fncas::output<T>::type parametrized_f(const T& x, size_t c) {
+  return (x[0] + x[1] * c) * (x[0] + x[1] * c);
+}
+
+// Need an explicit specialization, not a default parameter, since `f` itself is used as a parameter later on.
+template <typename T>
 typename fncas::output<T>::type f(const T& x) {
-  return (x[0] + x[1] * 2) * (x[0] + x[1] * 2);
+  return parametrized_f(x, 2u);
 }
 
 TEST(FNCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
@@ -78,6 +86,23 @@ TEST(FNCAS, GradientsWrapper) {
   EXPECT_EQ(81.0, d_3_3_intermediate.value);
   EXPECT_EQ(18.0, d_3_3_intermediate.gradient[0]);
   EXPECT_EQ(36.0, d_3_3_intermediate.gradient[1]);
+}
+
+TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
+  const auto advanced_math = [](){
+    for (size_t i = 0; i < 1000; ++i) {
+      fncas::reset_internals_singleton();
+      fncas::x x(2);
+      fncas::f_intermediate fi = parametrized_f(x, i + 1);
+      EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
+    }
+  };
+  std::thread t1(advanced_math);
+  std::thread t2(advanced_math);
+  std::thread t3(advanced_math);
+  t1.join();
+  t2.join();
+  t3.join();
 }
 
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
