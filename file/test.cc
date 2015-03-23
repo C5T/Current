@@ -109,9 +109,11 @@ TEST(File, FileStringOperations) {
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::RmFile(fn), FileException);
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
+  ASSERT_THROW(FileSystem::IsDir(fn), FileException);
 
   FileSystem::WriteStringToFile("PASSED", fn.c_str());
   EXPECT_EQ("PASSED", FileSystem::ReadFileAsString(fn));
+  EXPECT_FALSE(FileSystem::IsDir(fn));
 
   FileSystem::WriteStringToFile("ANOTHER", fn.c_str());
   FileSystem::WriteStringToFile(" TEST", fn.c_str(), true);
@@ -119,6 +121,7 @@ TEST(File, FileStringOperations) {
 
   FileSystem::RmFile(fn);
   FileSystem::MkDir(fn);
+  EXPECT_TRUE(FileSystem::IsDir(fn));
   ASSERT_THROW(FileSystem::WriteStringToFile("not so fast", fn.c_str()), FileException);
   FileSystem::RmDir(fn);
 }

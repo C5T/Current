@@ -56,6 +56,11 @@ struct Plotter {
   void operator()(T1&& x, T2&& y) {
     of_ << x << ' ' << y << std::endl;
   }
+  template <typename T1, typename T2, typename T3>
+  void operator()(T1&& x, T2&& y, T3&& z) {
+    // `z` is usually `label`. But it can go places.
+    of_ << x << ' ' << y << ' ' << z << std::endl;
+  }
 };
 
 struct PlotDataBase {
@@ -70,7 +75,7 @@ struct PlotDataFromFunction : PlotDataBase {
   explicit PlotDataFromFunction(std::function<void(Plotter&)> f,
                                 const std::string& meta = " t 'Graph' with lines lw 5")
       : f_(f), meta_(meta) {}
-  virtual void AppendMetadata(bricks::FileSystem::OutputFile& of) const override { of << meta_; }
+  virtual void AppendMetadata(bricks::FileSystem::OutputFile& of) const override { of << ' ' << meta_; }
   virtual void AppendData(bricks::FileSystem::OutputFile& of) const override {
     Plotter p(of);
     f_(p);
@@ -86,7 +91,7 @@ class WithMeta {
     return *this;
   }
   WithMeta& Color(const std::string& color) {
-    proto_meta_ += " lt " + color;
+    proto_meta_ += " lc " + color;
     return *this;
   }
   WithMeta& LineWidth(double lw) {
@@ -96,6 +101,10 @@ class WithMeta {
   }
   WithMeta& AsPoints() {
     type_ = "points";
+    return *this;
+  }
+  WithMeta& AsLabels() {
+    type_ = "labels";
     return *this;
   }
 
@@ -117,14 +126,29 @@ struct GNUPlot {
 
   GNUPlot() = default;
 
-  GNUPlot& TermSize(size_t x, size_t y) {
+  GNUPlot& ImageSize(size_t x, size_t y = 0) {
     x_ = x;
-    y_ = y;
+    y_ = y ? y : x;  // Square by default.
     return *this;
   }
 
   GNUPlot& Title(const std::string& title) {
     parameters_["title"] = Escape(title);
+    return *this;
+  }
+
+  GNUPlot& NoTitle() {
+    parameters_["title"] = "";
+    return *this;
+  }
+
+  GNUPlot& XLabel(const std::string& label) {
+    parameters_["xlabel"] = Escape(label);
+    return *this;
+  }
+
+  GNUPlot& YLabel(const std::string& label) {
+    parameters_["ylabel"] = Escape(label);
     return *this;
   }
 
@@ -140,6 +164,16 @@ struct GNUPlot {
 
   GNUPlot& KeyTitle(const std::string& key_title) {
     parameters_["key"] = "title " + Escape(key_title);
+    return *this;
+  }
+
+  GNUPlot& NoTics() {
+    parameters_["tics"] = "";
+    return *this;
+  }
+
+  GNUPlot& NoBorder() {
+    parameters_["border"] = "";
     return *this;
   }
 

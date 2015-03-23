@@ -141,11 +141,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
-    client.request_has_body_ = request.has_body;
-    if (request.has_body) {
-      client.request_body_contents_ = request.body;
-      client.request_body_content_type_ = request.content_type;
-    }
+    client.request_has_body_ = true;
+    client.request_body_contents_ = request.body;
+    client.request_body_content_type_ = request.content_type;
   }
 
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientPOSIX& client) {

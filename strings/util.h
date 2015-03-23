@@ -58,6 +58,20 @@ inline std::string ToString(T&& something) {
   return bricks::strings::to_string(something);
 }
 
+template <typename T_OUTPUT, typename T_INPUT = std::string>
+inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
+  std::istringstream is(input);
+  is >> output;
+  return output;
+}
+
+template <typename T_OUTPUT, typename T_INPUT = std::string>
+inline T_OUTPUT FromString(T_INPUT&& input) {
+  T_OUTPUT output;
+  FromString(std::forward<T_INPUT>(input), output);
+  return output;
+}
+
 template <size_t N>
 constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const (&)[N]) {
   return N - 1;

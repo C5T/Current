@@ -42,12 +42,13 @@ struct HTTPClientApple {
   std::string url_requested = "";
   std::string url_received = "";
   int http_response_code = -1;
+  bool is_post = false;
+  std::string post_body = "";
   std::string post_file = "";
   std::string received_file = "";
   std::string server_response = "";
   std::string content_type = "";
   std::string user_agent = "";
-  std::string post_body = "";
 
   inline bool Go();
 };
@@ -66,6 +67,7 @@ struct ImplWrapper<HTTPClientApple> {
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
+    client.is_post = true;
     client.post_body = request.body;
     client.content_type = request.content_type;
   }
@@ -74,6 +76,7 @@ struct ImplWrapper<HTTPClientApple> {
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
+    client.is_post = true;
     client.post_file = request.file_name;
     client.content_type = request.content_type;
   }

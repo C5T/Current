@@ -144,8 +144,9 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
+      "Access-Control-Allow-Origin: *\r\n"
       "Content-Length: 55\r\n"
       "\r\n"
       "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
@@ -167,8 +168,9 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
+      "Access-Control-Allow-Origin: *\r\n"
       "Content-Length: 60\r\n"
       "\r\n"
       "{\"epic_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
@@ -194,8 +196,9 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(
       "HTTP/1.1 200 OK\r\n"
-      "Content-Type: text/plain\r\n"
+      "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: keep-alive\r\n"
+      "Access-Control-Allow-Origin: *\r\n"
       "Transfer-Encoding: chunked\r\n"
       "\r\n"
       "B\r\n"

@@ -36,6 +36,7 @@ using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
 using bricks::strings::CompileTimeStringLength;
 using bricks::strings::Trim;
+using bricks::strings::FromString;
 using bricks::strings::ToLower;
 using bricks::strings::ToUpper;
 using bricks::strings::Join;
@@ -49,6 +50,7 @@ using bricks::strings::ByWhitespace;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
+  EXPECT_EQ(1024u * 5, Printf("%s", std::string(10000, 'A').c_str()).length());
 }
 
 TEST(FixedSizeSerializer, UInt16) {
@@ -114,6 +116,17 @@ TEST(Util, Trim) {
   EXPECT_EQ("", Trim(std::string("")));
   EXPECT_EQ("", Trim(" \t\r\n\t "));
   EXPECT_EQ("", Trim(std::string(" \t\r\n\t ")));
+}
+
+TEST(Util, FromString) {
+  EXPECT_EQ(1, FromString<int>("1"));
+
+  EXPECT_EQ(32767, static_cast<int>(FromString<int16_t>("32767")));
+  EXPECT_EQ(65535, static_cast<int>(FromString<uint16_t>("65535")));
+
+  double tmp;
+  EXPECT_EQ(0.5, FromString("0.5", tmp));
+  EXPECT_EQ(0.5, tmp);
 }
 
 TEST(Util, ToUpperAndToLower) {

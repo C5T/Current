@@ -99,13 +99,17 @@ struct is_string_type {
 template <typename T>
 struct is_read_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_input_serializable<T, cereal::JSONInputArchive>::value;
+      !is_string_type<T>::value && cereal::traits::is_input_serializable<
+                                       typename std::remove_cv<typename std::remove_reference<T>::type>::type,
+                                       cereal::JSONInputArchive>::value;
 };
 
 template <typename T>
 struct is_write_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_output_serializable<T, cereal::JSONOutputArchive>::value;
+      !is_string_type<T>::value && cereal::traits::is_output_serializable<
+                                       typename std::remove_cv<typename std::remove_reference<T>::type>::type,
+                                       cereal::JSONOutputArchive>::value;
 };
 
 template <typename T>
