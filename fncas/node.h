@@ -37,6 +37,11 @@
 
 #include "base.h"
 
+// Admittedly, `sqr()` is kind of helpful in machine learning. -- D.K.
+inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) {
+  return x * x;
+}
+
 namespace fncas {
 
 // Parsed expressions are stored in an array of node_impl objects.
@@ -51,7 +56,7 @@ inline const char* operation_as_string(operation_t operation) {
 
 inline const char* function_as_string(function_t function) {
   static const char* representation[static_cast<size_t>(function_t::end)] = {
-      "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
+      "sqr", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
 }
 
@@ -67,7 +72,7 @@ inline T apply_operation(operation_t operation, T lhs, T rhs) {
 template <typename T>
 inline T apply_function(function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
-      sqrt, exp, log, sin, cos, tan, asin, acos, atan};
+      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
                                     : std::numeric_limits<T>::quiet_NaN();
 }
@@ -402,6 +407,7 @@ DECLARE_OP(/, /=, divide);
     return result;                                    \
   }
 
+DECLARE_FUNCTION(sqr);
 DECLARE_FUNCTION(sqrt);
 DECLARE_FUNCTION(exp);
 DECLARE_FUNCTION(log);

@@ -77,6 +77,8 @@ inline node_index_type d_op(
 inline node_index_type d_f(function_t function, const node& original, const node& x, const node& dx) {
   static const size_t n = static_cast<size_t>(function_t::end);
   static const std::function<node(const node&, const node&, const node&)> differentiator[n] = {
+      // sqr().
+      [](const node&, const node& x, const node& dx) { return node(2.0) * x * dx; },
       // sqrt().
       [](const node& original, const node&, const node& dx) { return dx / (original + original); },
       // exp().
