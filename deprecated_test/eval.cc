@@ -133,7 +133,7 @@ struct eval {
   // that interprets the internal representation of the function.
   struct intermediate : base {
     std::unique_ptr<fncas::f> init(const F* f) {
-      return std::unique_ptr<fncas::f>(new fncas::f_intermediate(f->eval_as_expression(fncas::x(f->dim()))));
+      return std::unique_ptr<fncas::f>(new fncas::f_intermediate(f->eval_as_expression(fncas::X(f->dim()))));
     }
   };
   // Compiled implementation calls fncas implementation
@@ -143,7 +143,7 @@ struct eval {
     double compile_time_;
     std::unique_ptr<fncas::f> init(const F* f) {
       const double begin = get_wall_time_seconds();
-      std::unique_ptr<fncas::f> result(new fncas::f_compiled(f->eval_as_expression(fncas::x(f->dim()))));
+      std::unique_ptr<fncas::f> result(new fncas::f_compiled(f->eval_as_expression(fncas::X(f->dim()))));
       const double end = get_wall_time_seconds();
       compile_time_ = end - begin;
       return result;
@@ -171,7 +171,7 @@ struct action_test_gradient : generic_action {
   void start() {
     x = std::vector<double>(f->dim());
     ga = fncas::g_approximate(std::bind(&F::eval_as_double, f, std::placeholders::_1), f->dim());
-    fncas::x argument(f->dim());
+    fncas::X argument(f->dim());
     gi = fncas::g_intermediate(argument, f->eval_as_expression(argument));
   }
   bool step() {

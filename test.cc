@@ -50,8 +50,8 @@ static_assert(std::is_same<double, fncas::fncas_value_type>::value, "");
 static_assert(std::is_same<std::vector<double>, V2X<double>>::value, "");
 static_assert(std::is_same<X2V<std::vector<double>>, double>::value, "");
 
-static_assert(std::is_same<fncas::V, X2V<fncas::x>>::value, "");
-static_assert(std::is_same<fncas::x, V2X<fncas::V>>::value, "");
+static_assert(std::is_same<fncas::V, X2V<fncas::X>>::value, "");
+static_assert(std::is_same<fncas::X, V2X<fncas::V>>::value, "");
 
 TEST(FNCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
 
@@ -63,7 +63,7 @@ TEST(FNCAS, NativeWrapper) {
 
 TEST(FNCAS, IntermediateWrapper) {
   fncas::reset_internals_singleton();
-  fncas::x x(2);
+  fncas::X x(2);
   fncas::f_intermediate fi = f(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2.000000))*(x[0]+(x[1]*2.000000)))", fi.debug_as_string());
@@ -71,7 +71,7 @@ TEST(FNCAS, IntermediateWrapper) {
 
 TEST(FNCAS, CompilingWrapper) {
   fncas::reset_internals_singleton();
-  fncas::x x(2);
+  fncas::X x(2);
   fncas::f_intermediate fi = f(x);
   fncas::f_compiled fc = fncas::f_compiled(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
@@ -87,7 +87,7 @@ TEST(FNCAS, GradientsWrapper) {
   EXPECT_NEAR(18.0, d_3_3_approx.gradient[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx.gradient[1], 1e-5);
 
-  const fncas::x x(2);
+  const fncas::X x(2);
   fncas::g_intermediate gi = fncas::g_intermediate(x, f(x));
   auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(81.0, d_3_3_intermediate.value);
@@ -99,7 +99,7 @@ TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
   const auto advanced_math = [](){
     for (size_t i = 0; i < 1000; ++i) {
       fncas::reset_internals_singleton();
-      fncas::x x(2);
+      fncas::X x(2);
       fncas::f_intermediate fi = parametrized_f(x, i + 1);
       EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
     }

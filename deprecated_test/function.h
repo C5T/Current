@@ -44,7 +44,7 @@ class F {
 
   // To support registration macros.
   virtual double eval_as_double(const std::vector<double>& x) const = 0;
-  virtual fncas::V eval_as_expression(const fncas::x& x) const = 0;
+  virtual fncas::V eval_as_expression(const fncas::X& x) const = 0;
 };
 
 std::map<std::string, F*> registered_functions;
@@ -57,7 +57,7 @@ void register_function(const char* name, T* impl) {
 #define REGISTER_FUNCTION(F)                                                                              \
   struct enhanced_##F : F {                                                                               \
     virtual double eval_as_double(const std::vector<double>& x) const { return F::f(x); }                 \
-    virtual fncas::V eval_as_expression(const fncas::x& x) const { return F::f(x); } \
+    virtual fncas::V eval_as_expression(const fncas::X& x) const { return F::f(x); } \
   };                                                                                                      \
   static enhanced_##F F##_impl;                                                                           \
   static struct F##_registerer {                                                                          \

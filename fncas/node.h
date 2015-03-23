@@ -78,11 +78,11 @@ inline T apply_function(function_t function, T argument) {
 }
 
 struct node_impl;
-struct x;
+struct X;
 struct internals_impl {
   // The dimensionality of the function that is currently being worked with.
   int32_t dim_;
-  x* x_ptr_;
+  X* x_ptr_;
 
   // All expression nodes created so far, with fixed indexes.
   std::vector<node_impl> node_vector_;
@@ -287,11 +287,11 @@ struct V : node_index_allocator {
     return eval_node(index_, x, reuse);
   }
   // Template is used here as a form of forward declaration.
-  template <typename X>
-  V differentiate(const X& x_ref, int32_t variable_index) const {
-    static_assert(std::is_same<X, x>::value, "V::differentiate(const x& x, int32_t variable_index);");
+  template <typename TX>
+  V differentiate(const TX& x_ref, int32_t variable_index) const {
+    static_assert(std::is_same<TX, X>::value, "V::differentiate(const x& x, int32_t variable_index);");
     // Note: This method will not build unless `fncas_differentiate.h` is included.
-    return node_differentiate_impl<X>::differentiate(x_ref, index_, variable_index);
+    return node_differentiate_impl<TX>::differentiate(x_ref, index_, variable_index);
   }
 };
 static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_type).");
@@ -299,8 +299,8 @@ static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_type)
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
-struct x : noncopyable {
-  explicit x(int32_t dim) {
+struct X : noncopyable {
+  explicit X(int32_t dim) {
     assert(dim > 0);
     auto& meta = internals_singleton();
     assert(!meta.x_ptr_);
@@ -348,9 +348,9 @@ struct f_intermediate : f {
   }
   std::string debug_as_string() const { return f_.debug_as_string(); }
   // Template is used here as a form of forward declaration.
-  template <typename X>
-  V differentiate(const X& x_ref, int32_t variable_index) const {
-    static_assert(std::is_same<X, x>::value,
+  template <typename TX>
+  V differentiate(const TX& x_ref, int32_t variable_index) const {
+    static_assert(std::is_same<TX, X>::value,
                   "f_intermediate::differentiate(const x& x, int32_t variable_index);");
     assert(&x_ref == internals_singleton().x_ptr_);
     assert(variable_index >= 0);
@@ -371,7 +371,7 @@ struct x2v_impl<std::vector<fncas_value_type>> {
   typedef fncas_value_type type;
 };
 template <>
-struct x2v_impl<x> {
+struct x2v_impl<X> {
   typedef V type;
 };
 
@@ -383,7 +383,7 @@ struct v2x_impl<fncas_value_type> {
 };
 template <>
 struct v2x_impl<V> {
-  typedef x type;
+  typedef X type;
 };
 
 template<typename X> using X2V = typename x2v_impl<X>::type;

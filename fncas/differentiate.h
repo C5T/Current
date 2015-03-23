@@ -207,15 +207,15 @@ struct g_approximate : g {
 struct g_intermediate : g {
   V f_;
   std::vector<V> g_;
-  g_intermediate(const x& x_ref, const V& f) : f_(f) {
+  g_intermediate(const X& x_ref, const V& f) : f_(f) {
     assert(&x_ref == internals_singleton().x_ptr_);
     const int32_t dim = internals_singleton().dim_;
     g_.resize(dim);
     for (int32_t i = 0; i < dim; ++i) {
-      g_[i] = f_.template differentiate<x>(x_ref, i);
+      g_[i] = f_.template differentiate<X>(x_ref, i);
     }
   }
-  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
+  explicit g_intermediate(const X& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
   // TODO(dkorolev): This worries me a lot, need to move to gtest and measure coverage.
   g_intermediate(g_intermediate&&) {}
   g_intermediate() = default;
@@ -237,8 +237,8 @@ struct g_intermediate : g {
 };
 
 template <>
-struct node_differentiate_impl<x> {
-  static V differentiate(const x& x_ref, node_index_type node_index, int32_t variable_index) {
+struct node_differentiate_impl<X> {
+  static V differentiate(const X& x_ref, node_index_type node_index, int32_t variable_index) {
     assert(&x_ref == internals_singleton().x_ptr_);
     assert(variable_index < internals_singleton().dim_);
     return from_index(differentiate_node(node_index, variable_index, internals_singleton().dim_));
