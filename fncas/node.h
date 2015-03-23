@@ -46,7 +46,7 @@ inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) {
 namespace fncas {
 
 // This exception is thrown when more than one expression per thread
-// is attempted to be being evaluated concurrently under FNCAS.
+// is attempted to be evaluated concurrently under FNCAS.
 // This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
 struct FNCASConcurrentEvaluationAttemptException : std::exception {
 };
