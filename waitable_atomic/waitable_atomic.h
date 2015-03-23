@@ -258,7 +258,7 @@ class WaitableAtomicImpl {
       }
       RefCounterDecrease();
       if (destructor_ptr_) {
-        destructor_ptr_->WaitableAtomicDestructing();
+        destructor_ptr_->WaitableAtomicDestructing();  // LCOV_EXCL_LINE
       }
       // Wait for the registered scoped clients to leave their respective scopes.
       ref_count_is_nonzero_mutex_.lock();
