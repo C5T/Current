@@ -108,7 +108,6 @@ TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
 }
 
 TEST(FNCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
-  // An instance of `X` is instantiated before the call to `instantiate_x()`.
   fncas::X x(1);
   ASSERT_THROW(fncas::X x(2), fncas::FNCASConcurrentEvaluationAttemptException);
 }
