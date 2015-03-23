@@ -50,8 +50,8 @@ static_assert(std::is_same<double, fncas::fncas_value_type>::value, "");
 static_assert(std::is_same<std::vector<double>, V2X<double>>::value, "");
 static_assert(std::is_same<X2V<std::vector<double>>, double>::value, "");
 
-static_assert(std::is_same<fncas::node, X2V<fncas::x>>::value, "");
-static_assert(std::is_same<fncas::x, V2X<fncas::node>>::value, "");
+static_assert(std::is_same<fncas::V, X2V<fncas::x>>::value, "");
+static_assert(std::is_same<fncas::x, V2X<fncas::V>>::value, "");
 
 TEST(FNCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
 
