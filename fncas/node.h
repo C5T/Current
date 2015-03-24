@@ -39,17 +39,14 @@
 #include "base.h"
 
 // Admittedly, `sqr()` is kind of helpful in machine learning. -- D.K.
-inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) {
-  return x * x;
-}
+inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) { return x * x; }
 
 namespace fncas {
 
 // This exception is thrown when more than one expression per thread
 // is attempted to be evaluated concurrently under FNCAS.
 // This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
-struct FNCASConcurrentEvaluationAttemptException : std::exception {
-};
+struct FNCASConcurrentEvaluationAttemptException : std::exception {};
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.
@@ -402,8 +399,10 @@ struct v2x_impl<V> {
   typedef X type;
 };
 
-template<typename X> using X2V = typename x2v_impl<X>::type;
-template<typename V> using V2X = typename v2x_impl<V>::type;
+template <typename X>
+using X2V = typename x2v_impl<X>::type;
+template <typename V>
+using V2X = typename v2x_impl<V>::type;
 
 }  // namespace fncas
 
@@ -413,18 +412,18 @@ using fncas::V2X;
 
 // Arithmetic operations and mathematical functions are defined outside namespace fncas.
 
-#define DECLARE_OP(OP, OP2, NAME)                                                    \
+#define DECLARE_OP(OP, OP2, NAME)                                           \
   inline fncas::V operator OP(const fncas::V& lhs, const fncas::V& rhs) {   \
-    fncas::V result;                                                              \
-    result.type() = fncas::type_t::operation;                                        \
-    result.operation() = fncas::operation_t::NAME;                                   \
-    result.lhs_index() = lhs.index_;                                                 \
-    result.rhs_index() = rhs.index_;                                                 \
-    return result;                                                                   \
-  }                                                                                  \
+    fncas::V result;                                                        \
+    result.type() = fncas::type_t::operation;                               \
+    result.operation() = fncas::operation_t::NAME;                          \
+    result.lhs_index() = lhs.index_;                                        \
+    result.rhs_index() = rhs.index_;                                        \
+    return result;                                                          \
+  }                                                                         \
   inline const fncas::V& operator OP2(fncas::V& lhs, const fncas::V& rhs) { \
-    lhs = lhs OP rhs;                                                                \
-    return lhs;                                                                      \
+    lhs = lhs OP rhs;                                                       \
+    return lhs;                                                             \
   }
 
 // TODO(dkorolev): Support unary minus as well.
@@ -433,13 +432,13 @@ DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
 DECLARE_OP(/, /=, divide);
 
-#define DECLARE_FUNCTION(F)                           \
+#define DECLARE_FUNCTION(F)                     \
   inline fncas::V F(const fncas::V& argument) { \
-    fncas::V result;                               \
-    result.type() = fncas::type_t::function;          \
-    result.function() = fncas::function_t::F;         \
-    result.argument_index() = argument.index_;        \
-    return result;                                    \
+    fncas::V result;                            \
+    result.type() = fncas::type_t::function;    \
+    result.function() = fncas::function_t::F;   \
+    result.argument_index() = argument.index_;  \
+    return result;                              \
   }
 
 DECLARE_FUNCTION(sqr);

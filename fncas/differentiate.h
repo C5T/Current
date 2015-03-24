@@ -62,8 +62,7 @@ inline std::vector<fncas_value_type> approximate_gradient(
   return g;
 }
 
-inline node_index_type d_op(
-    operation_t operation, const V& a, const V& b, const V& da, const V& db) {
+inline node_index_type d_op(operation_t operation, const V& a, const V& b, const V& da, const V& db) {
   static const size_t n = static_cast<size_t>(operation_t::end);
   static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
       [](const V&, const V&, const V& da, const V& db) { return da + db; },

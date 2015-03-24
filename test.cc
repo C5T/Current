@@ -92,7 +92,7 @@ TEST(FNCAS, GradientsWrapper) {
 }
 
 TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
-  const auto advanced_math = [](){
+  const auto advanced_math = []() {
     for (size_t i = 0; i < 1000; ++i) {
       fncas::X x(2);
       fncas::f_intermediate fi = parametrized_f(x, i + 1);

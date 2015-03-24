@@ -54,14 +54,14 @@ void register_function(const char* name, T* impl) {
 }
 
 // To support registration macros.
-#define REGISTER_FUNCTION(F)                                                                              \
-  struct enhanced_##F : F {                                                                               \
-    virtual double eval_as_double(const std::vector<double>& x) const { return F::f(x); }                 \
-    virtual fncas::V eval_as_expression(const fncas::X& x) const { return F::f(x); } \
-  };                                                                                                      \
-  static enhanced_##F F##_impl;                                                                           \
-  static struct F##_registerer {                                                                          \
-    F##_registerer() { register_function<enhanced_##F>(#F, &F##_impl); }                                  \
+#define REGISTER_FUNCTION(F)                                                              \
+  struct enhanced_##F : F {                                                               \
+    virtual double eval_as_double(const std::vector<double>& x) const { return F::f(x); } \
+    virtual fncas::V eval_as_expression(const fncas::X& x) const { return F::f(x); }      \
+  };                                                                                      \
+  static enhanced_##F F##_impl;                                                           \
+  static struct F##_registerer {                                                          \
+    F##_registerer() { register_function<enhanced_##F>(#F, &F##_impl); }                  \
   } F##_impl_registerer
 
 #define INCLUDE_IN_SMOKE_TEST const bool INCLUDE_IN_SMOKE_TEST_ = true
