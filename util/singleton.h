@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_SINGLETON_H
 #define BRICKS_UTIL_SINGLETON_H
 
+#include "../port.h"
+
 namespace bricks {
 
 template <typename T>
@@ -32,6 +34,14 @@ inline T& Singleton() {
   static T instance;
   return instance;
 }
+
+#ifdef BRICKS_HAS_THREAD_LOCAL
+template <typename T>
+inline T& ThreadLocalSingleton() {
+  thread_local static T instance;
+  return instance;
+}
+#endif
 
 }  // namespace bricks
 
