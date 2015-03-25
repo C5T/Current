@@ -30,40 +30,51 @@ SOFTWARE.
 #endif
 
 #include "fncas/fncas.h"
-#include <functional>
 
-// TODO(dkorolev)+TODO(mzhurovich): Chat about this `typename fncas::output<T>::type` syntax. We can do better.
-template <typename T>
-typename fncas::output<T>::type f(const T& x) {
-  return (x[0] + x[1] * 2) * (x[0] + x[1] * 2);
+#include <functional>
+#include <thread>
+
+template <typename X>
+X2V<X> parametrized_f(const X& x, size_t c) {
+  return (x[0] + x[1] * c) * (x[0] + x[1] * c);
 }
+
+// Need an explicit specialization, not a default parameter, since `f` itself is used as a parameter later on.
+template <typename X>
+X2V<X> f(const X& x) {
+  return parametrized_f(x, 2u);
+}
+
+static_assert(std::is_same<double, fncas::fncas_value_type>::value, "");
+
+static_assert(std::is_same<std::vector<double>, V2X<double>>::value, "");
+static_assert(std::is_same<X2V<std::vector<double>>, double>::value, "");
+
+static_assert(std::is_same<fncas::V, X2V<fncas::X>>::value, "");
+static_assert(std::is_same<fncas::X, V2X<fncas::V>>::value, "");
 
 TEST(FNCAS, ReallyNativeComputationJustToBeSure) { EXPECT_EQ(25, f(std::vector<double>({1, 2}))); }
 
 TEST(FNCAS, NativeWrapper) {
-  fncas::reset_internals_singleton();
   fncas::f_native fn(f<std::vector<double>>, 2);
   EXPECT_EQ(25.0, fn({1.0, 2.0}));
 }
 
 TEST(FNCAS, IntermediateWrapper) {
-  fncas::reset_internals_singleton();
-  fncas::x x(2);
+  fncas::X x(2);
   fncas::f_intermediate fi = f(x);
   EXPECT_EQ(25.0, fi({1.0, 2.0}));
   EXPECT_EQ("((x[0]+(x[1]*2.000000))*(x[0]+(x[1]*2.000000)))", fi.debug_as_string());
 }
 
 TEST(FNCAS, CompilingWrapper) {
-  fncas::reset_internals_singleton();
-  fncas::x x(2);
+  fncas::X x(2);
   fncas::f_intermediate fi = f(x);
   fncas::f_compiled fc = fncas::f_compiled(fi);
   EXPECT_EQ(25.0, fc({1.0, 2.0})) << fc.lib_filename();
 }
 
 TEST(FNCAS, GradientsWrapper) {
-  fncas::reset_internals_singleton();
   std::vector<double> p_3_3({3.0, 3.0});
 
   fncas::g_approximate ga = fncas::g_approximate(f<std::vector<double>>, 2);
@@ -72,7 +83,7 @@ TEST(FNCAS, GradientsWrapper) {
   EXPECT_NEAR(18.0, d_3_3_approx.gradient[0], 1e-5);
   EXPECT_NEAR(36.0, d_3_3_approx.gradient[1], 1e-5);
 
-  const fncas::x x(2);
+  const fncas::X x(2);
   fncas::g_intermediate gi = fncas::g_intermediate(x, f(x));
   auto d_3_3_intermediate = gi(p_3_3);
   EXPECT_EQ(81.0, d_3_3_intermediate.value);
@@ -80,10 +91,31 @@ TEST(FNCAS, GradientsWrapper) {
   EXPECT_EQ(36.0, d_3_3_intermediate.gradient[1]);
 }
 
+TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {
+  const auto advanced_math = []() {
+    for (size_t i = 0; i < 1000; ++i) {
+      fncas::X x(2);
+      fncas::f_intermediate fi = parametrized_f(x, i + 1);
+      EXPECT_EQ(sqr(1.0 + 2.0 * (i + 1)), fi({1.0, 2.0}));
+    }
+  };
+  std::thread t1(advanced_math);
+  std::thread t2(advanced_math);
+  std::thread t3(advanced_math);
+  t1.join();
+  t2.join();
+  t3.join();
+}
+
+TEST(FNCAS, CannotEvaluateMoreThanOneFunctionPerThreadAtOnce) {
+  fncas::X x(1);
+  ASSERT_THROW(fncas::X x(2), fncas::FNCASConcurrentEvaluationAttemptException);
+}
+
 // An obviously convex function with a single minimum `f(3, 4) == 1`.
 struct StaticFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const auto dx = x[0] - 3;
     const auto dy = x[1] - 4;
     return exp(0.01 * (dx * dx + dy * dy));
@@ -107,8 +139,8 @@ struct MemberFunction {
 
 // An obviously convex function with a single minimum `f(0, 0) == 0`.
 struct PolynomialFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const double a = 10.0;
     const double b = 0.5;
     return (a * x[0] * x[0] + b * x[1] * x[1]);
@@ -118,8 +150,8 @@ struct PolynomialFunction {
 // http://en.wikipedia.org/wiki/Rosenbrock_function
 // Non-convex function with global minimum `f(a, a^2) == 0`.
 struct RosenbrockFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const double a = 1.0;
     const double b = 100.0;
     const auto d1 = (a - x[0]);
@@ -135,8 +167,8 @@ struct RosenbrockFunction {
 // f(-3.779310, -3.283186) = 0.0
 // f(3.584428, -1.848126) = 0.0
 struct HimmelblauFunction {
-  template <typename T>
-  static typename fncas::output<T>::type compute(const T& x) {
+  template <typename X>
+  static X2V<X> compute(const X& x) {
     const auto d1 = (x[0] * x[0] + x[1] - 11);
     const auto d2 = (x[0] + x[1] * x[1] - 7);
     return (d1 * d1 + d2 * d2);

@@ -53,7 +53,7 @@ T& growing_vector_access(std::vector<T>& vector, node_index_type index, const T&
 
 enum class type_t : uint8_t { variable, value, operation, function };
 enum class operation_t : uint8_t { add, subtract, multiply, divide, end };
-enum class function_t : uint8_t { sqrt, exp, log, sin, cos, tan, asin, acos, atan, end };
+enum class function_t : uint8_t { sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan, end };
 
 }  // namespace fncas
 

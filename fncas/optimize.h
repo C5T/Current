@@ -136,9 +136,8 @@ class ConjugateGradientOptimizer : noncopyable {
 
 template <class F>
 OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<double>& starting_point) {
-  fncas::reset_internals_singleton();
   const size_t dim = starting_point.size();
-  const fncas::x gradient_helper(dim);
+  const fncas::X gradient_helper(dim);
   fncas::f_intermediate fi(F::compute(gradient_helper));
   fncas::g_intermediate gi = fncas::g_intermediate(gradient_helper, fi);
   std::vector<double> current_point(starting_point);
@@ -158,9 +157,8 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
 
 template <class F>
 OptimizationResult GradientDescentOptimizerBT<F>::Optimize(const std::vector<double>& starting_point) {
-  fncas::reset_internals_singleton();
   const size_t dim = starting_point.size();
-  const fncas::x gradient_helper(dim);
+  const fncas::X gradient_helper(dim);
   fncas::f_intermediate fi(F::compute(gradient_helper));
   fncas::g_intermediate gi = fncas::g_intermediate(gradient_helper, fi);
   std::vector<double> current_point(starting_point);
@@ -182,9 +180,8 @@ OptimizationResult GradientDescentOptimizerBT<F>::Optimize(const std::vector<dou
 // TODO(mzhurovich): Implement more sophisticated version.
 template <class F>
 OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<double>& starting_point) {
-  fncas::reset_internals_singleton();
   const size_t dim = starting_point.size();
-  const fncas::x gradient_helper(dim);
+  const fncas::X gradient_helper(dim);
   fncas::f_intermediate fi(F::compute(gradient_helper));
   fncas::g_intermediate gi = fncas::g_intermediate(gradient_helper, fi);
   std::vector<double> current_point(starting_point);

@@ -304,11 +304,11 @@ inline compiled_expression compile(node_index_type index) {
   return compiled_expression(filename_so);
 }
 
-inline compiled_expression compile(const node& node) { return compile(node.index_); }
+inline compiled_expression compile(const V& node) { return compile(node.index_); }
 
 struct f_compiled : f {
   fncas::compiled_expression c_;
-  explicit f_compiled(const node& node) : c_(compile(node)) {}
+  explicit f_compiled(const V& node) : c_(compile(node)) {}
   explicit f_compiled(const f_intermediate& f) : c_(compile(f.f_)) {}
   f_compiled(const f_compiled&) = delete;
   void operator=(const f_compiled&) = delete;

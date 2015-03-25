@@ -34,10 +34,19 @@
 #include <stack>
 #include <string>
 #include <vector>
+#include <exception>
 
 #include "base.h"
 
+// Admittedly, `sqr()` is kind of helpful in machine learning. -- D.K.
+inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) { return x * x; }
+
 namespace fncas {
+
+// This exception is thrown when more than one expression per thread
+// is attempted to be evaluated concurrently under FNCAS.
+// This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
+struct FNCASConcurrentEvaluationAttemptException : std::exception {};
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.
@@ -51,7 +60,7 @@ inline const char* operation_as_string(operation_t operation) {
 
 inline const char* function_as_string(function_t function) {
   static const char* representation[static_cast<size_t>(function_t::end)] = {
-      "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
+      "sqr", "sqrt", "exp", "log", "sin", "cos", "tan", "asin", "acos", "atan"};
   return function < function_t::end ? representation[static_cast<size_t>(function)] : "?";
 }
 
@@ -67,17 +76,17 @@ inline T apply_operation(operation_t operation, T lhs, T rhs) {
 template <typename T>
 inline T apply_function(function_t function, T argument) {
   static std::function<T(T)> evaluator[static_cast<size_t>(function_t::end)] = {
-      sqrt, exp, log, sin, cos, tan, asin, acos, atan};
+      sqr, sqrt, exp, log, sin, cos, tan, asin, acos, atan};
   return function < function_t::end ? evaluator[static_cast<size_t>(function)](argument)
                                     : std::numeric_limits<T>::quiet_NaN();
 }
 
 struct node_impl;
-struct x;
+struct X;
 struct internals_impl {
   // The dimensionality of the function that is currently being worked with.
   int32_t dim_;
-  x* x_ptr_;
+  X* x_ptr_;
 
   // All expression nodes created so far, with fixed indexes.
   std::vector<node_impl> node_vector_;
@@ -102,12 +111,9 @@ struct internals_impl {
 };
 
 inline internals_impl& internals_singleton() {
-  static internals_impl storage;
+  thread_local static internals_impl storage;
   return storage;
 }
-
-// Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
-inline void reset_internals_singleton() { internals_singleton().reset(); }
 
 inline std::vector<node_impl>& node_vector_singleton() { return internals_singleton().node_vector_; }
 
@@ -207,16 +213,16 @@ inline fncas_value_type eval_node(node_index_type index,
   return V[index];
 }
 
-// The code that deals with nodes directly uses class node as a wrapper to node_impl.
-// Since the storage for node_impl-s is global, class node just holds an index of node_impl.
-// User code that defines the function to work with is effectively dealing with class node objects:
-// arithmetical and mathematical operations are overloaded for class node.
+// The code that deals with nodes directly uses class V as a wrapper to node_impl.
+// Since the storage for node_impl-s is global, class V just holds an index of node_impl.
+// User code that defines the function to work with is effectively dealing with class V objects:
+// arithmetical and mathematical operations are overloaded for class V.
 
 struct allocate_new {};
 enum class from_index : node_index_type;
 
 struct node_index_allocator {
-  node_index_type index_;  // non-const since `node` objects can be modified.
+  node_index_type index_;  // non-const since `V` objects can be modified.
   explicit inline node_index_allocator(from_index i) : index_(static_cast<node_index_type>(i)) {}
   explicit inline node_index_allocator(allocate_new) : index_(node_vector_singleton().size()) {
     node_vector_singleton().resize(index_ + 1);
@@ -226,36 +232,36 @@ struct node_index_allocator {
 };
 
 // Template used as a header-only way to move implemneation to another source file.
-struct node;
+struct V;
 template <typename T>
 struct node_differentiate_impl {
-  //  node differentiate(const x& x_ref, int32_t variable_index) const;
+  //  V differentiate(const x& x_ref, int32_t variable_index) const;
 };
 
-struct node : node_index_allocator {
+struct V : node_index_allocator {
  private:
-  node(const node_index_allocator& instance) : node_index_allocator(instance) {}
+  V(const node_index_allocator& instance) : node_index_allocator(instance) {}
 
  public:
-  node() : node_index_allocator(allocate_new()) {}
-  node(fncas_value_type x) : node_index_allocator(allocate_new()) {
+  V() : node_index_allocator(allocate_new()) {}
+  V(fncas_value_type x) : node_index_allocator(allocate_new()) {
     type() = type_t::value;
     value() = x;
   }
-  node(from_index i) : node_index_allocator(i) {}
+  V(from_index i) : node_index_allocator(i) {}
   type_t& type() const { return node_vector_singleton()[index_].type(); }
   int32_t& variable() const { return node_vector_singleton()[index_].variable(); }
   fncas_value_type& value() const { return node_vector_singleton()[index_].value(); }
   operation_t& operation() const { return node_vector_singleton()[index_].operation(); }
   node_index_type& lhs_index() const { return node_vector_singleton()[index_].lhs_index(); }
   node_index_type& rhs_index() const { return node_vector_singleton()[index_].rhs_index(); }
-  node lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
-  node rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
+  V lhs() const { return from_index(node_vector_singleton()[index_].lhs_index()); }
+  V rhs() const { return from_index(node_vector_singleton()[index_].rhs_index()); }
   function_t& function() const { return node_vector_singleton()[index_].function(); }
   node_index_type& argument_index() const { return node_vector_singleton()[index_].argument_index(); }
-  node argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
-  static node variable(node_index_type index) {
-    node result;
+  V argument() const { return from_index(node_vector_singleton()[index_].argument_index()); }
+  static V variable(node_index_type index) {
+    V result;
     result.type() = type_t::variable;
     result.variable() = index;
     return result;
@@ -282,31 +288,43 @@ struct node : node_index_allocator {
     return eval_node(index_, x, reuse);
   }
   // Template is used here as a form of forward declaration.
-  template <typename X>
-  node differentiate(const X& x_ref, int32_t variable_index) const {
-    static_assert(std::is_same<X, x>::value, "node::differentiate(const x& x, int32_t variable_index);");
+  template <typename TX>
+  V differentiate(const TX& x_ref, int32_t variable_index) const {
+    static_assert(std::is_same<TX, X>::value, "V::differentiate(const x& x, int32_t variable_index);");
     // Note: This method will not build unless `fncas_differentiate.h` is included.
-    return node_differentiate_impl<X>::differentiate(x_ref, index_, variable_index);
+    return node_differentiate_impl<TX>::differentiate(x_ref, index_, variable_index);
   }
 };
-static_assert(sizeof(node) == 8, "sizeof(node) should be 8, as sizeof(node_index_type).");
+static_assert(sizeof(V) == 8, "sizeof(V) should be 8, as sizeof(node_index_type).");
 
 // Class "x" is the placeholder class an instance of which is to be passed to the user function
 // to record the computation rather than perform it.
 
-struct x : noncopyable {
-  explicit x(int32_t dim) {
+struct X : noncopyable {
+  explicit X(int32_t dim) {
     assert(dim > 0);
     auto& meta = internals_singleton();
-    assert(!meta.x_ptr_);
+    if (meta.x_ptr_) {
+      throw FNCASConcurrentEvaluationAttemptException();
+    }
     assert(!meta.dim_);
+    // Invalidates cached functions, resets temp nodes enumeration from zero and frees cache memory.
+    meta.reset();
     meta.x_ptr_ = this;
     meta.dim_ = dim;
   }
-  node operator[](int32_t i) const {
+  ~X() {
+    auto& meta = internals_singleton();
+    if (meta.x_ptr_ == this) {
+      // The condition is required to correctly handle the case when the constructor did `throw`.
+      meta.x_ptr_ = nullptr;
+      meta.dim_ = 0;
+    }
+  }
+  V operator[](int32_t i) const {
     assert(i >= 0);
     assert(i < internals_singleton().dim_);
-    return node(node::variable(i));
+    return V(V::variable(i));
   }
   size_t size() const {
     auto& meta = internals_singleton();
@@ -334,8 +352,8 @@ struct f_native : f {
 };
 
 struct f_intermediate : f {
-  const node f_;
-  f_intermediate(const node& f) : f_(f) {}
+  const V f_;
+  f_intermediate(const V& f) : f_(f) {}
   f_intermediate(f_intermediate&& rhs) : f_(rhs.f_) {}
   virtual fncas_value_type operator()(const std::vector<fncas_value_type>& x) const {
     assert(static_cast<int32_t>(x.size()) == dim());
@@ -343,9 +361,9 @@ struct f_intermediate : f {
   }
   std::string debug_as_string() const { return f_.debug_as_string(); }
   // Template is used here as a form of forward declaration.
-  template <typename X>
-  node differentiate(const X& x_ref, int32_t variable_index) const {
-    static_assert(std::is_same<X, x>::value,
+  template <typename TX>
+  V differentiate(const TX& x_ref, int32_t variable_index) const {
+    static_assert(std::is_same<TX, X>::value,
                   "f_intermediate::differentiate(const x& x, int32_t variable_index);");
     assert(&x_ref == internals_singleton().x_ptr_);
     assert(variable_index >= 0);
@@ -356,35 +374,56 @@ struct f_intermediate : f {
 };
 
 // Helper code to allow writing polymorphic functions that can be both evaluated and recorded.
-// Synopsis: template<typename T> typename fncas::output<T>::type f(const T& x);
+// Type `V` describes one value (`double`), type `X` describes an array of values (`std::vector<double>`).
+// Synopsis: `X2V<X> f(const X& x)` or `V f(const V2X<V>& x);`.
 
 template <typename T>
-struct output {};
+struct x2v_impl {};
 template <>
-struct output<std::vector<fncas_value_type>> {
+struct x2v_impl<std::vector<fncas_value_type>> {
   typedef fncas_value_type type;
 };
 template <>
-struct output<x> {
-  typedef fncas::node type;
+struct x2v_impl<X> {
+  typedef V type;
 };
+
+template <typename T>
+struct v2x_impl {};
+template <>
+struct v2x_impl<fncas_value_type> {
+  typedef std::vector<fncas_value_type> type;
+};
+template <>
+struct v2x_impl<V> {
+  typedef X type;
+};
+
+template <typename X>
+using X2V = typename x2v_impl<X>::type;
+template <typename V>
+using V2X = typename v2x_impl<V>::type;
 
 }  // namespace fncas
 
+// Support `X2V` and `V2X` in the global namespace as well.
+using fncas::X2V;
+using fncas::V2X;
+
 // Arithmetic operations and mathematical functions are defined outside namespace fncas.
 
-#define DECLARE_OP(OP, OP2, NAME)                                                    \
-  inline fncas::node operator OP(const fncas::node& lhs, const fncas::node& rhs) {   \
-    fncas::node result;                                                              \
-    result.type() = fncas::type_t::operation;                                        \
-    result.operation() = fncas::operation_t::NAME;                                   \
-    result.lhs_index() = lhs.index_;                                                 \
-    result.rhs_index() = rhs.index_;                                                 \
-    return result;                                                                   \
-  }                                                                                  \
-  inline const fncas::node& operator OP2(fncas::node& lhs, const fncas::node& rhs) { \
-    lhs = lhs OP rhs;                                                                \
-    return lhs;                                                                      \
+#define DECLARE_OP(OP, OP2, NAME)                                           \
+  inline fncas::V operator OP(const fncas::V& lhs, const fncas::V& rhs) {   \
+    fncas::V result;                                                        \
+    result.type() = fncas::type_t::operation;                               \
+    result.operation() = fncas::operation_t::NAME;                          \
+    result.lhs_index() = lhs.index_;                                        \
+    result.rhs_index() = rhs.index_;                                        \
+    return result;                                                          \
+  }                                                                         \
+  inline const fncas::V& operator OP2(fncas::V& lhs, const fncas::V& rhs) { \
+    lhs = lhs OP rhs;                                                       \
+    return lhs;                                                             \
   }
 
 // TODO(dkorolev): Support unary minus as well.
@@ -393,15 +432,16 @@ DECLARE_OP(-, -=, subtract);
 DECLARE_OP(*, *=, multiply);
 DECLARE_OP(/, /=, divide);
 
-#define DECLARE_FUNCTION(F)                           \
-  inline fncas::node F(const fncas::node& argument) { \
-    fncas::node result;                               \
-    result.type() = fncas::type_t::function;          \
-    result.function() = fncas::function_t::F;         \
-    result.argument_index() = argument.index_;        \
-    return result;                                    \
+#define DECLARE_FUNCTION(F)                     \
+  inline fncas::V F(const fncas::V& argument) { \
+    fncas::V result;                            \
+    result.type() = fncas::type_t::function;    \
+    result.function() = fncas::function_t::F;   \
+    result.argument_index() = argument.index_;  \
+    return result;                              \
   }
 
+DECLARE_FUNCTION(sqr);
 DECLARE_FUNCTION(sqrt);
 DECLARE_FUNCTION(exp);
 DECLARE_FUNCTION(log);

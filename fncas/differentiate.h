@@ -62,43 +62,44 @@ inline std::vector<fncas_value_type> approximate_gradient(
   return g;
 }
 
-inline node_index_type d_op(
-    operation_t operation, const node& a, const node& b, const node& da, const node& db) {
+inline node_index_type d_op(operation_t operation, const V& a, const V& b, const V& da, const V& db) {
   static const size_t n = static_cast<size_t>(operation_t::end);
-  static const std::function<node(const node&, const node&, const node&, const node&)> differentiator[n] = {
-      [](const node&, const node&, const node& da, const node& db) { return da + db; },
-      [](const node&, const node&, const node& da, const node& db) { return da - db; },
-      [](const node& a, const node& b, const node& da, const node& db) { return a * db + b * da; },
-      [](const node& a, const node& b, const node& da, const node& db) { return (b * da - a * db) / (b * b); }};
+  static const std::function<V(const V&, const V&, const V&, const V&)> differentiator[n] = {
+      [](const V&, const V&, const V& da, const V& db) { return da + db; },
+      [](const V&, const V&, const V& da, const V& db) { return da - db; },
+      [](const V& a, const V& b, const V& da, const V& db) { return a * db + b * da; },
+      [](const V& a, const V& b, const V& da, const V& db) { return (b * da - a * db) / (b * b); }};
   return operation < operation_t::end ? differentiator[static_cast<size_t>(operation)](a, b, da, db).index()
                                       : 0;
 }
 
-inline node_index_type d_f(function_t function, const node& original, const node& x, const node& dx) {
+inline node_index_type d_f(function_t function, const V& original, const V& x, const V& dx) {
   static const size_t n = static_cast<size_t>(function_t::end);
-  static const std::function<node(const node&, const node&, const node&)> differentiator[n] = {
+  static const std::function<V(const V&, const V&, const V&)> differentiator[n] = {
+      // sqr().
+      [](const V&, const V& x, const V& dx) { return V(2.0) * x * dx; },
       // sqrt().
-      [](const node& original, const node&, const node& dx) { return dx / (original + original); },
+      [](const V& original, const V&, const V& dx) { return dx / (original + original); },
       // exp().
-      [](const node& original, const node&, const node& dx) { return original * dx; },
+      [](const V& original, const V&, const V& dx) { return original * dx; },
       // log().
-      [](const node&, const node& x, const node& dx) { return dx / x; },
+      [](const V&, const V& x, const V& dx) { return dx / x; },
       // sin().
-      [](const node&, const node& x, const node& dx) { return dx * cos(x); },
+      [](const V&, const V& x, const V& dx) { return dx * cos(x); },
       // cos().
-      [](const node&, const node& x, const node& dx) { return node(-1.0) * dx * sin(x); },
+      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx * sin(x); },
       // tan().
-      [](const node&, const node& x, const node& dx) {
-        node a = node(4.0) * dx * cos(x) * cos(x);
-        node b = cos(x + x) + 1;
+      [](const V&, const V& x, const V& dx) {
+        V a = V(4.0) * dx * cos(x) * cos(x);
+        V b = cos(x + x) + 1;
         return a / (b * b);
       },
       // asin().
-      [](const node&, const node& x, const node& dx) { return dx / sqrt(node(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) { return dx / sqrt(V(1.0) - x * x); },
       // acos().
-      [](const node&, const node& x, const node& dx) { return node(-1.0) * dx / sqrt(node(1.0) - x * x); },
+      [](const V&, const V& x, const V& dx) { return V(-1.0) * dx / sqrt(V(1.0) - x * x); },
       // atan().
-      [](const node&, const node& x, const node& dx) { return dx / (x * x + 1); },
+      [](const V&, const V& x, const V& dx) { return dx / (x * x + 1); },
   };
   return function < function_t::end ? differentiator[static_cast<size_t>(function)](original, x, dx).index()
                                     : 0;
@@ -117,8 +118,8 @@ inline node_index_type differentiate_node(node_index_type index,
   assert(static_cast<int32_t>(df_container.size()) == number_of_variables);
   std::vector<node_index_type>& df = df_container[var_index];
   if (growing_vector_access(df, index, static_cast<node_index_type>(-1)) == -1) {
-    const node_index_type zero_index = node(0.0).index();
-    const node_index_type one_index = node(1.0).index();
+    const node_index_type zero_index = V(0.0).index();
+    const node_index_type one_index = V(1.0).index();
     std::stack<node_index_type> stack;
     stack.push(index);
     while (!stack.empty()) {
@@ -203,17 +204,17 @@ struct g_approximate : g {
 };
 
 struct g_intermediate : g {
-  node f_;
-  std::vector<node> g_;
-  g_intermediate(const x& x_ref, const node& f) : f_(f) {
+  V f_;
+  std::vector<V> g_;
+  g_intermediate(const X& x_ref, const V& f) : f_(f) {
     assert(&x_ref == internals_singleton().x_ptr_);
     const int32_t dim = internals_singleton().dim_;
     g_.resize(dim);
     for (int32_t i = 0; i < dim; ++i) {
-      g_[i] = f_.template differentiate<x>(x_ref, i);
+      g_[i] = f_.template differentiate<X>(x_ref, i);
     }
   }
-  explicit g_intermediate(const x& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
+  explicit g_intermediate(const X& x_ref, const f_intermediate& fi) : g_intermediate(x_ref, fi.f_) {}
   // TODO(dkorolev): This worries me a lot, need to move to gtest and measure coverage.
   g_intermediate(g_intermediate&&) {}
   g_intermediate() = default;
@@ -235,8 +236,8 @@ struct g_intermediate : g {
 };
 
 template <>
-struct node_differentiate_impl<x> {
-  static node differentiate(const x& x_ref, node_index_type node_index, int32_t variable_index) {
+struct node_differentiate_impl<X> {
+  static V differentiate(const X& x_ref, node_index_type node_index, int32_t variable_index) {
     assert(&x_ref == internals_singleton().x_ptr_);
     assert(variable_index < internals_singleton().dim_);
     return from_index(differentiate_node(node_index, variable_index, internals_singleton().dim_));
