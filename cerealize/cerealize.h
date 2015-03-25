@@ -41,6 +41,8 @@ SOFTWARE.
 #include "../3party/cereal/include/archives/json.hpp"
 #include "../3party/cereal/include/archives/xml.hpp"
 
+#include "../3party/cereal/include/external/base64.hpp"
+
 #include "../rtti/dispatcher.h"
 
 namespace bricks {
@@ -336,6 +338,10 @@ inline T ParseJSON(const std::string& input_json) {
   ParseJSON(input_json, placeholder);
   // Can not just do `return ParseJSON()`, since it would not handle ownership transfer for `std::unique_ptr<>`.
   return placeholder;
+}
+
+inline std::string Base64Encode(const std::string& s) {
+  return base64::encode(reinterpret_cast<const unsigned char*>(s.c_str()), s.length());
 }
 
 }  // namespace cerealize

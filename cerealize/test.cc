@@ -370,3 +370,8 @@ TEST(Cerealize, ParseJSONThrowsOnError) {
 TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
   EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
 }
+
+TEST(Cerealize, Base64Encode) {
+  EXPECT_EQ("MTIzNDU=", Base64Encode("12345"));
+  EXPECT_EQ("NzY1NFh5Wg==", Base64Encode("7654XyZ"));
+}
