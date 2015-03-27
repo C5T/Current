@@ -180,15 +180,11 @@ struct action_test_gradient : generic_action {
   }
   bool step() {
     f->gen(x);
-    fncas::g::result ra = ga(x);
-    fncas::g::result ri = gi(x);
-    if (!approximate_compare(ra.value, ri.value)) {
-      (*serr) << "V: " << ra.value << " != " << ri.value << " @" << iteration;
-      return false;
-    }
-    assert(ra.gradient.size() == ri.gradient.size());
-    for (size_t i = 0; i < ra.gradient.size(); ++i) {
-      errors.push_back(error_between(ra.gradient[i], ri.gradient[i]));
+    std::vector<double> ra = ga(x);
+    std::vector<double> ri = gi(x);
+    assert(ra.size() == ri.size());
+    for (size_t i = 0; i < ra.size(); ++i) {
+      errors.push_back(error_between(ra[i], ri[i]));
     }
     return true;
   }

@@ -79,16 +79,14 @@ TEST(FNCAS, GradientsWrapper) {
 
   fncas::g_approximate ga = fncas::g_approximate(f<std::vector<double>>, 2);
   auto d_3_3_approx = ga(p_3_3);
-  EXPECT_EQ(81.0, d_3_3_approx.value);
-  EXPECT_NEAR(18.0, d_3_3_approx.gradient[0], 1e-5);
-  EXPECT_NEAR(36.0, d_3_3_approx.gradient[1], 1e-5);
+  EXPECT_NEAR(18.0, d_3_3_approx[0], 1e-5);
+  EXPECT_NEAR(36.0, d_3_3_approx[1], 1e-5);
 
   const fncas::X x(2);
   fncas::g_intermediate gi = fncas::g_intermediate(x, f(x));
   auto d_3_3_intermediate = gi(p_3_3);
-  EXPECT_EQ(81.0, d_3_3_intermediate.value);
-  EXPECT_EQ(18.0, d_3_3_intermediate.gradient[0]);
-  EXPECT_EQ(36.0, d_3_3_intermediate.gradient[1]);
+  EXPECT_EQ(18.0, d_3_3_intermediate[0]);
+  EXPECT_EQ(36.0, d_3_3_intermediate[1]);
 }
 
 TEST(FNCAS, SupportsConcurrentThreadsViaThreadLocal) {

@@ -173,12 +173,8 @@ inline node_index_type differentiate_node(node_index_type index,
 }
 
 struct g : noncopyable {
-  struct result {
-    fncas_value_type value;
-    std::vector<fncas_value_type> gradient;
-  };
   virtual ~g() {}
-  virtual result operator()(const std::vector<fncas_value_type>& x) const = 0;
+  virtual std::vector<fncas_value_type> operator()(const std::vector<fncas_value_type>& x) const = 0;
   virtual int32_t dim() const = 0;
 };
 
@@ -194,11 +190,8 @@ struct g_approximate : g {
     f_ = rhs.f_;
     d_ = rhs.d_;
   }
-  virtual result operator()(const std::vector<fncas_value_type>& x) const {
-    result r;
-    r.value = f_(x);
-    r.gradient = approximate_gradient(f_, x);
-    return r;
+  virtual std::vector<fncas_value_type> operator()(const std::vector<fncas_value_type>& x) const {
+    return approximate_gradient(f_, x);
   }
   virtual int32_t dim() const { return d_; }
 };
@@ -223,12 +216,11 @@ struct g_intermediate : g {
     f_ = rhs.f_;
     g_ = rhs.g_;
   }
-  virtual result operator()(const std::vector<fncas_value_type>& x) const {
-    result r;
-    r.value = f_(x);
-    r.gradient.resize(g_.size());
+  virtual std::vector<fncas_value_type> operator()(const std::vector<fncas_value_type>& x) const {
+    std::vector<fncas_value_type> r;
+    r.resize(g_.size());
     for (size_t i = 0; i < g_.size(); ++i) {
-      r.gradient[i] = g_[i](x, reuse_cache::reuse);
+      r[i] = g_[i](x, i ? reuse_cache::reuse : reuse_cache::invalidate);
     }
     return r;
   }
