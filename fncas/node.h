@@ -38,6 +38,10 @@
 
 #include "base.h"
 
+#ifndef BRICKS_HAS_THREAD_LOCAL
+#include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
+#endif
+
 // Admittedly, `sqr()` is kind of helpful in machine learning. -- D.K.
 inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) { return x * x; }
 
