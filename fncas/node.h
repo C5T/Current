@@ -110,10 +110,46 @@ struct internals_impl {
   }
 };
 
+#ifdef BRICKS_HAS_THREAD_LOCAL
+
 inline internals_impl& internals_singleton() {
   thread_local static internals_impl storage;
   return storage;
 }
+
+#else
+
+// Need to emulate `thread_local` on architectures that don't support it,
+// like a poorly configured MacOS.
+
+void destruct_internals_impl(void* ptr) { delete reinterpret_cast<internals_impl*>(ptr); }
+
+// Should only call `pthread_key_create` once per binary.
+struct FNCASPThreadKeyCreateException : std::exception {};
+inline pthread_key_t& per_thread_internals_pthread_key_t() {
+  // Use good old `static`-s to ensure the key is created once and only once.
+  static pthread_key_t key;
+  static bool key_created = false;
+  if (!key_created) {
+    key_created = true;
+    if (pthread_key_create(&key, destruct_internals_impl)) {
+      throw FNCASPThreadKeyCreateException();
+    }
+  }
+  return key;
+}
+
+inline internals_impl& internals_singleton() {
+  pthread_key_t& key = per_thread_internals_pthread_key_t();
+  internals_impl* ptr = reinterpret_cast<internals_impl*>(pthread_getspecific(key));
+  if (!ptr) {
+    ptr = new internals_impl();
+    pthread_setspecific(key, ptr);
+  }
+  return *ptr;
+}
+
+#endif
 
 inline std::vector<node_impl>& node_vector_singleton() { return internals_singleton().node_vector_; }
 

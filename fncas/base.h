@@ -26,6 +26,8 @@
 #ifndef FNCAS_BASE_H
 #define FNCAS_BASE_H
 
+#include "../../Bricks/port.h"
+
 #include <vector>
 #include <cstdlib>
 #include <cstdint>
