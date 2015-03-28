@@ -113,7 +113,7 @@ inline std::vector<double> BackTracking(F&& eval_function,
                                         const double beta = 0.8,
                                         const size_t max_steps = 100) {
   const double current_f_value = eval_function(current_point);
-  const std::vector<double> current_gradient = eval_gradient(current_point).gradient;
+  const std::vector<double> current_gradient = eval_gradient(current_point);
   std::vector<double> test_point = SumVectors(current_point, direction);
   double test_f_value = eval_function(test_point);
   const double gradient_l2norm = L2Norm(current_gradient);

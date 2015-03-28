@@ -145,7 +145,7 @@ OptimizationResult GradientDescentOptimizer<F>::Optimize(const std::vector<doubl
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
     const auto g = gi(current_point);
     const auto try_step = [&dim, &current_point, &fi, &g](double step) {
-      const auto candidate_point(SumVectors(current_point, g.gradient, -step));
+      const auto candidate_point(SumVectors(current_point, g, -step));
       return std::make_pair(fi(candidate_point), candidate_point);
     };
     current_point = std::min(try_step(0.01 * step_factor_),
@@ -164,7 +164,7 @@ OptimizationResult GradientDescentOptimizerBT<F>::Optimize(const std::vector<dou
   std::vector<double> current_point(starting_point);
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
-    auto direction = gi(current_point).gradient;
+    auto direction = gi(current_point);
     fncas::FlipSign(direction);  // Going against the gradient to minimize the function.
     current_point = BackTracking(fi, gi, current_point, direction, bt_alpha_, bt_beta_, bt_max_steps_);
 
@@ -186,21 +186,20 @@ OptimizationResult ConjugateGradientOptimizer<F>::Optimize(const std::vector<dou
   fncas::g_intermediate gi = fncas::g_intermediate(gradient_helper, fi);
   std::vector<double> current_point(starting_point);
 
-  const auto initial_f_gradf = gi(current_point);
-  std::vector<double> current_grad = initial_f_gradf.gradient;
-  std::vector<double> s(current_grad);  // Direction to search for a minimum.
-  fncas::FlipSign(s);                   // Trying first step against the gradient to minimize the function.
+  std::vector<double> current_gradient = gi(current_point);
+  std::vector<double> s(current_gradient);  // Direction to search for a minimum.
+  fncas::FlipSign(s);                       // Trying first step against the gradient to minimize the function.
 
   for (size_t iteration = 0; iteration < max_steps_; ++iteration) {
     // Backtracking line search.
     const auto new_point = fncas::BackTracking(fi, gi, current_point, s, bt_alpha_, bt_beta_, bt_max_steps_);
-    const auto new_f_gradf = gi(new_point);
+    const auto new_gradient = gi(new_point);
 
     // Calculating direction for the next step.
-    const double omega = std::max(fncas::PolakRibiere(new_f_gradf.gradient, current_grad), 0.0);
-    s = SumVectors(s, new_f_gradf.gradient, omega, -1.0);
+    const double omega = std::max(fncas::PolakRibiere(new_gradient, current_gradient), 0.0);
+    s = SumVectors(s, new_gradient, omega, -1.0);
 
-    current_grad = new_f_gradf.gradient;
+    current_gradient = new_gradient;
     current_point = new_point;
 
     // Simple early stopping by the norm of the gradient.
