@@ -23,6 +23,7 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <random>
 
 #include "../fncas/fncas.h"
 
@@ -54,7 +55,7 @@ struct action {
     limit_seconds = quantity < 0 ? -quantity : 1e12;
     this->sout = sout;
     this->serr = serr;
-    do_run();
+    return do_run();
   }
   virtual bool do_run() = 0;
 };
