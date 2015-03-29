@@ -126,21 +126,27 @@ inline internals_impl& internals_singleton() {
 // Need to emulate `thread_local` on architectures that don't support it,
 // like a poorly configured MacOS.
 
-void destruct_internals_impl(void* ptr) { delete reinterpret_cast<internals_impl*>(ptr); }
-
-// Should only call `pthread_key_create` once per binary.
-struct FNCASPThreadKeyCreateException : std::exception {};
-inline pthread_key_t& per_thread_internals_pthread_key_t() {
-  // Use good old `static`-s to ensure the key is created once and only once.
+inline pthread_key_t& per_thread_internals_pthread_key_t_static_storage() {
   static pthread_key_t key;
-  static bool key_created = false;
-  if (!key_created) {
-    key_created = true;
-    if (pthread_key_create(&key, destruct_internals_impl)) {
-      throw FNCASPThreadKeyCreateException();
-    }
-  }
   return key;
+}
+
+inline void internals_impl_deleter(void* ptr) { delete reinterpret_cast<internals_impl*>(ptr); }
+
+inline void per_thread_internals_pthread_key_create_caller() {
+  if (pthread_key_create(&(per_thread_internals_pthread_key_t_static_storage()), internals_impl_deleter)) {
+    std::cerr << "Error in `pthread_key_create()`. Terminating." << std::endl;
+    exit(-1);
+  }
+}
+
+inline pthread_key_t& per_thread_internals_pthread_key_t() {
+  static pthread_once_t key_is_initialized = PTHREAD_ONCE_INIT;
+  if (pthread_once(&key_is_initialized, per_thread_internals_pthread_key_create_caller)) {
+    std::cerr << "Error in `pthread_once()`. Terminating." << std::endl;
+    exit(-1);
+  }
+  return per_thread_internals_pthread_key_t_static_storage();
 }
 
 inline internals_impl& internals_singleton() {
