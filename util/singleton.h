@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2014 Alexander Zolotarev <me@alex.bio> from Minsk, Belarus
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +28,12 @@ SOFTWARE.
 
 #include "../port.h"
 
+#ifndef BRICKS_HAS_THREAD_LOCAL
+#include <cstdlib>
+#include <iostream>
+#include <pthread.h> // To emulate `thread_local` via `pthread_*`.
+#endif
+
 namespace bricks {
 
 template <typename T>
@@ -40,6 +47,55 @@ template <typename T>
 inline T& ThreadLocalSingleton() {
   thread_local static T instance;
   return instance;
+}
+#else
+template <typename T>
+class ThreadLocalSingletonInternals final {
+ private:
+  static pthread_key_t& KeyStaticStorage() {
+    static pthread_key_t key;
+    return key;
+  }
+
+  static pthread_once_t& KeyIsInitialized() {
+    static pthread_once_t key_is_initialized = PTHREAD_ONCE_INIT;
+    return key_is_initialized;
+  }
+ 
+  static void Deleter(void* ptr) { delete reinterpret_cast<T*>(ptr); }
+
+  static void CreateKey() {
+    if (pthread_key_create(&(ThreadLocalSingletonInternals::KeyStaticStorage()),
+                            ThreadLocalSingletonInternals::Deleter)) {
+      std::cerr << "Error in `pthread_key_create()`. Terminating." << std::endl;
+      exit(-1);
+    }
+  }
+
+  static pthread_key_t& GetKey() {
+    if (pthread_once(&(ThreadLocalSingletonInternals::KeyIsInitialized()),
+                      ThreadLocalSingletonInternals::CreateKey)) {
+      std::cerr << "Error in `pthread_once()`. Terminating." << std::endl;
+      exit(-1);
+    }
+    return ThreadLocalSingletonInternals::KeyStaticStorage();
+  }
+
+ public:
+  static T& GetInstance() {
+    pthread_key_t& key = ThreadLocalSingletonInternals::GetKey();
+    T* ptr = reinterpret_cast<T*>(pthread_getspecific(key));
+    if (!ptr) {
+      ptr = new T;
+      pthread_setspecific(key, ptr);
+    }
+    return *ptr;
+  }
+};
+
+template <typename T>
+inline T& ThreadLocalSingleton() {
+  return ThreadLocalSingletonInternals<T>::GetInstance();
 }
 #endif
 

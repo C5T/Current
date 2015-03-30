@@ -30,6 +30,8 @@ SOFTWARE.
 
 #include "../3party/gtest/gtest-main.h"
 
+#include <thread>
+
 TEST(Util, BasicException) {
   try {
     BRICKS_THROW(bricks::Exception("Foo"));
@@ -37,7 +39,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:35\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:37\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -54,7 +56,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:52\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:54\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -205,6 +207,21 @@ TEST(Util, Singleton) {
   EXPECT_EQ(2u, bricks::Singleton<Foo>().bar);
   // Allow running the test multiple times, via --gtest_repeat.
   bricks::Singleton<Foo>().reset();
+}
+
+TEST(Util, ThreadLocalSingleton) {
+  struct Foo {
+    size_t bar = 0u;
+    void baz() { ++bar; }
+  };
+  const auto add = [](size_t n) {
+    for (size_t i = 0; i < n; ++i) bricks::ThreadLocalSingleton<Foo>().baz();
+    EXPECT_EQ(n, bricks::ThreadLocalSingleton<Foo>().bar);
+  };
+  std::thread t1(add, 50000);
+  std::thread t2(add, 10);
+  t1.join();
+  t2.join();
 }
 
 TEST(Util, SHA256) {
