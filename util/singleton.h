@@ -31,7 +31,7 @@ SOFTWARE.
 #ifndef BRICKS_HAS_THREAD_LOCAL
 #include <cstdlib>
 #include <iostream>
-#include <pthread.h> // To emulate `thread_local` via `pthread_*`.
+#include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
 #endif
 
 namespace bricks {
@@ -61,12 +61,12 @@ class ThreadLocalSingletonInternals final {
     static pthread_once_t key_is_initialized = PTHREAD_ONCE_INIT;
     return key_is_initialized;
   }
- 
+
   static void Deleter(void* ptr) { delete reinterpret_cast<T*>(ptr); }
 
   static void CreateKey() {
     if (pthread_key_create(&(ThreadLocalSingletonInternals::KeyStaticStorage()),
-                            ThreadLocalSingletonInternals::Deleter)) {
+                           ThreadLocalSingletonInternals::Deleter)) {
       std::cerr << "Error in `pthread_key_create()`. Terminating." << std::endl;
       exit(-1);
     }
@@ -74,7 +74,7 @@ class ThreadLocalSingletonInternals final {
 
   static pthread_key_t& GetKey() {
     if (pthread_once(&(ThreadLocalSingletonInternals::KeyIsInitialized()),
-                      ThreadLocalSingletonInternals::CreateKey)) {
+                     ThreadLocalSingletonInternals::CreateKey)) {
       std::cerr << "Error in `pthread_once()`. Terminating." << std::endl;
       exit(-1);
     }

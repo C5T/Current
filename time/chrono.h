@@ -107,9 +107,7 @@ struct EpochClockGuaranteeingMonotonicity {
       return monotonic_now;
     }
   };
-  static const Impl& Singleton() {
-    return ThreadLocalSingleton<Impl>();  
-  }
+  static const Impl& Singleton() { return ThreadLocalSingleton<Impl>(); }
 };
 
 inline EPOCH_MILLISECONDS Now() {
