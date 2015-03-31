@@ -68,7 +68,7 @@ class ThreadLocalSingletonImpl final {
     if (pthread_key_create(&(ThreadLocalSingletonImpl::pthread_key_t_static_storage()),
                            ThreadLocalSingletonImpl::Deleter)) {
       std::cerr << "Error in `pthread_key_create()`. Terminating." << std::endl;
-      std::quick_exit(ERROR_FAILURE);
+      std::exit(EXIT_FAILURE);
     }
   }
 
@@ -76,7 +76,7 @@ class ThreadLocalSingletonImpl final {
     if (pthread_once(&(ThreadLocalSingletonImpl::pthread_once_t_static_storage()),
                      ThreadLocalSingletonImpl::CreateKey)) {
       std::cerr << "Error in `pthread_once()`. Terminating." << std::endl;
-      std::quick_exit(ERROR_FAILURE);
+      std::exit(EXIT_FAILURE);
     }
     return ThreadLocalSingletonImpl::pthread_key_t_static_storage();
   }
