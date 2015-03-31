@@ -50,14 +50,14 @@ inline T& ThreadLocalSingleton() {
 }
 #else
 template <typename T>
-class ThreadLocalSingletonInternals final {
+class ThreadLocalSingletonImpl final {
  private:
-  static pthread_key_t& KeyStaticStorage() {
+  static pthread_key_t& pthread_key_t_static_storage() {
     static pthread_key_t key;
     return key;
   }
 
-  static pthread_once_t& KeyIsInitialized() {
+  static pthread_once_t& pthread_once_t_static_storage() {
     static pthread_once_t key_is_initialized = PTHREAD_ONCE_INIT;
     return key_is_initialized;
   }
@@ -65,28 +65,28 @@ class ThreadLocalSingletonInternals final {
   static void Deleter(void* ptr) { delete reinterpret_cast<T*>(ptr); }
 
   static void CreateKey() {
-    if (pthread_key_create(&(ThreadLocalSingletonInternals::KeyStaticStorage()),
-                           ThreadLocalSingletonInternals::Deleter)) {
+    if (pthread_key_create(&(ThreadLocalSingletonImpl::pthread_key_t_static_storage()),
+                           ThreadLocalSingletonImpl::Deleter)) {
       std::cerr << "Error in `pthread_key_create()`. Terminating." << std::endl;
-      exit(-1);
+      std::quick_exit(ERROR_FAILURE);
     }
   }
 
   static pthread_key_t& GetKey() {
-    if (pthread_once(&(ThreadLocalSingletonInternals::KeyIsInitialized()),
-                     ThreadLocalSingletonInternals::CreateKey)) {
+    if (pthread_once(&(ThreadLocalSingletonImpl::pthread_once_t_static_storage()),
+                     ThreadLocalSingletonImpl::CreateKey)) {
       std::cerr << "Error in `pthread_once()`. Terminating." << std::endl;
-      exit(-1);
+      std::quick_exit(ERROR_FAILURE);
     }
-    return ThreadLocalSingletonInternals::KeyStaticStorage();
+    return ThreadLocalSingletonImpl::pthread_key_t_static_storage();
   }
 
  public:
   static T& GetInstance() {
-    pthread_key_t& key = ThreadLocalSingletonInternals::GetKey();
+    pthread_key_t& key = ThreadLocalSingletonImpl::GetKey();
     T* ptr = reinterpret_cast<T*>(pthread_getspecific(key));
     if (!ptr) {
-      ptr = new T;
+      ptr = new T();
       pthread_setspecific(key, ptr);
     }
     return *ptr;
@@ -95,7 +95,7 @@ class ThreadLocalSingletonInternals final {
 
 template <typename T>
 inline T& ThreadLocalSingleton() {
-  return ThreadLocalSingletonInternals<T>::GetInstance();
+  return ThreadLocalSingletonImpl<T>::GetInstance();
 }
 #endif
 
