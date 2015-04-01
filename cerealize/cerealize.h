@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../3party/cereal/include/types/string.hpp"
 #include "../3party/cereal/include/types/vector.hpp"
 #include "../3party/cereal/include/types/map.hpp"
+#include "../3party/cereal/include/types/set.hpp"
 
 #include "../3party/cereal/include/types/polymorphic.hpp"
 
