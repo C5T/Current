@@ -215,7 +215,9 @@ TEST(Util, ThreadLocalSingleton) {
     void baz() { ++bar; }
   };
   const auto add = [](size_t n) {
-    for (size_t i = 0; i < n; ++i) bricks::ThreadLocalSingleton<Foo>().baz();
+    for (size_t i = 0; i < n; ++i) {
+      bricks::ThreadLocalSingleton<Foo>().baz();
+    }
     EXPECT_EQ(n, bricks::ThreadLocalSingleton<Foo>().bar);
   };
   std::thread t1(add, 50000);
