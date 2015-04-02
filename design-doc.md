@@ -1,41 +1,54 @@
 # Sherlock Design Doc
 
+**Sherlock** is a persistent strongly typed publish-subscribe-friendly message queue.
+
 ## Terminology
 
-A **stream** is a persistent, sequential, structured, immutable, append-only storage of data.
+**Stream** is a persistent, sequential, structured, immutable, append-only storage of data.
 
-The quantum storage unit of the stream is an **entry**.
+The quantum storage unit of the stream is an **entry**. Each entry in the stream must have an **index** and may have one or more **order keys** of various types.
 
 Entries can be appended to streams using **publishers** and scanned with **listeners**.
 
 
 ## Entries
 
-Streams are strongly typed, and within a stream, each entry has the type specified at stream declaration time. All entries within one stream have the same type. The type can, and often is, polymorphic.
+Streams are strongly typed. All entries within one stream have the same type. This type can be, and often is, polymorphic.
 
-Implementation-wise, entries of polymorphic type are `std::unique_ptr<>`-s of `SomeBaseType`: the user they call their virtual functions or have individual instances of `[const] SomeBaseType&` dispatched via other RTTI mechanisms.
-
-The type of entries in the stream is defined at stream declaration time. When serializing/deserealizing streams to/from disk, a basic check of the signature of storage schema is performed to verify that no data corruption may occur.
+The type of entries in the stream is defined at stream declaration time. When serializing/deserializing streams to/from disk, a basic check of the signature of storage schema is performed for the sake of data integrity.
 
 Polymorphic types can be extended with more derived types, but it is the user's responsibilty that no binary attempts to deserialize entries of the type not supported by this particular version. (`TODO(dkorolev): See how strict we can be with this in V1.`)
 
-In order to qualify for a stream type, it should be guaranteed that an entry of this type can be serialized and de-serialized, and that the very same entry will be constructed as a result of the serialization/de-serialization cycle. In other words, stream entries should be agnostic with respect to serialization. This is a requirement for dropping strict guarantees on the number of serializations that take place internally.
+Entry stream type should be agnostic with respect to serialization. It should be guaranteed that an entry of this type can be serialized and deserialized, and that the very same entry will be constructed as a result of the serialization/deserialization cycle.
 
-Implemenation-wise, Sherlock uses Cereal, and we use JSON and binary formats.
+Implemenation details:
+
+* Sherlock uses Cereal, JSON and binary formats.
+* Entries of polymorphic type are `std::unique_ptr<>`-s of `SomeBaseType`.
+* RTTI dispatching mechanisms from `Bricks` can be used for convenience of saving on virtual functions.
 
 ## Consistency
 
-Each entry of a stream is assigned an **index**: an `uint64_t` value equal to the number of entries preceeding the one being considered, effectively, a 0-based index.
+Each entry of a stream is assigned an **index**: an `uint64_t` value equal to the number of entries preceeding the one being considered. Effectively, the entry's 0-based index in the stream.
 
 Additionally, a stream defines the **order key type**. One can think of the order key as the timestamp.
 
 Order keys often are indeed timestamps, represented in certain way, for example, Unix epoch time in milliseconds.
 
-It is the user's responsibility to ensure that order keys of consecutive entries follow a strictly increasing order. (`TODO(dkorolev): I am still debating whether "non-decreasing order" is worth it here, leaning towards "no".`).
+It is the user's responsibility to ensure that order keys of consecutive entries follow the non-decreasing order.
 
-This guarantee enables `TailProduce`: A paradigm for real-time data crunching algorithms based on `producers` accepting data joined at runtime from multiple streams on their respectiveve order keys.
+This guarantee enables `TailProduce`: a paradigm for real-time data crunching algorithms based on `producers` accepting entries from multiple streams joined at runtime, maintaining the order of their respective order keys.
 
-Implementation-wise, the mechanism to extract order keys from entries is a member function that can be templated or overloaded. Thus, there are no constraints on how many various values can be used as order keys per entry type. Keep in mind though, that if the entry type is polymorphic, in order for certain order key type to be supported it is required for a getter of the order key of this type to be a (virtual) function of the top-level base class of this polymorphic type.
+Order key type is defined at the stream level. Individual entry types can support multiple order key types.
+
+Implementation details:
+
+* By default, the order key duplicates `index` and has the type `uint64_t`.
+* To support order keys other than `index`, the mechanism to extract the order key of certain type should be provided.
+* The easiest way to provide this mechanism is to define a `void ExtractOrderKey(T& output_order_key);` method for the type defining the entry.
+* For polymorphic types this method should be virtual.
+
+`TODO(dkorolev): Yes, I will rename the method(s) in the code soon.`
 
 ## Persistence
 
@@ -61,32 +74,58 @@ Listener is a callback that is invoked per each stream entry, in the order the e
 
 By default, the listener starts at the beginning of a stream and never stops.
 
-As for the starting enrty for the listener, there are ways to start the listener from a specific point in the past, specifically, from an entry with certain index, or from an entry with certain order key. The former is used for stream replication, the latter is used for TailProduce jobs, where the producer guarantees that its state at certain "time == order key" is agnostic with respect to how many entries preceeding this order key minus a fixed, specified time window width.
+As for the starting entry for the listener, there are ways to start the listener from a specific point in the past, specifically, from an entry with certain index, or from an entry with certain order key. The former is used for stream replication, the latter is used for TailProduce jobs, where the producer guarantees that its state at certain "time == order key" is agnostic with respect to how many entries preceeding this order key minus a fixed, specified time window width.
 
 As for the end of the listener, it is possible to request the listener to terminate automatically after certain number of entries have been scanned or after certain order key has been reached. On top of that, the listener itself can choose to stop itself when certain criteria has been met. Since listeners are independent, the termination criteria does not have to be consistent, even within the very same listener.
 
-Implementation-wise, listening to a stream spawns a dedicated thread. (`TODO(dkorolev): The design enforces the users to be "good citizens", and not spawn listeners in large quantities, however, in certain cases one thread per listener might not be the most efficient approach. I should document it in a bit more detail.`).
+#### Operation
 
-Being run in dedicated threads, listeners never interfere with each other and with the publisher. It is legit for a very slow listener to run in parallel with the one that is expected to always be caught up with the most recently added entires.
+A dedicated thread is spawn per listener. Being run in separate threads, listeners never interfere with each other and with the publisher. It is legit for a very slow listener to run in parallel with the one that is expected to always be caught up with the most recently added entires.
 
-A per-entry handler of a listener has the means to tell how far "behind" on a stream it is, both index-wise and order-key-wise. This is important for serving guarantees: for example, when a listener is responsible for serving external requests, the common design is to notify its master or load balancer that it is healthy as it is caught up and that it still is in the "replay log" mode.
+Generally, listeners start by processing entries from the past. In this mode, the listener never waits, as the next entry is ready to be processed as soon as the processing of the previous one is done.
+
+Once processing of the entries from the past is done, the thread that runs the listener waits until new entries appear. New entries are then processed immediately as they are published.
+
+The former is called **log replay**, and the listener is considered to be **behind** in this mode. The latter listener is said to be **up to date** or **caught up**.
+
+The natural order of things for the listener is to start in "behind" mode and eventually get "caught up". Note that, however, it is not impossible for the listener to change its state from "caught up" back to "behind", if it turns out that its processing rate became slower that the rate at which new entries are being added to the stream.
+
+#### Batch Mode
+
+Listeners for batch-mode processing jobs are agnostic as to whether they are behind or caught up.
+
+#### Real-Time Mode
+
+In more sophisticated cases, the code powered by new data coming via a listener may wish to have its in-memory state exposed in a asynchronous way.
+
+Recommended solutions in the order of preference are;
+
+1. Push incoming requests into another stream and have the listener operate on the join of these two streams.
+2. Push both stream inputs and incoming requests into a message queue, where they will be interleaved.
+3. Old-school mutexes, which might be beneficial in cases where many input entries do not alter the state and read-write locking is faster.
 
 ### Publishing
 
 While publishing, entries should come in increasing order of order keys.
 
-By design, a `Publish()` operation is not thread-safe, and it is advised to acquire stream's publisher within a specific thread that does the publishing.
+##### Acquisition
 
-Implementation-wise, within KnowSheet, this thread would almost always be an HTTP server, a consumer of an in-memory message queue, a listener of another stream or a producer of a TailProduce job. All of the above are single-threaded by design, and they respect the order of calls.
+By design, a `Publish()` operation is not thread-safe. To remove room for error, stream's **publisher** has to be acquired. Each stream has only one publisher to acquire; an attempt to acquire the publisher twice results in a run-time error.
 
-Streams are hardly deleted: in most production systems, if a stream is created it persists for the lifetime of the binary.
+##### Stream Deletion
 
-With that in mind, however, it is possible to shutdown a stream without terminating the binary. The shutdown operation is designed to be as safe as possible: implementation-wise, it will wait for all pending calls to currently active listeners, as well as signal the acquired publisher to terminate. Only after all the handles have been released, the stream will be destructed.
+Streams are hardly deleted. In most production systems, if a stream is created it persists for the lifetime of the binary.
+
+With that in mind, however, it is possible to shutdown a stream without terminating the binary. The shutdown operation is designed to be as safe as possible: it waits for all pending calls to currently active listeners, as well as signal the acquired publisher to terminate. Only after all the handles have been released, the stream will be destructed.
+
+Implementation details:
+* Within KnowSheet (outside TailProduce), the listening thread would almost always be an HTTP server, a consumer of an in-memory message queue, a listener of another stream or a producer of a TailProduce job. All of the above are single-threaded by design, and they respect the order of calls.
+* The waiting part of stream destruction happens in the destructor of the instance of the stream.
 
 
 ## Replication
 
-From data integrity standpoint, each stream is assigned an **authority**: A binary, running, usually a dedicated machine, that is responsible to reporting the current up-to-date status of the stream.
+From data integrity standpoint, each stream is assigned an **authority**: a binary, running, usually on a dedicated machine, that is responsible for reporting the current up-to-date status of the stream.
 
 Sherlock uses master-slave replication. Replication logic is to indefinitely listen to the entries from the index that is the first one not yet published into the local copy of the stream.
 
@@ -114,7 +153,7 @@ TBD: A way to notify that the order key has updated without new entries being ad
 
 ## Background
 
-The reader of this design doc is expected to be familiar with `KnowSheet/Brick`, most notably, the Cereal part of it ("cerealize"), the HTTP API ("net/api"), the in-memory message queue ("mq/inmemory") and WaitableAtomic ("waitable_atomic").
+The reader of this design doc is expected to be familiar with `KnowSheet/Bricks`, most notably, the Cereal part of it ("cerealize"), the HTTP API ("net/api"), the in-memory message queue ("mq/inmemory") and WaitableAtomic ("waitable_atomic").
 
 ## Naming
 
