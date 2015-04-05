@@ -39,7 +39,6 @@ SOFTWARE.
 DEFINE_int32(sherlock_http_test_port, 8090, "Local port to use for Sherlock unit test.");
 
 using std::string;
-using std::atomic_bool;
 using std::atomic_size_t;
 using std::thread;
 using std::this_thread::sleep_for;
