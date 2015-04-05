@@ -158,6 +158,25 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_body_content_type_ = request.content_type;
   }
 
+  inline static void PrepareInput(const PUT& request, HTTPClientPOSIX& client) {
+    client.request_method_ = "PUT";
+    client.request_url_ = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    }
+    client.request_has_body_ = true;
+    client.request_body_contents_ = request.body;
+    client.request_body_content_type_ = request.content_type;
+  }
+
+  inline static void PrepareInput(const DELETE& request, HTTPClientPOSIX& client) {
+    client.request_method_ = "DELETE";
+    client.request_url_ = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.request_user_agent_ = request.custom_user_agent;
+    }
+  }
+
   inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientPOSIX&) {}
 
   inline static void PrepareInput(const SaveResponseToFile& save_to_file_request, HTTPClientPOSIX&) {

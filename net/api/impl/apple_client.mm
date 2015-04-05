@@ -52,13 +52,23 @@ bool bricks::net::api::HTTPClientApple::Go() {
         [NSURL URLWithString:[NSString stringWithUTF8String:url_requested.c_str()]]
         cachePolicy:NSURLRequestReloadIgnoringLocalCacheData timeoutInterval:TIMEOUT_IN_SECONDS];
 
-    if (!content_type.empty())
+    if (!content_type.empty()) {
       [request setValue:[NSString stringWithUTF8String:content_type.c_str()] forHTTPHeaderField:@"Content-Type"];
-    if (!user_agent.empty())
-      [request setValue:[NSString stringWithUTF8String:user_agent.c_str()] forHTTPHeaderField:@"User-Agent"];
+    }
 
-    if (is_post) {
-      request.HTTPMethod = @"POST";
+    if (!user_agent.empty()) {
+      [request setValue:[NSString stringWithUTF8String:user_agent.c_str()] forHTTPHeaderField:@"User-Agent"];
+    }
+
+    if (!method.empty()) {
+      request.HTTPMethod = [NSString stringWithUTF8String:method.c_str()];
+    } else {
+      http_response_code = -1;
+      NSLog(@"HTTP method is empty.");
+      return false;
+    }
+
+    if (method == "POST" || method == "PUT") {
       if (!post_file.empty()) {
         NSError * err = nil;
         NSString * path = [NSString stringWithUTF8String:post_file.c_str()];

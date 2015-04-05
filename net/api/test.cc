@@ -398,7 +398,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
                       "")).body);
 }
 
-struct ObjectToPOST {
+struct SerializableObject {
   int x = 42;
   std::string s = "foo";
   std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
@@ -415,17 +415,17 @@ TEST(HTTPAPI, PostCerealizableObject) {
     r("Data: " + r.body);
   });
   EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
+            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.has_body);
-    r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
+    r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
   });
   EXPECT_EQ("Data: 42:foo",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
+            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
@@ -434,7 +434,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
     ASSERT_TRUE(r.has_body);
     try {
-      r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
+      r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
     } catch (const std::exception&) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }
@@ -509,6 +509,30 @@ TEST(HTTPAPI, PostFromFileToFile) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Phew: Aloha, this text should pass from one file to another. Mahalo!",
             FileSystem::ReadFileAsString(response.body_file_name));
+}
+
+TEST(HTTPAPI, PutCerealizableObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/put", [](Request r) {
+    ASSERT_TRUE(r.has_body);
+    r(r.body, HTTPResponseCode.Created);
+  });
+  const auto response = HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
+  EXPECT_EQ("{\"data\":{\"x\":42,\"s\":\"foo\"}}", response.body);
+  EXPECT_EQ(201, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, DeleteObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/delete", [](Request r) {
+    //ASSERT_FALSE(r.has_body);
+    std::cerr << "Body = '" << r.body << "'" << std::endl;
+    SerializableObject object;
+    r(object);
+  });
+  const auto response = HTTP(DELETE(Printf("http://localhost:%d/delete", FLAGS_net_api_test_port)));
+  EXPECT_EQ("42:foo", ParseJSON<SerializableObject>(response.body).AsString());
+  EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, UserAgent) {
