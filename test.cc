@@ -97,7 +97,7 @@ struct Processor {
   }
 
   inline bool Entry(const Record& entry, size_t index, size_t total) {
-    static_cast<void>(total);
+    static_cast<void>(index);
     static_cast<void>(total);
     if (data_.seen_) {
       data_.results_ += ",";
