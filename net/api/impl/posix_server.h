@@ -64,8 +64,6 @@ struct Request final {
   const HTTPRequestData& http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const url::URL& url;
   const std::string method;
-  const bool has_body;
-  const std::string empty_string = "";
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const bricks::time::EPOCH_MILLISECONDS timestamp;
 
@@ -75,8 +73,7 @@ struct Request final {
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
         method(http_data.Method()),
-        has_body(http_data.HasBody()),
-        body(has_body ? http_data.Body() : empty_string),
+        body(http_data.Body()),
         timestamp(bricks::time::Now()) {}
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
@@ -86,8 +83,7 @@ struct Request final {
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
         method(http_data.Method()),
-        has_body(http_data.HasBody()),
-        body(has_body ? http_data.Body() : empty_string),
+        body(http_data.Body()),
         timestamp(rhs.timestamp) {}
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.

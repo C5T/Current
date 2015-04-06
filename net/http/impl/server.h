@@ -105,7 +105,6 @@ class HTTPDefaultHelper {
 // * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
 // Exceptions:
-// * HTTPNoBodyProvidedException : When attempting to access body when HasBody() is false.
 // * ConnectionResetByPeer       : When the server is using chunked transfer and doesn't fully send one.
 //
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
@@ -271,35 +270,25 @@ class TemplatedHTTPRequestData : public HELPER {
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
-  // then `HasBody()` will be false and all other `Body*()` methods will throw.
-  inline bool HasBody() const { return body_buffer_begin_ != nullptr; }
+  // then `Body()` will return empty string and all other `Body*()` methods will return nullptr.
 
   inline const std::string& Body() const {
     if (!prepared_body_) {
       if (body_buffer_begin_) {
         prepared_body_.reset(new std::string(body_buffer_begin_, body_buffer_end_));
       } else {
-        BRICKS_THROW(HTTPNoBodyProvidedException());
+        prepared_body_.reset(new std::string);
       }
     }
     return *prepared_body_.get();
   }
 
   inline const char* BodyBegin() const {
-    if (body_buffer_begin_) {
-      return body_buffer_begin_;
-    } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
-    }
+    return body_buffer_begin_;
   }
 
   inline const char* BodyEnd() const {
-    if (body_buffer_begin_) {
-      assert(body_buffer_end_);
-      return body_buffer_end_;
-    } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
-    }
+    return body_buffer_end_;
   }
 
   inline size_t BodyLength() const {
@@ -307,7 +296,7 @@ class TemplatedHTTPRequestData : public HELPER {
       assert(body_buffer_end_);
       return body_buffer_end_ - body_buffer_begin_;
     } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
+      return 0;
     }
   }
 
