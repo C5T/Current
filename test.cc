@@ -23,6 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "sherlock.h"
+#include "kv_storage.h"
 
 #include <string>
 #include <atomic>
@@ -39,7 +40,6 @@ SOFTWARE.
 DEFINE_int32(sherlock_http_test_port, 8090, "Local port to use for Sherlock unit test.");
 
 using std::string;
-using std::atomic_bool;
 using std::atomic_size_t;
 using std::thread;
 using std::this_thread::sleep_for;
@@ -50,6 +50,8 @@ using bricks::strings::ToString;
 
 using bricks::time::EPOCH_MILLISECONDS;
 using bricks::time::MILLISECONDS_INTERVAL;
+
+using sherlock::kv_storage::KeyNotPresentException;
 
 // The records we work with.
 // TODO(dkorolev): Support and test polymorphic types.
@@ -97,7 +99,7 @@ struct Processor {
   }
 
   inline bool Entry(const Record& entry, size_t index, size_t total) {
-    static_cast<void>(total);
+    static_cast<void>(index);
     static_cast<void>(total);
     if (data_.seen_) {
       data_.results_ += ",";
@@ -274,4 +276,136 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
+}
+
+struct KeyValueRecord {
+  struct Key {
+    int x;
+    Key(int x = 0) : x(x) {}
+
+    template <typename A>
+    void serialize(A& ar) {
+      ar(CEREAL_NVP(x));
+    }
+
+    bool operator==(const Key& rhs) const { return x == rhs.x; }
+    struct HashFunction {
+      size_t operator()(const Key& k) const { return static_cast<size_t>(k.x); }
+    };
+  };
+
+  struct Value {
+    double y;
+    Value(double y = 0) : y(y) {}
+
+    template <typename A>
+    void serialize(A& ar) {
+      ar(CEREAL_NVP(y));
+    }
+  };
+
+  Key key;
+  Value value;
+
+  KeyValueRecord() = default;
+  KeyValueRecord(const int key, const double value) : key(key), value(value) {}
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(key), CEREAL_NVP(value));
+  }
+};
+
+struct KeyValueSubscriptionData {
+  atomic_size_t seen_;
+  string results_;
+  KeyValueSubscriptionData() : seen_(0u) {}
+};
+
+struct KeyValueAggregateListener {
+  KeyValueSubscriptionData& data_;
+  size_t max_to_process_ = static_cast<size_t>(-1);
+
+  KeyValueAggregateListener() = delete;
+  explicit KeyValueAggregateListener(KeyValueSubscriptionData& data) : data_(data) {}
+
+  KeyValueAggregateListener& SetMax(size_t cap) {
+    max_to_process_ = cap;
+    return *this;
+  }
+
+  bool Entry(const KeyValueRecord& record, size_t index, size_t total) {
+    static_cast<void>(index);
+    static_cast<void>(total);
+    if (data_.seen_) {
+      data_.results_ += ",";
+    }
+    data_.results_ += Printf("%d=%.2lf", record.key.x, record.value.y);
+    ++data_.seen_;
+    return data_.seen_ < max_to_process_;
+  }
+
+  void Terminate() {
+    if (data_.seen_) {
+      data_.results_ += ",";
+    }
+    data_.results_ += "DONE";
+  }
+};
+
+TEST(Sherlock, NonPolymorphicKeyValueStorage) {
+  sherlock::kv_storage::API<KeyValueRecord> api("non_polymorphic_kv_storage");
+
+  // Add the first key-value pair.
+  // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.
+  api.UnsafeStream().Emplace(2, 0.5);
+
+  while (!api.CaughtUp()) {
+    // Spin lock, for the purposes of this test.
+    // Ensure that the data has reached the the processor that maintains the in-memory state of the API.
+  }
+
+  // Future expanded syntax.
+  std::future<KeyValueRecord::Value> f1 = api.AsyncGet(KeyValueRecord::Key(2));
+  KeyValueRecord::Value r1 = f1.get();
+  EXPECT_EQ(0.5, r1.y);
+
+  // Future short syntax.
+  EXPECT_EQ(0.5, api.AsyncGet(KeyValueRecord::Key(2)).get().y);
+
+  // Add two more key-value pairs.
+  api.UnsafeStream().Emplace(3, 0.33);
+  api.UnsafeStream().Emplace(4, 0.25);
+
+  while (api.EntriesSeen() < 3u) {
+    // For the purposes of this test: Spin lock to ensure that the listener/MMQ consumer got the data published.
+  }
+
+  EXPECT_EQ(0.33, api.AsyncGet(KeyValueRecord::Key(3)).get().y);
+  EXPECT_EQ(0.25, api.Get(KeyValueRecord::Key(4)).y);
+
+  ASSERT_THROW(api.AsyncGet(KeyValueRecord::Key(5)).get(), KeyNotPresentException);
+  ASSERT_THROW(api.Get(KeyValueRecord::Key(6)), KeyNotPresentException);
+
+  // Add two more key-value pairs, this time via the API.
+  api.AsyncSet(KeyValueRecord(5, 0.2)).wait();
+  api.Set(KeyValueRecord(6, 0.17));
+
+  // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
+  // Even if the next two lines run before the entries are published into the stream,
+  // the API will maintain the consistency of its own responses from its own in-memory state.
+  EXPECT_EQ(0.20, api.AsyncGet(KeyValueRecord::Key(5)).get().y);
+  EXPECT_EQ(0.17, api.Get(KeyValueRecord::Key(6)).y);
+
+  ASSERT_THROW(api.AsyncGet(KeyValueRecord::Key(7)).get(), KeyNotPresentException);
+  ASSERT_THROW(api.Get(KeyValueRecord::Key(8)), KeyNotPresentException);
+
+  // Confirm that data updates have been pubished as stream entries as well.
+  // This part is important since otherwise the API is no better than a wrapper over a hash map.
+  KeyValueSubscriptionData data;
+  KeyValueAggregateListener listener(data);
+  listener.SetMax(5u);
+  api.Subscribe(listener).Join();
+  EXPECT_EQ(data.seen_, 5u);
+  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17", data.results_);
 }
