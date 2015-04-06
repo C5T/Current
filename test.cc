@@ -409,4 +409,3 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   EXPECT_EQ(data.seen_, 5u);
   EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17", data.results_);
 }
-
