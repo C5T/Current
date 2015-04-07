@@ -316,7 +316,7 @@ TEST(HTTPAPI, GetToFile) {
 TEST(HTTPAPI, PostFromBufferToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r("Data: " + r.body);
   });
   const auto response = HTTP(POST(
@@ -327,7 +327,7 @@ TEST(HTTPAPI, PostFromBufferToBuffer) {
 TEST(HTTPAPI, PostAStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post_string", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r(r.body);
   });
   EXPECT_EQ("std::string",
@@ -339,7 +339,7 @@ TEST(HTTPAPI, PostAStringAsString) {
 TEST(HTTPAPI, PostAStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post_const_char_ptr", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r(r.body);
   });
   EXPECT_EQ("const char*",
@@ -351,7 +351,6 @@ TEST(HTTPAPI, PostAStringAsConstCharPtr) {
 TEST(HTTPAPI, RespondWithStringAsString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string", [](Request r) {
-    ASSERT_TRUE(r.has_body);
     EXPECT_EQ("", r.body);
     r.connection.SendHTTPResponse(std::string("std::string"), HTTPResponseCode.OK);
   });
@@ -363,7 +362,6 @@ TEST(HTTPAPI, RespondWithStringAsString) {
 TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr", [](Request r) {
-    ASSERT_TRUE(r.has_body);
     EXPECT_EQ("", r.body);
     r.connection.SendHTTPResponse(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
@@ -375,7 +373,6 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtr) {
 TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_std_string_via_request_directly", [](Request r) {
-    ASSERT_TRUE(r.has_body);
     EXPECT_EQ("", r.body);
     r(std::string("std::string"), HTTPResponseCode.OK);
   });
@@ -388,7 +385,6 @@ TEST(HTTPAPI, RespondWithStringAsStringViaRequestDirectly) {
 TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/respond_with_const_char_ptr_via_request_directly", [](Request r) {
-    ASSERT_TRUE(r.has_body);
     EXPECT_EQ("", r.body);
     r(static_cast<const char*>("const char*"), HTTPResponseCode.OK);
   });
@@ -398,7 +394,7 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
                       "")).body);
 }
 
-struct ObjectToPOST {
+struct SerializableObject {
   int x = 42;
   std::string s = "foo";
   std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
@@ -411,30 +407,30 @@ struct ObjectToPOST {
 TEST(HTTPAPI, PostCerealizableObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r("Data: " + r.body);
   });
   EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
+            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
-    r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
+    ASSERT_FALSE(r.body.empty());
+    r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
   });
   EXPECT_EQ("Data: 42:foo",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), ObjectToPOST())).body);
+            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     try {
-      r("Data: " + ParseJSON<ObjectToPOST>(r.body).AsString());
+      r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
     } catch (const std::exception&) {
       // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
     }
@@ -461,7 +457,7 @@ TEST(HTTPAPI, PostFromInvalidFile) {
 TEST(HTTPAPI, PostFromFileToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r("Voila: " + r.body);
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
@@ -477,7 +473,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
 TEST(HTTPAPI, PostFromBufferToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r("Meh: " + r.body);
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
@@ -492,7 +488,7 @@ TEST(HTTPAPI, PostFromBufferToFile) {
 TEST(HTTPAPI, PostFromFileToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
-    ASSERT_TRUE(r.has_body);
+    ASSERT_FALSE(r.body.empty());
     r("Phew: " + r.body);
   });
   bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
@@ -509,6 +505,31 @@ TEST(HTTPAPI, PostFromFileToFile) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Phew: Aloha, this text should pass from one file to another. Mahalo!",
             FileSystem::ReadFileAsString(response.body_file_name));
+}
+
+TEST(HTTPAPI, PutCerealizableObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/put", [](Request r) {                                         
+    EXPECT_EQ("PUT", r.method);
+    ASSERT_FALSE(r.body.empty());
+    r(r.body, HTTPResponseCode.Created);
+  });
+  const auto response = HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
+  EXPECT_EQ("{\"data\":{\"x\":42,\"s\":\"foo\"}}", response.body);
+  EXPECT_EQ(201, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, DeleteObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/delete", [](Request r) {
+    EXPECT_EQ("DELETE", r.method);
+    ASSERT_TRUE(r.body.empty());
+    SerializableObject object;
+    r(object);
+  });
+  const auto response = HTTP(DELETE(Printf("http://localhost:%d/delete", FLAGS_net_api_test_port)));
+  EXPECT_EQ("42:foo", ParseJSON<SerializableObject>(response.body).AsString());
+  EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, UserAgent) {

@@ -71,9 +71,30 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
-// A helper class to fill in POST body as either plain text of JSON-ified object.
-template <bool IS_JSON>
-struct FillPOSTBody {};
+// A helper class to fill in request body as either plain text of JSON-ified object.
+template <typename REQUEST, bool IS_JSON>
+struct FillBody {};
+
+// Body as string, default the type to "text/plain", when `is_string_type<T>::value == true`.
+template <typename REQUEST>
+struct FillBody<REQUEST, true> {
+  static void Fill(REQUEST& request, const std::string& body, const std::string& content_type) {
+    request.body = body;
+    request.content_type = !content_type.empty() ? content_type : "text/plain";
+  }
+};
+
+// Body as JSON, default the type to "application/json", when `is_string_type<T>::value == false`.
+template <typename REQUEST>
+struct FillBody<REQUEST, false> {
+  template <typename T>
+  static void Fill(REQUEST& request, T&& object, const std::string& content_type) {
+    static_assert(cerealize::is_write_cerealizable<T>::value,
+                  "This form of POST() requires a cerealizable object as the second parameter.");
+    request.body = cerealize::JSON(object, "data");
+    request.content_type = !content_type.empty() ? content_type : "application/json";
+  }
+};
 
 struct POST : HTTPRequestBase<POST> {
   std::string body;
@@ -82,28 +103,7 @@ struct POST : HTTPRequestBase<POST> {
   template <typename T>
   POST(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillPOSTBody<bricks::cerealize::is_string_type<T>::value>::Fill(*this, body, content_type);
-  }
-};
-
-// POST as string, default the type to "text/plain", when `is_string_type<T>::value == true`.
-template <>
-struct FillPOSTBody<true> {
-  static void Fill(POST& post_object, const std::string& body, const std::string& content_type) {
-    post_object.body = body;
-    post_object.content_type = !content_type.empty() ? content_type : "text/plain";
-  }
-};
-
-// POST as JSON, default the type to "application/json", when `is_string_type<T>::value == false`.
-template <>
-struct FillPOSTBody<false> {
-  template <typename T>
-  static void Fill(POST& post_object, T&& object, const std::string& content_type) {
-    static_assert(cerealize::is_write_cerealizable<T>::value,
-                  "This form of POST() requires a cerealizable object as the second parameter.");
-    post_object.body = cerealize::JSON(object, "data");
-    post_object.content_type = !content_type.empty() ? content_type : "application/json";
+    FillBody<POST, bricks::cerealize::is_string_type<T>::value>::Fill(*this, body, content_type);
   }
 };
 
@@ -113,6 +113,21 @@ struct POSTFromFile : HTTPRequestBase<POSTFromFile> {
 
   explicit POSTFromFile(const std::string& url, const std::string& file_name, const std::string& content_type)
       : HTTPRequestBase(url), file_name(file_name), content_type(content_type) {}
+};
+
+struct PUT : HTTPRequestBase<PUT> {
+  std::string body;
+  std::string content_type;
+
+  template <typename T>
+  PUT(const std::string& url, T&& body, const std::string& content_type = "")
+      : HTTPRequestBase(url) {
+    FillBody<PUT, bricks::cerealize::is_string_type<T>::value>::Fill(*this, body, content_type);
+  }
+};
+
+struct DELETE : HTTPRequestBase<DELETE> {
+  explicit DELETE(const std::string& url) : HTTPRequestBase(url) {}
 };
 
 // Structures to define HTTP response.
@@ -210,5 +225,7 @@ struct HTTPImpl {
 using bricks::net::api::GET;
 using bricks::net::api::POST;
 using bricks::net::api::POSTFromFile;
+using bricks::net::api::PUT;
+using bricks::net::api::DELETE;
 
 #endif  // BRICKS_NET_API_TYPES_H

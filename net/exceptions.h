@@ -70,7 +70,6 @@ struct HTTPException : NetworkException {
   HTTPException(const std::string& what) : NetworkException(what) {}
 };
 
-struct HTTPNoBodyProvidedException : HTTPException {};
 struct HTTPRedirectNotAllowedException : HTTPException {};
 struct HTTPRedirectLoopException : HTTPException {};
 struct CannotServeStaticFilesOfUnknownMIMEType : HTTPException {
