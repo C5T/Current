@@ -170,6 +170,16 @@ TEST(URLTest, ExtractsURLParameters) {
     EXPECT_EQ("value2", u.query["key2"]);
     EXPECT_EQ("value2", u.query.get("key2", "default_value"));
     EXPECT_EQ("http://www.google.com/q?key=value&key2=value2#fragment#foo", u.ComposeURL());
+    const auto& as_map = u.AllQueryParameters();
+    EXPECT_EQ(2u, as_map.size());
+    const auto key = as_map.find("key");
+    const auto key2 = as_map.find("key2");
+    const auto key3 = as_map.find("key3");
+    ASSERT_TRUE(key != as_map.end());
+    ASSERT_TRUE(key2 != as_map.end());
+    ASSERT_TRUE(key3 == as_map.end());
+    EXPECT_EQ("value", key->second);
+    EXPECT_EQ("value2", key2->second);
   }
   {
     URL u("www.google.com/a?k=a%3Db%26s%3D%25s%23#foo");

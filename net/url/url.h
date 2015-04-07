@@ -247,8 +247,11 @@ struct URLParametersExtractor {
         return default_value;
       }
     }
+    const std::map<std::string, std::string>& AsImmutableMap() const { return parameters_; }
     std::map<std::string, std::string> parameters_;
   };
+
+  const std::map<std::string, std::string>& AllQueryParameters() const { return query.AsImmutableMap(); }
 
   std::vector<std::pair<std::string, std::string>> parameters_vector;
   QueryParameters query;
