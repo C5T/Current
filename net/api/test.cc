@@ -510,8 +510,8 @@ TEST(HTTPAPI, PostFromFileToFile) {
 TEST(HTTPAPI, PutCerealizableObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/put", [](Request r) {                                         
-    ASSERT_FALSE(r.body.empty());
     EXPECT_EQ("PUT", r.method);
+    ASSERT_FALSE(r.body.empty());
     r(r.body, HTTPResponseCode.Created);
   });
   const auto response = HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
@@ -522,8 +522,8 @@ TEST(HTTPAPI, PutCerealizableObject) {
 TEST(HTTPAPI, DeleteObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/delete", [](Request r) {
-    ASSERT_TRUE(r.body.empty());
     EXPECT_EQ("DELETE", r.method);
+    ASSERT_TRUE(r.body.empty());
     SerializableObject object;
     r(object);
   });

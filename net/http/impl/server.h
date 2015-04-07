@@ -102,7 +102,7 @@ class HTTPDefaultHelper {
 // * url::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
 // * std::string RawPath() (the URL before parsing).
 // * std::string Method().
-// * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
+// * std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
 // Exceptions:
 // * ConnectionResetByPeer       : When the server is using chunked transfer and doesn't fully send one.
@@ -277,7 +277,7 @@ class TemplatedHTTPRequestData : public HELPER {
       if (body_buffer_begin_) {
         prepared_body_.reset(new std::string(body_buffer_begin_, body_buffer_end_));
       } else {
-        prepared_body_.reset(new std::string);
+        prepared_body_.reset(new std::string());
       }
     }
     return *prepared_body_.get();
@@ -296,7 +296,7 @@ class TemplatedHTTPRequestData : public HELPER {
       assert(body_buffer_end_);
       return body_buffer_end_ - body_buffer_begin_;
     } else {
-      return 0;
+      return 0u;
     }
   }
 
