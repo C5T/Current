@@ -1,0 +1,25 @@
+.noshit
+
+# Linux.
+
+core
+*.h.gch
+.exrc
+
+*.swp
+
+coverage.info
+*.gcov
+*.gcda
+*.gcno
+
+# Windows.
+
+*.suo
+*.sdf
+*.opensdf
+*.filters
+*.user
+Debug
+Release
+x64
