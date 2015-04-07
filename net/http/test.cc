@@ -147,9 +147,9 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
       "Access-Control-Allow-Origin: *\r\n"
-      "Content-Length: 55\r\n"
+      "Content-Length: 53\r\n"
       "\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
+      "{\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection);
   t.join();
 }
@@ -205,8 +205,8 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "onetwothree\r\n"
       "3\r\n"
       "foo\r\n"
-      "37\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
+      "35\r\n"
+      "{\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "3B\r\n"
       "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",

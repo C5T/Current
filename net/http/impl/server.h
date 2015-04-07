@@ -442,7 +442,7 @@ class HTTPServerConnection final {
       const std::string& content_type = DefaultJSONContentType(),
       const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(object) + '\n';
+    const std::string s = cerealize::JSON(object, "data") + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -502,7 +502,7 @@ class HTTPServerConnection final {
       // Support objects that can be serialized as JSON-s via Cereal.
       template <class T>
       inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object) {
-        SendImpl(cerealize::JSON(object) + '\n');
+        SendImpl(cerealize::JSON(object, "data") + '\n');
       }
       template <class T, typename S>
       inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object, S&& name) {
