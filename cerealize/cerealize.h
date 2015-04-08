@@ -140,34 +140,39 @@ WithBaseType(const ENTRY& object) {
 // Enumeration for compile-time format selection.
 enum class CerealFormat { Default = 0, Binary = 0, JSON };
 
+// ***** !!! ATTENTION !!! *****
+// `CerealFileAppenderBase`, which handles the stream for all file serialization
+// classes, DOES NOT guarantee an exclusive access to the file.
+// THIS MAY CAUSE DATA CORRUPTION.
+// It is user responsibility to ensure that there is no simultaneous access.
+// TODO: Think of platform-independent layer for filesystem locks.
 class CerealFileAppenderBase {
  public:
   explicit CerealFileAppenderBase(const std::string& filename, bool append = true)
-       : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary) {
-    long p = fo_.tellp();
-    if (p >= 0) {
-      initial_stream_position_ = static_cast<size_t>(p);
-    } else {
-      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());
-    }
-  }
+       : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary),
+         initial_stream_position_(fo_.tellp()) {}
 
-  inline size_t EntriesWritten() { return entries_written_; }
-  inline size_t BytesWritten() {
-    long p = fo_.tellp();
-    if (p >= 0) {
-      return static_cast<size_t>(p - initial_stream_position_);
-    } else {
-      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());
-    }
+  inline size_t EntriesAppended() const { return entries_appended_; }
+  inline size_t BytesAppended() const {
+      return current_stream_position() - initial_stream_position_;
   }
+  inline size_t TotalFileSize() const { return current_stream_position(); }
 
  protected:
-  std::ofstream fo_;
-  size_t entries_written_ = 0;
+  mutable std::ofstream fo_;
+  size_t entries_appended_ = 0;
 
  private:
-  size_t initial_stream_position_;
+  const std::streampos initial_stream_position_;
+
+  size_t current_stream_position() const {
+    const std::streampos p = fo_.tellp();
+    if (p >= 0) {
+      return static_cast<size_t>(p);
+    } else {
+      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());
+    }
+  }
 
   CerealFileAppenderBase() = delete;
   CerealFileAppenderBase(const CerealFileAppenderBase&) = delete;
@@ -179,6 +184,7 @@ class CerealFileAppenderBase {
 // `CerealBinaryFileAppender` appends cereal-ized records to a file in binary format.
 // Writes are performed using templated `operator <<(const T& entry)`.
 // If type `T` defines a typedef of `CEREAL_BASE_TYPE`, polymorphic serialization is used.
+// TODO(dkorolev): Support for non-polymorhic types.
 class CerealBinaryFileAppender : public CerealFileAppenderBase {
  public:
   explicit CerealBinaryFileAppender(const std::string& filename, bool append = true)
@@ -189,7 +195,7 @@ class CerealBinaryFileAppender : public CerealFileAppenderBase {
   typename std::enable_if<sizeof(typename T::CEREAL_BASE_TYPE) != 0, CerealBinaryFileAppender&>::type
   operator<<(const T& entry) {
     so_(WithBaseType<typename T::CEREAL_BASE_TYPE>(entry));
-    entries_written_++;
+    ++entries_appended_;
     return *this;
   }
 
@@ -201,6 +207,7 @@ class CerealBinaryFileAppender : public CerealFileAppenderBase {
 // Each entry is written as a separate line containing full JSON record.
 // Writes are performed using templated `operator <<(const T& entry)`.
 // If type `T` defines a typedef of `CEREAL_BASE_TYPE`, polymorphic serialization is used.
+// TODO(dkorolev): Support for non-polymorhic types.
 class CerealJSONFileAppender : public CerealFileAppenderBase {
  public:
   explicit CerealJSONFileAppender(const std::string& filename, bool append = true)
@@ -210,31 +217,32 @@ class CerealJSONFileAppender : public CerealFileAppenderBase {
   typename std::enable_if<sizeof(typename T::CEREAL_BASE_TYPE) != 0, CerealJSONFileAppender&>::type
   operator<<(const T& entry) {
     // One entry per line format.
-    // JSONOutputArchive writes final '}' after going out of the scope.
+    // JSONOutputArchive writes the final '}' after going out of the scope.
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
       so_(WithBaseType<typename T::CEREAL_BASE_TYPE>(entry));
     }
     fo_ << '\n';
-    entries_written_++;
+    ++entries_appended_;
     return *this;
   }
 };
 
 template <CerealFormat>
-struct CerealFileAppender {};
+struct CerealGenericFileAppender {};
 
 template <>
-struct CerealFileAppender<CerealFormat::Binary> : CerealBinaryFileAppender {
-  explicit CerealFileAppender(const std::string& filename, bool append = true) :
-      CerealBinaryFileAppender(filename, append) {}
+struct CerealGenericFileAppender<CerealFormat::Binary> {
+  typedef CerealBinaryFileAppender type;
 };
 
 template <>
-struct CerealFileAppender<CerealFormat::JSON> : CerealJSONFileAppender {
-  explicit CerealFileAppender(const std::string& filename, bool append = true) :
-      CerealJSONFileAppender(filename, append) {}
+struct CerealGenericFileAppender<CerealFormat::JSON> {
+  typedef CerealJSONFileAppender type;
 };
+
+template <CerealFormat T_FORMAT = CerealFormat::Default> 
+using CerealFileAppender = typename CerealGenericFileAppender<T_FORMAT>::type;
 
 // `CerealBinaryFileParser` de-cereal-izes records from binary file given their type
 // and passes them over to `T_PROCESSOR`.
@@ -246,7 +254,7 @@ class CerealBinaryFileParser {
   // `Next` calls `T_PROCESSOR::operator()(const T_ENTRY&)` for the next entry, or returns false.
   template <typename T_PROCESSOR>
   bool Next(T_PROCESSOR&& processor) {
-    if (fi_.peek() != std::char_traits<char>::eof()) {
+    if (fi_.peek() != std::char_traits<char>::eof()) {  // This is safe with any next byte in file.
       std::unique_ptr<T_ENTRY> entry;
       si_(entry);
       processor(*entry.get());
@@ -265,7 +273,7 @@ class CerealBinaryFileParser {
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename T_PROCESSOR>
   bool NextWithDispatching(T_PROCESSOR& processor) {
-    if (fi_.peek() != std::char_traits<char>::eof()) {
+    if (fi_.peek() != std::char_traits<char>::eof()) {  // This is safe with any next byte in file.
       std::unique_ptr<T_ENTRY> entry;
       si_(entry);
       bricks::rtti::RuntimeTupleDispatcher<typename T_PROCESSOR::BASE_TYPE,
@@ -300,7 +308,7 @@ class CerealJSONFileParser {
   // `Next` calls `T_PROCESSOR::operator()(const T_ENTRY&)` for the next entry, or returns false.
   template <typename T_PROCESSOR>
   bool Next(T_PROCESSOR&& processor) {
-    std::unique_ptr<T_ENTRY> entry = GetNextEntry();
+    std::unique_ptr<T_ENTRY> entry {GetNextEntry()};
     if (entry) {
       processor(*entry.get());
       return true;
@@ -318,7 +326,7 @@ class CerealJSONFileParser {
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename T_PROCESSOR>
   bool NextWithDispatching(T_PROCESSOR& processor) {
-    std::unique_ptr<T_ENTRY> entry = GetNextEntry();
+    std::unique_ptr<T_ENTRY> entry {GetNextEntry()};
     if (entry) {
       bricks::rtti::RuntimeTupleDispatcher<typename T_PROCESSOR::BASE_TYPE,
                                            typename T_PROCESSOR::DERIVED_TYPE_LIST>::DispatchCall(*entry.get(),
@@ -353,19 +361,20 @@ class CerealJSONFileParser {
 };
 
 template <typename T_ENTRY, CerealFormat>
-struct CerealFileParser {};
+struct CerealGenericFileParser {};
 
 template <typename T_ENTRY>
-struct CerealFileParser<T_ENTRY, CerealFormat::Binary> : CerealBinaryFileParser<T_ENTRY> {
-  explicit CerealFileParser(const std::string& filename) :
-      CerealBinaryFileParser<T_ENTRY>(filename) {}
+struct CerealGenericFileParser<T_ENTRY, CerealFormat::Binary> {
+  typedef CerealBinaryFileParser<T_ENTRY> type;
 };
 
 template <typename T_ENTRY>
-struct CerealFileParser<T_ENTRY, CerealFormat::JSON> : CerealJSONFileParser<T_ENTRY> {
-  explicit CerealFileParser(const std::string& filename) :
-      CerealJSONFileParser<T_ENTRY>(filename) {}
+struct CerealGenericFileParser<T_ENTRY, CerealFormat::JSON> {
+  typedef CerealJSONFileParser<T_ENTRY> type;
 };
+
+template <typename T_ENTRY, CerealFormat T_FORMAT = CerealFormat::Default>
+using CerealFileParser = typename CerealGenericFileParser<T_ENTRY, T_FORMAT>::type;
 
 template <typename OSTREAM, typename T>
 inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {

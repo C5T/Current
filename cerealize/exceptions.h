@@ -33,6 +33,7 @@ struct ParseJSONException : Exception {
   explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
 };
 
+// File stream during serialization got somehow corrupted.
 struct CerealizeFileStreamErrorException : Exception {};
 
 }  // namespace bricks
