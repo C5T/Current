@@ -33,6 +33,8 @@ struct ParseJSONException : Exception {
   explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
 };
 
+struct CerealizeFileStreamErrorException : Exception {};
+
 }  // namespace bricks
 
 #endif  // BRICKS_CEREALIZE_EXCEPTIONS_H
