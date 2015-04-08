@@ -145,7 +145,7 @@ enum class CerealFormat { Default = 0, Binary = 0, JSON };
 // classes, DOES NOT guarantee an exclusive access to the file.
 // THIS MAY CAUSE DATA CORRUPTION.
 // It is user responsibility to ensure that there is no simultaneous access.
-// TODO: Think of platform-independent layer for filesystem locks.
+// TODO(dkorolev): Think of platform-independent layer for filesystem locks.
 class CerealFileAppenderBase {
  public:
   explicit CerealFileAppenderBase(const std::string& filename, bool append = true)
@@ -308,7 +308,7 @@ class CerealJSONFileParser {
   // `Next` calls `T_PROCESSOR::operator()(const T_ENTRY&)` for the next entry, or returns false.
   template <typename T_PROCESSOR>
   bool Next(T_PROCESSOR&& processor) {
-    std::unique_ptr<T_ENTRY> entry {GetNextEntry()};
+    std::unique_ptr<T_ENTRY> entry(GetNextEntry());
     if (entry) {
       processor(*entry.get());
       return true;
@@ -326,7 +326,7 @@ class CerealJSONFileParser {
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename T_PROCESSOR>
   bool NextWithDispatching(T_PROCESSOR& processor) {
-    std::unique_ptr<T_ENTRY> entry {GetNextEntry()};
+    std::unique_ptr<T_ENTRY> entry(GetNextEntry());
     if (entry) {
       bricks::rtti::RuntimeTupleDispatcher<typename T_PROCESSOR::BASE_TYPE,
                                            typename T_PROCESSOR::DERIVED_TYPE_LIST>::DispatchCall(*entry.get(),
