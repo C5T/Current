@@ -149,13 +149,11 @@ enum class CerealFormat { Default = 0, Binary = 0, JSON };
 class CerealFileAppenderBase {
  public:
   explicit CerealFileAppenderBase(const std::string& filename, bool append = true)
-       : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary),
-         initial_stream_position_(fo_.tellp()) {}
+      : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary),
+        initial_stream_position_(fo_.tellp()) {}
 
   inline size_t EntriesAppended() const { return entries_appended_; }
-  inline size_t BytesAppended() const {
-      return current_stream_position() - initial_stream_position_;
-  }
+  inline size_t BytesAppended() const { return current_stream_position() - initial_stream_position_; }
   inline size_t TotalFileSize() const { return current_stream_position(); }
 
  protected:
@@ -188,8 +186,7 @@ class CerealFileAppenderBase {
 class CerealBinaryFileAppender : public CerealFileAppenderBase {
  public:
   explicit CerealBinaryFileAppender(const std::string& filename, bool append = true)
-      : CerealFileAppenderBase(filename, append),
-        so_(cereal::BinaryOutputArchive(fo_)) {}
+      : CerealFileAppenderBase(filename, append), so_(cereal::BinaryOutputArchive(fo_)) {}
 
   template <typename T>
   typename std::enable_if<sizeof(typename T::CEREAL_BASE_TYPE) != 0, CerealBinaryFileAppender&>::type
@@ -214,8 +211,8 @@ class CerealJSONFileAppender : public CerealFileAppenderBase {
       : CerealFileAppenderBase(filename, append) {}
 
   template <typename T>
-  typename std::enable_if<sizeof(typename T::CEREAL_BASE_TYPE) != 0, CerealJSONFileAppender&>::type
-  operator<<(const T& entry) {
+  typename std::enable_if<sizeof(typename T::CEREAL_BASE_TYPE) != 0, CerealJSONFileAppender&>::type operator<<(
+      const T& entry) {
     // One entry per line format.
     // JSONOutputArchive writes the final '}' after going out of the scope.
     {
@@ -241,7 +238,7 @@ struct CerealGenericFileAppender<CerealFormat::JSON> {
   typedef CerealJSONFileAppender type;
 };
 
-template <CerealFormat T_FORMAT = CerealFormat::Default> 
+template <CerealFormat T_FORMAT = CerealFormat::Default>
 using CerealFileAppender = typename CerealGenericFileAppender<T_FORMAT>::type;
 
 // `CerealBinaryFileParser` de-cereal-izes records from binary file given their type
@@ -296,8 +293,7 @@ class CerealBinaryFileParser {
   cereal::BinaryInputArchive si_;
 };
 
-
-// `CerealJSONFileParser` de-cereal-izes records from JSON file given their type 
+// `CerealJSONFileParser` de-cereal-izes records from JSON file given their type
 // and passes them over to `T_PROCESSOR`. Each line in the file expected to be a
 // full JSON record for one entry.
 template <typename T_ENTRY>

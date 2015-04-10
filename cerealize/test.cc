@@ -143,14 +143,18 @@ TEST(Cerealize, BinarySerializesAndParses) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender<CerealFormat::Binary> f1(CurrentTestTempFileName());
-  f1 << a << b;
-  EXPECT_EQ(2u, f1.EntriesAppended());
-  EXPECT_EQ(115u, f1.BytesAppended());
-  CerealFileAppender<CerealFormat::Binary> f2(CurrentTestTempFileName());
-  f2 << c;
-  EXPECT_EQ(1u, f2.EntriesAppended());
-  EXPECT_EQ(58u, f2.BytesAppended());
+  {
+    CerealFileAppender<CerealFormat::Binary> f1(CurrentTestTempFileName());
+    f1 << a << b;
+    EXPECT_EQ(2u, f1.EntriesAppended());
+    EXPECT_EQ(115u, f1.BytesAppended());
+  }
+  {
+    CerealFileAppender<CerealFormat::Binary> f2(CurrentTestTempFileName());
+    f2 << c;
+    EXPECT_EQ(1u, f2.EntriesAppended());
+    EXPECT_EQ(58u, f2.BytesAppended());
+  }
 
   CerealFileParser<MapsYouEventBase, CerealFormat::Binary> f(CurrentTestTempFileName());
 
@@ -173,15 +177,19 @@ TEST(Cerealize, JSONSerializesAndParses) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender<CerealFormat::JSON> f1(CurrentTestTempFileName());
-  f1 << a;
-  EXPECT_EQ(1u, f1.EntriesAppended());
-  EXPECT_EQ(169u, f1.BytesAppended());
-  CerealFileAppender<CerealFormat::JSON> f2(CurrentTestTempFileName());
-  f2 << b << c;
-  EXPECT_EQ(2u, f2.EntriesAppended());
-  EXPECT_EQ(340u, f2.BytesAppended());
-  EXPECT_EQ(509u, f2.TotalFileSize());
+  {
+    CerealFileAppender<CerealFormat::JSON> f1(CurrentTestTempFileName());
+    f1 << a;
+    EXPECT_EQ(1u, f1.EntriesAppended());
+    EXPECT_EQ(169u, f1.BytesAppended());
+  }
+  {
+    CerealFileAppender<CerealFormat::JSON> f2(CurrentTestTempFileName());
+    f2 << b << c;
+    EXPECT_EQ(2u, f2.EntriesAppended());
+    EXPECT_EQ(340u, f2.BytesAppended());
+    EXPECT_EQ(509u, f2.TotalFileSize());
+  }
 
   CerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(CurrentTestTempFileName());
 
