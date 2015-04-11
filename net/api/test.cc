@@ -509,12 +509,13 @@ TEST(HTTPAPI, PostFromFileToFile) {
 
 TEST(HTTPAPI, PutCerealizableObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port).Register("/put", [](Request r) {                                         
+  HTTP(FLAGS_net_api_test_port).Register("/put", [](Request r) {
     EXPECT_EQ("PUT", r.method);
     ASSERT_FALSE(r.body.empty());
     r(r.body, HTTPResponseCode.Created);
   });
-  const auto response = HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
+  const auto response =
+      HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
   EXPECT_EQ("{\"data\":{\"x\":42,\"s\":\"foo\"}}", response.body);
   EXPECT_EQ(201, static_cast<int>(response.code));
 }

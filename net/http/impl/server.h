@@ -283,13 +283,9 @@ class TemplatedHTTPRequestData : public HELPER {
     return *prepared_body_.get();
   }
 
-  inline const char* BodyBegin() const {
-    return body_buffer_begin_;
-  }
+  inline const char* BodyBegin() const { return body_buffer_begin_; }
 
-  inline const char* BodyEnd() const {
-    return body_buffer_end_;
-  }
+  inline const char* BodyEnd() const { return body_buffer_end_; }
 
   inline size_t BodyLength() const {
     if (body_buffer_begin_) {
