@@ -278,37 +278,36 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
+struct IntKey {
+  int x;
+  IntKey(int x = 0) : x(x) {}
+  explicit operator int() const { return x; }
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(x));
+  }
+
+  bool operator==(const IntKey& rhs) const { return x == rhs.x; }
+  struct HashFunction {
+    size_t operator()(const IntKey& k) const { return static_cast<size_t>(k.x); }
+  };
+};
+
 struct KeyValueRecord {
-  struct Key {
-    int x;
-    Key(int x = 0) : x(x) {}
+  typedef IntKey T_KEY;
 
-    template <typename A>
-    void serialize(A& ar) {
-      ar(CEREAL_NVP(x));
-    }
+  T_KEY key;
+  double value;
+  bool exists = true;
 
-    bool operator==(const Key& rhs) const { return x == rhs.x; }
-    struct HashFunction {
-      size_t operator()(const Key& k) const { return static_cast<size_t>(k.x); }
-    };
-  };
+  explicit KeyValueRecord(const bool exists = true) : exists(exists) {}
+  explicit KeyValueRecord(const int key, const double value) : key(key), value(value) {}
 
-  struct Value {
-    double y;
-    Value(double y = 0) : y(y) {}
-
-    template <typename A>
-    void serialize(A& ar) {
-      ar(CEREAL_NVP(y));
-    }
-  };
-
-  Key key;
-  Value value;
-
-  KeyValueRecord() = default;
-  KeyValueRecord(const int key, const double value) : key(key), value(value) {}
+  T_KEY GetKey() const { return key; }
+  void SetKey(const T_KEY& new_key) { key = new_key; }
+  bool Exists() const { return exists; }
+  void SetDoesNotExist() { exists = false; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -340,7 +339,7 @@ struct KeyValueAggregateListener {
     if (data_.seen_) {
       data_.results_ += ",";
     }
-    data_.results_ += Printf("%d=%.2lf", record.key.x, record.value.y);
+    data_.results_ += Printf("%d=%.2lf", record.GetKey(), record.value);
     ++data_.seen_;
     return data_.seen_ < max_to_process_;
   }
@@ -366,12 +365,39 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   }
 
   // Future expanded syntax.
-  std::future<KeyValueRecord::Value> f1 = api.AsyncGet(KeyValueRecord::Key(2));
-  KeyValueRecord::Value r1 = f1.get();
-  EXPECT_EQ(0.5, r1.y);
+  std::future<KeyValueRecord> f1 = api.AsyncGet(KeyValueRecord::T_KEY(2));
+  KeyValueRecord r1 = f1.get();
+  EXPECT_EQ(0.5, r1.value);
 
   // Future short syntax.
-  EXPECT_EQ(0.5, api.AsyncGet(KeyValueRecord::Key(2)).get().y);
+  EXPECT_EQ(0.5, api.AsyncGet(KeyValueRecord::T_KEY(2)).get().value);
+
+  // Callback version.
+  struct CallBackTest {
+    explicit CallBackTest(int key, double value, bool should_exist = true) :
+        key(key), value(value), should_exist(should_exist) {}
+
+    void f(const KeyValueRecord& record) {
+      called = true;
+      EXPECT_EQ(key, record.GetKey().x);
+      if (should_exist) {
+        EXPECT_EQ(value, record.value);
+      } else {
+        EXPECT_FALSE(record.Exists());
+      }
+    }
+
+    int key;
+    double value;
+    bool should_exist;
+    bool called = false;
+  };
+
+  CallBackTest cbt1(2, 0.5);
+  auto cbf1 = [&](const KeyValueRecord& record) { cbt1.f(record); };
+  api.AsyncGet(KeyValueRecord::T_KEY(2), cbf1);
+  while (!cbt1.called)
+    ;
 
   // Add two more key-value pairs.
   api.UnsafeStream().Emplace(3, 0.33);
@@ -381,11 +407,21 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
     // For the purposes of this test: Spin lock to ensure that the listener/MMQ consumer got the data published.
   }
 
-  EXPECT_EQ(0.33, api.AsyncGet(KeyValueRecord::Key(3)).get().y);
-  EXPECT_EQ(0.25, api.Get(KeyValueRecord::Key(4)).y);
+  EXPECT_EQ(0.33, api.AsyncGet(KeyValueRecord::T_KEY(3)).get().value);
+  EXPECT_EQ(0.25, api.Get(KeyValueRecord::T_KEY(4)).value);
 
-  ASSERT_THROW(api.AsyncGet(KeyValueRecord::Key(5)).get(), KeyNotPresentException);
-  ASSERT_THROW(api.Get(KeyValueRecord::Key(6)), KeyNotPresentException);
+  EXPECT_FALSE(api.AsyncGet(KeyValueRecord::T_KEY(5)).get().Exists());
+  EXPECT_FALSE(api.Get(KeyValueRecord::T_KEY(6)).Exists());
+  CallBackTest cbt2(7, 0.0, false);
+  auto cbf2 = [&](const KeyValueRecord& record) { cbt2.f(record); };
+  api.AsyncGet(KeyValueRecord::T_KEY(7), cbf2);
+  while (!cbt2.called)
+    ;
+
+/*  
+  ASSERT_THROW(api.AsyncGet(KeyValueRecord::T_KEY(5)).get(), KeyNotPresentException);
+  ASSERT_THROW(api.Get(KeyValueRecord::T_KEY(6)), KeyNotPresentException);
+*/
 
   // Add two more key-value pairs, this time via the API.
   api.AsyncSet(KeyValueRecord(5, 0.2)).wait();
@@ -394,11 +430,16 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
   // Even if the next two lines run before the entries are published into the stream,
   // the API will maintain the consistency of its own responses from its own in-memory state.
-  EXPECT_EQ(0.20, api.AsyncGet(KeyValueRecord::Key(5)).get().y);
-  EXPECT_EQ(0.17, api.Get(KeyValueRecord::Key(6)).y);
+  EXPECT_EQ(0.20, api.AsyncGet(KeyValueRecord::T_KEY(5)).get().value);
+  EXPECT_EQ(0.17, api.Get(KeyValueRecord::T_KEY(6)).value);
 
-  ASSERT_THROW(api.AsyncGet(KeyValueRecord::Key(7)).get(), KeyNotPresentException);
-  ASSERT_THROW(api.Get(KeyValueRecord::Key(8)), KeyNotPresentException);
+/*  
+  ASSERT_THROW(api.AsyncGet(KeyValueRecord::T_KEY(7)).get(), KeyNotPresentException);
+  ASSERT_THROW(api.Get(KeyValueRecord::T_KEY(8)), KeyNotPresentException);
+*/  
+  EXPECT_FALSE(api.AsyncGet(KeyValueRecord::T_KEY(7)).get().Exists());
+  EXPECT_FALSE(api.Get(KeyValueRecord::T_KEY(8)).Exists());
+
 
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.

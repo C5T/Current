@@ -71,6 +71,7 @@ struct KeyNotPresentException : bricks::Exception {};
 template <typename T_ENTRY>
 class API {
  public:
+  typedef std::function<void(const T_ENTRY&)> T_CALLBACK;
   API(const std::string& stream_name)
       : stream_(sherlock::Stream<T_ENTRY>(stream_name)), listener_scope_(stream_.Subscribe(listener_)) {}
 
@@ -81,15 +82,19 @@ class API {
     return std::move(stream_.Subscribe(listener));
   }
 
-  std::future<typename T_ENTRY::Value> AsyncGet(typename T_ENTRY::Key&& key) {
-    std::promise<typename T_ENTRY::Value> pr;
-    std::future<typename T_ENTRY::Value> future = pr.get_future();
+  std::future<T_ENTRY> AsyncGet(const typename T_ENTRY::T_KEY&& key) {
+    std::promise<T_ENTRY> pr;
+    std::future<T_ENTRY> future = pr.get_future();
     listener_.mq_.EmplaceMessage(new MQMessageGet(key, std::move(pr)));
     return future;
   }
 
-  typename T_ENTRY::Value Get(typename T_ENTRY::Key&& key) {
-    return AsyncGet(std::forward<typename T_ENTRY::Key>(key)).get();
+  void AsyncGet(const typename T_ENTRY::T_KEY&& key, T_CALLBACK callback) {
+    listener_.mq_.EmplaceMessage(new MQMessageGet(key, callback));
+  }
+
+  T_ENTRY Get(const typename T_ENTRY::T_KEY&& key) {
+    return AsyncGet(std::forward<const typename T_ENTRY::T_KEY>(key)).get();
   }
 
   std::future<void> AsyncSet(const T_ENTRY& entry) {
@@ -110,7 +115,7 @@ class API {
  private:
   // Stateful storage.
   struct Storage {
-    std::unordered_map<typename T_ENTRY::Key, typename T_ENTRY::Value, typename T_ENTRY::Key::HashFunction>
+    std::unordered_map<typename T_ENTRY::T_KEY, T_ENTRY, typename T_ENTRY::T_KEY::HashFunction>
         data;
   };
 
@@ -125,22 +130,36 @@ class API {
 
     explicit MQMessageEntry(const T_ENTRY& entry) : entry(entry) {}
 
-    virtual void DoIt(Storage& storage) { storage.data[entry.key] = entry.value; }
+    virtual void DoIt(Storage& storage) { storage.data[entry.GetKey()] = entry; }
   };
 
   struct MQMessageGet : MQMessage {
-    typename T_ENTRY::Key key;
-    std::promise<typename T_ENTRY::Value> pr;
+    typename T_ENTRY::T_KEY key;
+    std::promise<T_ENTRY> pr;
+    T_CALLBACK callback;
 
-    explicit MQMessageGet(const typename T_ENTRY::Key& key, std::promise<typename T_ENTRY::Value>&& pr)
+    explicit MQMessageGet(const typename T_ENTRY::T_KEY& key, std::promise<T_ENTRY>&& pr)
         : key(key), pr(std::move(pr)) {}
+    explicit MQMessageGet(const typename T_ENTRY::T_KEY& key, T_CALLBACK callback)
+        : key(key), callback(callback) {}
 
     virtual void DoIt(Storage& storage) {
       const auto cit = storage.data.find(key);
       if (cit != storage.data.end()) {
-        pr.set_value(cit->second);
+        if (callback) {
+          std::async(callback, cit->second);
+        } else {
+          pr.set_value(cit->second);
+        }
       } else {
-        pr.set_exception(std::make_exception_ptr(KeyNotPresentException()));
+        T_ENTRY not_existing_entry(false);
+        not_existing_entry.SetKey(key);
+        if (callback) {
+          std::async(callback, not_existing_entry);
+        } else {
+          pr.set_value(not_existing_entry);
+        }
+        // TODO(max+dima): Add exceptions?
       }
     }
   };
@@ -161,7 +180,7 @@ class API {
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void DoIt(Storage& storage) {
       // TODO(dkorolev): Something smarter than a plain overwrite? Or make it part of the policy?
-      storage.data[e.key] = e.value;
+      storage.data[e.GetKey()] = e;
       pr.set_value();
     }
   };
