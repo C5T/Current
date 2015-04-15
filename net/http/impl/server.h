@@ -455,6 +455,7 @@ class HTTPServerConnection final {
         try {
           connection_.BlockingWrite("0", true);
           connection_.BlockingWrite(kCRLF, false);
+          connection_.BlockingWrite(kCRLF, false);  // We should send CRLF twice.
         } catch (const std::exception& e) {  // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE

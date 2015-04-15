@@ -272,8 +272,6 @@ struct ShouldReduceDelayBetweenChunksSingleton {
   bool yes = false;
 };
 // Test various HTTP client modes.
-#ifndef BRICKS_APPLE
-// Temporary disabled chunked-transfer test for Apple -- M.Z.
 TEST(HTTPAPI, GetToFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/stars", [](Request r) {
@@ -311,7 +309,6 @@ TEST(HTTPAPI, GetToFile) {
   EXPECT_EQ(url, response.url);
   EXPECT_EQ("*ab12*ab12*ab12", FileSystem::ReadFileAsString(response.body_file_name));
 }
-#endif
 
 TEST(HTTPAPI, PostFromBufferToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
