@@ -51,7 +51,7 @@ using bricks::strings::ToString;
 using bricks::time::EPOCH_MILLISECONDS;
 using bricks::time::MILLISECONDS_INTERVAL;
 
-using sherlock::kv_storage::KeyNotPresentException;
+using sherlock::kv_storage::KeyNotFoundException;
 
 // The records we work with.
 // TODO(dkorolev): Support and test polymorphic types.
@@ -281,7 +281,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 struct IntKey {
   int x;
   IntKey(int x = 0) : x(x) {}
-  explicit operator int() const { return x; }
+  int operator()() const { return x; }
 
   template <typename A>
   void serialize(A& ar) {
@@ -294,24 +294,21 @@ struct IntKey {
   };
 };
 
-struct KeyValueRecord {
-  typedef IntKey T_KEY;
+struct KeyValueEntry {
+  IntKey key_;
+  double value_;
+  // Uncomment the line below to ensure that it doesn't compile.
+  // constexpr static bool allow_nonthrowing_get = true;
 
-  T_KEY key;
-  double value;
-  bool exists = true;
+  KeyValueEntry() = default;
+  KeyValueEntry(const int key, const double value) : key_(key), value_(value) {}
 
-  explicit KeyValueRecord(const bool exists = true) : exists(exists) {}
-  explicit KeyValueRecord(const int key, const double value) : key(key), value(value) {}
-
-  T_KEY GetKey() const { return key; }
-  void SetKey(const T_KEY& new_key) { key = new_key; }
-  bool Exists() const { return exists; }
-  void SetDoesNotExist() { exists = false; }
+  const IntKey& key() const { return key_; }
+  void set_key(const IntKey& key) { key_ = key; }
 
   template <typename A>
   void serialize(A& ar) {
-    ar(CEREAL_NVP(key), CEREAL_NVP(value));
+    ar(CEREAL_NVP(key_), CEREAL_NVP(value_));
   }
 };
 
@@ -333,13 +330,13 @@ struct KeyValueAggregateListener {
     return *this;
   }
 
-  bool Entry(const KeyValueRecord& record, size_t index, size_t total) {
+  bool Entry(const KeyValueEntry& entry, size_t index, size_t total) {
     static_cast<void>(index);
     static_cast<void>(total);
     if (data_.seen_) {
       data_.results_ += ",";
     }
-    data_.results_ += Printf("%d=%.2lf", record.GetKey(), record.value);
+    data_.results_ += Printf("%d=%.2lf", entry.key(), entry.value_);
     ++data_.seen_;
     return data_.seen_ < max_to_process_;
   }
@@ -353,7 +350,8 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  sherlock::kv_storage::API<KeyValueRecord> api("non_polymorphic_kv_storage");
+  typedef sherlock::kv_storage::API<KeyValueEntry> KVS;
+  KVS api("non_polymorphic_kv_storage");
 
   // Add the first key-value pair.
   // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.
@@ -365,37 +363,48 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   }
 
   // Future expanded syntax.
-  std::future<KeyValueRecord> f1 = api.AsyncGet(KeyValueRecord::T_KEY(2));
-  KeyValueRecord r1 = f1.get();
-  EXPECT_EQ(0.5, r1.value);
+  std::future<KeyValueEntry> f1 = api.AsyncGet(KVS::T_KEY(2));
+  KeyValueEntry r1 = f1.get();
+  EXPECT_EQ(0.5, r1.value_);
 
   // Future short syntax.
-  EXPECT_EQ(0.5, api.AsyncGet(KeyValueRecord::T_KEY(2)).get().value);
+  EXPECT_EQ(0.5, api.AsyncGet(KVS::T_KEY(2)).get().value_);
 
   // Callback version.
   struct CallBackTest {
-    explicit CallBackTest(int key, double value, bool should_exist = true) :
-        key(key), value(value), should_exist(should_exist) {}
+    explicit CallBackTest(int key, double value, bool expect_fail = false) :
+        key(key), value(value), expect_fail(expect_fail) {}
 
-    void f(const KeyValueRecord& record) {
+    void found(const KeyValueEntry& entry) {
       called = true;
-      EXPECT_EQ(key, record.GetKey().x);
-      if (should_exist) {
-        EXPECT_EQ(value, record.value);
-      } else {
-        EXPECT_FALSE(record.Exists());
-      }
+      EXPECT_FALSE(expect_fail);
+      EXPECT_EQ(key, entry.key()());
+      EXPECT_EQ(value, entry.value_);
+    }
+    void not_found(const IntKey& key) {
+      called = true;
+      EXPECT_TRUE(expect_fail);
+      EXPECT_EQ(this->key, key());
+    }
+    void added() {
+      called = true;
+      EXPECT_FALSE(expect_fail);
+    }
+    void already_exists() {
+      called = true;
+      EXPECT_TRUE(expect_fail);
     }
 
-    int key;
-    double value;
-    bool should_exist;
+    const int key;
+    const double value;
+    const bool expect_fail;
     bool called = false;
   };
 
   CallBackTest cbt1(2, 0.5);
-  auto cbf1 = [&](const KeyValueRecord& record) { cbt1.f(record); };
-  api.AsyncGet(KeyValueRecord::T_KEY(2), cbf1);
+  auto cbf1 = [&](const KeyValueEntry& entry) { cbt1.found(entry); };
+  auto cbnf1 = [&](const IntKey& key) { cbt1.not_found(key); };
+  api.AsyncGet(KVS::T_KEY(2), cbf1, cbnf1);
   while (!cbt1.called)
     ;
 
@@ -407,46 +416,53 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
     // For the purposes of this test: Spin lock to ensure that the listener/MMQ consumer got the data published.
   }
 
-  EXPECT_EQ(0.33, api.AsyncGet(KeyValueRecord::T_KEY(3)).get().value);
-  EXPECT_EQ(0.25, api.Get(KeyValueRecord::T_KEY(4)).value);
+  EXPECT_EQ(0.33, api.AsyncGet(KVS::T_KEY(3)).get().value_);
+  EXPECT_EQ(0.25, api.Get(KVS::T_KEY(4)).value_);
 
-  EXPECT_FALSE(api.AsyncGet(KeyValueRecord::T_KEY(5)).get().Exists());
-  EXPECT_FALSE(api.Get(KeyValueRecord::T_KEY(6)).Exists());
-  CallBackTest cbt2(7, 0.0, false);
-  auto cbf2 = [&](const KeyValueRecord& record) { cbt2.f(record); };
-  api.AsyncGet(KeyValueRecord::T_KEY(7), cbf2);
+  ASSERT_THROW(api.AsyncGet(KVS::T_KEY(5)).get(), KVS::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.Get(KVS::T_KEY(6)), KVS::T_KEY_NOT_FOUND_EXCEPTION);
+  CallBackTest cbt2(7, 0.0, true);
+  auto cbf2 = [&](const KeyValueEntry& entry) { cbt2.found(entry); };
+  auto cbnf2 = [&](const IntKey& key) { cbt2.not_found(key); };
+  api.AsyncGet(KVS::T_KEY(7), cbf2, cbnf2);
   while (!cbt2.called)
     ;
 
-/*  
-  ASSERT_THROW(api.AsyncGet(KeyValueRecord::T_KEY(5)).get(), KeyNotPresentException);
-  ASSERT_THROW(api.Get(KeyValueRecord::T_KEY(6)), KeyNotPresentException);
-*/
+  // Add three more key-value pairs, this time via the API.
+  api.AsyncAdd(KeyValueEntry(5, 0.2)).wait();
+  api.Add(KeyValueEntry(6, 0.17));
+  CallBackTest cbt3(7, 0.76);
+  auto cba3 = [&]() { cbt3.added(); };
+  auto cbae3 = [&]() { cbt3.already_exists(); };
+  api.AsyncAdd(KeyValueEntry(7, 0.76), cba3, cbae3);
+  while (!cbt3.called)
+    ;
 
-  // Add two more key-value pairs, this time via the API.
-  api.AsyncSet(KeyValueRecord(5, 0.2)).wait();
-  api.Set(KeyValueRecord(6, 0.17));
+  // Check that default policy doesn't allow overwriting on Add().
+  ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), KVS::T_KEY_ALREADY_EXISTS_EXCEPTION);
+  ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), KVS::T_KEY_ALREADY_EXISTS_EXCEPTION);
+  CallBackTest cbt4(7, 0.0, true);
+  auto cba4 = [&]() { cbt4.added(); };
+  auto cbae4 = [&]() { cbt4.already_exists(); };
+  api.AsyncAdd(KeyValueEntry(7, 0.0), cba4, cbae4);
+  while (!cbt4.called)
+    ;
 
   // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
   // Even if the next two lines run before the entries are published into the stream,
   // the API will maintain the consistency of its own responses from its own in-memory state.
-  EXPECT_EQ(0.20, api.AsyncGet(KeyValueRecord::T_KEY(5)).get().value);
-  EXPECT_EQ(0.17, api.Get(KeyValueRecord::T_KEY(6)).value);
+  EXPECT_EQ(0.20, api.AsyncGet(KVS::T_KEY(5)).get().value_);
+  EXPECT_EQ(0.17, api.Get(KVS::T_KEY(6)).value_);
 
-/*  
-  ASSERT_THROW(api.AsyncGet(KeyValueRecord::T_KEY(7)).get(), KeyNotPresentException);
-  ASSERT_THROW(api.Get(KeyValueRecord::T_KEY(8)), KeyNotPresentException);
-*/  
-  EXPECT_FALSE(api.AsyncGet(KeyValueRecord::T_KEY(7)).get().Exists());
-  EXPECT_FALSE(api.Get(KeyValueRecord::T_KEY(8)).Exists());
-
+  ASSERT_THROW(api.AsyncGet(KVS::T_KEY(8)).get(), KVS::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.Get(KVS::T_KEY(9)), KVS::T_KEY_NOT_FOUND_EXCEPTION);
 
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.
   KeyValueSubscriptionData data;
   KeyValueAggregateListener listener(data);
-  listener.SetMax(5u);
+  listener.SetMax(6u);
   api.Subscribe(listener).Join();
-  EXPECT_EQ(data.seen_, 5u);
-  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17", data.results_);
+  EXPECT_EQ(data.seen_, 6u);
+  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17,7=0.76", data.results_);
 }
