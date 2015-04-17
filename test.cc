@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,8 +51,6 @@ using bricks::strings::ToString;
 
 using bricks::time::EPOCH_MILLISECONDS;
 using bricks::time::MILLISECONDS_INTERVAL;
-
-using sherlock::kv_storage::KeyNotFoundException;
 
 // The records we work with.
 // TODO(dkorolev): Support and test polymorphic types.
@@ -350,8 +349,8 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  typedef sherlock::kv_storage::API<KeyValueEntry> KVS;
-  KVS api("non_polymorphic_kv_storage");
+  typedef sherlock::kvs::API<KeyValueEntry> KVS;
+  KVS api("non_polymorphic_kvs");
 
   // Add the first key-value pair.
   // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.
@@ -365,46 +364,46 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   // Future expanded syntax.
   std::future<KeyValueEntry> f1 = api.AsyncGet(KVS::T_KEY(2));
   KeyValueEntry r1 = f1.get();
+  EXPECT_EQ(2, r1.key()());
   EXPECT_EQ(0.5, r1.value_);
 
   // Future short syntax.
   EXPECT_EQ(0.5, api.AsyncGet(KVS::T_KEY(2)).get().value_);
 
   // Callback version.
-  struct CallBackTest {
-    explicit CallBackTest(int key, double value, bool expect_fail = false) :
-        key(key), value(value), expect_fail(expect_fail) {}
+  struct CallbackTest {
+    explicit CallbackTest(int key, double value, bool expect_success = true)
+        : key(key), value(value), expect_success(expect_success) {}
 
-    void found(const KeyValueEntry& entry) {
+    void found(const KeyValueEntry& entry) const {
       called = true;
-      EXPECT_FALSE(expect_fail);
+      EXPECT_TRUE(expect_success);
       EXPECT_EQ(key, entry.key()());
       EXPECT_EQ(value, entry.value_);
     }
-    void not_found(const IntKey& key) {
+    void not_found(const IntKey& key) const {
       called = true;
-      EXPECT_TRUE(expect_fail);
+      EXPECT_FALSE(expect_success);
       EXPECT_EQ(this->key, key());
     }
-    void added() {
+    void added() const {
       called = true;
-      EXPECT_FALSE(expect_fail);
+      EXPECT_TRUE(expect_success);
     }
-    void already_exists() {
+    void already_exists() const {
       called = true;
-      EXPECT_TRUE(expect_fail);
+      EXPECT_FALSE(expect_success);
     }
 
     const int key;
     const double value;
-    const bool expect_fail;
-    bool called = false;
+    const bool expect_success;
+    mutable bool called = false;
   };
 
-  CallBackTest cbt1(2, 0.5);
-  auto cbf1 = [&](const KeyValueEntry& entry) { cbt1.found(entry); };
-  auto cbnf1 = [&](const IntKey& key) { cbt1.not_found(key); };
-  api.AsyncGet(KVS::T_KEY(2), cbf1, cbnf1);
+  const CallbackTest cbt1(2, 0.5);
+  api.AsyncGet(KVS::T_KEY(2), std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
+               std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
   while (!cbt1.called)
     ;
 
@@ -420,42 +419,43 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   EXPECT_EQ(0.25, api.Get(KVS::T_KEY(4)).value_);
 
   ASSERT_THROW(api.AsyncGet(KVS::T_KEY(5)).get(), KVS::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.AsyncGet(KVS::T_KEY(5)).get(), sherlock::kvs::KeyNotFoundCoverException);
   ASSERT_THROW(api.Get(KVS::T_KEY(6)), KVS::T_KEY_NOT_FOUND_EXCEPTION);
-  CallBackTest cbt2(7, 0.0, true);
-  auto cbf2 = [&](const KeyValueEntry& entry) { cbt2.found(entry); };
-  auto cbnf2 = [&](const IntKey& key) { cbt2.not_found(key); };
-  api.AsyncGet(KVS::T_KEY(7), cbf2, cbnf2);
+  ASSERT_THROW(api.Get(KVS::T_KEY(6)), sherlock::kvs::KeyNotFoundCoverException);
+  const CallbackTest cbt2(7, 0.0, false);
+  api.AsyncGet(KVS::T_KEY(7), std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
+               std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
   while (!cbt2.called)
     ;
 
   // Add three more key-value pairs, this time via the API.
   api.AsyncAdd(KeyValueEntry(5, 0.2)).wait();
   api.Add(KeyValueEntry(6, 0.17));
-  CallBackTest cbt3(7, 0.76);
-  auto cba3 = [&]() { cbt3.added(); };
-  auto cbae3 = [&]() { cbt3.already_exists(); };
-  api.AsyncAdd(KeyValueEntry(7, 0.76), cba3, cbae3);
+  const CallbackTest cbt3(7, 0.76);
+  api.AsyncAdd(KVS::T_ENTRY(7, 0.76), std::bind(&CallbackTest::added, &cbt3),
+               std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called)
     ;
 
   // Check that default policy doesn't allow overwriting on Add().
   ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), KVS::T_KEY_ALREADY_EXISTS_EXCEPTION);
+  ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), sherlock::kvs::KeyAlreadyExistsCoverException);
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), KVS::T_KEY_ALREADY_EXISTS_EXCEPTION);
-  CallBackTest cbt4(7, 0.0, true);
-  auto cba4 = [&]() { cbt4.added(); };
-  auto cbae4 = [&]() { cbt4.already_exists(); };
-  api.AsyncAdd(KeyValueEntry(7, 0.0), cba4, cbae4);
+  ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), sherlock::kvs::KeyAlreadyExistsCoverException);
+  const CallbackTest cbt4(7, 0.0, false);
+  api.AsyncAdd(KVS::T_ENTRY(7, 0.0), std::bind(&CallbackTest::added, &cbt4),
+               std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called)
     ;
 
   // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
   // Even if the next two lines run before the entries are published into the stream,
   // the API will maintain the consistency of its own responses from its own in-memory state.
-  EXPECT_EQ(0.20, api.AsyncGet(KVS::T_KEY(5)).get().value_);
-  EXPECT_EQ(0.17, api.Get(KVS::T_KEY(6)).value_);
+  EXPECT_EQ(0.20, api.AsyncGet(IntKey(5)).get().value_);
+  EXPECT_EQ(0.17, api.Get(IntKey(6)).value_);
 
-  ASSERT_THROW(api.AsyncGet(KVS::T_KEY(8)).get(), KVS::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.Get(KVS::T_KEY(9)), KVS::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.AsyncGet(IntKey(8)).get(), KVS::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.Get(IntKey(9)), KVS::T_KEY_NOT_FOUND_EXCEPTION);
 
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.
