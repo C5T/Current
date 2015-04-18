@@ -39,7 +39,13 @@ using ENTRY_KEY_TYPE = typename std::remove_cv<
 struct AllowNonThrowingGet {
   constexpr static bool allow_nonthrowing_get = true;
 };
+struct AllowOverwriteOnAdd {
+  constexpr static bool allow_overwrite_on_add = true;
+};
 
+// By deriving from `Nullable` (and adding `using Nullable::Nullable`),
+// the user indicates that their entry type supports creation of a non-existing instance.
+// This is a requirement for a) non-throwing `Get()`, and b) for `Delete()` part of the API.
 enum NullEntryTypeHelper { NullEntry };
 struct Nullable {
   const bool exists;
@@ -49,6 +55,7 @@ struct Nullable {
 
 // By deriving from `Deletable`, the user commits to serializing the `Nullable::exists` field,
 // thus enabling delete-friendly storage.
+// The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
 struct Deletable {};
 
 }  // namespace yoda
