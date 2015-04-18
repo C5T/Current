@@ -85,6 +85,7 @@ SOFTWARE.
 #include <string>
 
 #include "types.h"
+#include "policy.h"
 #include "exceptions.h"
 
 #include "../sherlock.h"
@@ -93,57 +94,6 @@ SOFTWARE.
 
 namespace yoda {
 
-// Policies.
-template <typename ENTRY>
-constexpr auto nonthrowing_get_value_or_default(int)
-    -> decltype(std::declval<ENTRY>().allow_nonthrowing_get, bool()) {
-  return ENTRY::allow_nonthrowing_get;
-};
-
-template <typename ENTRY>
-constexpr bool nonthrowing_get_value_or_default(...) {
-  return false;  // Default: throw if key is not found.
-}
-
-template <typename ENTRY>
-constexpr auto overwrite_on_add_value_or_default(int)
-    -> decltype(std::declval<ENTRY>().allow_overwrite_on_add, bool()) {
-  return ENTRY::allow_overwrite_on_add;
-}
-
-template <typename ENTRY>
-constexpr bool overwrite_on_add_value_or_default(...) {
-  return false;  // Default: don't overwrite on Add() if key already exists.
-}
-
-template <typename ENTRY>
-struct DefaultPolicy {
-  constexpr static bool allow_nonthrowing_get = nonthrowing_get_value_or_default<ENTRY>(0);
-  constexpr static bool allow_overwrite_on_add = overwrite_on_add_value_or_default<ENTRY>(0);
-  static_assert(!allow_nonthrowing_get || std::is_base_of<Nullable, ENTRY>::value,
-                "To support non-throwing `Get()`, make sure `YourEntryType` derives from `Nullable`.");
-};
-
-template <typename T_KEY, typename T_ENTRY, typename T_KEY_NOT_FOUND_EXCEPTION, bool>
-struct SetPromiseToNullEntryOrThrow {};
-
-template <typename T_KEY, typename T_ENTRY, typename T_KEY_NOT_FOUND_EXCEPTION>
-struct SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, T_KEY_NOT_FOUND_EXCEPTION, false> {
-  static void DoIt(const T_KEY& key, std::promise<T_ENTRY>& pr) {
-    pr.set_exception(std::make_exception_ptr(T_KEY_NOT_FOUND_EXCEPTION(key)));
-  }
-};
-
-template <typename T_KEY, typename T_ENTRY, typename UNUSED_T_KEY_NOT_FOUND_EXCEPTION>
-struct SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, UNUSED_T_KEY_NOT_FOUND_EXCEPTION, true> {
-  static void DoIt(const T_KEY& key, std::promise<T_ENTRY>& pr) {
-    T_ENTRY null_entry(NullEntry);
-    null_entry.set_key(key);
-    pr.set_value(null_entry);
-  }
-};
-
-// Main storage class.
 template <typename ENTRY, typename POLICY = DefaultPolicy<ENTRY>>
 class API {
  public:
