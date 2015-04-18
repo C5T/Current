@@ -138,21 +138,25 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
         : key(key), value(value), expect_success(expect_success) {}
 
     void found(const KeyValueEntry& entry) const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_TRUE(expect_success);
       EXPECT_EQ(key, entry.key()());
       EXPECT_EQ(value, entry.value_);
     }
     void not_found(const IntKey& key) const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_FALSE(expect_success);
       EXPECT_EQ(this->key, key());
     }
     void added() const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_TRUE(expect_success);
     }
     void already_exists() const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_FALSE(expect_success);
     }
