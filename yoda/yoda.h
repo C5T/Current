@@ -57,7 +57,7 @@ SOFTWARE.
 //
 //   2) `Add()` and `AsyncGet()` throw `KeyAlreadyExistsException` if an entry with this key already exists.
 //
-//      This behavior can be changed by adding thThe user can change this behavior by adding:
+//      This behavior can be overriden by inheriting the entry type from `yoda::AllowOverwriteOnAdd` or adding:
 //
 //        constexpr static bool allow_overwrite_on_add = true;
 //
@@ -206,7 +206,7 @@ class API {
           pr.set_value(cit->second);
         }
       } else {
-        // The entry has not been fonud.
+        // The entry has not been found.
         if (on_failure) {
           // Callback semantics.
           on_failure(key);
