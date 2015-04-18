@@ -29,13 +29,6 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 
-/*
-#include "../Bricks/strings/util.h"
-#include "../Bricks/cerealize/cerealize.h"
-#include "../Bricks/net/api/api.h"
-#include "../Bricks/time/chrono.h"
-*/
-
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
 
@@ -45,17 +38,6 @@ SOFTWARE.
 using std::string;
 using std::atomic_size_t;
 using bricks::strings::Printf;
-
-/*
-using std::thread;
-using std::this_thread::sleep_for;
-using std::chrono::milliseconds;
-
-using bricks::strings::ToString;
-
-using bricks::time::EPOCH_MILLISECONDS;
-using bricks::time::MILLISECONDS_INTERVAL;
-*/
 
 struct IntKey {
   int x;
