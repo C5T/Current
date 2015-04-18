@@ -31,7 +31,6 @@ SOFTWARE.
 
 #include "types.h"
 
-namespace sherlock {
 namespace yoda {
 
 // Non-throwing get policy and its default.
@@ -90,6 +89,5 @@ struct SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, UNUSED_T_KEY_NOT_FOUND_EXCEP
 };
 
 }  // namespace yoda
-}  // namespace sherlock
 
 #endif  // SHERLOCK_YODA_POLICY_H

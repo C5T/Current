@@ -28,7 +28,6 @@ SOFTWARE.
 
 #include <type_traits>
 
-namespace sherlock {
 namespace yoda {
 
 // Entry key type extractor.
@@ -53,6 +52,5 @@ struct Nullable {
 struct Deletable {};
 
 }  // namespace yoda
-}  // namespace sherlock
 
 #endif  // SHERLOCK_YODA_TYPES_H

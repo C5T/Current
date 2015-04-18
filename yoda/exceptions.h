@@ -30,7 +30,6 @@ SOFTWARE.
 
 #include "../../Bricks/exception.h"
 
-namespace sherlock {
 namespace yoda {
 
 // Exception types for non-existent keys.
@@ -67,6 +66,5 @@ struct EntryShouldExistException : EntryShouldExistCoverException {
 };
 
 }  // namespace yoda
-}  // namespace sherlock
 
 #endif  // SHERLOCK_YODA_EXCEPTIONS_H

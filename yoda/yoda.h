@@ -91,7 +91,6 @@ SOFTWARE.
 
 #include "../../Bricks/mq/inmemory/mq.h"
 
-namespace sherlock {
 namespace yoda {
 
 // Policies.
@@ -156,7 +155,7 @@ class API {
   typedef sherlock::StreamInstance<T_ENTRY> T_STREAM_TYPE;
 
   template <typename F>
-  using T_STREAM_LISTENER_TYPE = typename StreamInstanceImpl<T_ENTRY>::template ListenerScope<F>;
+  using T_STREAM_LISTENER_TYPE = typename sherlock::StreamInstanceImpl<T_ENTRY>::template ListenerScope<F>;
 
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
@@ -371,6 +370,5 @@ class API {
 };
 
 }  // namespace yoda
-}  // namespace sherlock
 
 #endif  // SHERLOCK_YODA_YODA_H
