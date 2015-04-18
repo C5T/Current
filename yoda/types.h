@@ -30,18 +30,26 @@ SOFTWARE.
 
 namespace yoda {
 
+// Helper structures that the user can derive their entries from
+// to signal Yoga to behave in a non-default way.
+
+struct AllowNonThrowingGet {
+  // Inheriting from this base class, as well as defining the below constant manually,
+  // will result in `Get()`-s for non-existing keys to be non-throwing.
+  // NOTE: This behavior requires the user class to derive from `Nullable` as well, see below.
+  constexpr static bool allow_nonthrowing_get = true;
+};
+
+struct AllowOverwriteOnAdd {
+  // Inheriting from this base class, as well as defining the below constant manually,
+  // will result in `Add()`-s for already existing keys to silently overwrite previous values.
+  constexpr static bool allow_overwrite_on_add = true;
+};
+
 // Entry key type extractor.
 template <typename T_ENTRY>
 using ENTRY_KEY_TYPE = typename std::remove_cv<
     typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type;
-
-// Base structures for user to signal that their entries should have or do emit certain properties.
-struct AllowNonThrowingGet {
-  constexpr static bool allow_nonthrowing_get = true;
-};
-struct AllowOverwriteOnAdd {
-  constexpr static bool allow_overwrite_on_add = true;
-};
 
 // By deriving from `Nullable` (and adding `using Nullable::Nullable`),
 // the user indicates that their entry type supports creation of a non-existing instance.
