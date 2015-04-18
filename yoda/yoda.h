@@ -23,19 +23,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_KV_STORAGE_H
-#define SHERLOCK_KV_STORAGE_H
+#ifndef SHERLOCK_YODA_YODA_H
+#define SHERLOCK_YODA_YODA_H
 
 #include <atomic>
 #include <future>
 #include <string>
 
-#include "sherlock.h"
+#include "../sherlock.h"
 
-#include "../Bricks/mq/inmemory/mq.h"
+#include "../../Bricks/mq/inmemory/mq.h"
 
 namespace sherlock {
-namespace kvs {
+namespace yoda {
 
 // Pure key type alias.
 template <typename T_ENTRY>
@@ -140,7 +140,7 @@ T_ENTRY CreateNullEntry() {
 // Policies:
 //
 //   KVS exception-throwing behavior can be also set up by providing POLICY struct
-//   as a second template parameter to kvs::API. This struct should contain all
+//   as a second template parameter to yoda::API. This struct should contain all
 //   the members described in the section 'Exceptions' (see `struct
 //   DefaultPolicy` below for example).
 //
@@ -394,7 +394,7 @@ class API {
   typename sherlock::StreamInstance<T_ENTRY>::template ListenerScope<StorageStateMaintainer> listener_scope_;
 };
 
-}  // namespace kvs
+}  // namespace yoda
 }  // namespace sherlock
 
-#endif  // SHERLOCK_KV_STORAGE_H
+#endif  // SHERLOCK_YODA_YODA_H
