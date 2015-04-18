@@ -31,17 +31,17 @@ SOFTWARE.
 namespace yoda {
 
 // Helper structures that the user can derive their entries from
-// to signal Yoga to behave in a non-default way.
+// to signal Yoda to behave in a non-default way.
 
 struct AllowNonThrowingGet {
-  // Inheriting from this base class, as well as defining the below constant manually,
+  // Inheriting from this base class, or simply defining the below constant manually,
   // will result in `Get()`-s for non-existing keys to be non-throwing.
   // NOTE: This behavior requires the user class to derive from `Nullable` as well, see below.
   constexpr static bool allow_nonthrowing_get = true;
 };
 
 struct AllowOverwriteOnAdd {
-  // Inheriting from this base class, as well as defining the below constant manually,
+  // Inheriting from this base class, or simply defining the below constant manually,
   // will result in `Add()`-s for already existing keys to silently overwrite previous values.
   constexpr static bool allow_overwrite_on_add = true;
 };
