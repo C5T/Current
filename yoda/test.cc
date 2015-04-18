@@ -111,7 +111,7 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  typedef sherlock::yoda::API<KeyValueEntry> TestAPI;
+  typedef yoda::API<KeyValueEntry> TestAPI;
   TestAPI api("non_polymorphic_yoda");
 
   // Add the first key-value pair.
@@ -138,21 +138,25 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
         : key(key), value(value), expect_success(expect_success) {}
 
     void found(const KeyValueEntry& entry) const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_TRUE(expect_success);
       EXPECT_EQ(key, entry.key()());
       EXPECT_EQ(value, entry.value_);
     }
     void not_found(const IntKey& key) const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_FALSE(expect_success);
       EXPECT_EQ(this->key, key());
     }
     void added() const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_TRUE(expect_success);
     }
     void already_exists() const {
+      ASSERT_FALSE(called);
       called = true;
       EXPECT_FALSE(expect_success);
     }
@@ -182,9 +186,9 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   EXPECT_EQ(0.25, api.Get(TestAPI::T_KEY(4)).value_);
 
   ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), sherlock::yoda::KeyNotFoundCoverException);
+  ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), yoda::KeyNotFoundCoverException);
   ASSERT_THROW(api.Get(TestAPI::T_KEY(6)), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.Get(TestAPI::T_KEY(6)), sherlock::yoda::KeyNotFoundCoverException);
+  ASSERT_THROW(api.Get(TestAPI::T_KEY(6)), yoda::KeyNotFoundCoverException);
   const CallbackTest cbt2(7, 0.0, false);
   api.AsyncGet(TestAPI::T_KEY(7),
                std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
@@ -204,9 +208,9 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
 
   // Check that default policy doesn't allow overwriting on Add().
   ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), TestAPI::T_KEY_ALREADY_EXISTS_EXCEPTION);
-  ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), sherlock::yoda::KeyAlreadyExistsCoverException);
+  ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), yoda::KeyAlreadyExistsCoverException);
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), TestAPI::T_KEY_ALREADY_EXISTS_EXCEPTION);
-  ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), sherlock::yoda::KeyAlreadyExistsCoverException);
+  ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), yoda::KeyAlreadyExistsCoverException);
   const CallbackTest cbt4(7, 0.0, false);
   api.AsyncAdd(TestAPI::T_ENTRY(7, 0.0),
                std::bind(&CallbackTest::added, &cbt4),
