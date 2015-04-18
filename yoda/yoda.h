@@ -23,129 +23,52 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_YODA_H
-#define SHERLOCK_YODA_YODA_H
-
-#include <atomic>
-#include <future>
-#include <string>
-
-#include "../sherlock.h"
-
-#include "../../Bricks/mq/inmemory/mq.h"
-
-namespace sherlock {
-namespace yoda {
-
-// Pure key type alias.
-template <typename T_ENTRY>
-using ENTRY_KEY_TYPE = typename std::remove_cv<
-    typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type;
-
-// Exceptions.
-struct NonThrowingGetPrerequisitesNotMetException : bricks::Exception {
-  explicit NonThrowingGetPrerequisitesNotMetException(const std::string& what) : Exception(what) {}
-};
-
-struct KeyNotFoundCoverException : bricks::Exception {};
-
-template <typename T_ENTRY>
-struct KeyNotFoundException : KeyNotFoundCoverException {
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
-  const T_KEY key;
-  explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
-};
-
-struct KeyAlreadyExistsCoverException : bricks::Exception {};
-
-template <typename T_ENTRY>
-struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
-  const T_ENTRY entry;
-  explicit KeyAlreadyExistsException(const T_ENTRY& entry) : entry(entry) {}
-};
-
-struct EntryShouldExistCoverException : bricks::Exception {};
-
-template <typename T_ENTRY>
-struct EntryShouldExistException : EntryShouldExistCoverException {
-  const T_ENTRY entry;
-  explicit EntryShouldExistException(const T_ENTRY& entry) : entry(entry) {}
-};
-
-// Base structures for user entry types.
-struct AllowNonThrowingGet {
-  constexpr static bool allow_nonthrowing_get = true;
-};
-
-enum NullEntryTypeHelper { NullEntry };
-struct Nullable {
-  const bool exists;
-  Nullable() : exists(true) {}
-  Nullable(NullEntryTypeHelper) : exists(false) {}
-};
-
-struct Deletable {};  // User promises to serialize Nullable::exists;
-
-// Universal null entry creation.
-template <typename T_ENTRY, bool IS_NULLABLE>
-struct CreateNullEntryImpl {
-  static T_ENTRY get() {
-    // Dear User,
-    // It appears you'd like to use a non-throwing Get() syntax without making it possible
-    // to create a Null-ified instance of your entry. This can't possibly work. Sorry.
-    // The solution you are most likely looking for is to derive `YourEntryType` from
-    // `sherlock::yoda::Nullable`.
-    BRICKS_THROW(NonThrowingGetPrerequisitesNotMetException(
-        "Creating NullEntry requested for the entry type, which is not derived from `Nullable`."));
-  }
-};
-
-template <typename T_ENTRY>
-struct CreateNullEntryImpl<T_ENTRY, true> {
-  static T_ENTRY get() {
-    T_ENTRY e(NullEntry);
-    return e;
-  }
-};
-
-template <typename T_ENTRY, bool IS_NULLABLE>
-T_ENTRY CreateNullEntry() {
-  return CreateNullEntryImpl<T_ENTRY, IS_NULLABLE>::get();
-}
-
-// API calls, `[Async]{Get/Add/Update/Delete}(...)`.
+// Yoda is a simple to use, machine-learning-friendly key-value storage atop a Sherlock stream.
 //
-// C++ API supports three syntaxes:
+// The C++ usecase is to instantiate `Yoda<MyEntryType> API("stream_name")`.
+// The API supports CRUD-like operations, presently `Get` and `Add`.
 //
-//   1) Asynchronous, using std::{promise/future}.
-//      To use the async/await paradigm.
-//      `AsyncAdd(entry)` and `AsyncGet(key)`, both return a future.
+// The API offers three ways to invoke itself:
 //
-//   2) Asynchronous, using std::function as callbacks.
-//      Best for HTTP endpoints, with the Request object passed into these callbacks.
-//      `AsyncAdd(entry, on_success, on_failure)` and `AsyncGet(key, on_success, on_failure)`, both return void.
+//   1) Asynchronous, using std::{promise/future}, that utilize the the async/await paradigm.
+//      For instance, `AsyncAdd(entry)` and `AsyncGet(key)`, which both return a future.
 //
-//   3) Synchronous. `Get(key)` and `Add(entry)`.
+//   2) Asynchronous, using std::function as callbacks. Best for HTTP endpoints and other thread-based usecases.
+//      For instance, `AsyncAdd(entry, on_success, on_failure)` and `AsyncGet(key, on_success, on_failure)`,
+//      which both return `void` immediately and invoke the callback as the result is ready, from a separate
+//      thread.
 //
-// Exceptions:
+//   3) Synchronous, blocking calls.
+//      For instance, `Get(key)` and `Add(entry)`.
 //
-//   1) By default, `Get` and `AsyncGet` throw `KeyNotFoundException` if key is
-//      not found. User can change this behavior by adding
+// Exceptions strategy:
+//
+//   `Async*()` versions of the callers that take callbacks and return immediately never throw.
+//
+//   For synchronous and promise-based implementations:
+//
+//   1) `Get()` and `AsyncGet()` throw the `KeyNotFoundException` if the key has not been found.
+//
+//      This behavior can be overriden by inheriting the entry type from `yoda::Nullable`, and adding:
+//
 //        constexpr static bool allow_nonthrowing_get = true;
-//      to his entry class definition.
 //
-//   2) By default, `Add` and `AsyncGet` throw `KeyAlreadyExistsException` if
-//      entry with this key already exists. User can change this behavior by
-//      addding
+//      to the definition of the entry class.
+//
+//   2) `Add()` and `AsyncGet()` throw `KeyAlreadyExistsException` if an entry with this key already exists.
+//
+//      This behavior can be changed by adding thThe user can change this behavior by adding:
+//
 //        constexpr static bool allow_overwrite_on_add = true;
-//      to his entry class definition.
+//
+//      to the definition of the entry class.
 //
 // Policies:
 //
-//   Yoda's exception-throwing behavior can be also set up by providing POLICY struct
-//   as a second template parameter to yoda::API. This struct should contain all
-//   the members described in the section 'Exceptions' (see `struct
-//   DefaultPolicy` below for example).
+//   Yoda's behavior can be customized further by providing a POLICY as a second template parameter to
+//   yoda::API.
+//   This struct should contain all the members described in the "Exceptions" section above.
+//   Please refer to `struct DefaultPolicy` below for more details.
 //
 // TODO(dkorolev): Polymorphic types. Pass them in as std::tuple<...>, or directly as a variadic template param.
 
@@ -153,6 +76,23 @@ T_ENTRY CreateNullEntry() {
 //                 And it would require those `Scoped*` endpoints in Bricks. On me.
 
 // TODO(dkorolev): So, are we CRUD+REST or just a KeyValueStorage? Now we kinda merged POST+PUT. Not cool.
+
+#ifndef SHERLOCK_YODA_YODA_H
+#define SHERLOCK_YODA_YODA_H
+
+#include <atomic>
+#include <future>
+#include <string>
+
+#include "types.h"
+#include "exceptions.h"
+
+#include "../sherlock.h"
+
+#include "../../Bricks/mq/inmemory/mq.h"
+
+namespace sherlock {
+namespace yoda {
 
 // Policies.
 template <typename ENTRY>
@@ -183,6 +123,25 @@ struct DefaultPolicy {
   constexpr static bool allow_overwrite_on_add = overwrite_on_add_value_or_default<ENTRY>(0);
   static_assert(!allow_nonthrowing_get || std::is_base_of<Nullable, ENTRY>::value,
                 "To support non-throwing `Get()`, make sure `YourEntryType` derives from `Nullable`.");
+};
+
+template <typename T_KEY, typename T_ENTRY, typename T_KEY_NOT_FOUND_EXCEPTION, bool>
+struct SetPromiseToNullEntryOrThrow {};
+
+template <typename T_KEY, typename T_ENTRY, typename T_KEY_NOT_FOUND_EXCEPTION>
+struct SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, T_KEY_NOT_FOUND_EXCEPTION, false> {
+  static void DoIt(const T_KEY& key, std::promise<T_ENTRY>& pr) {
+    pr.set_exception(std::make_exception_ptr(T_KEY_NOT_FOUND_EXCEPTION(key)));
+  }
+};
+
+template <typename T_KEY, typename T_ENTRY, typename UNUSED_T_KEY_NOT_FOUND_EXCEPTION>
+struct SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, UNUSED_T_KEY_NOT_FOUND_EXCEPTION, true> {
+  static void DoIt(const T_KEY& key, std::promise<T_ENTRY>& pr) {
+    T_ENTRY null_entry(NullEntry);
+    null_entry.set_key(key);
+    pr.set_value(null_entry);
+  }
 };
 
 // Main storage class.
@@ -226,8 +185,7 @@ class API {
     return future;
   }
 
-  void AsyncGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure = [](const T_KEY&) {
-  }) {
+  void AsyncGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure) {
     state_maintainer_.mq_.EmplaceMessage(new MQMessageGet(key, on_success, on_failure));
   }
 
@@ -290,20 +248,25 @@ class API {
     virtual void DoIt(Storage& storage, T_STREAM_TYPE&) {
       const auto cit = storage.data.find(key);
       if (cit != storage.data.end()) {
-        if (on_success) {  // Callback function defined.
+        // The entry has been found.
+        if (on_success) {
+          // Callback semantics.
           on_success(cit->second);
         } else {
+          // Promise semantics.
           pr.set_value(cit->second);
         }
-      } else {             // Key not found.
-        if (on_failure) {  // Callback function defined.
+      } else {
+        // The entry has not been fonud.
+        if (on_failure) {
+          // Callback semantics.
           on_failure(key);
-        } else if (T_POLICY::allow_nonthrowing_get) {  // Return non-existing entry.
-          T_ENTRY null_entry(CreateNullEntry<T_ENTRY, std::is_base_of<Nullable, T_ENTRY>::value>());
-          null_entry.set_key(key);
-          pr.set_value(null_entry);
-        } else {  // Throw.
-          pr.set_exception(std::make_exception_ptr(T_KEY_NOT_FOUND_EXCEPTION(key)));
+        } else {
+          // Promise semantics.
+          SetPromiseToNullEntryOrThrow<T_KEY,
+                                       T_ENTRY,
+                                       T_KEY_NOT_FOUND_EXCEPTION,
+                                       T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);
         }
       }
     }
