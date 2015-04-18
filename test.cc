@@ -402,7 +402,8 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   };
 
   const CallbackTest cbt1(2, 0.5);
-  api.AsyncGet(KVS::T_KEY(2), std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
+  api.AsyncGet(KVS::T_KEY(2),
+               std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
   while (!cbt1.called)
     ;
@@ -423,7 +424,8 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   ASSERT_THROW(api.Get(KVS::T_KEY(6)), KVS::T_KEY_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.Get(KVS::T_KEY(6)), sherlock::kvs::KeyNotFoundCoverException);
   const CallbackTest cbt2(7, 0.0, false);
-  api.AsyncGet(KVS::T_KEY(7), std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
+  api.AsyncGet(KVS::T_KEY(7),
+               std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
   while (!cbt2.called)
     ;
@@ -432,7 +434,8 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   api.AsyncAdd(KeyValueEntry(5, 0.2)).wait();
   api.Add(KeyValueEntry(6, 0.17));
   const CallbackTest cbt3(7, 0.76);
-  api.AsyncAdd(KVS::T_ENTRY(7, 0.76), std::bind(&CallbackTest::added, &cbt3),
+  api.AsyncAdd(KVS::T_ENTRY(7, 0.76),
+               std::bind(&CallbackTest::added, &cbt3),
                std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called)
     ;
@@ -443,7 +446,8 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), KVS::T_KEY_ALREADY_EXISTS_EXCEPTION);
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), sherlock::kvs::KeyAlreadyExistsCoverException);
   const CallbackTest cbt4(7, 0.0, false);
-  api.AsyncAdd(KVS::T_ENTRY(7, 0.0), std::bind(&CallbackTest::added, &cbt4),
+  api.AsyncAdd(KVS::T_ENTRY(7, 0.0),
+               std::bind(&CallbackTest::added, &cbt4),
                std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called)
     ;
