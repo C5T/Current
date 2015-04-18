@@ -1,8 +1,8 @@
-# KVStorage Design Doc
-**KVStorage** is a layer of abstraction above **Sherlock** stream, which implements a key-value storage functionality. It is responsible for keeping in-memory state and data consistency. KVStorage provides API to Create, Read, Update and Delete records (CRUD).
+# Yoda Design Doc
+**Yoda** is a layer of abstraction above **Sherlock** stream, which implements a key-value storage functionality. It is responsible for keeping in-memory state and data consistency. Yoda provides API to Create, Read, Update and Delete records (CRUD).
 
 ## Data Structure
-Each data structure which is supposed to be used in KVStorage should be serializable itself and have serializable **Key** and **Value** members.
+Each data structure which is supposed to be used in Yoda should be serializable itself and have serializable **Key** and **Value** members.
 
 ### Key
 Key structure should implement: 
