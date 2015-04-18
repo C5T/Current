@@ -36,15 +36,22 @@ SOFTWARE.
 
 namespace sherlock {
 namespace kvs {
+
+// Pure key type alias.
+template <typename T_ENTRY>
+using ENTRY_KEY_TYPE = typename std::remove_cv<
+    typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type;
+
 // Exceptions.
-struct NonThrowingGetPrerequisitesNotMetException : bricks::Exception {};
+struct NonThrowingGetPrerequisitesNotMetException : bricks::Exception {
+  explicit NonThrowingGetPrerequisitesNotMetException(const std::string& what) { SetWhat(what); }
+};
 
 struct KeyNotFoundCoverException : bricks::Exception {};
 
 template <typename T_ENTRY>
 struct KeyNotFoundException : KeyNotFoundCoverException {
-  typedef typename std::remove_cv<
-      typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type T_KEY;
+  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
   const T_KEY key;
   explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
 };
@@ -85,7 +92,8 @@ struct CreateNullEntryImpl {
   static T_ENTRY get() {
     // This function shoud NEVER be called.
     // If you see this exception, something went terribly wrong.
-    BRICKS_THROW(NonThrowingGetPrerequisitesNotMetException());
+    BRICKS_THROW(NonThrowingGetPrerequisitesNotMetException(
+        "Creating NullEntry requested for the entry type, which is not derived from Nullable."));
   }
 };
 
@@ -119,15 +127,15 @@ T_ENTRY CreateNullEntry() {
 // Exceptions:
 //
 //   1) By default, `Get` and `AsyncGet` throw `KeyNotFoundException` if key is
-//   not found. User can change this behavior by adding
-//     constexpr static bool allow_nonthrowing_get = true;
-//   to his entry class definition.
+//      not found. User can change this behavior by adding
+//        constexpr static bool allow_nonthrowing_get = true;
+//      to his entry class definition.
 //
 //   2) By default, `Add` and `AsyncGet` throw `KeyAlreadyExistsException` if
-//   entry with this key already exists. User can change this behavior by
-//   addding
-//     constexpr static bool allow_overwrite_on_add = true;
-//   to his entry class definition.
+//      entry with this key already exists. User can change this behavior by
+//      addding
+//        constexpr static bool allow_overwrite_on_add = true;
+//      to his entry class definition.
 //
 // Policies:
 //
@@ -170,8 +178,6 @@ struct DefaultPolicy {
   constexpr static bool allow_overwrite_on_add = overwrite_on_add_field<ENTRY>(0);
   static_assert(!allow_nonthrowing_get || std::is_base_of<Nullable, ENTRY>::value,
                 "Entry types that requested non-throwing `Get()` must be derived from Nullable.");
-  static_assert(!allow_overwrite_on_add || std::is_base_of<Nullable, ENTRY>::value,
-                "Entry types that requested overwrite on `Add()` must be derived from Nullable.");
 };
 
 // Main storage class.
@@ -179,8 +185,7 @@ template <typename ENTRY, typename POLICY = DefaultPolicy<ENTRY>>
 class API {
  public:
   typedef ENTRY T_ENTRY;
-  typedef typename std::remove_cv<
-      typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type T_KEY;
+  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
@@ -252,10 +257,9 @@ class API {
 
     explicit MQMessageEntry(const T_ENTRY& entry) : entry(entry) {}
 
-    virtual void DoIt(Storage& storage, typename sherlock::StreamInstance<T_ENTRY>& stream) {
-      // TODO(max+dima): Ensure that this storage update can't break break
+    virtual void DoIt(Storage& storage, typename sherlock::StreamInstance<T_ENTRY>&) {
+      // TODO(max+dima): Ensure that this storage update can't break
       // the actual state of the data.
-      static_cast<void>(stream);  // Suppress warnings.
       storage.data[entry.key()] = entry;
     }
   };
@@ -270,18 +274,17 @@ class API {
     explicit MQMessageGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
 
-    virtual void DoIt(Storage& storage, typename sherlock::StreamInstance<T_ENTRY>& stream) {
-      static_cast<void>(stream);  // Suppress warnings.
+    virtual void DoIt(Storage& storage, typename sherlock::StreamInstance<T_ENTRY>&) {
       const auto cit = storage.data.find(key);
       if (cit != storage.data.end()) {
         if (on_success) {  // Callback function defined.
-          std::async(on_success, cit->second);
+          on_success(cit->second);
         } else {
           pr.set_value(cit->second);
         }
       } else {             // Key not found.
         if (on_failure) {  // Callback function defined.
-          std::async(on_failure, key);
+          on_failure(key);
         } else if (T_POLICY::allow_nonthrowing_get) {  // Return non-existing entry.
           T_ENTRY null_entry(CreateNullEntry<T_ENTRY, std::is_base_of<Nullable, T_ENTRY>::value>());
           null_entry.set_key(key);
@@ -315,7 +318,7 @@ class API {
       const bool key_exists = static_cast<bool>(storage.data.count(e.key()));
       if (key_exists && !T_POLICY::allow_overwrite_on_add) {
         if (on_failure) {  // Callback function defined.
-          std::async(on_failure);
+          on_failure();
         } else {  // Throw.
           pr.set_exception(std::make_exception_ptr(T_KEY_ALREADY_EXISTS_EXCEPTION(e)));
         }
@@ -323,7 +326,7 @@ class API {
         storage.data[e.key()] = e;
         stream.Publish(e);
         if (on_success) {
-          std::async(on_success);
+          on_success();
         } else {
           pr.set_value();
         }
