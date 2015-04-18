@@ -139,7 +139,7 @@ T_ENTRY CreateNullEntry() {
 //
 // Policies:
 //
-//   KVS exception-throwing behavior can be also set up by providing POLICY struct
+//   Yoda's exception-throwing behavior can be also set up by providing POLICY struct
 //   as a second template parameter to yoda::API. This struct should contain all
 //   the members described in the section 'Exceptions' (see `struct
 //   DefaultPolicy` below for example).
