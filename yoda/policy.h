@@ -83,7 +83,7 @@ template <typename T_KEY, typename T_ENTRY, typename UNUSED_T_KEY_NOT_FOUND_EXCE
 struct SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, UNUSED_T_KEY_NOT_FOUND_EXCEPTION, true> {
   static void DoIt(const T_KEY& key, std::promise<T_ENTRY>& pr) {
     T_ENTRY null_entry(NullEntry);
-    null_entry.set_key(key);
+    SetKey(null_entry, key);
     pr.set_value(null_entry);
   }
 };

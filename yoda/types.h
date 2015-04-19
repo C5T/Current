@@ -48,10 +48,51 @@ struct AllowOverwriteOnAdd {
   constexpr static bool allow_overwrite_on_add = true;
 };
 
-// Entry key type extractor.
+// Entry key type extractor, getter and setter.
+// Supports both `.key` data member and `.key() / .set_key()` methods.
 template <typename T_ENTRY>
-using ENTRY_KEY_TYPE = typename std::remove_cv<
-    typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type;
+constexpr bool HasKeyFunction(char) {
+  return false;
+}
+
+template <typename T_ENTRY>
+constexpr auto HasKeyFunction(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
+  return true;
+}
+
+template <typename T_ENTRY, bool HAS_KEY_FUNCTION>
+struct KEY_ACCESSOR_IMPL {};
+
+template <typename T_ENTRY>
+struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
+  typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
+  static T_KEY GetKey(const T_ENTRY& entry) { return entry.key; }
+  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.key = key; }
+};
+
+template <typename T_ENTRY>
+struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
+  typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
+  static T_KEY GetKey(const T_ENTRY& entry) { return entry.key(); }
+  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.set_key(key); }
+};
+
+template <typename T_ENTRY>
+using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyFunction<T_ENTRY>(0)>;
+
+template <typename T_ENTRY>
+typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
+  return KEY_ACCESSOR<T_ENTRY>::GetKey(entry);
+}
+
+template <typename T_ENTRY>
+using ENTRY_KEY_TYPE =
+    typename std::remove_cv<typename std::remove_reference<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>::type>::type;
+
+template <typename T_ENTRY>
+void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
+  KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
+}
 
 // Associative container type selector.
 // Tries unordered_map<T_KEY, T_ENTRY, {T_KEY::Hash}>, falls back to map<T_KEY, T_ENTRY> if unavailable.

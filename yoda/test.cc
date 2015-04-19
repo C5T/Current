@@ -39,39 +39,21 @@ using std::string;
 using std::atomic_size_t;
 using bricks::strings::Printf;
 
-struct IntKey {
-  int x;
-  IntKey(int x = 0) : x(x) {}
-  int operator()() const { return x; }
-
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(x));
-  }
-
-  bool operator==(const IntKey& rhs) const { return x == rhs.x; }
-
-  // Needs either `operator<` or `some_integral_type Hash() const`, uses `std::map` or `std::unordered_map`,
-  // prefers the latter in case both are present.
-  bool operator<(const IntKey& rhs) const { return x < rhs.x; }
-  int Hash() const { return x; }
-};
-
 struct KeyValueEntry {
-  IntKey key_;
-  double value_;
-  // Uncomment the line below to ensure that it doesn't compile.
+  int key;
+  double value;
+
+  // Uncomment one line below to see the test does not compile.
   // constexpr static bool allow_nonthrowing_get = true;
+  // Change `struct KeyValueEntry` into `struct KeyValueEntry : yoda::Nullable` and
+  // uncomment the above and the below line to see the test compile and fail due to not throwing on a `Get()`.
+  // void operator=(const KeyValueEntry& rhs) { std::tie(key, value) = std::make_tuple(rhs.key, rhs.value); }
 
-  KeyValueEntry() = default;
-  KeyValueEntry(const int key, const double value) : key_(key), value_(value) {}
-
-  const IntKey& key() const { return key_; }
-  void set_key(const IntKey& key) { key_ = key; }
+  KeyValueEntry(const int key = 0, const double value = 0.0) : key(key), value(value) {}
 
   template <typename A>
   void serialize(A& ar) {
-    ar(CEREAL_NVP(key_), CEREAL_NVP(value_));
+    ar(CEREAL_NVP(key), CEREAL_NVP(value));
   }
 };
 
@@ -99,7 +81,7 @@ struct KeyValueAggregateListener {
     if (data_.seen_) {
       data_.results_ += ",";
     }
-    data_.results_ += Printf("%d=%.2lf", entry.key(), entry.value_);
+    data_.results_ += Printf("%d=%.2lf", entry.key, entry.value);
     ++data_.seen_;
     return data_.seen_ < max_to_process_;
   }
@@ -128,11 +110,14 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   // Future expanded syntax.
   std::future<KeyValueEntry> f1 = api.AsyncGet(TestAPI::T_KEY(2));
   KeyValueEntry r1 = f1.get();
-  EXPECT_EQ(2, r1.key()());
-  EXPECT_EQ(0.5, r1.value_);
+  EXPECT_EQ(2, r1.key);
+  EXPECT_EQ(0.5, r1.value);
 
   // Future short syntax.
-  EXPECT_EQ(0.5, api.AsyncGet(TestAPI::T_KEY(2)).get().value_);
+  EXPECT_EQ(0.5, api.AsyncGet(TestAPI::T_KEY(2)).get().value);
+
+  // Future short syntax with type omitted.
+  EXPECT_EQ(0.5, api.AsyncGet(2).get().value);
 
   // Callback version.
   struct CallbackTest {
@@ -143,14 +128,14 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
       ASSERT_FALSE(called);
       called = true;
       EXPECT_TRUE(expect_success);
-      EXPECT_EQ(key, entry.key()());
-      EXPECT_EQ(value, entry.value_);
+      EXPECT_EQ(key, entry.key);
+      EXPECT_EQ(value, entry.value);
     }
-    void not_found(const IntKey& key) const {
+    void not_found(int key) const {
       ASSERT_FALSE(called);
       called = true;
       EXPECT_FALSE(expect_success);
-      EXPECT_EQ(this->key, key());
+      EXPECT_EQ(this->key, key);
     }
     void added() const {
       ASSERT_FALSE(called);
@@ -173,8 +158,9 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   api.AsyncGet(TestAPI::T_KEY(2),
                std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
-  while (!cbt1.called)
-    ;
+  while (!cbt1.called) {
+    ;  // Spin lock.
+  }
 
   // Add two more key-value pairs.
   api.UnsafeStream().Emplace(3, 0.33);
@@ -184,8 +170,8 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
     // For the purposes of this test: Spin lock to ensure that the listener/MMQ consumer got the data published.
   }
 
-  EXPECT_EQ(0.33, api.AsyncGet(TestAPI::T_KEY(3)).get().value_);
-  EXPECT_EQ(0.25, api.Get(TestAPI::T_KEY(4)).value_);
+  EXPECT_EQ(0.33, api.AsyncGet(TestAPI::T_KEY(3)).get().value);
+  EXPECT_EQ(0.25, api.Get(TestAPI::T_KEY(4)).value);
 
   ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), yoda::KeyNotFoundCoverException);
@@ -195,8 +181,9 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   api.AsyncGet(TestAPI::T_KEY(7),
                std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
-  while (!cbt2.called)
-    ;
+  while (!cbt2.called) {
+    ;  // Spin lock.
+  }
 
   // Add three more key-value pairs, this time via the API.
   api.AsyncAdd(KeyValueEntry(5, 0.2)).wait();
@@ -205,8 +192,9 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   api.AsyncAdd(TestAPI::T_ENTRY(7, 0.76),
                std::bind(&CallbackTest::added, &cbt3),
                std::bind(&CallbackTest::already_exists, &cbt3));
-  while (!cbt3.called)
-    ;
+  while (!cbt3.called) {
+    ;  // Spin lock.
+  }
 
   // Check that default policy doesn't allow overwriting on Add().
   ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), TestAPI::T_KEY_ALREADY_EXISTS_EXCEPTION);
@@ -223,11 +211,11 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
   // Even if the next two lines run before the entries are published into the stream,
   // the API will maintain the consistency of its own responses from its own in-memory state.
-  EXPECT_EQ(0.20, api.AsyncGet(IntKey(5)).get().value_);
-  EXPECT_EQ(0.17, api.Get(IntKey(6)).value_);
+  EXPECT_EQ(0.20, api.AsyncGet(5).get().value);
+  EXPECT_EQ(0.17, api.Get(6).value);
 
-  ASSERT_THROW(api.AsyncGet(IntKey(8)).get(), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.Get(IntKey(9)), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.AsyncGet(8).get(), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.Get(9), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
 
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.
