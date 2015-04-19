@@ -205,8 +205,9 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   api.AsyncAdd(TestAPI::T_ENTRY(7, 0.0),
                std::bind(&CallbackTest::added, &cbt4),
                std::bind(&CallbackTest::already_exists, &cbt4));
-  while (!cbt4.called)
-    ;
+  while (!cbt4.called) {
+    ;  // Spin lock.
+  }
 
   // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
   // Even if the next two lines run before the entries are published into the stream,
