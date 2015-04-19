@@ -50,9 +50,11 @@ struct IntKey {
   }
 
   bool operator==(const IntKey& rhs) const { return x == rhs.x; }
-  struct HashFunction {
-    size_t operator()(const IntKey& k) const { return static_cast<size_t>(k.x); }
-  };
+
+  // Needs either `operator<` or `some_integral_type Hash() const`, uses `std::map` or `std::unordered_map`,
+  // prefers the latter in case both are present.
+  bool operator<(const IntKey& rhs) const { return x < rhs.x; }
+  int Hash() const { return x; }
 };
 
 struct KeyValueEntry {

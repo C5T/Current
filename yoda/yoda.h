@@ -163,7 +163,7 @@ class API {
  private:
   // Stateful storage.
   struct Storage {
-    std::unordered_map<T_KEY, T_ENTRY, typename T_KEY::HashFunction> data;
+    T_MAP_TYPE<T_KEY, T_ENTRY> data;
   };
 
   // The logic to "interleave" updates from Sherlock stream with inbound KeyValueStorage requests.

@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_TYPES_H
 #define SHERLOCK_YODA_TYPES_H
 
+#include <map>
+#include <unordered_map>
 #include <type_traits>
 
 namespace yoda {
@@ -50,6 +52,38 @@ struct AllowOverwriteOnAdd {
 template <typename T_ENTRY>
 using ENTRY_KEY_TYPE = typename std::remove_cv<
     typename std::remove_reference<decltype(std::declval<T_ENTRY>().key())>::type>::type;
+
+// Associative container type selector.
+// Tries unordered_map<T_KEY, T_ENTRY, {T_KEY::Hash}>, falls back to map<T_KEY, T_ENTRY> if unavailable.
+
+template <typename T>
+constexpr bool HasHashFunction(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasHashFunction(int) -> decltype(std::declval<T>().Hash(), bool()) {
+  return true;
+}
+
+template <typename T_KEY, typename T_ENTRY, bool CAN_CUSTOM_HASH_MAP>
+struct T_MAP_TYPE_SELECTOR {};
+
+template <typename T_KEY, typename T_ENTRY>
+struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true> {
+  struct HashFunction {
+    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
+  };
+  typedef std::unordered_map<T_KEY, T_ENTRY, HashFunction> type;
+};
+
+template <typename T_KEY, typename T_ENTRY>
+struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false> {
+  typedef std::map<T_KEY, T_ENTRY> type;
+};
+
+template <typename T_KEY, typename T_ENTRY>
+using T_MAP_TYPE = typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0)>::type;
 
 // By deriving from `Nullable` (and adding `using Nullable::Nullable`),
 // the user indicates that their entry type supports creation of a non-existing instance.
