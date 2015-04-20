@@ -180,7 +180,7 @@ class API {
     virtual void DoIt(Storage& storage, T_STREAM_TYPE&) {
       // TODO(max+dima): Ensure that this storage update can't break
       // the actual state of the data.
-      storage.data[entry.key()] = entry;
+      storage.data[GetKey(entry)] = entry;
     }
   };
 
@@ -240,7 +240,7 @@ class API {
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void DoIt(Storage& storage, T_STREAM_TYPE& stream) {
-      const bool key_exists = static_cast<bool>(storage.data.count(e.key()));
+      const bool key_exists = static_cast<bool>(storage.data.count(GetKey(e)));
       if (key_exists && !T_POLICY::allow_overwrite_on_add) {
         if (on_failure) {  // Callback function defined.
           on_failure();
@@ -248,7 +248,7 @@ class API {
           pr.set_exception(std::make_exception_ptr(T_KEY_ALREADY_EXISTS_EXCEPTION(e)));
         }
       } else {
-        storage.data[e.key()] = e;
+        storage.data[GetKey(e)] = e;
         stream.Publish(e);
         if (on_success) {
           on_success();
