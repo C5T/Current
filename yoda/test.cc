@@ -131,7 +131,7 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
       EXPECT_EQ(key, entry.key);
       EXPECT_EQ(value, entry.value);
     }
-    void not_found(int key) const {
+    void not_found(const int key) const {
       ASSERT_FALSE(called);
       called = true;
       EXPECT_FALSE(expect_success);
