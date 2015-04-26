@@ -75,7 +75,7 @@ SOFTWARE.
 // TODO(dkorolev): How about HTTP endpoints? They should be added somewhat automatically, right?
 //                 And it would require those `Scoped*` endpoints in Bricks. On me.
 
-// TODO(dkorolev): So, are we CRUD+REST or just a KeyEntryStorage? Now we kinda merged POST+PUT. Not cool.
+// TODO(dkorolev): So, are we CRUD+REST or just a KeyValueStorage? Now we kinda merged POST+PUT. Not cool.
 
 #ifndef SHERLOCK_YODA_YODA_H
 #define SHERLOCK_YODA_YODA_H
