@@ -95,7 +95,7 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  typedef yoda::API<KeyValueEntry> TestAPI;
+  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>> TestAPI;
   TestAPI api("non_polymorphic_yoda");
 
   // Add the first key-value pair.

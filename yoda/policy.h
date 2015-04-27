@@ -60,8 +60,10 @@ constexpr bool overwrite_on_add_value_or_default(...) {
 }
 
 // Default set of policies for the instance of Yoda.
+template <typename> struct DefaultPolicy {};
+
 template <typename ENTRY>
-struct DefaultPolicy {
+struct DefaultPolicy<KeyEntry<ENTRY>> {
   constexpr static bool allow_nonthrowing_get = nonthrowing_get_value_or_default<ENTRY>(0);
   constexpr static bool allow_overwrite_on_add = overwrite_on_add_value_or_default<ENTRY>(0);
   static_assert(!allow_nonthrowing_get || std::is_base_of<Nullable, ENTRY>::value,
