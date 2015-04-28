@@ -79,7 +79,7 @@ TEST(Variadic, Reduce) {
   struct B { static std::string s() { return "B"; } };
   struct C { static std::string s() { return "C"; } };
   EXPECT_EQ("(A+(B+C))",
-            (bricks::variadic::reduce<concatenate_s, std::tuple<A,B,C>>::s()));
+            (bricks::variadic::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
 }
     
   // Combine.
@@ -88,7 +88,7 @@ TEST(Variadic, Combine) {
   struct B { static std::string bar() { return "bar"; } };
   struct C { static std::string baz() { return "baz"; } };
   
-  bricks::variadic::combine<std::tuple<A,B,C>> c;
+  bricks::variadic::combine<std::tuple<A, B, C>> c;
   
   EXPECT_EQ("foo", c.foo());
   EXPECT_EQ("bar", c.bar());

@@ -33,7 +33,6 @@ namespace bricks {
 namespace variadic {
 
 // `map<F<>, std::tuple<A, B, C>>` == `std::tuple<F<A>, F<B>, F<C>>`.
-
 template <template <typename> class F, typename TS>
 struct map_impl {};
 
@@ -51,9 +50,7 @@ struct map_impl<F, std::tuple<T, TS...>> {
       std::tuple_cat(std::declval<map<F, std::tuple<T>>>(), std::declval<map<F, std::tuple<TS...>>>())) type;
 };
 
-
 // `filter<F<>, std::tuple<A, B, C>>` == `std::tuple<>` that only contains types where `F<i>::filter` is `true`.
-
 template <template <typename> class F, typename TS>
 struct filter_impl {};
 
@@ -67,13 +64,11 @@ struct filter_impl<F, std::tuple<T>> {
 
 template <template <typename> class F, typename T, typename... TS>
 struct filter_impl<F, std::tuple<T, TS...>> {
-  typedef decltype(
-      std::tuple_cat(std::declval<filter<F, std::tuple<T>>>(), std::declval<filter<F, std::tuple<TS...>>>())) type;
+  typedef decltype(std::tuple_cat(std::declval<filter<F, std::tuple<T>>>(),
+                                  std::declval<filter<F, std::tuple<TS...>>>())) type;
 };
 
-
 // `reduce<F<LHS, RHS>, std::tuple<A, B, C>>` == `F<A, F<B, C>>`.
-
 template <template <typename, typename> class F, typename TS>
 struct reduce_impl {};
 
@@ -90,15 +85,13 @@ struct reduce_impl<F, std::tuple<T, TS...>> {
   typedef F<T, reduce<F, std::tuple<TS...>>> type;
 };
 
-
 // `combine<std::tuple<A, B, C>>` == a `struct` that combines all members and fields from `A`, `B` and `C`.
-
-template<typename A, typename B>
+template <typename A, typename B>
 struct multiple_inheritance_combiner_impl {
   struct type : A, B {};
 };
 
-template<typename A, typename B>
+template <typename A, typename B>
 using multiple_inheritance_combiner = typename multiple_inheritance_combiner_impl<A, B>::type;
 
 template <typename TS>
