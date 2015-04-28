@@ -136,8 +136,6 @@ struct MQListener<KeyEntry<ENTRY>> {
   T_STREAM_TYPE& stream_;
 };
 
-// typedef MMQ<MQListener, std::unique_ptr<MQMessage>> T_MQ;
-
 template <typename>
 struct SherlockListener {};
 
@@ -273,7 +271,7 @@ struct Storage<KeyEntry<ENTRY>> {
     // Thus, in theory, `MQMessageAdd::DoIt()` could be a no-op.
     // This code still updates the storage, to have the API appear more lively to the user.
     // Since the actual implementation of `Add` pushes the `MQMessageAdd` message before publishing
-    // an update to the stream, the final state will always be [evenually] consistent.
+    // an update to the stream, the final state will always be [eventually] consistent.
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
