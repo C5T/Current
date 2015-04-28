@@ -40,7 +40,15 @@ using std::string;
 using std::atomic_size_t;
 using bricks::strings::Printf;
 
-struct KeyValueEntry {
+struct KeyValueEntryBase {
+  virtual ~KeyValueEntryBase() = default;
+  template <typename A>
+  void serialize(A&) {}
+};
+
+struct KeyValueEntry : KeyValueEntryBase {
+  typedef KeyValueEntryBase CEREAL_BASE_TYPE;
+
   int key;
   double value;
 
@@ -54,9 +62,11 @@ struct KeyValueEntry {
 
   template <typename A>
   void serialize(A& ar) {
+    KeyValueEntryBase::serialize(ar);
     ar(CEREAL_NVP(key), CEREAL_NVP(value));
   }
 };
+CEREAL_REGISTER_TYPE(KeyValueEntry);
 
 struct KeyValueSubscriptionData {
   atomic_size_t seen_;
@@ -76,7 +86,9 @@ struct KeyValueAggregateListener {
     return *this;
   }
 
-  bool Entry(const KeyValueEntry& entry, size_t index, size_t total) {
+  bool Entry(std::unique_ptr<KeyValueEntryBase>& proto_entry, size_t index, size_t total) {
+    // TODO(dkorolev): Visitor. This code just compiles, it doesn't do the right thing.
+    const KeyValueEntry& entry = *dynamic_cast<KeyValueEntry*>(proto_entry.get());
     static_cast<void>(index);
     static_cast<void>(total);
     if (data_.seen_) {
@@ -96,12 +108,12 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  typedef yoda::API<std::tuple<yoda::KeyEntry<KeyValueEntry>>> TestAPI;
+  typedef yoda::API<KeyValueEntryBase, std::tuple<yoda::KeyEntry<KeyValueEntry>>> TestAPI;
   TestAPI api("non_polymorphic_yoda");
 
   // Add the first key-value pair.
   // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.
-  api.UnsafeStream().Emplace(2, 0.5);
+  api.UnsafeStream().Emplace(new KeyValueEntry(2, 0.5));
 
   while (!api.CaughtUp()) {
     // Spin lock, for the purposes of this test.
@@ -164,8 +176,8 @@ TEST(Sherlock, NonPolymorphicKeyValueStorage) {
   }
 
   // Add two more key-value pairs.
-  api.UnsafeStream().Emplace(3, 0.33);
-  api.UnsafeStream().Emplace(4, 0.25);
+  api.UnsafeStream().Emplace(new KeyValueEntry(3, 0.33));
+  api.UnsafeStream().Emplace(new KeyValueEntry(4, 0.25));
 
   while (api.EntriesSeen() < 3u) {
     // For the purposes of this test: Spin lock to ensure that the listener/MMQ consumer got the data published.

@@ -60,7 +60,8 @@ constexpr bool overwrite_on_add_value_or_default(...) {
 }
 
 // Default set of policies for the instance of Yoda.
-template <typename> struct DefaultPolicy {};
+template <typename>
+struct DefaultPolicy {};
 
 template <typename ENTRY>
 struct DefaultPolicy<KeyEntry<ENTRY>> {

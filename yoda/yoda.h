@@ -91,11 +91,60 @@ SOFTWARE.
 
 #include "../sherlock.h"
 
-#include "../../Bricks/variadic/variadic.h"
+// #include "../../Bricks/variadic/variadic.h" <-- TODO(dkorolev): Make use of it.
+
 #include "../../Bricks/mq/inmemory/mq.h"
 
 namespace yoda {
 
+// Additional sanity checks.
+template <typename... TS>
+struct is_std_tuple {
+  enum { value = false };
+};
+
+template <typename... TS>
+struct is_std_tuple<std::tuple<TS...>> {
+  enum { value = true };
+};
+
+// Essential types to define and make use of.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct MQListener;
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct SherlockListener;
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct MQMessage;
+
+template <typename SUPPORTED_TYPES_AS_TUPLE>
+struct PolymorphicContainer;
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct EssentialTypedefs {
+  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+
+  typedef ENTRY_BASE_TYPE T_ENTRY_BASE_TYPE;
+  typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
+
+  typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
+  typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
+  typedef MMQ<T_MQ_LISTENER, std::unique_ptr<T_MQ_MESSAGE>> T_MQ;
+
+  typedef PolymorphicContainer<T_SUPPORTED_TYPES_AS_TUPLE> T_CONTAINER;
+
+  typedef sherlock::StreamInstance<std::unique_ptr<T_ENTRY_BASE_TYPE>> T_STREAM_TYPE;
+
+  template <typename F>
+  using T_STREAM_LISTENER_TYPE = typename T_STREAM_TYPE::template ListenerScope<F>;
+
+  typedef SherlockListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
+
+  typedef T_STREAM_LISTENER_TYPE<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
+};
+
+// The logic to keep the in-memory state of a particular entry type and its internal represenation.
 template <typename>
 struct Container {};
 
@@ -108,62 +157,68 @@ struct Container<KeyEntry<ENTRY>> {
 };
 
 // The logic to "interleave" updates from Sherlock stream with inbound KeyEntryStorage requests.
-template <typename>
-struct MQMessage {};
-
-template <typename ENTRY>
-struct MQMessage<KeyEntry<ENTRY>> {
-  typedef sherlock::StreamInstance<ENTRY> T_STREAM_TYPE;
-  virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE& stream) = 0;
+// TODO(dkorolev): This guy should be polymorphic too.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct MQMessage {
+  typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
+  virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) = 0;
 };
 
-template <typename>
-struct MQListener {};
-
-template <typename ENTRY>
-struct MQListener<KeyEntry<ENTRY>> {
-  typedef sherlock::StreamInstance<ENTRY> T_STREAM_TYPE;
-
-  explicit MQListener(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE& stream)
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct MQListener {
+  typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
+  explicit MQListener(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream)
       : container_(container), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>& message, size_t dropped_count) {
+  void OnMessage(std::unique_ptr<typename ET::T_MQ_MESSAGE>& message, size_t dropped_count) {
     // TODO(dkorolev): Should use a non-dropping MMQ here, of course.
     static_cast<void>(dropped_count);  // TODO(dkorolev): And change the method's signature to remove this.
     message->DoIt(container_, stream_);
   }
 
-  Container<KeyEntry<ENTRY>>& container_;
-  T_STREAM_TYPE& stream_;
+  typename ET::T_CONTAINER::type& container_;
+  typename ET::T_STREAM_TYPE& stream_;
 };
 
-template <typename>
-struct SherlockListener {};
+// TODO(dkorolev): This piece of code should also be made polymorphic.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct SherlockListener {
+  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+};
 
-template <typename ENTRY>
-struct SherlockListener<KeyEntry<ENTRY>> {
-  typedef ENTRY T_ENTRY;
-  typedef MMQ<MQListener<KeyEntry<ENTRY>>, std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>> T_MQ;
+template <typename ENTRY_BASE_TYPE, typename ENTRY>
+struct SherlockListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
+  typedef EssentialTypedefs<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> ET;
 
-  explicit SherlockListener(T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
+  explicit SherlockListener(typename ET::T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
 
-  struct MQMessageEntry : MQMessage<KeyEntry<ENTRY>> {
-    // TODO(dkorolev): A single entry is fine to copy, polymorphic ones should be std::move()-d.
-    using typename MQMessage<KeyEntry<ENTRY>>::T_STREAM_TYPE;
-    T_ENTRY entry;
+  struct MQMessageEntry : MQMessage<ENTRY_BASE_TYPE, typename ET::T_SUPPORTED_TYPES_AS_TUPLE> {
+    std::unique_ptr<ENTRY_BASE_TYPE> entry;
 
-    explicit MQMessageEntry(const T_ENTRY& entry) : entry(entry) {}
+    explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>& entry) : entry(std::move(entry)) {}
 
-    virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE&) override {
+    virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) override {
+      // TODO(dkorolev): Move this logic to the *RIGHT* place.
       // TODO(max+dima): Ensure that this storage update can't break
       // the actual state of the data.
+
+      /*
+      !!!! TODO(dkorolev) !!!!
+      This is the place where runtime dispatching will happen.
+      It might be possible w/o `bricks::variadic::visitor<>` (once it's checked in),
+      and certainly is possible with it. I'm a bit tired now to make a clear call. -- D.K.
+
       container.data[GetKey(entry)] = entry;
+      */
+
+      static_cast<void>(container);
+      static_cast<void>(stream);
     }
   };
 
   // Sherlock stream listener call.
-  bool Entry(T_ENTRY& entry, size_t index, size_t total) {
+  bool Entry(std::unique_ptr<ENTRY_BASE_TYPE>& entry, size_t index, size_t total) {
     // The logic of this API implementation is:
     // * Defer all API requests until the persistent part of the stream is fully replayed,
     // * Allow all API requests after that.
@@ -196,14 +251,37 @@ struct SherlockListener<KeyEntry<ENTRY>> {
   std::atomic_size_t entries_seen_;
 
  private:
-  T_MQ& mq_;
+  typename ET::T_MQ& mq_;
 };
 
-template <typename>
-struct Storage {};
+// TODO(dkorolev): Enable the variadic version.
+template <typename SUPPORTED_TYPES_AS_TUPLE>
+struct PolymorphicContainer {
+  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+};
 
 template <typename ENTRY>
-struct Storage<KeyEntry<ENTRY>> {
+struct PolymorphicContainer<std::tuple<KeyEntry<ENTRY>>> {
+  typedef Container<KeyEntry<ENTRY>> type;
+};
+
+/*
+// TODO(dkorolev): Make better use of this piece of logic.
+template <typename SUPPORTED_TYPES_AS_TUPLE>
+using RealPolymorphicContainer = typename PolymorphicContainer<SUPPORTED_TYPES_AS_TUPLE>::type;
+*/
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct Storage {
+  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  Storage() = delete;
+};
+
+// TODO(dkorolev): This should be polymorphic- and variadic-friendly.
+template <typename ENTRY_BASE_TYPE, typename ENTRY>
+struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
+  typedef EssentialTypedefs<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> ET;
+
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
 
@@ -215,13 +293,10 @@ struct Storage<KeyEntry<ENTRY>> {
   typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
 
-  typedef MMQ<MQListener<KeyEntry<ENTRY>>, std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>> T_MQ;
+  Storage() = delete;
+  explicit Storage(typename ET::T_MQ& mq) : mq_(mq) {}
 
-  explicit Storage(T_MQ& mq) : mq_(mq) {}
-
-  struct MQMessageGet : MQMessage<KeyEntry<ENTRY>> {
-    using typename MQMessage<KeyEntry<ENTRY>>::T_STREAM_TYPE;
-
+  struct MQMessageGet : ET::T_MQ_MESSAGE {
     const T_KEY key;
     std::promise<T_ENTRY> pr;
     T_ENTRY_CALLBACK on_success;
@@ -230,8 +305,7 @@ struct Storage<KeyEntry<ENTRY>> {
     explicit MQMessageGet(const T_KEY& key, std::promise<T_ENTRY>&& pr) : key(key), pr(std::move(pr)) {}
     explicit MQMessageGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-
-    virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE&) override {
+    virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE&) override {
       const auto cit = container.data.find(key);
       if (cit != container.data.end()) {
         // The entry has been found.
@@ -249,7 +323,9 @@ struct Storage<KeyEntry<ENTRY>> {
           on_failure(key);
         } else {
           // Promise semantics.
-          SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, T_KEY_NOT_FOUND_EXCEPTION,
+          SetPromiseToNullEntryOrThrow<T_KEY,
+                                       T_ENTRY,
+                                       T_KEY_NOT_FOUND_EXCEPTION,
                                        false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
                                        >::DoIt(key, pr);
         }
@@ -257,9 +333,7 @@ struct Storage<KeyEntry<ENTRY>> {
     }
   };
 
-  struct MQMessageAdd : MQMessage<KeyEntry<ENTRY>> {
-    using typename MQMessage<KeyEntry<ENTRY>>::T_STREAM_TYPE;
-
+  struct MQMessageAdd : ET::T_MQ_MESSAGE {
     const T_ENTRY e;
     std::promise<void> pr;
     T_VOID_CALLBACK on_success;
@@ -277,7 +351,7 @@ struct Storage<KeyEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE& stream) override {
+    virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) override {
       const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
       if (key_exists) {
         if (on_failure) {  // Callback function defined.
@@ -327,36 +401,46 @@ struct Storage<KeyEntry<ENTRY>> {
   void Add(const T_ENTRY& entry) { AsyncAdd(entry).get(); }
 
  private:
-  T_MQ& mq_;
+  typename ET::T_MQ& mq_;
 };
 
-template <typename TYPE>
-class API {};
+// TODO(dkorolev): This should be polymorphic too. Using `bricks::variadic::combine`.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct PolymorphicStorage {
+  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+};
 
-template <typename ENTRY>
-class API<std::tuple<KeyEntry<ENTRY>>> : public Storage<KeyEntry<ENTRY>> {
+template <typename ENTRY_BASE_TYPE, typename ENTRY>
+struct PolymorphicStorage<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
+    : Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
+  typedef EssentialTypedefs<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> ET;
+
+  static_assert(std::is_base_of<ENTRY_BASE_TYPE, ENTRY>::value,
+                "The first template parameter for `yoda::API` should be the base class for entry types.");
+
+  PolymorphicStorage() = delete;
+  explicit PolymorphicStorage(typename ET::T_MQ& mq) : Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>>(mq) {}
+};
+
+// TODO(dkorolev): Base classes list should eventually go via `bricks::variadic::combine<>`.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+class API : public PolymorphicStorage<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
  public:
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+  typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
 
-  typedef sherlock::StreamInstance<T_ENTRY> T_STREAM_TYPE;
-  typedef MMQ<MQListener<KeyEntry<ENTRY>>, std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>> T_MQ;
-
-  template <typename F>
-  using T_STREAM_LISTENER_TYPE = typename sherlock::StreamInstanceImpl<T_ENTRY>::template ListenerScope<F>;
-
+  API() = delete;
   API(const std::string& stream_name)
-      : Storage<KeyEntry<ENTRY>>(mq_),
-        stream_(sherlock::Stream<T_ENTRY>(stream_name)),
+      : PolymorphicStorage<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<typename ET::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
         sherlock_listener_(mq_),
         listener_scope_(stream_.Subscribe(sherlock_listener_)) {}
 
-  T_STREAM_TYPE& UnsafeStream() { return stream_; }
+  typename ET::T_STREAM_TYPE& UnsafeStream() { return stream_; }
 
   template <typename F>
-  T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
+  typename ET::template T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
     return std::move(stream_.Subscribe(listener));
   }
 
@@ -365,14 +449,12 @@ class API<std::tuple<KeyEntry<ENTRY>>> : public Storage<KeyEntry<ENTRY>> {
   size_t EntriesSeen() const { return sherlock_listener_.entries_seen_; }
 
  private:
-  API() = delete;
-
-  T_STREAM_TYPE stream_;
-  Container<KeyEntry<ENTRY>> container_;
-  MQListener<KeyEntry<ENTRY>> mq_listener_;
-  T_MQ mq_;
-  SherlockListener<KeyEntry<ENTRY>> sherlock_listener_;
-  T_STREAM_LISTENER_TYPE<SherlockListener<KeyEntry<ENTRY>>> listener_scope_;
+  typename ET::T_STREAM_TYPE stream_;
+  typename ET::T_CONTAINER::type container_;
+  typename ET::T_MQ_LISTENER mq_listener_;
+  typename ET::T_MQ mq_;
+  typename ET::T_SHERLOCK_LISTENER sherlock_listener_;
+  typename ET::T_SHERLOCK_LISTENER_SCOPE_TYPE listener_scope_;
 };
 
 }  // namespace yoda

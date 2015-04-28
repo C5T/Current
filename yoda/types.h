@@ -33,8 +33,11 @@ SOFTWARE.
 namespace yoda {
 
 // Helper structures to define the type of the storage.
-template <typename ENTRY> struct KeyEntry {};
-template <typename ROW, typename COL, typename VALUE> struct Matrix {};
+template <typename ENTRY>
+struct KeyEntry {};
+
+template <typename ROW, typename COL, typename VALUE>
+struct Matrix {};
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
