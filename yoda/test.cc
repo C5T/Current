@@ -28,6 +28,7 @@ SOFTWARE.
 #include <string>
 #include <atomic>
 #include <thread>
+#include <tuple>
 
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
@@ -95,7 +96,7 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>> TestAPI;
+  typedef yoda::API<std::tuple<yoda::KeyEntry<KeyValueEntry>>> TestAPI;
   TestAPI api("non_polymorphic_yoda");
 
   // Add the first key-value pair.

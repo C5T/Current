@@ -83,6 +83,7 @@ SOFTWARE.
 #include <atomic>
 #include <future>
 #include <string>
+#include <tuple>
 
 #include "types.h"
 #include "policy.h"
@@ -90,6 +91,7 @@ SOFTWARE.
 
 #include "../sherlock.h"
 
+#include "../../Bricks/variadic/variadic.h"
 #include "../../Bricks/mq/inmemory/mq.h"
 
 namespace yoda {
@@ -332,7 +334,7 @@ template <typename TYPE>
 class API {};
 
 template <typename ENTRY>
-class API<KeyEntry<ENTRY>> : public Storage<KeyEntry<ENTRY>> {
+class API<std::tuple<KeyEntry<ENTRY>>> : public Storage<KeyEntry<ENTRY>> {
  public:
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
