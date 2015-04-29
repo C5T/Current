@@ -412,18 +412,78 @@ struct A { static std::string s() { return "A"; } };
 struct B { static std::string s() { return "B"; } };
 struct C { static std::string s() { return "C"; } };
 EXPECT_EQ("(A+(B+C))",
-          (bricks::variadic::reduce<concatenate_s, std::tuple<A,B,C>>::s()));
+          (bricks::variadic::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
   
 // Combine.
 struct A { static std::string foo() { return "foo"; } };
 struct B { static std::string bar() { return "bar"; } };
 struct C { static std::string baz() { return "baz"; } };
 
-bricks::variadic::combine<std::tuple<A,B,C>> c;
+bricks::variadic::combine<std::tuple<A, B, C>> c;
 
 EXPECT_EQ("foo", c.foo());
 EXPECT_EQ("bar", c.bar());
 EXPECT_EQ("baz", c.baz());
+
+// Visitor.
+using typelist_ab = std::tuple<struct A, struct B>;
+using typelist_bc = std::tuple<struct B, struct C>;
+  
+struct A : visitable<typelist_ab, A> {
+  int a = 101;
+  void foo(std::ostream& os) {
+    os << "a=" << a << std::endl;
+  }
+};
+
+struct B : visitable<typelist_ab, B>, visitable<typelist_bc, B> {
+  int b = 102;
+  void bar(std::ostream& os) {
+    os << "b=" << b << std::endl;
+  }
+};
+
+struct C : visitable<typelist_bc, C> {
+  int c = 103;
+  void baz(std::ostream& os) {
+    os << "c=" << c << std::endl;
+  }
+};
+
+A a;
+B b;
+C c;
+
+struct call_foo_bar : visitor<typelist_ab> {
+  // Note that forgetting to handle one of `visit()` overrides will result in compile errors of two types:
+  // 1) overriding what is not `virtual`, thus attempting to operate on a parameter not from the type list, or
+  // 2) not overriding what should be overridden, thus attempting to instantiate the `visitor` that is abstract.
+  virtual void visit(A& a) override {
+    a.foo(os);
+  }
+  virtual void visit(B& b) override {
+    b.bar(os);
+  }
+  std::ostringstream os;
+} foo_bar;
+for (auto& it : std::vector<abstract_visitable<typelist_ab>*>({ &a, &b })) {
+  it->accept(foo_bar);
+}
+EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
+
+struct call_bar_baz : visitor<typelist_bc> {
+  virtual void visit(B& b) override {
+    b.bar(os);
+  }
+  virtual void visit(C& c) override {
+    c.baz(os);
+  }
+  std::ostringstream os;
+} bar_baz;
+for (auto& it : std::vector<abstract_visitable<typelist_bc>*>({ &b, &c })) {
+  it->accept(bar_baz);
+}
+EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 ```
 ## Run-Time Type Dispatching
 

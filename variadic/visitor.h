@@ -22,12 +22,43 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Variadic methods. The convention is to use `std::tuple<>` for type lists.
+#ifndef BRICKS_VARIADIC_VISITOR_H
+#define BRICKS_VARIADIC_VISITOR_H
 
-#ifndef BRICKS_VARIADIC_VARIADIC_H
-#define BRICKS_VARIADIC_VARIADIC_H
+#include <tuple>
 
-#include "mapreduce.h"
-#include "visitor.h"
+namespace bricks {
+namespace variadic {
 
-#endif  // BRICKS_VARIADIC_VARIADIC_H
+// Library code.
+
+template <typename>
+struct visitor {};
+
+template <>
+struct visitor<std::tuple<>> {};
+
+template <typename T>
+struct virtual_visit_method {
+  virtual void visit(T&) = 0;
+};
+
+template <typename T, typename... TS>
+struct visitor<std::tuple<T, TS...>> : visitor<std::tuple<TS...>>, virtual_visit_method<T> {};
+
+template <typename TYPELIST_AS_TUPLE>
+struct abstract_visitable {
+  virtual void accept(visitor<TYPELIST_AS_TUPLE>&) = 0;
+};
+
+template <typename TYPELIST_AS_TUPLE, typename T>
+struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
+  virtual void accept(visitor<TYPELIST_AS_TUPLE>& v) override {
+    static_cast<virtual_visit_method<T>&>(v).visit(*static_cast<T*>(this));
+  }
+};
+
+}  // namespace variadic
+}  // namespace bricks
+
+#endif  // BRICKS_VARIADIC_VISITOR_H
