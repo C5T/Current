@@ -30,14 +30,24 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
+#include "../../Bricks/template/metaprogramming.h"
+
 namespace yoda {
 
 // Helper structures to define the type of the storage.
 template <typename ENTRY>
 struct KeyEntry {};
 
-template <typename ROW, typename COL, typename VALUE>
-struct Matrix {};
+template <typename ENTRY>
+struct UnderlyingEntryTypeImpl {};
+
+template <typename ENTRY>
+struct UnderlyingEntryTypeImpl<KeyEntry<ENTRY>> {
+  typedef ENTRY type;
+};
+
+template <typename T>
+using UnderlyingEntryType = typename UnderlyingEntryTypeImpl<bricks::metaprogramming::rmconstref<T>>::type;
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.

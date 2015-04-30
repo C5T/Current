@@ -30,11 +30,10 @@ SOFTWARE.
 #include <thread>
 #include <tuple>
 
+#include "../../Bricks/template/metaprogramming.h"
+
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
-
-// TODO(mzhurovich): We'll need it for REST API tests.
-// DEFINE_int32(yoda_http_test_port, 8090, "Local port to use for Sherlock unit test.");
 
 using std::string;
 using std::atomic_size_t;
@@ -46,7 +45,9 @@ struct KeyValueEntryBase {
   void serialize(A&) {}
 };
 
-struct KeyValueEntry : KeyValueEntryBase {
+// This doesn't look very fancy so far. Bear with me for a while. -- D.K.
+struct KeyValueEntry : KeyValueEntryBase,
+                       bricks::metaprogramming::visitable<std::tuple<struct KeyValueEntry>, KeyValueEntry> {
   typedef KeyValueEntryBase CEREAL_BASE_TYPE;
 
   int key;

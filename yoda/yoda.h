@@ -69,13 +69,6 @@ SOFTWARE.
 //   yoda::API.
 //   This struct should contain all the members described in the "Exceptions" section above.
 //   Please refer to `struct DefaultPolicy` below for more details.
-//
-// TODO(dkorolev): Polymorphic types. Pass them in as std::tuple<...>, or directly as a variadic template param.
-
-// TODO(dkorolev): How about HTTP endpoints? They should be added somewhat automatically, right?
-//                 And it would require those `Scoped*` endpoints in Bricks. On me.
-
-// TODO(dkorolev): So, are we CRUD+REST or just a KeyValueStorage? Now we kinda merged POST+PUT. Not cool.
 
 #ifndef SHERLOCK_YODA_YODA_H
 #define SHERLOCK_YODA_YODA_H
@@ -91,22 +84,18 @@ SOFTWARE.
 
 #include "../sherlock.h"
 
-// #include "../../Bricks/variadic/variadic.h" <-- TODO(dkorolev): Make use of it.
-
 #include "../../Bricks/mq/inmemory/mq.h"
+#include "../../Bricks/template/metaprogramming.h"
+
+// The best way I found to have clang++ dump the actual type. -- D.K.
+// Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
+// TODO(dkorolev): Chat with Max, remove or move it into Bricks.
+template <typename T1, typename T2>
+struct is_same_or_compile_error {
+  char c[std::is_same<T1, T2>::value ? 1 : -1];
+};
 
 namespace yoda {
-
-// Additional sanity checks.
-template <typename... TS>
-struct is_std_tuple {
-  enum { value = false };
-};
-
-template <typename... TS>
-struct is_std_tuple<std::tuple<TS...>> {
-  enum { value = true };
-};
 
 // Essential types to define and make use of.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
@@ -123,10 +112,21 @@ struct PolymorphicContainer;
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct EssentialTypedefs {
-  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
   typedef ENTRY_BASE_TYPE T_ENTRY_BASE_TYPE;
   typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
+
+  // A hack to extract the type of the (only) supported entry type.
+  // TODO(dkorolev): Make this variadic.
+  typedef UnderlyingEntryType<bricks::metaprogramming::rmconstref<
+      decltype(std::get<0>(std::declval<SUPPORTED_TYPES_AS_TUPLE>()))>> HACK_T_ENTRY;
+
+  // TODO(dkorolev): A *big* *BIG* note: Our `visitor` does not work with classes hierarchy now!
+  // It results in illegal ambiguous virtual function resolution.
+  // Long story short, `dynamic_cast<>` and no `ENTRY_BASE_TYPE` in the list of supported types.
+  typedef std::tuple<HACK_T_ENTRY> T_VISITABLE_TYPES_AS_TUPLE;
+  typedef bricks::metaprogramming::abstract_visitable<T_VISITABLE_TYPES_AS_TUPLE> T_ABSTRACT_VISITABLE;
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
   typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
@@ -148,24 +148,32 @@ struct EssentialTypedefs {
 template <typename>
 struct Container {};
 
+// TODO(dkorolev): With variadic implementation, the type list for the visitor will be taken from another place.
 template <typename ENTRY>
-struct Container<KeyEntry<ENTRY>> {
+struct Container<KeyEntry<ENTRY>> : bricks::metaprogramming::visitor<std::tuple<ENTRY>> {
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
 
   T_MAP_TYPE<T_KEY, T_ENTRY> data;
+
+  // The container itself is visitable by enties.
+  // The entries passed in this way are the entries scanned from the Sherlock stream.
+  // The default behavior is to update the contents of the container.
+  virtual void visit(ENTRY& entry) override { data[GetKey(entry)] = entry; }
 };
 
 // The logic to "interleave" updates from Sherlock stream with inbound KeyEntryStorage requests.
 // TODO(dkorolev): This guy should be polymorphic too.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
   virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
   explicit MQListener(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream)
       : container_(container), stream_(stream) {}
@@ -184,7 +192,7 @@ struct MQListener {
 // TODO(dkorolev): This piece of code should also be made polymorphic.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct SherlockListener {
-  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename ENTRY_BASE_TYPE, typename ENTRY>
@@ -196,23 +204,26 @@ struct SherlockListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
   struct MQMessageEntry : MQMessage<ENTRY_BASE_TYPE, typename ET::T_SUPPORTED_TYPES_AS_TUPLE> {
     std::unique_ptr<ENTRY_BASE_TYPE> entry;
 
-    explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>& entry) : entry(std::move(entry)) {}
+    explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
+
+    // TODO(dkorolev): Replace this by a variadic implementation. Metaprogramming MapReduce FTW!
+    static_assert(sizeof(is_same_or_compile_error<typename ET::T_VISITABLE_TYPES_AS_TUPLE, std::tuple<ENTRY>>),
+                  "");
 
     virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) override {
       // TODO(dkorolev): Move this logic to the *RIGHT* place.
-      // TODO(max+dima): Ensure that this storage update can't break
-      // the actual state of the data.
+      // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
 
-      /*
-      !!!! TODO(dkorolev) !!!!
-      This is the place where runtime dispatching will happen.
-      It might be possible w/o `bricks::variadic::visitor<>` (once it's checked in),
-      and certainly is possible with it. I'm a bit tired now to make a clear call. -- D.K.
+      typename ET::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename ET::T_ABSTRACT_VISITABLE*>(entry.get());
+      if (av) {
+        av->accept(container);
+      } else {
+        // TODO(dkorolev): Talk to Max about API's policy on the stream containing an entry of unsupported type.
+        // Ex., have base entry type B, entry types X and Y, and finding an entry of type Z in the stream.
+        // Fail with an error message by default?
+        throw false;
+      }
 
-      container.data[GetKey(entry)] = entry;
-      */
-
-      static_cast<void>(container);
       static_cast<void>(stream);
     }
   };
@@ -223,17 +234,18 @@ struct SherlockListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
     // * Defer all API requests until the persistent part of the stream is fully replayed,
     // * Allow all API requests after that.
 
+    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry)));
+
     // TODO(dkorolev): If that's the way to go, we should probably respond with HTTP 503 or 409 or 418?
     //                 (And add a `/statusz` endpoint to monitor the status wrt ready / not yet ready.)
-    // TODO(dkorolev): What about an empty stream? :-)
+
+    // TODO(dkorolev)+TODO(mzhurovich): What about the case of an empty stream?
+    // We should probably extend/enable Sherlock stream listener to report the `CaughtUp` event early,
+    // including the case where the initial stream is empty.
 
     if (index + 1 == total) {
       caught_up_ = true;
     }
-
-    // Non-polymorphic usecase.
-    // TODO(dkorolev): Eliminate the copy && code up the polymorphic scenario for this call. In another class.
-    mq_.EmplaceMessage(new MQMessageEntry(entry));
 
     // This is primarily for unit testing purposes.
     ++entries_seen_;
@@ -257,7 +269,7 @@ struct SherlockListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
 // TODO(dkorolev): Enable the variadic version.
 template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct PolymorphicContainer {
-  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename ENTRY>
@@ -273,7 +285,7 @@ using RealPolymorphicContainer = typename PolymorphicContainer<SUPPORTED_TYPES_A
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct Storage {
-  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   Storage() = delete;
 };
 
@@ -404,10 +416,10 @@ struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
   typename ET::T_MQ& mq_;
 };
 
-// TODO(dkorolev): This should be polymorphic too. Using `bricks::variadic::combine`.
+// TODO(dkorolev): This should be polymorphic too. Using `bricks::metaprogramming::combine`.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct PolymorphicStorage {
-  static_assert(is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename ENTRY_BASE_TYPE, typename ENTRY>
@@ -418,13 +430,26 @@ struct PolymorphicStorage<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
   static_assert(std::is_base_of<ENTRY_BASE_TYPE, ENTRY>::value,
                 "The first template parameter for `yoda::API` should be the base class for entry types.");
 
+  /*
+  // TODO(dkorolev): Give it a big thought. Right now `ENTRY_BASE_TYPE` is *NOT* visitable,
+  // otherwise the `visitor` implementation breaks due to ambiguous function resolution.
+  static_assert(
+      std::is_base_of<bricks::metaprogramming::abstract_visitable<typename ET::T_VISITABLE_TYPES_AS_TUPLE>,
+                      ENTRY_BASE_TYPE>::value,
+      "Entry type(s) for `yoda::API` should be `abstract_visitable<>` by the types used"
+      " in the API being instantiated. Please make your entry type(s) derive from `visitable<>`.");
+  */
+
   PolymorphicStorage() = delete;
   explicit PolymorphicStorage(typename ET::T_MQ& mq) : Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>>(mq) {}
 };
 
-// TODO(dkorolev): Base classes list should eventually go via `bricks::variadic::combine<>`.
+// TODO(dkorolev): Base classes list should eventually go via `bricks::metaprogramming::combine<>`.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 class API : public PolymorphicStorage<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
+ private:
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+
  public:
   typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
 
