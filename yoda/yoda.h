@@ -277,12 +277,6 @@ struct PolymorphicContainer<std::tuple<KeyEntry<ENTRY>>> {
   typedef Container<KeyEntry<ENTRY>> type;
 };
 
-/*
-// TODO(dkorolev): Make better use of this piece of logic.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
-using RealPolymorphicContainer = typename PolymorphicContainer<SUPPORTED_TYPES_AS_TUPLE>::type;
-*/
-
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct Storage {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
@@ -431,7 +425,7 @@ struct PolymorphicStorage<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
                 "The first template parameter for `yoda::API` should be the base class for entry types.");
 
   /*
-  // TODO(dkorolev): Give it a big thought. Right now `ENTRY_BASE_TYPE` is *NOT* visitable,
+  // TODO(dkorolev): Give it another big thought. Right now `ENTRY_BASE_TYPE` is *NOT* visitable,
   // otherwise the `visitor` implementation breaks due to ambiguous function resolution.
   static_assert(
       std::is_base_of<bricks::metaprogramming::abstract_visitable<typename ET::T_VISITABLE_TYPES_AS_TUPLE>,

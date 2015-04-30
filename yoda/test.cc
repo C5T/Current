@@ -88,7 +88,7 @@ struct KeyValueAggregateListener {
   }
 
   bool Entry(std::unique_ptr<KeyValueEntryBase>& proto_entry, size_t index, size_t total) {
-    // TODO(dkorolev): Visitor. This code just compiles, it doesn't do the right thing.
+    // This is a _safe_ way to process entries, since if the cast fails, the next line will crash.
     const KeyValueEntry& entry = *dynamic_cast<KeyValueEntry*>(proto_entry.get());
     static_cast<void>(index);
     static_cast<void>(total);
