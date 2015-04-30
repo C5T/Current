@@ -22,15 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Variadic methods. The convention is to use `std::tuple<>` for type lists.
+#ifndef BRICKS_VARIADIC_POD_H
+#define BRICKS_VARIADIC_POD_H
 
-#ifndef BRICKS_VARIADIC_VARIADIC_H
-#define BRICKS_VARIADIC_VARIADIC_H
+#include <string>
+#include <type_traits>
 
-#include "rmref.h"
-#include "pod.h"
-#include "is_tuple.h"
-#include "mapreduce.h"
-#include "visitor.h"
+namespace bricks {
+namespace metaprogramming {
 
-#endif  // BRICKS_VARIADIC_VARIADIC_H
+template <typename T>
+using pod_constref = typename std::conditional<std::is_pod<T>::value, T, const T&>::type;
+
+static_assert(std::is_same<int, pod_constref<int>>::value, "");
+static_assert(std::is_same<const std::string&, pod_constref<std::string>>::value, "");
+
+}  // namespace metaprogramming
+}  // namespace bricks
+
+#endif  // BRICKS_VARIADIC_POD_H
