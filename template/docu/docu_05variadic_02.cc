@@ -25,14 +25,14 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 
-#include "../variadic.h"
+#include "../metaprogramming.h"
 
 #include "../../3party/gtest/gtest-main.h"
 
   // Map.
   template<typename T> struct add_100 { enum { x = T::x + 100 }; };
   
-TEST(Variadic, Map) {
+TEST(TemplateMetaprogramming, Map) {
   struct A { enum { x = 1 }; };
   struct B { enum { x = 2 }; };
   struct C { enum { x = 3 }; };
@@ -53,7 +53,7 @@ TEST(Variadic, Map) {
   // Filter.
   template <typename T> struct y_is_even { enum { filter = ((T::y % 2) == 0) }; };
   
-TEST(Variadic, Filter) {
+TEST(TemplateMetaprogramming, Filter) {
   struct A { enum { y = 10 }; };
   struct B { enum { y = 15 }; };
   struct C { enum { y = 20 }; };
@@ -75,7 +75,7 @@ TEST(Variadic, Filter) {
     static std::string s() { return "(" + A::s() + "+" + B::s() + ")"; }
   };
       
-TEST(Variadic, Reduce) {
+TEST(TemplateMetaprogramming, Reduce) {
   struct A { static std::string s() { return "A"; } };
   struct B { static std::string s() { return "B"; } };
   struct C { static std::string s() { return "C"; } };
@@ -84,7 +84,7 @@ TEST(Variadic, Reduce) {
 }
     
   // Combine.
-TEST(Variadic, Combine) {
+TEST(TemplateMetaprogramming, Combine) {
   struct A { static std::string foo() { return "foo"; } };
   struct B { static std::string bar() { return "bar"; } };
   struct C { static std::string baz() { return "baz"; } };
@@ -127,7 +127,7 @@ using bricks::variadic::abstract_visitable;
   };
 }  // namespace visitor_unittest
   
-TEST(Variadic, Visitor) {
+TEST(TemplateMetaprogramming, Visitor) {
 using namespace visitor_unittest;
 
   A a;
