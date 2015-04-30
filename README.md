@@ -379,7 +379,7 @@ EXPECT_EQ(1, std::get<0>(before).x);
 EXPECT_EQ(2, std::get<1>(before).x);
 EXPECT_EQ(3, std::get<2>(before).x);
 
-bricks::variadic::map<add_100, decltype(before)> after;
+bricks::metaprogramming::map<add_100, decltype(before)> after;
 static_assert(std::tuple_size<decltype(after)>::value == 3, "");
 EXPECT_EQ(101, std::get<0>(after).x);
 EXPECT_EQ(102, std::get<1>(after).x);
@@ -398,7 +398,7 @@ EXPECT_EQ(10, std::get<0>(before).y);
 EXPECT_EQ(15, std::get<1>(before).y);
 EXPECT_EQ(20, std::get<2>(before).y);
 
-bricks::variadic::filter<y_is_even, decltype(before)> after;
+bricks::metaprogramming::filter<y_is_even, decltype(before)> after;
 static_assert(std::tuple_size<decltype(after)>::value == 2, "");
 EXPECT_EQ(10, std::get<0>(after).y);
 EXPECT_EQ(20, std::get<1>(after).y);
@@ -412,14 +412,14 @@ struct A { static std::string s() { return "A"; } };
 struct B { static std::string s() { return "B"; } };
 struct C { static std::string s() { return "C"; } };
 EXPECT_EQ("(A+(B+C))",
-          (bricks::variadic::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
+          (bricks::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
   
 // Combine.
 struct A { static std::string foo() { return "foo"; } };
 struct B { static std::string bar() { return "bar"; } };
 struct C { static std::string baz() { return "baz"; } };
 
-bricks::variadic::combine<std::tuple<A, B, C>> c;
+bricks::metaprogramming::combine<std::tuple<A, B, C>> c;
 
 EXPECT_EQ("foo", c.foo());
 EXPECT_EQ("bar", c.bar());
