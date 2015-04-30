@@ -156,7 +156,7 @@ struct Container<KeyEntry<ENTRY>> : bricks::metaprogramming::visitor<std::tuple<
 
   T_MAP_TYPE<T_KEY, T_ENTRY> data;
 
-  // The container itself is visitable by enties.
+  // The container itself is visitable by entries.
   // The entries passed in this way are the entries scanned from the Sherlock stream.
   // The default behavior is to update the contents of the container.
   virtual void visit(ENTRY& entry) override { data[GetKey(entry)] = entry; }
