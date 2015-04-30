@@ -27,6 +27,8 @@ SOFTWARE.
 
 #include <tuple>
 
+#include "is_tuple.h"
+
 namespace bricks {
 namespace variadic {
 
@@ -48,11 +50,13 @@ struct visitor<std::tuple<T, TS...>> : visitor<std::tuple<TS...>>, virtual_visit
 
 template <typename TYPELIST_AS_TUPLE>
 struct abstract_visitable {
+  static_assert(is_std_tuple<TYPELIST_AS_TUPLE>::value, "");
   virtual void accept(visitor<TYPELIST_AS_TUPLE>&) = 0;
 };
 
 template <typename TYPELIST_AS_TUPLE, typename T>
 struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
+  static_assert(is_std_tuple<TYPELIST_AS_TUPLE>::value, "");
   virtual void accept(visitor<TYPELIST_AS_TUPLE>& v) override {
     static_cast<virtual_visit_method<T>&>(v).visit(*static_cast<T*>(this));
   }
