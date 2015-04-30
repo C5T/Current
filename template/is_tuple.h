@@ -28,7 +28,7 @@ SOFTWARE.
 #include <tuple>
 
 namespace bricks {
-namespace variadic {
+namespace metaprogramming {
 
 template <typename... TS>
 struct is_std_tuple {
@@ -46,7 +46,7 @@ static_assert(is_std_tuple<std::tuple<int, std::string>>::value, "");
 static_assert(!is_std_tuple<int>::value, "");
 static_assert(!is_std_tuple<std::string>::value, "");
 
-}  // namespace variadic
+}  // namespace metaprogramming
 }  // namespace bricks
 
 #endif  // BRICKS_VARIADIC_IS_TUPLE_H

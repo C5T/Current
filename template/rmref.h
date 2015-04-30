@@ -25,18 +25,19 @@ SOFTWARE.
 #ifndef BRICKS_VARIADIC_RMREF_H
 #define BRICKS_VARIADIC_RMREF_H
 
+#include <string>
 #include <type_traits>
 
 namespace bricks {
-namespace variadic {
+namespace metaprogramming {
 
-template<typename T>
+template <typename T>
 using rmref = typename std::remove_reference<T>::type;
 
-template<typename T>
+template <typename T>
 using rmconst = typename std::remove_const<T>::type;
 
-template<typename T>
+template <typename T>
 using rmconstref = rmconst<rmref<T>>;
 
 static_assert(std::is_same<int, rmref<int>>::value, "");
@@ -46,11 +47,8 @@ static_assert(std::is_same<const int, rmref<const int>>::value, "");
 static_assert(std::is_same<const int, rmref<const int&>>::value, "");
 static_assert(std::is_same<const int, rmref<const int&&>>::value, "");
 
-static_assert(std::is_same<int, rmconst<int>>::value, "");
-static_assert(std::is_same<int&, rmconst<int&>>::value, "");
-static_assert(std::is_same<int&&, rmconst<int&&>>::value, "");
-static_assert(std::is_same<int, rmconst<const int>>::value, "");
-// `rmconst<const int&>` is a different specie.
+static_assert(std::is_same<std::string, rmconst<std::string>>::value, "");
+static_assert(std::is_same<std::string, rmconst<const std::string>>::value, "");
 
 static_assert(std::is_same<int, rmconstref<int>>::value, "");
 static_assert(std::is_same<int, rmconstref<int&>>::value, "");
@@ -59,7 +57,14 @@ static_assert(std::is_same<int, rmconstref<const int>>::value, "");
 static_assert(std::is_same<int, rmconstref<const int&>>::value, "");
 static_assert(std::is_same<int, rmconstref<const int&&>>::value, "");
 
-}  // namespace variadic
+static_assert(std::is_same<std::string, rmconstref<std::string>>::value, "");
+static_assert(std::is_same<std::string, rmconstref<std::string&>>::value, "");
+static_assert(std::is_same<std::string, rmconstref<std::string&&>>::value, "");
+static_assert(std::is_same<std::string, rmconstref<const std::string>>::value, "");
+static_assert(std::is_same<std::string, rmconstref<const std::string&>>::value, "");
+static_assert(std::is_same<std::string, rmconstref<const std::string&&>>::value, "");
+
+}  // namespace metaprogramming
 }  // namespace bricks
 
 #endif  // BRICKS_VARIADIC_RMREF_H

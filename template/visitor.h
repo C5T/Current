@@ -30,7 +30,7 @@ SOFTWARE.
 #include "is_tuple.h"
 
 namespace bricks {
-namespace variadic {
+namespace metaprogramming {
 
 // Library code.
 
@@ -62,7 +62,7 @@ struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
   }
 };
 
-}  // namespace variadic
+}  // namespace metaprogramming
 }  // namespace bricks
 
 #endif  // BRICKS_VARIADIC_VISITOR_H
