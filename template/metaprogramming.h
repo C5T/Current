@@ -27,8 +27,9 @@ SOFTWARE.
 #ifndef BRICKS_VARIADIC_VARIADIC_H
 #define BRICKS_VARIADIC_VARIADIC_H
 
+#include "rmref.h"
+#include "is_tuple.h"
 #include "mapreduce.h"
 #include "visitor.h"
-#include "is_tuple.h"
 
 #endif  // BRICKS_VARIADIC_VARIADIC_H
