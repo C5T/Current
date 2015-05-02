@@ -64,6 +64,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
     std::atomic_size_t processing_time_ms_;
     SlowConsumer() : processed_messages_(0u), processing_time_ms_(5u) {}
     void OnMessage(const std::string& s, size_t dropped_messages) {
+      std::cerr << s << std::endl;
       messages_ += s + '\n';
       dropped_messages_ += dropped_messages;
       // Simulate message processing time of 1ms.
@@ -76,7 +77,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
   // Queue with 10 events in the buffer.
   MMQ<SlowConsumer, std::string, 10> mmq(c);
   // Push 50 events one after another, causing an overflow, which would drop some messages.
-  for (size_t i = 0; i < 50; ++i) {
+  for (size_t i = 0; i < 11; ++i) {
     mmq.PushMessage(bricks::strings::Printf("M%03d", static_cast<int>(i)));
   }
   // Wait until at least two messages are processed by the consumer.
@@ -86,10 +87,11 @@ TEST(InMemoryMQ, DropsMessagesTest) {
     ;  // Spin lock;
   }
   // Confirm that some messages were indeed dropped.
+  std::cerr << "Dropped " << c.dropped_messages_ << std::endl;
   EXPECT_GT(c.dropped_messages_, 0u);
   EXPECT_LT(c.dropped_messages_, 50u);
 
   // Without the next line the test will run for 10+ms, since the remaining queue
   // is being processed in full in the destructor of MMQ.
-  c.processing_time_ms_ = 0u;
+  // c.processing_time_ms_ = 0u;
 }
