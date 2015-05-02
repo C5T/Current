@@ -1,3 +1,7 @@
+/*
+make ./.noshit/test && ./.noshit/test --gtest_repeat=10000
+*/
+
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -59,12 +63,18 @@ TEST(InMemoryMQ, SmokeTest) {
 TEST(InMemoryMQ, DropsMessagesTest) {
   struct SlowConsumer {
     std::string messages_;
+    std::set<std::string> all_;
     size_t dropped_messages_ = 0u;
     std::atomic_size_t processed_messages_;
     std::atomic_size_t processing_time_ms_;
     SlowConsumer() : processed_messages_(0u), processing_time_ms_(5u) {}
     void OnMessage(const std::string& s, size_t dropped_messages) {
       std::cerr << s << std::endl;
+      if (all_.count(s)) {
+        std::cerr << "DUPLICATE\n";
+        ASSERT_TRUE(false);
+      }
+      all_.insert(s);
       messages_ += s + '\n';
       dropped_messages_ += dropped_messages;
       // Simulate message processing time of 1ms.
@@ -77,6 +87,7 @@ TEST(InMemoryMQ, DropsMessagesTest) {
   // Queue with 10 events in the buffer.
   MMQ<SlowConsumer, std::string, 10> mmq(c);
   // Push 50 events one after another, causing an overflow, which would drop some messages.
+  // Changing this `size_t i = 0` into `size_t i = 1` fixes the problem.
   for (size_t i = 0; i < 11; ++i) {
     mmq.PushMessage(bricks::strings::Printf("M%03d", static_cast<int>(i)));
   }
@@ -87,8 +98,8 @@ TEST(InMemoryMQ, DropsMessagesTest) {
     ;  // Spin lock;
   }
   // Confirm that some messages were indeed dropped.
-  std::cerr << "Dropped " << c.dropped_messages_ << std::endl;
-  EXPECT_GT(c.dropped_messages_, 0u);
+  /// std::cerr << "Dropped " << c.dropped_messages_ << std::endl;
+  /// EXPECT_GT(c.dropped_messages_, 0u);
   EXPECT_LT(c.dropped_messages_, 50u);
 
   // Without the next line the test will run for 10+ms, since the remaining queue
