@@ -37,6 +37,7 @@ SOFTWARE.
 #include "fixed_size_serializer.h"
 #include "join.h"
 #include "split.h"
+#include "distance.h"
 
 namespace bricks {
 namespace strings {
