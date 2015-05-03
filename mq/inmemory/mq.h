@@ -34,6 +34,7 @@ class MMQ final {
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
+        dropped_messages_count_(0u),
         consumer_thread_(&MMQ::ConsumerThread, this) {}
 
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
@@ -51,21 +52,27 @@ class MMQ final {
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
   void PushMessage(const T_MESSAGE& message) {
     const size_t index = PushMessageAllocate();
-    circular_buffer_[index].message_body = message;
-    PushMessageCommit(index);
+    if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].message_body = message;
+      PushMessageCommit(index);
+    }
   }
 
   void PushMessage(T_MESSAGE&& message) {
     const size_t index = PushMessageAllocate();
-    circular_buffer_[index].message_body = std::move(message);
-    PushMessageCommit(index);
+    if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].message_body = std::move(message);
+      PushMessageCommit(index);
+    }
   }
 
   template <typename... ARGS>
   void EmplaceMessage(ARGS&&... args) {
     const size_t index = PushMessageAllocate();
-    circular_buffer_[index].message_body = T_MESSAGE(args...);
-    PushMessageCommit(index);
+    if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].message_body = T_MESSAGE(args...);
+      PushMessageCommit(index);
+    }
   }
 
  private:
@@ -79,38 +86,48 @@ class MMQ final {
 
   // The thread which extracts fully populated messages from the tail of the buffer and exports them.
   void ConsumerThread() {
+    // The `tail` pointer is local to the procesing thread.
+    size_t tail = 0u;
+
+    // The counter of dropped messages is updated within the first, mutex-locked, section,
+    // and then used in the second, mutex-free, one.
+    size_t actually_dropped_messages;
+
     while (true) {
-      size_t index;
-      size_t this_time_dropped_messages;
       {
         // First, get an message to export. Wait until it's finalized and ready to be exported.
         // MUTEX-LOCKED, except for the conditional variable part.
-        index = tail_;
         std::unique_lock<std::mutex> lock(mutex_);
-        if (head_ready_ == tail_) {
-          if (destructing_) {
-            return;  // LCOV_EXCL_LINE
-          }
-          condition_variable_.wait(lock, [this] { return head_ready_ != tail_ || destructing_; });
+        while (circular_buffer_[tail].status != Entry::READY) {
           if (destructing_) {
             return;
           }
+          condition_variable_.wait(
+              lock, [this, tail] { return (circular_buffer_[tail].status == Entry::READY) || destructing_; });
         }
-        this_time_dropped_messages = number_of_dropped_messages_;
-        number_of_dropped_messages_ = 0;
+        if (destructing_) {
+          return;
+        }
+        circular_buffer_[tail].status = Entry::BEING_EXPORTED;
+
+        actually_dropped_messages = dropped_messages_count_;
+        dropped_messages_count_ = 0u;
       }
 
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        consumer_.OnMessage(std::ref(circular_buffer_[index].message_body), this_time_dropped_messages);
+        consumer_.OnMessage(std::ref(circular_buffer_[tail].message_body), actually_dropped_messages);
       }
 
       {
         // Finally, mark the message as successfully exported.
         // MUTEX-LOCKED.
-        std::lock_guard<std::mutex> lock(mutex_);
-        Increment(tail_);
+        {
+          std::lock_guard<std::mutex> lock(mutex_);
+          circular_buffer_[tail].status = Entry::FREE;
+        }
+        Increment(tail);
       }
     }
   }
@@ -119,30 +136,34 @@ class MMQ final {
     // First, allocate room in the buffer for this message.
     // Overwrite the oldest message if have to.
     // MUTEX-LOCKED.
-    std::lock_guard<std::mutex> lock(mutex_);
-    const size_t index = head_allocated_;
-    Increment(head_allocated_);
-    if (head_allocated_ == tail_) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (circular_buffer_[head].status == Entry::FREE) {
+      // Regular case.
+      const size_t index = head;
+      Increment(head);
+      circular_buffer_[index].status = Entry::BEING_IMPORTED;
+      return index;
+    } else {
       // Buffer overflow, must drop the least recent element and keep the count of those.
-      ++number_of_dropped_messages_;
-      if (tail_ == head_ready_) {
-        Increment(head_ready_);  // LCOV_EXCL_LINE
+      // TODO(mzhurovich): This logic sohuld go away for persisteny non-droping memory queue.
+      for (size_t i = 0, candidate = head; i < circular_buffer_.size(); ++i, Increment(candidate)) {
+        if (circular_buffer_[candidate].status == Entry::FREE) {
+          circular_buffer_[candidate].status = Entry::BEING_IMPORTED;
+          return candidate;
+        }
       }
-      Increment(tail_);
+      // TODO(mzhurovich) + TODO(dkorolev): This should probably be a policy-driven thing,
+      // along with the `if (index != static_cast<size_t>(-1))` conditions above.
+      ++dropped_messages_count_;
+      return static_cast<size_t>(-1);
     }
-    // Mark this message as incomplete, not yet ready to be sent over to the consumer.
-    circular_buffer_[index].finalized = false;
-    return index;
   }
 
   void PushMessageCommit(const size_t index) {
     // After the message has been copied over, mark it as finalized and advance `head_ready_`.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
-    circular_buffer_[index].finalized = true;
-    while (head_ready_ != head_allocated_ && circular_buffer_[head_ready_].finalized) {
-      Increment(head_ready_);
-    }
+    circular_buffer_[index].status = Entry::READY;
     condition_variable_.notify_all();
   }
 
@@ -160,31 +181,18 @@ class MMQ final {
   // chronologically get finalized before the message at index `i` does.
   struct Entry {
     T_MESSAGE message_body;
-    bool finalized;
+    enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
   };
 
   // The circular buffer, of size `circular_buffer_size_`.
+  // Entries are added/imported at `head` and removed/exported at `tail`,
+  // where `head` is owned by the class instance and `tail` exists only in the consumer thread.
+  // While export is always sequential, depending on TODO policy, import may overwrite previously added entries.
   std::vector<Entry> circular_buffer_;
-
-  // The number of messages that have been overwritten due to buffer overflow.
-  size_t number_of_dropped_messages_ = 0;
-
-  // To minimize the time for which the message emitting thread is blocked for,
-  // the buffer uses three "pointers":
-  // 1) `tail_`: The index of the next element to be exported and removed from the buffer.
-  // 2) `head_ready_`: The successor of the index of the element that is the last finalized element.
-  // 3) `head_allocated_`: The index of the first unallocated element,
-  //     into which the next message will be written.
-  // The order of "pointers" is always tail_ <= head_ready_ <= head_allocated_.
-  // The range [tail_, head_ready_) is what is ready to be extracted and sent over.
-  // The range [head_ready_, head_allocated_) is the "grey area", where the entries are already
-  // assigned indexes, but their population, done by respective client threads, is not done yet.
-  // All three indexes are guarded by one mutex. (This can be improved, but meh. -- D.K.)
-  size_t tail_ = 0;
-  size_t head_ready_ = 0;
-  size_t head_allocated_ = 0;
+  size_t head = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
+  size_t dropped_messages_count_;
 
   // For safe thread destruction.
   bool destructing_ = false;
