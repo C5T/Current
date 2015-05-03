@@ -137,7 +137,7 @@ class MMQ final {
 
         // Need to notify message pushers.
         // TODO(dkorolev) + TODO(mzhurovich): Think whether this might be a performance bottleneck.
-        condition_variable_.notify_all();
+        condition_variable_.notify_one();
       }
     }
   }
