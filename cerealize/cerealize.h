@@ -166,7 +166,7 @@ class CerealFileAppenderBase {
     if (p >= 0) {
       return static_cast<size_t>(p);
     } else {
-      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());
+      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());  // LCOV_EXCL_LINE
     }
   }
 

@@ -447,6 +447,7 @@ TYPED_TEST(HTTPTest, POST) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
+             EXPECT_EQ(7u, c.HTTPRequest().BodyLength());
              EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
              c.SendHTTPResponse("POSTED");
            },

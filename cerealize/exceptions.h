@@ -34,7 +34,7 @@ struct ParseJSONException : Exception {
 };
 
 // File stream during serialization got somehow corrupted.
-struct CerealizeFileStreamErrorException : Exception {};
+struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE
 
 }  // namespace bricks
 
