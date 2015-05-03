@@ -102,7 +102,7 @@ template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener;
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct SherlockListener;
+struct StreamListener;
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage;
@@ -111,7 +111,7 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct PolymorphicContainer;
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct EssentialTypedefs {
+struct YodaTypes {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
   typedef ENTRY_BASE_TYPE T_ENTRY_BASE_TYPE;
@@ -139,7 +139,7 @@ struct EssentialTypedefs {
   template <typename F>
   using T_STREAM_LISTENER_TYPE = typename T_STREAM_TYPE::template ListenerScope<F>;
 
-  typedef SherlockListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
+  typedef StreamListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
 
   typedef T_STREAM_LISTENER_TYPE<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
 };
@@ -162,59 +162,59 @@ struct Container<KeyEntry<ENTRY>> : bricks::metaprogramming::visitor<std::tuple<
   virtual void visit(ENTRY& entry) override { data[GetKey(entry)] = entry; }
 };
 
-// The logic to "interleave" updates from Sherlock stream with inbound KeyEntryStorage requests.
+// The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
 // TODO(dkorolev): This guy should be polymorphic too.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-  typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
-  virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) = 0;
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+  virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-  typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
-  explicit MQListener(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream)
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+  explicit MQListener(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream)
       : container_(container), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<typename ET::T_MQ_MESSAGE>& message, size_t dropped_count) {
+  void OnMessage(std::unique_ptr<typename YT::T_MQ_MESSAGE>& message, size_t dropped_count) {
     // TODO(dkorolev): Should use a non-dropping MMQ here, of course.
     static_cast<void>(dropped_count);  // TODO(dkorolev): And change the method's signature to remove this.
-    message->DoIt(container_, stream_);
+    message->Process(container_, stream_);
   }
 
-  typename ET::T_CONTAINER::type& container_;
-  typename ET::T_STREAM_TYPE& stream_;
+  typename YT::T_CONTAINER::type& container_;
+  typename YT::T_STREAM_TYPE& stream_;
 };
 
 // TODO(dkorolev): This piece of code should also be made polymorphic.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct SherlockListener {
+struct StreamListener {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename ENTRY_BASE_TYPE, typename ENTRY>
-struct SherlockListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
-  typedef EssentialTypedefs<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> ET;
+struct StreamListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> YT;
 
-  explicit SherlockListener(typename ET::T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
+  explicit StreamListener(typename YT::T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
 
-  struct MQMessageEntry : MQMessage<ENTRY_BASE_TYPE, typename ET::T_SUPPORTED_TYPES_AS_TUPLE> {
+  struct MQMessageEntry : MQMessage<ENTRY_BASE_TYPE, typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
     std::unique_ptr<ENTRY_BASE_TYPE> entry;
 
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
     // TODO(dkorolev): Replace this by a variadic implementation. Metaprogramming MapReduce FTW!
-    static_assert(sizeof(is_same_or_compile_error<typename ET::T_VISITABLE_TYPES_AS_TUPLE, std::tuple<ENTRY>>),
+    static_assert(sizeof(is_same_or_compile_error<typename YT::T_VISITABLE_TYPES_AS_TUPLE, std::tuple<ENTRY>>),
                   "");
 
-    virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) override {
+    virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) override {
       // TODO(dkorolev): Move this logic to the *RIGHT* place.
       // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
 
-      typename ET::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename ET::T_ABSTRACT_VISITABLE*>(entry.get());
+      typename YT::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename YT::T_ABSTRACT_VISITABLE*>(entry.get());
       if (av) {
         av->accept(container);
       } else {
@@ -263,7 +263,7 @@ struct SherlockListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
   std::atomic_size_t entries_seen_;
 
  private:
-  typename ET::T_MQ& mq_;
+  typename YT::T_MQ& mq_;
 };
 
 // TODO(dkorolev): Enable the variadic version.
@@ -278,15 +278,15 @@ struct PolymorphicContainer<std::tuple<KeyEntry<ENTRY>>> {
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct Storage {
+struct YodaImpl {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-  Storage() = delete;
+  YodaImpl() = delete;
 };
 
 // TODO(dkorolev): This should be polymorphic- and variadic-friendly.
 template <typename ENTRY_BASE_TYPE, typename ENTRY>
-struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
-  typedef EssentialTypedefs<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> ET;
+struct YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> YT;
 
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
@@ -299,10 +299,10 @@ struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
   typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
 
-  Storage() = delete;
-  explicit Storage(typename ET::T_MQ& mq) : mq_(mq) {}
+  YodaImpl() = delete;
+  explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
 
-  struct MQMessageGet : ET::T_MQ_MESSAGE {
+  struct MQMessageGet : YT::T_MQ_MESSAGE {
     const T_KEY key;
     std::promise<T_ENTRY> pr;
     T_ENTRY_CALLBACK on_success;
@@ -311,7 +311,7 @@ struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
     explicit MQMessageGet(const T_KEY& key, std::promise<T_ENTRY>&& pr) : key(key), pr(std::move(pr)) {}
     explicit MQMessageGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-    virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE&) override {
+    virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE&) override {
       const auto cit = container.data.find(key);
       if (cit != container.data.end()) {
         // The entry has been found.
@@ -339,7 +339,7 @@ struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
     }
   };
 
-  struct MQMessageAdd : ET::T_MQ_MESSAGE {
+  struct MQMessageAdd : YT::T_MQ_MESSAGE {
     const T_ENTRY e;
     std::promise<void> pr;
     T_VOID_CALLBACK on_success;
@@ -350,14 +350,14 @@ struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
         : e(e), on_success(on_success), on_failure(on_failure) {}
 
     // Important note: The entry added will eventually reach the storage via the stream.
-    // Thus, in theory, `MQMessageAdd::DoIt()` could be a no-op.
+    // Thus, in theory, `MQMessageAdd::Process()` could be a no-op.
     // This code still updates the storage, to have the API appear more lively to the user.
     // Since the actual implementation of `Add` pushes the `MQMessageAdd` message before publishing
     // an update to the stream, the final state will always be [eventually] consistent.
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void DoIt(typename ET::T_CONTAINER::type& container, typename ET::T_STREAM_TYPE& stream) override {
+    virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) override {
       const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
       if (key_exists) {
         if (on_failure) {  // Callback function defined.
@@ -407,19 +407,19 @@ struct Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
   void Add(const T_ENTRY& entry) { AsyncAdd(entry).get(); }
 
  private:
-  typename ET::T_MQ& mq_;
+  typename YT::T_MQ& mq_;
 };
 
 // TODO(dkorolev): This should be polymorphic too. Using `bricks::metaprogramming::combine`.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct PolymorphicStorage {
+struct CombinedYodaImpls {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename ENTRY_BASE_TYPE, typename ENTRY>
-struct PolymorphicStorage<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
-    : Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
-  typedef EssentialTypedefs<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> ET;
+struct CombinedYodaImpls<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
+    : YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> YT;
 
   static_assert(std::is_base_of<ENTRY_BASE_TYPE, ENTRY>::value,
                 "The first template parameter for `yoda::API` should be the base class for entry types.");
@@ -428,38 +428,38 @@ struct PolymorphicStorage<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
   // TODO(dkorolev): Give it another big thought. Right now `ENTRY_BASE_TYPE` is *NOT* visitable,
   // otherwise the `visitor` implementation breaks due to ambiguous function resolution.
   static_assert(
-      std::is_base_of<bricks::metaprogramming::abstract_visitable<typename ET::T_VISITABLE_TYPES_AS_TUPLE>,
+      std::is_base_of<bricks::metaprogramming::abstract_visitable<typename YT::T_VISITABLE_TYPES_AS_TUPLE>,
                       ENTRY_BASE_TYPE>::value,
       "Entry type(s) for `yoda::API` should be `abstract_visitable<>` by the types used"
       " in the API being instantiated. Please make your entry type(s) derive from `visitable<>`.");
   */
 
-  PolymorphicStorage() = delete;
-  explicit PolymorphicStorage(typename ET::T_MQ& mq) : Storage<ENTRY_BASE_TYPE, KeyEntry<ENTRY>>(mq) {}
+  CombinedYodaImpls() = delete;
+  explicit CombinedYodaImpls(typename YT::T_MQ& mq) : YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>>(mq) {}
 };
 
 // TODO(dkorolev): Base classes list should eventually go via `bricks::metaprogramming::combine<>`.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-class API : public PolymorphicStorage<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
+class API : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
  public:
-  typedef EssentialTypedefs<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> ET;
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
 
   API() = delete;
   API(const std::string& stream_name)
-      : PolymorphicStorage<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<typename ET::T_ENTRY_BASE_TYPE>>(stream_name)),
+      : CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
         sherlock_listener_(mq_),
         listener_scope_(stream_.Subscribe(sherlock_listener_)) {}
 
-  typename ET::T_STREAM_TYPE& UnsafeStream() { return stream_; }
+  typename YT::T_STREAM_TYPE& UnsafeStream() { return stream_; }
 
   template <typename F>
-  typename ET::template T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
+  typename YT::template T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
     return std::move(stream_.Subscribe(listener));
   }
 
@@ -468,12 +468,12 @@ class API : public PolymorphicStorage<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE>
   size_t EntriesSeen() const { return sherlock_listener_.entries_seen_; }
 
  private:
-  typename ET::T_STREAM_TYPE stream_;
-  typename ET::T_CONTAINER::type container_;
-  typename ET::T_MQ_LISTENER mq_listener_;
-  typename ET::T_MQ mq_;
-  typename ET::T_SHERLOCK_LISTENER sherlock_listener_;
-  typename ET::T_SHERLOCK_LISTENER_SCOPE_TYPE listener_scope_;
+  typename YT::T_STREAM_TYPE stream_;
+  typename YT::T_CONTAINER::type container_;
+  typename YT::T_MQ_LISTENER mq_listener_;
+  typename YT::T_MQ mq_;
+  typename YT::T_SHERLOCK_LISTENER sherlock_listener_;
+  typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE listener_scope_;
 };
 
 }  // namespace yoda
