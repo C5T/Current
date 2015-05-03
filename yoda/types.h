@@ -211,6 +211,7 @@ struct Nullable {
 // By deriving from `Deletable`, the user commits to serializing the `Nullable::exists` field,
 // thus enabling delete-friendly storage.
 // The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
+// TODO(dkorolev): Add the runtime check that certain type does indeed serialize the `exists` field and test it.
 struct Deletable {};
 
 }  // namespace yoda
