@@ -30,7 +30,7 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
-#include "../../Bricks/template/metaprogramming.h"
+#include "../../Bricks/template/rmref.h"
 
 namespace yoda {
 
@@ -47,7 +47,7 @@ struct UnderlyingEntryTypeImpl<KeyEntry<ENTRY>> {
 };
 
 template <typename T>
-using UnderlyingEntryType = typename UnderlyingEntryTypeImpl<bricks::metaprogramming::rmconstref<T>>::type;
+using UnderlyingEntryType = typename UnderlyingEntryTypeImpl<bricks::rmconstref<T>>::type;
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
@@ -109,8 +109,7 @@ typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_KEY_TYPE =
-    typename std::remove_cv<typename std::remove_reference<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>::type>::type;
+using ENTRY_KEY_TYPE = bricks::rmconstref<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
 
 template <typename T_ENTRY>
 void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {

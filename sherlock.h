@@ -37,6 +37,7 @@ SOFTWARE.
 
 #include "../Bricks/net/api/api.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/template/rmref.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 #include "optionally_owned/optionally_owned.h"
@@ -128,8 +129,7 @@ struct ExtractTimestampImpl<std::unique_ptr<E>> {
 
 template <typename E>
 bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
-  return ExtractTimestampImpl<typename std::remove_reference<E>::type>::ExtractTimestamp(
-      std::forward<E>(entry));
+  return ExtractTimestampImpl<bricks::rmref<E>>::ExtractTimestamp(std::forward<E>(entry));
 }
 
 template <typename E>

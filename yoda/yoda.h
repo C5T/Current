@@ -119,8 +119,8 @@ struct YodaTypes {
 
   // A hack to extract the type of the (only) supported entry type.
   // TODO(dkorolev): Make this variadic.
-  typedef UnderlyingEntryType<bricks::metaprogramming::rmconstref<
-      decltype(std::get<0>(std::declval<SUPPORTED_TYPES_AS_TUPLE>()))>> HACK_T_ENTRY;
+  typedef UnderlyingEntryType<
+      bricks::rmconstref<decltype(std::get<0>(std::declval<SUPPORTED_TYPES_AS_TUPLE>()))>> HACK_T_ENTRY;
 
   // TODO(dkorolev): A *big* *BIG* note: Our `visitor` does not work with classes hierarchy now!
   // It results in illegal ambiguous virtual function resolution.
@@ -210,7 +210,8 @@ struct StreamListener<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> {
     static_assert(sizeof(is_same_or_compile_error<typename YT::T_VISITABLE_TYPES_AS_TUPLE, std::tuple<ENTRY>>),
                   "");
 
-    virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(typename YT::T_CONTAINER::type& container,
+                         typename YT::T_STREAM_TYPE& stream) override {
       // TODO(dkorolev): Move this logic to the *RIGHT* place.
       // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
 
@@ -357,7 +358,8 @@ struct YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(typename YT::T_CONTAINER::type& container,
+                         typename YT::T_STREAM_TYPE& stream) override {
       const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
       if (key_exists) {
         if (on_failure) {  // Callback function defined.
