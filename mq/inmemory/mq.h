@@ -136,7 +136,7 @@ class MMQ final {
     // First, allocate room in the buffer for this message.
     // Overwrite the oldest message if have to.
     // MUTEX-LOCKED.
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (circular_buffer_[head].status == Entry::FREE) {
       // Regular case.
       const size_t index = head;
