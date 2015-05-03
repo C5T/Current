@@ -29,15 +29,13 @@ SOFTWARE.
 #include <type_traits>
 
 namespace bricks {
-namespace metaprogramming {
 
 template <typename T>
-using pod_constref = typename std::conditional<std::is_pod<T>::value, T, const T&>::type;
+using copy_free = typename std::conditional<std::is_pod<T>::value, T, const T&>::type;
 
-static_assert(std::is_same<int, pod_constref<int>>::value, "");
-static_assert(std::is_same<const std::string&, pod_constref<std::string>>::value, "");
+static_assert(std::is_same<int, copy_free<int>>::value, "");
+static_assert(std::is_same<const std::string&, copy_free<std::string>>::value, "");
 
-}  // namespace metaprogramming
 }  // namespace bricks
 
 #endif  // BRICKS_VARIADIC_POD_H

@@ -29,7 +29,6 @@ SOFTWARE.
 #include <type_traits>
 
 namespace bricks {
-namespace metaprogramming {
 
 template <typename T>
 using rmref = typename std::remove_reference<T>::type;
@@ -64,7 +63,6 @@ static_assert(std::is_same<std::string, rmconstref<const std::string>>::value, "
 static_assert(std::is_same<std::string, rmconstref<const std::string&>>::value, "");
 static_assert(std::is_same<std::string, rmconstref<const std::string&&>>::value, "");
 
-}  // namespace metaprogramming
 }  // namespace bricks
 
 #endif  // BRICKS_VARIADIC_RMREF_H

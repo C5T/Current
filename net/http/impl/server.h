@@ -42,6 +42,7 @@ SOFTWARE.
 
 #include "../../../strings/util.h"
 #include "../../../cerealize/cerealize.h"
+#include "../../../template/rmref.h"
 
 namespace bricks {
 namespace net {
@@ -404,11 +405,11 @@ class HTTPServerConnection final {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
-  inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
-  SendHTTPResponse(T&& container,
-                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                   const std::string& content_type = DefaultContentType(),
-                   const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+  inline typename std::enable_if<sizeof(typename rmref<T>::value_type) == 1>::type SendHTTPResponse(
+      T&& container,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = DefaultContentType(),
+      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
@@ -456,7 +457,7 @@ class HTTPServerConnection final {
           connection_.BlockingWrite("0", true);
           connection_.BlockingWrite(kCRLF, false);
           connection_.BlockingWrite(kCRLF, false);  // We should send CRLF twice.
-        } catch (const std::exception& e) {  // LCOV_EXCL_LINE
+        } catch (const std::exception& e) {         // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
         }
@@ -477,8 +478,7 @@ class HTTPServerConnection final {
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
       template <typename T>
-      inline typename std::enable_if<sizeof(typename std::remove_reference<T>::type::value_type) == 1>::type
-      Send(T&& data) {
+      inline typename std::enable_if<sizeof(typename rmref<T>::value_type) == 1>::type Send(T&& data) {
         SendImpl(std::forward<T>(data));
       }
 
