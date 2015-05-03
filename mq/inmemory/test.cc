@@ -88,13 +88,13 @@ TEST(InMemoryMQ, DropsMessagesTest) {
   MMQ<SlowConsumer, std::string, 10> mmq(c);
   // Push 50 events one after another, causing an overflow, which would drop some messages.
   // Changing this `size_t i = 0` into `size_t i = 1` fixes the problem.
-  for (size_t i = 0; i < 11; ++i) {
-    mmq.PushMessage(bricks::strings::Printf("M%03d", static_cast<int>(i)));
+  for (size_t i = 0; i < 15; ++i) {
+    mmq.PushMessage(bricks::strings::Printf("M%02d", static_cast<int>(i + 1)));
   }
   // Wait until at least two messages are processed by the consumer.
   // The second one will get its `dropped_messages_` count set.
   // (The first one might too, but that's uncertain.
-  while (c.processed_messages_ < 2) {
+  while (c.processed_messages_ < 5) {
     ;  // Spin lock;
   }
   // Confirm that some messages were indeed dropped.

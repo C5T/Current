@@ -55,6 +55,8 @@ class MMQ final {
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].message_body = message;
       PushMessageCommit(index);
+    } else {
+      ++dropped_messages_count_;
     }
   }
 
@@ -63,6 +65,8 @@ class MMQ final {
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].message_body = std::move(message);
       PushMessageCommit(index);
+    } else {
+      ++dropped_messages_count_;
     }
   }
 
@@ -72,6 +76,8 @@ class MMQ final {
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].message_body = T_MESSAGE(args...);
       PushMessageCommit(index);
+    } else {
+      ++dropped_messages_count_;
     }
   }
 
@@ -128,35 +134,53 @@ class MMQ final {
           circular_buffer_[tail].status = Entry::FREE;
         }
         Increment(tail);
+
+        // Need to notify message pushers.
+        // TODO(dkorolev) + TODO(mzhurovich): Think whether this might be a performance bottleneck.
+        condition_variable_.notify_all();
       }
     }
   }
 
-  size_t PushMessageAllocate() {
+  size_t DroppingPushMessageAllocate() {
     // First, allocate room in the buffer for this message.
     // Overwrite the oldest message if have to.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
-    if (circular_buffer_[head].status == Entry::FREE) {
+    if (circular_buffer_[head_].status == Entry::FREE) {
       // Regular case.
-      const size_t index = head;
-      Increment(head);
+      const size_t index = head_;
+      Increment(head_);
       circular_buffer_[index].status = Entry::BEING_IMPORTED;
       return index;
     } else {
-      // Buffer overflow, must drop the least recent element and keep the count of those.
-      // TODO(mzhurovich): This logic sohuld go away for persisteny non-droping memory queue.
-      for (size_t i = 0, candidate = head; i < circular_buffer_.size(); ++i, Increment(candidate)) {
-        if (circular_buffer_[candidate].status == Entry::FREE) {
-          circular_buffer_[candidate].status = Entry::BEING_IMPORTED;
-          return candidate;
-        }
-      }
-      // TODO(mzhurovich) + TODO(dkorolev): This should probably be a policy-driven thing,
-      // along with the `if (index != static_cast<size_t>(-1))` conditions above.
-      ++dropped_messages_count_;
       return static_cast<size_t>(-1);
     }
+  }
+
+  size_t BlockingPushMessageAllocate() {
+    // MUTEX-LOCKED.
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (destructing_) {
+      return static_cast<size_t>(-1);
+    }
+    while (circular_buffer_[head_].status != Entry::FREE) {
+      condition_variable_.wait(
+          lock, [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
+      if (destructing_) {
+        return static_cast<size_t>(-1);
+      }
+    }
+    const size_t index = head_;
+    Increment(head_);
+    circular_buffer_[index].status = Entry::BEING_IMPORTED;
+    return index;
+  }
+
+  // TODO(mzhurovich): This should probably be a policy-driven thing,
+  size_t PushMessageAllocate() {
+    return BlockingPushMessageAllocate();
+    // return DroppingPushMessageAllocate();
   }
 
   void PushMessageCommit(const size_t index) {
@@ -185,11 +209,11 @@ class MMQ final {
   };
 
   // The circular buffer, of size `circular_buffer_size_`.
-  // Entries are added/imported at `head` and removed/exported at `tail`,
-  // where `head` is owned by the class instance and `tail` exists only in the consumer thread.
+  // Entries are added/imported at `head_` and removed/exported at `tail`,
+  // where `head_` is owned by the class instance and `tail` exists only in the consumer thread.
   // While export is always sequential, depending on TODO policy, import may overwrite previously added entries.
   std::vector<Entry> circular_buffer_;
-  size_t head = 0u;
+  size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
   size_t dropped_messages_count_;
