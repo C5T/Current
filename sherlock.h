@@ -219,6 +219,31 @@ class PubSubHTTPEndpoint {
 };
 
 template <typename T>
+constexpr bool HasTerminateMethod(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>() -> Terminate(), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct CallTerminateImpl {
+  static void DoIt(T&&) {}
+};
+
+template <typename T>
+struct CallTerminateImpl<T, true> {
+  static void DoIt(T&& ptr) { ptr->Terminate(); }
+};
+
+template <typename T>
+void CallTerminate(T&& ptr) {
+  CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
+}
+
+template <typename T>
 class StreamInstanceImpl {
  public:
   inline explicit StreamInstanceImpl(const std::string& name, const std::string& value_name)
@@ -318,7 +343,7 @@ class StreamInstanceImpl {
             return terminate->Get() || data.size() > cursor;
           });
           if (terminate->Get()) {
-            listener->Terminate();
+            CallTerminate(listener);
             break;
           }
           bool user_initiated_terminate = false;

@@ -59,12 +59,12 @@ struct AllowOverwriteOnAdd {
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
 template <typename T_ENTRY>
-constexpr bool HasKeyFunction(char) {
+constexpr bool HasKeyMethod(char) {
   return false;
 }
 
 template <typename T_ENTRY>
-constexpr auto HasKeyFunction(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
+constexpr auto HasKeyMethod(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
   return true;
 }
 
@@ -92,7 +92,7 @@ struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
 };
 
 template <typename T_ENTRY>
-using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyFunction<T_ENTRY>(0)>;
+using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyMethod<T_ENTRY>(0)>;
 
 template <typename T_ENTRY>
 typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
