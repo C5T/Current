@@ -24,3 +24,25 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "api/key_entry/test.cc"
+
+#include "yoda.h"
+#include "test_types.h"
+
+#include "../../Bricks/dflags/dflags.h"
+#include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+
+TEST(Yoda, CoverTest) {
+  typedef yoda::API<YodaTestEntryBase, yoda::KeyEntry<StringKVEntry>> TestAPI;
+  TestAPI api("YodaCoverTest");
+
+  api.UnsafeStream().Emplace(new StringKVEntry());
+
+  while (!api.CaughtUp()) {
+    ;
+  }
+
+  //  api.Add(StringKVEntry(1, 42.0));
+  //  EXPECT_EQ(42.0, api.Get(1).value);
+  api.Add(StringKVEntry("foo", "bar"));
+  EXPECT_EQ("bar", api.Get("foo").foo);
+}

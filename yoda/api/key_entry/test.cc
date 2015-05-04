@@ -29,6 +29,7 @@ SOFTWARE.
 #include <tuple>
 
 #include "../../yoda.h"
+#include "../../test_types.h"
 
 #include "../../../../Bricks/template/metaprogramming.h"
 #include "../../../../Bricks/dflags/dflags.h"
@@ -37,29 +38,6 @@ SOFTWARE.
 using std::string;
 using std::atomic_size_t;
 using bricks::strings::Printf;
-
-struct YodaTestEntryBase {
-  virtual ~YodaTestEntryBase() = default;
-  template <typename A>
-  void serialize(A&) {}
-};
-
-struct KeyValueEntry : YodaTestEntryBase,
-                       bricks::metaprogramming::visitable<std::tuple<struct KeyValueEntry>, KeyValueEntry> {
-  typedef YodaTestEntryBase CEREAL_BASE_TYPE;
-
-  int key;
-  double value;
-
-  KeyValueEntry(const int key = 0, const double value = 0.0) : key(key), value(value) {}
-
-  template <typename A>
-  void serialize(A& ar) {
-    YodaTestEntryBase::serialize(ar);
-    ar(CEREAL_NVP(key), CEREAL_NVP(value));
-  }
-};
-CEREAL_REGISTER_TYPE(KeyValueEntry);
 
 struct KeyValueSubscriptionData {
   atomic_size_t seen_;
@@ -100,9 +78,9 @@ struct KeyValueAggregateListener {
   }
 };
 
-TEST(Sherlock, NonPolymorphicKeyValueStorage) {
+TEST(YodaKeyEntry, Smoke) {
   typedef yoda::API<YodaTestEntryBase, yoda::KeyEntry<KeyValueEntry>> TestAPI;
-  TestAPI api("non_polymorphic_yoda");
+  TestAPI api("YodaKeyEntrySmokeTest");
 
   // Add the first key-value pair.
   // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.

@@ -28,10 +28,7 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_APY_KEY_ENTRY_H
 #define SHERLOCK_YODA_APY_KEY_ENTRY_H
 
-#include <atomic>
 #include <future>
-#include <string>
-#include <tuple>
 
 #include "../../types.h"
 #include "../../meta_yoda.h"

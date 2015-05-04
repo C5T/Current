@@ -60,6 +60,9 @@ struct MQMessage;
 template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct PolymorphicContainer;
 
+template <typename T>
+using StorageTypeImpl = typename StorageTypeExtractor<T>::type;
+
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct YodaTypes {
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
@@ -67,15 +70,7 @@ struct YodaTypes {
   typedef ENTRY_BASE_TYPE T_ENTRY_BASE_TYPE;
   typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
 
-  // A hack to extract the type of the (only) supported entry type.
-  // TODO(dkorolev): Make this variadic.
-  typedef typename StorageTypeExtractor<
-      bricks::rmconstref<decltype(std::get<0>(std::declval<SUPPORTED_TYPES_AS_TUPLE>()))>>::type HACK_T_ENTRY;
-
-  // TODO(dkorolev): A *big* *BIG* note: Our `visitor` does not work with classes hierarchy now!
-  // It results in illegal ambiguous virtual function resolution.
-  // Long story short, `dynamic_cast<>` and no `ENTRY_BASE_TYPE` in the list of supported types.
-  typedef std::tuple<HACK_T_ENTRY> T_VISITABLE_TYPES_AS_TUPLE;
+  typedef bricks::metaprogramming::map<StorageTypeImpl, SUPPORTED_TYPES_AS_TUPLE> T_VISITABLE_TYPES_AS_TUPLE;
   typedef bricks::metaprogramming::abstract_visitable<T_VISITABLE_TYPES_AS_TUPLE> T_ABSTRACT_VISITABLE;
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
@@ -116,6 +111,8 @@ struct StreamListener {
         // TODO(dkorolev): Talk to Max about API's policy on the stream containing an entry of unsupported type.
         // Ex., have base entry type B, entry types X and Y, and finding an entry of type Z in the stream.
         // Fail with an error message by default?
+        // DIMA static_assert(sizeof(is_same_or_compile_error<typename YT::T_ABSTRACT_VISITABLE, std::string>),
+        // "")
         throw false;
       }
 
