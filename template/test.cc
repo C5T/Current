@@ -22,4 +22,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "docu/docu_05variadic_02.cc"
+#include "docu/docu_05metaprogramming_02.cc"
