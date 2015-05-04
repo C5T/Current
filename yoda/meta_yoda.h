@@ -110,8 +110,7 @@ struct StreamListener {
 
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
-    virtual void Process(typename YT::T_CONTAINER& container,
-                         typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) override {
       // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
       typename YT::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename YT::T_ABSTRACT_VISITABLE*>(entry.get());
       if (av) {

@@ -134,8 +134,7 @@ struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(typename YT::T_CONTAINER& container,
-                         typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) override {
       const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
       if (key_exists) {
         if (on_failure) {  // Callback function defined.

@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// #include "api/key_entry/test.cc"
+#include "api/key_entry/test.cc"
 
 #include "yoda.h"
 #include "test_types.h"

@@ -89,7 +89,6 @@ SOFTWARE.
 
 namespace yoda {
 
-// TODO(dkorolev): Base classes list should eventually go via `bricks::metaprogramming::combine<>`.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 class APIWrapper
     : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, SUPPORTED_TYPES_AS_TUPLE> {
