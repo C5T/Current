@@ -34,20 +34,10 @@ SOFTWARE.
 
 namespace yoda {
 
-// Helper structures to define the type of the storage.
+// Templated type to resolve underlying entry types, converting template parameters of `yoda::API`
+// into respective types to be stored in the stream and dispatched via message queue and visitors.
 template <typename ENTRY>
-struct KeyEntry {};
-
-template <typename ENTRY>
-struct UnderlyingEntryTypeImpl {};
-
-template <typename ENTRY>
-struct UnderlyingEntryTypeImpl<KeyEntry<ENTRY>> {
-  typedef ENTRY type;
-};
-
-template <typename T>
-using UnderlyingEntryType = typename UnderlyingEntryTypeImpl<bricks::rmconstref<T>>::type;
+struct StorageTypeExtractor {};
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
@@ -65,6 +55,7 @@ struct AllowOverwriteOnAdd {
   constexpr static bool allow_overwrite_on_add = true;
 };
 
+// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
 template <typename T_ENTRY>
@@ -116,6 +107,7 @@ void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
   KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
 }
 
+// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Associative container type selector. Attempts to use:
 // 1) std::unordered_map<T_KEY, T_ENTRY, wrapper for `T_KEY::Hash()`>
 // 2) std::unordered_map<T_KEY, T_ENTRY [, std::hash<T_KEY>]>
@@ -201,6 +193,7 @@ using T_MAP_TYPE =
 // By deriving from `Nullable` (and adding `using Nullable::Nullable`),
 // the user indicates that their entry type supports creation of a non-existing instance.
 // This is a requirement for a) non-throwing `Get()`, and b) for `Delete()` part of the API.
+// TODO(dkorolev): Add a compile-time check that `Nullable` user types allow constructing themselves as null-s.
 enum NullEntryTypeHelper { NullEntry };
 struct Nullable {
   const bool exists;

@@ -24,8 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // The metaprogramming part of Yoda's implementation.
-// Type definitions, hardly any implementation code.
-// Used to enable per-vertical (ex. KeyEntry, MatrixEntry) storage types in a way
+// Type definitions, hardly any implementation code. Used to enable support per-storage types in a way
 // that allows combining them into a single polymorphic storage atop a single polymorphic stream.
 
 #ifndef SHERLOCK_YODA_META_YODA_H
@@ -70,8 +69,8 @@ struct YodaTypes {
 
   // A hack to extract the type of the (only) supported entry type.
   // TODO(dkorolev): Make this variadic.
-  typedef UnderlyingEntryType<
-      bricks::rmconstref<decltype(std::get<0>(std::declval<SUPPORTED_TYPES_AS_TUPLE>()))>> HACK_T_ENTRY;
+  typedef typename StorageTypeExtractor<
+      bricks::rmconstref<decltype(std::get<0>(std::declval<SUPPORTED_TYPES_AS_TUPLE>()))>>::type HACK_T_ENTRY;
 
   // TODO(dkorolev): A *big* *BIG* note: Our `visitor` does not work with classes hierarchy now!
   // It results in illegal ambiguous virtual function resolution.
@@ -95,22 +94,86 @@ struct YodaTypes {
   typedef T_STREAM_LISTENER_TYPE<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
 };
 
-// The logic to keep the in-memory state of a particular entry type and its internal represenation.
-template <typename>
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct StreamListener {
+  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+
+  explicit StreamListener(typename YT::T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
+
+  struct MQMessageEntry : MQMessage<ENTRY_BASE_TYPE, typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
+    std::unique_ptr<ENTRY_BASE_TYPE> entry;
+
+    explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
+
+    virtual void Process(typename YT::T_CONTAINER::type& container,
+                         typename YT::T_STREAM_TYPE& stream) override {
+      // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
+      typename YT::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename YT::T_ABSTRACT_VISITABLE*>(entry.get());
+      if (av) {
+        av->accept(container);
+      } else {
+        // TODO(dkorolev): Talk to Max about API's policy on the stream containing an entry of unsupported type.
+        // Ex., have base entry type B, entry types X and Y, and finding an entry of type Z in the stream.
+        // Fail with an error message by default?
+        throw false;
+      }
+
+      static_cast<void>(stream);
+    }
+  };
+
+  // Sherlock stream listener call.
+  bool Entry(std::unique_ptr<ENTRY_BASE_TYPE>& entry, size_t index, size_t total) {
+    // The logic of this API implementation is:
+    // * Defer all API requests until the persistent part of the stream is fully replayed,
+    // * Allow all API requests after that.
+
+    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry)));
+
+    // TODO(dkorolev): If that's the way to go, we should probably respond with HTTP 503 or 409 or 418?
+    //                 (And add a `/statusz` endpoint to monitor the status wrt ready / not yet ready.)
+
+    // TODO(dkorolev)+TODO(mzhurovich): What about the case of an empty stream?
+    // We should probably extend/enable Sherlock stream listener to report the `CaughtUp` event early,
+    // including the case where the initial stream is empty.
+
+    if (index + 1 == total) {
+      caught_up_ = true;
+    }
+
+    // This is primarily for unit testing purposes.
+    ++entries_seen_;
+
+    return true;
+  }
+
+  // Sherlock stream listener call.
+  // TODO(dkorolev): This call should also be made conditional on the existence of this method.
+  void Terminate() {}
+
+  std::atomic_bool caught_up_;
+  std::atomic_size_t entries_seen_;
+
+ private:
+  typename YT::T_MQ& mq_;
+};
+
+// The container to keep the in-memory state of a particular entry type and its internal represenation.
+// Particular implementations are located in `api/*/*.h`.
+template <typename SPECIFIC_ENTRY_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct Container {};
 
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
 // TODO(dkorolev): This guy should be polymorphic too.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
   virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
   explicit MQListener(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream)
       : container_(container), stream_(stream) {}
@@ -124,12 +187,6 @@ struct MQListener {
 
   typename YT::T_CONTAINER::type& container_;
   typename YT::T_STREAM_TYPE& stream_;
-};
-
-// TODO(dkorolev): This piece of code should also be made polymorphic.
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct StreamListener {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 // TODO(dkorolev): Enable the variadic version.
