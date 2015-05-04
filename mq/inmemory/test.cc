@@ -60,49 +60,74 @@ TEST(InMemoryMQ, SmokeTest) {
   EXPECT_EQ(0u, c.dropped_messages_);
 }
 
-TEST(InMemoryMQ, DropsMessagesTest) {
-  struct SlowConsumer {
-    std::string messages_;
-    std::set<std::string> all_;
-    size_t dropped_messages_ = 0u;
-    std::atomic_size_t processed_messages_;
-    std::atomic_size_t processing_time_ms_;
-    SlowConsumer() : processed_messages_(0u), processing_time_ms_(5u) {}
-    void OnMessage(const std::string& s, size_t dropped_messages) {
-      std::cerr << s << std::endl;
-      if (all_.count(s)) {
-        std::cerr << "DUPLICATE\n";
-        ASSERT_TRUE(false);
-      }
-      all_.insert(s);
-      messages_ += s + '\n';
-      dropped_messages_ += dropped_messages;
-      // Simulate message processing time of 1ms.
-      std::this_thread::sleep_for(std::chrono::milliseconds(processing_time_ms_));
-      ++processed_messages_;
+struct SlowConsumer {
+  std::vector<std::string> messages_;
+  std::atomic_size_t dropped_messages_;
+  std::atomic_size_t processed_messages_;
+  size_t processing_time_ms_;
+  SlowConsumer(size_t processing_time_ms = 20u)
+      : dropped_messages_(0u), processed_messages_(0u), processing_time_ms_(processing_time_ms) {}
+  // Uncomment the line below to see that it doesn't compile.
+  // void OnMessage(const std::string& s) {}
+  void OnMessage(const std::string& s, size_t dropped_messages) {
+    messages_.push_back(s);
+    dropped_messages_ += dropped_messages;
+    // Simulate message processing time of 20 ms.
+    std::this_thread::sleep_for(std::chrono::milliseconds(processing_time_ms_));
+    ++processed_messages_;
+  }
+};
+
+TEST(InMemoryMQ, DropOnOverflowTest) {
+  SlowConsumer c;
+
+  // Queue with 10 events in the buffer.
+  MMQ<SlowConsumer, std::string, 10> mmq(c);
+
+  // Push 20 events one after another, causing an overflow, which would drop some messages.
+  for (size_t i = 0; i < 20; ++i) {
+    mmq.PushMessage(bricks::strings::Printf("M%02d", static_cast<int>(i)));
+  }
+  // Wait until at least three messages are processed by the consumer to
+  // properly get dropped messages count.
+  while (c.processed_messages_ < 2) {
+    ;  // Spin lock;
+  }
+
+  // Confirm that exactly 10 messages were dropped due to a very slow consumer.
+  EXPECT_EQ(c.dropped_messages_, 10u);
+}
+
+TEST(InMemoryMQ, WaitOnOverflowTest) {
+  SlowConsumer c(1u);
+
+  // Queue with 10 events in the buffer.
+  MMQ<SlowConsumer, std::string, 10, false> mmq(c);
+
+  auto producer = [&](char prefix, size_t count) {
+     for (size_t i = 0; i < count; ++i) {
+      mmq.PushMessage(bricks::strings::Printf("%c%02d", prefix, static_cast<int>(i)));
     }
   };
 
-  SlowConsumer c;
-  // Queue with 10 events in the buffer.
-  MMQ<SlowConsumer, std::string, 10> mmq(c);
-  // Push 50 events one after another, causing an overflow, which would drop some messages.
-  // Changing this `size_t i = 0` into `size_t i = 1` fixes the problem.
-  for (size_t i = 0; i < 15; ++i) {
-    mmq.PushMessage(bricks::strings::Printf("M%02d", static_cast<int>(i + 1)));
-  }
-  // Wait until at least two messages are processed by the consumer.
-  // The second one will get its `dropped_messages_` count set.
-  // (The first one might too, but that's uncertain.
-  while (c.processed_messages_ < 5) {
-    ;  // Spin lock;
-  }
-  // Confirm that some messages were indeed dropped.
-  /// std::cerr << "Dropped " << c.dropped_messages_ << std::endl;
-  /// EXPECT_GT(c.dropped_messages_, 0u);
-  EXPECT_LT(c.dropped_messages_, 50u);
+  std::vector<std::thread> producers;
 
-  // Without the next line the test will run for 10+ms, since the remaining queue
-  // is being processed in full in the destructor of MMQ.
-  // c.processing_time_ms_ = 0u;
+  for (size_t i = 0; i < 10; ++i) {
+    producers.emplace_back(producer, 'a' + i, 10);
+  }
+
+  for (auto& p : producers) {
+    p.join();
+  }
+
+  // Wait for 30 ms - the queue should be processed by this time.
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+
+  // Confirm that exactly 100 messages was processed.
+  EXPECT_EQ(c.dropped_messages_, 0u);
+  EXPECT_EQ(c.processed_messages_, 100u);
+
+  // Ensure that all processed messages are indeed unique.
+  std::set<std::string> messages(begin(c.messages_), end(c.messages_));
+  EXPECT_EQ(messages.size(), 100u);
 }
