@@ -39,31 +39,24 @@ using std::string;
 using std::atomic_size_t;
 using bricks::strings::Printf;
 
-struct KeyValueEntryBase {
-  virtual ~KeyValueEntryBase() = default;
+struct YodaTestEntryBase {
+  virtual ~YodaTestEntryBase() = default;
   template <typename A>
   void serialize(A&) {}
 };
 
-// This doesn't look very fancy so far. Bear with me for a while. -- D.K.
-struct KeyValueEntry : KeyValueEntryBase,
+struct KeyValueEntry : YodaTestEntryBase,
                        bricks::metaprogramming::visitable<std::tuple<struct KeyValueEntry>, KeyValueEntry> {
-  typedef KeyValueEntryBase CEREAL_BASE_TYPE;
+  typedef YodaTestEntryBase CEREAL_BASE_TYPE;
 
   int key;
   double value;
-
-  // Uncomment one line below to see the test does not compile.
-  // constexpr static bool allow_nonthrowing_get = true;
-  // Change `struct KeyValueEntry` into `struct KeyValueEntry : yoda::Nullable` and
-  // uncomment the above and the below line to see the test compile and fail due to not throwing on a `Get()`.
-  // void operator=(const KeyValueEntry& rhs) { std::tie(key, value) = std::make_tuple(rhs.key, rhs.value); }
 
   KeyValueEntry(const int key = 0, const double value = 0.0) : key(key), value(value) {}
 
   template <typename A>
   void serialize(A& ar) {
-    KeyValueEntryBase::serialize(ar);
+    YodaTestEntryBase::serialize(ar);
     ar(CEREAL_NVP(key), CEREAL_NVP(value));
   }
 };
@@ -87,7 +80,7 @@ struct KeyValueAggregateListener {
     return *this;
   }
 
-  bool Entry(std::unique_ptr<KeyValueEntryBase>& proto_entry, size_t index, size_t total) {
+  bool Entry(std::unique_ptr<YodaTestEntryBase>& proto_entry, size_t index, size_t total) {
     // This is a _safe_ way to process entries, since if the cast fails, the next line will crash.
     const KeyValueEntry& entry = *dynamic_cast<KeyValueEntry*>(proto_entry.get());
     static_cast<void>(index);
@@ -109,7 +102,7 @@ struct KeyValueAggregateListener {
 };
 
 TEST(Sherlock, NonPolymorphicKeyValueStorage) {
-  typedef yoda::API<KeyValueEntryBase, std::tuple<yoda::KeyEntry<KeyValueEntry>>> TestAPI;
+  typedef yoda::API<YodaTestEntryBase, yoda::KeyEntry<KeyValueEntry>> TestAPI;
   TestAPI api("non_polymorphic_yoda");
 
   // Add the first key-value pair.

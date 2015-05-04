@@ -91,15 +91,15 @@ namespace yoda {
 
 // TODO(dkorolev): Base classes list should eventually go via `bricks::metaprogramming::combine<>`.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-class API : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
+class APIWrapper : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
  public:
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
 
-  API() = delete;
-  API(const std::string& stream_name)
+  APIWrapper() = delete;
+  APIWrapper(const std::string& stream_name)
       : CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
@@ -126,6 +126,20 @@ class API : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> 
   typename YT::T_SHERLOCK_LISTENER sherlock_listener_;
   typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE listener_scope_;
 };
+
+// Support both providing `std::tuple<>` and `TYPES...` as template parameter(s) for `yoda::API`.
+template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
+struct APIWrapperSelector {
+  typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES...>> type;
+};
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES>
+struct APIWrapperSelector<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> {
+  typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> type;
+};
+
+template<typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
+using API = typename APIWrapperSelector<ENTRY_BASE_TYPE, SUPPORTED_TYPES...>::type;
 
 }  // namespace yoda
 
