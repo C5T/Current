@@ -29,8 +29,7 @@ SOFTWARE.
 #include "yoda.h"
 
 using YodaTestTypes1 = std::tuple<struct KeyValueEntry>;
-// using YodaTestTypes2 = std::tuple<struct KeyValueEntry, struct StringKVEntry>;
-using YodaTestTypes2 = std::tuple<struct StringKVEntry>;
+using YodaTestTypes2 = std::tuple<struct KeyValueEntry, struct StringKVEntry>;
 
 struct YodaTestEntryBase {
   virtual ~YodaTestEntryBase() = default;

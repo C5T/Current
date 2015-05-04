@@ -47,10 +47,9 @@ struct StorageTypeExtractor<KeyEntry<ENTRY>> {
   typedef ENTRY type;
 };
 
-// TODO(dkorolev): With variadic implementation, the type list for the visitor will be taken from another place.
-template <typename ENTRY, typename SUPPORTED_TYPES_AS_TUPLE>
-struct Container<KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE>
-    : bricks::metaprogramming::visitor<SUPPORTED_TYPES_AS_TUPLE> {
+template <typename ENTRY, typename SUPPORTED_TYPES_AS_TUPLE, typename VISITABLE_TYPES_AS_TUPLE>
+struct Container<KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE, VISITABLE_TYPES_AS_TUPLE>
+    : bricks::metaprogramming::visitor<VISITABLE_TYPES_AS_TUPLE> {
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
 
@@ -62,15 +61,9 @@ struct Container<KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE>
   virtual void visit(ENTRY& entry) override { data[GetKey(entry)] = entry; }
 };
 
-template <typename ENTRY>
-struct PolymorphicContainer<std::tuple<KeyEntry<ENTRY>>> {
-  typedef Container<KeyEntry<ENTRY>, std::tuple<ENTRY>> type;
-};
-
-// TODO(dkorolev): This should be polymorphic- and variadic-friendly.
-template <typename ENTRY_BASE_TYPE, typename ENTRY>
-struct YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
-  typedef YodaTypes<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> YT;
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename ENTRY>
+struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
 
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
@@ -95,7 +88,7 @@ struct YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
     explicit MQMessageGet(const T_KEY& key, std::promise<T_ENTRY>&& pr) : key(key), pr(std::move(pr)) {}
     explicit MQMessageGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE&) override {
       const auto cit = container.data.find(key);
       if (cit != container.data.end()) {
         // The entry has been found.
@@ -141,7 +134,7 @@ struct YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(typename YT::T_CONTAINER::type& container,
+    virtual void Process(typename YT::T_CONTAINER& container,
                          typename YT::T_STREAM_TYPE& stream) override {
       const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
       if (key_exists) {
@@ -193,18 +186,6 @@ struct YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
 
  private:
   typename YT::T_MQ& mq_;
-};
-
-template <typename ENTRY_BASE_TYPE, typename ENTRY>
-struct CombinedYodaImpls<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>>
-    : YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>> {
-  typedef YodaTypes<ENTRY_BASE_TYPE, std::tuple<KeyEntry<ENTRY>>> YT;
-
-  static_assert(std::is_base_of<ENTRY_BASE_TYPE, ENTRY>::value,
-                "The first template parameter for `yoda::API` should be the base class for entry types.");
-
-  CombinedYodaImpls() = delete;
-  explicit CombinedYodaImpls(typename YT::T_MQ& mq) : YodaImpl<ENTRY_BASE_TYPE, KeyEntry<ENTRY>>(mq) {}
 };
 
 }  // namespace yoda

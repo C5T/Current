@@ -47,37 +47,47 @@ struct is_same_or_compile_error {
 
 namespace yoda {
 
-// Essential types to define and make use of.
+namespace MP = bricks::metaprogramming;
+
+// The container to keep the in-memory state of a particular entry type and its internal represenation.
+// Particular implementations are located in `api/*/*.h`.
+template <typename SPECIFIC_ENTRY_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename VISITABLE_TYPES_AS_TUPLE>
+struct Container {};
+
+// An abstract type to derive message queue message types from.
+// All asynchronous events within one Yoda instance go through this message queue.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct MQMessage;
+
+// Sherlock stream listener, responsible for converting every stream entry into a message queue one.
+// Encapsulates visitor-based message dispatching to keep Containers up to date via  per stream entry type.
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct StreamListener;
+
+// Message queue listener: makes sure each message gets its `virtual Process()` method called,
+// in the right order of processing messages.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener;
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct StreamListener;
-
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct MQMessage;
-
-template <typename SUPPORTED_TYPES_AS_TUPLE>
-struct PolymorphicContainer;
-
-template <typename T>
-using StorageTypeImpl = typename StorageTypeExtractor<T>::type;
-
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct YodaTypes {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
   typedef ENTRY_BASE_TYPE T_ENTRY_BASE_TYPE;
   typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
 
-  typedef bricks::metaprogramming::map<StorageTypeImpl, SUPPORTED_TYPES_AS_TUPLE> T_VISITABLE_TYPES_AS_TUPLE;
-  typedef bricks::metaprogramming::abstract_visitable<T_VISITABLE_TYPES_AS_TUPLE> T_ABSTRACT_VISITABLE;
+  template <typename T>
+  using StorageTypeSelector = typename StorageTypeExtractor<T>::type;
+  typedef MP::map<StorageTypeSelector, SUPPORTED_TYPES_AS_TUPLE> T_VISITABLE_TYPES_AS_TUPLE;
+  typedef MP::abstract_visitable<T_VISITABLE_TYPES_AS_TUPLE> T_ABSTRACT_VISITABLE;
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
   typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
   typedef MMQ<T_MQ_LISTENER, std::unique_ptr<T_MQ_MESSAGE>> T_MQ;
 
-  typedef PolymorphicContainer<T_SUPPORTED_TYPES_AS_TUPLE> T_CONTAINER;
+  template <typename T>
+  using ContainerTypeSelector = Container<T, T_SUPPORTED_TYPES_AS_TUPLE, T_VISITABLE_TYPES_AS_TUPLE>;
+  typedef MP::combine<MP::map<ContainerTypeSelector, T_SUPPORTED_TYPES_AS_TUPLE>> T_CONTAINER;
 
   typedef sherlock::StreamInstance<std::unique_ptr<T_ENTRY_BASE_TYPE>> T_STREAM_TYPE;
 
@@ -91,7 +101,6 @@ struct YodaTypes {
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct StreamListener {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
 
   explicit StreamListener(typename YT::T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
@@ -101,7 +110,7 @@ struct StreamListener {
 
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
-    virtual void Process(typename YT::T_CONTAINER::type& container,
+    virtual void Process(typename YT::T_CONTAINER& container,
                          typename YT::T_STREAM_TYPE& stream) override {
       // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
       typename YT::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename YT::T_ABSTRACT_VISITABLE*>(entry.get());
@@ -111,8 +120,6 @@ struct StreamListener {
         // TODO(dkorolev): Talk to Max about API's policy on the stream containing an entry of unsupported type.
         // Ex., have base entry type B, entry types X and Y, and finding an entry of type Z in the stream.
         // Fail with an error message by default?
-        // DIMA static_assert(sizeof(is_same_or_compile_error<typename YT::T_ABSTRACT_VISITABLE, std::string>),
-        // "")
         throw false;
       }
 
@@ -145,10 +152,6 @@ struct StreamListener {
     return true;
   }
 
-  // Sherlock stream listener call.
-  // TODO(dkorolev): This call should also be made conditional on the existence of this method.
-  void Terminate() {}
-
   std::atomic_bool caught_up_;
   std::atomic_size_t entries_seen_;
 
@@ -156,52 +159,58 @@ struct StreamListener {
   typename YT::T_MQ& mq_;
 };
 
-// The container to keep the in-memory state of a particular entry type and its internal represenation.
-// Particular implementations are located in `api/*/*.h`.
-template <typename SPECIFIC_ENTRY_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct Container {};
-
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
-// TODO(dkorolev): This guy should be polymorphic too.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  virtual void Process(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream) = 0;
+  virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  explicit MQListener(typename YT::T_CONTAINER::type& container, typename YT::T_STREAM_TYPE& stream)
+  explicit MQListener(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream)
       : container_(container), stream_(stream) {}
 
   // MMQ consumer call.
   void OnMessage(std::unique_ptr<typename YT::T_MQ_MESSAGE>& message, size_t dropped_count) {
-    // TODO(dkorolev): Should use a non-dropping MMQ here, of course.
-    static_cast<void>(dropped_count);  // TODO(dkorolev): And change the method's signature to remove this.
+    // TODO(mzhurovich): Should use a non-dropping MMQ here, of course.
+    static_cast<void>(dropped_count);  // TODO(mzhurovich): And change the method's signature to remove this.
     message->Process(container_, stream_);
   }
 
-  typename YT::T_CONTAINER::type& container_;
+  typename YT::T_CONTAINER& container_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 
-// TODO(dkorolev): Enable the variadic version.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
-struct PolymorphicContainer {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-};
-
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename CONCRETE_TYPE>
 struct YodaImpl {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   YodaImpl() = delete;
 };
 
-// TODO(dkorolev): This should be polymorphic too. Using `bricks::metaprogramming::combine`.
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename TYPES_TO_INHERIT>
 struct CombinedYodaImpls {
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+};
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename T, typename... TS>
+struct CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<T, TS...>>
+    : YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, T>,
+      CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<TS...>> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+  CombinedYodaImpls() = delete;
+  explicit CombinedYodaImpls(typename YT::T_MQ& mq)
+      : YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, T>(mq),
+        CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<TS...>>(mq) {}
+};
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
+struct CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<>> {
+  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+  CombinedYodaImpls() = delete;
+  explicit CombinedYodaImpls(typename YT::T_MQ&) {}
 };
 
 }  // namespace yoda
