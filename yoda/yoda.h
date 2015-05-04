@@ -94,18 +94,17 @@ template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 class APIWrapper : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-
- public:
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
 
+ public:
   APIWrapper() = delete;
   APIWrapper(const std::string& stream_name)
       : CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
-        sherlock_listener_(mq_),
-        listener_scope_(stream_.Subscribe(sherlock_listener_)) {}
+        stream_listener_(mq_),
+        sherlock_listener_scope_(stream_.Subscribe(stream_listener_)) {}
 
   typename YT::T_STREAM_TYPE& UnsafeStream() { return stream_; }
 
@@ -115,16 +114,16 @@ class APIWrapper : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_
   }
 
   // For testing purposes.
-  bool CaughtUp() const { return sherlock_listener_.caught_up_; }
-  size_t EntriesSeen() const { return sherlock_listener_.entries_seen_; }
+  bool CaughtUp() const { return stream_listener_.caught_up_; }
+  size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
  private:
   typename YT::T_STREAM_TYPE stream_;
   typename YT::T_CONTAINER::type container_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
-  typename YT::T_SHERLOCK_LISTENER sherlock_listener_;
-  typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE listener_scope_;
+  typename YT::T_SHERLOCK_LISTENER stream_listener_;
+  typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
 };
 
 // Support both providing `std::tuple<>` and `TYPES...` as template parameter(s) for `yoda::API`.
