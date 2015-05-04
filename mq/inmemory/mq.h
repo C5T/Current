@@ -43,7 +43,7 @@ SOFTWARE.
 //   2) Block the pushing thread and wait for the next message to be consumed and free the space in the buffer.
 //      IMPORTANT NOTE: if there are several threads waiting to push the  message, MMQ DOES NOT guarantee that
 //      the messages will be added in the order in which the functions were called. However, for any particular
-//      thread MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
+//      thread, MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
 //  This behavior of MMQ can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
 #include <condition_variable>
@@ -113,7 +113,7 @@ class MMQ final {
   // Type of the processor of the entries.
   // It should expose exactly one method `OnMessage()`, using one of the possible semantics - with or without
   // `number of dropped messages` argument. The least will be always zero in case of non-droppinq MMQ.
-  // Message can be passed by traditional or rvalue reference. For example:
+  // The message can be passed by traditional or rvalue reference. For example:
   //
   //   void OnMessage(T_MESSAGE&& message, size_t number_of_dropped_messages_if_any);
   //
@@ -293,7 +293,7 @@ class MMQ final {
   // Messages beyond it will be dropped.
   const size_t circular_buffer_size_;
 
-  // The `Entry` struct keeps the entries along with their completeion status.
+  // The `Entry` struct keeps the entries along with their completion status.
   struct Entry {
     T_MESSAGE message_body;
     enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
