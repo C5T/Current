@@ -137,7 +137,7 @@ struct APIWrapperSelector<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> {
   typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> type;
 };
 
-template<typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
+template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
 using API = typename APIWrapperSelector<ENTRY_BASE_TYPE, SUPPORTED_TYPES...>::type;
 
 }  // namespace yoda
