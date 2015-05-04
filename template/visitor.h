@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_VARIADIC_VISITOR_H
-#define BRICKS_VARIADIC_VISITOR_H
+#ifndef BRICKS_TEMPLATE_VISITOR_H
+#define BRICKS_TEMPLATE_VISITOR_H
 
 #include <tuple>
 
@@ -65,4 +65,4 @@ struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
 }  // namespace metaprogramming
 }  // namespace bricks
 
-#endif  // BRICKS_VARIADIC_VISITOR_H
+#endif  // BRICKS_TEMPLATE_VISITOR_H

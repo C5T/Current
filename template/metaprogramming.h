@@ -24,8 +24,8 @@ SOFTWARE.
 
 // Variadic methods. The convention is to use `std::tuple<>` for type lists.
 
-#ifndef BRICKS_VARIADIC_VARIADIC_H
-#define BRICKS_VARIADIC_VARIADIC_H
+#ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
+#define BRICKS_TEMPLATE_METAPROGRAMMING_H
 
 #include "rmref.h"
 #include "pod.h"
@@ -33,4 +33,4 @@ SOFTWARE.
 #include "mapreduce.h"
 #include "visitor.h"
 
-#endif  // BRICKS_VARIADIC_VARIADIC_H
+#endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H

@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_VARIADIC_POD_H
-#define BRICKS_VARIADIC_POD_H
+#ifndef BRICKS_TEMPLATE_POD_H
+#define BRICKS_TEMPLATE_POD_H
 
 #include <string>
 #include <type_traits>
@@ -38,4 +38,4 @@ static_assert(std::is_same<const std::string&, copy_free<std::string>>::value, "
 
 }  // namespace bricks
 
-#endif  // BRICKS_VARIADIC_POD_H
+#endif  // BRICKS_TEMPLATE_POD_H

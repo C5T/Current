@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_VARIADIC_IS_TUPLE_H
-#define BRICKS_VARIADIC_IS_TUPLE_H
+#ifndef BRICKS_TEMPLATE_IS_TUPLE_H
+#define BRICKS_TEMPLATE_IS_TUPLE_H
 
 #include <tuple>
 
@@ -49,4 +49,4 @@ static_assert(!is_std_tuple<std::string>::value, "");
 }  // namespace metaprogramming
 }  // namespace bricks
 
-#endif  // BRICKS_VARIADIC_IS_TUPLE_H
+#endif  // BRICKS_TEMPLATE_IS_TUPLE_H

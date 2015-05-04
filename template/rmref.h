@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_VARIADIC_RMREF_H
-#define BRICKS_VARIADIC_RMREF_H
+#ifndef BRICKS_TEMPLATE_RMREF_H
+#define BRICKS_TEMPLATE_RMREF_H
 
 #include <string>
 #include <type_traits>
@@ -65,4 +65,4 @@ static_assert(std::is_same<std::string, rmconstref<const std::string&&>>::value,
 
 }  // namespace bricks
 
-#endif  // BRICKS_VARIADIC_RMREF_H
+#endif  // BRICKS_TEMPLATE_RMREF_H
