@@ -1,11 +1,8 @@
-/*
-make ./.noshit/test && ./.noshit/test --gtest_repeat=10000
-*/
-
 /*******************************************************************************
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +31,8 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 #include <chrono>
+
+using bricks::MMQ;
 
 TEST(InMemoryMQ, SmokeTest) {
   struct Consumer {
@@ -64,16 +63,16 @@ struct SlowConsumer {
   std::vector<std::string> messages_;
   std::atomic_size_t dropped_messages_;
   std::atomic_size_t processed_messages_;
-  size_t processing_time_ms_;
-  SlowConsumer(size_t processing_time_ms = 20u)
-      : dropped_messages_(0u), processed_messages_(0u), processing_time_ms_(processing_time_ms) {}
+  size_t delay_ms_;
+  SlowConsumer(size_t delay_ms = 20u)
+      : dropped_messages_(0u), processed_messages_(0u), delay_ms_(delay_ms) {}
   // Uncomment the line below to see that it doesn't compile.
   // void OnMessage(const std::string& s) {}
   void OnMessage(const std::string& s, size_t dropped_messages) {
     messages_.push_back(s);
     dropped_messages_ += dropped_messages;
-    // Simulate message processing time of 20 ms.
-    std::this_thread::sleep_for(std::chrono::milliseconds(processing_time_ms_));
+    // Simulate slow message processing by adding a delay.
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms_));
     ++processed_messages_;
   }
 };
@@ -95,7 +94,19 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   }
 
   // Confirm that exactly 10 messages were dropped due to a very slow consumer.
+  // Despite being flaky, this condition can only fail if it takes more than 20 ms to add the messages,
+  // which is quite huge time interval.
   EXPECT_EQ(c.dropped_messages_, 10u);
+
+  // Wait until the rest of the queued messages are processed.
+  c.delay_ms_ = 0u;
+  while (c.processed_messages_ != 10u) {
+    ;  // Spin lock;
+  }
+
+  // Ensure that all processed messages are indeed unique.
+  std::set<std::string> messages(begin(c.messages_), end(c.messages_));
+  EXPECT_EQ(messages.size(), 10u);
 }
 
 TEST(InMemoryMQ, WaitOnOverflowTest) {
@@ -104,8 +115,8 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   // Queue with 10 events in the buffer.
   MMQ<SlowConsumer, std::string, 10, false> mmq(c);
 
-  auto producer = [&](char prefix, size_t count) {
-     for (size_t i = 0; i < count; ++i) {
+  const auto producer = [&](char prefix, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
       mmq.PushMessage(bricks::strings::Printf("%c%02d", prefix, static_cast<int>(i)));
     }
   };
@@ -120,12 +131,17 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
     p.join();
   }
 
-  // Wait for 30 ms - the queue should be processed by this time.
-  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  // Since we push 100 messages and the size of the buffer is 10, we must see at least 90 messages processed by
+  // this moment.
+  EXPECT_GE(c.processed_messages_, 90u);
 
-  // Confirm that exactly 100 messages was processed.
+  // Wait until the rest of the queued messages are processed.
+  while (c.processed_messages_ != 100u) {
+    ;  // Spin lock;
+  }
+
+  // Confirm that none of the messages were dropped.
   EXPECT_EQ(c.dropped_messages_, 0u);
-  EXPECT_EQ(c.processed_messages_, 100u);
 
   // Ensure that all processed messages are indeed unique.
   std::set<std::string> messages(begin(c.messages_), end(c.messages_));

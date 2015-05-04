@@ -1,3 +1,28 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
 #ifndef BRICKS_MQ_INMEMORY_MQ_H
 #define BRICKS_MQ_INMEMORY_MQ_H
 
@@ -7,31 +32,27 @@
 // Messages can be pushed into it via thread-safe methods `PushMessage()` or `EmplaceMessage()`.
 // The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
 //
-// The buffer size, i.e. the number of the messages MMQ can hold, is defined by
-// the constructor argument `buffer_size`. For usability reasons the default
-// value for it can be set via `DEFAULT_BUFFER_SIZE` template argument.
+// The buffer size, i.e. the number of the messages MMQ can hold, is defined by the constructor argument
+// `buffer_size`. For usability reasons the default value for it can be set via `DEFAULT_BUFFER_SIZE`
+// template argument.
 //
-// There are two possible strategies in case of buffer overflow (i.e. there is
-// no free space to store message at the next call to `PushMessage()` or
-// `EmplaceMessage()`):
-//   1) Discard (drop) the message. In this case, the number of the messages dropped between
-//      the subseqent calls of the consumer may be passed as a second argument of `OnMessage()`.
-//   2) Block the pushing thread and wait for the next message to be consumed
-//      and free the space in the buffer.
-//      IMPORTANT NOTE: if there are several threads waiting to push the
-//      message, MMQ DOES NOT guarantee that the messages will be added in the
-//      order in which the functions were called. However, for any particular
-//      thread MMQ DOES GUARANTEE the order of the messages for the subsequent
-//      requests to push the message.
-//  This behavior of MMQ can be controlled via `DROP_ON_OVERFLOW` template
-//  argument.
+// There are two possible strategies in case of buffer overflow (i.e. there is no free space to store message
+// at the next call to `PushMessage()` or `EmplaceMessage()`):
+//   1) Discard (drop) the message. In this case, the number of the messages dropped between the subseqent
+//      calls of the consumer may be passed as a second argument of `OnMessage()`.
+//   2) Block the pushing thread and wait for the next message to be consumed and free the space in the buffer.
+//      IMPORTANT NOTE: if there are several threads waiting to push the  message, MMQ DOES NOT guarantee that
+//      the messages will be added in the order in which the functions were called. However, for any particular
+//      thread MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
+//  This behavior of MMQ can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
-#include <iostream>
+
+namespace bricks {
 
 template <typename T_CONSUMER, typename T_MESSAGE>
 constexpr bool HasSimpleOnMessage(char) {
@@ -74,9 +95,8 @@ struct ExportMessageImpl<T_CONSUMER, T_MESSAGE, false> {
 
 template <typename T_CONSUMER, typename T_MESSAGE>
 void ExportMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_count) {
-  static_assert(
-      !(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) && HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0)),
-      "Two versions of `OnMessage()` are defined, choose one.");
+  static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) != HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
+                "There must be exactly one implementation of `OnMessage()` defined in the consumer.");
   ExportMessageImpl<T_CONSUMER, T_MESSAGE, HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0)>::OnMessage(
       consumer, std::move(message), dropped_count);
 }
@@ -91,15 +111,16 @@ class MMQ final {
   typedef MESSAGE T_MESSAGE;
 
   // Type of the processor of the entries.
-  // It should expose one of the methods, accepting message by const or rvalue reference:
+  // It should expose exactly one method `OnMessage()`, using one of the possible semantics - with or without
+  // `number of dropped messages` argument. The least will be always zero in case of non-droppinq MMQ.
+  // Message can be passed by traditional or rvalue reference. For example:
   //
-  //   void OnMessage(T_MESSAGE&[&], size_t number_of_dropped_messages_if_any);
+  //   void OnMessage(T_MESSAGE&& message, size_t number_of_dropped_messages_if_any);
   //
   //  or
   //
-  //   void OnMessage(T_MESSAGE&[&]);
+  //   void OnMessage(const T_MESSAGE& message);
   //
-  // but not both.
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
   typedef CONSUMER T_CONSUMER;
 
@@ -177,7 +198,7 @@ class MMQ final {
     while (true) {
       {
         // Get the next message, which is `READY` to be exported.
-        // MUTEX-LOCKED, except for the conditional variable part.
+        // MUTEX-LOCKED, except for the condition variable part.
         std::unique_lock<std::mutex> lock(mutex_);
         while (circular_buffer_[tail].status != Entry::READY) {
           if (destructing_) {
@@ -219,7 +240,7 @@ class MMQ final {
 
   template <bool DROP = DROP_ON_OVERFLOW>
   typename std::enable_if<DROP, size_t>::type PushMessageAllocate() {
-    // Implementation that discards message if the queue is full.
+    // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
     if (circular_buffer_[head_].status == Entry::FREE) {
@@ -236,7 +257,8 @@ class MMQ final {
 
   template <bool DROP = DROP_ON_OVERFLOW>
   typename std::enable_if<!DROP, size_t>::type PushMessageAllocate() {
-    // Implementation that waits for empty space if the queue is full.
+    // Implementation that waits for an empty space if the queue is full and blocks the calling thread
+    // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
     std::unique_lock<std::mutex> lock(mutex_);
     if (destructing_) {
@@ -271,7 +293,7 @@ class MMQ final {
   // Messages beyond it will be dropped.
   const size_t circular_buffer_size_;
 
-  // The `Entry` struct keeps the entries along with the status of
+  // The `Entry` struct keeps the entries along with their completeion status.
   struct Entry {
     T_MESSAGE message_body;
     enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
@@ -292,5 +314,7 @@ class MMQ final {
   // The thread in which the consuming process is running.
   std::thread consumer_thread_;
 };
+
+}  // namespace bricks
 
 #endif  // BRICKS_MQ_INMEMORY_MQ_H
