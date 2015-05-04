@@ -1,16 +1,50 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
 #ifndef BRICKS_MQ_INMEMORY_MQ_H
 #define BRICKS_MQ_INMEMORY_MQ_H
 
 // MMQ is an efficient in-memory FIFO buffer.
-//
-// Messages can be pushed into it via `PushMessage()`.
-// The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
-// The order of messages is preserved.
-//
 // One of the objectives of MMQ is to minimize the time for which the message pushing thread is blocked for.
 //
-// The default (and only so far) implementation discards older messages if the queue gets over capacity.
-// TODO(dkorolev): This behavior should probably change.
+// Messages can be pushed into it via thread-safe methods `PushMessage()` or `EmplaceMessage()`.
+// The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
+//
+// The buffer size, i.e. the number of the messages MMQ can hold, is defined by the constructor argument
+// `buffer_size`. For usability reasons the default value for it can be set via `DEFAULT_BUFFER_SIZE`
+// template argument.
+//
+// There are two possible strategies in case of buffer overflow (i.e. there is no free space to store message
+// at the next call to `PushMessage()` or `EmplaceMessage()`):
+//   1) Discard (drop) the message. In this case, the number of the messages dropped between the subseqent
+//      calls of the consumer may be passed as a second argument of `OnMessage()`.
+//   2) Block the pushing thread and wait for the next message to be consumed and free the space in the buffer.
+//      IMPORTANT NOTE: if there are several threads waiting to push the  message, MMQ DOES NOT guarantee that
+//      the messages will be added in the order in which the functions were called. However, for any particular
+//      thread, MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
+//  This behavior of MMQ can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
 #include <condition_variable>
 #include <mutex>
@@ -18,14 +52,75 @@
 #include <thread>
 #include <vector>
 
-template <typename CONSUMER, typename MESSAGE = std::string, size_t DEFAULT_BUFFER_SIZE = 1024>
+namespace bricks {
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+constexpr bool HasSimpleOnMessage(char) {
+  return false;
+}
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+constexpr auto HasSimpleOnMessage(int)
+    -> decltype(std::declval<T_CONSUMER>().OnMessage(std::move(std::declval<T_MESSAGE>())), bool()) {
+  return true;
+}
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+constexpr bool HasExtendedOnMessage(char) {
+  return false;
+}
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+constexpr auto HasExtendedOnMessage(int)
+    -> decltype(std::declval<T_CONSUMER>().OnMessage(std::move(std::declval<T_MESSAGE>()), 0u), bool()) {
+  return true;
+}
+
+template <typename T_CONSUMER, typename T_MESSAGE, bool HAS_SIMPLE_ON_MESSAGE>
+struct ExportMessageImpl {};
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+struct ExportMessageImpl<T_CONSUMER, T_MESSAGE, true> {
+  static void OnMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t) {
+    consumer.OnMessage(std::move(message));
+  }
+};
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+struct ExportMessageImpl<T_CONSUMER, T_MESSAGE, false> {
+  static void OnMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_count) {
+    consumer.OnMessage(std::move(message), dropped_count);
+  }
+};
+
+template <typename T_CONSUMER, typename T_MESSAGE>
+void ExportMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_count) {
+  static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) != HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
+                "There must be exactly one implementation of `OnMessage()` defined in the consumer.");
+  ExportMessageImpl<T_CONSUMER, T_MESSAGE, HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0)>::OnMessage(
+      consumer, std::move(message), dropped_count);
+}
+
+template <typename CONSUMER,
+          typename MESSAGE = std::string,
+          size_t DEFAULT_BUFFER_SIZE = 1024,
+          bool DROP_ON_OVERFLOW = true>
 class MMQ final {
  public:
   // Type of entries to store, defaults to `std::string`.
   typedef MESSAGE T_MESSAGE;
 
   // Type of the processor of the entries.
-  // It should expose one method, void OnMessage(T_MESSAGE&, size_t number_of_dropped_messages_if_any);
+  // It should expose exactly one method `OnMessage()`, using one of the possible semantics - with or without
+  // `number of dropped messages` argument. The least will be always zero in case of non-droppinq MMQ.
+  // The message can be passed by traditional or rvalue reference. For example:
+  //
+  //   void OnMessage(T_MESSAGE&& message, size_t number_of_dropped_messages_if_any);
+  //
+  //  or
+  //
+  //   void OnMessage(const T_MESSAGE& message);
+  //
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
   typedef CONSUMER T_CONSUMER;
 
@@ -34,6 +129,7 @@ class MMQ final {
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
+        dropped_messages_count_(0u),
         consumer_thread_(&MMQ::ConsumerThread, this) {}
 
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
@@ -51,21 +147,33 @@ class MMQ final {
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
   void PushMessage(const T_MESSAGE& message) {
     const size_t index = PushMessageAllocate();
-    circular_buffer_[index].message_body = message;
-    PushMessageCommit(index);
+    if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].message_body = message;
+      PushMessageCommit(index);
+    } else {
+      ++dropped_messages_count_;
+    }
   }
 
   void PushMessage(T_MESSAGE&& message) {
     const size_t index = PushMessageAllocate();
-    circular_buffer_[index].message_body = std::move(message);
-    PushMessageCommit(index);
+    if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].message_body = std::move(message);
+      PushMessageCommit(index);
+    } else {
+      ++dropped_messages_count_;
+    }
   }
 
   template <typename... ARGS>
   void EmplaceMessage(ARGS&&... args) {
     const size_t index = PushMessageAllocate();
-    circular_buffer_[index].message_body = T_MESSAGE(args...);
-    PushMessageCommit(index);
+    if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].message_body = T_MESSAGE(args...);
+      PushMessageCommit(index);
+    } else {
+      ++dropped_messages_count_;
+    }
   }
 
  private:
@@ -77,72 +185,104 @@ class MMQ final {
   // Increment the index respecting the circular nature of the buffer.
   void Increment(size_t& i) const { i = (i + 1) % circular_buffer_size_; }
 
-  // The thread which extracts fully populated messages from the tail of the buffer and exports them.
+  // The thread which extracts fully populated messages from the tail of the buffer and feeds them to the
+  // consumer.
   void ConsumerThread() {
+    // The `tail` pointer is local to the procesing thread.
+    size_t tail = 0u;
+
+    // The counter of dropped messages is updated within the first, mutex-locked, section,
+    // and then used in the second, mutex-free, one.
+    size_t actually_dropped_messages;
+
     while (true) {
-      size_t index;
-      size_t this_time_dropped_messages;
       {
-        // First, get an message to export. Wait until it's finalized and ready to be exported.
-        // MUTEX-LOCKED, except for the conditional variable part.
-        index = tail_;
+        // Get the next message, which is `READY` to be exported.
+        // MUTEX-LOCKED, except for the condition variable part.
         std::unique_lock<std::mutex> lock(mutex_);
-        if (head_ready_ == tail_) {
-          if (destructing_) {
-            return;  // LCOV_EXCL_LINE
-          }
-          condition_variable_.wait(lock, [this] { return head_ready_ != tail_ || destructing_; });
+        while (circular_buffer_[tail].status != Entry::READY) {
           if (destructing_) {
             return;
           }
+          condition_variable_.wait(
+              lock, [this, tail] { return (circular_buffer_[tail].status == Entry::READY) || destructing_; });
         }
-        this_time_dropped_messages = number_of_dropped_messages_;
-        number_of_dropped_messages_ = 0;
+        if (destructing_) {
+          return;
+        }
+        circular_buffer_[tail].status = Entry::BEING_EXPORTED;
+
+        actually_dropped_messages = dropped_messages_count_;
+        dropped_messages_count_ = 0u;
       }
 
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        consumer_.OnMessage(std::ref(circular_buffer_[index].message_body), this_time_dropped_messages);
+        ExportMessage(consumer_, std::move(circular_buffer_[tail].message_body), actually_dropped_messages);
       }
 
       {
-        // Finally, mark the message as successfully exported.
+        // Finally, mark the message entry in the buffer as `FREE` for overwriting.
         // MUTEX-LOCKED.
-        std::lock_guard<std::mutex> lock(mutex_);
-        Increment(tail_);
+        {
+          std::lock_guard<std::mutex> lock(mutex_);
+          circular_buffer_[tail].status = Entry::FREE;
+        }
+        Increment(tail);
+
+        // Need to notify message pushers.
+        // TODO(dkorolev) + TODO(mzhurovich): Think whether this might be a performance bottleneck.
+        condition_variable_.notify_one();
       }
     }
   }
 
-  size_t PushMessageAllocate() {
-    // First, allocate room in the buffer for this message.
-    // Overwrite the oldest message if have to.
+  template <bool DROP = DROP_ON_OVERFLOW>
+  typename std::enable_if<DROP, size_t>::type PushMessageAllocate() {
+    // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
-    const size_t index = head_allocated_;
-    Increment(head_allocated_);
-    if (head_allocated_ == tail_) {
-      // Buffer overflow, must drop the least recent element and keep the count of those.
-      ++number_of_dropped_messages_;
-      if (tail_ == head_ready_) {
-        Increment(head_ready_);  // LCOV_EXCL_LINE
-      }
-      Increment(tail_);
+    if (circular_buffer_[head_].status == Entry::FREE) {
+      // Regular case.
+      const size_t index = head_;
+      Increment(head_);
+      circular_buffer_[index].status = Entry::BEING_IMPORTED;
+      return index;
+    } else {
+      // Overflow. Discarding the message.
+      return static_cast<size_t>(-1);
     }
-    // Mark this message as incomplete, not yet ready to be sent over to the consumer.
-    circular_buffer_[index].finalized = false;
+  }
+
+  template <bool DROP = DROP_ON_OVERFLOW>
+  typename std::enable_if<!DROP, size_t>::type PushMessageAllocate() {
+    // Implementation that waits for an empty space if the queue is full and blocks the calling thread
+    // (potentially indefinitely, depends on the behavior of the consumer).
+    // MUTEX-LOCKED.
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (destructing_) {
+      return static_cast<size_t>(-1);
+    }
+    while (circular_buffer_[head_].status != Entry::FREE) {
+      // Waiting for the next empty slot in the buffer.
+      condition_variable_.wait(
+          lock, [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
+      if (destructing_) {
+        return static_cast<size_t>(-1);
+      }
+    }
+    const size_t index = head_;
+    Increment(head_);
+    circular_buffer_[index].status = Entry::BEING_IMPORTED;
     return index;
   }
 
   void PushMessageCommit(const size_t index) {
-    // After the message has been copied over, mark it as finalized and advance `head_ready_`.
+    // After the message has been copied over, mark it as `READY` for consumer.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
-    circular_buffer_[index].finalized = true;
-    while (head_ready_ != head_allocated_ && circular_buffer_[head_ready_].finalized) {
-      Increment(head_ready_);
-    }
+    circular_buffer_[index].status = Entry::READY;
     condition_variable_.notify_all();
   }
 
@@ -150,41 +290,23 @@ class MMQ final {
   T_CONSUMER& consumer_;
 
   // The capacity of the circular buffer for intermediate messages.
-  // Messages beyond it will be dropped (the earlier messages will be overwritten).
-  // TODO(dkorolev): Consider adding dropping policy. Often times block-waiting until the queue
-  // can accept new messages, or simply returning `false` on a new message is a safer way.
+  // Messages beyond it will be dropped.
   const size_t circular_buffer_size_;
 
-  // The `Entry` struct keeps the entries along with the flag describing whether the message is done being
-  // populated and thus is ready to be exported. The flag is neccesary, since the message at index `i+1` might
-  // chronologically get finalized before the message at index `i` does.
+  // The `Entry` struct keeps the entries along with their completion status.
   struct Entry {
     T_MESSAGE message_body;
-    bool finalized;
+    enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
   };
 
   // The circular buffer, of size `circular_buffer_size_`.
+  // Entries are added/imported at `head_` and removed/exported at `tail`,
+  // where `head_` is owned by the class instance and `tail` exists only in the consumer thread.
   std::vector<Entry> circular_buffer_;
-
-  // The number of messages that have been overwritten due to buffer overflow.
-  size_t number_of_dropped_messages_ = 0;
-
-  // To minimize the time for which the message emitting thread is blocked for,
-  // the buffer uses three "pointers":
-  // 1) `tail_`: The index of the next element to be exported and removed from the buffer.
-  // 2) `head_ready_`: The successor of the index of the element that is the last finalized element.
-  // 3) `head_allocated_`: The index of the first unallocated element,
-  //     into which the next message will be written.
-  // The order of "pointers" is always tail_ <= head_ready_ <= head_allocated_.
-  // The range [tail_, head_ready_) is what is ready to be extracted and sent over.
-  // The range [head_ready_, head_allocated_) is the "grey area", where the entries are already
-  // assigned indexes, but their population, done by respective client threads, is not done yet.
-  // All three indexes are guarded by one mutex. (This can be improved, but meh. -- D.K.)
-  size_t tail_ = 0;
-  size_t head_ready_ = 0;
-  size_t head_allocated_ = 0;
+  size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
+  std::atomic_size_t dropped_messages_count_;
 
   // For safe thread destruction.
   bool destructing_ = false;
@@ -192,5 +314,7 @@ class MMQ final {
   // The thread in which the consuming process is running.
   std::thread consumer_thread_;
 };
+
+}  // namespace bricks
 
 #endif  // BRICKS_MQ_INMEMORY_MQ_H
