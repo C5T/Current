@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,4 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "docu/docu_05variadic_02.cc"
+#ifndef BRICKS_TEMPLATE_IS_TUPLE_H
+#define BRICKS_TEMPLATE_IS_TUPLE_H
+
+#include <tuple>
+
+namespace bricks {
+namespace metaprogramming {
+
+template <typename... TS>
+struct is_std_tuple {
+  enum { value = false };
+};
+
+template <typename... TS>
+struct is_std_tuple<std::tuple<TS...>> {
+  enum { value = true };
+};
+
+static_assert(is_std_tuple<std::tuple<>>::value, "");
+static_assert(is_std_tuple<std::tuple<int>>::value, "");
+static_assert(is_std_tuple<std::tuple<int, std::string>>::value, "");
+static_assert(!is_std_tuple<int>::value, "");
+static_assert(!is_std_tuple<std::string>::value, "");
+
+}  // namespace metaprogramming
+}  // namespace bricks
+
+#endif  // BRICKS_TEMPLATE_IS_TUPLE_H

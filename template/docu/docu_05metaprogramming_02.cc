@@ -23,15 +23,16 @@ SOFTWARE.
 *******************************************************************************/
 
 #include <string>
+#include <sstream>
 
-#include "../variadic.h"
+#include "../metaprogramming.h"
 
 #include "../../3party/gtest/gtest-main.h"
 
   // Map.
   template<typename T> struct add_100 { enum { x = T::x + 100 }; };
   
-TEST(Variadic, Map) {
+TEST(TemplateMetaprogramming, Map) {
   struct A { enum { x = 1 }; };
   struct B { enum { x = 2 }; };
   struct C { enum { x = 3 }; };
@@ -42,7 +43,7 @@ TEST(Variadic, Map) {
   EXPECT_EQ(2, std::get<1>(before).x);
   EXPECT_EQ(3, std::get<2>(before).x);
   
-  bricks::variadic::map<add_100, decltype(before)> after;
+  bricks::metaprogramming::map<add_100, decltype(before)> after;
   static_assert(std::tuple_size<decltype(after)>::value == 3, "");
   EXPECT_EQ(101, std::get<0>(after).x);
   EXPECT_EQ(102, std::get<1>(after).x);
@@ -52,7 +53,7 @@ TEST(Variadic, Map) {
   // Filter.
   template <typename T> struct y_is_even { enum { filter = ((T::y % 2) == 0) }; };
   
-TEST(Variadic, Filter) {
+TEST(TemplateMetaprogramming, Filter) {
   struct A { enum { y = 10 }; };
   struct B { enum { y = 15 }; };
   struct C { enum { y = 20 }; };
@@ -63,7 +64,7 @@ TEST(Variadic, Filter) {
   EXPECT_EQ(15, std::get<1>(before).y);
   EXPECT_EQ(20, std::get<2>(before).y);
   
-  bricks::variadic::filter<y_is_even, decltype(before)> after;
+  bricks::metaprogramming::filter<y_is_even, decltype(before)> after;
   static_assert(std::tuple_size<decltype(after)>::value == 2, "");
   EXPECT_EQ(10, std::get<0>(after).y);
   EXPECT_EQ(20, std::get<1>(after).y);
@@ -74,23 +75,95 @@ TEST(Variadic, Filter) {
     static std::string s() { return "(" + A::s() + "+" + B::s() + ")"; }
   };
       
-TEST(Variadic, Reduce) {
+TEST(TemplateMetaprogramming, Reduce) {
   struct A { static std::string s() { return "A"; } };
   struct B { static std::string s() { return "B"; } };
   struct C { static std::string s() { return "C"; } };
   EXPECT_EQ("(A+(B+C))",
-            (bricks::variadic::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
+            (bricks::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
 }
     
   // Combine.
-TEST(Variadic, Combine) {
+TEST(TemplateMetaprogramming, Combine) {
   struct A { static std::string foo() { return "foo"; } };
   struct B { static std::string bar() { return "bar"; } };
   struct C { static std::string baz() { return "baz"; } };
   
-  bricks::variadic::combine<std::tuple<A, B, C>> c;
+  bricks::metaprogramming::combine<std::tuple<A, B, C>> c;
   
   EXPECT_EQ("foo", c.foo());
   EXPECT_EQ("bar", c.bar());
   EXPECT_EQ("baz", c.baz());
+}
+  
+  // Visitor.
+namespace visitor_unittest {
+using bricks::metaprogramming::visitor;
+using bricks::metaprogramming::visitable;
+using bricks::metaprogramming::abstract_visitable;
+
+  using typelist_ab = std::tuple<struct A, struct B>;
+  using typelist_bc = std::tuple<struct B, struct C>;
+    
+  struct A : visitable<typelist_ab, A> {
+    int a = 101;
+    void foo(std::ostream& os) {
+      os << "a=" << a << std::endl;
+    }
+  };
+  
+  struct B : visitable<typelist_ab, B>, visitable<typelist_bc, B> {
+    int b = 102;
+    void bar(std::ostream& os) {
+      os << "b=" << b << std::endl;
+    }
+  };
+  
+  struct C : visitable<typelist_bc, C> {
+    int c = 103;
+    void baz(std::ostream& os) {
+      os << "c=" << c << std::endl;
+    }
+  };
+}  // namespace visitor_unittest
+  
+TEST(TemplateMetaprogramming, Visitor) {
+using namespace visitor_unittest;
+
+  A a;
+  B b;
+  C c;
+  
+  struct call_foo_bar : visitor<typelist_ab> {
+    // Note that forgetting to handle one of `visit()` overrides will result in compile errors of two types:
+    // 1) overriding what is not `virtual`, thus attempting to operate on a parameter not from the type list, or
+    // 2) not overriding what should be overridden, thus attempting to instantiate the `visitor` that is abstract.
+    virtual void visit(A& a) override {
+      a.foo(os);
+    }
+    virtual void visit(B& b) override {
+      b.bar(os);
+    }
+    std::ostringstream os;
+  } foo_bar;
+
+  for (auto& it : std::vector<abstract_visitable<typelist_ab>*>({ &a, &b })) {
+    it->accept(foo_bar);
+  }
+  EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
+  
+  struct call_bar_baz : visitor<typelist_bc> {
+    virtual void visit(B& b) override {
+      b.bar(os);
+    }
+    virtual void visit(C& c) override {
+      c.baz(os);
+    }
+    std::ostringstream os;
+  } bar_baz;
+
+  for (auto& it : std::vector<abstract_visitable<typelist_bc>*>({ &b, &c })) {
+    it->accept(bar_baz);
+  }
+  EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 }

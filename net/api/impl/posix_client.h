@@ -173,7 +173,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_method_ = "DELETE";
     client.request_url_ = request.url;
     if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;
+      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
   }
 

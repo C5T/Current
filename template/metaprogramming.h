@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_EXCEPTIONS_H
-#define BRICKS_CEREALIZE_EXCEPTIONS_H
+// Variadic methods. The convention is to use `std::tuple<>` for type lists.
 
-#include "../exception.h"
+#ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
+#define BRICKS_TEMPLATE_METAPROGRAMMING_H
 
-namespace bricks {
+#include "rmref.h"
+#include "pod.h"
+#include "is_tuple.h"
+#include "mapreduce.h"
+#include "visitor.h"
 
-struct ParseJSONException : Exception {
-  explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
-};
-
-// File stream during serialization got somehow corrupted.
-struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE
-
-}  // namespace bricks
-
-#endif  // BRICKS_CEREALIZE_EXCEPTIONS_H
+#endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H

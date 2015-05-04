@@ -32,6 +32,7 @@ SOFTWARE.
 #include <type_traits>
 
 #include "../exception.h"
+#include "../template/rmref.h"
 
 namespace bricks {
 namespace strings {
@@ -76,7 +77,7 @@ struct MatchImpl<const char[N]> {
 
 template <typename T>
 inline bool Match(char a, T&& b) {
-  return MatchImpl<typename std::remove_reference<T>::type>::Match(a, b);
+  return MatchImpl<rmref<T>>::Match(a, b);
 }
 
 template <typename T>
