@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,47 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_EXCEPTIONS_H
-#define BRICKS_CEREALIZE_EXCEPTIONS_H
+#ifndef BRICKS_TEMPLATE_VISITOR_H
+#define BRICKS_TEMPLATE_VISITOR_H
 
-#include "../exception.h"
+#include <tuple>
+
+#include "is_tuple.h"
 
 namespace bricks {
+namespace metaprogramming {
 
-struct ParseJSONException : Exception {
-  explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
+// Library code.
+
+template <typename>
+struct visitor {};
+
+template <>
+struct visitor<std::tuple<>> {};
+
+template <typename T>
+struct virtual_visit_method {
+  virtual void visit(T&) = 0;
 };
 
-// File stream during serialization got somehow corrupted.
-struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE
+template <typename T, typename... TS>
+struct visitor<std::tuple<T, TS...>> : visitor<std::tuple<TS...>>, virtual_visit_method<T> {};
 
+template <typename TYPELIST_AS_TUPLE>
+struct abstract_visitable {
+  static_assert(is_std_tuple<TYPELIST_AS_TUPLE>::value, "");
+  virtual void accept(visitor<TYPELIST_AS_TUPLE>&) = 0;
+};
+
+template <typename TYPELIST_AS_TUPLE, typename T>
+struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
+  static_assert(is_std_tuple<TYPELIST_AS_TUPLE>::value, "");
+  virtual void accept(visitor<TYPELIST_AS_TUPLE>& v) override {
+    static_cast<virtual_visit_method<T>&>(v).visit(*static_cast<T*>(this));
+  }
+};
+
+}  // namespace metaprogramming
 }  // namespace bricks
 
-#endif  // BRICKS_CEREALIZE_EXCEPTIONS_H
+#endif  // BRICKS_TEMPLATE_VISITOR_H

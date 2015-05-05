@@ -22,15 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Variadic methods. The convention is to use `std::tuple<>` for type lists.
-
-#ifndef BRICKS_VARIADIC_VARIADIC_H
-#define BRICKS_VARIADIC_VARIADIC_H
+#ifndef BRICKS_TEMPLATE_MAPREDUCE_H
+#define BRICKS_TEMPLATE_MAPREDUCE_H
 
 #include <tuple>
 
 namespace bricks {
-namespace variadic {
+namespace metaprogramming {
 
 // `map<F<>, std::tuple<A, B, C>>` == `std::tuple<F<A>, F<B>, F<C>>`.
 template <template <typename> class F, typename TS>
@@ -97,7 +95,7 @@ using multiple_inheritance_combiner = typename multiple_inheritance_combiner_imp
 template <typename TS>
 using combine = reduce<multiple_inheritance_combiner, TS>;
 
-}  // namespace variadic
+}  // namespace metaprogramming
 }  // namespace bricks
 
-#endif  // BRICKS_VARIADIC_VARIADIC_H
+#endif  // BRICKS_TEMPLATE_MAPREDUCE_H

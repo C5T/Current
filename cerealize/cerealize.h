@@ -45,6 +45,7 @@ SOFTWARE.
 #include "../3party/cereal/include/external/base64.hpp"
 
 #include "../rtti/dispatcher.h"
+#include "../template/rmref.h"
 
 namespace bricks {
 namespace cerealize {
@@ -94,25 +95,22 @@ struct is_string_type_impl<const char[N]> {
 // explicitly exclude string-related types from cereal-based implementations.
 template <typename TOP_LEVEL_T>
 struct is_string_type {
-  constexpr static bool value = is_string_type_impl<
-      typename std::remove_cv<typename std::remove_reference<TOP_LEVEL_T>::type>::type>::value;
+  constexpr static bool value = is_string_type_impl<rmconstref<TOP_LEVEL_T>>::value;
 };
 
 // Helper compile-time test that certain type can be serialized via cereal.
 template <typename T>
 struct is_read_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_input_serializable<
-                                       typename std::remove_cv<typename std::remove_reference<T>::type>::type,
-                                       cereal::JSONInputArchive>::value;
+      !is_string_type<T>::value &&
+      cereal::traits::is_input_serializable<rmconstref<T>, cereal::JSONInputArchive>::value;
 };
 
 template <typename T>
 struct is_write_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value && cereal::traits::is_output_serializable<
-                                       typename std::remove_cv<typename std::remove_reference<T>::type>::type,
-                                       cereal::JSONOutputArchive>::value;
+      !is_string_type<T>::value &&
+      cereal::traits::is_output_serializable<rmconstref<T>, cereal::JSONOutputArchive>::value;
 };
 
 template <typename T>
@@ -168,7 +166,7 @@ class CerealFileAppenderBase {
     if (p >= 0) {
       return static_cast<size_t>(p);
     } else {
-      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());
+      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());  // LCOV_EXCL_LINE
     }
   }
 
@@ -387,7 +385,7 @@ struct AsConstCharPtr {
 template <typename OSTREAM, typename T, typename S>
 inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object, S&& name) {
   cereal::JSONOutputArchive so(os);
-  so(cereal::make_nvp<typename std::remove_reference<T>::type>(AsConstCharPtr::Run(name), object));
+  so(cereal::make_nvp<rmref<T>>(AsConstCharPtr::Run(name), object));
   return os;
 }
 
@@ -447,8 +445,8 @@ inline const T& ParseJSON(const std::string& input_json, T& output_object) {
     cereal::JSONInputArchive ar(is);
     ar(output_object);
   } catch (cereal::Exception&) {
-    BricksParseJSONError<T, HasFromInvalidJSON<typename std::remove_reference<T>::type>::value>::
-        HandleParseJSONError(input_json, output_object);
+    BricksParseJSONError<T, HasFromInvalidJSON<rmref<T>>::value>::HandleParseJSONError(input_json,
+                                                                                       output_object);
   }
   return output_object;
 }

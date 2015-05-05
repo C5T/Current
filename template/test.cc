@@ -22,20 +22,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_EXCEPTIONS_H
-#define BRICKS_CEREALIZE_EXCEPTIONS_H
-
-#include "../exception.h"
-
-namespace bricks {
-
-struct ParseJSONException : Exception {
-  explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
-};
-
-// File stream during serialization got somehow corrupted.
-struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE
-
-}  // namespace bricks
-
-#endif  // BRICKS_CEREALIZE_EXCEPTIONS_H
+#include "docu/docu_05metaprogramming_02.cc"

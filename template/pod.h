@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_EXCEPTIONS_H
-#define BRICKS_CEREALIZE_EXCEPTIONS_H
+#ifndef BRICKS_TEMPLATE_POD_H
+#define BRICKS_TEMPLATE_POD_H
 
-#include "../exception.h"
+#include <string>
+#include <type_traits>
 
 namespace bricks {
 
-struct ParseJSONException : Exception {
-  explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
-};
+template <typename T>
+using copy_free = typename std::conditional<std::is_pod<T>::value, T, const T&>::type;
 
-// File stream during serialization got somehow corrupted.
-struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE
+static_assert(std::is_same<int, copy_free<int>>::value, "");
+static_assert(std::is_same<const std::string&, copy_free<std::string>>::value, "");
 
 }  // namespace bricks
 
-#endif  // BRICKS_CEREALIZE_EXCEPTIONS_H
+#endif  // BRICKS_TEMPLATE_POD_H

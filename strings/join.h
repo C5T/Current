@@ -29,6 +29,8 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
+#include "../template/rmref.h"
+
 namespace bricks {
 namespace strings {
 
@@ -54,7 +56,7 @@ struct StringLengthOrOneForCharImpl<char> {
 
 template <typename T>
 inline size_t StringLengthOrOneForChar(T&& param) {
-  return StringLengthOrOneForCharImpl<typename std::remove_reference<T>::type>::Length(param);
+  return StringLengthOrOneForCharImpl<rmref<T>>::Length(param);
 }
 
 template <typename T_VECTOR_STRING, typename T_SEPARATOR>
