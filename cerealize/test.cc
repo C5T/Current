@@ -143,9 +143,20 @@ TEST(Cerealize, BinarySerializesAndParses) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender(CurrentTestTempFileName()) << a << b << c;
+  {
+    CerealFileAppender<CerealFormat::Binary> f1(CurrentTestTempFileName());
+    f1 << a << b;
+    EXPECT_EQ(2u, f1.EntriesAppended());
+    EXPECT_EQ(115u, f1.BytesAppended());
+  }
+  {
+    CerealFileAppender<CerealFormat::Binary> f2(CurrentTestTempFileName());
+    f2 << c;
+    EXPECT_EQ(1u, f2.EntriesAppended());
+    EXPECT_EQ(58u, f2.BytesAppended());
+  }
 
-  CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
+  CerealFileParser<MapsYouEventBase, CerealFormat::Binary> f(CurrentTestTempFileName());
 
   std::ostringstream os;
   while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
@@ -166,31 +177,21 @@ TEST(Cerealize, JSONSerializesAndParses) {
   EventAppSuspend b;
   EventAppResume c;
 
-  GenericCerealFileAppender<CerealFormat::JSON>(CurrentTestTempFileName()) << a << b;
-  GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(CurrentTestTempFileName());
+  {
+    CerealFileAppender<CerealFormat::JSON> f1(CurrentTestTempFileName());
+    f1 << a;
+    EXPECT_EQ(1u, f1.EntriesAppended());
+    EXPECT_EQ(169u, f1.BytesAppended());
+  }
+  {
+    CerealFileAppender<CerealFormat::JSON> f2(CurrentTestTempFileName());
+    f2 << b << c;
+    EXPECT_EQ(2u, f2.EntriesAppended());
+    EXPECT_EQ(340u, f2.BytesAppended());
+    EXPECT_EQ(509u, f2.TotalFileSize());
+  }
 
-  std::ostringstream os;
-  while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
-    ;
-
-  EXPECT_EQ(
-      "Type=EventAppStart, ShortType=\"a\", UID=, UID_Google=, UID_Apple=, UID_Facebook=, foo=foo\n"
-      "Type=EventAppSuspend, ShortType=\"as\", UID=, UID_Google=, UID_Apple=, UID_Facebook=, bar=bar\n",
-      os.str());
-}
-
-TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
-  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
-
-  EventAppStart a;
-  EventAppSuspend b;
-  EventAppResume c;
-
-  CerealFileAppender(CurrentTestTempFileName()) << a << b;
-  CerealFileAppender(CurrentTestTempFileName()) << c;
-
-  CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
+  CerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(CurrentTestTempFileName());
 
   std::ostringstream os;
   while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
@@ -203,20 +204,6 @@ TEST(Cerealize, BinaryStreamCanBeAppendedTo) {
       os.str());
 }
 
-TEST(Cerealize, JSONStreamCanNotBeJustAppendedTo) {
-  FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
-  FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
-
-  EventAppStart a;
-  EventAppSuspend b;
-  EventAppResume c;
-
-  GenericCerealFileAppender<CerealFormat::JSON>(CurrentTestTempFileName()) << a << b;
-  GenericCerealFileAppender<CerealFormat::JSON>(CurrentTestTempFileName()) << c;
-  ASSERT_THROW((GenericCerealFileParser<MapsYouEventBase, CerealFormat::JSON>(CurrentTestTempFileName())),
-               cereal::Exception);
-}
-
 TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
   FileSystem::MkDir(FLAGS_cerealize_test_tmpdir, FileSystem::MkDirParameters::Silent);
   FileSystem::RmFile(CurrentTestTempFileName(), FileSystem::RmFileParameters::Silent);
@@ -225,10 +212,10 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender(CurrentTestTempFileName()) << a << b;
-  CerealFileAppender(CurrentTestTempFileName()) << c;
+  CerealFileAppender<CerealFormat::Binary>(CurrentTestTempFileName()) << a << b;
+  CerealFileAppender<CerealFormat::Binary>(CurrentTestTempFileName()) << c;
 
-  CerealFileParser<MapsYouEventBase> f(CurrentTestTempFileName());
+  CerealFileParser<MapsYouEventBase, CerealFormat::Binary> f(CurrentTestTempFileName());
 
   struct ExampleConsumer {
     // TODO(dkorolev): Chat with Alex what the best way to handle this would be.
@@ -369,4 +356,9 @@ TEST(Cerealize, ParseJSONThrowsOnError) {
 
 TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
   EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
+}
+
+TEST(Cerealize, Base64Encode) {
+  EXPECT_EQ("MTIzNDU=", Base64Encode("12345"));
+  EXPECT_EQ("NzY1NFh5Wg==", Base64Encode("7654XyZ"));
 }

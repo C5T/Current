@@ -42,12 +42,13 @@ struct HTTPClientApple {
   std::string url_requested = "";
   std::string url_received = "";
   int http_response_code = -1;
+  std::string method = "";
+  std::string post_body = "";
   std::string post_file = "";
   std::string received_file = "";
   std::string server_response = "";
   std::string content_type = "";
   std::string user_agent = "";
-  std::string post_body = "";
 
   inline bool Go();
 };
@@ -56,12 +57,15 @@ template <>
 struct ImplWrapper<HTTPClientApple> {
   // Populating the fields of HTTPClientApple given request parameters.
   inline static void PrepareInput(const GET& request, HTTPClientApple& client) {
+    client.method = "GET";
     client.url_requested = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
   }
+
   inline static void PrepareInput(const POST& request, HTTPClientApple& client) {
+    client.method = "POST";
     client.url_requested = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
@@ -69,13 +73,33 @@ struct ImplWrapper<HTTPClientApple> {
     client.post_body = request.body;
     client.content_type = request.content_type;
   }
+
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientApple& client) {
+    client.method = "POST";
     client.url_requested = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent = request.custom_user_agent;
     }
     client.post_file = request.file_name;
     client.content_type = request.content_type;
+  }
+
+  inline static void PrepareInput(const PUT& request, HTTPClientApple& client) {
+    client.method = "PUT";
+    client.url_requested = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.user_agent = request.custom_user_agent;
+    }
+    client.post_body = request.body;
+    client.content_type = request.content_type;
+  }
+
+  inline static void PrepareInput(const DELETE& request, HTTPClientApple& client) {
+    client.method = "DELETE";
+    client.url_requested = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.user_agent = request.custom_user_agent;
+    }
   }
 
   // Populating the fields of HTTPClientApple given response configuration parameters.

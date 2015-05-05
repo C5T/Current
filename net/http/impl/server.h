@@ -102,10 +102,9 @@ class HTTPDefaultHelper {
 // * url::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
 // * std::string RawPath() (the URL before parsing).
 // * std::string Method().
-// * bool HasBody(), std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
+// * std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
 //
 // Exceptions:
-// * HTTPNoBodyProvidedException : When attempting to access body when HasBody() is false.
 // * ConnectionResetByPeer       : When the server is using chunked transfer and doesn't fully send one.
 //
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
@@ -271,43 +270,29 @@ class TemplatedHTTPRequestData : public HELPER {
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
   // If other means of reading the body, for example, event-based chunk parsing, is used,
-  // then `HasBody()` will be false and all other `Body*()` methods will throw.
-  inline bool HasBody() const { return body_buffer_begin_ != nullptr; }
+  // then `Body()` will return empty string and all other `Body*()` methods will return nullptr.
 
   inline const std::string& Body() const {
     if (!prepared_body_) {
       if (body_buffer_begin_) {
         prepared_body_.reset(new std::string(body_buffer_begin_, body_buffer_end_));
       } else {
-        BRICKS_THROW(HTTPNoBodyProvidedException());
+        prepared_body_.reset(new std::string());
       }
     }
     return *prepared_body_.get();
   }
 
-  inline const char* BodyBegin() const {
-    if (body_buffer_begin_) {
-      return body_buffer_begin_;
-    } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
-    }
-  }
+  inline const char* BodyBegin() const { return body_buffer_begin_; }
 
-  inline const char* BodyEnd() const {
-    if (body_buffer_begin_) {
-      assert(body_buffer_end_);
-      return body_buffer_end_;
-    } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
-    }
-  }
+  inline const char* BodyEnd() const { return body_buffer_end_; }
 
   inline size_t BodyLength() const {
     if (body_buffer_begin_) {
       assert(body_buffer_end_);
       return body_buffer_end_ - body_buffer_begin_;
     } else {
-      BRICKS_THROW(HTTPNoBodyProvidedException());
+      return 0u;
     }
   }
 
@@ -442,7 +427,7 @@ class HTTPServerConnection final {
       const std::string& content_type = DefaultJSONContentType(),
       const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = cerealize::JSON(object) + '\n';
+    const std::string s = cerealize::JSON(object, "data") + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -470,6 +455,7 @@ class HTTPServerConnection final {
         try {
           connection_.BlockingWrite("0", true);
           connection_.BlockingWrite(kCRLF, false);
+          connection_.BlockingWrite(kCRLF, false);  // We should send CRLF twice.
         } catch (const std::exception& e) {  // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
@@ -502,7 +488,7 @@ class HTTPServerConnection final {
       // Support objects that can be serialized as JSON-s via Cereal.
       template <class T>
       inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object) {
-        SendImpl(cerealize::JSON(object) + '\n');
+        SendImpl(cerealize::JSON(object, "data") + '\n');
       }
       template <class T, typename S>
       inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object, S&& name) {

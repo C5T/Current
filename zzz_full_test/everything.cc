@@ -32,3 +32,4 @@
 #include "./strings/test.cc"
 #include "./time/test.cc"
 #include "./util/test.cc"
+#include "./waitable_atomic/test.cc"

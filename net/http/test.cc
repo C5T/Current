@@ -53,7 +53,6 @@ using bricks::net::HTTPResponseCodeAsString;
 using bricks::net::GetFileMimeType;
 using bricks::net::DefaultInternalServerErrorMessage;
 using bricks::net::SocketException;
-using bricks::net::HTTPNoBodyProvidedException;
 using bricks::net::ConnectionResetByPeer;
 using bricks::net::AttemptedToSendHTTPResponseMoreThanOnce;
 
@@ -147,9 +146,9 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
       "Access-Control-Allow-Origin: *\r\n"
-      "Content-Length: 55\r\n"
+      "Content-Length: 53\r\n"
       "\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
+      "{\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
       connection);
   t.join();
 }
@@ -205,8 +204,8 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "onetwothree\r\n"
       "3\r\n"
       "foo\r\n"
-      "37\r\n"
-      "{\"value0\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
+      "35\r\n"
+      "{\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "3B\r\n"
       "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",
@@ -412,7 +411,7 @@ class HTTPClientImplPOSIX {
       connection.BlockingWrite("\r\n", false);
     }
     HTTPRequestData http_request(connection);
-    assert(http_request.HasBody());
+    assert(!http_request.Body().empty());
     const string body = http_request.Body();
     server_thread.join();
     return body;
@@ -448,7 +447,6 @@ TYPED_TEST(HTTPTest, POST) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/unittest_post", c.HTTPRequest().RawPath());
-             ASSERT_TRUE(c.HTTPRequest().HasBody()) << "WTF!";
              EXPECT_EQ("BAZINGA", c.HTTPRequest().Body());
              c.SendHTTPResponse("POSTED");
            },
@@ -461,8 +459,7 @@ TYPED_TEST(HTTPTest, NoBodyPOST) {
              HTTPServerConnection c(s.Accept());
              EXPECT_EQ("POST", c.HTTPRequest().Method());
              EXPECT_EQ("/unittest_empty_post", c.HTTPRequest().RawPath());
-             EXPECT_FALSE(c.HTTPRequest().HasBody());
-             ASSERT_THROW(c.HTTPRequest().Body(), HTTPNoBodyProvidedException);
+             EXPECT_EQ(0u, c.HTTPRequest().BodyLength());
              c.SendHTTPResponse("ALMOST_POSTED");
            },
            Socket(FLAGS_net_http_test_port));

@@ -93,12 +93,12 @@ HTTP(port).ResetAllHandlers();
       }
     }
   });
-EXPECT_EQ("{\"value0\":{\"error\":\"\",\"result\":5}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{2,3},""})).body);
-EXPECT_EQ("{\"value0\":{\"error\":\"\",\"result\":6}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{2,3},""})).body);
-EXPECT_EQ("{\"value0\":{\"error\":\"Unknown operation: sqrt\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"sqrt",{},""})).body);
-EXPECT_EQ("{\"value0\":{\"error\":\"Not enough arguments for 'add'.\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{},""})).body);
-EXPECT_EQ("{\"value0\":{\"error\":\"Not enough arguments for 'mul'.\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{},""})).body);
-EXPECT_EQ("{\"value0\":{\"error\":\"JSON parse error: FFFUUUUU\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), "FFFUUUUU", "text/plain")).body);
+EXPECT_EQ("{\"data\":{\"error\":\"\",\"result\":5}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{2,3},""})).body);
+EXPECT_EQ("{\"data\":{\"error\":\"\",\"result\":6}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{2,3},""})).body);
+EXPECT_EQ("{\"data\":{\"error\":\"Unknown operation: sqrt\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"sqrt",{},""})).body);
+EXPECT_EQ("{\"data\":{\"error\":\"Not enough arguments for 'add'.\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{},""})).body);
+EXPECT_EQ("{\"data\":{\"error\":\"Not enough arguments for 'mul'.\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{},""})).body);
+EXPECT_EQ("{\"data\":{\"error\":\"JSON parse error: FFFUUUUU\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), "FFFUUUUU", "text/plain")).body);
 }
 
 #endif  // BRICKS_NET_API_DOCU_SERVER_04_TEST_CC

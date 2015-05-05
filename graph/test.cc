@@ -27,60 +27,15 @@ SOFTWARE.
 #ifndef BRICKS_WINDOWS
 
 #include "regenerate_flag.cc"
-#include "docu/docu_04graph_02plotutils.cc"
-#include "docu/docu_04graph_05gnuplot.cc"
-#include "docu/docu_04graph_07gnuplot.cc"
+#include "docu/docu_04graph_02.cc"
+#include "docu/docu_04graph_04.cc"
+#include "docu/docu_04graph_06.cc"
 
 #include <vector>
 #include <string>
 
 #include "gnuplot.h"
-#include "plotutils.h"
 
 #include "../3party/gtest/gtest-main-with-dflags.h"
-
-using namespace bricks::plotutils;
-
-TEST(Graph, PlotutilsPoints) {
-  const int p1 = 27733;
-  const int p2 = 27791;
-  const double k = 1.0 / (p2 - 1);
-  int tmp = 1;
-  std::vector<std::pair<double, double>> flakes(200);
-  for (auto& xy : flakes) {
-    xy.first = k*(tmp = (tmp * p1) % p2);
-    xy.second = k*(tmp = (tmp * p1) % p2);
-  }
-  const std::string result = Plotutils(flakes)
-                                 .LineMode(LineMode::None)
-                                 .GridStyle(GridStyle::None)
-                                 .Symbol(Symbol::Asterisk, 0.1)
-                                 .OutputFormat("svg");
-  if (FLAGS_regenerate_golden_graphs) {
-    bricks::FileSystem::WriteStringToFile(result, "golden/flakes.svg");  // LCOV_EXCL_LINE
-  }
-#ifndef BRICKS_APPLE  // TODO(dkorolev): Figure out how to run this test on Apple.
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/flakes.svg"));
-#endif
-}
-
-TEST(Graph, PlotutilsMultiplot) {
-  auto gen = [](int phi) {
-    std::vector<std::pair<double, double>> xy(4);
-    for (int i = 0; i <= 3; ++i) {
-      const double alpha = (phi + i * 120) * M_PI / 180;
-      xy[i] = std::make_pair(sin(alpha), cos(alpha));
-    }
-    return xy;
-  };
-  const std::string result =
-      Plotutils({gen(0), gen(60)}).LineWidth(0.005).GridStyle(GridStyle::None).OutputFormat("svg");
-  if (FLAGS_regenerate_golden_graphs) {
-    bricks::FileSystem::WriteStringToFile(result, "golden/david.svg");  // LCOV_EXCL_LINE
-  }
-#ifndef BRICKS_APPLE  // TODO(dkorolev): Figure out how to run this test on Apple.
-  ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/david.svg"));
-#endif
-}
 
 #endif  // BRICKS_WINDOWS

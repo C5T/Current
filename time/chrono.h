@@ -32,6 +32,7 @@ SOFTWARE.
 #include <chrono>
 
 #include "../port.h"
+#include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
 
 namespace bricks {
@@ -94,8 +95,6 @@ inline void SleepUntil(EPOCH_MILLISECONDS moment) {
 
 #else
 
-#ifdef BRICKS_HAS_THREAD_LOCAL
-
 // Since chrono::system_clock is not monotonic, and chrono::steady_clock is not guaranteed to be Epoch,
 // use a simple wrapper around chrono::system_clock to make it non-decreasing.
 struct EpochClockGuaranteeingMonotonicity {
@@ -108,26 +107,12 @@ struct EpochClockGuaranteeingMonotonicity {
       return monotonic_now;
     }
   };
-  static const Impl& Singleton() {
-    static thread_local Impl singleton;
-    return singleton;
-  }
+  static const Impl& Singleton() { return ThreadLocalSingleton<Impl>(); }
 };
 
 inline EPOCH_MILLISECONDS Now() {
   return static_cast<EPOCH_MILLISECONDS>(EpochClockGuaranteeingMonotonicity::Singleton().Now());
 }
-
-#else  // BRICKS_HAS_THREAD_LOCAL
-
-#warning "Falling back to a naive `Now()`, since `thread_local` is not supported by the compiler."
-
-inline EPOCH_MILLISECONDS Now() {
-  return static_cast<EPOCH_MILLISECONDS>(std::chrono::duration_cast<std::chrono::milliseconds>(
-                                             std::chrono::system_clock::now().time_since_epoch()).count());
-}
-
-#endif  // BRICKS_HAS_THREAD_LOCAL
 
 inline void SleepUntil(EPOCH_MILLISECONDS moment) {
   const EPOCH_MILLISECONDS now = Now();

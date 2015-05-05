@@ -141,11 +141,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
     if (!request.custom_user_agent.empty()) {
       client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
     }
-    client.request_has_body_ = request.has_body;
-    if (request.has_body) {
-      client.request_body_contents_ = request.body;
-      client.request_body_content_type_ = request.content_type;
-    }
+    client.request_has_body_ = true;
+    client.request_body_contents_ = request.body;
+    client.request_body_content_type_ = request.content_type;
   }
 
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientPOSIX& client) {
@@ -158,6 +156,25 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_body_contents_ =
         FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
+  }
+
+  inline static void PrepareInput(const PUT& request, HTTPClientPOSIX& client) {
+    client.request_method_ = "PUT";
+    client.request_url_ = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    }
+    client.request_has_body_ = true;
+    client.request_body_contents_ = request.body;
+    client.request_body_content_type_ = request.content_type;
+  }
+
+  inline static void PrepareInput(const DELETE& request, HTTPClientPOSIX& client) {
+    client.request_method_ = "DELETE";
+    client.request_url_ = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.request_user_agent_ = request.custom_user_agent;
+    }
   }
 
   inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientPOSIX&) {}
@@ -185,7 +202,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     const auto& http_request = response.HTTPRequest();
-    output.body = http_request.HasBody() ? http_request.Body() : "";
+    output.body = http_request.Body();
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
@@ -196,8 +213,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
     const auto& http_request = response.HTTPRequest();
-    FileSystem::WriteStringToFile(http_request.HasBody() ? http_request.Body() : "",
-                                  response_params.file_name.c_str());
+    FileSystem::WriteStringToFile(http_request.Body(), response_params.file_name.c_str());
     output.body_file_name = response_params.file_name;
   }
 };
