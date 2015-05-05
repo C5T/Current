@@ -64,8 +64,7 @@ struct SlowConsumer {
   std::atomic_size_t dropped_messages_;
   std::atomic_size_t processed_messages_;
   size_t delay_ms_;
-  SlowConsumer(size_t delay_ms = 20u)
-      : dropped_messages_(0u), processed_messages_(0u), delay_ms_(delay_ms) {}
+  SlowConsumer(size_t delay_ms = 20u) : dropped_messages_(0u), processed_messages_(0u), delay_ms_(delay_ms) {}
   // Uncomment the line below to see that it doesn't compile.
   // void OnMessage(const std::string& s) {}
   void OnMessage(const std::string& s, size_t dropped_messages) {
