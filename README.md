@@ -364,7 +364,7 @@ const std::string result = GNUPlot()
 ![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels-Linux.png)
 ## Functional Template Library
 
-Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `bricks::variadic`.
+Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `bricks::metaprogramming`.
 ```cpp
 // Map.
 template<typename T> struct add_100 { enum { x = T::x + 100 }; };
