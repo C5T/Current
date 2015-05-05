@@ -46,13 +46,19 @@ SOFTWARE.
 //      thread, MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
 //  This behavior of MMQ can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "consumer.h"
+
 namespace bricks {
+namespace mq {
+
+namespace mmq {
 
 template <typename T_CONSUMER, typename T_MESSAGE>
 constexpr bool HasSimpleOnMessage(char) {
@@ -98,11 +104,13 @@ void ExportMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_cou
   static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) != HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
                 "There must be exactly one implementation of `OnMessage()` defined in the consumer.");
   ExportMessageImpl<T_CONSUMER, T_MESSAGE, HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0)>::OnMessage(
-      consumer, std::move(message), dropped_count);
+      consumer, std::forward<T_MESSAGE>(message), dropped_count);
 }
 
-template <typename CONSUMER,
-          typename MESSAGE = std::string,
+}  // namespace mmq
+
+template <typename MESSAGE,
+          typename CONSUMER = mmq::ProcessMessageConsumer<MESSAGE>,
           size_t DEFAULT_BUFFER_SIZE = 1024,
           bool DROP_ON_OVERFLOW = true>
 class MMQ final {
@@ -124,7 +132,16 @@ class MMQ final {
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
   typedef CONSUMER T_CONSUMER;
 
-  // The only constructor requires the refence to the instance of the consumer of entries.
+  // Constructor that uses the default `ProcessMessageConsumer`.
+  MMQ(size_t buffer_size = DEFAULT_BUFFER_SIZE)
+      : default_consumer_(new mmq::ProcessMessageConsumer<T_MESSAGE>()),
+        consumer_(*default_consumer_),
+        circular_buffer_size_(buffer_size),
+        circular_buffer_(circular_buffer_size_),
+        dropped_messages_count_(0u),
+        consumer_thread_(&MMQ::ConsumerThread, this) {}
+
+  // Constructor that requires the refence to the instance of the consumer of entries.
   explicit MMQ(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
@@ -219,7 +236,8 @@ class MMQ final {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        ExportMessage(consumer_, std::move(circular_buffer_[tail].message_body), actually_dropped_messages);
+        mmq::ExportMessage(consumer_, std::move(circular_buffer_[tail].message_body),
+                           actually_dropped_messages);
       }
 
       {
@@ -286,6 +304,10 @@ class MMQ final {
     condition_variable_.notify_all();
   }
 
+  // In case consumer instance is not provided as constructor argument, default consumer will be istantiated
+  // inside the constructor body.
+  std::unique_ptr<mmq::ProcessMessageConsumer<T_MESSAGE>> default_consumer_;
+
   // The instance of the consuming side of the FIFO buffer.
   T_CONSUMER& consumer_;
 
@@ -315,6 +337,7 @@ class MMQ final {
   std::thread consumer_thread_;
 };
 
+}  // namespace mq
 }  // namespace bricks
 
 #endif  // BRICKS_MQ_INMEMORY_MQ_H
