@@ -35,7 +35,7 @@ constexpr bool HasProcessMethodByPtr(char) {
 }
 
 template <typename T_MESSAGE>
-constexpr auto HasProcessMethodByPtr(int) -> decltype(std::declval<T_MESSAGE>() -> Process(), bool()) {
+constexpr auto HasProcessMethodByPtr(int) -> decltype(std::declval<T_MESSAGE>()->Process(), bool()) {
   return true;
 }
 
@@ -66,7 +66,7 @@ template <typename T_MESSAGE>
 void ProcessMessage(T_MESSAGE&& message) {
   static_assert(HasProcessMethodByPtr<T_MESSAGE>(0) || HasProcessMethodByRef<T_MESSAGE>(0),
                 "`ProcessMessageConsumer` requires `Process()` method defined in the message class.");
-  ProcessMessageImpl<T_MESSAGE, HasProcessMethodByPtr<T_MESSAGE>(0)>::Process(std::move(message));
+  ProcessMessageImpl<T_MESSAGE, HasProcessMethodByPtr<T_MESSAGE>(0)>::Process(std::forward<T_MESSAGE>(message));
 }
 
 // Default MMQ consumer. Calls `Process()` method for each message.

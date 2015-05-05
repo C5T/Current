@@ -46,6 +46,7 @@ SOFTWARE.
 //      thread, MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
 //  This behavior of MMQ can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <string>
@@ -103,7 +104,7 @@ void ExportMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_cou
   static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) != HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
                 "There must be exactly one implementation of `OnMessage()` defined in the consumer.");
   ExportMessageImpl<T_CONSUMER, T_MESSAGE, HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0)>::OnMessage(
-      consumer, std::move(message), dropped_count);
+      consumer, std::forward<T_MESSAGE>(message), dropped_count);
 }
 
 }  // namespace mmq
@@ -131,15 +132,14 @@ class MMQ final {
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
   typedef CONSUMER T_CONSUMER;
 
-  // Constructor that uses default `ProcessMessageConsumer`.
+  // Constructor that uses the default `ProcessMessageConsumer`.
   MMQ(size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : consumer_(*default_consumer_),
+      : default_consumer_(new mmq::ProcessMessageConsumer<T_MESSAGE>()),
+        consumer_(*default_consumer_),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
         dropped_messages_count_(0u),
-        consumer_thread_(&MMQ::ConsumerThread, this) {
-    default_consumer_ = new mmq::ProcessMessageConsumer<T_MESSAGE>();
-  }
+        consumer_thread_(&MMQ::ConsumerThread, this) {}
 
   // Constructor that requires the refence to the instance of the consumer of entries.
   explicit MMQ(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
@@ -157,9 +157,6 @@ class MMQ final {
     }
     condition_variable_.notify_all();
     consumer_thread_.join();
-    if (default_consumer_) {
-      delete default_consumer_;
-    }
   }
 
   // Adds a message to the buffer.
@@ -309,7 +306,7 @@ class MMQ final {
 
   // In case consumer instance is not provided as constructor argument, default consumer will be istantiated
   // inside the constructor body.
-  mmq::ProcessMessageConsumer<T_MESSAGE>* default_consumer_ = nullptr;
+  std::unique_ptr<mmq::ProcessMessageConsumer<T_MESSAGE>> default_consumer_;
 
   // The instance of the consuming side of the FIFO buffer.
   T_CONSUMER& consumer_;

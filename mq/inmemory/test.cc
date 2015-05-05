@@ -150,7 +150,8 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
 TEST(InMemoryMQ, DefaultConsumer) {
   struct Storage {
     std::string messages;
-    size_t count = 0u;
+    std::atomic_size_t count;
+    Storage() : count(0u) {}
   };
 
   struct ProcessableMessage {
