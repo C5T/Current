@@ -47,6 +47,8 @@ using bricks::strings::KeyValueParsing;
 using bricks::strings::KeyValueNoValueException;
 using bricks::strings::KeyValueMultipleValuesException;
 using bricks::strings::ByWhitespace;
+using bricks::strings::SlowEditDistance;
+using bricks::strings::FastEditDistance;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -242,4 +244,57 @@ TEST(JoinAndSplit, SplitIntoKeyValuePairsExceptions) {
   ASSERT_THROW(SplitIntoKeyValuePairs("foo", '=', KeyValueParsing::Throw), KeyValueNoValueException);
   ASSERT_THROW(SplitIntoKeyValuePairs("foo=bar=baz", '=', KeyValueParsing::Throw),
                KeyValueMultipleValuesException);
+}
+
+TEST(EditDistance, Smoke) {
+  EXPECT_EQ(0u, SlowEditDistance("foo", "foo"));
+  EXPECT_EQ(3u, SlowEditDistance("foo", ""));
+  EXPECT_EQ(3u, SlowEditDistance("", "foo"));
+  EXPECT_EQ(3u, SlowEditDistance("foo", "bar"));
+  EXPECT_EQ(1u, SlowEditDistance("foo", "zoo"));
+  EXPECT_EQ(1u, SlowEditDistance("foo", "fwo"));
+  EXPECT_EQ(1u, SlowEditDistance("foo", "foe"));
+  EXPECT_EQ(1u, SlowEditDistance("zoo", "foo"));
+  EXPECT_EQ(1u, SlowEditDistance("fwo", "foo"));
+  EXPECT_EQ(1u, SlowEditDistance("foe", "foo"));
+  EXPECT_EQ(1u, SlowEditDistance("foo", "fo"));
+  EXPECT_EQ(1u, SlowEditDistance("foo", "oo"));
+
+  EXPECT_EQ(0u, FastEditDistance("foo", "foo", 10u));
+  EXPECT_EQ(3u, FastEditDistance("foo", "", 10u));
+  EXPECT_EQ(3u, FastEditDistance("", "foo", 10u));
+  EXPECT_EQ(3u, FastEditDistance("foo", "bar", 10u));
+  EXPECT_EQ(1u, FastEditDistance("foo", "zoo", 10u));
+  EXPECT_EQ(1u, FastEditDistance("foo", "fwo", 10u));
+  EXPECT_EQ(1u, FastEditDistance("foo", "foe", 10u));
+  EXPECT_EQ(1u, FastEditDistance("zoo", "foo", 10u));
+  EXPECT_EQ(1u, FastEditDistance("fwo", "foo", 10u));
+  EXPECT_EQ(1u, FastEditDistance("foe", "foo", 10u));
+  EXPECT_EQ(1u, FastEditDistance("foo", "fo", 10u));
+  EXPECT_EQ(1u, FastEditDistance("foo", "oo", 10u));
+}
+
+TEST(EditDistance, MaxOffset1) {
+  // Max. offset of 1 is fine, max. offset 0 is per-char comparison.
+  EXPECT_EQ(2u, SlowEditDistance("abcde", "bcdef"));
+  EXPECT_EQ(2u, FastEditDistance("abcde", "bcdef", 1u));
+  EXPECT_EQ(5u, FastEditDistance("abcde", "bcdef", 0u));
+}
+
+TEST(EditDistance, MaxOffset2) {
+  // Max. offset of 2 is fine, max. offset of 1 is same as max. offset of 0, which is per-char comparison.
+  EXPECT_EQ(4u, SlowEditDistance("01234567", "23456789"));
+  EXPECT_EQ(4u, FastEditDistance("01234567", "23456789", 2u));
+  EXPECT_EQ(8u, FastEditDistance("01234567", "23456789", 1u));
+  EXPECT_EQ(8u, FastEditDistance("01234567", "23456789", 0u));
+}
+
+TEST(EditDistance, StringsOfTooDifferentLength) {
+  // When the strings are of too different lengths, `FastEditDistance` can't do anything.
+  EXPECT_EQ(6u, SlowEditDistance("foo", "foobarbaz"));
+  EXPECT_EQ(6u, SlowEditDistance("foobarbaz", "baz"));
+  EXPECT_EQ(6u, FastEditDistance("foo", "foobarbaz", 6u));
+  EXPECT_EQ(6u, FastEditDistance("foobarbaz", "baz", 6u));
+  EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foo", "foobarbaz", 5u));
+  EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foobarbaz", "baz", 5u));
 }

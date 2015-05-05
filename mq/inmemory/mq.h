@@ -225,7 +225,7 @@ class MMQ final {
               lock, [this, tail] { return (circular_buffer_[tail].status == Entry::READY) || destructing_; });
         }
         if (destructing_) {
-          return;
+          return;  // LCOV_EXCL_LINE
         }
         circular_buffer_[tail].status = Entry::BEING_EXPORTED;
 
@@ -269,7 +269,7 @@ class MMQ final {
       return index;
     } else {
       // Overflow. Discarding the message.
-      return static_cast<size_t>(-1);
+      return static_cast<size_t>(-1);  // LCOV_EXCL_LINE
     }
   }
 
@@ -280,14 +280,14 @@ class MMQ final {
     // MUTEX-LOCKED.
     std::unique_lock<std::mutex> lock(mutex_);
     if (destructing_) {
-      return static_cast<size_t>(-1);
+      return static_cast<size_t>(-1);  // LCOV_EXCL_LINE
     }
     while (circular_buffer_[head_].status != Entry::FREE) {
       // Waiting for the next empty slot in the buffer.
       condition_variable_.wait(
           lock, [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
       if (destructing_) {
-        return static_cast<size_t>(-1);
+        return static_cast<size_t>(-1);  // LCOV_EXCL_LINE
       }
     }
     const size_t index = head_;
