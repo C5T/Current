@@ -71,7 +71,7 @@ inline size_t SlowEditDistance(const std::string& a, const std::string& b) {
 }
 
 // Returns the edit distance between two strings, assuming it is forbidden
-// to 'skew' the strings by more than `max_offset` apart while mathing them letter-by-letter.
+// to 'skew' the strings by more than `max_offset` apart while matching them letter-by-letter.
 // The result is equal to Levenshtein distance if it is <= max_offset.
 // Runs with the complexity of O((A.length + B.length) * max_offset).
 inline size_t FastEditDistance(const std::string& a, const std::string& b, size_t max_offset) {
@@ -115,10 +115,6 @@ inline size_t FastEditDistance(const std::string& a, const std::string& b, size_
   };
   FastImpl impl(a, b, max_offset);
   return impl.Compute();
-}
-
-inline size_t FastEditDistance(const std::string& a, const std::string& b, int max_offset) {
-  return FastEditDistance(a, b, static_cast<size_t>(max_offset));
 }
 
 }  // namespace strings
