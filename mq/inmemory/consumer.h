@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_MQ_INMEMORY_CONSUMER_H
 #define BRICKS_MQ_INMEMORY_CONSUMER_H
 
+#include <cstddef>
 #include <utility>
 
 namespace bricks {
