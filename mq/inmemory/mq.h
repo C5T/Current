@@ -101,6 +101,13 @@ struct ExportMessageImpl<T_CONSUMER, T_MESSAGE, false> {
 
 template <typename T_CONSUMER, typename T_MESSAGE>
 void ExportMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_count) {
+  // Note that the allowed syntax for `OnMessage()` is:
+  //   either `OnMessage(const T_MESSAGE& message [, size_t dropped_count]);`
+  //   or     `OnMessage(T_MESSAGE&& message [, size_t dropped_count]);`
+  // If your class defines `OnMessage()` differently, for example, accepting a non-const non-rvalue reference
+  // as the first parameter, the `static_assert()` on the next line will fail.
+  static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) || HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
+                "There must be at least one implementation of `OnMessage()` defined in the consumer.");
   static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) != HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
                 "There must be exactly one implementation of `OnMessage()` defined in the consumer.");
   ExportMessageImpl<T_CONSUMER, T_MESSAGE, HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0)>::OnMessage(
@@ -236,8 +243,8 @@ class MMQ final {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        mmq::ExportMessage(consumer_, std::move(circular_buffer_[tail].message_body),
-                           actually_dropped_messages);
+        mmq::ExportMessage(
+            consumer_, std::move(circular_buffer_[tail].message_body), actually_dropped_messages);
       }
 
       {
