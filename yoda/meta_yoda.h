@@ -83,7 +83,7 @@ struct YodaTypes {
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
   typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
-  typedef MMQ<T_MQ_LISTENER, std::unique_ptr<T_MQ_MESSAGE>> T_MQ;
+  typedef bricks::mq::MMQ<std::unique_ptr<T_MQ_MESSAGE>, T_MQ_LISTENER> T_MQ;
 
   template <typename T>
   using ContainerTypeSelector = Container<T, T_SUPPORTED_TYPES_AS_TUPLE, T_VISITABLE_TYPES_AS_TUPLE>;
@@ -172,9 +172,7 @@ struct MQListener {
       : container_(container), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<typename YT::T_MQ_MESSAGE>& message, size_t dropped_count) {
-    // TODO(mzhurovich): Should use a non-dropping MMQ here, of course.
-    static_cast<void>(dropped_count);  // TODO(mzhurovich): And change the method's signature to remove this.
+  void OnMessage(std::unique_ptr<typename YT::T_MQ_MESSAGE>&& message) {
     message->Process(container_, stream_);
   }
 
