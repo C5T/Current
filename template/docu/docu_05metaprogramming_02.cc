@@ -83,19 +83,105 @@ TEST(TemplateMetaprogramming, Reduce) {
             (bricks::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
 }
     
+template <typename T> struct AsIntImpl {};
+template <> struct AsIntImpl<int> { static int DoIt(int x) { return x; } };
+template <> struct AsIntImpl<const char*> { static int DoIt(const char* s) { return atoi(s); } };
+template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
+
   // Combine.
+  struct NEG {
+    // A simple way to differentiate logic by struct/class type
+    // is to provide a local, unique, symbol as the 1st param.
+    struct TYPE {};
+
+    // Combine-able operations are defined as `operator()`.
+    // Just because we need to pick one common name,
+    // otherwise more `using`-s will be needed.
+    int operator()(TYPE, int a) { return -a; }
+  };
+  
+  struct ADD {
+    struct TYPE {};
+    int operator()(TYPE, int a, int b) { return a + b; }
+    // Prove that the method is instantiated at compile time.
+    template <typename T>
+    int operator()(TYPE, int a, int b, T c) {
+      return a + b + AsInt(c);
+    }
+  };
+  
+  // Since "has-a" is used instead of "is-a",
+  // mutual inheritance of underlying types
+  // is not a problem at all.
+  // Confirm this by making `MUL` inherit from `ADD`.
+  struct MUL : ADD {
+    struct TYPE {};
+    int operator()(TYPE, int a, int b) { return a * b; }
+    int operator()(TYPE, int a, int b, int c) { return a * b * c; }
+  };
+    
+  // User-friendly method names, internally dispatching calls via `operator()`.
+  // A good way to make sure new names appear in one place only, since
+  // using `using`-s would require writing them down at least twice each.
+  struct UserFriendlyArithmetics :
+      bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> {
+    int Neg(int x) {
+      return operator()(NEG::TYPE(), x);
+    }
+    template <typename... T>
+    int Add(T... xs) {
+      return operator()(ADD::TYPE(), xs...);
+    }
+    template <typename... T>
+    int Mul(T... xs) {
+      return operator()(MUL::TYPE(), xs...);
+    }
+    // The implementation for `Div()` is not provided,
+    // yet the code will compile until it's attempted to be used.
+    // (Unit tests and code coverage measurement FTW!)
+    template <typename... T>
+    int Div(T... xs) {
+      struct TypeForWhichThereIsNoImplemenation {};
+      return operator()(TypeForWhichThereIsNoImplemenation(),
+                        xs...);
+    }
+  };
+
 TEST(TemplateMetaprogramming, Combine) {
-  struct A { static std::string foo() { return "foo"; } };
-  struct B { static std::string bar() { return "bar"; } };
-  struct C { static std::string baz() { return "baz"; } };
+  EXPECT_EQ(1, NEG()(NEG::TYPE(), -1));
+  EXPECT_EQ(3, ADD()(ADD::TYPE(), 1, 2));
+  EXPECT_EQ(6, ADD()(ADD::TYPE(), 1, 2, "3"));
+  EXPECT_EQ(20, MUL()(MUL::TYPE(), 4, 5));
+  EXPECT_EQ(120, MUL()(MUL::TYPE(), 4, 5, 6));
   
-  bricks::metaprogramming::combine<std::tuple<A, B, C>> c;
+  // As a sanity check, since `MUL` inherits from `ADD`,
+  // the following construct will work just fine.
+  EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
   
-  EXPECT_EQ("foo", c.foo());
-  EXPECT_EQ("bar", c.bar());
-  EXPECT_EQ("baz", c.baz());
+  // Using the simple combiner, that still uses `operator()`.
+  typedef bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
+  EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
+  EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
+  EXPECT_EQ(9, Arithmetics()(ADD::TYPE(), 2, 3, "4"));
+  EXPECT_EQ(30, Arithmetics()(MUL::TYPE(), 5, 6));
+  EXPECT_EQ(210, Arithmetics()(MUL::TYPE(), 5, 6, 7));
+  
+  // Using the dispatched methods.
+  EXPECT_EQ(42, UserFriendlyArithmetics().Neg(-42));
+  EXPECT_EQ(21, UserFriendlyArithmetics().Add(10, 11));
+  EXPECT_EQ(33, UserFriendlyArithmetics().Add(10, 11, "12"));
+  EXPECT_EQ(420, UserFriendlyArithmetics().Mul(20, 21));
+  EXPECT_EQ(9240, UserFriendlyArithmetics().Mul(20, 21, 22));
+    
+  // The following call will fail to compile,
+  // with a nice error message explaining
+  // that none of the `NEG`, `ADD` and `MUL`
+  // have division operation defined.
+  //
+  // UserFriendlyArithmetics().Div(100, 5);
 }
-  
+
+#if 0
   // Visitor.
 namespace visitor_unittest {
 using bricks::metaprogramming::visitor;
@@ -167,3 +253,4 @@ using namespace visitor_unittest;
   }
   EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 }
+#endif

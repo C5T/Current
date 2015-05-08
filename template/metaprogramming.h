@@ -31,6 +31,6 @@ SOFTWARE.
 #include "pod.h"
 #include "is_tuple.h"
 #include "mapreduce.h"
-#include "visitor.h"
+#include "combine.h"
 
 #endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H
