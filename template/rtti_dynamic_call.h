@@ -148,6 +148,9 @@ void RTTIDynamicCall(std::unique_ptr<BASE>& ptr, F&& f) {
   RTTIDynamicCall<TYPELIST>(*ptr.get(), std::forward<F>(f));
 }
 
+// TODO(dkorolev): Consider whether RTTI-dispatched call might return a value.
+// TODO(dkorolev): Consider extending `RTTIDynamicCall` to support `const` inputs.
+
 }  // namespace metaprogramming
 }  // namespace bricks
 
