@@ -133,7 +133,6 @@ const RTTIDispatcherBase<BASE, F>* RTTIFindHandler(const std::type_info& type) {
 }
 
 // TODO(dkorolev): Should we support return value from these calls?
-// TODO(dkorolev): Should we firmly require a `unique_ptr<>`?
 // TODO(dkorolev): Non-const `PTR` OK?
 // TODO(dkorolev): Should we require `F` to derive from a special class
 //                 that wraps all the types into pure virtual functions?
@@ -141,6 +140,12 @@ const RTTIDispatcherBase<BASE, F>* RTTIFindHandler(const std::type_info& type) {
 template <typename TYPELIST, typename BASE, typename F>
 void RTTIDynamicCall(BASE& ptr, F&& f) {
   RTTIFindHandler<TYPELIST, BASE, F>(typeid(ptr))->Handle(ptr, std::forward<F>(f));
+}
+
+// A parital specialization for a `unique_ptr`.
+template <typename TYPELIST, typename BASE, typename F>
+void RTTIDynamicCall(std::unique_ptr<BASE>& ptr, F&& f) {
+  RTTIFindHandler<TYPELIST, BASE, F>(typeid(*ptr.get()))->Handle(*ptr.get(), std::forward<F>(f));
 }
 
 }  // namespace metaprogramming
