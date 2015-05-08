@@ -40,31 +40,7 @@ namespace yoda {
 // User type interface: Use `KeyEntry<MyKeyEntry>` in Yoda's type list for required storage types
 // for Yoda to support key-entry (key-value) accessors over the type `MyKeyEntry`.
 template <typename ENTRY>
-struct KeyEntry {};
-
-template <typename ENTRY>
-struct StorageTypeExtractor<KeyEntry<ENTRY>> {
-  typedef ENTRY type;
-};
-
-template <typename ENTRY, typename SUPPORTED_TYPES_AS_TUPLE, typename VISITABLE_TYPES_AS_TUPLE>
-struct Container<KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE, VISITABLE_TYPES_AS_TUPLE>
-    : bricks::metaprogramming::visitor<VISITABLE_TYPES_AS_TUPLE> {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
-
-  T_MAP_TYPE<T_KEY, T_ENTRY> data;
-
-  // The container itself is visitable by entries.
-  // The entries passed in this way are the entries scanned from the Sherlock stream.
-  // The default behavior is to update the contents of the container.
-  virtual void visit(ENTRY& entry) override { data[GetKey(entry)] = entry; }
-};
-
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename ENTRY>
-struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>> {
-  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-
+struct KeyEntry {
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
 
@@ -75,55 +51,43 @@ struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>> {
   typedef KeyNotFoundException<T_ENTRY> T_KEY_NOT_FOUND_EXCEPTION;
   typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
+};
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename ENTRY_FOR_YET>
+struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY_FOR_YET>> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;  // Yoda types.
+  typedef KeyEntry<ENTRY_FOR_YET> YET;                              // Yoda entry type.
 
   YodaImpl() = delete;
   explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
 
   struct MQMessageGet : YT::T_MQ_MESSAGE {
-    const T_KEY key;
-    std::promise<T_ENTRY> pr;
-    T_ENTRY_CALLBACK on_success;
-    T_KEY_CALLBACK on_failure;
+    const typename YET::T_KEY key;
+    std::promise<typename YET::T_ENTRY> pr;
+    typename YET::T_ENTRY_CALLBACK on_success;
+    typename YET::T_KEY_CALLBACK on_failure;
 
-    explicit MQMessageGet(const T_KEY& key, std::promise<T_ENTRY>&& pr) : key(key), pr(std::move(pr)) {}
-    explicit MQMessageGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure)
+    explicit MQMessageGet(const typename YET::T_KEY& key, std::promise<typename YET::T_ENTRY>&& pr)
+        : key(key), pr(std::move(pr)) {}
+    explicit MQMessageGet(const typename YET::T_KEY& key,
+                          typename YET::T_ENTRY_CALLBACK on_success,
+                          typename YET::T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
     virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE&) override {
-      const auto cit = container.data.find(key);
-      if (cit != container.data.end()) {
-        // The entry has been found.
-        if (on_success) {
-          // Callback semantics.
-          on_success(cit->second);
-        } else {
-          // Promise semantics.
-          pr.set_value(cit->second);
-        }
-      } else {
-        // The entry has not been found.
-        if (on_failure) {
-          // Callback semantics.
-          on_failure(key);
-        } else {
-          // Promise semantics.
-          SetPromiseToNullEntryOrThrow<T_KEY,
-                                       T_ENTRY,
-                                       T_KEY_NOT_FOUND_EXCEPTION,
-                                       false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
-                                       >::DoIt(key, pr);
-        }
-      }
+      container(std::ref(*this));
     }
   };
 
   struct MQMessageAdd : YT::T_MQ_MESSAGE {
-    const T_ENTRY e;
+    const typename YET::T_ENTRY e;
     std::promise<void> pr;
-    T_VOID_CALLBACK on_success;
-    T_VOID_CALLBACK on_failure;
+    typename YET::T_VOID_CALLBACK on_success;
+    typename YET::T_VOID_CALLBACK on_failure;
 
-    explicit MQMessageAdd(const T_ENTRY& e, std::promise<void>&& pr) : e(e), pr(std::move(pr)) {}
-    explicit MQMessageAdd(const T_ENTRY& e, T_VOID_CALLBACK on_success, T_VOID_CALLBACK on_failure)
+    explicit MQMessageAdd(const typename YET::T_ENTRY& e, std::promise<void>&& pr) : e(e), pr(std::move(pr)) {}
+    explicit MQMessageAdd(const typename YET::T_ENTRY& e,
+                          typename YET::T_VOID_CALLBACK on_success,
+                          typename YET::T_VOID_CALLBACK on_failure)
         : e(e), on_success(on_success), on_failure(on_failure) {}
 
     // Important note: The entry added will eventually reach the storage via the stream.
@@ -135,39 +99,28 @@ struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>> {
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) override {
-      const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
-      if (key_exists) {
-        if (on_failure) {  // Callback function defined.
-          on_failure();
-        } else {  // Throw.
-          pr.set_exception(std::make_exception_ptr(T_KEY_ALREADY_EXISTS_EXCEPTION(e)));
-        }
-      } else {
-        container.data[GetKey(e)] = e;
-        stream.Publish(e);
-        if (on_success) {
-          on_success();
-        } else {
-          pr.set_value();
-        }
-      }
+      container(std::ref(*this), std::ref(stream));
     }
   };
 
-  std::future<T_ENTRY> AsyncGet(const T_KEY& key) {
-    std::promise<T_ENTRY> pr;
-    std::future<T_ENTRY> future = pr.get_future();
+  std::future<typename YET::T_ENTRY> AsyncGet(const typename YET::T_KEY& key) {
+    std::promise<typename YET::T_ENTRY> pr;
+    std::future<typename YET::T_ENTRY> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageGet(key, std::move(pr)));
     return future;
   }
 
-  void AsyncGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure) {
+  void AsyncGet(const typename YET::T_KEY& key,
+                typename YET::T_ENTRY_CALLBACK on_success,
+                typename YET::T_KEY_CALLBACK on_failure) {
     mq_.EmplaceMessage(new MQMessageGet(key, on_success, on_failure));
   }
 
-  T_ENTRY Get(const T_KEY& key) { return AsyncGet(std::forward<const T_KEY>(key)).get(); }
+  typename YET::T_ENTRY Get(const typename YET::T_KEY& key) {
+    return AsyncGet(std::forward<const typename YET::T_KEY>(key)).get();
+  }
 
-  std::future<void> AsyncAdd(const T_ENTRY& entry) {
+  std::future<void> AsyncAdd(const typename YET::T_ENTRY& entry) {
     std::promise<void> pr;
     std::future<void> future = pr.get_future();
 
@@ -175,16 +128,86 @@ struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>> {
     return future;
   }
 
-  void AsyncAdd(const T_ENTRY& entry,
-                T_VOID_CALLBACK on_success,
-                T_VOID_CALLBACK on_failure = [](const T_KEY&) {}) {
+  void AsyncAdd(const typename YET::T_ENTRY& entry,
+                typename YET::T_VOID_CALLBACK on_success,
+                typename YET::T_VOID_CALLBACK on_failure = [](const typename YET::T_KEY&) {}) {
     mq_.EmplaceMessage(new MQMessageAdd(entry, on_success, on_failure));
   }
 
-  void Add(const T_ENTRY& entry) { AsyncAdd(entry).get(); }
+  void Add(const typename YET::T_ENTRY& entry) { AsyncAdd(entry).get(); }
 
  private:
   typename YT::T_MQ& mq_;
+};
+
+template <typename ENTRY>
+struct StorageTypeExtractor<KeyEntry<ENTRY>> {
+  typedef ENTRY type;
+};
+
+template <typename ENTRY_BASE_TYPE,
+          typename ENTRY,
+          typename SUPPORTED_TYPES_AS_TUPLE,
+          typename UNDERLYING_TYPES_AS_TUPLE>
+struct Container<ENTRY_BASE_TYPE, KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE, UNDERLYING_TYPES_AS_TUPLE> {
+  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef KeyEntry<ENTRY> YET;
+
+  typedef ENTRY T_ENTRY;
+  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+
+  T_MAP_TYPE<T_KEY, T_ENTRY> container;
+
+  void operator()(const ENTRY& entry) { container[GetKey(entry)] = entry; }
+
+  void operator()(
+      typename YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>>::MQMessageGet& msg) {
+    const auto cit = container.find(msg.key);
+    if (cit != container.end()) {
+      // The entry has been found.
+      if (msg.on_success) {
+        // Callback semantics.
+        msg.on_success(cit->second);
+      } else {
+        // Promise semantics.
+        msg.pr.set_value(cit->second);
+      }
+    } else {
+      // The entry has not been found.
+      if (msg.on_failure) {
+        // Callback semantics.
+        msg.on_failure(msg.key);
+      } else {
+        // Promise semantics.
+        SetPromiseToNullEntryOrThrow<typename YET::T_KEY,
+                                     typename YET::T_ENTRY,
+                                     typename YET::T_KEY_NOT_FOUND_EXCEPTION,
+                                     false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
+                                     >::DoIt(msg.key, msg.pr);
+      }
+    }
+  }
+
+  void operator()(
+      typename YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>>::MQMessageAdd& msg,
+      typename YT::T_STREAM_TYPE& stream) {
+    const bool key_exists = static_cast<bool>(container.count(GetKey(msg.e)));
+    if (key_exists) {
+      if (msg.on_failure) {  // Callback function defined.
+        msg.on_failure();
+      } else {  // Throw.
+        msg.pr.set_exception(std::make_exception_ptr(typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(msg.e)));
+      }
+    } else {
+      container[GetKey(msg.e)] = msg.e;
+      stream.Publish(msg.e);
+      if (msg.on_success) {
+        msg.on_success();
+      } else {
+        msg.pr.set_value();
+      }
+    }
+  }
 };
 
 }  // namespace yoda

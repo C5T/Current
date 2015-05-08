@@ -28,18 +28,13 @@ SOFTWARE.
 
 #include "yoda.h"
 
-using YodaTestTypes1 = std::tuple<struct KeyValueEntry>;
-using YodaTestTypes2 = std::tuple<struct KeyValueEntry, struct StringKVEntry>;
-
 struct YodaTestEntryBase {
   virtual ~YodaTestEntryBase() = default;
   template <typename A>
   void serialize(A&) {}
 };
 
-struct KeyValueEntry : YodaTestEntryBase,
-                       bricks::metaprogramming::visitable<YodaTestTypes1, KeyValueEntry>,
-                       bricks::metaprogramming::visitable<YodaTestTypes2, KeyValueEntry> {
+struct KeyValueEntry : YodaTestEntryBase {
   typedef YodaTestEntryBase CEREAL_BASE_TYPE;
 
   int key;
@@ -55,7 +50,7 @@ struct KeyValueEntry : YodaTestEntryBase,
 };
 CEREAL_REGISTER_TYPE(KeyValueEntry);
 
-struct StringKVEntry : YodaTestEntryBase, bricks::metaprogramming::visitable<YodaTestTypes2, StringKVEntry> {
+struct StringKVEntry : YodaTestEntryBase {
   typedef YodaTestEntryBase CEREAL_BASE_TYPE;
 
   std::string key;

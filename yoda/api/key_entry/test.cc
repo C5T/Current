@@ -92,15 +92,12 @@ TEST(YodaKeyEntry, Smoke) {
   }
 
   // Future expanded syntax.
-  std::future<KeyValueEntry> f1 = api.AsyncGet(TestAPI::T_KEY(2));
+  std::future<KeyValueEntry> f1 = api.AsyncGet(2);
   KeyValueEntry r1 = f1.get();
   EXPECT_EQ(2, r1.key);
   EXPECT_EQ(0.5, r1.value);
 
   // Future short syntax.
-  EXPECT_EQ(0.5, api.AsyncGet(TestAPI::T_KEY(2)).get().value);
-
-  // Future short syntax with type omitted.
   EXPECT_EQ(0.5, api.AsyncGet(2).get().value);
 
   // Callback version.
@@ -139,7 +136,7 @@ TEST(YodaKeyEntry, Smoke) {
   };
 
   const CallbackTest cbt1(2, 0.5);
-  api.AsyncGet(TestAPI::T_KEY(2),
+  api.AsyncGet(2,
                std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
   while (!cbt1.called) {
@@ -154,15 +151,15 @@ TEST(YodaKeyEntry, Smoke) {
     // For the purposes of this test: Spin lock to ensure that the listener/MMQ consumer got the data published.
   }
 
-  EXPECT_EQ(0.33, api.AsyncGet(TestAPI::T_KEY(3)).get().value);
-  EXPECT_EQ(0.25, api.Get(TestAPI::T_KEY(4)).value);
+  EXPECT_EQ(0.33, api.AsyncGet(3).get().value);
+  EXPECT_EQ(0.25, api.Get(4).value);
 
-  ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.AsyncGet(TestAPI::T_KEY(5)).get(), yoda::KeyNotFoundCoverException);
-  ASSERT_THROW(api.Get(TestAPI::T_KEY(6)), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.Get(TestAPI::T_KEY(6)), yoda::KeyNotFoundCoverException);
+  ASSERT_THROW(api.AsyncGet(5).get(), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.AsyncGet(5).get(), yoda::KeyNotFoundCoverException);
+  ASSERT_THROW(api.Get(6), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.Get(6), yoda::KeyNotFoundCoverException);
   const CallbackTest cbt2(7, 0.0, false);
-  api.AsyncGet(TestAPI::T_KEY(7),
+  api.AsyncGet(7,
                std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
   while (!cbt2.called) {
@@ -173,7 +170,7 @@ TEST(YodaKeyEntry, Smoke) {
   api.AsyncAdd(KeyValueEntry(5, 0.2)).wait();
   api.Add(KeyValueEntry(6, 0.17));
   const CallbackTest cbt3(7, 0.76);
-  api.AsyncAdd(TestAPI::T_ENTRY(7, 0.76),
+  api.AsyncAdd(yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76),
                std::bind(&CallbackTest::added, &cbt3),
                std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called) {
@@ -181,12 +178,13 @@ TEST(YodaKeyEntry, Smoke) {
   }
 
   // Check that default policy doesn't allow overwriting on Add().
-  ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), TestAPI::T_KEY_ALREADY_EXISTS_EXCEPTION);
+  ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(),
+               yoda::KeyEntry<KeyValueEntry>::T_KEY_ALREADY_EXISTS_EXCEPTION);
   ASSERT_THROW(api.AsyncAdd(KeyValueEntry(5, 1.1)).get(), yoda::KeyAlreadyExistsCoverException);
-  ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), TestAPI::T_KEY_ALREADY_EXISTS_EXCEPTION);
+  ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), yoda::KeyEntry<KeyValueEntry>::T_KEY_ALREADY_EXISTS_EXCEPTION);
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), yoda::KeyAlreadyExistsCoverException);
   const CallbackTest cbt4(7, 0.0, false);
-  api.AsyncAdd(TestAPI::T_ENTRY(7, 0.0),
+  api.AsyncAdd(KeyValueEntry(7, 0.0),
                std::bind(&CallbackTest::added, &cbt4),
                std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called) {
@@ -199,8 +197,8 @@ TEST(YodaKeyEntry, Smoke) {
   EXPECT_EQ(0.20, api.AsyncGet(5).get().value);
   EXPECT_EQ(0.17, api.Get(6).value);
 
-  ASSERT_THROW(api.AsyncGet(8).get(), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.Get(9), TestAPI::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.AsyncGet(8).get(), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.Get(9), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
 
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.

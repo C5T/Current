@@ -51,7 +51,10 @@ namespace MP = bricks::metaprogramming;
 
 // The container to keep the in-memory state of a particular entry type and its internal represenation.
 // Particular implementations are located in `api/*/*.h`.
-template <typename SPECIFIC_ENTRY_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename VISITABLE_TYPES_AS_TUPLE>
+template <typename ENTRY_BASE_TYPE,
+          typename SPECIFIC_ENTRY_TYPE,
+          typename SUPPORTED_TYPES_AS_TUPLE,
+          typename VISITABLE_TYPES_AS_TUPLE>
 struct Container {};
 
 // An abstract type to derive message queue message types from.
@@ -78,15 +81,15 @@ struct YodaTypes {
 
   template <typename T>
   using StorageTypeSelector = typename StorageTypeExtractor<T>::type;
-  typedef MP::map<StorageTypeSelector, SUPPORTED_TYPES_AS_TUPLE> T_VISITABLE_TYPES_AS_TUPLE;
-  typedef MP::abstract_visitable<T_VISITABLE_TYPES_AS_TUPLE> T_ABSTRACT_VISITABLE;
+  typedef MP::map<StorageTypeSelector, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
   typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
   typedef bricks::mq::MMQ<std::unique_ptr<T_MQ_MESSAGE>, T_MQ_LISTENER> T_MQ;
 
   template <typename T>
-  using ContainerTypeSelector = Container<T, T_SUPPORTED_TYPES_AS_TUPLE, T_VISITABLE_TYPES_AS_TUPLE>;
+  using ContainerTypeSelector =
+      Container<ENTRY_BASE_TYPE, T, T_SUPPORTED_TYPES_AS_TUPLE, T_UNDERLYING_TYPES_AS_TUPLE>;
   typedef MP::combine<MP::map<ContainerTypeSelector, T_SUPPORTED_TYPES_AS_TUPLE>> T_CONTAINER;
 
   typedef sherlock::StreamInstance<std::unique_ptr<T_ENTRY_BASE_TYPE>> T_STREAM_TYPE;
@@ -110,19 +113,9 @@ struct StreamListener {
 
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
-    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) override {
-      // TODO(max+dima): Ensure that this storage update can't break the actual state of the data.
-      typename YT::T_ABSTRACT_VISITABLE* av = dynamic_cast<typename YT::T_ABSTRACT_VISITABLE*>(entry.get());
-      if (av) {
-        av->accept(container);
-      } else {
-        // TODO(dkorolev): Talk to Max about API's policy on the stream containing an entry of unsupported type.
-        // Ex., have base entry type B, entry types X and Y, and finding an entry of type Z in the stream.
-        // Fail with an error message by default?
-        throw false;
-      }
-
-      static_cast<void>(stream);
+    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE&) override {
+      // TODO(dkorolev): RTTIDynamicCall should support `std::unique_ptr<>`-s as the 1st parameter.
+      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry.get(), container);
     }
   };
 
