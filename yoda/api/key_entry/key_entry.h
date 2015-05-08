@@ -140,28 +140,26 @@ struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY_FOR_YE
   typename YT::T_MQ& mq_;
 };
 
-template <typename ENTRY>
-struct StorageTypeExtractor<KeyEntry<ENTRY>> {
-  typedef ENTRY type;
-};
-
 template <typename ENTRY_BASE_TYPE,
-          typename ENTRY,
+          typename ENTRY_FOR_YET,
           typename SUPPORTED_TYPES_AS_TUPLE,
           typename UNDERLYING_TYPES_AS_TUPLE>
-struct Container<ENTRY_BASE_TYPE, KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE, UNDERLYING_TYPES_AS_TUPLE> {
+struct Container<ENTRY_BASE_TYPE,
+                 KeyEntry<ENTRY_FOR_YET>,
+                 SUPPORTED_TYPES_AS_TUPLE,
+                 UNDERLYING_TYPES_AS_TUPLE> {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  typedef KeyEntry<ENTRY> YET;
+  typedef KeyEntry<ENTRY_FOR_YET> YET;
 
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+  T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> container;
 
-  T_MAP_TYPE<T_KEY, T_ENTRY> container;
+  // Event: The entry has been scanned from the stream.
+  void operator()(const typename YET::T_ENTRY& entry) { container[GetKey(entry)] = entry; }
 
-  void operator()(const ENTRY& entry) { container[GetKey(entry)] = entry; }
-
-  void operator()(
-      typename YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>>::MQMessageGet& msg) {
+  // Event: `Get()`.
+  void operator()(typename YodaImpl<ENTRY_BASE_TYPE,
+                                    SUPPORTED_TYPES_AS_TUPLE,
+                                    KeyEntry<typename YET::T_ENTRY>>::MQMessageGet& msg) {
     const auto cit = container.find(msg.key);
     if (cit != container.end()) {
       // The entry has been found.
@@ -188,9 +186,11 @@ struct Container<ENTRY_BASE_TYPE, KeyEntry<ENTRY>, SUPPORTED_TYPES_AS_TUPLE, UND
     }
   }
 
-  void operator()(
-      typename YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY>>::MQMessageAdd& msg,
-      typename YT::T_STREAM_TYPE& stream) {
+  // Event: `Add()`.
+  void operator()(typename YodaImpl<ENTRY_BASE_TYPE,
+                                    SUPPORTED_TYPES_AS_TUPLE,
+                                    KeyEntry<typename YET::T_ENTRY>>::MQMessageAdd& msg,
+                  typename YT::T_STREAM_TYPE& stream) {
     const bool key_exists = static_cast<bool>(container.count(GetKey(msg.e)));
     if (key_exists) {
       if (msg.on_failure) {  // Callback function defined.

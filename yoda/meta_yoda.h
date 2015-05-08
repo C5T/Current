@@ -80,8 +80,8 @@ struct YodaTypes {
   typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
 
   template <typename T>
-  using StorageTypeSelector = typename StorageTypeExtractor<T>::type;
-  typedef MP::map<StorageTypeSelector, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
+  using SherlockEntryTypeFromYodaEntryType = typename T::T_ENTRY;
+  typedef MP::map<SherlockEntryTypeFromYodaEntryType, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
   typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
