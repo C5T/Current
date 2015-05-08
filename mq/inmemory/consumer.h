@@ -38,7 +38,7 @@ constexpr bool HasProcessMethodByPtr(char) {
 }
 
 template <typename T_MESSAGE>
-constexpr auto HasProcessMethodByPtr(int) -> decltype(std::declval<T_MESSAGE>()->Process(), bool()) {
+constexpr auto HasProcessMethodByPtr(int) -> decltype(std::declval<T_MESSAGE>() -> Process(), bool()) {
   return true;
 }
 

@@ -32,5 +32,6 @@ SOFTWARE.
 #include "is_tuple.h"
 #include "mapreduce.h"
 #include "combine.h"
+#include "rtti_dynamic_call.h"
 
 #endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H

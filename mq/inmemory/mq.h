@@ -236,8 +236,8 @@ class MMQ final {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        mmq::ExportMessage(consumer_, std::move(circular_buffer_[tail].message_body),
-                           actually_dropped_messages);
+        mmq::ExportMessage(
+            consumer_, std::move(circular_buffer_[tail].message_body), actually_dropped_messages);
       }
 
       {
