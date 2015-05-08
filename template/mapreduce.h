@@ -83,18 +83,6 @@ struct reduce_impl<F, std::tuple<T, TS...>> {
   typedef F<T, reduce<F, std::tuple<TS...>>> type;
 };
 
-// `combine<std::tuple<A, B, C>>` == a `struct` that combines all members and fields from `A`, `B` and `C`.
-template <typename A, typename B>
-struct multiple_inheritance_combiner_impl {
-  struct type : A, B {};
-};
-
-template <typename A, typename B>
-using multiple_inheritance_combiner = typename multiple_inheritance_combiner_impl<A, B>::type;
-
-template <typename TS>
-using combine = reduce<multiple_inheritance_combiner, TS>;
-
 }  // namespace metaprogramming
 }  // namespace bricks
 
