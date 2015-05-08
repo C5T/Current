@@ -417,7 +417,7 @@ EXPECT_EQ("(A+(B+C))",
 // Combine.
 struct NEG {
   // A simple way to differentiate logic by struct/class type
-  // is to provide a local, unique, symbol as the 1st param.
+  // is to use a helper local type as the 1st param in the signature.
   struct TYPE {};
   // Combine-able operations are defined as `operator()`.
   // Just because we need to pick one common name,
@@ -550,8 +550,8 @@ struct call_foo_bar {
   std::ostringstream os;
 } foo_bar;
 
-RTTIDynamicCall<std::tuple<A, B>>(pa, foo_bar);
-RTTIDynamicCall<std::tuple<A, B>>(pb, foo_bar);
+RTTIDynamicCall<std::tuple<A, B>>(*pa, foo_bar);
+RTTIDynamicCall<std::tuple<A, B>>(*pb, foo_bar);
 EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
 
 struct call_bar_baz {
@@ -564,8 +564,8 @@ struct call_bar_baz {
   std::ostringstream os;
 } bar_baz;
 
-RTTIDynamicCall<std::tuple<B, C>>(pb, bar_baz);
-RTTIDynamicCall<std::tuple<B, C>>(pc, bar_baz);
+RTTIDynamicCall<std::tuple<B, C>>(*pb, bar_baz);
+RTTIDynamicCall<std::tuple<B, C>>(*pc, bar_baz);
 EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 // TODO(dkorolev): Test all the corner cases with exceptions, wrong base types, etc.
 ```

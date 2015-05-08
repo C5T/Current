@@ -235,8 +235,8 @@ using bricks::metaprogramming::RTTIDynamicCall;
     std::ostringstream os;
   } foo_bar;
   
-  RTTIDynamicCall<std::tuple<A, B>>(pa, foo_bar);
-  RTTIDynamicCall<std::tuple<A, B>>(pb, foo_bar);
+  RTTIDynamicCall<std::tuple<A, B>>(*pa, foo_bar);
+  RTTIDynamicCall<std::tuple<A, B>>(*pb, foo_bar);
   EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
   
   struct call_bar_baz {
@@ -249,8 +249,8 @@ using bricks::metaprogramming::RTTIDynamicCall;
     std::ostringstream os;
   } bar_baz;
   
-  RTTIDynamicCall<std::tuple<B, C>>(pb, bar_baz);
-  RTTIDynamicCall<std::tuple<B, C>>(pc, bar_baz);
+  RTTIDynamicCall<std::tuple<B, C>>(*pb, bar_baz);
+  RTTIDynamicCall<std::tuple<B, C>>(*pc, bar_baz);
   EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 
   // TODO(dkorolev): Test all the corner cases with exceptions, wrong base types, etc.

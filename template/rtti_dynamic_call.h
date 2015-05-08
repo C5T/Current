@@ -78,13 +78,13 @@ struct SpecificUncastableTypeException : UncastableTypeException {
 
 template <typename BASE, typename F>
 struct RTTIDispatcherBase {
-  virtual void Handle(BASE*, F&&) const { throw SpecificUnhandledTypeException<BASE>(); }
+  virtual void Handle(BASE&, F&&) const { throw SpecificUnhandledTypeException<BASE>(); }
 };
 
 template <typename BASE, typename F, typename DERIVED>
 struct RTTIDispatcher : RTTIDispatcherBase<BASE, F> {
-  virtual void Handle(BASE* ptr, F&& f) const override {
-    DERIVED* derived = dynamic_cast<DERIVED*>(ptr);
+  virtual void Handle(BASE& ptr, F&& f) const override {
+    DERIVED* derived = dynamic_cast<DERIVED*>(&ptr);
     if (derived) {
       f(*derived);
     } else {
@@ -139,8 +139,8 @@ const RTTIDispatcherBase<BASE, F>* RTTIFindHandler(const std::type_info& type) {
 //                 that wraps all the types into pure virtual functions?
 //                 This way forgetting either of them would be a compile error.
 template <typename TYPELIST, typename BASE, typename F>
-void RTTIDynamicCall(BASE* ptr, F&& f) {
-  RTTIFindHandler<TYPELIST, BASE, F>(typeid(*ptr))->Handle(ptr, std::forward<F>(f));
+void RTTIDynamicCall(BASE& ptr, F&& f) {
+  RTTIFindHandler<TYPELIST, BASE, F>(typeid(ptr))->Handle(ptr, std::forward<F>(f));
 }
 
 }  // namespace metaprogramming
