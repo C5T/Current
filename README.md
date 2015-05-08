@@ -535,10 +535,9 @@ A a;
 B b;
 C c;
 
-BASE* pa = &a;
-// Explicit casts since `B` and `C` derive from `A` too.
-BASE* pb = static_cast<BASE*>(&b);
-BASE* pc = static_cast<BASE*>(&c);
+BASE& pa = a;
+BASE& pb = b;
+BASE& pc = c;
 
 struct call_foo_bar {
   void operator()(A& a) {
@@ -550,8 +549,8 @@ struct call_foo_bar {
   std::ostringstream os;
 } foo_bar;
 
-RTTIDynamicCall<std::tuple<A, B>>(*pa, foo_bar);
-RTTIDynamicCall<std::tuple<A, B>>(*pb, foo_bar);
+RTTIDynamicCall<std::tuple<A, B>>(pa, foo_bar);
+RTTIDynamicCall<std::tuple<A, B>>(pb, foo_bar);
 EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
 
 struct call_bar_baz {
@@ -564,10 +563,24 @@ struct call_bar_baz {
   std::ostringstream os;
 } bar_baz;
 
-RTTIDynamicCall<std::tuple<B, C>>(*pb, bar_baz);
-RTTIDynamicCall<std::tuple<B, C>>(*pc, bar_baz);
+RTTIDynamicCall<std::tuple<B, C>>(pb, bar_baz);
+RTTIDynamicCall<std::tuple<B, C>>(pc, bar_baz);
 EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
-// TODO(dkorolev): Test all the corner cases with exceptions, wrong base types, etc.
+struct call_foo_baz {
+  void operator()(A& a) {
+    a.foo(os);
+  }
+  void operator()(C& c) {
+    c.baz(os);
+  }
+  std::ostringstream os;
+} foo_baz;
+
+std::unique_ptr<BASE> unique_a(new A());
+std::unique_ptr<BASE> unique_c(new C());
+RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
+RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
+EXPECT_EQ("a=101\nc=103\n", foo_baz.os.str());
 ```
 ## Run-Time Type Dispatching
 
