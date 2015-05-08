@@ -145,7 +145,7 @@ void RTTIDynamicCall(BASE& ptr, F&& f) {
 // A parital specialization for a `unique_ptr`.
 template <typename TYPELIST, typename BASE, typename F>
 void RTTIDynamicCall(std::unique_ptr<BASE>& ptr, F&& f) {
-  RTTIFindHandler<TYPELIST, BASE, F>(typeid(*ptr.get()))->Handle(*ptr.get(), std::forward<F>(f));
+  RTTIDynamicCall<TYPELIST>(*ptr.get(), std::forward<F>(f));
 }
 
 }  // namespace metaprogramming
