@@ -32,14 +32,14 @@ namespace bricks {
 namespace metaprogramming {
 
 // `combine<std::tuple<A, B, C>>` == a `struct` that internally contains all `A`, `B` and `C`
-// via "has-a" inheritance, and exposes `operator()`, calls to which compile-time dispatched
+// via "has-a" inheritance, and exposes `operator()`, calls to which are dispatched in compile time
 // to the instances of `A`, `B` or `C` respectively, based on type signature.
 // No matching invocation signature will result in compile-time error, same as the case
 // of more than one invocation signature matching the call.
 
 template <typename T>
 struct dispatch {
-  T has_a_instance;
+  T instance;
 
   template <typename... XS>
   static constexpr bool sfinae(char) {
@@ -54,7 +54,7 @@ struct dispatch {
   template <typename... XS>
   typename std::enable_if<sfinae<XS...>(0), decltype(std::declval<T>()(std::declval<XS>()...))>::type
   operator()(XS... params) {
-    return has_a_instance(params...);
+    return instance(params...);
   }
 };
 

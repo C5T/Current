@@ -91,7 +91,7 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
   // Combine.
   struct NEG {
     // A simple way to differentiate logic by struct/class type
-    // is to provide a local, unique, symbol as the 1st param.
+    // is to use a helper local type as the 1st param in the signature.
     struct TYPE {};
 
     // Combine-able operations are defined as `operator()`.
