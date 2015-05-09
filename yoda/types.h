@@ -30,11 +30,9 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
-namespace yoda {
+#include "../../Bricks/template/rmref.h"
 
-// Helper structures to define the type of the storage.
-template <typename ENTRY> struct KeyEntry {};
-template <typename ROW, typename COL, typename VALUE> struct Matrix {};
+namespace yoda {
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
@@ -52,15 +50,16 @@ struct AllowOverwriteOnAdd {
   constexpr static bool allow_overwrite_on_add = true;
 };
 
+// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
 template <typename T_ENTRY>
-constexpr bool HasKeyFunction(char) {
+constexpr bool HasKeyMethod(char) {
   return false;
 }
 
 template <typename T_ENTRY>
-constexpr auto HasKeyFunction(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
+constexpr auto HasKeyMethod(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
   return true;
 }
 
@@ -88,7 +87,7 @@ struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
 };
 
 template <typename T_ENTRY>
-using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyFunction<T_ENTRY>(0)>;
+using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyMethod<T_ENTRY>(0)>;
 
 template <typename T_ENTRY>
 typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
@@ -96,14 +95,14 @@ typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_KEY_TYPE =
-    typename std::remove_cv<typename std::remove_reference<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>::type>::type;
+using ENTRY_KEY_TYPE = bricks::rmconstref<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
 
 template <typename T_ENTRY>
 void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
   KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
 }
 
+// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Associative container type selector. Attempts to use:
 // 1) std::unordered_map<T_KEY, T_ENTRY, wrapper for `T_KEY::Hash()`>
 // 2) std::unordered_map<T_KEY, T_ENTRY [, std::hash<T_KEY>]>
@@ -189,6 +188,7 @@ using T_MAP_TYPE =
 // By deriving from `Nullable` (and adding `using Nullable::Nullable`),
 // the user indicates that their entry type supports creation of a non-existing instance.
 // This is a requirement for a) non-throwing `Get()`, and b) for `Delete()` part of the API.
+// TODO(dkorolev): Add a compile-time check that `Nullable` user types allow constructing themselves as null-s.
 enum NullEntryTypeHelper { NullEntry };
 struct Nullable {
   const bool exists;
@@ -199,6 +199,7 @@ struct Nullable {
 // By deriving from `Deletable`, the user commits to serializing the `Nullable::exists` field,
 // thus enabling delete-friendly storage.
 // The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
+// TODO(dkorolev): Add the runtime check that certain type does indeed serialize the `exists` field and test it.
 struct Deletable {};
 
 }  // namespace yoda

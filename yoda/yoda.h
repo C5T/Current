@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// TODO(dkorolev) + TODO(mzhurovich): These comments should be made up to date one day.
+
 // Yoda is a simple to use, machine-learning-friendly key-value storage atop a Sherlock stream.
 //
 // The C++ usecase is to instantiate `Yoda<MyEntryType> API("stream_name")`.
@@ -69,13 +71,6 @@ SOFTWARE.
 //   yoda::API.
 //   This struct should contain all the members described in the "Exceptions" section above.
 //   Please refer to `struct DefaultPolicy` below for more details.
-//
-// TODO(dkorolev): Polymorphic types. Pass them in as std::tuple<...>, or directly as a variadic template param.
-
-// TODO(dkorolev): How about HTTP endpoints? They should be added somewhat automatically, right?
-//                 And it would require those `Scoped*` endpoints in Bricks. On me.
-
-// TODO(dkorolev): So, are we CRUD+REST or just a KeyValueStorage? Now we kinda merged POST+PUT. Not cool.
 
 #ifndef SHERLOCK_YODA_YODA_H
 #define SHERLOCK_YODA_YODA_H
@@ -83,297 +78,74 @@ SOFTWARE.
 #include <atomic>
 #include <future>
 #include <string>
+#include <tuple>
 
 #include "types.h"
+#include "metaprogramming.h"
 #include "policy.h"
 #include "exceptions.h"
 
-#include "../sherlock.h"
-
-#include "../../Bricks/mq/inmemory/mq.h"
+#include "api/key_entry/key_entry.h"
+#include "api/matrix/matrix_entry.h"
 
 namespace yoda {
 
-template <typename>
-struct Container {};
-
-template <typename ENTRY>
-struct Container<KeyEntry<ENTRY>> {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
-
-  T_MAP_TYPE<T_KEY, T_ENTRY> data;
-};
-
-// The logic to "interleave" updates from Sherlock stream with inbound KeyEntryStorage requests.
-template <typename>
-struct MQMessage {};
-
-template <typename ENTRY>
-struct MQMessage<KeyEntry<ENTRY>> {
-  typedef sherlock::StreamInstance<ENTRY> T_STREAM_TYPE;
-  virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE& stream) = 0;
-};
-
-template <typename>
-struct MQListener {};
-
-template <typename ENTRY>
-struct MQListener<KeyEntry<ENTRY>> {
-  typedef sherlock::StreamInstance<ENTRY> T_STREAM_TYPE;
-
-  explicit MQListener(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE& stream)
-      : container_(container), stream_(stream) {}
-
-  // MMQ consumer call.
-  void OnMessage(std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>& message, size_t dropped_count) {
-    // TODO(dkorolev): Should use a non-dropping MMQ here, of course.
-    static_cast<void>(dropped_count);  // TODO(dkorolev): And change the method's signature to remove this.
-    message->DoIt(container_, stream_);
-  }
-
-  Container<KeyEntry<ENTRY>>& container_;
-  T_STREAM_TYPE& stream_;
-};
-
-// typedef MMQ<MQListener, std::unique_ptr<MQMessage>> T_MQ;
-
-template <typename>
-struct SherlockListener {};
-
-template <typename ENTRY>
-struct SherlockListener<KeyEntry<ENTRY>> {
-  typedef ENTRY T_ENTRY;
-  typedef MMQ<MQListener<KeyEntry<ENTRY>>, std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>> T_MQ;
-
-  explicit SherlockListener(T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
-
-  struct MQMessageEntry : MQMessage<KeyEntry<ENTRY>> {
-    // TODO(dkorolev): A single entry is fine to copy, polymorphic ones should be std::move()-d.
-    using typename MQMessage<KeyEntry<ENTRY>>::T_STREAM_TYPE;
-    T_ENTRY entry;
-
-    explicit MQMessageEntry(const T_ENTRY& entry) : entry(entry) {}
-
-    virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE&) override {
-      // TODO(max+dima): Ensure that this storage update can't break
-      // the actual state of the data.
-      container.data[GetKey(entry)] = entry;
-    }
-  };
-
-  // Sherlock stream listener call.
-  bool Entry(T_ENTRY& entry, size_t index, size_t total) {
-    // The logic of this API implementation is:
-    // * Defer all API requests until the persistent part of the stream is fully replayed,
-    // * Allow all API requests after that.
-
-    // TODO(dkorolev): If that's the way to go, we should probably respond with HTTP 503 or 409 or 418?
-    //                 (And add a `/statusz` endpoint to monitor the status wrt ready / not yet ready.)
-    // TODO(dkorolev): What about an empty stream? :-)
-
-    if (index + 1 == total) {
-      caught_up_ = true;
-    }
-
-    // Non-polymorphic usecase.
-    // TODO(dkorolev): Eliminate the copy && code up the polymorphic scenario for this call. In another class.
-    mq_.EmplaceMessage(new MQMessageEntry(entry));
-
-    // This is primarily for unit testing purposes.
-    ++entries_seen_;
-
-    return true;
-  }
-
-  // Sherlock stream listener call.
-  void Terminate() {
-    // TODO(dkorolev): Should stop serving API requests.
-    // TODO(dkorolev): Should un-register HTTP endpoints, if they have been registered.
-  }
-
-  std::atomic_bool caught_up_;
-  std::atomic_size_t entries_seen_;
-
+// `yoda::APIWrapper` requires two template parameters:
+// 1) The base type for the stream entries -- to serialize and deserialize polymorphic records.
+// 2) The list of specific entries to expose through the Yoda API.
+template <typename ENTRY_BASE_TYPE, typename ENTRIES_TYPELIST>
+struct APIWrapper : apicalls::APICallsWrapper<
+                        YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>,
+                        CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
  private:
-  T_MQ& mq_;
-};
+  static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
+  typedef YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST> YT;
 
-template <typename>
-struct Storage {};
-
-template <typename ENTRY>
-struct Storage<KeyEntry<ENTRY>> {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
-
-  typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
-  typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
-  typedef std::function<void()> T_VOID_CALLBACK;
-
-  typedef KeyNotFoundException<T_ENTRY> T_KEY_NOT_FOUND_EXCEPTION;
-  typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
-  typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
-
-  typedef MMQ<MQListener<KeyEntry<ENTRY>>, std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>> T_MQ;
-
-  explicit Storage(T_MQ& mq) : mq_(mq) {}
-
-  struct MQMessageGet : MQMessage<KeyEntry<ENTRY>> {
-    using typename MQMessage<KeyEntry<ENTRY>>::T_STREAM_TYPE;
-
-    const T_KEY key;
-    std::promise<T_ENTRY> pr;
-    T_ENTRY_CALLBACK on_success;
-    T_KEY_CALLBACK on_failure;
-
-    explicit MQMessageGet(const T_KEY& key, std::promise<T_ENTRY>&& pr) : key(key), pr(std::move(pr)) {}
-    explicit MQMessageGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure)
-        : key(key), on_success(on_success), on_failure(on_failure) {}
-
-    virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE&) override {
-      const auto cit = container.data.find(key);
-      if (cit != container.data.end()) {
-        // The entry has been found.
-        if (on_success) {
-          // Callback semantics.
-          on_success(cit->second);
-        } else {
-          // Promise semantics.
-          pr.set_value(cit->second);
-        }
-      } else {
-        // The entry has not been found.
-        if (on_failure) {
-          // Callback semantics.
-          on_failure(key);
-        } else {
-          // Promise semantics.
-          SetPromiseToNullEntryOrThrow<T_KEY, T_ENTRY, T_KEY_NOT_FOUND_EXCEPTION,
-                                       false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
-                                       >::DoIt(key, pr);
-        }
-      }
-    }
-  };
-
-  struct MQMessageAdd : MQMessage<KeyEntry<ENTRY>> {
-    using typename MQMessage<KeyEntry<ENTRY>>::T_STREAM_TYPE;
-
-    const T_ENTRY e;
-    std::promise<void> pr;
-    T_VOID_CALLBACK on_success;
-    T_VOID_CALLBACK on_failure;
-
-    explicit MQMessageAdd(const T_ENTRY& e, std::promise<void>&& pr) : e(e), pr(std::move(pr)) {}
-    explicit MQMessageAdd(const T_ENTRY& e, T_VOID_CALLBACK on_success, T_VOID_CALLBACK on_failure)
-        : e(e), on_success(on_success), on_failure(on_failure) {}
-
-    // Important note: The entry added will eventually reach the storage via the stream.
-    // Thus, in theory, `MQMessageAdd::DoIt()` could be a no-op.
-    // This code still updates the storage, to have the API appear more lively to the user.
-    // Since the actual implementation of `Add` pushes the `MQMessageAdd` message before publishing
-    // an update to the stream, the final state will always be [evenually] consistent.
-    // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
-    // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
-    // reflects updated data is not reliable from the point of data synchronization.
-    virtual void DoIt(Container<KeyEntry<ENTRY>>& container, T_STREAM_TYPE& stream) override {
-      const bool key_exists = static_cast<bool>(container.data.count(GetKey(e)));
-      if (key_exists) {
-        if (on_failure) {  // Callback function defined.
-          on_failure();
-        } else {  // Throw.
-          pr.set_exception(std::make_exception_ptr(T_KEY_ALREADY_EXISTS_EXCEPTION(e)));
-        }
-      } else {
-        container.data[GetKey(e)] = e;
-        stream.Publish(e);
-        if (on_success) {
-          on_success();
-        } else {
-          pr.set_value();
-        }
-      }
-    }
-  };
-
-  std::future<T_ENTRY> AsyncGet(const T_KEY& key) {
-    std::promise<T_ENTRY> pr;
-    std::future<T_ENTRY> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageGet(key, std::move(pr)));
-    return future;
-  }
-
-  void AsyncGet(const T_KEY& key, T_ENTRY_CALLBACK on_success, T_KEY_CALLBACK on_failure) {
-    mq_.EmplaceMessage(new MQMessageGet(key, on_success, on_failure));
-  }
-
-  T_ENTRY Get(const T_KEY& key) { return AsyncGet(std::forward<const T_KEY>(key)).get(); }
-
-  std::future<void> AsyncAdd(const T_ENTRY& entry) {
-    std::promise<void> pr;
-    std::future<void> future = pr.get_future();
-
-    mq_.EmplaceMessage(new MQMessageAdd(entry, std::move(pr)));
-    return future;
-  }
-
-  void AsyncAdd(const T_ENTRY& entry,
-                T_VOID_CALLBACK on_success,
-                T_VOID_CALLBACK on_failure = [](const T_KEY&) {}) {
-    mq_.EmplaceMessage(new MQMessageAdd(entry, on_success, on_failure));
-  }
-
-  void Add(const T_ENTRY& entry) { AsyncAdd(entry).get(); }
-
- private:
-  T_MQ& mq_;
-};
-
-template <typename TYPE>
-class API {};
-
-template <typename ENTRY>
-class API<KeyEntry<ENTRY>> : public Storage<KeyEntry<ENTRY>> {
  public:
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
-
-  typedef sherlock::StreamInstance<T_ENTRY> T_STREAM_TYPE;
-  typedef MMQ<MQListener<KeyEntry<ENTRY>>, std::unique_ptr<MQMessage<KeyEntry<ENTRY>>>> T_MQ;
-
-  template <typename F>
-  using T_STREAM_LISTENER_TYPE = typename sherlock::StreamInstanceImpl<T_ENTRY>::template ListenerScope<F>;
-
-  API(const std::string& stream_name)
-      : Storage<KeyEntry<ENTRY>>(mq_),
-        stream_(sherlock::Stream<T_ENTRY>(stream_name)),
+  APIWrapper() = delete;
+  APIWrapper(const std::string& stream_name)
+      : apicalls::APICallsWrapper<
+            YT,
+            CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
-        sherlock_listener_(mq_),
-        listener_scope_(stream_.Subscribe(sherlock_listener_)) {}
+        stream_listener_(mq_),
+        sherlock_listener_scope_(stream_.Subscribe(stream_listener_)) {}
 
-  T_STREAM_TYPE& UnsafeStream() { return stream_; }
+  typename YT::T_STREAM_TYPE& UnsafeStream() { return stream_; }
 
   template <typename F>
-  T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
+  typename YT::template T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
     return std::move(stream_.Subscribe(listener));
   }
 
   // For testing purposes.
-  bool CaughtUp() const { return sherlock_listener_.caught_up_; }
-  size_t EntriesSeen() const { return sherlock_listener_.entries_seen_; }
+  bool CaughtUp() const { return stream_listener_.caught_up_; }
+  size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
  private:
-  API() = delete;
-
-  T_STREAM_TYPE stream_;
-  Container<KeyEntry<ENTRY>> container_;
-  MQListener<KeyEntry<ENTRY>> mq_listener_;
-  T_MQ mq_;
-  SherlockListener<KeyEntry<ENTRY>> sherlock_listener_;
-  T_STREAM_LISTENER_TYPE<SherlockListener<KeyEntry<ENTRY>>> listener_scope_;
+  typename YT::T_STREAM_TYPE stream_;
+  YodaContainer<YT> container_;
+  typename YT::T_MQ_LISTENER mq_listener_;
+  typename YT::T_MQ mq_;
+  typename YT::T_SHERLOCK_LISTENER stream_listener_;
+  typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
 };
+
+// `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
+template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
+struct APIWrapperSelector {
+  typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES...>> type;
+};
+
+template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES>
+struct APIWrapperSelector<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> {
+  typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> type;
+};
+
+template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
+using API = typename APIWrapperSelector<ENTRY_BASE_TYPE, SUPPORTED_TYPES...>::type;
 
 }  // namespace yoda
 

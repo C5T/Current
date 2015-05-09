@@ -207,7 +207,6 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
       ++count_;
       return true;
     }
-    inline void Terminate() {}
   };
 
   std::vector<std::string> s;

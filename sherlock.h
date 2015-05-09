@@ -37,6 +37,7 @@ SOFTWARE.
 
 #include "../Bricks/net/api/api.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/template/rmref.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 #include "optionally_owned/optionally_owned.h"
@@ -128,8 +129,7 @@ struct ExtractTimestampImpl<std::unique_ptr<E>> {
 
 template <typename E>
 bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
-  return ExtractTimestampImpl<typename std::remove_reference<E>::type>::ExtractTimestamp(
-      std::forward<E>(entry));
+  return ExtractTimestampImpl<bricks::rmref<E>>::ExtractTimestamp(std::forward<E>(entry));
 }
 
 template <typename E>
@@ -217,6 +217,31 @@ class PubSubHTTPEndpoint {
   PubSubHTTPEndpoint(PubSubHTTPEndpoint&&) = delete;
   void operator=(PubSubHTTPEndpoint&&) = delete;
 };
+
+template <typename T>
+constexpr bool HasTerminateMethod(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>() -> Terminate(), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct CallTerminateImpl {
+  static void DoIt(T&&) {}
+};
+
+template <typename T>
+struct CallTerminateImpl<T, true> {
+  static void DoIt(T&& ptr) { ptr->Terminate(); }
+};
+
+template <typename T>
+void CallTerminate(T&& ptr) {
+  CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
+}
 
 template <typename T>
 class StreamInstanceImpl {
@@ -318,7 +343,7 @@ class StreamInstanceImpl {
             return terminate->Get() || data.size() > cursor;
           });
           if (terminate->Get()) {
-            listener->Terminate();
+            CallTerminate(listener);
             break;
           }
           bool user_initiated_terminate = false;

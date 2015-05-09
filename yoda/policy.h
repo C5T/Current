@@ -59,16 +59,20 @@ constexpr bool overwrite_on_add_value_or_default(...) {
   return false;
 }
 
+/*
+// TODO(dkorolev): Revisit policies. They should likely go into `YodaImpl`-s.
 // Default set of policies for the instance of Yoda.
-template <typename> struct DefaultPolicy {};
+template <typename>
+struct DefaultPolicy {};
 
 template <typename ENTRY>
-struct DefaultPolicy<KeyEntry<ENTRY>> {
+struct DefaultPolicy<SomeTypeOfEntry<ENTRY>> {
   constexpr static bool allow_nonthrowing_get = nonthrowing_get_value_or_default<ENTRY>(0);
   constexpr static bool allow_overwrite_on_add = overwrite_on_add_value_or_default<ENTRY>(0);
   static_assert(!allow_nonthrowing_get || std::is_base_of<Nullable, ENTRY>::value,
                 "To support non-throwing `Get()`, make the entry types derive from `yoda::Nullable`.");
 };
+*/
 
 // The implementation for the logic of `allow_nonthrowing_get`.
 template <typename T_KEY, typename T_ENTRY, typename T_KEY_NOT_FOUND_EXCEPTION, bool>
