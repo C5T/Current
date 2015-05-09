@@ -34,11 +34,6 @@ SOFTWARE.
 
 namespace yoda {
 
-// Templated type to resolve underlying entry types, converting template parameters of `yoda::API`
-// into respective types to be stored in the stream and dispatched via message queue and visitors.
-template <typename ENTRY>
-struct StorageTypeExtractor {};
-
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
 

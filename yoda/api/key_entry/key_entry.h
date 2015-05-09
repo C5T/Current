@@ -31,7 +31,7 @@ SOFTWARE.
 #include <future>
 
 #include "../../types.h"
-#include "../../meta_yoda.h"
+#include "../../metaprogramming.h"
 #include "../../policy.h"
 #include "../../exceptions.h"
 

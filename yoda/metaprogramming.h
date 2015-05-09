@@ -27,8 +27,8 @@ SOFTWARE.
 // Type definitions, hardly any implementation code. Used to enable support per-storage types in a way
 // that allows combining them into a single polymorphic storage atop a single polymorphic stream.
 
-#ifndef SHERLOCK_YODA_META_YODA_H
-#define SHERLOCK_YODA_META_YODA_H
+#ifndef SHERLOCK_YODA_METAPROGRAMMING_H
+#define SHERLOCK_YODA_METAPROGRAMMING_H
 
 #include "types.h"
 
@@ -46,15 +46,6 @@ struct is_same_or_compile_error {
 };
 
 namespace yoda {
-
-namespace apicalls {
-
-struct Get {};
-struct AsyncGet {};
-struct Add {};
-struct AsyncAdd {};
-
-};
 
 namespace MP = bricks::metaprogramming;
 
@@ -253,6 +244,50 @@ struct CombinedYodaImpls<YT, std::tuple<T>> : dispatch<YT, YodaImpl<YT, T>> {
   explicit CombinedYodaImpls(typename YT::T_MQ& mq) : dispatch<YT, YodaImpl<YT, T>>(mq) {}
 };
 
+// All the user-facing methods are defined here.
+// To add a new user-facing method, add a new empty struct into `namespace apicalls`
+// and a SFINAE-based wrapper into `struct APICallsWrapper`.
+namespace apicalls {
+
+// Helper types for user-facing API calls.
+struct Get {};
+struct AsyncGet {};
+struct Add {};
+struct AsyncAdd {};
+
+template <typename YT, typename API>
+struct APICallsWrapper {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
+
+  APICallsWrapper() = delete;
+  APICallsWrapper(typename YT::T_MQ& mq) : api(mq) {}
+
+  // User-facing API calls, proxied to the chain of per-type Yoda API-s.
+  template <typename... XS>
+  decltype(std::declval<API>()(apicalls::Get(), std::declval<XS>()...)) Get(XS&&... xs) {
+    return api(apicalls::Get(), xs...);
+  };
+
+  template <typename... XS>
+  decltype(std::declval<API>()(apicalls::Add(), std::declval<XS>()...)) Add(XS&&... xs) {
+    return api(apicalls::Add(), xs...);
+  };
+
+  template <typename... XS>
+  decltype(std::declval<API>()(apicalls::AsyncGet(), std::declval<XS>()...)) AsyncGet(XS&&... xs) {
+    return api(apicalls::AsyncGet(), xs...);
+  };
+
+  template <typename... XS>
+  decltype(std::declval<API>()(apicalls::AsyncAdd(), std::declval<XS>()...)) AsyncAdd(XS&&... xs) {
+    return api(apicalls::AsyncAdd(), xs...);
+  };
+
+  API api;
+};
+
+}  // namespace apicalls
+
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_META_YODA_H
+#endif  // SHERLOCK_YODA_METAPROGRAMMING_H

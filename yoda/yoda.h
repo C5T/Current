@@ -81,7 +81,7 @@ SOFTWARE.
 #include <tuple>
 
 #include "types.h"
-#include "meta_yoda.h"
+#include "metaprogramming.h"
 #include "policy.h"
 #include "exceptions.h"
 
@@ -92,22 +92,25 @@ namespace yoda {
 // `yoda::APIWrapper` requires two template parameters:
 // 1) The base type for the stream entries -- to serialize and deserialize polymorphic records.
 // 2) The list of specific entries to expose through the Yoda API.
-template <typename ENTRY_BASE_TYPE, typename ENTRIES_TYPELITS>
-class APIWrapper {
+template <typename ENTRY_BASE_TYPE, typename ENTRIES_TYPELIST>
+struct APIWrapper : apicalls::APICallsWrapper<
+                        YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>,
+                        CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
  private:
-  static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELITS>::value, "");
-  typedef YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELITS> YT;
-  typedef CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELITS>, ENTRIES_TYPELITS> T_API;
+  static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
+  typedef YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST> YT;
 
  public:
   APIWrapper() = delete;
   APIWrapper(const std::string& stream_name)
-      : stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
+      : apicalls::APICallsWrapper<
+            YT,
+            CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
-        sherlock_listener_scope_(stream_.Subscribe(stream_listener_)),
-        api_(mq_) {}
+        sherlock_listener_scope_(stream_.Subscribe(stream_listener_)) {}
 
   typename YT::T_STREAM_TYPE& UnsafeStream() { return stream_; }
 
@@ -120,27 +123,6 @@ class APIWrapper {
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
-  // User-facing API calls, proxied to the chain of per-type Yoda API-s.
-  template <typename... X>
-  decltype(std::declval<T_API>()(apicalls::Get(), std::declval<X>()...)) Get(X&&... xs) {
-    return api_(apicalls::Get(), xs...);
-  };
-
-  template <typename... X>
-  decltype(std::declval<T_API>()(apicalls::Add(), std::declval<X>()...)) Add(X&&... xs) {
-    return api_(apicalls::Add(), xs...);
-  };
-
-  template <typename... X>
-  decltype(std::declval<T_API>()(apicalls::AsyncGet(), std::declval<X>()...)) AsyncGet(X&&... xs) {
-    return api_(apicalls::AsyncGet(), xs...);
-  };
-
-  template <typename... X>
-  decltype(std::declval<T_API>()(apicalls::AsyncAdd(), std::declval<X>()...)) AsyncAdd(X&&... xs) {
-    return api_(apicalls::AsyncAdd(), xs...);
-  };
-
  private:
   typename YT::T_STREAM_TYPE stream_;
   YodaContainer<YT> container_;
@@ -148,7 +130,6 @@ class APIWrapper {
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;
   typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
-  T_API api_;
 };
 
 // `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
