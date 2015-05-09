@@ -78,7 +78,9 @@ struct KeyValueAggregateListener {
   }
 };
 
-// Work in progress: Making sure types are proxies the right way for the polymorphic case.
+// Test the key-value storage implemenation internals.
+// TODO(dkorolev): Remove this test in a while.
+// TODO(mzhurovich): No need to look at and/or port this test when working on `MatrixEntry`.
 TEST(YodaKeyEntry, SmokeImpl) {
   // Works with either line now, yay!
   // typedef yoda::YodaTypes<YodaTestEntryBase, std::tuple<yoda::KeyEntry<KeyValueEntry>>> YT;
@@ -113,13 +115,13 @@ TEST(YodaKeyEntry, SmokeImpl) {
   }
 
   // Future expanded syntax.
-  std::future<KeyValueEntry> f1 = api_impl.AsyncGet(2);
+  std::future<KeyValueEntry> f1 = api_impl(yoda::apicalls::AsyncGet(), 2);
   KeyValueEntry r1 = f1.get();
   EXPECT_EQ(2, r1.key);
   EXPECT_EQ(0.5, r1.value);
 
   // Future short syntax.
-  EXPECT_EQ(0.5, api_impl.AsyncGet(2).get().value);
+  EXPECT_EQ(0.5, api_impl(yoda::apicalls::AsyncGet(), 2).get().value);
 
   // Callback version.
   struct CallbackTest {
@@ -157,9 +159,10 @@ TEST(YodaKeyEntry, SmokeImpl) {
   };
 
   const CallbackTest cbt1(2, 0.5);
-  api_impl.AsyncGet(2,
-                    std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
-                    std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
+  api_impl(yoda::apicalls::AsyncGet(),
+           2,
+           std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
+           std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
   while (!cbt1.called) {
     ;  // Spin lock.
   }
@@ -178,43 +181,48 @@ TEST(YodaKeyEntry, SmokeImpl) {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
-  EXPECT_EQ(0.33, api_impl.AsyncGet(3).get().value);
-  EXPECT_EQ(0.25, api_impl.Get(4).value);
+  EXPECT_EQ(0.33, api_impl(yoda::apicalls::AsyncGet(), 3).get().value);
+  EXPECT_EQ(0.25, api_impl(yoda::apicalls::Get(), 4).value);
 
-  ASSERT_THROW(api_impl.AsyncGet(5).get(), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api_impl.AsyncGet(5).get(), yoda::KeyNotFoundCoverException);
-  ASSERT_THROW(api_impl.Get(6), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api_impl.Get(6), yoda::KeyNotFoundCoverException);
+  ASSERT_THROW(api_impl(yoda::apicalls::AsyncGet(), 5).get(),
+               yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api_impl(yoda::apicalls::AsyncGet(), 5).get(), yoda::KeyNotFoundCoverException);
+  ASSERT_THROW(api_impl(yoda::apicalls::Get(), 6), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api_impl(yoda::apicalls::Get(), 6), yoda::KeyNotFoundCoverException);
   const CallbackTest cbt2(7, 0.0, false);
-  api_impl.AsyncGet(7,
-                    std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
-                    std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
+  api_impl(yoda::apicalls::AsyncGet(),
+           7,
+           std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
+           std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
   while (!cbt2.called) {
     ;  // Spin lock.
   }
 
   // Add three more key-value pairs, this time via the API.
-  api_impl.AsyncAdd(KeyValueEntry(5, 0.2)).wait();
-  api_impl.Add(KeyValueEntry(6, 0.17));
+  api_impl(yoda::apicalls::AsyncAdd(), KeyValueEntry(5, 0.2)).wait();
+  api_impl(yoda::apicalls::Add(), KeyValueEntry(6, 0.17));
   const CallbackTest cbt3(7, 0.76);
-  api_impl.AsyncAdd(yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76),
-                    std::bind(&CallbackTest::added, &cbt3),
-                    std::bind(&CallbackTest::already_exists, &cbt3));
+  api_impl(yoda::apicalls::AsyncAdd(),
+           yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76),
+           std::bind(&CallbackTest::added, &cbt3),
+           std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called) {
     ;  // Spin lock.
   }
 
   // Check that default policy doesn't allow overwriting on Add().
-  ASSERT_THROW(api_impl.AsyncAdd(KeyValueEntry(5, 1.1)).get(),
+  ASSERT_THROW(api_impl(yoda::apicalls::AsyncAdd(), KeyValueEntry(5, 1.1)).get(),
                yoda::KeyEntry<KeyValueEntry>::T_KEY_ALREADY_EXISTS_EXCEPTION);
-  ASSERT_THROW(api_impl.AsyncAdd(KeyValueEntry(5, 1.1)).get(), yoda::KeyAlreadyExistsCoverException);
-  ASSERT_THROW(api_impl.Add(KeyValueEntry(6, 0.28)),
+  ASSERT_THROW(api_impl(yoda::apicalls::AsyncAdd(), KeyValueEntry(5, 1.1)).get(),
+               yoda::KeyAlreadyExistsCoverException);
+  ASSERT_THROW(api_impl(yoda::apicalls::Add(), KeyValueEntry(6, 0.28)),
                yoda::KeyEntry<KeyValueEntry>::T_KEY_ALREADY_EXISTS_EXCEPTION);
-  ASSERT_THROW(api_impl.Add(KeyValueEntry(6, 0.28)), yoda::KeyAlreadyExistsCoverException);
+  ASSERT_THROW(api_impl(yoda::apicalls::Add(), KeyValueEntry(6, 0.28)), yoda::KeyAlreadyExistsCoverException);
   const CallbackTest cbt4(7, 0.0, false);
-  api_impl.AsyncAdd(KeyValueEntry(7, 0.0),
-                    std::bind(&CallbackTest::added, &cbt4),
-                    std::bind(&CallbackTest::already_exists, &cbt4));
+  api_impl(yoda::apicalls::AsyncAdd(),
+           KeyValueEntry(7, 0.0),
+           std::bind(&CallbackTest::added, &cbt4),
+           std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called) {
     ;  // Spin lock.
   }
@@ -222,11 +230,12 @@ TEST(YodaKeyEntry, SmokeImpl) {
   // Thanks to eventual consistency, we don't have to wait until the above calls fully propagate.
   // Even if the next two lines run before the entries are published into the stream,
   // the API will maintain the consistency of its own responses from its own in-memory state.
-  EXPECT_EQ(0.20, api_impl.AsyncGet(5).get().value);
-  EXPECT_EQ(0.17, api_impl.Get(6).value);
+  EXPECT_EQ(0.20, api_impl(yoda::apicalls::AsyncGet(), 5).get().value);
+  EXPECT_EQ(0.17, api_impl(yoda::apicalls::Get(), 6).value);
 
-  ASSERT_THROW(api_impl.AsyncGet(8).get(), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api_impl.Get(9), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api_impl(yoda::apicalls::AsyncGet(), 8).get(),
+               yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api_impl(yoda::apicalls::Get(), 9), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
 
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.

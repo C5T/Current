@@ -103,24 +103,25 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     }
   };
 
-  std::future<typename YET::T_ENTRY> AsyncGet(const typename YET::T_KEY& key) {
+  std::future<typename YET::T_ENTRY> operator()(apicalls::AsyncGet, const typename YET::T_KEY& key) {
     std::promise<typename YET::T_ENTRY> pr;
     std::future<typename YET::T_ENTRY> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageGet(key, std::move(pr)));
     return future;
   }
 
-  void AsyncGet(const typename YET::T_KEY& key,
-                typename YET::T_ENTRY_CALLBACK on_success,
-                typename YET::T_KEY_CALLBACK on_failure) {
+  void operator()(apicalls::AsyncGet,
+                  const typename YET::T_KEY& key,
+                  typename YET::T_ENTRY_CALLBACK on_success,
+                  typename YET::T_KEY_CALLBACK on_failure) {
     mq_.EmplaceMessage(new MQMessageGet(key, on_success, on_failure));
   }
 
-  typename YET::T_ENTRY Get(const typename YET::T_KEY& key) {
-    return AsyncGet(std::forward<const typename YET::T_KEY>(key)).get();
+  typename YET::T_ENTRY operator()(apicalls::Get, const typename YET::T_KEY& key) {
+    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_KEY>(key)).get();
   }
 
-  std::future<void> AsyncAdd(const typename YET::T_ENTRY& entry) {
+  std::future<void> operator()(apicalls::AsyncAdd, const typename YET::T_ENTRY& entry) {
     std::promise<void> pr;
     std::future<void> future = pr.get_future();
 
@@ -128,13 +129,16 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     return future;
   }
 
-  void AsyncAdd(const typename YET::T_ENTRY& entry,
-                typename YET::T_VOID_CALLBACK on_success,
-                typename YET::T_VOID_CALLBACK on_failure = [](const typename YET::T_KEY&) {}) {
+  void operator()(apicalls::AsyncAdd,
+                  const typename YET::T_ENTRY& entry,
+                  typename YET::T_VOID_CALLBACK on_success,
+                  typename YET::T_VOID_CALLBACK on_failure = [](const typename YET::T_KEY&) {}) {
     mq_.EmplaceMessage(new MQMessageAdd(entry, on_success, on_failure));
   }
 
-  void Add(const typename YET::T_ENTRY& entry) { AsyncAdd(entry).get(); }
+  void operator()(apicalls::Add, const typename YET::T_ENTRY& entry) {
+    operator()(apicalls::AsyncAdd(), entry).get();
+  }
 
  private:
   typename YT::T_MQ& mq_;

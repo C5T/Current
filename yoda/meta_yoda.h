@@ -47,6 +47,15 @@ struct is_same_or_compile_error {
 
 namespace yoda {
 
+namespace apicalls {
+
+struct Get {};
+struct AsyncGet {};
+struct Add {};
+struct AsyncAdd {};
+
+};
+
 namespace MP = bricks::metaprogramming;
 
 // The container to keep the in-memory state of a particular entry type and its internal represenation.
@@ -192,19 +201,56 @@ struct CombinedYodaImpls {
   static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
+// Shamelessly taken from `Bricks/template/combine.h`.
+// TODO(dkorolev): With Max, think of how to best move these into Bricks, or at least rename a few.
+template <typename YT, typename T>
+struct dispatch {
+  T instance;
+
+  template <typename... XS>
+  static constexpr bool sfinae(char) {
+    return false;
+  }
+
+  template <typename... XS>
+  static constexpr auto sfinae(int) -> decltype(std::declval<T>()(std::declval<XS>()...), bool()) {
+    return true;
+  }
+
+  template <typename... XS>
+  typename std::enable_if<sfinae<XS...>(0), decltype(std::declval<T>()(std::declval<XS>()...))>::type
+  operator()(XS... params) {
+    return instance(params...);
+  }
+
+  dispatch() = delete;
+  explicit dispatch(typename YT::T_MQ& mq) : instance(mq) {}
+};
+
+template <typename YT, typename T1, typename T2>
+struct inherit_from_both : T1, T2 {
+  using T1::operator();
+  using T2::operator();
+  inherit_from_both() = delete;
+  explicit inherit_from_both(typename YT::T_MQ& mq) : T1(mq), T2(mq) {}
+  // Note: clang++ passes `operator`-s through
+  // by default, whereas g++ requires `using`-s. --  D.K.
+};
+
 template <typename YT, typename T, typename... TS>
-struct CombinedYodaImpls<YT, std::tuple<T, TS...>> : YodaImpl<YT, T>, CombinedYodaImpls<YT, std::tuple<TS...>> {
+struct CombinedYodaImpls<YT, std::tuple<T, TS...>>
+    : inherit_from_both<YT, dispatch<YT, YodaImpl<YT, T>>, CombinedYodaImpls<YT, std::tuple<TS...>>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   CombinedYodaImpls() = delete;
   explicit CombinedYodaImpls(typename YT::T_MQ& mq)
-      : YodaImpl<YT, T>(mq), CombinedYodaImpls<YT, std::tuple<TS...>>(mq) {}
+      : inherit_from_both<YT, dispatch<YT, YodaImpl<YT, T>>, CombinedYodaImpls<YT, std::tuple<TS...>>>(mq) {}
 };
 
-template <typename YT>
-struct CombinedYodaImpls<YT, std::tuple<>> {
+template <typename YT, typename T>
+struct CombinedYodaImpls<YT, std::tuple<T>> : dispatch<YT, YodaImpl<YT, T>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   CombinedYodaImpls() = delete;
-  explicit CombinedYodaImpls(typename YT::T_MQ&) {}
+  explicit CombinedYodaImpls(typename YT::T_MQ& mq) : dispatch<YT, YodaImpl<YT, T>>(mq) {}
 };
 
 }  // namespace yoda

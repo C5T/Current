@@ -41,8 +41,8 @@ TEST(Yoda, CoverTest) {
     ;
   }
 
-  //  api.Add(KeyValueEntry(1, 42.0));
-  //  EXPECT_EQ(42.0, api.Get(1).value);
+  api.Add(KeyValueEntry(1, 42.0));
+  EXPECT_EQ(42.0, api.Get(1).value);
   api.Add(StringKVEntry("foo", "bar"));
   EXPECT_EQ("bar", api.Get("foo").foo);
 }
