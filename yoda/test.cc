@@ -24,6 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "api/key_entry/test.cc"
+#include "api/matrix/test.cc"
 
 #include "yoda.h"
 #include "test_types.h"

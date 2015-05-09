@@ -25,8 +25,8 @@ SOFTWARE.
 
 // The implementation for `KeyEntry` storage type.
 
-#ifndef SHERLOCK_YODA_APY_KEY_ENTRY_H
-#define SHERLOCK_YODA_APY_KEY_ENTRY_H
+#ifndef SHERLOCK_YODA_API_KEY_ENTRY_H
+#define SHERLOCK_YODA_API_KEY_ENTRY_H
 
 #include <future>
 
@@ -206,4 +206,4 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_APY_KEY_ENTRY_H
+#endif  // SHERLOCK_YODA_API_KEY_ENTRY_H

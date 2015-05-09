@@ -254,6 +254,7 @@ struct Get {};
 struct AsyncGet {};
 struct Add {};
 struct AsyncAdd {};
+struct AsyncCallFunction {};
 
 template <typename YT, typename API>
 struct APICallsWrapper {
@@ -266,22 +267,29 @@ struct APICallsWrapper {
   template <typename... XS>
   decltype(std::declval<API>()(apicalls::Get(), std::declval<XS>()...)) Get(XS&&... xs) {
     return api(apicalls::Get(), xs...);
-  };
+  }
 
   template <typename... XS>
   decltype(std::declval<API>()(apicalls::Add(), std::declval<XS>()...)) Add(XS&&... xs) {
     return api(apicalls::Add(), xs...);
-  };
+  }
 
   template <typename... XS>
   decltype(std::declval<API>()(apicalls::AsyncGet(), std::declval<XS>()...)) AsyncGet(XS&&... xs) {
     return api(apicalls::AsyncGet(), xs...);
-  };
+  }
 
   template <typename... XS>
   decltype(std::declval<API>()(apicalls::AsyncAdd(), std::declval<XS>()...)) AsyncAdd(XS&&... xs) {
     return api(apicalls::AsyncAdd(), xs...);
-  };
+  }
+
+  // TODO(dkorolev): I should really convert these into `#define`-s. And I will.
+  template <typename... XS>
+  decltype(std::declval<API>()(apicalls::AsyncCallFunction(), std::declval<XS>()...)) AsyncCallFunction(
+      XS&&... xs) {
+    return api(apicalls::AsyncCallFunction(), xs...);
+  }
 
   API api;
 };

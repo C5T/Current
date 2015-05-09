@@ -86,6 +86,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "api/key_entry/key_entry.h"
+#include "api/matrix/matrix_entry.h"
 
 namespace yoda {
 

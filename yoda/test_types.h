@@ -66,4 +66,19 @@ struct StringKVEntry : YodaTestEntryBase {
 };
 CEREAL_REGISTER_TYPE(StringKVEntry);
 
+struct MatrixCell : YodaTestEntryBase {
+  size_t row;
+  std::string col;
+  int value;
+
+  MatrixCell(const size_t row = 0, const std::string& col = std::string("0"), const int value = 0)
+      : row(row), col(col), value(value) {}
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(row), CEREAL_NVP(col), CEREAL_NVP(value));
+  }
+};
+CEREAL_REGISTER_TYPE(MatrixCell);
+
 #endif  // SHERLOCK_YODA_TEST_TYPES_H

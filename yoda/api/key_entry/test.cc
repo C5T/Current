@@ -31,9 +31,8 @@ SOFTWARE.
 #include "../../yoda.h"
 #include "../../test_types.h"
 
-#include "../../../../Bricks/template/metaprogramming.h"
-#include "../../../../Bricks/dflags/dflags.h"
-#include "../../../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+// #include "../../../../Bricks/template/metaprogramming.h"
+#include "../../../../Bricks/3party/gtest/gtest-main.h"
 
 using std::string;
 using std::atomic_size_t;
