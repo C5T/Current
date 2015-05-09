@@ -53,10 +53,9 @@ struct KeyEntry {
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
 };
 
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename ENTRY_FOR_YET>
-struct YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, KeyEntry<ENTRY_FOR_YET>> {
-  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;  // Yoda types.
-  typedef KeyEntry<ENTRY_FOR_YET> YET;                              // Yoda entry type.
+template <typename YT, typename ENTRY_FOR_YET>
+struct YodaImpl<YT, KeyEntry<ENTRY_FOR_YET>> {
+  typedef KeyEntry<ENTRY_FOR_YET> YET;  // "Yoda entry type".
 
   YodaImpl() = delete;
   explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
@@ -157,9 +156,7 @@ struct Container<ENTRY_BASE_TYPE,
   void operator()(const typename YET::T_ENTRY& entry) { container[GetKey(entry)] = entry; }
 
   // Event: `Get()`.
-  void operator()(typename YodaImpl<ENTRY_BASE_TYPE,
-                                    SUPPORTED_TYPES_AS_TUPLE,
-                                    KeyEntry<typename YET::T_ENTRY>>::MQMessageGet& msg) {
+  void operator()(typename YodaImpl<YT, KeyEntry<typename YET::T_ENTRY>>::MQMessageGet& msg) {
     const auto cit = container.find(msg.key);
     if (cit != container.end()) {
       // The entry has been found.
@@ -187,9 +184,7 @@ struct Container<ENTRY_BASE_TYPE,
   }
 
   // Event: `Add()`.
-  void operator()(typename YodaImpl<ENTRY_BASE_TYPE,
-                                    SUPPORTED_TYPES_AS_TUPLE,
-                                    KeyEntry<typename YET::T_ENTRY>>::MQMessageAdd& msg,
+  void operator()(typename YodaImpl<YT, KeyEntry<typename YET::T_ENTRY>>::MQMessageAdd& msg,
                   typename YT::T_STREAM_TYPE& stream) {
     const bool key_exists = static_cast<bool>(container.count(GetKey(msg.e)));
     if (key_exists) {

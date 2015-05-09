@@ -54,7 +54,7 @@ namespace MP = bricks::metaprogramming;
 template <typename ENTRY_BASE_TYPE,
           typename SPECIFIC_ENTRY_TYPE,
           typename SUPPORTED_TYPES_AS_TUPLE,
-          typename VISITABLE_TYPES_AS_TUPLE>
+          typename UNDERLYING_TYPES_AS_TUPLE>
 struct Container {};
 
 // An abstract type to derive message queue message types from.
@@ -114,8 +114,7 @@ struct StreamListener {
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
     virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE&) override {
-      // TODO(dkorolev): RTTIDynamicCall should support `std::unique_ptr<>`-s as the 1st parameter.
-      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry.get(), container);
+      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
     }
   };
 
@@ -173,28 +172,27 @@ struct MQListener {
   typename YT::T_STREAM_TYPE& stream_;
 };
 
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename CONCRETE_TYPE>
+template <typename YT, typename CONCRETE_TYPE>
 struct YodaImpl {
-  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   YodaImpl() = delete;
 };
 
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename TYPES_TO_INHERIT>
+template <typename YT, typename SUPPORTED_TYPES_AS_TUPLE>
 struct CombinedYodaImpls {
   static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE, typename T, typename... TS>
-struct CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<T, TS...>>
-    : YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, T>,
-      CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<TS...>> {
-  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+template <typename YT, typename T, typename... TS>
+struct CombinedYodaImpls<YT, std::tuple<T, TS...>>
+    : YodaImpl<YT, T>,
+      CombinedYodaImpls<YT, std::tuple<TS...>> {
   CombinedYodaImpls() = delete;
   explicit CombinedYodaImpls(typename YT::T_MQ& mq)
-      : YodaImpl<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, T>(mq),
-        CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<TS...>>(mq) {}
+      : YodaImpl<YT, T>(mq),
+        CombinedYodaImpls<YT, std::tuple<TS...>>(mq) {}
 };
 
+/*
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<>> {
   static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
@@ -202,6 +200,7 @@ struct CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<>
   CombinedYodaImpls() = delete;
   explicit CombinedYodaImpls(typename YT::T_MQ&) {}
 };
+*/
 
 }  // namespace yoda
 

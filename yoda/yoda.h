@@ -90,8 +90,7 @@ SOFTWARE.
 namespace yoda {
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-class APIWrapper
-    : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, SUPPORTED_TYPES_AS_TUPLE> {
+class APIWrapper : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
@@ -99,7 +98,7 @@ class APIWrapper
  public:
   APIWrapper() = delete;
   APIWrapper(const std::string& stream_name)
-      : CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, SUPPORTED_TYPES_AS_TUPLE>(mq_),
+      : CombinedYodaImpls<YT, SUPPORTED_TYPES_AS_TUPLE>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
