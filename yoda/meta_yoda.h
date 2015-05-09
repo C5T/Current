@@ -50,11 +50,9 @@ namespace yoda {
 namespace MP = bricks::metaprogramming;
 
 // The container to keep the in-memory state of a particular entry type and its internal represenation.
+// Note that the template parameter for should be wrapped one, ex. `KeyEntry<MyEntry>`, instead of `MyEntry`.
 // Particular implementations are located in `api/*/*.h`.
-template <typename ENTRY_BASE_TYPE,
-          typename SPECIFIC_ENTRY_TYPE,
-          typename SUPPORTED_TYPES_AS_TUPLE,
-          typename UNDERLYING_TYPES_AS_TUPLE>
+template <typename YT, typename ENTRY>
 struct Container {};
 
 // An abstract type to derive message queue message types from.
@@ -86,13 +84,8 @@ struct YodaTypes : YodaTypesBase {
   typedef MP::map<SherlockEntryTypeFromYodaEntryType, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
 
   typedef MQListener<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
-  typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE;
-  typedef bricks::mq::MMQ<std::unique_ptr<T_MQ_MESSAGE>, T_MQ_LISTENER> T_MQ;
-
-  template <typename T>
-  using ContainerTypeSelector =
-      Container<ENTRY_BASE_TYPE, T, T_SUPPORTED_TYPES_AS_TUPLE, T_UNDERLYING_TYPES_AS_TUPLE>;
-  typedef MP::combine<MP::map<ContainerTypeSelector, T_SUPPORTED_TYPES_AS_TUPLE>> T_CONTAINER;
+  typedef MQMessage<ENTRY_BASE_TYPE, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
+  typedef bricks::mq::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
 
   typedef sherlock::StreamInstance<std::unique_ptr<T_ENTRY_BASE_TYPE>> T_STREAM_TYPE;
 
@@ -103,6 +96,21 @@ struct YodaTypes : YodaTypesBase {
 
   typedef T_STREAM_LISTENER_TYPE<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
 };
+
+// Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.
+// This enables external users to specify their types in a template-deducible manner.
+template <typename YT>
+using YodaMMQMessage = MQMessage<typename YT::T_ENTRY_BASE_TYPE, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>;
+
+template <typename YT>
+struct YodaContainerImpl {
+  template <typename T>
+  using ContainerType = Container<YT, T>;
+  typedef MP::combine<MP::map<ContainerType, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>> type;
+};
+
+template <typename YT>
+using YodaContainer = typename YodaContainerImpl<YT>::type;
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct StreamListener {
@@ -115,7 +123,7 @@ struct StreamListener {
 
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
-    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
       MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
     }
   };
@@ -156,21 +164,19 @@ struct StreamListener {
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) = 0;
+  virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  explicit MQListener(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream)
+  explicit MQListener(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container_(container), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<typename YT::T_MQ_MESSAGE>&& message) {
-    message->Process(container_, stream_);
-  }
+  void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) { message->Process(container_, stream_); }
 
-  typename YT::T_CONTAINER& container_;
+  YodaContainer<YT>& container_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 

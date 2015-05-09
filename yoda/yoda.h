@@ -89,7 +89,7 @@ SOFTWARE.
 
 namespace yoda {
 
-// APIWrapper requires two template parameters:
+// `yoda::APIWrapper` requires two template parameters:
 // 1) The base type for the stream entries -- to serialize and deserialize polymorphic records.
 // 2) The list of specific entries to expose through the Yoda API.
 template <typename ENTRY_BASE_TYPE, typename ENTRIES_TYPELITS>
@@ -121,14 +121,14 @@ class APIWrapper : public CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_T
 
  private:
   typename YT::T_STREAM_TYPE stream_;
-  typename YT::T_CONTAINER container_;
+  YodaContainer<YT> container_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;
   typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
 };
 
-// Support both providing `std::tuple<>` and `TYPES...` as template parameter(s) for `yoda::API`.
+// `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
 template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
 struct APIWrapperSelector {
   typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES...>> type;

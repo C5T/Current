@@ -53,15 +53,15 @@ struct KeyEntry {
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
 };
 
-template <typename YT, typename ENTRY_FOR_YET>
-struct YodaImpl<YT, KeyEntry<ENTRY_FOR_YET>> {
+template <typename YT, typename ENTRY>
+struct YodaImpl<YT, KeyEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef KeyEntry<ENTRY_FOR_YET> YET;  // "Yoda entry type".
+  typedef KeyEntry<ENTRY> YET;  // "Yoda entry type".
 
   YodaImpl() = delete;
   explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
 
-  struct MQMessageGet : YT::T_MQ_MESSAGE {
+  struct MQMessageGet : YodaMMQMessage<YT> {
     const typename YET::T_KEY key;
     std::promise<typename YET::T_ENTRY> pr;
     typename YET::T_ENTRY_CALLBACK on_success;
@@ -73,12 +73,12 @@ struct YodaImpl<YT, KeyEntry<ENTRY_FOR_YET>> {
                           typename YET::T_ENTRY_CALLBACK on_success,
                           typename YET::T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
   };
 
-  struct MQMessageAdd : YT::T_MQ_MESSAGE {
+  struct MQMessageAdd : YodaMMQMessage<YT> {
     const typename YET::T_ENTRY e;
     std::promise<void> pr;
     typename YET::T_VOID_CALLBACK on_success;
@@ -98,7 +98,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY_FOR_YET>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(typename YT::T_CONTAINER& container, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
   };
@@ -140,16 +140,10 @@ struct YodaImpl<YT, KeyEntry<ENTRY_FOR_YET>> {
   typename YT::T_MQ& mq_;
 };
 
-template <typename ENTRY_BASE_TYPE,
-          typename ENTRY_FOR_YET,
-          typename SUPPORTED_TYPES_AS_TUPLE,
-          typename UNDERLYING_TYPES_AS_TUPLE>
-struct Container<ENTRY_BASE_TYPE,
-                 KeyEntry<ENTRY_FOR_YET>,
-                 SUPPORTED_TYPES_AS_TUPLE,
-                 UNDERLYING_TYPES_AS_TUPLE> {
-  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  typedef KeyEntry<ENTRY_FOR_YET> YET;
+template <typename YT, typename ENTRY>
+struct Container<YT, KeyEntry<ENTRY>> {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
+  typedef KeyEntry<ENTRY> YET;
 
   T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> container;
 
