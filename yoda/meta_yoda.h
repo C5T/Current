@@ -72,8 +72,10 @@ struct StreamListener;
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener;
 
+struct YodaTypesBase {};  // For `static_assert(std::is_base_of<...>)` compile-time checks.
+
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct YodaTypes {
+struct YodaTypes : YodaTypesBase {
   static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
   typedef ENTRY_BASE_TYPE T_ENTRY_BASE_TYPE;
@@ -174,33 +176,30 @@ struct MQListener {
 
 template <typename YT, typename CONCRETE_TYPE>
 struct YodaImpl {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   YodaImpl() = delete;
 };
 
 template <typename YT, typename SUPPORTED_TYPES_AS_TUPLE>
 struct CombinedYodaImpls {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename YT, typename T, typename... TS>
-struct CombinedYodaImpls<YT, std::tuple<T, TS...>>
-    : YodaImpl<YT, T>,
-      CombinedYodaImpls<YT, std::tuple<TS...>> {
+struct CombinedYodaImpls<YT, std::tuple<T, TS...>> : YodaImpl<YT, T>, CombinedYodaImpls<YT, std::tuple<TS...>> {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   CombinedYodaImpls() = delete;
   explicit CombinedYodaImpls(typename YT::T_MQ& mq)
-      : YodaImpl<YT, T>(mq),
-        CombinedYodaImpls<YT, std::tuple<TS...>>(mq) {}
+      : YodaImpl<YT, T>(mq), CombinedYodaImpls<YT, std::tuple<TS...>>(mq) {}
 };
 
-/*
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-struct CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE, std::tuple<>> {
-  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+template <typename YT>
+struct CombinedYodaImpls<YT, std::tuple<>> {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   CombinedYodaImpls() = delete;
   explicit CombinedYodaImpls(typename YT::T_MQ&) {}
 };
-*/
 
 }  // namespace yoda
 

@@ -55,6 +55,7 @@ struct KeyEntry {
 
 template <typename YT, typename ENTRY_FOR_YET>
 struct YodaImpl<YT, KeyEntry<ENTRY_FOR_YET>> {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef KeyEntry<ENTRY_FOR_YET> YET;  // "Yoda entry type".
 
   YodaImpl() = delete;

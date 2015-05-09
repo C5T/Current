@@ -89,16 +89,19 @@ SOFTWARE.
 
 namespace yoda {
 
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
-class APIWrapper : public CombinedYodaImpls<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> {
+// APIWrapper requires two template parameters:
+// 1) The base type for the stream entries -- to serialize and deserialize polymorphic records.
+// 2) The list of specific entries to expose through the Yoda API.
+template <typename ENTRY_BASE_TYPE, typename ENTRIES_TYPELITS>
+class APIWrapper : public CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELITS>, ENTRIES_TYPELITS> {
  private:
-  static_assert(bricks::metaprogramming::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-  typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
+  static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELITS>::value, "");
+  typedef YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELITS> YT;
 
  public:
   APIWrapper() = delete;
   APIWrapper(const std::string& stream_name)
-      : CombinedYodaImpls<YT, SUPPORTED_TYPES_AS_TUPLE>(mq_),
+      : CombinedYodaImpls<YT, ENTRIES_TYPELITS>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
         mq_listener_(container_, stream_),
         mq_(mq_listener_),
