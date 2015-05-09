@@ -33,7 +33,10 @@ SOFTWARE.
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
 
 TEST(Yoda, CoverTest) {
-  typedef yoda::API<YodaTestEntryBase, yoda::KeyEntry<KeyValueEntry>, yoda::KeyEntry<StringKVEntry>> TestAPI;
+  typedef yoda::API<YodaTestEntryBase,
+                    yoda::KeyEntry<KeyValueEntry>,
+                    yoda::MatrixEntry<MatrixCell>,
+                    yoda::KeyEntry<StringKVEntry>> TestAPI;
   TestAPI api("YodaCoverTest");
 
   api.UnsafeStream().Emplace(new StringKVEntry());
@@ -44,6 +47,8 @@ TEST(Yoda, CoverTest) {
 
   api.Add(KeyValueEntry(1, 42.0));
   EXPECT_EQ(42.0, api.Get(1).value);
+  api.Add(MatrixCell(42, "answer", 100));
+  EXPECT_EQ(100, api.Get(42, "answer").value);
   api.Add(StringKVEntry("foo", "bar"));
   EXPECT_EQ("bar", api.Get("foo").foo);
 }
