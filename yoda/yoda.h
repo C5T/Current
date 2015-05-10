@@ -108,7 +108,7 @@ struct APIWrapper : apicalls::APICallsWrapper<
             YT,
             CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
-        container_wrapper_(container_),
+        container_wrapper_(container_, stream_),
         mq_listener_(container_, container_wrapper_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
@@ -134,7 +134,7 @@ struct APIWrapper : apicalls::APICallsWrapper<
     
     explicit MQMessageFunction(const T_USER_FUNCTION function) : function(function) {}
 
-    virtual void Process(YodaContainer<YT>& container, T_CONTAINER_WRAPPER& container_wrapper, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>&, T_CONTAINER_WRAPPER& container_wrapper, typename YT::T_STREAM_TYPE&) override {
       function(container_wrapper);
     }
   };

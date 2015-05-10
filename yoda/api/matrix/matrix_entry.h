@@ -74,7 +74,6 @@ struct MatrixEntry {
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_ROW&, const T_COL&)> T_CELL_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
-  //typedef std::function<void(const Container<MatrixEntry<ENTRY>>&)> T_USER_FUNCTION;
 
   typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
   typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
@@ -130,23 +129,11 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>& container_wrapper_, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
   };
-
-/*
-  struct MQMessageFunction : YodaMMQMessage<YT> {
-    const typename YET::T_USER_FUNCTION function;
-
-    explicit MQMessageFunction(const typename YET::T_USER_FUNCTION function) : function(function) {}
-
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
-      container(std::ref(*this));
-    }
-  };
-*/
-  
+ 
   std::future<typename YET::T_ENTRY> operator()(apicalls::AsyncGet,
                                                 const typename YET::T_ROW& row,
                                                 const typename YET::T_COL& col) {
@@ -190,12 +177,6 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
   void operator()(apicalls::Add, const typename YET::T_ENTRY& entry) {
     operator()(apicalls::AsyncAdd(), entry).get();
   }
-
-/*
-  void operator()(apicalls::AsyncCallFunction, const typename YET::T_USER_FUNCTION function) {
-    mq_.EmplaceMessage(new MQMessageFunction(function));
-  }
-*/
 
  private:
   typename YT::T_MQ& mq_;
@@ -271,13 +252,36 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     }
   }
 
-/*
-  // Event: `Function()`.
-  void operator()(typename YodaImpl<YT, MatrixEntry<typename YET::T_ENTRY>>::MQMessageFunction& msg) {
-    msg.function(container);
+   // Synchronous `Get()` to be used in user functions.
+  const typename YET::T_ENTRY& operator()(container_wrapper::Get,
+                                          const typename YET::T_ROW& row,
+                                          const typename YET::T_COL& col) const {
+    const auto rit = forward_.find(row);
+    if (rit != forward_.end()) {
+      const auto cit = rit->second.find(col);
+      if (cit != rit->second.end()) {
+        return cit->second;
+      }
+    }
+    throw typename YET::T_CELL_NOT_FOUND_EXCEPTION(row, col);
   }
-*/
 
+  // Synchronous `Add()` to be used in user functions.
+  void operator()(container_wrapper::Add, typename YT::T_STREAM_TYPE& stream, const typename YET::T_ENTRY& entry) {
+    bool cell_exists = false;
+    const auto rit = forward_.find(GetRow(entry));
+    if (rit != forward_.end()) {
+      cell_exists = static_cast<bool>(rit->second.count(GetCol(entry)));
+    }
+    if (cell_exists) {
+       throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(entry);
+    } else {
+      forward_[GetRow(entry)][GetCol(entry)] = entry;
+      transposed_[GetCol(entry)][GetRow(entry)] = entry;
+      stream.Publish(entry);
+    }
+  }
+ 
  private:
   // TODO(dkorolev)+TODO(mzhurovich): Eventually we'll think of storing each entry only once.
   T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, typename YET::T_ENTRY>> forward_;

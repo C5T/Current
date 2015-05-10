@@ -90,10 +90,10 @@ TEST(YodaKeyEntry, SmokeImpl) {
                                                 typename YT::T_STREAM_TYPE>),
                 "");
 
-  yoda::YodaContainer<YT> container;
-  yoda::ContainerWrapper<YT> container_wrapper(container);
-  typename YT::T_STREAM_TYPE stream(
+ typename YT::T_STREAM_TYPE stream(
       sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>("YodaKeyEntrySmokeImplTest"));
+  yoda::YodaContainer<YT> container;
+  yoda::ContainerWrapper<YT> container_wrapper(container, stream);
   typename YT::T_MQ_LISTENER mq_listener(container, container_wrapper, stream);
   typename YT::T_MQ mq(mq_listener);
   typename YT::T_SHERLOCK_LISTENER stream_listener(mq);

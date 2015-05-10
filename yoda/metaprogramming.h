@@ -30,6 +30,8 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_METAPROGRAMMING_H
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
+#include <utility>
+
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
@@ -113,19 +115,28 @@ using YodaContainer = typename YodaContainerImpl<YT>::type;
 
 namespace container_wrapper {
 struct Get {};
+struct Add {};
 }  // namespace container_wrapper
 
 template <typename YT>
 struct ContainerWrapper {
-  explicit ContainerWrapper(YodaContainer<YT>& container) : container(container) {}
+  ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) : container(container), stream(stream) {}
 
   template <typename... XS>
-  decltype(container(std::declval<XS>()...)) operator[](XS&&... xs) const {
-    return container(xs...);
+  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...)) Get(XS&&... xs) const {
+    return container(container_wrapper::Get(), std::forward<XS>(xs)...);
   }
 
+  template <typename... XS>
+  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Add>(),
+                                             std::declval<typename YT::T_STREAM_TYPE>(),
+                                             std::declval<XS>()...)) Add(XS&&... xs) {
+    container(container_wrapper::Add(), stream, std::forward<XS>(xs)...);
+  }
+ 
 private:
   YodaContainer<YT>& container;
+  typename YT::T_STREAM_TYPE& stream;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>

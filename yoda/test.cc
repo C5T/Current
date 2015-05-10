@@ -31,6 +31,9 @@ SOFTWARE.
 
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../Bricks/strings/printf.h"
+
+using bricks::strings::Printf;
 
 TEST(Yoda, CoverTest) {
   typedef yoda::API<YodaTestEntryBase,
@@ -51,7 +54,33 @@ TEST(Yoda, CoverTest) {
   EXPECT_EQ(100, api.Get(42, "answer").value);
   api.Add(StringKVEntry("foo", "bar"));
   EXPECT_EQ("bar", api.Get("foo").foo);
+
+  // Adding some more values.
+  api.Add(KeyValueEntry(2, 31.5));
+  api.Add(KeyValueEntry(3, 11.2));
+  api.Add(MatrixCell(1, "test", 2));
+  api.Add(MatrixCell(2, "test", 1));
+  api.Add(MatrixCell(3, "test", 4));
+
+
+  // Asynchronous call of user function.
+  bool done = false;
+  EXPECT_EQ("bar", api.Get("foo").foo);
   api.AsyncCallFunction([&](const TestAPI::T_CONTAINER_WRAPPER& cw) {
-    EXPECT_EQ(42.0, cw[1]);
+    EXPECT_EQ(42.0, cw.Get(1).value);
+    EXPECT_EQ(100, cw.Get(42, "answer").value);
+    EXPECT_EQ("bar", cw.Get("foo").foo);
+
+    double result = 0.0;
+    for (int i = 1; i <= 3; ++i) {
+      result += cw.Get(i).value * static_cast<double>(cw.Get(i, "test").value);
+    }
+    cw.Add(StringKVEntry("result", Printf("%.2f", result)));
+
+    done = true;
   });
+
+  while (!done) {
+    ;  // Spin lock;
+  }
 }
