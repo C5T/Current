@@ -267,7 +267,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   }
 
   // Synchronous `Add()` to be used in user functions.
-  void operator()(container_wrapper::Add, typename YT::T_STREAM_TYPE& stream, const typename YET::T_ENTRY& entry) {
+  // NOTE: `stream` is passed via const reference to make `decltype()` work.
+  void operator()(container_wrapper::Add, const typename YT::T_STREAM_TYPE& stream, const typename YET::T_ENTRY& entry) {
     bool cell_exists = false;
     const auto rit = forward_.find(GetRow(entry));
     if (rit != forward_.end()) {
@@ -278,7 +279,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     } else {
       forward_[GetRow(entry)][GetCol(entry)] = entry;
       transposed_[GetCol(entry)][GetRow(entry)] = entry;
-      stream.Publish(entry);
+      const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
     }
   }
  

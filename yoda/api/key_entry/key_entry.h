@@ -217,13 +217,14 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
   // Synchronous `Add()` to be used in user functions.
-  void operator()(container_wrapper::Add, typename YT::T_STREAM_TYPE& stream, const typename YET::T_ENTRY& entry) {
+  // NOTE: `stream` is passed via const reference to make `decltype()` work.
+  void operator()(container_wrapper::Add, const typename YT::T_STREAM_TYPE& stream, const typename YET::T_ENTRY& entry) {
     const bool key_exists = static_cast<bool>(map_.count(GetKey(entry)));
     if (key_exists) {
       throw typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(entry);
     } else {
       map_[GetKey(entry)] = entry;
-      stream.Publish(entry);
+      const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
     }
   }
 

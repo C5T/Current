@@ -66,7 +66,7 @@ TEST(Yoda, CoverTest) {
   // Asynchronous call of user function.
   bool done = false;
   EXPECT_EQ("bar", api.Get("foo").foo);
-  api.AsyncCallFunction([&](const TestAPI::T_CONTAINER_WRAPPER& cw) {
+  api.AsyncCallFunction([&](TestAPI::T_CONTAINER_WRAPPER& cw) {
     EXPECT_EQ(42.0, cw.Get(1).value);
     EXPECT_EQ(100, cw.Get(42, "answer").value);
     EXPECT_EQ("bar", cw.Get("foo").foo);
@@ -76,6 +76,8 @@ TEST(Yoda, CoverTest) {
       result += cw.Get(i).value * static_cast<double>(cw.Get(i, "test").value);
     }
     cw.Add(StringKVEntry("result", Printf("%.2f", result)));
+    cw.Add(MatrixCell(123, "test", 11));
+    cw.Add(KeyValueEntry(42, 1.23));
 
     done = true;
   });
@@ -83,4 +85,8 @@ TEST(Yoda, CoverTest) {
   while (!done) {
     ;  // Spin lock;
   }
+
+  EXPECT_EQ("160.30", api.Get("result").foo);
+  EXPECT_EQ(11, api.Get(123, "test").value);
+  EXPECT_EQ(1.23, api.Get(42).value);
 }
