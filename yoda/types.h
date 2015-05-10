@@ -30,8 +30,6 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
-#include "../../Bricks/template/rmref.h"
-
 namespace yoda {
 
 // Helper structures that the user can derive their entries from
@@ -50,57 +48,25 @@ struct AllowOverwriteOnAdd {
   constexpr static bool allow_overwrite_on_add = true;
 };
 
-// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
-// Entry key type extractor, getter and setter.
-// Supports both `.key` data member and `.key() / .set_key()` methods.
-template <typename T_ENTRY>
-constexpr bool HasKeyMethod(char) {
-  return false;
-}
+// Helper structures that the user can derive their entries from
+// to implement particular Yoda functionality.
 
-template <typename T_ENTRY>
-constexpr auto HasKeyMethod(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
-  return true;
-}
-
-template <typename T_ENTRY, bool HAS_KEY_FUNCTION>
-struct KEY_ACCESSOR_IMPL {};
-
-template <typename T_ENTRY>
-struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
-  typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
-  static typename std::conditional<std::is_pod<T_KEY>::value, T_KEY, const T_KEY&>::type GetKey(
-      const T_ENTRY& entry) {
-    return entry.key;
-  }
-  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.key = key; }
+// By deriving from `Nullable` (and adding `using Nullable::Nullable`),
+// the user indicates that their entry type supports creation of a non-existing instance.
+// This is a requirement for a) non-throwing `Get()`, and b) for `Delete()` part of the API.
+// TODO(dkorolev): Add a compile-time check that `Nullable` user types allow constructing themselves as null-s.
+enum NullEntryTypeHelper { NullEntry };
+struct Nullable {
+  const bool exists;
+  Nullable() : exists(true) {}
+  Nullable(NullEntryTypeHelper) : exists(false) {}
 };
 
-template <typename T_ENTRY>
-struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
-  typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
-  static typename std::conditional<std::is_pod<T_KEY>::value, T_KEY, const T_KEY&>::type GetKey(
-      const T_ENTRY& entry) {
-    return entry.key();
-  }
-  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.set_key(key); }
-};
-
-template <typename T_ENTRY>
-using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyMethod<T_ENTRY>(0)>;
-
-template <typename T_ENTRY>
-typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
-  return KEY_ACCESSOR<T_ENTRY>::GetKey(entry);
-}
-
-template <typename T_ENTRY>
-using ENTRY_KEY_TYPE = bricks::rmconstref<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
-
-template <typename T_ENTRY>
-void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
-  KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
-}
+// By deriving from `Deletable`, the user commits to serializing the `Nullable::exists` field,
+// thus enabling delete-friendly storage.
+// The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
+// TODO(dkorolev): Add the runtime check that certain type does indeed serialize the `exists` field and test it.
+struct Deletable {};
 
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Associative container type selector. Attempts to use:
@@ -174,7 +140,7 @@ struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
   typedef std::unordered_map<T_KEY, T_ENTRY> type;
 };
 
-// Neither `T_KEY::Hash()` nor `std::has<T_KEY>` are defined, use std::map<>.
+// Neither `T_KEY::Hash()` nor `std::hash<T_KEY>` are defined, use std::map<>.
 template <typename T_KEY, typename T_ENTRY>
 struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
   static_assert(HasOperatorLess<T_KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
@@ -184,23 +150,6 @@ struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
 template <typename T_KEY, typename T_ENTRY>
 using T_MAP_TYPE =
     typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0), HasStdHash<T_KEY>(0)>::type;
-
-// By deriving from `Nullable` (and adding `using Nullable::Nullable`),
-// the user indicates that their entry type supports creation of a non-existing instance.
-// This is a requirement for a) non-throwing `Get()`, and b) for `Delete()` part of the API.
-// TODO(dkorolev): Add a compile-time check that `Nullable` user types allow constructing themselves as null-s.
-enum NullEntryTypeHelper { NullEntry };
-struct Nullable {
-  const bool exists;
-  Nullable() : exists(true) {}
-  Nullable(NullEntryTypeHelper) : exists(false) {}
-};
-
-// By deriving from `Deletable`, the user commits to serializing the `Nullable::exists` field,
-// thus enabling delete-friendly storage.
-// The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
-// TODO(dkorolev): Add the runtime check that certain type does indeed serialize the `exists` field and test it.
-struct Deletable {};
 
 }  // namespace yoda
 

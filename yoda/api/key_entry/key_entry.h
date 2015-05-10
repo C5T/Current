@@ -30,6 +30,9 @@ SOFTWARE.
 
 #include <future>
 
+#include "exceptions.h"
+#include "metaprogramming.h"
+
 #include "../../types.h"
 #include "../../metaprogramming.h"
 #include "../../policy.h"
@@ -73,7 +76,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
                           typename YET::T_ENTRY_CALLBACK on_success,
                           typename YET::T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
   };
@@ -98,7 +101,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
   };
@@ -149,15 +152,13 @@ struct Container<YT, KeyEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef KeyEntry<ENTRY> YET;
 
-  T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> container;
-
   // Event: The entry has been scanned from the stream.
-  void operator()(const typename YET::T_ENTRY& entry) { container[GetKey(entry)] = entry; }
+  void operator()(const typename YET::T_ENTRY& entry) { map_[GetKey(entry)] = entry; }
 
   // Event: `Get()`.
   void operator()(typename YodaImpl<YT, KeyEntry<typename YET::T_ENTRY>>::MQMessageGet& msg) {
-    const auto cit = container.find(msg.key);
-    if (cit != container.end()) {
+    const auto cit = map_.find(msg.key);
+    if (cit != map_.end()) {
       // The entry has been found.
       if (msg.on_success) {
         // Callback semantics.
@@ -185,7 +186,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
   // Event: `Add()`.
   void operator()(typename YodaImpl<YT, KeyEntry<typename YET::T_ENTRY>>::MQMessageAdd& msg,
                   typename YT::T_STREAM_TYPE& stream) {
-    const bool key_exists = static_cast<bool>(container.count(GetKey(msg.e)));
+    const bool key_exists = static_cast<bool>(map_.count(GetKey(msg.e)));
     if (key_exists) {
       if (msg.on_failure) {  // Callback function defined.
         msg.on_failure();
@@ -193,7 +194,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
         msg.pr.set_exception(std::make_exception_ptr(typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(msg.e)));
       }
     } else {
-      container[GetKey(msg.e)] = msg.e;
+      map_[GetKey(msg.e)] = msg.e;
       stream.Publish(msg.e);
       if (msg.on_success) {
         msg.on_success();
@@ -202,6 +203,21 @@ struct Container<YT, KeyEntry<ENTRY>> {
       }
     }
   }
+
+  // Synchronous `Get()` to be used in user functions.
+  const typename YET::T_ENTRY& operator()(const typename YET::T_KEY& key) const {
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      // The entry has been found.
+      return cit->second;
+    } else {
+      // The entry has not been found.
+      throw YET::T_KEY_NOT_FOUND_EXCEPTION();
+    }
+  }
+
+ private:
+   T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> map_;
 };
 
 }  // namespace yoda

@@ -30,8 +30,6 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_METAPROGRAMMING_H
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
-#include "types.h"
-
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
@@ -49,7 +47,8 @@ namespace yoda {
 
 namespace MP = bricks::metaprogramming;
 
-// The container to keep the in-memory state of a particular entry type and its internal represenation.
+// The container to keep the internal represenation of a particular entry type and all access methods
+// implemented via corresponding `operator()` overload.
 // Note that the template parameter for should be wrapped one, ex. `KeyEntry<MyEntry>`, instead of `MyEntry`.
 // Particular implementations are located in `api/*/*.h`.
 template <typename YT, typename ENTRY>
@@ -61,7 +60,7 @@ template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage;
 
 // Sherlock stream listener, responsible for converting every stream entry into a message queue one.
-// Encapsulates visitor-based message dispatching to keep Containers up to date via  per stream entry type.
+// Encapsulates RTTI dynamic dispatching to bring all corresponding containers up-to-date.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct StreamListener;
 
@@ -112,6 +111,23 @@ struct YodaContainerImpl {
 template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
+namespace container_wrapper {
+struct Get {};
+}  // namespace container_wrapper
+
+template <typename YT>
+struct ContainerWrapper {
+  explicit ContainerWrapper(YodaContainer<YT>& container) : container(container) {}
+
+  template <typename... XS>
+  decltype(container(std::declval<XS>()...)) operator[](XS&&... xs) const {
+    return container(xs...);
+  }
+
+private:
+  YodaContainer<YT>& container;
+};
+
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct StreamListener {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
@@ -123,7 +139,7 @@ struct StreamListener {
 
     explicit MQMessageEntry(std::unique_ptr<ENTRY_BASE_TYPE>&& entry) : entry(std::move(entry)) {}
 
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE&) override {
       MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
     }
   };
@@ -160,23 +176,25 @@ struct StreamListener {
   typename YT::T_MQ& mq_;
 };
 
+
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) = 0;
+  virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>& container_wrapper, typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<ENTRY_BASE_TYPE, SUPPORTED_TYPES_AS_TUPLE> YT;
-  explicit MQListener(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
-      : container_(container), stream_(stream) {}
+  explicit MQListener(YodaContainer<YT>& container, ContainerWrapper<YT>& container_wrapper, typename YT::T_STREAM_TYPE& stream)
+      : container_(container), container_wrapper_(container_wrapper), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) { message->Process(container_, stream_); }
+  void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) { message->Process(container_, container_wrapper_, stream_); }
 
   YodaContainer<YT>& container_;
+  ContainerWrapper<YT>& container_wrapper_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 

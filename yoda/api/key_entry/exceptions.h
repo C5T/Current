@@ -23,35 +23,41 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "api/key_entry/test.cc"
-#include "api/matrix/test.cc"
+#ifndef SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
+#define SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
 
-#include "yoda.h"
-#include "test_types.h"
+#include "metaprogramming.h"
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../exceptions.h"
+#include "../../../../Bricks/exception.h"
 
-TEST(Yoda, CoverTest) {
-  typedef yoda::API<YodaTestEntryBase,
-                    yoda::KeyEntry<KeyValueEntry>,
-                    yoda::MatrixEntry<MatrixCell>,
-                    yoda::KeyEntry<StringKVEntry>> TestAPI;
-  TestAPI api("YodaCoverTest");
+namespace yoda {
 
-  api.UnsafeStream().Emplace(new StringKVEntry());
+// Exception types for non-existent keys.
+// Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
+struct KeyNotFoundCoverException : bricks::Exception {};
 
-  while (!api.CaughtUp()) {
-    ;
-  }
+template <typename ENTRY>
+struct KeyNotFoundException : KeyNotFoundCoverException {
+  typedef ENTRY T_ENTRY;
+  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
+  const T_KEY key;
+  explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
+};
 
-  api.Add(KeyValueEntry(1, 42.0));
-  EXPECT_EQ(42.0, api.Get(1).value);
-  api.Add(MatrixCell(42, "answer", 100));
-  EXPECT_EQ(100, api.Get(42, "answer").value);
-  api.Add(StringKVEntry("foo", "bar"));
-  EXPECT_EQ("bar", api.Get("foo").foo);
-  api.AsyncCallFunction([&](const TestAPI::T_CONTAINER_WRAPPER& cw) {
-    EXPECT_EQ(42.0, cw[1]);
-  });
-}
+// Exception types for the existence of a particular key being a runtime error.
+// Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
+struct KeyAlreadyExistsCoverException : bricks::Exception {};
+
+template <typename ENTRY>
+struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
+  typedef ENTRY T_ENTRY;
+  const ENTRY entry;
+  explicit KeyAlreadyExistsException(const ENTRY& entry) : entry(entry) {}
+};
+
+}  // namespace yoda
+
+#endif  // SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
+
+

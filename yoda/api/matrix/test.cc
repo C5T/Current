@@ -140,8 +140,9 @@ TEST(YodaMatrixEntry, Smoke) {
     ;  // Spin lock.
   }
 
+/*
   // Test user function accessing the underlying container.
-  typedef yoda::ActualContainer<yoda::MatrixEntry<MatrixCell>> T_CONTAINER;
+  typedef yoda::Container<yoda::MatrixEntry<MatrixCell>> T_CONTAINER;
   size_t row_index_sum = 0;
   int value_sum = 0;
   bool done = false;
@@ -162,4 +163,5 @@ TEST(YodaMatrixEntry, Smoke) {
   }
   EXPECT_EQ(48u, row_index_sum);
   EXPECT_EQ(6, value_sum);
+*/
 }

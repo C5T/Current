@@ -108,7 +108,8 @@ struct APIWrapper : apicalls::APICallsWrapper<
             YT,
             CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
-        mq_listener_(container_, stream_),
+        container_wrapper_(container_),
+        mq_listener_(container_, container_wrapper_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
         sherlock_listener_scope_(stream_.Subscribe(stream_listener_)) {}
@@ -124,9 +125,28 @@ struct APIWrapper : apicalls::APICallsWrapper<
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
+  // Asynchronous user function calling functionality.
+  typedef ContainerWrapper<YT> T_CONTAINER_WRAPPER;
+  typedef std::function<void(T_CONTAINER_WRAPPER& container_wrapper)> T_USER_FUNCTION;
+
+  struct MQMessageFunction : YodaMMQMessage<YT> {
+    const T_USER_FUNCTION function;
+    
+    explicit MQMessageFunction(const T_USER_FUNCTION function) : function(function) {}
+
+    virtual void Process(YodaContainer<YT>& container, T_CONTAINER_WRAPPER& container_wrapper, typename YT::T_STREAM_TYPE&) override {
+      function(container_wrapper);
+    }
+  };
+
+  void AsyncCallFunction(const T_USER_FUNCTION function) {
+    mq_.EmplaceMessage(new MQMessageFunction(function));
+  }
+
  private:
   typename YT::T_STREAM_TYPE stream_;
   YodaContainer<YT> container_;
+  ContainerWrapper<YT> container_wrapper_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;

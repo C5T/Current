@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// Exceptions, which are common for all Yoda entry types, are defined here.
+
 #ifndef SHERLOCK_YODA_EXCEPTIONS_H
 #define SHERLOCK_YODA_EXCEPTIONS_H
 
@@ -31,29 +33,6 @@ SOFTWARE.
 #include "../../Bricks/exception.h"
 
 namespace yoda {
-
-// Exception types for non-existent keys.
-// Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
-struct KeyNotFoundCoverException : bricks::Exception {};
-
-template <typename ENTRY>
-struct KeyNotFoundException : KeyNotFoundCoverException {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
-  const T_KEY key;
-  explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
-};
-
-// Exception types for the existence of a particular key being a runtime error.
-// Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
-struct KeyAlreadyExistsCoverException : bricks::Exception {};
-
-template <typename ENTRY>
-struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
-  typedef ENTRY T_ENTRY;
-  const ENTRY entry;
-  explicit KeyAlreadyExistsException(const ENTRY& entry) : entry(entry) {}
-};
 
 // Exception types for non-existence of a particular key being a runtime error.
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.

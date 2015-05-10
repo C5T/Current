@@ -28,6 +28,9 @@ SOFTWARE.
 
 #include <utility>
 
+#include "../../metaprogramming.h"
+#include "../../../../Bricks/template/rmref.h"
+
 namespace yoda {
 
 // Matrix row and column type extractors, getters and setters.
@@ -76,8 +79,7 @@ typename ROW_ACCESSOR<T_ENTRY>::T_ROW GetRow(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_ROW_TYPE =
-    typename std::remove_cv<typename std::remove_reference<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>::type>::type;
+using ENTRY_ROW_TYPE = bricks::rmconstref<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
 
 template <typename T_ENTRY>
 void SetRow(T_ENTRY& entry, ENTRY_ROW_TYPE<T_ENTRY> row) {
@@ -126,8 +128,7 @@ typename COL_ACCESSOR<T_ENTRY>::T_COL GetCol(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_COL_TYPE =
-    typename std::remove_cv<typename std::remove_reference<typename COL_ACCESSOR<T_ENTRY>::T_COL>::type>::type;
+using ENTRY_COL_TYPE = bricks::rmconstref<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
 
 template <typename T_ENTRY>
 void SetCol(T_ENTRY& entry, ENTRY_COL_TYPE<T_ENTRY> key) {
