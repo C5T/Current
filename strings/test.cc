@@ -127,6 +127,14 @@ TEST(Util, FromString) {
   double tmp;
   EXPECT_EQ(0.5, FromString("0.5", tmp));
   EXPECT_EQ(0.5, tmp);
+
+  EXPECT_EQ(0u, FromString<size_t>(""));
+  EXPECT_EQ(0u, FromString<size_t>("foo"));
+  EXPECT_EQ(0u, FromString<size_t>("\n"));
+
+  EXPECT_EQ(0.0, FromString<double>(""));
+  EXPECT_EQ(0.0, FromString<double>("bar"));
+  EXPECT_EQ(0.0, FromString<double>("\t"));
 }
 
 TEST(Util, ToUpperAndToLower) {

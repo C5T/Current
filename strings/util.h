@@ -61,7 +61,10 @@ inline std::string ToString(T&& something) {
 template <typename T_OUTPUT, typename T_INPUT = std::string>
 inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
   std::istringstream is(input);
-  is >> output;
+  if (!(is >> output)) {
+    // Default initializer, zero for primitive types.
+    output = T_OUTPUT();
+  }
   return output;
 }
 
