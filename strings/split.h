@@ -69,15 +69,30 @@ struct MatchImpl<std::string> {
 };
 
 template <size_t N>
-struct MatchImpl<const char[N]> {
+struct MatchImpl<const char[N]> {  // No `const char` because the calling semantics uses `rmconstref`.
   static typename std::enable_if<(N > 0), bool>::type Match(char a, const char b[N]) {
     return std::find(b, b + N, a) != (b + N);
   }
 };
 
 template <typename T>
-inline bool Match(char a, T&& b) {
-  return MatchImpl<rmref<T>>::Match(a, b);
+static constexpr bool CanCallForChar(char) {
+  return false;
+}
+
+template <typename T>
+static constexpr auto CanCallForChar(int) -> decltype(std::declval<T>()(std::declval<char>()), bool()) {
+  return true;
+}
+
+template <typename T>
+inline typename std::enable_if<!CanCallForChar<T>(0), bool>::type Match(char a, T&& b) {
+  return MatchImpl<rmref<T>>::Match(a, std::forward<T>(b));
+}
+
+template <typename T>
+inline typename std::enable_if<CanCallForChar<T>(0), bool>::type Match(char a, T&& b) {
+  return !b(a);
 }
 
 template <typename T>
@@ -104,7 +119,7 @@ inline size_t Split(const std::string& s,
     }
   };
   for (i = 0; i < s.size(); ++i) {
-    if (impl::Match(s[i], separator)) {
+    if (impl::Match(s[i], std::forward<T_SEPARATOR>(separator))) {
       emit();
       j = i + 1;
     }
@@ -119,7 +134,7 @@ inline std::vector<std::string> Split(const std::string& s,
                                       EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   std::vector<std::string> result;
   Split(s,
-        separator,
+        std::forward<T_SEPARATOR>(separator),
         [&result](std::string&& chunk) { result.emplace_back(std::move(chunk)); },
         empty_fields_strategy);
   return result;
@@ -133,9 +148,10 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
     KeyValueParsing throw_mode = KeyValueParsing::Silent) {
   std::vector<std::pair<std::string, std::string>> result;
   Split(s,
-        fields_separator,
+        std::forward<T_FIELDS_SEPARATOR>(fields_separator),
         [&result, &key_value_separator, &throw_mode](std::string&& key_and_value_as_one_string) {
-    const std::vector<std::string> key_and_value = Split(key_and_value_as_one_string, key_value_separator);
+    const std::vector<std::string> key_and_value =
+        Split(key_and_value_as_one_string, std::forward<T_KEY_VALUE_SEPARATOR>(key_value_separator));
     if (key_and_value.size() >= 2) {
       if (key_and_value.size() == 2) {
         result.emplace_back(key_and_value[0], key_and_value[1]);

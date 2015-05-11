@@ -170,6 +170,12 @@ TEST(JoinAndSplit, Split) {
 
   EXPECT_EQ("one two three", Join(Split<ByWhitespace>("one two three"), ' '));
   EXPECT_EQ("one two three", Join(Split<ByWhitespace>("\t \tone\t \ttwo\t \tthree\t \t"), ' '));
+
+  // Note that `Split` on a predicate splits on the characters for which the predicate returns `false`,
+  // and keeps the characters where the predicate returns `true`.
+  // This way, `Split` on `::isalpha` or `::isalnum` makes perfect sense.
+  EXPECT_EQ("1 2 3 4 5", Join(Split("1 a2b\n3\n\n4\n\n&5$", [](char c) { return ::isdigit(c); }), ' '));
+  EXPECT_EQ("ab c d e123", Join(Split("ab'c d--e123", ::isalnum), ' '));
 }
 
 TEST(JoinAndSplit, FunctionalSplit) {
