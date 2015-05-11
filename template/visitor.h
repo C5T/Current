@@ -25,6 +25,12 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_VISITOR_H
 #define BRICKS_TEMPLATE_VISITOR_H
 
+#ifndef BRICKS_CHECK_HEADERS_MODE
+#error "`visitor.h` is being deprecated now."
+#endif
+
+#if 0
+
 #include <tuple>
 
 #include "is_tuple.h"
@@ -64,5 +70,7 @@ struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
 
 }  // namespace metaprogramming
 }  // namespace bricks
+
+#endif
 
 #endif  // BRICKS_TEMPLATE_VISITOR_H

@@ -32,7 +32,7 @@ SOFTWARE.
 #include <thread>
 #include <chrono>
 
-using bricks::MMQ;
+using bricks::mq::MMQ;
 
 TEST(InMemoryMQ, SmokeTest) {
   struct Consumer {
@@ -48,7 +48,7 @@ TEST(InMemoryMQ, SmokeTest) {
   };
 
   Consumer c;
-  MMQ<Consumer> mmq(c);
+  MMQ<std::string, Consumer> mmq(c);
   mmq.PushMessage("one");
   mmq.PushMessage("two");
   mmq.PushMessage("three");
@@ -64,8 +64,7 @@ struct SlowConsumer {
   std::atomic_size_t dropped_messages_;
   std::atomic_size_t processed_messages_;
   size_t delay_ms_;
-  SlowConsumer(size_t delay_ms = 20u)
-      : dropped_messages_(0u), processed_messages_(0u), delay_ms_(delay_ms) {}
+  SlowConsumer(size_t delay_ms = 20u) : dropped_messages_(0u), processed_messages_(0u), delay_ms_(delay_ms) {}
   // Uncomment the line below to see that it doesn't compile.
   // void OnMessage(const std::string& s) {}
   void OnMessage(const std::string& s, size_t dropped_messages) {
@@ -81,7 +80,7 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   SlowConsumer c;
 
   // Queue with 10 events in the buffer.
-  MMQ<SlowConsumer, std::string, 10> mmq(c);
+  MMQ<std::string, SlowConsumer, 10> mmq(c);
 
   // Push 20 events one after another, causing an overflow, which would drop some messages.
   for (size_t i = 0; i < 20; ++i) {
@@ -113,7 +112,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   SlowConsumer c(1u);
 
   // Queue with 10 events in the buffer.
-  MMQ<SlowConsumer, std::string, 10, false> mmq(c);
+  MMQ<std::string, SlowConsumer, 10, false> mmq(c);
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {
@@ -146,4 +145,43 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   // Ensure that all processed messages are indeed unique.
   std::set<std::string> messages(begin(c.messages_), end(c.messages_));
   EXPECT_EQ(messages.size(), 100u);
+}
+
+TEST(InMemoryMQ, DefaultConsumer) {
+  struct Storage {
+    std::string messages;
+    std::atomic_size_t count;
+    Storage() : count(0u) {}
+  };
+
+  struct ProcessableMessage {
+    Storage* storage;
+    std::string message;
+
+    ProcessableMessage() = default;
+    ProcessableMessage(Storage* storage, const std::string& message) : storage(storage), message(message) {}
+
+    void Process() {
+      storage->messages += message;
+      ++storage->count;
+    }
+  };
+
+  Storage storage;
+
+  MMQ<std::unique_ptr<ProcessableMessage>> mmq1;
+  mmq1.EmplaceMessage(new ProcessableMessage(&storage, "This "));
+  mmq1.EmplaceMessage(new ProcessableMessage(&storage, "is"));
+  while (storage.count != 2) {
+    ;  // Spin lock;
+  }
+  EXPECT_EQ("This is", storage.messages);
+
+  MMQ<ProcessableMessage> mmq2;
+  ProcessableMessage msg(&storage, " Sparta!");
+  mmq2.PushMessage(msg);
+  while (storage.count != 3) {
+    ;  // Spin lock;
+  }
+  EXPECT_EQ("This is Sparta!", storage.messages);
 }

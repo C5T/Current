@@ -364,7 +364,7 @@ const std::string result = GNUPlot()
 ![](https://raw.githubusercontent.com/dkorolev/Bricks/master/graph/golden/labels-Linux.png)
 ## Functional Template Library
 
-Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `bricks::variadic`.
+Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `bricks::metaprogramming`.
 ```cpp
 // Map.
 template<typename T> struct add_100 { enum { x = T::x + 100 }; };
@@ -415,35 +415,116 @@ EXPECT_EQ("(A+(B+C))",
           (bricks::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
   
 // Combine.
-struct A { static std::string foo() { return "foo"; } };
-struct B { static std::string bar() { return "bar"; } };
-struct C { static std::string baz() { return "baz"; } };
+struct NEG {
+  // A simple way to differentiate logic by struct/class type
+  // is to use a helper local type as the 1st param in the signature.
+  struct TYPE {};
+  // Combine-able operations are defined as `operator()`.
+  // Just because we need to pick one common name,
+  // otherwise more `using`-s will be needed.
+  int operator()(TYPE, int a) { return -a; }
+};
 
-bricks::metaprogramming::combine<std::tuple<A, B, C>> c;
+struct ADD {
+  struct TYPE {};
+  int operator()(TYPE, int a, int b) { return a + b; }
+  // Prove that the method is instantiated at compile time.
+  template <typename T>
+  int operator()(TYPE, int a, int b, T c) {
+    return a + b + AsInt(c);
+  }
+};
 
-EXPECT_EQ("foo", c.foo());
-EXPECT_EQ("bar", c.bar());
-EXPECT_EQ("baz", c.baz());
-
-// Visitor.
-using typelist_ab = std::tuple<struct A, struct B>;
-using typelist_bc = std::tuple<struct B, struct C>;
+// Since "has-a" is used instead of "is-a",
+// mutual inheritance of underlying types
+// is not a problem at all.
+// Confirm this by making `MUL` inherit from `ADD`.
+struct MUL : ADD {
+  struct TYPE {};
+  int operator()(TYPE, int a, int b) { return a * b; }
+  int operator()(TYPE, int a, int b, int c) { return a * b * c; }
+};
   
-struct A : visitable<typelist_ab, A> {
+// User-friendly method names, internally dispatching calls via `operator()`.
+// A good way to make sure new names appear in one place only, since
+// using `using`-s would require writing them down at least twice each.
+struct UserFriendlyArithmetics :
+    bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> {
+  int Neg(int x) {
+    return operator()(NEG::TYPE(), x);
+  }
+  template <typename... T>
+  int Add(T... xs) {
+    return operator()(ADD::TYPE(), xs...);
+  }
+  template <typename... T>
+  int Mul(T... xs) {
+    return operator()(MUL::TYPE(), xs...);
+  }
+  // The implementation for `Div()` is not provided,
+  // yet the code will compile until it's attempted to be used.
+  // (Unit tests and code coverage measurement FTW!)
+  template <typename... T>
+  int Div(T... xs) {
+    struct TypeForWhichThereIsNoImplemenation {};
+    return operator()(TypeForWhichThereIsNoImplemenation(),
+                      xs...);
+  }
+};
+EXPECT_EQ(1, NEG()(NEG::TYPE(), -1));
+EXPECT_EQ(3, ADD()(ADD::TYPE(), 1, 2));
+EXPECT_EQ(6, ADD()(ADD::TYPE(), 1, 2, "3"));
+EXPECT_EQ(20, MUL()(MUL::TYPE(), 4, 5));
+EXPECT_EQ(120, MUL()(MUL::TYPE(), 4, 5, 6));
+
+// As a sanity check, since `MUL` inherits from `ADD`,
+// the following construct will work just fine.
+EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
+
+// Using the simple combiner, that still uses `operator()`.
+typedef bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
+EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
+EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
+EXPECT_EQ(9, Arithmetics()(ADD::TYPE(), 2, 3, "4"));
+EXPECT_EQ(30, Arithmetics()(MUL::TYPE(), 5, 6));
+EXPECT_EQ(210, Arithmetics()(MUL::TYPE(), 5, 6, 7));
+
+// Using the dispatched methods.
+EXPECT_EQ(42, UserFriendlyArithmetics().Neg(-42));
+EXPECT_EQ(21, UserFriendlyArithmetics().Add(10, 11));
+EXPECT_EQ(33, UserFriendlyArithmetics().Add(10, 11, "12"));
+EXPECT_EQ(420, UserFriendlyArithmetics().Mul(20, 21));
+EXPECT_EQ(9240, UserFriendlyArithmetics().Mul(20, 21, 22));
+  
+// The following call will fail to compile,
+// with a nice error message explaining
+// that none of the `NEG`, `ADD` and `MUL`
+// have division operation defined.
+//
+// UserFriendlyArithmetics().Div(100, 5);
+
+// RTTI.
+struct BASE {
+  // Need a virtual base.
+  virtual ~BASE() = default;
+};
+
+struct A : virtual BASE {
   int a = 101;
   void foo(std::ostream& os) {
     os << "a=" << a << std::endl;
   }
 };
 
-struct B : visitable<typelist_ab, B>, visitable<typelist_bc, B> {
+// Inherit from `A` as well, just to show that we can.
+struct B : virtual A, virtual BASE {
   int b = 102;
   void bar(std::ostream& os) {
     os << "b=" << b << std::endl;
   }
 };
-
-struct C : visitable<typelist_bc, C> {
+// Even more "multiple" inheritance.
+struct C : virtual A, virtual B, virtual BASE {
   int c = 103;
   void baz(std::ostream& os) {
     os << "c=" << c << std::endl;
@@ -454,36 +535,52 @@ A a;
 B b;
 C c;
 
-struct call_foo_bar : visitor<typelist_ab> {
-  // Note that forgetting to handle one of `visit()` overrides will result in compile errors of two types:
-  // 1) overriding what is not `virtual`, thus attempting to operate on a parameter not from the type list, or
-  // 2) not overriding what should be overridden, thus attempting to instantiate the `visitor` that is abstract.
-  virtual void visit(A& a) override {
+BASE& pa = a;
+BASE& pb = b;
+BASE& pc = c;
+
+struct call_foo_bar {
+  void operator()(A& a) {
     a.foo(os);
   }
-  virtual void visit(B& b) override {
+  void operator()(B& b) {
     b.bar(os);
   }
   std::ostringstream os;
 } foo_bar;
-for (auto& it : std::vector<abstract_visitable<typelist_ab>*>({ &a, &b })) {
-  it->accept(foo_bar);
-}
+
+RTTIDynamicCall<std::tuple<A, B>>(pa, foo_bar);
+RTTIDynamicCall<std::tuple<A, B>>(pb, foo_bar);
 EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
 
-struct call_bar_baz : visitor<typelist_bc> {
-  virtual void visit(B& b) override {
+struct call_bar_baz {
+  void operator()(B& b) {
     b.bar(os);
   }
-  virtual void visit(C& c) override {
+  void operator()(C& c) {
     c.baz(os);
   }
   std::ostringstream os;
 } bar_baz;
-for (auto& it : std::vector<abstract_visitable<typelist_bc>*>({ &b, &c })) {
-  it->accept(bar_baz);
-}
+
+RTTIDynamicCall<std::tuple<B, C>>(pb, bar_baz);
+RTTIDynamicCall<std::tuple<B, C>>(pc, bar_baz);
 EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
+struct call_foo_baz {
+  void operator()(A& a) {
+    a.foo(os);
+  }
+  void operator()(C& c) {
+    c.baz(os);
+  }
+  std::ostringstream os;
+} foo_baz;
+
+std::unique_ptr<BASE> unique_a(new A());
+std::unique_ptr<BASE> unique_c(new C());
+RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
+RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
+EXPECT_EQ("a=101\nc=103\n", foo_baz.os.str());
 ```
 ## Run-Time Type Dispatching
 
