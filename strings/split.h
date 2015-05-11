@@ -69,7 +69,7 @@ struct MatchImpl<std::string> {
 };
 
 template <size_t N>
-struct MatchImpl<const char[N]> {  // No `const char` because the calling semantics uses `rmconstref`.
+struct MatchImpl<const char[N]> {
   static typename std::enable_if<(N > 0), bool>::type Match(char a, const char b[N]) {
     return std::find(b, b + N, a) != (b + N);
   }
