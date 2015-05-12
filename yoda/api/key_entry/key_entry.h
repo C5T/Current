@@ -46,8 +46,7 @@ using namespace sfinae;
 // for Yoda to support key-entry (key-value) accessors over the type `MyKeyEntry`.
 template <typename ENTRY>
 struct KeyEntry {
-  static_assert(std::is_base_of<Padawan, ENTRY>::value,
-                "Entry type must be derived from `yoda::Padawan`.");
+  static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
@@ -81,7 +80,9 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
                           typename YET::T_ENTRY_CALLBACK on_success,
                           typename YET::T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container,
+                         ContainerWrapper<YT>&,
+                         typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
   };
@@ -106,7 +107,9 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(YodaContainer<YT>& container,
+                         ContainerWrapper<YT>&,
+                         typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
   };
@@ -179,8 +182,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
         msg.on_failure(msg.key);
       } else {
         // Promise semantics.
-        SetPromiseToNullEntryOrThrow<typename YET::T_KEY,
-                                     typename YET::T_ENTRY,
+        SetPromiseToNullEntryOrThrow<typename YET::T_KEY, typename YET::T_ENTRY,
                                      typename YET::T_KEY_NOT_FOUND_EXCEPTION,
                                      false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
                                      >::DoIt(msg.key, msg.pr);
@@ -210,20 +212,23 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
   // Synchronous `Get()` to be used in user functions.
-  const typename YET::T_ENTRY& operator()(container_wrapper::Get, const typename YET::T_KEY& key) const {
+  const EntryWrapper<typename YET::T_ENTRY> operator()(container_wrapper::Get,
+                                                       const typename YET::T_KEY& key) const {
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       // The entry has been found.
-      return cit->second;
+      return EntryWrapper<typename YET::T_ENTRY>(cit->second);
     } else {
       // The entry has not been found.
-      throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
+      return EntryWrapper<typename YET::T_ENTRY>();
     }
   }
 
   // Synchronous `Add()` to be used in user functions.
   // NOTE: `stream` is passed via const reference to make `decltype()` work.
-  void operator()(container_wrapper::Add, const typename YT::T_STREAM_TYPE& stream, const typename YET::T_ENTRY& entry) {
+  void operator()(container_wrapper::Add,
+                  const typename YT::T_STREAM_TYPE& stream,
+                  const typename YET::T_ENTRY& entry) {
     const bool key_exists = static_cast<bool>(map_.count(GetKey(entry)));
     if (key_exists) {
       throw typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(entry);
@@ -234,7 +239,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
  private:
-   T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> map_;
+  T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> map_;
 };
 
 }  // namespace yoda

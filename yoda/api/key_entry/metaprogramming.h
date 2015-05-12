@@ -90,5 +90,3 @@ void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_API_KEYENTRY_METAPTOGRAMMING_H
-
-

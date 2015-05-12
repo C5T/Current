@@ -92,9 +92,9 @@ namespace yoda {
 
 // `yoda::APIWrapper` requires the list of specific entries to expose through the Yoda API.
 template <typename ENTRIES_TYPELIST>
-struct APIWrapper : apicalls::APICallsWrapper<
-                        YodaTypes<ENTRIES_TYPELIST>,
-                        CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
+struct APIWrapper
+    : apicalls::APICallsWrapper<YodaTypes<ENTRIES_TYPELIST>,
+                                CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
   typedef YodaTypes<ENTRIES_TYPELIST> YT;
@@ -102,9 +102,7 @@ struct APIWrapper : apicalls::APICallsWrapper<
  public:
   APIWrapper() = delete;
   APIWrapper(const std::string& stream_name)
-      : apicalls::APICallsWrapper<
-            YT,
-            CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
+      : apicalls::APICallsWrapper<YT, CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<Padawan>>(stream_name)),
         container_wrapper_(container_, stream_),
         mq_listener_(container_, container_wrapper_, stream_),
@@ -129,17 +127,17 @@ struct APIWrapper : apicalls::APICallsWrapper<
 
   struct MQMessageFunction : YodaMMQMessage<YT> {
     const T_USER_FUNCTION function;
-    
+
     explicit MQMessageFunction(const T_USER_FUNCTION function) : function(function) {}
 
-    virtual void Process(YodaContainer<YT>&, T_CONTAINER_WRAPPER& container_wrapper, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>&,
+                         T_CONTAINER_WRAPPER& container_wrapper,
+                         typename YT::T_STREAM_TYPE&) override {
       function(container_wrapper);
     }
   };
 
-  void AsyncCallFunction(const T_USER_FUNCTION function) {
-    mq_.EmplaceMessage(new MQMessageFunction(function));
-  }
+  void Call(const T_USER_FUNCTION function) { mq_.EmplaceMessage(new MQMessageFunction(function)); }
 
  private:
   typename YT::T_STREAM_TYPE stream_;

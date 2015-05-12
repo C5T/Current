@@ -64,7 +64,7 @@ CEREAL_REGISTER_TYPE(StringKVEntry);
 
 struct MatrixCell : Padawan {
   typedef Padawan CEREAL_BASE_TYPE;
-  
+
   size_t row;
   std::string col;
   int value;

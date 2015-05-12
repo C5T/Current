@@ -45,6 +45,19 @@ struct Padawan {
   }
 };
 
+// Wrapper to return non-existing entries.
+template <typename T_ENTRY>
+struct EntryWrapper {
+  EntryWrapper() = default;
+  explicit EntryWrapper(const T_ENTRY& entry) : exists(true), entry(&entry) {}
+  operator bool() const { return exists; }
+  const T_ENTRY& operator()() const { return *entry; }
+
+ private:
+  bool exists = false;
+  const T_ENTRY* entry = nullptr;
+};
+
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
 

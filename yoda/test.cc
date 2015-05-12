@@ -36,9 +36,8 @@ SOFTWARE.
 using bricks::strings::Printf;
 
 TEST(Yoda, CoverTest) {
-  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>,
-                    yoda::MatrixEntry<MatrixCell>,
-                    yoda::KeyEntry<StringKVEntry>> TestAPI;
+  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>, yoda::MatrixEntry<MatrixCell>, yoda::KeyEntry<StringKVEntry>>
+      TestAPI;
   TestAPI api("YodaCoverTest");
 
   api.UnsafeStream().Emplace(new StringKVEntry());
@@ -61,18 +60,24 @@ TEST(Yoda, CoverTest) {
   api.Add(MatrixCell(2, "test", 1));
   api.Add(MatrixCell(3, "test", 4));
 
-
   // Asynchronous call of user function.
   bool done = false;
   EXPECT_EQ("bar", api.Get("foo").foo);
-  api.AsyncCallFunction([&](TestAPI::T_CONTAINER_WRAPPER& cw) {
-    EXPECT_EQ(42.0, cw.Get(1).value);
-    EXPECT_EQ(100, cw.Get(42, "answer").value);
-    EXPECT_EQ("bar", cw.Get("foo").foo);
+  api.Call([&](TestAPI::T_CONTAINER_WRAPPER& cw) {
+    EXPECT_TRUE(cw.Get(1));
+    EXPECT_EQ(42.0, cw.Get(1)().value);
+    EXPECT_TRUE(cw.Get(42, "answer"));
+    EXPECT_EQ(100, cw.Get(42, "answer")().value);
+    EXPECT_TRUE(cw.Get("foo"));
+    EXPECT_EQ("bar", cw.Get("foo")().foo);
+
+    EXPECT_FALSE(cw.Get(-1));
+    EXPECT_FALSE(cw.Get(41, "not an answer"));
+    EXPECT_FALSE(cw.Get("bazinga"));
 
     double result = 0.0;
     for (int i = 1; i <= 3; ++i) {
-      result += cw.Get(i).value * static_cast<double>(cw.Get(i, "test").value);
+      result += cw.Get(i)().value * static_cast<double>(cw.Get(i, "test")().value);
     }
     cw.Add(StringKVEntry("result", Printf("%.2f", result)));
     cw.Add(MatrixCell(123, "test", 11));

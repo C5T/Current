@@ -61,5 +61,3 @@ struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
-
-

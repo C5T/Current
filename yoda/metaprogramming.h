@@ -123,7 +123,6 @@ template <typename T_KEY, typename T_ENTRY>
 using T_MAP_TYPE =
     typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0), HasStdHash<T_KEY>(0)>::type;
 
-
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
 // TODO(dkorolev): Chat with Max, remove or move it into Bricks.
@@ -206,21 +205,24 @@ struct Add {};
 
 template <typename YT>
 struct ContainerWrapper {
-  ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) : container(container), stream(stream) {}
+  ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
+      : container(container), stream(stream) {}
 
   template <typename... XS>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...)) Get(XS&&... xs) const {
+  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))
+  Get(XS&&... xs) const {
     return container(container_wrapper::Get(), std::forward<XS>(xs)...);
   }
 
   template <typename... XS>
   decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Add>(),
                                              std::declval<typename YT::T_STREAM_TYPE>(),
-                                             std::declval<XS>()...)) Add(XS&&... xs) {
+                                             std::declval<XS>()...))
+  Add(XS&&... xs) {
     container(container_wrapper::Add(), stream, std::forward<XS>(xs)...);
   }
- 
-private:
+
+ private:
   YodaContainer<YT>& container;
   typename YT::T_STREAM_TYPE& stream;
 };
@@ -236,7 +238,9 @@ struct StreamListener {
 
     explicit MQMessageEntry(std::unique_ptr<Padawan>&& entry) : entry(std::move(entry)) {}
 
-    virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>&, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container,
+                         ContainerWrapper<YT>&,
+                         typename YT::T_STREAM_TYPE&) override {
       MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
     }
   };
@@ -273,22 +277,27 @@ struct StreamListener {
   typename YT::T_MQ& mq_;
 };
 
-
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
 template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
-  virtual void Process(YodaContainer<YT>& container, ContainerWrapper<YT>& container_wrapper, typename YT::T_STREAM_TYPE& stream) = 0;
+  virtual void Process(YodaContainer<YT>& container,
+                       ContainerWrapper<YT>& container_wrapper,
+                       typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
-  explicit MQListener(YodaContainer<YT>& container, ContainerWrapper<YT>& container_wrapper, typename YT::T_STREAM_TYPE& stream)
+  explicit MQListener(YodaContainer<YT>& container,
+                      ContainerWrapper<YT>& container_wrapper,
+                      typename YT::T_STREAM_TYPE& stream)
       : container_(container), container_wrapper_(container_wrapper), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) { message->Process(container_, container_wrapper_, stream_); }
+  void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) {
+    message->Process(container_, container_wrapper_, stream_);
+  }
 
   YodaContainer<YT>& container_;
   ContainerWrapper<YT>& container_wrapper_;
