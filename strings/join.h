@@ -88,12 +88,12 @@ std::string Join(const T_VECTOR_STRING& strings, T_SEPARATOR&& separator) {
 
 template <typename T_VECTOR_STRING, typename T_SEPARATOR>
 std::string Join(const T_VECTOR_STRING& strings, T_SEPARATOR&& separator) {
-  return impl::Join(strings, separator);
+  return impl::Join(strings, std::forward<T_SEPARATOR>(separator));
 }
 
 template <typename T_SEPARATOR>
 std::string Join(const std::vector<std::string>& strings, T_SEPARATOR&& separator) {
-  return impl::Join(strings, separator);
+  return impl::Join(strings, std::forward<T_SEPARATOR>(separator));
 }
 
 }  // namespace strings
