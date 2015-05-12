@@ -32,6 +32,8 @@ SOFTWARE.
 #include "../../../../Bricks/template/rmref.h"
 
 namespace yoda {
+
+namespace sfinae {
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
@@ -84,6 +86,7 @@ void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
   KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
 }
 
+}  // namespace sfinae
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_API_KEYENTRY_METAPTOGRAMMING_H

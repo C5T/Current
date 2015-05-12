@@ -30,7 +30,20 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
+#include "../../Bricks/cerealize/cerealize.h"
+
 namespace yoda {
+
+// All user entries, which are supposed to be stored in Yoda, should be derived from this base structure.
+struct Padawan {
+  uint64_t ms;
+  virtual ~Padawan() = default;
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(ms));
+  }
+};
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
@@ -67,89 +80,6 @@ struct Nullable {
 // The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
 // TODO(dkorolev): Add the runtime check that certain type does indeed serialize the `exists` field and test it.
 struct Deletable {};
-
-// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
-// Associative container type selector. Attempts to use:
-// 1) std::unordered_map<T_KEY, T_ENTRY, wrapper for `T_KEY::Hash()`>
-// 2) std::unordered_map<T_KEY, T_ENTRY [, std::hash<T_KEY>]>
-// 3) std::map<T_KEY, T_ENTRY>
-// in the above order.
-
-template <typename T_KEY>
-constexpr bool HasHashFunction(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasHashFunction(int) -> decltype(std::declval<T_KEY>().Hash(), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasStdHash(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasStdHash(int) -> decltype(std::hash<T_KEY>(), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasOperatorEquals(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasOperatorEquals(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() == std::declval<T_KEY>()), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasOperatorLess(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasOperatorLess(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() < std::declval<T_KEY>()), bool()) {
-  return true;
-}
-
-template <typename T_KEY, typename T_ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR {};
-
-// `T_KEY::Hash()` and `T_KEY::operator==()` are defined, use std::unordered_map<> with user-defined hash
-// function.
-template <typename T_KEY, typename T_ENTRY, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true, DEFINES_STD_HASH> {
-  static_assert(HasOperatorEquals<T_KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
-  struct HashFunction {
-    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
-  };
-  typedef std::unordered_map<T_KEY, T_ENTRY, HashFunction> type;
-};
-
-// `T_KEY::Hash()` is not defined, but `std::hash<T_KEY>` and `T_KEY::operator==()` are, use
-// std::unordered_map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
-  static_assert(HasOperatorEquals<T_KEY>(0),
-                "The key type supports `std::hash<T_KEY>`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY> type;
-};
-
-// Neither `T_KEY::Hash()` nor `std::hash<T_KEY>` are defined, use std::map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
-  static_assert(HasOperatorLess<T_KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
-  typedef std::map<T_KEY, T_ENTRY> type;
-};
-
-template <typename T_KEY, typename T_ENTRY>
-using T_MAP_TYPE =
-    typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0), HasStdHash<T_KEY>(0)>::type;
 
 }  // namespace yoda
 

@@ -37,6 +37,9 @@ SOFTWARE.
 #include "../../exceptions.h"
 
 namespace yoda {
+
+using namespace sfinae;
+
 // The implementation for the logic of `allow_nonthrowing_get` for `MatrixEntry`
 // type.
 template <typename T_ENTRY, typename T_CELL_NOT_FOUND_EXCEPTION, bool>
@@ -67,6 +70,9 @@ struct MatrixEntrySetPromiseToNullEntryOrThrow<T_ENTRY, UNUSED_T_CELL_NOT_FOUND_
 // for Yoda to support key-entry (key-value) accessors over the type `MyMatrixEntry`.
 template <typename ENTRY>
 struct MatrixEntry {
+  static_assert(std::is_base_of<Padawan, ENTRY>::value,
+                "Entry type must be derived from `yoda::Padawan`.");
+
   typedef ENTRY T_ENTRY;
   typedef ENTRY_ROW_TYPE<T_ENTRY> T_ROW;
   typedef ENTRY_COL_TYPE<T_ENTRY> T_COL;

@@ -29,7 +29,7 @@ SOFTWARE.
 #include "../../../../Bricks/3party/gtest/gtest-main.h"
 
 TEST(YodaMatrixEntry, Smoke) {
-  typedef yoda::API<YodaTestEntryBase, yoda::MatrixEntry<MatrixCell>> TestAPI;
+  typedef yoda::API<yoda::MatrixEntry<MatrixCell>> TestAPI;
   TestAPI api("YodaMatrixEntrySmokeTest");
 
   // Add the first key-value pair.

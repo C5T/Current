@@ -33,6 +33,7 @@ SOFTWARE.
 
 namespace yoda {
 
+namespace sfinae {
 // Matrix row and column type extractors, getters and setters.
 // Support two access methods:
 // - `.row / .col` data members,
@@ -135,6 +136,7 @@ void SetCol(T_ENTRY& entry, ENTRY_COL_TYPE<T_ENTRY> key) {
   COL_ACCESSOR<T_ENTRY>::SetCol(entry, key);
 }
 
+}  // namespace sfinae
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_API_MATRIX_METAPROGRAMMING_H

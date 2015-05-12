@@ -36,8 +36,7 @@ SOFTWARE.
 using bricks::strings::Printf;
 
 TEST(Yoda, CoverTest) {
-  typedef yoda::API<YodaTestEntryBase,
-                    yoda::KeyEntry<KeyValueEntry>,
+  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>,
                     yoda::MatrixEntry<MatrixCell>,
                     yoda::KeyEntry<StringKVEntry>> TestAPI;
   TestAPI api("YodaCoverTest");

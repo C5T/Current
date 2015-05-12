@@ -40,10 +40,15 @@ SOFTWARE.
 
 namespace yoda {
 
+using namespace sfinae;
+
 // User type interface: Use `KeyEntry<MyKeyEntry>` in Yoda's type list for required storage types
 // for Yoda to support key-entry (key-value) accessors over the type `MyKeyEntry`.
 template <typename ENTRY>
 struct KeyEntry {
+  static_assert(std::is_base_of<Padawan, ENTRY>::value,
+                "Entry type must be derived from `yoda::Padawan`.");
+
   typedef ENTRY T_ENTRY;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
 

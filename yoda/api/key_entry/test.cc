@@ -31,12 +31,12 @@ SOFTWARE.
 #include "../../yoda.h"
 #include "../../test_types.h"
 
-// #include "../../../../Bricks/template/metaprogramming.h"
 #include "../../../../Bricks/3party/gtest/gtest-main.h"
 
 using std::string;
 using std::atomic_size_t;
 using bricks::strings::Printf;
+using yoda::sfinae::is_same_or_compile_error;
 
 struct KeyValueSubscriptionData {
   atomic_size_t seen_;
@@ -56,7 +56,7 @@ struct KeyValueAggregateListener {
     return *this;
   }
 
-  bool Entry(std::unique_ptr<YodaTestEntryBase>& proto_entry, size_t index, size_t total) {
+  bool Entry(std::unique_ptr<Padawan>& proto_entry, size_t index, size_t total) {
     // This is a _safe_ way to process entries, since if the cast fails, the next line will crash.
     const KeyValueEntry& entry = *dynamic_cast<KeyValueEntry*>(proto_entry.get());
     static_cast<void>(index);
@@ -82,16 +82,14 @@ struct KeyValueAggregateListener {
 // TODO(mzhurovich): No need to look at and/or port this test when working on `MatrixEntry`.
 TEST(YodaKeyEntry, SmokeImpl) {
   // Works with either line now, yay!
-  // typedef yoda::YodaTypes<YodaTestEntryBase, std::tuple<yoda::KeyEntry<KeyValueEntry>>> YT;
-  typedef yoda::YodaTypes<YodaTestEntryBase,
-                          std::tuple<yoda::KeyEntry<KeyValueEntry>, yoda::KeyEntry<StringKVEntry>>> YT;
+  typedef yoda::YodaTypes<std::tuple<yoda::KeyEntry<KeyValueEntry>, yoda::KeyEntry<StringKVEntry>>> YT;
 
-  static_assert(sizeof(is_same_or_compile_error<sherlock::StreamInstance<std::unique_ptr<YodaTestEntryBase>>,
+  static_assert(sizeof(is_same_or_compile_error<sherlock::StreamInstance<std::unique_ptr<Padawan>>,
                                                 typename YT::T_STREAM_TYPE>),
                 "");
 
  typename YT::T_STREAM_TYPE stream(
-      sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>("YodaKeyEntrySmokeImplTest"));
+      sherlock::Stream<std::unique_ptr<Padawan>>("YodaKeyEntrySmokeImplTest"));
   yoda::YodaContainer<YT> container;
   yoda::ContainerWrapper<YT> container_wrapper(container, stream);
   typename YT::T_MQ_LISTENER mq_listener(container, container_wrapper, stream);
@@ -249,7 +247,7 @@ TEST(YodaKeyEntry, SmokeImpl) {
 }
 
 TEST(YodaKeyEntry, Smoke) {
-  typedef yoda::API<YodaTestEntryBase, yoda::KeyEntry<KeyValueEntry>> TestAPI;
+  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>> TestAPI;
   TestAPI api("YodaKeyEntrySmokeTest");
 
   // Add the first key-value pair.
