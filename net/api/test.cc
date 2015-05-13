@@ -163,6 +163,23 @@ TEST(HTTPAPI, RespondsWithObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
 }
 
+struct GoodStuff {
+  void RESTful(Request r) {
+    r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
+  }
+};
+
+TEST(HTTPAPI, RespondsWithCustomObject) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port).Register("/dude_this_is_awesome", [](Request r) { r(GoodStuff()); });
+  const string url = Printf("http://localhost:%d/dude_this_is_awesome", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(762, static_cast<int>(response.code));
+  EXPECT_EQ("Good stuff.", response.body);
+  EXPECT_EQ(url, response.url);
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+}
+
 #ifndef BRICKS_APPLE
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, Redirect) {

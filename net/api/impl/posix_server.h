@@ -86,6 +86,25 @@ struct Request final {
         body(http_data.Body()),
         timestamp(rhs.timestamp) {}
 
+  // Support objects with user-defined HTTP response handlers.
+  template <typename T>
+  struct IsRESTful {
+    typedef char one;
+    typedef long two;
+
+    template <typename C>
+    static one test(decltype(&C::RESTful));
+    template <typename C>
+    static two test(...);
+
+    constexpr static bool value = (sizeof(test<T>(0)) == sizeof(one));
+  };
+
+  template <typename T>
+  inline typename std::enable_if<IsRESTful<T>::value>::type operator()(T&& that_dude_over_there) {
+    that_dude_over_there.RESTful(std::move(*this));
+  }
+
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
   template <typename... TS>
   void operator()(TS&&... params) {
