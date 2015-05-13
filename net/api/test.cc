@@ -164,7 +164,7 @@ TEST(HTTPAPI, RespondsWithObject) {
 }
 
 struct GoodStuff {
-  void RESTful(Request r) {
+  void RespondViaHTTP(Request r) {
     r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
   }
 };

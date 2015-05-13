@@ -88,12 +88,12 @@ struct Request final {
 
   // Support objects with user-defined HTTP response handlers.
   template <typename T>
-  struct IsRESTful {
+  struct HasRespondViaHTTP {
     typedef char one;
     typedef long two;
 
     template <typename C>
-    static one test(decltype(&C::RESTful));
+    static one test(decltype(&C::RespondViaHTTP));
     template <typename C>
     static two test(...);
 
@@ -101,8 +101,8 @@ struct Request final {
   };
 
   template <typename T>
-  inline typename std::enable_if<IsRESTful<T>::value>::type operator()(T&& that_dude_over_there) {
-    that_dude_over_there.RESTful(std::move(*this));
+  inline typename std::enable_if<HasRespondViaHTTP<T>::value>::type operator()(T&& that_dude_over_there) {
+    that_dude_over_there.RespondViaHTTP(std::move(*this));
   }
 
   // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
