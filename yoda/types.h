@@ -30,6 +30,7 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
+#include "../../Bricks/exception.h"
 #include "../../Bricks/cerealize/cerealize.h"
 
 namespace yoda {
@@ -45,13 +46,21 @@ struct Padawan {
   }
 };
 
-// Wrapper to return non-existing entries.
+struct NonexistentEntryAccessed : bricks::Exception {};
+
+// Wrapper to return possibly nonexistent entries.
 template <typename T_ENTRY>
 struct EntryWrapper {
   EntryWrapper() = default;
   explicit EntryWrapper(const T_ENTRY& entry) : exists(true), entry(&entry) {}
   operator bool() const { return exists; }
-  const T_ENTRY& operator()() const { return *entry; }
+  const T_ENTRY& operator()() const {
+    if (exists) {
+      return *entry;
+    } else {
+      throw NonexistentEntryAccessed();
+    }
+  }
 
  private:
   bool exists = false;

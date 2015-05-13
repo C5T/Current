@@ -64,8 +64,10 @@ TEST(Yoda, CoverTest) {
   bool done = false;
   EXPECT_EQ("bar", api.Get("foo").foo);
   api.Call([&](TestAPI::T_CONTAINER_WRAPPER& cw) {
-    EXPECT_TRUE(cw.Get(1));
-    EXPECT_EQ(42.0, cw.Get(1)().value);
+    const bool exists = cw.Get(1);
+    EXPECT_TRUE(exists);
+    yoda::EntryWrapper<KeyValueEntry> entry = cw.Get(1);
+    EXPECT_EQ(42.0, entry().value);
     EXPECT_TRUE(cw.Get(42, "answer"));
     EXPECT_EQ(100, cw.Get(42, "answer")().value);
     EXPECT_TRUE(cw.Get("foo"));
@@ -74,6 +76,9 @@ TEST(Yoda, CoverTest) {
     EXPECT_FALSE(cw.Get(-1));
     EXPECT_FALSE(cw.Get(41, "not an answer"));
     EXPECT_FALSE(cw.Get("bazinga"));
+
+    // Accessing nonexistent entry throws an exception.
+    ASSERT_THROW(cw.Get(1000)(), yoda::NonexistentEntryAccessed);
 
     double result = 0.0;
     for (int i = 1; i <= 3; ++i) {

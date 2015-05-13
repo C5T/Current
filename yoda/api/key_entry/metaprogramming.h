@@ -23,12 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_API_KEYENTRY_METAPTOGRAMMING_H
-#define SHERLOCK_YODA_API_KEYENTRY_METAPTOGRAMMING_H
+#ifndef SHERLOCK_YODA_API_KEYENTRY_METAPROGRAMMING_H
+#define SHERLOCK_YODA_API_KEYENTRY_METAPROGRAMMING_H
 
 #include <utility>
 
 #include "../../metaprogramming.h"
+#include "../../../../Bricks/template/pod.h"
 #include "../../../../Bricks/template/rmref.h"
 
 namespace yoda {
@@ -53,7 +54,7 @@ struct KEY_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
-  static typename std::conditional<std::is_pod<T_KEY>::value, T_KEY, const T_KEY&>::type GetKey(
+  static typename bricks::copy_free<T_KEY> GetKey(
       const T_ENTRY& entry) {
     return entry.key;
   }
@@ -63,7 +64,7 @@ struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
 template <typename T_ENTRY>
 struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
-  static typename std::conditional<std::is_pod<T_KEY>::value, T_KEY, const T_KEY&>::type GetKey(
+  static typename bricks::copy_free<T_KEY> GetKey(
       const T_ENTRY& entry) {
     return entry.key();
   }
@@ -89,4 +90,4 @@ void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
 }  // namespace sfinae
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_KEYENTRY_METAPTOGRAMMING_H
+#endif  // SHERLOCK_YODA_API_KEYENTRY_METAPROGRAMMING_H

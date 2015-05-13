@@ -29,6 +29,7 @@ SOFTWARE.
 #include <utility>
 
 #include "../../metaprogramming.h"
+#include "../../../../Bricks/template/pod.h"
 #include "../../../../Bricks/template/rmref.h"
 
 namespace yoda {
@@ -54,7 +55,7 @@ struct ROW_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().row) T_ROW;
-  static typename std::conditional<std::is_pod<T_ROW>::value, T_ROW, const T_ROW&>::type GetRow(
+  static typename bricks::copy_free<T_ROW> GetRow(
       const T_ENTRY& entry) {
     return entry.row;
   }
@@ -64,7 +65,7 @@ struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().row()) T_ROW;
-  static typename std::conditional<std::is_pod<T_ROW>::value, T_ROW, const T_ROW&>::type GetRow(
+  static typename bricks::copy_free<T_ROW> GetRow(
       const T_ENTRY& entry) {
     return entry.row();
   }
@@ -103,7 +104,7 @@ struct COL_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().col) T_COL;
-  static typename std::conditional<std::is_pod<T_COL>::value, T_COL, const T_COL&>::type GetCol(
+  static typename bricks::copy_free<T_COL> GetCol(
       const T_ENTRY& entry) {
     return entry.col;
   }
@@ -113,7 +114,7 @@ struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().col()) T_COL;
-  static typename std::conditional<std::is_pod<T_COL>::value, T_COL, const T_COL&>::type GetCol(
+  static typename bricks::copy_free<T_COL> GetCol(
       const T_ENTRY& entry) {
     return entry.col();
   }

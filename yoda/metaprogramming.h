@@ -211,7 +211,9 @@ struct ContainerWrapper {
   template <typename... XS>
   decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))
   Get(XS&&... xs) const {
-    return container(container_wrapper::Get(), std::forward<XS>(xs)...);
+    return std::forward<decltype(
+        std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))>(
+        container(container_wrapper::Get(), std::forward<XS>(xs)...));
   }
 
   template <typename... XS>
