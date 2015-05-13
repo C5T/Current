@@ -33,5 +33,6 @@ SOFTWARE.
 #include "mapreduce.h"
 #include "combine.h"
 #include "rtti_dynamic_call.h"
+#include "weed.h"
 
 #endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H
