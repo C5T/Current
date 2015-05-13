@@ -26,9 +26,10 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_TYPES_H
 #define SHERLOCK_YODA_TYPES_H
 
+#include <future>
 #include <map>
-#include <unordered_map>
 #include <type_traits>
+#include <unordered_map>
 
 #include "../../Bricks/exception.h"
 #include "../../Bricks/cerealize/cerealize.h"
@@ -65,6 +66,31 @@ struct EntryWrapper {
  private:
   bool exists = false;
   const T_ENTRY* entry = nullptr;
+};
+
+// Wrapper to expose user-friendly semantics.
+template <typename T>
+struct Future {
+  Future() = delete;
+  Future(std::future<T>&& f) : f_(std::move(f)) {}
+
+  T Go() { return std::forward<T>(f_.get()); }
+  void Wait() { f_.wait(); }
+
+ private:
+  std::future<T> f_;
+};
+
+template <>
+struct Future<void> {
+  Future() = delete;
+  Future(std::future<void>&& f) : f_(std::move(f)) {}
+
+  void Go() { f_.get(); }
+  void Wait() { f_.wait(); }
+
+ private:
+  std::future<void> f_;
 };
 
 // Helper structures that the user can derive their entries from

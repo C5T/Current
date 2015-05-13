@@ -114,9 +114,9 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     }
   };
 
-  std::future<typename YET::T_ENTRY> operator()(apicalls::AsyncGet, const typename YET::T_KEY& key) {
+  Future<typename YET::T_ENTRY> operator()(apicalls::AsyncGet, const typename YET::T_KEY& key) {
     std::promise<typename YET::T_ENTRY> pr;
-    std::future<typename YET::T_ENTRY> future = pr.get_future();
+    Future<typename YET::T_ENTRY> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageGet(key, std::move(pr)));
     return future;
   }
@@ -129,12 +129,12 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
   }
 
   typename YET::T_ENTRY operator()(apicalls::Get, const typename YET::T_KEY& key) {
-    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_KEY>(key)).get();
+    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_KEY>(key)).Go();
   }
 
-  std::future<void> operator()(apicalls::AsyncAdd, const typename YET::T_ENTRY& entry) {
+  Future<void> operator()(apicalls::AsyncAdd, const typename YET::T_ENTRY& entry) {
     std::promise<void> pr;
-    std::future<void> future = pr.get_future();
+    Future<void> future = pr.get_future();
 
     mq_.EmplaceMessage(new MQMessageAdd(entry, std::move(pr)));
     return future;
@@ -148,7 +148,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
   }
 
   void operator()(apicalls::Add, const typename YET::T_ENTRY& entry) {
-    operator()(apicalls::AsyncAdd(), entry).get();
+    operator()(apicalls::AsyncAdd(), entry).Go();
   }
 
  private:
