@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../exception.h"
 #include "../template/rmref.h"
+#include "../template/weed.h"
 
 namespace bricks {
 namespace strings {
@@ -76,22 +77,12 @@ struct MatchImpl<const char[N]> {
 };
 
 template <typename T>
-static constexpr bool CanCallForChar(char) {
-  return false;
-}
-
-template <typename T>
-static constexpr auto CanCallForChar(int) -> decltype(std::declval<T>()(std::declval<char>()), bool()) {
-  return true;
-}
-
-template <typename T>
-inline typename std::enable_if<!CanCallForChar<T>(0), bool>::type Match(char a, T&& b) {
+inline typename std::enable_if<!weed::call_with<T, char>::implemented, bool>::type Match(char a, T&& b) {
   return MatchImpl<rmref<T>>::Match(a, std::forward<T>(b));
 }
 
 template <typename T>
-inline typename std::enable_if<CanCallForChar<T>(0), bool>::type Match(char a, T&& b) {
+inline typename std::enable_if<weed::call_with<T, char>::implemented, bool>::type Match(char a, T&& b) {
   return !b(a);
 }
 

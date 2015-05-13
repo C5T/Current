@@ -28,6 +28,8 @@ SOFTWARE.
 #include <tuple>
 #include <utility>
 
+#include "weed.h"
+
 namespace bricks {
 namespace metaprogramming {
 
@@ -42,17 +44,7 @@ struct dispatch {
   T instance;
 
   template <typename... XS>
-  static constexpr bool sfinae(char) {
-    return false;
-  }
-
-  template <typename... XS>
-  static constexpr auto sfinae(int) -> decltype(std::declval<T>()(std::declval<XS>()...), bool()) {
-    return true;
-  }
-
-  template <typename... XS>
-  typename std::enable_if<sfinae<XS...>(0), decltype(std::declval<T>()(std::declval<XS>()...))>::type
+  typename std::enable_if<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>>::type
   operator()(XS... params) {
     return instance(params...);
   }

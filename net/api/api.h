@@ -52,6 +52,7 @@ SOFTWARE.
 
 #include "../../port.h"
 #include "../../util/singleton.h"
+#include "../../template/weed.h"
 
 #if defined(BRICKS_POSIX) || defined(BRICKS_WINDOWS)
 #include "impl/posix_client.h"
@@ -75,16 +76,9 @@ namespace bricks {
 namespace net {
 namespace api {
 
-// Allow `HTTP(GET(url))` and other `HTTP(...)` syntaxes, assuming `using bricks::net::api`.
-template <typename T1>
-inline decltype(Singleton<HTTP_IMPL>()(std::declval<T1>())) HTTP(T1&& p1) {
-  return Singleton<HTTP_IMPL>()(std::forward<T1>(p1));
-}
-
-// Allow `HTTP(POST(url, data))` and other `HTTP(..., ...)` syntaxes, assuming `using bricks::net::api`.
-template <typename T1, typename T2>
-inline decltype(Singleton<HTTP_IMPL>()(std::declval<T1>(), std::declval<T2>())) HTTP(T1&& p1, T2&& p2) {
-  return Singleton<HTTP_IMPL>()(std::forward<T1>(p1), std::forward<T2>(p2));
+template <typename... TS>
+inline typename weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... params) {
+  return Singleton<HTTP_IMPL>()(std::forward<TS>(params)...);
 }
 
 }  // namespace api
