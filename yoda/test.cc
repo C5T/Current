@@ -29,9 +29,12 @@ SOFTWARE.
 #include "yoda.h"
 #include "test_types.h"
 
+#include "../../Bricks/net/api/api.h"
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
 #include "../../Bricks/strings/printf.h"
+
+DEFINE_int32(yoda_test_port, 8991, "");
 
 using bricks::strings::Printf;
 
@@ -91,9 +94,28 @@ TEST(Yoda, CoverTest) {
     done = true;
   });
 
-  while (!done) {
-    ;  // Spin lock;
-  }
+  struct HappyEnding {
+    Request request;
+    explicit HappyEnding(Request request) : request(std::move(request)) {}
+    void operator()(double result) { request(Printf("Magic: %.3lf", result)); }
+    // TODO(dkmz): Did we just realize this magic is unnecessary here? :-)
+    // void RESTful(Request r) {
+    //   r("Get me more of this stuff.");
+    // }
+  };
+
+  HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
+  HTTP(FLAGS_yoda_test_port)
+      .Register("/omfg", [&api](Request r) {
+        // Note: C standard does not regulate the order in which parameters are evaluated,
+        // thus, if any data should be extracted from `r.query`, it should be done before the next line
+        // since it does `std::move(r)`.
+        api.Call([](TestAPI::T_CONTAINER_WRAPPER& cw) { return cw.Get(2)().value * cw.Get(3)().value; },
+                 HappyEnding(std::move(r)));
+      });
+  const auto response = HTTP(GET(Printf("http://localhost:%d/omfg", FLAGS_yoda_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("Magic: 352.800", response.body);
 
   EXPECT_EQ("160.30", api.Get("result").foo);
   EXPECT_EQ(11, api.Get(123, "test").value);

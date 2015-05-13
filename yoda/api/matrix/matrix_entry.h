@@ -144,8 +144,8 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
   };
 
   Future<typename YET::T_ENTRY> operator()(apicalls::AsyncGet,
-                                                const typename YET::T_ROW& row,
-                                                const typename YET::T_COL& col) {
+                                           const typename YET::T_ROW& row,
+                                           const typename YET::T_COL& col) {
     std::promise<typename YET::T_ENTRY> pr;
     Future<typename YET::T_ENTRY> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageGet(row, col, std::move(pr)));
