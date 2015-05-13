@@ -31,12 +31,13 @@ SOFTWARE.
 
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../Bricks/strings/printf.h"
+
+using bricks::strings::Printf;
 
 TEST(Yoda, CoverTest) {
-  typedef yoda::API<YodaTestEntryBase,
-                    yoda::KeyEntry<KeyValueEntry>,
-                    yoda::MatrixEntry<MatrixCell>,
-                    yoda::KeyEntry<StringKVEntry>> TestAPI;
+  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>, yoda::MatrixEntry<MatrixCell>, yoda::KeyEntry<StringKVEntry>>
+      TestAPI;
   TestAPI api("YodaCoverTest");
 
   api.UnsafeStream().Emplace(new StringKVEntry());
@@ -51,4 +52,50 @@ TEST(Yoda, CoverTest) {
   EXPECT_EQ(100, api.Get(42, "answer").value);
   api.Add(StringKVEntry("foo", "bar"));
   EXPECT_EQ("bar", api.Get("foo").foo);
+
+  // Adding some more values.
+  api.Add(KeyValueEntry(2, 31.5));
+  api.Add(KeyValueEntry(3, 11.2));
+  api.Add(MatrixCell(1, "test", 2));
+  api.Add(MatrixCell(2, "test", 1));
+  api.Add(MatrixCell(3, "test", 4));
+
+  // Asynchronous call of user function.
+  bool done = false;
+  EXPECT_EQ("bar", api.Get("foo").foo);
+  api.Call([&](TestAPI::T_CONTAINER_WRAPPER& cw) {
+    const bool exists = cw.Get(1);
+    EXPECT_TRUE(exists);
+    yoda::EntryWrapper<KeyValueEntry> entry = cw.Get(1);
+    EXPECT_EQ(42.0, entry().value);
+    EXPECT_TRUE(cw.Get(42, "answer"));
+    EXPECT_EQ(100, cw.Get(42, "answer")().value);
+    EXPECT_TRUE(cw.Get("foo"));
+    EXPECT_EQ("bar", cw.Get("foo")().foo);
+
+    EXPECT_FALSE(cw.Get(-1));
+    EXPECT_FALSE(cw.Get(41, "not an answer"));
+    EXPECT_FALSE(cw.Get("bazinga"));
+
+    // Accessing nonexistent entry throws an exception.
+    ASSERT_THROW(cw.Get(1000)(), yoda::NonexistentEntryAccessed);
+
+    double result = 0.0;
+    for (int i = 1; i <= 3; ++i) {
+      result += cw.Get(i)().value * static_cast<double>(cw.Get(i, "test")().value);
+    }
+    cw.Add(StringKVEntry("result", Printf("%.2f", result)));
+    cw.Add(MatrixCell(123, "test", 11));
+    cw.Add(KeyValueEntry(42, 1.23));
+
+    done = true;
+  });
+
+  while (!done) {
+    ;  // Spin lock;
+  }
+
+  EXPECT_EQ("160.30", api.Get("result").foo);
+  EXPECT_EQ(11, api.Get(123, "test").value);
+  EXPECT_EQ(1.23, api.Get(42).value);
 }

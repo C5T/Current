@@ -28,8 +28,13 @@ SOFTWARE.
 
 #include <utility>
 
+#include "../../metaprogramming.h"
+#include "../../../../Bricks/template/pod.h"
+#include "../../../../Bricks/template/rmref.h"
+
 namespace yoda {
 
+namespace sfinae {
 // Matrix row and column type extractors, getters and setters.
 // Support two access methods:
 // - `.row / .col` data members,
@@ -50,7 +55,7 @@ struct ROW_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().row) T_ROW;
-  static typename std::conditional<std::is_pod<T_ROW>::value, T_ROW, const T_ROW&>::type GetRow(
+  static typename bricks::copy_free<T_ROW> GetRow(
       const T_ENTRY& entry) {
     return entry.row;
   }
@@ -60,7 +65,7 @@ struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().row()) T_ROW;
-  static typename std::conditional<std::is_pod<T_ROW>::value, T_ROW, const T_ROW&>::type GetRow(
+  static typename bricks::copy_free<T_ROW> GetRow(
       const T_ENTRY& entry) {
     return entry.row();
   }
@@ -76,8 +81,7 @@ typename ROW_ACCESSOR<T_ENTRY>::T_ROW GetRow(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_ROW_TYPE =
-    typename std::remove_cv<typename std::remove_reference<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>::type>::type;
+using ENTRY_ROW_TYPE = bricks::rmconstref<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
 
 template <typename T_ENTRY>
 void SetRow(T_ENTRY& entry, ENTRY_ROW_TYPE<T_ENTRY> row) {
@@ -100,7 +104,7 @@ struct COL_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().col) T_COL;
-  static typename std::conditional<std::is_pod<T_COL>::value, T_COL, const T_COL&>::type GetCol(
+  static typename bricks::copy_free<T_COL> GetCol(
       const T_ENTRY& entry) {
     return entry.col;
   }
@@ -110,7 +114,7 @@ struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().col()) T_COL;
-  static typename std::conditional<std::is_pod<T_COL>::value, T_COL, const T_COL&>::type GetCol(
+  static typename bricks::copy_free<T_COL> GetCol(
       const T_ENTRY& entry) {
     return entry.col();
   }
@@ -126,14 +130,14 @@ typename COL_ACCESSOR<T_ENTRY>::T_COL GetCol(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_COL_TYPE =
-    typename std::remove_cv<typename std::remove_reference<typename COL_ACCESSOR<T_ENTRY>::T_COL>::type>::type;
+using ENTRY_COL_TYPE = bricks::rmconstref<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
 
 template <typename T_ENTRY>
 void SetCol(T_ENTRY& entry, ENTRY_COL_TYPE<T_ENTRY> key) {
   COL_ACCESSOR<T_ENTRY>::SetCol(entry, key);
 }
 
+}  // namespace sfinae
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_API_MATRIX_METAPROGRAMMING_H

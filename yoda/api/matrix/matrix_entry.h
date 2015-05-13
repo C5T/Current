@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <future>
 
+#include "exceptions.h"
 #include "metaprogramming.h"
 
 #include "../../types.h"
@@ -37,32 +38,7 @@ SOFTWARE.
 
 namespace yoda {
 
-// Exceptions for `MatrixEntry` type  of storage.
-//
-// Exception types for non-existent cells.
-// Cover exception type for entry types and templated, narrowed down exception types, one per entry key type.
-struct CellNotFoundCoverException : bricks::Exception {};
-
-template <typename ENTRY>
-struct CellNotFoundException : CellNotFoundCoverException {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_ROW_TYPE<ENTRY> T_ROW;
-  typedef ENTRY_COL_TYPE<ENTRY> T_COL;
-  const T_ROW row;
-  const T_COL col;
-  explicit CellNotFoundException(const T_ROW& row, const T_COL& col) : row(row), col(col) {}
-};
-
-// Exception types for the existence of a particular cell being a runtime error.
-// Cover exception type for all entry types and templated, narrowed down exception types, one per entry type.
-struct CellAlreadyExistsCoverException : bricks::Exception {};
-
-template <typename ENTRY>
-struct CellAlreadyExistsException : CellAlreadyExistsCoverException {
-  typedef ENTRY T_ENTRY;
-  const ENTRY entry;
-  explicit CellAlreadyExistsException(const ENTRY& entry) : entry(entry) {}
-};
+using namespace sfinae;
 
 // The implementation for the logic of `allow_nonthrowing_get` for `MatrixEntry`
 // type.
@@ -90,14 +66,12 @@ struct MatrixEntrySetPromiseToNullEntryOrThrow<T_ENTRY, UNUSED_T_CELL_NOT_FOUND_
   }
 };
 
-// TODO(dkorolev): Rename `ActualContainer` into `Container` and move it up to `../..`.
-template <typename ENTRY>
-struct ActualContainer {};
-
 // User type interface: Use `MatrixEntry<MyMatrixEntry>` in Yoda's type list for required storage types
 // for Yoda to support key-entry (key-value) accessors over the type `MyMatrixEntry`.
 template <typename ENTRY>
 struct MatrixEntry {
+  static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
+
   typedef ENTRY T_ENTRY;
   typedef ENTRY_ROW_TYPE<T_ENTRY> T_ROW;
   typedef ENTRY_COL_TYPE<T_ENTRY> T_COL;
@@ -105,20 +79,10 @@ struct MatrixEntry {
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_ROW&, const T_COL&)> T_CELL_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
-  typedef std::function<void(const ActualContainer<MatrixEntry<ENTRY>>&)> T_USER_FUNCTION;
 
   typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
   typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
-};
-
-template <typename ENTRY>
-struct ActualContainer<MatrixEntry<ENTRY>> {
-  typedef MatrixEntry<ENTRY> YET;  // "Yoda entry type".
-
-  // TODO(dkorolev)+TODO(mzhurovich): Eventually we'll think of storing each entry only once.
-  T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, typename YET::T_ENTRY>> forward;
-  T_MAP_TYPE<typename YET::T_COL, T_MAP_TYPE<typename YET::T_ROW, typename YET::T_ENTRY>> transposed;
 };
 
 template <typename YT, typename ENTRY>
@@ -145,7 +109,9 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
                           typename YET::T_ENTRY_CALLBACK on_success,
                           typename YET::T_CELL_CALLBACK on_failure)
         : row(row), col(col), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container,
+                         ContainerWrapper<YT>&,
+                         typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
   };
@@ -170,18 +136,10 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
     // The practical implication here is that an API `Get()` after an api `Add()` may and will return data,
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream) override {
+    virtual void Process(YodaContainer<YT>& container,
+                         ContainerWrapper<YT>&,
+                         typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
-    }
-  };
-
-  struct MQMessageFunction : YodaMMQMessage<YT> {
-    const typename YET::T_USER_FUNCTION function;
-
-    explicit MQMessageFunction(const typename YET::T_USER_FUNCTION function) : function(function) {}
-
-    virtual void Process(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE&) override {
-      container(std::ref(*this));
     }
   };
 
@@ -205,8 +163,7 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
   typename YET::T_ENTRY operator()(apicalls::Get,
                                    const typename YET::T_ROW& row,
                                    const typename YET::T_COL& col) {
-    return operator()(apicalls::AsyncGet(),
-                      std::forward<const typename YET::T_ROW>(row),
+    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_ROW>(row),
                       std::forward<const typename YET::T_COL>(col)).get();
   }
 
@@ -229,10 +186,6 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
     operator()(apicalls::AsyncAdd(), entry).get();
   }
 
-  void operator()(apicalls::AsyncCallFunction, const typename YET::T_USER_FUNCTION function) {
-    mq_.EmplaceMessage(new MQMessageFunction(function));
-  }
-
  private:
   typename YT::T_MQ& mq_;
 };
@@ -242,19 +195,17 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef MatrixEntry<ENTRY> YET;
 
-  ActualContainer<MatrixEntry<ENTRY>> container;
-
   // Event: The entry has been scanned from the stream.
   void operator()(const typename YET::T_ENTRY& entry) {
-    container.forward[GetRow(entry)][GetCol(entry)] = entry;
-    container.transposed[GetCol(entry)][GetRow(entry)] = entry;
+    forward_[GetRow(entry)][GetCol(entry)] = entry;
+    transposed_[GetCol(entry)][GetRow(entry)] = entry;
   }
 
   // Event: `Get()`.
   void operator()(typename YodaImpl<YT, MatrixEntry<typename YET::T_ENTRY>>::MQMessageGet& msg) {
     bool cell_exists = false;
-    const auto rit = container.forward.find(msg.row);
-    if (rit != container.forward.end()) {
+    const auto rit = forward_.find(msg.row);
+    if (rit != forward_.end()) {
       const auto cit = rit->second.find(msg.col);
       if (cit != rit->second.end()) {
         cell_exists = true;
@@ -275,8 +226,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
         msg.on_failure(msg.row, msg.col);
       } else {
         // Promise semantics.
-        MatrixEntrySetPromiseToNullEntryOrThrow<typename YET::T_ENTRY,
-                                                typename YET::T_CELL_NOT_FOUND_EXCEPTION,
+        MatrixEntrySetPromiseToNullEntryOrThrow<typename YET::T_ENTRY, typename YET::T_CELL_NOT_FOUND_EXCEPTION,
                                                 false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
                                                 >::DoIt(msg.row, msg.col, msg.pr);
       }
@@ -287,8 +237,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   void operator()(typename YodaImpl<YT, MatrixEntry<typename YET::T_ENTRY>>::MQMessageAdd& msg,
                   typename YT::T_STREAM_TYPE& stream) {
     bool cell_exists = false;
-    const auto rit = container.forward.find(GetRow(msg.e));
-    if (rit != container.forward.end()) {
+    const auto rit = forward_.find(GetRow(msg.e));
+    if (rit != forward_.end()) {
       cell_exists = static_cast<bool>(rit->second.count(GetCol(msg.e)));
     }
     if (cell_exists) {
@@ -298,8 +248,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
         msg.pr.set_exception(std::make_exception_ptr(typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(msg.e)));
       }
     } else {
-      container.forward[GetRow(msg.e)][GetCol(msg.e)] = msg.e;
-      container.transposed[GetCol(msg.e)][GetRow(msg.e)] = msg.e;
+      forward_[GetRow(msg.e)][GetCol(msg.e)] = msg.e;
+      transposed_[GetCol(msg.e)][GetRow(msg.e)] = msg.e;
       stream.Publish(msg.e);
       if (msg.on_success) {
         msg.on_success();
@@ -309,10 +259,43 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     }
   }
 
-  // Event: `Function()`.
-  void operator()(typename YodaImpl<YT, MatrixEntry<typename YET::T_ENTRY>>::MQMessageFunction& msg) {
-    msg.function(container);
+  // Synchronous `Get()` to be used in user functions.
+  const EntryWrapper<typename YET::T_ENTRY> operator()(container_wrapper::Get,
+                                                       const typename YET::T_ROW& row,
+                                                       const typename YET::T_COL& col) const {
+    const auto rit = forward_.find(row);
+    if (rit != forward_.end()) {
+      const auto cit = rit->second.find(col);
+      if (cit != rit->second.end()) {
+        return EntryWrapper<typename YET::T_ENTRY>(cit->second);
+      }
+    }
+    return EntryWrapper<typename YET::T_ENTRY>();
   }
+
+  // Synchronous `Add()` to be used in user functions.
+  // NOTE: `stream` is passed via const reference to make `decltype()` work.
+  void operator()(container_wrapper::Add,
+                  const typename YT::T_STREAM_TYPE& stream,
+                  const typename YET::T_ENTRY& entry) {
+    bool cell_exists = false;
+    const auto rit = forward_.find(GetRow(entry));
+    if (rit != forward_.end()) {
+      cell_exists = static_cast<bool>(rit->second.count(GetCol(entry)));
+    }
+    if (cell_exists) {
+      throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(entry);
+    } else {
+      forward_[GetRow(entry)][GetCol(entry)] = entry;
+      transposed_[GetCol(entry)][GetRow(entry)] = entry;
+      const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
+    }
+  }
+
+ private:
+  // TODO(dkorolev)+TODO(mzhurovich): Eventually we'll think of storing each entry only once.
+  T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, typename YET::T_ENTRY>> forward_;
+  T_MAP_TYPE<typename YET::T_COL, T_MAP_TYPE<typename YET::T_ROW, typename YET::T_ENTRY>> transposed_;
 };
 
 }  // namespace yoda

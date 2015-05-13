@@ -28,14 +28,10 @@ SOFTWARE.
 
 #include "yoda.h"
 
-struct YodaTestEntryBase {
-  virtual ~YodaTestEntryBase() = default;
-  template <typename A>
-  void serialize(A&) {}
-};
+using yoda::Padawan;
 
-struct KeyValueEntry : YodaTestEntryBase {
-  typedef YodaTestEntryBase CEREAL_BASE_TYPE;
+struct KeyValueEntry : Padawan {
+  typedef Padawan CEREAL_BASE_TYPE;
 
   int key;
   double value;
@@ -44,14 +40,14 @@ struct KeyValueEntry : YodaTestEntryBase {
 
   template <typename A>
   void serialize(A& ar) {
-    YodaTestEntryBase::serialize(ar);
+    Padawan::serialize(ar);
     ar(CEREAL_NVP(key), CEREAL_NVP(value));
   }
 };
 CEREAL_REGISTER_TYPE(KeyValueEntry);
 
-struct StringKVEntry : YodaTestEntryBase {
-  typedef YodaTestEntryBase CEREAL_BASE_TYPE;
+struct StringKVEntry : Padawan {
+  typedef Padawan CEREAL_BASE_TYPE;
 
   std::string key;
   std::string foo;
@@ -60,13 +56,15 @@ struct StringKVEntry : YodaTestEntryBase {
 
   template <typename A>
   void serialize(A& ar) {
-    YodaTestEntryBase::serialize(ar);
+    Padawan::serialize(ar);
     ar(CEREAL_NVP(key), CEREAL_NVP(foo));
   }
 };
 CEREAL_REGISTER_TYPE(StringKVEntry);
 
-struct MatrixCell : YodaTestEntryBase {
+struct MatrixCell : Padawan {
+  typedef Padawan CEREAL_BASE_TYPE;
+
   size_t row;
   std::string col;
   int value;

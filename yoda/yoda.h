@@ -90,25 +90,22 @@ SOFTWARE.
 
 namespace yoda {
 
-// `yoda::APIWrapper` requires two template parameters:
-// 1) The base type for the stream entries -- to serialize and deserialize polymorphic records.
-// 2) The list of specific entries to expose through the Yoda API.
-template <typename ENTRY_BASE_TYPE, typename ENTRIES_TYPELIST>
-struct APIWrapper : apicalls::APICallsWrapper<
-                        YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>,
-                        CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
+// `yoda::APIWrapper` requires the list of specific entries to expose through the Yoda API.
+template <typename ENTRIES_TYPELIST>
+struct APIWrapper
+    : apicalls::APICallsWrapper<YodaTypes<ENTRIES_TYPELIST>,
+                                CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
-  typedef YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST> YT;
+  typedef YodaTypes<ENTRIES_TYPELIST> YT;
 
  public:
   APIWrapper() = delete;
   APIWrapper(const std::string& stream_name)
-      : apicalls::APICallsWrapper<
-            YT,
-            CombinedYodaImpls<YodaTypes<ENTRY_BASE_TYPE, ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<typename YT::T_ENTRY_BASE_TYPE>>(stream_name)),
-        mq_listener_(container_, stream_),
+      : apicalls::APICallsWrapper<YT, CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<Padawan>>(stream_name)),
+        container_wrapper_(container_, stream_),
+        mq_listener_(container_, container_wrapper_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
         sherlock_listener_scope_(stream_.Subscribe(stream_listener_)) {}
@@ -124,9 +121,28 @@ struct APIWrapper : apicalls::APICallsWrapper<
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
+  // Asynchronous user function calling functionality.
+  typedef ContainerWrapper<YT> T_CONTAINER_WRAPPER;
+  typedef std::function<void(T_CONTAINER_WRAPPER& container_wrapper)> T_USER_FUNCTION;
+
+  struct MQMessageFunction : YodaMMQMessage<YT> {
+    const T_USER_FUNCTION function;
+
+    explicit MQMessageFunction(const T_USER_FUNCTION function) : function(function) {}
+
+    virtual void Process(YodaContainer<YT>&,
+                         T_CONTAINER_WRAPPER& container_wrapper,
+                         typename YT::T_STREAM_TYPE&) override {
+      function(container_wrapper);
+    }
+  };
+
+  void Call(const T_USER_FUNCTION function) { mq_.EmplaceMessage(new MQMessageFunction(function)); }
+
  private:
   typename YT::T_STREAM_TYPE stream_;
   YodaContainer<YT> container_;
+  ContainerWrapper<YT> container_wrapper_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;
@@ -134,18 +150,18 @@ struct APIWrapper : apicalls::APICallsWrapper<
 };
 
 // `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
-template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
+template <typename... SUPPORTED_TYPES>
 struct APIWrapperSelector {
-  typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES...>> type;
+  typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <typename ENTRY_BASE_TYPE, typename SUPPORTED_TYPES>
-struct APIWrapperSelector<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> {
-  typedef APIWrapper<ENTRY_BASE_TYPE, std::tuple<SUPPORTED_TYPES>> type;
+template <typename SUPPORTED_TYPES>
+struct APIWrapperSelector<std::tuple<SUPPORTED_TYPES>> {
+  typedef APIWrapper<std::tuple<SUPPORTED_TYPES>> type;
 };
 
-template <typename ENTRY_BASE_TYPE, typename... SUPPORTED_TYPES>
-using API = typename APIWrapperSelector<ENTRY_BASE_TYPE, SUPPORTED_TYPES...>::type;
+template <typename... SUPPORTED_TYPES>
+using API = typename APIWrapperSelector<SUPPORTED_TYPES...>::type;
 
 }  // namespace yoda
 

@@ -30,9 +30,42 @@ SOFTWARE.
 #include <unordered_map>
 #include <type_traits>
 
-#include "../../Bricks/template/rmref.h"
+#include "../../Bricks/exception.h"
+#include "../../Bricks/cerealize/cerealize.h"
 
 namespace yoda {
+
+// All user entries, which are supposed to be stored in Yoda, should be derived from this base structure.
+struct Padawan {
+  uint64_t ms;
+  virtual ~Padawan() = default;
+
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(ms));
+  }
+};
+
+struct NonexistentEntryAccessed : bricks::Exception {};
+
+// Wrapper to return possibly nonexistent entries.
+template <typename T_ENTRY>
+struct EntryWrapper {
+  EntryWrapper() = default;
+  explicit EntryWrapper(const T_ENTRY& entry) : exists(true), entry(&entry) {}
+  operator bool() const { return exists; }
+  const T_ENTRY& operator()() const {
+    if (exists) {
+      return *entry;
+    } else {
+      throw NonexistentEntryAccessed();
+    }
+  }
+
+ private:
+  bool exists = false;
+  const T_ENTRY* entry = nullptr;
+};
 
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
@@ -50,140 +83,8 @@ struct AllowOverwriteOnAdd {
   constexpr static bool allow_overwrite_on_add = true;
 };
 
-// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
-// Entry key type extractor, getter and setter.
-// Supports both `.key` data member and `.key() / .set_key()` methods.
-template <typename T_ENTRY>
-constexpr bool HasKeyMethod(char) {
-  return false;
-}
-
-template <typename T_ENTRY>
-constexpr auto HasKeyMethod(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
-  return true;
-}
-
-template <typename T_ENTRY, bool HAS_KEY_FUNCTION>
-struct KEY_ACCESSOR_IMPL {};
-
-template <typename T_ENTRY>
-struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
-  typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
-  static typename std::conditional<std::is_pod<T_KEY>::value, T_KEY, const T_KEY&>::type GetKey(
-      const T_ENTRY& entry) {
-    return entry.key;
-  }
-  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.key = key; }
-};
-
-template <typename T_ENTRY>
-struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
-  typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
-  static typename std::conditional<std::is_pod<T_KEY>::value, T_KEY, const T_KEY&>::type GetKey(
-      const T_ENTRY& entry) {
-    return entry.key();
-  }
-  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.set_key(key); }
-};
-
-template <typename T_ENTRY>
-using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyMethod<T_ENTRY>(0)>;
-
-template <typename T_ENTRY>
-typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
-  return KEY_ACCESSOR<T_ENTRY>::GetKey(entry);
-}
-
-template <typename T_ENTRY>
-using ENTRY_KEY_TYPE = bricks::rmconstref<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
-
-template <typename T_ENTRY>
-void SetKey(T_ENTRY& entry, ENTRY_KEY_TYPE<T_ENTRY> key) {
-  KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
-}
-
-// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
-// Associative container type selector. Attempts to use:
-// 1) std::unordered_map<T_KEY, T_ENTRY, wrapper for `T_KEY::Hash()`>
-// 2) std::unordered_map<T_KEY, T_ENTRY [, std::hash<T_KEY>]>
-// 3) std::map<T_KEY, T_ENTRY>
-// in the above order.
-
-template <typename T_KEY>
-constexpr bool HasHashFunction(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasHashFunction(int) -> decltype(std::declval<T_KEY>().Hash(), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasStdHash(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasStdHash(int) -> decltype(std::hash<T_KEY>(), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasOperatorEquals(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasOperatorEquals(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() == std::declval<T_KEY>()), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasOperatorLess(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasOperatorLess(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() < std::declval<T_KEY>()), bool()) {
-  return true;
-}
-
-template <typename T_KEY, typename T_ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR {};
-
-// `T_KEY::Hash()` and `T_KEY::operator==()` are defined, use std::unordered_map<> with user-defined hash
-// function.
-template <typename T_KEY, typename T_ENTRY, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true, DEFINES_STD_HASH> {
-  static_assert(HasOperatorEquals<T_KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
-  struct HashFunction {
-    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
-  };
-  typedef std::unordered_map<T_KEY, T_ENTRY, HashFunction> type;
-};
-
-// `T_KEY::Hash()` is not defined, but `std::hash<T_KEY>` and `T_KEY::operator==()` are, use
-// std::unordered_map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
-  static_assert(HasOperatorEquals<T_KEY>(0),
-                "The key type supports `std::hash<T_KEY>`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY> type;
-};
-
-// Neither `T_KEY::Hash()` nor `std::has<T_KEY>` are defined, use std::map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
-  static_assert(HasOperatorLess<T_KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
-  typedef std::map<T_KEY, T_ENTRY> type;
-};
-
-template <typename T_KEY, typename T_ENTRY>
-using T_MAP_TYPE =
-    typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0), HasStdHash<T_KEY>(0)>::type;
+// Helper structures that the user can derive their entries from
+// to implement particular Yoda functionality.
 
 // By deriving from `Nullable` (and adding `using Nullable::Nullable`),
 // the user indicates that their entry type supports creation of a non-existing instance.
