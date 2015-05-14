@@ -39,15 +39,11 @@ DEFINE_int32(yoda_test_port, 8991, "");
 using bricks::strings::Printf;
 
 TEST(Yoda, CoverTest) {
-  typedef yoda::API<yoda::KeyEntry<KeyValueEntry>, yoda::MatrixEntry<MatrixCell>, yoda::KeyEntry<StringKVEntry>>
-      TestAPI;
+  using yoda::API;
+  using yoda::KeyEntry;
+  using yoda::MatrixEntry;
+  typedef API<KeyEntry<KeyValueEntry>, MatrixEntry<MatrixCell>, KeyEntry<StringKVEntry>> TestAPI;
   TestAPI api("YodaCoverTest");
-
-  api.UnsafeStream().Emplace(new StringKVEntry());
-
-  while (!api.CaughtUp()) {
-    ;
-  }
 
   api.Add(KeyValueEntry(1, 42.0));
   EXPECT_EQ(42.0, api.Get(1).value);
@@ -98,10 +94,6 @@ TEST(Yoda, CoverTest) {
     Request request;
     explicit HappyEnding(Request request) : request(std::move(request)) {}
     void operator()(double result) { request(Printf("Magic: %.3lf", result)); }
-    // TODO(dkmz): Did we just realize this magic is unnecessary here? :-)
-    // void RESTful(Request r) {
-    //   r("Get me more of this stuff.");
-    // }
   };
 
   HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
