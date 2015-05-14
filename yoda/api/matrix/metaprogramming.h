@@ -55,20 +55,14 @@ struct ROW_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().row) T_ROW;
-  static typename bricks::copy_free<T_ROW> GetRow(
-      const T_ENTRY& entry) {
-    return entry.row;
-  }
+  static typename bricks::copy_free<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row; }
   static void SetRow(T_ENTRY& entry, T_ROW row) { entry.row = row; }
 };
 
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().row()) T_ROW;
-  static typename bricks::copy_free<T_ROW> GetRow(
-      const T_ENTRY& entry) {
-    return entry.row();
-  }
+  static typename bricks::copy_free<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row(); }
   static void SetRow(T_ENTRY& entry, T_ROW row) { entry.set_row(row); }
 };
 
@@ -104,20 +98,14 @@ struct COL_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().col) T_COL;
-  static typename bricks::copy_free<T_COL> GetCol(
-      const T_ENTRY& entry) {
-    return entry.col;
-  }
+  static typename bricks::copy_free<T_COL> GetCol(const T_ENTRY& entry) { return entry.col; }
   static void SetCol(T_ENTRY& entry, T_COL col) { entry.col = col; }
 };
 
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().col()) T_COL;
-  static typename bricks::copy_free<T_COL> GetCol(
-      const T_ENTRY& entry) {
-    return entry.col();
-  }
+  static typename bricks::copy_free<T_COL> GetCol(const T_ENTRY& entry) { return entry.col(); }
   static void SetCol(T_ENTRY& entry, T_COL col) { entry.set_col(col); }
 };
 

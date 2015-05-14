@@ -41,7 +41,7 @@ TEST(YodaMatrixEntry, Smoke) {
     // Ensure that the data has reached the the processor that maintains the in-memory state of the API.
   }
 
-  EXPECT_EQ(-1, api.AsyncGet(5, "x").get().value);
+  EXPECT_EQ(-1, api.AsyncGet(5, "x").Go().value);
   EXPECT_EQ(-1, api.Get(5, "x").value);
 
   // Callback version.
@@ -97,8 +97,8 @@ TEST(YodaMatrixEntry, Smoke) {
     ;  // Spin lock.
   }
 
-  ASSERT_THROW(api.AsyncGet(5, "y").get(), typename yoda::MatrixEntry<MatrixCell>::T_CELL_NOT_FOUND_EXCEPTION);
-  ASSERT_THROW(api.AsyncGet(5, "y").get(), yoda::CellNotFoundCoverException);
+  ASSERT_THROW(api.AsyncGet(5, "y").Go(), typename yoda::MatrixEntry<MatrixCell>::T_CELL_NOT_FOUND_EXCEPTION);
+  ASSERT_THROW(api.AsyncGet(5, "y").Go(), yoda::CellNotFoundCoverException);
   ASSERT_THROW(api.Get(1, "x"), typename yoda::MatrixEntry<MatrixCell>::T_CELL_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.Get(1, "x"), yoda::CellNotFoundCoverException);
   const CallbackTest cbt2(123, "no_entry", 0, false);
@@ -109,7 +109,7 @@ TEST(YodaMatrixEntry, Smoke) {
   }
 
   // Add three more key-value pairs, this time via the API.
-  api.AsyncAdd(MatrixCell(5, "y", 15)).wait();
+  api.AsyncAdd(MatrixCell(5, "y", 15)).Wait();
   api.Add(MatrixCell(1, "x", -9));
   const CallbackTest cbt3(42, "the_answer", 1);
   api.AsyncAdd(typename yoda::MatrixEntry<MatrixCell>::T_ENTRY(42, "the_answer", 1),
@@ -123,9 +123,9 @@ TEST(YodaMatrixEntry, Smoke) {
   EXPECT_EQ(1, api.Get(42, "the_answer").value);
 
   // Check that default policy doesn't allow overwriting on Add().
-  ASSERT_THROW(api.AsyncAdd(MatrixCell(5, "y", 8)).get(),
+  ASSERT_THROW(api.AsyncAdd(MatrixCell(5, "y", 8)).Go(),
                typename yoda::MatrixEntry<MatrixCell>::T_CELL_ALREADY_EXISTS_EXCEPTION);
-  ASSERT_THROW(api.AsyncAdd(MatrixCell(5, "y", 100)).get(), yoda::CellAlreadyExistsCoverException);
+  ASSERT_THROW(api.AsyncAdd(MatrixCell(5, "y", 100)).Go(), yoda::CellAlreadyExistsCoverException);
   ASSERT_THROW(api.Add(MatrixCell(1, "x", 2)),
                typename yoda::MatrixEntry<MatrixCell>::T_CELL_ALREADY_EXISTS_EXCEPTION);
   ASSERT_THROW(api.Add(MatrixCell(1, "x", 2)), yoda::CellAlreadyExistsCoverException);

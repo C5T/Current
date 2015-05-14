@@ -54,20 +54,14 @@ struct KEY_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
-  static typename bricks::copy_free<T_KEY> GetKey(
-      const T_ENTRY& entry) {
-    return entry.key;
-  }
+  static typename bricks::copy_free<T_KEY> GetKey(const T_ENTRY& entry) { return entry.key; }
   static void SetKey(T_ENTRY& entry, T_KEY key) { entry.key = key; }
 };
 
 template <typename T_ENTRY>
 struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
-  static typename bricks::copy_free<T_KEY> GetKey(
-      const T_ENTRY& entry) {
-    return entry.key();
-  }
+  static typename bricks::copy_free<T_KEY> GetKey(const T_ENTRY& entry) { return entry.key(); }
   static void SetKey(T_ENTRY& entry, T_KEY key) { entry.set_key(key); }
 };
 
