@@ -47,6 +47,7 @@ using bricks::strings::KeyValueParsing;
 using bricks::strings::KeyValueNoValueException;
 using bricks::strings::KeyValueMultipleValuesException;
 using bricks::strings::ByWhitespace;
+using bricks::strings::ByLines;
 using bricks::strings::SlowEditDistance;
 using bricks::strings::FastEditDistance;
 
@@ -170,6 +171,9 @@ TEST(JoinAndSplit, Split) {
 
   EXPECT_EQ("one two three", Join(Split<ByWhitespace>("one two three"), ' '));
   EXPECT_EQ("one two three", Join(Split<ByWhitespace>("\t \tone\t \ttwo\t \tthree\t \t"), ' '));
+
+  EXPECT_EQ("one two|three", Join(Split<ByLines>("one two\nthree"), '|'));
+  EXPECT_EQ("one|two three", Join(Split<ByLines>("\r\n\n\r\none\n\r\n\n\r\ntwo three"), '|'));
 
   // Note that `Split` on a predicate splits on the characters for which the predicate returns `false`,
   // and keeps the characters where the predicate returns `true`.
