@@ -45,8 +45,6 @@ struct KeyValueEntry : Padawan {
 CEREAL_REGISTER_TYPE(KeyValueEntry);
 
 struct StringKVEntry : Padawan {
-  typedef Padawan CEREAL_BASE_TYPE;
-
   std::string key;
   std::string foo;
 
@@ -61,8 +59,6 @@ struct StringKVEntry : Padawan {
 CEREAL_REGISTER_TYPE(StringKVEntry);
 
 struct MatrixCell : Padawan {
-  typedef Padawan CEREAL_BASE_TYPE;
-
   size_t row;
   std::string col;
   int value;
