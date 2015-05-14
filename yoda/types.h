@@ -36,8 +36,10 @@ SOFTWARE.
 
 namespace yoda {
 
-// All user entries, which are supposed to be stored in Yoda, should be derived from this base structure.
+// All user entries, which are supposed to be stored in Yoda, should be derived from this base class.
 struct Padawan {
+  typedef Padawan CEREAL_BASE_TYPE;
+
   uint64_t ms;
   virtual ~Padawan() = default;
 
