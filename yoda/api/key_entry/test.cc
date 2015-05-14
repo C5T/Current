@@ -240,15 +240,8 @@ TEST(YodaKeyEntry, SmokeImpl) {
 TEST(YodaKeyEntry, Smoke) {
   typedef yoda::API<yoda::KeyEntry<KeyValueEntry>> TestAPI;
   TestAPI api("YodaKeyEntrySmokeTest");
-
-  // Add the first key-value pair.
-  // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.
-  api.UnsafeStream().Emplace(new KeyValueEntry(2, 0.5));
-
-  while (!api.CaughtUp()) {
-    // Spin lock, for the purposes of this test.
-    // Ensure that the data has reached the the processor that maintains the in-memory state of the API.
-  }
+ 
+  api.AsyncAdd(KeyValueEntry(2, 0.5)).Wait();
 
   // Future expanded syntax.
   yoda::Future<KeyValueEntry> f1 = api.AsyncGet(2);

@@ -32,15 +32,7 @@ TEST(YodaMatrixEntry, Smoke) {
   typedef yoda::API<yoda::MatrixEntry<MatrixCell>> TestAPI;
   TestAPI api("YodaMatrixEntrySmokeTest");
 
-  // Add the first key-value pair.
-  // Use `UnsafeStream()`, since generally the only way to access the underlying stream is to make API calls.
-  api.UnsafeStream().Emplace(new MatrixCell(5, "x", -1));
-
-  while (!api.CaughtUp()) {
-    // Spin lock, for the purposes of this test.
-    // Ensure that the data has reached the the processor that maintains the in-memory state of the API.
-  }
-
+  api.AsyncAdd(MatrixCell(5, "x", -1)).Wait();
   EXPECT_EQ(-1, api.AsyncGet(5, "x").Go().value);
   EXPECT_EQ(-1, api.Get(5, "x").value);
 
