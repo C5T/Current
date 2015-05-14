@@ -31,8 +31,6 @@ SOFTWARE.
 using yoda::Padawan;
 
 struct KeyValueEntry : Padawan {
-  typedef Padawan CEREAL_BASE_TYPE;
-
   int key;
   double value;
 
