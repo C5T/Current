@@ -61,8 +61,28 @@ TEST(Yoda, CoverTest) {
 
   // Asynchronous call of user function.
   bool done = false;
-  EXPECT_EQ("bar", api.Get("foo").foo);
-  api.Call([&](TestAPI::T_CONTAINER_WRAPPER& cw) {
+  api.Call([&](TestAPI::T_CONTAINER_WRAPPER cw) {
+    auto KVEntries = cw.GetAccessor(KeyEntry<KeyValueEntry>());
+
+    EXPECT_TRUE(KVEntries.Exists(1));
+    EXPECT_FALSE(KVEntries.Exists(100500));
+
+    // `Get()` syntax.
+    EXPECT_EQ(42.0, static_cast<const KeyValueEntry&>(KVEntries.Get(1)).value);
+    EXPECT_FALSE(KVEntries.Get(56));
+
+    // `operator[]` syntax.
+    EXPECT_EQ(42.0, static_cast<const KeyValueEntry&>(KVEntries[1]).value);
+    KeyValueEntry kve34;
+    ASSERT_THROW(kve34 = KVEntries[34], yoda::KeyNotFoundCoverException);
+
+    auto MutableKVE = cw.GetMutator(KeyEntry<KeyValueEntry>());
+    MutableKVE.Add(KeyValueEntry(128, 512.0));
+    EXPECT_EQ(512.0, static_cast<const KeyValueEntry&>(MutableKVE[128]).value);
+
+    auto MutableMatrix = cw.GetMutator(MatrixEntry<MatrixCell>());
+    EXPECT_EQ(2, static_cast<const MatrixCell&>(MutableMatrix.Get(1, "test")).value);
+/*    
     const bool exists = cw.Get(1);
     EXPECT_TRUE(exists);
     yoda::EntryWrapper<KeyValueEntry> entry = cw.Get(1);
@@ -86,10 +106,14 @@ TEST(Yoda, CoverTest) {
     cw.Add(StringKVEntry("result", Printf("%.2f", result)));
     cw.Add(MatrixCell(123, "test", 11));
     cw.Add(KeyValueEntry(42, 1.23));
-
+*/
     done = true;
   });
 
+  while (!done || !api.CaughtUp()) {
+    ; // Spin lock.
+  }
+/*
   struct HappyEnding {
     Request request;
     explicit HappyEnding(Request request) : request(std::move(request)) {}
@@ -112,4 +136,5 @@ TEST(Yoda, CoverTest) {
   EXPECT_EQ("160.30", api.Get("result").foo);
   EXPECT_EQ(11, api.Get(123, "test").value);
   EXPECT_EQ(1.23, api.Get(42).value);
+*/
 }

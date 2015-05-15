@@ -208,21 +208,12 @@ struct ContainerWrapper {
   ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container(container), stream(stream) {}
 
-  template <typename... XS>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))
-  Get(XS&&... xs) const {
-    return std::forward<decltype(
-        std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))>(
-        container(container_wrapper::Get(), std::forward<XS>(xs)...));
-  }
+  template <typename T>
+  decltype(std::declval<YodaContainer<YT>>()(std::declval<T>())) GetAccessor(T t) const { return container(t); }
 
-  template <typename... XS>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Add>(),
-                                             std::declval<typename YT::T_STREAM_TYPE>(),
-                                             std::declval<XS>()...))
-  Add(XS&&... xs) {
-    container(container_wrapper::Add(), stream, std::forward<XS>(xs)...);
-  }
+  template <typename T>
+  decltype(std::declval<YodaContainer<YT>>()(std::declval<T>(), std::declval<typename YT::T_STREAM_TYPE>())) 
+      GetMutator(T t) const { return container(t, stream); }
 
  private:
   YodaContainer<YT>& container;
@@ -241,7 +232,7 @@ struct StreamListener {
     explicit MQMessageEntry(std::unique_ptr<Padawan>&& entry) : entry(std::move(entry)) {}
 
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>&,
+                         ContainerWrapper<YT>,
                          typename YT::T_STREAM_TYPE&) override {
       MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
     }
@@ -284,7 +275,7 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
   virtual void Process(YodaContainer<YT>& container,
-                       ContainerWrapper<YT>& container_wrapper,
+                       ContainerWrapper<YT> container_wrapper,
                        typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
@@ -292,7 +283,7 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
   explicit MQListener(YodaContainer<YT>& container,
-                      ContainerWrapper<YT>& container_wrapper,
+                      ContainerWrapper<YT> container_wrapper,
                       typename YT::T_STREAM_TYPE& stream)
       : container_(container), container_wrapper_(container_wrapper), stream_(stream) {}
 
@@ -302,7 +293,7 @@ struct MQListener {
   }
 
   YodaContainer<YT>& container_;
-  ContainerWrapper<YT>& container_wrapper_;
+  ContainerWrapper<YT> container_wrapper_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 

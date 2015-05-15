@@ -33,13 +33,16 @@ SOFTWARE.
 #include "exceptions.h"
 #include "metaprogramming.h"
 
-#include "../../types.h"
+#include "../../exceptions.h"
 #include "../../metaprogramming.h"
 #include "../../policy.h"
-#include "../../exceptions.h"
+#include "../../types.h"
+
+#include "../../../../Bricks/template/pod.h"
 
 namespace yoda {
 
+using bricks::copy_free;
 using namespace sfinae;
 
 // User type interface: Use `KeyEntry<MyKeyEntry>` in Yoda's type list for required storage types
@@ -81,7 +84,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
                           typename YET::T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>&,
+                         ContainerWrapper<YT>,
                          typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
@@ -108,7 +111,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>&,
+                         ContainerWrapper<YT>,
                          typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
@@ -161,10 +164,10 @@ struct Container<YT, KeyEntry<ENTRY>> {
   typedef KeyEntry<ENTRY> YET;
 
   // Event: The entry has been scanned from the stream.
-  void operator()(const typename YET::T_ENTRY& entry) { map_[GetKey(entry)] = entry; }
+  void operator()(const ENTRY& entry) { map_[GetKey(entry)] = entry; }
 
   // Event: `Get()`.
-  void operator()(typename YodaImpl<YT, KeyEntry<typename YET::T_ENTRY>>::MQMessageGet& msg) {
+  void operator()(typename YodaImpl<YT, YET>::MQMessageGet& msg) {
     const auto cit = map_.find(msg.key);
     if (cit != map_.end()) {
       // The entry has been found.
@@ -191,7 +194,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
   // Event: `Add()`.
-  void operator()(typename YodaImpl<YT, KeyEntry<typename YET::T_ENTRY>>::MQMessageAdd& msg,
+  void operator()(typename YodaImpl<YT, YET>::MQMessageAdd& msg,
                   typename YT::T_STREAM_TYPE& stream) {
     const bool key_exists = static_cast<bool>(map_.count(GetKey(msg.e)));
     if (key_exists) {
@@ -212,15 +215,15 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
   // Synchronous `Get()` to be used in user functions.
-  const EntryWrapper<typename YET::T_ENTRY> operator()(container_wrapper::Get,
-                                                       const typename YET::T_KEY& key) const {
+  const EntryWrapper<ENTRY> operator()(container_wrapper::Get,
+                                       const typename YET::T_KEY& key) const {
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       // The entry has been found.
-      return EntryWrapper<typename YET::T_ENTRY>(cit->second);
+      return EntryWrapper<ENTRY>(cit->second);
     } else {
       // The entry has not been found.
-      return EntryWrapper<typename YET::T_ENTRY>();
+      return EntryWrapper<ENTRY>();
     }
   }
 
@@ -236,6 +239,59 @@ struct Container<YT, KeyEntry<ENTRY>> {
       map_[GetKey(entry)] = entry;
       const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
     }
+  }
+
+  struct Accessor {
+    Accessor(Container<YT, YET>& container) : container(container) {}
+
+    bool Exists(const copy_free<typename YET::T_KEY> key) const {
+      return container.map_.count(key);
+    }
+
+    const EntryWrapper<ENTRY> Get(const copy_free<typename YET::T_KEY> key) const {
+      const auto cit = container.map_.find(key);
+      if (cit != container.map_.end()) {
+        return EntryWrapper<ENTRY>(cit->second);
+      } else {
+        return EntryWrapper<ENTRY>();
+      }
+    }
+
+    // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
+    const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
+      const auto cit = container.map_.find(key);
+      if (cit != container.map_.end()) {
+        return cit->second;
+      } else {
+        throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
+      }
+    }
+
+   protected:
+    Container<YT, YET>& container;
+  };
+
+  struct Mutator : Accessor {
+    Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream) :
+        Accessor(container), container(container), stream(stream) {}
+
+    // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
+    void Add(const ENTRY& entry) {
+      container.map_[GetKey(entry)] = entry;
+      // NOTE: runtime error - mutex lock failed.
+      // stream.Publish(entry);
+    }
+   private:
+    Container<YT, YET>& container;
+    typename YT::T_STREAM_TYPE& stream;
+  };
+
+  Accessor operator()(YET) {
+    return Accessor(*this);
+  }
+
+  Mutator operator()(YET, const typename YT::T_STREAM_TYPE& stream) {
+    return Mutator(*this, const_cast<typename YT::T_STREAM_TYPE&>(stream));
   }
 
  private:
