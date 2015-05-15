@@ -45,6 +45,7 @@ enum class EmptyFields { Skip, Keep };
 // Throw:   Throw an exception if the input string is malfomed.
 enum class KeyValueParsing { Silent, Throw };
 enum class ByWhitespace { UseIsSpace };
+enum class ByLines { Use0Aor0D };
 
 struct KeyValueNoValueException : Exception {};
 struct KeyValueMultipleValuesException : Exception {};
@@ -61,18 +62,23 @@ struct MatchImpl<char> {
 
 template <>
 struct MatchImpl<ByWhitespace> {
-  inline static bool Match(char a, ByWhitespace) { return !!(::isspace(a)); }
+  inline static bool Match(char c, ByWhitespace) { return !!(::isspace(c)); }
+};
+
+template <>
+struct MatchImpl<ByLines> {
+  inline static bool Match(char c, ByLines) { return c == '\n' || c == '\r'; }
 };
 
 template <>
 struct MatchImpl<std::string> {
-  inline static bool Match(char a, const std::string& b) { return b.find(a) != std::string::npos; }
+  inline static bool Match(char c, const std::string& s) { return s.find(c) != std::string::npos; }
 };
 
 template <size_t N>
 struct MatchImpl<const char[N]> {
-  static typename std::enable_if<(N > 0), bool>::type Match(char a, const char b[N]) {
-    return std::find(b, b + N, a) != (b + N);
+  static typename std::enable_if<(N > 0), bool>::type Match(char c, const char s[N]) {
+    return std::find(s, s + N, c) != (s + N);
   }
 };
 
@@ -88,9 +94,15 @@ inline typename std::enable_if<weed::call_with<T, char>::implemented, bool>::typ
 
 template <typename T>
 struct DefaultSeparator {};
+
 template <>
 struct DefaultSeparator<ByWhitespace> {
   static inline ByWhitespace value() { return ByWhitespace::UseIsSpace; }
+};
+
+template <>
+struct DefaultSeparator<ByLines> {
+  static inline ByLines value() { return ByLines::Use0Aor0D; }
 };
 
 }  // namespace impl
