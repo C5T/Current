@@ -358,9 +358,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
   Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {
-    // TODO(dkorolev): const
-    return Mutator(*this, const_cast<typename YT::T_STREAM_TYPE&>(stream));
+  Mutator operator()(container_wrapper::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+    return Mutator(*this, std::ref(stream));
   }
 
  private:

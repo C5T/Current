@@ -30,6 +30,7 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_METAPROGRAMMING_H
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
+#include <functional>
 #include <utility>
 
 #include "../sherlock.h"
@@ -225,8 +226,10 @@ struct ContainerWrapper {
 
   // Container getter for `Mutator`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_wrapper::RetrieveMutator<T>, const typename YT::T_STREAM_TYPE&> GetMutator()
-      const {
+  CWT<YodaContainer<YT>,
+      container_wrapper::RetrieveMutator<T>,
+      std::reference_wrapper<typename YT::T_STREAM_TYPE>>
+  GetMutator() const {
     return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
   }
 
