@@ -289,7 +289,6 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
   Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  // TODO(dkorolev): This one should not be const.
   Mutator operator()(container_wrapper::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
