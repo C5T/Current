@@ -386,7 +386,9 @@ struct Get {};
 struct AsyncGet {};
 struct Add {};
 struct AsyncAdd {};
-struct AsyncCallFunction {};
+
+/// TODO(dkorolev): Remove this code.
+/// struct AsyncCallFunction {};
 
 template <typename YT, typename API>
 struct APICallsWrapper {
@@ -420,10 +422,11 @@ struct APICallsWrapper {
     return api(apicalls::AsyncAdd(), xs...);
   }
 
-  template <typename... XS>
-  CWT<API, apicalls::AsyncCallFunction, XS...> AsyncCallFunction(XS&&... xs) {
-    return api(apicalls::AsyncCallFunction(), xs...);
-  }
+  /// TODO(dkorolev): Remove this code.
+  /// template <typename... XS>
+  /// CWT<API, apicalls::AsyncCallFunction, XS...> AsyncCallFunction(XS&&... xs) {
+  ///   return api(apicalls::AsyncCallFunction(), xs...);
+  /// }
 
   API api;
 };

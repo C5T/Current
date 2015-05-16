@@ -211,31 +211,33 @@ struct Container<YT, KeyEntry<ENTRY>> {
     }
   }
 
-  // Synchronous `Get()` to be used in user functions.
-  const EntryWrapper<ENTRY> operator()(container_wrapper::Get, const typename YET::T_KEY& key) const {
-    const auto cit = map_.find(key);
-    if (cit != map_.end()) {
-      // The entry has been found.
-      return EntryWrapper<ENTRY>(cit->second);
-    } else {
-      // The entry has not been found.
-      return EntryWrapper<ENTRY>();
-    }
-  }
+  /// TODO(dkorolev): Remove this code, it's been replaced by an `Accessor`.
+  /// Synchronous `Get()` to be used in user functions.
+  /// const EntryWrapper<ENTRY> operator()(container_wrapper::Get, const typename YET::T_KEY& key) const {
+  ///   const auto cit = map_.find(key);
+  ///   if (cit != map_.end()) {
+  ///     // The entry has been found.
+  ///     return EntryWrapper<ENTRY>(cit->second);
+  ///   } else {
+  ///     // The entry has not been found.
+  ///     return EntryWrapper<ENTRY>();
+  ///   }
+  /// }
 
-  // Synchronous `Add()` to be used in user functions.
-  // NOTE: `stream` is passed via const reference to make `decltype()` work.
-  void operator()(container_wrapper::Add,
-                  const typename YT::T_STREAM_TYPE& stream,
-                  const typename YET::T_ENTRY& entry) {
-    const bool key_exists = static_cast<bool>(map_.count(GetKey(entry)));
-    if (key_exists) {
-      throw typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(entry);
-    } else {
-      map_[GetKey(entry)] = entry;
-      const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
-    }
-  }
+  /// TODO(dkorolev): Remove this code, it's been replaced by a `Mutator`.
+  /// Synchronous `Add()` to be used in user functions.
+  /// NOTE: `stream` is passed via const reference to make `decltype()` work.
+  /// void operator()(container_wrapper::Add,
+  ///                 const typename YT::T_STREAM_TYPE& stream,
+  ///                 const typename YET::T_ENTRY& entry) {
+  ///   const bool key_exists = static_cast<bool>(map_.count(GetKey(entry)));
+  ///   if (key_exists) {
+  ///     throw typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(entry);
+  ///   } else {
+  ///     map_[GetKey(entry)] = entry;
+  ///     const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
+  ///   }
+  /// }
 
   class Accessor {
    public:
@@ -285,7 +287,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) { return Accessor(*this); }
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
   // TODO(dkorolev): This one should not be const.
   Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {

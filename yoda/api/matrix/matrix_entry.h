@@ -356,7 +356,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) { return Accessor(*this); }
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
   Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {
     // TODO(dkorolev): const
