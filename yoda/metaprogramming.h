@@ -35,6 +35,7 @@ SOFTWARE.
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
+#include "../../Bricks/template/weed.h"
 #include "../../Bricks/mq/inmemory/mq.h"
 
 namespace yoda {
@@ -199,21 +200,35 @@ template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
 namespace container_wrapper {
+template<typename T>
+struct RetrieveAccessor {};
+template<typename T>
+struct RetrieveMutator {};
+
 struct Get {};
 struct Add {};
 }  // namespace container_wrapper
 
 template <typename YT>
 struct ContainerWrapper {
+  template<typename T, typename... TS> using CWT = bricks::weed::call_with_type<T, TS...>;
+
   ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container(container), stream(stream) {}
 
+  // Container getter for `Accessor`.
   template <typename T>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<T>())) GetAccessor(T t) const { return container(t); }
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>>
+  GetAccessor() const  {
+    return container(container_wrapper::RetrieveAccessor<T>());
+  }
 
+  // Container getter for `Mutator`.
   template <typename T>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<T>(), std::declval<typename YT::T_STREAM_TYPE>())) 
-      GetMutator(T t) const { return container(t, stream); }
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveMutator<T>, const typename YT::T_STREAM_TYPE&>
+  GetMutator() const {
+    return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
+  }
 
  private:
   YodaContainer<YT>& container;
@@ -377,34 +392,36 @@ template <typename YT, typename API>
 struct APICallsWrapper {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
-  APICallsWrapper() = delete;
-  APICallsWrapper(typename YT::T_MQ& mq) : api(mq) {}
+  template<typename T, typename... TS>
+  using CWT = bricks::weed::call_with_type<T, TS...>;
 
-  // User-facing API calls, proxied to the chain of per-type Yoda API-s.
+  APICallsWrapper() = delete;
+  explicit APICallsWrapper(typename YT::T_MQ& mq) : api(mq) {}
+
+  // User-facing API calls, proxied to the chain of per-type Yoda API-s
+  // via the `using T1::operator(); using T2::operator();` trick.
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::Get(), std::declval<XS>()...)) Get(XS&&... xs) {
+  CWT<API, apicalls::Get, XS...> Get(XS&&... xs) {
     return api(apicalls::Get(), xs...);
   }
 
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::Add(), std::declval<XS>()...)) Add(XS&&... xs) {
+  CWT<API, apicalls::Add, XS...> Add(XS&&... xs) {
     return api(apicalls::Add(), xs...);
   }
 
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::AsyncGet(), std::declval<XS>()...)) AsyncGet(XS&&... xs) {
+  CWT<API, apicalls::AsyncGet, XS...> AsyncGet(XS&&... xs) {
     return api(apicalls::AsyncGet(), xs...);
   }
 
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::AsyncAdd(), std::declval<XS>()...)) AsyncAdd(XS&&... xs) {
+  CWT<API, apicalls::AsyncAdd, XS...> AsyncAdd(XS&&... xs) {
     return api(apicalls::AsyncAdd(), xs...);
   }
 
-  // TODO(dkorolev): I should really convert these into `#define`-s. And I will.
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::AsyncCallFunction(), std::declval<XS>()...)) AsyncCallFunction(
-      XS&&... xs) {
+  CWT<API, apicalls::AsyncCallFunction, XS...> AsyncCallFunction(XS&&... xs) {
     return api(apicalls::AsyncCallFunction(), xs...);
   }
 

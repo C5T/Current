@@ -195,6 +195,9 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef MatrixEntry<ENTRY> YET;
 
+  template <typename T>
+  using CF = bricks::copy_free<T>;
+
   // Event: The entry has been scanned from the stream.
   void operator()(const typename YET::T_ENTRY& entry) {
     forward_[GetRow(entry)][GetCol(entry)] = entry;
@@ -292,21 +295,23 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     }
   }
 
-  struct Accessor {
-    Accessor(Container<YT, YET>& container) : container(container) {}
+  class Accessor {
+   public:
+    Accessor() = delete;
+    Accessor(Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(const copy_free<typename YET::T_ROW> row, const copy_free<typename YET::T_COL> col) const {
-      const auto rit = container.forward_.find(row);
-      if (rit != container.forward_.end()) {
+    bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
+      const auto rit = immutable_.forward_.find(row);
+      if (rit != immutable_.forward_.end()) {
         return rit->second.count(col);
       } else {
         return false;
       }
     }
 
-    const EntryWrapper<ENTRY> Get(const copy_free<typename YET::T_ROW> row, const copy_free<typename YET::T_COL> col) const {
-     const auto rit = container.forward_.find(row);
-      if (rit != container.forward_.end()) {
+    const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
+     const auto rit = immutable_.forward_.find(row);
+      if (rit != immutable_.forward_.end()) {
         const auto cit = rit->second.find(col);
         if (cit != rit->second.end()) {
           return EntryWrapper<typename YET::T_ENTRY>(cit->second);
@@ -318,39 +323,43 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 /*
     // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
     const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
-      const auto cit = container.map_.find(key);
-      if (cit != container.map_.end()) {
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
         return cit->second;
       } else {
         throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
       }
     }
 */
-   protected:
-    Container<YT, YET>& container;
+
+   private:
+    const Container<YT, YET>& immutable_;
   };
 
-  struct Mutator : Accessor {
+  class Mutator : public Accessor {
+   public:
     Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream) :
-        Accessor(container), container(container), stream(stream) {}
+        Accessor(container), mutable_(container), stream_(stream) {}
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
-      container.forward_[GetRow(entry)][GetCol(entry)] = entry;
-      container.transposed_[GetCol(entry)][GetRow(entry)] = entry;
+      mutable_.forward_[GetRow(entry)][GetCol(entry)] = entry;
+      mutable_.transposed_[GetCol(entry)][GetRow(entry)] = entry;
       // NOTE: runtime error - mutex lock failed.
-      // stream.Publish(entry);
+      // stream_.Publish(entry);
     }
+
    private:
-    Container<YT, YET>& container;
-    typename YT::T_STREAM_TYPE& stream;
+    Container<YT, YET>& mutable_;
+    typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(YET) {
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) {
     return Accessor(*this);
   }
 
-  Mutator operator()(YET, const typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {
+    // TODO(dkorolev): const
     return Mutator(*this, const_cast<typename YT::T_STREAM_TYPE&>(stream));
   }
 

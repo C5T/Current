@@ -42,9 +42,6 @@ SOFTWARE.
 
 namespace yoda {
 
-using bricks::copy_free;
-using namespace sfinae;
-
 // User type interface: Use `KeyEntry<MyKeyEntry>` in Yoda's type list for required storage types
 // for Yoda to support key-entry (key-value) accessors over the type `MyKeyEntry`.
 template <typename ENTRY>
@@ -241,16 +238,18 @@ struct Container<YT, KeyEntry<ENTRY>> {
     }
   }
 
-  struct Accessor {
-    Accessor(Container<YT, YET>& container) : container(container) {}
+  class Accessor {
+   public:
+    Accessor() = delete;
+    explicit Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(const copy_free<typename YET::T_KEY> key) const {
-      return container.map_.count(key);
+    bool Exists(bricks::copy_free<typename YET::T_KEY> key) const {
+      return immutable_.map_.count(key);
     }
 
-    const EntryWrapper<ENTRY> Get(const copy_free<typename YET::T_KEY> key) const {
-      const auto cit = container.map_.find(key);
-      if (cit != container.map_.end()) {
+    const EntryWrapper<ENTRY> Get(bricks::copy_free<typename YET::T_KEY> key) const {
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
         return EntryWrapper<ENTRY>(cit->second);
       } else {
         return EntryWrapper<ENTRY>();
@@ -258,39 +257,43 @@ struct Container<YT, KeyEntry<ENTRY>> {
     }
 
     // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
-    const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
-      const auto cit = container.map_.find(key);
-      if (cit != container.map_.end()) {
+    const ENTRY& operator[](bricks::copy_free<typename YET::T_KEY> key) const {
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
         return cit->second;
       } else {
         throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
       }
     }
 
-   protected:
-    Container<YT, YET>& container;
+   private:
+    const Container<YT, YET>& immutable_;
   };
 
-  struct Mutator : Accessor {
+  class Mutator : public Accessor {
+   public:
+    Mutator() = delete;
     Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream) :
-        Accessor(container), container(container), stream(stream) {}
+        Accessor(container), mutable_(container), stream_(stream) {}
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
-      container.map_[GetKey(entry)] = entry;
+      mutable_.map_[GetKey(entry)] = entry;
       // NOTE: runtime error - mutex lock failed.
-      // stream.Publish(entry);
+      // stream_.Publish(entry);
     }
+
    private:
-    Container<YT, YET>& container;
-    typename YT::T_STREAM_TYPE& stream;
+    Container<YT, YET>& mutable_;
+    typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(YET) {
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) {
     return Accessor(*this);
   }
 
-  Mutator operator()(YET, const typename YT::T_STREAM_TYPE& stream) {
+  // TODO(dkorolev): This one should not be const.
+  Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, const_cast<typename YT::T_STREAM_TYPE&>(stream));
   }
 
