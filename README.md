@@ -423,6 +423,7 @@ struct NEG {
   // Just because we need to pick one common name,
   // otherwise more `using`-s will be needed.
   int operator()(TYPE, int a) { return -a; }
+  template<typename T> void DispatchToAll(T& x) { x.result += "NEG\n"; }
 };
 
 struct ADD {
@@ -433,6 +434,7 @@ struct ADD {
   int operator()(TYPE, int a, int b, T c) {
     return a + b + AsInt(c);
   }
+  template<typename T> void DispatchToAll(T& x) { x.result += "ADD\n"; }
 };
 
 // Since "has-a" is used instead of "is-a",
@@ -443,6 +445,7 @@ struct MUL : ADD {
   struct TYPE {};
   int operator()(TYPE, int a, int b) { return a * b; }
   int operator()(TYPE, int a, int b, int c) { return a * b * c; }
+  template<typename T> void DispatchToAll(T& x) { x.result += "MUL\n"; }
 };
   
 // User-friendly method names, internally dispatching calls via `operator()`.
@@ -502,6 +505,12 @@ EXPECT_EQ(9240, UserFriendlyArithmetics().Mul(20, 21, 22));
 // have division operation defined.
 //
 // UserFriendlyArithmetics().Div(100, 5);
+struct Magic {
+  std::string result;
+};
+Magic magic;
+UserFriendlyArithmetics().DispatchToAll(magic);
+EXPECT_EQ("NEG\nADD\nMUL\n", magic.result);
 
 // RTTI.
 struct BASE {

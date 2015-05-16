@@ -17,7 +17,8 @@ CPPFLAGS=-std=c++11 -Wall -W
 ifeq ($(NDEBUG),1)
 CPPFLAGS+= -O3
 else
-CPPFLAGS+= -g
+# Commented out by @dkorolev -- this flag makes compilation slower for no good reason.
+# CPPFLAGS+= -g
 endif
 LDFLAGS=-pthread
 

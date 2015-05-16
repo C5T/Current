@@ -98,6 +98,8 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
     // Just because we need to pick one common name,
     // otherwise more `using`-s will be needed.
     int operator()(TYPE, int a) { return -a; }
+
+    template<typename T> void DispatchToAll(T& x) { x.result += "NEG\n"; }
   };
   
   struct ADD {
@@ -108,6 +110,8 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
     int operator()(TYPE, int a, int b, T c) {
       return a + b + AsInt(c);
     }
+
+    template<typename T> void DispatchToAll(T& x) { x.result += "ADD\n"; }
   };
   
   // Since "has-a" is used instead of "is-a",
@@ -118,6 +122,8 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
     struct TYPE {};
     int operator()(TYPE, int a, int b) { return a * b; }
     int operator()(TYPE, int a, int b, int c) { return a * b * c; }
+
+    template<typename T> void DispatchToAll(T& x) { x.result += "MUL\n"; }
   };
     
   // User-friendly method names, internally dispatching calls via `operator()`.
@@ -179,6 +185,13 @@ TEST(TemplateMetaprogramming, Combine) {
   // have division operation defined.
   //
   // UserFriendlyArithmetics().Div(100, 5);
+
+  struct Magic {
+    std::string result;
+  };
+  Magic magic;
+  UserFriendlyArithmetics().DispatchToAll(magic);
+  EXPECT_EQ("NEG\nADD\nMUL\n", magic.result);
 }
   
   // RTTI.
