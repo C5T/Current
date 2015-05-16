@@ -156,7 +156,9 @@ TEST(YodaKeyEntry, SmokeImpl) {
   };
 
   const CallbackTest cbt1(2, 0.5);
-  api_impl(yoda::apicalls::AsyncGet(), 2, std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
+  api_impl(yoda::apicalls::AsyncGet(),
+           2,
+           std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
            std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
   while (!cbt1.called) {
     ;  // Spin lock.
@@ -185,7 +187,9 @@ TEST(YodaKeyEntry, SmokeImpl) {
   ASSERT_THROW(api_impl(yoda::apicalls::Get(), 6), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api_impl(yoda::apicalls::Get(), 6), yoda::KeyNotFoundCoverException);
   const CallbackTest cbt2(7, 0.0, false);
-  api_impl(yoda::apicalls::AsyncGet(), 7, std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
+  api_impl(yoda::apicalls::AsyncGet(),
+           7,
+           std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
            std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
   while (!cbt2.called) {
     ;  // Spin lock.
@@ -195,8 +199,10 @@ TEST(YodaKeyEntry, SmokeImpl) {
   api_impl(yoda::apicalls::AsyncAdd(), KeyValueEntry(5, 0.2)).Wait();
   api_impl(yoda::apicalls::Add(), KeyValueEntry(6, 0.17));
   const CallbackTest cbt3(7, 0.76);
-  api_impl(yoda::apicalls::AsyncAdd(), yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76),
-           std::bind(&CallbackTest::added, &cbt3), std::bind(&CallbackTest::already_exists, &cbt3));
+  api_impl(yoda::apicalls::AsyncAdd(),
+           yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76),
+           std::bind(&CallbackTest::added, &cbt3),
+           std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called) {
     ;  // Spin lock.
   }
@@ -210,7 +216,9 @@ TEST(YodaKeyEntry, SmokeImpl) {
                yoda::KeyEntry<KeyValueEntry>::T_KEY_ALREADY_EXISTS_EXCEPTION);
   ASSERT_THROW(api_impl(yoda::apicalls::Add(), KeyValueEntry(6, 0.28)), yoda::KeyAlreadyExistsCoverException);
   const CallbackTest cbt4(7, 0.0, false);
-  api_impl(yoda::apicalls::AsyncAdd(), KeyValueEntry(7, 0.0), std::bind(&CallbackTest::added, &cbt4),
+  api_impl(yoda::apicalls::AsyncAdd(),
+           KeyValueEntry(7, 0.0),
+           std::bind(&CallbackTest::added, &cbt4),
            std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called) {
     ;  // Spin lock.
@@ -240,7 +248,7 @@ TEST(YodaKeyEntry, SmokeImpl) {
 TEST(YodaKeyEntry, Smoke) {
   typedef yoda::API<yoda::KeyEntry<KeyValueEntry>> TestAPI;
   TestAPI api("YodaKeyEntrySmokeTest");
- 
+
   api.AsyncAdd(KeyValueEntry(2, 0.5)).Wait();
 
   // Future expanded syntax.
@@ -288,7 +296,8 @@ TEST(YodaKeyEntry, Smoke) {
   };
 
   const CallbackTest cbt1(2, 0.5);
-  api.AsyncGet(2, std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
+  api.AsyncGet(2,
+               std::bind(&CallbackTest::found, &cbt1, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt1, std::placeholders::_1));
   while (!cbt1.called) {
     ;  // Spin lock.
@@ -310,7 +319,8 @@ TEST(YodaKeyEntry, Smoke) {
   ASSERT_THROW(api.Get(6), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.Get(6), yoda::KeyNotFoundCoverException);
   const CallbackTest cbt2(7, 0.0, false);
-  api.AsyncGet(7, std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
+  api.AsyncGet(7,
+               std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1));
   while (!cbt2.called) {
     ;  // Spin lock.
@@ -320,7 +330,8 @@ TEST(YodaKeyEntry, Smoke) {
   api.AsyncAdd(KeyValueEntry(5, 0.2)).Wait();
   api.Add(KeyValueEntry(6, 0.17));
   const CallbackTest cbt3(7, 0.76);
-  api.AsyncAdd(yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76), std::bind(&CallbackTest::added, &cbt3),
+  api.AsyncAdd(yoda::KeyEntry<KeyValueEntry>::T_ENTRY(7, 0.76),
+               std::bind(&CallbackTest::added, &cbt3),
                std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called) {
     ;  // Spin lock.
@@ -333,7 +344,8 @@ TEST(YodaKeyEntry, Smoke) {
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), yoda::KeyEntry<KeyValueEntry>::T_KEY_ALREADY_EXISTS_EXCEPTION);
   ASSERT_THROW(api.Add(KeyValueEntry(6, 0.28)), yoda::KeyAlreadyExistsCoverException);
   const CallbackTest cbt4(7, 0.0, false);
-  api.AsyncAdd(KeyValueEntry(7, 0.0), std::bind(&CallbackTest::added, &cbt4),
+  api.AsyncAdd(KeyValueEntry(7, 0.0),
+               std::bind(&CallbackTest::added, &cbt4),
                std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called) {
     ;  // Spin lock.

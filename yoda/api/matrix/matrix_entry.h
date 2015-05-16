@@ -163,7 +163,8 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
   typename YET::T_ENTRY operator()(apicalls::Get,
                                    const typename YET::T_ROW& row,
                                    const typename YET::T_COL& col) {
-    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_ROW>(row),
+    return operator()(apicalls::AsyncGet(),
+                      std::forward<const typename YET::T_ROW>(row),
                       std::forward<const typename YET::T_COL>(col)).Go();
   }
 
@@ -229,7 +230,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
         msg.on_failure(msg.row, msg.col);
       } else {
         // Promise semantics.
-        MatrixEntrySetPromiseToNullEntryOrThrow<typename YET::T_ENTRY, typename YET::T_CELL_NOT_FOUND_EXCEPTION,
+        MatrixEntrySetPromiseToNullEntryOrThrow<typename YET::T_ENTRY,
+                                                typename YET::T_CELL_NOT_FOUND_EXCEPTION,
                                                 false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
                                                 >::DoIt(msg.row, msg.col, msg.pr);
       }
@@ -310,7 +312,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     }
 
     const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-     const auto rit = immutable_.forward_.find(row);
+      const auto rit = immutable_.forward_.find(row);
       if (rit != immutable_.forward_.end()) {
         const auto cit = rit->second.find(col);
         if (cit != rit->second.end()) {
@@ -320,17 +322,17 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       return EntryWrapper<typename YET::T_ENTRY>();
     }
 
-/*
-    // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
-    const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
-      const auto cit = immutable_.map_.find(key);
-      if (cit != immutable_.map_.end()) {
-        return cit->second;
-      } else {
-        throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
-      }
-    }
-*/
+    /*
+        // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
+        const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
+          const auto cit = immutable_.map_.find(key);
+          if (cit != immutable_.map_.end()) {
+            return cit->second;
+          } else {
+            throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
+          }
+        }
+    */
 
    private:
     const Container<YT, YET>& immutable_;
@@ -338,8 +340,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
   class Mutator : public Accessor {
    public:
-    Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream) :
-        Accessor(container), mutable_(container), stream_(stream) {}
+    Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream)
+        : Accessor(container), mutable_(container), stream_(stream) {}
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
@@ -354,9 +356,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) {
-    return Accessor(*this);
-  }
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) { return Accessor(*this); }
 
   Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {
     // TODO(dkorolev): const

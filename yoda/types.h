@@ -56,7 +56,7 @@ template <typename T_ENTRY>
 struct EntryWrapper {
   EntryWrapper() = default;
   explicit EntryWrapper(const T_ENTRY& entry) : exists(true), entry(&entry) {}
-  
+
   operator bool() const { return exists; }
   operator const T_ENTRY&() const {
     if (exists) {

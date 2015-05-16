@@ -182,7 +182,8 @@ struct Container<YT, KeyEntry<ENTRY>> {
         msg.on_failure(msg.key);
       } else {
         // Promise semantics.
-        SetPromiseToNullEntryOrThrow<typename YET::T_KEY, typename YET::T_ENTRY,
+        SetPromiseToNullEntryOrThrow<typename YET::T_KEY,
+                                     typename YET::T_ENTRY,
                                      typename YET::T_KEY_NOT_FOUND_EXCEPTION,
                                      false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
                                      >::DoIt(msg.key, msg.pr);
@@ -191,8 +192,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
   // Event: `Add()`.
-  void operator()(typename YodaImpl<YT, YET>::MQMessageAdd& msg,
-                  typename YT::T_STREAM_TYPE& stream) {
+  void operator()(typename YodaImpl<YT, YET>::MQMessageAdd& msg, typename YT::T_STREAM_TYPE& stream) {
     const bool key_exists = static_cast<bool>(map_.count(GetKey(msg.e)));
     if (key_exists) {
       if (msg.on_failure) {  // Callback function defined.
@@ -212,8 +212,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
   }
 
   // Synchronous `Get()` to be used in user functions.
-  const EntryWrapper<ENTRY> operator()(container_wrapper::Get,
-                                       const typename YET::T_KEY& key) const {
+  const EntryWrapper<ENTRY> operator()(container_wrapper::Get, const typename YET::T_KEY& key) const {
     const auto cit = map_.find(key);
     if (cit != map_.end()) {
       // The entry has been found.
@@ -243,9 +242,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     Accessor() = delete;
     explicit Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(bricks::copy_free<typename YET::T_KEY> key) const {
-      return immutable_.map_.count(key);
-    }
+    bool Exists(bricks::copy_free<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
 
     const EntryWrapper<ENTRY> Get(bricks::copy_free<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
@@ -273,8 +270,8 @@ struct Container<YT, KeyEntry<ENTRY>> {
   class Mutator : public Accessor {
    public:
     Mutator() = delete;
-    Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream) :
-        Accessor(container), mutable_(container), stream_(stream) {}
+    Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream)
+        : Accessor(container), mutable_(container), stream_(stream) {}
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
@@ -288,9 +285,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) {
-    return Accessor(*this);
-  }
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) { return Accessor(*this); }
 
   // TODO(dkorolev): This one should not be const.
   Mutator operator()(container_wrapper::RetrieveMutator<YET>, const typename YT::T_STREAM_TYPE& stream) {

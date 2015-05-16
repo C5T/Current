@@ -82,59 +82,59 @@ TEST(Yoda, CoverTest) {
 
     auto mutable_matrix = cw.GetMutator<MatrixEntry<MatrixCell>>();
     EXPECT_EQ(2, static_cast<const MatrixCell&>(mutable_matrix.Get(1, "test")).value);
-/*    
-    const bool exists = cw.Get(1);
-    EXPECT_TRUE(exists);
-    yoda::EntryWrapper<KeyValueEntry> entry = cw.Get(1);
-    EXPECT_EQ(42.0, entry().value);
-    EXPECT_TRUE(cw.Get(42, "answer"));
-    EXPECT_EQ(100, cw.Get(42, "answer")().value);
-    EXPECT_TRUE(cw.Get("foo"));
-    EXPECT_EQ("bar", cw.Get("foo")().foo);
+    /*
+        const bool exists = cw.Get(1);
+        EXPECT_TRUE(exists);
+        yoda::EntryWrapper<KeyValueEntry> entry = cw.Get(1);
+        EXPECT_EQ(42.0, entry().value);
+        EXPECT_TRUE(cw.Get(42, "answer"));
+        EXPECT_EQ(100, cw.Get(42, "answer")().value);
+        EXPECT_TRUE(cw.Get("foo"));
+        EXPECT_EQ("bar", cw.Get("foo")().foo);
 
-    EXPECT_FALSE(cw.Get(-1));
-    EXPECT_FALSE(cw.Get(41, "not an answer"));
-    EXPECT_FALSE(cw.Get("bazinga"));
+        EXPECT_FALSE(cw.Get(-1));
+        EXPECT_FALSE(cw.Get(41, "not an answer"));
+        EXPECT_FALSE(cw.Get("bazinga"));
 
-    // Accessing nonexistent entry throws an exception.
-    ASSERT_THROW(cw.Get(1000)(), yoda::NonexistentEntryAccessed);
+        // Accessing nonexistent entry throws an exception.
+        ASSERT_THROW(cw.Get(1000)(), yoda::NonexistentEntryAccessed);
 
-    double result = 0.0;
-    for (int i = 1; i <= 3; ++i) {
-      result += cw.Get(i)().value * static_cast<double>(cw.Get(i, "test")().value);
-    }
-    cw.Add(StringKVEntry("result", Printf("%.2f", result)));
-    cw.Add(MatrixCell(123, "test", 11));
-    cw.Add(KeyValueEntry(42, 1.23));
-*/
+        double result = 0.0;
+        for (int i = 1; i <= 3; ++i) {
+          result += cw.Get(i)().value * static_cast<double>(cw.Get(i, "test")().value);
+        }
+        cw.Add(StringKVEntry("result", Printf("%.2f", result)));
+        cw.Add(MatrixCell(123, "test", 11));
+        cw.Add(KeyValueEntry(42, 1.23));
+    */
     done = true;
   });
 
   while (!done || !api.CaughtUp()) {
-    ; // Spin lock.
+    ;  // Spin lock.
   }
-/*
-  struct HappyEnding {
-    Request request;
-    explicit HappyEnding(Request request) : request(std::move(request)) {}
-    void operator()(double result) { request(Printf("Magic: %.3lf", result)); }
-  };
+  /*
+    struct HappyEnding {
+      Request request;
+      explicit HappyEnding(Request request) : request(std::move(request)) {}
+      void operator()(double result) { request(Printf("Magic: %.3lf", result)); }
+    };
 
-  HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
-  HTTP(FLAGS_yoda_test_port)
-      .Register("/omfg", [&api](Request r) {
-        // Note: C standard does not regulate the order in which parameters are evaluated,
-        // thus, if any data should be extracted from `r.query`, it should be done before the next line
-        // since it does `std::move(r)`.
-        api.Call([](TestAPI::T_CONTAINER_WRAPPER& cw) { return cw.Get(2)().value * cw.Get(3)().value; },
-                 HappyEnding(std::move(r)));
-      });
-  const auto response = HTTP(GET(Printf("http://localhost:%d/omfg", FLAGS_yoda_test_port)));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("Magic: 352.800", response.body);
+    HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
+    HTTP(FLAGS_yoda_test_port)
+        .Register("/omfg", [&api](Request r) {
+          // Note: C standard does not regulate the order in which parameters are evaluated,
+          // thus, if any data should be extracted from `r.query`, it should be done before the next line
+          // since it does `std::move(r)`.
+          api.Call([](TestAPI::T_CONTAINER_WRAPPER& cw) { return cw.Get(2)().value * cw.Get(3)().value; },
+                   HappyEnding(std::move(r)));
+        });
+    const auto response = HTTP(GET(Printf("http://localhost:%d/omfg", FLAGS_yoda_test_port)));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("Magic: 352.800", response.body);
 
-  EXPECT_EQ("160.30", api.Get("result").foo);
-  EXPECT_EQ(11, api.Get(123, "test").value);
-  EXPECT_EQ(1.23, api.Get(42).value);
-*/
+    EXPECT_EQ("160.30", api.Get("result").foo);
+    EXPECT_EQ(11, api.Get(123, "test").value);
+    EXPECT_EQ(1.23, api.Get(42).value);
+  */
 }

@@ -200,9 +200,9 @@ template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
 namespace container_wrapper {
-template<typename T>
+template <typename T>
 struct RetrieveAccessor {};
-template<typename T>
+template <typename T>
 struct RetrieveMutator {};
 
 struct Get {};
@@ -211,22 +211,22 @@ struct Add {};
 
 template <typename YT>
 struct ContainerWrapper {
-  template<typename T, typename... TS> using CWT = bricks::weed::call_with_type<T, TS...>;
+  template <typename T, typename... TS>
+  using CWT = bricks::weed::call_with_type<T, TS...>;
 
   ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container(container), stream(stream) {}
 
   // Container getter for `Accessor`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>>
-  GetAccessor() const  {
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> GetAccessor() const {
     return container(container_wrapper::RetrieveAccessor<T>());
   }
 
   // Container getter for `Mutator`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_wrapper::RetrieveMutator<T>, const typename YT::T_STREAM_TYPE&>
-  GetMutator() const {
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveMutator<T>, const typename YT::T_STREAM_TYPE&> GetMutator()
+      const {
     return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
   }
 
@@ -392,7 +392,7 @@ template <typename YT, typename API>
 struct APICallsWrapper {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
-  template<typename T, typename... TS>
+  template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
 
   APICallsWrapper() = delete;
