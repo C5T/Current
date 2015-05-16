@@ -110,7 +110,7 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
                           typename YET::T_CELL_CALLBACK on_failure)
         : row(row), col(col), on_success(on_success), on_failure(on_failure) {}
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>&,
+                         ContainerWrapper<YT>,
                          typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
@@ -137,7 +137,7 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>&,
+                         ContainerWrapper<YT>,
                          typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
@@ -163,7 +163,8 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
   typename YET::T_ENTRY operator()(apicalls::Get,
                                    const typename YET::T_ROW& row,
                                    const typename YET::T_COL& col) {
-    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_ROW>(row),
+    return operator()(apicalls::AsyncGet(),
+                      std::forward<const typename YET::T_ROW>(row),
                       std::forward<const typename YET::T_COL>(col)).Go();
   }
 
@@ -194,6 +195,9 @@ template <typename YT, typename ENTRY>
 struct Container<YT, MatrixEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef MatrixEntry<ENTRY> YET;
+
+  template <typename T>
+  using CF = bricks::copy_free<T>;
 
   // Event: The entry has been scanned from the stream.
   void operator()(const typename YET::T_ENTRY& entry) {
@@ -226,7 +230,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
         msg.on_failure(msg.row, msg.col);
       } else {
         // Promise semantics.
-        MatrixEntrySetPromiseToNullEntryOrThrow<typename YET::T_ENTRY, typename YET::T_CELL_NOT_FOUND_EXCEPTION,
+        MatrixEntrySetPromiseToNullEntryOrThrow<typename YET::T_ENTRY,
+                                                typename YET::T_CELL_NOT_FOUND_EXCEPTION,
                                                 false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
                                                 >::DoIt(msg.row, msg.col, msg.pr);
       }
@@ -290,6 +295,71 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       transposed_[GetCol(entry)][GetRow(entry)] = entry;
       const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
     }
+  }
+
+  class Accessor {
+   public:
+    Accessor() = delete;
+    Accessor(Container<YT, YET>& container) : immutable_(container) {}
+
+    bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
+      const auto rit = immutable_.forward_.find(row);
+      if (rit != immutable_.forward_.end()) {
+        return rit->second.count(col);
+      } else {
+        return false;
+      }
+    }
+
+    const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
+      const auto rit = immutable_.forward_.find(row);
+      if (rit != immutable_.forward_.end()) {
+        const auto cit = rit->second.find(col);
+        if (cit != rit->second.end()) {
+          return EntryWrapper<typename YET::T_ENTRY>(cit->second);
+        }
+      }
+      return EntryWrapper<typename YET::T_ENTRY>();
+    }
+
+    /*
+        // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
+        const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
+          const auto cit = immutable_.map_.find(key);
+          if (cit != immutable_.map_.end()) {
+            return cit->second;
+          } else {
+            throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
+          }
+        }
+    */
+
+   private:
+    const Container<YT, YET>& immutable_;
+  };
+
+  class Mutator : public Accessor {
+   public:
+    Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream)
+        : Accessor(container), mutable_(container), stream_(stream) {}
+
+    // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
+    void Add(const ENTRY& entry) {
+      mutable_.forward_[GetRow(entry)][GetCol(entry)] = entry;
+      mutable_.transposed_[GetCol(entry)][GetRow(entry)] = entry;
+      // NOTE: runtime error - mutex lock failed.
+      // stream_.Publish(entry);
+    }
+
+   private:
+    Container<YT, YET>& mutable_;
+    typename YT::T_STREAM_TYPE& stream_;
+  };
+
+  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
+
+  Mutator operator()(container_wrapper::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+    return Mutator(*this, std::ref(stream));
   }
 
  private:

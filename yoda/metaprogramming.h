@@ -30,11 +30,13 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_METAPROGRAMMING_H
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
+#include <functional>
 #include <utility>
 
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
+#include "../../Bricks/template/weed.h"
 #include "../../Bricks/mq/inmemory/mq.h"
 
 namespace yoda {
@@ -199,29 +201,36 @@ template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
 namespace container_wrapper {
+template <typename T>
+struct RetrieveAccessor {};
+template <typename T>
+struct RetrieveMutator {};
+
 struct Get {};
 struct Add {};
 }  // namespace container_wrapper
 
 template <typename YT>
 struct ContainerWrapper {
+  template <typename T, typename... TS>
+  using CWT = bricks::weed::call_with_type<T, TS...>;
+
   ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container(container), stream(stream) {}
 
-  template <typename... XS>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))
-  Get(XS&&... xs) const {
-    return std::forward<decltype(
-        std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Get>(), std::declval<XS>()...))>(
-        container(container_wrapper::Get(), std::forward<XS>(xs)...));
+  // Container getter for `Accessor`.
+  template <typename T>
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> GetAccessor() const {
+    return container(container_wrapper::RetrieveAccessor<T>());
   }
 
-  template <typename... XS>
-  decltype(std::declval<YodaContainer<YT>>()(std::declval<container_wrapper::Add>(),
-                                             std::declval<typename YT::T_STREAM_TYPE>(),
-                                             std::declval<XS>()...))
-  Add(XS&&... xs) {
-    container(container_wrapper::Add(), stream, std::forward<XS>(xs)...);
+  // Container getter for `Mutator`.
+  template <typename T>
+  CWT<YodaContainer<YT>,
+      container_wrapper::RetrieveMutator<T>,
+      std::reference_wrapper<typename YT::T_STREAM_TYPE>>
+  GetMutator() const {
+    return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
   }
 
  private:
@@ -241,7 +250,7 @@ struct StreamListener {
     explicit MQMessageEntry(std::unique_ptr<Padawan>&& entry) : entry(std::move(entry)) {}
 
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>&,
+                         ContainerWrapper<YT>,
                          typename YT::T_STREAM_TYPE&) override {
       MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
     }
@@ -284,7 +293,7 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
   virtual void Process(YodaContainer<YT>& container,
-                       ContainerWrapper<YT>& container_wrapper,
+                       ContainerWrapper<YT> container_wrapper,
                        typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
@@ -292,7 +301,7 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
   explicit MQListener(YodaContainer<YT>& container,
-                      ContainerWrapper<YT>& container_wrapper,
+                      ContainerWrapper<YT> container_wrapper,
                       typename YT::T_STREAM_TYPE& stream)
       : container_(container), container_wrapper_(container_wrapper), stream_(stream) {}
 
@@ -302,7 +311,7 @@ struct MQListener {
   }
 
   YodaContainer<YT>& container_;
-  ContainerWrapper<YT>& container_wrapper_;
+  ContainerWrapper<YT> container_wrapper_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 
@@ -380,42 +389,47 @@ struct Get {};
 struct AsyncGet {};
 struct Add {};
 struct AsyncAdd {};
-struct AsyncCallFunction {};
+
+/// TODO(dkorolev): Remove this code.
+/// struct AsyncCallFunction {};
 
 template <typename YT, typename API>
 struct APICallsWrapper {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
-  APICallsWrapper() = delete;
-  APICallsWrapper(typename YT::T_MQ& mq) : api(mq) {}
+  template <typename T, typename... TS>
+  using CWT = bricks::weed::call_with_type<T, TS...>;
 
-  // User-facing API calls, proxied to the chain of per-type Yoda API-s.
+  APICallsWrapper() = delete;
+  explicit APICallsWrapper(typename YT::T_MQ& mq) : api(mq) {}
+
+  // User-facing API calls, proxied to the chain of per-type Yoda API-s
+  // via the `using T1::operator(); using T2::operator();` trick.
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::Get(), std::declval<XS>()...)) Get(XS&&... xs) {
+  CWT<API, apicalls::Get, XS...> Get(XS&&... xs) {
     return api(apicalls::Get(), xs...);
   }
 
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::Add(), std::declval<XS>()...)) Add(XS&&... xs) {
+  CWT<API, apicalls::Add, XS...> Add(XS&&... xs) {
     return api(apicalls::Add(), xs...);
   }
 
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::AsyncGet(), std::declval<XS>()...)) AsyncGet(XS&&... xs) {
+  CWT<API, apicalls::AsyncGet, XS...> AsyncGet(XS&&... xs) {
     return api(apicalls::AsyncGet(), xs...);
   }
 
   template <typename... XS>
-  decltype(std::declval<API>()(apicalls::AsyncAdd(), std::declval<XS>()...)) AsyncAdd(XS&&... xs) {
+  CWT<API, apicalls::AsyncAdd, XS...> AsyncAdd(XS&&... xs) {
     return api(apicalls::AsyncAdd(), xs...);
   }
 
-  // TODO(dkorolev): I should really convert these into `#define`-s. And I will.
-  template <typename... XS>
-  decltype(std::declval<API>()(apicalls::AsyncCallFunction(), std::declval<XS>()...)) AsyncCallFunction(
-      XS&&... xs) {
-    return api(apicalls::AsyncCallFunction(), xs...);
-  }
+  /// TODO(dkorolev): Remove this code.
+  /// template <typename... XS>
+  /// CWT<API, apicalls::AsyncCallFunction, XS...> AsyncCallFunction(XS&&... xs) {
+  ///   return api(apicalls::AsyncCallFunction(), xs...);
+  /// }
 
   API api;
 };

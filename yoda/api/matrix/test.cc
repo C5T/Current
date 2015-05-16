@@ -94,7 +94,9 @@ TEST(YodaMatrixEntry, Smoke) {
   ASSERT_THROW(api.Get(1, "x"), typename yoda::MatrixEntry<MatrixCell>::T_CELL_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.Get(1, "x"), yoda::CellNotFoundCoverException);
   const CallbackTest cbt2(123, "no_entry", 0, false);
-  api.AsyncGet(123, "no_entry", std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
+  api.AsyncGet(123,
+               "no_entry",
+               std::bind(&CallbackTest::found, &cbt2, std::placeholders::_1),
                std::bind(&CallbackTest::not_found, &cbt2, std::placeholders::_1, std::placeholders::_2));
   while (!cbt2.called) {
     ;  // Spin lock.
@@ -105,7 +107,8 @@ TEST(YodaMatrixEntry, Smoke) {
   api.Add(MatrixCell(1, "x", -9));
   const CallbackTest cbt3(42, "the_answer", 1);
   api.AsyncAdd(typename yoda::MatrixEntry<MatrixCell>::T_ENTRY(42, "the_answer", 1),
-               std::bind(&CallbackTest::added, &cbt3), std::bind(&CallbackTest::already_exists, &cbt3));
+               std::bind(&CallbackTest::added, &cbt3),
+               std::bind(&CallbackTest::already_exists, &cbt3));
   while (!cbt3.called) {
     ;  // Spin lock.
   }
@@ -123,7 +126,8 @@ TEST(YodaMatrixEntry, Smoke) {
   ASSERT_THROW(api.Add(MatrixCell(1, "x", 2)), yoda::CellAlreadyExistsCoverException);
   const CallbackTest cbt4(42, "the_answer", 0, false);
   api.AsyncAdd(typename yoda::MatrixEntry<MatrixCell>::T_ENTRY(42, "the_answer", 0),
-               std::bind(&CallbackTest::added, &cbt4), std::bind(&CallbackTest::already_exists, &cbt4));
+               std::bind(&CallbackTest::added, &cbt4),
+               std::bind(&CallbackTest::already_exists, &cbt4));
   while (!cbt4.called) {
     ;  // Spin lock.
   }

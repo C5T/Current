@@ -124,7 +124,7 @@ struct APIWrapper
   // Asynchronous user function calling functionality.
   typedef ContainerWrapper<YT> T_CONTAINER_WRAPPER;
   template <typename RETURN_VALUE>
-  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_CONTAINER_WRAPPER& container_wrapper)>;
+  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_CONTAINER_WRAPPER container_wrapper)>;
 
   template <typename RETURN_VALUE>
   struct MQMessageFunction : YodaMMQMessage<YT> {
@@ -135,7 +135,7 @@ struct APIWrapper
         : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)) {}
 
     virtual void Process(YodaContainer<YT>&,
-                         T_CONTAINER_WRAPPER& container_wrapper,
+                         T_CONTAINER_WRAPPER container_wrapper,
                          typename YT::T_STREAM_TYPE&) override {
       function(container_wrapper);
     }
@@ -152,7 +152,7 @@ struct APIWrapper
         : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
 
     virtual void Process(YodaContainer<YT>&,
-                         T_CONTAINER_WRAPPER& container_wrapper,
+                         T_CONTAINER_WRAPPER container_wrapper,
                          typename YT::T_STREAM_TYPE&) override {
       next(function(container_wrapper));
     }
@@ -160,16 +160,13 @@ struct APIWrapper
 
   template <typename T_TYPED_USER_FUNCTION>
   void Call(T_TYPED_USER_FUNCTION&& function) {
-    using T_RETURN_TYPE = decltype(function(std::declval<T_CONTAINER_WRAPPER&>()));
-    mq_.EmplaceMessage(new MQMessageFunction<T_RETURN_TYPE>(function));
+    using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
+    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function));
   }
 
   template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
   void Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = decltype(function(std::declval<T_CONTAINER_WRAPPER&>()));
-    // Question: Why don't we always pass extended references and use `std::forward`?
-    // Real user benefit: Can both pass in a lambda, a name function, and an instance of a class
-    // with `operator()` overloaded. And all three are worth unit-testing!
+    using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
     mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
         std::forward<T_TYPED_USER_FUNCTION>(function), std::forward<T_NEXT_USER_FUNCTION>(next)));
   }
