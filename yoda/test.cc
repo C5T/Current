@@ -25,6 +25,8 @@ SOFTWARE.
 
 #define BRICKS_MOCK_TIME
 
+#include <atomic>
+
 #include "api/key_entry/test.cc"
 #include "api/matrix/test.cc"
 
@@ -62,7 +64,7 @@ TEST(Yoda, CoverTest) {
   api.Add(MatrixCell(3, "test", 4));
 
   // Asynchronous call of user function.
-  bool done = false;
+  std::atomic_bool done(false);
   api.Call([&](TestAPI::T_CONTAINER_WRAPPER cw) {
     auto KVEntries = KeyEntry<KeyValueEntry>::Accessor(cw);
 

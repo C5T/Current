@@ -25,6 +25,8 @@ SOFTWARE.
 
 #define BRICKS_MOCK_TIME
 
+#include <atomic>
+
 #include "../../yoda.h"
 #include "../../test_types.h"
 
@@ -49,7 +51,7 @@ TEST(YodaMatrixEntry, Smoke) {
                           const std::string& col,
                           const int value,
                           const bool expect_success = true)
-        : row(row), col(col), value(value), expect_success(expect_success) {}
+        : called(false), row(row), col(col), value(value), expect_success(expect_success) {}
 
     void found(const MatrixCell& entry) const {
       ASSERT_FALSE(called);
@@ -80,11 +82,11 @@ TEST(YodaMatrixEntry, Smoke) {
       EXPECT_FALSE(expect_success);
     }
 
+    mutable std::atomic_bool called;
     const size_t row;
     const std::string col;
     const int value;
     const bool expect_success;
-    mutable bool called = false;
   };
 
   const CallbackTest cbt1(5, "x", -1);

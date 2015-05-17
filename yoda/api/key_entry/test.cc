@@ -100,7 +100,7 @@ TEST(YodaKeyEntry, Smoke) {
   // Callback version.
   struct CallbackTest {
     explicit CallbackTest(int key, double value, bool expect_success = true)
-        : key(key), value(value), expect_success(expect_success) {}
+        : called(false), key(key), value(value), expect_success(expect_success) {}
 
     void found(const KeyValueEntry& entry) const {
       ASSERT_FALSE(called);
@@ -126,10 +126,10 @@ TEST(YodaKeyEntry, Smoke) {
       EXPECT_FALSE(expect_success);
     }
 
+    mutable std::atomic_bool called;
     const int key;
     const double value;
     const bool expect_success;
-    mutable bool called = false;
   };
 
   const CallbackTest cbt1(2, 0.5);
