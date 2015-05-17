@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define BRICKS_MOCK_TIME
+
 #include <string>
 #include <atomic>
 #include <thread>
@@ -31,7 +33,10 @@ SOFTWARE.
 #include "../../yoda.h"
 #include "../../test_types.h"
 
-#include "../../../../Bricks/3party/gtest/gtest-main.h"
+#include "../../../../Bricks/dflags/dflags.h"
+#include "../../../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+
+DEFINE_int32(yoda_key_entry_test_port, 8992, "");
 
 using std::string;
 using std::atomic_size_t;
@@ -192,12 +197,49 @@ TEST(YodaKeyEntry, Smoke) {
   ASSERT_THROW(api.AsyncGet(8).Go(), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.Get(9), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
 
+  // Test `Call`-based access.
+  api.Call([](TestAPI::T_CONTAINER_WRAPPER cw) {
+             auto entries = yoda::KeyEntry<KeyValueEntry>::Accessor(cw);
+
+             EXPECT_FALSE(entries.Exists(1));
+             EXPECT_TRUE(entries.Exists(2));
+
+             // `Get()` syntax.
+             EXPECT_EQ(0.33, static_cast<const KeyValueEntry&>(entries.Get(3)).value);
+             EXPECT_FALSE(entries.Get(103));
+
+             // `operator[]` syntax.
+             EXPECT_EQ(0.25, static_cast<const KeyValueEntry&>(entries[4]).value);
+             ASSERT_THROW(static_cast<void>(static_cast<const KeyValueEntry&>(entries[104])),
+                          yoda::KeyNotFoundCoverException);
+
+             auto mutable_entries = yoda::KeyEntry<KeyValueEntry>::Mutator(cw);
+             mutable_entries.Add(KeyValueEntry(50, 0.02));
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(entries[50]).value);
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(mutable_entries[50]).value);
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(entries.Get(50)).value);
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(mutable_entries.Get(50)).value);
+           }).Wait();
+
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.
   KeyValueSubscriptionData data;
   KeyValueAggregateListener listener(data);
-  listener.SetMax(6u);
+  listener.SetMax(7u);
   api.Subscribe(listener).Join();
-  EXPECT_EQ(data.seen_, 6u);
-  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17,7=0.76", data.results_);
+  EXPECT_EQ(data.seen_, 7u);
+  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17,7=0.76,50=0.02", data.results_);
+
+  // Confirm that the stream can be HTTP-listened to.
+  HTTP(FLAGS_yoda_key_entry_test_port).ResetAllHandlers();
+  api.ExposeViaHTTP(FLAGS_yoda_key_entry_test_port, "/data");
+  const std::string Z = "";  // For `clang-format`-indentation purposes.
+  EXPECT_EQ(Z + JSON(WithBaseType<Padawan>(KeyValueEntry(2, 0.50)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(3, 0.33)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(4, 0.25)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(5, 0.20)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(6, 0.17)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(7, 0.76)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(50, 0.02)), "entry") + '\n',
+            HTTP(GET(Printf("http://localhost:%d/data?cap=7", FLAGS_yoda_key_entry_test_port))).body);
 }

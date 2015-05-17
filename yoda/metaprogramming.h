@@ -31,6 +31,7 @@ SOFTWARE.
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
 #include <functional>
+#include <future>
 #include <utility>
 
 #include "../sherlock.h"
@@ -40,6 +41,8 @@ SOFTWARE.
 #include "../../Bricks/mq/inmemory/mq.h"
 
 namespace yoda {
+
+struct Padawan;
 
 namespace sfinae {
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
@@ -220,7 +223,7 @@ struct ContainerWrapper {
 
   // Container getter for `Accessor`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> GetAccessor() const {
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> Accessor() const {
     return container(container_wrapper::RetrieveAccessor<T>());
   }
 
@@ -229,7 +232,7 @@ struct ContainerWrapper {
   CWT<YodaContainer<YT>,
       container_wrapper::RetrieveMutator<T>,
       std::reference_wrapper<typename YT::T_STREAM_TYPE>>
-  GetMutator() const {
+  Mutator() const {
     return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
   }
 
@@ -435,6 +438,24 @@ struct APICallsWrapper {
 };
 
 }  // namespace apicalls
+
+// Handle `void` and non-`void` types equally for promises.
+template <typename R>
+struct CallAndSetPromiseImpl {
+  template <typename FUNCTION, typename PARAMETER>
+  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<R>& promise) {
+    promise.set_value(function(std::forward<PARAMETER>(parameter)));
+  }
+};
+
+template <>
+struct CallAndSetPromiseImpl<void> {
+  template <typename FUNCTION, typename PARAMETER>
+  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<void>& promise) {
+    function(std::forward<PARAMETER>(parameter));
+    promise.set_value();
+  }
+};
 
 }  // namespace yoda
 

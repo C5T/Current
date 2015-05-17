@@ -58,6 +58,16 @@ struct KeyEntry {
   typedef KeyNotFoundException<T_ENTRY> T_KEY_NOT_FOUND_EXCEPTION;
   typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
+
+  template <typename CW>
+  static decltype(std::declval<CW>().template Accessor<KeyEntry<ENTRY>>()) Accessor(CW&& c) {
+    return c.template Accessor<KeyEntry<ENTRY>>();
+  }
+
+  template <typename CW>
+  static decltype(std::declval<CW>().template Mutator<KeyEntry<ENTRY>>()) Mutator(CW&& c) {
+    return c.template Mutator<KeyEntry<ENTRY>>();
+  }
 };
 
 template <typename YT, typename ENTRY>
@@ -278,8 +288,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
       mutable_.map_[GetKey(entry)] = entry;
-      // NOTE: runtime error - mutex lock failed.
-      // stream_.Publish(entry);
+      stream_.Publish(entry);
     }
 
    private:

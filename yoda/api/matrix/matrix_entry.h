@@ -83,6 +83,16 @@ struct MatrixEntry {
   typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
   typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
+
+  template <typename CW>
+  static decltype(std::declval<CW>().template Accessor<MatrixEntry<ENTRY>>()) Accessor(CW&& c) {
+    return c.template Accessor<MatrixEntry<ENTRY>>();
+  }
+
+  template <typename CW>
+  static decltype(std::declval<CW>().template Mutator<MatrixEntry<ENTRY>>()) Mutator(CW&& c) {
+    return c.template Mutator<MatrixEntry<ENTRY>>();
+  }
 };
 
 template <typename YT, typename ENTRY>
@@ -300,7 +310,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   class Accessor {
    public:
     Accessor() = delete;
-    Accessor(Container<YT, YET>& container) : immutable_(container) {}
+    Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
     bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
       const auto rit = immutable_.forward_.find(row);
@@ -347,8 +357,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     void Add(const ENTRY& entry) {
       mutable_.forward_[GetRow(entry)][GetCol(entry)] = entry;
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = entry;
-      // NOTE: runtime error - mutex lock failed.
-      // stream_.Publish(entry);
+      stream_.Publish(entry);
     }
 
    private:

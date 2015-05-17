@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define BRICKS_MOCK_TIME
+
 #include "api/key_entry/test.cc"
 #include "api/matrix/test.cc"
 
@@ -54,7 +56,7 @@ TEST(Yoda, CoverTest) {
 
   // Adding some more values.
   api.Add(KeyValueEntry(2, 31.5));
-  api.Add(KeyValueEntry(3, 11.2));
+  api.Add(KeyValueEntry(3, 11.5));
   api.Add(MatrixCell(1, "test", 2));
   api.Add(MatrixCell(2, "test", 1));
   api.Add(MatrixCell(3, "test", 4));
@@ -62,7 +64,7 @@ TEST(Yoda, CoverTest) {
   // Asynchronous call of user function.
   bool done = false;
   api.Call([&](TestAPI::T_CONTAINER_WRAPPER cw) {
-    auto KVEntries = cw.GetAccessor<KeyEntry<KeyValueEntry>>();
+    auto KVEntries = KeyEntry<KeyValueEntry>::Accessor(cw);
 
     EXPECT_TRUE(KVEntries.Exists(1));
     EXPECT_FALSE(KVEntries.Exists(100500));
@@ -76,11 +78,11 @@ TEST(Yoda, CoverTest) {
     KeyValueEntry kve34;
     ASSERT_THROW(kve34 = KVEntries[34], yoda::KeyNotFoundCoverException);
 
-    auto mutable_kve = cw.GetMutator<KeyEntry<KeyValueEntry>>();
+    auto mutable_kve = KeyEntry<KeyValueEntry>::Mutator(cw);
     mutable_kve.Add(KeyValueEntry(128, 512.0));
     EXPECT_EQ(512.0, static_cast<const KeyValueEntry&>(mutable_kve[128]).value);
 
-    auto mutable_matrix = cw.GetMutator<MatrixEntry<MatrixCell>>();
+    auto mutable_matrix = MatrixEntry<MatrixCell>::Mutator(cw);
     EXPECT_EQ(2, static_cast<const MatrixCell&>(mutable_matrix.Get(1, "test")).value);
     /*
         const bool exists = cw.Get(1);
@@ -109,6 +111,20 @@ TEST(Yoda, CoverTest) {
     */
     done = true;
   });
+
+  HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
+  api.ExposeViaHTTP(FLAGS_yoda_test_port, "/data");
+  const std::string Z = "";  // For `clang-format`-indentation purposes.
+  EXPECT_EQ(Z + JSON(WithBaseType<Padawan>(KeyValueEntry(1, 42)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(42, "answer", 100)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(StringKVEntry("foo", "bar")), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(2, 31.5)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(3, 11.5)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(1, "test", 2)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(2, "test", 1)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(3, "test", 4)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(128, 512)), "entry") + '\n',
+            HTTP(GET(Printf("http://localhost:%d/data?cap=9", FLAGS_yoda_test_port))).body);
 
   while (!done || !api.CaughtUp()) {
     ;  // Spin lock.
