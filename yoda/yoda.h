@@ -132,14 +132,15 @@ struct APIWrapper
   struct MQMessageFunction : YodaMMQMessage<YT> {
     typedef RETURN_VALUE T_RETURN_VALUE;
     T_USER_FUNCTION<T_RETURN_VALUE> function;
+    std::promise<T_RETURN_VALUE> promise;
 
-    explicit MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)) {}
+    MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
+        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
 
     virtual void Process(YodaContainer<YT>&,
                          T_CONTAINER_WRAPPER container_wrapper,
                          typename YT::T_STREAM_TYPE&) override {
-      function(container_wrapper);
+      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_wrapper, promise);
     }
   };
 
@@ -149,6 +150,7 @@ struct APIWrapper
     typedef NEXT T_NEXT;
     T_USER_FUNCTION<T_RETURN_VALUE> function;
     NEXT next;
+    std::promise<void> promise;
 
     MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next)
         : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
@@ -157,20 +159,31 @@ struct APIWrapper
                          T_CONTAINER_WRAPPER container_wrapper,
                          typename YT::T_STREAM_TYPE&) override {
       next(function(container_wrapper));
+      promise.set_value();
     }
   };
 
   template <typename T_TYPED_USER_FUNCTION>
-  void Call(T_TYPED_USER_FUNCTION&& function) {
+  Future<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>> Call(
+      T_TYPED_USER_FUNCTION&& function) {
     using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
-    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function));
+    std::promise<T_INTERMEDIATE_TYPE> pr;
+    Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
+    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
+    return future;
   }
 
+  // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
   template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
-  void Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
+  Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
     using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
+    std::promise<void> pr;
+    Future<void> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
-        std::forward<T_TYPED_USER_FUNCTION>(function), std::forward<T_NEXT_USER_FUNCTION>(next)));
+        std::forward<T_TYPED_USER_FUNCTION>(function),
+        std::forward<T_NEXT_USER_FUNCTION>(next),
+        std::move(pr)));
+    return future;
   }
 
  private:

@@ -310,7 +310,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   class Accessor {
    public:
     Accessor() = delete;
-    Accessor(Container<YT, YET>& container) : immutable_(container) {}
+    Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
     bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
       const auto rit = immutable_.forward_.find(row);
@@ -357,8 +357,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     void Add(const ENTRY& entry) {
       mutable_.forward_[GetRow(entry)][GetCol(entry)] = entry;
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = entry;
-      // NOTE: runtime error - mutex lock failed.
-      // stream_.Publish(entry);
+      stream_.Publish(entry);
     }
 
    private:

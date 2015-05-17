@@ -288,8 +288,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
       mutable_.map_[GetKey(entry)] = entry;
-      // NOTE: runtime error - mutex lock failed.
-      // stream_.Publish(entry);
+      stream_.Publish(entry);
     }
 
    private:

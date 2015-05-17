@@ -438,6 +438,24 @@ struct APICallsWrapper {
 
 }  // namespace apicalls
 
+// Handle `void` and non-`void` types equally for promises.
+template <typename R>
+struct CallAndSetPromiseImpl {
+  template <typename A, typename B>
+  static void DoIt(A&& a, B&& b, std::promise<R>& promise) {
+    promise.set_value(a(b));
+  }
+};
+
+template <>
+struct CallAndSetPromiseImpl<void> {
+  template <typename A, typename B>
+  static void DoIt(A&& a, B&& b, std::promise<void>& promise) {
+    a(b);
+    promise.set_value();
+  }
+};
+
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_METAPROGRAMMING_H

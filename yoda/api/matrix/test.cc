@@ -139,12 +139,31 @@ TEST(YodaMatrixEntry, Smoke) {
     ;  // Spin lock.
   }
 
+  // Test `Call`-based access.
+  api.Call([](TestAPI::T_CONTAINER_WRAPPER cw) {
+             const auto cells = yoda::MatrixEntry<MatrixCell>::Accessor(cw);
+
+             EXPECT_TRUE(cells.Exists(5, "x"));
+             EXPECT_FALSE(cells.Exists(5, "q"));
+
+             // `Get()` syntax.
+             EXPECT_EQ(-1, static_cast<const MatrixCell&>(cells.Get(5, "x")).value);
+             EXPECT_FALSE(cells.Get(5, "q"));
+
+             auto mutable_cells = yoda::MatrixEntry<MatrixCell>::Mutator(cw);
+             mutable_cells.Add(MatrixCell(100, "z", 43));
+             EXPECT_EQ(43, static_cast<const MatrixCell&>(cells.Get(100, "z")).value);
+             EXPECT_EQ(43, static_cast<const MatrixCell&>(mutable_cells.Get(100, "z")).value);
+           }).Wait();
+
+  // Test HTTP subscription.
   HTTP(FLAGS_yoda_matrix_test_port).ResetAllHandlers();
   api.ExposeViaHTTP(FLAGS_yoda_matrix_test_port, "/data");
   const std::string Z = "";  // For `clang-format`-indentation purposes.
   EXPECT_EQ(Z + JSON(WithBaseType<Padawan>(MatrixCell(5, "x", -1)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(MatrixCell(5, "y", 15)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(MatrixCell(1, "x", -9)), "entry") + '\n' +
-                JSON(WithBaseType<Padawan>(MatrixCell(42, "the_answer", 1)), "entry") + '\n',
-            HTTP(GET(Printf("http://localhost:%d/data?cap=4", FLAGS_yoda_matrix_test_port))).body);
+                JSON(WithBaseType<Padawan>(MatrixCell(42, "the_answer", 1)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(100, "z", 43)), "entry") + '\n',
+            HTTP(GET(Printf("http://localhost:%d/data?cap=5", FLAGS_yoda_matrix_test_port))).body);
 }

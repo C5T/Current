@@ -197,14 +197,38 @@ TEST(YodaKeyEntry, Smoke) {
   ASSERT_THROW(api.AsyncGet(8).Go(), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
   ASSERT_THROW(api.Get(9), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
 
+  // Test `Call`-based access.
+  api.Call([](TestAPI::T_CONTAINER_WRAPPER cw) {
+             auto entries = yoda::KeyEntry<KeyValueEntry>::Accessor(cw);
+
+             EXPECT_FALSE(entries.Exists(1));
+             EXPECT_TRUE(entries.Exists(2));
+
+             // `Get()` syntax.
+             EXPECT_EQ(0.33, static_cast<const KeyValueEntry&>(entries.Get(3)).value);
+             EXPECT_FALSE(entries.Get(103));
+
+             // `operator[]` syntax.
+             EXPECT_EQ(0.25, static_cast<const KeyValueEntry&>(entries[4]).value);
+             ASSERT_THROW(static_cast<void>(static_cast<const KeyValueEntry&>(entries[104])),
+                          yoda::KeyNotFoundCoverException);
+
+             auto mutable_entries = yoda::KeyEntry<KeyValueEntry>::Mutator(cw);
+             mutable_entries.Add(KeyValueEntry(50, 0.02));
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(entries[50]).value);
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(mutable_entries[50]).value);
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(entries.Get(50)).value);
+             EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(mutable_entries.Get(50)).value);
+           }).Wait();
+
   // Confirm that data updates have been pubished as stream entries as well.
   // This part is important since otherwise the API is no better than a wrapper over a hash map.
   KeyValueSubscriptionData data;
   KeyValueAggregateListener listener(data);
-  listener.SetMax(6u);
+  listener.SetMax(7u);
   api.Subscribe(listener).Join();
-  EXPECT_EQ(data.seen_, 6u);
-  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17,7=0.76", data.results_);
+  EXPECT_EQ(data.seen_, 7u);
+  EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17,7=0.76,50=0.02", data.results_);
 
   // Confirm that the stream can be HTTP-listened to.
   HTTP(FLAGS_yoda_key_entry_test_port).ResetAllHandlers();
@@ -215,6 +239,7 @@ TEST(YodaKeyEntry, Smoke) {
                 JSON(WithBaseType<Padawan>(KeyValueEntry(4, 0.25)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(KeyValueEntry(5, 0.20)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(KeyValueEntry(6, 0.17)), "entry") + '\n' +
-                JSON(WithBaseType<Padawan>(KeyValueEntry(7, 0.76)), "entry") + '\n',
-            HTTP(GET(Printf("http://localhost:%d/data?cap=6", FLAGS_yoda_key_entry_test_port))).body);
+                JSON(WithBaseType<Padawan>(KeyValueEntry(7, 0.76)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(50, 0.02)), "entry") + '\n',
+            HTTP(GET(Printf("http://localhost:%d/data?cap=7", FLAGS_yoda_key_entry_test_port))).body);
 }

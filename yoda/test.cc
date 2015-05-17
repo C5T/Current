@@ -56,7 +56,7 @@ TEST(Yoda, CoverTest) {
 
   // Adding some more values.
   api.Add(KeyValueEntry(2, 31.5));
-  api.Add(KeyValueEntry(3, 11.2));
+  api.Add(KeyValueEntry(3, 11.5));
   api.Add(MatrixCell(1, "test", 2));
   api.Add(MatrixCell(2, "test", 1));
   api.Add(MatrixCell(3, "test", 4));
@@ -111,6 +111,20 @@ TEST(Yoda, CoverTest) {
     */
     done = true;
   });
+
+  HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
+  api.ExposeViaHTTP(FLAGS_yoda_test_port, "/data");
+  const std::string Z = "";  // For `clang-format`-indentation purposes.
+  EXPECT_EQ(Z + JSON(WithBaseType<Padawan>(KeyValueEntry(1, 42)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(42, "answer", 100)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(StringKVEntry("foo", "bar")), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(2, 31.5)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(3, 11.5)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(1, "test", 2)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(2, "test", 1)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(3, "test", 4)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(KeyValueEntry(128, 512)), "entry") + '\n',
+            HTTP(GET(Printf("http://localhost:%d/data?cap=9", FLAGS_yoda_test_port))).body);
 
   while (!done || !api.CaughtUp()) {
     ;  // Spin lock.
