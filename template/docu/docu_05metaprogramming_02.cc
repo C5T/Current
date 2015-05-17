@@ -94,10 +94,17 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
     // is to use a helper local type as the 1st param in the signature.
     struct TYPE {};
 
-    // Combine-able operations are defined as `operator()`.
-    // Just because we need to pick one common name,
-    // otherwise more `using`-s will be needed.
+    // `operator()` on an instance of a `combine`-d type
+    // calls `operator()` of the type from the type list that matches
+    // the types of parameters passed in.
+    // If none or more than one of the input types have the matching signature,
+    // attempting such a call will result in compilation error.
     int operator()(TYPE, int a) { return -a; }
+
+    // `DispatchToAll()` on an instance of `combine`-d type
+    // calls `DispatchToAll()` from all combined classes,
+    // in the order they have been listed in the type list.
+    template<typename T> void DispatchToAll(T& x) { x.result += "NEG\n"; }
   };
   
   struct ADD {
@@ -108,6 +115,8 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
     int operator()(TYPE, int a, int b, T c) {
       return a + b + AsInt(c);
     }
+
+    template<typename T> void DispatchToAll(T& x) { x.result += "ADD\n"; }
   };
   
   // Since "has-a" is used instead of "is-a",
@@ -118,6 +127,8 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
     struct TYPE {};
     int operator()(TYPE, int a, int b) { return a * b; }
     int operator()(TYPE, int a, int b, int c) { return a * b * c; }
+
+    template<typename T> void DispatchToAll(T& x) { x.result += "MUL\n"; }
   };
     
   // User-friendly method names, internally dispatching calls via `operator()`.
@@ -158,7 +169,6 @@ TEST(TemplateMetaprogramming, Combine) {
   // the following construct will work just fine.
   EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
   
-  // Using the simple combiner, that still uses `operator()`.
   typedef bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
   EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
   EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
@@ -179,6 +189,13 @@ TEST(TemplateMetaprogramming, Combine) {
   // have division operation defined.
   //
   // UserFriendlyArithmetics().Div(100, 5);
+  
+  struct Magic {
+    std::string result;
+  };
+  Magic magic;
+  UserFriendlyArithmetics().DispatchToAll(magic);
+  EXPECT_EQ("NEG\nADD\nMUL\n", magic.result);
 }
   
   // RTTI.

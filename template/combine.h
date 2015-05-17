@@ -45,17 +45,30 @@ struct dispatch {
 
   template <typename... XS>
   typename std::enable_if<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>>::type
-  operator()(XS... params) {
-    return instance(params...);
+  operator()(XS&&... params) {
+    return instance(std::forward<XS>(params)...);
+  }
+
+  template <typename... XS>
+  void DispatchToAll(XS&&... params) {
+    return instance.DispatchToAll(std::forward<XS>(params)...);
   }
 };
 
 template <typename T1, typename T2>
 struct inherit_from_both : T1, T2 {
+  // `operator()(...)` is handled such that only one of `T1::operator()` and `T2::operator()` will match
+  // the given type(s) of parameter(s) types. If none or both match, it's a compilation error.
+  // `operator()(...)` is used to avoid various `using ...`-s throughout template metaprogramming code.
   using T1::operator();
   using T2::operator();
-  // Note: clang++ passes `operator`-s through
-  // by default, whereas g++ requires `using`-s. --  D.K.
+
+  // `DispatchToAll(...)` will reach both `T1` and `T2`.
+  template <typename... TS>
+  void DispatchToAll(TS&&... params) {
+    T1::DispatchToAll(std::forward<TS>(params)...);
+    T2::DispatchToAll(std::forward<TS>(params)...);
+  }
 };
 
 template <typename T>
