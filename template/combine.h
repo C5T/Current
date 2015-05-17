@@ -58,7 +58,7 @@ struct dispatch {
 template <typename T1, typename T2>
 struct inherit_from_both : T1, T2 {
   // `operator()(...)` is handled such that only one of `T1::operator()` and `T2::operator()` will match
-  // the given ype(s) of parameter(s) types. If none or both match, it's a compilation error.
+  // the given type(s) of parameter(s) types. If none or both match, it's a compilation error.
   // `operator()(...)` is used to avoid various `using ...`-s throughout template metaprogramming code.
   using T1::operator();
   using T2::operator();
