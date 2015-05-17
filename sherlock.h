@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef SHERLOCK_H
 #define SHERLOCK_H
 
+#define BRICKS_MOCK_TIME
+
 #include "../Bricks/port.h"
 
 #include <vector>
@@ -133,7 +135,7 @@ bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
 }
 
 template <typename E>
-class PubSubHTTPEndpoint {
+class PubSubHTTPEndpoint final {
  public:
   PubSubHTTPEndpoint(const std::string& value_name, Request r)
       : value_name_(value_name),

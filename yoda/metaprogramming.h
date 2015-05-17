@@ -41,6 +41,8 @@ SOFTWARE.
 
 namespace yoda {
 
+struct Padawan;
+
 namespace sfinae {
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Associative container type selector. Attempts to use:

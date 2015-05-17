@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../../Bricks/exception.h"
 #include "../../Bricks/cerealize/cerealize.h"
+#include "../../Bricks/time/chrono.h"
 
 namespace yoda {
 
@@ -41,8 +42,14 @@ struct Padawan {
   typedef Padawan CEREAL_BASE_TYPE;
 
   uint64_t ms;
+  Padawan() : ms(static_cast<uint64_t>(bricks::time::Now())) {}
   virtual ~Padawan() = default;
 
+  // TODO(dk+mz): This should go away with SFINAE-based timestamp extraction in Sherlock.
+  // We might even already have the code ;-)
+  bricks::time::EPOCH_MILLISECONDS ExtractTimestamp() const {
+    return static_cast<bricks::time::EPOCH_MILLISECONDS>(ms);
+  }
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(ms));

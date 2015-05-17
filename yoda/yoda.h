@@ -117,6 +117,8 @@ struct APIWrapper
     return std::move(stream_.Subscribe(listener));
   }
 
+  void ExposeViaHTTP(int port, const std::string& endpoint) { HTTP(port).Register(endpoint, stream_); }
+
   // For testing purposes.
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }

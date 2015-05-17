@@ -23,10 +23,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define BRICKS_MOCK_TIME
+
 #include "../../yoda.h"
 #include "../../test_types.h"
 
-#include "../../../../Bricks/3party/gtest/gtest-main.h"
+#include "../../../../Bricks/dflags/dflags.h"
+#include "../../../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+
+DEFINE_int32(yoda_matrix_test_port, 8993, "");
+
+using bricks::strings::Printf;
 
 TEST(YodaMatrixEntry, Smoke) {
   typedef yoda::API<yoda::MatrixEntry<MatrixCell>> TestAPI;
@@ -131,4 +138,13 @@ TEST(YodaMatrixEntry, Smoke) {
   while (!cbt4.called) {
     ;  // Spin lock.
   }
+
+  HTTP(FLAGS_yoda_matrix_test_port).ResetAllHandlers();
+  api.ExposeViaHTTP(FLAGS_yoda_matrix_test_port, "/data");
+  const std::string Z = "";  // For `clang-format`-indentation purposes.
+  EXPECT_EQ(Z + JSON(WithBaseType<Padawan>(MatrixCell(5, "x", -1)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(5, "y", 15)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(1, "x", -9)), "entry") + '\n' +
+                JSON(WithBaseType<Padawan>(MatrixCell(42, "the_answer", 1)), "entry") + '\n',
+            HTTP(GET(Printf("http://localhost:%d/data?cap=4", FLAGS_yoda_matrix_test_port))).body);
 }
