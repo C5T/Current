@@ -31,6 +31,7 @@ SOFTWARE.
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
 #include <functional>
+#include <future>
 #include <utility>
 
 #include "../sherlock.h"
@@ -441,17 +442,17 @@ struct APICallsWrapper {
 // Handle `void` and non-`void` types equally for promises.
 template <typename R>
 struct CallAndSetPromiseImpl {
-  template <typename A, typename B>
-  static void DoIt(A&& a, B&& b, std::promise<R>& promise) {
-    promise.set_value(a(b));
+  template <typename FUNCTION, typename PARAMETER>
+  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<R>& promise) {
+    promise.set_value(function(parameter));
   }
 };
 
 template <>
 struct CallAndSetPromiseImpl<void> {
-  template <typename A, typename B>
-  static void DoIt(A&& a, B&& b, std::promise<void>& promise) {
-    a(b);
+  template <typename FUNCTION, typename PARAMETER>
+  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<void>& promise) {
+    function(parameter);
     promise.set_value();
   }
 };
