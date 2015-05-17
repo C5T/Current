@@ -444,7 +444,7 @@ template <typename R>
 struct CallAndSetPromiseImpl {
   template <typename FUNCTION, typename PARAMETER>
   static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<R>& promise) {
-    promise.set_value(function(parameter));
+    promise.set_value(function(std::forward<PARAMETER>(parameter)));
   }
 };
 
@@ -452,7 +452,7 @@ template <>
 struct CallAndSetPromiseImpl<void> {
   template <typename FUNCTION, typename PARAMETER>
   static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<void>& promise) {
-    function(parameter);
+    function(std::forward<PARAMETER>(parameter));
     promise.set_value();
   }
 };
