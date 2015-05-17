@@ -64,7 +64,7 @@ TEST(Yoda, CoverTest) {
   // Asynchronous call of user function.
   bool done = false;
   api.Call([&](TestAPI::T_CONTAINER_WRAPPER cw) {
-    auto KVEntries = cw.GetAccessor<KeyEntry<KeyValueEntry>>();
+    auto KVEntries = KeyEntry<KeyValueEntry>::Accessor(cw);
 
     EXPECT_TRUE(KVEntries.Exists(1));
     EXPECT_FALSE(KVEntries.Exists(100500));
@@ -78,11 +78,11 @@ TEST(Yoda, CoverTest) {
     KeyValueEntry kve34;
     ASSERT_THROW(kve34 = KVEntries[34], yoda::KeyNotFoundCoverException);
 
-    auto mutable_kve = cw.GetMutator<KeyEntry<KeyValueEntry>>();
+    auto mutable_kve = KeyEntry<KeyValueEntry>::Mutator(cw);
     mutable_kve.Add(KeyValueEntry(128, 512.0));
     EXPECT_EQ(512.0, static_cast<const KeyValueEntry&>(mutable_kve[128]).value);
 
-    auto mutable_matrix = cw.GetMutator<MatrixEntry<MatrixCell>>();
+    auto mutable_matrix = MatrixEntry<MatrixCell>::Mutator(cw);
     EXPECT_EQ(2, static_cast<const MatrixCell&>(mutable_matrix.Get(1, "test")).value);
     /*
         const bool exists = cw.Get(1);

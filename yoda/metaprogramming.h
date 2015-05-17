@@ -222,7 +222,7 @@ struct ContainerWrapper {
 
   // Container getter for `Accessor`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> GetAccessor() const {
+  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> Accessor() const {
     return container(container_wrapper::RetrieveAccessor<T>());
   }
 
@@ -231,7 +231,7 @@ struct ContainerWrapper {
   CWT<YodaContainer<YT>,
       container_wrapper::RetrieveMutator<T>,
       std::reference_wrapper<typename YT::T_STREAM_TYPE>>
-  GetMutator() const {
+  Mutator() const {
     return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
   }
 

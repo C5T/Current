@@ -83,6 +83,16 @@ struct MatrixEntry {
   typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
   typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
+
+  template <typename CW>
+  static decltype(std::declval<CW>().template Accessor<MatrixEntry<ENTRY>>()) Accessor(CW&& c) {
+    return c.template Accessor<MatrixEntry<ENTRY>>();
+  }
+
+  template <typename CW>
+  static decltype(std::declval<CW>().template Mutator<MatrixEntry<ENTRY>>()) Mutator(CW&& c) {
+    return c.template Mutator<MatrixEntry<ENTRY>>();
+  }
 };
 
 template <typename YT, typename ENTRY>
