@@ -164,7 +164,11 @@ TEST(TemplateMetaprogramming, Combine) {
   // the following construct will work just fine.
   EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
   
-  // Using the simple combiner, that still uses `operator()`.
+  // `operator()` on an instance of a `combine`-d type will
+  // call `operator()` of the type from the type list that matches
+  // the types of parameters passed in.
+  // If none or more than of the input types match the signature,
+  // attempting such a call will result in compilation error.
   typedef bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
   EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
   EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
@@ -185,7 +189,9 @@ TEST(TemplateMetaprogramming, Combine) {
   // have division operation defined.
   //
   // UserFriendlyArithmetics().Div(100, 5);
-
+  
+  // Top-level `DispatchToAll()` calls `DispatchToAll()` from all combined classes,
+  // in the order they have been listed in the type list.
   struct Magic {
     std::string result;
   };
