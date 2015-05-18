@@ -618,7 +618,9 @@ struct StreamInstance {
   using AsyncListenerScope = typename StreamInstanceImpl<T>::template AsyncListenerScope<F>;
 
   // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
-  // should ensure to terminate itself by or in the destructor of `SyncListenerScope`.
+  // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
+  // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
+  // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
   template <typename F>
   SyncListenerScope<bricks::rmconstref<F>> SyncSubscribe(F& listener) {
     // No `std::move()` needed: RAAI.
