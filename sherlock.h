@@ -545,11 +545,7 @@ class StreamInstanceImpl {
     void operator=(SyncListenerScope&&) = delete;
   };
 
-  // There are two forms of `Subscribe()`: One takes a reference to the listener, and one takes a
-  // `unique_ptr`.
-  // They both go through `OptionallyOwned<F>`, with the one taking a `unique_ptr` being detachable,
-  // while the one taking a reference to the listener being scoped-only.
-  // I'd rather implement them as two separate methods to avoid any confusions. - D.K.
+  // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
   template <typename F>
   AsyncListenerScope<F> AsyncSubscribeImpl(F&& listener) {
     // No `std::move()` needed: RAAI.
