@@ -261,7 +261,6 @@ struct CallTerminateAndReturnBoolImpl<T, true> {
 
 template <typename T>
 bool CallTerminate(T&& ptr) {
-  // return CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
   return CallTerminateAndReturnBoolImpl<
       T,
       std::is_same<void, decltype(CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
