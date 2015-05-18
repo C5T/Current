@@ -171,7 +171,8 @@ struct Container<YT, KeyEntry<ENTRY>> {
   typedef KeyEntry<ENTRY> YET;
 
   // Event: The entry has been scanned from the stream.
-  void operator()(const ENTRY& entry) { map_[GetKey(entry)] = entry; }
+  // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
+  void operator()(ENTRY& entry) { map_[GetKey(entry)] = std::move(entry); }
 
   // Event: `Get()`.
   void operator()(typename YodaImpl<YT, YET>::MQMessageGet& msg) {
@@ -208,7 +209,8 @@ struct Container<YT, KeyEntry<ENTRY>> {
       if (msg.on_failure) {  // Callback function defined.
         msg.on_failure();
       } else {  // Throw.
-        msg.pr.set_exception(std::make_exception_ptr(typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(msg.e)));
+        msg.pr.set_exception(
+            std::make_exception_ptr(typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(GetKey(msg.e))));
       }
     } else {
       map_[GetKey(msg.e)] = msg.e;

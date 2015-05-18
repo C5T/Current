@@ -345,8 +345,8 @@ struct dispatch {
 
   template <typename... XS>
   typename std::enable_if<sfinae<XS...>(0), decltype(std::declval<T>()(std::declval<XS>()...))>::type
-  operator()(XS... params) {
-    return instance(params...);
+  operator()(XS&&... params) {
+    return instance(std::forward<XS>(params)...);
   }
 
   dispatch() = delete;
@@ -407,22 +407,22 @@ struct APICallsWrapper {
   // via the `using T1::operator(); using T2::operator();` trick.
   template <typename... XS>
   CWT<API, apicalls::Get, XS...> Get(XS&&... xs) {
-    return api(apicalls::Get(), xs...);
+    return api(apicalls::Get(), std::forward<XS>(xs)...);
   }
 
   template <typename... XS>
   CWT<API, apicalls::Add, XS...> Add(XS&&... xs) {
-    return api(apicalls::Add(), xs...);
+    return api(apicalls::Add(), std::forward<XS>(xs)...);
   }
 
   template <typename... XS>
   CWT<API, apicalls::AsyncGet, XS...> AsyncGet(XS&&... xs) {
-    return api(apicalls::AsyncGet(), xs...);
+    return api(apicalls::AsyncGet(), std::forward<XS>(xs)...);
   }
 
   template <typename... XS>
   CWT<API, apicalls::AsyncAdd, XS...> AsyncAdd(XS&&... xs) {
-    return api(apicalls::AsyncAdd(), xs...);
+    return api(apicalls::AsyncAdd(), std::forward<XS>(xs)...);
   }
 
   /// TODO(dkorolev): Remove this code.

@@ -313,11 +313,6 @@ class StreamInstanceImpl {
     scope->emplace_back(entry_params...);
   }
 
-  template <typename E>
-  void PublishPolymorphic(const E& polymorphic_entry) {
-    data_.MutableUse([&polymorphic_entry](std::vector<T>& data) { data.emplace_back(polymorphic_entry); });
-  }
-
   // `ListenerThread` spawns the thread and runs stream listener within it.
   //
   // Listener thread can always be `std::thread::join()`-ed. When this happens, the listener itself is notified
@@ -608,7 +603,8 @@ struct StreamInstance {
   // TODO(dkorolev): Perhaps eliminate the copy.
   template <typename E>
   typename std::enable_if<can_be_stored_in_unique_ptr<T, E>::value>::type Publish(const E& polymorphic_entry) {
-    impl_->PublishPolymorphic(new E(polymorphic_entry));
+    // TODO(dkorolev): Don't rely on the existence of copy constructor.
+    impl_->Emplace(new E(polymorphic_entry));
   }
 
   template <typename F>

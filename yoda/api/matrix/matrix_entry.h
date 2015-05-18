@@ -260,7 +260,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       if (msg.on_failure) {  // Callback function defined.
         msg.on_failure();
       } else {  // Throw.
-        msg.pr.set_exception(std::make_exception_ptr(typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(msg.e)));
+        msg.pr.set_exception(std::make_exception_ptr(
+            typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(msg.e), GetCol(msg.e))));
       }
     } else {
       forward_[GetRow(msg.e)][GetCol(msg.e)] = msg.e;
@@ -299,7 +300,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       cell_exists = static_cast<bool>(rit->second.count(GetCol(entry)));
     }
     if (cell_exists) {
-      throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(entry);
+      throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(entry), GetCol(entry));
     } else {
       forward_[GetRow(entry)][GetCol(entry)] = entry;
       transposed_[GetCol(entry)][GetRow(entry)] = entry;

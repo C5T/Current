@@ -54,8 +54,9 @@ struct KeyAlreadyExistsCoverException : bricks::Exception {};
 template <typename ENTRY>
 struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
   typedef ENTRY T_ENTRY;
-  const ENTRY entry;
-  explicit KeyAlreadyExistsException(const ENTRY& entry) : entry(entry) {}
+  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
+  const T_KEY key;
+  explicit KeyAlreadyExistsException(const T_KEY& key) : key(key) {}
 };
 
 }  // namespace yoda

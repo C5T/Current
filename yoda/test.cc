@@ -77,8 +77,8 @@ TEST(Yoda, CoverTest) {
 
     // `operator[]` syntax.
     EXPECT_EQ(42.0, static_cast<const KeyValueEntry&>(KVEntries[1]).value);
-    KeyValueEntry kve34;
-    ASSERT_THROW(kve34 = KVEntries[34], yoda::KeyNotFoundCoverException);
+    ASSERT_THROW(static_cast<void>(static_cast<const KeyValueEntry&>(KVEntries[34]).value),
+                 yoda::KeyNotFoundCoverException);
 
     auto mutable_kve = KeyEntry<KeyValueEntry>::Mutator(cw);
     mutable_kve.Add(KeyValueEntry(128, 512.0));

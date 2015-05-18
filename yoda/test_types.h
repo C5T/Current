@@ -41,6 +41,16 @@ struct KeyValueEntry : Padawan {
     Padawan::serialize(ar);
     ar(CEREAL_NVP(key), CEREAL_NVP(value));
   }
+
+  // Confirm that Yoda works with non-copyable types, as long as they are `std::move()`-d in.
+  // TODO(dkorolev): Sync up with Max on whether we need this. Chances are, we don't, at least now.
+  // void operator=(KeyValueEntry&& rhs) {
+  //   key = rhs.key;
+  //   value = rhs.value;
+  // }
+  // KeyValueEntry(KeyValueEntry&&) = default;
+  // KeyValueEntry(const KeyValueEntry&) = delete;
+  // void operator=(const KeyValueEntry&) = delete;
 };
 CEREAL_REGISTER_TYPE(KeyValueEntry);
 

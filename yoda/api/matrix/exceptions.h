@@ -44,7 +44,7 @@ struct CellNotFoundException : CellNotFoundCoverException {
   typedef ENTRY_COL_TYPE<ENTRY> T_COL;
   const T_ROW row;
   const T_COL col;
-  explicit CellNotFoundException(const T_ROW& row, const T_COL& col) : row(row), col(col) {}
+  CellNotFoundException(const T_ROW& row, const T_COL& col) : row(row), col(col) {}
 };
 
 // Exception types for the existence of a particular cell being a runtime error.
@@ -54,8 +54,11 @@ struct CellAlreadyExistsCoverException : bricks::Exception {};
 template <typename ENTRY>
 struct CellAlreadyExistsException : CellAlreadyExistsCoverException {
   typedef ENTRY T_ENTRY;
-  const ENTRY entry;
-  explicit CellAlreadyExistsException(const ENTRY& entry) : entry(entry) {}
+  typedef ENTRY_ROW_TYPE<ENTRY> T_ROW;
+  typedef ENTRY_COL_TYPE<ENTRY> T_COL;
+  const T_ROW row;
+  const T_COL col;
+  CellAlreadyExistsException(const T_ROW& row, const T_COL& col) : row(row), col(col) {}
 };
 
 }  // namespace yoda
