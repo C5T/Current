@@ -1,1 +1,0 @@
-../KnowSheet/scripts/Makefile

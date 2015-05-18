@@ -73,13 +73,6 @@ struct KeyValueAggregateListener {
     ++data_.seen_;
     return data_.seen_ < max_to_process_;
   }
-
-  /// void Terminate() {
-  ///   if (data_.seen_) {
-  ///     data_.results_ += ",";
-  ///   }
-  ///   data_.results_ += "DONE";
-  /// }
 };
 
 TEST(YodaKeyEntry, Smoke) {
@@ -226,7 +219,13 @@ TEST(YodaKeyEntry, Smoke) {
   KeyValueSubscriptionData data;
   KeyValueAggregateListener listener(data);
   listener.SetMax(7u);
-  api.Subscribe(listener).Join();
+  {
+    auto scope = api.UnsafeStream().SyncSubscribe(listener);
+    while (data.seen_ < 7u) {
+      ;  // Spin lock.
+    }
+    scope.Join();
+  }
   EXPECT_EQ(data.seen_, 7u);
   EXPECT_EQ("2=0.50,3=0.33,4=0.25,5=0.20,6=0.17,7=0.76,50=0.02", data.results_);
 

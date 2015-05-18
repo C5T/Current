@@ -180,12 +180,9 @@ struct YodaTypes : YodaTypesBase {
 
   typedef sherlock::StreamInstance<std::unique_ptr<Padawan>> T_STREAM_TYPE;
 
-  template <typename F>
-  using T_STREAM_LISTENER_TYPE = typename T_STREAM_TYPE::template ListenerScope<F>;
-
   typedef StreamListener<T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
-
-  typedef T_STREAM_LISTENER_TYPE<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
+  typedef typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>
+      T_SHERLOCK_LISTENER_SCOPE_TYPE;
 };
 
 // Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.

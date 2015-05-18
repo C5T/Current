@@ -42,6 +42,7 @@ SOFTWARE.
 DEFINE_int32(sherlock_http_test_port, 8090, "Local port to use for Sherlock unit test.");
 
 using std::string;
+using std::atomic_bool;
 using std::atomic_size_t;
 using std::thread;
 using std::this_thread::sleep_for;
@@ -79,19 +80,30 @@ struct RecordWithTimestamp {
 };
 
 // Struct `Data` should be outside struct `Processor`, since the latter is `std::move`-d away in some tests.
-struct Data {
+struct Data final {
+  atomic_bool listener_alive_;
   atomic_size_t seen_;
   string results_;
-  Data() : seen_(0u) {}
+  Data() : listener_alive_(false), seen_(0u) {}
 };
 
 // Struct `Processor` handles the entries that tests subscribe to.
-struct Processor {
+struct Processor final {
   Data& data_;
   size_t max_to_process_ = static_cast<size_t>(-1);
+  bool allow_terminate_;
 
   Processor() = delete;
-  explicit Processor(Data& data) : data_(data) {}
+
+  explicit Processor(Data& data, bool allow_terminate) : data_(data), allow_terminate_(allow_terminate) {
+    assert(!data_.listener_alive_);
+    data_.listener_alive_ = true;
+  }
+
+  ~Processor() {
+    assert(data_.listener_alive_);
+    data_.listener_alive_ = false;
+  }
 
   Processor& SetMax(size_t cap) {
     max_to_process_ = cap;
@@ -101,7 +113,7 @@ struct Processor {
   inline bool Entry(const Record& entry, size_t index, size_t total) {
     static_cast<void>(index);
     static_cast<void>(total);
-    if (data_.seen_) {
+    if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
     data_.results_ += ToString(entry.x_);
@@ -109,11 +121,12 @@ struct Processor {
     return data_.seen_ < max_to_process_;
   }
 
-  inline void Terminate() {
-    if (data_.seen_) {
+  inline bool Terminate() {
+    if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
-    data_.results_ += "DONE";
+    data_.results_ += "TERMINATE";
+    return allow_terminate_;
   }
 };
 
@@ -123,11 +136,20 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   foo_stream.Publish(2);
   foo_stream.Publish(3);
   Data d;
-  Processor p(d);
-  foo_stream.Subscribe(p.SetMax(3u))
-      .Join();  // `.Join()` makes this a blocking call, waiting for three entries.
-  EXPECT_EQ(d.seen_, 3u);
-  EXPECT_EQ("1,2,3", d.results_);
+  {
+    ASSERT_FALSE(d.listener_alive_);
+    Processor p(d, false);
+    ASSERT_TRUE(d.listener_alive_);
+    foo_stream.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
+    EXPECT_EQ(3u, d.seen_);
+    ASSERT_TRUE(d.listener_alive_);
+  }
+  ASSERT_FALSE(d.listener_alive_);
+
+  // A careful condition, since the listener may process some or all entries before going out of scope.
+  EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
+              (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
+      << d.results_;
 }
 
 TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
@@ -136,27 +158,70 @@ TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
   bar_stream.Publish(5);
   bar_stream.Publish(6);
   Data d;
-  std::unique_ptr<Processor> p(new Processor(d));
+  ASSERT_FALSE(d.listener_alive_);
+  std::unique_ptr<Processor> p(new Processor(d, false));
+  ASSERT_TRUE(d.listener_alive_);
   p->SetMax(3u);
-  bar_stream.Subscribe(std::move(p))
-      .Join();  // `.Join()` makes this a blocking call, waiting for three entries.
-  EXPECT_EQ(d.seen_, 3u);
-  EXPECT_EQ("4,5,6", d.results_);
+  bar_stream.AsyncSubscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
+  EXPECT_EQ(3u, d.seen_);
+  while (d.listener_alive_) {
+    ;  // Spin lock.
+  }
+
+  // A careful condition, since the listener may process some or all entries before going out of scope.
+  EXPECT_TRUE((d.results_ == "TERMINATE,4,5,6") || (d.results_ == "4,TERMINATE,5,6") ||
+              (d.results_ == "4,5,TERMINATE,6") || (d.results_ == "4,5,6,TERMINATE") || (d.results_ == "4,5,6"))
+      << d.results_;
+}
+
+TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
+  auto bar_stream = sherlock::Stream<Record>("bar");
+  bar_stream.Publish(4);
+  bar_stream.Publish(5);
+  bar_stream.Publish(6);
+  Data d;
+  std::unique_ptr<Processor> p(new Processor(d, false));
+  p->SetMax(4u);
+  bar_stream.AsyncSubscribe(std::move(p)).Detach();  // `.Detach()` results in the listener running on its own.
+  while (d.seen_ < 3u) {
+    ;  // Spin lock.
+  }
+  EXPECT_EQ(3u, d.seen_);
+  EXPECT_EQ("4,5,6", d.results_);  // No `TERMINATE` for an asyncronous listener.
+  EXPECT_TRUE(d.listener_alive_);
+  bar_stream.Publish(42);  // Need the 4th entry for the async listener to terminate.
+  while (d.listener_alive_) {
+    ;  // Spin lock.
+  }
 }
 
 TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   auto baz_stream = sherlock::Stream<Record>("baz");
-  thread delayed_publish_thread([&baz_stream]() {
-    sleep_for(milliseconds(10));
+  atomic_bool wait(true);
+  thread delayed_publish_thread([&baz_stream, &wait]() {
+    while (wait) {
+      ;  // Spin lock.
+    }
     baz_stream.Publish(7);
     baz_stream.Publish(8);
     baz_stream.Publish(9);
   });
-  Data d;
-  Processor p(d);
-  baz_stream.Subscribe(p);
-  EXPECT_EQ(d.seen_, 0u);
-  EXPECT_EQ("DONE", d.results_);
+  {
+    Data d;
+    Processor p(d, true);
+    // NOTE: plain `baz_stream.SyncSubscribe(p);` will fail with exception
+    // in the destructor of `SyncListenerScope`.
+    baz_stream.SyncSubscribe(p).Join();
+    EXPECT_EQ(0u, d.seen_);
+  }
+  {
+    Data d;
+    Processor p(d, true);
+    auto scope = baz_stream.SyncSubscribe(p);
+    scope.Join();
+    EXPECT_EQ(0u, d.seen_);
+  }
+  wait = false;
   delayed_publish_thread.join();
 }
 
@@ -166,9 +231,9 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   meh_stream.Publish(11);
   meh_stream.Publish(12);
   Data d;
-  Processor p(d);
+  Processor p(d, true);
   {
-    auto scope = meh_stream.Subscribe(p);
+    auto scope = meh_stream.SyncSubscribe(p);
     {
       auto scope2 = std::move(scope);
       {
@@ -176,11 +241,14 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
         while (d.seen_ < 3u) {
           ;  // Spin lock.
         }
+        // If the next line is commented out, an unrecoverable exception
+        // will be thrown in the destructor of `SyncListenerScope`.
+        scope3.Join();
       }
     }
   }
-  EXPECT_EQ(d.seen_, 3u);
-  EXPECT_EQ("10,11,12,DONE", d.results_);
+  EXPECT_EQ(3u, d.seen_);
+  EXPECT_EQ("10,11,12,TERMINATE", d.results_);
 }
 
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
@@ -214,18 +282,20 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   std::vector<std::string> s;
   RecordsCollector collector(s);
   {
-    auto scope = exposed_stream.Subscribe(collector);
+    auto scope = exposed_stream.SyncSubscribe(collector);
     while (collector.count_ < 4u) {
       ;  // Spin lock.
     }
+    scope.Join();
   }
-  EXPECT_EQ(s.size(), 4u);
+  EXPECT_EQ(4u, s.size());
 
   HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
 
   // Test `?n=...`.
   EXPECT_EQ(s[3], HTTP(GET(Printf("http://localhost:%d/exposed?n=1", FLAGS_sherlock_http_test_port))).body);
+
   EXPECT_EQ(s[2] + s[3],
             HTTP(GET(Printf("http://localhost:%d/exposed?n=2", FLAGS_sherlock_http_test_port))).body);
   EXPECT_EQ(s[1] + s[2] + s[3],
