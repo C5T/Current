@@ -42,8 +42,6 @@ SOFTWARE.
 #include "../Bricks/template/rmref.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
-#include "optionally_owned/optionally_owned.h"
-
 // Sherlock is the overlord of data storage and processing in KnowSheet.
 // Its primary entity is the stream of data.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records.
@@ -98,9 +96,12 @@ SOFTWARE.
 //      when the listener is considered eligible to serve incoming data requests.
 //      TODO(dkorolev): Discuss the case if the listener falls behind again.
 //
-//   3) `void TerminationRequest()`:
+//   3) `void Terminate` or `bool Terminate()`:
 //      This member function will be called if the listener has to be terminated externally,
 //      which happens when the handler returned by `Subscribe()` goes out of scope.
+//      If the signature is `bool Terminate()`, returning `false` will prevent the termination from happening,
+//      allowing the user code to process more entries. Note that this can yield to the calling thread
+//      waiting indefinitely.
 //
 // The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
 // an instance of a handle, the scope of which will define the lifetime of the listener.
@@ -162,7 +163,7 @@ class PubSubHTTPEndpoint final {
     }
   }
 
-  inline bool Entry(E& entry, size_t index, size_t total) {
+  bool Entry(E& entry, size_t index, size_t total) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
@@ -192,7 +193,10 @@ class PubSubHTTPEndpoint final {
     }
   }
 
-  inline void Terminate() { http_response_("{\"error\":\"The subscriber has terminated.\"}\n"); }
+  bool Terminate() {
+    http_response_("{\"error\":\"The subscriber has terminated.\"}\n");
+    return true;  // Confirm termination.
+  }
 
  private:
   // Top-level JSON object name for Cereal.
@@ -232,33 +236,74 @@ constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>() -> Terminat
 
 template <typename T, bool>
 struct CallTerminateImpl {
-  static void DoIt(T&&) {}
+  static bool DoIt(T&&) { return true; }
 };
 
 template <typename T>
 struct CallTerminateImpl<T, true> {
-  static void DoIt(T&& ptr) { ptr->Terminate(); }
+  static decltype(std::declval<T>()->Terminate()) DoIt(T&& ptr) { return ptr->Terminate(); }
+};
+
+template <typename T, bool>
+struct CallTerminateAndReturnBoolImpl {
+  static bool DoIt(T&& ptr) {
+    return CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
+  }
 };
 
 template <typename T>
-void CallTerminate(T&& ptr) {
-  CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
+struct CallTerminateAndReturnBoolImpl<T, true> {
+  static bool DoIt(T&& ptr) {
+    CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
+    return true;
+  }
+};
+
+template <typename T>
+bool CallTerminate(T&& ptr) {
+  // return CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
+  return CallTerminateAndReturnBoolImpl<
+      T,
+      std::is_same<void, decltype(CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
+          value>::DoIt(ptr);
 }
+
+// TODO(dkorolev): Move this to Bricks. Cerealize uses it too, for `WithBaseType`.
+template <typename T>
+struct PretendingToBeUniquePtr {
+  struct NullDeleter {
+    void operator()(T&) {}
+    void operator()(T*) {}
+  };
+  std::unique_ptr<T, NullDeleter> non_owned_instance_;
+  PretendingToBeUniquePtr() = delete;
+  PretendingToBeUniquePtr(T& instance) : non_owned_instance_(&instance) {}
+  PretendingToBeUniquePtr(PretendingToBeUniquePtr&& rhs)
+      : non_owned_instance_(std::move(rhs.non_owned_instance_)) {
+    assert(non_owned_instance_);
+    assert(!rhs.non_owned_instance_);
+  }
+  T* operator->() {
+    assert(non_owned_instance_);
+    return non_owned_instance_.get();
+  }
+};
 
 template <typename T>
 class StreamInstanceImpl {
  public:
-  inline explicit StreamInstanceImpl(const std::string& name, const std::string& value_name)
+  explicit StreamInstanceImpl(const std::string& name, const std::string& value_name)
       : name_(name), value_name_(value_name) {
     // TODO(dkorolev): Register this stream under this name.
+    // TODO(dk+mz): Ensure the stream lives forever.
   }
 
-  inline void Publish(const T& entry) {
+  void Publish(const T& entry) {
     data_.MutableUse([&entry](std::vector<T>& data) { data.emplace_back(entry); });
   }
 
   template <typename... ARGS>
-  inline void Emplace(const ARGS&... entry_params) {
+  void Emplace(const ARGS&... entry_params) {
     // TODO(dkorolev): Am I not doing this C++11 thing right, or is it not yet supported?
     // data_.MutableUse([&entry_params](std::vector<T>& data) { data.emplace_back(entry_params...); });
     auto scope = data_.MutableScopedAccessor();
@@ -266,90 +311,127 @@ class StreamInstanceImpl {
   }
 
   template <typename E>
-  inline void PublishPolymorphic(const E& polymorphic_entry) {
+  void PublishPolymorphic(const E& polymorphic_entry) {
     data_.MutableUse([&polymorphic_entry](std::vector<T>& data) { data.emplace_back(polymorphic_entry); });
   }
 
+  // `ListenerThread` spawns the thread and runs stream listener within it.
+  //
+  // Listener thread can always be `std::thread::join()`-ed. When this happens, the listener itself is notified
+  // that the user has requested to join the listening thread, and then the thread is joined.
+  // The listener code itself may choose to stop immediately, later, or never; in the latter cases `join()`-ing
+  // the thread will run for a long time or forever.
+  // Most commonly though, `join()` on a listener thread will result it in completing processing the entry
+  // that it is currently processing, and then shutting down gracefully.
+  // This makes working with C++ Sherlock almost as cozy as it could have been in node.js or Python.
+  //
+  // With respect to `std::thread::detach()`, we have two very different usecases:
+  //
+  // 1) If `ListenerThread` has been provided with a fair `unique_ptr<>` (which obviously is
+  //    immediately `std::move()`-d into the thread, thus enabling `thread::detach()`), then
+  //    `thread::detach()` is a legal operation, and it is the way to detach the listener from the caller
+  //    thread,
+  //    enabling to run the listener indefinitely, or until it itself decides to stop.
+  //    The most notable example here would be spawning a listener to serve an HTTP request.
+  //    (NOTE: This logic requires `Stream` objects to live forever. TODO(dk+mz): Make sure it is the case.)
+  //
+  // 2) The alternate usecase is when a stack-allocated object should acts as a listener.
+  //    Implementation-wise, it is handled by wrapping the stack-allocated object into a `unique_ptr<>`
+  //    with null deleter. Obviously, `thread::detach()` is then unsafe and thus impossible.
+  //
+  // The `ListenerScope` class handles the above two usecases, depending on whether a stack- or heap-allocated
+  // instance of a listener has been passed into.
   template <typename F>
-  class ListenerScope {
-   public:
-    inline explicit ListenerScope(bricks::WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
-        : impl_(new Impl(data, std::move(listener))) {}
-
-    // TODO(dkorolev): Think whether it's worth it to transfer the scope.
-    // ListenerScope(ListenerScope&&) = delete;
-    inline ListenerScope(ListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {}
-
-    inline void Join() { impl_->Join(); }
-    inline void Detach() { impl_->Detach(); }
-
+  class ListenerThread {
    private:
-    struct ReallyAtomicFlag {
-      // TODO(dkorolev): I couldn't figure out shared_ptr + atomic + memory orders at 3am.
-      bool value_ = false;
-      mutable std::mutex mutex_;
-      bool Get() const {
-        std::unique_lock<std::mutex> lock(mutex_);
-        return value_;
-      }
-      void Set() {
-        std::unique_lock<std::mutex> lock(mutex_);
-        value_ = true;
-      }
+    struct CrossThreadsBlob {
+      bricks::WaitableAtomic<std::vector<T>>& data;
+      F listener;
+      std::atomic_bool external_termination_request;
+      std::atomic_bool thread_received_terminate_request;
+      std::atomic_bool thread_done;
+
+      CrossThreadsBlob(bricks::WaitableAtomic<std::vector<T>>& data, F&& listener)
+          : data(data),
+            listener(std::move(listener)),
+            external_termination_request(false),
+            thread_received_terminate_request(false),
+            thread_done(false) {}
+
+      CrossThreadsBlob() = delete;
+      CrossThreadsBlob(const CrossThreadsBlob&) = delete;
+      CrossThreadsBlob(CrossThreadsBlob&&) = delete;
+      void operator=(const CrossThreadsBlob&) = delete;
+      void operator=(CrossThreadsBlob&&) = delete;
     };
 
-    class Impl {
-     public:
-      inline Impl(bricks::WaitableAtomic<std::vector<T>>& data, OptionallyOwned<F> listener)
-          : listener_is_detachable_(listener.IsDetachable()),
-            data_(data),
-            terminate_flag_(new ReallyAtomicFlag()),
-            listener_thread_(
-                &Impl::StaticListenerThread, terminate_flag_, std::ref(data), std::move(listener)) {}
+   public:
+    ListenerThread(bricks::WaitableAtomic<std::vector<T>>& data, F&& listener)
+        : data_(data),
+          blob_(std::make_shared<CrossThreadsBlob>(data, std::move(listener))),
+          thread_(&ListenerThread::StaticListenerThread, blob_) {}
 
-      inline ~Impl() {
-        // Indicate to the listener thread that the listener handle is going out of scope.
-        if (listener_thread_.joinable()) {
-          // Buzz all active listeners. Ineffective, but does the right thing semantically, and passes the test.
-          terminate_flag_->Set();
+    ~ListenerThread() {
+      if (thread_.joinable()) {
+        // TODO(dkorolev): Phrase the error message better.
+        throw std::logic_error("Unrecoverable error in destructor: ListenerThread was not joined/detached.");
+      }
+    }
+
+    void SafeJoinThread() {
+      assert(thread_.joinable());  // TODO(dkorolev): Exception && test?
+      // Buzz all active listeners. Ineffective, but does the right thing semantically, and passes the test.
+      blob_->external_termination_request = true;
+      data_.Notify();
+      // This loop, along with polling logic in the thread, is our Chamberlain's Response to deadlocks.
+      const auto now = bricks::time::Now();
+      while (!blob_->thread_received_terminate_request && !blob_->thread_done) {
+        // Spin lock if under 2ms. Start sending notifications nonstop afterwards.
+        if (static_cast<uint64_t>(bricks::time::Now() - now) >= 2) {
           data_.Notify();
-          // Wait for the thread to terminate.
-          // Note that this code will only be executed if neither `Join()` nor `Detach()` has been done before.
-          listener_thread_.join();
         }
       }
+      // Wait for the thread to terminate.
+      // Note that this code will only be executed if neither `Join()` nor `Detach()` has been done before.
+      thread_.join();
+    }
 
-      inline void Join() {
-        if (listener_thread_.joinable()) {
-          listener_thread_.join();
-        }
-      }
+    void PotentiallyUnsafeDetachThread() {
+      assert(thread_.joinable());  // TODO(dkorolev): Exception && test?
+      thread_.detach();
+    }
 
-      inline void Detach() {
-        if (listener_is_detachable_) {
-          if (listener_thread_.joinable()) {
-            listener_thread_.detach();
-          }
-        } else {
-          // TODO(dkorolev): Custom exception type here.
-          throw std::logic_error("Can not detach a non-unique_ptr-created listener.");
-        }
-      }
-
-      inline static void StaticListenerThread(std::shared_ptr<ReallyAtomicFlag> terminate,
-                                              bricks::WaitableAtomic<std::vector<T>>& data,
-                                              OptionallyOwned<F> listener) {
-        size_t cursor = 0;
-        while (true) {
-          data.Wait([&cursor, &terminate](const std::vector<T>& data) {
-            return terminate->Get() || data.size() > cursor;
-          });
-          if (terminate->Get()) {
-            CallTerminate(listener);
+    static void StaticListenerThread(std::shared_ptr<CrossThreadsBlob> blob_shared_ptr) {
+      CrossThreadsBlob* blob = blob_shared_ptr.get();
+      assert(blob);
+      size_t cursor = 0;
+      volatile bool user_already_notified_to_terminate = false;
+      volatile bool has_data;
+      while (true) {
+        has_data = false;
+        blob->data.WaitFor(
+            [&blob, &cursor, &user_already_notified_to_terminate, &has_data](const std::vector<T>& data) {
+              if (!user_already_notified_to_terminate && blob->external_termination_request) {
+                return true;
+              } else if (data.size() > cursor) {
+                has_data = true;
+                return true;
+              } else {
+                return false;
+              }
+            },
+            static_cast<bricks::time::MILLISECONDS_INTERVAL>(10));
+        // This condition, along with the timeout in `WaitFor`, is our Chamberlain's Response to deadlocks.
+        if (!user_already_notified_to_terminate && blob->external_termination_request) {
+          blob->thread_received_terminate_request = true;
+          user_already_notified_to_terminate = true;
+          if (CallTerminate(blob->listener)) {
             break;
           }
+        }
+        if (has_data) {  // action == NEW_DATA_READY) {
           bool user_initiated_terminate = false;
-          data.ImmutableUse([&listener, &cursor, &user_initiated_terminate](const std::vector<T>& data) {
+          blob->data.ImmutableUse([&blob, &cursor, &user_initiated_terminate](const std::vector<T>& data) {
             // Entries are often instances of polymorphic types, that make it into various message queues.
             // The most straightforward way to store them is a `unique_ptr`, and the most straightforward
             // way to pass `unique_ptr`-s between threads is via `Emplace*(ptr.release())`.
@@ -360,6 +442,7 @@ class StreamInstanceImpl {
             // The below implementation is imperfect, but it serves the purpose semantically.
             // TODO(dkorolev): Fix it.
 
+            assert(cursor < data.size());
             const std::string json = JSON(data[cursor]);
             T copy_of_entry;
             try {
@@ -371,7 +454,7 @@ class StreamInstanceImpl {
             }
 
             // TODO(dkorolev): Perhaps RTTI dispatching here.
-            if (!listener->Entry(copy_of_entry, cursor, data.size())) {
+            if (!blob->listener->Entry(copy_of_entry, cursor, data.size())) {
               user_initiated_terminate = true;
             }
             ++cursor;
@@ -381,46 +464,107 @@ class StreamInstanceImpl {
           }
         }
       }
+      blob->thread_done = true;
+    }
 
-      const bool listener_is_detachable_;             // Indicates whether `Detach()` is legal.
-      bricks::WaitableAtomic<std::vector<T>>& data_;  // Just to `.Notify()` when terminating.
+    bricks::WaitableAtomic<std::vector<T>>& data_;  // Just to `.Notify()` when terminating.
+    std::shared_ptr<CrossThreadsBlob> blob_;
+    std::thread thread_;
 
-      // A termination flag that outlives both the `Impl` and its thread.
-      std::shared_ptr<ReallyAtomicFlag> terminate_flag_;
+    ListenerThread(ListenerThread&&) = delete;  // Yep -- no move constructor.
 
-      // The thread that runs the listener. It owns the actual `OptionallyOwned<F>` handler;
-      std::thread listener_thread_;
-
-      Impl() = delete;
-      Impl(const Impl&) = delete;
-      Impl(Impl&&) = delete;
-      void operator=(const Impl&) = delete;
-      void operator=(Impl&&) = delete;
-    };
-
-    std::unique_ptr<Impl> impl_;
-
-    ListenerScope() = delete;
-    ListenerScope(const ListenerScope&) = delete;
-    void operator=(const ListenerScope&) = delete;
-    void operator=(ListenerScope&&) = delete;
+    ListenerThread() = delete;
+    ListenerThread(const ListenerThread&) = delete;
+    void operator=(const ListenerThread&) = delete;
+    void operator=(ListenerThread&&) = delete;
   };
 
-  // There are two forms of `Subscribe()`: One takes a reference to the listener, and one takes a `unique_ptr`.
+  template <typename F>
+  class AsyncListenerScope {
+   public:
+    AsyncListenerScope(bricks::WaitableAtomic<std::vector<T>>& data, F&& listener)
+        : impl_(make_unique<ListenerThread<F>>(data, std::forward<F>(listener))) {}
+
+    AsyncListenerScope(AsyncListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
+      assert(impl_);
+      assert(!rhs.impl_);
+    }
+
+    void Join() {
+      assert(impl_);
+      impl_->SafeJoinThread();
+    }
+    void Detach() {
+      assert(impl_);
+      impl_->PotentiallyUnsafeDetachThread();
+    }
+
+   private:
+    std::unique_ptr<ListenerThread<F>> impl_;
+
+    AsyncListenerScope() = delete;
+    AsyncListenerScope(const AsyncListenerScope&) = delete;
+    void operator=(const AsyncListenerScope&) = delete;
+    void operator=(AsyncListenerScope&&) = delete;
+  };
+
+  template <typename F>
+  class SyncListenerScope {
+   public:
+    SyncListenerScope(bricks::WaitableAtomic<std::vector<T>>& data, F&& listener)
+        : joined_(false), impl_(make_unique<ListenerThread<F>>(data, std::move(listener))) {}
+
+    SyncListenerScope(SyncListenerScope&& rhs) : joined_(false), impl_(std::move(rhs.impl_)) {
+      // TODO(dkorolev): Constructor is not destructor -- we can make these exceptions and test them.
+      assert(impl_);
+      assert(!rhs.impl_);
+      assert(!rhs.joined_);
+      rhs.joined_ = true;  // Make sure no two joins are possible.
+    }
+
+    ~SyncListenerScope() {
+      if (!joined_) {
+        throw std::logic_error("Unrecoverable error in destructor: Join() was not called on for SyncListener.");
+      }
+    }
+
+    void Join() {
+      // TODO(dkorolev): Make these exceptions and test them.
+      assert(!joined_);
+      assert(impl_);
+      impl_->SafeJoinThread();
+      joined_ = true;
+    }
+
+   private:
+    bool joined_;
+    std::unique_ptr<ListenerThread<F>> impl_;
+
+    SyncListenerScope() = delete;
+    SyncListenerScope(const SyncListenerScope&) = delete;
+    void operator=(const SyncListenerScope&) = delete;
+    void operator=(SyncListenerScope&&) = delete;
+  };
+
+  // There are two forms of `Subscribe()`: One takes a reference to the listener, and one takes a
+  // `unique_ptr`.
   // They both go through `OptionallyOwned<F>`, with the one taking a `unique_ptr` being detachable,
   // while the one taking a reference to the listener being scoped-only.
   // I'd rather implement them as two separate methods to avoid any confusions. - D.K.
   template <typename F>
-  inline ListenerScope<F> Subscribe(F& listener) {
-    return std::move(ListenerScope<F>(data_, OptionallyOwned<F>(listener)));
+  AsyncListenerScope<F> AsyncSubscribeImpl(F&& listener) {
+    // No `std::move()` needed: RAAI.
+    return AsyncListenerScope<F>(data_, std::forward<F>(listener));
   }
+
   template <typename F>
-  inline ListenerScope<F> Subscribe(std::unique_ptr<F>&& listener) {
-    return std::move(ListenerScope<F>(data_, OptionallyOwned<F>(std::move(listener))));
+  SyncListenerScope<PretendingToBeUniquePtr<F>> SyncSubscribeImpl(F& listener) {
+    // No `std::move()` needed: RAAI.
+    return SyncListenerScope<PretendingToBeUniquePtr<F>>(data_, PretendingToBeUniquePtr<F>(listener));
   }
 
   void ServeDataViaHTTP(Request r) {
-    Subscribe(make_unique(new PubSubHTTPEndpoint<T>(value_name_, std::move(r)))).Detach();
+    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<T>>(value_name_, std::move(r))).Detach();
   }
 
  private:
@@ -450,14 +594,16 @@ struct can_be_stored_in_unique_ptr<std::unique_ptr<B>, E> {
 template <typename T>
 struct StreamInstance {
   StreamInstanceImpl<T>* impl_;
-  inline explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
+  explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
 
-  inline void Publish(const T& entry) { impl_->Publish(entry); }
+  void Publish(const T& entry) { impl_->Publish(entry); }
 
   template <typename... ARGS>
-  inline void Emplace(const ARGS&... entry_params) {
+  void Emplace(const ARGS&... entry_params) {
     impl_->Emplace(entry_params...);
   }
+
+  // TODO(dkorolev): EmplacePolymorphic, that does `new`.
 
   // TODO(dkorolev): Add a test for this code.
   // TODO(dkorolev): Perhaps eliminate the copy.
@@ -467,22 +613,32 @@ struct StreamInstance {
   }
 
   template <typename F>
-  inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(F& listener) {
-    return std::move(impl_->Subscribe(listener));
-  }
+  using SyncListenerScope =
+      typename StreamInstanceImpl<T>::template SyncListenerScope<PretendingToBeUniquePtr<F>>;
   template <typename F>
-  inline typename StreamInstanceImpl<T>::template ListenerScope<F> Subscribe(std::unique_ptr<F> listener) {
-    return std::move(impl_->Subscribe(std::move(listener)));
+  using AsyncListenerScope = typename StreamInstanceImpl<T>::template AsyncListenerScope<F>;
+
+  // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
+  // should ensure to terminate itself by or in the destructor of `SyncListenerScope`.
+  template <typename F>
+  SyncListenerScope<bricks::rmconstref<F>> SyncSubscribe(F& listener) {
+    // No `std::move()` needed: RAAI.
+    return impl_->SyncSubscribeImpl(listener);
+  }
+
+  // Aynchonous subscription: `listener` is a heap-allocated object, the ownership of which
+  // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
+  template <typename F>
+  AsyncListenerScope<bricks::rmconstref<F>> AsyncSubscribe(F&& listener) {
+    // No `std::move()` needed: RAAI.
+    return impl_->AsyncSubscribeImpl(std::forward<F>(listener));
   }
 
   void operator()(Request r) { impl_->ServeDataViaHTTP(std::move(r)); }
-
-  template <typename F>
-  using ListenerScope = typename StreamInstanceImpl<T>::template ListenerScope<F>;
 };
 
 template <typename T>
-inline StreamInstance<T> Stream(const std::string& name, const std::string& value_name = "entry") {
+StreamInstance<T> Stream(const std::string& name, const std::string& value_name = "entry") {
   // TODO(dkorolev): Validate stream name, add exceptions and tests for it.
   // TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
   // TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.

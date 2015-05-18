@@ -108,14 +108,11 @@ struct APIWrapper
         mq_listener_(container_, container_wrapper_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
-        sherlock_listener_scope_(stream_.Subscribe(stream_listener_)) {}
+        sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {}
+
+  ~APIWrapper() { sherlock_listener_scope_.Join(); }
 
   typename YT::T_STREAM_TYPE& UnsafeStream() { return stream_; }
-
-  template <typename F>
-  typename YT::template T_STREAM_LISTENER_TYPE<F> Subscribe(F& listener) {
-    return std::move(stream_.Subscribe(listener));
-  }
 
   void ExposeViaHTTP(int port, const std::string& endpoint) { HTTP(port).Register(endpoint, stream_); }
 
