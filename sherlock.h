@@ -301,6 +301,10 @@ class StreamInstanceImpl {
     data_.MutableUse([&entry](std::vector<T>& data) { data.emplace_back(entry); });
   }
 
+  void Publish(T&& entry) {
+    data_.MutableUse([&entry](std::vector<T>& data) { data.emplace_back(std::move(entry)); });
+  }
+
   template <typename... ARGS>
   void Emplace(const ARGS&... entry_params) {
     // TODO(dkorolev): Am I not doing this C++11 thing right, or is it not yet supported?
@@ -591,6 +595,7 @@ struct StreamInstance {
   explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
 
   void Publish(const T& entry) { impl_->Publish(entry); }
+  void Publish(T&& entry) { impl_->Publish(std::move(entry)); }
 
   template <typename... ARGS>
   void Emplace(const ARGS&... entry_params) {
