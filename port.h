@@ -121,9 +121,9 @@ SOFTWARE.
 
 // `std::make_unique` exists in C++14, but for Bricks we'd like to see it "supported" in C++11. -- D.K.
 namespace make_unique_for_poor_cpp11_users_impl {
-template <typename T>
-std::unique_ptr<T> make_unique(T* ptr) {
-  return std::unique_ptr<T>(ptr);
+template <typename T, typename... PARAMS>
+std::unique_ptr<T> make_unique(PARAMS&&... params) {
+  return std::unique_ptr<T>(new T(std::forward<PARAMS>(params)...));
 }
 }  // namespace make_unique_for_poor_cpp11_users_impl
 using namespace make_unique_for_poor_cpp11_users_impl;
