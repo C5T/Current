@@ -327,10 +327,9 @@ class StreamInstanceImpl {
   //
   // With respect to `std::thread::detach()`, we have two very different usecases:
   //
-  // 1) If `ListenerThread` has been provided with a fair `unique_ptr<>` (which obviously is
-  //    immediately `std::move()`-d into the thread, thus enabling `thread::detach()`), then
-  //    `thread::detach()` is a legal operation, and it is the way to detach the listener from the caller
-  //    thread,
+  // 1) If `ListenerThread` has been provided with a fair `unique_ptr<>` (which obviously is immediately
+  //    `std::move()`-d into the thread, thus enabling `thread::detach()`), then `thread::detach()`
+  //    is a legal operation, and it is the way to detach the listener from the caller thread,
   //    enabling to run the listener indefinitely, or until it itself decides to stop.
   //    The most notable example here would be spawning a listener to serve an HTTP request.
   //    (NOTE: This logic requires `Stream` objects to live forever. TODO(dk+mz): Make sure it is the case.)

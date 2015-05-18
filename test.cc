@@ -182,7 +182,7 @@ TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
   Data d;
   std::unique_ptr<Processor> p(new Processor(d, false));
   p->SetMax(4u);
-  bar_stream.AsyncSubscribe(std::move(p)).Detach();  // `.Join()` blocks this thread waiting for three entries.
+  bar_stream.AsyncSubscribe(std::move(p)).Detach();  // `.Detach()` results in the listener running on its own.
   while (d.seen_ < 3u) {
     ;  // Spin lock.
   }
