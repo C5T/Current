@@ -27,10 +27,9 @@ SOFTWARE.
 
 #define BRICKS_MOCK_TIME
 
-#include <atomic>
-
 #include "../yoda.h"
-#include "../test_types.h"
+
+#include "../../../Bricks/strings/printf.h"
 
 #include "../../../Bricks/net/api/api.h"
 #include "../../../Bricks/dflags/dflags.h"
@@ -47,6 +46,8 @@ using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
 using yoda::KeyNotFoundException;
 using yoda::KeyAlreadyExistsException;
+
+using bricks::strings::Printf;
 
   // Unique types for keys.
   enum class PRIME : int {};
@@ -81,6 +82,9 @@ using yoda::KeyAlreadyExistsException;
   CEREAL_REGISTER_TYPE(Prime);
   
 TEST(YodaDocu, Test) {
+const int port = FLAGS_yoda_docu_test_port;
+bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
+
   // Define the `api` object.
   typedef API<KeyEntry<Prime>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
@@ -230,6 +234,24 @@ TEST(YodaDocu, Test) {
     EXPECT_EQ(8u, c1);
     EXPECT_EQ(8u, c2);
   }).Go();
+  
+  // Confirm that the stream is indeed populated.
+  HTTP(port).ResetAllHandlers();
+  api.ExposeViaHTTP(port, "/data");
+  EXPECT_EQ(
+#if 1
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"Prime\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"prime\":2,\"index\":1}}}}\n",
+#else
+    "... JSON represenation of the first entry ...",
+#endif
+    HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
+  EXPECT_EQ(
+#if 1
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"Prime\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"prime\":19,\"index\":9}}}}\n",
+#else
+    "... JSON represenation of the last entry ...",
+#endif
+    HTTP(GET(Printf("http://localhost:%d/data?n=1", port))).body);
 }
   
   // Prime p = api.AsyncGet(static_cast<PRIME>(2)).Go();
