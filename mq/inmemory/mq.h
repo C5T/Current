@@ -193,7 +193,7 @@ class MMQ final {
   void EmplaceMessage(ARGS&&... args) {
     const size_t index = PushMessageAllocate();
     if (index != static_cast<size_t>(-1)) {
-      circular_buffer_[index].message_body = T_MESSAGE(args...);
+      circular_buffer_[index].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
       PushMessageCommit(index);
     } else {
       ++dropped_messages_count_;
