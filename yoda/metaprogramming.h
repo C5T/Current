@@ -200,7 +200,7 @@ struct YodaContainerImpl {
 template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
-namespace container_wrapper {
+namespace container_data {
 template <typename T>
 struct RetrieveAccessor {};
 template <typename T>
@@ -208,29 +208,27 @@ struct RetrieveMutator {};
 
 struct Get {};
 struct Add {};
-}  // namespace container_wrapper
+}  // namespace container_data
 
 template <typename YT>
-struct ContainerWrapper {
+struct YodaData {
   template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
 
-  ContainerWrapper(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
+  YodaData(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container(container), stream(stream) {}
 
   // Container getter for `Accessor`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_wrapper::RetrieveAccessor<T>> Accessor() const {
-    return container(container_wrapper::RetrieveAccessor<T>());
+  CWT<YodaContainer<YT>, container_data::RetrieveAccessor<T>> Accessor() const {
+    return container(container_data::RetrieveAccessor<T>());
   }
 
   // Container getter for `Mutator`.
   template <typename T>
-  CWT<YodaContainer<YT>,
-      container_wrapper::RetrieveMutator<T>,
-      std::reference_wrapper<typename YT::T_STREAM_TYPE>>
+  CWT<YodaContainer<YT>, container_data::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
   Mutator() const {
-    return container(container_wrapper::RetrieveMutator<T>(), std::ref(stream));
+    return container(container_data::RetrieveMutator<T>(), std::ref(stream));
   }
 
  private:
@@ -246,13 +244,13 @@ struct StreamListener {
 
   struct MQMessageEntry : MQMessage<typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
     std::unique_ptr<Padawan> entry;
+    const size_t index_in_stream;
 
-    explicit MQMessageEntry(std::unique_ptr<Padawan>&& entry) : entry(std::move(entry)) {}
+    MQMessageEntry(std::unique_ptr<Padawan>&& entry, size_t index_in_stream)
+        : entry(std::move(entry)), index_in_stream(index_in_stream) {}
 
-    virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>,
-                         typename YT::T_STREAM_TYPE&) override {
-      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container);
+    virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
+      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container, index_in_stream);
     }
   };
 
@@ -262,7 +260,7 @@ struct StreamListener {
     // * Defer all API requests until the persistent part of the stream is fully replayed,
     // * Allow all API requests after that.
 
-    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry)));
+    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry), index));
 
     // TODO(dkorolev): If that's the way to go, we should probably respond with HTTP 503 or 409 or 418?
     //                 (And add a `/statusz` endpoint to monitor the status wrt ready / not yet ready.)
@@ -293,7 +291,7 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
   virtual void Process(YodaContainer<YT>& container,
-                       ContainerWrapper<YT> container_wrapper,
+                       YodaData<YT> container_data,
                        typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
@@ -301,9 +299,9 @@ template <typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
   typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
   explicit MQListener(YodaContainer<YT>& container,
-                      ContainerWrapper<YT> container_wrapper,
+                      YodaData<YT> container_data,
                       typename YT::T_STREAM_TYPE& stream)
-      : container_(container), container_wrapper_(container_wrapper), stream_(stream) {}
+      : container_(container), container_wrapper_(container_data), stream_(stream) {}
 
   // MMQ consumer call.
   void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) {
@@ -311,7 +309,7 @@ struct MQListener {
   }
 
   YodaContainer<YT>& container_;
-  ContainerWrapper<YT> container_wrapper_;
+  YodaData<YT> container_wrapper_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 

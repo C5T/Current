@@ -119,9 +119,7 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
                           typename YET::T_ENTRY_CALLBACK on_success,
                           typename YET::T_CELL_CALLBACK on_failure)
         : row(row), col(col), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>,
-                         typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
   };
@@ -147,7 +145,7 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>,
+                         YodaData<YT>,
                          typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
@@ -276,7 +274,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   }
 
   // Synchronous `Get()` to be used in user functions.
-  const EntryWrapper<typename YET::T_ENTRY> operator()(container_wrapper::Get,
+  const EntryWrapper<typename YET::T_ENTRY> operator()(container_data::Get,
                                                        const typename YET::T_ROW& row,
                                                        const typename YET::T_COL& col) const {
     const auto rit = forward_.find(row);
@@ -291,7 +289,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
   // Synchronous `Add()` to be used in user functions.
   // NOTE: `stream` is passed via const reference to make `decltype()` work.
-  void operator()(container_wrapper::Add,
+  void operator()(container_data::Add,
                   const typename YT::T_STREAM_TYPE& stream,
                   const typename YET::T_ENTRY& entry) {
     bool cell_exists = false;
@@ -366,9 +364,9 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(container_data::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_wrapper::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(container_data::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
 

@@ -80,34 +80,36 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
 
   struct MQMessageGet : YodaMMQMessage<YT> {
     const typename YET::T_KEY key;
-    std::promise<typename YET::T_ENTRY> pr;
+    std::promise<EntryWrapper<typename YET::T_ENTRY>> pr;
     typename YET::T_ENTRY_CALLBACK on_success;
     typename YET::T_KEY_CALLBACK on_failure;
 
-    explicit MQMessageGet(const typename YET::T_KEY& key, std::promise<typename YET::T_ENTRY>&& pr)
+    explicit MQMessageGet(const typename YET::T_KEY& key,
+                          std::promise<EntryWrapper<typename YET::T_ENTRY>>&& pr)
         : key(key), pr(std::move(pr)) {}
     explicit MQMessageGet(const typename YET::T_KEY& key,
                           typename YET::T_ENTRY_CALLBACK on_success,
                           typename YET::T_KEY_CALLBACK on_failure)
         : key(key), on_success(on_success), on_failure(on_failure) {}
-    virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>,
-                         typename YT::T_STREAM_TYPE&) override {
+    virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
       container(std::ref(*this));
     }
   };
 
   struct MQMessageAdd : YodaMMQMessage<YT> {
     const typename YET::T_ENTRY e;
+    const bool overwrite_allowed;
     std::promise<void> pr;
     typename YET::T_VOID_CALLBACK on_success;
     typename YET::T_VOID_CALLBACK on_failure;
 
-    explicit MQMessageAdd(const typename YET::T_ENTRY& e, std::promise<void>&& pr) : e(e), pr(std::move(pr)) {}
+    explicit MQMessageAdd(const typename YET::T_ENTRY& e, bool overwrite_allowed, std::promise<void>&& pr)
+        : e(e), overwrite_allowed(overwrite_allowed), pr(std::move(pr)) {}
     explicit MQMessageAdd(const typename YET::T_ENTRY& e,
+                          bool overwrite_allowed,
                           typename YET::T_VOID_CALLBACK on_success,
                           typename YET::T_VOID_CALLBACK on_failure)
-        : e(e), on_success(on_success), on_failure(on_failure) {}
+        : e(e), overwrite_allowed(overwrite_allowed), on_success(on_success), on_failure(on_failure) {}
 
     // Important note: The entry added will eventually reach the storage via the stream.
     // Thus, in theory, `MQMessageAdd::Process()` could be a no-op.
@@ -118,15 +120,15 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     // that might not yet have reached the storage, and thus relying on the fact that an API `Get()` call
     // reflects updated data is not reliable from the point of data synchronization.
     virtual void Process(YodaContainer<YT>& container,
-                         ContainerWrapper<YT>,
+                         YodaData<YT>,
                          typename YT::T_STREAM_TYPE& stream) override {
       container(std::ref(*this), std::ref(stream));
     }
   };
 
-  Future<typename YET::T_ENTRY> operator()(apicalls::AsyncGet, const typename YET::T_KEY& key) {
-    std::promise<typename YET::T_ENTRY> pr;
-    Future<typename YET::T_ENTRY> future = pr.get_future();
+  Future<EntryWrapper<typename YET::T_ENTRY>> operator()(apicalls::AsyncGet, const typename YET::T_KEY& key) {
+    std::promise<EntryWrapper<typename YET::T_ENTRY>> pr;
+    Future<EntryWrapper<typename YET::T_ENTRY>> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageGet(key, std::move(pr)));
     return future;
   }
@@ -138,15 +140,16 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     mq_.EmplaceMessage(new MQMessageGet(key, on_success, on_failure));
   }
 
-  typename YET::T_ENTRY operator()(apicalls::Get, const typename YET::T_KEY& key) {
-    return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_KEY>(key)).Go();
-  }
+  /// TODO(dkorolev): Remove old&unused code. Work in progress.
+  /// const EntryWrapper<typename YET::T_ENTRY> operator()(apicalls::Get, const typename YET::T_KEY& key) {
+  ///   return operator()(apicalls::AsyncGet(), std::forward<const typename YET::T_KEY>(key)).Go();
+  /// }
 
   Future<void> operator()(apicalls::AsyncAdd, const typename YET::T_ENTRY& entry) {
     std::promise<void> pr;
     Future<void> future = pr.get_future();
 
-    mq_.EmplaceMessage(new MQMessageAdd(entry, std::move(pr)));
+    mq_.EmplaceMessage(new MQMessageAdd(entry, true, std::move(pr)));
     return future;
   }
 
@@ -154,7 +157,7 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
                   const typename YET::T_ENTRY& entry,
                   typename YET::T_VOID_CALLBACK on_success,
                   typename YET::T_VOID_CALLBACK on_failure = [](const typename YET::T_KEY&) {}) {
-    mq_.EmplaceMessage(new MQMessageAdd(entry, on_success, on_failure));
+    mq_.EmplaceMessage(new MQMessageAdd(entry, true, on_success, on_failure));
   }
 
   void operator()(apicalls::Add, const typename YET::T_ENTRY& entry) {
@@ -172,7 +175,12 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
-  void operator()(ENTRY& entry) { map_[GetKey(entry)] = std::move(entry); }
+  void operator()(ENTRY& entry, size_t index) {
+    EntryWithIndex<ENTRY>& placeholder = map_[GetKey(entry)];
+    if (index > placeholder.index) {
+      placeholder.Update(index, std::move(entry));
+    }
+  }
 
   // Event: `Get()`.
   void operator()(typename YodaImpl<YT, YET>::MQMessageGet& msg) {
@@ -181,10 +189,10 @@ struct Container<YT, KeyEntry<ENTRY>> {
       // The entry has been found.
       if (msg.on_success) {
         // Callback semantics.
-        msg.on_success(cit->second);
+        msg.on_success(cit->second.entry);
       } else {
         // Promise semantics.
-        msg.pr.set_value(cit->second);
+        msg.pr.set_value(EntryWrapper<ENTRY>(cit->second.entry));
       }
     } else {
       // The entry has not been found.
@@ -193,19 +201,21 @@ struct Container<YT, KeyEntry<ENTRY>> {
         msg.on_failure(msg.key);
       } else {
         // Promise semantics.
-        SetPromiseToNullEntryOrThrow<typename YET::T_KEY,
-                                     typename YET::T_ENTRY,
-                                     typename YET::T_KEY_NOT_FOUND_EXCEPTION,
-                                     false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
-                                     >::DoIt(msg.key, msg.pr);
+        msg.pr.set_value(EntryWrapper<ENTRY>());
+        /// TODO(dkorolev): Remove old and unused code.
+        /// SetPromiseToNullEntryOrThrow<typename YET::T_KEY,
+        ///                              typename YET::T_ENTRY,
+        ///                              typename YET::T_KEY_NOT_FOUND_EXCEPTION,
+        ///                              false  // Was `T_POLICY::allow_nonthrowing_get>::DoIt(key, pr);`
+        ///                              >::DoIt(msg.key, msg.pr);
       }
     }
   }
 
   // Event: `Add()`.
   void operator()(typename YodaImpl<YT, YET>::MQMessageAdd& msg, typename YT::T_STREAM_TYPE& stream) {
-    const bool key_exists = static_cast<bool>(map_.count(GetKey(msg.e)));
-    if (key_exists) {
+    const bool unacceptable_overwrite = !msg.overwrite_allowed && static_cast<bool>(map_.count(GetKey(msg.e)));
+    if (unacceptable_overwrite) {
       if (msg.on_failure) {  // Callback function defined.
         msg.on_failure();
       } else {  // Throw.
@@ -213,8 +223,8 @@ struct Container<YT, KeyEntry<ENTRY>> {
             std::make_exception_ptr(typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(GetKey(msg.e))));
       }
     } else {
-      map_[GetKey(msg.e)] = msg.e;
-      stream.Publish(msg.e);
+      const size_t index = stream.Publish(msg.e);
+      map_[GetKey(msg.e)].Update(index, msg.e);
       if (msg.on_success) {
         msg.on_success();
       } else {
@@ -225,7 +235,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
   /// TODO(dkorolev): Remove this code, it's been replaced by an `Accessor`.
   /// Synchronous `Get()` to be used in user functions.
-  /// const EntryWrapper<ENTRY> operator()(container_wrapper::Get, const typename YET::T_KEY& key) const {
+  /// const EntryWrapper<ENTRY> operator()(container_data::Get, const typename YET::T_KEY& key) const {
   ///   const auto cit = map_.find(key);
   ///   if (cit != map_.end()) {
   ///     // The entry has been found.
@@ -239,7 +249,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
   /// TODO(dkorolev): Remove this code, it's been replaced by a `Mutator`.
   /// Synchronous `Add()` to be used in user functions.
   /// NOTE: `stream` is passed via const reference to make `decltype()` work.
-  /// void operator()(container_wrapper::Add,
+  /// void operator()(container_data::Add,
   ///                 const typename YT::T_STREAM_TYPE& stream,
   ///                 const typename YET::T_ENTRY& entry) {
   ///   const bool key_exists = static_cast<bool>(map_.count(GetKey(entry)));
@@ -261,7 +271,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     const EntryWrapper<ENTRY> Get(bricks::copy_free<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
-        return EntryWrapper<ENTRY>(cit->second);
+        return EntryWrapper<ENTRY>(cit->second.entry);
       } else {
         return EntryWrapper<ENTRY>();
       }
@@ -289,8 +299,8 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
-      mutable_.map_[GetKey(entry)] = entry;
-      stream_.Publish(entry);
+      const size_t index = stream_.Publish(entry);
+      mutable_.map_[GetKey(entry)].Update(index, entry);
     }
 
    private:
@@ -298,14 +308,14 @@ struct Container<YT, KeyEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_wrapper::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(container_data::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_wrapper::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(container_data::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
 
  private:
-  T_MAP_TYPE<typename YET::T_KEY, typename YET::T_ENTRY> map_;
+  T_MAP_TYPE<typename YET::T_KEY, EntryWithIndex<typename YET::T_ENTRY>> map_;
 };
 
 }  // namespace yoda

@@ -121,9 +121,9 @@ struct APIWrapper
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
   // Asynchronous user function calling functionality.
-  typedef ContainerWrapper<YT> T_CONTAINER_WRAPPER;
+  typedef YodaData<YT> T_DATA;
   template <typename RETURN_VALUE>
-  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_CONTAINER_WRAPPER container_wrapper)>;
+  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
 
   template <typename RETURN_VALUE>
   struct MQMessageFunction : YodaMMQMessage<YT> {
@@ -134,10 +134,8 @@ struct APIWrapper
     MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
         : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
 
-    virtual void Process(YodaContainer<YT>&,
-                         T_CONTAINER_WRAPPER container_wrapper,
-                         typename YT::T_STREAM_TYPE&) override {
-      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_wrapper, promise);
+    virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
+      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_data, promise);
     }
   };
 
@@ -152,18 +150,16 @@ struct APIWrapper
     MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next)
         : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
 
-    virtual void Process(YodaContainer<YT>&,
-                         T_CONTAINER_WRAPPER container_wrapper,
-                         typename YT::T_STREAM_TYPE&) override {
-      next(function(container_wrapper));
+    virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
+      next(function(container_data));
       promise.set_value();
     }
   };
 
   template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>> Call(
+  Future<bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>> Call(
       T_TYPED_USER_FUNCTION&& function) {
-    using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
+    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<T_INTERMEDIATE_TYPE> pr;
     Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
@@ -173,7 +169,7 @@ struct APIWrapper
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
   template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
   Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
+    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
@@ -186,7 +182,7 @@ struct APIWrapper
  private:
   typename YT::T_STREAM_TYPE stream_;
   YodaContainer<YT> container_;
-  ContainerWrapper<YT> container_wrapper_;
+  YodaData<YT> container_wrapper_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;

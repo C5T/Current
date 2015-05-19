@@ -191,8 +191,8 @@ TEST(YodaKeyEntry, Smoke) {
   ASSERT_THROW(api.Get(9), yoda::KeyEntry<KeyValueEntry>::T_KEY_NOT_FOUND_EXCEPTION);
 
   // Test `Call`-based access.
-  api.Call([](TestAPI::T_CONTAINER_WRAPPER cw) {
-             auto entries = yoda::KeyEntry<KeyValueEntry>::Accessor(cw);
+  api.Call([](TestAPI::T_DATA data) {
+             auto entries = yoda::KeyEntry<KeyValueEntry>::Accessor(data);
 
              EXPECT_FALSE(entries.Exists(1));
              EXPECT_TRUE(entries.Exists(2));
@@ -206,7 +206,7 @@ TEST(YodaKeyEntry, Smoke) {
              ASSERT_THROW(static_cast<void>(static_cast<const KeyValueEntry&>(entries[104])),
                           yoda::KeyNotFoundCoverException);
 
-             auto mutable_entries = yoda::KeyEntry<KeyValueEntry>::Mutator(cw);
+             auto mutable_entries = yoda::KeyEntry<KeyValueEntry>::Mutator(data);
              mutable_entries.Add(KeyValueEntry(50, 0.02));
              EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(entries[50]).value);
              EXPECT_EQ(0.02, static_cast<const KeyValueEntry&>(mutable_entries[50]).value);

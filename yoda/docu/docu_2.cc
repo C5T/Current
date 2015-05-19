@@ -1,8 +1,10 @@
+// TODO(dkorolev): Rename `Call` into `Transaction`.
+
 /*******************************************************************************
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
-          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,32 +27,139 @@ SOFTWARE.
 
 #define BRICKS_MOCK_TIME
 
-#include "docu/docu_2.cc"
-
-#include "api/key_entry/test.cc"
-#include "api/matrix/test.cc"
-
 #include <atomic>
 
-#include "yoda.h"
-#include "test_types.h"
+#include "../yoda.h"
+#include "../test_types.h"
 
-#include "../../Bricks/net/api/api.h"
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
-#include "../../Bricks/strings/printf.h"
+#include "../../../Bricks/net/api/api.h"
+#include "../../../Bricks/dflags/dflags.h"
+#include "../../../Bricks/3party/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(yoda_test_port, 8991, "");
+DEFINE_int32(yoda_docu_test_port, 8999, "");
 
-using bricks::strings::Printf;
+using yoda::Padawan;
+using yoda::API;
+using yoda::Future;
+using yoda::KeyEntry;
+using yoda::MatrixEntry;
+using yoda::EntryWrapper;
+  // Unique types for keys.
+  enum class PRIME : int {};
+  enum class FIRST_DIGIT : int {};
+  enum class LAST_DIGIT : int {};
+  
+  // Serializable class `Prime`.
+  struct Prime : Padawan {
+    PRIME prime;
+    int index;
+  
+    Prime(const int prime = 0, const int index = 0)
+      : prime(static_cast<PRIME>(prime)),
+        index(index) {
+    }
+  
+    Prime(const Prime&) = default;
+  
+    PRIME key() const {
+      // The `Key()` method would be unnecessary
+      // if the `prime` field is called `key`.
+      return prime;
+    }
+  
+    template <typename A>
+    void serialize(A& ar) {
+      Padawan::serialize(ar);
+      ar(cereal::make_nvp("prime", reinterpret_cast<int&>(prime)),
+         CEREAL_NVP(index));
+    }
+  };
+  CEREAL_REGISTER_TYPE(Prime);
+  
+TEST(YodaDocu, Test) {
+  // Define the `api` object.
+  typedef API<KeyEntry<Prime>> PrimesAPI;
+  PrimesAPI api("YodaExampleUsage");
+  
+  // Expanded syntax for `Add()`.
+{
+  api.Call([](PrimesAPI::T_DATA data) {
+    KeyEntry<Prime>::Mutator(data).Add(Prime(2, 1));
+  }).Wait();
+  
+  api.Call([](PrimesAPI::T_DATA data) {
+    KeyEntry<Prime>::Mutator(data).Add(Prime(3, 100));
+  }).Wait();
+  
+  // `Add()`: Overwrite is OK.
+  api.Call([](PrimesAPI::T_DATA data) {
+    KeyEntry<Prime>::Mutator(data).Add(Prime(3, 2));
+  }).Wait();
+}
+  
+  // Expanded syntax for `Get()`.
+{
+  Future<EntryWrapper<Prime>> future = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
+  });
+  EntryWrapper<Prime> entry = future.Go();
+  
+  const bool b = entry;
+  ASSERT_TRUE(b);
+  
+  const Prime& p = entry;
+  EXPECT_EQ(1, p.index);
+}
+  
+{
+  Future<EntryWrapper<Prime>> future1 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(3));
+  });
+  EntryWrapper<Prime> entry1 = future1.Go();
+  
+  const bool b1 = entry1;
+  ASSERT_TRUE(b1);
+  
+  const Prime& p1 = entry1;
+  EXPECT_EQ(2, p1.index);
+  
+  Future<EntryWrapper<Prime>> future2 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(4));
+  });
+  EntryWrapper<Prime> entry2 = future2.Go();
+  
+  const bool b2 = entry2;
+  ASSERT_FALSE(b2);
+}
 
-TEST(Yoda, CoverTest) {
-  using yoda::API;
-  using yoda::KeyEntry;
-  using yoda::MatrixEntry;
-  typedef API<KeyEntry<KeyValueEntry>, MatrixEntry<MatrixCell>, KeyEntry<StringKVEntry>> TestAPI;
-  TestAPI api("YodaCoverTest");
 
+  /*
+  // `2` is the first prime.
+  api.DimaAdd(Prime(2, 1));
+
+  // `3` is the second prime.
+  // `api.Add()` never throws and silently overwrites.
+  api.DimaAdd(Prime(3, 100));
+  api.DimaAdd(Prime(3, 2));
+
+  // `api.Get()` has multiple signatures, one or more per
+  // supported data type. It never throws, and returns a wrapper,
+  // that can be casted to both `bool` and the underlying type.
+  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(2)).Go()));
+  EXPECT_EQ(1, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(2)).Go()).index);
+  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(3)).Go()));
+  EXPECT_EQ(2, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(3)).Go()).index);
+  ASSERT_FALSE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(4)).Go()));
+
+  */
+
+  // Prime p = api.AsyncGet(static_cast<PRIME>(2)).Go();
+  // EXPECT_EQ(1, p.index);
+
+  // DIMA: Show implicit casts.
+  // DIMA: Show promises.
+
+#if 0
   api.Add(KeyValueEntry(1, 42.0));
   EXPECT_EQ(42.0, api.Get(1).value);
   api.Add(MatrixCell(42, "answer", 100));
@@ -67,7 +176,7 @@ TEST(Yoda, CoverTest) {
 
   // Asynchronous call of user function.
   std::atomic_bool done(false);
-  api.Call([&](TestAPI::T_DATA data) {
+  api.Call([&](DemoAPI::T_DATA data) {
     auto KVEntries = KeyEntry<KeyValueEntry>::Accessor(data);
 
     EXPECT_TRUE(KVEntries.Exists(1));
@@ -116,8 +225,8 @@ TEST(Yoda, CoverTest) {
     done = true;
   });
 
-  HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
-  api.ExposeViaHTTP(FLAGS_yoda_test_port, "/data");
+  HTTP(FLAGS_yoda_docu_test_port).ResetAllHandlers();
+  api.ExposeViaHTTP(FLAGS_yoda_docu_test_port, "/data");
   const std::string Z = "";  // For `clang-format`-indentation purposes.
   EXPECT_EQ(Z + JSON(WithBaseType<Padawan>(KeyValueEntry(1, 42)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(MatrixCell(42, "answer", 100)), "entry") + '\n' +
@@ -128,7 +237,7 @@ TEST(Yoda, CoverTest) {
                 JSON(WithBaseType<Padawan>(MatrixCell(2, "test", 1)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(MatrixCell(3, "test", 4)), "entry") + '\n' +
                 JSON(WithBaseType<Padawan>(KeyValueEntry(128, 512)), "entry") + '\n',
-            HTTP(GET(Printf("http://localhost:%d/data?cap=9", FLAGS_yoda_test_port))).body);
+            HTTP(GET(Printf("http://localhost:%d/data?cap=9", FLAGS_yoda_docu_test_port))).body);
 
   while (!done || !api.CaughtUp()) {
     ;  // Spin lock.
@@ -140,16 +249,16 @@ TEST(Yoda, CoverTest) {
       void operator()(double result) { request(Printf("Magic: %.3lf", result)); }
     };
 
-    HTTP(FLAGS_yoda_test_port).ResetAllHandlers();
-    HTTP(FLAGS_yoda_test_port)
+    HTTP(FLAGS_yoda_docu_test_port).ResetAllHandlers();
+    HTTP(FLAGS_yoda_docu_test_port)
         .Register("/omfg", [&api](Request r) {
           // Note: C standard does not regulate the order in which parameters are evaluated,
           // thus, if any data should be extracted from `r.query`, it should be done before the next line
           // since it does `std::move(r)`.
-          api.Call([](TestAPI::T_DATA& data) { return data.Get(2)().value * data.Get(3)().value; },
+          api.Call([](DemoAPI::T_DATA& data) { return data.Get(2)().value * data.Get(3)().value; },
                    HappyEnding(std::move(r)));
         });
-    const auto response = HTTP(GET(Printf("http://localhost:%d/omfg", FLAGS_yoda_test_port)));
+    const auto response = HTTP(GET(Printf("http://localhost:%d/omfg", FLAGS_yoda_docu_test_port)));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("Magic: 352.800", response.body);
 
@@ -157,4 +266,5 @@ TEST(Yoda, CoverTest) {
     EXPECT_EQ(11, api.Get(123, "test").value);
     EXPECT_EQ(1.23, api.Get(42).value);
   */
+#endif
 }

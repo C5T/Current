@@ -142,8 +142,8 @@ TEST(YodaMatrixEntry, Smoke) {
   }
 
   // Test `Call`-based access.
-  api.Call([](TestAPI::T_CONTAINER_WRAPPER cw) {
-             const auto cells = yoda::MatrixEntry<MatrixCell>::Accessor(cw);
+  api.Call([](TestAPI::T_DATA data) {
+             const auto cells = yoda::MatrixEntry<MatrixCell>::Accessor(data);
 
              EXPECT_TRUE(cells.Exists(5, "x"));
              EXPECT_FALSE(cells.Exists(5, "q"));
@@ -152,7 +152,7 @@ TEST(YodaMatrixEntry, Smoke) {
              EXPECT_EQ(-1, static_cast<const MatrixCell&>(cells.Get(5, "x")).value);
              EXPECT_FALSE(cells.Get(5, "q"));
 
-             auto mutable_cells = yoda::MatrixEntry<MatrixCell>::Mutator(cw);
+             auto mutable_cells = yoda::MatrixEntry<MatrixCell>::Mutator(data);
              mutable_cells.Add(MatrixCell(100, "z", 43));
              EXPECT_EQ(43, static_cast<const MatrixCell&>(cells.Get(100, "z")).value);
              EXPECT_EQ(43, static_cast<const MatrixCell&>(mutable_cells.Get(100, "z")).value);
