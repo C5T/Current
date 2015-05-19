@@ -36,7 +36,7 @@ default: all
 	if [ -f test.cc ] ; then \
 		make test ;\
 	else \
-		find .noshit/ -executable -type f -exec "{}" ";" ; \
+		find .noshit/ -perm +111 -type f -exec "{}" ";" ; \
 	fi
 
 test: .noshit/test
