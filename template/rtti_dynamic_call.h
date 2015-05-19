@@ -33,6 +33,7 @@ SOFTWARE.
 #include <utility>
 
 #include "is_tuple.h"
+#include "is_unique_ptr.h"
 
 #include "../exception.h"
 #include "../util/singleton.h"
@@ -76,54 +77,56 @@ struct SpecificUncastableTypeException : UncastableTypeException {
       : UncastableTypeException(typeid(BASE).name() + std::string(" -> ") + typeid(DERIVED).name()) {}
 };
 
-template <typename BASE, typename F>
+template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase {
-  virtual void Handle(BASE&, F&&) const { throw SpecificUnhandledTypeException<BASE>(); }
+  virtual void Handle(BASE&&, F&&, ARGS&&...) const { throw SpecificUnhandledTypeException<BASE>(); }
 };
 
-template <typename BASE, typename F, typename DERIVED>
-struct RTTIDispatcher : RTTIDispatcherBase<BASE, F> {
-  virtual void Handle(BASE& ptr, F&& f) const override {
-    DERIVED* derived = dynamic_cast<DERIVED*>(&ptr);
+template <typename BASE, typename F, typename DERIVED, typename... ARGS>
+struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
+  virtual void Handle(BASE&& ref, F&& f, ARGS&&... args) const override {
+    DERIVED* derived = dynamic_cast<DERIVED*>(&ref);
     if (derived) {
-      f(*derived);
+      f(*derived, std::forward<ARGS>(args)...);
     } else {
       throw SpecificUncastableTypeException<BASE, DERIVED>();
     }
   }
 };
 
-template <typename BASE, typename F>
-using RTTIHandlersMap = std::unordered_map<std::type_index, std::unique_ptr<RTTIDispatcherBase<BASE, F>>>;
+template <typename BASE, typename F, typename... ARGS>
+using RTTIHandlersMap =
+    std::unordered_map<std::type_index, std::unique_ptr<RTTIDispatcherBase<BASE, F, ARGS...>>>;
 
-template <typename TYPELIST, typename BASE, typename F>
+template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
 struct PopulateRTTIHandlers {};
 
-template <typename BASE, typename F>
-struct PopulateRTTIHandlers<std::tuple<>, BASE, F> {
-  static void DoIt(RTTIHandlersMap<BASE, F>&) {}
+template <typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers<std::tuple<>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>&) {}
 };
 
-template <typename T, typename... TS, typename BASE, typename F>
-struct PopulateRTTIHandlers<std::tuple<T, TS...>, BASE, F> {
-  static void DoIt(RTTIHandlersMap<BASE, F>& map) {
+template <typename T, typename... TS, typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers<std::tuple<T, TS...>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>& map) {
     // TODO(dkorolev): Check for duplicate types in input type list? Throw an exception?
-    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<BASE, F, T>());
-    PopulateRTTIHandlers<std::tuple<TS...>, BASE, F>::DoIt(map);
+    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<BASE, F, T, ARGS...>());
+    PopulateRTTIHandlers<std::tuple<TS...>, BASE, F, ARGS...>::DoIt(map);
   }
 };
 
-template <typename TYPELIST, typename BASE, typename F>
+template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
 struct RTTIPopulatedHandlers {
   static_assert(is_std_tuple<TYPELIST>::value, "");
-  RTTIHandlersMap<BASE, F> map;
-  RTTIPopulatedHandlers() { PopulateRTTIHandlers<TYPELIST, BASE, F>::DoIt(map); }
+  RTTIHandlersMap<BASE, F, ARGS...> map;
+  RTTIPopulatedHandlers() { PopulateRTTIHandlers<TYPELIST, BASE, F, ARGS...>::DoIt(map); }
 };
 
-template <typename TYPELIST, typename BASE, typename F>
-const RTTIDispatcherBase<BASE, F>* RTTIFindHandler(const std::type_info& type) {
+template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
+const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info& type) {
   static_assert(is_std_tuple<TYPELIST>::value, "");
-  const RTTIHandlersMap<BASE, F>& map = ThreadLocalSingleton<RTTIPopulatedHandlers<TYPELIST, BASE, F>>().map;
+  const RTTIHandlersMap<BASE, F, ARGS...>& map =
+      ThreadLocalSingleton<RTTIPopulatedHandlers<TYPELIST, BASE, F, ARGS...>>().map;
   const auto handler = map.find(std::type_index(type));
   if (handler != map.end()) {
     return handler->second.get();
@@ -137,15 +140,18 @@ const RTTIDispatcherBase<BASE, F>* RTTIFindHandler(const std::type_info& type) {
 // TODO(dkorolev): Should we require `F` to derive from a special class
 //                 that wraps all the types into pure virtual functions?
 //                 This way forgetting either of them would be a compile error.
-template <typename TYPELIST, typename BASE, typename F>
-void RTTIDynamicCall(BASE& ptr, F&& f) {
-  RTTIFindHandler<TYPELIST, BASE, F>(typeid(ptr))->Handle(ptr, std::forward<F>(f));
+template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
+void RTTIDynamicCallImpl(BASE&& ref, F&& f, ARGS&&... args) {
+  RTTIFindHandler<TYPELIST, BASE, F, ARGS...>(typeid(ref))
+      ->Handle(std::forward<BASE>(ref), std::forward<F>(f), std::forward<ARGS>(args)...);
 }
 
-// A parital specialization for a `unique_ptr`.
-template <typename TYPELIST, typename BASE, typename F>
-void RTTIDynamicCall(std::unique_ptr<BASE>& ptr, F&& f) {
-  RTTIDynamicCall<TYPELIST>(*ptr.get(), std::forward<F>(f));
+template <typename TYPELIST, typename BASE, typename... REST>
+void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
+  typedef typename is_unique_ptr<BASE>::underlying_type ACTUAL_BASE;
+  RTTIDynamicCallImpl<TYPELIST, ACTUAL_BASE, REST...>(
+      std::forward<ACTUAL_BASE>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref))),
+      std::forward<REST>(rest)...);
 }
 
 // TODO(dkorolev): Consider whether RTTI-dispatched call might return a value.
