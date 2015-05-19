@@ -82,57 +82,43 @@ TEST(YodaDocu, Test) {
   PrimesAPI api("YodaExampleUsage");
   
   // `2` is the first prime.
-  api.DimaAdd(Prime(2, 1));
+  // `.Go()` (or `.Wait()`) makes `DimaAdd()` a blocking call.
+  api.DimaAdd(Prime(2, 1)).Go();
 
   // `3` is the second prime.
   // `api.Add()` never throws and silently overwrites.
   api.DimaAdd(Prime(3, 100));
   api.DimaAdd(Prime(3, 2));
-
-  /*
+  
   // `api.Get()` has multiple signatures, one or more per
   // supported data type. It never throws, and returns a wrapper,
   // that can be casted to both `bool` and the underlying type.
-  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(2)).Go()));
-  EXPECT_EQ(1, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(2)).Go()).index);
-  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(3)).Go()));
-  EXPECT_EQ(2, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(3)).Go()).index);
-  ASSERT_FALSE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(4)).Go()));
-  */
-
+  ASSERT_TRUE(static_cast<bool>(api.DimaGet(static_cast<PRIME>(2)).Go()));
+  EXPECT_EQ(1, static_cast<const Prime&>(api.DimaGet(static_cast<PRIME>(2)).Go()).index);
+  ASSERT_TRUE(static_cast<bool>(api.DimaGet(static_cast<PRIME>(3)).Go()));
+  EXPECT_EQ(2, static_cast<const Prime&>(api.DimaGet(static_cast<PRIME>(3)).Go()).index);
+  ASSERT_FALSE(static_cast<bool>(api.DimaGet(static_cast<PRIME>(4)).Go()));
+  
   // Expanded syntax for `Add()`.
 {
-//  api.Call([](PrimesAPI::T_DATA data) {
-//    KeyEntry<Prime>::Mutator(data).Add(Prime(2, 1));
-//  }).Wait();
+  api.Call([](PrimesAPI::T_DATA data) {
+    KeyEntry<Prime>::Mutator(data).Add(Prime(5, 3));
+  }).Wait();
   
   api.Call([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(3, 100));
+    KeyEntry<Prime>::Mutator(data).Add(Prime(7, 100));
   }).Wait();
   
   // `Add()`: Overwrite is OK.
   api.Call([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(3, 2));
+    KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
 }
   
   // Expanded syntax for `Get()`.
 {
-  Future<EntryWrapper<Prime>> future = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
-  });
-  EntryWrapper<Prime> entry = future.Go();
-  
-  const bool b = entry;
-  ASSERT_TRUE(b);
-  
-  const Prime& p = entry;
-  EXPECT_EQ(1, p.index);
-}
-  
-{
   Future<EntryWrapper<Prime>> future1 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(3));
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
   });
   EntryWrapper<Prime> entry1 = future1.Go();
   
@@ -140,17 +126,39 @@ TEST(YodaDocu, Test) {
   ASSERT_TRUE(b1);
   
   const Prime& p1 = entry1;
-  EXPECT_EQ(2, p1.index);
+  EXPECT_EQ(1, p1.index);
   
   Future<EntryWrapper<Prime>> future2 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(4));
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
   });
   EntryWrapper<Prime> entry2 = future2.Go();
   
   const bool b2 = entry2;
-  ASSERT_FALSE(b2);
+  ASSERT_TRUE(b2);
+  
+  const Prime& p2 = entry2;
+  EXPECT_EQ(3, p2.index);
+  
+  Future<EntryWrapper<Prime>> future3 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
+  });
+  EntryWrapper<Prime> entry3 = future3.Go();
+  
+  const bool b3 = entry3;
+  ASSERT_TRUE(b3);
+  
+  const Prime& p3 = entry3;
+  EXPECT_EQ(4, p3.index);
+  
+  Future<EntryWrapper<Prime>> future4 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+  });
+  EntryWrapper<Prime> entry4 = future4.Go();
+  
+  const bool b4 = entry4;
+  ASSERT_FALSE(b4);
 }
-
+  
   // Prime p = api.AsyncGet(static_cast<PRIME>(2)).Go();
   // EXPECT_EQ(1, p.index);
 

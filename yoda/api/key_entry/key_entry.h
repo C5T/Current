@@ -59,13 +59,13 @@ struct KeyEntry {
   typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
   typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
 
-  template <typename CW>
-  static decltype(std::declval<CW>().template Accessor<KeyEntry<ENTRY>>()) Accessor(CW&& c) {
+  template <typename DATA>
+  static decltype(std::declval<DATA>().template Accessor<KeyEntry<ENTRY>>()) Accessor(DATA&& c) {
     return c.template Accessor<KeyEntry<ENTRY>>();
   }
 
-  template <typename CW>
-  static decltype(std::declval<CW>().template Mutator<KeyEntry<ENTRY>>()) Mutator(CW&& c) {
+  template <typename DATA>
+  static decltype(std::declval<DATA>().template Mutator<KeyEntry<ENTRY>>()) Mutator(DATA&& c) {
     return c.template Mutator<KeyEntry<ENTRY>>();
   }
 };
@@ -164,7 +164,8 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     operator()(apicalls::AsyncAdd(), entry).Go();
   }
 
-  YET operator()(apicalls::template ExtractYETFromT<typename YET::T_ENTRY>);
+  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_KEY>);
 
  private:
   typename YT::T_MQ& mq_;

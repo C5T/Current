@@ -409,7 +409,12 @@ struct AsyncAdd {};
 // A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename T>
-struct ExtractYETFromT {};
+struct ExtractYETFromE {};
+
+// A wrapper to convert `T::T_KEY` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
+template <typename K>
+struct ExtractYETFromK {};
 
 /// TODO(dkorolev): Remove this code.
 /// struct AsyncCallFunction {};
@@ -419,6 +424,15 @@ struct AddViaCall {
   const E entry;
   AddViaCall(E&& entry) : entry(std::move(entry)) {}
   void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
+};
+
+template <typename DATA, typename YET, typename K>
+struct GetViaCall {
+  const K key;
+  GetViaCall(K&& key) : key(std::move(key)) {}
+  typedef decltype(
+      std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
+  T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
 };
 
 template <typename YT, typename API>
@@ -511,10 +525,19 @@ struct APICallsWrapper {
     return future;
   }
 
+  // Helper method to wrap `DimaAdd()` into `Call()`.
   template <typename ENTRY>
   Future<void> DimaAdd(ENTRY&& entry) {
-    typedef bricks::weed::call_with_type<API, apicalls::ExtractYETFromT<ENTRY>> YET;
+    typedef bricks::weed::call_with_type<API, apicalls::ExtractYETFromE<ENTRY>> YET;
     return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::move(entry)));
+  }
+
+  // Helper method to wrap `DimaGet()` into `Call()`.
+  template <typename KEY>
+  Future<EntryWrapper<typename bricks::weed::call_with_type<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>>
+  DimaGet(KEY&& entry) {
+    typedef bricks::weed::call_with_type<API, apicalls::ExtractYETFromK<KEY>> YET;
+    return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::move(entry)));
   }
 
   /// TODO(dkorolev): Remove this code.
