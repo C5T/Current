@@ -270,9 +270,11 @@ struct Container<YT, MatrixEntry<ENTRY>> {
             typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(msg.e), GetCol(msg.e))));
       }
     } else {
-      forward_[GetRow(msg.e)][GetCol(msg.e)] = msg.e;
-      transposed_[GetCol(msg.e)][GetRow(msg.e)] = msg.e;
-      stream.Publish(msg.e);
+      const size_t index = stream.Publish(msg.e);
+      std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[std::make_pair(GetRow(msg.e), GetCol(msg.e))];
+      placeholder = make_unique(EntryWithIndex<ENTRY>(index, msg.e));
+      forward_[GetRow(msg.e)][GetCol(msg.e)] = &placeholder->entry;
+      transposed_[GetCol(msg.e)][GetRow(msg.e)] = &placeholder->entry;
       if (msg.on_success) {
         msg.on_success();
       } else {
@@ -295,6 +297,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     return EntryWrapper<typename YET::T_ENTRY>();
   }
 
+  /*
   // Synchronous `Add()` to be used in user functions.
   // NOTE: `stream` is passed via const reference to make `decltype()` work.
   void operator()(container_data::Add,
@@ -308,11 +311,14 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     if (cell_exists) {
       throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(entry), GetCol(entry));
     } else {
+      // TODO(dk+mz): Did't we fix this `const_cast`?
+      const size_t index = const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
+      std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[std::make_pair(GetRow(entry), GetCol(entry))];
       forward_[GetRow(entry)][GetCol(entry)] = entry;
       transposed_[GetCol(entry)][GetRow(entry)] = entry;
-      const_cast<typename YT::T_STREAM_TYPE&>(stream).Publish(entry);
     }
   }
+  */
 
   class Accessor {
    public:
@@ -362,9 +368,12 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
-      mutable_.forward_[GetRow(entry)][GetCol(entry)] = entry;
-      mutable_.transposed_[GetCol(entry)][GetRow(entry)] = entry;
-      stream_.Publish(entry);
+      const size_t index = stream_.Publish(entry);
+      std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder =
+          mutable_.map_[std::make_pair(GetRow(entry), GetCol(entry))];
+      placeholder = make_unique<EntryWithIndex<ENTRY>>(index, entry);
+      mutable_.forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
+      mutable_.transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
     }
 
    private:

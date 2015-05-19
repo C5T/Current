@@ -274,6 +274,9 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(10u, c1);
     EXPECT_EQ(10u, c2);
   }).Go();
+  
+  // Work with `MatrixEntry<>` as well.
+  api.DimaAdd(PrimeCell(0, 2, 1));
 }
   
   // The return value from `Call()` is wrapped into a `Future<>`,
@@ -319,7 +322,7 @@ HTTP(port).ResetAllHandlers();
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"Prime\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"prime\":29,\"index\":11}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":0,\"d2\":2,\"index\":1}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif
