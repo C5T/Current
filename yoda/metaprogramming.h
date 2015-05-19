@@ -245,6 +245,17 @@ struct YodaData {
     return container(container_data::RetrieveMutator<T>(), std::ref(stream));
   }
 
+  // Top-level methods and operators, dispatching by parameter type.
+  template <typename E>
+  void Add(E&& entry) {
+    Mutator<CWT<YodaContainer<YT>, apicalls::ExtractYETFromE<E>>>().Add(std::forward<E>(entry));
+  }
+
+  template <typename K>
+  EntryWrapper<typename CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>::T_ENTRY> Get(K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
+  }
+
   template <typename K>
   typename CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
     return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>()[std::forward<K>(key)];
