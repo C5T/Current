@@ -587,14 +587,28 @@ struct call_foo_baz {
   void operator()(C& c) {
     c.baz(os);
   }
+  void operator()(A& a, int x, const std::string& y) {
+    a.foo(os);
+    os << "[" << x << "]['" << y << "']\n";
+  }
+  void operator()(C& c, int x, const std::string& y) {
+    c.baz(os);
+    os << "[" << x << "]['" << y << "']\n";
+  }
   std::ostringstream os;
-} foo_baz;
+};
 
 std::unique_ptr<BASE> unique_a(new A());
 std::unique_ptr<BASE> unique_c(new C());
+call_foo_baz foo_baz;
 RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
 RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
 EXPECT_EQ("a=101\nc=103\n", foo_baz.os.str());
+
+call_foo_baz foo_baz2;
+RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz2, 1, std::string("one"));
+RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz2, 2, std::string("two"));
+EXPECT_EQ("a=101\n[1]['one']\nc=103\n[2]['two']\n", foo_baz2.os.str());
 ```
 ## Run-Time Type Dispatching
 
