@@ -234,7 +234,24 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
     EXPECT_EQ(8u, c1);
     EXPECT_EQ(8u, c2);
   }).Go();
+}
   
+  // The return value from `Call()` is wrapped into a `Future<>`,
+  // use `.Go()` to retrieve the result.
+  // (Or `.Wait()` to just wait for the passed in function to complete.)
+{
+  Future<std::string> future = api.Call([](PrimesAPI::T_DATA data) {
+    const auto getter = KeyEntry<Prime>::Accessor(data);
+    return Printf("[2]=%d,[3]=%d,[5]*[7]=%d",
+                  getter[static_cast<PRIME>(2)].index, 
+                  getter[static_cast<PRIME>(3)].index,
+                  getter[static_cast<PRIME>(5)].index *
+                  getter[static_cast<PRIME>(7)].index);
+  });
+  EXPECT_EQ("[2]=1,[3]=2,[5]*[7]=12", future.Go());
+}
+    
+{
   // Confirm that the stream is indeed populated.
   HTTP(port).ResetAllHandlers();
   api.ExposeViaHTTP(port, "/data");
