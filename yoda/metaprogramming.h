@@ -256,6 +256,12 @@ struct YodaData {
     return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
   }
 
+  template <typename E>
+  YodaData& operator<<(E&& entry) {
+    Mutator<CWT<YodaContainer<YT>, apicalls::ExtractYETFromE<E>>>() << std::forward<E>(entry);
+    return *this;
+  }
+
   template <typename K>
   typename CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
     return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>()[std::forward<K>(key)];

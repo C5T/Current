@@ -213,7 +213,10 @@ HTTP(port).ResetAllHandlers();
     }
   
     // The syntax using `data` directly, without `Accessor` or `Mutator`.
-    data.Add(Prime(23, 10));
+    data << Prime(23, 10) << Prime(29, 101);
+    ASSERT_THROW(data << Prime(29, 102),
+                 KeyAlreadyExistsException<PRIME>);
+    data.Add(Prime(29, 11));
     ASSERT_TRUE(static_cast<bool>(data.Get(static_cast<PRIME>(3))));
     EXPECT_EQ(2, static_cast<const Prime&>(data.Get(static_cast<PRIME>(3))).index);
     ASSERT_FALSE(static_cast<bool>(data.Get(static_cast<PRIME>(4))));
@@ -222,8 +225,8 @@ HTTP(port).ResetAllHandlers();
                  KeyNotFoundException<PRIME>);
   
     // Traversal.
-    EXPECT_EQ(9u, getter.size());
-    EXPECT_EQ(9u, adder.size());
+    EXPECT_EQ(10u, getter.size());
+    EXPECT_EQ(10u, adder.size());
   
     std::set<std::pair<int, int>> as_set;  // To ensure the order is right.
     for (auto cit = getter.begin(); cit != getter.end(); ++cit) {
@@ -233,7 +236,8 @@ HTTP(port).ResetAllHandlers();
     for (const auto cit : as_set) {
       os << ',' << cit.first << ':' << cit.second;
     }
-    EXPECT_EQ("1:2,2:3,3:5,4:7,5:11,6:13,7:17,9:19,10:23", os.str().substr(1));
+    EXPECT_EQ("1:2,2:3,3:5,4:7,5:11,6:13,7:17,9:19,10:23,11:29",
+              os.str().substr(1));
       
     size_t c1 = 0u;
     size_t c2 = 0u;
@@ -243,8 +247,8 @@ HTTP(port).ResetAllHandlers();
     for (const auto cit : adder) {
       ++c2;
     }
-    EXPECT_EQ(9u, c1);
-    EXPECT_EQ(9u, c2);
+    EXPECT_EQ(10u, c1);
+    EXPECT_EQ(10u, c2);
   }).Go();
 }
   
@@ -291,7 +295,7 @@ HTTP(port).ResetAllHandlers();
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"Prime\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"prime\":23,\"index\":10}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"Prime\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"prime\":29,\"index\":11}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif
