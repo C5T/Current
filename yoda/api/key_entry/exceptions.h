@@ -39,10 +39,9 @@ using namespace sfinae;
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
 struct KeyNotFoundCoverException : bricks::Exception {};
 
-template <typename ENTRY>
+template <typename KEY>
 struct KeyNotFoundException : KeyNotFoundCoverException {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
+  typedef KEY T_KEY;
   const T_KEY key;
   explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
 };

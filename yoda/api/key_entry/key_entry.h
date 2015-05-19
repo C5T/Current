@@ -55,9 +55,9 @@ struct KeyEntry {
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
 
-  typedef KeyNotFoundException<T_ENTRY> T_KEY_NOT_FOUND_EXCEPTION;
-  typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
-  typedef EntryShouldExistException<T_ENTRY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
+  typedef KeyNotFoundException<T_KEY> T_KEY_NOT_FOUND_EXCEPTION;
+  typedef KeyAlreadyExistsException<T_KEY> T_KEY_ALREADY_EXISTS_EXCEPTION;
+  // typedef EntryShouldExistException<T_KEY> T_ENTRY_SHOULD_EXIST_EXCEPTION;
 
   template <typename DATA>
   static decltype(std::declval<DATA>().template Accessor<KeyEntry<ENTRY>>()) Accessor(DATA&& c) {
@@ -284,7 +284,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     const ENTRY& operator[](bricks::copy_free<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
-        return cit->second;
+        return cit->second.entry;
       } else {
         throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
       }

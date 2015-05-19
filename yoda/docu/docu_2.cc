@@ -44,6 +44,9 @@ using yoda::Future;
 using yoda::KeyEntry;
 using yoda::MatrixEntry;
 using yoda::EntryWrapper;
+using yoda::NonexistentEntryAccessed;
+using yoda::KeyNotFoundException;
+
   // Unique types for keys.
   enum class PRIME : int {};
   enum class FIRST_DIGIT : int {};
@@ -113,6 +116,35 @@ TEST(YodaDocu, Test) {
   api.Call([](PrimesAPI::T_DATA data) {
     KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
+}
+  
+  // Accessing the memory view of `data`.
+{
+  api.Call([](PrimesAPI::T_DATA data) {
+    const auto primes = KeyEntry<Prime>::Accessor(data);
+  
+    // `accessor.Get()` in a non-throwing call, returning a wrapper.
+    const auto p5 = primes.Get(static_cast<PRIME>(5));
+    ASSERT_TRUE(static_cast<bool>(p5));
+    EXPECT_EQ(3, static_cast<const Prime&>(p5).index);
+  
+    // `accessor[...]` is a potentially throwing call, returning a value.
+    EXPECT_EQ(4, primes[static_cast<PRIME>(7)].index);
+  
+    // Query a non-existing value using two ways.
+    const auto p8 = primes.Get(static_cast<PRIME>(8));
+    ASSERT_FALSE(static_cast<bool>(p8));
+    ASSERT_THROW(static_cast<void>(static_cast<const Prime&>(p8)),
+                 NonexistentEntryAccessed);
+      
+    ASSERT_THROW(primes[static_cast<PRIME>(9)],
+                 KeyNotFoundException<PRIME>);
+    try {
+      primes[static_cast<PRIME>(9)];
+    } catch(const KeyNotFoundException<PRIME>& e) {
+      EXPECT_EQ(9, static_cast<int>(e.key));
+    }
+  }).Go();
 }
   
   // Expanded syntax for `Get()`.
