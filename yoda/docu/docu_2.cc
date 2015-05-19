@@ -118,6 +118,50 @@ TEST(YodaDocu, Test) {
     KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
 }
+    
+  // Expanded syntax for `Get()`.
+{
+  Future<EntryWrapper<Prime>> future1 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
+  });
+  EntryWrapper<Prime> entry1 = future1.Go();
+  
+  const bool b1 = entry1;
+  ASSERT_TRUE(b1);
+  
+  const Prime& p1 = entry1;
+  EXPECT_EQ(1, p1.index);
+  
+  Future<EntryWrapper<Prime>> future2 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+  });
+  EntryWrapper<Prime> entry2 = future2.Go();
+  
+  const bool b2 = entry2;
+  ASSERT_TRUE(b2);
+  
+  const Prime& p2 = entry2;
+  EXPECT_EQ(3, p2.index);
+  
+  Future<EntryWrapper<Prime>> future3 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
+  });
+  EntryWrapper<Prime> entry3 = future3.Go();
+  
+  const bool b3 = entry3;
+  ASSERT_TRUE(b3);
+  
+  const Prime& p3 = entry3;
+  EXPECT_EQ(4, p3.index);
+  
+  Future<EntryWrapper<Prime>> future4 = api.Call([](PrimesAPI::T_DATA data) {
+    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+  });
+  EntryWrapper<Prime> entry4 = future4.Go();
+  
+  const bool b4 = entry4;
+  ASSERT_FALSE(b4);
+}
   
   // Accessing the memory view of `data`.
 {
@@ -186,50 +230,6 @@ TEST(YodaDocu, Test) {
     EXPECT_EQ(8u, c1);
     EXPECT_EQ(8u, c2);
   }).Go();
-}
-  
-  // Expanded syntax for `Get()`.
-{
-  Future<EntryWrapper<Prime>> future1 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
-  });
-  EntryWrapper<Prime> entry1 = future1.Go();
-  
-  const bool b1 = entry1;
-  ASSERT_TRUE(b1);
-  
-  const Prime& p1 = entry1;
-  EXPECT_EQ(1, p1.index);
-  
-  Future<EntryWrapper<Prime>> future2 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
-  });
-  EntryWrapper<Prime> entry2 = future2.Go();
-  
-  const bool b2 = entry2;
-  ASSERT_TRUE(b2);
-  
-  const Prime& p2 = entry2;
-  EXPECT_EQ(3, p2.index);
-  
-  Future<EntryWrapper<Prime>> future3 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
-  });
-  EntryWrapper<Prime> entry3 = future3.Go();
-  
-  const bool b3 = entry3;
-  ASSERT_TRUE(b3);
-  
-  const Prime& p3 = entry3;
-  EXPECT_EQ(4, p3.index);
-  
-  Future<EntryWrapper<Prime>> future4 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
-  });
-  EntryWrapper<Prime> entry4 = future4.Go();
-  
-  const bool b4 = entry4;
-  ASSERT_FALSE(b4);
 }
   
   // Prime p = api.AsyncGet(static_cast<PRIME>(2)).Go();
