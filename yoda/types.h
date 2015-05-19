@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../../Bricks/exception.h"
 #include "../../Bricks/cerealize/cerealize.h"
 #include "../../Bricks/time/chrono.h"
+#include "../../Bricks/net/api/api.h"
 
 namespace yoda {
 
@@ -91,6 +92,15 @@ struct EntryWrapper {
       return *entry;
     } else {
       throw NonexistentEntryAccessed();
+    }
+  }
+
+  void RespondViaHTTP(Request r) const {
+    if (exists) {
+      r(*entry, "entry");
+    } else {
+      // TODO(dkorolev): This should certainly be done in a cleaner way.
+      r("{\"error\":\"NOT_FOUND\"}\n", HTTPResponseCode.NotFound, "application/json");
     }
   }
 

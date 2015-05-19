@@ -48,6 +48,7 @@ using yoda::KeyNotFoundException;
 using yoda::KeyAlreadyExistsException;
 
 using bricks::strings::Printf;
+using bricks::strings::FromString;
 
   // Unique types for keys.
   enum class PRIME : int {};
@@ -257,17 +258,22 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("[2]=1,[3]=2,[5]*[7]=12", future.Go());
 }
   
-/*
 {
-  // Confirm that the send parameter callback is `std::move()`-d into
-  // the processing thread. REST is the easiest test.
+  // Confirm that the send parameter callback is `std::move()`-d
+  // into the processing thread.
+  // Interestingly, a REST-ful endpoint is the easiest possible test.
   HTTP(port).Register("/rest", [&api](Request request) {
-    api.DimaGet2(static_cast<PRIME>(FromString<int>(request.url.query["p"]),
-                std::move(request)));
+    api.DimaGet2(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
+                 std::move(request));
   });
+  auto response_prime = HTTP(GET(Printf("http://localhost:%d/rest?p=7", port)));
+  EXPECT_EQ(200, static_cast<int>(response_prime.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
+  auto response_composite = HTTP(GET(Printf("http://localhost:%d/rest?p=9", port)));
+  EXPECT_EQ(404, static_cast<int>(response_composite.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
 }
-*/
-    
+  
 {
   // Confirm that the stream is indeed populated.
   api.ExposeViaHTTP(port, "/data");

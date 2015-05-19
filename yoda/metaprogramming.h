@@ -444,6 +444,15 @@ struct GetViaCall {
   T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
 };
 
+template <typename DATA, typename YET, typename K, typename F>
+struct Get2ViaCall {
+  const K key;
+  F f;
+  Get2ViaCall(K&& key, F&& f) : key(std::move(key)), f(std::move(f)) {}
+  Get2ViaCall(Get2ViaCall&& rhs) : key(std::move(rhs.key)), f(std::move(rhs.f)) {}
+  void operator()(DATA data) { f(YET::Accessor(data).Get(std::move(key))); }
+};
+
 template <typename YT, typename API>
 struct APICallsWrapper {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
@@ -503,8 +512,10 @@ struct APICallsWrapper {
     NEXT next;
     std::promise<void> promise;
 
-    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
+    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next, std::promise<void> pr)
+        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)),
+          next(std::forward<NEXT>(next)),
+          promise(std::move(pr)) {}
 
     virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
       next(function(container_data));
@@ -516,7 +527,9 @@ struct APICallsWrapper {
     using T_INTERMEDIATE_TYPE = bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<T_INTERMEDIATE_TYPE> pr;
     Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
+    // TODO(dkorolev): Figure out the `mq_.EmplaceMessage(new ...)` magic.
+    mq_.PushMessage(std::move(make_unique<MQMessageFunction<T_INTERMEDIATE_TYPE>>(
+        std::forward<T_TYPED_USER_FUNCTION>(function), std::move(pr))));
     return future;
   }
 
@@ -537,14 +550,21 @@ struct APICallsWrapper {
   template <typename ENTRY>
   Future<void> DimaAdd(ENTRY&& entry) {
     typedef CWT<API, apicalls::ExtractYETFromE<ENTRY>> YET;
-    return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::move(entry)));
+    return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
   // Helper method to wrap `DimaGet()` into `Call()`.
   template <typename KEY>
-  Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> DimaGet(KEY&& entry) {
+  Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> DimaGet(KEY&& key) {
     typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
-    return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::move(entry)));
+    return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
+  }
+
+  // Helper method to wrap `DimaGet2()` into `Call()`.
+  template <typename KEY, typename F>
+  Future<void> DimaGet2(KEY&& key, F&& f) {
+    typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
+    return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 
   /// TODO(dkorolev): Remove this code.
