@@ -53,7 +53,7 @@ using bricks::strings::FromString;
   // Unique types for keys.
   enum class PRIME : int {};
   enum class FIRST_DIGIT : int {};
-  enum class LAST_DIGIT : int {};
+  enum class SECOND_DIGIT : int {};
   
   // Serializable class `Prime`.
   struct Prime : Padawan {
@@ -82,13 +82,37 @@ using bricks::strings::FromString;
   };
   CEREAL_REGISTER_TYPE(Prime);
   
+  // Serializable class `PrimeCell`.
+  struct PrimeCell : Padawan {
+    FIRST_DIGIT row;
+    SECOND_DIGIT col;
+    int index;
+  
+    PrimeCell(const int a = 0, const int b = 0, const int index = 0)
+      : row(static_cast<FIRST_DIGIT>(a)),
+        col(static_cast<SECOND_DIGIT>(b)),
+        index(index) {
+    }
+  
+    PrimeCell(const PrimeCell&) = default;
+  
+    template <typename A>
+    void serialize(A& ar) {
+      Padawan::serialize(ar);
+      ar(cereal::make_nvp("d1", reinterpret_cast<int&>(row)),
+         cereal::make_nvp("d2", reinterpret_cast<int&>(col)),
+         CEREAL_NVP(index));
+    }
+  };
+  CEREAL_REGISTER_TYPE(PrimeCell);
+    
 TEST(YodaDocu, Test) {
 const int port = FLAGS_yoda_docu_test_port;
 bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef API<KeyEntry<Prime>> PrimesAPI;
+  typedef API<KeyEntry<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // `2` is the first prime.

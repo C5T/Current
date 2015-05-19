@@ -195,6 +195,10 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
     operator()(apicalls::AsyncAdd(), entry).Go();
   }
 
+  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_ROW>);
+  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_COL>);
+
  private:
   typename YT::T_MQ& mq_;
 };
@@ -208,9 +212,13 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   using CF = bricks::copy_free<T>;
 
   // Event: The entry has been scanned from the stream.
-  void operator()(const typename YET::T_ENTRY& entry) {
-    forward_[GetRow(entry)][GetCol(entry)] = entry;
-    transposed_[GetCol(entry)][GetRow(entry)] = entry;
+  void operator()(ENTRY& entry, size_t index) {
+    std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[std::make_pair(GetRow(entry), GetCol(entry))];
+    if (index > placeholder->index) {
+      placeholder->Update(index, std::move(entry));
+      forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
+      transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
+    }
   }
 
   // Event: `Get()`.
@@ -370,10 +378,16 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     return Mutator(*this, std::ref(stream));
   }
 
+  // TODO(dkorolev): This is duplication. We certainly don't need it.
+  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_ROW>);
+  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_COL>);
+
  private:
-  // TODO(dkorolev)+TODO(mzhurovich): Eventually we'll think of storing each entry only once.
-  T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, typename YET::T_ENTRY>> forward_;
-  T_MAP_TYPE<typename YET::T_COL, T_MAP_TYPE<typename YET::T_ROW, typename YET::T_ENTRY>> transposed_;
+  T_MAP_TYPE<std::pair<typename YET::T_ROW, typename YET::T_COL>,
+             std::unique_ptr<EntryWithIndex<typename YET::T_ENTRY>>> map_;
+  T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>> forward_;
+  T_MAP_TYPE<typename YET::T_COL, T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>> transposed_;
 };
 
 }  // namespace yoda
