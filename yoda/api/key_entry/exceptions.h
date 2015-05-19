@@ -28,12 +28,9 @@ SOFTWARE.
 
 #include "metaprogramming.h"
 
-#include "../../exceptions.h"
 #include "../../../../Bricks/exception.h"
 
 namespace yoda {
-
-using namespace sfinae;
 
 // Exception types for non-existent keys.
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.

@@ -34,6 +34,8 @@ SOFTWARE.
 #include <future>
 #include <utility>
 
+#include "types.h"
+
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
@@ -436,15 +438,6 @@ struct CallAndSetPromiseImpl<void> {
 // and a SFINAE-based wrapper into `struct APICallsWrapper`.
 namespace apicalls {
 
-// Helper types for user-facing API calls.
-struct Get {};
-struct AsyncGet {};
-struct Add {};
-struct AsyncAdd {};
-
-/// TODO(dkorolev): Remove this code.
-/// struct AsyncCallFunction {};
-
 template <typename DATA, typename YET, typename E>
 struct AddViaCall {
   const E entry;
@@ -462,11 +455,11 @@ struct GetViaCall {
 };
 
 template <typename DATA, typename YET, typename K, typename F>
-struct Get2ViaCall {
+struct FunctionalGetViaCall {
   const K key;
   F f;
-  Get2ViaCall(K&& key, F&& f) : key(std::move(key)), f(std::move(f)) {}
-  Get2ViaCall(Get2ViaCall&& rhs) : key(std::move(rhs.key)), f(std::move(rhs.f)) {}
+  FunctionalGetViaCall(K&& key, F&& f) : key(std::move(key)), f(std::move(f)) {}
+  FunctionalGetViaCall(FunctionalGetViaCall&& rhs) : key(std::move(rhs.key)), f(std::move(rhs.f)) {}
   void operator()(DATA data) { f(YET::Accessor(data).Get(std::move(key))); }
 };
 
@@ -479,28 +472,6 @@ struct APICallsWrapper {
 
   APICallsWrapper() = delete;
   explicit APICallsWrapper(typename YT::T_MQ& mq) : mq_(mq), api(mq_) {}
-
-  // User-facing API calls, proxied to the chain of per-type Yoda API-s
-  // via the `using T1::operator(); using T2::operator();` trick.
-  template <typename... XS>
-  CWT<API, apicalls::Get, XS...> Get(XS&&... xs) {
-    return api(apicalls::Get(), std::forward<XS>(xs)...);
-  }
-
-  template <typename... XS>
-  CWT<API, apicalls::Add, XS...> Add(XS&&... xs) {
-    return api(apicalls::Add(), std::forward<XS>(xs)...);
-  }
-
-  template <typename... XS>
-  CWT<API, apicalls::AsyncGet, XS...> AsyncGet(XS&&... xs) {
-    return api(apicalls::AsyncGet(), std::forward<XS>(xs)...);
-  }
-
-  template <typename... XS>
-  CWT<API, apicalls::AsyncAdd, XS...> AsyncAdd(XS&&... xs) {
-    return api(apicalls::AsyncAdd(), std::forward<XS>(xs)...);
-  }
 
   // Asynchronous user function calling functionality.
   typedef YodaData<YT> T_DATA;
@@ -539,6 +510,7 @@ struct APICallsWrapper {
       promise.set_value();
     }
   };
+
   template <typename T_TYPED_USER_FUNCTION>
   Future<bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>> Call(T_TYPED_USER_FUNCTION&& function) {
     using T_INTERMEDIATE_TYPE = bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
@@ -563,32 +535,26 @@ struct APICallsWrapper {
     return future;
   }
 
-  // Helper method to wrap `DimaAdd()` into `Call()`.
+  // Helper method to wrap `Add()` into `Call()`.
   template <typename ENTRY>
-  Future<void> DimaAdd(ENTRY&& entry) {
+  Future<void> Add(ENTRY&& entry) {
     typedef CWT<API, apicalls::ExtractYETFromE<ENTRY>> YET;
     return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
-  // Helper method to wrap `DimaGet()` into `Call()`.
+  // Helper method to wrap `Get()` into `Call()`.
   template <typename KEY>
-  Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> DimaGet(KEY&& key) {
+  Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
     typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
     return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
   }
 
-  // Helper method to wrap `DimaGet2()` into `Call()`.
+  // Helper method to wrap `FunctionalGet()` into `Call()`.
   template <typename KEY, typename F>
-  Future<void> DimaGet2(KEY&& key, F&& f) {
+  Future<void> FunctionalGet(KEY&& key, F&& f) {
     typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
     return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
-
-  /// TODO(dkorolev): Remove this code.
-  /// template <typename... XS>
-  /// CWT<API, apicalls::AsyncCallFunction, XS...> AsyncCallFunction(XS&&... xs) {
-  ///   return api(apicalls::AsyncCallFunction(), xs...);
-  /// }
 
   typename YT::T_MQ& mq_;
   API api;

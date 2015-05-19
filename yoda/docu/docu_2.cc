@@ -116,22 +116,22 @@ HTTP(port).ResetAllHandlers();
   PrimesAPI api("YodaExampleUsage");
   
   // `2` is the first prime.
-  // `.Go()` (or `.Wait()`) makes `DimaAdd()` a blocking call.
-  api.DimaAdd(Prime(2, 1)).Go();
+  // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
+  api.Add(Prime(2, 1)).Go();
 
   // `3` is the second prime.
   // `api.Add()` never throws and silently overwrites.
-  api.DimaAdd(Prime(3, 100));
-  api.DimaAdd(Prime(3, 2));
+  api.Add(Prime(3, 100));
+  api.Add(Prime(3, 2));
   
   // `api.Get()` has multiple signatures, one or more per
   // supported data type. It never throws, and returns a wrapper,
   // that can be casted to both `bool` and the underlying type.
-  ASSERT_TRUE(static_cast<bool>(api.DimaGet(static_cast<PRIME>(2)).Go()));
-  EXPECT_EQ(1, static_cast<const Prime&>(api.DimaGet(static_cast<PRIME>(2)).Go()).index);
-  ASSERT_TRUE(static_cast<bool>(api.DimaGet(static_cast<PRIME>(3)).Go()));
-  EXPECT_EQ(2, static_cast<const Prime&>(api.DimaGet(static_cast<PRIME>(3)).Go()).index);
-  ASSERT_FALSE(static_cast<bool>(api.DimaGet(static_cast<PRIME>(4)).Go()));
+  ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(2)).Go()));
+  EXPECT_EQ(1, static_cast<const Prime&>(api.Get(static_cast<PRIME>(2)).Go()).index);
+  ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(3)).Go()));
+  EXPECT_EQ(2, static_cast<const Prime&>(api.Get(static_cast<PRIME>(3)).Go()).index);
+  ASSERT_FALSE(static_cast<bool>(api.Get(static_cast<PRIME>(4)).Go()));
   
   // Expanded syntax for `Add()`.
 {
@@ -276,7 +276,7 @@ HTTP(port).ResetAllHandlers();
   }).Go();
   
   // Work with `MatrixEntry<>` as well.
-  api.DimaAdd(PrimeCell(0, 2, 1));
+  api.Add(PrimeCell(0, 2, 1));
 }
   
   // The return value from `Call()` is wrapped into a `Future<>`,
@@ -299,7 +299,7 @@ HTTP(port).ResetAllHandlers();
   // into the processing thread.
   // Interestingly, a REST-ful endpoint is the easiest possible test.
   HTTP(port).Register("/rest", [&api](Request request) {
-    api.DimaGet2(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
+    api.FunctionalGet(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
                  std::move(request));
   });
   auto response_prime = HTTP(GET(Printf("http://localhost:%d/rest?p=7", port)));

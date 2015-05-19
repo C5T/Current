@@ -28,10 +28,12 @@ SOFTWARE.
 
 #include "metaprogramming.h"
 
-#include "../../exceptions.h"
 #include "../../../../Bricks/exception.h"
 
 namespace yoda {
+
+using sfinae::ENTRY_ROW_TYPE;
+using sfinae::ENTRY_COL_TYPE;
 
 // Exception types for non-existent cells.
 // Cover exception type for entry types and templated, narrowed down exception types, one per entry key type.

@@ -80,10 +80,8 @@ SOFTWARE.
 #include <string>
 #include <tuple>
 
-#include "types.h"
 #include "metaprogramming.h"
-#include "policy.h"
-#include "exceptions.h"
+#include "types.h"
 
 #include "api/key_entry/key_entry.h"
 #include "api/matrix/matrix_entry.h"
@@ -120,44 +118,6 @@ struct APIWrapper
   // For testing purposes.
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
-
-  /*
-  // Asynchronous user function calling functionality.
-  typedef YodaData<YT> T_DATA;
-  template <typename RETURN_VALUE>
-  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
-
-  template <typename RETURN_VALUE>
-  struct MQMessageFunction : YodaMMQMessage<YT> {
-    typedef RETURN_VALUE T_RETURN_VALUE;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
-    std::promise<T_RETURN_VALUE> promise;
-
-    MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
-
-    virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
-      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_data, promise);
-    }
-  };
-
-  template <typename RETURN_VALUE, typename NEXT>
-  struct MQMessageFunctionWithNext : YodaMMQMessage<YT> {
-    typedef RETURN_VALUE T_RETURN_VALUE;
-    typedef NEXT T_NEXT;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
-    NEXT next;
-    std::promise<void> promise;
-
-    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
-
-    virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
-      next(function(container_data));
-      promise.set_value();
-    }
-  };
-  */
 
  private:
   typename YT::T_STREAM_TYPE stream_;
