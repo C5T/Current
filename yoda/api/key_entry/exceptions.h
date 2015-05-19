@@ -50,10 +50,9 @@ struct KeyNotFoundException : KeyNotFoundCoverException {
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
 struct KeyAlreadyExistsCoverException : bricks::Exception {};
 
-template <typename ENTRY>
+template <typename KEY>
 struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
+  typedef KEY T_KEY;
   const T_KEY key;
   explicit KeyAlreadyExistsException(const T_KEY& key) : key(key) {}
 };

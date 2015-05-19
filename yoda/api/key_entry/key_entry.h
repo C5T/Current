@@ -271,6 +271,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
     bool Exists(bricks::copy_free<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
 
+    // Non-throwing getter. Returns a wrapped null entry if not found.
     const EntryWrapper<ENTRY> Get(bricks::copy_free<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
@@ -280,7 +281,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
       }
     }
 
-    // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
+    // Throwing getter.
     const ENTRY& operator[](bricks::copy_free<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
@@ -300,10 +301,22 @@ struct Container<YT, KeyEntry<ENTRY>> {
     Mutator(Container<YT, YET>& container, typename YT::T_STREAM_TYPE& stream)
         : Accessor(container), mutable_(container), stream_(stream) {}
 
-    // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
+    // Non-throwing adder. Silently overwrites if already exists.
     void Add(const ENTRY& entry) {
       const size_t index = stream_.Publish(entry);
       mutable_.map_[GetKey(entry)].Update(index, entry);
+    }
+
+    // Throwing adder.
+    Mutator& operator<<(const ENTRY& entry) {
+      // TODO(dkorolev): Make one, not two lookups in `map`.
+      auto key = GetKey(entry);
+      if (mutable_.map_.count(key)) {
+        throw typename YET::T_KEY_ALREADY_EXISTS_EXCEPTION(std::move(key));
+      } else {
+        Add(entry);
+        return *this;
+      }
     }
 
    private:

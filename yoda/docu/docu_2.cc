@@ -46,6 +46,7 @@ using yoda::MatrixEntry;
 using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
 using yoda::KeyNotFoundException;
+using yoda::KeyAlreadyExistsException;
 
   // Unique types for keys.
   enum class PRIME : int {};
@@ -121,26 +122,42 @@ TEST(YodaDocu, Test) {
   // Accessing the memory view of `data`.
 {
   api.Call([](PrimesAPI::T_DATA data) {
-    const auto primes = KeyEntry<Prime>::Accessor(data);
+    auto adder = KeyEntry<Prime>::Mutator(data);
+    const auto getter = KeyEntry<Prime>::Accessor(data);
   
-    // `accessor.Get()` in a non-throwing call, returning a wrapper.
-    const auto p5 = primes.Get(static_cast<PRIME>(5));
-    ASSERT_TRUE(static_cast<bool>(p5));
-    EXPECT_EQ(3, static_cast<const Prime&>(p5).index);
+    // `adder.Add()` in a non-throwing call.
+    adder.Add(Prime(11, 5));
+    adder.Add(Prime(13, 100));
+    adder.Add(Prime(13, 6));  // Overwrite.
+
+    // `adder.operator<<()` is a potentially throwing call.
+    adder << Prime(17, 7) << Prime(19, 9);
+    ASSERT_THROW(adder << Prime(19, 9), KeyAlreadyExistsException<PRIME>);
+    try {
+      adder << Prime(19, 9);
+    } catch (const KeyAlreadyExistsException<PRIME>& e) {
+      EXPECT_EQ(19, static_cast<int>(e.key));
+    }
+
+    // `getter.Get()` in a non-throwing call, returning a wrapper.
+    const auto p13 = getter.Get(static_cast<PRIME>(13));
+    ASSERT_TRUE(static_cast<bool>(p13));
+    EXPECT_EQ(6, static_cast<const Prime&>(p13).index);
   
-    // `accessor[...]` is a potentially throwing call, returning a value.
-    EXPECT_EQ(4, primes[static_cast<PRIME>(7)].index);
+    // `getter.operator[]()` is a potentially throwing call, returning a value.
+    EXPECT_EQ(3, getter[static_cast<PRIME>(5)].index);
+    EXPECT_EQ(7, getter[static_cast<PRIME>(17)].index);
   
     // Query a non-existing value using two ways.
-    const auto p8 = primes.Get(static_cast<PRIME>(8));
+    const auto p8 = getter.Get(static_cast<PRIME>(8));
     ASSERT_FALSE(static_cast<bool>(p8));
     ASSERT_THROW(static_cast<void>(static_cast<const Prime&>(p8)),
                  NonexistentEntryAccessed);
       
-    ASSERT_THROW(primes[static_cast<PRIME>(9)],
+    ASSERT_THROW(getter[static_cast<PRIME>(9)],
                  KeyNotFoundException<PRIME>);
     try {
-      primes[static_cast<PRIME>(9)];
+      getter[static_cast<PRIME>(9)];
     } catch(const KeyNotFoundException<PRIME>& e) {
       EXPECT_EQ(9, static_cast<int>(e.key));
     }
