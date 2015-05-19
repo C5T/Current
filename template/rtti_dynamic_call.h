@@ -84,8 +84,8 @@ struct RTTIDispatcherBase {
 
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
 struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
-  virtual void Handle(BASE&& ptr, F&& f, ARGS&&... args) const override {
-    DERIVED* derived = dynamic_cast<DERIVED*>(&ptr);
+  virtual void Handle(BASE&& ref, F&& f, ARGS&&... args) const override {
+    DERIVED* derived = dynamic_cast<DERIVED*>(&ref);
     if (derived) {
       f(*derived, std::forward<ARGS>(args)...);
     } else {
@@ -141,16 +141,16 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
 //                 that wraps all the types into pure virtual functions?
 //                 This way forgetting either of them would be a compile error.
 template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
-void RTTIDynamicCallImpl(BASE&& ptr, F&& f, ARGS&&... args) {
-  RTTIFindHandler<TYPELIST, BASE, F, ARGS...>(typeid(ptr))
-      ->Handle(std::forward<BASE>(ptr), std::forward<F>(f), std::forward<ARGS>(args)...);
+void RTTIDynamicCallImpl(BASE&& ref, F&& f, ARGS&&... args) {
+  RTTIFindHandler<TYPELIST, BASE, F, ARGS...>(typeid(ref))
+      ->Handle(std::forward<BASE>(ref), std::forward<F>(f), std::forward<ARGS>(args)...);
 }
 
 template <typename TYPELIST, typename BASE, typename... REST>
-void RTTIDynamicCall(BASE&& ptr, REST&&... rest) {
+void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
   typedef typename is_unique_ptr<BASE>::underlying_type ACTUAL_BASE;
   RTTIDynamicCallImpl<TYPELIST, ACTUAL_BASE, REST...>(
-      std::forward<ACTUAL_BASE>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ptr))),
+      std::forward<ACTUAL_BASE>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref))),
       std::forward<REST>(rest)...);
 }
 
