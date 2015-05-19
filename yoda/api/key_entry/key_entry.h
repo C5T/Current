@@ -164,6 +164,8 @@ struct YodaImpl<YT, KeyEntry<ENTRY>> {
     operator()(apicalls::AsyncAdd(), entry).Go();
   }
 
+  YET operator()(apicalls::template ExtractYETFromT<typename YET::T_ENTRY>);
+
  private:
   typename YT::T_MQ& mq_;
 };

@@ -301,15 +301,15 @@ struct MQListener {
   explicit MQListener(YodaContainer<YT>& container,
                       YodaData<YT> container_data,
                       typename YT::T_STREAM_TYPE& stream)
-      : container_(container), container_wrapper_(container_data), stream_(stream) {}
+      : container_(container), container_data_(container_data), stream_(stream) {}
 
   // MMQ consumer call.
   void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) {
-    message->Process(container_, container_wrapper_, stream_);
+    message->Process(container_, container_data_, stream_);
   }
 
   YodaContainer<YT>& container_;
-  YodaData<YT> container_wrapper_;
+  YodaData<YT> container_data_;
   typename YT::T_STREAM_TYPE& stream_;
 };
 
@@ -377,6 +377,24 @@ struct CombinedYodaImpls<YT, std::tuple<T>> : dispatch<YT, YodaImpl<YT, T>> {
   explicit CombinedYodaImpls(typename YT::T_MQ& mq) : dispatch<YT, YodaImpl<YT, T>>(mq) {}
 };
 
+// Handle `void` and non-`void` types equally for promises.
+template <typename R>
+struct CallAndSetPromiseImpl {
+  template <typename FUNCTION, typename PARAMETER>
+  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<R>& promise) {
+    promise.set_value(function(std::forward<PARAMETER>(parameter)));
+  }
+};
+
+template <>
+struct CallAndSetPromiseImpl<void> {
+  template <typename FUNCTION, typename PARAMETER>
+  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<void>& promise) {
+    function(std::forward<PARAMETER>(parameter));
+    promise.set_value();
+  }
+};
+
 // All the user-facing methods are defined here.
 // To add a new user-facing method, add a new empty struct into `namespace apicalls`
 // and a SFINAE-based wrapper into `struct APICallsWrapper`.
@@ -388,8 +406,20 @@ struct AsyncGet {};
 struct Add {};
 struct AsyncAdd {};
 
+// A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
+template <typename T>
+struct ExtractYETFromT {};
+
 /// TODO(dkorolev): Remove this code.
 /// struct AsyncCallFunction {};
+
+template <typename DATA, typename YET, typename E>
+struct AddViaCall {
+  const E entry;
+  AddViaCall(E&& entry) : entry(std::move(entry)) {}
+  void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
+};
 
 template <typename YT, typename API>
 struct APICallsWrapper {
@@ -399,7 +429,7 @@ struct APICallsWrapper {
   using CWT = bricks::weed::call_with_type<T, TS...>;
 
   APICallsWrapper() = delete;
-  explicit APICallsWrapper(typename YT::T_MQ& mq) : api(mq) {}
+  explicit APICallsWrapper(typename YT::T_MQ& mq) : mq_(mq), api(mq_) {}
 
   // User-facing API calls, proxied to the chain of per-type Yoda API-s
   // via the `using T1::operator(); using T2::operator();` trick.
@@ -423,34 +453,81 @@ struct APICallsWrapper {
     return api(apicalls::AsyncAdd(), std::forward<XS>(xs)...);
   }
 
+  // Asynchronous user function calling functionality.
+  typedef YodaData<YT> T_DATA;
+  template <typename RETURN_VALUE>
+  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
+
+  template <typename RETURN_VALUE>
+  struct MQMessageFunction : YodaMMQMessage<YT> {
+    typedef RETURN_VALUE T_RETURN_VALUE;
+    T_USER_FUNCTION<T_RETURN_VALUE> function;
+    std::promise<T_RETURN_VALUE> promise;
+
+    MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
+        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
+
+    virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
+      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_data, promise);
+    }
+  };
+
+  template <typename RETURN_VALUE, typename NEXT>
+  struct MQMessageFunctionWithNext : YodaMMQMessage<YT> {
+    typedef RETURN_VALUE T_RETURN_VALUE;
+    typedef NEXT T_NEXT;
+    T_USER_FUNCTION<T_RETURN_VALUE> function;
+    NEXT next;
+    std::promise<void> promise;
+
+    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next)
+        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
+
+    virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
+      next(function(container_data));
+      promise.set_value();
+    }
+  };
+  template <typename T_TYPED_USER_FUNCTION>
+  Future<bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>> Call(
+      T_TYPED_USER_FUNCTION&& function) {
+    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
+    std::promise<T_INTERMEDIATE_TYPE> pr;
+    Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
+    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
+    return future;
+  }
+
+  // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
+  template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
+  Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
+    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
+    std::promise<void> pr;
+    Future<void> future = pr.get_future();
+    mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
+        std::forward<T_TYPED_USER_FUNCTION>(function),
+        std::forward<T_NEXT_USER_FUNCTION>(next),
+        std::move(pr)));
+    return future;
+  }
+
+  template <typename ENTRY>
+  Future<void> DimaAdd(ENTRY&& entry) {
+    typedef bricks::weed::call_with_type<API, apicalls::ExtractYETFromT<ENTRY>> YET;
+    return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::move(entry)));
+  }
+
   /// TODO(dkorolev): Remove this code.
   /// template <typename... XS>
   /// CWT<API, apicalls::AsyncCallFunction, XS...> AsyncCallFunction(XS&&... xs) {
   ///   return api(apicalls::AsyncCallFunction(), xs...);
   /// }
 
+  typename YT::T_MQ& mq_;
   API api;
 };
 
 }  // namespace apicalls
-
-// Handle `void` and non-`void` types equally for promises.
-template <typename R>
-struct CallAndSetPromiseImpl {
-  template <typename FUNCTION, typename PARAMETER>
-  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<R>& promise) {
-    promise.set_value(function(std::forward<PARAMETER>(parameter)));
-  }
-};
-
-template <>
-struct CallAndSetPromiseImpl<void> {
-  template <typename FUNCTION, typename PARAMETER>
-  static void DoIt(FUNCTION&& function, PARAMETER&& parameter, std::promise<void>& promise) {
-    function(std::forward<PARAMETER>(parameter));
-    promise.set_value();
-  }
-};
 
 }  // namespace yoda
 

@@ -81,11 +81,30 @@ TEST(YodaDocu, Test) {
   typedef API<KeyEntry<Prime>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
+  // `2` is the first prime.
+  api.DimaAdd(Prime(2, 1));
+
+  // `3` is the second prime.
+  // `api.Add()` never throws and silently overwrites.
+  api.DimaAdd(Prime(3, 100));
+  api.DimaAdd(Prime(3, 2));
+
+  /*
+  // `api.Get()` has multiple signatures, one or more per
+  // supported data type. It never throws, and returns a wrapper,
+  // that can be casted to both `bool` and the underlying type.
+  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(2)).Go()));
+  EXPECT_EQ(1, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(2)).Go()).index);
+  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(3)).Go()));
+  EXPECT_EQ(2, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(3)).Go()).index);
+  ASSERT_FALSE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(4)).Go()));
+  */
+
   // Expanded syntax for `Add()`.
 {
-  api.Call([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(2, 1));
-  }).Wait();
+//  api.Call([](PrimesAPI::T_DATA data) {
+//    KeyEntry<Prime>::Mutator(data).Add(Prime(2, 1));
+//  }).Wait();
   
   api.Call([](PrimesAPI::T_DATA data) {
     KeyEntry<Prime>::Mutator(data).Add(Prime(3, 100));
@@ -131,27 +150,6 @@ TEST(YodaDocu, Test) {
   const bool b2 = entry2;
   ASSERT_FALSE(b2);
 }
-
-
-  /*
-  // `2` is the first prime.
-  api.DimaAdd(Prime(2, 1));
-
-  // `3` is the second prime.
-  // `api.Add()` never throws and silently overwrites.
-  api.DimaAdd(Prime(3, 100));
-  api.DimaAdd(Prime(3, 2));
-
-  // `api.Get()` has multiple signatures, one or more per
-  // supported data type. It never throws, and returns a wrapper,
-  // that can be casted to both `bool` and the underlying type.
-  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(2)).Go()));
-  EXPECT_EQ(1, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(2)).Go()).index);
-  ASSERT_TRUE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(3)).Go()));
-  EXPECT_EQ(2, static_cast<const Prime&>(api.AsyncGet(static_cast<PRIME>(3)).Go()).index);
-  ASSERT_FALSE(static_cast<bool>(api.AsyncGet(static_cast<PRIME>(4)).Go()));
-
-  */
 
   // Prime p = api.AsyncGet(static_cast<PRIME>(2)).Go();
   // EXPECT_EQ(1, p.index);

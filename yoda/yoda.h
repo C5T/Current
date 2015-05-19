@@ -101,11 +101,12 @@ struct APIWrapper
 
  public:
   APIWrapper() = delete;
+  // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   APIWrapper(const std::string& stream_name)
       : apicalls::APICallsWrapper<YT, CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<Padawan>>(stream_name)),
-        container_wrapper_(container_, stream_),
-        mq_listener_(container_, container_wrapper_, stream_),
+        container_data_(container_, stream_),
+        mq_listener_(container_, container_data_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
         sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {}
@@ -120,6 +121,7 @@ struct APIWrapper
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
+  /*
   // Asynchronous user function calling functionality.
   typedef YodaData<YT> T_DATA;
   template <typename RETURN_VALUE>
@@ -155,34 +157,12 @@ struct APIWrapper
       promise.set_value();
     }
   };
-
-  template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>> Call(
-      T_TYPED_USER_FUNCTION&& function) {
-    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
-    std::promise<T_INTERMEDIATE_TYPE> pr;
-    Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
-    return future;
-  }
-
-  // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
-  template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
-  Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
-    std::promise<void> pr;
-    Future<void> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
-        std::forward<T_TYPED_USER_FUNCTION>(function),
-        std::forward<T_NEXT_USER_FUNCTION>(next),
-        std::move(pr)));
-    return future;
-  }
+  */
 
  private:
   typename YT::T_STREAM_TYPE stream_;
   YodaContainer<YT> container_;
-  YodaData<YT> container_wrapper_;
+  YodaData<YT> container_data_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;
