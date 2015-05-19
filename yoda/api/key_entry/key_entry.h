@@ -291,6 +291,24 @@ struct Container<YT, KeyEntry<ENTRY>> {
       }
     }
 
+    // Iteration.
+    struct Iterator {
+      typedef decltype(std::declval<Container<YT, YET>>().map_.cbegin()) T_ITERATOR;
+      T_ITERATOR iterator;
+      explicit Iterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
+      void operator++() { ++iterator; }
+      bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
+      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+      const ENTRY& operator*() const { return iterator->second.entry; }
+      const ENTRY* operator->() const { return &iterator->second.entry; }
+    };
+
+    Iterator begin() const { return Iterator(immutable_.map_.cbegin()); }
+
+    Iterator end() const { return Iterator(immutable_.map_.cend()); }
+
+    size_t size() const { return immutable_.map_.size(); }
+
    private:
     const Container<YT, YET>& immutable_;
   };

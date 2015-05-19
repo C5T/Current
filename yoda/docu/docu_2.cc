@@ -161,6 +161,30 @@ TEST(YodaDocu, Test) {
     } catch(const KeyNotFoundException<PRIME>& e) {
       EXPECT_EQ(9, static_cast<int>(e.key));
     }
+  
+    EXPECT_EQ(8u, getter.size());
+    EXPECT_EQ(8u, adder.size());
+  
+    std::set<std::pair<int, int>> as_set;  // To ensure the order is right.
+    for (auto cit = getter.begin(); cit != getter.end(); ++cit) {
+      as_set.insert(std::make_pair((*cit).index, static_cast<int>(cit->prime)));
+    }
+    std::ostringstream os;
+    for (const auto cit : as_set) {
+      os << ',' << cit.first << ':' << cit.second;
+    }
+    EXPECT_EQ("1:2,2:3,3:5,4:7,5:11,6:13,7:17,9:19", os.str().substr(1));
+      
+    size_t c1 = 0u;
+    size_t c2 = 0u;
+    for (const auto cit : getter) {
+      ++c1;
+    }
+    for (const auto cit : adder) {
+      ++c2;
+    }
+    EXPECT_EQ(8u, c1);
+    EXPECT_EQ(8u, c2);
   }).Go();
 }
   
