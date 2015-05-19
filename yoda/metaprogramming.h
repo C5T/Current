@@ -210,6 +210,20 @@ struct Get {};
 struct Add {};
 }  // namespace container_data
 
+namespace apicalls {
+
+// A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
+template <typename T>
+struct ExtractYETFromE {};
+
+// A wrapper to convert `T::T_KEY` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
+template <typename K>
+struct ExtractYETFromK {};
+
+}  // namespace apicalls
+
 template <typename YT>
 struct YodaData {
   template <typename T, typename... TS>
@@ -229,6 +243,11 @@ struct YodaData {
   CWT<YodaContainer<YT>, container_data::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
   Mutator() const {
     return container(container_data::RetrieveMutator<T>(), std::ref(stream));
+  }
+
+  template <typename K>
+  typename CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>()[std::forward<K>(key)];
   }
 
  private:
@@ -406,16 +425,6 @@ struct AsyncGet {};
 struct Add {};
 struct AsyncAdd {};
 
-// A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
-// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
-template <typename T>
-struct ExtractYETFromE {};
-
-// A wrapper to convert `T::T_KEY` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
-// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
-template <typename K>
-struct ExtractYETFromK {};
-
 /// TODO(dkorolev): Remove this code.
 /// struct AsyncCallFunction {};
 
@@ -503,9 +512,8 @@ struct APICallsWrapper {
     }
   };
   template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>> Call(
-      T_TYPED_USER_FUNCTION&& function) {
-    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
+  Future<bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>> Call(T_TYPED_USER_FUNCTION&& function) {
+    using T_INTERMEDIATE_TYPE = bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<T_INTERMEDIATE_TYPE> pr;
     Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
@@ -515,7 +523,7 @@ struct APICallsWrapper {
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
   template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
   Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = bricks::rmconstref<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_DATA>>;
+    using T_INTERMEDIATE_TYPE = bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
     mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
@@ -528,15 +536,14 @@ struct APICallsWrapper {
   // Helper method to wrap `DimaAdd()` into `Call()`.
   template <typename ENTRY>
   Future<void> DimaAdd(ENTRY&& entry) {
-    typedef bricks::weed::call_with_type<API, apicalls::ExtractYETFromE<ENTRY>> YET;
+    typedef CWT<API, apicalls::ExtractYETFromE<ENTRY>> YET;
     return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::move(entry)));
   }
 
   // Helper method to wrap `DimaGet()` into `Call()`.
   template <typename KEY>
-  Future<EntryWrapper<typename bricks::weed::call_with_type<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>>
-  DimaGet(KEY&& entry) {
-    typedef bricks::weed::call_with_type<API, apicalls::ExtractYETFromK<KEY>> YET;
+  Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> DimaGet(KEY&& entry) {
+    typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
     return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::move(entry)));
   }
 

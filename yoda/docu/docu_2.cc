@@ -84,6 +84,7 @@ using bricks::strings::Printf;
 TEST(YodaDocu, Test) {
 const int port = FLAGS_yoda_docu_test_port;
 bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
+HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
   typedef API<KeyEntry<Prime>> PrimesAPI;
@@ -210,6 +211,11 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
       EXPECT_EQ(9, static_cast<int>(e.key));
     }
   
+    // The syntax using `data` directly, without `Accessor` or `Mutator`.
+    EXPECT_EQ(3, data[static_cast<PRIME>(5)].index);
+    ASSERT_THROW(data[static_cast<PRIME>(9)],
+                 KeyNotFoundException<PRIME>);
+
     EXPECT_EQ(8u, getter.size());
     EXPECT_EQ(8u, adder.size());
   
@@ -250,10 +256,20 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
   });
   EXPECT_EQ("[2]=1,[3]=2,[5]*[7]=12", future.Go());
 }
+  
+/*
+{
+  // Confirm that the send parameter callback is `std::move()`-d into
+  // the processing thread. REST is the easiest test.
+  HTTP(port).Register("/rest", [&api](Request request) {
+    api.DimaGet2(static_cast<PRIME>(FromString<int>(request.url.query["p"]),
+                std::move(request)));
+  });
+}
+*/
     
 {
   // Confirm that the stream is indeed populated.
-  HTTP(port).ResetAllHandlers();
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(
 #if 1
