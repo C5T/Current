@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
-#define SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
+#ifndef SHERLOCK_YODA_CONTAINER_DICTIONARY_EXCEPTIONS_H
+#define SHERLOCK_YODA_CONTAINER_DICTIONARY_EXCEPTIONS_H
 
 #include "metaprogramming.h"
 
@@ -56,4 +56,4 @@ struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
+#endif  // SHERLOCK_YODA_CONTAINER_DICTIONARY_EXCEPTIONS_H

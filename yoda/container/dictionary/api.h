@@ -25,8 +25,8 @@ SOFTWARE.
 
 // The implementation for `KeyEntry` storage type.
 
-#ifndef SHERLOCK_YODA_API_KEY_ENTRY_H
-#define SHERLOCK_YODA_API_KEY_ENTRY_H
+#ifndef SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H
+#define SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H
 
 #include <future>
 
@@ -139,6 +139,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     Iterator begin() const { return Iterator(immutable_.map_.cbegin()); }
     Iterator end() const { return Iterator(immutable_.map_.cend()); }
     size_t size() const { return immutable_.map_.size(); }
+    bool empty() const { return immutable_.map_.empty(); }
 
    private:
     const Container<YT, YET>& immutable_;
@@ -186,4 +187,4 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_KEY_ENTRY_H
+#endif  // SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H

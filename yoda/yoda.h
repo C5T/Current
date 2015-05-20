@@ -83,8 +83,8 @@ SOFTWARE.
 #include "metaprogramming.h"
 #include "types.h"
 
-#include "api/key_entry/key_entry.h"
-#include "api/matrix/matrix_entry.h"
+#include "container/dictionary/api.h"
+#include "container/matrix/api.h"
 
 namespace yoda {
 

@@ -354,11 +354,11 @@ HTTP(port).ResetAllHandlers();
                     std::move(request));
   });
   auto cell_prime = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=3", port)));
-  EXPECT_EQ(200, static_cast<int>(response_prime.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
+  EXPECT_EQ(200, static_cast<int>(cell_prime.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime.body);
   auto cell_composite = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=4", port)));
-  EXPECT_EQ(404, static_cast<int>(response_composite.code));
-  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
+  EXPECT_EQ(404, static_cast<int>(cell_composite.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite.body);
 }
   
 if (0) {

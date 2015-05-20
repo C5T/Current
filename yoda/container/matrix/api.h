@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_API_MATRIX_H
-#define SHERLOCK_YODA_API_MATRIX_H
+#ifndef SHERLOCK_YODA_CONTAINER_MATRIX_API_H
+#define SHERLOCK_YODA_CONTAINER_MATRIX_API_H
 
 #include <future>
 
@@ -173,4 +173,4 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_MATRIX_H
+#endif  // SHERLOCK_YODA_CONTAINER_MATRIX_API_H
