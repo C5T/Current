@@ -131,7 +131,7 @@ struct YETFromK {};
 template <typename K>
 struct YETFromSubscript {};
 
-}  // namespace container_data
+}  // namespace type_inference
 
 template <typename YT>
 struct YodaData {
@@ -257,38 +257,6 @@ struct MQListener {
   typename YT::T_STREAM_TYPE& stream_;
 };
 
-template <typename YT, typename CONCRETE_TYPE>
-struct YodaImpl {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  YodaImpl() = delete;
-};
-
-// Shamelessly taken from `Bricks/template/combine.h`.
-// TODO(dkorolev): With Max, think of how to best move these into Bricks, or at least rename a few.
-template <typename YT, typename T>
-struct dispatch {
-  T instance;
-
-  template <typename... XS>
-  static constexpr bool sfinae(char) {
-    return false;
-  }
-
-  template <typename... XS>
-  static constexpr auto sfinae(int) -> decltype(std::declval<T>()(std::declval<XS>()...), bool()) {
-    return true;
-  }
-
-  template <typename... XS>
-  typename std::enable_if<sfinae<XS...>(0), decltype(std::declval<T>()(std::declval<XS>()...))>::type
-  operator()(XS&&... params) {
-    return instance(std::forward<XS>(params)...);
-  }
-
-  dispatch() = delete;
-  explicit dispatch(typename YT::T_MQ& mq) : instance(mq) {}
-};
-
 template <typename YT, typename T1, typename T2>
 struct inherit_from_both : T1, T2 {
   using T1::operator();
@@ -297,28 +265,6 @@ struct inherit_from_both : T1, T2 {
   explicit inherit_from_both(typename YT::T_MQ& mq) : T1(mq), T2(mq) {}
   // Note: clang++ passes `operator`-s through
   // by default, whereas g++ requires `using`-s. --  D.K.
-};
-
-template <typename YT, typename SUPPORTED_TYPES_AS_TUPLE>
-struct CombinedYodaImpls {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
-};
-
-template <typename YT, typename T, typename... TS>
-struct CombinedYodaImpls<YT, std::tuple<T, TS...>>
-    : inherit_from_both<YT, dispatch<YT, YodaImpl<YT, T>>, CombinedYodaImpls<YT, std::tuple<TS...>>> {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  CombinedYodaImpls() = delete;
-  explicit CombinedYodaImpls(typename YT::T_MQ& mq)
-      : inherit_from_both<YT, dispatch<YT, YodaImpl<YT, T>>, CombinedYodaImpls<YT, std::tuple<TS...>>>(mq) {}
-};
-
-template <typename YT, typename T>
-struct CombinedYodaImpls<YT, std::tuple<T>> : dispatch<YT, YodaImpl<YT, T>> {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  CombinedYodaImpls() = delete;
-  explicit CombinedYodaImpls(typename YT::T_MQ& mq) : dispatch<YT, YodaImpl<YT, T>>(mq) {}
 };
 
 // TODO(dk+mz): Move promises into Bricks.
