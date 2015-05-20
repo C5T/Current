@@ -107,7 +107,7 @@ struct YodaContainerImpl {
 template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
-namespace container_data {
+namespace container_helpers {
 
 // Helper types to extract `Accessor` and `Mutator`.
 template <typename T>
@@ -137,37 +137,37 @@ struct YodaData {
 
   // Container getter for `Accessor`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_data::RetrieveAccessor<T>> Accessor() const {
-    return container(container_data::RetrieveAccessor<T>());
+  CWT<YodaContainer<YT>, container_helpers::RetrieveAccessor<T>> Accessor() const {
+    return container(container_helpers::RetrieveAccessor<T>());
   }
 
   // Container getter for `Mutator`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_data::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
+  CWT<YodaContainer<YT>, container_helpers::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
   Mutator() const {
-    return container(container_data::RetrieveMutator<T>(), std::ref(stream));
+    return container(container_helpers::RetrieveMutator<T>(), std::ref(stream));
   }
 
   // Top-level methods and operators, dispatching by parameter type.
   template <typename E>
   void Add(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, container_data::ExtractYETFromE<E>>>().Add(std::forward<E>(entry));
+    Mutator<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromE<E>>>().Add(std::forward<E>(entry));
   }
 
   template <typename K>
-  EntryWrapper<typename CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>::T_ENTRY> Get(K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
+  EntryWrapper<typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>::T_ENTRY> Get(K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
   }
 
   template <typename E>
   YodaData& operator<<(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, container_data::ExtractYETFromE<E>>>() << std::forward<E>(entry);
+    Mutator<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromE<E>>>() << std::forward<E>(entry);
     return *this;
   }
 
   template <typename K>
-  typename CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>>()[std::forward<K>(key)];
+  typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>>()[std::forward<K>(key)];
   }
 
  private:
@@ -303,6 +303,7 @@ struct CombinedYodaImpls<YT, std::tuple<T>> : dispatch<YT, YodaImpl<YT, T>> {
   explicit CombinedYodaImpls(typename YT::T_MQ& mq) : dispatch<YT, YodaImpl<YT, T>>(mq) {}
 };
 
+// TODO(dk+mz): Move promises into Bricks.
 // Handle `void` and non-`void` types equally for promises.
 template <typename R>
 struct CallAndSetPromiseImpl {
@@ -321,36 +322,30 @@ struct CallAndSetPromiseImpl<void> {
   }
 };
 
-// All the user-facing methods are defined here.
-// To add a new user-facing method, add a new empty struct into `namespace apicalls`
-// and a SFINAE-based wrapper into `struct APICallsWrapper`.
-namespace apicalls {
-
-template <typename DATA, typename YET, typename E>
-struct TopLevelAdd {
-  const E entry;
-  TopLevelAdd(E&& entry) : entry(std::move(entry)) {}
-  void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
-};
-
-template <typename DATA, typename YET, typename K>
-struct TopLevelGet {
-  const K key;
-  TopLevelGet(K&& key) : key(std::move(key)) {}
-  typedef decltype(
-      std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
-  T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
-};
-
-template <typename YT, typename API>
-struct APICallsWrapper {
+template <typename YT>
+struct APICalls {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
+
+  template <typename DATA, typename YET, typename E>
+  struct TopLevelAdd {
+    const E entry;
+    TopLevelAdd(E&& entry) : entry(std::move(entry)) {}
+    void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
+  };
+
+  template <typename DATA, typename YET, typename K>
+  struct TopLevelGet {
+    const K key;
+    TopLevelGet(K&& key) : key(std::move(key)) {}
+    typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
+    T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
+  };
 
   template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
 
-  APICallsWrapper() = delete;
-  explicit APICallsWrapper(typename YT::T_MQ& mq) : mq_(mq), api(mq_) {}
+  APICalls() = delete;
+  explicit APICalls(typename YT::T_MQ& mq) : mq_(mq) {}
 
   // Asynchronous user function calling functionality.
   typedef YodaData<YT> T_DATA;
@@ -417,29 +412,26 @@ struct APICallsWrapper {
   // Helper method to wrap `Add()` into `Transaction()`.
   template <typename ENTRY>
   Future<void> Add(ENTRY&& entry) {
-    typedef CWT<API, container_data::ExtractYETFromE<ENTRY>> YET;
+    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromE<ENTRY>> YET;
     return Transaction(TopLevelAdd<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
   // Helper method to wrap `Get()` into `Transaction()`.
   template <typename KEY>
-  Future<EntryWrapper<typename CWT<API, container_data::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
-    typedef CWT<API, container_data::ExtractYETFromK<KEY>> YET;
+  Future<EntryWrapper<typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
+    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<KEY>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
   }
 
   // Helper method to wrap `GetWithNext()` into `Transaction()`.
   template <typename KEY, typename F>
   Future<void> GetWithNext(KEY&& key, F&& f) {
-    typedef CWT<API, container_data::ExtractYETFromK<KEY>> YET;
+    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<KEY>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 
   typename YT::T_MQ& mq_;
-  API api;
 };
-
-}  // namespace apicalls
 
 }  // namespace yoda
 

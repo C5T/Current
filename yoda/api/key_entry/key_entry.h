@@ -72,27 +72,16 @@ struct KeyEntry {
 };
 
 template <typename YT, typename ENTRY>
-struct YodaImpl<YT, KeyEntry<ENTRY>> {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef KeyEntry<ENTRY> YET;  // "Yoda entry type".
-
-  YodaImpl() = delete;
-  explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
-
-  YET operator()(container_data::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(container_data::template ExtractYETFromK<typename YET::T_KEY>);
-
- private:
-  typename YT::T_MQ& mq_;
-};
-
-template <typename YT, typename ENTRY>
 struct Container<YT, KeyEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
+
   typedef KeyEntry<ENTRY> YET;
+  YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_KEY>);
 
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
+  // TODO(dkorolev): For this parameter to be an `ENTRY&&`, we'd need to clean up Bricks wrt RTTI.
   void operator()(ENTRY& entry, size_t index) {
     EntryWithIndex<ENTRY>& placeholder = map_[GetKey(entry)];
     if (index > placeholder.index) {
@@ -140,9 +129,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     };
 
     Iterator begin() const { return Iterator(immutable_.map_.cbegin()); }
-
     Iterator end() const { return Iterator(immutable_.map_.cend()); }
-
     size_t size() const { return immutable_.map_.size(); }
 
    private:
@@ -178,15 +165,11 @@ struct Container<YT, KeyEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_data::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(container_helpers::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_data::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(container_helpers::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
-
-  // TODO(dkorolev): This is duplication. We certainly don't need it.
-  YET operator()(container_data::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(container_data::template ExtractYETFromK<typename YET::T_KEY>);
 
  private:
   T_MAP_TYPE<typename YET::T_KEY, EntryWithIndex<typename YET::T_ENTRY>> map_;

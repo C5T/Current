@@ -71,25 +71,13 @@ struct MatrixEntry {
 };
 
 template <typename YT, typename ENTRY>
-struct YodaImpl<YT, MatrixEntry<ENTRY>> {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef MatrixEntry<ENTRY> YET;  // "Yoda entry type".
-
-  YodaImpl() = delete;
-  explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
-
-  YET operator()(container_data::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(container_data::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(container_data::template ExtractYETFromK<typename YET::T_COL>);
-
- private:
-  typename YT::T_MQ& mq_;
-};
-
-template <typename YT, typename ENTRY>
 struct Container<YT, MatrixEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef MatrixEntry<ENTRY> YET;
+
+  YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_ROW>);
+  YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_COL>);
 
   template <typename T>
   using CF = bricks::copy_free<T>;
@@ -165,16 +153,11 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_data::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(container_helpers::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_data::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(container_helpers::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
-
-  // TODO(dkorolev): This is duplication. We certainly don't need it.
-  YET operator()(container_data::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(container_data::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(container_data::template ExtractYETFromK<typename YET::T_COL>);
 
  private:
   T_MAP_TYPE<std::pair<typename YET::T_ROW, typename YET::T_COL>,
