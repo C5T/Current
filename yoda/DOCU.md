@@ -319,29 +319,30 @@ api.Transaction([](PrimesAPI::T_DATA data) {
     }
   }
 });  // No need to wait, tests that use this data are right here.
+
 // Primes that start with `4`.
 EXPECT_EQ("41,43,47",
-         api.Transaction([](PrimesAPI::T_DATA data) {
-           // TODO(dkorolev): In real life, the order can be off. -- D.K.
-           std::ostringstream os;
-           for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
-             os << ',' << (static_cast<int>(cit.row) * 10 +
-                           static_cast<int>(cit.col));
-           }
-           return os.str().substr(1);
-         }).Go());
+          api.Transaction([](PrimesAPI::T_DATA data) {
+            // TODO(dkorolev): In real life, the order can be off. -- D.K.
+            std::ostringstream os;
+            for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
+              os << ',' << (static_cast<int>(cit.row) * 10 +
+                            static_cast<int>(cit.col));
+            }
+            return os.str().substr(1);
+          }).Go());
  
 // Primes that end with `7`.
 EXPECT_EQ("7,17,37,47,67,97",
-         api.Transaction([](PrimesAPI::T_DATA data) {
-           // TODO(dkorolev): In real life, the order can be off. -- D.K.
-           std::ostringstream os;
-           for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
-             os << ',' << (static_cast<int>(cit.row) * 10 +
-                           static_cast<int>(cit.col));
-           }
-           return os.str().substr(1);
-         }).Go());
+          api.Transaction([](PrimesAPI::T_DATA data) {
+            // TODO(dkorolev): In real life, the order can be off. -- D.K.
+            std::ostringstream os;
+            for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
+              os << ',' << (static_cast<int>(cit.row) * 10 +
+                            static_cast<int>(cit.col));
+            }
+            return os.str().substr(1);
+          }).Go());
  
 // Confirm that the send parameter callback is `std::move()`-d
 // into the processing thread.
