@@ -23,8 +23,4 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#define BRICKS_MOCK_TIME
-
-#include "docu/docu_2.cc"
-
-#include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "docu/docu_2_reference_code.cc"
