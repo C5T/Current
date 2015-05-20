@@ -108,7 +108,7 @@ struct YodaContainerImpl {
 template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
-namespace container_helpers {
+namespace type_inference {
 
 // Helper types to extract `Accessor` and `Mutator`.
 template <typename T>
@@ -119,17 +119,17 @@ struct RetrieveMutator {};
 // A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename T>
-struct ExtractYETFromE {};
+struct YETFromE {};
 
 // A wrapper to convert `T::T_KEY` into `KeyEntry<T>`,
 // `std::tuple<T::T_ROW, T::T_COL>` into `MatrixEntry<T>`, etc.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename K>
-struct ExtractYETFromK {};
+struct YETFromK {};
 
 // A wrapper to convert subscript types into values or row/col accessors respectively.
 template <typename K>
-struct ExtractYETFromSubscript {};
+struct YETFromSubscript {};
 
 }  // namespace container_data
 
@@ -143,41 +143,40 @@ struct YodaData {
 
   // Container getter for `Accessor`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_helpers::RetrieveAccessor<T>> Accessor() const {
-    return container(container_helpers::RetrieveAccessor<T>());
+  CWT<YodaContainer<YT>, type_inference::RetrieveAccessor<T>> Accessor() const {
+    return container(type_inference::RetrieveAccessor<T>());
   }
 
   // Container getter for `Mutator`.
   template <typename T>
-  CWT<YodaContainer<YT>,
-      container_helpers::RetrieveMutator<T>,
-      std::reference_wrapper<typename YT::T_STREAM_TYPE>>
+  CWT<YodaContainer<YT>, type_inference::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
   Mutator() const {
-    return container(container_helpers::RetrieveMutator<T>(), std::ref(stream));
+    return container(type_inference::RetrieveMutator<T>(), std::ref(stream));
   }
 
   // Top-level methods and operators, dispatching by parameter type.
   template <typename E>
   void Add(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromE<E>>>().Add(std::forward<E>(entry));
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<E>>>().Add(std::forward<E>(entry));
   }
 
   template <typename K>
-  EntryWrapper<typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>::T_ENTRY> Get(K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
+  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<K>>::T_ENTRY> Get(K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<K>>>().Get(std::forward<K>(key));
   }
 
   template <typename E>
   YodaData& operator<<(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromE<E>>>() << std::forward<E>(entry);
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<E>>>() << std::forward<E>(entry);
     return *this;
   }
 
   template <typename K>
-  auto operator[](K&& key) -> decltype(Accessor<
-      CWT<YodaContainer<YT>, container_helpers::ExtractYETFromSubscript<K>>>()[std::forward<K>(key)]) {
-    return Accessor<
-        CWT<YodaContainer<YT>, container_helpers::ExtractYETFromSubscript<K>>>()[std::forward<K>(key)];
+  decltype(std::declval<decltype(
+      std::declval<YodaData>()
+          .Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>())>()[std::declval<K>()])
+  operator[](K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>()[std::forward<K>(key)];
   }
 
  private:
@@ -423,28 +422,28 @@ struct APICalls {
   // Helper method to wrap `Add()` into `Transaction()`.
   template <typename ENTRY>
   Future<void> Add(ENTRY&& entry) {
-    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromE<ENTRY>> YET;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<ENTRY>> YET;
     return Transaction(TopLevelAdd<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
   // Helper method to wrap `Get()` into `Transaction()`. With one and with more than one parameter.
   template <typename KEY>
-  Future<EntryWrapper<
-      typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<bricks::rmconstref<KEY>>>::T_ENTRY>>
+  Future<
+      EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<KEY>>>::T_ENTRY>>
   Get(KEY&& key) {
     typedef bricks::rmconstref<KEY> SAFE_KEY;
-    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<SAFE_KEY>> YET;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_KEY>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)));
   }
 
   template <typename KEY, typename... KEYS>
   Future<EntryWrapper<
       typename CWT<YodaContainer<YT>,
-                   container_helpers::ExtractYETFromK<bricks::rmconstref<std::tuple<KEY, KEYS...>>>>::T_ENTRY>>
+                   type_inference::YETFromK<bricks::rmconstref<std::tuple<KEY, KEYS...>>>>::T_ENTRY>>
   Get(KEY&& key, KEYS&&... keys) {
     typedef std::tuple<KEY, KEYS...> TUPLE;
     typedef bricks::rmconstref<TUPLE> SAFE_TUPLE;
-    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<SAFE_TUPLE>> YET;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_TUPLE>(
         std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
   }
@@ -455,7 +454,7 @@ struct APICalls {
   template <typename KEY, typename F>
   Future<void> GetWithNext(KEY&& key, F&& f) {
     typedef bricks::rmconstref<KEY> SAFE_KEY;
-    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<SAFE_KEY>> YET;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_KEY>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 

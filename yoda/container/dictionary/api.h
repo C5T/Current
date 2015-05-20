@@ -80,11 +80,11 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
   typedef KeyEntry<ENTRY> YET;
 
-  YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_KEY>);
-  YET operator()(container_helpers::template ExtractYETFromK<std::tuple<typename YET::T_KEY>>);
-  YET operator()(container_helpers::template ExtractYETFromSubscript<typename YET::T_KEY>);
-  YET operator()(container_helpers::template ExtractYETFromSubscript<std::tuple<typename YET::T_KEY>>);
+  YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
+  YET operator()(type_inference::template YETFromK<typename YET::T_KEY>);
+  YET operator()(type_inference::template YETFromK<std::tuple<typename YET::T_KEY>>);
+  YET operator()(type_inference::template YETFromSubscript<typename YET::T_KEY>);
+  YET operator()(type_inference::template YETFromSubscript<std::tuple<typename YET::T_KEY>>);
 
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
@@ -178,9 +178,9 @@ struct Container<YT, KeyEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_helpers::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(type_inference::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_helpers::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(type_inference::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
 
