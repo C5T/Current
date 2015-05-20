@@ -96,19 +96,8 @@ api.Transaction([](PrimesAPI::T_DATA data) {
 }).Wait();
   
 // Expanded syntax for `Get()`.
-Future<EntryWrapper<Prime>> future1 = api.Transaction([](PrimesAPI::T_DATA data) {
-  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
-});
-EntryWrapper<Prime> entry1 = future1.Go();
-
-const bool b1 = entry1;
-ASSERT_TRUE(b1);
-
-const Prime& p1 = entry1;
-EXPECT_EQ(1, p1.index);
-
 Future<EntryWrapper<Prime>> future2 = api.Transaction([](PrimesAPI::T_DATA data) {
-  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
 });
 EntryWrapper<Prime> entry2 = future2.Go();
 
@@ -116,26 +105,37 @@ const bool b2 = entry2;
 ASSERT_TRUE(b2);
 
 const Prime& p2 = entry2;
-EXPECT_EQ(3, p2.index);
+EXPECT_EQ(1, p2.index);
 
-Future<EntryWrapper<Prime>> future3 = api.Transaction([](PrimesAPI::T_DATA data) {
+Future<EntryWrapper<Prime>> future5 = api.Transaction([](PrimesAPI::T_DATA data) {
+  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+});
+EntryWrapper<Prime> entry5 = future5.Go();
+
+const bool b5 = entry5;
+ASSERT_TRUE(b5);
+
+const Prime& p5 = entry5;
+EXPECT_EQ(3, p5.index);
+
+Future<EntryWrapper<Prime>> future7 = api.Transaction([](PrimesAPI::T_DATA data) {
   return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
 });
-EntryWrapper<Prime> entry3 = future3.Go();
+EntryWrapper<Prime> entry7 = future7.Go();
 
-const bool b3 = entry3;
-ASSERT_TRUE(b3);
+const bool b7 = entry7;
+ASSERT_TRUE(b7);
 
-const Prime& p3 = entry3;
-EXPECT_EQ(4, p3.index);
+const Prime& p7 = entry7;
+EXPECT_EQ(4, p7.index);
 
-Future<EntryWrapper<Prime>> future4 = api.Transaction([](PrimesAPI::T_DATA data) {
+Future<EntryWrapper<Prime>> future8 = api.Transaction([](PrimesAPI::T_DATA data) {
   return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
 });
-EntryWrapper<Prime> entry4 = future4.Go();
+EntryWrapper<Prime> entry8 = future8.Go();
 
-const bool b4 = entry4;
-ASSERT_FALSE(b4);
+const bool b8 = entry8;
+ASSERT_FALSE(b8);
 
 // Accessing the memory view of `data`.
 api.Transaction([](PrimesAPI::T_DATA data) {
