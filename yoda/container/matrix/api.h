@@ -98,40 +98,41 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
     bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-      const auto rit = immutable_.forward_.find(row);
-      if (rit != immutable_.forward_.end()) {
-        return rit->second.count(col);
+      const auto key = std::make_pair(row, col);
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
+        return true;
       } else {
         return false;
       }
     }
 
     const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-      const auto rit = immutable_.forward_.find(row);
-      if (rit != immutable_.forward_.end()) {
-        const auto cit = rit->second.find(col);
-        if (cit != rit->second.end()) {
-          return EntryWrapper<typename YET::T_ENTRY>(*cit->second);
-        }
+      const auto key = std::make_pair(row, col);
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
+        return EntryWrapper<typename YET::T_ENTRY>(cit->second->entry);
+      } else {
+        return EntryWrapper<typename YET::T_ENTRY>();
       }
-      return EntryWrapper<typename YET::T_ENTRY>();
     }
 
-    const EntryWrapper<ENTRY> Get(const std::tuple<typename YET::T_ROW, typename YET::T_COL> key) const {
-      return Get(std::get<0>(key), std::get<1>(key));
+    const EntryWrapper<ENTRY> Get(
+        const std::tuple<CF<typename YET::T_ROW>, CF<typename YET::T_COL>>& key_as_tuple) const {
+      return Get(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
     }
 
-    /*
-        // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
-        const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
-          const auto cit = immutable_.map_.find(key);
-          if (cit != immutable_.map_.end()) {
-            return cit->second;
-          } else {
-            throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
-          }
-        }
-    */
+    // Throwing getter.
+    const ENTRY& operator[](
+        const std::tuple<CF<typename YET::T_ROW>, CF<typename YET::T_COL>>& key_as_tuple) const {
+      const auto key = std::make_pair(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
+        return cit->second->entry;
+      } else {
+        throw typename YET::T_CELL_NOT_FOUND_EXCEPTION(key.first, key.second);
+      }
+    }
 
    private:
     const Container<YT, YET>& immutable_;
@@ -152,6 +153,18 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
     }
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
+
+    // Throwing adder.
+    Mutator& operator<<(const ENTRY& entry) {
+      // TODO(dkorolev): Make one, not two lookups in `map`.
+      auto key = std::make_pair(GetRow(entry), GetCol(entry));
+      if (mutable_.map_.count(key)) {
+        throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(entry), GetCol(entry));
+      } else {
+        Add(entry);
+        return *this;
+      }
+    }
 
    private:
     Container<YT, YET>& mutable_;

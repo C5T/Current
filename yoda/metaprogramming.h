@@ -453,6 +453,12 @@ struct APICalls {
     return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 
+  // Because I'm nice. :-) -- D.K.
+  template <typename KEY1, typename KEY2, typename F>
+  Future<void> GetWithNext(KEY1&& key1, KEY2&& key2, F&& f) {
+    return GetWithNext(std::tie(std::forward<KEY1>(key1), std::forward<KEY2>(key2)), std::forward<F>(f));
+  }
+
   typename YT::T_MQ& mq_;
 };
 

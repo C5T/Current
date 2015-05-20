@@ -44,6 +44,8 @@ using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
 using yoda::KeyNotFoundException;
 using yoda::KeyAlreadyExistsException;
+using yoda::CellNotFoundException;
+using yoda::CellAlreadyExistsException;
 
 using bricks::strings::Printf;
 using bricks::strings::FromString;
@@ -206,10 +208,10 @@ HTTP(port).ResetAllHandlers();
 
     // `adder.operator<<()` is a potentially throwing call.
     adder << Prime(17, 7) << Prime(19, 9);
-    ASSERT_THROW(adder << Prime(19, 9), KeyAlreadyExistsException<PRIME>);
+    ASSERT_THROW(adder << Prime(19, 9), KeyAlreadyExistsException<Prime>);
     try {
-      adder << Prime(19, 9);
-    } catch (const KeyAlreadyExistsException<PRIME>& e) {
+      data << Prime(19, 9);
+    } catch (const KeyAlreadyExistsException<Prime>& e) {
       EXPECT_EQ(19, static_cast<int>(e.key));
     }
 
@@ -229,17 +231,17 @@ HTTP(port).ResetAllHandlers();
                  NonexistentEntryAccessed);
       
     ASSERT_THROW(getter[static_cast<PRIME>(9)],
-                 KeyNotFoundException<PRIME>);
+                 KeyNotFoundException<Prime>);
     try {
       getter[static_cast<PRIME>(9)];
-    } catch(const KeyNotFoundException<PRIME>& e) {
+    } catch(const KeyNotFoundException<Prime>& e) {
       EXPECT_EQ(9, static_cast<int>(e.key));
     }
   
     // The syntax using `data` directly, without `Accessor` or `Mutator`.
     data << Prime(23, 10) << Prime(29, 101);
     ASSERT_THROW(data << Prime(29, 102),
-                 KeyAlreadyExistsException<PRIME>);
+                 KeyAlreadyExistsException<Prime>);
     data.Add(Prime(29, 11));
     ASSERT_TRUE(static_cast<bool>(data.Get(std::make_tuple(static_cast<PRIME>(3)))));
     ASSERT_TRUE(static_cast<bool>(data.Get(static_cast<PRIME>(3))));
@@ -247,7 +249,7 @@ HTTP(port).ResetAllHandlers();
     ASSERT_FALSE(static_cast<bool>(data.Get(static_cast<PRIME>(4))));
     EXPECT_EQ(3, data[static_cast<PRIME>(5)].index);
     ASSERT_THROW(data[static_cast<PRIME>(9)],
-                 KeyNotFoundException<PRIME>);
+                 KeyNotFoundException<Prime>);
   
     // Traversal.
     EXPECT_EQ(10u, getter.size());
@@ -314,6 +316,20 @@ HTTP(port).ResetAllHandlers();
 
     adder.Add(PrimeCell(0, 5, 3));
     adder.Add(std::tuple<PrimeCell>(PrimeCell(0, 5, 3)));
+
+    data.Add(PrimeCell(0, 7, 4));
+
+    adder << PrimeCell(1, 1, 5) << PrimeCell(1, 3, 6);
+    data << PrimeCell(1, 7, 7);
+    ASSERT_THROW(data << PrimeCell(1, 7, 7),
+                 CellAlreadyExistsException<PrimeCell>);
+
+    EXPECT_EQ(7, getter[std::make_tuple(static_cast<FIRST_DIGIT>(1),
+                                        static_cast<SECOND_DIGIT>(7))].index);
+
+    ASSERT_THROW(getter[std::make_tuple(static_cast<FIRST_DIGIT>(0),
+                                        static_cast<SECOND_DIGIT>(4))],
+                 CellNotFoundException<PrimeCell>);
   }).Wait();
 }
   
@@ -347,18 +363,28 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(404, static_cast<int>(response_composite.code));
   EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
   
-  HTTP(port).Register("/matrix_entry", [&api](Request request) {
+  HTTP(port).Register("/matrix_entry_1", [&api](Request request) {
     const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
     const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
-    api.GetWithNext(std::tie(a, b),
-                    std::move(request));
+    api.GetWithNext(std::tie(a, b), std::move(request));
   });
-  auto cell_prime = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=3", port)));
-  EXPECT_EQ(200, static_cast<int>(cell_prime.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime.body);
-  auto cell_composite = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=4", port)));
-  EXPECT_EQ(404, static_cast<int>(cell_composite.code));
-  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite.body);
+  HTTP(port).Register("/matrix_entry_2", [&api](Request request) {
+    const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
+    const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
+    api.GetWithNext(a, b, std::move(request));
+  });
+  auto cell_prime_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=3", port)));
+  EXPECT_EQ(200, static_cast<int>(cell_prime_1.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_1.body);
+  auto cell_prime_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=3", port)));
+  EXPECT_EQ(200, static_cast<int>(cell_prime_2.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_2.body);
+  auto cell_composite_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=4", port)));
+  EXPECT_EQ(404, static_cast<int>(cell_composite_1.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_1.body);
+  auto cell_composite_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=4", port)));
+  EXPECT_EQ(404, static_cast<int>(cell_composite_2.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_2.body);
 }
   
 if (0) {

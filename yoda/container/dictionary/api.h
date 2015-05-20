@@ -57,8 +57,8 @@ struct KeyEntry {
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
 
-  typedef KeyNotFoundException<T_KEY> T_KEY_NOT_FOUND_EXCEPTION;
-  typedef KeyAlreadyExistsException<T_KEY> T_KEY_ALREADY_EXISTS_EXCEPTION;
+  typedef KeyNotFoundException<T_ENTRY> T_KEY_NOT_FOUND_EXCEPTION;
+  typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
 
   template <typename DATA>
   static decltype(std::declval<DATA>().template Accessor<KeyEntry<ENTRY>>()) Accessor(DATA&& c) {
