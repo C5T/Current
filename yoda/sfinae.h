@@ -26,7 +26,6 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_SFINAE_H
 #define SHERLOCK_YODA_SFINAE_H
 
-
 #include <utility>
 
 namespace yoda {
