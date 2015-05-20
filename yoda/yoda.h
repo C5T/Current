@@ -129,9 +129,9 @@ struct APIWrapperSelector {
   typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <typename SUPPORTED_TYPES>
-struct APIWrapperSelector<std::tuple<SUPPORTED_TYPES>> {
-  typedef APIWrapper<std::tuple<SUPPORTED_TYPES>> type;
+template <typename... SUPPORTED_TYPES>
+struct APIWrapperSelector<std::tuple<SUPPORTED_TYPES...>> {
+  typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
 };
 
 template <typename... SUPPORTED_TYPES>
