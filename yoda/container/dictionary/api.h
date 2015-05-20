@@ -75,13 +75,16 @@ template <typename YT, typename ENTRY>
 struct Container<YT, KeyEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
+  template <typename T>
+  using CF = bricks::copy_free<T>;
+
   typedef KeyEntry<ENTRY> YET;
+
   YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
   YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_KEY>);
   YET operator()(container_helpers::template ExtractYETFromK<std::tuple<typename YET::T_KEY>>);
-
-  template <typename T>
-  using CF = bricks::copy_free<T>;
+  YET operator()(container_helpers::template ExtractYETFromSubscript<typename YET::T_KEY>);
+  YET operator()(container_helpers::template ExtractYETFromSubscript<std::tuple<typename YET::T_KEY>>);
 
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
@@ -115,7 +118,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     }
 
     // Throwing getter.
-    const ENTRY& operator[](CF<typename YET::T_KEY> key) const {
+    CF<ENTRY> operator[](CF<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return cit->second.entry;
@@ -125,7 +128,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     }
 
     // Iteration.
-    struct Iterator {
+    struct Iterator final {
       typedef decltype(std::declval<Container<YT, YET>>().map_.cbegin()) T_ITERATOR;
       T_ITERATOR iterator;
       explicit Iterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}

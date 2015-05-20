@@ -127,6 +127,10 @@ struct ExtractYETFromE {};
 template <typename K>
 struct ExtractYETFromK {};
 
+// A wrapper to convert subscript types into values or row/col accessors respectively.
+template <typename K>
+struct ExtractYETFromSubscript {};
+
 }  // namespace container_data
 
 template <typename YT>
@@ -170,8 +174,10 @@ struct YodaData {
   }
 
   template <typename K>
-  typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<K>>>()[std::forward<K>(key)];
+  auto operator[](K&& key) -> decltype(Accessor<
+      CWT<YodaContainer<YT>, container_helpers::ExtractYETFromSubscript<K>>>()[std::forward<K>(key)]) {
+    return Accessor<
+        CWT<YodaContainer<YT>, container_helpers::ExtractYETFromSubscript<K>>>()[std::forward<K>(key)];
   }
 
  private:

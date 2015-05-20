@@ -284,7 +284,7 @@ HTTP(port).ResetAllHandlers();
   api.Add(PrimeCell(0, 2, 100));
   api.Add(PrimeCell(0, 2, 1));  // Overwrite.
   api.Add(PrimeCell(0, 3, 2));
-
+  
   const EntryWrapper<PrimeCell> e2 =
     api.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go();
   const bool b2 = e2;
@@ -293,11 +293,11 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(0, static_cast<int>(p2.row));
   EXPECT_EQ(2, static_cast<int>(p2.col));
   EXPECT_EQ(1, p2.index);
-
+   
   api.Transaction([](PrimesAPI::T_DATA data) {
     const auto getter = MatrixEntry<PrimeCell>::Accessor(data);
     auto adder = MatrixEntry<PrimeCell>::Mutator(data);
-
+  
     const EntryWrapper<PrimeCell> e3 =
       getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3));
     const bool b3 = e3;
@@ -306,33 +306,51 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(0, static_cast<int>(p3.row));
     EXPECT_EQ(3, static_cast<int>(p3.col));
     EXPECT_EQ(2, p3.index);
-
+  
     const EntryWrapper<PrimeCell> e4 =
       getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4));
     const bool b4 = e4;
     ASSERT_FALSE(b4);
     ASSERT_THROW(static_cast<void>(static_cast<const PrimeCell&>(e4)),
                  NonexistentEntryAccessed);
-
+  
     adder.Add(PrimeCell(0, 5, 3));
     adder.Add(std::tuple<PrimeCell>(PrimeCell(0, 5, 3)));
-
+  
     data.Add(PrimeCell(0, 7, 4));
-
+  
     adder << PrimeCell(1, 1, 5) << PrimeCell(1, 3, 6);
     data << PrimeCell(1, 7, 7);
     ASSERT_THROW(data << PrimeCell(1, 7, 7),
                  CellAlreadyExistsException<PrimeCell>);
-
+  
     EXPECT_EQ(7, getter[std::make_tuple(static_cast<FIRST_DIGIT>(1),
                                         static_cast<SECOND_DIGIT>(7))].index);
-
+  
     ASSERT_THROW(getter[std::make_tuple(static_cast<FIRST_DIGIT>(0),
                                         static_cast<SECOND_DIGIT>(4))],
                  CellNotFoundException<PrimeCell>);
+  
+    EXPECT_EQ(7, getter[static_cast<FIRST_DIGIT>(1)]
+                       [static_cast<SECOND_DIGIT>(7)].index);
+  
+    EXPECT_EQ(7, getter[static_cast<SECOND_DIGIT>(7)]
+                       [static_cast<FIRST_DIGIT>(1)].index);
+  
+    EXPECT_EQ(7, adder[static_cast<FIRST_DIGIT>(1)]
+                      [static_cast<SECOND_DIGIT>(7)].index);
+  
+    EXPECT_EQ(7, adder[static_cast<SECOND_DIGIT>(7)]
+                      [static_cast<FIRST_DIGIT>(1)].index);
+  
+    EXPECT_EQ(7, data[static_cast<FIRST_DIGIT>(1)]
+                     [static_cast<SECOND_DIGIT>(7)].index);
+  
+    EXPECT_EQ(7, data[static_cast<SECOND_DIGIT>(7)]
+                     [static_cast<FIRST_DIGIT>(1)].index);
   }).Wait();
 }
-  
+    
   // The return value from `Transaction()` is wrapped into a `Future<>`,
   // use `.Go()` to retrieve the result.
   // (Or `.Wait()` to just wait for the passed in function to complete.)
@@ -348,6 +366,50 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("[2]=1,[3]=2,[5]*[7]=12", future.Go());
 }
   
+{
+  // Fill in all the primes and traverse the matrix by rows and by cols.
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto is_prime = [](int i) {
+      for (int j = 2; j * j <= i; ++j) {
+        if ((i % j) == 0) {
+          return false;
+        }
+      }
+      return true;
+    };
+    int index = 0;
+    for (int p = 2; p <= 99; ++p) {
+      if (is_prime(p)) {
+        data.Add(PrimeCell(p / 10, p % 10, ++index));
+      }
+    }
+  });  // No need to wait, tests that use this data are right here.
+
+  // Primes that start with `4`.
+  EXPECT_EQ("41,43,47",
+           api.Transaction([](PrimesAPI::T_DATA data) {
+             // TODO(dkorolev): In real life, the order can be off. -- D.K.
+             std::ostringstream os;
+             for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
+               os << ',' << (static_cast<int>(cit.row) * 10 +
+                             static_cast<int>(cit.col));
+             }
+             return os.str().substr(1);
+           }).Go());
+   
+  // Primes that end with `7`.
+  EXPECT_EQ("7,17,37,47,67,97",
+           api.Transaction([](PrimesAPI::T_DATA data) {
+             // TODO(dkorolev): In real life, the order can be off. -- D.K.
+             std::ostringstream os;
+             for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
+               os << ',' << (static_cast<int>(cit.row) * 10 +
+                             static_cast<int>(cit.col));
+             }
+             return os.str().substr(1);
+           }).Go());
+}
+   
 {
   // Confirm that the send parameter callback is `std::move()`-d
   // into the processing thread.

@@ -58,6 +58,7 @@ struct MatrixEntry {
 
   typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
   typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
+  typedef SubscriptException<T_ENTRY> T_SUBSCRIPT_EXCEPTION;
 
   template <typename DATA>
   static decltype(std::declval<DATA>().template Accessor<MatrixEntry<ENTRY>>()) Accessor(DATA&& c) {
@@ -70,17 +71,51 @@ struct MatrixEntry {
   }
 };
 
+template <typename YET, typename SUBMAP, typename SUBKEY>
+struct InnerMapAccessor final {
+  using T_SUBMAP = SUBMAP;
+  const T_SUBMAP& map_;
+  explicit InnerMapAccessor(const T_SUBMAP& map) : map_(map) {}
+  InnerMapAccessor(InnerMapAccessor&&) = default;
+  struct Iterator final {
+    typedef decltype(std::declval<T_SUBMAP>().cbegin()) T_ITERATOR;
+    T_ITERATOR iterator;
+    explicit Iterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
+    void operator++() { ++iterator; }
+    bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    const typename YET::T_ENTRY& operator*() const { return *iterator->second; }
+    const typename YET::T_ENTRY* operator->() const { return iterator->second; }
+  };
+
+  const typename YET::T_ENTRY& operator[](bricks::copy_free<SUBKEY> subkey) {
+    const auto cit = map_.find(subkey);
+    if (cit != map_.end()) {
+      return *cit->second;
+    } else {
+      throw typename YET::T_SUBSCRIPT_EXCEPTION();
+    }
+  }
+  Iterator begin() const { return Iterator(map_.cbegin()); }
+  Iterator end() const { return Iterator(map_.cend()); }
+  size_t size() const { return map_.size(); }
+};
+
 template <typename YT, typename ENTRY>
 struct Container<YT, MatrixEntry<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef MatrixEntry<ENTRY> YET;
 
+  template <typename T>
+  using CF = bricks::copy_free<T>;
+
   YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
   YET operator()(
       container_helpers::template ExtractYETFromK<std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
-
-  template <typename T>
-  using CF = bricks::copy_free<T>;
+  YET operator()(container_helpers::template ExtractYETFromSubscript<
+      std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
+  YET operator()(container_helpers::template ExtractYETFromSubscript<typename YET::T_ROW>);
+  YET operator()(container_helpers::template ExtractYETFromSubscript<typename YET::T_COL>);
 
   // Event: The entry has been scanned from the stream.
   void operator()(ENTRY& entry, size_t index) {
@@ -131,6 +166,32 @@ struct Container<YT, MatrixEntry<ENTRY>> {
         return cit->second->entry;
       } else {
         throw typename YET::T_CELL_NOT_FOUND_EXCEPTION(key.first, key.second);
+      }
+    }
+
+    // TODO(dk+mz): Should per-row / per-col getters throw right away when row/col is not present?
+    // TODO(dk+mz): Add `Has(...)` here and for `Dictionary`?
+    InnerMapAccessor<YET, T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>, typename YET::T_COL>
+    operator[](CF<typename YET::T_ROW> row) const {
+      const auto submap_cit = immutable_.forward_.find(row);
+      if (submap_cit != immutable_.forward_.end()) {
+        return InnerMapAccessor<YET,
+                                T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
+                                typename YET::T_COL>(submap_cit->second);
+      } else {
+        throw typename YET::T_SUBSCRIPT_EXCEPTION();
+      }
+    }
+
+    InnerMapAccessor<YET, T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>, typename YET::T_ROW>
+    operator[](CF<typename YET::T_COL> col) const {
+      const auto submap_cit = immutable_.transposed_.find(col);
+      if (submap_cit != immutable_.transposed_.end()) {
+        return InnerMapAccessor<YET,
+                                T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
+                                typename YET::T_ROW>(submap_cit->second);
+      } else {
+        throw typename YET::T_SUBSCRIPT_EXCEPTION();
       }
     }
 

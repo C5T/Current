@@ -39,6 +39,12 @@ using sfinae::ENTRY_COL_TYPE;
 // Cover exception type for entry types and templated, narrowed down exception types, one per entry key type.
 struct CellNotFoundCoverException : bricks::Exception {};  // TODO(dk+mz): YodaException.
 
+// TODO(dkorolev): Take into account 1) row vs. col, and 2) top- vs. inner-level [].
+struct SubscriptCoverException : CellNotFoundCoverException {};
+
+template <typename ENTRY>
+struct SubscriptException : SubscriptCoverException {};
+
 template <typename ENTRY>
 struct CellNotFoundException : CellNotFoundCoverException {
   typedef ENTRY T_ENTRY;
