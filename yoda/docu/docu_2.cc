@@ -1,5 +1,3 @@
-// TODO(dkorolev): Rename `Call` into `Transaction`.
-
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -135,23 +133,23 @@ HTTP(port).ResetAllHandlers();
   
   // Expanded syntax for `Add()`.
 {
-  api.Call([](PrimesAPI::T_DATA data) {
+  api.Transaction([](PrimesAPI::T_DATA data) {
     KeyEntry<Prime>::Mutator(data).Add(Prime(5, 3));
   }).Wait();
   
-  api.Call([](PrimesAPI::T_DATA data) {
+  api.Transaction([](PrimesAPI::T_DATA data) {
     KeyEntry<Prime>::Mutator(data).Add(Prime(7, 100));
   }).Wait();
   
   // `Add()`: Overwrite is OK.
-  api.Call([](PrimesAPI::T_DATA data) {
+  api.Transaction([](PrimesAPI::T_DATA data) {
     KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
 }
     
   // Expanded syntax for `Get()`.
 {
-  Future<EntryWrapper<Prime>> future1 = api.Call([](PrimesAPI::T_DATA data) {
+  Future<EntryWrapper<Prime>> future1 = api.Transaction([](PrimesAPI::T_DATA data) {
     return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
   });
   EntryWrapper<Prime> entry1 = future1.Go();
@@ -162,7 +160,7 @@ HTTP(port).ResetAllHandlers();
   const Prime& p1 = entry1;
   EXPECT_EQ(1, p1.index);
   
-  Future<EntryWrapper<Prime>> future2 = api.Call([](PrimesAPI::T_DATA data) {
+  Future<EntryWrapper<Prime>> future2 = api.Transaction([](PrimesAPI::T_DATA data) {
     return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
   });
   EntryWrapper<Prime> entry2 = future2.Go();
@@ -173,7 +171,7 @@ HTTP(port).ResetAllHandlers();
   const Prime& p2 = entry2;
   EXPECT_EQ(3, p2.index);
   
-  Future<EntryWrapper<Prime>> future3 = api.Call([](PrimesAPI::T_DATA data) {
+  Future<EntryWrapper<Prime>> future3 = api.Transaction([](PrimesAPI::T_DATA data) {
     return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
   });
   EntryWrapper<Prime> entry3 = future3.Go();
@@ -184,7 +182,7 @@ HTTP(port).ResetAllHandlers();
   const Prime& p3 = entry3;
   EXPECT_EQ(4, p3.index);
   
-  Future<EntryWrapper<Prime>> future4 = api.Call([](PrimesAPI::T_DATA data) {
+  Future<EntryWrapper<Prime>> future4 = api.Transaction([](PrimesAPI::T_DATA data) {
     return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
   });
   EntryWrapper<Prime> entry4 = future4.Go();
@@ -195,7 +193,7 @@ HTTP(port).ResetAllHandlers();
   
   // Accessing the memory view of `data`.
 {
-  api.Call([](PrimesAPI::T_DATA data) {
+  api.Transaction([](PrimesAPI::T_DATA data) {
     auto adder = KeyEntry<Prime>::Mutator(data);
     const auto getter = KeyEntry<Prime>::Accessor(data);
   
@@ -279,11 +277,11 @@ HTTP(port).ResetAllHandlers();
   api.Add(PrimeCell(0, 2, 1));
 }
   
-  // The return value from `Call()` is wrapped into a `Future<>`,
+  // The return value from `Transaction()` is wrapped into a `Future<>`,
   // use `.Go()` to retrieve the result.
   // (Or `.Wait()` to just wait for the passed in function to complete.)
 {
-  Future<std::string> future = api.Call([](PrimesAPI::T_DATA data) {
+  Future<std::string> future = api.Transaction([](PrimesAPI::T_DATA data) {
     const auto getter = KeyEntry<Prime>::Accessor(data);
     return Printf("[2]=%d,[3]=%d,[5]*[7]=%d",
                   getter[static_cast<PRIME>(2)].index, 
@@ -299,8 +297,8 @@ HTTP(port).ResetAllHandlers();
   // into the processing thread.
   // Interestingly, a REST-ful endpoint is the easiest possible test.
   HTTP(port).Register("/rest", [&api](Request request) {
-    api.FunctionalGet(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
-                 std::move(request));
+    api.GetWithNext(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
+                    std::move(request));
   });
   auto response_prime = HTTP(GET(Printf("http://localhost:%d/rest?p=7", port)));
   EXPECT_EQ(200, static_cast<int>(response_prime.code));

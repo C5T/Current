@@ -439,28 +439,19 @@ struct CallAndSetPromiseImpl<void> {
 namespace apicalls {
 
 template <typename DATA, typename YET, typename E>
-struct AddViaCall {
+struct TopLevelAdd {
   const E entry;
-  AddViaCall(E&& entry) : entry(std::move(entry)) {}
+  TopLevelAdd(E&& entry) : entry(std::move(entry)) {}
   void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
 };
 
 template <typename DATA, typename YET, typename K>
-struct GetViaCall {
+struct TopLevelGet {
   const K key;
-  GetViaCall(K&& key) : key(std::move(key)) {}
+  TopLevelGet(K&& key) : key(std::move(key)) {}
   typedef decltype(
       std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
   T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
-};
-
-template <typename DATA, typename YET, typename K, typename F>
-struct FunctionalGetViaCall {
-  const K key;
-  F f;
-  FunctionalGetViaCall(K&& key, F&& f) : key(std::move(key)), f(std::move(f)) {}
-  FunctionalGetViaCall(FunctionalGetViaCall&& rhs) : key(std::move(rhs.key)), f(std::move(rhs.f)) {}
-  void operator()(DATA data) { f(YET::Accessor(data).Get(std::move(key))); }
 };
 
 template <typename YT, typename API>
@@ -512,7 +503,7 @@ struct APICallsWrapper {
   };
 
   template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>> Call(T_TYPED_USER_FUNCTION&& function) {
+  Future<bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>> Transaction(T_TYPED_USER_FUNCTION&& function) {
     using T_INTERMEDIATE_TYPE = bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<T_INTERMEDIATE_TYPE> pr;
     Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
@@ -524,7 +515,7 @@ struct APICallsWrapper {
 
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
   template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
-  Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
+  Future<void> Transaction(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
     using T_INTERMEDIATE_TYPE = bricks::rmconstref<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
@@ -535,25 +526,25 @@ struct APICallsWrapper {
     return future;
   }
 
-  // Helper method to wrap `Add()` into `Call()`.
+  // Helper method to wrap `Add()` into `Transaction()`.
   template <typename ENTRY>
   Future<void> Add(ENTRY&& entry) {
     typedef CWT<API, apicalls::ExtractYETFromE<ENTRY>> YET;
-    return Call(AddViaCall<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
+    return Transaction(TopLevelAdd<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
-  // Helper method to wrap `Get()` into `Call()`.
+  // Helper method to wrap `Get()` into `Transaction()`.
   template <typename KEY>
   Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
     typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
-    return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
+    return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
   }
 
-  // Helper method to wrap `FunctionalGet()` into `Call()`.
+  // Helper method to wrap `GetWithNext()` into `Transaction()`.
   template <typename KEY, typename F>
-  Future<void> FunctionalGet(KEY&& key, F&& f) {
+  Future<void> GetWithNext(KEY&& key, F&& f) {
     typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
-    return Call(GetViaCall<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
+    return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 
   typename YT::T_MQ& mq_;
