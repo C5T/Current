@@ -76,8 +76,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   typedef MatrixEntry<ENTRY> YET;
 
   YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_COL>);
+  YET operator()(
+      container_helpers::template ExtractYETFromK<std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
 
   template <typename T>
   using CF = bricks::copy_free<T>;
@@ -111,10 +111,14 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       if (rit != immutable_.forward_.end()) {
         const auto cit = rit->second.find(col);
         if (cit != rit->second.end()) {
-          return EntryWrapper<typename YET::T_ENTRY>(cit->second);
+          return EntryWrapper<typename YET::T_ENTRY>(*cit->second);
         }
       }
       return EntryWrapper<typename YET::T_ENTRY>();
+    }
+
+    const EntryWrapper<ENTRY> Get(const std::tuple<typename YET::T_ROW, typename YET::T_COL> key) const {
+      return Get(std::get<0>(key), std::get<1>(key));
     }
 
     /*
@@ -147,6 +151,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       mutable_.forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
     }
+    void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
    private:
     Container<YT, YET>& mutable_;

@@ -78,6 +78,10 @@ struct Container<YT, KeyEntry<ENTRY>> {
   typedef KeyEntry<ENTRY> YET;
   YET operator()(container_helpers::template ExtractYETFromE<typename YET::T_ENTRY>);
   YET operator()(container_helpers::template ExtractYETFromK<typename YET::T_KEY>);
+  YET operator()(container_helpers::template ExtractYETFromK<std::tuple<typename YET::T_KEY>>);
+
+  template <typename T>
+  using CF = bricks::copy_free<T>;
 
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
@@ -94,10 +98,10 @@ struct Container<YT, KeyEntry<ENTRY>> {
     Accessor() = delete;
     explicit Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(bricks::copy_free<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
+    bool Exists(CF<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
 
     // Non-throwing getter. Returns a wrapped null entry if not found.
-    const EntryWrapper<ENTRY> Get(bricks::copy_free<typename YET::T_KEY> key) const {
+    const EntryWrapper<ENTRY> Get(CF<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return EntryWrapper<ENTRY>(cit->second.entry);
@@ -106,8 +110,12 @@ struct Container<YT, KeyEntry<ENTRY>> {
       }
     }
 
+    const EntryWrapper<ENTRY> Get(const std::tuple<typename YET::T_KEY>& key) const {
+      return Get(std::get<0>(key));
+    }
+
     // Throwing getter.
-    const ENTRY& operator[](bricks::copy_free<typename YET::T_KEY> key) const {
+    const ENTRY& operator[](CF<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return cit->second.entry;
@@ -147,6 +155,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
       const size_t index = stream_.Publish(entry);
       mutable_.map_[GetKey(entry)].Update(index, entry);
     }
+    void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {

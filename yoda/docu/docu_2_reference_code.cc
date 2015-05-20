@@ -126,6 +126,7 @@ HTTP(port).ResetAllHandlers();
   // supported data type. It never throws, and returns a wrapper,
   // that can be casted to both `bool` and the underlying type.
   ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(2)).Go()));
+  ASSERT_TRUE(static_cast<bool>(api.Get(std::make_tuple(static_cast<PRIME>(2))).Go()));
   EXPECT_EQ(1, static_cast<const Prime&>(api.Get(static_cast<PRIME>(2)).Go()).index);
   ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(3)).Go()));
   EXPECT_EQ(2, static_cast<const Prime&>(api.Get(static_cast<PRIME>(3)).Go()).index);
@@ -194,13 +195,14 @@ HTTP(port).ResetAllHandlers();
   // Accessing the memory view of `data`.
 {
   api.Transaction([](PrimesAPI::T_DATA data) {
-    auto adder = KeyEntry<Prime>::Mutator(data);
     const auto getter = KeyEntry<Prime>::Accessor(data);
+    auto adder = KeyEntry<Prime>::Mutator(data);
   
     // `adder.Add()` in a non-throwing call.
     adder.Add(Prime(11, 5));
     adder.Add(Prime(13, 100));
     adder.Add(Prime(13, 6));  // Overwrite.
+    adder.Add(std::tuple<Prime>(Prime(13, 6)));  // Again.
 
     // `adder.operator<<()` is a potentially throwing call.
     adder << Prime(17, 7) << Prime(19, 9);
@@ -239,6 +241,7 @@ HTTP(port).ResetAllHandlers();
     ASSERT_THROW(data << Prime(29, 102),
                  KeyAlreadyExistsException<PRIME>);
     data.Add(Prime(29, 11));
+    ASSERT_TRUE(static_cast<bool>(data.Get(std::make_tuple(static_cast<PRIME>(3)))));
     ASSERT_TRUE(static_cast<bool>(data.Get(static_cast<PRIME>(3))));
     EXPECT_EQ(2, static_cast<const Prime&>(data.Get(static_cast<PRIME>(3))).index);
     ASSERT_FALSE(static_cast<bool>(data.Get(static_cast<PRIME>(4))));
@@ -272,9 +275,46 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(10u, c1);
     EXPECT_EQ(10u, c2);
   }).Go();
+}
   
+{
   // Work with `MatrixEntry<>` as well.
-  api.Add(PrimeCell(0, 2, 1));
+  api.Add(PrimeCell(0, 2, 100));
+  api.Add(PrimeCell(0, 2, 1));  // Overwrite.
+  api.Add(PrimeCell(0, 3, 2));
+
+  const EntryWrapper<PrimeCell> e2 =
+    api.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go();
+  const bool b2 = e2;
+  ASSERT_TRUE(b2);
+  const PrimeCell p2 = e2;
+  EXPECT_EQ(0, static_cast<int>(p2.row));
+  EXPECT_EQ(2, static_cast<int>(p2.col));
+  EXPECT_EQ(1, p2.index);
+
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto getter = MatrixEntry<PrimeCell>::Accessor(data);
+    auto adder = MatrixEntry<PrimeCell>::Mutator(data);
+
+    const EntryWrapper<PrimeCell> e3 =
+      getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3));
+    const bool b3 = e3;
+    ASSERT_TRUE(b3);
+    const PrimeCell p3 = e3;
+    EXPECT_EQ(0, static_cast<int>(p3.row));
+    EXPECT_EQ(3, static_cast<int>(p3.col));
+    EXPECT_EQ(2, p3.index);
+
+    const EntryWrapper<PrimeCell> e4 =
+      getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4));
+    const bool b4 = e4;
+    ASSERT_FALSE(b4);
+    ASSERT_THROW(static_cast<void>(static_cast<const PrimeCell&>(e4)),
+                 NonexistentEntryAccessed);
+
+    adder.Add(PrimeCell(0, 5, 3));
+    adder.Add(std::tuple<PrimeCell>(PrimeCell(0, 5, 3)));
+  }).Wait();
 }
   
   // The return value from `Transaction()` is wrapped into a `Future<>`,
@@ -296,19 +336,32 @@ HTTP(port).ResetAllHandlers();
   // Confirm that the send parameter callback is `std::move()`-d
   // into the processing thread.
   // Interestingly, a REST-ful endpoint is the easiest possible test.
-  HTTP(port).Register("/rest", [&api](Request request) {
+  HTTP(port).Register("/key_entry", [&api](Request request) {
     api.GetWithNext(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
                     std::move(request));
   });
-  auto response_prime = HTTP(GET(Printf("http://localhost:%d/rest?p=7", port)));
+  auto response_prime = HTTP(GET(Printf("http://localhost:%d/key_entry?p=7", port)));
   EXPECT_EQ(200, static_cast<int>(response_prime.code));
   EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
-  auto response_composite = HTTP(GET(Printf("http://localhost:%d/rest?p=9", port)));
+  auto response_composite = HTTP(GET(Printf("http://localhost:%d/key_entry?p=9", port)));
+  EXPECT_EQ(404, static_cast<int>(response_composite.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
+  
+  HTTP(port).Register("/matrix_entry", [&api](Request request) {
+    const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
+    const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
+    api.GetWithNext(std::tie(a, b),
+                    std::move(request));
+  });
+  auto cell_prime = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=3", port)));
+  EXPECT_EQ(200, static_cast<int>(response_prime.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
+  auto cell_composite = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=4", port)));
   EXPECT_EQ(404, static_cast<int>(response_composite.code));
   EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
 }
   
-{
+if (0) {
   // Confirm that the stream is indeed populated.
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(

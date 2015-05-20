@@ -39,6 +39,7 @@ SOFTWARE.
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
+#include "../../Bricks/template/rmref.h"
 #include "../../Bricks/template/weed.h"
 #include "../../Bricks/mq/inmemory/mq.h"
 
@@ -120,7 +121,8 @@ struct RetrieveMutator {};
 template <typename T>
 struct ExtractYETFromE {};
 
-// A wrapper to convert `T::T_KEY` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// A wrapper to convert `T::T_KEY` into `KeyEntry<T>`,
+// `std::tuple<T::T_ROW, T::T_COL>` into `MatrixEntry<T>`, etc.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename K>
 struct ExtractYETFromK {};
@@ -143,7 +145,9 @@ struct YodaData {
 
   // Container getter for `Mutator`.
   template <typename T>
-  CWT<YodaContainer<YT>, container_helpers::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
+  CWT<YodaContainer<YT>,
+      container_helpers::RetrieveMutator<T>,
+      std::reference_wrapper<typename YT::T_STREAM_TYPE>>
   Mutator() const {
     return container(container_helpers::RetrieveMutator<T>(), std::ref(stream));
   }
@@ -337,7 +341,8 @@ struct APICalls {
   struct TopLevelGet {
     const K key;
     TopLevelGet(K&& key) : key(std::move(key)) {}
-    typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
+    typedef decltype(
+        std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
     T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
   };
 
@@ -416,18 +421,36 @@ struct APICalls {
     return Transaction(TopLevelAdd<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
-  // Helper method to wrap `Get()` into `Transaction()`.
+  // Helper method to wrap `Get()` into `Transaction()`. With one and with more than one parameter.
   template <typename KEY>
-  Future<EntryWrapper<typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
-    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
+  Future<EntryWrapper<
+      typename CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<bricks::rmconstref<KEY>>>::T_ENTRY>>
+  Get(KEY&& key) {
+    typedef bricks::rmconstref<KEY> SAFE_KEY;
+    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<SAFE_KEY>> YET;
+    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)));
+  }
+
+  template <typename KEY, typename... KEYS>
+  Future<EntryWrapper<
+      typename CWT<YodaContainer<YT>,
+                   container_helpers::ExtractYETFromK<bricks::rmconstref<std::tuple<KEY, KEYS...>>>>::T_ENTRY>>
+  Get(KEY&& key, KEYS&&... keys) {
+    typedef std::tuple<KEY, KEYS...> TUPLE;
+    typedef bricks::rmconstref<TUPLE> SAFE_TUPLE;
+    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<SAFE_TUPLE>> YET;
+    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_TUPLE>(
+        std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
   }
 
   // Helper method to wrap `GetWithNext()` into `Transaction()`.
+  // Unlike `Get()`, the last parameter to `GetWithNext()` is the function,
+  // thus the user will have to tie the first ones using `std::tie()`.
   template <typename KEY, typename F>
   Future<void> GetWithNext(KEY&& key, F&& f) {
-    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
+    typedef bricks::rmconstref<KEY> SAFE_KEY;
+    typedef CWT<YodaContainer<YT>, container_helpers::ExtractYETFromK<SAFE_KEY>> YET;
+    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 
   typename YT::T_MQ& mq_;
