@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../../Bricks/exception.h"
 #include "../../Bricks/cerealize/cerealize.h"
 #include "../../Bricks/time/chrono.h"
+#include "../../Bricks/net/api/api.h"
 
 namespace yoda {
 
@@ -58,6 +59,26 @@ struct Padawan {
 
 struct NonexistentEntryAccessed : bricks::Exception {};
 
+// Wrapper to have in-memory view not only contain the entries, but also the index with which this entry
+// has been pushed to the stream. This is to ensure that the in-memory view is kept up to date
+// in case of overwrites, when the value written earlier can come from the stream after it was overwritten.
+template <typename ENTRY>
+struct EntryWithIndex {
+  size_t index;
+  ENTRY entry;
+  EntryWithIndex() : index(static_cast<size_t>(-1)) {}
+  EntryWithIndex(size_t index, const ENTRY& entry) : index(index), entry(entry) {}
+  EntryWithIndex(size_t index, ENTRY&& entry) : index(index), entry(std::move(entry)) {}
+  void Update(size_t i, const ENTRY& e) {
+    index = i;
+    entry = e;
+  }
+  void Update(size_t i, ENTRY&& e) {
+    index = i;
+    entry = std::move(e);
+  }
+};
+
 // Wrapper to return possibly nonexistent entries.
 template <typename T_ENTRY>
 struct EntryWrapper {
@@ -65,11 +86,21 @@ struct EntryWrapper {
   explicit EntryWrapper(const T_ENTRY& entry) : exists(true), entry(&entry) {}
 
   operator bool() const { return exists; }
+
   operator const T_ENTRY&() const {
     if (exists) {
       return *entry;
     } else {
       throw NonexistentEntryAccessed();
+    }
+  }
+
+  void RespondViaHTTP(Request r) const {
+    if (exists) {
+      r(*entry, "entry");
+    } else {
+      // TODO(dkorolev): This should certainly be done in a cleaner way.
+      r("{\"error\":\"NOT_FOUND\"}\n", HTTPResponseCode.NotFound, "application/json");
     }
   }
 

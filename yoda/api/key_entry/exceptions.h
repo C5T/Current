@@ -28,21 +28,17 @@ SOFTWARE.
 
 #include "metaprogramming.h"
 
-#include "../../exceptions.h"
 #include "../../../../Bricks/exception.h"
 
 namespace yoda {
-
-using namespace sfinae;
 
 // Exception types for non-existent keys.
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
 struct KeyNotFoundCoverException : bricks::Exception {};
 
-template <typename ENTRY>
+template <typename KEY>
 struct KeyNotFoundException : KeyNotFoundCoverException {
-  typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<ENTRY> T_KEY;
+  typedef KEY T_KEY;
   const T_KEY key;
   explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
 };
@@ -51,11 +47,11 @@ struct KeyNotFoundException : KeyNotFoundCoverException {
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
 struct KeyAlreadyExistsCoverException : bricks::Exception {};
 
-template <typename ENTRY>
+template <typename KEY>
 struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
-  typedef ENTRY T_ENTRY;
-  const ENTRY entry;
-  explicit KeyAlreadyExistsException(const ENTRY& entry) : entry(entry) {}
+  typedef KEY T_KEY;
+  const T_KEY key;
+  explicit KeyAlreadyExistsException(const T_KEY& key) : key(key) {}
 };
 
 }  // namespace yoda

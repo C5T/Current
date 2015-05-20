@@ -297,25 +297,31 @@ class StreamInstanceImpl {
     // TODO(dk+mz): Ensure the stream lives forever.
   }
 
-  void Publish(const T& entry) {
-    data_.MutableUse([&entry](std::vector<T>& data) { data.emplace_back(entry); });
+  // `Publish()` and `Emplace()` return the index of the added entry.
+  size_t Publish(const T& entry) {
+    return data_.MutableUse([&entry](std::vector<T>& data) {
+      const size_t index = data.size();
+      data.emplace_back(entry);
+      return index;
+    });
   }
 
-  void Publish(T&& entry) {
-    data_.MutableUse([&entry](std::vector<T>& data) { data.emplace_back(std::move(entry)); });
+  size_t Publish(T&& entry) {
+    return data_.MutableUse([&entry](std::vector<T>& data) {
+      const size_t index = data.size();
+      data.emplace_back(std::move(entry));
+      return index;
+    });
   }
 
   template <typename... ARGS>
-  void Emplace(const ARGS&... entry_params) {
+  size_t Emplace(const ARGS&... entry_params) {
     // TODO(dkorolev): Am I not doing this C++11 thing right, or is it not yet supported?
     // data_.MutableUse([&entry_params](std::vector<T>& data) { data.emplace_back(entry_params...); });
     auto scope = data_.MutableScopedAccessor();
+    const size_t index = scope->size();
     scope->emplace_back(entry_params...);
-  }
-
-  template <typename E>
-  void PublishPolymorphic(const E& polymorphic_entry) {
-    data_.MutableUse([&polymorphic_entry](std::vector<T>& data) { data.emplace_back(polymorphic_entry); });
+    return index;
   }
 
   // `ListenerThread` spawns the thread and runs stream listener within it.
@@ -594,12 +600,12 @@ struct StreamInstance {
   StreamInstanceImpl<T>* impl_;
   explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
 
-  void Publish(const T& entry) { impl_->Publish(entry); }
-  void Publish(T&& entry) { impl_->Publish(std::move(entry)); }
+  size_t Publish(const T& entry) { return impl_->Publish(entry); }
+  size_t Publish(T&& entry) { return impl_->Publish(std::move(entry)); }
 
   template <typename... ARGS>
-  void Emplace(const ARGS&... entry_params) {
-    impl_->Emplace(entry_params...);
+  size_t Emplace(const ARGS&... entry_params) {
+    return impl_->Emplace(entry_params...);
   }
 
   // TODO(dkorolev): EmplacePolymorphic, that does `new`.
@@ -607,8 +613,9 @@ struct StreamInstance {
   // TODO(dkorolev): Add a test for this code.
   // TODO(dkorolev): Perhaps eliminate the copy.
   template <typename E>
-  typename std::enable_if<can_be_stored_in_unique_ptr<T, E>::value>::type Publish(const E& polymorphic_entry) {
-    impl_->PublishPolymorphic(new E(polymorphic_entry));
+  typename std::enable_if<can_be_stored_in_unique_ptr<T, E>::value, size_t>::type Publish(const E& e) {
+    // TODO(dkorolev): Don't rely on the existence of copy constructor.
+    return impl_->Emplace(new E(e));
   }
 
   template <typename F>

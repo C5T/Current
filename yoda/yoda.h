@@ -80,10 +80,8 @@ SOFTWARE.
 #include <string>
 #include <tuple>
 
-#include "types.h"
 #include "metaprogramming.h"
-#include "policy.h"
-#include "exceptions.h"
+#include "types.h"
 
 #include "api/key_entry/key_entry.h"
 #include "api/matrix/matrix_entry.h"
@@ -101,11 +99,12 @@ struct APIWrapper
 
  public:
   APIWrapper() = delete;
+  // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   APIWrapper(const std::string& stream_name)
       : apicalls::APICallsWrapper<YT, CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<Padawan>>(stream_name)),
-        container_wrapper_(container_, stream_),
-        mq_listener_(container_, container_wrapper_, stream_),
+        container_data_(container_, stream_),
+        mq_listener_(container_, container_data_, stream_),
         mq_(mq_listener_),
         stream_listener_(mq_),
         sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {}
@@ -120,73 +119,10 @@ struct APIWrapper
   bool CaughtUp() const { return stream_listener_.caught_up_; }
   size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
-  // Asynchronous user function calling functionality.
-  typedef ContainerWrapper<YT> T_CONTAINER_WRAPPER;
-  template <typename RETURN_VALUE>
-  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_CONTAINER_WRAPPER container_wrapper)>;
-
-  template <typename RETURN_VALUE>
-  struct MQMessageFunction : YodaMMQMessage<YT> {
-    typedef RETURN_VALUE T_RETURN_VALUE;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
-    std::promise<T_RETURN_VALUE> promise;
-
-    MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
-
-    virtual void Process(YodaContainer<YT>&,
-                         T_CONTAINER_WRAPPER container_wrapper,
-                         typename YT::T_STREAM_TYPE&) override {
-      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_wrapper, promise);
-    }
-  };
-
-  template <typename RETURN_VALUE, typename NEXT>
-  struct MQMessageFunctionWithNext : YodaMMQMessage<YT> {
-    typedef RETURN_VALUE T_RETURN_VALUE;
-    typedef NEXT T_NEXT;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
-    NEXT next;
-    std::promise<void> promise;
-
-    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), next(std::forward<NEXT>(next)) {}
-
-    virtual void Process(YodaContainer<YT>&,
-                         T_CONTAINER_WRAPPER container_wrapper,
-                         typename YT::T_STREAM_TYPE&) override {
-      next(function(container_wrapper));
-      promise.set_value();
-    }
-  };
-
-  template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>> Call(
-      T_TYPED_USER_FUNCTION&& function) {
-    using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
-    std::promise<T_INTERMEDIATE_TYPE> pr;
-    Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageFunction<T_INTERMEDIATE_TYPE>(function, std::move(pr)));
-    return future;
-  }
-
-  // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
-  template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
-  Future<void> Call(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = bricks::weed::call_with_type<T_TYPED_USER_FUNCTION, T_CONTAINER_WRAPPER>;
-    std::promise<void> pr;
-    Future<void> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
-        std::forward<T_TYPED_USER_FUNCTION>(function),
-        std::forward<T_NEXT_USER_FUNCTION>(next),
-        std::move(pr)));
-    return future;
-  }
-
  private:
   typename YT::T_STREAM_TYPE stream_;
   YodaContainer<YT> container_;
-  ContainerWrapper<YT> container_wrapper_;
+  YodaData<YT> container_data_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;
