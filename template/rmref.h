@@ -28,40 +28,177 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
+#include "mapreduce.h"
+
 namespace bricks {
 
 template <typename T>
-using rmref = typename std::remove_reference<T>::type;
+struct rmref_impl {
+  typedef typename std::remove_reference<T>::type type;
+};
+
+template <typename... TS>
+struct rmref_impl<std::tuple<TS...>> {
+  template <typename T>
+  using impl = typename rmref_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
+
+template <typename... TS>
+struct rmref_impl<const std::tuple<TS...>> {
+  template <typename T>
+  using impl = typename rmref_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
+
+template <typename... TS>
+struct rmref_impl<std::tuple<TS...>&> {
+  template <typename T>
+  using impl = typename rmref_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
+
+template <typename... TS>
+struct rmref_impl<const std::tuple<TS...>&> {
+  template <typename T>
+  using impl = typename rmref_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
+
+template <typename... TS>
+struct rmref_impl<std::tuple<TS...>&&> {
+  template <typename T>
+  using impl = typename rmref_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
+
+template <typename... TS>
+using rmref = typename rmref_impl<TS...>::type;
 
 template <typename T>
-using rmconst = typename std::remove_const<T>::type;
+struct rmconst_impl {
+  typedef typename std::remove_const<T>::type type;
+};
 
-template <typename T>
-using rmconstref = rmconst<rmref<T>>;
+template <typename... TS>
+struct rmconst_impl<std::tuple<TS...>> {
+  template <typename T>
+  using impl = typename rmconst_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
 
-static_assert(std::is_same<int, rmref<int>>::value, "");
-static_assert(std::is_same<int, rmref<int&>>::value, "");
-static_assert(std::is_same<int, rmref<int&&>>::value, "");
-static_assert(std::is_same<const int, rmref<const int>>::value, "");
-static_assert(std::is_same<const int, rmref<const int&>>::value, "");
-static_assert(std::is_same<const int, rmref<const int&&>>::value, "");
+template <typename... TS>
+struct rmconst_impl<const std::tuple<TS...>> {
+  template <typename T>
+  using impl = typename rmconst_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
 
-static_assert(std::is_same<std::string, rmconst<std::string>>::value, "");
-static_assert(std::is_same<std::string, rmconst<const std::string>>::value, "");
+template <typename... TS>
+struct rmconst_impl<std::tuple<TS...>&> {
+  template <typename T>
+  using impl = typename rmconst_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
 
-static_assert(std::is_same<int, rmconstref<int>>::value, "");
-static_assert(std::is_same<int, rmconstref<int&>>::value, "");
-static_assert(std::is_same<int, rmconstref<int&&>>::value, "");
-static_assert(std::is_same<int, rmconstref<const int>>::value, "");
-static_assert(std::is_same<int, rmconstref<const int&>>::value, "");
-static_assert(std::is_same<int, rmconstref<const int&&>>::value, "");
+template <typename... TS>
+struct rmconst_impl<const std::tuple<TS...>&> {
+  template <typename T>
+  using impl = typename rmconst_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
 
-static_assert(std::is_same<std::string, rmconstref<std::string>>::value, "");
-static_assert(std::is_same<std::string, rmconstref<std::string&>>::value, "");
-static_assert(std::is_same<std::string, rmconstref<std::string&&>>::value, "");
-static_assert(std::is_same<std::string, rmconstref<const std::string>>::value, "");
-static_assert(std::is_same<std::string, rmconstref<const std::string&>>::value, "");
-static_assert(std::is_same<std::string, rmconstref<const std::string&&>>::value, "");
+template <typename... TS>
+struct rmconst_impl<std::tuple<TS...>&&> {
+  template <typename T>
+  using impl = typename rmconst_impl<T>::type;
+  typedef metaprogramming::map<impl, std::tuple<TS...>> type;
+};
+
+template <typename... TS>
+using rmconst = typename rmconst_impl<TS...>::type;
+
+template <typename... TS>
+using rmconstref = rmconst<rmref<TS...>>;
+
+template <typename A, typename B>
+using is_same = std::is_same<A, B>;
+
+static_assert(is_same<int, rmref<int>>::value, "");
+static_assert(is_same<int, rmref<int&>>::value, "");
+static_assert(is_same<int, rmref<int&&>>::value, "");
+static_assert(is_same<const int, rmref<const int>>::value, "");
+static_assert(is_same<const int, rmref<const int&>>::value, "");
+static_assert(is_same<const int, rmref<const int&&>>::value, "");
+
+static_assert(is_same<std::string, rmconst<std::string>>::value, "");
+static_assert(is_same<std::string, rmconst<const std::string>>::value, "");
+
+static_assert(is_same<int, rmconstref<int>>::value, "");
+static_assert(is_same<int, rmconstref<int&>>::value, "");
+static_assert(is_same<int, rmconstref<int&&>>::value, "");
+static_assert(is_same<int, rmconstref<const int>>::value, "");
+static_assert(is_same<int, rmconstref<const int&>>::value, "");
+static_assert(is_same<int, rmconstref<const int&&>>::value, "");
+
+static_assert(is_same<std::string, rmconstref<std::string>>::value, "");
+static_assert(is_same<std::string, rmconstref<std::string&>>::value, "");
+static_assert(is_same<std::string, rmconstref<std::string&&>>::value, "");
+static_assert(is_same<std::string, rmconstref<const std::string>>::value, "");
+static_assert(is_same<std::string, rmconstref<const std::string&>>::value, "");
+static_assert(is_same<std::string, rmconstref<const std::string&&>>::value, "");
+
+static_assert(is_same<std::tuple<int, int, int, int>, rmconstref<std::tuple<int, int, int, int>>>::value, "");
+static_assert(
+    is_same<std::tuple<int, int, int, int>, rmconstref<std::tuple<const int, int&, const int&, int&&>>>::value,
+    "");
+
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<std::string&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<std::string&&>>>::value, "");
+
+static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<std::string>&>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<const std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<const std::string&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<const std::string&>&>>::value, "");
+static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string&>&&>>::value, "");
+
+// YO DAWG! I HEARD YOU LIKE TUPLES!
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<const std::string>>>>::value,
+    "");
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<std::string&>>>>::value, "");
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<const std::string&>>>>::value,
+    "");
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<std::string&&>>>>::value, "");
+
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<std::string>>>>::value, "");
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, rmconstref<const std::tuple<std::tuple<std::string>>&>>::value,
+    "");
+static_assert(is_same<std::tuple<std::tuple<std::string>>,
+                      rmconstref<const std::tuple<std::tuple<std::string>&>&>>::value,
+              "");
+static_assert(is_same<std::tuple<std::tuple<std::string>>,
+                      rmconstref<const std::tuple<std::tuple<std::string&>&>&>>::value,
+              "");
+static_assert(is_same<std::tuple<std::tuple<std::string>>,
+                      rmconstref<const std::tuple<std::tuple<std::string&&>&>&>>::value,
+              "");
+
+static_assert(is_same<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<int>, std::tuple<int>>,
+                      rmconstref<std::tuple<const std::tuple<const int>,
+                                            std::tuple<int&>&,
+                                            const std::tuple<const int&>&,
+                                            std::tuple<int&&>&&>>>::value,
+              "");
 
 }  // namespace bricks
 
