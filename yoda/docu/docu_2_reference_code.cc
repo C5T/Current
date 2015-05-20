@@ -449,7 +449,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_2.body);
 }
   
-if (0) {
+{
   // Confirm that the stream is indeed populated.
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(
@@ -461,7 +461,7 @@ if (0) {
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":0,\"d2\":2,\"index\":1}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":9,\"d2\":7,\"index\":25}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif

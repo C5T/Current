@@ -172,10 +172,19 @@ struct YodaData {
   }
 
   template <typename K>
+  /*
+  // OK for `g++`, fails for `clang++`.
   decltype(std::declval<decltype(
       std::declval<YodaData>()
-          .Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>())>()[std::declval<K>()])
-  operator[](K&& key) {
+          .template Accessor<C    WT<YodaContainer<YT>,
+  type_inference::YETFromSubscript<K>>>())>()[std::declval<K>()])
+  */
+
+  // OK for `clang++` on Ubuntu, keeping it this way.
+  auto
+  operator[](K&& key)
+      -> decltype(
+            Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>()[std::forward<K>(key)]) {
     return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>()[std::forward<K>(key)];
   }
 
