@@ -78,9 +78,9 @@ struct YodaImpl<YT, MatrixEntry<ENTRY>> {
   YodaImpl() = delete;
   explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
 
-  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_COL>);
+  YET operator()(container_data::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(container_data::template ExtractYETFromK<typename YET::T_ROW>);
+  YET operator()(container_data::template ExtractYETFromK<typename YET::T_COL>);
 
  private:
   typename YT::T_MQ& mq_;
@@ -172,9 +172,9 @@ struct Container<YT, MatrixEntry<ENTRY>> {
   }
 
   // TODO(dkorolev): This is duplication. We certainly don't need it.
-  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_COL>);
+  YET operator()(container_data::template ExtractYETFromE<typename YET::T_ENTRY>);
+  YET operator()(container_data::template ExtractYETFromK<typename YET::T_ROW>);
+  YET operator()(container_data::template ExtractYETFromK<typename YET::T_COL>);
 
  private:
   T_MAP_TYPE<std::pair<typename YET::T_ROW, typename YET::T_COL>,

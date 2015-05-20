@@ -134,6 +134,8 @@ struct Future<void> {
   std::future<void> f_;
 };
 
+#if 0
+
 // Helper structures that the user can derive their entries from
 // to signal Yoda to behave in a non-default way.
 
@@ -169,6 +171,8 @@ struct Nullable {
 // The user should derive from both `Nullable` and `Deletable` for full `Delete()` support via Yoda.
 // TODO(dkorolev): Add the runtime check that certain type does indeed serialize the `exists` field and test it.
 struct Deletable {};
+
+#endif
 
 }  // namespace yoda
 

@@ -35,7 +35,7 @@ SOFTWARE.
 #include <utility>
 
 #include "types.h"
-
+#include "sfinae.h"
 #include "../sherlock.h"
 
 #include "../../Bricks/template/metaprogramming.h"
@@ -45,101 +45,6 @@ SOFTWARE.
 namespace yoda {
 
 struct Padawan;
-
-namespace sfinae {
-// TODO(dkorolev): Let's move this to Bricks once we merge repositories?
-// Associative container type selector. Attempts to use:
-// 1) std::unordered_map<T_KEY, T_ENTRY, wrapper for `T_KEY::Hash()`>
-// 2) std::unordered_map<T_KEY, T_ENTRY [, std::hash<T_KEY>]>
-// 3) std::map<T_KEY, T_ENTRY>
-// in the above order.
-
-template <typename T_KEY>
-constexpr bool HasHashFunction(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasHashFunction(int) -> decltype(std::declval<T_KEY>().Hash(), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasStdHash(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasStdHash(int) -> decltype(std::hash<T_KEY>(), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasOperatorEquals(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasOperatorEquals(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() == std::declval<T_KEY>()), bool()) {
-  return true;
-}
-
-template <typename T_KEY>
-constexpr bool HasOperatorLess(char) {
-  return false;
-}
-
-template <typename T_KEY>
-constexpr auto HasOperatorLess(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() < std::declval<T_KEY>()), bool()) {
-  return true;
-}
-
-template <typename T_KEY, typename T_ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR {};
-
-// `T_KEY::Hash()` and `T_KEY::operator==()` are defined, use std::unordered_map<> with user-defined hash
-// function.
-template <typename T_KEY, typename T_ENTRY, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true, DEFINES_STD_HASH> {
-  static_assert(HasOperatorEquals<T_KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
-  struct HashFunction {
-    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
-  };
-  typedef std::unordered_map<T_KEY, T_ENTRY, HashFunction> type;
-};
-
-// `T_KEY::Hash()` is not defined, but `std::hash<T_KEY>` and `T_KEY::operator==()` are, use
-// std::unordered_map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
-  static_assert(HasOperatorEquals<T_KEY>(0),
-                "The key type supports `std::hash<T_KEY>`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY> type;
-};
-
-// Neither `T_KEY::Hash()` nor `std::hash<T_KEY>` are defined, use std::map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
-  static_assert(HasOperatorLess<T_KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
-  typedef std::map<T_KEY, T_ENTRY> type;
-};
-
-template <typename T_KEY, typename T_ENTRY>
-using T_MAP_TYPE =
-    typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0), HasStdHash<T_KEY>(0)>::type;
-
-// The best way I found to have clang++ dump the actual type in error message. -- D.K.
-// Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
-// TODO(dkorolev): Chat with Max, remove or move it into Bricks.
-template <typename T1, typename T2>
-struct is_same_or_compile_error {
-  char c[std::is_same<T1, T2>::value ? 1 : -1];
-};
-
-}  // namespace sfinae
-
 namespace MP = bricks::metaprogramming;
 
 // The container to keep the internal represenation of a particular entry type and all access methods
@@ -203,16 +108,12 @@ template <typename YT>
 using YodaContainer = typename YodaContainerImpl<YT>::type;
 
 namespace container_data {
+
+// Helper types to extract `Accessor` and `Mutator`.
 template <typename T>
 struct RetrieveAccessor {};
 template <typename T>
 struct RetrieveMutator {};
-
-struct Get {};
-struct Add {};
-}  // namespace container_data
-
-namespace apicalls {
 
 // A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
@@ -224,7 +125,7 @@ struct ExtractYETFromE {};
 template <typename K>
 struct ExtractYETFromK {};
 
-}  // namespace apicalls
+}  // namespace container_data
 
 template <typename YT>
 struct YodaData {
@@ -250,78 +151,28 @@ struct YodaData {
   // Top-level methods and operators, dispatching by parameter type.
   template <typename E>
   void Add(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, apicalls::ExtractYETFromE<E>>>().Add(std::forward<E>(entry));
+    Mutator<CWT<YodaContainer<YT>, container_data::ExtractYETFromE<E>>>().Add(std::forward<E>(entry));
   }
 
   template <typename K>
-  EntryWrapper<typename CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>::T_ENTRY> Get(K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
+  EntryWrapper<typename CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>::T_ENTRY> Get(K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>>().Get(std::forward<K>(key));
   }
 
   template <typename E>
   YodaData& operator<<(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, apicalls::ExtractYETFromE<E>>>() << std::forward<E>(entry);
+    Mutator<CWT<YodaContainer<YT>, container_data::ExtractYETFromE<E>>>() << std::forward<E>(entry);
     return *this;
   }
 
   template <typename K>
-  typename CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, apicalls::ExtractYETFromK<K>>>()[std::forward<K>(key)];
+  typename CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>::T_ENTRY operator[](K&& key) {
+    return Accessor<CWT<YodaContainer<YT>, container_data::ExtractYETFromK<K>>>()[std::forward<K>(key)];
   }
 
  private:
   YodaContainer<YT>& container;
   typename YT::T_STREAM_TYPE& stream;
-};
-
-template <typename SUPPORTED_TYPES_AS_TUPLE>
-struct StreamListener {
-  typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
-
-  explicit StreamListener(typename YT::T_MQ& mq) : caught_up_(false), entries_seen_(0u), mq_(mq) {}
-
-  struct MQMessageEntry : MQMessage<typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
-    std::unique_ptr<Padawan> entry;
-    const size_t index_in_stream;
-
-    MQMessageEntry(std::unique_ptr<Padawan>&& entry, size_t index_in_stream)
-        : entry(std::move(entry)), index_in_stream(index_in_stream) {}
-
-    virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
-      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container, index_in_stream);
-    }
-  };
-
-  // Sherlock stream listener call.
-  bool Entry(std::unique_ptr<Padawan>& entry, size_t index, size_t total) {
-    // The logic of this API implementation is:
-    // * Defer all API requests until the persistent part of the stream is fully replayed,
-    // * Allow all API requests after that.
-
-    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry), index));
-
-    // TODO(dkorolev): If that's the way to go, we should probably respond with HTTP 503 or 409 or 418?
-    //                 (And add a `/statusz` endpoint to monitor the status wrt ready / not yet ready.)
-
-    // TODO(dkorolev)+TODO(mzhurovich): What about the case of an empty stream?
-    // We should probably extend/enable Sherlock stream listener to report the `CaughtUp` event early,
-    // including the case where the initial stream is empty.
-
-    if (index + 1 == total) {
-      caught_up_ = true;
-    }
-
-    // This is primarily for unit testing purposes.
-    ++entries_seen_;
-
-    return true;
-  }
-
-  std::atomic_bool caught_up_;
-  std::atomic_size_t entries_seen_;
-
- private:
-  typename YT::T_MQ& mq_;
 };
 
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
@@ -331,6 +182,43 @@ struct MQMessage {
   virtual void Process(YodaContainer<YT>& container,
                        YodaData<YT> container_data,
                        typename YT::T_STREAM_TYPE& stream) = 0;
+};
+
+// Stream listener is passing entries from the Sherlock stream into the message queue.
+template <typename SUPPORTED_TYPES_AS_TUPLE>
+struct StreamListener {
+  typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
+
+  explicit StreamListener(typename YT::T_MQ& mq) : mq_(mq) {}
+
+  struct MQMessageEntry : MQMessage<typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
+    std::unique_ptr<Padawan> entry;
+    const size_t index;
+
+    MQMessageEntry(std::unique_ptr<Padawan>&& entry, size_t index) : entry(std::move(entry)), index(index) {}
+
+    virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
+      // TODO(dkorolev): For this call, `entry`, the first parameter, should be `std::move()`-d,
+      // but Bricks doesn't support it yet for `RTTIDynamicCall`.
+      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container, index);
+    }
+  };
+
+  // Sherlock stream listener call.
+  bool Entry(std::unique_ptr<Padawan>& entry, size_t index, size_t total) {
+    static_cast<void>(total);
+
+    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry), index));
+
+    // Eventually, the logic of this API implementation is:
+    // * Defer all API requests until the persistent part of the stream is fully replayed,
+    // * Allow all API requests after that.
+
+    return true;
+  }
+
+ private:
+  typename YT::T_MQ& mq_;
 };
 
 template <typename SUPPORTED_TYPES_AS_TUPLE>
@@ -355,12 +243,6 @@ template <typename YT, typename CONCRETE_TYPE>
 struct YodaImpl {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   YodaImpl() = delete;
-};
-
-template <typename YT, typename SUPPORTED_TYPES_AS_TUPLE>
-struct CombinedYodaImpls {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 // Shamelessly taken from `Bricks/template/combine.h`.
@@ -397,6 +279,12 @@ struct inherit_from_both : T1, T2 {
   explicit inherit_from_both(typename YT::T_MQ& mq) : T1(mq), T2(mq) {}
   // Note: clang++ passes `operator`-s through
   // by default, whereas g++ requires `using`-s. --  D.K.
+};
+
+template <typename YT, typename SUPPORTED_TYPES_AS_TUPLE>
+struct CombinedYodaImpls {
+  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
+  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 };
 
 template <typename YT, typename T, typename... TS>
@@ -529,21 +417,21 @@ struct APICallsWrapper {
   // Helper method to wrap `Add()` into `Transaction()`.
   template <typename ENTRY>
   Future<void> Add(ENTRY&& entry) {
-    typedef CWT<API, apicalls::ExtractYETFromE<ENTRY>> YET;
+    typedef CWT<API, container_data::ExtractYETFromE<ENTRY>> YET;
     return Transaction(TopLevelAdd<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
   }
 
   // Helper method to wrap `Get()` into `Transaction()`.
   template <typename KEY>
-  Future<EntryWrapper<typename CWT<API, apicalls::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
-    typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
+  Future<EntryWrapper<typename CWT<API, container_data::ExtractYETFromK<KEY>>::T_ENTRY>> Get(KEY&& key) {
+    typedef CWT<API, container_data::ExtractYETFromK<KEY>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)));
   }
 
   // Helper method to wrap `GetWithNext()` into `Transaction()`.
   template <typename KEY, typename F>
   Future<void> GetWithNext(KEY&& key, F&& f) {
-    typedef CWT<API, apicalls::ExtractYETFromK<KEY>> YET;
+    typedef CWT<API, container_data::ExtractYETFromK<KEY>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, KEY>(std::forward<KEY>(key)), std::forward<F>(f));
   }
 
