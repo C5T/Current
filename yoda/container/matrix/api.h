@@ -216,7 +216,7 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {
-      auto key = std::make_pair(GetRow(entry), GetCol(entry));
+      const auto key = std::make_pair(GetRow(entry), GetCol(entry));
       if (mutable_.map_.count(key)) {
         throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(entry), GetCol(entry));
       } else {
