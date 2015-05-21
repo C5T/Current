@@ -423,7 +423,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
   auto response_composite = HTTP(GET(Printf("http://localhost:%d/key_entry?p=9", port)));
   EXPECT_EQ(404, static_cast<int>(response_composite.code));
-  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
+  EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", response_composite.body);
   
   HTTP(port).Register("/matrix_entry_1", [&api](Request request) {
     const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
@@ -443,10 +443,10 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_2.body);
   auto cell_composite_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=4", port)));
   EXPECT_EQ(404, static_cast<int>(cell_composite_1.code));
-  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_1.body);
+  EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite_1.body);
   auto cell_composite_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=4", port)));
   EXPECT_EQ(404, static_cast<int>(cell_composite_2.code));
-  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_2.body);
+  EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite_2.body);
 }
   
 {

@@ -51,6 +51,7 @@ struct Padawan {
   bricks::time::EPOCH_MILLISECONDS ExtractTimestamp() const {
     return static_cast<bricks::time::EPOCH_MILLISECONDS>(ms);
   }
+
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(ms));
@@ -80,6 +81,15 @@ struct EntryWithIndex {
 };
 
 // Wrapper to return possibly nonexistent entries.
+struct EntryNotFoundHTTPResponse {
+  const std::string message = "NOT_FOUND";
+  EntryNotFoundHTTPResponse() {}
+  template <typename A>
+  void save(A& ar) const {
+    ar(CEREAL_NVP(message));
+  }
+};
+
 template <typename T_ENTRY>
 struct EntryWrapper {
   EntryWrapper() = default;
@@ -94,13 +104,11 @@ struct EntryWrapper {
       throw NonexistentEntryAccessed();
     }
   }
-
   void RespondViaHTTP(Request r) const {
     if (exists) {
       r(*entry, "entry");
     } else {
-      // TODO(dkorolev): This should certainly be done in a cleaner way.
-      r("{\"error\":\"NOT_FOUND\"}\n", HTTPResponseCode.NotFound, "application/json");
+      r(EntryNotFoundHTTPResponse(), "error", HTTPResponseCode.NotFound);
     }
   }
 

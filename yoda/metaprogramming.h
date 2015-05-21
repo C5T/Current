@@ -157,28 +157,34 @@ struct YodaData {
   // Top-level methods and operators, dispatching by parameter type.
   template <typename E>
   void Add(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<E>>>().Add(std::forward<E>(entry));
+    typedef bricks::rmconstref<E> SAFE_E;
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<SAFE_E>>>().Add(std::forward<E>(entry));
   }
 
   template <typename K>
-  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<K>>::T_ENTRY> Get(K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<K>>>().Get(std::forward<K>(key));
+  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<K>>>::T_ENTRY> Get(
+      K&& key) {
+    typedef bricks::rmconstref<K> SAFE_K;
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_K>>>().Get(std::forward<K>(key));
   }
 
   template <typename E>
   YodaData& operator<<(E&& entry) {
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<E>>>() << std::forward<E>(entry);
+    typedef bricks::rmconstref<E> SAFE_E;
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<SAFE_E>>>() << std::forward<E>(entry);
     return *this;
   }
 
   // This scary `decltype(declval)` is just to extract the return type of `the_right_accessor[key]`.
   template <typename K>
-  decltype(std::declval<
-      CWT<YodaContainer<YT>,
-          type_inference::RetrieveAccessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>>>()
-               [std::declval<K>()])
+  decltype(
+      std::declval<CWT<YodaContainer<YT>,
+                       type_inference::RetrieveAccessor<
+                           CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::rmconstref<K>>>>>>()
+          [std::declval<bricks::rmconstref<K>>()])
   operator[](K&& key) {
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>()[std::forward<K>(key)];
+    typedef bricks::rmconstref<K> SAFE_K;
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<SAFE_K>>>()[std::forward<K>(key)];
   }
 
  private:
@@ -370,8 +376,9 @@ struct APICalls {
   // Helper method to wrap `Add()` into `Transaction()`.
   template <typename ENTRY>
   Future<void> Add(ENTRY&& entry) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<ENTRY>> YET;
-    return Transaction(TopLevelAdd<YodaData<YT>, YET, ENTRY>(std::forward<ENTRY>(entry)));
+    typedef bricks::rmconstref<ENTRY> SAFE_ENTRY;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<SAFE_ENTRY>> YET;
+    return Transaction(TopLevelAdd<YodaData<YT>, YET, SAFE_ENTRY>(std::forward<ENTRY>(entry)));
   }
 
   // Helper method to wrap `Get()` into `Transaction()`. With one and with more than one parameter.
