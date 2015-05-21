@@ -86,6 +86,8 @@ SOFTWARE.
 #include "container/dictionary/api.h"
 #include "container/matrix/api.h"
 
+#include "../../Bricks/net/api/api.h"
+
 namespace yoda {
 
 // `yoda::APIWrapper` requires the list of specific entries to expose through the Yoda API.
