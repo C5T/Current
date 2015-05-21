@@ -171,20 +171,13 @@ struct YodaData {
     return *this;
   }
 
+  // This scary `decltype(declval)` is just to extract the return type of `the_right_accessor[key]`.
   template <typename K>
-  /*
-  // OK for `g++`, fails for `clang++`.
-  decltype(std::declval<decltype(
-      std::declval<YodaData>()
-          .template Accessor<C    WT<YodaContainer<YT>,
-  type_inference::YETFromSubscript<K>>>())>()[std::declval<K>()])
-  */
-
-  // OK for `clang++` on Ubuntu, keeping it this way.
-  auto
-  operator[](K&& key)
-      -> decltype(
-            Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>()[std::forward<K>(key)]) {
+  decltype(std::declval<
+      CWT<YodaContainer<YT>,
+          type_inference::RetrieveAccessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>>>()
+               [std::declval<K>()])
+  operator[](K&& key) {
     return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<K>>>()[std::forward<K>(key)];
   }
 
