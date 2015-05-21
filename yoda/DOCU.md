@@ -61,7 +61,7 @@ struct PrimeCell : Padawan {
 CEREAL_REGISTER_TYPE(PrimeCell);
   
 // Define the `api` object.
-typedef API<KeyEntry<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
+typedef API<Dictionary<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
 PrimesAPI api("YodaExampleUsage");
 
 // `2` is the first prime.
@@ -84,21 +84,21 @@ ASSERT_FALSE(static_cast<bool>(api.Get(static_cast<PRIME>(4)).Go()));
 
 // Expanded syntax for `Add()`.
 api.Transaction([](PrimesAPI::T_DATA data) {
-  KeyEntry<Prime>::Mutator(data).Add(Prime(5, 3));
+  Dictionary<Prime>::Mutator(data).Add(Prime(5, 3));
 }).Wait();
 
 api.Transaction([](PrimesAPI::T_DATA data) {
-  KeyEntry<Prime>::Mutator(data).Add(Prime(7, 100));
+  Dictionary<Prime>::Mutator(data).Add(Prime(7, 100));
 }).Wait();
 
 // `Add()`: Overwrite is OK.
 api.Transaction([](PrimesAPI::T_DATA data) {
-  KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
+  Dictionary<Prime>::Mutator(data).Add(Prime(7, 4));
 }).Wait();
   
 // Expanded syntax for `Get()`.
 Future<EntryWrapper<Prime>> future2 = api.Transaction([](PrimesAPI::T_DATA data) {
-  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
+  return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
 });
 EntryWrapper<Prime> entry2 = future2.Go();
 
@@ -109,7 +109,7 @@ const Prime& p2 = entry2;
 EXPECT_EQ(1, p2.index);
 
 Future<EntryWrapper<Prime>> future5 = api.Transaction([](PrimesAPI::T_DATA data) {
-  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+  return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
 });
 EntryWrapper<Prime> entry5 = future5.Go();
 
@@ -120,7 +120,7 @@ const Prime& p5 = entry5;
 EXPECT_EQ(3, p5.index);
 
 Future<EntryWrapper<Prime>> future7 = api.Transaction([](PrimesAPI::T_DATA data) {
-  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
+  return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
 });
 EntryWrapper<Prime> entry7 = future7.Go();
 
@@ -131,7 +131,7 @@ const Prime& p7 = entry7;
 EXPECT_EQ(4, p7.index);
 
 Future<EntryWrapper<Prime>> future8 = api.Transaction([](PrimesAPI::T_DATA data) {
-  return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+  return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
 });
 EntryWrapper<Prime> entry8 = future8.Go();
 
@@ -140,8 +140,8 @@ ASSERT_FALSE(b8);
 
 // Accessing the memory view of `data`.
 api.Transaction([](PrimesAPI::T_DATA data) {
-  const auto getter = KeyEntry<Prime>::Accessor(data);
-  auto adder = KeyEntry<Prime>::Mutator(data);
+  const auto getter = Dictionary<Prime>::Accessor(data);
+  auto adder = Dictionary<Prime>::Mutator(data);
 
   // `adder.Add()` in a non-throwing call.
   adder.Add(Prime(11, 5));
@@ -293,7 +293,7 @@ api.Transaction([](PrimesAPI::T_DATA data) {
 // use `.Go()` to retrieve the result.
 // (Or `.Wait()` to just wait for the passed in function to complete.)
 Future<std::string> future = api.Transaction([](PrimesAPI::T_DATA data) {
-  const auto getter = KeyEntry<Prime>::Accessor(data);
+  const auto getter = Dictionary<Prime>::Accessor(data);
   return Printf("[2]=%d,[3]=%d,[5]*[7]=%d",
                 getter[static_cast<PRIME>(2)].index, 
                 getter[static_cast<PRIME>(3)].index,

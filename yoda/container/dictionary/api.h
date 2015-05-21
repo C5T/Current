@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// The implementation for `KeyEntry` storage type.
+// The implementation for `Dictionary` storage type.
 
 #ifndef SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H
 #define SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H
@@ -44,10 +44,10 @@ using sfinae::ENTRY_KEY_TYPE;
 using sfinae::T_MAP_TYPE;
 using sfinae::GetKey;
 
-// User type interface: Use `KeyEntry<MyKeyEntry>` in Yoda's type list for required storage types
-// for Yoda to support key-entry (key-value) accessors over the type `MyKeyEntry`.
+// User type interface: Use `Dictionary<MyEntry>` in Yoda's type list for required storage types
+// for Yoda to support key-entry (key-value) accessors over the type `MyEntry`.
 template <typename ENTRY>
-struct KeyEntry {
+struct Dictionary {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
@@ -61,24 +61,24 @@ struct KeyEntry {
   typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
 
   template <typename DATA>
-  static decltype(std::declval<DATA>().template Accessor<KeyEntry<ENTRY>>()) Accessor(DATA&& c) {
-    return c.template Accessor<KeyEntry<ENTRY>>();
+  static decltype(std::declval<DATA>().template Accessor<Dictionary<ENTRY>>()) Accessor(DATA&& c) {
+    return c.template Accessor<Dictionary<ENTRY>>();
   }
 
   template <typename DATA>
-  static decltype(std::declval<DATA>().template Mutator<KeyEntry<ENTRY>>()) Mutator(DATA&& c) {
-    return c.template Mutator<KeyEntry<ENTRY>>();
+  static decltype(std::declval<DATA>().template Mutator<Dictionary<ENTRY>>()) Mutator(DATA&& c) {
+    return c.template Mutator<Dictionary<ENTRY>>();
   }
 };
 
 template <typename YT, typename ENTRY>
-struct Container<YT, KeyEntry<ENTRY>> {
+struct Container<YT, Dictionary<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
   template <typename T>
   using CF = bricks::copy_free<T>;
 
-  typedef KeyEntry<ENTRY> YET;
+  typedef Dictionary<ENTRY> YET;
 
   YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
   YET operator()(type_inference::template YETFromK<typename YET::T_KEY>);

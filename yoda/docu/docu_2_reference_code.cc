@@ -38,7 +38,7 @@ DEFINE_int32(yoda_docu_test_port, 8999, "");
 using yoda::Padawan;
 using yoda::API;
 using yoda::Future;
-using yoda::KeyEntry;
+using yoda::Dictionary;
 using yoda::MatrixEntry;
 using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
@@ -112,7 +112,7 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef API<KeyEntry<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
+  typedef API<Dictionary<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // `2` is the first prime.
@@ -137,23 +137,23 @@ HTTP(port).ResetAllHandlers();
   // Expanded syntax for `Add()`.
 {
   api.Transaction([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(5, 3));
+    Dictionary<Prime>::Mutator(data).Add(Prime(5, 3));
   }).Wait();
   
   api.Transaction([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(7, 100));
+    Dictionary<Prime>::Mutator(data).Add(Prime(7, 100));
   }).Wait();
   
   // `Add()`: Overwrite is OK.
   api.Transaction([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
+    Dictionary<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
 }
     
   // Expanded syntax for `Get()`.
 {
   Future<EntryWrapper<Prime>> future2 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
   });
   EntryWrapper<Prime> entry2 = future2.Go();
   
@@ -164,7 +164,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(1, p2.index);
   
   Future<EntryWrapper<Prime>> future5 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
   });
   EntryWrapper<Prime> entry5 = future5.Go();
   
@@ -175,7 +175,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(3, p5.index);
   
   Future<EntryWrapper<Prime>> future7 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
   });
   EntryWrapper<Prime> entry7 = future7.Go();
   
@@ -186,7 +186,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(4, p7.index);
   
   Future<EntryWrapper<Prime>> future8 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
   });
   EntryWrapper<Prime> entry8 = future8.Go();
   
@@ -197,8 +197,8 @@ HTTP(port).ResetAllHandlers();
   // Accessing the memory view of `data`.
 {
   api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto getter = KeyEntry<Prime>::Accessor(data);
-    auto adder = KeyEntry<Prime>::Mutator(data);
+    const auto getter = Dictionary<Prime>::Accessor(data);
+    auto adder = Dictionary<Prime>::Mutator(data);
   
     // `adder.Add()` in a non-throwing call.
     adder.Add(Prime(11, 5));
@@ -356,7 +356,7 @@ HTTP(port).ResetAllHandlers();
   // (Or `.Wait()` to just wait for the passed in function to complete.)
 {
   Future<std::string> future = api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto getter = KeyEntry<Prime>::Accessor(data);
+    const auto getter = Dictionary<Prime>::Accessor(data);
     return Printf("[2]=%d,[3]=%d,[5]*[7]=%d",
                   getter[static_cast<PRIME>(2)].index, 
                   getter[static_cast<PRIME>(3)].index,

@@ -50,7 +50,7 @@ namespace MP = bricks::metaprogramming;
 
 // The container to keep the internal represenation of a particular entry type and all access methods
 // implemented via corresponding `operator()` overload.
-// Note that the template parameter for should be wrapped one, ex. `KeyEntry<MyEntry>`, instead of `MyEntry`.
+// Note that the template parameter for should be wrapped one, ex. `Dictionary<MyEntry>`, instead of `MyEntry`.
 // Particular implementations are located in `api/*/*.h`.
 template <typename YT, typename ENTRY>
 struct Container {};
@@ -116,12 +116,12 @@ struct RetrieveAccessor {};
 template <typename T>
 struct RetrieveMutator {};
 
-// A wrapper to convert `T` into `KeyEntry<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// A wrapper to convert `T` into `Dictionary<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename T>
 struct YETFromE {};
 
-// A wrapper to convert `T::T_KEY` into `KeyEntry<T>`,
+// A wrapper to convert `T::T_KEY` into `Dictionary<T>`,
 // `std::tuple<T::T_ROW, T::T_COL>` into `MatrixEntry<T>`, etc.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename K>
