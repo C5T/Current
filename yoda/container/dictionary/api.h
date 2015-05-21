@@ -23,10 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// The implementation for `KeyEntry` storage type.
+// The implementation for `Dictionary` storage type.
 
-#ifndef SHERLOCK_YODA_API_KEY_ENTRY_H
-#define SHERLOCK_YODA_API_KEY_ENTRY_H
+#ifndef SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H
+#define SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H
 
 #include <future>
 
@@ -44,10 +44,10 @@ using sfinae::ENTRY_KEY_TYPE;
 using sfinae::T_MAP_TYPE;
 using sfinae::GetKey;
 
-// User type interface: Use `KeyEntry<MyKeyEntry>` in Yoda's type list for required storage types
-// for Yoda to support key-entry (key-value) accessors over the type `MyKeyEntry`.
+// User type interface: Use `Dictionary<MyEntry>` in Yoda's type list for required storage types
+// for Yoda to support key-entry (key-value) accessors over the type `MyEntry`.
 template <typename ENTRY>
-struct KeyEntry {
+struct Dictionary {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
@@ -57,42 +57,38 @@ struct KeyEntry {
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
 
-  typedef KeyNotFoundException<T_KEY> T_KEY_NOT_FOUND_EXCEPTION;
-  typedef KeyAlreadyExistsException<T_KEY> T_KEY_ALREADY_EXISTS_EXCEPTION;
+  typedef KeyNotFoundException<T_ENTRY> T_KEY_NOT_FOUND_EXCEPTION;
+  typedef KeyAlreadyExistsException<T_ENTRY> T_KEY_ALREADY_EXISTS_EXCEPTION;
 
   template <typename DATA>
-  static decltype(std::declval<DATA>().template Accessor<KeyEntry<ENTRY>>()) Accessor(DATA&& c) {
-    return c.template Accessor<KeyEntry<ENTRY>>();
+  static decltype(std::declval<DATA>().template Accessor<Dictionary<ENTRY>>()) Accessor(DATA&& c) {
+    return c.template Accessor<Dictionary<ENTRY>>();
   }
 
   template <typename DATA>
-  static decltype(std::declval<DATA>().template Mutator<KeyEntry<ENTRY>>()) Mutator(DATA&& c) {
-    return c.template Mutator<KeyEntry<ENTRY>>();
+  static decltype(std::declval<DATA>().template Mutator<Dictionary<ENTRY>>()) Mutator(DATA&& c) {
+    return c.template Mutator<Dictionary<ENTRY>>();
   }
 };
 
 template <typename YT, typename ENTRY>
-struct YodaImpl<YT, KeyEntry<ENTRY>> {
+struct Container<YT, Dictionary<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef KeyEntry<ENTRY> YET;  // "Yoda entry type".
 
-  YodaImpl() = delete;
-  explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
+  template <typename T>
+  using CF = bricks::copy_free<T>;
 
-  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_KEY>);
+  typedef Dictionary<ENTRY> YET;
 
- private:
-  typename YT::T_MQ& mq_;
-};
-
-template <typename YT, typename ENTRY>
-struct Container<YT, KeyEntry<ENTRY>> {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef KeyEntry<ENTRY> YET;
+  YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
+  YET operator()(type_inference::template YETFromK<typename YET::T_KEY>);
+  YET operator()(type_inference::template YETFromK<std::tuple<typename YET::T_KEY>>);
+  YET operator()(type_inference::template YETFromSubscript<typename YET::T_KEY>);
+  YET operator()(type_inference::template YETFromSubscript<std::tuple<typename YET::T_KEY>>);
 
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
+  // TODO(dkorolev): For this parameter to be an `ENTRY&&`, we'd need to clean up Bricks wrt RTTI.
   void operator()(ENTRY& entry, size_t index) {
     EntryWithIndex<ENTRY>& placeholder = map_[GetKey(entry)];
     if (index > placeholder.index) {
@@ -105,10 +101,10 @@ struct Container<YT, KeyEntry<ENTRY>> {
     Accessor() = delete;
     explicit Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(bricks::copy_free<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
+    bool Exists(CF<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
 
     // Non-throwing getter. Returns a wrapped null entry if not found.
-    const EntryWrapper<ENTRY> Get(bricks::copy_free<typename YET::T_KEY> key) const {
+    const EntryWrapper<ENTRY> Get(CF<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return EntryWrapper<ENTRY>(cit->second.entry);
@@ -117,8 +113,12 @@ struct Container<YT, KeyEntry<ENTRY>> {
       }
     }
 
+    const EntryWrapper<ENTRY> Get(const std::tuple<typename YET::T_KEY>& key) const {
+      return Get(std::get<0>(key));
+    }
+
     // Throwing getter.
-    const ENTRY& operator[](bricks::copy_free<typename YET::T_KEY> key) const {
+    CF<ENTRY> operator[](CF<typename YET::T_KEY> key) const {
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return cit->second.entry;
@@ -128,7 +128,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
     }
 
     // Iteration.
-    struct Iterator {
+    struct Iterator final {
       typedef decltype(std::declval<Container<YT, YET>>().map_.cbegin()) T_ITERATOR;
       T_ITERATOR iterator;
       explicit Iterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
@@ -140,10 +140,9 @@ struct Container<YT, KeyEntry<ENTRY>> {
     };
 
     Iterator begin() const { return Iterator(immutable_.map_.cbegin()); }
-
     Iterator end() const { return Iterator(immutable_.map_.cend()); }
-
     size_t size() const { return immutable_.map_.size(); }
+    bool empty() const { return immutable_.map_.empty(); }
 
    private:
     const Container<YT, YET>& immutable_;
@@ -160,6 +159,7 @@ struct Container<YT, KeyEntry<ENTRY>> {
       const size_t index = stream_.Publish(entry);
       mutable_.map_[GetKey(entry)].Update(index, entry);
     }
+    void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {
@@ -178,15 +178,11 @@ struct Container<YT, KeyEntry<ENTRY>> {
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_data::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(type_inference::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_data::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(type_inference::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
-
-  // TODO(dkorolev): This is duplication. We certainly don't need it.
-  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_KEY>);
 
  private:
   T_MAP_TYPE<typename YET::T_KEY, EntryWithIndex<typename YET::T_ENTRY>> map_;
@@ -194,4 +190,4 @@ struct Container<YT, KeyEntry<ENTRY>> {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_KEY_ENTRY_H
+#endif  // SHERLOCK_YODA_CONTAINER_DICTIONARY_API_H

@@ -1,5 +1,3 @@
-// TODO(dkorolev): Rename `Call` into `Transaction`.
-
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -40,12 +38,14 @@ DEFINE_int32(yoda_docu_test_port, 8999, "");
 using yoda::Padawan;
 using yoda::API;
 using yoda::Future;
-using yoda::KeyEntry;
+using yoda::Dictionary;
 using yoda::MatrixEntry;
 using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
 using yoda::KeyNotFoundException;
 using yoda::KeyAlreadyExistsException;
+using yoda::CellNotFoundException;
+using yoda::CellAlreadyExistsException;
 
 using bricks::strings::Printf;
 using bricks::strings::FromString;
@@ -112,7 +112,7 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef API<KeyEntry<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
+  typedef API<Dictionary<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // `2` is the first prime.
@@ -128,6 +128,7 @@ HTTP(port).ResetAllHandlers();
   // supported data type. It never throws, and returns a wrapper,
   // that can be casted to both `bool` and the underlying type.
   ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(2)).Go()));
+  ASSERT_TRUE(static_cast<bool>(api.Get(std::make_tuple(static_cast<PRIME>(2))).Go()));
   EXPECT_EQ(1, static_cast<const Prime&>(api.Get(static_cast<PRIME>(2)).Go()).index);
   ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(3)).Go()));
   EXPECT_EQ(2, static_cast<const Prime&>(api.Get(static_cast<PRIME>(3)).Go()).index);
@@ -135,35 +136,24 @@ HTTP(port).ResetAllHandlers();
   
   // Expanded syntax for `Add()`.
 {
-  api.Call([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(5, 3));
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    Dictionary<Prime>::Mutator(data).Add(Prime(5, 3));
   }).Wait();
   
-  api.Call([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(7, 100));
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    Dictionary<Prime>::Mutator(data).Add(Prime(7, 100));
   }).Wait();
   
   // `Add()`: Overwrite is OK.
-  api.Call([](PrimesAPI::T_DATA data) {
-    KeyEntry<Prime>::Mutator(data).Add(Prime(7, 4));
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    Dictionary<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
 }
     
   // Expanded syntax for `Get()`.
 {
-  Future<EntryWrapper<Prime>> future1 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
-  });
-  EntryWrapper<Prime> entry1 = future1.Go();
-  
-  const bool b1 = entry1;
-  ASSERT_TRUE(b1);
-  
-  const Prime& p1 = entry1;
-  EXPECT_EQ(1, p1.index);
-  
-  Future<EntryWrapper<Prime>> future2 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+  Future<EntryWrapper<Prime>> future2 = api.Transaction([](PrimesAPI::T_DATA data) {
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
   });
   EntryWrapper<Prime> entry2 = future2.Go();
   
@@ -171,45 +161,57 @@ HTTP(port).ResetAllHandlers();
   ASSERT_TRUE(b2);
   
   const Prime& p2 = entry2;
-  EXPECT_EQ(3, p2.index);
+  EXPECT_EQ(1, p2.index);
   
-  Future<EntryWrapper<Prime>> future3 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
+  Future<EntryWrapper<Prime>> future5 = api.Transaction([](PrimesAPI::T_DATA data) {
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
   });
-  EntryWrapper<Prime> entry3 = future3.Go();
+  EntryWrapper<Prime> entry5 = future5.Go();
   
-  const bool b3 = entry3;
-  ASSERT_TRUE(b3);
+  const bool b5 = entry5;
+  ASSERT_TRUE(b5);
   
-  const Prime& p3 = entry3;
-  EXPECT_EQ(4, p3.index);
+  const Prime& p5 = entry5;
+  EXPECT_EQ(3, p5.index);
   
-  Future<EntryWrapper<Prime>> future4 = api.Call([](PrimesAPI::T_DATA data) {
-    return KeyEntry<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+  Future<EntryWrapper<Prime>> future7 = api.Transaction([](PrimesAPI::T_DATA data) {
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
   });
-  EntryWrapper<Prime> entry4 = future4.Go();
+  EntryWrapper<Prime> entry7 = future7.Go();
   
-  const bool b4 = entry4;
-  ASSERT_FALSE(b4);
+  const bool b7 = entry7;
+  ASSERT_TRUE(b7);
+  
+  const Prime& p7 = entry7;
+  EXPECT_EQ(4, p7.index);
+  
+  Future<EntryWrapper<Prime>> future8 = api.Transaction([](PrimesAPI::T_DATA data) {
+    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+  });
+  EntryWrapper<Prime> entry8 = future8.Go();
+  
+  const bool b8 = entry8;
+  ASSERT_FALSE(b8);
 }
   
   // Accessing the memory view of `data`.
 {
-  api.Call([](PrimesAPI::T_DATA data) {
-    auto adder = KeyEntry<Prime>::Mutator(data);
-    const auto getter = KeyEntry<Prime>::Accessor(data);
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto getter = Dictionary<Prime>::Accessor(data);
+    auto adder = Dictionary<Prime>::Mutator(data);
   
     // `adder.Add()` in a non-throwing call.
     adder.Add(Prime(11, 5));
     adder.Add(Prime(13, 100));
     adder.Add(Prime(13, 6));  // Overwrite.
+    adder.Add(std::tuple<Prime>(Prime(13, 6)));  // Again.
 
     // `adder.operator<<()` is a potentially throwing call.
     adder << Prime(17, 7) << Prime(19, 9);
-    ASSERT_THROW(adder << Prime(19, 9), KeyAlreadyExistsException<PRIME>);
+    ASSERT_THROW(adder << Prime(19, 9), KeyAlreadyExistsException<Prime>);
     try {
-      adder << Prime(19, 9);
-    } catch (const KeyAlreadyExistsException<PRIME>& e) {
+      data << Prime(19, 9);
+    } catch (const KeyAlreadyExistsException<Prime>& e) {
       EXPECT_EQ(19, static_cast<int>(e.key));
     }
 
@@ -229,24 +231,25 @@ HTTP(port).ResetAllHandlers();
                  NonexistentEntryAccessed);
       
     ASSERT_THROW(getter[static_cast<PRIME>(9)],
-                 KeyNotFoundException<PRIME>);
+                 KeyNotFoundException<Prime>);
     try {
       getter[static_cast<PRIME>(9)];
-    } catch(const KeyNotFoundException<PRIME>& e) {
+    } catch(const KeyNotFoundException<Prime>& e) {
       EXPECT_EQ(9, static_cast<int>(e.key));
     }
   
     // The syntax using `data` directly, without `Accessor` or `Mutator`.
     data << Prime(23, 10) << Prime(29, 101);
     ASSERT_THROW(data << Prime(29, 102),
-                 KeyAlreadyExistsException<PRIME>);
+                 KeyAlreadyExistsException<Prime>);
     data.Add(Prime(29, 11));
+    ASSERT_TRUE(static_cast<bool>(data.Get(std::make_tuple(static_cast<PRIME>(3)))));
     ASSERT_TRUE(static_cast<bool>(data.Get(static_cast<PRIME>(3))));
     EXPECT_EQ(2, static_cast<const Prime&>(data.Get(static_cast<PRIME>(3))).index);
     ASSERT_FALSE(static_cast<bool>(data.Get(static_cast<PRIME>(4))));
     EXPECT_EQ(3, data[static_cast<PRIME>(5)].index);
     ASSERT_THROW(data[static_cast<PRIME>(9)],
-                 KeyNotFoundException<PRIME>);
+                 KeyNotFoundException<Prime>);
   
     // Traversal.
     EXPECT_EQ(10u, getter.size());
@@ -274,17 +277,86 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(10u, c1);
     EXPECT_EQ(10u, c2);
   }).Go();
-  
-  // Work with `MatrixEntry<>` as well.
-  api.Add(PrimeCell(0, 2, 1));
 }
   
-  // The return value from `Call()` is wrapped into a `Future<>`,
+{
+  // Work with `MatrixEntry<>` as well.
+  api.Add(PrimeCell(0, 2, 100));
+  api.Add(PrimeCell(0, 2, 1));  // Overwrite.
+  api.Add(PrimeCell(0, 3, 2));
+  
+  const EntryWrapper<PrimeCell> e2 =
+    api.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go();
+  const bool b2 = e2;
+  ASSERT_TRUE(b2);
+  const PrimeCell p2 = e2;
+  EXPECT_EQ(0, static_cast<int>(p2.row));
+  EXPECT_EQ(2, static_cast<int>(p2.col));
+  EXPECT_EQ(1, p2.index);
+   
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto getter = MatrixEntry<PrimeCell>::Accessor(data);
+    auto adder = MatrixEntry<PrimeCell>::Mutator(data);
+  
+    const EntryWrapper<PrimeCell> e3 =
+      getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3));
+    const bool b3 = e3;
+    ASSERT_TRUE(b3);
+    const PrimeCell p3 = e3;
+    EXPECT_EQ(0, static_cast<int>(p3.row));
+    EXPECT_EQ(3, static_cast<int>(p3.col));
+    EXPECT_EQ(2, p3.index);
+  
+    const EntryWrapper<PrimeCell> e4 =
+      getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4));
+    const bool b4 = e4;
+    ASSERT_FALSE(b4);
+    ASSERT_THROW(static_cast<void>(static_cast<const PrimeCell&>(e4)),
+                 NonexistentEntryAccessed);
+  
+    adder.Add(PrimeCell(0, 5, 3));
+    adder.Add(std::tuple<PrimeCell>(PrimeCell(0, 5, 3)));
+  
+    data.Add(PrimeCell(0, 7, 4));
+  
+    adder << PrimeCell(1, 1, 5) << PrimeCell(1, 3, 6);
+    data << PrimeCell(1, 7, 7);
+    ASSERT_THROW(data << PrimeCell(1, 7, 7),
+                 CellAlreadyExistsException<PrimeCell>);
+  
+    EXPECT_EQ(7, getter[std::make_tuple(static_cast<FIRST_DIGIT>(1),
+                                        static_cast<SECOND_DIGIT>(7))].index);
+  
+    ASSERT_THROW(getter[std::make_tuple(static_cast<FIRST_DIGIT>(0),
+                                        static_cast<SECOND_DIGIT>(4))],
+                 CellNotFoundException<PrimeCell>);
+  
+    EXPECT_EQ(7, getter[static_cast<FIRST_DIGIT>(1)]
+                       [static_cast<SECOND_DIGIT>(7)].index);
+  
+    EXPECT_EQ(7, getter[static_cast<SECOND_DIGIT>(7)]
+                       [static_cast<FIRST_DIGIT>(1)].index);
+  
+    EXPECT_EQ(7, adder[static_cast<FIRST_DIGIT>(1)]
+                      [static_cast<SECOND_DIGIT>(7)].index);
+  
+    EXPECT_EQ(7, adder[static_cast<SECOND_DIGIT>(7)]
+                      [static_cast<FIRST_DIGIT>(1)].index);
+  
+    EXPECT_EQ(7, data[static_cast<FIRST_DIGIT>(1)]
+                     [static_cast<SECOND_DIGIT>(7)].index);
+  
+    EXPECT_EQ(7, data[static_cast<SECOND_DIGIT>(7)]
+                     [static_cast<FIRST_DIGIT>(1)].index);
+  }).Wait();
+}
+    
+  // The return value from `Transaction()` is wrapped into a `Future<>`,
   // use `.Go()` to retrieve the result.
   // (Or `.Wait()` to just wait for the passed in function to complete.)
 {
-  Future<std::string> future = api.Call([](PrimesAPI::T_DATA data) {
-    const auto getter = KeyEntry<Prime>::Accessor(data);
+  Future<std::string> future = api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto getter = Dictionary<Prime>::Accessor(data);
     return Printf("[2]=%d,[3]=%d,[5]*[7]=%d",
                   getter[static_cast<PRIME>(2)].index, 
                   getter[static_cast<PRIME>(3)].index,
@@ -295,19 +367,86 @@ HTTP(port).ResetAllHandlers();
 }
   
 {
+  // Fill in all the primes and traverse the matrix by rows and by cols.
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto is_prime = [](int i) {
+      for (int j = 2; j * j <= i; ++j) {
+        if ((i % j) == 0) {
+          return false;
+        }
+      }
+      return true;
+    };
+    int index = 0;
+    for (int p = 2; p <= 99; ++p) {
+      if (is_prime(p)) {
+        data.Add(PrimeCell(p / 10, p % 10, ++index));
+      }
+    }
+  });  // No need to wait, tests that use this data are right here.
+  
+  // Primes that start with `4`.
+  EXPECT_EQ("41,43,47",
+            api.Transaction([](PrimesAPI::T_DATA data) {
+              // TODO(dkorolev): In real life, the order can be off. -- D.K.
+              std::ostringstream os;
+              for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
+                os << ',' << (static_cast<int>(cit.row) * 10 +
+                              static_cast<int>(cit.col));
+              }
+              return os.str().substr(1);
+            }).Go());
+   
+  // Primes that end with `7`.
+  EXPECT_EQ("7,17,37,47,67,97",
+            api.Transaction([](PrimesAPI::T_DATA data) {
+              // TODO(dkorolev): In real life, the order can be off. -- D.K.
+              std::ostringstream os;
+              for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
+                os << ',' << (static_cast<int>(cit.row) * 10 +
+                              static_cast<int>(cit.col));
+              }
+              return os.str().substr(1);
+            }).Go());
+}
+   
+{
   // Confirm that the send parameter callback is `std::move()`-d
   // into the processing thread.
   // Interestingly, a REST-ful endpoint is the easiest possible test.
-  HTTP(port).Register("/rest", [&api](Request request) {
-    api.FunctionalGet(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
-                 std::move(request));
+  HTTP(port).Register("/key_entry", [&api](Request request) {
+    api.GetWithNext(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
+                    std::move(request));
   });
-  auto response_prime = HTTP(GET(Printf("http://localhost:%d/rest?p=7", port)));
+  auto response_prime = HTTP(GET(Printf("http://localhost:%d/key_entry?p=7", port)));
   EXPECT_EQ(200, static_cast<int>(response_prime.code));
   EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
-  auto response_composite = HTTP(GET(Printf("http://localhost:%d/rest?p=9", port)));
+  auto response_composite = HTTP(GET(Printf("http://localhost:%d/key_entry?p=9", port)));
   EXPECT_EQ(404, static_cast<int>(response_composite.code));
   EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", response_composite.body);
+  
+  HTTP(port).Register("/matrix_entry_1", [&api](Request request) {
+    const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
+    const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
+    api.GetWithNext(std::tie(a, b), std::move(request));
+  });
+  HTTP(port).Register("/matrix_entry_2", [&api](Request request) {
+    const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
+    const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
+    api.GetWithNext(a, b, std::move(request));
+  });
+  auto cell_prime_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=3", port)));
+  EXPECT_EQ(200, static_cast<int>(cell_prime_1.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_1.body);
+  auto cell_prime_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=3", port)));
+  EXPECT_EQ(200, static_cast<int>(cell_prime_2.code));
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_2.body);
+  auto cell_composite_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=4", port)));
+  EXPECT_EQ(404, static_cast<int>(cell_composite_1.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_1.body);
+  auto cell_composite_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=4", port)));
+  EXPECT_EQ(404, static_cast<int>(cell_composite_2.code));
+  EXPECT_EQ("{\"error\":\"NOT_FOUND\"}\n", cell_composite_2.body);
 }
   
 {
@@ -322,7 +461,7 @@ HTTP(port).ResetAllHandlers();
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":0,\"d2\":2,\"index\":1}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":9,\"d2\":7,\"index\":25}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif

@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_API_MATRIX_EXCEPTIONS_H
-#define SHERLOCK_YODA_API_MATRIX_EXCEPTIONS_H
+#ifndef SHERLOCK_YODA_CONTAINER_MATRIX_EXCEPTIONS_H
+#define SHERLOCK_YODA_CONTAINER_MATRIX_EXCEPTIONS_H
 
 #include "metaprogramming.h"
 
@@ -37,7 +37,13 @@ using sfinae::ENTRY_COL_TYPE;
 
 // Exception types for non-existent cells.
 // Cover exception type for entry types and templated, narrowed down exception types, one per entry key type.
-struct CellNotFoundCoverException : bricks::Exception {};
+struct CellNotFoundCoverException : bricks::Exception {};  // TODO(dk+mz): YodaException.
+
+// TODO(dkorolev): Take into account 1) row vs. col, and 2) top- vs. inner-level [].
+struct SubscriptCoverException : CellNotFoundCoverException {};
+
+template <typename ENTRY>
+struct SubscriptException : SubscriptCoverException {};
 
 template <typename ENTRY>
 struct CellNotFoundException : CellNotFoundCoverException {
@@ -65,4 +71,4 @@ struct CellAlreadyExistsException : CellAlreadyExistsCoverException {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_MATRIX_EXCEPTIONS_H
+#endif  // SHERLOCK_YODA_CONTAINER_MATRIX_EXCEPTIONS_H

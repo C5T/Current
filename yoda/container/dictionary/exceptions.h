@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
-#define SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
+#ifndef SHERLOCK_YODA_CONTAINER_DICTIONARY_EXCEPTIONS_H
+#define SHERLOCK_YODA_CONTAINER_DICTIONARY_EXCEPTIONS_H
 
 #include "metaprogramming.h"
 
@@ -36,9 +36,10 @@ namespace yoda {
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
 struct KeyNotFoundCoverException : bricks::Exception {};
 
-template <typename KEY>
+template <typename ENTRY>
 struct KeyNotFoundException : KeyNotFoundCoverException {
-  typedef KEY T_KEY;
+  typedef ENTRY T_ENTRY;
+  typedef sfinae::ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
   const T_KEY key;
   explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
 };
@@ -47,13 +48,14 @@ struct KeyNotFoundException : KeyNotFoundCoverException {
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
 struct KeyAlreadyExistsCoverException : bricks::Exception {};
 
-template <typename KEY>
+template <typename ENTRY>
 struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
-  typedef KEY T_KEY;
+  typedef ENTRY T_ENTRY;
+  typedef sfinae::ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
   const T_KEY key;
   explicit KeyAlreadyExistsException(const T_KEY& key) : key(key) {}
 };
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_KEYENTRY_EXCEPTIONS_H
+#endif  // SHERLOCK_YODA_CONTAINER_DICTIONARY_EXCEPTIONS_H

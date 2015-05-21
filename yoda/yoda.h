@@ -83,16 +83,14 @@ SOFTWARE.
 #include "metaprogramming.h"
 #include "types.h"
 
-#include "api/key_entry/key_entry.h"
-#include "api/matrix/matrix_entry.h"
+#include "container/dictionary/api.h"
+#include "container/matrix/api.h"
 
 namespace yoda {
 
 // `yoda::APIWrapper` requires the list of specific entries to expose through the Yoda API.
 template <typename ENTRIES_TYPELIST>
-struct APIWrapper
-    : apicalls::APICallsWrapper<YodaTypes<ENTRIES_TYPELIST>,
-                                CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>> {
+struct APIWrapper : APICalls<YodaTypes<ENTRIES_TYPELIST>> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
   typedef YodaTypes<ENTRIES_TYPELIST> YT;
@@ -101,7 +99,7 @@ struct APIWrapper
   APIWrapper() = delete;
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   APIWrapper(const std::string& stream_name)
-      : apicalls::APICallsWrapper<YT, CombinedYodaImpls<YodaTypes<ENTRIES_TYPELIST>, ENTRIES_TYPELIST>>(mq_),
+      : APICalls<YT>(mq_),
         stream_(sherlock::Stream<std::unique_ptr<Padawan>>(stream_name)),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
@@ -114,10 +112,6 @@ struct APIWrapper
   typename YT::T_STREAM_TYPE& UnsafeStream() { return stream_; }
 
   void ExposeViaHTTP(int port, const std::string& endpoint) { HTTP(port).Register(endpoint, stream_); }
-
-  // For testing purposes.
-  bool CaughtUp() const { return stream_listener_.caught_up_; }
-  size_t EntriesSeen() const { return stream_listener_.entries_seen_; }
 
  private:
   typename YT::T_STREAM_TYPE stream_;
@@ -135,9 +129,9 @@ struct APIWrapperSelector {
   typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <typename SUPPORTED_TYPES>
-struct APIWrapperSelector<std::tuple<SUPPORTED_TYPES>> {
-  typedef APIWrapper<std::tuple<SUPPORTED_TYPES>> type;
+template <typename... SUPPORTED_TYPES>
+struct APIWrapperSelector<std::tuple<SUPPORTED_TYPES...>> {
+  typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
 };
 
 template <typename... SUPPORTED_TYPES>

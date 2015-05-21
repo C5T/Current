@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_YODA_API_MATRIX_H
-#define SHERLOCK_YODA_API_MATRIX_H
+#ifndef SHERLOCK_YODA_CONTAINER_MATRIX_API_H
+#define SHERLOCK_YODA_CONTAINER_MATRIX_API_H
 
 #include <future>
 
@@ -58,6 +58,7 @@ struct MatrixEntry {
 
   typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
   typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
+  typedef SubscriptException<T_ENTRY> T_SUBSCRIPT_EXCEPTION;
 
   template <typename DATA>
   static decltype(std::declval<DATA>().template Accessor<MatrixEntry<ENTRY>>()) Accessor(DATA&& c) {
@@ -70,20 +71,34 @@ struct MatrixEntry {
   }
 };
 
-template <typename YT, typename ENTRY>
-struct YodaImpl<YT, MatrixEntry<ENTRY>> {
-  static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef MatrixEntry<ENTRY> YET;  // "Yoda entry type".
+template <typename YET, typename SUBMAP, typename SUBKEY>
+struct InnerMapAccessor final {
+  using T_SUBMAP = SUBMAP;
+  const T_SUBMAP& map_;
+  explicit InnerMapAccessor(const T_SUBMAP& map) : map_(map) {}
+  InnerMapAccessor(InnerMapAccessor&&) = default;
+  struct Iterator final {
+    typedef decltype(std::declval<T_SUBMAP>().cbegin()) T_ITERATOR;
+    T_ITERATOR iterator;
+    explicit Iterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
+    void operator++() { ++iterator; }
+    bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    const typename YET::T_ENTRY& operator*() const { return *iterator->second; }
+    const typename YET::T_ENTRY* operator->() const { return iterator->second; }
+  };
 
-  YodaImpl() = delete;
-  explicit YodaImpl(typename YT::T_MQ& mq) : mq_(mq) {}
-
-  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_COL>);
-
- private:
-  typename YT::T_MQ& mq_;
+  const typename YET::T_ENTRY& operator[](bricks::copy_free<SUBKEY> subkey) {
+    const auto cit = map_.find(subkey);
+    if (cit != map_.end()) {
+      return *cit->second;
+    } else {
+      throw typename YET::T_SUBSCRIPT_EXCEPTION();
+    }
+  }
+  Iterator begin() const { return Iterator(map_.cbegin()); }
+  Iterator end() const { return Iterator(map_.cend()); }
+  size_t size() const { return map_.size(); }
 };
 
 template <typename YT, typename ENTRY>
@@ -93,6 +108,13 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
   template <typename T>
   using CF = bricks::copy_free<T>;
+
+  YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
+  YET operator()(type_inference::template YETFromK<std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
+  YET operator()(
+      type_inference::template YETFromSubscript<std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
+  YET operator()(type_inference::template YETFromSubscript<typename YET::T_ROW>);
+  YET operator()(type_inference::template YETFromSubscript<typename YET::T_COL>);
 
   // Event: The entry has been scanned from the stream.
   void operator()(ENTRY& entry, size_t index) {
@@ -110,36 +132,67 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
     bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-      const auto rit = immutable_.forward_.find(row);
-      if (rit != immutable_.forward_.end()) {
-        return rit->second.count(col);
+      const auto key = std::make_pair(row, col);
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
+        return true;
       } else {
         return false;
       }
     }
 
     const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-      const auto rit = immutable_.forward_.find(row);
-      if (rit != immutable_.forward_.end()) {
-        const auto cit = rit->second.find(col);
-        if (cit != rit->second.end()) {
-          return EntryWrapper<typename YET::T_ENTRY>(cit->second);
-        }
+      const auto key = std::make_pair(row, col);
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
+        return EntryWrapper<typename YET::T_ENTRY>(cit->second->entry);
+      } else {
+        return EntryWrapper<typename YET::T_ENTRY>();
       }
-      return EntryWrapper<typename YET::T_ENTRY>();
     }
 
-    /*
-        // `operator[key]` returns entry with the corresponding key and throws, if it's not found.
-        const ENTRY& operator[](const copy_free<typename YET::T_KEY> key) const {
-          const auto cit = immutable_.map_.find(key);
-          if (cit != immutable_.map_.end()) {
-            return cit->second;
-          } else {
-            throw typename YET::T_KEY_NOT_FOUND_EXCEPTION(key);
-          }
-        }
-    */
+    const EntryWrapper<ENTRY> Get(
+        const std::tuple<CF<typename YET::T_ROW>, CF<typename YET::T_COL>>& key_as_tuple) const {
+      return Get(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
+    }
+
+    // Throwing getter.
+    const ENTRY& operator[](
+        const std::tuple<CF<typename YET::T_ROW>, CF<typename YET::T_COL>>& key_as_tuple) const {
+      const auto key = std::make_pair(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
+      const auto cit = immutable_.map_.find(key);
+      if (cit != immutable_.map_.end()) {
+        return cit->second->entry;
+      } else {
+        throw typename YET::T_CELL_NOT_FOUND_EXCEPTION(key.first, key.second);
+      }
+    }
+
+    // TODO(dk+mz): Should per-row / per-col getters throw right away when row/col is not present?
+    // TODO(dk+mz): Add `Has(...)` here and for `Dictionary`?
+    InnerMapAccessor<YET, T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>, typename YET::T_COL>
+    operator[](CF<typename YET::T_ROW> row) const {
+      const auto submap_cit = immutable_.forward_.find(row);
+      if (submap_cit != immutable_.forward_.end()) {
+        return InnerMapAccessor<YET,
+                                T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
+                                typename YET::T_COL>(submap_cit->second);
+      } else {
+        throw typename YET::T_SUBSCRIPT_EXCEPTION();
+      }
+    }
+
+    InnerMapAccessor<YET, T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>, typename YET::T_ROW>
+    operator[](CF<typename YET::T_COL> col) const {
+      const auto submap_cit = immutable_.transposed_.find(col);
+      if (submap_cit != immutable_.transposed_.end()) {
+        return InnerMapAccessor<YET,
+                                T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
+                                typename YET::T_ROW>(submap_cit->second);
+      } else {
+        throw typename YET::T_SUBSCRIPT_EXCEPTION();
+      }
+    }
 
    private:
     const Container<YT, YET>& immutable_;
@@ -159,22 +212,29 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       mutable_.forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
     }
+    void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
+
+    // Throwing adder.
+    Mutator& operator<<(const ENTRY& entry) {
+      const auto key = std::make_pair(GetRow(entry), GetCol(entry));
+      if (mutable_.map_.count(key)) {
+        throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(entry), GetCol(entry));
+      } else {
+        Add(entry);
+        return *this;
+      }
+    }
 
    private:
     Container<YT, YET>& mutable_;
     typename YT::T_STREAM_TYPE& stream_;
   };
 
-  Accessor operator()(container_data::RetrieveAccessor<YET>) const { return Accessor(*this); }
+  Accessor operator()(type_inference::RetrieveAccessor<YET>) const { return Accessor(*this); }
 
-  Mutator operator()(container_data::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
+  Mutator operator()(type_inference::RetrieveMutator<YET>, typename YT::T_STREAM_TYPE& stream) {
     return Mutator(*this, std::ref(stream));
   }
-
-  // TODO(dkorolev): This is duplication. We certainly don't need it.
-  YET operator()(apicalls::template ExtractYETFromE<typename YET::T_ENTRY>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_ROW>);
-  YET operator()(apicalls::template ExtractYETFromK<typename YET::T_COL>);
 
  private:
   T_MAP_TYPE<std::pair<typename YET::T_ROW, typename YET::T_COL>,
@@ -185,4 +245,4 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
 }  // namespace yoda
 
-#endif  // SHERLOCK_YODA_API_MATRIX_H
+#endif  // SHERLOCK_YODA_CONTAINER_MATRIX_API_H

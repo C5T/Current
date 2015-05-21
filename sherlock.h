@@ -299,28 +299,26 @@ class StreamInstanceImpl {
 
   // `Publish()` and `Emplace()` return the index of the added entry.
   size_t Publish(const T& entry) {
-    return data_.MutableUse([&entry](std::vector<T>& data) {
-      const size_t index = data.size();
-      data.emplace_back(entry);
-      return index;
-    });
+    auto accesor = data_.MutableScopedAccessor();
+    const size_t index = accesor->size();
+    accesor->emplace_back(entry);
+    return index;
   }
 
   size_t Publish(T&& entry) {
-    return data_.MutableUse([&entry](std::vector<T>& data) {
-      const size_t index = data.size();
-      data.emplace_back(std::move(entry));
-      return index;
-    });
+    auto accesor = data_.MutableScopedAccessor();
+    const size_t index = accesor->size();
+    accesor->emplace_back(std::move(entry));
+    return index;
   }
 
   template <typename... ARGS>
   size_t Emplace(const ARGS&... entry_params) {
     // TODO(dkorolev): Am I not doing this C++11 thing right, or is it not yet supported?
     // data_.MutableUse([&entry_params](std::vector<T>& data) { data.emplace_back(entry_params...); });
-    auto scope = data_.MutableScopedAccessor();
-    const size_t index = scope->size();
-    scope->emplace_back(entry_params...);
+    auto accesor = data_.MutableScopedAccessor();
+    const size_t index = accesor->size();
+    accesor->emplace_back(entry_params...);
     return index;
   }
 
