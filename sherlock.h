@@ -25,8 +25,6 @@ SOFTWARE.
 #ifndef SHERLOCK_H
 #define SHERLOCK_H
 
-#define BRICKS_MOCK_TIME
-
 #include "../Bricks/port.h"
 
 #include <vector>
