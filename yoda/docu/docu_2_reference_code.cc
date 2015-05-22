@@ -105,15 +105,47 @@ using bricks::strings::FromString;
     }
   };
   CEREAL_REGISTER_TYPE(PrimeCell);
-    
+  
+  // A more complex case of the using a non-POD type for the key.
+  struct StringIntTuple : Padawan {
+    std::string key;
+    int value;
+    StringIntTuple(const std::string& key = "", int value = 0) : key(key), value(value) {}
+    template <typename A>
+    void serialize(A& ar) {
+      Padawan::serialize(ar);
+      ar(CEREAL_NVP(key), CEREAL_NVP(value));
+    }
+  };
+  CEREAL_REGISTER_TYPE(StringIntTuple);
+  
 TEST(YodaDocu, Test) {
 const int port = FLAGS_yoda_docu_test_port;
 bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef API<Dictionary<Prime>, MatrixEntry<PrimeCell>> PrimesAPI;
+  typedef API<Dictionary<StringIntTuple>,
+              Dictionary<Prime>,
+              MatrixEntry<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
+  
+  // Simple dictionary usecase, and a unit test for type system implementation.
+  api.Add(StringIntTuple("two", 2));
+  api.Add(static_cast<const StringIntTuple&>(StringIntTuple("three", 3)));
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    data.Add(StringIntTuple("five", 5));
+    data.Add(static_cast<const StringIntTuple&>(
+      StringIntTuple("seven", 7)));
+    EXPECT_EQ(3, static_cast<StringIntTuple>(
+      data.Get(std::string("three"))).value);
+    EXPECT_EQ(5, static_cast<StringIntTuple>(
+      data.Get(static_cast<const std::string&>(std::string("five")))).value);
+  });
+  EXPECT_EQ(2, static_cast<StringIntTuple>(
+    api.Get(std::string("two")).Go()).value);
+  EXPECT_EQ(7, static_cast<StringIntTuple>(
+    api.Get(static_cast<const std::string&>(std::string("seven"))).Go()).value);
   
   // `2` is the first prime.
   // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
@@ -454,7 +486,7 @@ HTTP(port).ResetAllHandlers();
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"Prime\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"prime\":2,\"index\":1}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"key\":\"two\",\"value\":2}}}}\n",
 #else
     "... JSON represenation of the first entry ...",
 #endif

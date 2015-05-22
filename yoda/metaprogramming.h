@@ -289,19 +289,25 @@ template <typename YT>
 struct APICalls {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
-  template <typename DATA, typename YET, typename E>
+  // `TopLevelAdd` accepts an undecayed type.
+  // It itself makes a copy of the entry to add, and passing in a non-decayed type
+  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
+  template <typename DATA, typename YET, typename UNDECAYED_ENTRY>
   struct TopLevelAdd {
-    const E entry;
-    TopLevelAdd(E&& entry) : entry(std::move(entry)) {}
+    const bricks::rmconstref<UNDECAYED_ENTRY> entry;
+    TopLevelAdd(UNDECAYED_ENTRY&& entry) : entry(std::forward<UNDECAYED_ENTRY>(entry)) {}
     void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
   };
 
-  template <typename DATA, typename YET, typename K>
+  // `TopLevelGet` accepts an undecayed type.
+  // It itself makes a copy of the key to query, and passing in a non-decayed type
+  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
+  template <typename DATA, typename YET, typename UNDECAYED_KEY>
   struct TopLevelGet {
-    const K key;
-    TopLevelGet(K&& key) : key(std::move(key)) {}
-    typedef decltype(
-        std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(std::declval<K>())) T_RETVAL;
+    const bricks::rmconstref<UNDECAYED_KEY> key;
+    TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
+    typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
+        std::declval<bricks::rmconstref<UNDECAYED_KEY>>())) T_RETVAL;
     T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
   };
 
@@ -374,21 +380,23 @@ struct APICalls {
   }
 
   // Helper method to wrap `Add()` into `Transaction()`.
-  template <typename ENTRY>
-  Future<void> Add(ENTRY&& entry) {
-    typedef bricks::rmconstref<ENTRY> SAFE_ENTRY;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<SAFE_ENTRY>> YET;
-    return Transaction(TopLevelAdd<YodaData<YT>, YET, SAFE_ENTRY>(std::forward<ENTRY>(entry)));
+  // Note: `TopLevelAdd` accepts an undecayed type. 
+  // This is required to correctly handle both by-value and by-reference parameter types.
+  template <typename UNDECAYED_ENTRY>
+  Future<void> Add(UNDECAYED_ENTRY&& entry) {
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<bricks::rmconstref<UNDECAYED_ENTRY>>> YET;
+    return Transaction(TopLevelAdd<YodaData<YT>, YET, UNDECAYED_ENTRY>(std::forward<UNDECAYED_ENTRY>(entry)));
   }
 
   // Helper method to wrap `Get()` into `Transaction()`. With one and with more than one parameter.
-  template <typename KEY>
-  Future<
-      EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<KEY>>>::T_ENTRY>>
-  Get(KEY&& key) {
-    typedef bricks::rmconstref<KEY> SAFE_KEY;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)));
+  // Note: `TopLevelGet` accepts an undecayed type.
+  // This is required to correctly handle both by-value and by-reference parameter types.
+  template <typename UNDECAYED_KEY>
+  Future<EntryWrapper<
+      typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<UNDECAYED_KEY>>>::T_ENTRY>>
+  Get(UNDECAYED_KEY&& key) {
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<UNDECAYED_KEY>>> YET;
+    return Transaction(TopLevelGet<YodaData<YT>, YET, UNDECAYED_KEY>(std::forward<UNDECAYED_KEY>(key)));
   }
 
   template <typename KEY, typename... KEYS>
@@ -410,7 +418,8 @@ struct APICalls {
   Future<void> GetWithNext(KEY&& key, F&& f) {
     typedef bricks::rmconstref<KEY> SAFE_KEY;
     typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<KEY>(key)), std::forward<F>(f));
+    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<SAFE_KEY>(key)),
+                       std::forward<F>(f));
   }
 
   // Because I'm nice. :-) -- D.K.
