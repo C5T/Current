@@ -4,7 +4,15 @@ core
 *.h.gch
 .exrc
 
+*/*~
+*/*.o
+*/*.a
+*/a.out
+
 *.swp
+*~
+**/*.swp
+**/*~
 
 coverage.info
 *.gcov
