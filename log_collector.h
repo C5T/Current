@@ -29,9 +29,9 @@ SOFTWARE.
 #include <map>
 #include <ostream>
 
-#include "../Bricks/net/api/api.h"
-#include "../Bricks/time/chrono.h"
-#include "../Bricks/cerealize/cerealize.h"
+#include "../../Current/Bricks/net/api/api.h"
+#include "../../Current/Bricks/time/chrono.h"
+#include "../../Current/Bricks/cerealize/cerealize.h"
 
 // An entry to log. Keeps everything that is easy to dig out. :-)
 struct LogEntry {

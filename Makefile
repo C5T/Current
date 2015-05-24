@@ -1,1 +1,1 @@
-../Bricks/KnowSheet/scripts/Makefile
+../../Current/Bricks/KnowSheet/scripts/Makefile
