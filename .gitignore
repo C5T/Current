@@ -12,12 +12,12 @@ coverage.info
 *.gcno
 
 # Just `.gitignore`-ing full paths does not work; this syntax seems to do it -- D.K.
-everything
-zzz_full_test/everything
-coverage
-zzz_full_test/coverage
-zzz_full_test/coverage0.info  # A temporary file, appears for a while during `make`, ignore to be safe.
-zzz_full_test/everything.dSYM
+Bricks/everything
+Bricks/zzz_full_test/everything
+Bricks/coverage
+Bricks/zzz_full_test/coverage
+Bricks/zzz_full_test/coverage0.info  # A temporary file, appears for a while during `make`, ignore to be safe.
+Bricks/zzz_full_test/everything.dSYM
 
 # Microsoft Visual Studio files.
 *.suo
