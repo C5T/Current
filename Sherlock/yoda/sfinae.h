@@ -26,6 +26,9 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_SFINAE_H
 #define SHERLOCK_YODA_SFINAE_H
 
+#include <functional>
+#include <map>
+#include <unordered_map>
 #include <utility>
 
 namespace yoda {
