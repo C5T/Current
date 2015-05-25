@@ -109,7 +109,7 @@ struct FileSystem {
     assert(!(::tmpnam_s(buffer)));
 #elif defined(BRICKS_APPLE)
     // TODO(dkorolev): Fix temporary file names generation.
-    return strings::Printf("/tmp/.noshit-%08x", rand());
+    return strings::Printf("/tmp/.current-tmp-%08x", rand());
 #else
     assert(buffer == ::tmpnam(buffer));
 #endif

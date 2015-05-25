@@ -4,10 +4,10 @@ default:
 	(cd url; make default) && (cd tcp; make default) && (cd http; make default) && (cd api; make default) && echo "ALL TESTS PASS"
 
 indent:
-	../KnowSheet/scripts/indent.sh
+	../../scripts/indent.sh
 
 clean:
-	rm -rf build .noshit
+	rm -rf build .current
 	(cd url; make clean) && (cd tcp; make clean) && (cd http; make clean) && (cd api; make clean)
 
 check:

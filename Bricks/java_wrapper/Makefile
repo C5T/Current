@@ -6,4 +6,4 @@ all:
 check:
 
 clean:
-	rm -rf .noshit
+	rm -rf .current

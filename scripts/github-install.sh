@@ -15,7 +15,7 @@ GITHUB_REPO_DASH_BRANCH="${GITHUB_REPO}-${GITHUB_BRANCH}"
 URL="https://github.com/${GITHUB_USER}/${GITHUB_REPO}/archive/${GITHUB_BRANCH}.tar.gz"
 
 # A temporary directory, expected to be .gitignore-d.
-TMP_DIR_NAME=".noshit"
+TMP_DIR_NAME=".current"
 
 (
   mkdir -p "$TMP_DIR_NAME"

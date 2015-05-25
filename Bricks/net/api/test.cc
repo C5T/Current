@@ -75,7 +75,7 @@ DEFINE_int32(net_api_test_port,
              "Local port to use for the test API-based HTTP server. NOTE: This port should be different from "
              "ports in other network-based tests, since API-driven HTTP server will hold it open for the whole "
              "lifetime of the binary.");
-DEFINE_string(net_api_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
+DEFINE_string(net_api_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 struct HTTPAPITestObject {
   int number;

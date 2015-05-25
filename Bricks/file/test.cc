@@ -36,7 +36,7 @@ using bricks::FileException;
 using bricks::DirDoesNotExistException;
 using bricks::PathIsNotADirectoryException;
 
-DEFINE_string(file_test_tmpdir, ".noshit", "Local path for the test to create temporary files in.");
+DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 TEST(File, JoinPath) {
 #ifndef BRICKS_WINDOWS

@@ -23,7 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // Just `make` will run the test.
-// Invoke with `./.noshit/test --run=1` to spawn on `localhost:3000`.
+// Invoke with `./.current/test --run=1` to spawn on `localhost:3000`.
 //
 // More info:
 // * http://en.wikipedia.org/wiki/Iris_flower_data_set

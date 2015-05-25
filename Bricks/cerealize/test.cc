@@ -59,7 +59,7 @@ using namespace cerealize;
 
 using strings::Printf;
 
-DEFINE_string(cerealize_test_tmpdir, ".noshit", "The directory to create temporary files in.");
+DEFINE_string(cerealize_test_tmpdir, ".current", "The directory to create temporary files in.");
 
 // TODO(dkorolev): Move this helper into 3party/gtest/ ?
 static std::string CurrentTestName() {

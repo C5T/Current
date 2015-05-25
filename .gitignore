@@ -1,4 +1,5 @@
 .noshit
+.current
 
 core
 *.h.gch
@@ -11,6 +12,7 @@ core
 a.out
 
 # Coverage report.
+coverage
 coverage0.info
 coverage.info
 *.gcov
