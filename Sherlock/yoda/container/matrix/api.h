@@ -71,11 +71,14 @@ struct MatrixEntry {
   }
 };
 
-template <typename YET, typename SUBMAP, typename SUBKEY>
-struct InnerMapAccessor final {
+// `OUTER_KEY` and `INNER_KEY` are { T_ROW, T_COL } or { T_COL, T_ROW }, depending
+// on whether it's `forward_` or `transposed_` that is being traversed.
+template <typename YET, typename OUTER_KEY, typename SUBMAP, typename INNER_KEY>
+class InnerMapAccessor final {
+ public:
   using T_SUBMAP = SUBMAP;
-  const T_SUBMAP& map_;
-  explicit InnerMapAccessor(const T_SUBMAP& map) : map_(map) {}
+
+  InnerMapAccessor(bricks::copy_free<OUTER_KEY> key, const T_SUBMAP& map) : key_(key), map_(map) {}
   InnerMapAccessor(InnerMapAccessor&&) = default;
   struct Iterator final {
     typedef decltype(std::declval<T_SUBMAP>().cbegin()) T_ITERATOR;
@@ -84,11 +87,12 @@ struct InnerMapAccessor final {
     void operator++() { ++iterator; }
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    bricks::copy_free<INNER_KEY> key() const { return iterator->first; }
     const typename YET::T_ENTRY& operator*() const { return *iterator->second; }
     const typename YET::T_ENTRY* operator->() const { return iterator->second; }
   };
 
-  const typename YET::T_ENTRY& operator[](bricks::copy_free<SUBKEY> subkey) {
+  const typename YET::T_ENTRY& operator[](bricks::copy_free<INNER_KEY> subkey) const {
     const auto cit = map_.find(subkey);
     if (cit != map_.end()) {
       return *cit->second;
@@ -96,9 +100,57 @@ struct InnerMapAccessor final {
       throw typename YET::T_SUBSCRIPT_EXCEPTION();
     }
   }
+
+  const bricks::copy_free<OUTER_KEY> key() const { return key_; }
+  size_t size() const { return map_.size(); }
+  bool empty() const { return map_.empty(); }
   Iterator begin() const { return Iterator(map_.cbegin()); }
   Iterator end() const { return Iterator(map_.cend()); }
-  size_t size() const { return map_.size(); }
+
+ private:
+  const bricks::copy_free<OUTER_KEY> key_;
+  const T_SUBMAP& map_;
+};
+
+// `OUTER_KEY` and `INNER_KEY` are { T_ROW, T_COL } or { T_COL, T_ROW }, depending
+// on whether it's `forward_` or `transposed_` that is being traversed.
+template <typename YET, typename OUTER_KEY, typename INNER_KEY>
+class OuterMapAccessor final {
+ public:
+  using T_INNER_MAP = T_MAP_TYPE<INNER_KEY, const typename YET::T_ENTRY*>;
+  using T_INNER_MAP_ACCESSOR = InnerMapAccessor<YET, OUTER_KEY, T_INNER_MAP, INNER_KEY>;
+  using T_OUTER_MAP = T_MAP_TYPE<OUTER_KEY, T_INNER_MAP>;
+
+  explicit OuterMapAccessor(const T_OUTER_MAP& outer_map) : outer_map_(outer_map) {}
+  OuterMapAccessor(OuterMapAccessor&&) = default;
+
+  struct OuterIterator final {
+    typedef decltype(std::declval<T_OUTER_MAP>().cbegin()) T_ITERATOR;
+    T_ITERATOR iterator;
+    explicit OuterIterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
+    void operator++() { ++iterator; }
+    bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
+    bricks::copy_free<OUTER_KEY> key() const { return iterator->first; }
+    T_INNER_MAP_ACCESSOR operator*() const { return T_INNER_MAP_ACCESSOR(iterator->first, iterator->second); }
+  };
+
+  const T_INNER_MAP_ACCESSOR operator[](bricks::copy_free<OUTER_KEY> key) const {
+    const auto cit = outer_map_.find(key);
+    if (cit != outer_map_.end()) {
+      return T_INNER_MAP_ACCESSOR(cit->first, cit->second);
+    } else {
+      throw typename YET::T_SUBSCRIPT_EXCEPTION();
+    }
+  }
+
+  size_t size() const { return outer_map_.size(); }
+  bool empty() const { return outer_map_.empty(); }
+  OuterIterator begin() const { return OuterIterator(outer_map_.cbegin()); }
+  OuterIterator end() const { return OuterIterator(outer_map_.cend()); }
+
+ private:
+  const T_OUTER_MAP& outer_map_;
 };
 
 template <typename YT, typename ENTRY>
@@ -170,28 +222,44 @@ struct Container<YT, MatrixEntry<ENTRY>> {
 
     // TODO(dk+mz): Should per-row / per-col getters throw right away when row/col is not present?
     // TODO(dk+mz): Add `Has(...)` here and for `Dictionary`?
-    InnerMapAccessor<YET, T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>, typename YET::T_COL>
+    InnerMapAccessor<YET,
+                     typename YET::T_ROW,
+                     T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
+                     typename YET::T_COL>
     operator[](CF<typename YET::T_ROW> row) const {
       const auto submap_cit = immutable_.forward_.find(row);
       if (submap_cit != immutable_.forward_.end()) {
         return InnerMapAccessor<YET,
+                                typename YET::T_ROW,
                                 T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
-                                typename YET::T_COL>(submap_cit->second);
+                                typename YET::T_COL>(submap_cit->first, submap_cit->second);
       } else {
         throw typename YET::T_SUBSCRIPT_EXCEPTION();
       }
     }
 
-    InnerMapAccessor<YET, T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>, typename YET::T_ROW>
+    InnerMapAccessor<YET,
+                     typename YET::T_COL,
+                     T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
+                     typename YET::T_ROW>
     operator[](CF<typename YET::T_COL> col) const {
       const auto submap_cit = immutable_.transposed_.find(col);
       if (submap_cit != immutable_.transposed_.end()) {
         return InnerMapAccessor<YET,
+                                typename YET::T_COL,
                                 T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
-                                typename YET::T_ROW>(submap_cit->second);
+                                typename YET::T_ROW>(submap_cit->first, submap_cit->second);
       } else {
         throw typename YET::T_SUBSCRIPT_EXCEPTION();
       }
+    }
+
+    OuterMapAccessor<YET, typename YET::T_ROW, typename YET::T_COL> Rows() const {
+      return OuterMapAccessor<YET, typename YET::T_ROW, typename YET::T_COL>(immutable_.forward_);
+    }
+
+    OuterMapAccessor<YET, typename YET::T_COL, typename YET::T_ROW> Cols() const {
+      return OuterMapAccessor<YET, typename YET::T_COL, typename YET::T_ROW>(immutable_.transposed_);
     }
 
    private:
