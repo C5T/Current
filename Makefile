@@ -1,1 +1,0 @@
-../../Current/Bricks/KnowSheet/scripts/Makefile
