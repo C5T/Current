@@ -4,28 +4,22 @@ core
 *.h.gch
 .exrc
 
-*/*~
-*/*.o
-*/*.a
-*/a.out
-
-*.swp
 *~
-**/*.swp
-**/*~
+*.o
+*.a
+*.swp
+a.out
 
+# Coverage report.
+coverage0.info
 coverage.info
 *.gcov
 *.gcda
 *.gcno
 
-# Just `.gitignore`-ing full paths does not work; this syntax seems to do it -- D.K.
-Bricks/everything
-Bricks/zzz_full_test/everything
-Bricks/coverage
-Bricks/zzz_full_test/coverage
-Bricks/zzz_full_test/coverage0.info  # A temporary file, appears for a while during `make`, ignore to be safe.
-Bricks/zzz_full_test/everything.dSYM
+# Bricks.
+Bricks/**/everything
+Bricks/**/everything.dSYM
 
 # Microsoft Visual Studio files.
 *.suo
