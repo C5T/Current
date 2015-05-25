@@ -375,6 +375,70 @@ EXPECT_EQ("7,17,37,47,67,97",
             }
             return os.str().substr(1);
           }).Go());
+
+// Top-level per-row and per-columb accessors.
+api.Transaction([](PrimesAPI::T_DATA data) {
+  const auto accessor = MatrixEntry<PrimeCell>::Accessor(data);
+  EXPECT_EQ(10u, accessor.Rows().size());
+  EXPECT_EQ(6u, accessor.Cols().size());  // 2, 3, 5, 7 or 9, my captain.
+  std::string by_rows_keys;
+  std::string by_rows_values;
+  for (const auto cit : accessor.Rows()) {
+    by_rows_keys += Printf("[`%d`:%d]",
+                           static_cast<int>(cit.key()),
+                           static_cast<int>(cit.size()));
+    by_rows_values += "[";
+    bool first = true;
+    for (const auto cit2 : cit) {
+      by_rows_values += Printf("%s%d", first ? "" : ",", cit2.index);
+      first = false;
+    }
+    by_rows_values += "]";
+  }
+  EXPECT_EQ(
+    "[`0`:4][`1`:4][`2`:2][`3`:2][`4`:3]"
+    "[`5`:2][`6`:2][`7`:3][`8`:2][`9`:1]",
+    by_rows_keys);
+  EXPECT_EQ(
+    "[1,2,3,4][5,6,7,8][9,10][11,12][13,14,15]"
+    "[16,17][18,19][20,21,22][23,24][25]",
+     by_rows_values);
+
+  std::string by_cols_keys;
+  std::string by_cols_values;
+  for (const auto cit : accessor.Cols()) {
+    by_cols_keys += Printf("(`%d`:%d)",
+                           static_cast<int>(cit.key()),
+                           static_cast<int>(cit.size()));
+    by_cols_values += "(";
+    bool first = true;
+    for (const auto cit2 : cit) {
+      by_cols_values += Printf("%s%d", first ? "" : ",", cit2.index);
+      first = false;
+    }
+    by_cols_values += ")";
+  }
+  EXPECT_EQ("(`1`:5)(`2`:1)(`3`:7)(`5`:1)(`7`:6)(`9`:5)",
+            by_cols_keys);
+  EXPECT_EQ("(5,11,13,18,20)(1)(2,6,9,14,16,21,23)"
+            "(3)(4,7,12,15,19,25)(8,10,17,22,24)",
+            by_cols_values);
+  
+  const auto first_digit_one = static_cast<FIRST_DIGIT>(1);
+  const auto second_digit_three = static_cast<SECOND_DIGIT>(3);
+  const auto first_digit_off = static_cast<FIRST_DIGIT>(100);
+  const auto second_digit_off = static_cast<SECOND_DIGIT>(100);
+  EXPECT_EQ(6, accessor.Rows()[first_digit_one][second_digit_three].index);
+  EXPECT_EQ(6, accessor.Cols()[second_digit_three][first_digit_one].index);
+  ASSERT_THROW(accessor.Rows()[first_digit_off],
+               SubscriptException<PrimeCell>);
+  ASSERT_THROW(accessor.Rows()[first_digit_one][second_digit_off],
+               SubscriptException<PrimeCell>);
+  ASSERT_THROW(accessor.Cols()[second_digit_off],
+               SubscriptException<PrimeCell>);
+  ASSERT_THROW(accessor.Cols()[second_digit_three][first_digit_off],
+               SubscriptException<PrimeCell>);
+}).Go();
  
 // Confirm that the send parameter callback is `std::move()`-d
 // into the processing thread.
