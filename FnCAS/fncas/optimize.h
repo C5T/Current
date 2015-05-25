@@ -28,8 +28,12 @@ SOFTWARE.
 
 #include <algorithm>
 #include <numeric>
+#include <map>
 #include <string>
 
+#include "base.h"
+#include "differentiate.h"
+#include "node.h"
 #include "mathutil.h"
 
 namespace fncas {

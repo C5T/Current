@@ -26,6 +26,8 @@
 #ifndef FNCAS_DIFFERENTIATE_H
 #define FNCAS_DIFFERENTIATE_H
 
+#include <vector>
+
 #include "base.h"
 #include "node.h"
 
