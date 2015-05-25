@@ -18,7 +18,7 @@ fi
 # NOTE: FULL_TEST_DIR must be resolved from the current working directory.
 
 CURRENT_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
-RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/readlink.sh" "$PWD" )
+RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD" )
 
 FULL_TEST_DIR_NAME="zzz_full_test"  # The `zzz` prefix guarantees the full test directory is down the list.
 FULL_TEST_DIR_FULL_PATH="$RUN_DIR_FULL_PATH/$FULL_TEST_DIR_NAME"

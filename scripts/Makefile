@@ -11,7 +11,7 @@
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
 CURRENT_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink "$(MAKEFILE_NAME)" || echo "$(MAKEFILE_NAME)"))))
-CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/readlink.sh" "$(CURRENT_SCRIPTS_DIR)" )
+CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/fullpath.sh" "$(CURRENT_SCRIPTS_DIR)" )
 
 CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
