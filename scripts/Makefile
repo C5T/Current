@@ -9,7 +9,8 @@
 .PHONY: test all indent clean check coverage readlink
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
-CURRENT_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink $(lastword $(MAKEFILE_LIST))))))
+MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
+CURRENT_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink "$(MAKEFILE_NAME)" || echo "$(MAKEFILE_NAME)"))))
 CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/readlink.sh" "$(CURRENT_SCRIPTS_DIR)" )
 
 CPLUSPLUS?=g++
