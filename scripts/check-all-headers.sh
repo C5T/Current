@@ -7,8 +7,8 @@
 set -u -e
 
 CURRENT_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
-CURRENT_SCRIPTS_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/readlink.sh" "$CURRENT_SCRIPTS_DIR" )
-RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/readlink.sh" "$PWD" )
+CURRENT_SCRIPTS_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$CURRENT_SCRIPTS_DIR" )
+RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD" )
 
 echo -e "\033[1m\033[34mTesting all headers to comply with the header-only paradigm.\033[0m"
 

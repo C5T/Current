@@ -38,9 +38,7 @@
 
 #include "base.h"
 
-#ifndef BRICKS_HAS_THREAD_LOCAL
-#include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
-#endif
+#include "../../Bricks/util/singleton.h"
 
 // Admittedly, `sqr()` is kind of helpful in machine learning. -- D.K.
 inline fncas::fncas_value_type sqr(fncas::fncas_value_type x) { return x * x; }
@@ -114,52 +112,9 @@ struct internals_impl {
   }
 };
 
-#ifdef BRICKS_HAS_THREAD_LOCAL
-
 inline internals_impl& internals_singleton() {
-  thread_local static internals_impl storage;
-  return storage;
+  return bricks::ThreadLocalSingleton<internals_impl>();
 }
-
-#else
-
-// Need to emulate `thread_local` on architectures that don't support it,
-// like a poorly configured MacOS.
-
-inline pthread_key_t& per_thread_internals_pthread_key_t_static_storage() {
-  static pthread_key_t key;
-  return key;
-}
-
-inline void internals_impl_deleter(void* ptr) { delete reinterpret_cast<internals_impl*>(ptr); }
-
-inline void per_thread_internals_pthread_key_create_caller() {
-  if (pthread_key_create(&(per_thread_internals_pthread_key_t_static_storage()), internals_impl_deleter)) {
-    std::cerr << "Error in `pthread_key_create()`. Terminating." << std::endl;
-    exit(-1);
-  }
-}
-
-inline pthread_key_t& per_thread_internals_pthread_key_t() {
-  static pthread_once_t key_is_initialized = PTHREAD_ONCE_INIT;
-  if (pthread_once(&key_is_initialized, per_thread_internals_pthread_key_create_caller)) {
-    std::cerr << "Error in `pthread_once()`. Terminating." << std::endl;
-    exit(-1);
-  }
-  return per_thread_internals_pthread_key_t_static_storage();
-}
-
-inline internals_impl& internals_singleton() {
-  pthread_key_t& key = per_thread_internals_pthread_key_t();
-  internals_impl* ptr = reinterpret_cast<internals_impl*>(pthread_getspecific(key));
-  if (!ptr) {
-    ptr = new internals_impl();
-    pthread_setspecific(key, ptr);
-  }
-  return *ptr;
-}
-
-#endif
 
 inline std::vector<node_impl>& node_vector_singleton() { return internals_singleton().node_vector_; }
 

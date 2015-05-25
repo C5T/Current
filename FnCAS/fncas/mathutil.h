@@ -27,8 +27,10 @@
 #define FNCAS_MATHUTIL_H
 
 #include <cassert>
-#include <vector>
+#include <cmath>
+#include <functional>
 #include <numeric>
+#include <vector>
 
 namespace fncas {
 

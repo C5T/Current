@@ -3,7 +3,7 @@
 .PHONY: default docu docu_impl README.md test all clean check indent wc
 
 CURRENT_SCRIPTS_DIR := ../scripts
-CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/readlink.sh" "$(CURRENT_SCRIPTS_DIR)" )
+CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/fullpath.sh" "$(CURRENT_SCRIPTS_DIR)" )
 
 default: test docu_impl
 

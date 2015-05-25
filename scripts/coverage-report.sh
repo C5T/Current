@@ -10,7 +10,7 @@ LDFLAGS="-pthread"
 # NOTE: TMP_DIR must be resolved from the current working directory.
 
 CURRENT_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
-RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/readlink.sh" "$PWD" )
+RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD" )
 
 TMP_DIR_NAME=".current"
 TMP_DIR_FULL_PATH="$RUN_DIR_FULL_PATH/.current"
