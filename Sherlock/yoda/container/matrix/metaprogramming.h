@@ -45,7 +45,7 @@ constexpr bool HasRowFunction(char) {
 }
 
 template <typename T_ENTRY>
-constexpr auto HasRowFunction(int) -> decltype(std::declval<T_ENTRY>().row(), bool()) {
+constexpr auto HasRowFunction(int) -> decltype(std::declval<const T_ENTRY>().row(), bool()) {
   return true;
 }
 
@@ -89,7 +89,7 @@ constexpr bool HasColFunction(char) {
 }
 
 template <typename T_ENTRY>
-constexpr auto HasColFunction(int) -> decltype(std::declval<T_ENTRY>().col(), bool()) {
+constexpr auto HasColFunction(int) -> decltype(std::declval<const T_ENTRY>().col(), bool()) {
   return true;
 }
 

@@ -44,7 +44,7 @@ constexpr bool HasKeyMethod(char) {
 }
 
 template <typename T_ENTRY>
-constexpr auto HasKeyMethod(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
+constexpr auto HasKeyMethod(int) -> decltype(std::declval<const T_ENTRY>().key(), bool()) {
   return true;
 }
 
