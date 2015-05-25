@@ -76,13 +76,6 @@ TEST(LogCollector, Body) {
   EXPECT_EQ("Yay!", ParseJSON<LogEntry>(os.str()).b);
 }
 
-TEST(LogCollector, URLFragment) {
-  std::ostringstream os;
-  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os, "/baz", "Y");
-  EXPECT_EQ("Y", HTTP(GET(Printf("http://localhost:%d/baz#meh", FLAGS_log_collector_test_port))).body);
-  EXPECT_EQ("meh", ParseJSON<LogEntry>(os.str()).f);
-}
-
 // TODO(dkorolev): Add extra headers support into `net/api/types.h`. And test them on Mac.
 #if 0
 TEST(LogCollector, ExtraHeaders) {
