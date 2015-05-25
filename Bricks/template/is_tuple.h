@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_IS_TUPLE_H
 #define BRICKS_TEMPLATE_IS_TUPLE_H
 
+#include <string>
 #include <tuple>
 
 namespace bricks {

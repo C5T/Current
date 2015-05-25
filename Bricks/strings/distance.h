@@ -25,8 +25,9 @@ SOFTWARE.
 #ifndef BRICKS_STRINGS_DISTANCE_H
 #define BRICKS_STRINGS_DISTANCE_H
 
-#include <vector>
 #include <algorithm>
+#include <string>
+#include <vector>
 
 namespace bricks {
 namespace strings {
