@@ -55,15 +55,16 @@ struct ROW_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().row) T_ROW;
-  static typename bricks::copy_free<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row; }
-  static void SetRow(T_ENTRY& entry, T_ROW row) { entry.row = row; }
+  static bricks::copy_free<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row; }
+  static void SetRow(T_ENTRY& entry, bricks::copy_free<T_ROW> row) { entry.row = row; }
 };
 
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().row()) T_ROW;
-  static typename bricks::copy_free<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row(); }
-  static void SetRow(T_ENTRY& entry, T_ROW row) { entry.set_row(row); }
+  // Can not return a reference to a temporary.
+  static const T_ROW GetRow(const T_ENTRY& entry) { return entry.row(); }
+  static void SetRow(T_ENTRY& entry, bricks::copy_free<T_ROW> row) { entry.set_row(row); }
 };
 
 template <typename T_ENTRY>
@@ -78,7 +79,7 @@ template <typename T_ENTRY>
 using ENTRY_ROW_TYPE = bricks::rmconstref<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
 
 template <typename T_ENTRY>
-void SetRow(T_ENTRY& entry, ENTRY_ROW_TYPE<T_ENTRY> row) {
+void SetRow(T_ENTRY& entry, bricks::copy_free<ENTRY_ROW_TYPE<T_ENTRY>> row) {
   ROW_ACCESSOR<T_ENTRY>::SetRow(entry, row);
 }
 
@@ -88,7 +89,7 @@ constexpr bool HasColFunction(char) {
 }
 
 template <typename T_ENTRY>
-constexpr auto HasColFunction(int) -> decltype(std::declval<T_ENTRY>().key(), bool()) {
+constexpr auto HasColFunction(int) -> decltype(std::declval<T_ENTRY>().col(), bool()) {
   return true;
 }
 
@@ -98,15 +99,16 @@ struct COL_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().col) T_COL;
-  static typename bricks::copy_free<T_COL> GetCol(const T_ENTRY& entry) { return entry.col; }
+  static bricks::copy_free<T_COL> GetCol(const T_ENTRY& entry) { return entry.col; }
   static void SetCol(T_ENTRY& entry, T_COL col) { entry.col = col; }
 };
 
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().col()) T_COL;
-  static typename bricks::copy_free<T_COL> GetCol(const T_ENTRY& entry) { return entry.col(); }
-  static void SetCol(T_ENTRY& entry, T_COL col) { entry.set_col(col); }
+  // Can not return a reference to a temporary.
+  static const T_COL GetCol(const T_ENTRY& entry) { return entry.col(); }
+  static void SetCol(T_ENTRY& entry, bricks::copy_free<T_COL> col) { entry.set_col(col); }
 };
 
 template <typename T_ENTRY>
@@ -121,8 +123,8 @@ template <typename T_ENTRY>
 using ENTRY_COL_TYPE = bricks::rmconstref<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
 
 template <typename T_ENTRY>
-void SetCol(T_ENTRY& entry, ENTRY_COL_TYPE<T_ENTRY> key) {
-  COL_ACCESSOR<T_ENTRY>::SetCol(entry, key);
+void SetCol(T_ENTRY& entry, bricks::copy_free<ENTRY_COL_TYPE<T_ENTRY>> col) {
+  COL_ACCESSOR<T_ENTRY>::SetCol(entry, col);
 }
 
 }  // namespace sfinae
