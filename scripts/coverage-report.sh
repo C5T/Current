@@ -9,11 +9,11 @@ LDFLAGS="-pthread"
 
 # NOTE: TMP_DIR must be resolved from the current working directory.
 
-KNOWSHEET_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
-RUN_DIR_FULL_PATH=$( "$KNOWSHEET_SCRIPTS_DIR/KnowSheetReadlink.sh" "$PWD" )
+CURRENT_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
+RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/readlink.sh" "$PWD" )
 
-TMP_DIR_NAME=".noshit"
-TMP_DIR_FULL_PATH="$RUN_DIR_FULL_PATH/.noshit"
+TMP_DIR_NAME=".current"
+TMP_DIR_FULL_PATH="$RUN_DIR_FULL_PATH/.current"
 
 mkdir -p "$TMP_DIR_NAME"
 

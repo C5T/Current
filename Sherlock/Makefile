@@ -1,1 +1,1 @@
-KnowSheet/scripts/Makefile
+../scripts/Makefile
