@@ -442,7 +442,7 @@ HTTP(port).ResetAllHandlers();
               return os.str().substr(1);
             }).Go());
   
-  // Top-level per-row and per-columb accessors.
+  // Top-level per-row and per-column accessors.
   api.Transaction([](PrimesAPI::T_DATA data) {
     const auto accessor = MatrixEntry<PrimeCell>::Accessor(data);
     EXPECT_EQ(10u, accessor.Rows().size());
