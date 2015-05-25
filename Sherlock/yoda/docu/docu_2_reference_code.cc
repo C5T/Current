@@ -446,7 +446,7 @@ HTTP(port).ResetAllHandlers();
   api.Transaction([](PrimesAPI::T_DATA data) {
     const auto accessor = MatrixEntry<PrimeCell>::Accessor(data);
     EXPECT_EQ(10u, accessor.Rows().size());
-    EXPECT_EQ(6u, accessor.Cols().size());  // 2, 3, 5, 7 or 9, my captain.
+    EXPECT_EQ(6u, accessor.Cols().size());  // 1, 2, 3, 5, 7 or 9, my captain.
     std::string by_rows_keys;
     std::string by_rows_values;
     for (const auto cit : accessor.Rows()) {
