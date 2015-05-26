@@ -30,8 +30,9 @@ SOFTWARE.
 
 DEFINE_int32(port, 8686, "Port to spawn log collector on.");
 DEFINE_string(route, "/log", "The route to listen to events on.");
+DEFINE_int32(tick_interval_ms, 1000, "Maximum interval between entries.");
 
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);
-  LogCollectorHTTPServer(FLAGS_port, std::cerr, FLAGS_route).Join();
+  LogCollectorHTTPServer(FLAGS_port, std::cerr, FLAGS_route, "OK\n", FLAGS_tick_interval_ms).Join();
 }

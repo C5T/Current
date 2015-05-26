@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include <string>
 #include <sstream>
+#include <thread>
 
 #define BRICKS_MOCK_TIME  // `SetNow()`.
 
@@ -40,27 +41,37 @@ using bricks::strings::Printf;
 
 TEST(LogCollector, Smoke) {
   std::ostringstream os;
-  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os);
+  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os, "/log", "OK\n", 100);
 
-  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(1234));
+  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(12));
   const auto get_response = HTTP(GET(Printf("http://localhost:%d/log", FLAGS_log_collector_test_port)));
   EXPECT_EQ(200, static_cast<int>(get_response.code));
   EXPECT_EQ("OK\n", get_response.body);
 
-  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(5678));
+  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(112));
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(178));
   const auto post_response =
       HTTP(POST(Printf("http://localhost:%d/log", FLAGS_log_collector_test_port), "meh"));
   EXPECT_EQ(200, static_cast<int>(post_response.code));
   EXPECT_EQ("OK\n", post_response.body);
+
+  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(278));
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
   EXPECT_EQ(
-      "{\"log_entry\":{\"t\":1234,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
-      "{\"log_entry\":{\"t\":5678,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n",
+      "{\"log_entry\":{\"t\":0,\"m\":\"\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":12,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":112,\"m\":\"\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":178,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":278,\"m\":\"\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n",
       os.str());
 }
 
 TEST(LogCollector, QueryParameters) {
   std::ostringstream os;
-  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os, "/foo", "+");
+  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os, "/foo", "+", 0);
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_log_collector_test_port))).body);
   auto e = ParseJSON<LogEntry>(os.str());
@@ -71,7 +82,7 @@ TEST(LogCollector, QueryParameters) {
 
 TEST(LogCollector, Body) {
   std::ostringstream os;
-  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os, "/bar", "y");
+  LogCollectorHTTPServer collector(FLAGS_log_collector_test_port, os, "/bar", "y", 0);
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_log_collector_test_port), "Yay!")).body);
   EXPECT_EQ("Yay!", ParseJSON<LogEntry>(os.str()).b);
 }
