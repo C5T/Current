@@ -34,5 +34,7 @@ DEFINE_int32(tick_interval_ms, 1000, "Maximum interval between entries.");
 
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);
-  LogCollectorHTTPServer(FLAGS_port, std::cerr, FLAGS_route, "OK\n", FLAGS_tick_interval_ms).Join();
+  LogCollectorHTTPServer(FLAGS_port, std::cerr,
+                         static_cast<bricks::time::MILLISECONDS_INTERVAL>(FLAGS_tick_interval_ms),
+                         FLAGS_route).Join();
 }
