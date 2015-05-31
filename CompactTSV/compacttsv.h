@@ -34,6 +34,8 @@ SOFTWARE.
 #include <string>
 #include <unordered_map>
 
+#include "../Bricks/util/singleton.h"
+
 // At most 254 columns, at most 64KB per entry, at most 4B of distinct strings + metadata in total.
 // Rationale behind the number "254": 0..253 => update value for this col, 254 => row ready, 255 => new string.
 class CompactTSV {
@@ -45,9 +47,8 @@ class CompactTSV {
   }
 
   void operator()(const std::vector<std::string>& row) {
-    static const index_type row_done_marker = static_cast<index_type>(0) - 2;  // 0xfe.
-    assert(!done_);                                                            // TODO(batman): Exception.
-    assert(!row.empty());                                                      // TODO(batman): Exception.
+    assert(!done_);        // TODO(batman): Exception.
+    assert(!row.empty());  // TODO(batman): Exception.
     if (!dim_) {
       dim_ = row.size();
       assert(dim_ <= 254u);  // TODO(batman): Exception.
@@ -63,7 +64,7 @@ class CompactTSV {
         data_.append(reinterpret_cast<const char*>(&offset), sizeof(offset_type));
       }
     }
-    data_.append(reinterpret_cast<const char*>(&row_done_marker), sizeof(index_type));
+    data_.append(reinterpret_cast<const char*>(&markers().row_done), sizeof(index_type));
     AssertStillSmall();
   }
 
@@ -79,8 +80,6 @@ class CompactTSV {
 
   template <typename F>
   static size_t Unpack(F&& f, const uint8_t* data, size_t length) {
-    static const index_type storage_marker = static_cast<index_type>(0) - 1;   // 0xff.
-    static const index_type row_done_marker = static_cast<index_type>(0) - 2;  // 0xfe.
     std::vector<std::string> row;
     size_t dim = 0u;
     const uint8_t* p = data;
@@ -91,13 +90,13 @@ class CompactTSV {
       const index_type index = *reinterpret_cast<const index_type*>(p);
       p += sizeof(index_type);
       assert(p <= end);  // TODO(batman): Exception.
-      if (index == storage_marker) {
+      if (index == markers().storage) {
         const length_type length = *reinterpret_cast<const length_type*>(p);
         p += sizeof(length_type);
         p += length;
         ++p;
         assert(p <= end);  // TODO(batman): Exception.
-      } else if (index == row_done_marker) {
+      } else if (index == markers().row_done) {
         assert(!row.empty());
         if (!dim) {
           dim = row.size();
@@ -132,10 +131,19 @@ class CompactTSV {
   }
 
  private:
+  // Types and helpers.
   using index_type = uint8_t;    // Type to store column index, <= 255.
   using length_type = uint16_t;  // Type to store string length, <= 64K, 2^16 - 1.
   using offset_type = uint32_t;  // Type to store offset of a string within `data_`, <= 4B, 2^32 - 1.
 
+  struct Markers {
+    const index_type row_done = static_cast<index_type>(0) - 2;  // 0xfe.
+    const index_type storage = static_cast<index_type>(0) - 1;   // 0xff.
+  };
+
+  static const Markers& markers() { return bricks::Singleton<Markers>(); }
+
+  // Members.
   bool done_ = false;                 // Whether the TSV data is done.
   size_t dim_ = 0u;                   // Number of rows in input data.
   std::vector<std::string> current_;  // Previous/current values of rows, to eliminate redundant data.
@@ -150,16 +158,13 @@ class CompactTSV {
   }
 
   offset_type StoreString(const std::string& s) {
-    static char null_character = '\0';
-    static const index_type storage_marker = static_cast<index_type>(0) - 1;  // 0xff.
-    assert(s.find('\0') == std::string::npos);                                // TODO(batman): Exception.
+    assert(s.find('\0') == std::string::npos);  // TODO(batman): Exception.
     const length_type length = static_cast<length_type>(s.length());
     assert(static_cast<size_t>(length) == s.length());  // TODO(batman): Exception.
-    data_.append(reinterpret_cast<const char*>(&storage_marker), sizeof(index_type));
+    data_.append(reinterpret_cast<const char*>(&markers().storage), sizeof(index_type));
     const offset_type result = static_cast<offset_type>(data_.size());
     data_.append(reinterpret_cast<const char*>(&length), sizeof(length_type));
-    data_.append(s.c_str(), length);
-    data_.append(reinterpret_cast<const char*>(&null_character), 1);
+    data_.append(s.c_str(), length + 1);  // Including the null character.
     AssertStillSmall();
     return result;
   }
