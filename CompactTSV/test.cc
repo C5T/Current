@@ -29,7 +29,7 @@ SOFTWARE.
 #include "gen.h"
 
 #include "../Bricks/time/chrono.h"
-
+#include "../Bricks/strings/util.h"
 #include "../Bricks/dflags/dflags.h"
 #include "../Bricks/3party/gtest/gtest-main-with-dflags.h"
 
@@ -47,7 +47,7 @@ TEST(CompactTSV, Smoke) {
   std::ostringstream os;
 
   const auto t_a_begin = static_cast<uint64_t>(bricks::time::Now());
-  CreateTSV([&os](const std::vector<std::string>& row) {
+  CreateTSV([&os](const std::vector<size_t>& row) {
               for (size_t i = 0; i < row.size(); ++i) {
                 os << std::setw(2) << row[i] << ((i + 1) == row.size() ? '\n' : ' ');
               }
@@ -77,7 +77,17 @@ TEST(CompactTSV, Smoke) {
 
   CompactTSV fast;
   const auto t_b_begin = static_cast<uint64_t>(bricks::time::Now());
-  CreateTSV(fast, FLAGS_rows, FLAGS_cols, FLAGS_scale, FLAGS_random_seed);
+  CreateTSV([&fast](const std::vector<size_t>& row) {
+              std::vector<std::string> row_of_strings(row.size());
+              for (size_t i = 0; i < row.size(); ++i) {
+                row_of_strings[i] = bricks::strings::ToString(row[i]);
+              }
+              fast(row_of_strings);
+            },
+            FLAGS_rows,
+            FLAGS_cols,
+            FLAGS_scale,
+            FLAGS_random_seed);
   const auto t_b_end = static_cast<uint64_t>(bricks::time::Now());
   fast.Finalize();
 

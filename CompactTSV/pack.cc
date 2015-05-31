@@ -23,35 +23,18 @@ SOFTWARE.
 *******************************************************************************/
 
 #include <iostream>
-#include <vector>
 #include <string>
-#include <unordered_map>
 
-#include "gen.h"
+#include "compacttsv.h"
 
-#include "../Bricks/dflags/dflags.h"
+#include "../Bricks/strings/split.h"
 
-DEFINE_size_t(rows, 10u, "Number of rows.");
-DEFINE_size_t(cols, 10u, "Number of cols.");
-DEFINE_double(scale, 10.0, "Exponential distribution parameter.");
-DEFINE_size_t(random_seed, 42, "Random seed.");
-
-int main(int argc, char** argv) {
-  ParseDFlags(&argc, &argv);
-  std::unordered_map<size_t, std::string> strings;
-  CreateTSV([&strings](const std::vector<size_t>& row) {
-              for (size_t i = 0; i < row.size(); ++i) {
-                std::string& s = strings[row[i]];
-                if (s.empty()) {
-                  do {
-                    s += 'a' + rand() % 26;
-                  } while (rand() & 7);
-                }
-                std::cout << s << ((i + 1) == row.size() ? '\n' : '\t');
-              }
-            },
-            FLAGS_rows,
-            FLAGS_cols,
-            FLAGS_scale,
-            FLAGS_random_seed);
+int main() {
+  std::string row;
+  CompactTSV fast;
+  while (std::getline(std::cin, row)) {
+    fast(bricks::strings::Split(row, '\t'));
+  }
+  fast.Finalize();
+  std::cout << fast.GetPackedString();
 }

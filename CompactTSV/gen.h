@@ -29,18 +29,15 @@ SOFTWARE.
 #include <string>
 #include <random>
 
-#include "../Bricks/strings/util.h"
-
 template <typename F>
 inline void CreateTSV(F&& f, size_t rows, size_t cols = 100, double scale = 10, size_t random_seed = 42) {
   std::mt19937 g(random_seed);
   std::exponential_distribution<> d(1);
-  auto next_random_string =
-      [&d, &g, scale]() { return bricks::strings::ToString(static_cast<int>(d(g) * scale)); };
-  std::vector<std::string> row(cols);
+  auto next_random = [&d, &g, scale]() { return static_cast<size_t>(d(g) * scale); };
+  std::vector<size_t> row(cols);
   for (size_t i = 0; i < rows; ++i) {
     for (auto& col : row) {
-      col = next_random_string();
+      col = next_random();
     }
     f(row);
   }
