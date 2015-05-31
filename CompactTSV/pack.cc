@@ -33,7 +33,7 @@ int main() {
   std::string row;
   CompactTSV fast;
   while (std::getline(std::cin, row)) {
-    fast(bricks::strings::Split(row, '\t'));
+    fast(bricks::strings::Split(row, '\t', bricks::strings::EmptyFields::Keep));
   }
   fast.Finalize();
   std::cout << fast.GetPackedString();

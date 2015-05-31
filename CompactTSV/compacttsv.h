@@ -57,7 +57,7 @@ class CompactTSV {
       assert(row.size() == dim_);  // TODO(batman): Exception.
     }
     for (index_type i = 0; i < row.size(); ++i) {
-      if (row[i] != current_[i]) {
+      if (row[i] != current_[i] || first_) {
         current_[i] = row[i];
         const offset_type offset = GetOffsetOf(row[i]);
         data_.append(reinterpret_cast<const char*>(&i), sizeof(index_type));
@@ -65,6 +65,7 @@ class CompactTSV {
       }
     }
     data_.append(reinterpret_cast<const char*>(&markers().row_done), sizeof(index_type));
+    first_ = false;
     AssertStillSmall();
   }
 
@@ -146,6 +147,7 @@ class CompactTSV {
   // Members.
   bool done_ = false;                 // Whether the TSV data is done.
   size_t dim_ = 0u;                   // Number of rows in input data.
+  bool first_ = true;                 // If `operator()` is called for the 1st time and should dump all cols.
   std::vector<std::string> current_;  // Previous/current values of rows, to eliminate redundant data.
   std::string data_;                  // Compressed contents of the "TSV".
 
