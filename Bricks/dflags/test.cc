@@ -134,7 +134,7 @@ TEST(DFlags, ParsesMultipleFlags) {
   DEFINE_bool(flag_bool1, false, "");
   DEFINE_bool(flag_bool2, true, "");
   DEFINE_int64(flag_int64, 0, "");
-  DEFINE_uint64(flag_uint64, 0, "");
+  DEFINE_uint64(flag_uint64, 0u, "");
   DEFINE_size_t(flag_size_t, 0u, "");
   static_assert(std::is_same<decltype(FLAGS_flag_string), std::string>::value, "");
   static_assert(std::is_same<decltype(FLAGS_flag_bool1), bool>::value, "");
