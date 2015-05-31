@@ -83,7 +83,6 @@ TEST(CompactTSV, Smoke) {
 
   std::ostringstream os2;
   const auto t_c_begin = static_cast<uint64_t>(bricks::time::Now());
-  ;
   EXPECT_EQ(FLAGS_rows,
             CompactTSV::Unpack([&os2](const std::vector<std::string>& row) {
                                  for (size_t i = 0; i < row.size(); ++i) {
