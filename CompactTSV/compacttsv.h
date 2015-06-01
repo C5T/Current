@@ -69,8 +69,8 @@ struct DispatcherImpl<true, false, false> : DispatcherStorage<std::string> {
 };
 
 // Note: The dispatcher using a bare `const char*` pointer loses information about the length
-// of strings containing '\0'-s in the middle. The dispatcher with a pair<const chat*, size_t>
-// is the safest and fastest solution.
+// of strings containing '\0'-s in the middle. For those cases, the dispatcher passing in rows
+// as an `std::pair<const char*, size_t>` is the safest and fastest solution.
 template <>
 struct DispatcherImpl<false, true, false> : DispatcherStorage<const char*> {
   template <typename L>
