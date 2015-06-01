@@ -40,7 +40,14 @@ int main(int argc, char** argv) {
   assert(!FLAGS_input.empty());
   const auto contents = bricks::FileSystem::ReadFileAsString(FLAGS_input);
 
-  CompactTSV::Unpack(
-      [](const std::vector<std::string>& v) { std::cout << bricks::strings::Join(v, '\t') << std::endl; },
-      contents);
+  CompactTSV::Unpack([](const std::vector<const char*>& v) {
+                       for (size_t i = 0; i < v.size(); ++i) {
+                         if (i) {
+                           fputc('\t', stdout);
+                         }
+                         fputs(v[i], stdout);
+                       }
+                       fputc('\n', stdout);
+                     },
+                     contents);
 }

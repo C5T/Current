@@ -30,12 +30,13 @@ SOFTWARE.
 // TODO(batman): Exceptions.
 
 #include <cassert>
-#include <vector>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
-#include "../Bricks/util/singleton.h"
 #include "../Bricks/template/weed.h"
+#include "../Bricks/util/singleton.h"
 
 namespace efficient_tsv_parser_dispatcher {
 
@@ -101,7 +102,7 @@ class CompactTSV {
  public:
   // `dim_` can be initialized at construction time or later.
   CompactTSV(size_t dim = 0u) : dim_(dim) {
-    assert(dim <= 254u);  // TODO(batman): Exception.
+    assert(dim <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
     current_.resize(dim_);
   }
 
@@ -110,7 +111,7 @@ class CompactTSV {
     assert(!row.empty());  // TODO(batman): Exception.
     if (!dim_) {
       dim_ = row.size();
-      assert(dim_ <= 254u);  // TODO(batman): Exception.
+      assert(dim_ <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
       current_.resize(dim_);
     } else {
       assert(row.size() == dim_);  // TODO(batman): Exception.
@@ -169,8 +170,8 @@ class CompactTSV {
         const offset_type offset = *reinterpret_cast<const offset_type*>(p);
         p += sizeof(offset_type);
         dispatcher.Update(index,
-                           reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
-                           *reinterpret_cast<const length_type*>(data + offset));
+                          reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
+                          *reinterpret_cast<const length_type*>(data + offset));
         assert(p <= end);  // TODO(batman): Exception.
       }
     }
@@ -189,9 +190,13 @@ class CompactTSV {
 
  private:
   // Types and helpers.
-  using index_type = uint8_t;    // Type to store column index, <= 255.
+  using index_type = uint8_t;    // Type to store column index, <= 254, 2^8 minus two special markers.
   using length_type = uint16_t;  // Type to store string length, <= 64K, 2^16 - 1.
   using offset_type = uint32_t;  // Type to store offset of a string within `data_`, <= 4B, 2^32 - 1.
+
+  static_assert(std::is_unsigned<index_type>::value, "");
+  static_assert(std::is_unsigned<length_type>::value, "");
+  static_assert(std::is_unsigned<offset_type>::value, "");
 
   struct Markers {
     const index_type row_done = static_cast<index_type>(0) - 2;  // 0xfe.
