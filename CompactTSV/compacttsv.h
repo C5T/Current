@@ -193,7 +193,7 @@ class CompactTSV {
 
  private:
   // Types and helpers.
-  using index_type = uint8_t;    // Type to store column index, <= 254, 2^8 minus two special markers.
+  using index_type = uint8_t;    // Type to store column index, strictly < 254, 2^8 minus two special markers.
   using length_type = uint16_t;  // Type to store string length, <= 64K, 2^16 - 1.
   using offset_type = uint32_t;  // Type to store offset of a string within `data_`, <= 4B, 2^32 - 1.
 
