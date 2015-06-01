@@ -35,6 +35,65 @@ SOFTWARE.
 #include <unordered_map>
 
 #include "../Bricks/util/singleton.h"
+#include "../Bricks/template/weed.h"
+
+namespace efficient_tsv_parser_dispatcher {
+
+template <typename T>
+struct DispatcherStorage {
+  std::vector<T> row;
+  bool Empty() const { return row.empty(); }
+  size_t Dim() const { return row.size(); }
+  template <typename F>
+  void Emit(F&& f) const {
+    f(row);
+  }
+  void GrowAsNeeded(size_t index) {
+    if (index >= row.size()) {
+      row.resize(index + 1);
+    }
+  }
+};
+
+template <bool string, bool pchar, bool pchar_length_pair>
+struct DispatcherImpl {};
+
+template <>
+struct DispatcherImpl<true, false, false> : DispatcherStorage<std::string> {
+  template <typename L>
+  void Update(size_t index, const char* string, L length) {
+    GrowAsNeeded(index);
+    row[index] = std::string(string, length);
+  }
+};
+
+template <>
+struct DispatcherImpl<false, true, false> : DispatcherStorage<const char*> {
+  template <typename L>
+  void Update(size_t index, const char* string, L) {
+    GrowAsNeeded(index);
+    row[index] = string;
+  }
+};
+
+template <>
+struct DispatcherImpl<false, false, true> : DispatcherStorage<std::pair<const char*, size_t>> {
+  template <typename L>
+  void Update(size_t index, const char* string, L length) {
+    GrowAsNeeded(index);
+    row[index] = std::make_pair(string, static_cast<size_t>(length));
+  }
+};
+
+template <typename T, typename... ARGS>
+using CW = bricks::weed::call_with<T, ARGS...>;
+
+template <typename F>
+using DispatcherImplSelector = DispatcherImpl<CW<F, std::vector<std::string>>::implemented,
+                                              CW<F, std::vector<const char*>>::implemented,
+                                              CW<F, std::vector<std::pair<const char*, size_t>>>::implemented>;
+
+}  // namespace efficient_tsv_parser_dispatcher
 
 // At most 254 columns, at most 64KB per entry, at most 4B of distinct strings + metadata in total.
 // Rationale behind the number "254": 0..253 => update value for this col, 254 => row ready, 255 => new string.
@@ -81,7 +140,7 @@ class CompactTSV {
 
   template <typename F>
   static size_t Unpack(F&& f, const uint8_t* data, size_t length) {
-    std::vector<std::string> row;
+    efficient_tsv_parser_dispatcher::DispatcherImplSelector<F> dispatcher;
     size_t dim = 0u;
     const uint8_t* p = data;
     const uint8_t* end = data + length;
@@ -98,23 +157,20 @@ class CompactTSV {
         ++p;
         assert(p <= end);  // TODO(batman): Exception.
       } else if (index == markers().row_done) {
-        assert(!row.empty());
+        assert(!dispatcher.Empty());
         if (!dim) {
-          dim = row.size();
+          dim = dispatcher.Dim();
         } else {
-          assert(dim == row.size());  // TODO(batman): Exception.
+          assert(dim == dispatcher.Dim());
         }
-        f(row);
+        dispatcher.Emit(std::forward<F>(f));
         ++total;
       } else {
-        if (index >= row.size()) {
-          row.resize(index + 1);
-        }
         const offset_type offset = *reinterpret_cast<const offset_type*>(p);
         p += sizeof(offset_type);
-        const length_type length = *reinterpret_cast<const length_type*>(data + offset);
-        row[index] = std::string(reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
-                                 static_cast<size_t>(length));
+        dispatcher.Update(index,
+                           reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
+                           *reinterpret_cast<const length_type*>(data + offset));
         assert(p <= end);  // TODO(batman): Exception.
       }
     }
