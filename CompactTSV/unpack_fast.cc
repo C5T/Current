@@ -40,12 +40,12 @@ int main(int argc, char** argv) {
   assert(!FLAGS_input.empty());
   const auto contents = bricks::FileSystem::ReadFileAsString(FLAGS_input);
 
-  CompactTSV::Unpack([](const std::vector<const char*>& v) {
+  CompactTSV::Unpack([](const std::vector<std::pair<const char*, size_t>>& v) {
                        for (size_t i = 0; i < v.size(); ++i) {
                          if (i) {
                            fputc('\t', stdout);
                          }
-                         fputs(v[i], stdout);
+                         fwrite(v[i].first, 1, v[i].second, stdout);
                        }
                        fputc('\n', stdout);
                      },

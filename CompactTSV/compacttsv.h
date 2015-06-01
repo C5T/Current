@@ -68,6 +68,9 @@ struct DispatcherImpl<true, false, false> : DispatcherStorage<std::string> {
   }
 };
 
+// Note: The dispatcher using a bare `const char*` pointer loses information about the length
+// of strings containing '\0'-s in the middle. The dispatcher with a pair<const chat*, size_t>
+// is the safest and fastest solution.
 template <>
 struct DispatcherImpl<false, true, false> : DispatcherStorage<const char*> {
   template <typename L>
@@ -221,7 +224,6 @@ class CompactTSV {
   }
 
   offset_type StoreString(const std::string& s) {
-    assert(s.find('\0') == std::string::npos);  // TODO(batman): Exception.
     const length_type length = static_cast<length_type>(s.length());
     assert(static_cast<size_t>(length) == s.length());  // TODO(batman): Exception.
     data_.append(reinterpret_cast<const char*>(&markers().storage), sizeof(index_type));

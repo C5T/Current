@@ -34,6 +34,7 @@ SOFTWARE.
 DEFINE_size_t(rows, 10u, "Number of rows.");
 DEFINE_size_t(cols, 10u, "Number of cols.");
 DEFINE_double(scale, 10.0, "Exponential distribution parameter.");
+DEFINE_bool(nulls, false, "Inject '\0'-s into strings as well.");
 DEFINE_size_t(random_seed, 42, "Random seed.");
 
 int main(int argc, char** argv) {
@@ -45,6 +46,11 @@ int main(int argc, char** argv) {
                 if (s.empty()) {
                   do {
                     s += 'a' + rand() % 26;
+                    if (FLAGS_nulls) {
+                      do {
+                        s += '\0';
+                      } while ((rand() & 31) == 31);
+                    }
                   } while (rand() & 7);
                 }
                 std::cout << s << ((i + 1) == row.size() ? '\n' : '\t');
