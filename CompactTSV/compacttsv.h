@@ -161,7 +161,7 @@ class CompactTSV {
         if (!dim) {
           dim = dispatcher.Dim();
         } else {
-          assert(dim == dispatcher.Dim());
+          assert(dim == dispatcher.Dim());  // TODO(batman): Exception.
         }
         dispatcher.Emit(std::forward<F>(f));
         ++total;
