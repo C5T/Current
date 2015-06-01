@@ -30,11 +30,74 @@ SOFTWARE.
 // TODO(batman): Exceptions.
 
 #include <cassert>
-#include <vector>
 #include <string>
+#include <type_traits>
 #include <unordered_map>
+#include <vector>
 
+#include "../Bricks/template/weed.h"
 #include "../Bricks/util/singleton.h"
+
+namespace efficient_tsv_parser_dispatcher {
+
+template <typename T>
+struct DispatcherStorage {
+  std::vector<T> row;
+  bool Empty() const { return row.empty(); }
+  size_t Dim() const { return row.size(); }
+  template <typename F>
+  void Emit(F&& f) const {
+    f(row);
+  }
+  void GrowAsNeeded(size_t index) {
+    if (index >= row.size()) {
+      row.resize(index + 1);
+    }
+  }
+};
+
+template <bool string, bool pchar, bool pchar_length_pair>
+struct DispatcherImpl {};
+
+template <>
+struct DispatcherImpl<true, false, false> : DispatcherStorage<std::string> {
+  template <typename L>
+  void Update(size_t index, const char* string, L length) {
+    GrowAsNeeded(index);
+    row[index] = std::string(string, length);
+  }
+};
+
+// Note: The dispatcher using a bare `const char*` pointer loses information about the length
+// of strings containing '\0'-s in the middle. For those cases, the dispatcher passing in rows
+// as an `std::pair<const char*, size_t>` is the safest and fastest solution.
+template <>
+struct DispatcherImpl<false, true, false> : DispatcherStorage<const char*> {
+  template <typename L>
+  void Update(size_t index, const char* string, L) {
+    GrowAsNeeded(index);
+    row[index] = string;
+  }
+};
+
+template <>
+struct DispatcherImpl<false, false, true> : DispatcherStorage<std::pair<const char*, size_t>> {
+  template <typename L>
+  void Update(size_t index, const char* string, L length) {
+    GrowAsNeeded(index);
+    row[index] = std::make_pair(string, static_cast<size_t>(length));
+  }
+};
+
+template <typename T, typename... ARGS>
+using CW = bricks::weed::call_with<T, ARGS...>;
+
+template <typename F>
+using DispatcherImplSelector = DispatcherImpl<CW<F, std::vector<std::string>>::implemented,
+                                              CW<F, std::vector<const char*>>::implemented,
+                                              CW<F, std::vector<std::pair<const char*, size_t>>>::implemented>;
+
+}  // namespace efficient_tsv_parser_dispatcher
 
 // At most 254 columns, at most 64KB per entry, at most 4B of distinct strings + metadata in total.
 // Rationale behind the number "254": 0..253 => update value for this col, 254 => row ready, 255 => new string.
@@ -42,7 +105,7 @@ class CompactTSV {
  public:
   // `dim_` can be initialized at construction time or later.
   CompactTSV(size_t dim = 0u) : dim_(dim) {
-    assert(dim <= 254u);  // TODO(batman): Exception.
+    assert(dim <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
     current_.resize(dim_);
   }
 
@@ -51,7 +114,7 @@ class CompactTSV {
     assert(!row.empty());  // TODO(batman): Exception.
     if (!dim_) {
       dim_ = row.size();
-      assert(dim_ <= 254u);  // TODO(batman): Exception.
+      assert(dim_ <= static_cast<size_t>(static_cast<index_type>(-2)));  // TODO(batman): Exception.
       current_.resize(dim_);
     } else {
       assert(row.size() == dim_);  // TODO(batman): Exception.
@@ -81,7 +144,7 @@ class CompactTSV {
 
   template <typename F>
   static size_t Unpack(F&& f, const uint8_t* data, size_t length) {
-    std::vector<std::string> row;
+    efficient_tsv_parser_dispatcher::DispatcherImplSelector<F> dispatcher;
     size_t dim = 0u;
     const uint8_t* p = data;
     const uint8_t* end = data + length;
@@ -98,23 +161,20 @@ class CompactTSV {
         ++p;
         assert(p <= end);  // TODO(batman): Exception.
       } else if (index == markers().row_done) {
-        assert(!row.empty());
+        assert(!dispatcher.Empty());
         if (!dim) {
-          dim = row.size();
+          dim = dispatcher.Dim();
         } else {
-          assert(dim == row.size());  // TODO(batman): Exception.
+          assert(dim == dispatcher.Dim());  // TODO(batman): Exception.
         }
-        f(row);
+        dispatcher.Emit(std::forward<F>(f));
         ++total;
       } else {
-        if (index >= row.size()) {
-          row.resize(index + 1);
-        }
         const offset_type offset = *reinterpret_cast<const offset_type*>(p);
         p += sizeof(offset_type);
-        const length_type length = *reinterpret_cast<const length_type*>(data + offset);
-        row[index] = std::string(reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
-                                 static_cast<size_t>(length));
+        dispatcher.Update(index,
+                          reinterpret_cast<const char*>(data + offset + sizeof(length_type)),
+                          *reinterpret_cast<const length_type*>(data + offset));
         assert(p <= end);  // TODO(batman): Exception.
       }
     }
@@ -133,9 +193,13 @@ class CompactTSV {
 
  private:
   // Types and helpers.
-  using index_type = uint8_t;    // Type to store column index, <= 255.
+  using index_type = uint8_t;    // Type to store column index, strictly < 254, 2^8 minus two special markers.
   using length_type = uint16_t;  // Type to store string length, <= 64K, 2^16 - 1.
   using offset_type = uint32_t;  // Type to store offset of a string within `data_`, <= 4B, 2^32 - 1.
+
+  static_assert(std::is_unsigned<index_type>::value, "");
+  static_assert(std::is_unsigned<length_type>::value, "");
+  static_assert(std::is_unsigned<offset_type>::value, "");
 
   struct Markers {
     const index_type row_done = static_cast<index_type>(0) - 2;  // 0xfe.
@@ -160,7 +224,6 @@ class CompactTSV {
   }
 
   offset_type StoreString(const std::string& s) {
-    assert(s.find('\0') == std::string::npos);  // TODO(batman): Exception.
     const length_type length = static_cast<length_type>(s.length());
     assert(static_cast<size_t>(length) == s.length());  // TODO(batman): Exception.
     data_.append(reinterpret_cast<const char*>(&markers().storage), sizeof(index_type));

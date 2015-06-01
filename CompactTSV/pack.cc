@@ -30,11 +30,11 @@ SOFTWARE.
 #include "../Bricks/strings/split.h"
 
 int main() {
-  std::string row;
-  CompactTSV fast;
-  while (std::getline(std::cin, row)) {
-    fast(bricks::strings::Split(row, '\t', bricks::strings::EmptyFields::Keep));
+  std::string row_as_string;
+  CompactTSV compact;
+  while (std::getline(std::cin, row_as_string)) {
+    compact(bricks::strings::Split(row_as_string, '\t', bricks::strings::EmptyFields::Keep));
   }
-  fast.Finalize();
-  std::cout << fast.GetPackedString();
+  compact.Finalize();
+  std::cout << compact.GetPackedString();
 }

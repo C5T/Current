@@ -22,42 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include <cassert>
 #include <iostream>
-#include <vector>
 #include <string>
-#include <unordered_map>
 
-#include "gen.h"
+#include "compacttsv.h"
 
 #include "../Bricks/dflags/dflags.h"
+#include "../Bricks/file/file.h"
 
-DEFINE_size_t(rows, 10u, "Number of rows.");
-DEFINE_size_t(cols, 10u, "Number of cols.");
-DEFINE_double(scale, 10.0, "Exponential distribution parameter.");
-DEFINE_bool(nulls, false, "Inject '\0'-s into strings as well.");
-DEFINE_size_t(random_seed, 42, "Random seed.");
+DEFINE_string(input, "", "Input file to parse.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
-  std::unordered_map<size_t, std::string> strings;
-  CreateTSV([&strings](const std::vector<size_t>& row) {
-              for (size_t i = 0; i < row.size(); ++i) {
-                std::string& s = strings[row[i]];
-                if (s.empty()) {
-                  do {
-                    s += 'a' + rand() % 26;
-                    if (FLAGS_nulls) {
-                      do {
-                        s += '\0';
-                      } while ((rand() & 31) == 31);
-                    }
-                  } while (rand() & 7);
-                }
-                std::cout << s << ((i + 1) == row.size() ? '\n' : '\t');
-              }
-            },
-            FLAGS_rows,
-            FLAGS_cols,
-            FLAGS_scale,
-            FLAGS_random_seed);
+
+  assert(!FLAGS_input.empty());
+  const auto contents = bricks::FileSystem::ReadFileAsString(FLAGS_input);
+
+  size_t count = 0u;
+  CompactTSV::Unpack([&count](const std::vector<const char*>&) { ++count; }, contents);
+  std::cerr << count << std::endl;
 }
