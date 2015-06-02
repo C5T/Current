@@ -40,10 +40,8 @@
 #include "../../../Bricks/cerealize/cerealize.h"
 
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
-
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
-
 #endif  // COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 
 struct MidichloriansEvent {
