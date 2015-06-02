@@ -26,9 +26,9 @@
  *******************************************************************************/
 
 #ifndef __cplusplus
-// If you get this error build your Objective-C project, #include neither this file nor "MidichloriansImpl.h".
-// Use "Midichlorians.h" instead.
-// It wraps the inner, plarform-independent, event tracking code, and allows client code to stay `.m`.
+// If you get this error building an Objective-C project, #include neither this file
+// nor "MidichloriansDataDictionary.h". Use "Midichlorians.h" instead.
+// It wraps the inner, platform-independent, event tracking code, and allows client code to stay `.m`.
 #error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
 
@@ -43,7 +43,7 @@
 #import <CoreLocation/CoreLocation.h>
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
-#error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'Midichlodians[Impl].h'."
+#error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."
 #endif  // CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 
 #define COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
