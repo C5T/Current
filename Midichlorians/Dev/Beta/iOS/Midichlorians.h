@@ -26,13 +26,14 @@
 @interface Midichlorians : NSObject
 
 // Initialization, to be called from application:{didFinishLaunchingWithOptions|willFinishLaunchingWithOptions}.
-+ (void)setup:(NSString*)serverUrl withLaunchOptions:(NSDictionary*)options;
++ (void)setup:(NSString *)serverUrl withLaunchOptions:(NSDictionary *)options;
 
 // Client identification call, structured.
 + (void)identify:(NSString *)identifier;
 
 // iOS focus events tracking, structured.
-// Can be called from anywhere after `setup` has been called. Usually called from `AppDelegate.m`-s event handlers.
+// Can be called from anywhere after `setup` has been called.
+// Usually called from `AppDelegate.m`-s event handlers.
 + (void)focusEvent:(BOOL)hasFocus source:(NSString *)source;
 
 // User events tracking, unstructured.

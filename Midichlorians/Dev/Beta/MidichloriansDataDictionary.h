@@ -29,7 +29,7 @@
 // If you get this error build your Objective-C project, #include neither this file nor "MidichloriansImpl.h".
 // Use "Midichlorians.h" instead.
 // It wraps the inner, plarform-independent, event tracking code, and allows client code to stay `.m`.
-#error  "This file is a C++ header, and it should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
+#error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
 
 #ifndef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
