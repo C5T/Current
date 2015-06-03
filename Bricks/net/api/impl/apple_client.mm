@@ -89,18 +89,19 @@ bool bricks::net::api::HTTPClientApple::Go() {
       }
     }
 
-    __block bool request_succeeded = true;
     *async_request_completed.MutableScopedAccessor() = false;
     [NSURLConnection sendAsynchronousRequest:request queue:[[NSOperationQueue alloc] init]
         completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
           // Workaround to handle HTTP 401 response without errors.
           if (error.code == NSURLErrorUserCancelledAuthentication) {
             http_response_code = 401;
+            request_succeeded = true;
           } else {
             if (response) {
               NSHTTPURLResponse *http_response = (NSHTTPURLResponse *)response;
               http_response_code = http_response.statusCode;
               url_received = [http_response.URL.absoluteString UTF8String];
+              request_succeeded = true;
             } else {
               http_response_code = -1;
               NSLog(@"ERROR while connecting to %s: %@", url_requested.c_str(), error.localizedDescription);
@@ -111,8 +112,11 @@ bool bricks::net::api::HTTPClientApple::Go() {
           if (data) {
             if (received_file.empty()) {
               server_response.assign(reinterpret_cast<char const *>(data.bytes), data.length);
+              request_succeeded = true;
             } else {
-              if (![data writeToFile:[NSString stringWithUTF8String:received_file.c_str()] atomically:YES]) {
+              if ([data writeToFile:[NSString stringWithUTF8String:received_file.c_str()] atomically:YES]) {
+                request_succeeded = true;
+              } else {
                 request_succeeded = false;
               }
             }
@@ -121,6 +125,7 @@ bool bricks::net::api::HTTPClientApple::Go() {
     }];
 
     async_request_completed.Wait([](bool done) { return done; });
+
     return request_succeeded;
 
   } // @autoreleasepool

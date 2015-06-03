@@ -51,6 +51,7 @@ struct HTTPClientApple {
   std::string server_response = "";
   std::string content_type = "";
   std::string user_agent = "";
+  bool request_succeeded = false;
   WaitableAtomic<bool> async_request_completed;
 
   inline bool Go();
