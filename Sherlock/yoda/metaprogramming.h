@@ -308,7 +308,7 @@ struct APICalls {
     TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
     typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
         std::declval<bricks::rmconstref<UNDECAYED_KEY>>())) T_RETVAL;
-    T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(std::move(key)); }
+    T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(key); }  // TODO(dkorolev): Use `std::move()` here.
   };
 
   template <typename T, typename... TS>

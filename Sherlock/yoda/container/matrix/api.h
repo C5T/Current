@@ -144,6 +144,15 @@ class OuterMapAccessor final {
     }
   }
 
+  bool has(bricks::copy_free<OUTER_KEY> key) const {
+    const auto cit = outer_map_.find(key);
+    if (cit != outer_map_.end()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   size_t size() const { return outer_map_.size(); }
   bool empty() const { return outer_map_.empty(); }
   OuterIterator begin() const { return OuterIterator(outer_map_.cbegin()); }
