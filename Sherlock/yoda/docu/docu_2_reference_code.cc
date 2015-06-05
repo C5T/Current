@@ -156,7 +156,12 @@ HTTP(port).ResetAllHandlers();
   // `api.Add()` never throws and silently overwrites.
   api.Add(Prime(3, 100));
   api.Add(Prime(3, 2));
-  
+
+  // `api.Has()` supports both raw keys and tuples.
+  ASSERT_TRUE(api.Has(static_cast<PRIME>(3)).Go());
+  ASSERT_TRUE(api.Has(std::make_tuple(static_cast<PRIME>(3))).Go());
+  ASSERT_FALSE(api.Has(static_cast<PRIME>(4)).Go());
+
   // `api.Get()` has multiple signatures, one or more per
   // supported data type. It never throws, and returns a wrapper,
   // that can be casted to both `bool` and the underlying type.
@@ -248,6 +253,9 @@ HTTP(port).ResetAllHandlers();
       EXPECT_EQ(19, static_cast<int>(e.key));
     }
 
+    // Check if value exists.
+    ASSERT_TRUE(getter.Has(static_cast<PRIME>(13)));
+
     // `getter.Get()` in a non-throwing call, returning a wrapper.
     const auto p13 = getter.Get(static_cast<PRIME>(13));
     ASSERT_TRUE(static_cast<bool>(p13));
@@ -276,9 +284,12 @@ HTTP(port).ResetAllHandlers();
     ASSERT_THROW(data << Prime(29, 102),
                  KeyAlreadyExistsException<Prime>);
     data.Add(Prime(29, 11));
+    ASSERT_TRUE(data.Has(std::make_tuple(static_cast<PRIME>(3))));
+    ASSERT_TRUE(data.Has(static_cast<PRIME>(3)));
     ASSERT_TRUE(static_cast<bool>(data.Get(std::make_tuple(static_cast<PRIME>(3)))));
     ASSERT_TRUE(static_cast<bool>(data.Get(static_cast<PRIME>(3))));
     EXPECT_EQ(2, static_cast<const Prime&>(data.Get(static_cast<PRIME>(3))).index);
+    ASSERT_FALSE(data.Has(static_cast<PRIME>(4)));
     ASSERT_FALSE(static_cast<bool>(data.Get(static_cast<PRIME>(4))));
     EXPECT_EQ(3, data[static_cast<PRIME>(5)].index);
     ASSERT_THROW(data[static_cast<PRIME>(9)],
@@ -322,6 +333,7 @@ HTTP(port).ResetAllHandlers();
     api.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go();
   const bool b2 = e2;
   ASSERT_TRUE(b2);
+  ASSERT_TRUE(api.Has(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go());
   const PrimeCell p2 = e2;
   EXPECT_EQ(0, static_cast<int>(p2.row));
   EXPECT_EQ(2, static_cast<int>(p2.col));
@@ -335,6 +347,7 @@ HTTP(port).ResetAllHandlers();
       getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3));
     const bool b3 = e3;
     ASSERT_TRUE(b3);
+    ASSERT_TRUE(getter.Has(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3)));
     const PrimeCell p3 = e3;
     EXPECT_EQ(0, static_cast<int>(p3.row));
     EXPECT_EQ(3, static_cast<int>(p3.col));
@@ -344,6 +357,7 @@ HTTP(port).ResetAllHandlers();
       getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4));
     const bool b4 = e4;
     ASSERT_FALSE(b4);
+    ASSERT_FALSE(getter.Has(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4)));
     ASSERT_THROW(static_cast<void>(static_cast<const PrimeCell&>(e4)),
                  NonexistentEntryAccessed);
   

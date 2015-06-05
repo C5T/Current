@@ -101,6 +101,10 @@ class InnerMapAccessor final {
     }
   }
 
+  bool Has(bricks::copy_free<INNER_KEY> subkey) const {
+    return (map_.find(subkey) != map_.end());
+  }
+
   const bricks::copy_free<OUTER_KEY> key() const { return key_; }
   size_t size() const { return map_.size(); }
   bool empty() const { return map_.empty(); }
@@ -144,13 +148,8 @@ class OuterMapAccessor final {
     }
   }
 
-  bool has(bricks::copy_free<OUTER_KEY> key) const {
-    const auto cit = outer_map_.find(key);
-    if (cit != outer_map_.end()) {
-      return true;
-    } else {
-      return false;
-    }
+  bool Has(bricks::copy_free<OUTER_KEY> key) const {
+    return (outer_map_.find(key) != outer_map_.end());
   }
 
   size_t size() const { return outer_map_.size(); }
@@ -192,7 +191,8 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     Accessor() = delete;
     Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
+    // Returns `true` id entry with corresponding `row`\`col` pair exists.
+    bool Has(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
       const auto key = std::make_pair(row, col);
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
@@ -202,6 +202,11 @@ struct Container<YT, MatrixEntry<ENTRY>> {
       }
     }
 
+    bool Has(const std::tuple<CF<typename YET::T_ROW>, CF<typename YET::T_COL>>& key_as_tuple) const {
+      return Has(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
+    }
+
+    // Non-throwing getter, returns a wrapper.
     const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
       const auto key = std::make_pair(row, col);
       const auto cit = immutable_.map_.find(key);
@@ -230,7 +235,6 @@ struct Container<YT, MatrixEntry<ENTRY>> {
     }
 
     // TODO(dk+mz): Should per-row / per-col getters throw right away when row/col is not present?
-    // TODO(dk+mz): Add `Has(...)` here and for `Dictionary`?
     InnerMapAccessor<YET,
                      typename YET::T_ROW,
                      T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,

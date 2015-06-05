@@ -163,10 +163,17 @@ struct YodaData {
 
   template <typename K>
   EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<K>>>::T_ENTRY> Get(
-      K&& key) {
+      K&& key) const {
     typedef bricks::rmconstref<K> SAFE_K;
     return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_K>>>().Get(std::forward<K>(key));
   }
+
+  template <typename K>
+  bool Has(K&& key) const {
+    typedef bricks::rmconstref<K> SAFE_K;
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_K>>>().Has(std::forward<K>(key));
+  }
+
 
   template <typename E>
   YodaData& operator<<(E&& entry) {
@@ -308,8 +315,20 @@ struct APICalls {
     TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
     typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
         std::declval<bricks::rmconstref<UNDECAYED_KEY>>())) T_RETVAL;
-    T_RETVAL operator()(DATA data) { return YET::Accessor(data).Get(key); }  // TODO(dkorolev): Use `std::move()` here.
+    T_RETVAL operator()(DATA data) const { return YET::Accessor(data).Get(key); }  // TODO(dkorolev): Use `std::move()` here.
   };
+
+  // `TopLevelHas` accepts an undecayed type.
+  // It itself makes a copy of the key to query, and passing in a non-decayed type
+  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
+  template <typename DATA, typename YET, typename UNDECAYED_KEY>
+  struct TopLevelHas {
+    const bricks::rmconstref<UNDECAYED_KEY> key;
+    TopLevelHas(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
+    bool operator()(DATA data) const { return YET::Accessor(data).Has(key); }  // TODO(dkorolev): Use `std::move()` here.
+  };
+
+
 
   template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
@@ -408,6 +427,24 @@ struct APICalls {
     typedef bricks::rmconstref<TUPLE> SAFE_TUPLE;
     typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
     return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_TUPLE>(
+        std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
+  }
+
+  // Helper method to wrap `Has()` into `Transaction()`. With one and with more than one parameter.
+  // Note: `TopLevelHas` accepts an undecayed type.
+  // This is required to correctly handle both by-value and by-reference parameter types.
+  template <typename UNDECAYED_KEY>
+  Future<bool> Has(UNDECAYED_KEY&& key) {
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<UNDECAYED_KEY>>> YET;
+    return Transaction(TopLevelHas<YodaData<YT>, YET, UNDECAYED_KEY>(std::forward<UNDECAYED_KEY>(key)));
+  }
+
+  template <typename KEY, typename... KEYS>
+  Future<bool> Has(KEY&& key, KEYS&&... keys) {
+    typedef std::tuple<KEY, KEYS...> TUPLE;
+    typedef bricks::rmconstref<TUPLE> SAFE_TUPLE;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
+    return Transaction(TopLevelHas<YodaData<YT>, YET, SAFE_TUPLE>(
         std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
   }
 
