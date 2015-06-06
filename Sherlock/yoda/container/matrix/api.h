@@ -78,7 +78,10 @@ class InnerMapAccessor final {
  public:
   using T_SUBMAP = SUBMAP;
 
-  InnerMapAccessor(bricks::copy_free<OUTER_KEY> key, const T_SUBMAP& map) : key_(key), map_(map) {}
+  template <typename T>
+  using CF = bricks::copy_free<T>;
+
+  InnerMapAccessor(CF<OUTER_KEY> key, const T_SUBMAP& map) : key_(key), map_(map) {}
   InnerMapAccessor(InnerMapAccessor&&) = default;
   struct Iterator final {
     typedef decltype(std::declval<T_SUBMAP>().cbegin()) T_ITERATOR;
@@ -87,12 +90,12 @@ class InnerMapAccessor final {
     void operator++() { ++iterator; }
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    bricks::copy_free<INNER_KEY> key() const { return iterator->first; }
+    CF<INNER_KEY> key() const { return iterator->first; }
     const typename YET::T_ENTRY& operator*() const { return *iterator->second; }
     const typename YET::T_ENTRY* operator->() const { return iterator->second; }
   };
 
-  const typename YET::T_ENTRY& operator[](bricks::copy_free<INNER_KEY> subkey) const {
+  const typename YET::T_ENTRY& operator[](CF<INNER_KEY> subkey) const {
     const auto cit = map_.find(subkey);
     if (cit != map_.end()) {
       return *cit->second;
@@ -101,18 +104,18 @@ class InnerMapAccessor final {
     }
   }
 
-  bool Has(bricks::copy_free<INNER_KEY> subkey) const {
+  bool Has(CF<INNER_KEY> subkey) const {
     return (map_.find(subkey) != map_.end());
   }
 
-  const bricks::copy_free<OUTER_KEY> key() const { return key_; }
+  const CF<OUTER_KEY> key() const { return key_; }
   size_t size() const { return map_.size(); }
   bool empty() const { return map_.empty(); }
   Iterator begin() const { return Iterator(map_.cbegin()); }
   Iterator end() const { return Iterator(map_.cend()); }
 
  private:
-  const bricks::copy_free<OUTER_KEY> key_;
+  const CF<OUTER_KEY> key_;
   const T_SUBMAP& map_;
 };
 
@@ -125,6 +128,9 @@ class OuterMapAccessor final {
   using T_INNER_MAP_ACCESSOR = InnerMapAccessor<YET, OUTER_KEY, T_INNER_MAP, INNER_KEY>;
   using T_OUTER_MAP = T_MAP_TYPE<OUTER_KEY, T_INNER_MAP>;
 
+  template <typename T>
+  using CF = bricks::copy_free<T>;
+
   explicit OuterMapAccessor(const T_OUTER_MAP& outer_map) : outer_map_(outer_map) {}
   OuterMapAccessor(OuterMapAccessor&&) = default;
 
@@ -135,11 +141,11 @@ class OuterMapAccessor final {
     void operator++() { ++iterator; }
     bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
-    bricks::copy_free<OUTER_KEY> key() const { return iterator->first; }
+    CF<OUTER_KEY> key() const { return iterator->first; }
     T_INNER_MAP_ACCESSOR operator*() const { return T_INNER_MAP_ACCESSOR(iterator->first, iterator->second); }
   };
 
-  const T_INNER_MAP_ACCESSOR operator[](bricks::copy_free<OUTER_KEY> key) const {
+  const T_INNER_MAP_ACCESSOR operator[](CF<OUTER_KEY> key) const {
     const auto cit = outer_map_.find(key);
     if (cit != outer_map_.end()) {
       return T_INNER_MAP_ACCESSOR(cit->first, cit->second);
@@ -148,7 +154,7 @@ class OuterMapAccessor final {
     }
   }
 
-  bool Has(bricks::copy_free<OUTER_KEY> key) const {
+  bool Has(CF<OUTER_KEY> key) const {
     return (outer_map_.find(key) != outer_map_.end());
   }
 

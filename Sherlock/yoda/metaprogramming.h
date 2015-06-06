@@ -155,43 +155,43 @@ struct YodaData {
   }
 
   // Top-level methods and operators, dispatching by parameter type.
-  template <typename E>
-  void Add(E&& entry) {
-    typedef bricks::rmconstref<E> SAFE_E;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<SAFE_E>>>().Add(std::forward<E>(entry));
+  template <typename ENTRY>
+  void Add(ENTRY&& entry) {
+    typedef bricks::rmconstref<ENTRY> DECAYED_ENTRY;
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>().Add(std::forward<ENTRY>(entry));
   }
 
-  template <typename K>
-  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<K>>>::T_ENTRY> Get(
-      K&& key) const {
-    typedef bricks::rmconstref<K> SAFE_K;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_K>>>().Get(std::forward<K>(key));
+  template <typename KEY>
+  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<KEY>>>::T_ENTRY> Get(
+      KEY&& key) const {
+    typedef bricks::rmconstref<KEY> DECAYED_KEY;
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Get(std::forward<KEY>(key));
   }
 
-  template <typename K>
-  bool Has(K&& key) const {
-    typedef bricks::rmconstref<K> SAFE_K;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_K>>>().Has(std::forward<K>(key));
+  template <typename KEY>
+  bool Has(KEY&& key) const {
+    typedef bricks::rmconstref<KEY> DECAYED_KEY;
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Has(std::forward<KEY>(key));
   }
 
 
-  template <typename E>
-  YodaData& operator<<(E&& entry) {
-    typedef bricks::rmconstref<E> SAFE_E;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<SAFE_E>>>() << std::forward<E>(entry);
+  template <typename ENTRY>
+  YodaData& operator<<(ENTRY&& entry) {
+    typedef bricks::rmconstref<ENTRY> DECAYED_ENTRY;
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>() << std::forward<ENTRY>(entry);
     return *this;
   }
 
   // This scary `decltype(declval)` is just to extract the return type of `the_right_accessor[key]`.
-  template <typename K>
+  template <typename KEY>
   decltype(
       std::declval<CWT<YodaContainer<YT>,
                        type_inference::RetrieveAccessor<
-                           CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::rmconstref<K>>>>>>()
-          [std::declval<bricks::rmconstref<K>>()])
-  operator[](K&& key) {
-    typedef bricks::rmconstref<K> SAFE_K;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<SAFE_K>>>()[std::forward<K>(key)];
+                           CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::rmconstref<KEY>>>>>>()
+          [std::declval<bricks::rmconstref<KEY>>()])
+  operator[](KEY&& key) {
+    typedef bricks::rmconstref<KEY> DECAYED_KEY;
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(key)];
   }
 
  private:
@@ -328,8 +328,6 @@ struct APICalls {
     bool operator()(DATA data) const { return YET::Accessor(data).Has(key); }  // TODO(dkorolev): Use `std::move()` here.
   };
 
-
-
   template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
 
@@ -453,9 +451,9 @@ struct APICalls {
   // thus the user will have to tie the first ones using `std::tie()`.
   template <typename KEY, typename F>
   Future<void> GetWithNext(KEY&& key, F&& f) {
-    typedef bricks::rmconstref<KEY> SAFE_KEY;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_KEY>(std::forward<SAFE_KEY>(key)),
+    typedef bricks::rmconstref<KEY> DECAYED_KEY;
+    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>> YET;
+    return Transaction(TopLevelGet<YodaData<YT>, YET, DECAYED_KEY>(std::forward<DECAYED_KEY>(key)),
                        std::forward<F>(f));
   }
 
