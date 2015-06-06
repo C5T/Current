@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../../metaprogramming.h"
 #include "../../../../Bricks/template/pod.h"
-#include "../../../../Bricks/template/rmref.h"
+#include "../../../../Bricks/template/decay.h"
 
 namespace yoda {
 
@@ -76,7 +76,7 @@ typename ROW_ACCESSOR<T_ENTRY>::T_ROW GetRow(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_ROW_TYPE = bricks::rmconstref<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
+using ENTRY_ROW_TYPE = bricks::decay<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
 
 template <typename T_ENTRY>
 void SetRow(T_ENTRY& entry, bricks::copy_free<ENTRY_ROW_TYPE<T_ENTRY>> row) {
@@ -120,7 +120,7 @@ typename COL_ACCESSOR<T_ENTRY>::T_COL GetCol(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_COL_TYPE = bricks::rmconstref<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
+using ENTRY_COL_TYPE = bricks::decay<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
 
 template <typename T_ENTRY>
 void SetCol(T_ENTRY& entry, bricks::copy_free<ENTRY_COL_TYPE<T_ENTRY>> col) {

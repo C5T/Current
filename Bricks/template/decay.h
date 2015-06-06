@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_TEMPLATE_RMREF_H
-#define BRICKS_TEMPLATE_RMREF_H
+#ifndef BRICKS_TEMPLATE_DECAY_H
+#define BRICKS_TEMPLATE_DECAY_H
 
 #include <string>
 #include <type_traits>
@@ -118,8 +118,10 @@ struct rmconst_impl<std::tuple<TS...>&&> {
 template <typename... TS>
 using rmconst = typename rmconst_impl<TS...>::type;
 
+// Bricks define `decay<>` as the combination of `rmconst` and `rmref`, penetrating tuples.
+// We did not need other functionality of `std::decay_t<>` yet. -- D.K.
 template <typename... TS>
-using rmconstref = rmconst<rmref<TS...>>;
+using decay = rmconst<rmref<TS...>>;
 
 template <typename A, typename B>
 using is_same = std::is_same<A, B>;
@@ -134,72 +136,68 @@ static_assert(is_same<const int, rmref<const int&&>>::value, "");
 static_assert(is_same<std::string, rmconst<std::string>>::value, "");
 static_assert(is_same<std::string, rmconst<const std::string>>::value, "");
 
-static_assert(is_same<int, rmconstref<int>>::value, "");
-static_assert(is_same<int, rmconstref<int&>>::value, "");
-static_assert(is_same<int, rmconstref<int&&>>::value, "");
-static_assert(is_same<int, rmconstref<const int>>::value, "");
-static_assert(is_same<int, rmconstref<const int&>>::value, "");
-static_assert(is_same<int, rmconstref<const int&&>>::value, "");
+static_assert(is_same<int, decay<int>>::value, "");
+static_assert(is_same<int, decay<int&>>::value, "");
+static_assert(is_same<int, decay<int&&>>::value, "");
+static_assert(is_same<int, decay<const int>>::value, "");
+static_assert(is_same<int, decay<const int&>>::value, "");
+static_assert(is_same<int, decay<const int&&>>::value, "");
 
-static_assert(is_same<std::string, rmconstref<std::string>>::value, "");
-static_assert(is_same<std::string, rmconstref<std::string&>>::value, "");
-static_assert(is_same<std::string, rmconstref<std::string&&>>::value, "");
-static_assert(is_same<std::string, rmconstref<const std::string>>::value, "");
-static_assert(is_same<std::string, rmconstref<const std::string&>>::value, "");
-static_assert(is_same<std::string, rmconstref<const std::string&&>>::value, "");
+static_assert(is_same<std::string, decay<std::string>>::value, "");
+static_assert(is_same<std::string, decay<std::string&>>::value, "");
+static_assert(is_same<std::string, decay<std::string&&>>::value, "");
+static_assert(is_same<std::string, decay<const std::string>>::value, "");
+static_assert(is_same<std::string, decay<const std::string&>>::value, "");
+static_assert(is_same<std::string, decay<const std::string&&>>::value, "");
 
-static_assert(is_same<std::tuple<int, int, int, int>, rmconstref<std::tuple<int, int, int, int>>>::value, "");
+static_assert(is_same<std::tuple<int, int, int, int>, decay<std::tuple<int, int, int, int>>>::value, "");
 static_assert(
-    is_same<std::tuple<int, int, int, int>, rmconstref<std::tuple<const int, int&, const int&, int&&>>>::value,
-    "");
+    is_same<std::tuple<int, int, int, int>, decay<std::tuple<const int, int&, const int&, int&&>>>::value, "");
 
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string&>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<std::string&>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<std::string&&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<std::string&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<std::string&&>>>::value, "");
 
-static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<std::string>&>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<const std::string>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<const std::string&>>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<const std::tuple<const std::string&>&>>::value, "");
-static_assert(is_same<std::tuple<std::string>, rmconstref<std::tuple<const std::string&>&&>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<std::string>&>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string&>>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<const std::tuple<const std::string&>&>>::value, "");
+static_assert(is_same<std::tuple<std::string>, decay<std::tuple<const std::string&>&&>>::value, "");
 
 // YO DAWG! I HEARD YOU LIKE TUPLES!
 static_assert(
-    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<const std::string>>>>::value,
-    "");
+    is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string>>>>::value, "");
+static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string&>>>>::value,
+              "");
 static_assert(
-    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<std::string&>>>>::value, "");
-static_assert(
-    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<const std::string&>>>>::value,
-    "");
-static_assert(
-    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<std::string&&>>>>::value, "");
+    is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<const std::string&>>>>::value, "");
+static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string&&>>>>::value,
+              "");
 
+static_assert(is_same<std::tuple<std::tuple<std::string>>, decay<std::tuple<std::tuple<std::string>>>>::value,
+              "");
 static_assert(
-    is_same<std::tuple<std::tuple<std::string>>, rmconstref<std::tuple<std::tuple<std::string>>>>::value, "");
+    is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string>>&>>::value, "");
 static_assert(
-    is_same<std::tuple<std::tuple<std::string>>, rmconstref<const std::tuple<std::tuple<std::string>>&>>::value,
+    is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string>&>&>>::value,
     "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>,
-                      rmconstref<const std::tuple<std::tuple<std::string>&>&>>::value,
-              "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>,
-                      rmconstref<const std::tuple<std::tuple<std::string&>&>&>>::value,
-              "");
-static_assert(is_same<std::tuple<std::tuple<std::string>>,
-                      rmconstref<const std::tuple<std::tuple<std::string&&>&>&>>::value,
-              "");
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string&>&>&>>::value,
+    "");
+static_assert(
+    is_same<std::tuple<std::tuple<std::string>>, decay<const std::tuple<std::tuple<std::string&&>&>&>>::value,
+    "");
 
 static_assert(is_same<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<int>, std::tuple<int>>,
-                      rmconstref<std::tuple<const std::tuple<const int>,
-                                            std::tuple<int&>&,
-                                            const std::tuple<const int&>&,
-                                            std::tuple<int&&>&&>>>::value,
+                      decay<std::tuple<const std::tuple<const int>,
+                                       std::tuple<int&>&,
+                                       const std::tuple<const int&>&,
+                                       std::tuple<int&&>&&>>>::value,
               "");
 
 }  // namespace bricks
 
-#endif  // BRICKS_TEMPLATE_RMREF_H
+#endif  // BRICKS_TEMPLATE_DECAY_H

@@ -32,7 +32,7 @@ SOFTWARE.
 #include <type_traits>
 
 #include "../exception.h"
-#include "../template/rmref.h"
+#include "../template/decay.h"
 #include "../template/weed.h"
 
 namespace bricks {
