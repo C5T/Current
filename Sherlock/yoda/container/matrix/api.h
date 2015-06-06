@@ -104,9 +104,7 @@ class InnerMapAccessor final {
     }
   }
 
-  bool Has(CF<INNER_KEY> subkey) const {
-    return (map_.find(subkey) != map_.end());
-  }
+  bool Has(CF<INNER_KEY> subkey) const { return (map_.find(subkey) != map_.end()); }
 
   const CF<OUTER_KEY> key() const { return key_; }
   size_t size() const { return map_.size(); }
@@ -154,9 +152,7 @@ class OuterMapAccessor final {
     }
   }
 
-  bool Has(CF<OUTER_KEY> key) const {
-    return (outer_map_.find(key) != outer_map_.end());
-  }
+  bool Has(CF<OUTER_KEY> key) const { return (outer_map_.find(key) != outer_map_.end()); }
 
   size_t size() const { return outer_map_.size(); }
   bool empty() const { return outer_map_.empty(); }

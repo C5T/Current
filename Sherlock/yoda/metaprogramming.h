@@ -165,15 +165,16 @@ struct YodaData {
   EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::rmconstref<KEY>>>::T_ENTRY> Get(
       KEY&& key) const {
     typedef bricks::rmconstref<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Get(std::forward<KEY>(key));
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Get(
+        std::forward<KEY>(key));
   }
 
   template <typename KEY>
   bool Has(KEY&& key) const {
     typedef bricks::rmconstref<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Has(std::forward<KEY>(key));
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Has(
+        std::forward<KEY>(key));
   }
-
 
   template <typename ENTRY>
   YodaData& operator<<(ENTRY&& entry) {
@@ -184,14 +185,15 @@ struct YodaData {
 
   // This scary `decltype(declval)` is just to extract the return type of `the_right_accessor[key]`.
   template <typename KEY>
-  decltype(
-      std::declval<CWT<YodaContainer<YT>,
-                       type_inference::RetrieveAccessor<
-                           CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::rmconstref<KEY>>>>>>()
-          [std::declval<bricks::rmconstref<KEY>>()])
+  decltype(std::declval<
+      CWT<YodaContainer<YT>,
+          type_inference::RetrieveAccessor<
+              CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::rmconstref<KEY>>>>>>()
+               [std::declval<bricks::rmconstref<KEY>>()])
   operator[](KEY&& key) {
     typedef bricks::rmconstref<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(key)];
+    return Accessor<
+        CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(key)];
   }
 
  private:
@@ -315,7 +317,9 @@ struct APICalls {
     TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
     typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
         std::declval<bricks::rmconstref<UNDECAYED_KEY>>())) T_RETVAL;
-    T_RETVAL operator()(DATA data) const { return YET::Accessor(data).Get(key); }  // TODO(dkorolev): Use `std::move()` here.
+    T_RETVAL operator()(DATA data) const {
+      return YET::Accessor(data).Get(key);
+    }  // TODO(dkorolev): Use `std::move()` here.
   };
 
   // `TopLevelHas` accepts an undecayed type.
@@ -325,7 +329,9 @@ struct APICalls {
   struct TopLevelHas {
     const bricks::rmconstref<UNDECAYED_KEY> key;
     TopLevelHas(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
-    bool operator()(DATA data) const { return YET::Accessor(data).Has(key); }  // TODO(dkorolev): Use `std::move()` here.
+    bool operator()(DATA data) const {
+      return YET::Accessor(data).Has(key);
+    }  // TODO(dkorolev): Use `std::move()` here.
   };
 
   template <typename T, typename... TS>
