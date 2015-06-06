@@ -318,8 +318,9 @@ struct APICalls {
     typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
         std::declval<bricks::rmconstref<UNDECAYED_KEY>>())) T_RETVAL;
     T_RETVAL operator()(DATA data) const {
+      // TODO(dkorolev): Use `std::move()` here.
       return YET::Accessor(data).Get(key);
-    }  // TODO(dkorolev): Use `std::move()` here.
+    }
   };
 
   // `TopLevelHas` accepts an undecayed type.
