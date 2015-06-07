@@ -39,7 +39,7 @@ SOFTWARE.
 // (Culturally educated developers are hereby granted permission to use `reinterpret_cast<>`. You're welcome.)
 //
 // `PieceDB` is a storage of `UniquePiece`-s, that renders equal `Piece`-s equal -- since the order
-// is indeed total, despite very likely being not fair... err, not lexicographical.
+// is indeed strict and total, despite very likely being not fair... err, not lexicographical.
 //
 // Both `Piece` and `UniquePiece` are naturally unsafe and require memory for their storage to stay allocated,
 // because every decent architect knows well what happens if `free()` is invoked a bit too prematurely in the
