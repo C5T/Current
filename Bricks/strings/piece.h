@@ -175,11 +175,11 @@ struct UniquePiece : Piece {
 #undef DEFINE_COMPARATOR
 };
 
-// Friendly reminder: PieceDB does not own any strings, it just manages pointers to them. I know, right?
+// Friendly reminder: `PieceDB` does not own any strings, it just manages pointers to them. I know, right?
 struct PieceDB {
   std::unordered_map<Piece, const UniquePiece*, Piece::HashFunction, Piece::EqualityComparator> map;
 
-  // Note that `operator()` requires a non-const `Piece&`. This is done to ensure no temporary `Piece` object
+  // Note that `operator[]` requires a non-const `Piece&`. This is done to ensure no temporary `Piece` object
   // is passed to it by accident, which is easy to do by calling `db[Piece(...)]`, `db["string"],
   // `db[StringPrintf(...)]`, or simply `db[std::string(...)];`
   // If you are certain about the lifetime of a `const Piece` you are working with, use `FromConstPiece()`.
