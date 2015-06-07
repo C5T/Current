@@ -42,10 +42,10 @@ using sfinae::T_MAP_TYPE;
 using sfinae::GetRow;
 using sfinae::GetCol;
 
-// User type interface: Use `MatrixEntry<MyMatrixEntry>` in Yoda's type list for required storage types
-// for Yoda to support key-entry (key-value) accessors over the type `MyMatrixEntry`.
+// User type interface: Use `Matrix<MyMatrix>` in Yoda's type list for required storage types
+// for Yoda to support key-entry (key-value) accessors over the type `MyMatrix`.
 template <typename ENTRY>
-struct MatrixEntry {
+struct Matrix {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
@@ -61,13 +61,13 @@ struct MatrixEntry {
   typedef SubscriptException<T_ENTRY> T_SUBSCRIPT_EXCEPTION;
 
   template <typename DATA>
-  static decltype(std::declval<DATA>().template Accessor<MatrixEntry<ENTRY>>()) Accessor(DATA&& c) {
-    return c.template Accessor<MatrixEntry<ENTRY>>();
+  static decltype(std::declval<DATA>().template Accessor<Matrix<ENTRY>>()) Accessor(DATA&& c) {
+    return c.template Accessor<Matrix<ENTRY>>();
   }
 
   template <typename DATA>
-  static decltype(std::declval<DATA>().template Mutator<MatrixEntry<ENTRY>>()) Mutator(DATA&& c) {
-    return c.template Mutator<MatrixEntry<ENTRY>>();
+  static decltype(std::declval<DATA>().template Mutator<Matrix<ENTRY>>()) Mutator(DATA&& c) {
+    return c.template Mutator<Matrix<ENTRY>>();
   }
 };
 
@@ -164,9 +164,9 @@ class OuterMapAccessor final {
 };
 
 template <typename YT, typename ENTRY>
-struct Container<YT, MatrixEntry<ENTRY>> {
+struct Container<YT, Matrix<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-  typedef MatrixEntry<ENTRY> YET;
+  typedef Matrix<ENTRY> YET;
 
   template <typename T>
   using CF = bricks::copy_free<T>;
