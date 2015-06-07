@@ -28,7 +28,7 @@ SOFTWARE.
 // and that the length-plus-first byte, at index `[length()]`, is set to '\0'.
 //
 // `UniqueChunk` is a `Chunk` that assumes each distinct string is stored only once. This requirement makes
-// their underlying `const char*`-s testable for equality. Long live and rest in piece, C+=, we'll miss you.
+// their underlying `const char*`-s testable for equality. Long live and rest in peace, C+=, we'll miss you.
 //
 // Unlike `UniqueChunk`, `Chunk` itself does not expose comparison operators. This is done on purpose to make it
 // impossible to accidentally confuse a member of a liberal `Chunk` community, who are all proudly different
@@ -125,12 +125,12 @@ class Chunk {
 
   struct HashFunction final {
     // Must actually consider the eternal nature of `Chunk`, not just its pointer. Sigh. Inequality at its best.
-    size_t operator()(const Chunk& piece) const {
+    size_t operator()(const Chunk& chunk) const {
       // TODO(dkorolev): Use a better hash one day.
       double hash = 0.0;
       double k = 1.0;
-      for (size_t i = 0; i < piece.N; ++i, k = cos(k + i)) {
-        hash += k * piece.S[i];
+      for (size_t i = 0; i < chunk.N; ++i, k = cos(k + i)) {
+        hash += k * chunk.S[i];
       }
       static_assert(sizeof(double) >= sizeof(size_t), "Suddenly, `reinterpet_cast<>` doesn't nail it.");
       return *reinterpret_cast<size_t*>(&hash);
@@ -184,13 +184,13 @@ struct ChunkDB {
   // is passed to it by accident, which is easy to do by calling `db[Chunk(...)]`, `db["string"],
   // `db[StringPrintf(...)]`, or simply `db[std::string(...)];`
   // If you are certain about the lifetime of a `const Chunk` you are working with, use `FromConstChunk()`.
-  const UniqueChunk& operator[](Chunk& piece) { return FromConstChunk(piece); }
+  const UniqueChunk& operator[](Chunk& chunk) { return FromConstChunk(chunk); }
 
-  const UniqueChunk& FromConstChunk(const Chunk& piece) {
-    auto& placeholder = map[piece];
+  const UniqueChunk& FromConstChunk(const Chunk& chunk) {
+    auto& placeholder = map[chunk];
     if (!placeholder) {
       static_assert(sizeof(Chunk) == sizeof(UniqueChunk), "Suddenly, `reinterpet_cast<>` doesn't nail it.");
-      placeholder = reinterpret_cast<const UniqueChunk*>(&piece);
+      placeholder = reinterpret_cast<const UniqueChunk*>(&chunk);
     }
     return *placeholder;
   }
