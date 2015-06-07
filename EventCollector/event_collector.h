@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef LOG_COLLECTOR_H
-#define LOG_COLLECTOR_H
+#ifndef EVENT_COLLECTOR_H
+#define EVENT_COLLECTOR_H
 
 #include <map>
 #include <ostream>
@@ -56,9 +56,9 @@ struct LogEntry {
   }
 };
 
-class LogCollectorHTTPServer {
+class EventCollectorHTTPServer {
  public:
-  LogCollectorHTTPServer(int http_port,
+  EventCollectorHTTPServer(int http_port,
                          std::ostream& ostream,
                          const bricks::time::MILLISECONDS_INTERVAL tick_interval_ms,
                          const std::string& route = "/log",
@@ -70,7 +70,7 @@ class LogCollectorHTTPServer {
         tick_interval_ms_(static_cast<uint64_t>(tick_interval_ms)),
         send_ticks_(tick_interval_ms_ > 0),
         events_pushed_(0u),
-        timer_thread_(&LogCollectorHTTPServer::TimerThreadFunction, this) {
+        timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
     HTTP(http_port_)
         .Register(route_, [this](Request r) {
           LogEntry entry;
@@ -92,7 +92,7 @@ class LogCollectorHTTPServer {
         });
   }
 
-  ~LogCollectorHTTPServer() {
+  ~EventCollectorHTTPServer() {
     HTTP(http_port_).UnRegister(route_);
     send_ticks_ = false;
     timer_thread_.join();
@@ -135,4 +135,4 @@ class LogCollectorHTTPServer {
   std::thread timer_thread_;
 };
 
-#endif  // LOG_COLLECTOR_H
+#endif  // EVENT_COLLECTOR_H

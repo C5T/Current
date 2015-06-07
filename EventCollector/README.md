@@ -1,4 +1,4 @@
-# SimpleServer
+# EventCollector
 
 A reference implementation of an HTTP server. Stub data collector.
 
@@ -8,7 +8,7 @@ A reference implementation of an HTTP server. Stub data collector.
 
 ```
 $ make
-$ while true ; do date ; ./.noshit/example 2>&1 | tee output.txt ; done
+$ while true ; do date ; ./.current/example 2>&1 | tee output.txt ; done
 ```
 
 ## Port Forwarding

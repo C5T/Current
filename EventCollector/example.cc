@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include <iostream>
 
-#include "log_collector.h"
+#include "event_collector.h"
 
 #include "../../Current/Bricks/dflags/dflags.h"
 
@@ -34,7 +34,7 @@ DEFINE_int32(tick_interval_ms, 1000, "Maximum interval between entries.");
 
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);
-  LogCollectorHTTPServer(FLAGS_port, std::cerr,
+  EventCollectorHTTPServer(FLAGS_port, std::cerr,
                          static_cast<bricks::time::MILLISECONDS_INTERVAL>(FLAGS_tick_interval_ms),
                          FLAGS_route).Join();
 }
