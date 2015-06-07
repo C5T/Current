@@ -124,7 +124,7 @@ class Piece {
   }
 
   struct HashFunction final {
-    // Must actually consider the eternal nature of `Piece`, not just its pointer. Sigh. Inequality in its best.
+    // Must actually consider the eternal nature of `Piece`, not just its pointer. Sigh. Inequality at its best.
     size_t operator()(const Piece& piece) const {
       // TODO(dkorolev): Use a better hash one day.
       double hash = 0.0;
@@ -173,7 +173,7 @@ struct UniquePiece : Piece {
 #undef DEFINE_COMPARATOR
 };
 
-// Friendly reminder: `PieceDB` does not own any strings, it just manages pointers to them. I know, right?
+// Friendly reminder: `PieceDB` does not own any strings, it just manages pointers to them. I know right?
 struct PieceDB {
   std::unordered_map<Piece, const UniquePiece*, Piece::HashFunction, Piece::EqualityComparator> map;
 
