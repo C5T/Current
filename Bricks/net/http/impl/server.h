@@ -42,7 +42,7 @@ SOFTWARE.
 
 #include "../../../strings/util.h"
 #include "../../../cerealize/cerealize.h"
-#include "../../../template/rmref.h"
+#include "../../../template/decay.h"
 
 namespace bricks {
 namespace net {

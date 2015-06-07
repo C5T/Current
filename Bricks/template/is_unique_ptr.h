@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <memory>
 
-#include "rmref.h"
+#include "decay.h"
 
 namespace bricks {
 
@@ -48,7 +48,7 @@ struct is_unique_ptr_impl<std::unique_ptr<T, D>> {
 };
 
 template <typename T>
-using is_unique_ptr = is_unique_ptr_impl<rmconstref<T>>;
+using is_unique_ptr = is_unique_ptr_impl<decay<T>>;
 
 static_assert(!is_unique_ptr<int>::value, "");
 static_assert(std::is_same<int, typename is_unique_ptr<int>::underlying_type>::value, "");

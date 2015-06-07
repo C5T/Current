@@ -45,7 +45,7 @@ SOFTWARE.
 #include "../3party/cereal/include/external/base64.hpp"
 
 #include "../rtti/dispatcher.h"
-#include "../template/rmref.h"
+#include "../template/decay.h"
 
 namespace bricks {
 namespace cerealize {
@@ -95,7 +95,7 @@ struct is_string_type_impl<const char[N]> {
 // explicitly exclude string-related types from cereal-based implementations.
 template <typename TOP_LEVEL_T>
 struct is_string_type {
-  constexpr static bool value = is_string_type_impl<rmconstref<TOP_LEVEL_T>>::value;
+  constexpr static bool value = is_string_type_impl<decay<TOP_LEVEL_T>>::value;
 };
 
 // Helper compile-time test that certain type can be serialized via cereal.
@@ -103,14 +103,14 @@ template <typename T>
 struct is_read_cerealizable {
   constexpr static bool value =
       !is_string_type<T>::value &&
-      cereal::traits::is_input_serializable<rmconstref<T>, cereal::JSONInputArchive>::value;
+      cereal::traits::is_input_serializable<decay<T>, cereal::JSONInputArchive>::value;
 };
 
 template <typename T>
 struct is_write_cerealizable {
   constexpr static bool value =
       !is_string_type<T>::value &&
-      cereal::traits::is_output_serializable<rmconstref<T>, cereal::JSONOutputArchive>::value;
+      cereal::traits::is_output_serializable<decay<T>, cereal::JSONOutputArchive>::value;
 };
 
 template <typename T>

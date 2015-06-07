@@ -27,7 +27,7 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
 #define BRICKS_TEMPLATE_METAPROGRAMMING_H
 
-#include "rmref.h"
+#include "decay.h"
 #include "pod.h"
 #include "is_tuple.h"
 #include "mapreduce.h"

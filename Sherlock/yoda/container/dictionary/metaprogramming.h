@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../../metaprogramming.h"
 #include "../../../../Bricks/template/pod.h"
-#include "../../../../Bricks/template/rmref.h"
+#include "../../../../Bricks/template/decay.h"
 
 namespace yoda {
 
@@ -75,7 +75,7 @@ typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
 }
 
 template <typename T_ENTRY>
-using ENTRY_KEY_TYPE = bricks::rmconstref<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
+using ENTRY_KEY_TYPE = bricks::decay<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
 
 template <typename T_ENTRY>
 void SetKey(T_ENTRY& entry, bricks::copy_free<ENTRY_KEY_TYPE<T_ENTRY>> key) {

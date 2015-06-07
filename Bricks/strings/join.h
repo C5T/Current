@@ -29,7 +29,7 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
-#include "../template/rmref.h"
+#include "../template/decay.h"
 
 namespace bricks {
 namespace strings {
