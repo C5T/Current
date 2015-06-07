@@ -31,7 +31,7 @@ SOFTWARE.
 // their underlying `const char*`-s testable for equality. Long live and rest in piece, C+=, we'll miss you.
 //
 // Unlike `UniquePiece`, `Piece` itself does not expose comparison operators. This is done on purpose to make it
-// impossible to accidentally confuse a member of a liberal `Piece` community, who are all prouly different
+// impossible to accidentally confuse a member of a liberal `Piece` community, who are all proudly different
 // and resist exposing any [efficient] way of ordering or even comparing one to another, with a member of
 // an organized `UniquePiece` society, members of which have gladly accepted the deprivation
 // of the right to express their opinion on whether the order should be lexicographical, as long as it is total.
