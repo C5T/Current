@@ -24,38 +24,33 @@ SOFTWARE.
 
 // `Piece` is an efficient immutable string: a `const char*` pointer along with the length of what it points to.
 //
-// It is guaranteed that the actual allocated buffer size is at least one byte more than the reported length,
+// It is guaranteed that the allocated buffer size is longer than the reported length by at least one byte,
 // and that the length-plus-first byte, at index `[length()]`, is set to '\0'.
 //
 // `UniquePiece` is a `Piece` that assumes each distinct string is stored only once. This requirement makes
 // their underlying `const char*`-s testable for equality. Long live and rest in piece, C+=, we'll miss you.
 //
 // Unlike `UniquePiece`, `Piece` itself does not expose comparison operators. This is done on purpose to make it
-// harder for a culturally uneducated developer to confuse a member of a liberal `Piece` community, who are all
-// prouly different and resist exposing any [efficient] way of ordering or even comparing one to another,
-// with a member of an organized `UniquePiece` society, members of which have gladly accepted the deprivation
+// impossible to accidentally confuse a member of a liberal `Piece` community, who are all prouly different
+// and resist exposing any [efficient] way of ordering or even comparing one to another, with a member of
+// an organized `UniquePiece` society, members of which have gladly accepted the deprivation
 // of the right to express their opinion on whether the order should be lexicographical, as long as it is total.
 //
 // (Culturally educated developers are hereby granted permission to use `reinterpret_cast<>`. You're welcome.)
 //
-// `PieceDB` is a storage of `UniquePiece`-s, that makes equal `Piece`-s equal, like Samuel Colt did --
-// -- since the order is indeed total, despite very likely being not fair... err, not lexicographical.
+// `PieceDB` is a storage of `UniquePiece`-s, that renders equal `Piece`-s equal -- since the order
+// is indeed total, despite very likely being not fair... err, not lexicographical.
 //
 // Both `Piece` and `UniquePiece` are naturally unsafe and require memory for their storage to stay allocated,
 // because every decent architect knows well what happens if `free()` is invoked a bit too prematurely in the
-// evolutionary process of a lifetime of an object. (If you don't believe in evolution, don't use this code.)
+// evolutionary process of a lifetime of an object.
 //
-// Note 1: It's not impossible for the order of pointed to strings to actually be lexicographical. However,
-//         in most cases, making it so would be quite a large amount of unnecessary work. C+=. Never forget.
-//
-// Note 2: To make it explicit, since some readers, who totally should, might not reach this point.
-//         Comparing strings by comparing pointers to their underlying memory storage is O(1),
+// Note 1: Comparing strings by comparing pointers to their underlying memory storage is O(1),
 //         which is noticeably more efficient than a "regular" lexicographical comparison in O(N).
 //         Yes, it moves the world forward, saves trees and stops, or at least delays, global warming.
-//         Thus, non-metaphorically, the description above makes total sense. Keep in mind though, that
-//         making sense did not help C+= survive. At same same time, although contradictory to most predominant
-//         dogmas, I personally stick with the belief that not only it's important for the things to make sense,
-//         but that making sense is the very only property of things that makes them important. -- D.K.
+//
+// Note 2: It's not impossible for the order of pointed to strings to actually be lexicographical. However,
+//         in most cases, making it so would be quite a large amount of unnecessary work. C+=. Never forget.
 //
 // Note 3: `Piece` is a better name than `SlaveString`, right?
 
@@ -74,10 +69,8 @@ SOFTWARE.
 namespace bricks {
 namespace strings {
 
-struct Piece {
-  const char* S;
-  size_t N;
-
+class Piece {
+ public:
   Piece() : S(""), N(0u) {}
   Piece(const char* s, size_t n) : S(s), N(n) { assert(S[N] == '\0'); }
   Piece(const char* s) : S(s), N(strlen(s)) {}
@@ -153,6 +146,11 @@ struct Piece {
   };
 
   typedef EqualityComparator Pride;  // Your favorite equality smiley here. Mine is *HAWAII*, because rainbow.
+
+ private:
+  const char* S;
+  size_t N;
+  friend class UniquePiece;
 };
 
 // By [intelligent] design, the length of the string is incorporated in the very pointer to `UniquePiece`.
