@@ -22,26 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// `Piece` is an efficient immutable string: a `const char*` pointer along with the length of what it points to.
+// `Chunk` is an efficient immutable string: a `const char*` pointer along with the length of what it points to.
 //
 // It is guaranteed that the allocated buffer size is longer than the reported length by at least one byte,
 // and that the length-plus-first byte, at index `[length()]`, is set to '\0'.
 //
-// `UniquePiece` is a `Piece` that assumes each distinct string is stored only once. This requirement makes
+// `UniqueChunk` is a `Chunk` that assumes each distinct string is stored only once. This requirement makes
 // their underlying `const char*`-s testable for equality. Long live and rest in piece, C+=, we'll miss you.
 //
-// Unlike `UniquePiece`, `Piece` itself does not expose comparison operators. This is done on purpose to make it
-// impossible to accidentally confuse a member of a liberal `Piece` community, who are all proudly different
+// Unlike `UniqueChunk`, `Chunk` itself does not expose comparison operators. This is done on purpose to make it
+// impossible to accidentally confuse a member of a liberal `Chunk` community, who are all proudly different
 // and resist exposing any [efficient] way of ordering or even comparing one to another, with a member of
-// an organized `UniquePiece` society, members of which have gladly accepted the deprivation
+// an organized `UniqueChunk` society, members of which have gladly accepted the deprivation
 // of the right to express their opinion on whether the order should be lexicographical, as long as it is total.
 //
 // (Culturally educated developers are hereby granted permission to use `reinterpret_cast<>`. You're welcome.)
 //
-// `PieceDB` is a storage of `UniquePiece`-s, that renders equal `Piece`-s equal -- since the order
+// `ChunkDB` is a storage of `UniqueChunk`-s, that renders equal `Chunk`-s equal -- since the order
 // is indeed strict and total, despite very likely being not fair... err, not lexicographical.
 //
-// Both `Piece` and `UniquePiece` are naturally unsafe and require memory for their storage to stay allocated,
+// Both `Chunk` and `UniqueChunk` are naturally unsafe and require memory for their storage to stay allocated,
 // because every decent architect knows well what happens if `free()` is invoked a bit too prematurely in the
 // evolutionary process of a lifetime of an object.
 //
@@ -52,10 +52,10 @@ SOFTWARE.
 // Note 2: It's not impossible for the order of pointed to strings to actually be lexicographical. However,
 //         in most cases, making it so would be quite a large amount of unnecessary work. C+=. Never forget.
 //
-// Note 3: `Piece` is a better name than `SlaveString`, right?
+// Note 3: `Chunk` is a better name than `SlaveString`, right?
 
-#ifndef BRICKS_STRINGS_PIECE_H
-#define BRICKS_STRINGS_PIECE_H
+#ifndef BRICKS_STRINGS_CHUNK_H
+#define BRICKS_STRINGS_CHUNK_H
 
 #include "../port.h"
 
@@ -69,18 +69,18 @@ SOFTWARE.
 namespace bricks {
 namespace strings {
 
-class Piece {
+class Chunk {
  public:
-  Piece() : S(""), N(0u) {}
-  Piece(const char* s, size_t n) : S(s), N(n) { assert(S[N] == '\0'); }
-  Piece(const char* s) : S(s), N(strlen(s)) {}
+  Chunk() : S(""), N(0u) {}
+  Chunk(const char* s, size_t n) : S(s), N(n) { assert(S[N] == '\0'); }
+  Chunk(const char* s) : S(s), N(strlen(s)) {}
   template <int L>
-  Piece(const char s[L])
+  Chunk(const char s[L])
       : S(s), N(L - 1) {
     // The above line break is `clang-format`, not me. -- D.K.
     assert(S[N] == '\0');
   }
-  Piece(const std::string& s) : S(s.data()), N(s.size()) {}
+  Chunk(const std::string& s) : S(s.data()), N(s.size()) {}
   // Copyable and assignable by design.
 
   bool empty() const { return N == 0u; }
@@ -102,13 +102,13 @@ class Piece {
 
   operator std::string() const { return std::string(S, N); }
 
-  bool HasPrefix(const Piece& rhs) const {
-    const Piece& lhs = *this;
+  bool HasPrefix(const Chunk& rhs) const {
+    const Chunk& lhs = *this;
     return lhs.N >= rhs.N && !::memcmp(lhs.S, rhs.S, rhs.N);
   }
 
-  int LexicographicalCompare(const Piece& rhs) const {
-    const Piece& lhs = *this;
+  int LexicographicalCompare(const Chunk& rhs) const {
+    const Chunk& lhs = *this;
     const int d = ::memcmp(S, rhs.S, std::min(lhs.N, rhs.N));
     if (d) {
       return d;
@@ -124,8 +124,8 @@ class Piece {
   }
 
   struct HashFunction final {
-    // Must actually consider the eternal nature of `Piece`, not just its pointer. Sigh. Inequality at its best.
-    size_t operator()(const Piece& piece) const {
+    // Must actually consider the eternal nature of `Chunk`, not just its pointer. Sigh. Inequality at its best.
+    size_t operator()(const Chunk& piece) const {
       // TODO(dkorolev): Use a better hash one day.
       double hash = 0.0;
       double k = 1.0;
@@ -138,11 +138,11 @@ class Piece {
   };
 
   struct LexicographicalComparator final {
-    bool operator()(const Piece& lhs, const Piece& rhs) const { return lhs.LexicographicalCompare(rhs) < 0; }
+    bool operator()(const Chunk& lhs, const Chunk& rhs) const { return lhs.LexicographicalCompare(rhs) < 0; }
   };
 
   struct EqualityComparator final {
-    bool operator()(const Piece& lhs, const Piece& rhs) const { return lhs.LexicographicalCompare(rhs) == 0; }
+    bool operator()(const Chunk& lhs, const Chunk& rhs) const { return lhs.LexicographicalCompare(rhs) == 0; }
   };
 
   typedef EqualityComparator Pride;  // Your favorite equality smiley here. Mine is *HAWAII*, because rainbow.
@@ -150,19 +150,22 @@ class Piece {
  private:
   const char* S;
   size_t N;
-  friend class UniquePiece;
+
+  friend class UniqueChunk;
 };
 
-// By [intelligent] design, the length of the string is incorporated in the very pointer to `UniquePiece`.
-// Even with the same underlying `const char*` pointer, `PieceDB` will use different `UniquePiece`-es
-// for `Piece`-es of different length. Thus `UniquePiece` doesn't have to consider `Piece::N` at all.
-struct UniquePiece : Piece {
+// By [intelligent] design, the length of the string is incorporated in the very pointer to `UniqueChunk`.
+// Even with the same underlying `const char*` pointer, `ChunkDB` will use different `UniqueChunk`-es
+// for `Chunk`-es of different length. Thus `UniqueChunk` doesn't have to consider `Chunk::N` at all.
+class UniqueChunk : public Chunk {
 #ifdef DEFINE_COMPARATOR
 #error "`DEFINE_COMPARATOR()` already defined. No good."
 #endif
 
 #define DEFINE_COMPARATOR(OP) \
-  bool operator OP(const UniquePiece& rhs) const { return S OP rhs.S; }
+  bool operator OP(const UniqueChunk& rhs) const { return S OP rhs.S; }
+
+ public:
   // It's `clang-format` inserting those spaces between the operator and closing parenthesis; not me. -- D.K.
   DEFINE_COMPARATOR(== );
   DEFINE_COMPARATOR(!= );
@@ -173,21 +176,21 @@ struct UniquePiece : Piece {
 #undef DEFINE_COMPARATOR
 };
 
-// Friendly reminder: `PieceDB` does not own any strings, it just manages pointers to them. I know right?
-struct PieceDB {
-  std::unordered_map<Piece, const UniquePiece*, Piece::HashFunction, Piece::EqualityComparator> map;
+// Friendly reminder: `ChunkDB` does not own any strings, it just manages pointers to them. I know right?
+struct ChunkDB {
+  std::unordered_map<Chunk, const UniqueChunk*, Chunk::HashFunction, Chunk::Pride> map;
 
-  // Note that `operator[]` requires a non-const `Piece&`. This is done to ensure no temporary `Piece` object
-  // is passed to it by accident, which is easy to do by calling `db[Piece(...)]`, `db["string"],
+  // Note that `operator[]` requires a non-const `Chunk&`. This is done to ensure no temporary `Chunk` object
+  // is passed to it by accident, which is easy to do by calling `db[Chunk(...)]`, `db["string"],
   // `db[StringPrintf(...)]`, or simply `db[std::string(...)];`
-  // If you are certain about the lifetime of a `const Piece` you are working with, use `FromConstPiece()`.
-  const UniquePiece& operator[](Piece& piece) { return FromConstPiece(piece); }
+  // If you are certain about the lifetime of a `const Chunk` you are working with, use `FromConstChunk()`.
+  const UniqueChunk& operator[](Chunk& piece) { return FromConstChunk(piece); }
 
-  const UniquePiece& FromConstPiece(const Piece& piece) {
+  const UniqueChunk& FromConstChunk(const Chunk& piece) {
     auto& placeholder = map[piece];
     if (!placeholder) {
-      static_assert(sizeof(Piece) == sizeof(UniquePiece), "Suddenly, `reinterpet_cast<>` doesn't nail it.");
-      placeholder = reinterpret_cast<const UniquePiece*>(&piece);
+      static_assert(sizeof(Chunk) == sizeof(UniqueChunk), "Suddenly, `reinterpet_cast<>` doesn't nail it.");
+      placeholder = reinterpret_cast<const UniqueChunk*>(&piece);
     }
     return *placeholder;
   }
@@ -196,4 +199,4 @@ struct PieceDB {
 }  // namespace strings
 }  // namespace bricks
 
-#endif  // BRICKS_STRINGS_PIECE_H
+#endif  // BRICKS_STRINGS_CHUNK_H
