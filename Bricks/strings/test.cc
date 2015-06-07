@@ -50,6 +50,9 @@ using bricks::strings::ByWhitespace;
 using bricks::strings::ByLines;
 using bricks::strings::SlowEditDistance;
 using bricks::strings::FastEditDistance;
+using bricks::strings::Piece;
+using bricks::strings::UniquePiece;
+using bricks::strings::PieceDB;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -315,4 +318,112 @@ TEST(EditDistance, StringsOfTooDifferentLength) {
   EXPECT_EQ(6u, FastEditDistance("foobarbaz", "baz", 6u));
   EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foo", "foobarbaz", 5u));
   EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foobarbaz", "baz", 5u));
+}
+
+TEST(Piece, Smoke) {
+  Piece foo("foo", 3);
+  EXPECT_FALSE(foo.empty());
+  EXPECT_EQ(3u, foo.length());
+  EXPECT_EQ(0, ::strcmp("foo", foo.c_str()));
+
+  Piece bar("bar\0baz", 3);
+  EXPECT_FALSE(bar.empty());
+  EXPECT_EQ(3u, bar.length());
+  EXPECT_EQ(0, ::strcmp("bar", bar.c_str()));
+
+  Piece empty;
+  EXPECT_TRUE(empty.empty());
+  EXPECT_EQ(0u, empty.length());
+
+  Piece foo_copy = foo;
+  Piece bar_copy = "meh";
+  bar_copy = bar;
+
+  EXPECT_TRUE(foo_copy.HasPrefix(foo));
+  EXPECT_TRUE(foo_copy.HasPrefix("foo"));
+  EXPECT_TRUE(foo_copy.HasPrefix("fo"));
+  EXPECT_TRUE(foo_copy.HasPrefix("f"));
+  EXPECT_TRUE(foo_copy.HasPrefix(""));
+  EXPECT_FALSE(foo_copy.HasPrefix(bar));
+  EXPECT_FALSE(foo_copy.HasPrefix("bar"));
+  EXPECT_FALSE(foo_copy.HasPrefix("ba"));
+  EXPECT_FALSE(foo_copy.HasPrefix("b"));
+
+  EXPECT_EQ(0, foo_copy.LexicographicalCompare(foo));
+  EXPECT_EQ(0, bar_copy.LexicographicalCompare(bar));
+  EXPECT_GT(foo_copy.LexicographicalCompare(bar_copy), 0);
+  EXPECT_LT(bar_copy.LexicographicalCompare(foo_copy), 0);
+
+  std::string new_foo;
+  new_foo += 'f';
+  new_foo += 'o';
+  new_foo += 'o';
+  Piece foo_from_std_string(new_foo);
+
+  EXPECT_FALSE(foo_from_std_string.empty());
+  EXPECT_EQ(3u, foo_from_std_string.length());
+  EXPECT_EQ(0, ::strcmp("foo", foo_from_std_string.c_str()));
+
+  EXPECT_EQ(0, ::strcmp(foo_copy.c_str(), foo_from_std_string.c_str()));
+  EXPECT_FALSE(foo_copy.c_str() == foo_from_std_string.c_str());
+
+  PieceDB db;
+
+  UniquePiece unique_foo_1 = db[foo];
+  UniquePiece unique_foo_2 = db[foo_copy];
+  UniquePiece unique_foo_3 = db[foo_from_std_string];
+  EXPECT_EQ(unique_foo_1.c_str(), foo.c_str());
+  EXPECT_EQ(unique_foo_2.c_str(), foo.c_str());
+  EXPECT_EQ(unique_foo_3.c_str(), foo.c_str());
+  EXPECT_TRUE(unique_foo_1 == unique_foo_2);
+  EXPECT_TRUE(unique_foo_2 == unique_foo_3);
+  EXPECT_FALSE(unique_foo_1 != unique_foo_3);
+  EXPECT_FALSE(unique_foo_2 != unique_foo_1);
+  EXPECT_FALSE(unique_foo_3 != unique_foo_2);
+  EXPECT_FALSE(unique_foo_1 < unique_foo_2);
+  EXPECT_FALSE(unique_foo_2 > unique_foo_3);
+  EXPECT_TRUE(unique_foo_1 <= unique_foo_2);
+  EXPECT_TRUE(unique_foo_2 >= unique_foo_3);
+  EXPECT_FALSE(unique_foo_1 != unique_foo_2);
+
+  UniquePiece unique_bar_1 = db[bar];
+  UniquePiece unique_bar_2 = db[bar_copy];
+  EXPECT_EQ(unique_bar_1.c_str(), bar.c_str());
+  EXPECT_EQ(unique_bar_2.c_str(), bar.c_str());
+  EXPECT_TRUE(unique_bar_1 == unique_bar_2);
+  EXPECT_FALSE(unique_bar_1 != unique_bar_2);
+
+  EXPECT_TRUE(unique_foo_1 != unique_bar_1);
+  EXPECT_FALSE(unique_foo_1 == unique_bar_1);
+
+  const bool dir = (unique_foo_1 < unique_bar_1);  // Can be either way.
+  EXPECT_EQ(dir, unique_foo_1 <= unique_bar_1);
+  EXPECT_EQ(!dir, unique_foo_1 > unique_bar_1);
+  EXPECT_EQ(!dir, unique_foo_1 >= unique_bar_1);
+
+  const char* pchar_meh_more_stuff = "meh\0more\0good stuff";
+  const Piece meh_1 = Piece("meh", 3);
+  const Piece meh_2 = Piece(pchar_meh_more_stuff, 3);
+  EXPECT_EQ(0, meh_1.LexicographicalCompare(meh_2));
+  EXPECT_EQ(0, meh_2.LexicographicalCompare(meh_1));
+
+  UniquePiece unique_meh_1 = db.FromConstPiece(meh_1);
+  UniquePiece unique_meh_2 = db.FromConstPiece(meh_2);
+  EXPECT_TRUE(unique_meh_1 == unique_meh_2);
+
+  const Piece meh_more_1 = Piece("meh\0more\0stuff", 8);
+  const Piece meh_more_2 = Piece(pchar_meh_more_stuff, 8);
+  EXPECT_EQ(0, meh_more_1.LexicographicalCompare(meh_more_2));
+  EXPECT_EQ(0, meh_more_2.LexicographicalCompare(meh_more_1));
+
+  EXPECT_EQ(-1, meh_1.LexicographicalCompare(meh_more_1));
+
+  UniquePiece unique_meh_more_1 = db.FromConstPiece(meh_more_1);
+  UniquePiece unique_meh_more_2 = db.FromConstPiece(meh_more_2);
+  EXPECT_TRUE(unique_meh_more_1 == unique_meh_more_2);
+
+  EXPECT_FALSE(unique_meh_1 == unique_meh_more_1);
+  EXPECT_FALSE(unique_meh_1 == unique_meh_more_2);
+  EXPECT_FALSE(unique_meh_2 == unique_meh_more_1);
+  EXPECT_FALSE(unique_meh_2 == unique_meh_more_2);
 }
