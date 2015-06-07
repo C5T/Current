@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include "../Bricks/net/api/api.h"
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/template/rmref.h"
+#include "../Bricks/template/decay.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 // Sherlock is the overlord of data storage and processing in KnowSheet.
@@ -625,7 +625,7 @@ struct StreamInstance {
   // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
   template <typename F>
-  SyncListenerScope<bricks::rmconstref<F>> SyncSubscribe(F& listener) {
+  SyncListenerScope<bricks::decay<F>> SyncSubscribe(F& listener) {
     // No `std::move()` needed: RAAI.
     return impl_->SyncSubscribeImpl(listener);
   }
@@ -633,7 +633,7 @@ struct StreamInstance {
   // Aynchonous subscription: `listener` is a heap-allocated object, the ownership of which
   // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
   template <typename F>
-  AsyncListenerScope<bricks::rmconstref<F>> AsyncSubscribe(F&& listener) {
+  AsyncListenerScope<bricks::decay<F>> AsyncSubscribe(F&& listener) {
     // No `std::move()` needed: RAAI.
     return impl_->AsyncSubscribeImpl(std::forward<F>(listener));
   }

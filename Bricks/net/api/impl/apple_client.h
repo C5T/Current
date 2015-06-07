@@ -3,6 +3,7 @@ The MIT License (MIT)
 
 Copyright (c) 2014 Alexander Zolotarev <me@alex.bio> from Minsk, Belarus
           (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +30,7 @@ SOFTWARE.
 #define BRICKS_NET_API_IMPL_APPLE_H
 
 #include "../../../port.h"
+#include "../../../waitable_atomic/waitable_atomic.h"
 
 #if defined(BRICKS_APPLE)
 
@@ -49,6 +51,8 @@ struct HTTPClientApple {
   std::string server_response = "";
   std::string content_type = "";
   std::string user_agent = "";
+  bool request_succeeded = false;
+  WaitableAtomic<bool> async_request_completed;
 
   inline bool Go();
 };

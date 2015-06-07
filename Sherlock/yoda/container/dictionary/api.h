@@ -101,7 +101,10 @@ struct Container<YT, Dictionary<ENTRY>> {
     Accessor() = delete;
     explicit Accessor(const Container<YT, YET>& container) : immutable_(container) {}
 
-    bool Exists(CF<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
+    // Returns `true` if entry with corresponding `key` exists.
+    bool Has(CF<typename YET::T_KEY> key) const { return immutable_.map_.count(key); }
+
+    bool Has(const std::tuple<typename YET::T_KEY>& key) const { return Has(std::get<0>(key)); }
 
     // Non-throwing getter. Returns a wrapped null entry if not found.
     const EntryWrapper<ENTRY> Get(CF<typename YET::T_KEY> key) const {

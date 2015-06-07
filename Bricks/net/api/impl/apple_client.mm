@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2014 Alexander Zolotarev <me@alex.bio> from Minsk, Belarus
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +41,9 @@ SOFTWARE.
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
 #import <Foundation/NSURLConnection.h>
+#import <Foundation/NSOperation.h>
 #import <Foundation/NSError.h>
+#import <Foundation/NSURLError.h>
 #import <Foundation/NSFileManager.h>
 
 #define TIMEOUT_IN_SECONDS 30.0
@@ -86,30 +89,44 @@ bool bricks::net::api::HTTPClientApple::Go() {
       }
     }
 
-    NSHTTPURLResponse * response = nil;
-    NSError * err = nil;
-    NSData * url_data = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&err];
+    *async_request_completed.MutableScopedAccessor() = false;
+    [NSURLConnection sendAsynchronousRequest:request queue:[[NSOperationQueue alloc] init]
+        completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
+          // Workaround to handle HTTP 401 response without errors.
+          if (error.code == NSURLErrorUserCancelledAuthentication) {
+            http_response_code = 401;
+            request_succeeded = true;
+          } else {
+            if (response) {
+              NSHTTPURLResponse *http_response = (NSHTTPURLResponse *)response;
+              http_response_code = http_response.statusCode;
+              url_received = [http_response.URL.absoluteString UTF8String];
+              request_succeeded = true;
+            } else {
+              http_response_code = -1;
+              NSLog(@"ERROR while connecting to %s: %@", url_requested.c_str(), error.localizedDescription);
+              request_succeeded = false;
+            }
+          }
 
-    if (response) {
-      http_response_code = response.statusCode;
-      url_received = [response.URL.absoluteString UTF8String];
-    }
-    else {
-      http_response_code = -1;
-      NSLog(@"ERROR while connecting to %s: %@", url_requested.c_str(), err.localizedDescription);
-      return false;
-    }
+          if (data) {
+            if (received_file.empty()) {
+              server_response.assign(reinterpret_cast<char const *>(data.bytes), data.length);
+              request_succeeded = true;
+            } else {
+              if ([data writeToFile:[NSString stringWithUTF8String:received_file.c_str()] atomically:YES]) {
+                request_succeeded = true;
+              } else {
+                request_succeeded = false;
+              }
+            }
+          }
+          *async_request_completed.MutableScopedAccessor() = true;
+    }];
 
-    if (url_data) {
-      if (received_file.empty()) {
-        server_response.assign(reinterpret_cast<char const *>(url_data.bytes), url_data.length);
-      } else {
-        if (![url_data writeToFile:[NSString stringWithUTF8String:received_file.c_str()] atomically:YES]) {
-          return false;
-        }
-      }
-    }
-    return true;
+    async_request_completed.Wait([](bool done) { return done; });
+
+    return request_succeeded;
 
   } // @autoreleasepool
 }
