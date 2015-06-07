@@ -39,7 +39,7 @@ using yoda::Padawan;
 using yoda::API;
 using yoda::Future;
 using yoda::Dictionary;
-using yoda::MatrixEntry;
+using yoda::Matrix;
 using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
 using yoda::KeyNotFoundException;
@@ -128,7 +128,7 @@ HTTP(port).ResetAllHandlers();
   // Define the `api` object.
   typedef API<Dictionary<StringIntTuple>,
               Dictionary<Prime>,
-              MatrixEntry<PrimeCell>> PrimesAPI;
+              Matrix<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // Simple dictionary usecase, and a unit test for type system implementation.
@@ -324,7 +324,7 @@ HTTP(port).ResetAllHandlers();
 }
   
 {
-  // Work with `MatrixEntry<>` as well.
+  // Work with `Matrix<>` as well.
   api.Add(PrimeCell(0, 2, 100));
   api.Add(PrimeCell(0, 2, 1));  // Overwrite.
   api.Add(PrimeCell(0, 3, 2));
@@ -340,8 +340,8 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(1, p2.index);
    
   api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto getter = MatrixEntry<PrimeCell>::Accessor(data);
-    auto adder = MatrixEntry<PrimeCell>::Mutator(data);
+    const auto getter = Matrix<PrimeCell>::Accessor(data);
+    auto adder = Matrix<PrimeCell>::Mutator(data);
   
     const EntryWrapper<PrimeCell> e3 =
       getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3));
@@ -458,7 +458,7 @@ HTTP(port).ResetAllHandlers();
   
   // Top-level per-row and per-column accessors.
   api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto accessor = MatrixEntry<PrimeCell>::Accessor(data);
+    const auto accessor = Matrix<PrimeCell>::Accessor(data);
     EXPECT_EQ(10u, accessor.Rows().size());
     EXPECT_EQ(6u, accessor.Cols().size());  // 1, 2, 3, 5, 7 or 9, my captain.
     std::string by_rows_keys;

@@ -116,13 +116,13 @@ struct RetrieveAccessor {};
 template <typename T>
 struct RetrieveMutator {};
 
-// A wrapper to convert `T` into `Dictionary<T>`, `MatrixEntry<T>`, etc., using `decltype()`.
+// A wrapper to convert `T` into `Dictionary<T>`, `Matrix<T>`, etc., using `decltype()`.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename T>
 struct YETFromE {};
 
 // A wrapper to convert `T::T_KEY` into `Dictionary<T>`,
-// `std::tuple<T::T_ROW, T::T_COL>` into `MatrixEntry<T>`, etc.
+// `std::tuple<T::T_ROW, T::T_COL>` into `Matrix<T>`, etc.
 // Used to enable top-level `Add()`/`Get()` when passed in the entry only.
 template <typename K>
 struct YETFromK {};
