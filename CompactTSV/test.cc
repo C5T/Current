@@ -107,10 +107,28 @@ TEST(CompactTSV, Smoke) {
   EXPECT_EQ(FLAGS_rows, CompactTSV::Unpack([](const std::vector<std::string>&) {}, fast.GetPackedString()));
   const auto t_d_end = static_cast<uint64_t>(bricks::time::Now());
 
+  const auto t_e_begin = static_cast<uint64_t>(bricks::time::Now());
+  EXPECT_EQ(
+      FLAGS_rows,
+      CompactTSV::Unpack([](const std::vector<std::pair<const char*, size_t>>&) {}, fast.GetPackedString()));
+  const auto t_e_end = static_cast<uint64_t>(bricks::time::Now());
+
+  const auto t_f_begin = static_cast<uint64_t>(bricks::time::Now());
+  EXPECT_EQ(
+      FLAGS_rows,
+      CompactTSV::Unpack([](const std::vector<bricks::strings::UniqueChunk>&) {}, fast.GetPackedString()));
+  const auto t_f_end = static_cast<uint64_t>(bricks::time::Now());
+
   if (FLAGS_benchmark) {
-    std::cerr << "Generate:            " << (t_a_end - t_a_begin) << "ms.\n";
-    std::cerr << "Pack:                " << (t_b_end - t_b_begin) << "ms.\n";
-    std::cerr << "Unpack into strings: " << (t_c_end - t_c_begin) << "ms.\n";
-    std::cerr << "Unpack into memory:  " << (t_d_end - t_d_begin) << "ms.\n";
+    const size_t golden_size = golden.length();
+    const size_t packed_size = fast.GetPackedString().length();
+    std::cerr << "Original TSV size:\t" << golden_size << "b, or\t" << golden_size / (1024u * 1024u) << "MB.\n";
+    std::cerr << "Packed   TSV size:\t" << packed_size << "b, or\t" << packed_size / (1024u * 1024u) << "MB.\n";
+    std::cerr << "Generate:                                   " << (t_a_end - t_a_begin) << "ms.\n";
+    std::cerr << "Pack:                                       " << (t_b_end - t_b_begin) << "ms.\n";
+    std::cerr << "Unpack into std::ostringstream:             " << (t_c_end - t_c_begin) << "ms.\n";
+    std::cerr << "Unpack into std::string-s:                  " << (t_d_end - t_d_begin) << "ms.\n";
+    std::cerr << "Unpack into std::pair<const char*, size_t>: " << (t_e_end - t_e_begin) << "ms.\n";
+    std::cerr << "Unpack into UniqueChunk-s:                  " << (t_f_end - t_f_begin) << "ms.\n";
   }
 }

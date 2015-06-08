@@ -50,6 +50,9 @@ using bricks::strings::ByWhitespace;
 using bricks::strings::ByLines;
 using bricks::strings::SlowEditDistance;
 using bricks::strings::FastEditDistance;
+using bricks::strings::Chunk;
+using bricks::strings::UniqueChunk;
+using bricks::strings::ChunkDB;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -315,4 +318,124 @@ TEST(EditDistance, StringsOfTooDifferentLength) {
   EXPECT_EQ(6u, FastEditDistance("foobarbaz", "baz", 6u));
   EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foo", "foobarbaz", 5u));
   EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foobarbaz", "baz", 5u));
+}
+
+TEST(Chunk, Smoke) {
+  Chunk foo("foo", 3);
+  EXPECT_FALSE(foo.empty());
+  EXPECT_EQ(3u, foo.length());
+  EXPECT_EQ(0, ::strcmp("foo", foo.c_str()));
+
+  Chunk bar("bar\0baz", 3);
+  EXPECT_FALSE(bar.empty());
+  EXPECT_EQ(3u, bar.length());
+  EXPECT_EQ(0, ::strcmp("bar", bar.c_str()));
+
+  Chunk empty;
+  EXPECT_TRUE(empty.empty());
+  EXPECT_EQ(0u, empty.length());
+
+  Chunk foo_copy = foo;
+  Chunk bar_copy = "meh";
+  bar_copy = bar;
+
+  EXPECT_TRUE(foo_copy.HasPrefix(foo));
+  EXPECT_TRUE(foo_copy.HasPrefix("foo"));
+  EXPECT_TRUE(foo_copy.HasPrefix("fo"));
+  EXPECT_TRUE(foo_copy.HasPrefix("f"));
+  EXPECT_TRUE(foo_copy.HasPrefix(""));
+  EXPECT_FALSE(foo_copy.HasPrefix(bar));
+  EXPECT_FALSE(foo_copy.HasPrefix("bar"));
+  EXPECT_FALSE(foo_copy.HasPrefix("ba"));
+  EXPECT_FALSE(foo_copy.HasPrefix("b"));
+
+  Chunk result;
+  EXPECT_TRUE(foo_copy.ExpungePrefix(foo, result));
+  EXPECT_EQ(0u, result.length());
+  EXPECT_TRUE(foo_copy.ExpungePrefix("f", result));
+  EXPECT_EQ(2u, result.length());
+  EXPECT_EQ(std::string("oo"), result.c_str());
+
+  EXPECT_EQ(0, foo_copy.LexicographicalCompare(foo));
+  EXPECT_EQ(0, bar_copy.LexicographicalCompare(bar));
+  EXPECT_GT(foo_copy.LexicographicalCompare(bar_copy), 0);
+  EXPECT_LT(bar_copy.LexicographicalCompare(foo_copy), 0);
+
+  std::string new_foo;
+  new_foo += 'f';
+  new_foo += 'o';
+  new_foo += 'o';
+  Chunk foo_from_std_string(new_foo);
+
+  EXPECT_FALSE(foo_from_std_string.empty());
+  EXPECT_EQ(3u, foo_from_std_string.length());
+  EXPECT_EQ(0, ::strcmp("foo", foo_from_std_string.c_str()));
+
+  EXPECT_EQ(0, ::strcmp(foo_copy.c_str(), foo_from_std_string.c_str()));
+  EXPECT_FALSE(foo_copy.c_str() == foo_from_std_string.c_str());
+
+  ChunkDB db;
+
+  UniqueChunk unique_foo_1 = db[foo];
+  UniqueChunk unique_foo_2 = db[foo_copy];
+  UniqueChunk unique_foo_3 = db[foo_from_std_string];
+  EXPECT_EQ(unique_foo_1.c_str(), foo.c_str());
+  EXPECT_EQ(unique_foo_2.c_str(), foo.c_str());
+  EXPECT_EQ(unique_foo_3.c_str(), foo.c_str());
+  EXPECT_TRUE(unique_foo_1 == unique_foo_2);
+  EXPECT_TRUE(unique_foo_2 == unique_foo_3);
+  EXPECT_FALSE(unique_foo_1 != unique_foo_3);
+  EXPECT_FALSE(unique_foo_2 != unique_foo_1);
+  EXPECT_FALSE(unique_foo_3 != unique_foo_2);
+  EXPECT_FALSE(unique_foo_1 < unique_foo_2);
+  EXPECT_FALSE(unique_foo_2 > unique_foo_3);
+  EXPECT_TRUE(unique_foo_1 <= unique_foo_2);
+  EXPECT_TRUE(unique_foo_2 >= unique_foo_3);
+  EXPECT_FALSE(unique_foo_1 != unique_foo_2);
+
+  UniqueChunk unique_bar_1 = db[bar];
+  UniqueChunk unique_bar_2 = db[bar_copy];
+  EXPECT_EQ(unique_bar_1.c_str(), bar.c_str());
+  EXPECT_EQ(unique_bar_2.c_str(), bar.c_str());
+  EXPECT_TRUE(unique_bar_1 == unique_bar_2);
+  EXPECT_FALSE(unique_bar_1 != unique_bar_2);
+
+  EXPECT_TRUE(unique_foo_1 != unique_bar_1);
+  EXPECT_FALSE(unique_foo_1 == unique_bar_1);
+
+  const bool dir = (unique_foo_1 < unique_bar_1);  // Can be either way.
+  EXPECT_EQ(dir, unique_foo_1 <= unique_bar_1);
+  EXPECT_EQ(!dir, unique_foo_1 > unique_bar_1);
+  EXPECT_EQ(!dir, unique_foo_1 >= unique_bar_1);
+
+  const char* pchar_meh_more_stuff = "meh\0more\0good stuff";
+  const Chunk meh_1 = Chunk("meh", 3);
+  const Chunk meh_2 = Chunk(pchar_meh_more_stuff, 3);
+  EXPECT_EQ(0, meh_1.LexicographicalCompare(meh_2));
+  EXPECT_EQ(0, meh_2.LexicographicalCompare(meh_1));
+
+  UniqueChunk unique_meh_1 = db.FromConstChunk(meh_1);
+  UniqueChunk unique_meh_2 = db.FromConstChunk(meh_2);
+  EXPECT_TRUE(unique_meh_1 == unique_meh_2);
+
+  const Chunk meh_more_1 = Chunk("meh\0more\0stuff", 8);
+  const Chunk meh_more_2 = Chunk(pchar_meh_more_stuff, 8);
+  EXPECT_EQ(0, meh_more_1.LexicographicalCompare(meh_more_2));
+  EXPECT_EQ(0, meh_more_2.LexicographicalCompare(meh_more_1));
+
+  EXPECT_EQ(-1, meh_1.LexicographicalCompare(meh_more_1));
+
+  UniqueChunk unique_meh_more_1 = db.FromConstChunk(meh_more_1);
+  UniqueChunk unique_meh_more_2 = db.FromConstChunk(meh_more_2);
+  EXPECT_TRUE(unique_meh_more_1 == unique_meh_more_2);
+
+  EXPECT_FALSE(unique_meh_1 == unique_meh_more_1);
+  EXPECT_FALSE(unique_meh_1 == unique_meh_more_2);
+  EXPECT_FALSE(unique_meh_2 == unique_meh_more_1);
+  EXPECT_FALSE(unique_meh_2 == unique_meh_more_2);
+
+  UniqueChunk unique_result;
+  EXPECT_TRUE(db.Find("foo", unique_result));
+  EXPECT_TRUE(unique_result == unique_foo_1);
+  EXPECT_FALSE(db.Find("nope", unique_result));
 }

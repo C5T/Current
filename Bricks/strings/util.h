@@ -38,6 +38,7 @@ SOFTWARE.
 #include "join.h"
 #include "split.h"
 #include "distance.h"
+#include "chunk.h"
 
 namespace bricks {
 namespace strings {
