@@ -35,6 +35,7 @@ SOFTWARE.
 // and resist exposing any [efficient] way of ordering or even comparing one to another, with a member of
 // an organized `UniqueChunk` society, members of which have gladly accepted the deprivation
 // of the right to express their opinion on whether the order should be lexicographical, as long as it is total.
+// For more details on total order please refer to http://en.wikipedia.org/wiki/Total_order.
 //
 // (Culturally educated developers are hereby granted permission to use `reinterpret_cast<>`. You're welcome.)
 //
