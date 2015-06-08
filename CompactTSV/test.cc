@@ -107,10 +107,17 @@ TEST(CompactTSV, Smoke) {
   EXPECT_EQ(FLAGS_rows, CompactTSV::Unpack([](const std::vector<std::string>&) {}, fast.GetPackedString()));
   const auto t_d_end = static_cast<uint64_t>(bricks::time::Now());
 
+  const auto t_e_begin = static_cast<uint64_t>(bricks::time::Now());
+  EXPECT_EQ(
+      FLAGS_rows,
+      CompactTSV::Unpack([](const std::vector<bricks::strings::UniqueChunk>&) {}, fast.GetPackedString()));
+  const auto t_e_end = static_cast<uint64_t>(bricks::time::Now());
+
   if (FLAGS_benchmark) {
-    std::cerr << "Generate:            " << (t_a_end - t_a_begin) << "ms.\n";
-    std::cerr << "Pack:                " << (t_b_end - t_b_begin) << "ms.\n";
-    std::cerr << "Unpack into strings: " << (t_c_end - t_c_begin) << "ms.\n";
-    std::cerr << "Unpack into memory:  " << (t_d_end - t_d_begin) << "ms.\n";
+    std::cerr << "Generate:                       " << (t_a_end - t_a_begin) << "ms.\n";
+    std::cerr << "Pack:                           " << (t_b_end - t_b_begin) << "ms.\n";
+    std::cerr << "Unpack into std::ostringstream: " << (t_c_end - t_c_begin) << "ms.\n";
+    std::cerr << "Unpack into std::string-s:      " << (t_d_end - t_d_begin) << "ms.\n";
+    std::cerr << "Unpack into UniqueChunk-s:      " << (t_e_end - t_e_begin) << "ms.\n";
   }
 }

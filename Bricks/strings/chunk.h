@@ -88,6 +88,12 @@ class Chunk {
 
   const char* c_str() const { return S; }
 
+  void assign(const char* s, size_t n) {
+    S = s;
+    N = n;
+    assert(S[N] == '\0');
+  }
+
   void clear() {
     S = "";
     N = 0u;
@@ -174,6 +180,8 @@ class UniqueChunk : public Chunk {
   DEFINE_COMPARATOR(<= );
   DEFINE_COMPARATOR(>= );
 #undef DEFINE_COMPARATOR
+
+  // Define no constructors or assignment operators to enable all the default ones.
 };
 
 // Friendly reminder: `ChunkDB` does not own any strings, it just manages pointers to them. I know right?

@@ -36,6 +36,7 @@ SOFTWARE.
 #include <vector>
 
 #include "../Bricks/template/weed.h"
+#include "../Bricks/strings/chunk.h"
 #include "../Bricks/util/singleton.h"
 
 namespace efficient_tsv_parser_dispatcher {
@@ -56,11 +57,11 @@ struct DispatcherStorage {
   }
 };
 
-template <bool string, bool pchar, bool pchar_length_pair>
+template <bool string, bool pchar, bool pchar_length_pair, bool unique_chunk>
 struct DispatcherImpl {};
 
 template <>
-struct DispatcherImpl<true, false, false> : DispatcherStorage<std::string> {
+struct DispatcherImpl<true, false, false, false> : DispatcherStorage<std::string> {
   template <typename L>
   void Update(size_t index, const char* string, L length) {
     GrowAsNeeded(index);
@@ -72,7 +73,7 @@ struct DispatcherImpl<true, false, false> : DispatcherStorage<std::string> {
 // of strings containing '\0'-s in the middle. For those cases, the dispatcher passing in rows
 // as an `std::pair<const char*, size_t>` is the safest and fastest solution.
 template <>
-struct DispatcherImpl<false, true, false> : DispatcherStorage<const char*> {
+struct DispatcherImpl<false, true, false, false> : DispatcherStorage<const char*> {
   template <typename L>
   void Update(size_t index, const char* string, L) {
     GrowAsNeeded(index);
@@ -81,11 +82,20 @@ struct DispatcherImpl<false, true, false> : DispatcherStorage<const char*> {
 };
 
 template <>
-struct DispatcherImpl<false, false, true> : DispatcherStorage<std::pair<const char*, size_t>> {
+struct DispatcherImpl<false, false, true, false> : DispatcherStorage<std::pair<const char*, size_t>> {
   template <typename L>
   void Update(size_t index, const char* string, L length) {
     GrowAsNeeded(index);
     row[index] = std::make_pair(string, static_cast<size_t>(length));
+  }
+};
+
+template <>
+struct DispatcherImpl<false, false, false, true> : DispatcherStorage<bricks::strings::UniqueChunk> {
+  template <typename L>
+  void Update(size_t index, const char* string, L length) {
+    GrowAsNeeded(index);
+    row[index].assign(string, length);
   }
 };
 
@@ -95,7 +105,8 @@ using CW = bricks::weed::call_with<T, ARGS...>;
 template <typename F>
 using DispatcherImplSelector = DispatcherImpl<CW<F, std::vector<std::string>>::implemented,
                                               CW<F, std::vector<const char*>>::implemented,
-                                              CW<F, std::vector<std::pair<const char*, size_t>>>::implemented>;
+                                              CW<F, std::vector<std::pair<const char*, size_t>>>::implemented,
+                                              CW<F, std::vector<bricks::strings::UniqueChunk>>::implemented>;
 
 }  // namespace efficient_tsv_parser_dispatcher
 
