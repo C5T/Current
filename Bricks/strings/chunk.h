@@ -201,9 +201,8 @@ class UniqueChunk final : public Chunk {
 };
 
 // Friendly reminder: `ChunkDB` does not own any strings, it just manages pointers to them. I know right?
-struct ChunkDB {
-  std::unordered_map<Chunk, const UniqueChunk*, Chunk::HashFunction, Chunk::Pride> map;
-
+class ChunkDB {
+ public:
   // Note that `operator[]` requires a non-const `Chunk&`. This is done to ensure no temporary `Chunk` object
   // is passed to it by accident, which is easy to do by calling `db[Chunk(...)]`, `db["string"],
   // `db[StringPrintf(...)]`, or simply `db[std::string(...)];`
@@ -229,6 +228,9 @@ struct ChunkDB {
       return false;
     }
   }
+
+ private:
+  std::unordered_map<Chunk, const UniqueChunk*, Chunk::HashFunction, Chunk::Pride> map;
 };
 
 }  // namespace strings
