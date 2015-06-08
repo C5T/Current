@@ -433,4 +433,9 @@ TEST(Chunk, Smoke) {
   EXPECT_FALSE(unique_meh_1 == unique_meh_more_2);
   EXPECT_FALSE(unique_meh_2 == unique_meh_more_1);
   EXPECT_FALSE(unique_meh_2 == unique_meh_more_2);
+
+  UniqueChunk unique_result;
+  EXPECT_TRUE(db.Find("foo", unique_result));
+  EXPECT_TRUE(unique_result == unique_foo_1);
+  EXPECT_FALSE(db.Find("nope", unique_result));
 }

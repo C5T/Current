@@ -172,15 +172,24 @@ class Chunk {
 // By [intelligent] design, the length of the string is incorporated in the very pointer to `UniqueChunk`.
 // Even with the same underlying `const char*` pointer, `ChunkDB` will use different `UniqueChunk`-es
 // for `Chunk`-es of different length. Thus `UniqueChunk` doesn't have to consider `Chunk::N` at all.
-class UniqueChunk : public Chunk {
+class UniqueChunk final : public Chunk {
+ public:
+  UniqueChunk() = default;
+  ~UniqueChunk() = default;
+  UniqueChunk(const UniqueChunk&) = default;
+  UniqueChunk(UniqueChunk&&) = default;
+  UniqueChunk& operator=(const UniqueChunk&) = default;
+  UniqueChunk& operator=(UniqueChunk&&) = default;
+
+  UniqueChunk(const Chunk& chunk) : Chunk(chunk) {}
+  void operator=(const Chunk& chunk) { S = chunk.S, N = chunk.N; }
+
 #ifdef DEFINE_COMPARATOR
 #error "`DEFINE_COMPARATOR()` already defined. No good."
 #endif
 
 #define DEFINE_COMPARATOR(OP) \
   bool operator OP(const UniqueChunk& rhs) const { return S OP rhs.S; }
-
- public:
   // It's `clang-format` inserting those spaces between the operator and closing parenthesis; not me. -- D.K.
   DEFINE_COMPARATOR(== );
   DEFINE_COMPARATOR(!= );
@@ -189,8 +198,6 @@ class UniqueChunk : public Chunk {
   DEFINE_COMPARATOR(<= );
   DEFINE_COMPARATOR(>= );
 #undef DEFINE_COMPARATOR
-
-  // Define no constructors or assignment operators to enable all the default ones.
 };
 
 // Friendly reminder: `ChunkDB` does not own any strings, it just manages pointers to them. I know right?
@@ -210,6 +217,17 @@ struct ChunkDB {
       placeholder = reinterpret_cast<const UniqueChunk*>(&chunk);
     }
     return *placeholder;
+  }
+
+  // `Find()`, unlike `operator[]` and `FromConstChunk()`, does not insert the chunk if it does not exist.
+  bool Find(const Chunk& key, UniqueChunk& response) const {
+    const auto cit = map.find(key);
+    if (cit != map.end()) {
+      response = *cit->second;
+      return true;
+    } else {
+      return false;
+    }
   }
 };
 
