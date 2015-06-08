@@ -132,8 +132,8 @@ class Chunk {
       for (size_t i = 0; i < chunk.N; ++i, k = cos(k + i)) {
         hash += k * chunk.S[i];
       }
-      static_assert(sizeof(double) >= sizeof(size_t), "Suddenly, `reinterpet_cast<>` doesn't nail it.");
-      return *reinterpret_cast<size_t*>(&hash);
+      return static_cast<size_t>(hash) ^ static_cast<size_t>(hash * 0x100) ^
+             static_cast<size_t>(hash * 0x10000);
     }
   };
 
