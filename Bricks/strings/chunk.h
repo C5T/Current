@@ -108,9 +108,18 @@ class Chunk {
 
   operator std::string() const { return std::string(S, N); }
 
-  bool HasPrefix(const Chunk& rhs) const {
-    const Chunk& lhs = *this;
-    return lhs.N >= rhs.N && !::memcmp(lhs.S, rhs.S, rhs.N);
+  // Returns true if this `Chunk` starts with a given prefix.
+  bool HasPrefix(const Chunk& prefix) const { return N >= prefix.N && !::memcmp(S, prefix.S, prefix.N); }
+
+  // Returns true and initializes `result` with the rest of this `Chunk`, if it starts with a given prefix.
+  // OK to pass in `result` same as `this`.
+  bool ExpungePrefix(const Chunk& prefix, Chunk& result) const {
+    if (HasPrefix(prefix)) {
+      result.assign(S + prefix.N, N - prefix.N);
+      return true;
+    } else {
+      return false;
+    }
   }
 
   int LexicographicalCompare(const Chunk& rhs) const {

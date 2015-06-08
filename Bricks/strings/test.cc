@@ -349,6 +349,13 @@ TEST(Chunk, Smoke) {
   EXPECT_FALSE(foo_copy.HasPrefix("ba"));
   EXPECT_FALSE(foo_copy.HasPrefix("b"));
 
+  Chunk result;
+  EXPECT_TRUE(foo_copy.ExpungePrefix(foo, result));
+  EXPECT_EQ(0u, result.length());
+  EXPECT_TRUE(foo_copy.ExpungePrefix("f", result));
+  EXPECT_EQ(2u, result.length());
+  EXPECT_EQ(std::string("oo"), result.c_str());
+
   EXPECT_EQ(0, foo_copy.LexicographicalCompare(foo));
   EXPECT_EQ(0, bar_copy.LexicographicalCompare(bar));
   EXPECT_GT(foo_copy.LexicographicalCompare(bar_copy), 0);
