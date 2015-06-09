@@ -39,10 +39,25 @@ DEFINE_int32(event_collector_test_port, 8089, "Local port to run the test.");
 
 using bricks::strings::Printf;
 
+struct EventReceiver {
+  EventReceiver() : count(0u), last_t(0ull) {}
+  void OnEvent(const LogEntry& e) {
+    ++count;
+    last_t = e.t;
+  }
+
+  std::atomic_size_t count;
+  std::atomic<uint64_t> last_t;
+};
+
 TEST(EventCollector, Smoke) {
   std::ostringstream os;
+  EventReceiver er;
+
+  bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(0));
   EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os,
-                                   static_cast<bricks::time::MILLISECONDS_INTERVAL>(100));
+                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(100), "/log", "OK\n",
+                                     std::bind(&EventReceiver::OnEvent, &er, std::placeholders::_1));
 
   bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(12));
   const auto get_response = HTTP(GET(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port)));
@@ -50,7 +65,7 @@ TEST(EventCollector, Smoke) {
   EXPECT_EQ("OK\n", get_response.body);
 
   bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(112));
-  while (collector.EventsPushed() < 3u) {
+  while (collector.EventsPushed() < 2u) {
     ;  // Spin lock.
   }
 
@@ -61,23 +76,24 @@ TEST(EventCollector, Smoke) {
   EXPECT_EQ("OK\n", post_response.body);
 
   bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(278));
-  while (collector.EventsPushed() < 5u) {
+  while (collector.EventsPushed() < 4u) {
     ;  // Spin lock.
   }
 
   EXPECT_EQ(
-      "{\"log_entry\":{\"t\":0,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":12,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":112,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":178,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":278,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n",
       os.str());
+  EXPECT_EQ(4u, er.count);
+  EXPECT_EQ(278u, er.last_t);
 }
 
 TEST(EventCollector, QueryParameters) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os,
-                                   static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
+                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
   auto e = ParseJSON<LogEntry>(os.str());
@@ -89,7 +105,7 @@ TEST(EventCollector, QueryParameters) {
 TEST(EventCollector, Body) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os,
-                                   static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
+                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
   EXPECT_EQ("Yay!", ParseJSON<LogEntry>(os.str()).b);
 }
