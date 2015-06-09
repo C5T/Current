@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef EVENT_COLLECTOR_H
 #define EVENT_COLLECTOR_H
 
+#include <functional>
 #include <map>
 #include <ostream>
 #include <string>
@@ -62,13 +63,16 @@ class EventCollectorHTTPServer {
                          std::ostream& ostream,
                          const bricks::time::MILLISECONDS_INTERVAL tick_interval_ms,
                          const std::string& route = "/log",
-                         const std::string& response_text = "OK\n")
+                         const std::string& response_text = "OK\n",
+                         std::function<void(const LogEntry&)> callback = {})
       : http_port_(http_port),
         ostream_(ostream),
         route_(route),
         response_text_(response_text),
+        callback_(callback),
         tick_interval_ms_(static_cast<uint64_t>(tick_interval_ms)),
         send_ticks_(tick_interval_ms_ > 0),
+        last_event_t_(0u),
         events_pushed_(0u),
         timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
     HTTP(http_port_)
@@ -87,6 +91,9 @@ class EventCollectorHTTPServer {
             ostream_ << JSON(entry, "log_entry") << std::endl;
             ++events_pushed_;
             last_event_t_ = entry.t;
+            if (callback_) {
+              callback_(entry);
+            }
           }
           r(response_text_);
         });
@@ -112,6 +119,9 @@ class EventCollectorHTTPServer {
         ostream_ << JSON(entry, "log_entry") << std::endl;
         ++events_pushed_;
         last_event_t_ = entry.t;
+        if (callback_) {
+          callback_(entry);
+        }
       } else {
         lock.unlock();
         std::this_thread::sleep_for(std::chrono::milliseconds(tick_interval_ms_ - dt + 1));
@@ -119,7 +129,7 @@ class EventCollectorHTTPServer {
     }
   }
 
-  size_t EventsPushed() { return events_pushed_; }
+  size_t EventsPushed() const { return events_pushed_; }
 
  private:
   std::mutex mutex_;
@@ -127,6 +137,7 @@ class EventCollectorHTTPServer {
   std::ostream& ostream_;
   const std::string route_;
   const std::string response_text_;
+  std::function<void(const LogEntry&)> callback_;
 
   const uint64_t tick_interval_ms_;
   std::atomic_bool send_ticks_;
