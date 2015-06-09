@@ -60,11 +60,11 @@ struct LogEntry {
 class EventCollectorHTTPServer {
  public:
   EventCollectorHTTPServer(int http_port,
-                         std::ostream& ostream,
-                         const bricks::time::MILLISECONDS_INTERVAL tick_interval_ms,
-                         const std::string& route = "/log",
-                         const std::string& response_text = "OK\n",
-                         std::function<void(const LogEntry&)> callback = {})
+                           std::ostream& ostream,
+                           const bricks::time::MILLISECONDS_INTERVAL tick_interval_ms,
+                           const std::string& route = "/log",
+                           const std::string& response_text = "OK\n",
+                           std::function<void(const LogEntry&)> callback = {})
       : http_port_(http_port),
         ostream_(ostream),
         route_(route),
