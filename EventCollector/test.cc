@@ -40,7 +40,7 @@ DEFINE_int32(event_collector_test_port, 8089, "Local port to run the test.");
 using bricks::strings::Printf;
 
 struct EventReceiver {
-  EventReceiver() : count(0u) {}
+  EventReceiver() : count(0u), last_t(0ull) {}
   void OnEvent(const LogEntry& e) {
     ++count;
     last_t = e.t;
