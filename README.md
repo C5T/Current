@@ -12,5 +12,8 @@ Storage layer with super easy to use in-memory data views and Sherlock-based per
 #### [FnCAS](https://github.com/C5T/Current/blob/master/FnCAS/README.md)
 An efficient convex optimization engine.
 
+#### [EventCollector](https://github.com/C5T/Current/blob/master/EventCollector/README.md)
+An extensible event collecting HTTP server.
+
 #### [CompactTSV](https://github.com/C5T/Current/blob/master/CompactTSV/)
 Low-level compact persistence layer with 1+ GB/s throughput.
