@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../gnuplot.h"
 
 #include "../../dflags/dflags.h"
-#include "../../3party/gtest/gtest-main-with-dflags.h"
+#include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
   #include "../../strings/printf.h"
   

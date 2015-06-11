@@ -38,7 +38,7 @@ echo
 echo '#include "port.h"  // To have `std::{min/max}` work in Visual Studio, need port.h before STL headers.'
 echo
 echo '#include "../Bricks/dflags/dflags.h"'
-echo '#include "../Bricks/3party/gtest/gtest-main-with-dflags.h"'
+echo '#include "../3rdparty/gtest/gtest-main-with-dflags.h"'
 echo
 echo '#define BRICKS_MOCK_TIME'  # Assume and require none of the tests require wall time.
 echo
@@ -46,7 +46,7 @@ echo
 
 
 echo -n -e "\033[0m\033[1mTests:\033[0m\033[36m"
-for i in $(find . -iname "*test.cc" | grep -v 3party | grep -v "/.current/" | sort -g); do
+for i in $(find . -iname "*test.cc" | grep -v 3rdparty | grep -v "/.current/" | sort -g); do
   echo "#include \"$i\"" >> "$FULL_TEST_DIR_NAME/$ALL_TESTS_TOGETHER.cc"
   echo -n " $i"
 done
@@ -54,7 +54,7 @@ done
 # Allow this one test to rule them all to access all the `golden/` files.
 mkdir -p "$GOLDEN_FULL_PATH"
 echo -e "\n\n\033[0m\033[1mGolden files\033[0m: \033[35m"
-for dirname in $(find . -iname "$GOLDEN_DIR_NAME" -type d | grep -v 3party | grep -v "/.current/" | grep -v "$FULL_TEST_DIR_NAME"); do
+for dirname in $(find . -iname "$GOLDEN_DIR_NAME" -type d | grep -v 3rdparty | grep -v "/.current/" | grep -v "$FULL_TEST_DIR_NAME"); do
   (cd $dirname; for filename in * ; do cp -v "$PWD/$filename" "$GOLDEN_FULL_PATH" ; done)
 done
 echo -e -n "\033[0m"
@@ -75,7 +75,7 @@ echo -e -n "\033[0m"
   # Generate the resulting code coverage report.
   gcov "$ALL_TESTS_TOGETHER.cc" >/dev/null
   geninfo . --output-file coverage0.info >/dev/null
-  lcov -r coverage0.info /usr/include/\* \*/gtest/\* \*/3party/\* -o coverage.info >/dev/null
+  lcov -r coverage0.info /usr/include/\* \*/gtest/\* \*/3rdparty/\* -o coverage.info >/dev/null
   genhtml coverage.info --output-directory coverage/ >/dev/null
   rm -rf coverage.info coverage0.info *.gcov *.gcda *.gcno
   echo

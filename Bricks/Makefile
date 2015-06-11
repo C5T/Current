@@ -23,11 +23,11 @@ README.md:
 	${CURRENT_SCRIPTS_DIR_FULL_PATH}/gen-docu.sh >"$@"
 
 all:
-	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd "$$i"; make) ; done
+	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3rdparty` ; do (cd "$$i"; make) ; done
 
 clean:
 	rm -rf .current
-	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3party` ; do (cd "$$i"; make clean) ; done
+	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3rdparty` ; do (cd "$$i"; make clean) ; done
 
 check:
 	${CURRENT_SCRIPTS_DIR_FULL_PATH}/check-all-headers.sh
@@ -37,4 +37,4 @@ indent:
 
 wc:
 	(for i in "*.cc" "*.h" "*.mm" "*.sh" Makefile; do find . -iname "$$i" -type f; done) \
-	| grep -v "/.current/" | grep -v "/3party/" | xargs wc -l | sort -g
+	| grep -v "/.current/" | grep -v "/3rdparty/" | xargs wc -l | sort -g

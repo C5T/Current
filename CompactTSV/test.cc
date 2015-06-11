@@ -31,7 +31,7 @@ SOFTWARE.
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/util.h"
 #include "../Bricks/dflags/dflags.h"
-#include "../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_size_t(rows, 10u, "Number of rows.");
 DEFINE_size_t(cols, 4u, "Number of cols.");

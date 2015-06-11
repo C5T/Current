@@ -31,18 +31,18 @@ SOFTWARE.
 
 #include "exceptions.h"
 
-#include "../3party/cereal/include/types/string.hpp"
-#include "../3party/cereal/include/types/vector.hpp"
-#include "../3party/cereal/include/types/map.hpp"
-#include "../3party/cereal/include/types/set.hpp"
+#include "../../3rdparty/cereal/include/types/string.hpp"
+#include "../../3rdparty/cereal/include/types/vector.hpp"
+#include "../../3rdparty/cereal/include/types/map.hpp"
+#include "../../3rdparty/cereal/include/types/set.hpp"
 
-#include "../3party/cereal/include/types/polymorphic.hpp"
+#include "../../3rdparty/cereal/include/types/polymorphic.hpp"
 
-#include "../3party/cereal/include/archives/binary.hpp"
-#include "../3party/cereal/include/archives/json.hpp"
-#include "../3party/cereal/include/archives/xml.hpp"
+#include "../../3rdparty/cereal/include/archives/binary.hpp"
+#include "../../3rdparty/cereal/include/archives/json.hpp"
+#include "../../3rdparty/cereal/include/archives/xml.hpp"
 
-#include "../3party/cereal/include/external/base64.hpp"
+#include "../../3rdparty/cereal/include/external/base64.hpp"
 
 #include "../rtti/dispatcher.h"
 #include "../template/decay.h"

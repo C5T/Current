@@ -33,7 +33,7 @@ SOFTWARE.
 #include "../../Current/Bricks/strings/printf.h"
 
 #include "../../Current/Bricks/dflags/dflags.h"
-#include "../../Current/Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../Current/3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(event_collector_test_port, 8089, "Local port to run the test.");
 

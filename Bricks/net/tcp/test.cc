@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../../strings/printf.h"
 #include "../../util/singleton.h"
 
-#include "../../3party/gtest/gtest-main-with-dflags.h"
+#include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(net_tcp_test_port, 8081, "Port to use for the test.");
 

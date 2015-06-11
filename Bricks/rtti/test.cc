@@ -29,7 +29,7 @@ SOFTWARE.
 #include <string>
 #include <tuple>
 
-#include "../3party/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main.h"
 
 using std::string;
 using std::tuple;

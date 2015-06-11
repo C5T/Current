@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_SHA256_H
 #define BRICKS_UTIL_SHA256_H
 
-#include "../3party/stephan-brumme/sha256.h"
+#include "../../3rdparty/stephan-brumme/sha256.h"
 
 namespace bricks {
 

@@ -28,7 +28,7 @@ SOFTWARE.
 #include "../dispatcher.h"
 #include "../../strings/printf.h"
 
-#include "../../3party/gtest/gtest-main.h"
+#include "../../../3rdparty/gtest/gtest-main.h"
 
 using std::tuple;
 using bricks::strings::Printf;

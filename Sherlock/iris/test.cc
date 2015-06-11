@@ -38,7 +38,7 @@ SOFTWARE.
 #include "../../Bricks/file/file.h"
 
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #include "iris.h"
 CEREAL_REGISTER_TYPE(LabeledFlower);

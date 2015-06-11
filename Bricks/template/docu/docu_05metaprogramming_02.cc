@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../metaprogramming.h"
 
-#include "../../3party/gtest/gtest-main.h"
+#include "../../../3rdparty/gtest/gtest-main.h"
 
   // Map.
   template<typename T> struct add_100 { enum { x = T::x + 100 }; };
