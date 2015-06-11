@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,33 +25,54 @@ SOFTWARE.
 #ifndef BRICKS_STRINGS_UTIL_H
 #define BRICKS_STRINGS_UTIL_H
 
-#include <cstddef>
-#include <type_traits>
-#include <cstring>
-#include <cctype>
 #include <algorithm>
-#include <iterator>
+#include <cstring>
+#include <sstream>
+#include <string>
 
-// These are small headers, and #include "bricks/strings/util.h" should be enough.
-#include "printf.h"
-#include "fixed_size_serializer.h"
-#include "join.h"
-#include "split.h"
-#include "distance.h"
-#include "chunk.h"
+#include "is_string_type.h"
+
+#include "../template/decay.h"
 
 namespace bricks {
 namespace strings {
 
+template <typename DECAYED_T>
+struct ToStringImpl {
+  static typename std::enable_if<std::is_pod<DECAYED_T>::value, std::string>::type ToString(DECAYED_T value) {
+    return std::to_string(value);
+  }
+};
+
+template <>
+struct ToStringImpl<std::string> {
+  template <typename T>
+  static std::string ToString(T&& string) {
+    return string;
+  }
+};
+
+template <>
+struct ToStringImpl<char*> {  // Decayed type in template parameters list.
+  static std::string ToString(const char* string) { return string; }
+};
+
+template <int N>
+struct ToStringImpl<char[N]> {  // Decayed type in template parameters list.
+  static std::string ToString(const char string[N]) {
+    return std::string(string, string + N - 1);  // Do not include the '\0' character.
+  }
+};
+
+template <>
+struct ToStringImpl<char> {
+  static std::string ToString(char c) { return std::string(1u, c); }
+};
+
 // Keep the lowercase name to possibly act as a replacement for `std::to_string`.
 template <typename T>
 inline std::string to_string(T&& something) {
-  return std::to_string(something);
-}
-
-template <>
-inline std::string to_string<std::string>(std::string&& shame_std_to_string_does_not_support_string) {
-  return shame_std_to_string_does_not_support_string;
+  return ToStringImpl<bricks::decay<T>>::ToString(something);
 }
 
 // Use camel-case `ToString()` within Bricks.
