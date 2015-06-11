@@ -84,12 +84,9 @@ namespace sfinae {
 
 template <typename T>
 struct HasBegin {
-  template <typename... XS>
   static constexpr bool CompileTimeCheck(char) {
     return false;
   }
-
-  template <typename... XS>
   static constexpr auto CompileTimeCheck(int) -> decltype(std::declval<T>().begin(), bool()) {
     return true;
   }
