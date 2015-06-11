@@ -52,9 +52,6 @@ SOFTWARE.
 namespace bricks {
 namespace cerealize {
 
-// Explicitly exclude string-related types from cereal-based implementations.
-// (Had troubles with Microsoft Visual Studio compiler matching too much, likely, correctly. -- D.K.)
-
 // Helper compile-time test that certain type can be serialized via cereal.
 template <typename T>
 struct is_read_cerealizable {

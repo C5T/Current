@@ -80,12 +80,48 @@ struct OptionallyReserveOutputBufferImpl<true> {
   }
 };
 
+namespace sfinae {
+
+template <typename T>
+struct HasBegin {
+  template <typename... XS>
+  static constexpr bool CompileTimeCheck(char) {
+    return false;
+  }
+
+  template <typename... XS>
+  static constexpr auto CompileTimeCheck(int) -> decltype(std::declval<T>().begin(), bool()) {
+    return true;
+  }
+};
+
+template <typename T, bool IS_CONTAINER>
+struct IsContainerOfStringsImpl {};
+
+template <typename T>
+struct IsContainerOfStringsImpl<T, false> {
+  enum { value = false };
+};
+
+template <typename T>
+struct IsContainerOfStringsImpl<T, true> {
+  enum { value = std::is_same<std::string, bricks::decay<decltype(*std::declval<T>().begin())>>::value };
+};
+
+template <typename T>
+struct IsContainerOfStrings {
+  enum { value = IsContainerOfStringsImpl<T, HasBegin<T>::CompileTimeCheck(0)>::value };
+};
+
+}  // namespace sfinae
+
 template <typename T_CONTAINER, typename T_SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output,
                                    const T_CONTAINER& components,
                                    T_SEPARATOR&& separator) {
-  // TODO(dkorolev): SFINAE here. :-)
-  OptionallyReserveOutputBufferImpl<false>::Impl(output, components, separator);
+  // Note: this implementation does not to `reserve()` for chars, the length of which is always known to be 1.
+  OptionallyReserveOutputBufferImpl<sfinae::IsContainerOfStrings<T_CONTAINER>::value>::Impl(
+      output, components, separator);
 }
 
 template <typename T_CONTAINER, typename T_SEPARATOR>
