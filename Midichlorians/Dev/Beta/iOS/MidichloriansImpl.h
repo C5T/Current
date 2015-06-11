@@ -39,15 +39,17 @@
 
 #include "../../../../Bricks/cerealize/cerealize.h"
 
-#import <Foundation/Foundation.h>
-#import <CoreLocation/CoreLocation.h>
-
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."
 #endif  // CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 
+#ifndef CURRENT_TEST_COMPILATION
+
 #define COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 #include "../MidichloriansDataDictionary.h"
+
+#import <Foundation/Foundation.h>
+#import <CoreLocation/CoreLocation.h>
 
 // Define the iOS interface, being comfortably within a C++ header file included exclusively from an `.mm` one.
 @interface MidichloriansImpl : NSObject
@@ -63,5 +65,12 @@
 + (void)identify:(NSString*)identifier;
 
 @end
+
+#else
+
+// In `CURRENT_TEST_COMPILATION` mode, still compile the data dictionary header.
+#include "../MidichloriansDataDictionary.h"
+
+#endif  // CURRENT_TEST_COMPILATION
 
 #endif  // CURRENT_MIDICHLORIANS_IMPL_H

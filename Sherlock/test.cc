@@ -79,7 +79,8 @@ struct RecordWithTimestamp {
   EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp_); }
 };
 
-// Struct `Data` should be outside struct `Processor`, since the latter is `std::move`-d away in some tests.
+// Struct `Data` should be outside struct `SherlockTestProcessor`, since the latter is `std::move`-d away in
+// some tests.
 struct Data final {
   atomic_bool listener_alive_;
   atomic_size_t seen_;
@@ -87,25 +88,26 @@ struct Data final {
   Data() : listener_alive_(false), seen_(0u) {}
 };
 
-// Struct `Processor` handles the entries that tests subscribe to.
-struct Processor final {
+// Struct `SherlockTestProcessor` handles the entries that tests subscribe to.
+struct SherlockTestProcessor final {
   Data& data_;
   size_t max_to_process_ = static_cast<size_t>(-1);
   bool allow_terminate_;
 
-  Processor() = delete;
+  SherlockTestProcessor() = delete;
 
-  explicit Processor(Data& data, bool allow_terminate) : data_(data), allow_terminate_(allow_terminate) {
+  explicit SherlockTestProcessor(Data& data, bool allow_terminate)
+      : data_(data), allow_terminate_(allow_terminate) {
     assert(!data_.listener_alive_);
     data_.listener_alive_ = true;
   }
 
-  ~Processor() {
+  ~SherlockTestProcessor() {
     assert(data_.listener_alive_);
     data_.listener_alive_ = false;
   }
 
-  Processor& SetMax(size_t cap) {
+  SherlockTestProcessor& SetMax(size_t cap) {
     max_to_process_ = cap;
     return *this;
   }
@@ -138,7 +140,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   Data d;
   {
     ASSERT_FALSE(d.listener_alive_);
-    Processor p(d, false);
+    SherlockTestProcessor p(d, false);
     ASSERT_TRUE(d.listener_alive_);
     foo_stream.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
@@ -159,7 +161,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
   bar_stream.Publish(6);
   Data d;
   ASSERT_FALSE(d.listener_alive_);
-  std::unique_ptr<Processor> p(new Processor(d, false));
+  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
   ASSERT_TRUE(d.listener_alive_);
   p->SetMax(3u);
   bar_stream.AsyncSubscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
@@ -180,7 +182,7 @@ TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
   bar_stream.Publish(5);
   bar_stream.Publish(6);
   Data d;
-  std::unique_ptr<Processor> p(new Processor(d, false));
+  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
   p->SetMax(4u);
   bar_stream.AsyncSubscribe(std::move(p)).Detach();  // `.Detach()` results in the listener running on its own.
   while (d.seen_ < 3u) {
@@ -208,7 +210,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   });
   {
     Data d;
-    Processor p(d, true);
+    SherlockTestProcessor p(d, true);
     // NOTE: plain `baz_stream.SyncSubscribe(p);` will fail with exception
     // in the destructor of `SyncListenerScope`.
     baz_stream.SyncSubscribe(p).Join();
@@ -216,7 +218,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   }
   {
     Data d;
-    Processor p(d, true);
+    SherlockTestProcessor p(d, true);
     auto scope = baz_stream.SyncSubscribe(p);
     scope.Join();
     EXPECT_EQ(0u, d.seen_);
@@ -231,7 +233,7 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   meh_stream.Publish(11);
   meh_stream.Publish(12);
   Data d;
-  Processor p(d, true);
+  SherlockTestProcessor p(d, true);
   {
     auto scope = meh_stream.SyncSubscribe(p);
     {

@@ -62,7 +62,7 @@ struct OtherBase {
 
 typedef TypeList<Foo, Bar, Baz> FooBarBazTypeList;
 
-struct Processor {
+struct RTTITestProcessor {
   string s;
   void operator()(const Base&) { s = "const Base&"; }
   void operator()(const Foo&) { s = "const Foo&"; }
@@ -75,7 +75,7 @@ struct Processor {
 };
 
 TEST(RuntimeDispatcher, StaticCalls) {
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(Base());
   EXPECT_EQ("const Base&", p.s);
@@ -92,7 +92,7 @@ TEST(RuntimeDispatcher, ImmutableStaticCalls) {
   const Foo foo;
   const Bar bar;
   const Baz baz;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(base);
   EXPECT_EQ("const Base&", p.s);
@@ -109,7 +109,7 @@ TEST(RuntimeDispatcher, MutableStaticCalls) {
   Foo foo;
   Bar bar;
   Baz baz;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(base);
   EXPECT_EQ("Base&", p.s);
@@ -130,7 +130,7 @@ TEST(RuntimeDispatcher, ImmutableWithoutDispatching) {
   const Base& rfoo = foo;
   const Base& rbar = bar;
   const Base& rbaz = baz;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(rbase);
   EXPECT_EQ("const Base&", p.s);
@@ -151,7 +151,7 @@ TEST(RuntimeDispatcher, MutableWithoutDispatching) {
   Base& rfoo = foo;
   Base& rbar = bar;
   Base& rbaz = baz;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(rbase);
   EXPECT_EQ("Base&", p.s);
@@ -174,7 +174,7 @@ TEST(RuntimeDispatcher, ImmutableWithDispatching) {
   const Base& rbar = bar;
   const Base& rbaz = baz;
   const OtherBase& rother = other;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
   EXPECT_EQ("const Base&", p.s);
@@ -199,7 +199,7 @@ TEST(RuntimeDispatcher, MutableWithDispatching) {
   Base& rbar = bar;
   Base& rbaz = baz;
   OtherBase& rother = other;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
   EXPECT_EQ("Base&", p.s);
@@ -224,7 +224,7 @@ TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
   const Base& rbar = bar;
   const Base& rbaz = baz;
   const OtherBase& rother = other;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("const Base&", p.s);
@@ -249,7 +249,7 @@ TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
   Base& rbar = bar;
   Base& rbaz = baz;
   OtherBase& rother = other;
-  Processor p;
+  RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("Base&", p.s);

@@ -11,6 +11,14 @@ core
 *.swp
 a.out
 
+# Full test.
+
+CompactTSV/zzz_full_test/
+EventCollector/zzz_full_test/
+FnCAS/zzz_full_test/
+Sherlock/zzz_full_test/
+zzz_full_test/
+
 # Coverage report.
 coverage
 coverage0.info

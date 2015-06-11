@@ -29,6 +29,8 @@ SOFTWARE.
 
 #include "../3party/gtest/gtest-main.h"
 
+#ifndef BRICKS_MOCK_TIME
+
 // This smoke test is flaky, but it does the job of comparing bricks::time::Now() to wall time.
 TEST(Time, SmokeTest) {
   const bricks::time::EPOCH_MILLISECONDS a = bricks::time::Now();
@@ -43,3 +45,11 @@ TEST(Time, SmokeTest) {
   EXPECT_GE(dt, 50 - allowed_skew);
   EXPECT_LE(dt, 50 + allowed_skew);
 }
+
+#else
+
+#warning "== Ignore this warning if a full batch test is being run! ==="
+#warning "A flaky test comparing against wall time is disabled for batch run."
+#warning "== Ignore this warning if a full batch test is being run! ==="
+
+#endif  // BRICKS_MOCK_TIME

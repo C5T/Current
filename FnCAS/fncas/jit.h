@@ -30,11 +30,11 @@
 #define FNCAS_JIT_H
 
 // Do include this header in the `make test` target for checking there are no leaked symbols.
-#ifdef BRICKS_CHECK_HEADERS_MODE
+#ifdef CURRENT_TEST_COMPILATION
 #ifndef FNCAS_JIT
 #define FNCAS_JIT CLANG
-#endif
-#endif
+#endif  // FNCAS_JIT
+#endif  // CURRENT_TEST_COMPILATION
 
 #ifdef FNCAS_JIT
 

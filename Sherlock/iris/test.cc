@@ -35,6 +35,7 @@ SOFTWARE.
 #include "../../Bricks/net/api/api.h"
 #include "../../Bricks/graph/gnuplot.h"
 #include "../../Bricks/strings/printf.h"
+#include "../../Bricks/file/file.h"
 
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
@@ -89,9 +90,11 @@ TEST(Iris, Demo) {
                     std::move(request));
   });
 
+  // The input file is in the `golden` directory for it to be successfully picked up by `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
-            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port), "dataset.tsv", "text/tsv"))
-                .body);
+            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port),
+                              bricks::FileSystem::JoinPath("golden", "dataset.tsv"),
+                              "text/tsv")).body);
 
   // Ref.: http://localhost:3000/stream
   api.ExposeViaHTTP(FLAGS_iris_port, "/stream");

@@ -9,7 +9,7 @@
 set -u -e
 
 CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
-LDFLAGS="-pthread"
+LDFLAGS="-pthread -ldl"
 if [ $(uname) = "Darwin" ] ; then
   CPPFLAGS+=" -stdlib=libc++ -x objective-c++ -fobjc-arc"
   LDFLAGS+=" -framework Foundation"
@@ -37,8 +37,10 @@ echo '// And it is checked in, much like the documentation, so that non-*nix sys
 echo
 echo '#include "port.h"  // To have `std::{min/max}` work in Visual Studio, need port.h before STL headers.'
 echo
-echo '#include "dflags/dflags.h"'
-echo '#include "3party/gtest/gtest-main-with-dflags.h"'
+echo '#include "../Bricks/dflags/dflags.h"'
+echo '#include "../Bricks/3party/gtest/gtest-main-with-dflags.h"'
+echo
+echo '#define BRICKS_MOCK_TIME'  # Assume and require none of the tests require wall time.
 echo
 ) > "$FULL_TEST_DIR_NAME/$ALL_TESTS_TOGETHER.cc"
 

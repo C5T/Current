@@ -90,10 +90,11 @@ inline std::string ToStdString(JNIEnv* env, jstring str) {
 #endif  // LINK_JAVA_ON_LOAD_INTO_SOURCE
 
 #else  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
-#ifndef BRICKS_CHECK_HEADERS_MODE
+#ifndef CURRENT_TEST_COMPILATION
 #error "`java_wrapper.h` should only be compiled on Java and Android."
+#endif  // CURRENT_TEST_COMPILATION
+
 #endif  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
 
-#endif
 
 #endif  // BRICKS_JAVA_WRAPPER_H
