@@ -485,8 +485,7 @@ HTTP(port).ResetAllHandlers();
       by_rows_values.push_back(v);
     }
     std::set<std::string> by_rows_keys_set(by_rows_keys.begin(), by_rows_keys.end());
-    const bool rows_unordeded = (Join(by_rows_keys, "") != Join(by_rows_keys_set, ""));
-    ASSERT_TRUE(rows_unordeded);
+    EXPECT_NE(Join(by_rows_keys, ""), Join(by_rows_keys_set, ""));
     std::set<std::string> by_rows_values_set(by_rows_values.begin(), by_rows_values.end());
     EXPECT_EQ(
       "[`0`:4][`1`:4][`2`:2][`3`:2][`4`:3]"
@@ -513,8 +512,7 @@ HTTP(port).ResetAllHandlers();
       by_cols_values.push_back(v);
     }
     std::set<std::string> by_cols_keys_set(by_cols_keys.begin(), by_cols_keys.end());
-    const bool cols_unordeded = (Join(by_cols_keys, "") != Join(by_cols_keys_set, ""));
-    ASSERT_TRUE(cols_unordeded);
+    EXPECT_NE(Join(by_cols_keys, ""), Join(by_cols_keys_set, ""));
     std::set<std::string> by_cols_values_set(by_cols_values.begin(), by_cols_values.end());
     EXPECT_EQ("(`1`:5)(`2`:1)(`3`:7)(`5`:1)(`7`:6)(`9`:5)",
               Join(by_cols_keys_set, ""));

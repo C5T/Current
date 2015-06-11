@@ -177,8 +177,7 @@ static_assert(std::is_same<std::unordered_map<A, int, typename T_HASH_SELECTOR<A
               "");
 
 struct B {
-  int x;
-  bool operator<(const B& rhs) const { return x < rhs.x; }
+  bool operator<(const B&) const { return true; }
 };
 static_assert(std::is_same<std::map<B, int>, T_MAP_TYPE<B, int>>::value, "");
 }  // namespace test
