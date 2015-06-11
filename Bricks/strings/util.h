@@ -39,10 +39,8 @@ namespace strings {
 
 template <typename DECAYED_T>
 struct ToStringImpl {
-  template <typename T>
-  static std::string ToString(T&& something) {
-    static_assert(std::is_same<bricks::decay<T>, DECAYED_T>::value, "");
-    return std::to_string(std::forward<T>(something));
+  static typename std::enable_if<std::is_pod<DECAYED_T>::value, std::string>::type ToString(DECAYED_T value) {
+    return std::to_string(value);
   }
 };
 
@@ -61,8 +59,8 @@ struct ToStringImpl<char*> {  // Decayed type in template parameters list.
 
 template <int N>
 struct ToStringImpl<char[N]> {  // Decayed type in template parameters list.
-  static std::string ToString(const char chunk[N]) {
-    return std::string(chunk, chunk + N - 1);  // Do not include the '\0' character.
+  static std::string ToString(const char string[N]) {
+    return std::string(string, string + N - 1);  // Do not include the '\0' character.
   }
 };
 
