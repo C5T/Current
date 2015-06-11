@@ -438,12 +438,12 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("41,43,47",
             api.Transaction([](PrimesAPI::T_DATA data) {
               std::ostringstream os;
-              std::set<int> n;
+              std::set<int> values;
               for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
-                n.insert(static_cast<int>(cit.row) * 10 +
-                         static_cast<int>(cit.col));
+                values.insert(static_cast<int>(cit.row) * 10 +
+                              static_cast<int>(cit.col));
               }
-              for (int i : n) {
+              for (const int i : values) {
                  os << ',' << i;
               }
               return os.str().substr(1);
@@ -453,12 +453,12 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("7,17,37,47,67,97",
             api.Transaction([](PrimesAPI::T_DATA data) {
               std::ostringstream os;
-              std::set<int> n;
+              std::set<int> values;
               for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
-                n.insert(static_cast<int>(cit.row) * 10 +
-                         static_cast<int>(cit.col));
+                values.insert(static_cast<int>(cit.row) * 10 +
+                              static_cast<int>(cit.col));
               }
-              for (int i : n) {
+              for (const int i : values) {
                  os << ',' << i;
               }
               return os.str().substr(1);

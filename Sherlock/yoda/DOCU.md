@@ -194,7 +194,7 @@ api.Transaction([](PrimesAPI::T_DATA data) {
   } catch (const KeyAlreadyExistsException<Prime>& e) {
     EXPECT_EQ(19, static_cast<int>(e.key));
   }
-  // Check if value exists.
+  // Check if the value exists.
   ASSERT_TRUE(getter.Has(static_cast<PRIME>(13)));
   // `getter.Get()` in a non-throwing call, returning a wrapper.
   const auto p13 = getter.Get(static_cast<PRIME>(13));
@@ -370,12 +370,12 @@ api.Transaction([](PrimesAPI::T_DATA data) {
 EXPECT_EQ("41,43,47",
           api.Transaction([](PrimesAPI::T_DATA data) {
             std::ostringstream os;
-            std::set<int> n;
+            std::set<int> values;
             for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
-              n.insert(static_cast<int>(cit.row) * 10 +
-                       static_cast<int>(cit.col));
+              values.insert(static_cast<int>(cit.row) * 10 +
+                            static_cast<int>(cit.col));
             }
-            for (int i : n) {
+            for (const int i : values) {
                os << ',' << i;
             }
             return os.str().substr(1);
@@ -385,12 +385,12 @@ EXPECT_EQ("41,43,47",
 EXPECT_EQ("7,17,37,47,67,97",
           api.Transaction([](PrimesAPI::T_DATA data) {
             std::ostringstream os;
-            std::set<int> n;
+            std::set<int> values;
             for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
-              n.insert(static_cast<int>(cit.row) * 10 +
-                       static_cast<int>(cit.col));
+              values.insert(static_cast<int>(cit.row) * 10 +
+                            static_cast<int>(cit.col));
             }
-            for (int i : n) {
+            for (const int i : values) {
                os << ',' << i;
             }
             return os.str().substr(1);
@@ -416,16 +416,18 @@ api.Transaction([](PrimesAPI::T_DATA data) {
     v += "]";
     by_rows_values.push_back(v);
   }
-  std::sort(begin(by_rows_keys), end(by_rows_keys));
-  std::sort(begin(by_rows_values), end(by_rows_values));
+  std::set<std::string> by_rows_keys_set(by_rows_keys.begin(), by_rows_keys.end());
+  const bool rows_unordeded = (Join(by_rows_keys, "") != Join(by_rows_keys_set, ""));
+  ASSERT_TRUE(rows_unordeded);
+  std::set<std::string> by_rows_values_set(by_rows_values.begin(), by_rows_values.end());
   EXPECT_EQ(
     "[`0`:4][`1`:4][`2`:2][`3`:2][`4`:3]"
     "[`5`:2][`6`:2][`7`:3][`8`:2][`9`:1]",
-    Join(by_rows_keys, ""));
+    Join(by_rows_keys_set, ""));
   EXPECT_EQ(
     "[10,9][12,11][15,14,13][17,16][19,18]"
     "[22,21,20][24,23][25][3,2,4,1][8,7,6,5]",
-     Join(by_rows_values, ""));
+     Join(by_rows_values_set, ""));
 
   std::vector<std::string> by_cols_keys;
   std::vector<std::string> by_cols_values;
@@ -442,13 +444,15 @@ api.Transaction([](PrimesAPI::T_DATA data) {
     v += ")";
     by_cols_values.push_back(v);
   }
-  std::sort(begin(by_cols_keys), end(by_cols_keys));
-  std::sort(begin(by_cols_values), end(by_cols_values));
+  std::set<std::string> by_cols_keys_set(by_cols_keys.begin(), by_cols_keys.end());
+  const bool cols_unordeded = (Join(by_cols_keys, "") != Join(by_cols_keys_set, ""));
+  ASSERT_TRUE(cols_unordeded);
+  std::set<std::string> by_cols_values_set(by_cols_values.begin(), by_cols_values.end());
   EXPECT_EQ("(`1`:5)(`2`:1)(`3`:7)(`5`:1)(`7`:6)(`9`:5)",
-            Join(by_cols_keys, ""));
+            Join(by_cols_keys_set, ""));
   EXPECT_EQ("(1)(20,13,11,18,5)(23,21,14,9,6,16,2)"
             "(24,17,22,10,8)(25,15,12,19,7,4)(3)",
-            Join(by_cols_values, ""));
+            Join(by_cols_values_set, ""));
   
   const auto first_digit_one = static_cast<FIRST_DIGIT>(1);
   const auto second_digit_three = static_cast<SECOND_DIGIT>(3);
