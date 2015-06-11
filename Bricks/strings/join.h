@@ -119,7 +119,7 @@ template <typename T_CONTAINER, typename T_SEPARATOR>
 void OptionallyReserveOutputBuffer(std::string& output,
                                    const T_CONTAINER& components,
                                    T_SEPARATOR&& separator) {
-  // Note: this implementation does not to `reserve()` for chars, the length of which is always known to be 1.
+  // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
   OptionallyReserveOutputBufferImpl<sfinae::IsContainerOfStrings<T_CONTAINER>::value>::Impl(
       output, components, separator);
 }
