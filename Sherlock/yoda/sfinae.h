@@ -166,6 +166,23 @@ using T_MAP_TYPE =
                                  HasHashFunction<T_KEY>(0),
                                  GenericHasStdHash<T_KEY, std::is_enum<T_KEY>::value>::value()>::type;
 
+// Check that SFINAE does the magic right.
+namespace test {
+static_assert(std::is_same<std::unordered_map<int, int>, T_MAP_TYPE<int, int>>::value, "");
+static_assert(std::is_same<std::unordered_map<std::string, int>, T_MAP_TYPE<std::string, int>>::value, "");
+
+enum class A : int;
+static_assert(std::is_same<std::unordered_map<A, int, typename T_HASH_SELECTOR<A, false, true>::type>,
+                           T_MAP_TYPE<A, int>>::value,
+              "");
+
+struct B {
+  int x;
+  bool operator<(const B& rhs) const { return x < rhs.x; }
+};
+static_assert(std::is_same<std::map<B, int>, T_MAP_TYPE<B, int>>::value, "");
+}  // namespace test
+
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
 // TODO(dkorolev): Chat with Max, remove or move it into Bricks.
