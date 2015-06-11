@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "../yoda.h"
 
+#include "../../../Bricks/strings/join.h"
 #include "../../../Bricks/strings/printf.h"
 
 #include "../../../Bricks/net/api/api.h"
@@ -48,6 +49,7 @@ using yoda::CellNotFoundException;
 using yoda::CellAlreadyExistsException;
 using yoda::SubscriptException;
 
+using bricks::strings::Join;
 using bricks::strings::Printf;
 using bricks::strings::FromString;
 
@@ -151,17 +153,17 @@ HTTP(port).ResetAllHandlers();
   // `2` is the first prime.
   // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
   api.Add(Prime(2, 1)).Go();
-
+  
   // `3` is the second prime.
   // `api.Add()` never throws and silently overwrites.
   api.Add(Prime(3, 100));
   api.Add(Prime(3, 2));
-
+  
   // `api.Has()` supports both raw keys and tuples.
   ASSERT_TRUE(api.Has(static_cast<PRIME>(3)).Go());
   ASSERT_TRUE(api.Has(std::make_tuple(static_cast<PRIME>(3))).Go());
   ASSERT_FALSE(api.Has(static_cast<PRIME>(4)).Go());
-
+  
   // `api.Get()` has multiple signatures, one or more per
   // supported data type. It never throws, and returns a wrapper,
   // that can be casted to both `bool` and the underlying type.
@@ -253,7 +255,7 @@ HTTP(port).ResetAllHandlers();
       EXPECT_EQ(19, static_cast<int>(e.key));
     }
 
-    // Check if value exists.
+    // Check if the value exists.
     ASSERT_TRUE(getter.Has(static_cast<PRIME>(13)));
 
     // `getter.Get()` in a non-throwing call, returning a wrapper.
@@ -435,11 +437,14 @@ HTTP(port).ResetAllHandlers();
   // Primes that start with `4`.
   EXPECT_EQ("41,43,47",
             api.Transaction([](PrimesAPI::T_DATA data) {
-              // TODO(dkorolev): In real life, the order can be off. -- D.K.
               std::ostringstream os;
+              std::set<int> values;
               for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
-                os << ',' << (static_cast<int>(cit.row) * 10 +
+                values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
+              }
+              for (const int i : values) {
+                 os << ',' << i;
               }
               return os.str().substr(1);
             }).Go());
@@ -447,11 +452,14 @@ HTTP(port).ResetAllHandlers();
   // Primes that end with `7`.
   EXPECT_EQ("7,17,37,47,67,97",
             api.Transaction([](PrimesAPI::T_DATA data) {
-              // TODO(dkorolev): In real life, the order can be off. -- D.K.
               std::ostringstream os;
+              std::set<int> values;
               for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
-                os << ',' << (static_cast<int>(cit.row) * 10 +
+                values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
+              }
+              for (const int i : values) {
+                 os << ',' << i;
               }
               return os.str().substr(1);
             }).Go());
@@ -461,48 +469,56 @@ HTTP(port).ResetAllHandlers();
     const auto accessor = Matrix<PrimeCell>::Accessor(data);
     EXPECT_EQ(10u, accessor.Rows().size());
     EXPECT_EQ(6u, accessor.Cols().size());  // 1, 2, 3, 5, 7 or 9, my captain.
-    std::string by_rows_keys;
-    std::string by_rows_values;
+    std::vector<std::string> by_rows_keys;
+    std::vector<std::string> by_rows_values;
     for (const auto cit : accessor.Rows()) {
-      by_rows_keys += Printf("[`%d`:%d]",
+      by_rows_keys.push_back(Printf("[`%d`:%d]",
                              static_cast<int>(cit.key()),
-                             static_cast<int>(cit.size()));
-      by_rows_values += "[";
+                             static_cast<int>(cit.size())));
+      std::string v = "[";
       bool first = true;
       for (const auto cit2 : cit) {
-        by_rows_values += Printf("%s%d", first ? "" : ",", cit2.index);
+        v += Printf("%s%d", first ? "" : ",", cit2.index);
         first = false;
       }
-      by_rows_values += "]";
+      v += "]";
+      by_rows_values.push_back(v);
     }
+    std::set<std::string> by_rows_keys_set(by_rows_keys.begin(), by_rows_keys.end());
+    EXPECT_NE(Join(by_rows_keys, ""), Join(by_rows_keys_set, ""));
+    std::set<std::string> by_rows_values_set(by_rows_values.begin(), by_rows_values.end());
     EXPECT_EQ(
       "[`0`:4][`1`:4][`2`:2][`3`:2][`4`:3]"
       "[`5`:2][`6`:2][`7`:3][`8`:2][`9`:1]",
-      by_rows_keys);
+      Join(by_rows_keys_set, ""));
     EXPECT_EQ(
-      "[1,2,3,4][5,6,7,8][9,10][11,12][13,14,15]"
-      "[16,17][18,19][20,21,22][23,24][25]",
-       by_rows_values);
+      "[10,9][12,11][15,14,13][17,16][19,18]"
+      "[22,21,20][24,23][25][3,2,4,1][8,7,6,5]",
+       Join(by_rows_values_set, ""));
   
-    std::string by_cols_keys;
-    std::string by_cols_values;
+    std::vector<std::string> by_cols_keys;
+    std::vector<std::string> by_cols_values;
     for (const auto cit : accessor.Cols()) {
-      by_cols_keys += Printf("(`%d`:%d)",
+      by_cols_keys.push_back(Printf("(`%d`:%d)",
                              static_cast<int>(cit.key()),
-                             static_cast<int>(cit.size()));
-      by_cols_values += "(";
+                             static_cast<int>(cit.size())));
+      std::string v = "(";
       bool first = true;
       for (const auto cit2 : cit) {
-        by_cols_values += Printf("%s%d", first ? "" : ",", cit2.index);
+        v += Printf("%s%d", first ? "" : ",", cit2.index);
         first = false;
       }
-      by_cols_values += ")";
+      v += ")";
+      by_cols_values.push_back(v);
     }
+    std::set<std::string> by_cols_keys_set(by_cols_keys.begin(), by_cols_keys.end());
+    EXPECT_NE(Join(by_cols_keys, ""), Join(by_cols_keys_set, ""));
+    std::set<std::string> by_cols_values_set(by_cols_values.begin(), by_cols_values.end());
     EXPECT_EQ("(`1`:5)(`2`:1)(`3`:7)(`5`:1)(`7`:6)(`9`:5)",
-              by_cols_keys);
-    EXPECT_EQ("(5,11,13,18,20)(1)(2,6,9,14,16,21,23)"
-              "(3)(4,7,12,15,19,25)(8,10,17,22,24)",
-              by_cols_values);
+              Join(by_cols_keys_set, ""));
+    EXPECT_EQ("(1)(20,13,11,18,5)(23,21,14,9,6,16,2)"
+              "(24,17,22,10,8)(25,15,12,19,7,4)(3)",
+              Join(by_cols_values_set, ""));
     
     const auto first_digit_one = static_cast<FIRST_DIGIT>(1);
     const auto second_digit_three = static_cast<SECOND_DIGIT>(3);
