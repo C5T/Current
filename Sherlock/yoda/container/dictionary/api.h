@@ -74,6 +74,7 @@ struct Dictionary {
 template <typename YT, typename ENTRY>
 struct Container<YT, Dictionary<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
+  Container() { std::cout << typeid(map_).name() << std::endl; }
 
   template <typename T>
   using CF = bricks::copy_free<T>;

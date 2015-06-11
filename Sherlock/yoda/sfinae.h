@@ -62,6 +62,17 @@ constexpr auto HasStdHash(int) -> decltype(std::hash<T_KEY>(), bool()) {
 }
 
 template <typename T_KEY>
+constexpr bool EnumHasStdHash(char) {
+  return false;
+}
+
+template <typename T_KEY>
+constexpr auto EnumHasStdHash(int)
+    -> decltype(std::hash<typename std::underlying_type<T_KEY>::type>(), bool()) {
+  return true;
+}
+
+template <typename T_KEY>
 constexpr bool HasOperatorEquals(char) {
   return false;
 }
@@ -83,6 +94,41 @@ constexpr auto HasOperatorLess(int)
   return true;
 }
 
+template <typename T_KEY, bool IS_ENUM = false>
+struct GenericHasStdHash {
+  static constexpr bool value() { return HasStdHash<T_KEY>(0); }
+};
+
+template <typename T_KEY>
+struct GenericHasStdHash<T_KEY, true> {
+  static constexpr bool value() { return EnumHasStdHash<T_KEY>(0); }
+};
+
+template <typename T_KEY, bool HAS_CUSTOM_HASH_FUNCTION, bool IS_ENUM>
+struct T_HASH_SELECTOR;
+
+template <typename T_KEY>
+struct T_HASH_SELECTOR<T_KEY, true, false> {
+  struct HashFunction {
+    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
+  };
+  typedef HashFunction type;
+};
+
+template <typename T_KEY>
+struct T_HASH_SELECTOR<T_KEY, false, true> {
+  struct HashFunction {
+    typedef typename std::underlying_type<T_KEY>::type UT;
+    size_t operator()(const T_KEY& key) const { return std::hash<UT>()(static_cast<UT>(key)); }
+  };
+  typedef HashFunction type;
+};
+
+template <typename T_KEY>
+struct T_HASH_SELECTOR<T_KEY, false, false> {
+  typedef std::hash<T_KEY> type;
+};
+
 template <typename T_KEY, typename T_ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
 struct T_MAP_TYPE_SELECTOR {};
 
@@ -91,22 +137,22 @@ struct T_MAP_TYPE_SELECTOR {};
 template <typename T_KEY, typename T_ENTRY, bool DEFINES_STD_HASH>
 struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true, DEFINES_STD_HASH> {
   static_assert(HasOperatorEquals<T_KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
-  struct HashFunction {
-    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
-  };
-  typedef std::unordered_map<T_KEY, T_ENTRY, HashFunction> type;
+  typedef std::unordered_map<T_KEY, T_ENTRY, typename T_HASH_SELECTOR<T_KEY, true, false>::type> type;
 };
 
-// `T_KEY::Hash()` is not defined, but `std::hash<T_KEY>` and `T_KEY::operator==()` are, use
-// std::unordered_map<>.
+// `T_KEY::Hash()` is not defined, but `std::hash<>` (for either T_KEY or its underlying type) and
+// `T_KEY::operator==()` are, use std::unordered_map<>.
 template <typename T_KEY, typename T_ENTRY>
 struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
   static_assert(HasOperatorEquals<T_KEY>(0),
                 "The key type supports `std::hash<T_KEY>`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY> type;
+  typedef std::unordered_map<T_KEY,
+                             T_ENTRY,
+                             typename T_HASH_SELECTOR<T_KEY, false, std::is_enum<T_KEY>::value>::type> type;
 };
 
-// Neither `T_KEY::Hash()` nor `std::hash<T_KEY>` are defined, use std::map<>.
+// Neither `T_KEY::Hash()` nor `std::hash<>` (for either T_KEY or its underlying type) are defined,
+// use std::map<>.
 template <typename T_KEY, typename T_ENTRY>
 struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
   static_assert(HasOperatorLess<T_KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
@@ -115,7 +161,10 @@ struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
 
 template <typename T_KEY, typename T_ENTRY>
 using T_MAP_TYPE =
-    typename T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, HasHashFunction<T_KEY>(0), HasStdHash<T_KEY>(0)>::type;
+    typename T_MAP_TYPE_SELECTOR<T_KEY,
+                                 T_ENTRY,
+                                 HasHashFunction<T_KEY>(0),
+                                 GenericHasStdHash<T_KEY, std::is_enum<T_KEY>::value>::value()>::type;
 
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
