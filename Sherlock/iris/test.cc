@@ -23,7 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // Just `make` will run the test.
-// Invoke with `./.current/test --run=1` to spawn on `localhost:3000`.
+// Invoke with `./.current/test --run=1` to spawn on `localhost:5000`.
 //
 // More info:
 // * http://en.wikipedia.org/wiki/Iris_flower_data_set
@@ -47,7 +47,7 @@ using namespace bricks::strings;
 using namespace bricks::gnuplot;
 using namespace yoda;
 
-DEFINE_int32(iris_port, 3000, "");
+DEFINE_int32(iris_port, 5000, "");
 
 DEFINE_bool(run, false, "Set to true to run indefinitely.");
 
