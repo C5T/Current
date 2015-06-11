@@ -1,8 +1,6 @@
 #!/bin/bash
 #
 # Runs `check-headers.sh` in every subdirectory containing `*.h` files.
-#
-# TODO(dkorolev): Move this `scripts/` directory into another repository.
 
 set -u -e
 

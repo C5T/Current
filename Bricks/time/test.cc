@@ -48,8 +48,9 @@ TEST(Time, SmokeTest) {
 
 #else
 
-#warning "== Ignore this warning if a full batch test is being run! ==="
+#warning "==================================================================="
+#warning "Ignore this warning if a full batch test is being run!"
 #warning "A flaky test comparing against wall time is disabled for batch run."
-#warning "== Ignore this warning if a full batch test is being run! ==="
+#warning "==================================================================="
 
 #endif  // BRICKS_MOCK_TIME

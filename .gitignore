@@ -11,13 +11,17 @@ core
 *.swp
 a.out
 
-# Full test.
+# Full test: Keep the Bricks one, ignore the rest.
+# TODO(dkorolev): Keep the top-level `zzz_full_test` too.
+zzz_full_test/**/everything.dSYM
+Bricks/**/everything
+Bricks/**/everything.dSYM
 
+zzz_full_test/
 CompactTSV/zzz_full_test/
 EventCollector/zzz_full_test/
 FnCAS/zzz_full_test/
 Sherlock/zzz_full_test/
-zzz_full_test/
 
 # Coverage report.
 coverage
@@ -26,10 +30,6 @@ coverage.info
 *.gcov
 *.gcda
 *.gcno
-
-# Bricks.
-Bricks/**/everything
-Bricks/**/everything.dSYM
 
 # Microsoft Visual Studio files.
 *.suo
