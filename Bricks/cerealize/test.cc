@@ -81,25 +81,6 @@ TEST(Cerealize, CompileTimeTests) {
   static_assert(!is_cerealizable<No>::value, "");
   static_assert(is_cerealizable<Yes>::value, "");
 
-  static_assert(!is_string_type<int>::value, "");
-
-  static_assert(is_string_type<char>::value, "");
-
-  static_assert(is_string_type<char*>::value, "");
-
-  static_assert(is_string_type<const char*>::value, "");
-  static_assert(is_string_type<const char*&>::value, "");
-  static_assert(is_string_type<const char*&&>::value, "");
-  static_assert(is_string_type<char*&&>::value, "");
-
-  static_assert(is_string_type<std::string>::value, "");
-  static_assert(is_string_type<const std::string&>::value, "");
-  static_assert(is_string_type<std::string&&>::value, "");
-
-  static_assert(is_string_type<std::vector<char>>::value, "");
-  static_assert(is_string_type<const std::vector<char>&>::value, "");
-  static_assert(is_string_type<std::vector<char>&&>::value, "");
-
   static_assert(!is_write_cerealizable<const char*>::value, "");
   static_assert(!is_write_cerealizable<const char*&>::value, "");
   static_assert(!is_write_cerealizable<const char*&&>::value, "");

@@ -29,6 +29,8 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
+#include "util.h"
+
 #include "../template/decay.h"
 
 namespace bricks {
@@ -59,26 +61,77 @@ inline size_t StringLengthOrOneForChar(T&& param) {
   return StringLengthOrOneForCharImpl<rmref<T>>::Length(param);
 }
 
-template <typename T_VECTOR_STRING, typename T_SEPARATOR>
-std::string Join(const T_VECTOR_STRING& strings, T_SEPARATOR&& separator) {
-  if (strings.empty()) {
-    return "";
-  } else {
+template <bool CAN_GET_LENGTH>
+struct OptionallyReserveOutputBufferImpl {
+  template <typename T_CONTAINER, typename T_SEPARATOR>
+  static void Impl(std::string&, const T_CONTAINER&, T_SEPARATOR&&) {}
+};
+
+template <>
+struct OptionallyReserveOutputBufferImpl<true> {
+  template <typename T_CONTAINER, typename T_SEPARATOR>
+  static void Impl(std::string& output, const T_CONTAINER& components, T_SEPARATOR&& separator) {
     size_t length = 0;
-    for (const auto cit : strings) {
+    for (const auto cit : components) {
       length += cit.length();
     }
-    length += impl::StringLengthOrOneForChar(separator) * (strings.size() - 1);
+    length += impl::StringLengthOrOneForChar(separator) * (components.size() - 1);
+    output.reserve(length);
+  }
+};
+
+namespace sfinae {
+
+template <typename T>
+struct HasBegin {
+  static constexpr bool CompileTimeCheck(char) { return false; }
+  static constexpr auto CompileTimeCheck(int) -> decltype(std::declval<T>().begin(), bool()) { return true; }
+};
+
+template <typename T, bool IS_CONTAINER>
+struct IsContainerOfStringsImpl {};
+
+template <typename T>
+struct IsContainerOfStringsImpl<T, false> {
+  enum { value = false };
+};
+
+template <typename T>
+struct IsContainerOfStringsImpl<T, true> {
+  enum { value = std::is_same<std::string, bricks::decay<decltype(*std::declval<T>().begin())>>::value };
+};
+
+template <typename T>
+struct IsContainerOfStrings {
+  enum { value = IsContainerOfStringsImpl<T, HasBegin<T>::CompileTimeCheck(0)>::value };
+};
+
+}  // namespace sfinae
+
+template <typename T_CONTAINER, typename T_SEPARATOR>
+void OptionallyReserveOutputBuffer(std::string& output,
+                                   const T_CONTAINER& components,
+                                   T_SEPARATOR&& separator) {
+  // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
+  OptionallyReserveOutputBufferImpl<sfinae::IsContainerOfStrings<T_CONTAINER>::value>::Impl(
+      output, components, separator);
+}
+
+template <typename T_CONTAINER, typename T_SEPARATOR>
+std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
+  if (components.empty()) {
+    return "";
+  } else {
     std::string result;
-    result.reserve(length);
+    OptionallyReserveOutputBuffer(result, components, separator);
     bool first = true;
-    for (const auto cit : strings) {
+    for (const auto cit : components) {
       if (first) {
         first = false;
       } else {
         result += separator;
       }
-      result += cit;
+      result += ToString(cit);
     }
     return result;
   }
@@ -86,14 +139,14 @@ std::string Join(const T_VECTOR_STRING& strings, T_SEPARATOR&& separator) {
 
 }  // namespace impl
 
-template <typename T_VECTOR_STRING, typename T_SEPARATOR>
-std::string Join(const T_VECTOR_STRING& strings, T_SEPARATOR&& separator) {
-  return impl::Join(strings, std::forward<T_SEPARATOR>(separator));
+template <typename T_CONTAINER, typename T_SEPARATOR>
+std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
+  return impl::Join(components, std::forward<T_SEPARATOR>(separator));
 }
 
 template <typename T_SEPARATOR>
-std::string Join(const std::vector<std::string>& strings, T_SEPARATOR&& separator) {
-  return impl::Join(strings, std::forward<T_SEPARATOR>(separator));
+std::string Join(const std::vector<std::string>& components, T_SEPARATOR&& separator) {
+  return impl::Join(components, std::forward<T_SEPARATOR>(separator));
 }
 
 }  // namespace strings

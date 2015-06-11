@@ -26,7 +26,7 @@ SOFTWARE.
 #include <string>
 #include <set>
 
-#include "util.h"
+#include "strings.h"
 
 #include "../3party/gtest/gtest-main.h"
 
@@ -36,6 +36,7 @@ using bricks::strings::PackToString;
 using bricks::strings::UnpackFromString;
 using bricks::strings::CompileTimeStringLength;
 using bricks::strings::Trim;
+using bricks::strings::ToString;
 using bricks::strings::FromString;
 using bricks::strings::ToLower;
 using bricks::strings::ToUpper;
@@ -53,6 +54,7 @@ using bricks::strings::FastEditDistance;
 using bricks::strings::Chunk;
 using bricks::strings::UniqueChunk;
 using bricks::strings::ChunkDB;
+using bricks::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));
@@ -143,6 +145,14 @@ TEST(Util, FromString) {
   EXPECT_EQ(0.0, FromString<double>("\t"));
 }
 
+TEST(ToString, SmokeTest) {
+  EXPECT_EQ("foo", ToString("foo"));
+  EXPECT_EQ("bar", ToString(std::string("bar")));
+  EXPECT_EQ("42", ToString(42));
+  EXPECT_EQ("0.500000", ToString(0.5));
+  EXPECT_EQ("c", ToString('c'));
+}
+
 TEST(Util, ToUpperAndToLower) {
   EXPECT_EQ("test passed", ToLower("TeSt pAsSeD"));
   EXPECT_EQ("TEST PASSED", ToUpper("TeSt pAsSeD"));
@@ -156,9 +166,16 @@ TEST(JoinAndSplit, Join) {
   EXPECT_EQ("", Join({}, ' '));
   EXPECT_EQ("", Join({}, " "));
 
+  EXPECT_EQ("1 3 2 3", Join(std::vector<int>({1, 3, 2, 3}), " "));
+  EXPECT_EQ("1 2 3", Join(std::set<int>({1, 3, 2, 3}), " "));
+  EXPECT_EQ("1 2 3 3", Join(std::multiset<int>({1, 3, 2, 3}), " "));
+
   EXPECT_EQ("a,b,c,b", Join(std::vector<std::string>({"a", "b", "c", "b"}), ','));
   EXPECT_EQ("a,b,c", Join(std::set<std::string>({"a", "b", "c", "b"}), ','));
   EXPECT_EQ("a,b,b,c", Join(std::multiset<std::string>({"a", "b", "c", "b"}), ','));
+
+  EXPECT_EQ("x->y->z", Join(std::set<char>({'x', 'z', 'y'}), "->"));
+  EXPECT_EQ("0.500000<0.750000<0.875000<1.000000", Join(std::multiset<double>({1, 0.5, 0.75, 0.875}), '<'));
 }
 
 TEST(JoinAndSplit, Split) {
@@ -267,7 +284,7 @@ TEST(JoinAndSplit, SplitIntoKeyValuePairsExceptions) {
                KeyValueMultipleValuesException);
 }
 
-TEST(EditDistance, Smoke) {
+TEST(EditDistance, SmokeTest) {
   EXPECT_EQ(0u, SlowEditDistance("foo", "foo"));
   EXPECT_EQ(3u, SlowEditDistance("foo", ""));
   EXPECT_EQ(3u, SlowEditDistance("", "foo"));
@@ -320,7 +337,7 @@ TEST(EditDistance, StringsOfTooDifferentLength) {
   EXPECT_EQ(static_cast<size_t>(-1), FastEditDistance("foobarbaz", "baz", 5u));
 }
 
-TEST(Chunk, Smoke) {
+TEST(Chunk, SmokeTest) {
   Chunk foo("foo", 3);
   EXPECT_FALSE(foo.empty());
   EXPECT_EQ(3u, foo.length());
@@ -438,4 +455,25 @@ TEST(Chunk, Smoke) {
   EXPECT_TRUE(db.Find("foo", unique_result));
   EXPECT_TRUE(unique_result == unique_foo_1);
   EXPECT_FALSE(db.Find("nope", unique_result));
+}
+
+TEST(IsStringType, StaticAsserts) {
+  static_assert(!is_string_type<int>::value, "");
+
+  static_assert(is_string_type<char>::value, "");
+
+  static_assert(is_string_type<char*>::value, "");
+
+  static_assert(is_string_type<const char*>::value, "");
+  static_assert(is_string_type<const char*&>::value, "");
+  static_assert(is_string_type<const char*&&>::value, "");
+  static_assert(is_string_type<char*&&>::value, "");
+
+  static_assert(is_string_type<std::string>::value, "");
+  static_assert(is_string_type<const std::string&>::value, "");
+  static_assert(is_string_type<std::string&&>::value, "");
+
+  static_assert(is_string_type<std::vector<char>>::value, "");
+  static_assert(is_string_type<const std::vector<char>&>::value, "");
+  static_assert(is_string_type<std::vector<char>&&>::value, "");
 }
