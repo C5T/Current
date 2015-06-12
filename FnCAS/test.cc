@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../Bricks/3party/gtest/gtest-main.h"
+#include "../3rdparty/gtest/gtest-main.h"
 
 #ifndef FNCAS_JIT
 #define FNCAS_JIT CLANG

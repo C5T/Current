@@ -36,6 +36,6 @@ SOFTWARE.
 
 #include "gnuplot.h"
 
-#include "../3party/gtest/gtest-main-with-dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #endif  // BRICKS_WINDOWS

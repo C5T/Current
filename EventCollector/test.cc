@@ -33,7 +33,7 @@ SOFTWARE.
 #include "../../Current/Bricks/strings/printf.h"
 
 #include "../../Current/Bricks/dflags/dflags.h"
-#include "../../Current/Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../Current/3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(event_collector_test_port, 8089, "Local port to run the test.");
 
@@ -55,8 +55,11 @@ TEST(EventCollector, Smoke) {
   EventReceiver er;
 
   bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(0));
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os,
-                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(100), "/log", "OK\n",
+  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port,
+                                     os,
+                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(100),
+                                     "/log",
+                                     "OK\n",
                                      std::bind(&EventReceiver::OnEvent, &er, std::placeholders::_1));
 
   bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(12));
@@ -92,8 +95,8 @@ TEST(EventCollector, Smoke) {
 
 TEST(EventCollector, QueryParameters) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os,
-                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
+  EventCollectorHTTPServer collector(
+      FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
   auto e = ParseJSON<LogEntry>(os.str());
@@ -104,8 +107,8 @@ TEST(EventCollector, QueryParameters) {
 
 TEST(EventCollector, Body) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os,
-                                     static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
+  EventCollectorHTTPServer collector(
+      FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
   EXPECT_EQ("Yay!", ParseJSON<LogEntry>(os.str()).b);
 }

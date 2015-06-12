@@ -23,7 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // Just `make` will run the test.
-// Invoke with `./.current/test --run=1` to spawn on `localhost:3000`.
+// Invoke with `./.current/test --run=1` to spawn on `localhost:5000`.
 //
 // More info:
 // * http://en.wikipedia.org/wiki/Iris_flower_data_set
@@ -35,9 +35,10 @@ SOFTWARE.
 #include "../../Bricks/net/api/api.h"
 #include "../../Bricks/graph/gnuplot.h"
 #include "../../Bricks/strings/printf.h"
+#include "../../Bricks/file/file.h"
 
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/3party/gtest/gtest-main-with-dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #include "iris.h"
 CEREAL_REGISTER_TYPE(LabeledFlower);
@@ -46,7 +47,7 @@ using namespace bricks::strings;
 using namespace bricks::gnuplot;
 using namespace yoda;
 
-DEFINE_int32(iris_port, 3000, "");
+DEFINE_int32(iris_port, 5000, "");
 
 DEFINE_bool(run, false, "Set to true to run indefinitely.");
 
@@ -89,9 +90,11 @@ TEST(Iris, Demo) {
                     std::move(request));
   });
 
+  // The input file is in the `golden` directory for it to be successfully picked up by `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
-            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port), "dataset.tsv", "text/tsv"))
-                .body);
+            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port),
+                              bricks::FileSystem::JoinPath("golden", "dataset.tsv"),
+                              "text/tsv")).body);
 
   // Ref.: http://localhost:3000/stream
   api.ExposeViaHTTP(FLAGS_iris_port, "/stream");

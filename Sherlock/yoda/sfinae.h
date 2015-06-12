@@ -27,6 +27,7 @@ SOFTWARE.
 #define SHERLOCK_YODA_SFINAE_H
 
 #include <functional>
+#include <string>
 #include <map>
 #include <unordered_map>
 #include <utility>
@@ -93,6 +94,8 @@ constexpr auto HasOperatorLess(int)
     -> decltype(static_cast<bool>(std::declval<T_KEY>() < std::declval<T_KEY>()), bool()) {
   return true;
 }
+
+static_assert(HasOperatorLess<std::string>(0), "");
 
 template <typename T_KEY, bool IS_ENUM = false>
 struct GenericHasStdHash {

@@ -75,28 +75,27 @@ class EventCollectorHTTPServer {
         last_event_t_(0u),
         events_pushed_(0u),
         timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
-    HTTP(http_port_)
-        .Register(route_, [this](Request r) {
-          LogEntry entry;
-          {
-            std::lock_guard<std::mutex> lock(mutex_);
-            entry.t = static_cast<uint64_t>(bricks::time::Now());
-            entry.m = r.method;
-            entry.u = r.url.url_without_parameters;
-            entry.q = r.url.AllQueryParameters();
-            entry.b = r.body;
-            entry.f = r.url.fragment;
-            // TODO(dkorolev): HTTP headers come here.
-            // entry.h = { ... }
-            ostream_ << JSON(entry, "log_entry") << std::endl;
-            ++events_pushed_;
-            last_event_t_ = entry.t;
-            if (callback_) {
-              callback_(entry);
-            }
-          }
-          r(response_text_);
-        });
+    HTTP(http_port_).Register(route_, [this](Request r) {
+      LogEntry entry;
+      {
+        std::lock_guard<std::mutex> lock(mutex_);
+        entry.t = static_cast<uint64_t>(bricks::time::Now());
+        entry.m = r.method;
+        entry.u = r.url.url_without_parameters;
+        entry.q = r.url.AllQueryParameters();
+        entry.b = r.body;
+        entry.f = r.url.fragment;
+        // TODO(dkorolev): HTTP headers come here.
+        // entry.h = { ... }
+        ostream_ << JSON(entry, "log_entry") << std::endl;
+        ++events_pushed_;
+        last_event_t_ = entry.t;
+        if (callback_) {
+          callback_(entry);
+        }
+      }
+      r(response_text_);
+    });
   }
 
   ~EventCollectorHTTPServer() {

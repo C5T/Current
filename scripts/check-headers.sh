@@ -1,55 +1,19 @@
 #!/bin/bash
 #
-# Checks that every header can be compiled independently and that they do not violate ODR.
-#
-# Compiles each header with g++ and clang++, then links them all together to confirm that
-# one-definition-rule is not violated, i.e., no non-inlined global symbols are defined.
+# Runs `check-headers.sh` in every subdirectory containing `*.h` files.
 
 set -u -e
 
-CPPFLAGS="-std=c++11 -g -Wall -W -DBRICKS_CHECK_HEADERS_MODE"
-LDFLAGS="-pthread"
+CURRENT_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
+CURRENT_SCRIPTS_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$CURRENT_SCRIPTS_DIR" )
+RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD" )
 
-if [ $(uname) = "Darwin" ] ; then
-  CPPFLAGS+=" -stdlib=libc++ -x objective-c++ -fobjc-arc"
-  LDFLAGS+=" -framework Foundation"
-fi
+echo -e "\033[1m\033[34mTesting all headers to comply with the header-only paradigm.\033[0m"
 
-# NOTE: TMP_DIR must be resolved from the current working directory.
-
-TMP_DIR_NAME=".current"
-TMP_STDOUT="$TMP_DIR_NAME/stdout.log"
-TMP_STDERR="$TMP_DIR_NAME/stderr.log"
-
-rm -rf "$TMP_DIR_NAME/headers"
-mkdir -p "$TMP_DIR_NAME/headers"
-
-echo -e -n "\033[1mCompiling\033[0m: "
-for i in $(ls *.h | grep -v ".cc.h$") ; do
-  echo -e -n "\033[36m"
-  echo -n "$i "
-  echo -e -n "\033[31m"
-  ln -sf "$PWD/$i" "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc"
-  ln -sf "$PWD/$i" "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc"
-  g++ -I . $CPPFLAGS \
-    -c "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc" \
-    -o "$PWD/$TMP_DIR_NAME/headers/$i.g++.o" $LDFLAGS \
-    >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-  clang++ -I . $CPPFLAGS \
-    -c "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc" \
-    -o "$PWD/$TMP_DIR_NAME/headers/$i.clang++.o" $LDFLAGS \
-    >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
+for i in $(for i in $(find . -iname "*.h" | grep -v 3rdparty | grep -vi deprecated) ; do dirname "$i" ; done | sort -u) ; do
+  echo -e "\033[1mDirectory\033[0m: $i"
+  cd "$i" && "$CURRENT_SCRIPTS_DIR_FULL_PATH/check-headers-within-dir.sh" && cd "$RUN_DIR_FULL_PATH" && continue
+  echo -e "\033[1m\033[31mTerminating.\033[0m" && exit 1
 done
-echo
 
-echo -e -n "\033[0m\033[1mLinking\033[0m:\033[0m\033[31m "
-echo -e '#include <cstdio>\nint main() { printf("OK\\n"); }\n' >"$TMP_DIR_NAME/headers/main.cc"
-g++ -c $CPPFLAGS \
-  -o "$TMP_DIR_NAME/headers/main.o" "$TMP_DIR_NAME/headers/main.cc" $LDFLAGS \
-  >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-g++ -o "$TMP_DIR_NAME/headers/main" $TMP_DIR_NAME/headers/*.o $LDFLAGS \
-  >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-echo -e -n "\033[1m\033[32m"
-"$TMP_DIR_NAME/headers/main"
-
-echo -e -n "\033[0m"
+echo -e "\033[1m\033[32mConfirmed\033[34m:\033[1m All headers comply with the header-only paradigm.\033[0m"

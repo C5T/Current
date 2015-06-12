@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include <thread>
 
-#include "../../Bricks/3party/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main.h"
 
 using std::thread;
 using std::this_thread::sleep_for;

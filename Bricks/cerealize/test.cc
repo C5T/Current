@@ -52,7 +52,7 @@ SOFTWARE.
 #include "../strings/printf.h"
 
 #include "../dflags/dflags.h"
-#include "../3party/gtest/gtest-main-with-dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 using namespace bricks;
 using namespace cerealize;
@@ -61,7 +61,7 @@ using strings::Printf;
 
 DEFINE_string(cerealize_test_tmpdir, ".current", "The directory to create temporary files in.");
 
-// TODO(dkorolev): Move this helper into 3party/gtest/ ?
+// TODO(dkorolev): Move this helper into 3rdparty/gtest/ ?
 static std::string CurrentTestName() {
   // via https://code.google.com/p/googletest/wiki/AdvancedGuide#Getting_the_Current_Test%27s_Name
   return ::testing::UnitTest::GetInstance()->current_test_info()->name();

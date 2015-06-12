@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef SHERLOCK_H
 #define SHERLOCK_H
 
-#include "../Bricks/port.h"
+#include "../port.h"
 
 #include <vector>
 #include <string>

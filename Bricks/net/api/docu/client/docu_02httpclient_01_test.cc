@@ -28,7 +28,7 @@ SOFTWARE.
 #include "../../api.h"
 #include "../../../../strings/printf.h"
 #include "../../../../dflags/dflags.h"
-#include "../../../../3party/gtest/gtest-main-with-dflags.h"
+#include "../../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(docu_net_client_port_01, 8082, "Okay to keep the same as in net/api/test.cc");
 
