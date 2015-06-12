@@ -53,6 +53,19 @@ using bricks::strings::Join;
 using bricks::strings::Printf;
 using bricks::strings::FromString;
 
+template<typename T, typename... TS> using CWT = bricks::weed::call_with_type<T, TS...>;
+
+// TODO(dkorolev): Productionize top-level `Has()` and `Value()`.
+// TODO(dkorolev): Productionize `Map()`, and also `Filter()` and `Reduce()`.
+template<typename T, typename F>
+std::vector<CWT<F, decltype(*std::declval<T>().begin())>> Map(const T& container, F&& function) {
+typedef CWT<F, decltype(*std::declval<T>().begin())> T_ELEMENT;
+std::vector<T_ELEMENT> result;
+result.reserve(container.size());
+for (const auto& cit : container) { result.push_back(function(cit)); }
+return result;
+}
+
   // Unique types for keys.
   enum class PRIME : int {};
   enum class FIRST_DIGIT : int {};
@@ -167,7 +180,6 @@ HTTP(port).ResetAllHandlers();
   // `api.Get()` has multiple signatures, one or more per supported data type.
   // It never throws, and returns a wrapper that can be cast to both `bool`
   // and the underlying type.
-  // TODO(dkorolev): Productionize top-level `Has()` and `Value()`?
   ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(2)).Go()));
   ASSERT_TRUE(static_cast<bool>(api.Get(std::make_tuple(static_cast<PRIME>(2))).Go()));
   EXPECT_EQ(1, static_cast<const Prime&>(api.Get(static_cast<PRIME>(2)).Go()).index);
@@ -302,16 +314,14 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(10u, getter.size());
     EXPECT_EQ(10u, adder.size());
   
-    std::set<std::pair<int, int>> as_set;  // To ensure the order is right.
+    std::set<std::pair<int, int>> set;  // To ensure the order is right.
     for (auto cit = getter.begin(); cit != getter.end(); ++cit) {
-      as_set.insert(std::make_pair((*cit).index, static_cast<int>(cit->prime)));
-    }
-    std::ostringstream os;
-    for (const auto cit : as_set) {
-      os << ',' << cit.first << ':' << cit.second;
+      set.insert(std::make_pair((*cit).index, static_cast<int>(cit->prime)));
     }
     EXPECT_EQ("1:2,2:3,3:5,4:7,5:11,6:13,7:17,9:19,10:23,11:29",
-              os.str().substr(1));
+              Join(Map(set, [](const std::pair<int, int>& e) {
+                         return Printf("%d:%d", e.first, e.second);
+                       }), ','));
       
     size_t c1 = 0u;
     size_t c2 = 0u;
@@ -439,7 +449,6 @@ HTTP(port).ResetAllHandlers();
   // Primes that start with `4`.
   EXPECT_EQ("41,43,47",
             api.Transaction([](PrimesAPI::T_DATA data) {
-              std::ostringstream os;
               std::set<int> values;
               for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
                 values.insert(static_cast<int>(cit.row) * 10 +
@@ -451,7 +460,6 @@ HTTP(port).ResetAllHandlers();
   // Primes that end with `7`.
   EXPECT_EQ("7,17,37,47,67,97",
             api.Transaction([](PrimesAPI::T_DATA data) {
-              std::ostringstream os;
               std::set<int> values;
               for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
                 values.insert(static_cast<int>(cit.row) * 10 +
@@ -533,6 +541,7 @@ HTTP(port).ResetAllHandlers();
     }
   }).Go();
   EXPECT_EQ(168, prime_index);
+  
   api.Transaction([](PrimesAPI::T_DATA data) {
     const auto accessor = Matrix<PrimeCell>::Accessor(data);
     // `Rows()` are now the set of all prime numbers
@@ -551,13 +560,13 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(93u, set.size());
     EXPECT_EQ("0,1,2,3,4,5,6,7,8,9,"
               "10,11,12,13,14,15,16,17,18,19,"
-              "21,22,23,24,25,26,27,28,29,"  // No 20x.
-              "30,31,33,34,35,36,37,38,39,"  // No 32x.
+              "21,22,23,24,25,26,27,28,29,"     // No 20x.
+              "30,31,33,34,35,36,37,38,39,"     // No 32x.
               "40,41,42,43,44,45,46,47,48,49,"
-              "50,52,54,55,56,57,58,59,"  // No 51x, 53x.
-              "60,61,63,64,65,66,67,68,69,"  // No 62x.
+              "50,52,54,55,56,57,58,59,"        // No 51x, 53x.
+              "60,61,63,64,65,66,67,68,69,"     // No 62x.
               "70,71,72,73,74,75,76,77,78,79,"
-              "80,81,82,83,85,86,87,88,"  // No 84x, 89x.
+              "80,81,82,83,85,86,87,88,"        // No 84x, 89x.
               "90,91,92,93,94,95,96,97,98,99",
               Join(set, ','));
     EXPECT_NE(Join(vector, ','), Join(set, ','));
