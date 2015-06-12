@@ -48,9 +48,23 @@ TEST(Time, SmokeTest) {
 
 #else
 
+// Emit a warning that the test is disabled.
+// Sadly, `#warning` is non-standard.
+
+#ifndef _MSC_VER
+
+// `g++` and `clang++` style.
 #warning "==================================================================="
 #warning "Ignore this warning if a full batch test is being run!"
 #warning "A flaky test comparing against wall time is disabled for batch run."
 #warning "==================================================================="
 
+#else
+
+#pragma message WARN("===================================================================")
+#pragma message WARN("Ignore this warning if a full batch test is being run!")
+#pragma message WARN("A flaky test comparing against wall time is disabled for batch run.")
+#pragma message WARN("===================================================================")
+
+#endif  // _MSC_VER
 #endif  // BRICKS_MOCK_TIME
