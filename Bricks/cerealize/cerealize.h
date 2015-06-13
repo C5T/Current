@@ -100,12 +100,18 @@ enum class CerealFormat { Default = 0, Binary = 0, JSON };
 // TODO(dkorolev): Think of platform-independent layer for filesystem locks.
 class CerealFileAppenderBase {
  public:
+  // This "ios" here has nothing to do with Apple, but with Microsoft: in Windows
+  // `initial_stream_position_` gets initialized with zero without it. -- D.K.
   explicit CerealFileAppenderBase(const std::string& filename, bool append = true)
       : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary),
-        initial_stream_position_(fo_.tellp()) {}
+        initial_stream_position_(static_cast<size_t>((fo_.seekp(0, std::ios_base::end), fo_.tellp()))) {}
 
   inline size_t EntriesAppended() const { return entries_appended_; }
-  inline size_t BytesAppended() const { return current_stream_position() - initial_stream_position_; }
+  inline size_t BytesAppended() const {
+    const size_t current = current_stream_position();
+    assert(current >= initial_stream_position_);  // TFU is it's the case.
+    return current - initial_stream_position_;
+  }
   inline size_t TotalFileSize() const { return current_stream_position(); }
 
  protected:
@@ -113,7 +119,7 @@ class CerealFileAppenderBase {
   size_t entries_appended_ = 0;
 
  private:
-  const std::streampos initial_stream_position_;
+  const size_t initial_stream_position_;
 
   size_t current_stream_position() const {
     const std::streampos p = fo_.tellp();

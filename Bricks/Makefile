@@ -30,7 +30,7 @@ clean:
 	for i in `find . -mindepth 1 -maxdepth 1 -type d | grep -v ".git" | grep -v 3rdparty` ; do (cd "$$i"; make clean) ; done
 
 check:
-	${CURRENT_SCRIPTS_DIR_FULL_PATH}/check-all-headers.sh
+	${CURRENT_SCRIPTS_DIR_FULL_PATH}/check-headers.sh
 
 indent:
 	${CURRENT_SCRIPTS_DIR_FULL_PATH}/indent.sh

@@ -61,10 +61,10 @@ TEST(Time, SmokeTest) {
 
 #else
 
-#pragma message WARN("===================================================================")
-#pragma message WARN("Ignore this warning if a full batch test is being run!")
-#pragma message WARN("A flaky test comparing against wall time is disabled for batch run.")
-#pragma message WARN("===================================================================")
+#pragma message("===================================================================")
+#pragma message("Ignore this warning if a full batch test is being run!")
+#pragma message("A flaky test comparing against wall time is disabled for batch run.")
+#pragma message("===================================================================")
 
 #endif  // _MSC_VER
 #endif  // BRICKS_MOCK_TIME

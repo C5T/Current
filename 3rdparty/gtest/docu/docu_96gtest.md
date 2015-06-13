@@ -1,3 +1,5 @@
+`TODO(dkorolev): Include this file some documentation -- likely a separate .md for "3rdparty".`
+
 ## Unit Testing: `gtest`
 
 Bricks contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
