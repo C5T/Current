@@ -138,51 +138,51 @@ template <typename T_ROW,
           bool ROW_HAS_OPERATOR_LESS,
           bool COL_FITS_UNORDERED_MAP,
           bool COL_HAS_OPERATOR_LESS>
-struct MapPairKeyImpl {
+struct RowColImpl {
   static_assert(
       (ROW_FITS_UNORDERED_MAP && COL_FITS_UNORDERED_MAP) || (ROW_HAS_OPERATOR_LESS && COL_HAS_OPERATOR_LESS),
       "Row and column types must either both (be hashable + have `operator==`) or both have `operator<`.");
 };
 
 template <typename T_ROW, typename T_COL, bool ROW_HAS_OPERATOR_LESS, bool COL_HAS_OPERATOR_LESS>
-struct MapPairKeyImpl<T_ROW, T_COL, true, ROW_HAS_OPERATOR_LESS, true, COL_HAS_OPERATOR_LESS> {
+struct RowColImpl<T_ROW, T_COL, true, ROW_HAS_OPERATOR_LESS, true, COL_HAS_OPERATOR_LESS> {
   T_ROW row;
   T_COL col;
-  MapPairKeyImpl(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
+  RowColImpl(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
   size_t Hash() const { return T_HASH_FUNCTION<T_ROW>()(row) ^ T_HASH_FUNCTION<T_COL>()(col); }
-  bool operator==(const MapPairKeyImpl& rhs) const { return row == rhs.row && col == rhs.col; }
+  bool operator==(const RowColImpl& rhs) const { return row == rhs.row && col == rhs.col; }
 };
 
 template <typename T_ROW, typename T_COL>
-struct MapPairKeyWithOperatorLess {
+struct RowColWithOperatorLess {
   T_ROW row;
   T_COL col;
-  MapPairKeyWithOperatorLess(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
-  bool operator<(const MapPairKeyWithOperatorLess& rhs) const { return row < rhs.row && col < rhs.col; }
+  RowColWithOperatorLess(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
+  bool operator<(const RowColWithOperatorLess& rhs) const { return row < rhs.row && col < rhs.col; }
 };
 
 template <typename T_ROW, typename T_COL>
-struct MapPairKeyImpl<T_ROW, T_COL, false, true, false, true> : MapPairKeyWithOperatorLess<T_ROW, T_COL> {
-  using MapPairKeyWithOperatorLess<T_ROW, T_COL>::MapPairKeyWithOperatorLess;
+struct RowColImpl<T_ROW, T_COL, false, true, false, true> : RowColWithOperatorLess<T_ROW, T_COL> {
+  using RowColWithOperatorLess<T_ROW, T_COL>::RowColWithOperatorLess;
 };
 
 template <typename T_ROW, typename T_COL>
-struct MapPairKeyImpl<T_ROW, T_COL, true, true, false, true> : MapPairKeyWithOperatorLess<T_ROW, T_COL> {
-  using MapPairKeyWithOperatorLess<T_ROW, T_COL>::MapPairKeyWithOperatorLess;
+struct RowColImpl<T_ROW, T_COL, true, true, false, true> : RowColWithOperatorLess<T_ROW, T_COL> {
+  using RowColWithOperatorLess<T_ROW, T_COL>::RowColWithOperatorLess;
 };
 
 template <typename T_ROW, typename T_COL>
-struct MapPairKeyImpl<T_ROW, T_COL, false, true, true, true> : MapPairKeyWithOperatorLess<T_ROW, T_COL> {
-  using MapPairKeyWithOperatorLess<T_ROW, T_COL>::MapPairKeyWithOperatorLess;
+struct RowColImpl<T_ROW, T_COL, false, true, true, true> : RowColWithOperatorLess<T_ROW, T_COL> {
+  using RowColWithOperatorLess<T_ROW, T_COL>::RowColWithOperatorLess;
 };
 
 template <typename T_ROW, typename T_COL>
-using MapPairKey = MapPairKeyImpl<T_ROW,
-                                  T_COL,
-                                  FitsAsKeyForUnorderedMap<T_ROW>(),
-                                  HasOperatorLess<T_ROW>(0),
-                                  FitsAsKeyForUnorderedMap<T_COL>(),
-                                  HasOperatorLess<T_COL>(0)>;
+using RowCol = RowColImpl<T_ROW,
+                          T_COL,
+                          FitsAsKeyForUnorderedMap<T_ROW>(),
+                          HasOperatorLess<T_ROW>(0),
+                          FitsAsKeyForUnorderedMap<T_COL>(),
+                          HasOperatorLess<T_COL>(0)>;
 
 }  // namespace sfinae
 }  // namespace yoda
