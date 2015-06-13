@@ -72,8 +72,8 @@ struct rmref_impl<std::tuple<TS...>&&> {
   typedef metaprogramming::map<impl, std::tuple<TS...>> type;
 };
 
-template <typename... TS>
-using rmref = typename rmref_impl<TS...>::type;
+template <typename T>
+using rmref = typename rmref_impl<T>::type;
 
 template <typename T>
 struct rmconst_impl {
@@ -115,13 +115,13 @@ struct rmconst_impl<std::tuple<TS...>&&> {
   typedef metaprogramming::map<impl, std::tuple<TS...>> type;
 };
 
-template <typename... TS>
-using rmconst = typename rmconst_impl<TS...>::type;
+template <typename T>
+using rmconst = typename rmconst_impl<T>::type;
 
 // Bricks define `decay<>` as the combination of `rmconst` and `rmref`, penetrating tuples.
 // We did not need other functionality of `std::decay_t<>` yet. -- D.K.
-template <typename... TS>
-using decay = rmconst<rmref<TS...>>;
+template <typename T>
+using decay = rmconst<rmref<T>>;
 
 template <typename A, typename B>
 using is_same = std::is_same<A, B>;
