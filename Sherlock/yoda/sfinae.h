@@ -107,6 +107,16 @@ struct GenericHasStdHash<T_KEY, true> {
   static constexpr bool value() { return EnumHasStdHash<T_KEY>(0); }
 };
 
+template <typename T_KEY>
+constexpr bool HasStdOrCustomHash() {
+  return GenericHasStdHash<T_KEY, std::is_enum<T_KEY>::value>::value() || HasHashFunction<T_KEY>(0);
+};
+
+template <typename T_KEY>
+constexpr bool FitsAsKeyForUnorderedMap() {
+  return HasStdOrCustomHash<T_KEY>() && HasOperatorEquals<T_KEY>(0);
+};
+
 template <typename T_KEY, bool HAS_CUSTOM_HASH_FUNCTION, bool IS_ENUM>
 struct T_HASH_SELECTOR;
 
@@ -132,6 +142,10 @@ struct T_HASH_SELECTOR<T_KEY, false, false> {
   typedef std::hash<T_KEY> type;
 };
 
+template <typename T_KEY>
+using T_HASH_FUNCTION =
+    typename T_HASH_SELECTOR<T_KEY, HasHashFunction<T_KEY>(0), std::is_enum<T_KEY>::value>::type;
+
 template <typename T_KEY, typename T_ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
 struct T_MAP_TYPE_SELECTOR {};
 
@@ -140,7 +154,7 @@ struct T_MAP_TYPE_SELECTOR {};
 template <typename T_KEY, typename T_ENTRY, bool DEFINES_STD_HASH>
 struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true, DEFINES_STD_HASH> {
   static_assert(HasOperatorEquals<T_KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY, typename T_HASH_SELECTOR<T_KEY, true, false>::type> type;
+  typedef std::unordered_map<T_KEY, T_ENTRY, T_HASH_FUNCTION<T_KEY>> type;
 };
 
 // `T_KEY::Hash()` is not defined, but `std::hash<>` (for either T_KEY or its underlying type) and
@@ -149,9 +163,7 @@ template <typename T_KEY, typename T_ENTRY>
 struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
   static_assert(HasOperatorEquals<T_KEY>(0),
                 "The key type supports `std::hash<T_KEY>`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY,
-                             T_ENTRY,
-                             typename T_HASH_SELECTOR<T_KEY, false, std::is_enum<T_KEY>::value>::type> type;
+  typedef std::unordered_map<T_KEY, T_ENTRY, T_HASH_FUNCTION<T_KEY>> type;
 };
 
 // Neither `T_KEY::Hash()` nor `std::hash<>` (for either T_KEY or its underlying type) are defined,

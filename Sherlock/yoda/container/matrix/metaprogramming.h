@@ -35,6 +35,10 @@ SOFTWARE.
 namespace yoda {
 
 namespace sfinae {
+
+template <typename T>
+using CF = bricks::copy_free<T>;
+
 // Matrix row and column type extractors, getters and setters.
 // Support two access methods:
 // - `.row / .col` data members,
@@ -55,8 +59,8 @@ struct ROW_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().row) T_ROW;
-  static bricks::copy_free<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row; }
-  static void SetRow(T_ENTRY& entry, bricks::copy_free<T_ROW> row) { entry.row = row; }
+  static CF<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row; }
+  static void SetRow(T_ENTRY& entry, CF<T_ROW> row) { entry.row = row; }
 };
 
 template <typename T_ENTRY>
@@ -64,7 +68,7 @@ struct ROW_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().row()) T_ROW;
   // Can not return a reference to a temporary.
   static const T_ROW GetRow(const T_ENTRY& entry) { return entry.row(); }
-  static void SetRow(T_ENTRY& entry, bricks::copy_free<T_ROW> row) { entry.set_row(row); }
+  static void SetRow(T_ENTRY& entry, CF<T_ROW> row) { entry.set_row(row); }
 };
 
 template <typename T_ENTRY>
@@ -79,7 +83,7 @@ template <typename T_ENTRY>
 using ENTRY_ROW_TYPE = bricks::decay<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
 
 template <typename T_ENTRY>
-void SetRow(T_ENTRY& entry, bricks::copy_free<ENTRY_ROW_TYPE<T_ENTRY>> row) {
+void SetRow(T_ENTRY& entry, CF<ENTRY_ROW_TYPE<T_ENTRY>> row) {
   ROW_ACCESSOR<T_ENTRY>::SetRow(entry, row);
 }
 
@@ -99,7 +103,7 @@ struct COL_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().col) T_COL;
-  static bricks::copy_free<T_COL> GetCol(const T_ENTRY& entry) { return entry.col; }
+  static CF<T_COL> GetCol(const T_ENTRY& entry) { return entry.col; }
   static void SetCol(T_ENTRY& entry, T_COL col) { entry.col = col; }
 };
 
@@ -108,7 +112,7 @@ struct COL_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().col()) T_COL;
   // Can not return a reference to a temporary.
   static const T_COL GetCol(const T_ENTRY& entry) { return entry.col(); }
-  static void SetCol(T_ENTRY& entry, bricks::copy_free<T_COL> col) { entry.set_col(col); }
+  static void SetCol(T_ENTRY& entry, CF<T_COL> col) { entry.set_col(col); }
 };
 
 template <typename T_ENTRY>
@@ -123,9 +127,61 @@ template <typename T_ENTRY>
 using ENTRY_COL_TYPE = bricks::decay<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
 
 template <typename T_ENTRY>
-void SetCol(T_ENTRY& entry, bricks::copy_free<ENTRY_COL_TYPE<T_ENTRY>> col) {
+void SetCol(T_ENTRY& entry, CF<ENTRY_COL_TYPE<T_ENTRY>> col) {
   COL_ACCESSOR<T_ENTRY>::SetCol(entry, col);
 }
+
+template <typename T_ROW,
+          typename T_COL,
+          bool ROW_FITS_UNORDERED_MAP,
+          bool ROW_HAS_OPERATOR_LESS,
+          bool COL_FITS_UNORDERED_MAP,
+          bool COL_HAS_OPERATOR_LESS>
+struct MapPairKeyImpl {
+  static_assert(
+      (ROW_FITS_UNORDERED_MAP && COL_FITS_UNORDERED_MAP) || (ROW_HAS_OPERATOR_LESS && COL_HAS_OPERATOR_LESS),
+      "Row and column types must either both (be hashable + have `operator==`) or both have `operator<`.");
+};
+
+template <typename T_ROW, typename T_COL, bool ROW_HAS_OPERATOR_LESS, bool COL_HAS_OPERATOR_LESS>
+struct MapPairKeyImpl<T_ROW, T_COL, true, ROW_HAS_OPERATOR_LESS, true, COL_HAS_OPERATOR_LESS> {
+  T_ROW row;
+  T_COL col;
+  MapPairKeyImpl(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
+  size_t Hash() const { return T_HASH_FUNCTION<T_ROW>()(row) ^ T_HASH_FUNCTION<T_COL>()(col); }
+  bool operator==(const MapPairKeyImpl& rhs) const { return row == rhs.row && col == rhs.col; }
+};
+
+template <typename T_ROW, typename T_COL>
+struct MapPairKeyWithOperatorLess {
+  T_ROW row;
+  T_COL col;
+  MapPairKeyWithOperatorLess(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
+  bool operator<(const MapPairKeyWithOperatorLess& rhs) const { return row < rhs.row && col < rhs.col; }
+};
+
+template <typename T_ROW, typename T_COL>
+struct MapPairKeyImpl<T_ROW, T_COL, false, true, false, true> : MapPairKeyWithOperatorLess<T_ROW, T_COL> {
+  using MapPairKeyWithOperatorLess<T_ROW, T_COL>::MapPairKeyWithOperatorLess;
+};
+
+template <typename T_ROW, typename T_COL>
+struct MapPairKeyImpl<T_ROW, T_COL, true, true, false, true> : MapPairKeyWithOperatorLess<T_ROW, T_COL> {
+  using MapPairKeyWithOperatorLess<T_ROW, T_COL>::MapPairKeyWithOperatorLess;
+};
+
+template <typename T_ROW, typename T_COL>
+struct MapPairKeyImpl<T_ROW, T_COL, false, true, true, true> : MapPairKeyWithOperatorLess<T_ROW, T_COL> {
+  using MapPairKeyWithOperatorLess<T_ROW, T_COL>::MapPairKeyWithOperatorLess;
+};
+
+template <typename T_ROW, typename T_COL>
+using MapPairKey = MapPairKeyImpl<T_ROW,
+                                  T_COL,
+                                  FitsAsKeyForUnorderedMap<T_ROW>(),
+                                  HasOperatorLess<T_ROW>(0),
+                                  FitsAsKeyForUnorderedMap<T_COL>(),
+                                  HasOperatorLess<T_COL>(0)>;
 
 }  // namespace sfinae
 }  // namespace yoda
