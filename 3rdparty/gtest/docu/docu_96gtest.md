@@ -1,4 +1,4 @@
-`TODO(dkorolev): Include this file some documentation -- likely a separate .md for "3rdparty".`
+`TODO(dkorolev): Include this file in some documentation -- likely a separate .md for "3rdparty".`
 
 ## Unit Testing: `gtest`
 
