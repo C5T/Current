@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_CONTAINER_MATRIX_METAPROGRAMMING_H
 #define SHERLOCK_YODA_CONTAINER_MATRIX_METAPROGRAMMING_H
 
+#include <tuple>
 #include <utility>
 
 #include "../../metaprogramming.h"
@@ -158,7 +159,9 @@ struct RowColWithOperatorLess {
   T_ROW row;
   T_COL col;
   RowColWithOperatorLess(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
-  bool operator<(const RowColWithOperatorLess& rhs) const { return row < rhs.row && col < rhs.col; }
+  bool operator<(const RowColWithOperatorLess& rhs) const {
+    return std::tie(row, col) < std::tie(rhs.row, rhs.col);
+  }
 };
 
 template <typename T_ROW, typename T_COL>
