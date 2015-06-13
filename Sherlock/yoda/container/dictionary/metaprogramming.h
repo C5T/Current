@@ -35,6 +35,10 @@ SOFTWARE.
 namespace yoda {
 
 namespace sfinae {
+
+template <typename T>
+using CF = bricks::copy_free<T>;
+
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
@@ -54,7 +58,7 @@ struct KEY_ACCESSOR_IMPL {};
 template <typename T_ENTRY>
 struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
   typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
-  static bricks::copy_free<T_KEY> GetKey(const T_ENTRY& entry) { return entry.key; }
+  static CF<T_KEY> GetKey(const T_ENTRY& entry) { return entry.key; }
   static void SetKey(T_ENTRY& entry, T_KEY key) { entry.key = key; }
 };
 
@@ -63,7 +67,7 @@ struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
   typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
   // Can not return a reference to a temporary.
   static const T_KEY GetKey(const T_ENTRY& entry) { return entry.key(); }
-  static void SetKey(T_ENTRY& entry, bricks::copy_free<T_KEY> key) { entry.set_key(key); }
+  static void SetKey(T_ENTRY& entry, CF<T_KEY> key) { entry.set_key(key); }
 };
 
 template <typename T_ENTRY>
@@ -78,7 +82,7 @@ template <typename T_ENTRY>
 using ENTRY_KEY_TYPE = bricks::decay<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
 
 template <typename T_ENTRY>
-void SetKey(T_ENTRY& entry, bricks::copy_free<ENTRY_KEY_TYPE<T_ENTRY>> key) {
+void SetKey(T_ENTRY& entry, CF<ENTRY_KEY_TYPE<T_ENTRY>> key) {
   KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
 }
 
