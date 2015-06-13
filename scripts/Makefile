@@ -14,7 +14,7 @@ CURRENT_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink "$
 CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/fullpath.sh" "$(CURRENT_SCRIPTS_DIR)" )
 
 CPLUSPLUS?=g++
-CPPFLAGS=-std=c++11 -Wall -W
+CPPFLAGS=-std=c++11 -Wall -W -ftemplate-backtrace-limit=0
 ifeq ($(NDEBUG),1)
 CPPFLAGS+= -O3
 else

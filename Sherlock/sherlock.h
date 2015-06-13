@@ -27,17 +27,20 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include "sfinae.h"
+
 #include <vector>
 #include <string>
 #include <mutex>
 #include <memory>
 #include <thread>
 #include <type_traits>
-#include <iostream>  // TODO(dkorolev): Remove it from here.
 
+#include "../Bricks/mq/interface/interface.h"
 #include "../Bricks/net/api/api.h"
-#include "../Bricks/time/chrono.h"
 #include "../Bricks/template/decay.h"
+#include "../Bricks/template/is_unique_ptr.h"
+#include "../Bricks/time/chrono.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 // Sherlock is the overlord of data storage and processing in KnowSheet.
@@ -79,14 +82,19 @@ SOFTWARE.
 //
 //   The `my_listener` object should expose the following member functions:
 //
-//   1) `bool Entry(const T_ENTRY& entry, size_t index, size_t total)`:
+//   1) `void/bool operator()({const T_ENTRY& / T_ENTRY&&} entry [, size_t index [, size_t total]]):
+//
 //      The `T_ENTRY` type is RTTI-dispatched against the supplied type list.
 //      As long as `my_listener` returns `true`, it will keep receiving new entries,
 //      which may end up blocking the thread until new, yet unseen, entries have been published.
-//      Returning `false` will lead to no more entries passed to the listener, and the thread will be
-//      terminated.
+//
+//      If `operator()` is defined as `bool`, returning `false` will tell Sherlock that no more entries
+//      should be passed to this listener, and the thread serving this listener should be terminated.
+//
+//      More details on the calling convention: "Bricks/mq/interface/interface.h"
 //
 //   2) `void CaughtUp()`:
+//
 //      TODO(dkorolev): Implement it.
 //      This method will be called as soon as the "historical data replay" phase is completed,
 //      and the listener has entered the mode of serving the new entires coming in the real time.
@@ -95,6 +103,7 @@ SOFTWARE.
 //      TODO(dkorolev): Discuss the case if the listener falls behind again.
 //
 //   3) `void Terminate` or `bool Terminate()`:
+//
 //      This member function will be called if the listener has to be terminated externally,
 //      which happens when the handler returned by `Subscribe()` goes out of scope.
 //      If the signature is `bool Terminate()`, returning `false` will prevent the termination from happening,
@@ -104,11 +113,10 @@ SOFTWARE.
 // The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
 // an instance of a handle, the scope of which will define the lifetime of the listener.
 //
-// If the subscribing thread would like the listener to run forever, it can
-// use use `.Join()` or `.Detach()` on the handle. `Join()` will block the calling thread unconditionally,
-// until the listener itself decides to stop listening. `Detach()` will ensure
-// that the ownership of the listener object has been transferred to the thread running the listener,
-// and detach this thread to run in the background.
+// If the subscribing thread would like the listener to run forever, it can use `.Join()` or `.Detach()`
+// on the handle. `Join()` will block the calling thread unconditionally, until the listener itself
+// decides to stop listening. `Detach()` will ensure that the ownership of the listener object
+// has been transferred to the thread running the listener, and detach this thread to run in the background.
 //
 // TODO(dkorolev): Data persistence and tests.
 // TODO(dkorolev): Add timestamps support and tests.
@@ -116,21 +124,28 @@ SOFTWARE.
 
 namespace sherlock {
 
-template <typename E>
-struct ExtractTimestampImpl {
-  static bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(const E& entry) { return entry.ExtractTimestamp(); }
+template <bool IS_UNIQUE_PTR>
+struct ExtractTimestampImpl {};
+
+template <>
+struct ExtractTimestampImpl<false> {
+  template <typename E>
+  static bricks::time::EPOCH_MILLISECONDS DoIt(E&& e) {
+    return e.ExtractTimestamp();
+  }
 };
 
-template <typename E>
-struct ExtractTimestampImpl<std::unique_ptr<E>> {
-  static bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(const std::unique_ptr<E>& entry) {
-    return entry->ExtractTimestamp();
+template <>
+struct ExtractTimestampImpl<true> {
+  template <typename E>
+  static bricks::time::EPOCH_MILLISECONDS DoIt(E&& e) {
+    return e->ExtractTimestamp();
   }
 };
 
 template <typename E>
 bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
-  return ExtractTimestampImpl<bricks::rmref<E>>::ExtractTimestamp(std::forward<E>(entry));
+  return ExtractTimestampImpl<bricks::is_unique_ptr<E>::value>::template DoIt<E>(std::forward<E>(entry));
 }
 
 template <typename E>
@@ -161,13 +176,18 @@ class PubSubHTTPEndpoint final {
     }
   }
 
-  bool Entry(E& entry, size_t index, size_t total) {
+  // The implementation of the listener in `PubSubHTTPEndpoint` is an example of using:
+  // * `index` as the second parameter,
+  // * `total_so_far` as the third parameter, and
+  // * `bool` as the return value.
+  // It does do to respect the URL parameters of the range of entries to listen to.
+  bool operator()(const E& entry, size_t index, size_t total_so_far) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
         const bricks::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
         // Respect `n`.
-        if (total - index <= n_) {
+        if (total_so_far - index <= n_) {
           serving_ = true;
         }
         // Respect `recent`.
@@ -264,27 +284,6 @@ bool CallTerminate(T&& ptr) {
       std::is_same<void, decltype(CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
           value>::DoIt(ptr);
 }
-
-// TODO(dkorolev): Move this to Bricks. Cerealize uses it too, for `WithBaseType`.
-template <typename T>
-struct PretendingToBeUniquePtr {
-  struct NullDeleter {
-    void operator()(T&) {}
-    void operator()(T*) {}
-  };
-  std::unique_ptr<T, NullDeleter> non_owned_instance_;
-  PretendingToBeUniquePtr() = delete;
-  PretendingToBeUniquePtr(T& instance) : non_owned_instance_(&instance) {}
-  PretendingToBeUniquePtr(PretendingToBeUniquePtr&& rhs)
-      : non_owned_instance_(std::move(rhs.non_owned_instance_)) {
-    assert(non_owned_instance_);
-    assert(!rhs.non_owned_instance_);
-  }
-  T* operator->() {
-    assert(non_owned_instance_);
-    return non_owned_instance_.get();
-  }
-};
 
 template <typename T>
 class StreamInstanceImpl {
@@ -436,31 +435,18 @@ class StreamInstanceImpl {
         if (has_data) {  // action == NEW_DATA_READY) {
           bool user_initiated_terminate = false;
           blob->data.ImmutableUse([&blob, &cursor, &user_initiated_terminate](const std::vector<T>& data) {
-            // Entries are often instances of polymorphic types, that make it into various message queues.
-            // The most straightforward way to store them is a `unique_ptr`, and the most straightforward
-            // way to pass `unique_ptr`-s between threads is via `Emplace*(ptr.release())`.
-            // If `Entry()` is being passed immutable records, the pain of cloning data from `unique_ptr`-s
-            // becomes the user's pain. This shall not be allowed.
-            //
-            // Thus, here we need to make a copy.
-            // The below implementation is imperfect, but it serves the purpose semantically.
-            // TODO(dkorolev): Fix it.
 
             assert(cursor < data.size());
-            const std::string json = JSON(data[cursor]);
-            T copy_of_entry;
-            try {
-              ParseJSON(json, copy_of_entry);
-            } catch (const std::exception& e) {
-              std::cerr << "Something went terribly wrong." << std::endl;
-              std::cerr << e.what();
-              ::exit(-1);
-            }
 
-            // TODO(dkorolev): Perhaps RTTI dispatching here.
-            if (!blob->listener->Entry(copy_of_entry, cursor, data.size())) {
+            // The below implementation for entry cloning is imperfect, but it serves the purpose semantically.
+            // TODO(dkorolev): Fix it.
+            const std::function<T(const T&)> clone = [](const T& e) { return ParseJSON<T>(JSON(e)); };
+
+            using bricks::mq::DispatchEntryByConstReference;
+            if (!DispatchEntryByConstReference(*blob->listener, data[cursor], cursor, data.size(), clone)) {
               user_initiated_terminate = true;
             }
+
             ++cursor;
           });
           if (user_initiated_terminate) {
@@ -558,9 +544,10 @@ class StreamInstanceImpl {
   }
 
   template <typename F>
-  SyncListenerScope<PretendingToBeUniquePtr<F>> SyncSubscribeImpl(F& listener) {
+  SyncListenerScope<sfinae::PretendingToBeUniquePtr<F>> SyncSubscribeImpl(F& listener) {
     // No `std::move()` needed: RAAI.
-    return SyncListenerScope<PretendingToBeUniquePtr<F>>(data_, PretendingToBeUniquePtr<F>(listener));
+    return SyncListenerScope<sfinae::PretendingToBeUniquePtr<F>>(data_,
+                                                                 sfinae::PretendingToBeUniquePtr<F>(listener));
   }
 
   void ServeDataViaHTTP(Request r) {
@@ -616,7 +603,7 @@ struct StreamInstance {
 
   template <typename F>
   using SyncListenerScope =
-      typename StreamInstanceImpl<T>::template SyncListenerScope<PretendingToBeUniquePtr<F>>;
+      typename StreamInstanceImpl<T>::template SyncListenerScope<sfinae::PretendingToBeUniquePtr<F>>;
   template <typename F>
   using AsyncListenerScope = typename StreamInstanceImpl<T>::template AsyncListenerScope<F>;
 
