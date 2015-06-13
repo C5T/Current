@@ -109,7 +109,7 @@ class CerealFileAppenderBase {
   inline size_t EntriesAppended() const { return entries_appended_; }
   inline size_t BytesAppended() const {
     const size_t current = current_stream_position();
-    assert(current >= initial_stream_position_);  // TFU is it's the case.
+    assert(current >= initial_stream_position_);  // TFU if it's the case.
     return current - initial_stream_position_;
   }
   inline size_t TotalFileSize() const { return current_stream_position(); }
