@@ -29,6 +29,7 @@ SOFTWARE.
 #include <utility>
 
 #include "../../metaprogramming.h"
+#include "../../sfinae.h"
 #include "../../../../Bricks/template/pod.h"
 #include "../../../../Bricks/template/decay.h"
 
