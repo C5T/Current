@@ -125,14 +125,14 @@ struct BoolOrTrueImpl;
 
 template <typename F, typename E>
 struct BoolOrTrueImpl<bool, F, E> {
-  static bool CallIt(F&& f, E&& e, size_t index, size_t total) {
+  static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
     return CallMatchingSignature<F, E>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
   };
 };
 
 template <typename F, typename E>
 struct BoolOrTrueImpl<void, F, E> {
-  static bool CallIt(F&& f, E&& e, size_t index, size_t total) {
+  static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
     CallMatchingSignature<F, E>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
     return true;
   };
@@ -144,7 +144,7 @@ struct BoolOrTrue {
     return BoolOrTrueImpl<
         decltype(CallMatchingSignature<F, E>::CallIt(std::declval<F>(), std::declval<E>(), 0, 0)),
         F,
-        E>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
+        E>::MakeItBool(std::forward<F>(f), std::forward<E>(e), index, total);
   }
 };
 

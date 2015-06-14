@@ -27,8 +27,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "sfinae.h"
-
 #include <vector>
 #include <string>
 #include <mutex>
@@ -82,7 +80,7 @@ SOFTWARE.
 //
 //   The `my_listener` object should expose the following member functions:
 //
-//   1) `void/bool operator()({const T_ENTRY& / T_ENTRY&&} entry [, size_t index [, size_t total]]):
+//   1) `{void/bool} operator()({const T_ENTRY& / T_ENTRY&&} entry [, size_t index [, size_t total]]):
 //
 //      The `T_ENTRY` type is RTTI-dispatched against the supplied type list.
 //      As long as `my_listener` returns `true`, it will keep receiving new entries,
@@ -178,16 +176,16 @@ class PubSubHTTPEndpoint final {
 
   // The implementation of the listener in `PubSubHTTPEndpoint` is an example of using:
   // * `index` as the second parameter,
-  // * `total_so_far` as the third parameter, and
+  // * `total` as the third parameter, and
   // * `bool` as the return value.
   // It does do to respect the URL parameters of the range of entries to listen to.
-  bool operator()(const E& entry, size_t index, size_t total_so_far) {
+  bool operator()(const E& entry, size_t index, size_t total) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
         const bricks::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
         // Respect `n`.
-        if (total_so_far - index <= n_) {
+        if (total - index <= n_) {
           serving_ = true;
         }
         // Respect `recent`.
@@ -284,6 +282,31 @@ bool CallTerminate(T&& ptr) {
       std::is_same<void, decltype(CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
           value>::DoIt(ptr);
 }
+
+// TODO(dkorolev): Move this to Bricks. Cerealize uses it too, for `WithBaseType`.
+template <typename T>
+struct PretendingToBeUniquePtr {
+  struct NullDeleter {
+    void operator()(T&) {}
+    void operator()(T*) {}
+  };
+  std::unique_ptr<T, NullDeleter> non_owned_instance_;
+  PretendingToBeUniquePtr() = delete;
+  PretendingToBeUniquePtr(T& instance) : non_owned_instance_(&instance) {}
+  PretendingToBeUniquePtr(PretendingToBeUniquePtr&& rhs)
+      : non_owned_instance_(std::move(rhs.non_owned_instance_)) {
+    assert(non_owned_instance_);
+    assert(!rhs.non_owned_instance_);
+  }
+  T* operator->() {
+    assert(non_owned_instance_);
+    return non_owned_instance_.operator->();
+  }
+  T& operator*() {
+    assert(non_owned_instance_);
+    return non_owned_instance_.operator*();
+  }
+};
 
 template <typename T>
 class StreamInstanceImpl {
@@ -544,10 +567,9 @@ class StreamInstanceImpl {
   }
 
   template <typename F>
-  SyncListenerScope<sfinae::PretendingToBeUniquePtr<F>> SyncSubscribeImpl(F& listener) {
+  SyncListenerScope<PretendingToBeUniquePtr<F>> SyncSubscribeImpl(F& listener) {
     // No `std::move()` needed: RAAI.
-    return SyncListenerScope<sfinae::PretendingToBeUniquePtr<F>>(data_,
-                                                                 sfinae::PretendingToBeUniquePtr<F>(listener));
+    return SyncListenerScope<PretendingToBeUniquePtr<F>>(data_, PretendingToBeUniquePtr<F>(listener));
   }
 
   void ServeDataViaHTTP(Request r) {
@@ -603,7 +625,7 @@ struct StreamInstance {
 
   template <typename F>
   using SyncListenerScope =
-      typename StreamInstanceImpl<T>::template SyncListenerScope<sfinae::PretendingToBeUniquePtr<F>>;
+      typename StreamInstanceImpl<T>::template SyncListenerScope<PretendingToBeUniquePtr<F>>;
   template <typename F>
   using AsyncListenerScope = typename StreamInstanceImpl<T>::template AsyncListenerScope<F>;
 
