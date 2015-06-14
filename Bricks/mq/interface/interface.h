@@ -64,7 +64,7 @@ namespace mq {
 // accepting entries. It can be stopped externally (via listener scope), or detached to run forever.
 //
 // C: Accept a const reference to an entry, or require a copy of which the listener will gain ownership.
-// C.1: `void/bool operator()(const T_ENTRY&& entry [, index [, total]])`.
+// C.1: `void/bool operator()(const T_ENTRY& entry [, index [, total]])`.
 // C.2: `void/bool operator()(T_ENTRY&& [, index [, total]])`.
 // One usecase is to `std::move()` the received entry into a different message queue.
 // If a copy of an entry is passed in, this behavior is impossible without making a clone of the entry.
@@ -106,14 +106,20 @@ struct CallWithNParameters<1, F, E> {
 };
 
 template <bool N1, bool N2, bool N3, typename F, typename E>
-struct FindMatchingSignature;
+struct FindMatchingSignature {};
 
 template <typename F, typename E>
-struct FindMatchingSignature<true, false, false, F, E> : CallWithNParameters<1, F, E> {};
+struct FindMatchingSignature<true, false, false, F, E> : CallWithNParameters<1, F, E> {
+  enum { valid = true };
+};
 template <typename F, typename E>
-struct FindMatchingSignature<false, true, false, F, E> : CallWithNParameters<2, F, E> {};
+struct FindMatchingSignature<false, true, false, F, E> : CallWithNParameters<2, F, E> {
+  enum { valid = true };
+};
 template <typename F, typename E>
-struct FindMatchingSignature<false, false, true, F, E> : CallWithNParameters<3, F, E> {};
+struct FindMatchingSignature<false, false, true, F, E> : CallWithNParameters<3, F, E> {
+  enum { valid = true };
+};
 
 template <typename F, typename E>
 struct CallMatchingSignature : FindMatchingSignature<CW<F, E>::implemented,
@@ -128,6 +134,8 @@ struct BoolOrTrueImpl;
 template <typename F, typename E>
 struct BoolOrTrueImpl<bool, F, E> {
   static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
+    static_assert(CallMatchingSignature<F, E>::valid,
+                  "The listener should expose only one signature of `operator()`.");
     return CallMatchingSignature<F, E>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
   };
 };
