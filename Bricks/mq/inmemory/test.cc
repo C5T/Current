@@ -85,7 +85,7 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   SlowConsumer c;
 
   // Queue with 10 events in the buffer.
-  MMQ<std::string, SlowConsumer, 10> mmq(c);
+  MMQ<std::string, SlowConsumer, 10, true> mmq(c);
 
   // Push 20 events one after another, causing an overflow, which would drop some messages.
   for (size_t i = 0; i < 20; ++i) {
@@ -122,7 +122,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   SlowConsumer c(1u);
 
   // Queue with 10 events in the buffer.
-  MMQ<std::string, SlowConsumer, 10, false> mmq(c);
+  MMQ<std::string, SlowConsumer, 10> mmq(c);
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {

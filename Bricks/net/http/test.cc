@@ -302,10 +302,9 @@ TEST(PosixHTTPServerTest, ChunkedLargeBodyManyChunks) {
                       "Content-Type: text/plain\r\n"
                       "Connection: close\r\n"
                       "Content-Length: %d\r\n"
-                      "\r\n"
-                      "%s",
-                      static_cast<int>(body.length()),
-                      body.c_str()),
+                      "\r\n",
+                      static_cast<int>(body.length())) +
+                      body,
                   connection);
   t.join();
 }
@@ -340,10 +339,9 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
                       "Content-Type: text/plain\r\n"
                       "Connection: close\r\n"
                       "Content-Length: %d\r\n"
-                      "\r\n"
-                      "%s",
-                      static_cast<int>(body.length()),
-                      body.c_str()),
+                      "\r\n",
+                      static_cast<int>(body.length())) +
+                      body,
                   connection);
   t.join();
 }

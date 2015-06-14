@@ -38,6 +38,7 @@ namespace yoda {
 
 using sfinae::ENTRY_ROW_TYPE;
 using sfinae::ENTRY_COL_TYPE;
+using sfinae::RowCol;
 using sfinae::T_MAP_TYPE;
 using sfinae::GetRow;
 using sfinae::GetCol;
@@ -168,6 +169,8 @@ struct Container<YT, Matrix<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
   typedef Matrix<ENTRY> YET;
 
+  typedef RowCol<typename YET::T_ROW, typename YET::T_COL> ROW_COL;
+
   template <typename T>
   using CF = bricks::copy_free<T>;
 
@@ -180,7 +183,7 @@ struct Container<YT, Matrix<ENTRY>> {
 
   // Event: The entry has been scanned from the stream.
   void operator()(ENTRY& entry, size_t index) {
-    std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[std::make_pair(GetRow(entry), GetCol(entry))];
+    std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[ROW_COL(GetRow(entry), GetCol(entry))];
     if (index > placeholder->index) {
       placeholder->Update(index, std::move(entry));
       forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
@@ -195,7 +198,7 @@ struct Container<YT, Matrix<ENTRY>> {
 
     // Returns `true` id entry with corresponding `row`\`col` pair exists.
     bool Has(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-      const auto key = std::make_pair(row, col);
+      const ROW_COL key(row, col);
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return true;
@@ -210,7 +213,7 @@ struct Container<YT, Matrix<ENTRY>> {
 
     // Non-throwing getter, returns a wrapper.
     const EntryWrapper<ENTRY> Get(CF<typename YET::T_ROW> row, CF<typename YET::T_COL> col) const {
-      const auto key = std::make_pair(row, col);
+      const ROW_COL key(row, col);
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return EntryWrapper<typename YET::T_ENTRY>(cit->second->entry);
@@ -227,12 +230,12 @@ struct Container<YT, Matrix<ENTRY>> {
     // Throwing getter.
     const ENTRY& operator[](
         const std::tuple<CF<typename YET::T_ROW>, CF<typename YET::T_COL>>& key_as_tuple) const {
-      const auto key = std::make_pair(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
+      const auto key = ROW_COL(std::get<0>(key_as_tuple), std::get<1>(key_as_tuple));
       const auto cit = immutable_.map_.find(key);
       if (cit != immutable_.map_.end()) {
         return cit->second->entry;
       } else {
-        throw typename YET::T_CELL_NOT_FOUND_EXCEPTION(key.first, key.second);
+        throw typename YET::T_CELL_NOT_FOUND_EXCEPTION(key.row, key.col);
       }
     }
 
@@ -290,7 +293,7 @@ struct Container<YT, Matrix<ENTRY>> {
     void Add(const ENTRY& entry) {
       const size_t index = stream_.Publish(entry);
       std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder =
-          mutable_.map_[std::make_pair(GetRow(entry), GetCol(entry))];
+          mutable_.map_[ROW_COL(GetRow(entry), GetCol(entry))];
       placeholder = make_unique<EntryWithIndex<ENTRY>>(index, entry);
       mutable_.forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
@@ -299,7 +302,7 @@ struct Container<YT, Matrix<ENTRY>> {
 
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {
-      const auto key = std::make_pair(GetRow(entry), GetCol(entry));
+      const auto key = ROW_COL(GetRow(entry), GetCol(entry));
       if (mutable_.map_.count(key)) {
         throw typename YET::T_CELL_ALREADY_EXISTS_EXCEPTION(GetRow(entry), GetCol(entry));
       } else {
@@ -320,8 +323,7 @@ struct Container<YT, Matrix<ENTRY>> {
   }
 
  private:
-  T_MAP_TYPE<std::pair<typename YET::T_ROW, typename YET::T_COL>,
-             std::unique_ptr<EntryWithIndex<typename YET::T_ENTRY>>> map_;
+  T_MAP_TYPE<ROW_COL, std::unique_ptr<EntryWithIndex<typename YET::T_ENTRY>>> map_;
   T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>> forward_;
   T_MAP_TYPE<typename YET::T_COL, T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>> transposed_;
 };

@@ -103,6 +103,8 @@ SOFTWARE.
 #include <WS2tcpip.h>
 #include <corecrt_io.h>
 
+#undef DELETE  // Yep. <winnt.h> does `#define DELETE (0x00010000L)`. I know right?
+
 // Visual Studio does not define `M_PI`.
 #ifndef M_PI
 #define M_PI 3.14159265359

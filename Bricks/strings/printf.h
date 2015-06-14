@@ -49,7 +49,7 @@ inline std::string Printf(const char *fmt, ...) {
 #ifndef BRICKS_WINDOWS
   vsnprintf(buf, max_formatted_output_length + 1, fmt, ap);
 #else
-  _vsnprintf_s(buf, max_formatted_output_length + 1, fmt, ap);
+  _vsnprintf_s(buf, max_formatted_output_length + 1, _TRUNCATE, fmt, ap);
 #endif
   va_end(ap);
 

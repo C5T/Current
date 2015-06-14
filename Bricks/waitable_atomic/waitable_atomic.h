@@ -273,8 +273,13 @@ class WaitableAtomicImpl {
       if (destructor_ptr_) {
         destructor_ptr_->WaitableAtomicDestructing();  // LCOV_EXCL_LINE
       }
-      // Wait for the registered scoped clients to leave their respective scopes.
-      ref_count_is_nonzero_mutex_.lock();
+      {
+        // Wait for the registered scoped clients to leave their respective scopes.
+        std::unique_lock<std::mutex> lock(BasicImpl::data_mutex_);
+        if (ref_count_ > 0u) {
+          cv_.wait(lock, [this]() { return ref_count_ == 0u; });
+        }
+      }
     }
 
     bool Wait(std::function<bool(const T_DATA&)> predicate) const {
@@ -294,22 +299,24 @@ class WaitableAtomicImpl {
     IntrusiveClient RegisterScopedClient() { return IntrusiveClient(this); }
 
     virtual bool RefCounterTryIncrease() override {
-      std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
-      if (destructing_) {
-        return false;
-      } else {
-        if (!ref_count_++) {
-          ref_count_is_nonzero_mutex_.lock();
+      {
+        std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
+        if (destructing_) {
+          return false;
+        } else {
+          ++ref_count_;
         }
-        return true;
       }
+      cv_.notify_one();
+      return true;
     }
 
     virtual void RefCounterDecrease() override {
-      std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
-      if (!--ref_count_) {
-        ref_count_is_nonzero_mutex_.unlock();
+      {
+        std::lock_guard<std::mutex> guard(BasicImpl::data_mutex_);
+        --ref_count_;
       }
+      cv_.notify_one();
     }
 
     virtual bool IsDestructing() const override {
@@ -318,9 +325,11 @@ class WaitableAtomicImpl {
     }
 
    protected:
-    size_t ref_count_ = 0;
     bool destructing_ = false;
-    std::mutex ref_count_is_nonzero_mutex_;
+    size_t ref_count_ = 0;
+    // Deep thanks to Windows for reminding us that a mutex can not be locked from one thread and
+    // then released from another one. Although not with the best possible diagnostics message. -- D.K.
+    std::condition_variable cv_;
     CustomWaitableAtomicDestructor* destructor_ptr_ = nullptr;
 
    private:
