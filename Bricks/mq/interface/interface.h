@@ -77,6 +77,8 @@ namespace mq {
 // -- whichever suits their needs best -- and know that the framework will take care of making a copy
 // of the incoming entry as necessary.
 
+// === `operator()` and message processing. ===
+// Various signatures according to which the user may choose to receive the messages to process.
 namespace impl {
 
 template <typename T, typename... TS>
@@ -261,7 +263,7 @@ inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
   return impl::DispatchEntryWithoutMakingACopy<F, E>(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
-// === Terminate() ===
+// === `Terminate()` ===
 // If the listener implements `Terminate()` it is invoked as the listening is about to end.
 // The implementation of `Terminate()` in the listener can return `void` or `bool`.
 // The `bool` one can indicate it refuses to terminate just now by returning `false`.

@@ -47,6 +47,7 @@ SOFTWARE.
 #include "../strings/is_string_type.h"
 
 #include "../rtti/dispatcher.h"
+#include "../util/null_deleter.h"
 #include "../template/decay.h"
 
 namespace bricks {
@@ -72,21 +73,12 @@ struct is_cerealizable {
   constexpr static bool value = is_read_cerealizable<T>::value && is_write_cerealizable<T>::value;
 };
 
-// Helper code to simplify wrapping objects into `unique_ptr`-s of their base types
-// for Cereal to serialize them as polymorphic types.
-struct EmptyDeleterForAnyType {
-  template <typename T>
-  void operator()(T&) {}
-  template <typename T>
-  void operator()(T*) {}
-};
-
 template <typename BASE, typename ENTRY>
 inline typename std::enable_if<std::is_base_of<BASE, ENTRY>::value,
-                               std::unique_ptr<const BASE, EmptyDeleterForAnyType>>::type
+                               std::unique_ptr<const BASE, bricks::NullDeleter>>::type
 WithBaseType(const ENTRY& object) {
-  return std::unique_ptr<const BASE, EmptyDeleterForAnyType>(reinterpret_cast<const BASE*>(&object),
-                                                             EmptyDeleterForAnyType());
+  return std::unique_ptr<const BASE, NullDeleter>(reinterpret_cast<const BASE*>(&object),
+                                                  bricks::NullDeleter());
 }
 
 // Enumeration for compile-time format selection.

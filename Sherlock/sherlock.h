@@ -27,18 +27,21 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <vector>
-#include <string>
-#include <mutex>
+#include <iostream>
 #include <memory>
+#include <mutex>
+#include <string>
 #include <thread>
 #include <type_traits>
+#include <vector>
+
+#include "pubsub.h"
 
 #include "../Bricks/mq/interface/interface.h"
 #include "../Bricks/net/api/api.h"
 #include "../Bricks/template/decay.h"
-#include "../Bricks/template/is_unique_ptr.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/util/null_deleter.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
 // Sherlock is the overlord of data storage and processing in KnowSheet.
@@ -121,149 +124,6 @@ SOFTWARE.
 // TODO(dkorolev): Ensure the timestamps always come in a non-decreasing order.
 
 namespace sherlock {
-
-template <bool IS_UNIQUE_PTR>
-struct ExtractTimestampImpl {};
-
-template <>
-struct ExtractTimestampImpl<false> {
-  template <typename E>
-  static bricks::time::EPOCH_MILLISECONDS DoIt(E&& e) {
-    return e.ExtractTimestamp();
-  }
-};
-
-template <>
-struct ExtractTimestampImpl<true> {
-  template <typename E>
-  static bricks::time::EPOCH_MILLISECONDS DoIt(E&& e) {
-    return e->ExtractTimestamp();
-  }
-};
-
-template <typename E>
-bricks::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
-  return ExtractTimestampImpl<bricks::is_unique_ptr<E>::value>::template DoIt<E>(std::forward<E>(entry));
-}
-
-template <typename E>
-class PubSubHTTPEndpoint final {
- public:
-  PubSubHTTPEndpoint(const std::string& value_name, Request r)
-      : value_name_(value_name),
-        http_request_(std::move(r)),
-        http_response_(http_request_.SendChunkedResponse()) {
-    if (http_request_.url.query.has("recent")) {
-      serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
-      from_timestamp_ =
-          r.timestamp - static_cast<bricks::time::MILLISECONDS_INTERVAL>(
-                            bricks::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
-    }
-    if (http_request_.url.query.has("n")) {
-      serving_ = false;  // Start in 'non-serving' mode when `n` is set.
-      bricks::strings::FromString(http_request_.url.query["n"], n_);
-      cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
-    }
-    if (http_request_.url.query.has("n_min")) {
-      // `n_min` is same as `n`, but it does not set the cap; just the lower bound for `recent`.
-      serving_ = false;  // Start in 'non-serving' mode when `n_min` is set.
-      bricks::strings::FromString(http_request_.url.query["n_min"], n_);
-    }
-    if (http_request_.url.query.has("cap")) {
-      bricks::strings::FromString(http_request_.url.query["cap"], cap_);
-    }
-  }
-
-  // The implementation of the listener in `PubSubHTTPEndpoint` is an example of using:
-  // * `index` as the second parameter,
-  // * `total` as the third parameter, and
-  // * `bool` as the return value.
-  // It does so to respect the URL parameters of the range of entries to listen to.
-  bool operator()(const E& entry, size_t index, size_t total) {
-    // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
-    try {
-      if (!serving_) {
-        const bricks::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
-        // Respect `n`.
-        if (total - index <= n_) {
-          serving_ = true;
-        }
-        // Respect `recent`.
-        if (from_timestamp_ != static_cast<bricks::time::EPOCH_MILLISECONDS>(-1) &&
-            timestamp >= from_timestamp_) {
-          serving_ = true;
-        }
-      }
-      if (serving_) {
-        http_response_(entry, value_name_);
-        if (cap_) {
-          --cap_;
-          if (!cap_) {
-            return false;
-          }
-        }
-      }
-      return true;
-    } catch (const bricks::net::NetworkException&) {
-      return false;
-    }
-  }
-
-  bool Terminate() {
-    http_response_("{\"error\":\"The subscriber has terminated.\"}\n");
-    return true;  // Confirm termination.
-  }
-
- private:
-  // Top-level JSON object name for Cereal.
-  const std::string& value_name_;
-
-  // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
-  Request http_request_;
-
-  // `http_response_`: the instance of the chunked response object to use.
-  bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
-
-  // Conditions on which parts of the stream to serve.
-  bool serving_ = true;
-  // If set, the number of "last" entries to output.
-  size_t n_ = 0;
-  // If set, the hard limit on the maximum number of entries to output.
-  size_t cap_ = 0;
-  // If set, the timestamp from which the output should start.
-  bricks::time::EPOCH_MILLISECONDS from_timestamp_ = static_cast<bricks::time::EPOCH_MILLISECONDS>(-1);
-
-  PubSubHTTPEndpoint() = delete;
-  PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
-  void operator=(const PubSubHTTPEndpoint&) = delete;
-  PubSubHTTPEndpoint(PubSubHTTPEndpoint&&) = delete;
-  void operator=(PubSubHTTPEndpoint&&) = delete;
-};
-
-// TODO(dkorolev): Move this to Bricks. Cerealize uses it too, for `WithBaseType`.
-template <typename T>
-struct PretendingToBeUniquePtr {
-  struct NullDeleter {
-    void operator()(T&) {}
-    void operator()(T*) {}
-  };
-  std::unique_ptr<T, NullDeleter> non_owned_instance_;
-  PretendingToBeUniquePtr() = delete;
-  PretendingToBeUniquePtr(T& instance) : non_owned_instance_(&instance) {}
-  PretendingToBeUniquePtr(PretendingToBeUniquePtr&& rhs)
-      : non_owned_instance_(std::move(rhs.non_owned_instance_)) {
-    assert(non_owned_instance_);
-    assert(!rhs.non_owned_instance_);
-  }
-  T* operator->() {
-    assert(non_owned_instance_);
-    return non_owned_instance_.operator->();
-  }
-  T& operator*() {
-    assert(non_owned_instance_);
-    return non_owned_instance_.operator*();
-  }
-};
 
 template <typename T>
 class StreamInstanceImpl {
@@ -357,7 +217,8 @@ class StreamInstanceImpl {
     ~ListenerThread() {
       if (thread_.joinable()) {
         // TODO(dkorolev): Phrase the error message better.
-        throw std::logic_error("Unrecoverable error in destructor: ListenerThread was not joined/detached.");
+        std::cerr << "Unrecoverable error in destructor: ListenerThread was not joined/detached.\n";
+        std::exit(-1);
       }
     }
 
@@ -494,7 +355,8 @@ class StreamInstanceImpl {
 
     ~SyncListenerScope() {
       if (!joined_) {
-        throw std::logic_error("Unrecoverable error in destructor: Join() was not called on for SyncListener.");
+        std::cerr << "Unrecoverable error in destructor: Join() was not called on for SyncListener.\n";
+        std::exit(-1);
       }
     }
 
@@ -524,9 +386,10 @@ class StreamInstanceImpl {
   }
 
   template <typename F>
-  SyncListenerScope<PretendingToBeUniquePtr<F>> SyncSubscribeImpl(F& listener) {
-    // No `std::move()` needed: RAAI.
-    return SyncListenerScope<PretendingToBeUniquePtr<F>>(data_, PretendingToBeUniquePtr<F>(listener));
+  SyncListenerScope<std::unique_ptr<F, bricks::NullDeleter>> SyncSubscribeImpl(F& listener) {
+    // RAAI, no `std::move()` needed.
+    return SyncListenerScope<std::unique_ptr<F, bricks::NullDeleter>>(
+        data_, std::unique_ptr<F, bricks::NullDeleter>(&listener));
   }
 
   void ServeDataViaHTTP(Request r) {
@@ -544,17 +407,6 @@ class StreamInstanceImpl {
   void operator=(const StreamInstanceImpl&) = delete;
   StreamInstanceImpl(StreamInstanceImpl&&) = delete;
   void operator=(StreamInstanceImpl&&) = delete;
-};
-
-// TODO(dkorolev): Move into Bricks/util/ ?
-template <typename B, typename E>
-struct can_be_stored_in_unique_ptr {
-  static constexpr bool value = false;
-};
-
-template <typename B, typename E>
-struct can_be_stored_in_unique_ptr<std::unique_ptr<B>, E> {
-  static constexpr bool value = std::is_same<B, E>::value || std::is_base_of<B, E>::value;
 };
 
 template <typename T>
@@ -575,14 +427,14 @@ struct StreamInstance {
   // TODO(dkorolev): Add a test for this code.
   // TODO(dkorolev): Perhaps eliminate the copy.
   template <typename E>
-  typename std::enable_if<can_be_stored_in_unique_ptr<T, E>::value, size_t>::type Publish(const E& e) {
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T, E>::value, size_t>::type Publish(const E& e) {
     // TODO(dkorolev): Don't rely on the existence of copy constructor.
     return impl_->Emplace(new E(e));
   }
 
   template <typename F>
   using SyncListenerScope =
-      typename StreamInstanceImpl<T>::template SyncListenerScope<PretendingToBeUniquePtr<F>>;
+      typename StreamInstanceImpl<T>::template SyncListenerScope<std::unique_ptr<F, bricks::NullDeleter>>;
   template <typename F>
   using AsyncListenerScope = typename StreamInstanceImpl<T>::template AsyncListenerScope<F>;
 
