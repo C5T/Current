@@ -178,7 +178,7 @@ class PubSubHTTPEndpoint final {
   // * `index` as the second parameter,
   // * `total` as the third parameter, and
   // * `bool` as the return value.
-  // It does do to respect the URL parameters of the range of entries to listen to.
+  // It does so to respect the URL parameters of the range of entries to listen to.
   bool operator()(const E& entry, size_t index, size_t total) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
