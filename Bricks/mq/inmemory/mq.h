@@ -58,10 +58,7 @@ SOFTWARE.
 namespace bricks {
 namespace mq {
 
-template <typename MESSAGE,
-          typename CONSUMER,
-          size_t DEFAULT_BUFFER_SIZE = 1024,
-          bool DROP_ON_OVERFLOW = false>
+template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
 class MMQ final {
  public:
   // Type of entries to store, defaults to `std::string`.

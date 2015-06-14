@@ -196,19 +196,19 @@ constexpr static bool RequiresCopyOfEntry1(char) {
 
 template <typename F, typename E>
 constexpr static auto RequiresCopyOfEntry3(int)
-    -> decltype(std::declval<F>()(static_cast<const E&>(std::declval<E>()), 0u, 0u), bool()) {
+    -> decltype(std::declval<F>()(std::declval<const E&>(), 0u, 0u), bool()) {
   return false;
 }
 
 template <typename F, typename E>
 constexpr static auto RequiresCopyOfEntry2(int)
-    -> decltype(std::declval<F>()(static_cast<const E&>(std::declval<E>()), 0u), bool()) {
+    -> decltype(std::declval<F>()(std::declval<const E&>(), 0u), bool()) {
   return false;
 }
 
 template <typename F, typename E>
 constexpr static auto RequiresCopyOfEntry1(int)
-    -> decltype(std::declval<F>()(static_cast<const E&>(std::declval<E>())), bool()) {
+    -> decltype(std::declval<F>()(std::declval<const E&>()), bool()) {
   return false;
 }
 
@@ -239,7 +239,7 @@ struct DispatchEntryMakingACopyIfNecessary<false> {
 
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
-// Generic const reference usecase, which dispatches an entry that should be preserver.
+// Generic const reference usecase, which dispatches an entry that should be preserved.
 // It will be cloned is the listener requires an rvalue reference. Hence a custom `clone` method is required.
 template <typename F, typename E>
 inline bool DispatchEntryByConstReference(
