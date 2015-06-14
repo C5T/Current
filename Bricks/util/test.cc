@@ -234,9 +234,13 @@ TEST(Util, SHA256) {
             static_cast<std::string>(bricks::SHA256("Hello World")));
 }
 
+#if 0
+// Test is disabled since even being initialized with constant seed, random number generator
+// returns different values on different platforms :(
 TEST(Util, RandomWithFixedSeed) {
   EXPECT_EQ(114, bricks::random::RandomInt<int>(-100, 200));
   EXPECT_EQ(258833541435025064u, bricks::random::RandomInt<uint64_t>(1e10, 1e18));
-  EXPECT_FLOAT_EQ(0.752145, bricks::random::RandomFloat<float>(0.0, 1.0));
-  EXPECT_DOUBLE_EQ(-605.7885522709737, bricks::random::RandomFloat<double>(-1024.5, 2048.1));
+  EXPECT_FLOAT_EQ(0.752145, bricks::random::RandomReal<float>(0.0, 1.0));
+  EXPECT_DOUBLE_EQ(-605.7885522709737, bricks::random::RandomReal<double>(-1024.5, 2048.1));
 }
+#endif

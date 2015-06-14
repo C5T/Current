@@ -62,18 +62,20 @@ inline void SetSeed(const size_t seed) {
   ThreadLocalSingleton<impl::SeedImpl>().is_set = true;
 }
 
-inline std::mt19937_64& mt19937_64() { return ThreadLocalSingleton<impl::mt19937_64_wrapper>().instance; }
+inline std::mt19937_64& mt19937_64_tls() { return ThreadLocalSingleton<impl::mt19937_64_wrapper>().instance; }
 
 template <typename T>
-inline typename std::enable_if<std::is_integral<T>::value, T>::type RandomInt(const T a, const T b) {
+inline T RandomInt(const T a, const T b) {
+  static_assert(std::is_integral<T>::value, "`RandomInt` can be used only with integral types.");
   std::uniform_int_distribution<T> distribution(a, b);
-  return distribution(mt19937_64());
+  return distribution(mt19937_64_tls());
 }
 
 template <typename T>
-inline typename std::enable_if<std::is_floating_point<T>::value, T>::type RandomFloat(const T a, const T b) {
+inline T RandomReal(const T a, const T b) {
+  static_assert(std::is_floating_point<T>::value, "`RandomReal` can be used only with floating point types.");
   std::uniform_real_distribution<T> distribution(a, b);
-  return distribution(mt19937_64());
+  return distribution(mt19937_64_tls());
 }
 
 }  // namespace random
