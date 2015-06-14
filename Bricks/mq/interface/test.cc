@@ -92,7 +92,7 @@ TEST(MQInterface, SmokeTest) {
     return false;
   };
 
-  // The two parameters after `entry, `index` and `total`, do not carry any value for this test,
+  // The two parameters after `entry` -- `index` and `total` -- do not carry any value for this test,
   // we just confirm they are passed through.
   DDE e;
 
