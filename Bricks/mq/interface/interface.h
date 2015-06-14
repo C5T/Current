@@ -261,6 +261,62 @@ inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
   return impl::DispatchEntryWithoutMakingACopy<F, E>(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
+// === Terminate() ===
+// If the listener implements `Terminate()` it is invoked as the listening is about to end.
+// The implementation of `Terminate()` in the listener can return `void` or `bool`.
+// The `bool` one can indicate it refuses to terminate just now by returning `false`.
+// It is then the responsibility of the listener to eventually terminate.
+
+// TODO(dkorolev): This code is moved from "Sherlock/sherlock". I have yet to refactor/test it.
+
+namespace impl {
+
+template <typename T>
+constexpr bool HasTerminateMethod(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>().Terminate(), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct CallTerminateImpl {
+  static bool DoIt(T&&) { return true; }
+};
+
+template <typename T>
+struct CallTerminateImpl<T, true> {
+  static decltype(std::declval<T>().Terminate()) DoIt(T&& ref) { return ref.Terminate(); }
+};
+
+template <typename T, bool>
+struct CallTerminateAndReturnBoolImpl {
+  static bool DoIt(T&& ref) {
+    return CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ref));
+  }
+};
+
+template <typename T>
+struct CallTerminateAndReturnBoolImpl<T, true> {
+  static bool DoIt(T&& ref) {
+    CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ref));
+    return true;
+  }
+};
+
+}  // namespace bricks::mq::impl
+
+template <typename T>
+bool CallTerminate(T&& ref) {
+  return impl::CallTerminateAndReturnBoolImpl<
+      T,
+      std::is_same<void, decltype(impl::CallTerminateImpl<T, impl::HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
+          value>::DoIt(std::forward<T>(ref));
+}
+
+
 }  // namespace bricks::mq
 }  // namespace bricks
 

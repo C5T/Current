@@ -240,49 +240,6 @@ class PubSubHTTPEndpoint final {
   void operator=(PubSubHTTPEndpoint&&) = delete;
 };
 
-template <typename T>
-constexpr bool HasTerminateMethod(char) {
-  return false;
-}
-
-template <typename T>
-constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>() -> Terminate(), bool()) {
-  return true;
-}
-
-template <typename T, bool>
-struct CallTerminateImpl {
-  static bool DoIt(T&&) { return true; }
-};
-
-template <typename T>
-struct CallTerminateImpl<T, true> {
-  static decltype(std::declval<T>()->Terminate()) DoIt(T&& ptr) { return ptr->Terminate(); }
-};
-
-template <typename T, bool>
-struct CallTerminateAndReturnBoolImpl {
-  static bool DoIt(T&& ptr) {
-    return CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
-  }
-};
-
-template <typename T>
-struct CallTerminateAndReturnBoolImpl<T, true> {
-  static bool DoIt(T&& ptr) {
-    CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ptr));
-    return true;
-  }
-};
-
-template <typename T>
-bool CallTerminate(T&& ptr) {
-  return CallTerminateAndReturnBoolImpl<
-      T,
-      std::is_same<void, decltype(CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
-          value>::DoIt(ptr);
-}
-
 // TODO(dkorolev): Move this to Bricks. Cerealize uses it too, for `WithBaseType`.
 template <typename T>
 struct PretendingToBeUniquePtr {
@@ -451,7 +408,7 @@ class StreamInstanceImpl {
         if (!user_already_notified_to_terminate && blob->external_termination_request) {
           blob->thread_received_terminate_request = true;
           user_already_notified_to_terminate = true;
-          if (CallTerminate(blob->listener)) {
+          if (bricks::mq::CallTerminate(*blob->listener)) {
             break;
           }
         }
