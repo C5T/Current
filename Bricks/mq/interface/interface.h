@@ -240,7 +240,7 @@ struct DispatchEntryMakingACopyIfNecessary<false> {
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
 // Generic const reference usecase, which dispatches an entry that should be preserved.
-// It will be cloned is the listener requires an rvalue reference. Hence a custom `clone` method is required.
+// It will be cloned if the listener requires an rvalue reference. Hence a custom `clone` method is required.
 template <typename F, typename E>
 inline bool DispatchEntryByConstReference(
     F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
