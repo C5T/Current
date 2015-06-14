@@ -22,7 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define BRICKS_RANDOM_FIX_SEED
+
 #include "make_scope_guard.h"
+#include "random.h"
 #include "singleton.h"
 #include "sha256.h"
 
@@ -39,7 +42,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:37\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:40\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -56,7 +59,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:54\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:57\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -229,4 +232,11 @@ TEST(Util, ThreadLocalSingleton) {
 TEST(Util, SHA256) {
   EXPECT_EQ("a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
             static_cast<std::string>(bricks::SHA256("Hello World")));
+}
+
+TEST(Util, RandomWithFixedSeed) {
+  EXPECT_EQ(114, bricks::random::RandomInt<int>(-100, 200));
+  EXPECT_EQ(258833541435025064u, bricks::random::RandomInt<uint64_t>(1e10, 1e18));
+  EXPECT_FLOAT_EQ(0.752145, bricks::random::RandomFloat<float>(0.0, 1.0));
+  EXPECT_DOUBLE_EQ(-605.7885522709737, bricks::random::RandomFloat<double>(-1024.5, 2048.1));
 }
