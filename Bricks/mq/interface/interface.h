@@ -38,8 +38,9 @@ namespace mq {
 // 1) A generic call to `operator()`.
 //    Enabling one-, two- or three-parameter signatures, returning `bool` or `void`,
 //    and accepting entries as const- or rvalue reference parameters.
-// 2) A way to do `UpdateHead()`, as ticks and to handle that previously persisted entries have been replayed.
-// 3) A way to do `Termimate()` gracefully (this one has been done already, just need to move here).
+// 2) A way to do `UpdateHead()` (external sync events or timer ticke),
+//    and, perhaps, combine it with the way to notify that previously persisted entries have been replayed.
+// 3) A way to do `Terminate()` gracefully (this one has been done already, just need to move here).
 //
 // TODO(dkorolev): Only the first part is done now. But this code change should make the rest straightforward.
 
@@ -51,7 +52,7 @@ namespace mq {
 // A: Number of parameters.
 // A.1: `void/bool operator()(entry)`, one-parameter signature.
 // A.2: `void/bool operator()(entry, index)`, two-parameters signature.
-// A.3: `void/bool operator()(entry, index, total)`, three-parameres signature.
+// A.3: `void/bool operator()(entry, index, total)`, three-parameters signature.
 // By omitting the last parameters, the user declares they do not need the values of them.
 //
 // B: Return type.
@@ -70,10 +71,11 @@ namespace mq {
 // At the same time, some framworks may construct the entry object for this particular listener,
 // thus making the very clone operation.
 // This is not to mention that cloning a polymorphic `unique_ptr<>` may be painful at times.
-// Therefore, if the framework is passing in a const reference to the entry, it too is responsible
+// Therefore, if the framework is passing in a const reference to the entry, it is also responsible
 // for providing a method to clone this entry.
-// The client, in their turn, has nothing to worry about, as their signature defines if they must
-// be passed an entry that fully in their possession or the entry that can later be re-used.
+// The client, in their turn, can define a signature with a const reference or with an rvalue reference --
+// -- whichever suits their needs best -- and know that the framework will take care of making a copy
+// of the incoming entry as necessary.
 
 namespace impl {
 
