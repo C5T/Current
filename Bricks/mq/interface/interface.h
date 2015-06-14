@@ -38,7 +38,7 @@ namespace mq {
 // 1) A generic call to `operator()`.
 //    Enabling one-, two- or three-parameter signatures, returning `bool` or `void`,
 //    and accepting entries as const- or rvalue reference parameters.
-// 2) A way to do `UpdateHead()` (external sync events or timer ticke),
+// 2) A way to do `UpdateHead()` (external sync events or timer ticks).
 //    and, perhaps, combine it with the way to notify that previously persisted entries have been replayed.
 // 3) A way to do `Terminate()` gracefully (this one has been done already, just need to move here).
 //
