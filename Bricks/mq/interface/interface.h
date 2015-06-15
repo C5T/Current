@@ -38,8 +38,10 @@ namespace mq {
 // 1) A generic call to `operator()`.
 //    Enabling one-, two- or three-parameter signatures, returning `bool` or `void`,
 //    and accepting entries as const- or rvalue reference parameters.
-// 2) A way to do `UpdateHead()` (external sync events or timer ticks).
-//    and, perhaps, combine it with the way to notify that previously persisted entries have been replayed.
+//
+// 2) A way to do `UpdateHead()` (external sync events or timer ticks), and,
+//    perhaps, combine it with the way to notify that previously persisted entries have been replayed.
+//
 // 3) A way to do `Terminate()` gracefully (this one has been done already, just need to move here).
 //
 // TODO(dkorolev): Only the first part is done now. But this code change should make the rest straightforward.
@@ -66,16 +68,17 @@ namespace mq {
 // C: Accept a const reference to an entry, or require a copy of which the listener will gain ownership.
 // C.1: `void/bool operator()(const T_ENTRY& entry [, index [, total]])`.
 // C.2: `void/bool operator()(T_ENTRY&& [, index [, total]])`.
-// One usecase is to `std::move()` the received entry into a different message queue.
-// If a copy of an entry is passed in, this behavior is impossible without making a clone of the entry.
-// At the same time, some framworks may construct the entry object for this particular listener,
-// thus making the very clone operation.
-// This is not to mention that cloning a polymorphic `unique_ptr<>` may be painful at times.
-// Therefore, if the framework is passing in a const reference to the entry, it is also responsible
-// for providing a method to clone this entry.
+// One listener's usecase is to `std::move()` the received entry into a different message queue.
+// If the entry is passed in via a const reference, its ownership can not be transferred to the listener.
+// A clone of the entry is made in this case, for the listener to own. At the same time framworks
+// that construct the very entry object independently for a particular listener (for example, by
+// de-serealizing the entry object from an `std::string`) they pass the entry by an rvalue via `std::move()`,
+// which eliminates unnecessary copy/clone operation. This is not to mention that cloning
+// a polymorphic `unique_ptr<>` may be painful at times. Therefore, if the framework is passing in
+// a const reference to the entry, it is also responsible for providing a method to clone it.
 // The client, in their turn, can define a signature with a const reference or with an rvalue reference --
 // -- whichever suits their needs best -- and know that the framework will take care of making a copy
-// of the incoming entry as necessary.
+// or sparing it as necessary.
 
 namespace impl {
 

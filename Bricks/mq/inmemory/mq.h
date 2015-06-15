@@ -61,7 +61,7 @@ namespace mq {
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
 class MMQ final {
  public:
-  // Type of entries to store, defaults to `std::string`.
+  // Type of messages to store and dispatch.
   typedef MESSAGE T_MESSAGE;
 
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
@@ -88,35 +88,44 @@ class MMQ final {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  void PushMessage(const T_MESSAGE& message) {
+  bool PushMessage(const T_MESSAGE& message) {
     const size_t index = PushMessageAllocate();
+    bool result = false;
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = message;
       PushMessageCommit(index);
+      result = true;
     }
     ++total_messages_;
+    return result;
   }
 
-  void PushMessage(T_MESSAGE&& message) {
+  bool PushMessage(T_MESSAGE&& message) {
     const size_t index = PushMessageAllocate();
+    bool result = false;
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = std::move(message);
       PushMessageCommit(index);
+      result = true;
     }
     ++total_messages_;
+    return result;
   }
 
   template <typename... ARGS>
-  void EmplaceMessage(ARGS&&... args) {
+  bool EmplaceMessage(ARGS&&... args) {
     const size_t index = PushMessageAllocate();
+    bool result = false;
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
       PushMessageCommit(index);
+      result = true;
     }
     ++total_messages_;
+    return result;
   }
 
  private:
