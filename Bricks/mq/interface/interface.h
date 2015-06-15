@@ -285,7 +285,7 @@ constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>().Terminate()
 
 template <typename T, bool>
 struct CallTerminateImpl {
-  static bool DoIt(T&&) { return true; }
+  static bool DoIt(T) { return true; }
 };
 
 template <typename T>
@@ -316,6 +316,38 @@ bool CallTerminate(T&& ref) {
       T,
       std::is_same<void, decltype(impl::CallTerminateImpl<T, impl::HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
           value>::DoIt(std::forward<T>(ref));
+}
+
+// === `ReplayDone()` ===
+// Optionally invokes `ReplayDone()` if it is defined by the listener.
+
+namespace impl {
+
+template <typename T>
+constexpr bool HasReplayDoneMethod(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasReplayDoneMethod(int) -> decltype(std::declval<T>().ReplayDone(), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct CallReplayDoneImpl {
+  static void DoIt(T) {}
+};
+
+template <typename T>
+struct CallReplayDoneImpl<T, true> {
+  static decltype(std::declval<T>().ReplayDone()) DoIt(T&& ref) { ref.ReplayDone(); }
+};
+
+}  // namespace bricks::mq::impl
+
+template <typename T>
+void CallReplayDone(T&& ref) {
+  impl::CallReplayDoneImpl<T, impl::HasReplayDoneMethod<T>(0)>::DoIt(std::forward<T>(ref));
 }
 
 

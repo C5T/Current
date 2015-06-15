@@ -28,6 +28,7 @@ SOFTWARE.
 #include "random.h"
 #include "singleton.h"
 #include "sha256.h"
+#include "clone.h"
 
 #include "../exception.h"
 
@@ -42,7 +43,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:40\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:41\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -59,7 +60,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:57\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:58\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -244,3 +245,95 @@ TEST(Util, RandomWithFixedSeed) {
   EXPECT_DOUBLE_EQ(-605.7885522709737, bricks::random::RandomReal<double>(-1024.5, 2048.1));
 }
 #endif
+
+namespace cloning_unit_test {
+
+// First preference: `.Clone()`.
+struct ClonableByRef {
+  const std::string text;
+  ClonableByRef(const std::string& text = "original") : text(text) {}
+
+  ClonableByRef Clone() const { return ClonableByRef("cloned by ref"); }
+
+  struct Cloner {
+    ClonableByRef Clone() { return ClonableByRef("cloned by ptr"); }
+  };
+  Cloner operator->() const { return Cloner(); }
+
+  ClonableByRef(const ClonableByRef& rhs) : text("copy-constructed from " + rhs.text) {}
+};
+
+// Second preference: `->Clone()`.
+struct ClonableByPtr {
+  const std::string text;
+  ClonableByPtr(const std::string& text = "original") : text(text) {}
+
+  struct Cloner {
+    Cloner() {}
+    ClonableByPtr Clone() const { return ClonableByPtr("cloned by ptr"); }
+  };
+  const Cloner cloner;
+  const Cloner* operator->() const { return &cloner; }
+
+  ClonableByPtr(const ClonableByPtr& rhs) : text("copy-constructed from " + rhs.text) {}
+};
+
+// Third preference: copy constructor.
+struct ClonableByCtor {
+  const std::string text;
+  ClonableByCtor(const std::string& text = "original") : text(text) {}
+  ClonableByCtor(const ClonableByCtor& rhs) : text("copy-constructed from " + rhs.text) {}
+};
+
+// Fourth preference: `ParseJSON<T>(JSON(t))`.
+// Inefficient, but it's our shortest shortcut for Cereal-serializable `std::unique_ptr<>`-s. -- D.K.
+struct ClonableViaJSON {
+  std::string text;
+  ClonableViaJSON(const std::string& text = "original") : text(text) {}
+  ClonableViaJSON(const ClonableViaJSON&) = delete;
+  template <typename A>
+  void save(A& ar) const {
+    ar(CEREAL_NVP(text));
+  }
+  template <typename A>
+  void load(A& ar) {
+    ar(CEREAL_NVP(text));
+    text = "deserialized from " + text;
+  }
+  // Cereal needs this signature to exist to support serializing `ClonableViaJSON`.
+  ClonableViaJSON(ClonableViaJSON&&);
+};
+
+}  // namespace cloning_unit_test
+
+TEST(Util, Clone) {
+  using namespace cloning_unit_test;
+  using bricks::Clone;
+  using bricks::DefaultCloneFunction;
+
+  EXPECT_EQ("original", ClonableByRef().text);
+  EXPECT_EQ("original", ClonableByPtr().text);
+  EXPECT_EQ("original", ClonableByCtor().text);
+  EXPECT_EQ("original", ClonableViaJSON().text);
+
+  EXPECT_EQ("cloned by ref", Clone(ClonableByRef()).text);
+  EXPECT_EQ("cloned by ptr", Clone(ClonableByPtr()).text);
+  EXPECT_EQ("copy-constructed from original", Clone(ClonableByCtor()).text);
+  EXPECT_EQ("deserialized from original", Clone(ClonableViaJSON()).text);
+
+  EXPECT_EQ("cloned by ref", DefaultCloneFunction<ClonableByRef>()(ClonableByRef()).text);
+  EXPECT_EQ("cloned by ptr", DefaultCloneFunction<ClonableByPtr>()(ClonableByPtr()).text);
+  EXPECT_EQ("copy-constructed from original", DefaultCloneFunction<ClonableByCtor>()(ClonableByCtor()).text);
+  EXPECT_EQ("deserialized from original", DefaultCloneFunction<ClonableViaJSON>()(ClonableViaJSON()).text);
+
+  const auto clone_by_ref = DefaultCloneFunction<ClonableByRef>();
+  const auto clone_by_ptr = DefaultCloneFunction<ClonableByPtr>();
+  const auto clone_by_ctor = DefaultCloneFunction<ClonableByCtor>();
+  const auto clone_via_json = DefaultCloneFunction<ClonableViaJSON>();
+  EXPECT_EQ("cloned by ref", clone_by_ref(ClonableByRef()).text);
+  EXPECT_EQ("cloned by ptr", clone_by_ptr(ClonableByPtr()).text);
+  EXPECT_EQ("copy-constructed from original", clone_by_ctor(ClonableByCtor()).text);
+  EXPECT_EQ("deserialized from original", clone_via_json(ClonableViaJSON()).text);
+
+  EXPECT_EQ("deserialized from deserialized from original", Clone(Clone(make_unique<ClonableViaJSON>()))->text);
+}
