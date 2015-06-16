@@ -88,13 +88,32 @@ return result;
       // if the `prime` field is called `key`.
       return prime;
     }
-  
+
+#if 0
     template <typename A>
     void serialize(A& ar) {
       Padawan::serialize(ar);
       ar(cereal::make_nvp("prime", reinterpret_cast<int&>(prime)),
          CEREAL_NVP(index));
     }
+#else
+// Fix `NDEBUG=1` warnings.
+// warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+template<typename A> void serialize(A&) = delete;
+template <typename A>
+void save(A& ar) const {
+const int prime = static_cast<int>(this->prime);
+Padawan::immutable_save(ar);
+ar(CEREAL_NVP(prime), CEREAL_NVP(index));
+}
+template <typename A>
+void load(A& ar) {
+int prime;
+Padawan::mutable_load(ar);
+ar(CEREAL_NVP(prime), CEREAL_NVP(index));
+this->prime = static_cast<PRIME>(prime);
+}
+#endif
   };
   CEREAL_REGISTER_TYPE(Prime);
   
@@ -112,6 +131,7 @@ return result;
   
     PrimeCell(const PrimeCell&) = default;
   
+#if 0
     template <typename A>
     void serialize(A& ar) {
       Padawan::serialize(ar);
@@ -119,6 +139,27 @@ return result;
          cereal::make_nvp("d2", reinterpret_cast<int&>(col)),
          CEREAL_NVP(index));
     }
+#else
+// Fix `NDEBUG=1` warnings.
+// warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+template<typename A> void serialize(A&) = delete;
+template <typename A>
+void save(A& ar) const {
+const int row = static_cast<int>(this->row);
+const int col = static_cast<int>(this->col);
+Padawan::immutable_save(ar);
+ar(cereal::make_nvp("d1", row), cereal::make_nvp("d2", col), CEREAL_NVP(index));
+}
+template <typename A>
+void load(A& ar) {
+int row;
+int col;
+Padawan::mutable_load(ar);
+ar(cereal::make_nvp("d1", row), cereal::make_nvp("d2", col), CEREAL_NVP(index));
+this->row = static_cast<FIRST_DIGIT>(row);
+this->col = static_cast<SECOND_DIGIT>(col);
+}
+#endif
   };
   CEREAL_REGISTER_TYPE(PrimeCell);
   
@@ -145,7 +186,6 @@ HTTP(port).ResetAllHandlers();
               Dictionary<Prime>,
               Matrix<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
-  
   // Simple dictionary usecase, and a unit test for type system implementation.
   api.Add(StringIntTuple("two", 2));
   api.Add(static_cast<const StringIntTuple&>(StringIntTuple("three", 3)));

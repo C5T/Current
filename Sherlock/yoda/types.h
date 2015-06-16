@@ -56,6 +56,16 @@ struct Padawan {
   void serialize(A& ar) {
     ar(CEREAL_NVP(ms));
   }
+
+  template <typename A>
+  void immutable_save(A& ar) const {
+    ar(CEREAL_NVP(ms));
+  }
+
+  template <typename A>
+  void mutable_load(A& ar) {
+    ar(CEREAL_NVP(ms));
+  }
 };
 
 struct NonexistentEntryAccessed : bricks::Exception {};
@@ -183,5 +193,14 @@ struct Deletable {};
 #endif
 
 }  // namespace yoda
+
+#if 0
+// TODO(dkorolev): Fix this and make it clean.
+// Disambiguate serialization of `yoda::Parawan`.
+namespace cereal {
+template <class A>
+struct specialize<A, yoda::Padawan, cereal::specialization::member_serialize> {};
+}  // namespace cereal
+#endif
 
 #endif  // SHERLOCK_YODA_TYPES_H
