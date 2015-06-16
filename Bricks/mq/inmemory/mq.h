@@ -53,107 +53,26 @@ SOFTWARE.
 #include <thread>
 #include <vector>
 
-#include "consumer.h"
+#include "../interface/interface.h"
 
 namespace bricks {
 namespace mq {
 
-namespace mmq {
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-constexpr bool HasSimpleOnMessage(char) {
-  return false;
-}
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-constexpr auto HasSimpleOnMessage(int)
-    -> decltype(std::declval<T_CONSUMER>().OnMessage(std::move(std::declval<T_MESSAGE>())), bool()) {
-  return true;
-}
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-constexpr bool HasExtendedOnMessage(char) {
-  return false;
-}
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-constexpr auto HasExtendedOnMessage(int)
-    -> decltype(std::declval<T_CONSUMER>().OnMessage(std::move(std::declval<T_MESSAGE>()), 0u), bool()) {
-  return true;
-}
-
-template <typename T_CONSUMER, typename T_MESSAGE, bool HAS_SIMPLE_ON_MESSAGE>
-struct ExportMessageImpl {};
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-struct ExportMessageImpl<T_CONSUMER, T_MESSAGE, true> {
-  static void OnMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t) {
-    consumer.OnMessage(std::move(message));
-  }
-};
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-struct ExportMessageImpl<T_CONSUMER, T_MESSAGE, false> {
-  static void OnMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_count) {
-    consumer.OnMessage(std::move(message), dropped_count);
-  }
-};
-
-template <typename T_CONSUMER, typename T_MESSAGE>
-void ExportMessage(T_CONSUMER& consumer, T_MESSAGE&& message, size_t dropped_count) {
-  // Note that the allowed syntax for `OnMessage()` is:
-  //   either `OnMessage(const T_MESSAGE& message [, size_t dropped_count]);`
-  //   or     `OnMessage(T_MESSAGE&& message [, size_t dropped_count]);`
-  // If your class defines `OnMessage()` differently, for example, accepting a non-const non-rvalue reference
-  // as the first parameter, the `static_assert()` on the next line will fail.
-  static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) || HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
-                "There must be at least one implementation of `OnMessage()` defined in the consumer.");
-  static_assert(HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0) != HasExtendedOnMessage<T_CONSUMER, T_MESSAGE>(0),
-                "There must be exactly one implementation of `OnMessage()` defined in the consumer.");
-  ExportMessageImpl<T_CONSUMER, T_MESSAGE, HasSimpleOnMessage<T_CONSUMER, T_MESSAGE>(0)>::OnMessage(
-      consumer, std::forward<T_MESSAGE>(message), dropped_count);
-}
-
-}  // namespace mmq
-
-template <typename MESSAGE,
-          typename CONSUMER = mmq::ProcessMessageConsumer<MESSAGE>,
-          size_t DEFAULT_BUFFER_SIZE = 1024,
-          bool DROP_ON_OVERFLOW = false>
+template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
 class MMQ final {
  public:
-  // Type of entries to store, defaults to `std::string`.
+  // Type of messages to store and dispatch.
   typedef MESSAGE T_MESSAGE;
 
-  // Type of the processor of the entries.
-  // It should expose exactly one method `OnMessage()`, using one of the possible semantics - with or without
-  // `number of dropped messages` argument. The least will be always zero in case of non-droppinq MMQ.
-  // The message can be passed by traditional or rvalue reference. For example:
-  //
-  //   void OnMessage(T_MESSAGE&& message, size_t number_of_dropped_messages_if_any);
-  //
-  //  or
-  //
-  //   void OnMessage(const T_MESSAGE& message);
-  //
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
+  // Please see "Bricks/mq/interface/interface.h" and its test for possible callee signatures.
   typedef CONSUMER T_CONSUMER;
 
-  // Constructor that uses the default `ProcessMessageConsumer`.
-  MMQ(size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : default_consumer_(new mmq::ProcessMessageConsumer<T_MESSAGE>()),
-        consumer_(*default_consumer_),
-        circular_buffer_size_(buffer_size),
-        circular_buffer_(circular_buffer_size_),
-        dropped_messages_count_(0u),
-        consumer_thread_(&MMQ::ConsumerThread, this) {}
-
-  // Constructor that requires the refence to the instance of the consumer of entries.
   explicit MMQ(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
-        dropped_messages_count_(0u),
+        total_messages_(0u),
         consumer_thread_(&MMQ::ConsumerThread, this) {}
 
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
@@ -169,35 +88,44 @@ class MMQ final {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  void PushMessage(const T_MESSAGE& message) {
+  bool PushMessage(const T_MESSAGE& message) {
     const size_t index = PushMessageAllocate();
+    bool result = false;
     if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = message;
       PushMessageCommit(index);
-    } else {
-      ++dropped_messages_count_;
+      result = true;
     }
+    ++total_messages_;
+    return result;
   }
 
-  void PushMessage(T_MESSAGE&& message) {
+  bool PushMessage(T_MESSAGE&& message) {
     const size_t index = PushMessageAllocate();
+    bool result = false;
     if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = std::move(message);
       PushMessageCommit(index);
-    } else {
-      ++dropped_messages_count_;
+      result = true;
     }
+    ++total_messages_;
+    return result;
   }
 
   template <typename... ARGS>
-  void EmplaceMessage(ARGS&&... args) {
+  bool EmplaceMessage(ARGS&&... args) {
     const size_t index = PushMessageAllocate();
+    bool result = false;
     if (index != static_cast<size_t>(-1)) {
+      circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
       PushMessageCommit(index);
-    } else {
-      ++dropped_messages_count_;
+      result = true;
     }
+    ++total_messages_;
+    return result;
   }
 
  private:
@@ -209,15 +137,11 @@ class MMQ final {
   // Increment the index respecting the circular nature of the buffer.
   void Increment(size_t& i) const { i = (i + 1) % circular_buffer_size_; }
 
-  // The thread which extracts fully populated messages from the tail of the buffer and feeds them to the
-  // consumer.
+  // The thread which extracts fully populated messages from the tail of the buffer
+  // and feeds them to the consumer.
   void ConsumerThread() {
     // The `tail` pointer is local to the procesing thread.
     size_t tail = 0u;
-
-    // The counter of dropped messages is updated within the first, mutex-locked, section,
-    // and then used in the second, mutex-free, one.
-    size_t actually_dropped_messages;
 
     while (true) {
       {
@@ -235,16 +159,15 @@ class MMQ final {
           return;  // LCOV_EXCL_LINE
         }
         circular_buffer_[tail].status = Entry::BEING_EXPORTED;
-
-        actually_dropped_messages = dropped_messages_count_;
-        dropped_messages_count_ = 0u;
       }
 
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        mmq::ExportMessage(
-            consumer_, std::move(circular_buffer_[tail].message_body), actually_dropped_messages);
+        mq::DispatchEntryByRValue(consumer_,
+                                  std::move(circular_buffer_[tail].message_body),
+                                  circular_buffer_[tail].absolute_index,
+                                  total_messages_);
       }
 
       {
@@ -311,10 +234,6 @@ class MMQ final {
     condition_variable_.notify_all();
   }
 
-  // In case consumer instance is not provided as constructor argument, default consumer will be istantiated
-  // inside the constructor body.
-  std::unique_ptr<mmq::ProcessMessageConsumer<T_MESSAGE>> default_consumer_;
-
   // The instance of the consuming side of the FIFO buffer.
   T_CONSUMER& consumer_;
 
@@ -324,6 +243,7 @@ class MMQ final {
 
   // The `Entry` struct keeps the entries along with their completion status.
   struct Entry {
+    size_t absolute_index;
     T_MESSAGE message_body;
     enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
   };
@@ -335,7 +255,7 @@ class MMQ final {
   size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
-  std::atomic_size_t dropped_messages_count_;
+  std::atomic_size_t total_messages_;
 
   // For safe thread destruction.
   bool destructing_ = false;

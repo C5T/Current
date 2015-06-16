@@ -79,8 +79,8 @@ struct RecordWithTimestamp {
   EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp_); }
 };
 
-// Struct `Data` should be outside struct `SherlockTestProcessor`, since the latter is `std::move`-d away in
-// some tests.
+// Struct `Data` should be outside struct `SherlockTestProcessor`,
+// since the latter is `std::move`-d away in some tests.
 struct Data final {
   atomic_bool listener_alive_;
   atomic_size_t seen_;
@@ -90,9 +90,9 @@ struct Data final {
 
 // Struct `SherlockTestProcessor` handles the entries that tests subscribe to.
 struct SherlockTestProcessor final {
-  Data& data_;
+  Data& data_;                  // Initialized in constructor.
+  const bool allow_terminate_;  // Initialized in constructor.
   size_t max_to_process_ = static_cast<size_t>(-1);
-  bool allow_terminate_;
 
   SherlockTestProcessor() = delete;
 
@@ -112,9 +112,7 @@ struct SherlockTestProcessor final {
     return *this;
   }
 
-  inline bool Entry(const Record& entry, size_t index, size_t total) {
-    static_cast<void>(index);
-    static_cast<void>(total);
+  inline bool operator()(Record&& entry) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
@@ -272,7 +270,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     RecordsCollector() = delete;
     explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
 
-    inline bool Entry(const RecordWithTimestamp& entry, size_t index, size_t total) {
+    inline bool operator()(const RecordWithTimestamp& entry, size_t index, size_t total) {
       static_cast<void>(index);
       static_cast<void>(total);
       data_.push_back(JSON(entry, "entry") + '\n');

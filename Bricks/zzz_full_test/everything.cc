@@ -20,6 +20,7 @@
 #include "./file/test.cc"
 #include "./graph/test.cc"
 #include "./mq/inmemory/test.cc"
+#include "./mq/interface/test.cc"
 #include "./net/api/docu/client/docu_02httpclient_01_test.cc"
 #include "./net/api/docu/client/docu_02httpclient_02_test.cc"
 #include "./net/api/docu/server/docu_03httpserver_01_test.cc"
