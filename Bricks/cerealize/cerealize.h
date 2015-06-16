@@ -44,72 +44,26 @@ SOFTWARE.
 
 #include "../../3rdparty/cereal/include/external/base64.hpp"
 
+#include "../strings/is_string_type.h"
+
 #include "../rtti/dispatcher.h"
 #include "../template/decay.h"
 
 namespace bricks {
 namespace cerealize {
 
-// Helper compile-type test to tell string-like types from cerealizable types.
-template <typename T>
-struct is_string_type_impl {
-  constexpr static bool value = false;
-};
-template <>
-struct is_string_type_impl<std::string> {
-  constexpr static bool value = true;
-};
-template <>
-struct is_string_type_impl<char> {
-  constexpr static bool value = true;
-};
-template <>
-struct is_string_type_impl<std::vector<char>> {
-  constexpr static bool value = true;
-};
-template <>
-struct is_string_type_impl<std::vector<int8_t>> {
-  constexpr static bool value = true;
-};
-template <>
-struct is_string_type_impl<std::vector<uint8_t>> {
-  constexpr static bool value = true;
-};
-template <>
-struct is_string_type_impl<char*> {
-  constexpr static bool value = true;
-};
-template <size_t N>
-struct is_string_type_impl<char[N]> {
-  constexpr static bool value = true;
-};
-template <>
-struct is_string_type_impl<const char*> {
-  constexpr static bool value = true;
-};
-template <size_t N>
-struct is_string_type_impl<const char[N]> {
-  constexpr static bool value = true;
-};
-// Microsoft Visual Studio compiler is strict with overloads,
-// explicitly exclude string-related types from cereal-based implementations.
-template <typename TOP_LEVEL_T>
-struct is_string_type {
-  constexpr static bool value = is_string_type_impl<decay<TOP_LEVEL_T>>::value;
-};
-
 // Helper compile-time test that certain type can be serialized via cereal.
 template <typename T>
 struct is_read_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value &&
+      !strings::is_string_type<T>::value &&
       cereal::traits::is_input_serializable<decay<T>, cereal::JSONInputArchive>::value;
 };
 
 template <typename T>
 struct is_write_cerealizable {
   constexpr static bool value =
-      !is_string_type<T>::value &&
+      !strings::is_string_type<T>::value &&
       cereal::traits::is_output_serializable<decay<T>, cereal::JSONOutputArchive>::value;
 };
 
@@ -146,12 +100,18 @@ enum class CerealFormat { Default = 0, Binary = 0, JSON };
 // TODO(dkorolev): Think of platform-independent layer for filesystem locks.
 class CerealFileAppenderBase {
  public:
+  // This "ios" here has nothing to do with Apple, but with Microsoft: in Windows
+  // `initial_stream_position_` gets initialized with zero without it. -- D.K.
   explicit CerealFileAppenderBase(const std::string& filename, bool append = true)
       : fo_(filename, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary),
-        initial_stream_position_(fo_.tellp()) {}
+        initial_stream_position_(static_cast<size_t>((fo_.seekp(0, std::ios_base::end), fo_.tellp()))) {}
 
   inline size_t EntriesAppended() const { return entries_appended_; }
-  inline size_t BytesAppended() const { return current_stream_position() - initial_stream_position_; }
+  inline size_t BytesAppended() const {
+    const size_t current = current_stream_position();
+    assert(current >= initial_stream_position_);  // TFU if it's the case.
+    return current - initial_stream_position_;
+  }
   inline size_t TotalFileSize() const { return current_stream_position(); }
 
  protected:
@@ -159,7 +119,7 @@ class CerealFileAppenderBase {
   size_t entries_appended_ = 0;
 
  private:
-  const std::streampos initial_stream_position_;
+  const size_t initial_stream_position_;
 
   size_t current_stream_position() const {
     const std::streampos p = fo_.tellp();

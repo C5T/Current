@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../exceptions.h"
 #include "../http/codes.h"
 
+#include "../../strings/is_string_type.h"
 #include "../../cerealize/cerealize.h"
 
 namespace bricks {
@@ -103,7 +104,7 @@ struct POST : HTTPRequestBase<POST> {
   template <typename T>
   POST(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<POST, bricks::cerealize::is_string_type<T>::value>::Fill(*this, body, content_type);
+    FillBody<POST, bricks::strings::is_string_type<T>::value>::Fill(*this, body, content_type);
   }
 };
 
@@ -122,7 +123,7 @@ struct PUT : HTTPRequestBase<PUT> {
   template <typename T>
   PUT(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<PUT, bricks::cerealize::is_string_type<T>::value>::Fill(*this, body, content_type);
+    FillBody<PUT, bricks::strings::is_string_type<T>::value>::Fill(*this, body, content_type);
   }
 };
 

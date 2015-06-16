@@ -22,41 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_PRINTF_H
-#define BRICKS_STRINGS_PRINTF_H
+#ifndef BRICKS_STRINGS_STRINGS_H
+#define BRICKS_STRINGS_STRINGS_H
 
-#include "../port.h"
+#include "chunk.h"
+#include "distance.h"
+#include "fixed_size_serializer.h"
+#include "is_string_type.h"
+#include "join.h"
+#include "printf.h"
+#include "split.h"
+#include "util.h"
 
-#include <string>
-#include <cstdarg>
-
-namespace bricks {
-namespace strings {
-
-inline std::string Printf(const char *fmt, ...) {
-  // `Printf()` crops the output to five KiB.
-  const int max_formatted_output_length = 5 * 1024;
-
-#ifdef BRICKS_HAS_THREAD_LOCAL
-  thread_local static char buf[max_formatted_output_length + 1];
-#else
-  // Slow but safe.
-  char buf[max_formatted_output_length + 1];
-#endif
-
-  va_list ap;
-  va_start(ap, fmt);
-#ifndef BRICKS_WINDOWS
-  vsnprintf(buf, max_formatted_output_length + 1, fmt, ap);
-#else
-  _vsnprintf_s(buf, max_formatted_output_length + 1, _TRUNCATE, fmt, ap);
-#endif
-  va_end(ap);
-
-  return buf;
-}
-
-}  // namespace strings
-}  // namespace bricks
-
-#endif  // BRICKS_STRINGS_PRINTF_H
+#endif  // BRICKS_STRINGS_STRINGS_H

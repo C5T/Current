@@ -231,16 +231,13 @@ struct StreamListener {
   };
 
   // Sherlock stream listener call.
-  bool Entry(std::unique_ptr<Padawan>& entry, size_t index, size_t total) {
-    static_cast<void>(total);
-
+  void operator()(std::unique_ptr<Padawan>&& entry, size_t index) {
     mq_.EmplaceMessage(new MQMessageEntry(std::move(entry), index));
 
     // Eventually, the logic of this API implementation is:
     // * Defer all API requests until the persistent part of the stream is fully replayed,
     // * Allow all API requests after that.
-
-    return true;
+    // TODO(dkorolev): The above is coming soon.
   }
 
  private:
@@ -256,7 +253,7 @@ struct MQListener {
       : container_(container), container_data_(container_data), stream_(stream) {}
 
   // MMQ consumer call.
-  void OnMessage(std::unique_ptr<YodaMMQMessage<YT>>&& message) {
+  void operator()(std::unique_ptr<YodaMMQMessage<YT>>&& message) {
     message->Process(container_, container_data_, stream_);
   }
 

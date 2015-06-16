@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "../yoda.h"
 
+#include "../../../Bricks/strings/join.h"
 #include "../../../Bricks/strings/printf.h"
 
 #include "../../../Bricks/net/api/api.h"
@@ -48,8 +49,22 @@ using yoda::CellNotFoundException;
 using yoda::CellAlreadyExistsException;
 using yoda::SubscriptException;
 
+using bricks::strings::Join;
 using bricks::strings::Printf;
 using bricks::strings::FromString;
+
+template<typename T, typename... TS> using CWT = bricks::weed::call_with_type<T, TS...>;
+
+// TODO(dkorolev): Productionize top-level `Has()` and `Value()`.
+// TODO(dkorolev): Productionize `Map()`, and also `Filter()` and `Reduce()`.
+template<typename T, typename F>
+std::vector<CWT<F, decltype(*std::declval<T>().begin())>> Map(const T& container, F&& function) {
+typedef CWT<F, decltype(*std::declval<T>().begin())> T_ELEMENT;
+std::vector<T_ELEMENT> result;
+result.reserve(container.size());
+for (const auto& cit : container) { result.push_back(function(cit)); }
+return result;
+}
 
   // Unique types for keys.
   enum class PRIME : int {};
@@ -151,20 +166,20 @@ HTTP(port).ResetAllHandlers();
   // `2` is the first prime.
   // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
   api.Add(Prime(2, 1)).Go();
-
+  
   // `3` is the second prime.
   // `api.Add()` never throws and silently overwrites.
   api.Add(Prime(3, 100));
   api.Add(Prime(3, 2));
-
+  
   // `api.Has()` supports both raw keys and tuples.
   ASSERT_TRUE(api.Has(static_cast<PRIME>(3)).Go());
   ASSERT_TRUE(api.Has(std::make_tuple(static_cast<PRIME>(3))).Go());
   ASSERT_FALSE(api.Has(static_cast<PRIME>(4)).Go());
-
-  // `api.Get()` has multiple signatures, one or more per
-  // supported data type. It never throws, and returns a wrapper,
-  // that can be casted to both `bool` and the underlying type.
+  
+  // `api.Get()` has multiple signatures, one or more per supported data type.
+  // It never throws, and returns a wrapper that can be cast to both `bool`
+  // and the underlying type.
   ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(2)).Go()));
   ASSERT_TRUE(static_cast<bool>(api.Get(std::make_tuple(static_cast<PRIME>(2))).Go()));
   EXPECT_EQ(1, static_cast<const Prime&>(api.Get(static_cast<PRIME>(2)).Go()).index);
@@ -253,7 +268,7 @@ HTTP(port).ResetAllHandlers();
       EXPECT_EQ(19, static_cast<int>(e.key));
     }
 
-    // Check if value exists.
+    // Check if the value exists.
     ASSERT_TRUE(getter.Has(static_cast<PRIME>(13)));
 
     // `getter.Get()` in a non-throwing call, returning a wrapper.
@@ -299,16 +314,14 @@ HTTP(port).ResetAllHandlers();
     EXPECT_EQ(10u, getter.size());
     EXPECT_EQ(10u, adder.size());
   
-    std::set<std::pair<int, int>> as_set;  // To ensure the order is right.
+    std::set<std::pair<int, int>> set;  // To ensure the order is right.
     for (auto cit = getter.begin(); cit != getter.end(); ++cit) {
-      as_set.insert(std::make_pair((*cit).index, static_cast<int>(cit->prime)));
-    }
-    std::ostringstream os;
-    for (const auto cit : as_set) {
-      os << ',' << cit.first << ':' << cit.second;
+      set.insert(std::make_pair((*cit).index, static_cast<int>(cit->prime)));
     }
     EXPECT_EQ("1:2,2:3,3:5,4:7,5:11,6:13,7:17,9:19,10:23,11:29",
-              os.str().substr(1));
+              Join(Map(set, [](const std::pair<int, int>& e) {
+                         return Printf("%d:%d", e.first, e.second);
+                       }), ','));
       
     size_t c1 = 0u;
     size_t c2 = 0u;
@@ -413,21 +426,22 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("[2]=1,[3]=2,[5]*[7]=12", future.Go());
 }
   
+  int prime_index = 0;
+  const auto is_prime = [](int i) {
+    for (int j = 2; j * j <= i; ++j) {
+      if ((i % j) == 0) {
+        return false;
+      }
+    }
+    return true;
+  };
+  
 {
   // Fill in all the primes and traverse the matrix by rows and by cols.
-  api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto is_prime = [](int i) {
-      for (int j = 2; j * j <= i; ++j) {
-        if ((i % j) == 0) {
-          return false;
-        }
-      }
-      return true;
-    };
-    int index = 0;
+  api.Transaction([&prime_index, &is_prime](PrimesAPI::T_DATA data) {
     for (int p = 2; p <= 99; ++p) {
       if (is_prime(p)) {
-        data.Add(PrimeCell(p / 10, p % 10, ++index));
+        data.Add(PrimeCell(p / 10, p % 10, ++prime_index));
       }
     }
   });  // No need to wait, tests that use this data are right here.
@@ -435,25 +449,23 @@ HTTP(port).ResetAllHandlers();
   // Primes that start with `4`.
   EXPECT_EQ("41,43,47",
             api.Transaction([](PrimesAPI::T_DATA data) {
-              // TODO(dkorolev): In real life, the order can be off. -- D.K.
-              std::ostringstream os;
+              std::set<int> values;
               for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
-                os << ',' << (static_cast<int>(cit.row) * 10 +
+                values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
               }
-              return os.str().substr(1);
+              return Join(values, ',');
             }).Go());
    
   // Primes that end with `7`.
   EXPECT_EQ("7,17,37,47,67,97",
             api.Transaction([](PrimesAPI::T_DATA data) {
-              // TODO(dkorolev): In real life, the order can be off. -- D.K.
-              std::ostringstream os;
+              std::set<int> values;
               for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
-                os << ',' << (static_cast<int>(cit.row) * 10 +
+                values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
               }
-              return os.str().substr(1);
+              return Join(values, ',');
             }).Go());
   
   // Top-level per-row and per-column accessors.
@@ -461,48 +473,44 @@ HTTP(port).ResetAllHandlers();
     const auto accessor = Matrix<PrimeCell>::Accessor(data);
     EXPECT_EQ(10u, accessor.Rows().size());
     EXPECT_EQ(6u, accessor.Cols().size());  // 1, 2, 3, 5, 7 or 9, my captain.
-    std::string by_rows_keys;
-    std::string by_rows_values;
+    std::set<std::string> by_rows_keys;
+    std::set<std::string> by_rows_values;
     for (const auto cit : accessor.Rows()) {
-      by_rows_keys += Printf("[`%d`:%d]",
-                             static_cast<int>(cit.key()),
-                             static_cast<int>(cit.size()));
-      by_rows_values += "[";
-      bool first = true;
+      by_rows_keys.insert(Printf("[`%d`:%d]",
+                          static_cast<int>(cit.key()),
+                          static_cast<int>(cit.size())));
+      std::set<int> indexes;
       for (const auto cit2 : cit) {
-        by_rows_values += Printf("%s%d", first ? "" : ",", cit2.index);
-        first = false;
+        indexes.insert(cit2.index);
       }
-      by_rows_values += "]";
+      by_rows_values.insert("[" + Join(indexes, ',') + "]");
     }
     EXPECT_EQ(
       "[`0`:4][`1`:4][`2`:2][`3`:2][`4`:3]"
       "[`5`:2][`6`:2][`7`:3][`8`:2][`9`:1]",
-      by_rows_keys);
+      Join(by_rows_keys, ""));
     EXPECT_EQ(
-      "[1,2,3,4][5,6,7,8][9,10][11,12][13,14,15]"
-      "[16,17][18,19][20,21,22][23,24][25]",
-       by_rows_values);
+      "[1,2,3,4][11,12][13,14,15][16,17]"
+      "[18,19][20,21,22][23,24][25][5,6,7,8][9,10]",
+       Join(by_rows_values, ""));
   
-    std::string by_cols_keys;
-    std::string by_cols_values;
+    std::set<std::string> by_cols_keys;
+    std::set<std::string> by_cols_values;
     for (const auto cit : accessor.Cols()) {
-      by_cols_keys += Printf("(`%d`:%d)",
-                             static_cast<int>(cit.key()),
-                             static_cast<int>(cit.size()));
-      by_cols_values += "(";
-      bool first = true;
+      by_cols_keys.insert(Printf("(`%d`:%d)",
+                          static_cast<int>(cit.key()),
+                          static_cast<int>(cit.size())));
+      std::set<int> values;
       for (const auto cit2 : cit) {
-        by_cols_values += Printf("%s%d", first ? "" : ",", cit2.index);
-        first = false;
+        values.insert(cit2.index);
       }
-      by_cols_values += ")";
+      by_cols_values.insert("(" + Join(values, ',') + ")");
     }
     EXPECT_EQ("(`1`:5)(`2`:1)(`3`:7)(`5`:1)(`7`:6)(`9`:5)",
-              by_cols_keys);
-    EXPECT_EQ("(5,11,13,18,20)(1)(2,6,9,14,16,21,23)"
-              "(3)(4,7,12,15,19,25)(8,10,17,22,24)",
-              by_cols_values);
+              Join(by_cols_keys, ""));
+    EXPECT_EQ("(1)(2,6,9,14,16,21,23)(3)(4,7,12,15,19,25)"
+              "(5,11,13,18,20)(8,10,17,22,24)",
+              Join(by_cols_values, ""));
     
     const auto first_digit_one = static_cast<FIRST_DIGIT>(1);
     const auto second_digit_three = static_cast<SECOND_DIGIT>(3);
@@ -520,7 +528,51 @@ HTTP(port).ResetAllHandlers();
                  SubscriptException<PrimeCell>);
   }).Go();
 }
-   
+  
+{
+  // Confirm that the underlying storage is an `unordered_map<>`,
+  // not an `std::map<>`. To do so, add more prime numbers
+  // and verify that their internal order is not lexicographical.
+  api.Transaction([&prime_index, &is_prime](PrimesAPI::T_DATA data) {
+    for (int p = 100; p <= 999; ++p) {
+      if (is_prime(p)) {
+        data.Add(PrimeCell(p / 10, p % 10, ++prime_index));
+      }
+    }
+  }).Go();
+  EXPECT_EQ(168, prime_index);
+  
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto accessor = Matrix<PrimeCell>::Accessor(data);
+    // `Rows()` are now the set of all prime numbers
+    // with the last digit chopped off.
+    EXPECT_EQ(93u, accessor.Rows().size());
+    std::vector<int> vector;
+    std::set<int> set;
+    for (const auto cit : accessor.Rows()) {
+      // It's actually first one or two digits here.
+      const FIRST_DIGIT row = cit.key();
+      const int row_as_int = static_cast<int>(row);
+      vector.push_back(row_as_int);
+      set.insert(row_as_int);
+    }
+    EXPECT_EQ(93u, vector.size());
+    EXPECT_EQ(93u, set.size());
+    EXPECT_EQ("0,1,2,3,4,5,6,7,8,9,"
+              "10,11,12,13,14,15,16,17,18,19,"
+              "21,22,23,24,25,26,27,28,29,"     // No 20x.
+              "30,31,33,34,35,36,37,38,39,"     // No 32x.
+              "40,41,42,43,44,45,46,47,48,49,"
+              "50,52,54,55,56,57,58,59,"        // No 51x, 53x.
+              "60,61,63,64,65,66,67,68,69,"     // No 62x.
+              "70,71,72,73,74,75,76,77,78,79,"
+              "80,81,82,83,85,86,87,88,"        // No 84x, 89x.
+              "90,91,92,93,94,95,96,97,98,99",
+              Join(set, ','));
+    EXPECT_NE(Join(vector, ','), Join(set, ','));
+  }).Go();
+}
+  
 {
   // Confirm that the send parameter callback is `std::move()`-d
   // into the processing thread.
@@ -572,7 +624,7 @@ HTTP(port).ResetAllHandlers();
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":9,\"d2\":7,\"index\":25}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":99,\"d2\":7,\"index\":168}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif
