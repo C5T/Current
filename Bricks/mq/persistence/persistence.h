@@ -26,8 +26,8 @@ SOFTWARE.
 //                 I suggest we promote Yoda, MMQ (under a different name),
 //                 and Persistence (under a different name) to the top level directory.
 
-#ifndef BRICKS_MQ_INTERFACE_PERSISTENCE_H
-#define BRICKS_MQ_INTERFACE_PERSISTENCE_H
+#ifndef BRICKS_MQ_PERSISTENCE_PERSISTENCE_H
+#define BRICKS_MQ_PERSISTENCE_PERSISTENCE_H
 
 #include <atomic>
 #include <cassert>
@@ -149,4 +149,4 @@ class MemoryOnly {
 }  // namespace bricks::persistence
 }  // namespace bricks
 
-#endif  // BRICKS_MQ_INTERFACE_PERSISTENCE_H
+#endif  // BRICKS_MQ_PERSISTENCE_PERSISTENCE_H
