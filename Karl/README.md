@@ -239,8 +239,16 @@ A single instance per Karl.
 
 By default, muted alerts do not become pages, and non-muted ones are promoted to pages and sent to all DRIs. Paged alerts are then automatically muted by their { Service, Name }, any tags, for the next 15 minutes.
 
-The logic to take into consideration current muting configuration, alert severity, DRI configuration, account medias (e-mail, SMS, etc.), time of day, vacations, etc., is implemented as the Dispatcher.
+Dispatcher contains the more sophisticated logic that takes into consideration:
+* current muting configuration
+* alert severity
+* DRI configuration
+* alert delivery mediums (e-mail, SMS, etc.)
+* time of day
+* vacations calendar
+* etc.
 
+and makes the decision as per which alerts to promote to pages, and whom to deliver them using which mediums.
 
 ## Implementation
 
@@ -252,6 +260,6 @@ Everything is stored in Yoda, with a REST-ful browsing API for viewing current c
 
 `TODO(dkorolev): Discuss aggregation master-plan with Max.`
 
-For Claire binaries requiring extra time to start up or tear down, pass `karl::WarmupPeriod(FLAGS_warmup_period_ms)` and/or `karl::ShutdownPeriod(FLAGS_shutdown_period_ms)`. This will tell Claire to allow for more time before switching form graceful to non-graceful shutdown of an already running binary in case it is by design expected to take more than the default three seconds to start up or to tear down.
+For Claire binaries requiring extra time to start up or tear down, pass `karl::WarmupPeriod(FLAGS_warmup_period_ms)` and/or `karl::ShutdownPeriod(FLAGS_shutdown_period_ms)`. This will tell Claire to allow for more time before switching form graceful to non-graceful shutdown of an already running binary in case it is expected by design to take more than the default three seconds to start up or to tear down.
 
 The state can be changed programmatically from "StartingUp" to "Running" and from "Running" to "ShuttingDown". Use `CLAIRE_DECLARE_BINARY_RUNNING()` and `CLAIRE_DECLARE_BINARY_TERMINATING()` to change the state programmatically. Externally exposed state will also be used for load balancing.
