@@ -286,7 +286,7 @@ constexpr auto HasTerminateMethod(int) -> decltype(std::declval<T>().Terminate()
   return true;
 }
 
-template <typename T, bool>
+template <typename T, bool HAS_TERMINATE_METHOD>
 struct CallTerminateImpl {
   static bool DoIt(T) { return true; }
 };
