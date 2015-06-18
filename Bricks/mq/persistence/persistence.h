@@ -106,7 +106,7 @@ class Impl final : public T_PERSISTENCE_LAYER<E> {
     Cursor current;
 
     const size_t size_at_start = [this]() {
-      // LOCKED: Move the cursor forward.
+      // LOCKED: Get the number of entries before sending them to the listener.
       std::lock_guard<std::mutex> lock(mutex_);
       return list_.size();
     }();

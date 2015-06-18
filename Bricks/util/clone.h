@@ -33,7 +33,7 @@ namespace bricks {
 
 namespace impl {
 
-template <typename T, bool HAS_CLONEBY_REF, bool HAS_CLONE_BY_PTR, bool CAN_BE_COPIED>
+template <typename T, bool HAS_CLONE_BY_REF, bool HAS_CLONE_BY_PTR, bool CAN_BE_COPIED>
 struct DefaultCloneImpl {};
 
 template <typename T, bool HAS_CLONE_BY_PTR, bool CAN_BE_COPIED>
@@ -85,12 +85,12 @@ constexpr auto HasCloneByPtr(int) -> decltype(std::declval<const T&>() -> Clone(
 }
 
 template <typename T>
-constexpr bool CanBeCopied(char) {
+constexpr bool HasCopyConstructor(char) {
   return false;
 }
 
 template <typename T>
-constexpr auto CanBeCopied(int) -> decltype(T(std::declval<const T&>()), bool()) {
+constexpr auto HasCopyConstructor(int) -> decltype(T(std::declval<const T&>()), bool()) {
   return true;
 }
 
@@ -101,7 +101,7 @@ std::function<T(const T&)> DefaultCloneFunction() {
   return impl::DefaultCloneImpl<T,
                                 impl::HasCloneByRef<T>(0),
                                 impl::HasCloneByPtr<T>(0),
-                                impl::CanBeCopied<T>(0)>::CloneImpl();
+                                impl::HasCopyConstructor<T>(0)>::CloneImpl();
 }
 
 template <typename T>
