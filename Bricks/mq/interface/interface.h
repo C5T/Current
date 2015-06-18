@@ -296,7 +296,7 @@ struct CallTerminateImpl<T, true> {
   static decltype(std::declval<T>().Terminate()) DoIt(T&& ref) { return ref.Terminate(); }
 };
 
-template <typename T, bool>
+template <typename T, bool HAS_TERMINATE_METHOD>
 struct CallTerminateAndReturnBoolImpl {
   static bool DoIt(T&& ref) {
     return CallTerminateImpl<T, HasTerminateMethod<T>(0)>::DoIt(std::forward<T>(ref));
@@ -337,7 +337,7 @@ constexpr auto HasReplayDoneMethod(int) -> decltype(std::declval<T>().ReplayDone
   return true;
 }
 
-template <typename T, bool>
+template <typename T, bool HAS_REPLAY_DONE_METHOD>
 struct CallReplayDoneImpl {
   static void DoIt(T) {}
 };
