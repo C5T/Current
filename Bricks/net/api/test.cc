@@ -164,7 +164,7 @@ TEST(HTTPAPI, RespondsWithObject) {
 }
 
 struct GoodStuff {
-  void RespondViaHTTP(Request r) {
+  void RespondViaHTTP(Request r) const {
     r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
   }
 };
@@ -620,4 +620,44 @@ TEST(HTTPAPI, ServeDirOnlyServesFilesOfKnownMIMEType) {
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir),
                CannotServeStaticFilesOfUnknownMIMEType);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
+}
+
+TEST(HTTPAPI, ResponseSmokeTest) {
+  const auto send_response = [](const Response& response, Request request) { request(response); };
+
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/response1", [send_response](Request r) { send_response(Response("foo"), std::move(r)); });
+  HTTP(FLAGS_net_api_test_port).Register("/response2", [send_response](Request r) {
+    send_response(Response("bar", HTTPResponseCode.Accepted), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response3", [send_response](Request r) {
+    send_response(Response("baz", HTTPResponseCode.NotFound, "text/blah"), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response4", [send_response](Request r) {
+    send_response(Response(SerializableObject(), HTTPResponseCode.Accepted), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response5", [send_response](Request r) {
+    send_response(Response(SerializableObject(), "meh").Code(HTTPResponseCode.Created), std::move(r));
+  });
+
+  const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response1.code));
+  EXPECT_EQ("foo", response1.body);
+
+  const auto response2 = HTTP(GET(Printf("http://localhost:%d/response2", FLAGS_net_api_test_port)));
+  EXPECT_EQ(202, static_cast<int>(response2.code));
+  EXPECT_EQ("bar", response2.body);
+
+  const auto response3 = HTTP(GET(Printf("http://localhost:%d/response3", FLAGS_net_api_test_port)));
+  EXPECT_EQ(404, static_cast<int>(response3.code));
+  EXPECT_EQ("baz", response3.body);
+
+  const auto response4 = HTTP(GET(Printf("http://localhost:%d/response4", FLAGS_net_api_test_port)));
+  EXPECT_EQ(202, static_cast<int>(response4.code));
+  EXPECT_EQ("{\"value0\":{\"x\":42,\"s\":\"foo\"}}", response4.body);
+
+  const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", FLAGS_net_api_test_port)));
+  EXPECT_EQ(201, static_cast<int>(response5.code));
+  EXPECT_EQ("{\"meh\":{\"x\":42,\"s\":\"foo\"}}", response5.body);
 }
