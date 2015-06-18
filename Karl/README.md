@@ -243,12 +243,12 @@ Dispatcher contains the more sophisticated logic that takes into consideration:
 * current muting configuration
 * alert severity
 * DRI configuration
-* alert delivery mediums (e-mail, SMS, etc.)
+* alert delivery media (e-mail, SMS, etc.)
 * time of day
 * vacations calendar
 * etc.
 
-and makes the decision as per which alerts to promote to pages, and whom to deliver them using which mediums.
+and makes the decision as per which alerts to promote to pages, and whom to deliver them using which media.
 
 ## Implementation
 
