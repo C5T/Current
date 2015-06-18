@@ -90,7 +90,7 @@ struct Response {
   Construct(T&& object,
             HTTPResponseCodeValue code = HTTPResponseCode.OK,
             const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    this->body = cerealize::JSON(std::forward<T>(object));
+    this->body = cerealize::JSON(std::forward<T>(object)) + '\n';
     this->code = code;
     this->content_type = HTTPServerConnection::DefaultJSONContentType();
     this->extra_headers = extra_headers;
@@ -103,7 +103,7 @@ struct Response {
             const std::string& object_name,
             HTTPResponseCodeValue code = HTTPResponseCode.OK,
             const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
-    this->body = cerealize::JSON(std::forward<T>(object), object_name);
+    this->body = cerealize::JSON(std::forward<T>(object), object_name) + '\n';
     this->code = code;
     this->content_type = HTTPServerConnection::DefaultJSONContentType();
     this->extra_headers = extra_headers;
