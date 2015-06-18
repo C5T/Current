@@ -58,8 +58,8 @@ struct Response {
         content_type(HTTPServerConnection::DefaultContentType()),
         extra_headers(HTTPHeadersType()) {}
 
-  void operator=(const Response&) = delete;
-  void operator=(Response&&) = delete;
+  Response& operator=(const Response&) = default;
+  Response& operator=(Response&&) = default;
 
   template <typename... ARGS>
   Response(ARGS&&... args)
@@ -68,6 +68,7 @@ struct Response {
   }
 
   void Construct(const Response& rhs) {
+    initialized = rhs.initialized;
     body = rhs.body;
     code = rhs.code;
     content_type = rhs.content_type;
@@ -75,10 +76,20 @@ struct Response {
   }
 
   void Construct(Response&& rhs) {
+    initialized = rhs.initialized;
     body = std::move(rhs.body);
     code = rhs.code;
     content_type = rhs.content_type;
     extra_headers = rhs.extra_headers;
+  }
+
+  void Construct(HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                 const std::string& content_type = HTTPServerConnection::DefaultContentType(),
+                 const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+    this->body = "";
+    this->code = code;
+    this->content_type = content_type;
+    this->extra_headers = extra_headers;
   }
 
   template <typename T>

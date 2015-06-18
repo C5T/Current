@@ -647,6 +647,9 @@ TEST(HTTPAPI, ResponseSmokeTest) {
     send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK), std::move(r));
   });
   HTTP(FLAGS_net_api_test_port).Register("/response8", [send_response](Request r) {
+    send_response(Response(HTTPResponseCode.Created), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response9", [send_response](Request r) {
     send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
   });
 
@@ -679,6 +682,10 @@ TEST(HTTPAPI, ResponseSmokeTest) {
   EXPECT_EQ("{\"magic\":{\"x\":42,\"s\":\"foo\"}}\n", response7.body);
 
   const auto response8 = HTTP(GET(Printf("http://localhost:%d/response8", FLAGS_net_api_test_port)));
-  EXPECT_EQ(500, static_cast<int>(response8.code));
-  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response8.body);
+  EXPECT_EQ(201, static_cast<int>(response8.code));
+  EXPECT_EQ("", response8.body);
+
+  const auto response9 = HTTP(GET(Printf("http://localhost:%d/response9", FLAGS_net_api_test_port)));
+  EXPECT_EQ(500, static_cast<int>(response9.code));
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response9.body);
 }
