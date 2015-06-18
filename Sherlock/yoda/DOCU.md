@@ -319,10 +319,11 @@ api.Transaction([](PrimesAPI::T_DATA data) {
   data << PrimeCell(1, 7, 7);
   ASSERT_THROW(data << PrimeCell(1, 7, 7),
                CellAlreadyExistsException<PrimeCell>);
+  const auto key1 = std::make_tuple(Div10(1), Mod10(7));
+  EXPECT_EQ(7, getter[key1].index);
 
-  EXPECT_EQ(7, getter[std::make_tuple(Div10(1), Mod10(7))].index);
-
-  ASSERT_THROW(getter[std::make_tuple(Div10(0), Mod10(4))],
+  const auto key2 = std::make_tuple(Div10(0), Mod10(4));
+  ASSERT_THROW(getter[key2],
                CellNotFoundException<PrimeCell>);
 
   EXPECT_EQ(7, getter[Div10(1)][Mod10(7)].index);
