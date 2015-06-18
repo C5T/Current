@@ -39,28 +39,44 @@ SOFTWARE.
 
 #include "../interface/interface.h"
 
-#include "../../util/clone.h"
+#include "../../cerealize/cerealize.h"
 
 namespace bricks {
 namespace persistence {
 
-template <typename E>
-class MemoryOnly {
+namespace impl {
+
+template <template <class> class T_PERSISTENCE_LAYER, typename E>
+class Impl final : public T_PERSISTENCE_LAYER<E> {
+ private:
+  typedef T_PERSISTENCE_LAYER<E> PERSISTENCE_LAYER;
+
  public:
-  MemoryOnly() : clone_(DefaultCloneFunction<E>()) {}
-  MemoryOnly(const std::function<E(const E&)> clone) : clone_(clone) {}
+  template <typename... ARGS>
+  Impl(const std::function<E(const E&)> clone, ARGS&&... args)
+      : PERSISTENCE_LAYER(std::forward<ARGS>(args)...), clone_(clone) {
+    PERSISTENCE_LAYER::Replay([this](E&& e) { list_.push_back(std::move(e)); });
+  }
 
-  MemoryOnly(const MemoryOnly&) = delete;
+  Impl(const Impl&) = delete;
 
+  size_t Publish(const E& entry) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    PERSISTENCE_LAYER::Publish(entry);
+    list_.push_back(entry);
+    return list_.size() - 1;
+  }
   size_t Publish(E&& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
-    list_.push_back(std::forward<E>(entry));
+    PERSISTENCE_LAYER::Publish(static_cast<const E&>(entry));
+    list_.push_back(std::move(entry));
     return list_.size() - 1;
   }
   template <typename... ARGS>
   size_t Emplace(ARGS&&... args) {
     std::lock_guard<std::mutex> lock(mutex_);
     list_.emplace_back(std::forward<ARGS>(args)...);
+    PERSISTENCE_LAYER::Publish(list_.back());
     return list_.size() - 1;
   }
 
@@ -132,7 +148,7 @@ class MemoryOnly {
           return Cursor::Next(current, list_);
         }();
         if (next.at_end) {
-          // DIMA
+          // TODO(dkorolev): Wait for { `stop` || new data available } in a smart way.
           std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
       } while (next.at_end);
@@ -145,6 +161,43 @@ class MemoryOnly {
   std::mutex mutex_;
   const std::function<E(const E&)> clone_;
 };
+
+template <typename E>
+struct MemoryOnlyImpl {
+  void Replay(std::function<void(E&&)>) {}
+  void Publish(const E&) {}
+};
+
+template <typename E>
+class AppendToFileImpl {
+ protected:
+  AppendToFileImpl(const std::string& filename) : filename_(filename) {}
+
+  void Replay(std::function<void(E&&)> push) {
+    // TODO(dkorolev): Try/catch here?
+    assert(!appender_);
+    cerealize::CerealJSONFileParser<E> parser(filename_);
+    while (parser.Next(push)) {
+      ;
+    }
+    appender_ = make_unique<cerealize::CerealJSONFileAppender>(filename_);
+    assert(appender_);
+  }
+
+  void Publish(const E& e) { (*appender_) << e; }
+
+ private:
+  const std::string& filename_;
+  std::unique_ptr<cerealize::CerealJSONFileAppender> appender_;
+};
+
+}  // namespace bricks::persistence::impl
+
+template <typename E>
+using MemoryOnly = impl::Impl<impl::MemoryOnlyImpl, E>;
+
+template <typename E>
+using AppendToFile = impl::Impl<impl::AppendToFileImpl, E>;
 
 }  // namespace bricks::persistence
 }  // namespace bricks

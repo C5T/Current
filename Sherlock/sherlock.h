@@ -39,6 +39,7 @@ SOFTWARE.
 
 #include "pubsub.h"
 
+#include "../Bricks/util/clone.h"
 #include "../Bricks/mq/persistence/persistence.h"
 
 using bricks::persistence::MemoryOnly;

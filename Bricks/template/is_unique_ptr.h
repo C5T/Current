@@ -56,7 +56,6 @@ static_assert(std::is_same<int, typename is_unique_ptr<int>::underlying_type>::v
 static_assert(is_unique_ptr<std::unique_ptr<int>>::value, "");
 static_assert(std::is_same<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>::value, "");
 
-
 template <typename B, typename E>
 struct can_be_stored_in_unique_ptr {
   static constexpr bool value = false;

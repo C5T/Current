@@ -35,16 +35,32 @@ SOFTWARE.
 #include "../../strings/join.h"
 //#include "../../strings/printf.h"
 
+#include "../../util/clone.h"
+
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 using bricks::persistence::MemoryOnly;
+using bricks::persistence::AppendToFile;
+
+using bricks::DefaultCloneFunction;
 
 using bricks::FileSystem;
 using bricks::strings::Join;
 
 using bricks::mq::DispatchEntryByRValue;
+
+struct CerealizableString {
+  using CEREAL_BASE_TYPE = CerealizableString;
+  std::string s;
+  CerealizableString(const std::string& s = "") : s(s) {}
+  CerealizableString(const char* s) : s(s) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(s));
+  }
+};
 
 struct PersistenceTestListener {
   std::atomic_size_t seen;
@@ -53,11 +69,13 @@ struct PersistenceTestListener {
   std::vector<std::string> messages;
 
   PersistenceTestListener() : seen(0u), replay_done(false) {}
-  
+
   void operator()(const std::string& message) {
     messages.push_back(message);
     ++seen;
   }
+
+  void operator()(const CerealizableString& message) { operator()(message.s); }
 
   void ReplayDone() {
     messages.push_back("MARKER");
@@ -66,32 +84,118 @@ struct PersistenceTestListener {
 };
 
 TEST(PersistenceLayer, MemoryOnly) {
-  MemoryOnly<std::string> memory_only;
+  {
+    MemoryOnly<std::string> impl(DefaultCloneFunction<std::string>());
 
-  memory_only.Publish("foo");
-  memory_only.Publish("bar");
+    impl.Publish("foo");
+    impl.Publish("bar");
 
-  std::atomic_bool stop(false);
-  PersistenceTestListener test_listener;
-  std::thread t([&memory_only, &stop, &test_listener]() {
-    memory_only.SyncScanAllEntries(stop, test_listener);
-  });
+    std::atomic_bool stop(false);
+    PersistenceTestListener test_listener;
+    std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
-  while (!test_listener.replay_done) {
-    ;  // Spin lock.
+    while (!test_listener.replay_done) {
+      ;  // Spin lock.
+    }
+
+    impl.Publish("meh");
+
+    while (test_listener.seen < 3u) {
+      ;  // Spin lock.
+    }
+
+    stop = true;
+    t.join();
+
+    EXPECT_EQ(3u, test_listener.seen);
+    EXPECT_EQ("foo,bar,MARKER,meh", Join(test_listener.messages, ","));
   }
 
-  memory_only.Publish("meh");
+  {
+    // Obviously, no state is shared for `MemoryOnly` implementation.
+    // The data starts from ground zero.
+    MemoryOnly<std::string> impl(DefaultCloneFunction<std::string>());
 
-  while (test_listener.seen < 3u) {
-    ;  // Spin lock.
+    std::atomic_bool stop(false);
+    PersistenceTestListener test_listener;
+    std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
+
+    while (!test_listener.replay_done) {
+      ;  // Spin lock.
+    }
+
+    impl.Publish("blah");
+
+    while (test_listener.seen < 1u) {
+      ;  // Spin lock.
+    }
+
+    stop = true;
+    t.join();
+
+    EXPECT_EQ(1u, test_listener.seen);
+    EXPECT_EQ("MARKER,blah", Join(test_listener.messages, ","));
+  }
+}
+
+TEST(PersistenceLayer, AppendToFile) {
+  const std::string fn = FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
+  const auto file_remover = FileSystem::ScopedRmFile(fn);
+
+  {
+    AppendToFile<CerealizableString> impl(DefaultCloneFunction<CerealizableString>(), fn);
+
+    impl.Publish("foo");
+    impl.Publish("bar");
+
+    std::atomic_bool stop(false);
+    PersistenceTestListener test_listener;
+    std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
+
+    while (!test_listener.replay_done) {
+      ;  // Spin lock.
+    }
+
+    impl.Publish("meh");
+
+    while (test_listener.seen < 3u) {
+      ;  // Spin lock.
+    }
+
+    stop = true;
+    t.join();
+
+    EXPECT_EQ(3u, test_listener.seen);
+    EXPECT_EQ("foo,bar,MARKER,meh", Join(test_listener.messages, ","));
   }
 
-  stop = true;
-  t.join();
+  {
+    // Confirm that the data has been saved and can be replayed.
+    AppendToFile<CerealizableString> impl(DefaultCloneFunction<CerealizableString>(), fn);
 
-  EXPECT_EQ(3u, test_listener.seen);
-  EXPECT_EQ("foo,bar,MARKER,meh", Join(test_listener.messages, ","));
+    std::atomic_bool stop(false);
+    PersistenceTestListener test_listener;
+    std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
+
+    while (!test_listener.replay_done) {
+      ;  // Spin lock.
+    }
+
+    EXPECT_EQ("foo,bar,meh,MARKER", Join(test_listener.messages, ","));
+
+    impl.Publish("blah");
+
+    while (test_listener.seen < 4u) {
+      ;  // Spin lock.
+    }
+
+    stop = true;
+    t.join();
+
+    EXPECT_EQ(4u, test_listener.seen);
+    EXPECT_EQ("foo,bar,meh,MARKER,blah", Join(test_listener.messages, ","));
+  }
 }
 
 TEST(PersistenceLayer, RespectsCustomCloneFunction) {
@@ -101,25 +205,22 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   };
   struct A : BASE {
     std::string AsString() override { return "A"; }
-    std::unique_ptr<BASE> Clone() override {
-      return std::unique_ptr<BASE>(new A());
-    }
+    std::unique_ptr<BASE> Clone() override { return std::unique_ptr<BASE>(new A()); }
   };
   struct B : BASE {
     std::string AsString() override { return "B"; }
-    std::unique_ptr<BASE> Clone() override {
-      return std::unique_ptr<BASE>(new B());
-    }
+    std::unique_ptr<BASE> Clone() override { return std::unique_ptr<BASE>(new B()); }
   };
-  MemoryOnly<std::unique_ptr<BASE>> memory_only([](const std::unique_ptr<BASE>& input) { return input->Clone(); });
+  MemoryOnly<std::unique_ptr<BASE>> test_clone(
+      [](const std::unique_ptr<BASE>& input) { return input->Clone(); });
 
-  memory_only.Publish(make_unique<A>());
-  memory_only.Publish(make_unique<B>());
+  test_clone.Publish(make_unique<A>());
+  test_clone.Publish(make_unique<B>());
 
   std::vector<std::string> results;
   size_t counter = 0u;
   std::atomic_bool stop(false);
-  memory_only.SyncScanAllEntries(stop, [&results, &counter](std::unique_ptr<BASE>&& e) {
+  test_clone.SyncScanAllEntries(stop, [&results, &counter](std::unique_ptr<BASE>&& e) {
     results.push_back(e->AsString());
     ++counter;
     return counter < 2u;
@@ -128,13 +229,3 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   EXPECT_EQ(2u, counter);
   EXPECT_EQ("A,B", Join(results, ","));
 }
-
-/*
-    FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
-      const auto file_remover = FileSystem::ScopedRmFile(fn);
-    const std::string fn1 = FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "one");
-    const std::string fn2 = FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "two");
-
-    FileSystem::RmFile(fn1, FileSystem::RmFileParameters::Silent);
-    EXPECT_EQ(5, 2 * 2);
-*/

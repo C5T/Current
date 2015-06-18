@@ -204,7 +204,7 @@ class CerealBinaryFileParser {
     if (fi_.peek() != std::char_traits<char>::eof()) {  // This is safe with any next byte in file.
       std::unique_ptr<T_ENTRY> entry;
       si_(entry);
-      processor(*entry.get());
+      processor(std::move(*entry.get()));
       return true;
     } else {
       return false;
@@ -256,7 +256,7 @@ class CerealJSONFileParser {
   bool Next(T_PROCESSOR&& processor) {
     std::unique_ptr<T_ENTRY> entry(GetNextEntry());
     if (entry) {
-      processor(*entry.get());
+      processor(std::move(*entry.get()));
       return true;
     } else {
       return false;

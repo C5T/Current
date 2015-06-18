@@ -317,8 +317,9 @@ template <typename T>
 bool CallTerminate(T&& ref) {
   return impl::CallTerminateAndReturnBoolImpl<
       T,
-      std::is_same<void, decltype(impl::CallTerminateImpl<T, impl::HasTerminateMethod<T>(0)>::DoIt(std::declval<T>()))>::
-          value>::DoIt(std::forward<T>(ref));
+      std::is_same<void,
+                   decltype(impl::CallTerminateImpl<T, impl::HasTerminateMethod<T>(0)>::DoIt(
+                       std::declval<T>()))>::value>::DoIt(std::forward<T>(ref));
 }
 
 // === `ReplayDone()` ===
@@ -352,7 +353,6 @@ template <typename T>
 void CallReplayDone(T&& ref) {
   impl::CallReplayDoneImpl<T, impl::HasReplayDoneMethod<T>(0)>::DoIt(std::forward<T>(ref));
 }
-
 
 }  // namespace bricks::mq
 }  // namespace bricks
