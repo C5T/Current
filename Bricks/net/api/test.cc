@@ -640,6 +640,15 @@ TEST(HTTPAPI, ResponseSmokeTest) {
   HTTP(FLAGS_net_api_test_port).Register("/response5", [send_response](Request r) {
     send_response(Response(SerializableObject(), "meh").Code(HTTPResponseCode.Created), std::move(r));
   });
+  HTTP(FLAGS_net_api_test_port).Register("/response6", [send_response](Request r) {
+    send_response(Response().Body("OK").Code(HTTPResponseCode.OK), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response7", [send_response](Request r) {
+    send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response8", [send_response](Request r) {
+    send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
+  });
 
   const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", FLAGS_net_api_test_port)));
   EXPECT_EQ(200, static_cast<int>(response1.code));
@@ -660,4 +669,16 @@ TEST(HTTPAPI, ResponseSmokeTest) {
   const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", FLAGS_net_api_test_port)));
   EXPECT_EQ(201, static_cast<int>(response5.code));
   EXPECT_EQ("{\"meh\":{\"x\":42,\"s\":\"foo\"}}\n", response5.body);
+
+  const auto response6 = HTTP(GET(Printf("http://localhost:%d/response6", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response6.code));
+  EXPECT_EQ("OK", response6.body);
+
+  const auto response7 = HTTP(GET(Printf("http://localhost:%d/response7", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response7.code));
+  EXPECT_EQ("{\"magic\":{\"x\":42,\"s\":\"foo\"}}\n", response7.body);
+
+  const auto response8 = HTTP(GET(Printf("http://localhost:%d/response8", FLAGS_net_api_test_port)));
+  EXPECT_EQ(500, static_cast<int>(response8.code));
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response8.body);
 }

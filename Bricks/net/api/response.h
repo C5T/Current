@@ -31,6 +31,8 @@ SOFTWARE.
 
 #include "request.h"
 
+#include "../exceptions.h"
+
 #include "../http/http.h"
 #include "../../strings/is_string_type.h"
 #include "../../cerealize/cerealize.h"
@@ -43,17 +45,25 @@ static_assert(strings::is_string_type<const char*>::value, "");
 static_assert(!strings::is_string_type<int>::value, "");
 
 struct Response {
+  bool initialized = false;
+
   std::string body;
   HTTPResponseCodeValue code;
   std::string content_type;
   HTTPHeadersType extra_headers;
 
-  Response() = delete;
+  Response()
+      : body(""),
+        code(HTTPResponseCode.OK),
+        content_type(HTTPServerConnection::DefaultContentType()),
+        extra_headers(HTTPHeadersType()) {}
+
   void operator=(const Response&) = delete;
   void operator=(Response&&) = delete;
 
   template <typename... ARGS>
-  Response(ARGS&&... args) {
+  Response(ARGS&&... args)
+      : initialized(true) {
     Construct(std::forward<ARGS>(args)...);
   }
 
@@ -111,42 +121,54 @@ struct Response {
 
   Response& Body(const std::string& s) {
     body = s;
+    initialized = true;
     return *this;
   }
 
   template <typename T>
   Response& JSON(const T& object) {
-    body = cerealize::JSON(object);
+    body = cerealize::JSON(object) + '\n';
     content_type = HTTPServerConnection::DefaultJSONContentType();
+    initialized = true;
     return *this;
   }
 
   template <typename T>
   Response& JSON(const T& object, const std::string& object_name) {
-    body = cerealize::JSON(object, object_name);
+    body = cerealize::JSON(object, object_name) + '\n';
     content_type = HTTPServerConnection::DefaultJSONContentType();
+    initialized = true;
     return *this;
   }
 
   Response& Code(HTTPResponseCodeValue c) {
     code = c;
+    initialized = true;
     return *this;
   }
 
   Response& ContentType(const std::string& s) {
     content_type = s;
+    initialized = true;
     return *this;
   }
 
   Response& Headers(const HTTPHeadersType& h) {
     extra_headers = h;
+    initialized = true;
     return *this;
   }
 
-  void RespondViaHTTP(Request r) const { r(body, code, content_type, extra_headers); }
+  void RespondViaHTTP(Request r) const {
+    if (initialized) {
+      r(body, code, content_type, extra_headers);
+    }
+    // Else, a 500 "INTERNAL SERVER ERROR" will be returned, since `Request`
+    // has not been served upon destructing at the exit from this method.
+  }
 };
 
-static_assert(Request::HasRespondViaHTTP<Response>::value, "");
+static_assert(HasRespondViaHTTP<Response>(0), "");
 
 }  // namespace api
 }  // namespace net

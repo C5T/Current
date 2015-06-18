@@ -35,6 +35,17 @@ namespace bricks {
 namespace net {
 namespace api {
 
+template <typename T>
+constexpr static bool HasRespondViaHTTP(char) {
+  return false;
+}
+
+template <typename T>
+constexpr static auto HasRespondViaHTTP(int)
+    -> decltype(std::declval<T>().RespondViaHTTP(std::declval<struct Request>()), bool()) {
+  return true;
+}
+
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
   std::unique_ptr<HTTPServerConnection> unique_connection;
@@ -67,20 +78,7 @@ struct Request final {
 
   // Support objects with user-defined HTTP response handlers.
   template <typename T>
-  struct HasRespondViaHTTP {
-    typedef char one;
-    typedef long two;
-
-    template <typename C>
-    static one test(decltype(&C::RespondViaHTTP));
-    template <typename C>
-    static two test(...);
-
-    constexpr static bool value = (sizeof(test<T>(0)) == sizeof(one));
-  };
-
-  template <typename T>
-  inline typename std::enable_if<HasRespondViaHTTP<bricks::decay<T>>::value>::type operator()(
+  inline typename std::enable_if<HasRespondViaHTTP<bricks::decay<T>>(0)>::type operator()(
       T&& that_dude_over_there) {
     that_dude_over_there.RespondViaHTTP(std::move(*this));
   }
@@ -95,7 +93,6 @@ struct Request final {
     return connection.SendChunkedHTTPResponse();
   }
 
-  Request() = delete;
   Request(const Request&) = delete;
   void operator=(const Request&) = delete;
   void operator=(Request&&) = delete;
