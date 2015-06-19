@@ -64,7 +64,7 @@ struct can_be_stored_in_unique_ptr {
 // Note: No custom deleters here [yet]. TODO(dkorolev): Make sure they are here as we need them.
 template <typename B, typename E>
 struct can_be_stored_in_unique_ptr<std::unique_ptr<B>, E> {
-  static constexpr bool value = std::is_same<B, E>::value || std::is_base_of<B, E>::value;
+  static constexpr bool value = std::is_base_of<B, E>::value;
 };
 
 namespace selftest {
