@@ -38,8 +38,6 @@ SOFTWARE.
 #include "../types.h"
 
 namespace blocks {
-namespace net {
-namespace api {
 
 struct HTTPClientApple {
   std::string url_requested = "";
@@ -53,7 +51,7 @@ struct HTTPClientApple {
   std::string content_type = "";
   std::string user_agent = "";
   bool request_succeeded = false;
-  WaitableAtomic<bool> async_request_completed;
+  bricks::WaitableAtomic<bool> async_request_completed;
 
   inline bool Go();
 };
@@ -142,8 +140,6 @@ struct ImplWrapper<HTTPClientApple> {
   }
 };
 
-}  // namespace api
-}  // namespace net
 }  // namespace blocks
 
 #include "apple_client.mm"

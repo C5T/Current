@@ -48,7 +48,7 @@ SOFTWARE.
 
 #define TIMEOUT_IN_SECONDS 30.0
 
-bool bricks::net::api::HTTPClientApple::Go() {
+bool blocks::HTTPClientApple::Go() {
   @autoreleasepool {
 
     NSMutableURLRequest * request = [NSMutableURLRequest requestWithURL:
