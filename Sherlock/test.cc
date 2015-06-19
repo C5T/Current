@@ -31,7 +31,8 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 
-#include "../Bricks/strings/util.h"
+#include "../Bricks/strings/printf.h"
+#include "../Bricks/strings/join.h"
 #include "../Bricks/cerealize/cerealize.h"
 #include "../Bricks/net/api/api.h"
 #include "../Bricks/time/chrono.h"
@@ -48,6 +49,7 @@ using std::thread;
 using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
+using bricks::strings::Join;
 using bricks::strings::Printf;
 using bricks::strings::ToString;
 

@@ -184,4 +184,13 @@ struct Deletable {};
 
 }  // namespace yoda
 
+#if 0
+// TODO(dkorolev): Fix this and make it clean.
+// Disambiguate serialization of `yoda::Parawan`.
+namespace cereal {
+template <class A>
+struct specialize<A, yoda::Padawan, cereal::specialization::member_serialize> {};
+}  // namespace cereal
+#endif
+
 #endif  // SHERLOCK_YODA_TYPES_H

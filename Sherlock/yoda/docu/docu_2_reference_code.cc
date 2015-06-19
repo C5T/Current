@@ -66,10 +66,31 @@ for (const auto& cit : container) { result.push_back(function(cit)); }
 return result;
 }
 
-  // Unique types for keys.
-  enum class PRIME : int {};
-  enum class FIRST_DIGIT : int {};
-  enum class SECOND_DIGIT : int {};
+  // Explicitly declare { `PRIME`, `Div10` and `Mod10` }
+  // types as different. This enables a bit more Yoda magic.
+  using PRIME = int;
+  
+  struct Div10 {
+    int div10;
+    Div10(int div10 = 0) : div10(div10) {}
+    operator int() const { return div10; }
+    size_t Hash() const { return div10; }
+    template<typename A>
+    void serialize(A& ar) {
+      ar(CEREAL_NVP(div10));
+    }
+  };
+    
+  struct Mod10 {
+    int mod10;
+    Mod10(int mod10 = 0) : mod10(mod10) {}
+    operator int() const { return mod10; }
+    size_t Hash() const { return mod10; }
+    template<typename A>
+    void serialize(A& ar) {
+      ar(CEREAL_NVP(mod10));
+    }
+  };
   
   // Serializable class `Prime`.
   struct Prime : Padawan {
@@ -88,25 +109,24 @@ return result;
       // if the `prime` field is called `key`.
       return prime;
     }
-  
+
     template <typename A>
     void serialize(A& ar) {
       Padawan::serialize(ar);
-      ar(cereal::make_nvp("prime", reinterpret_cast<int&>(prime)),
-         CEREAL_NVP(index));
+      ar(CEREAL_NVP(prime), CEREAL_NVP(index));
     }
   };
   CEREAL_REGISTER_TYPE(Prime);
   
   // Serializable class `PrimeCell`.
   struct PrimeCell : Padawan {
-    FIRST_DIGIT row;
-    SECOND_DIGIT col;
+    Div10 row;
+    Mod10 col;
     int index;
   
     PrimeCell(const int a = 0, const int b = 0, const int index = 0)
-      : row(static_cast<FIRST_DIGIT>(a)),
-        col(static_cast<SECOND_DIGIT>(b)),
+      : row(Div10(a)),
+        col(Mod10(b)),
         index(index) {
     }
   
@@ -115,9 +135,7 @@ return result;
     template <typename A>
     void serialize(A& ar) {
       Padawan::serialize(ar);
-      ar(cereal::make_nvp("d1", reinterpret_cast<int&>(row)),
-         cereal::make_nvp("d2", reinterpret_cast<int&>(col)),
-         CEREAL_NVP(index));
+      ar(CEREAL_NVP(row), CEREAL_NVP(col), CEREAL_NVP(index));
     }
   };
   CEREAL_REGISTER_TYPE(PrimeCell);
@@ -145,7 +163,6 @@ HTTP(port).ResetAllHandlers();
               Dictionary<Prime>,
               Matrix<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
-  
   // Simple dictionary usecase, and a unit test for type system implementation.
   api.Add(StringIntTuple("two", 2));
   api.Add(static_cast<const StringIntTuple&>(StringIntTuple("three", 3)));
@@ -342,11 +359,10 @@ HTTP(port).ResetAllHandlers();
   api.Add(PrimeCell(0, 2, 1));  // Overwrite.
   api.Add(PrimeCell(0, 3, 2));
   
-  const EntryWrapper<PrimeCell> e2 =
-    api.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go();
+  const EntryWrapper<PrimeCell> e2 = api.Get(Div10(0), Mod10(2)).Go();
   const bool b2 = e2;
   ASSERT_TRUE(b2);
-  ASSERT_TRUE(api.Has(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(2)).Go());
+  ASSERT_TRUE(api.Has(Div10(0), Mod10(2)).Go());
   const PrimeCell p2 = e2;
   EXPECT_EQ(0, static_cast<int>(p2.row));
   EXPECT_EQ(2, static_cast<int>(p2.col));
@@ -356,21 +372,19 @@ HTTP(port).ResetAllHandlers();
     const auto getter = Matrix<PrimeCell>::Accessor(data);
     auto adder = Matrix<PrimeCell>::Mutator(data);
   
-    const EntryWrapper<PrimeCell> e3 =
-      getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3));
+    const EntryWrapper<PrimeCell> e3 = getter.Get(Div10(0), Mod10(3));
     const bool b3 = e3;
     ASSERT_TRUE(b3);
-    ASSERT_TRUE(getter.Has(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(3)));
+    ASSERT_TRUE(getter.Has(Div10(0), Mod10(3)));
     const PrimeCell p3 = e3;
     EXPECT_EQ(0, static_cast<int>(p3.row));
     EXPECT_EQ(3, static_cast<int>(p3.col));
     EXPECT_EQ(2, p3.index);
   
-    const EntryWrapper<PrimeCell> e4 =
-      getter.Get(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4));
+    const EntryWrapper<PrimeCell> e4 = getter.Get(Div10(0), Mod10(4));
     const bool b4 = e4;
     ASSERT_FALSE(b4);
-    ASSERT_FALSE(getter.Has(static_cast<FIRST_DIGIT>(0), static_cast<SECOND_DIGIT>(4)));
+    ASSERT_FALSE(getter.Has(Div10(0), Mod10(4)));
     ASSERT_THROW(static_cast<void>(static_cast<const PrimeCell&>(e4)),
                  NonexistentEntryAccessed);
   
@@ -383,31 +397,25 @@ HTTP(port).ResetAllHandlers();
     data << PrimeCell(1, 7, 7);
     ASSERT_THROW(data << PrimeCell(1, 7, 7),
                  CellAlreadyExistsException<PrimeCell>);
+
+    const auto key1 = std::make_tuple(Div10(1), Mod10(7));
+    EXPECT_EQ(7, getter[key1].index);
   
-    EXPECT_EQ(7, getter[std::make_tuple(static_cast<FIRST_DIGIT>(1),
-                                        static_cast<SECOND_DIGIT>(7))].index);
-  
-    ASSERT_THROW(getter[std::make_tuple(static_cast<FIRST_DIGIT>(0),
-                                        static_cast<SECOND_DIGIT>(4))],
+    const auto key2 = std::make_tuple(Div10(0), Mod10(4));
+    ASSERT_THROW(getter[key2],
                  CellNotFoundException<PrimeCell>);
   
-    EXPECT_EQ(7, getter[static_cast<FIRST_DIGIT>(1)]
-                       [static_cast<SECOND_DIGIT>(7)].index);
+    EXPECT_EQ(7, getter[Div10(1)][Mod10(7)].index);
   
-    EXPECT_EQ(7, getter[static_cast<SECOND_DIGIT>(7)]
-                       [static_cast<FIRST_DIGIT>(1)].index);
+    EXPECT_EQ(7, getter[Mod10(7)][Div10(1)].index);
   
-    EXPECT_EQ(7, adder[static_cast<FIRST_DIGIT>(1)]
-                      [static_cast<SECOND_DIGIT>(7)].index);
+    EXPECT_EQ(7, adder[Div10(1)][Mod10(7)].index);
   
-    EXPECT_EQ(7, adder[static_cast<SECOND_DIGIT>(7)]
-                      [static_cast<FIRST_DIGIT>(1)].index);
+    EXPECT_EQ(7, adder[Mod10(7)][Div10(1)].index);
   
-    EXPECT_EQ(7, data[static_cast<FIRST_DIGIT>(1)]
-                     [static_cast<SECOND_DIGIT>(7)].index);
+    EXPECT_EQ(7, data[Div10(1)][Mod10(7)].index);
   
-    EXPECT_EQ(7, data[static_cast<SECOND_DIGIT>(7)]
-                     [static_cast<FIRST_DIGIT>(1)].index);
+    EXPECT_EQ(7, data[Mod10(7)][Div10(1)].index);
   }).Wait();
 }
     
@@ -450,7 +458,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("41,43,47",
             api.Transaction([](PrimesAPI::T_DATA data) {
               std::set<int> values;
-              for (const auto cit : data[static_cast<FIRST_DIGIT>(4)]) {
+              for (const auto cit : data[static_cast<Div10>(4)]) {
                 values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
               }
@@ -461,7 +469,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("7,17,37,47,67,97",
             api.Transaction([](PrimesAPI::T_DATA data) {
               std::set<int> values;
-              for (const auto cit : data[static_cast<SECOND_DIGIT>(7)]) {
+              for (const auto cit : data[Mod10(7)]) {
                 values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
               }
@@ -512,10 +520,10 @@ HTTP(port).ResetAllHandlers();
               "(5,11,13,18,20)(8,10,17,22,24)",
               Join(by_cols_values, ""));
     
-    const auto first_digit_one = static_cast<FIRST_DIGIT>(1);
-    const auto second_digit_three = static_cast<SECOND_DIGIT>(3);
-    const auto first_digit_off = static_cast<FIRST_DIGIT>(100);
-    const auto second_digit_off = static_cast<SECOND_DIGIT>(100);
+    const auto first_digit_one = Div10(1);
+    const auto second_digit_three = Mod10(3);
+    const auto first_digit_off = Div10(100);
+    const auto second_digit_off = Mod10(100);
     EXPECT_EQ(6, accessor.Rows()[first_digit_one][second_digit_three].index);
     EXPECT_EQ(6, accessor.Cols()[second_digit_three][first_digit_one].index);
     ASSERT_THROW(accessor.Rows()[first_digit_off],
@@ -551,7 +559,7 @@ HTTP(port).ResetAllHandlers();
     std::set<int> set;
     for (const auto cit : accessor.Rows()) {
       // It's actually first one or two digits here.
-      const FIRST_DIGIT row = cit.key();
+      const Div10 row = cit.key();
       const int row_as_int = static_cast<int>(row);
       vector.push_back(row_as_int);
       set.insert(row_as_int);
@@ -589,21 +597,23 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", response_composite.body);
   
   HTTP(port).Register("/matrix_entry_1", [&api](Request request) {
-    const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
-    const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
+    const auto a = Div10(FromString<int>(request.url.query["a"]));
+    const auto b = Mod10(FromString<int>(request.url.query["b"]));
     api.GetWithNext(std::tie(a, b), std::move(request));
   });
   HTTP(port).Register("/matrix_entry_2", [&api](Request request) {
-    const auto a = static_cast<FIRST_DIGIT>(FromString<int>(request.url.query["a"]));
-    const auto b = static_cast<SECOND_DIGIT>(FromString<int>(request.url.query["b"]));
+    const auto a = Div10(FromString<int>(request.url.query["a"]));
+    const auto b = Mod10(FromString<int>(request.url.query["b"]));
     api.GetWithNext(a, b, std::move(request));
   });
   auto cell_prime_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=3", port)));
   EXPECT_EQ(200, static_cast<int>(cell_prime_1.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_1.body);
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
+            cell_prime_1.body);
   auto cell_prime_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=3", port)));
   EXPECT_EQ(200, static_cast<int>(cell_prime_2.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"d1\":0,\"d2\":3,\"index\":2}}\n", cell_prime_2.body);
+  EXPECT_EQ("{\"entry\":{\"ms\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
+            cell_prime_2.body);
   auto cell_composite_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=4", port)));
   EXPECT_EQ(404, static_cast<int>(cell_composite_1.code));
   EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite_1.body);
@@ -624,7 +634,7 @@ HTTP(port).ResetAllHandlers();
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"d1\":99,\"d2\":7,\"index\":168}}}}\n",
+"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif
