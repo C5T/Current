@@ -36,6 +36,7 @@ SOFTWARE.
 #include <iostream>  // TODO(dkorolev): More robust logging here.
 
 #include "../types.h"
+#include "../request.h"
 
 #include "../../exceptions.h"
 #include "../../http/http.h"
@@ -54,71 +55,6 @@ struct HandlerAlreadyExistsException : HTTPException {
 
 struct HandlerDoesNotExistException : HTTPException {
   explicit HandlerDoesNotExistException(const std::string& what) { SetWhat(what); }
-};
-
-// The only parameter to be passed to HTTP handlers.
-struct Request final {
-  std::unique_ptr<HTTPServerConnection> unique_connection;
-
-  HTTPServerConnection& connection;
-  const HTTPRequestData& http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
-  const url::URL& url;
-  const std::string method;
-  const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
-  const bricks::time::EPOCH_MILLISECONDS timestamp;
-
-  explicit Request(std::unique_ptr<HTTPServerConnection>&& connection)
-      : unique_connection(std::move(connection)),
-        connection(*unique_connection.get()),
-        http_data(unique_connection->HTTPRequest()),
-        url(http_data.URL()),
-        method(http_data.Method()),
-        body(http_data.Body()),
-        timestamp(bricks::time::Now()) {}
-
-  // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
-  Request(Request&& rhs)
-      : unique_connection(std::move(rhs.unique_connection)),
-        connection(*unique_connection.get()),
-        http_data(unique_connection->HTTPRequest()),
-        url(http_data.URL()),
-        method(http_data.Method()),
-        body(http_data.Body()),
-        timestamp(rhs.timestamp) {}
-
-  // Support objects with user-defined HTTP response handlers.
-  template <typename T>
-  struct HasRespondViaHTTP {
-    typedef char one;
-    typedef long two;
-
-    template <typename C>
-    static one test(decltype(&C::RespondViaHTTP));
-    template <typename C>
-    static two test(...);
-
-    constexpr static bool value = (sizeof(test<T>(0)) == sizeof(one));
-  };
-
-  template <typename T>
-  inline typename std::enable_if<HasRespondViaHTTP<T>::value>::type operator()(T&& that_dude_over_there) {
-    that_dude_over_there.RespondViaHTTP(std::move(*this));
-  }
-
-  // A shortcut to allow `[](Request r) { r("OK"); }` instead of `r.connection.SendHTTPResponse("OK")`.
-  template <typename... TS>
-  void operator()(TS&&... params) {
-    connection.SendHTTPResponse(std::forward<TS>(params)...);
-  }
-
-  HTTPServerConnection::ChunkedResponseSender SendChunkedResponse() {
-    return connection.SendChunkedHTTPResponse();
-  }
-
-  Request() = delete;
-  Request(const Request&) = delete;
-  void operator=(const Request&) = delete;
-  void operator=(Request&&) = delete;
 };
 
 // Helper to serve a static file.

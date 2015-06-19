@@ -164,7 +164,7 @@ TEST(HTTPAPI, RespondsWithObject) {
 }
 
 struct GoodStuff {
-  void RespondViaHTTP(Request r) {
+  void RespondViaHTTP(Request r) const {
     r("Good stuff.", HTTPResponseCode(762));  // https://github.com/joho/7XX-rfc
   }
 };
@@ -620,4 +620,72 @@ TEST(HTTPAPI, ServeDirOnlyServesFilesOfKnownMIMEType) {
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).ServeStaticFilesFrom(dir),
                CannotServeStaticFilesOfUnknownMIMEType);
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
+}
+
+TEST(HTTPAPI, ResponseSmokeTest) {
+  const auto send_response = [](const Response& response, Request request) { request(response); };
+
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/response1", [send_response](Request r) { send_response(Response("foo"), std::move(r)); });
+  HTTP(FLAGS_net_api_test_port).Register("/response2", [send_response](Request r) {
+    send_response(Response("bar", HTTPResponseCode.Accepted), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response3", [send_response](Request r) {
+    send_response(Response("baz", HTTPResponseCode.NotFound, "text/blah"), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response4", [send_response](Request r) {
+    send_response(Response(SerializableObject(), HTTPResponseCode.Accepted), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response5", [send_response](Request r) {
+    send_response(Response(SerializableObject(), "meh").Code(HTTPResponseCode.Created), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response6", [send_response](Request r) {
+    send_response(Response().Body("OK").Code(HTTPResponseCode.OK), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response7", [send_response](Request r) {
+    send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response8", [send_response](Request r) {
+    send_response(Response(HTTPResponseCode.Created), std::move(r));
+  });
+  HTTP(FLAGS_net_api_test_port).Register("/response9", [send_response](Request r) {
+    send_response(Response(), std::move(r));  // Will result in a 500 "INTERNAL SERVER ERROR".
+  });
+
+  const auto response1 = HTTP(GET(Printf("http://localhost:%d/response1", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response1.code));
+  EXPECT_EQ("foo", response1.body);
+
+  const auto response2 = HTTP(GET(Printf("http://localhost:%d/response2", FLAGS_net_api_test_port)));
+  EXPECT_EQ(202, static_cast<int>(response2.code));
+  EXPECT_EQ("bar", response2.body);
+
+  const auto response3 = HTTP(GET(Printf("http://localhost:%d/response3", FLAGS_net_api_test_port)));
+  EXPECT_EQ(404, static_cast<int>(response3.code));
+  EXPECT_EQ("baz", response3.body);
+
+  const auto response4 = HTTP(GET(Printf("http://localhost:%d/response4", FLAGS_net_api_test_port)));
+  EXPECT_EQ(202, static_cast<int>(response4.code));
+  EXPECT_EQ("{\"value0\":{\"x\":42,\"s\":\"foo\"}}\n", response4.body);
+
+  const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", FLAGS_net_api_test_port)));
+  EXPECT_EQ(201, static_cast<int>(response5.code));
+  EXPECT_EQ("{\"meh\":{\"x\":42,\"s\":\"foo\"}}\n", response5.body);
+
+  const auto response6 = HTTP(GET(Printf("http://localhost:%d/response6", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response6.code));
+  EXPECT_EQ("OK", response6.body);
+
+  const auto response7 = HTTP(GET(Printf("http://localhost:%d/response7", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response7.code));
+  EXPECT_EQ("{\"magic\":{\"x\":42,\"s\":\"foo\"}}\n", response7.body);
+
+  const auto response8 = HTTP(GET(Printf("http://localhost:%d/response8", FLAGS_net_api_test_port)));
+  EXPECT_EQ(201, static_cast<int>(response8.code));
+  EXPECT_EQ("", response8.body);
+
+  const auto response9 = HTTP(GET(Printf("http://localhost:%d/response9", FLAGS_net_api_test_port)));
+  EXPECT_EQ(500, static_cast<int>(response9.code));
+  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response9.body);
 }

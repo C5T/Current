@@ -42,7 +42,6 @@ SOFTWARE.
 
 #include "../../../strings/util.h"
 #include "../../../cerealize/cerealize.h"
-#include "../../../template/decay.h"
 
 namespace bricks {
 namespace net {
@@ -405,7 +404,7 @@ class HTTPServerConnection final {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
-  inline typename std::enable_if<sizeof(typename rmref<T>::value_type) == 1>::type SendHTTPResponse(
+  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
       T&& container,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
@@ -478,7 +477,7 @@ class HTTPServerConnection final {
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
       template <typename T>
-      inline typename std::enable_if<sizeof(typename rmref<T>::value_type) == 1>::type Send(T&& data) {
+      inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type Send(T&& data) {
         SendImpl(std::forward<T>(data));
       }
 

@@ -48,6 +48,8 @@ SOFTWARE.
 #ifndef BRICKS_NET_API_API_H
 #define BRICKS_NET_API_API_H
 
+#include "request.h"
+#include "response.h"
 #include "types.h"
 
 #include "../../port.h"
@@ -86,5 +88,7 @@ inline typename weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... params) {
 }  // namespace bricks
 
 using bricks::net::api::HTTP;
+using bricks::net::api::Request;
+using bricks::net::api::Response;
 
 #endif  // BRICKS_NET_API_API_H
