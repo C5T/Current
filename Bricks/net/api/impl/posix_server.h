@@ -121,6 +121,143 @@ struct Request final {
   void operator=(Request&&) = delete;
 };
 
+// A `Response` added here to test CTFO_BE.
+// Friendly reminder: This branch is not to be merged.
+struct Response {
+  bool initialized = false;
+
+  std::string body;
+  bricks::net::HTTPResponseCodeValue code;
+  std::string content_type;
+  bricks::net::HTTPHeadersType extra_headers;
+
+  Response()
+      : body(""),
+        code(HTTPResponseCode.OK),
+        content_type(bricks::net::HTTPServerConnection::DefaultContentType()),
+        extra_headers(bricks::net::HTTPHeadersType()) {}
+
+  Response& operator=(const Response&) = default;
+  Response& operator=(Response&&) = default;
+
+  template <typename... ARGS>
+  Response(ARGS&&... args)
+      : initialized(true) {
+    Construct(std::forward<ARGS>(args)...);
+  }
+
+  void Construct(const Response& rhs) {
+    initialized = rhs.initialized;
+    body = rhs.body;
+    code = rhs.code;
+    content_type = rhs.content_type;
+    extra_headers = rhs.extra_headers;
+  }
+
+  void Construct(Response&& rhs) {
+    initialized = rhs.initialized;
+    body = std::move(rhs.body);
+    code = rhs.code;
+    content_type = rhs.content_type;
+    extra_headers = rhs.extra_headers;
+  }
+
+  void Construct(bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                 const std::string& content_type = bricks::net::HTTPServerConnection::DefaultContentType(),
+                 const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
+    this->body = "";
+    this->code = code;
+    this->content_type = content_type;
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
+                          bricks::strings::is_string_type<T>::value>::type
+  Construct(T&& body,
+            bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+            const std::string& content_type = bricks::net::HTTPServerConnection::DefaultContentType(),
+            const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
+    this->body = std::forward<T>(body);
+    this->code = code;
+    this->content_type = content_type;
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
+                          !(bricks::strings::is_string_type<T>::value)>::type
+  Construct(T&& object,
+            bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+            const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
+    this->body = bricks::cerealize::JSON(std::forward<T>(object)) + '\n';
+    this->code = code;
+    this->content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
+                          !(bricks::strings::is_string_type<T>::value)>::type
+  Construct(T&& object,
+            const std::string& object_name,
+            bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+            const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
+    this->body = bricks::cerealize::JSON(std::forward<T>(object), object_name) + '\n';
+    this->code = code;
+    this->content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    this->extra_headers = extra_headers;
+  }
+
+  Response& Body(const std::string& s) {
+    body = s;
+    initialized = true;
+    return *this;
+  }
+
+  template <typename T>
+  Response& JSON(const T& object) {
+    body = bricks::cerealize::JSON(object) + '\n';
+    content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    initialized = true;
+    return *this;
+  }
+
+  template <typename T>
+  Response& JSON(const T& object, const std::string& object_name) {
+    body = bricks::cerealize::JSON(object, object_name) + '\n';
+    content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    initialized = true;
+    return *this;
+  }
+
+  Response& Code(bricks::net::HTTPResponseCodeValue c) {
+    code = c;
+    initialized = true;
+    return *this;
+  }
+
+  Response& ContentType(const std::string& s) {
+    content_type = s;
+    initialized = true;
+    return *this;
+  }
+
+  Response& Headers(const bricks::net::HTTPHeadersType& h) {
+    extra_headers = h;
+    initialized = true;
+    return *this;
+  }
+
+  void RespondViaHTTP(Request r) const {
+    if (initialized) {
+      r(body, code, content_type, extra_headers);
+    }
+    // Else, a 500 "INTERNAL SERVER ERROR" will be returned, since `Request`
+    // has not been served upon destructing at the exit from this method.
+  }
+};
+
 // Helper to serve a static file.
 // TODO(dkorolev): Expose it externally under a better name, and add a comment/example.
 struct StaticFileServer {
@@ -317,5 +454,6 @@ class HTTPServerPOSIX final {
 }  // namespace bricks
 
 using bricks::net::api::Request;
+using bricks::net::api::Response;
 
 #endif  // BRICKS_NET_API_POSIX_SERVER_H
