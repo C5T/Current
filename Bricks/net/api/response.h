@@ -41,9 +41,6 @@ namespace bricks {
 namespace net {
 namespace api {
 
-static_assert(strings::is_string_type<const char*>::value, "");
-static_assert(!strings::is_string_type<int>::value, "");
-
 struct Response {
   bool initialized = false;
 
