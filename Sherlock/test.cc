@@ -31,9 +31,10 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 
+#include "../Blocks/HTTP/api.h"
+
 #include "../Bricks/strings/util.h"
 #include "../Bricks/cerealize/cerealize.h"
-#include "../Bricks/net/api/api.h"
 #include "../Bricks/time/chrono.h"
 
 #include "../Bricks/dflags/dflags.h"

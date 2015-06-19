@@ -34,14 +34,15 @@ SOFTWARE.
 #include <thread>
 #include <type_traits>
 
+#include "../Blocks/HTTP/api.h"
+
 #include "../Bricks/mq/interface/interface.h"
-#include "../Bricks/net/api/api.h"
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/is_unique_ptr.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 
-// Sherlock is the overlord of data storage and processing in KnowSheet.
+// Sherlock is the overlord of data storage and processing in Current.
 // Its primary entity is the stream of data.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records.
 //
