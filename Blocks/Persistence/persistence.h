@@ -38,6 +38,7 @@ SOFTWARE.
 #include "../../Bricks/cerealize/cerealize.h"
 
 namespace blocks {
+namespace persistence {
 
 namespace impl {
 
@@ -187,7 +188,7 @@ class AppendToFileImpl {
   std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<E>> appender_;
 };
 
-}  // namespace blocks::impl
+}  // namespace blocks::persistence::impl
 
 template <typename E>
 using MemoryOnly = impl::Impl<impl::MemoryOnlyImpl, E>;
@@ -195,6 +196,7 @@ using MemoryOnly = impl::Impl<impl::MemoryOnlyImpl, E>;
 template <typename E>
 using AppendToFile = impl::Impl<impl::AppendToFileImpl, E>;
 
+}  // namespace persistence
 }  // namespace blocks
 
 #endif  // BLOCKS_PERSISTENCE_PERSISTENCE_H

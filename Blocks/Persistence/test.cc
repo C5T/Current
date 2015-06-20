@@ -38,13 +38,13 @@ SOFTWARE.
 
 DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
-using blocks::MemoryOnly;
-using blocks::AppendToFile;
+using blocks::persistence::MemoryOnly;
+using blocks::persistence::AppendToFile;
+
 using blocks::DispatchEntryByRValue;
-
 using bricks::DefaultCloneFunction;
-
 using bricks::FileSystem;
+
 using bricks::strings::Join;
 
 struct CerealizableString {

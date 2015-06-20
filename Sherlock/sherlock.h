@@ -125,7 +125,7 @@ SOFTWARE.
 namespace sherlock {
 
 // TODO(dkorolev): Make persistence strategy a template parameter and initialize it properly.
-using blocks::MemoryOnly;
+using blocks::persistence::MemoryOnly;
 
 template <typename T>
 class StreamInstanceImpl {
