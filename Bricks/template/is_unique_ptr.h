@@ -56,6 +56,40 @@ static_assert(std::is_same<int, typename is_unique_ptr<int>::underlying_type>::v
 static_assert(is_unique_ptr<std::unique_ptr<int>>::value, "");
 static_assert(std::is_same<int, typename is_unique_ptr<std::unique_ptr<int>>::underlying_type>::value, "");
 
+template <typename BASE_TYPE, typename ENTRY_TYPE>
+struct can_be_stored_in_unique_ptr {
+  static constexpr bool value = false;
+};
+
+template <typename BASE_TYPE, typename ENTRY_TYPE, typename CUSTOM_DELETER>
+struct can_be_stored_in_unique_ptr<std::unique_ptr<BASE_TYPE, CUSTOM_DELETER>, ENTRY_TYPE> {
+  static constexpr bool value = std::is_base_of<BASE_TYPE, ENTRY_TYPE>::value;
+};
+
+namespace selftest {
+
+struct BASE {
+  virtual ~BASE() = default;
+};
+
+struct DERIVED : BASE {};
+
+struct STANDALONE {};
+
+static_assert(can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, BASE>::value, "");
+static_assert(can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, DERIVED>::value, "");
+static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, STANDALONE>::value, "");
+
+static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<DERIVED>, BASE>::value, "");
+static_assert(can_be_stored_in_unique_ptr<std::unique_ptr<DERIVED>, DERIVED>::value, "");
+static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, STANDALONE>::value, "");
+
+static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, std::unique_ptr<BASE>>::value, "");
+static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, std::unique_ptr<DERIVED>>::value, "");
+static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<DERIVED>, std::unique_ptr<DERIVED>>::value, "");
+
+}  // namespace bricks::selftest
+
 }  // namespace bricks
 
 #endif  // BRICKS_TEMPLATE_IS_UNIQUE_PTR_H

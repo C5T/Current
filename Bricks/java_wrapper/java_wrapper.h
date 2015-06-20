@@ -96,5 +96,4 @@ inline std::string ToStdString(JNIEnv* env, jstring str) {
 
 #endif  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
 
-
 #endif  // BRICKS_JAVA_WRAPPER_H

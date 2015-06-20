@@ -24,9 +24,10 @@ SOFTWARE.
 
 #include "sherlock.h"
 
+#include "../Blocks/HTTP/api.h"
+
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/cerealize/cerealize.h"
-#include "../Bricks/net/api/api.h"
 #include "../Bricks/dflags/dflags.h"
 
 DEFINE_int32(port, 8191, "Local port to use.");
@@ -275,7 +276,7 @@ int main() {
   // Need a dedicated handler for '/'.
   HTTP(port).Register(
       "/",
-      new bricks::net::api::StaticFileServer(
+      new blocks::StaticFileServer(
           bricks::FileSystem::ReadFileAsString(bricks::FileSystem::JoinPath(dir, "index.html")), "text/html"));
 
   HTTP(port).Join();

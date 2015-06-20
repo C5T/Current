@@ -119,7 +119,7 @@ Streams are hardly deleted. In most production systems, if a stream is created i
 With that in mind, however, it is possible to shutdown a stream without terminating the binary. The shutdown operation is designed to be as safe as possible: it waits for all pending calls to currently active listeners, as well as signal the acquired publisher to terminate. Only after all the handles have been released, the stream will be destructed.
 
 Implementation details:
-* Within KnowSheet (outside TailProduce), the listening thread would almost always be an HTTP server, a consumer of an in-memory message queue, a listener of another stream or a producer of a TailProduce job. All of the above are single-threaded by design, and they respect the order of calls.
+* Within Current (outside TailProduce), the listening thread would almost always be an HTTP server, a consumer of an in-memory message queue, a listener of another stream or a producer of a TailProduce job. All of the above are single-threaded by design, and they respect the order of calls.
 * The waiting part of stream destruction happens in the destructor of the instance of the stream.
 
 
@@ -153,7 +153,7 @@ TBD: A way to notify that the order key has updated without new entries being ad
 
 ## Background
 
-The reader of this design doc is expected to be familiar with `KnowSheet/Bricks`, most notably, the Cereal part of it ("cerealize"), the HTTP API ("net/api"), the in-memory message queue ("mq/inmemory") and WaitableAtomic ("waitable_atomic").
+The reader of this design doc is expected to be familiar with `Current`, most notably, the Cereal part of it (`"Bricks/cerealize"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Bricks/mq/inmemory"`) and WaitableAtomic (`"Bricks/waitable_atomic"`).
 
 ## Naming
 

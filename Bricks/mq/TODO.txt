@@ -1,1 +1,0 @@
-TODO(dkorolev): Add a disk-based MQ and a test that tests the combination of both.
