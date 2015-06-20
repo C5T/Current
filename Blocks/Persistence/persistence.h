@@ -109,7 +109,7 @@ class Impl final : public T_PERSISTENCE_LAYER<E> {
     bool replay_done = false;
 
     if (!size_at_start) {
-      blocks::CallReplayDone(f);
+      blocks::ss::CallReplayDone(f);
       replay_done = true;
     }
 
@@ -117,17 +117,17 @@ class Impl final : public T_PERSISTENCE_LAYER<E> {
     while (true) {
       if (stop && !notified_about_termination) {
         notified_about_termination = true;
-        if (blocks::CallTerminate(f)) {
+        if (blocks::ss::CallTerminate(f)) {
           return;
         }
       }
       if (!current.at_end) {
-        if (!blocks::DispatchEntryByConstReference(
+        if (!blocks::ss::DispatchEntryByConstReference(
                 f, *current.iterator, current.index, current.total, clone_)) {
           break;
         }
         if (!replay_done && current.index + 1 >= size_at_start) {
-          blocks::CallReplayDone(f);
+          blocks::ss::CallReplayDone(f);
           replay_done = true;
         }
       }
@@ -135,7 +135,7 @@ class Impl final : public T_PERSISTENCE_LAYER<E> {
       do {
         if (stop && !notified_about_termination) {
           notified_about_termination = true;
-          if (blocks::CallTerminate(f)) {
+          if (blocks::ss::CallTerminate(f)) {
             return;
           }
         }
@@ -196,7 +196,7 @@ using MemoryOnly = impl::Impl<impl::MemoryOnlyImpl, E>;
 template <typename E>
 using AppendToFile = impl::Impl<impl::AppendToFileImpl, E>;
 
-}  // namespace persistence
+}  // namespace blocks::persistence
 }  // namespace blocks
 
 #endif  // BLOCKS_PERSISTENCE_PERSISTENCE_H

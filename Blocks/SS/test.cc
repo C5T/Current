@@ -98,26 +98,26 @@ TEST(MQInterface, SmokeTest) {
   // we just confirm they are passed through.
   DDE e;
 
-  ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_lambda, e, 1, 4));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_lambda, e, 1, 4));
   EXPECT_EQ("Entry(), 1, 4", text);
 
-  ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_lambda, e, 2, 3, clone_f));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_lambda, e, 2, 3, clone_f));
   EXPECT_EQ("Entry(), 2, 3", text);
 
-  ASSERT_FALSE(blocks::DispatchEntryByConstReference(need_a_copy_lambda, e, 1, 2));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(need_a_copy_lambda, e, 1, 2));
   EXPECT_EQ("Entry(copy of {Entry()}), 1, 2", text);
 
-  ASSERT_FALSE(blocks::DispatchEntryByConstReference(need_a_copy_lambda, e, 3, 4, clone_f));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(need_a_copy_lambda, e, 3, 4, clone_f));
   EXPECT_EQ("Entry(clone of {Entry()}), 3, 4", text);
 
   EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-  ASSERT_FALSE(blocks::DispatchEntryByRValue(does_not_need_a_copy_lambda, e, 1, 3));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_lambda, e, 1, 3));
   EXPECT_EQ("Entry(), 1, 3", text);
 
   EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-  ASSERT_FALSE(blocks::DispatchEntryByRValue(need_a_copy_lambda, std::move(e), 2, 4));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(need_a_copy_lambda, std::move(e), 2, 4));
   EXPECT_EQ("Entry(), 2, 4", text);
 
   EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -163,26 +163,26 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
 
     DDE e;
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 1, 4));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 1, 4));
     EXPECT_EQ("Entry(), 1, 4", does_not_need_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 2, 3, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 2, 3, clone_f));
     EXPECT_EQ("Entry(), 2, 3", does_not_need_a_copy_2.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(needs_a_copy_1, e, 1, 2));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 1, 2));
     EXPECT_EQ("Entry(copy of {Entry()}), 1, 2", needs_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(needs_a_copy_2, e, 3, 4, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 3, 4, clone_f));
     EXPECT_EQ("Entry(clone of {Entry()}), 3, 4", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_FALSE(blocks::DispatchEntryByRValue(does_not_need_a_copy_3, e, 1, 3));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_3, e, 1, 3));
     EXPECT_EQ("Entry(), 1, 3", does_not_need_a_copy_3.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_FALSE(blocks::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 2, 4));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 2, 4));
     EXPECT_EQ("Entry(), 2, 4", needs_a_copy_3.text);
 
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -215,26 +215,26 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
 
     DDE e;
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 1, 4));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 1, 4));
     EXPECT_EQ("Entry(), 1, 4", does_not_need_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 2, 3, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 2, 3, clone_f));
     EXPECT_EQ("Entry(), 2, 3", does_not_need_a_copy_2.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(needs_a_copy_1, e, 1, 2));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 1, 2));
     EXPECT_EQ("Entry(copy of {Entry()}), 1, 2", needs_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(needs_a_copy_2, e, 3, 4, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 3, 4, clone_f));
     EXPECT_EQ("Entry(clone of {Entry()}), 3, 4", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_TRUE(blocks::DispatchEntryByRValue(does_not_need_a_copy_3, e, 1, 3));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_3, e, 1, 3));
     EXPECT_EQ("Entry(), 1, 3", does_not_need_a_copy_3.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_TRUE(blocks::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 2, 4));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 2, 4));
     EXPECT_EQ("Entry(), 2, 4", needs_a_copy_3.text);
 
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -269,26 +269,26 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
 
     DDE e;
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 100, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 100, 0));
     EXPECT_EQ("Entry(), 100", does_not_need_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 101, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 101, 0, clone_f));
     EXPECT_EQ("Entry(), 101", does_not_need_a_copy_2.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(needs_a_copy_1, e, 102, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 102, 0));
     EXPECT_EQ("Entry(copy of {Entry()}), 102", needs_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(needs_a_copy_2, e, 103, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 103, 0, clone_f));
     EXPECT_EQ("Entry(clone of {Entry()}), 103", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_FALSE(blocks::DispatchEntryByRValue(does_not_need_a_copy_3, e, 104, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_3, e, 104, 0));
     EXPECT_EQ("Entry(), 104", does_not_need_a_copy_3.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_FALSE(blocks::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 105, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 105, 0));
     EXPECT_EQ("Entry(), 105", needs_a_copy_3.text);
 
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -319,26 +319,26 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
 
     DDE e;
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 200, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 200, 0));
     EXPECT_EQ("Entry(), 200", does_not_need_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 201, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 201, 0, clone_f));
     EXPECT_EQ("Entry(), 201", does_not_need_a_copy_2.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(needs_a_copy_1, e, 202, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 202, 0));
     EXPECT_EQ("Entry(copy of {Entry()}), 202", needs_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(needs_a_copy_2, e, 203, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 203, 0, clone_f));
     EXPECT_EQ("Entry(clone of {Entry()}), 203", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_TRUE(blocks::DispatchEntryByRValue(does_not_need_a_copy_3, e, 204, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_3, e, 204, 0));
     EXPECT_EQ("Entry(), 204", does_not_need_a_copy_3.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_TRUE(blocks::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 205, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 205, 0));
     EXPECT_EQ("Entry(), 205", needs_a_copy_3.text);
 
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -373,26 +373,26 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
 
     DDE e;
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 300, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 300, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 301, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 301, 0, clone_f));
     EXPECT_EQ("Entry()", does_not_need_a_copy_2.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(needs_a_copy_1, e, 302, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 302, 0));
     EXPECT_EQ("Entry(copy of {Entry()})", needs_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::DispatchEntryByConstReference(needs_a_copy_2, e, 303, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 303, 0, clone_f));
     EXPECT_EQ("Entry(clone of {Entry()})", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_FALSE(blocks::DispatchEntryByRValue(does_not_need_a_copy_3, e, 304, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_3, e, 304, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_3.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_FALSE(blocks::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 305, 0));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 305, 0));
     EXPECT_EQ("Entry()", needs_a_copy_3.text);
 
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -423,26 +423,26 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
 
     DDE e;
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 400, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 400, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 401, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 401, 0, clone_f));
     EXPECT_EQ("Entry()", does_not_need_a_copy_2.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(needs_a_copy_1, e, 402, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 402, 0));
     EXPECT_EQ("Entry(copy of {Entry()})", needs_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::DispatchEntryByConstReference(needs_a_copy_2, e, 403, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 403, 0, clone_f));
     EXPECT_EQ("Entry(clone of {Entry()})", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_TRUE(blocks::DispatchEntryByRValue(does_not_need_a_copy_3, e, 404, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByRValue(does_not_need_a_copy_3, e, 404, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_3.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-    ASSERT_TRUE(blocks::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 405, 0));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByRValue(needs_a_copy_3, std::move(e), 405, 0));
     EXPECT_EQ("Entry()", needs_a_copy_3.text);
 
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";

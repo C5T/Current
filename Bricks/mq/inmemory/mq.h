@@ -164,10 +164,10 @@ class MMQ final {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        blocks::DispatchEntryByRValue(consumer_,
-                                      std::move(circular_buffer_[tail].message_body),
-                                      circular_buffer_[tail].absolute_index,
-                                      total_messages_);
+        blocks::ss::DispatchEntryByRValue(consumer_,
+                                          std::move(circular_buffer_[tail].message_body),
+                                          circular_buffer_[tail].absolute_index,
+                                          total_messages_);
       }
 
       {

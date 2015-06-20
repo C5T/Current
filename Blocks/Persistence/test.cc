@@ -41,7 +41,8 @@ DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to c
 using blocks::persistence::MemoryOnly;
 using blocks::persistence::AppendToFile;
 
-using blocks::DispatchEntryByRValue;
+using blocks::ss::DispatchEntryByRValue;
+
 using bricks::DefaultCloneFunction;
 using bricks::FileSystem;
 

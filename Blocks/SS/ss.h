@@ -31,6 +31,7 @@ SOFTWARE.
 #include "../../Bricks/template/weed.h"
 
 namespace blocks {
+namespace ss {
 
 // TODO(dkorolev): Enables three abstractions for message passing:
 //
@@ -239,7 +240,7 @@ struct DispatchEntryMakingACopyIfNecessary<false> {
   }
 };
 
-}  // namespace blocks:impl
+}  // namespace blocks::ss::impl
 
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
@@ -310,7 +311,7 @@ struct CallTerminateAndReturnBoolImpl<T, true> {
   }
 };
 
-}  // namespace blocks::impl
+}  // namespace blocks::ss::impl
 
 template <typename T>
 bool CallTerminate(T&& ref) {
@@ -346,13 +347,14 @@ struct CallReplayDoneImpl<T, true> {
   static decltype(std::declval<T>().ReplayDone()) DoIt(T&& ref) { ref.ReplayDone(); }
 };
 
-}  // namespace blocks::impl
+}  // namespace blocks::ss::impl
 
 template <typename T>
 void CallReplayDone(T&& ref) {
   impl::CallReplayDoneImpl<T, impl::HasReplayDoneMethod<T>(0)>::DoIt(std::forward<T>(ref));
 }
 
+}  // namespace blocks::ss
 }  // namespace blocks
 
 #endif  // BLOCKS_SS_SS_H
