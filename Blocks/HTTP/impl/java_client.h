@@ -25,8 +25,8 @@ SOFTWARE.
 
 // TODO(dkorolev): Check in the remaining code and test it.
 
-#ifndef BLOCKS_HTTP_IMPL_JAVA_H
-#define BLOCKS_HTTP_IMPL_JAVA_H
+#ifndef BLOCKS_HTTP_IMPL_JAVA_CLIENT_H
+#define BLOCKS_HTTP_IMPL_JAVA_CLIENT_H
 
 #include "../../../port.h"
 
@@ -293,4 +293,4 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
 
 #endif  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
 
-#endif  // BLOCKS_HTTP_IMPL_ANDROID_H
+#endif  // BLOCKS_HTTP_IMPL_JAVA_CLIENT_H
