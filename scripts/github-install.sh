@@ -5,7 +5,7 @@
 set -u -e
 
 # Command-line parameters.
-GITHUB_REPO="${1:-Curren}"
+GITHUB_REPO="${1:-Current}"
 GITHUB_USER="${2:-C5T}"
 GITHUB_BRANCH="${3:-master}"
 
