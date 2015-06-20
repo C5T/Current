@@ -58,7 +58,7 @@ HTTP(port).ResetAllHandlers();
     response("\n");
   });
    
-#if 0
+#if 1
 EXPECT_EQ(".....\n", HTTP(GET(Printf("http://localhost:%d/chunked?n=5&delay_ms=2", port))).body);
 #else
   EXPECT_EQ(".....\n", HTTP(GET("http://test.tailproduce.org/chunked")).body);
