@@ -33,18 +33,18 @@ namespace bricks {
 
 namespace impl {
 
-template <typename T, bool HAS_CLONE_BY_REF, bool HAS_CLONE_BY_PTR, bool CAN_BE_COPIED>
+template <typename T, bool HAS_CLONE_BY_REF, bool HAS_CLONE_BY_PTR, bool HAS_COPY_CONSTRUCTOR>
 struct DefaultCloneImpl {};
 
-template <typename T, bool HAS_CLONE_BY_PTR, bool CAN_BE_COPIED>
-struct DefaultCloneImpl<T, true, HAS_CLONE_BY_PTR, CAN_BE_COPIED> {
+template <typename T, bool HAS_CLONE_BY_PTR, bool HAS_COPY_CONSTRUCTOR>
+struct DefaultCloneImpl<T, true, HAS_CLONE_BY_PTR, HAS_COPY_CONSTRUCTOR> {
   static std::function<T(const T&)> CloneImpl() {
     return [](const T& t) { return t.Clone(); };
   }
 };
 
-template <typename T, bool CAN_BE_COPIED>
-struct DefaultCloneImpl<T, false, true, CAN_BE_COPIED> {
+template <typename T, bool HAS_COPY_CONSTRUCTOR>
+struct DefaultCloneImpl<T, false, true, HAS_COPY_CONSTRUCTOR> {
   static std::function<T(const T&)> CloneImpl() {
     return [](const T& t) { return t->Clone(); };
   }
