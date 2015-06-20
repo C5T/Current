@@ -46,6 +46,7 @@ SOFTWARE.
 
 #include "../strings/is_string_type.h"
 #include "../template/is_unique_ptr.h"
+#include "../util/null_deleter.h"
 #include "../rtti/dispatcher.h"
 #include "../template/decay.h"
 
@@ -72,21 +73,12 @@ struct is_cerealizable {
   constexpr static bool value = is_read_cerealizable<T>::value && is_write_cerealizable<T>::value;
 };
 
-// Helper code to simplify wrapping objects into `unique_ptr`-s of their base types
-// for Cereal to serialize them as polymorphic types.
-struct EmptyDeleterForAnyType {
-  template <typename T>
-  void operator()(T&) {}
-  template <typename T>
-  void operator()(T*) {}
-};
-
 template <typename BASE, typename ENTRY>
 inline typename std::enable_if<std::is_base_of<BASE, ENTRY>::value,
-                               std::unique_ptr<const BASE, EmptyDeleterForAnyType>>::type
+                               std::unique_ptr<const BASE, bricks::NullDeleter>>::type
 WithBaseType(const ENTRY& object) {
-  return std::unique_ptr<const BASE, EmptyDeleterForAnyType>(reinterpret_cast<const BASE*>(&object),
-                                                             EmptyDeleterForAnyType());
+  return std::unique_ptr<const BASE, NullDeleter>(reinterpret_cast<const BASE*>(&object),
+                                                  bricks::NullDeleter());
 }
 
 // Enumeration for compile-time format selection.
@@ -153,7 +145,9 @@ class CerealBinaryFileAppender : public CerealFileAppenderBase {
   }
 
   // Support direct serialization of derived types in polymorphic cases.
-  template <typename E, typename UNIQUE_PTR = T_ENTRY, typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
+  template <typename E,
+            typename UNIQUE_PTR = T_ENTRY,
+            typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
   typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
                           CerealBinaryFileAppender&>::type
   operator<<(const E& entry) {
@@ -187,13 +181,16 @@ class CerealJSONFileAppender : public CerealFileAppenderBase {
   }
 
   // Support direct serialization of derived types in polymorphic cases.
-  template <typename E, typename UNIQUE_PTR = T_ENTRY, typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
+  template <typename E,
+            typename UNIQUE_PTR = T_ENTRY,
+            typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
   typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
                           CerealJSONFileAppender&>::type
   operator<<(const E& entry) {
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
-      so_(cereal::make_nvp("p", WithBaseType<typename T_ENTRY::element_type>(entry)));  // "p" for "polymorphic".
+      so_(cereal::make_nvp("p",
+                           WithBaseType<typename T_ENTRY::element_type>(entry)));  // "p" for "polymorphic".
     }
     fo_ << '\n';
     ++entries_appended_;
