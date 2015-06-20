@@ -153,7 +153,7 @@ TBD: A way to notify that the order key has updated without new entries being ad
 
 ## Background
 
-The reader of this design doc is expected to be familiar with `Current`, most notably, the Cereal part of it ("cerealize"), the HTTP API ("net/api"), the in-memory message queue ("mq/inmemory") and WaitableAtomic ("waitable_atomic").
+The reader of this design doc is expected to be familiar with `Current`, most notably, the Cereal part of it (`"Bricks/cerealize"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Bricks/mq/inmemory"`) and WaitableAtomic (`"Bricks/waitable_atomic"`).
 
 ## Naming
 
