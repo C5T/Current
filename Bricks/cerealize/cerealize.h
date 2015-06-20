@@ -221,7 +221,8 @@ class CerealBinaryFileParser {
  public:
   explicit CerealBinaryFileParser(const std::string& filename) : fi_(filename), si_(fi_) {}
 
-  // `Next` calls `T_PROCESSOR::operator()(const T_ENTRY&)` for the next entry, or returns false.
+  // `Next` calls `T_PROCESSOR::operator()(T_ENTRY)` for the next entry, or returns false.
+  // The handler can taking an rvalue reference and own the freshly deconstructed entry.
   template <typename T_PROCESSOR>
   bool Next(T_PROCESSOR&& processor) {
     if (fi_.peek() != std::char_traits<char>::eof()) {  // This is safe with any next byte in file.
