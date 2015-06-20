@@ -25,8 +25,8 @@ SOFTWARE.
 // TODO(dkorolev): Handle empty POST body. Add a test for it.
 // TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
 
-#ifndef BLOCKS_HTTP_POSIX_CLIENT_H
-#define BLOCKS_HTTP_POSIX_CLIENT_H
+#ifndef BLOCKS_HTTP_IMPL_POSIX_CLIENT_H
+#define BLOCKS_HTTP_IMPL_POSIX_CLIENT_H
 
 #include "../types.h"
 
@@ -220,4 +220,4 @@ struct ImplWrapper<HTTPClientPOSIX> {
 
 }  // namespace blocks
 
-#endif  // BLOCKS_HTTP_POSIX_CLIENT_H
+#endif  // BLOCKS_HTTP_IMPL_POSIX_CLIENT_H

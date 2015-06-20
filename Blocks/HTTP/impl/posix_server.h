@@ -25,8 +25,8 @@ SOFTWARE.
 // TODO(dkorolev): Refactor the code to disallow BODY-less POST requests.
 // TODO(dkorolev): Support receiving body via POST requests. Add a test for it.
 
-#ifndef BLOCKS_HTTP_POSIX_SERVER_H
-#define BLOCKS_HTTP_POSIX_SERVER_H
+#ifndef BLOCKS_HTTP_IMPL_POSIX_SERVER_H
+#define BLOCKS_HTTP_IMPL_POSIX_SERVER_H
 
 #include <atomic>
 #include <string>
@@ -254,4 +254,4 @@ class HTTPServerPOSIX final {
 
 using blocks::Request;
 
-#endif  // BLOCKS_HTTP_POSIX_SERVER_H
+#endif  // BLOCKS_HTTP_IMPL_POSIX_SERVER_H
