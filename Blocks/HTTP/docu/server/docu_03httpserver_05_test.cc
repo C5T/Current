@@ -64,11 +64,8 @@ HTTP(port).ResetAllHandlers();
   // NOTE: For most legitimate practical usecases of returning unlimited
   // amounts of data, consider Sherlock's stream data replication mechanisms.
 #endif
-
-#ifndef BRICKS_APPLE
-// Temporary disabled chunked-transfer test for Apple -- M.Z.
-EXPECT_EQ(".....\n", HTTP(GET(Printf("http://localhost:%d/chunked?n=5&delay_ms=2", port))).body);
-#endif
+  
+  EXPECT_EQ(".....\n", HTTP(GET(Printf("http://localhost:%d/chunked?n=5&delay_ms=2", port))).body);
 }
 
 #endif  // BLOCKS_HTTP_DOCU_SERVER_05_TEST_CC
