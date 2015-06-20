@@ -121,7 +121,8 @@ class Impl final : public T_PERSISTENCE_LAYER<E> {
         }
       }
       if (!current.at_end) {
-        if (!blocks::DispatchEntryByConstReference(f, *current.iterator, current.index, current.total, clone_)) {
+        if (!blocks::DispatchEntryByConstReference(
+                f, *current.iterator, current.index, current.total, clone_)) {
           break;
         }
         if (!replay_done && current.index + 1 >= size_at_start) {
