@@ -119,12 +119,10 @@ HTTP(port).Register("/chunked", [](Request r) {
   }
   response("\n");
 });
-
-EXPECT_EQ(".....\n", HTTP(GET("http://test.tailproduce.org/chunked?n=5&delay_ms=2")).body);
+  
+EXPECT_EQ(".....\n", HTTP(GET(Printf("http://localhost:%d/chunked?n=5&delay_ms=2", port))).body);
 
 // NOTE: For most legitimate practical usecases of returning unlimited
 // amounts of data, consider Sherlock's stream data replication mechanisms.
-
-EXPECT_EQ(".....\n", HTTP(GET(Printf("http://localhost:%d/chunked?n=5&delay_ms=2", port))).body);
 ```
 HTTP server also has support for several other features, check out the [`Blocks/HTTP/test.cc`](https://github.com/C5T/Current/blob/master/Blocks/HTTP/test.cc) unit test.
