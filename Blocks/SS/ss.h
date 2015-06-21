@@ -28,6 +28,7 @@ SOFTWARE.
 #include <functional>
 #include <utility>
 
+#include "../../Bricks/util/clone.h"
 #include "../../Bricks/template/weed.h"
 
 namespace blocks {
@@ -256,8 +257,7 @@ inline bool DispatchEntryByConstReference(
 // A special case of the above method; GCC doesn't handle default values for `std::function<>` parameters well.
 template <typename F, typename E>
 inline bool DispatchEntryByConstReference(F&& f, const E& e, size_t index, size_t total) {
-  std::function<E(const E&)> clone_f = [](const E& e) { return e; };
-  return DispatchEntryByConstReference(std::forward<F>(f), e, index, total, clone_f);
+  return DispatchEntryByConstReference(std::forward<F>(f), e, index, total, bricks::DefaultCloneFunction<E>());
 }
 
 // Generic rvalue reference usecase, which dispatches the entry that does not need to be reused later.
