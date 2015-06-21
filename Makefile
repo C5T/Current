@@ -7,3 +7,7 @@ test:
 
 check:
 	./scripts/check-headers.sh
+
+clean:
+	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name coverage -type d)
+	rm -rf $(shell find . -name ".current")
