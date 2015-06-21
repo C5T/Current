@@ -5,8 +5,8 @@
 set -u -e
 
 # Command-line parameters.
-GITHUB_REPO="${1:-Bricks}"
-GITHUB_USER="${2:-KnowSheet}"
+GITHUB_REPO="${1:-Current}"
+GITHUB_USER="${2:-C5T}"
 GITHUB_BRANCH="${3:-master}"
 
 GITHUB_REPO_DASH_BRANCH="${GITHUB_REPO}-${GITHUB_BRANCH}"

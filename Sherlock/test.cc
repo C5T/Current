@@ -31,12 +31,13 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 
-#include "../Bricks/strings/util.h"
-#include "../Bricks/cerealize/cerealize.h"
-#include "../Bricks/net/api/api.h"
-#include "../Bricks/time/chrono.h"
+#include "../Blocks/HTTP/api.h"
 
+#include "../Bricks/strings/strings.h"
+#include "../Bricks/cerealize/cerealize.h"
+#include "../Bricks/time/chrono.h"
 #include "../Bricks/dflags/dflags.h"
+
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(sherlock_http_test_port, 8090, "Local port to use for Sherlock unit test.");
@@ -48,6 +49,7 @@ using std::thread;
 using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
+using bricks::strings::Join;
 using bricks::strings::Printf;
 using bricks::strings::ToString;
 

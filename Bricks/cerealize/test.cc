@@ -22,8 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TOOD(dkorolev): WORK IN PROGRESS.
-//
+// TODO(dkorolev): Add a test for non-polymorphic entries to serialize and de-serialize.
+// So far it's only tested via `CTFO_BE`. -- D.K.
+
 // TODO(dkorolev): TESTS TO WRITE.
 //
 // * Compare against golden files.
@@ -125,22 +126,22 @@ TEST(Cerealize, BinarySerializesAndParses) {
   EventAppResume c;
 
   {
-    CerealFileAppender<CerealFormat::Binary> f1(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f1(CurrentTestTempFileName());
     f1 << a << b;
     EXPECT_EQ(2u, f1.EntriesAppended());
     EXPECT_EQ(115u, f1.BytesAppended());
   }
   {
-    CerealFileAppender<CerealFormat::Binary> f2(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f2(CurrentTestTempFileName());
     f2 << c;
     EXPECT_EQ(1u, f2.EntriesAppended());
     EXPECT_EQ(58u, f2.BytesAppended());
   }
 
-  CerealFileParser<MapsYouEventBase, CerealFormat::Binary> f(CurrentTestTempFileName());
+  CerealFileParser<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f(CurrentTestTempFileName());
 
   std::ostringstream os;
-  while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
+  while (f.Next([&os](std::unique_ptr<MapsYouEventBase>&& e) { e->AppendTo(os) << '\n'; }))
     ;
 
   EXPECT_EQ(
@@ -159,23 +160,23 @@ TEST(Cerealize, JSONSerializesAndParses) {
   EventAppResume c;
 
   {
-    CerealFileAppender<CerealFormat::JSON> f1(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::JSON> f1(CurrentTestTempFileName());
     f1 << a;
     EXPECT_EQ(1u, f1.EntriesAppended());
-    EXPECT_EQ(169u, f1.BytesAppended());
+    EXPECT_EQ(164u, f1.BytesAppended());
   }
   {
-    CerealFileAppender<CerealFormat::JSON> f2(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::JSON> f2(CurrentTestTempFileName());
     f2 << b << c;
     EXPECT_EQ(2u, f2.EntriesAppended());
-    EXPECT_EQ(340u, f2.BytesAppended());
-    EXPECT_EQ(509u, f2.TotalFileSize());
+    EXPECT_EQ(330u, f2.BytesAppended());
+    EXPECT_EQ(494u, f2.TotalFileSize());
   }
 
-  CerealFileParser<MapsYouEventBase, CerealFormat::JSON> f(CurrentTestTempFileName());
+  CerealFileParser<std::unique_ptr<MapsYouEventBase>, CerealFormat::JSON> f(CurrentTestTempFileName());
 
   std::ostringstream os;
-  while (f.Next([&os](const MapsYouEventBase& e) { e.AppendTo(os) << '\n'; }))
+  while (f.Next([&os](const std::unique_ptr<MapsYouEventBase>& e) { e->AppendTo(os) << '\n'; }))
     ;
 
   EXPECT_EQ(
@@ -193,10 +194,11 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender<CerealFormat::Binary>(CurrentTestTempFileName()) << a << b;
-  CerealFileAppender<CerealFormat::Binary>(CurrentTestTempFileName()) << c;
+  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary>(CurrentTestTempFileName()) << a
+                                                                                                         << b;
+  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary>(CurrentTestTempFileName()) << c;
 
-  CerealFileParser<MapsYouEventBase, CerealFormat::Binary> f(CurrentTestTempFileName());
+  CerealFileParser<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f(CurrentTestTempFileName());
 
   struct ExampleConsumer {
     // TODO(dkorolev): Chat with Alex what the best way to handle this would be.
