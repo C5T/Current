@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_MQ_INMEMORY_MQ_H
-#define BRICKS_MQ_INMEMORY_MQ_H
+#ifndef BLOCKS_MMQ_MMQ_H
+#define BLOCKS_MMQ_MMQ_H
 
 // MMQ is an efficient in-memory FIFO buffer.
 // One of the objectives of MMQ is to minimize the time for which the message pushing thread is blocked for.
@@ -53,10 +53,9 @@ SOFTWARE.
 #include <thread>
 #include <vector>
 
-#include "../../../Blocks/SS/ss.h"
+#include "../SS/ss.h"
 
-namespace bricks {
-namespace mq {
+namespace blocks {
 
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
 class MMQ final {
@@ -65,7 +64,7 @@ class MMQ final {
   typedef MESSAGE T_MESSAGE;
 
   // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
-  // Please see "Bricks/mq/interface/interface.h" and its test for possible callee signatures.
+  // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   typedef CONSUMER T_CONSUMER;
 
   explicit MMQ(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
@@ -264,7 +263,6 @@ class MMQ final {
   std::thread consumer_thread_;
 };
 
-}  // namespace mq
-}  // namespace bricks
+}  // namespace blocks
 
-#endif  // BRICKS_MQ_INMEMORY_MQ_H
+#endif  // BLOCKS_MMQ_MMQ_H

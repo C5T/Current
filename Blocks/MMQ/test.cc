@@ -23,16 +23,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "mq.h"
-
-#include "../../../3rdparty/gtest/gtest-main.h"
-#include "../../strings/printf.h"
+#include "mmq.h"
 
 #include <atomic>
-#include <thread>
 #include <chrono>
+#include <thread>
 
-using bricks::mq::MMQ;
+#include "../../Bricks/strings/printf.h"
+
+#include "../../3rdparty/gtest/gtest-main.h"
+
+using blocks::MMQ;
 
 TEST(InMemoryMQ, SmokeTest) {
   struct Consumer {

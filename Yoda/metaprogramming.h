@@ -39,10 +39,11 @@ SOFTWARE.
 
 #include "../Sherlock/sherlock.h"
 
+#include "../Blocks/MMQ/mmq.h"
+
 #include "../Bricks/template/metaprogramming.h"
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/weed.h"
-#include "../Bricks/mq/inmemory/mq.h"
 
 namespace yoda {
 
@@ -85,7 +86,7 @@ struct YodaTypes : YodaTypesBase {
 
   typedef MQListener<T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
   typedef MQMessage<T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
-  typedef bricks::mq::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
+  typedef blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
 
   typedef sherlock::StreamInstance<std::unique_ptr<Padawan>> T_STREAM_TYPE;
 
