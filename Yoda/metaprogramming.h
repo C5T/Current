@@ -234,7 +234,7 @@ struct StreamListener {
 
   // Sherlock stream listener call.
   void operator()(std::unique_ptr<Padawan>&& entry, size_t index) {
-    mq_.EmplaceMessage(new MQMessageEntry(std::move(entry), index));
+    mq_.Emplace(new MQMessageEntry(std::move(entry), index));
 
     // Eventually, the logic of this API implementation is:
     // * Defer all API requests until the persistent part of the stream is fully replayed,
@@ -383,9 +383,8 @@ struct APICalls {
     using T_INTERMEDIATE_TYPE = bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<T_INTERMEDIATE_TYPE> pr;
     Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
-    // TODO(dkorolev): Figure out the `mq_.EmplaceMessage(new ...)` magic.
-    mq_.PushMessage(std::move(make_unique<MQMessageFunction<T_INTERMEDIATE_TYPE>>(
-        std::forward<T_TYPED_USER_FUNCTION>(function), std::move(pr))));
+    mq_.Emplace(new MQMessageFunction<T_INTERMEDIATE_TYPE>(std::forward<T_TYPED_USER_FUNCTION>(function),
+                                                           std::move(pr)));
     return future;
   }
 
@@ -395,7 +394,7 @@ struct APICalls {
     using T_INTERMEDIATE_TYPE = bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
-    mq_.EmplaceMessage(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
+    mq_.Emplace(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
         std::forward<T_TYPED_USER_FUNCTION>(function),
         std::forward<T_NEXT_USER_FUNCTION>(next),
         std::move(pr)));

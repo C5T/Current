@@ -29,7 +29,7 @@ SOFTWARE.
 // MMQ is an efficient in-memory FIFO buffer.
 // One of the objectives of MMQ is to minimize the time for which the message pushing thread is blocked for.
 //
-// Messages can be pushed into it via thread-safe methods `PushMessage()` or `EmplaceMessage()`.
+// Messages can be pushed intao MMQ via standard `Publish()` interface defined in `Blocks/SS/ss.h`.
 // The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
 //
 // The buffer size, i.e. the number of the messages MMQ can hold, is defined by the constructor argument
@@ -37,7 +37,7 @@ SOFTWARE.
 // template argument.
 //
 // There are two possible strategies in case of buffer overflow (i.e. there is no free space to store message
-// at the next call to `PushMessage()` or `EmplaceMessage()`):
+// at the next call to `Publish()` or `Emplace()`):
 //   1) Discard (drop) the message. In this case, the number of the messages dropped between the subseqent
 //      calls of the consumer may be passed as a second argument of `OnMessage()`.
 //   2) Block the pushing thread and wait for the next message to be consumed and free the space in the buffer.
@@ -58,24 +58,24 @@ SOFTWARE.
 namespace blocks {
 
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
-class MMQ final {
+class MMQImpl {
  public:
   // Type of messages to store and dispatch.
   typedef MESSAGE T_MESSAGE;
 
-  // This method will be called from one thread, which is spawned and owned by an instance of MMQ.
+  // This method will be called from one thread, which is spawned and owned by an instance of MMQImpl.
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   typedef CONSUMER T_CONSUMER;
 
-  explicit MMQ(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
+  explicit MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
         total_messages_(0u),
-        consumer_thread_(&MMQ::ConsumerThread, this) {}
+        consumer_thread_(&MMQImpl::ConsumerThread, this) {}
 
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
-  ~MMQ() {
+  ~MMQImpl() {
     {
       std::unique_lock<std::mutex> lock(mutex_);
       destructing_ = true;
@@ -84,54 +84,52 @@ class MMQ final {
     consumer_thread_.join();
   }
 
+ protected:
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  bool PushMessage(const T_MESSAGE& message) {
+  size_t DoPublish(const T_MESSAGE& message) {
     const size_t index = PushMessageAllocate();
-    bool result = false;
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = message;
       PushMessageCommit(index);
-      result = true;
+      return ++total_messages_;
+    } else {
+      return 0u;
     }
-    ++total_messages_;
-    return result;
   }
 
-  bool PushMessage(T_MESSAGE&& message) {
+  size_t DoPublish(T_MESSAGE&& message) {
     const size_t index = PushMessageAllocate();
-    bool result = false;
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = std::move(message);
       PushMessageCommit(index);
-      result = true;
+      return ++total_messages_;
+    } else {
+      return 0u;
     }
-    ++total_messages_;
-    return result;
   }
 
   template <typename... ARGS>
-  bool EmplaceMessage(ARGS&&... args) {
+  size_t DoEmplace(ARGS&&... args) {
     const size_t index = PushMessageAllocate();
-    bool result = false;
     if (index != static_cast<size_t>(-1)) {
       circular_buffer_[index].absolute_index = total_messages_;
       circular_buffer_[index].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
       PushMessageCommit(index);
-      result = true;
+      return ++total_messages_;
+    } else {
+      return 0u;
     }
-    ++total_messages_;
-    return result;
   }
 
  private:
-  MMQ(const MMQ&) = delete;
-  MMQ(MMQ&&) = delete;
-  void operator=(const MMQ&) = delete;
-  void operator=(MMQ&&) = delete;
+  MMQImpl(const MMQImpl&) = delete;
+  MMQImpl(MMQImpl&&) = delete;
+  void operator=(const MMQImpl&) = delete;
+  void operator=(MMQImpl&&) = delete;
 
   // Increment the index respecting the circular nature of the buffer.
   void Increment(size_t& i) const { i = (i + 1) % circular_buffer_size_; }
@@ -262,6 +260,9 @@ class MMQ final {
   // The thread in which the consuming process is running.
   std::thread consumer_thread_;
 };
+
+template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
+using MMQ = ss::Publisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
 
 }  // namespace blocks
 
