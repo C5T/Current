@@ -39,10 +39,8 @@ namespace sherlock {
 template <typename E>
 class PubSubHTTPEndpoint final {
  public:
-  PubSubHTTPEndpoint(const std::string& value_name, Request r)
-      : value_name_(value_name),
-        http_request_(std::move(r)),
-        http_response_(http_request_.SendChunkedResponse()) {
+  explicit PubSubHTTPEndpoint(Request r)
+      : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
@@ -85,7 +83,7 @@ class PubSubHTTPEndpoint final {
         }
       }
       if (serving_) {
-        http_response_(entry, value_name_);
+        http_response_(entry);
         if (cap_) {
           --cap_;
           if (!cap_) {
@@ -105,9 +103,6 @@ class PubSubHTTPEndpoint final {
   }
 
  private:
-  // Top-level JSON object name for Cereal.
-  const std::string& value_name_;
-
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
   Request http_request_;
 

@@ -341,6 +341,14 @@ TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
   EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
 }
 
+TEST(Cerealize, ExtractJSONEntryName) { struct Foo { };
+  struct Bar {
+    static std::string JSONEntryName() { return "bar_entry_name"; }
+  };
+  EXPECT_EQ("entry", ExtractJSONEntryName<Foo>());
+  EXPECT_EQ("bar_entry_name", ExtractJSONEntryName<Bar>());
+}
+
 TEST(Cerealize, Base64Encode) {
   EXPECT_EQ("MTIzNDU=", Base64Encode("12345"));
   EXPECT_EQ("NzY1NFh5Wg==", Base64Encode("7654XyZ"));

@@ -32,6 +32,7 @@ SOFTWARE.
 #include <thread>
 
 #include "../Blocks/HTTP/api.h"
+#include "../Blocks/Persistence/persistence.h"
 
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/cerealize/cerealize.h"
@@ -347,4 +348,27 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
+}
+
+TEST(Sherlock, PersistsToFile) {
+  auto permanent = sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", "workinprogress.json");
+
+  permanent.Publish(1);
+  permanent.Publish(2);
+  permanent.Publish(3);
+  Data d;
+  {
+    ASSERT_FALSE(d.listener_alive_);
+    SherlockTestProcessor p(d, false);
+    ASSERT_TRUE(d.listener_alive_);
+    permanent.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
+    EXPECT_EQ(3u, d.seen_);
+    ASSERT_TRUE(d.listener_alive_);
+  }
+  ASSERT_FALSE(d.listener_alive_);
+
+  // A careful condition, since the listener may process some or all entries before going out of scope.
+  EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
+              (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
+      << d.results_;
 }

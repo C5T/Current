@@ -64,7 +64,7 @@ SOFTWARE.
 //
 // Sherlock runs as a singleton. The stream of a specific name can only be added once.
 // TODO(dkorolev): Implement it this way. :-)
-// A user of C++ Sherlock interface should keep the return value of `sherlock::Stream<T>`,
+// A user of C++ Sherlock interface should keep the return value of `sherlock::Stream<ENTRY>`,
 // as it is later used as the proxy to publish and subscribe to the data from this stream.
 //
 // Sherlock streams can be published into and subscribed to.
@@ -124,30 +124,34 @@ SOFTWARE.
 
 namespace sherlock {
 
-// TODO(dkorolev): Make persistence strategy a template parameter and initialize it properly.
-using blocks::persistence::MemoryOnly;
-
-template <typename T>
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>
 class StreamInstanceImpl {
  public:
+  typedef ENTRY T_ENTRY;
+  typedef PERSISTENCE_LAYER<ENTRY> T_PERSISTENCE_LAYER;
+
+  // TODO(dkorolev): In constuctor: Register the stream under its name in a singleton.
+  // TODO(dkorolev): In constuctor: Ensure the stream lives forever.
+
+  StreamInstanceImpl(const std::string& name, std::function<T_ENTRY(const T_ENTRY&)> clone)
+      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>(clone)) {}
+
+  template <typename EXTRA_PARAM>
   StreamInstanceImpl(const std::string& name,
-                     const std::string& value_name,
-                     const std::function<T(const T&)> clone)
-      : name_(name), value_name_(value_name), storage_(std::make_shared<MemoryOnly<T>>(clone)) {
-    // TODO(dkorolev): Register this stream under this name.
-    // TODO(dk+mz): Ensure the stream lives forever.
-  }
+                     std::function<T_ENTRY(const T_ENTRY&)> clone,
+                     EXTRA_PARAM&& extra_param)
+      : name_(name),
+        storage_(std::make_shared<T_PERSISTENCE_LAYER>(clone, std::forward<EXTRA_PARAM>(extra_param))) {}
 
   // `Publish()` and `Emplace()` return the index of the added entry.
-  size_t Publish(const T& entry) { return storage_->Publish(entry); }
+  size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
 
-  size_t Publish(T&& entry) { return storage_->Publish(std::move(entry)); }
+  size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
   template <typename E>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T, E>::value, size_t>::type Publish(const E& e) {
-    // TODO(dkorolev): Don't rely on the existence of copy constructor.
-    // TODO(dkorolev): Eliminate this copy.
-    return storage_->Emplace(new E(e));
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, E>::value, size_t>::type Publish(
+      const E& e) {
+    return storage_->Publish(std::move(Clone(e)));
   }
 
   template <typename... ARGS>
@@ -187,10 +191,10 @@ class StreamInstanceImpl {
     // This guy is a `shared_ptr<>` itself later on, to ensure its lifetime.
     struct ListenerThreadSharedState {
       F listener;  // The ownership of the listener is transferred to instance of this class.
-      std::shared_ptr<MemoryOnly<T>> storage;
+      std::shared_ptr<T_PERSISTENCE_LAYER> storage;
       std::atomic_bool stop;
 
-      ListenerThreadSharedState(std::shared_ptr<MemoryOnly<T>> storage, F&& listener)
+      ListenerThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
           : listener(std::move(listener)), storage(storage), stop(false) {}
 
       ListenerThreadSharedState() = delete;
@@ -201,7 +205,7 @@ class StreamInstanceImpl {
     };
 
    public:
-    ListenerThread(std::shared_ptr<MemoryOnly<T>> storage, F&& listener)
+    ListenerThread(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
         : state_(std::make_shared<ListenerThreadSharedState>(storage, std::forward<F>(listener))),
           thread_(&ListenerThread::StaticListenerThread, state_) {}
 
@@ -247,7 +251,7 @@ class StreamInstanceImpl {
   template <typename F>
   class AsyncListenerScope {
    public:
-    AsyncListenerScope(std::shared_ptr<MemoryOnly<T>> storage, F&& listener)
+    AsyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
         : impl_(make_unique<ListenerThread<F>>(storage, std::forward<F>(listener))) {}
 
     AsyncListenerScope(AsyncListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
@@ -276,7 +280,7 @@ class StreamInstanceImpl {
   template <typename F>
   class SyncListenerScope {
    public:
-    SyncListenerScope(std::shared_ptr<MemoryOnly<T>> storage, F&& listener)
+    SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
         : joined_(false), impl_(make_unique<ListenerThread<F>>(storage, std::move(listener))) {}
 
     SyncListenerScope(SyncListenerScope&& rhs) : joined_(false), impl_(std::move(rhs.impl_)) {
@@ -327,13 +331,12 @@ class StreamInstanceImpl {
   }
 
   void ServeDataViaHTTP(Request r) {
-    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<T>>(value_name_, std::move(r))).Detach();
+    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<T_ENTRY>>(std::move(r))).Detach();
   }
 
  private:
   const std::string name_;
-  const std::string value_name_;
-  std::shared_ptr<MemoryOnly<T>> storage_;
+  std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
 
   StreamInstanceImpl() = delete;
   StreamInstanceImpl(const StreamInstanceImpl&) = delete;
@@ -342,10 +345,14 @@ class StreamInstanceImpl {
   void operator=(StreamInstanceImpl&&) = delete;
 };
 
-template <typename T>
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>
 struct StreamInstance {
-  StreamInstanceImpl<T>* impl_;
-  explicit StreamInstance(StreamInstanceImpl<T>* impl) : impl_(impl) {}
+  typedef ENTRY T_ENTRY;
+  typedef PERSISTENCE_LAYER<ENTRY> T_PERSISTENCE_LAYER;
+
+  StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>* impl_;
+
+  explicit StreamInstance(StreamInstanceImpl<T_ENTRY, PERSISTENCE_LAYER>* impl) : impl_(impl) {}
 
   template <typename E>
   size_t Publish(E&& entry) {
@@ -358,10 +365,11 @@ struct StreamInstance {
   }
 
   template <typename F>
-  using SyncListenerScope =
-      typename StreamInstanceImpl<T>::template SyncListenerScope<std::unique_ptr<F, bricks::NullDeleter>>;
+  using SyncListenerScope = typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>::template SyncListenerScope<
+      std::unique_ptr<F, bricks::NullDeleter>>;
   template <typename F>
-  using AsyncListenerScope = typename StreamInstanceImpl<T>::template AsyncListenerScope<F>;
+  using AsyncListenerScope =
+      typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>::template AsyncListenerScope<F>;
 
   // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
   // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
@@ -384,15 +392,32 @@ struct StreamInstance {
   void operator()(Request r) { impl_->ServeDataViaHTTP(std::move(r)); }
 };
 
-template <typename T>
-StreamInstance<T> Stream(const std::string& name,
-                         const std::string& value_name = "entry",
-                         const std::function<T(const T&)> clone = bricks::DefaultCloneFunction<T>()) {
-  // TODO(dkorolev): Validate stream name, add exceptions and tests for it.
-  // TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
-  // TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
-  // TODO(dkorolev): Add the persistence layer.
-  return StreamInstance<T>(new StreamInstanceImpl<T>(name, value_name, clone));
+// TODO(dkorolev): Validate stream name, add exceptions and tests for it.
+// TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
+// TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
+// TODO(dkorolev): Add the persistence layer.
+
+template <typename ENTRY>
+using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY>;
+
+template <typename ENTRY>
+StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER> Stream(const std::string& name) {
+  return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER>(
+      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER>(name, bricks::DefaultCloneFunction<ENTRY>()));
+}
+
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER, typename... EXTRA_PARAMS>
+StreamInstance<ENTRY, PERSISTENCE_LAYER> Stream(const std::string& name, EXTRA_PARAMS&&... extra_params) {
+  return StreamInstance<ENTRY, PERSISTENCE_LAYER>(new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>(
+      name, bricks::DefaultCloneFunction<ENTRY>(), std::forward<EXTRA_PARAMS>(extra_params)...));
+}
+
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER, typename... EXTRA_PARAMS>
+StreamInstance<ENTRY, PERSISTENCE_LAYER> Stream(const std::string& name,
+                                                const std::function<ENTRY(const ENTRY&)> clone,
+                                                EXTRA_PARAMS&&... extra_params) {
+  return StreamInstance<ENTRY, PERSISTENCE_LAYER>(new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>(
+      name, clone, std::forward<EXTRA_PARAMS>(extra_params)...));
 }
 
 }  // namespace sherlock

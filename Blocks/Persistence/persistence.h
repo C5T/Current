@@ -46,9 +46,9 @@ namespace impl {
 template <class PERSISTENCE_LAYER, typename E>
 class Logic {
  public:
-  template <typename... ARGS>
-  Logic(const std::function<E(const E&)> clone, ARGS&&... args)
-      : persistence_layer_(std::forward<ARGS>(args)...), clone_(clone) {
+  template <typename... EXTRA_PARAMS>
+  Logic(std::function<E(const E&)> clone, EXTRA_PARAMS&&... extra_params)
+      : persistence_layer_(clone, std::forward<EXTRA_PARAMS>(extra_params)...), clone_(clone) {
     persistence_layer_.Replay([this](E&& e) { list_.push_back(std::move(e)); });
   }
 
@@ -163,9 +163,14 @@ class Logic {
   const std::function<E(const E&)> clone_;
 };
 
+// We keep the `clone` param part of the constructor signature of persistence layers.
+// Right now persistence layers don't need to clone incoming entries, but we never know. -- D.K.
+
 // The implementation of a "publisher into nowhere".
 template <typename E>
 struct DevNullPublisherImpl {
+  DevNullPublisherImpl() = delete;
+  DevNullPublisherImpl(std::function<E(const E&)>) {}
   void Replay(std::function<void(E&&)>) {}
   size_t DoPublish(const E&) { return ++count_; }
   size_t count_ = 0u;
@@ -177,7 +182,8 @@ using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<E>, E>;
 // TODO(dkorolev): Move into Cerealize.
 template <typename E>
 struct AppendToFilePublisherImpl {
-  AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+  AppendToFilePublisherImpl(std::function<E(const E&)> clone, const std::string& filename)
+      : clone_(clone), filename_(filename) {}
 
   void Replay(std::function<void(E&&)> push) {
     // TODO(dkorolev): Try/catch here?
@@ -186,17 +192,20 @@ struct AppendToFilePublisherImpl {
     while (parser.Next(push)) {
       ++count_;
     }
-    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<E>>(filename_);
+    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<E>>(clone_, filename_);
     assert(appender_);
   }
 
   size_t DoPublish(const E& e) {
+    // TODO(dkorolev): Remove this debug output.
+    std::cerr << "PUSLISHING " << JSON(e) << " INTO '" << filename_ << "'\n";
     (*appender_) << e;
     return ++count_;
   }
 
  private:
-  const std::string& filename_;
+  const std::function<E(const E&)> clone_;
+  const std::string filename_;
   std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<E>> appender_;
   size_t count_ = 0u;
 };

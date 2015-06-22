@@ -285,9 +285,9 @@ struct GenericEntryPublisher : GenericPublisher {};
 template <typename IMPL, typename ENTRY>
 class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
-  template <typename... ARGS>
-  explicit Publisher(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  template <typename... EXTRA_PARAMS>
+  explicit Publisher(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
+      : IMPL(clone, std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
   template <typename E>
   inline size_t Publish(E&& e) {

@@ -55,6 +55,34 @@ WithBaseType(const ENTRY& object) {
                                                   bricks::NullDeleter());
 }
 
+template <typename T>
+constexpr bool HasJSONEntryName(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasJSONEntryName(int) -> decltype(T::JSONEntryName(), bool()) {
+  return true;
+}
+
+template <typename T, bool HAS_JSON_ENTRY_NAME>
+struct ExtractJSONEntryNameImpl {};
+
+template <typename T>
+struct ExtractJSONEntryNameImpl<T, false> {
+  static std::string DoIt() { return "entry"; }
+};
+
+template <typename T>
+struct ExtractJSONEntryNameImpl<T, true> {
+  static std::string DoIt() { return T::JSONEntryName(); }
+};
+
+template <typename T>
+inline std::string ExtractJSONEntryName() {
+  return ExtractJSONEntryNameImpl<T, HasJSONEntryName<T>(0)>::DoIt();
+}
+
 template <typename OSTREAM, typename T>
 inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {
   cereal::JSONOutputArchive so(os);
@@ -77,7 +105,7 @@ inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object, S&& name) {
 template <typename T>
 inline std::string JSON(T&& object) {
   std::ostringstream os;
-  AppendAsJSON(os, std::forward<T>(object));
+  AppendAsJSON(os, std::forward<T>(object), ExtractJSONEntryName<T>());
   return os.str();
 }
 
@@ -105,18 +133,18 @@ constexpr auto HasFromInvalidJSON(int)
 }
 
 template <typename T, bool B>
-struct BricksParseJSONError {};
+struct ParseJSONErrorHandler {};
 
 template <typename T>
-struct BricksParseJSONError<T, false> {
-  static void HandleParseJSONError(const std::string& input_json, T&) {
+struct ParseJSONErrorHandler<T, false> {
+  static void HandleError(const std::string& input_json, T&) {
     BRICKS_THROW(bricks::ParseJSONException(input_json));
   }
 };
 
 template <typename T>
-struct BricksParseJSONError<T, true> {
-  static void HandleParseJSONError(const std::string& input_json, T& output_object) {
+struct ParseJSONErrorHandler<T, true> {
+  static void HandleError(const std::string& input_json, T& output_object) {
     output_object.FromInvalidJSON(input_json);
   }
 };
@@ -128,7 +156,7 @@ inline const T& ParseJSON(const std::string& input_json, T& output_object) {
     cereal::JSONInputArchive ar(is);
     ar(output_object);
   } catch (cereal::Exception&) {
-    BricksParseJSONError<T, HasFromInvalidJSON<decay<T>>(0)>::HandleParseJSONError(input_json, output_object);
+    ParseJSONErrorHandler<T, HasFromInvalidJSON<decay<T>>(0)>::HandleError(input_json, output_object);
   }
   return output_object;
 }
@@ -151,5 +179,6 @@ inline std::string Base64Encode(const std::string& s) {
 using bricks::cerealize::JSON;
 using bricks::cerealize::ParseJSON;
 using bricks::cerealize::WithBaseType;
+using bricks::cerealize::ExtractJSONEntryName;
 
 #endif  // BRICKS_CEREALIZE_JSON_H

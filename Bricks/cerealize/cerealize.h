@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_CEREALIZE_CEREALIZE_H
 
 #include <fstream>
+#include <functional>
 #include <string>
 #include <sstream>
 
@@ -128,6 +129,11 @@ class CerealFileAppenderBase {
 template <typename T_ENTRY>
 class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
  public:
+  explicit CerealBinaryFileAppenderImpl(std::function<T_ENTRY(const T_ENTRY&)>,
+                                        const std::string& filename,
+                                        bool append = true)
+      : CerealFileAppenderBase(filename, append), so_(cereal::BinaryOutputArchive(fo_)) {}
+
   explicit CerealBinaryFileAppenderImpl(const std::string& filename, bool append = true)
       : CerealFileAppenderBase(filename, append), so_(cereal::BinaryOutputArchive(fo_)) {}
 
@@ -174,6 +180,11 @@ using CerealBinaryFileAppender = blocks::ss::Publisher<CerealBinaryFileAppenderI
 template <typename T_ENTRY>
 class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
  public:
+  CerealJSONFileAppenderImpl(std::function<T_ENTRY(const T_ENTRY&)>,
+                             const std::string& filename,
+                             bool append = true)
+      : CerealFileAppenderBase(filename, append) {}
+
   explicit CerealJSONFileAppenderImpl(const std::string& filename, bool append = true)
       : CerealFileAppenderBase(filename, append) {}
 
