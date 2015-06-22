@@ -27,9 +27,9 @@ SOFTWARE.
 #define BLOCKS_MMQ_MMQ_H
 
 // MMQ is an efficient in-memory FIFO buffer.
-// One of the objectives of MMQ is to minimize the time for which the message pushing thread is blocked for.
+// One of the objectives of MMQ is to minimize the time for which the thread publishing the message is blocked for.
 //
-// Messages can be pushed intao MMQ via standard `Publish()` interface defined in `Blocks/SS/ss.h`.
+// Messages can be published into a MMQ via standard `Publish()` interface defined in `Blocks/SS/ss.h`.
 // The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
 //
 // The buffer size, i.e. the number of the messages MMQ can hold, is defined by the constructor argument
@@ -40,10 +40,10 @@ SOFTWARE.
 // at the next call to `Publish()` or `Emplace()`):
 //   1) Discard (drop) the message. In this case, the number of the messages dropped between the subseqent
 //      calls of the consumer may be passed as a second argument of `OnMessage()`.
-//   2) Block the pushing thread and wait for the next message to be consumed and free the space in the buffer.
-//      IMPORTANT NOTE: if there are several threads waiting to push the message, MMQ DOES NOT guarantee that
+//   2) Block the publishing thread and wait for the next message to be consumed and free the space in the buffer.
+//      IMPORTANT NOTE: if there are several threads waiting to publish the message, MMQ DOES NOT guarantee that
 //      the messages will be added in the order in which the functions were called. However, for any particular
-//      thread, MMQ DOES GUARANTEE the order of the messages for the subsequent requests to push the message.
+//      thread, MMQ DOES GUARANTEE that the order of messages published from this thread will be respected.
 //  Default behavior of MMQ is non-dropping and can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
 #include <atomic>
@@ -88,11 +88,11 @@ class MMQImpl {
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
   size_t DoPublish(const T_MESSAGE& message) {
-    const std::pair<size_t, size_t> index = PushMessageAllocate();
+    const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
       circular_buffer_[index.first].message_body = message;
-      PushMessageCommit(index.first);
+      CircularBufferCommit(index.first);
       return index.second;
     } else {
       return 0u;
@@ -100,11 +100,11 @@ class MMQImpl {
   }
 
   size_t DoPublish(T_MESSAGE&& message) {
-    const std::pair<size_t, size_t> index = PushMessageAllocate();
+    const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
       circular_buffer_[index.first].message_body = std::move(message);
-      PushMessageCommit(index.first);
+      CircularBufferCommit(index.first);
       return index.second;
     } else {
       return 0u;
@@ -113,11 +113,11 @@ class MMQImpl {
 
   template <typename... ARGS>
   size_t DoEmplace(ARGS&&... args) {
-    const std::pair<size_t, size_t> index = PushMessageAllocate();
+    const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
       circular_buffer_[index.first].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
-      PushMessageCommit(index.first);
+      CircularBufferCommit(index.first);
       return index.second;
     } else {
       return 0u;
@@ -177,7 +177,7 @@ class MMQImpl {
         }
         Increment(tail);
 
-        // Need to notify message pushers.
+        // Need to notify message publishers that, in case they were waiting, a new slot is now available.
         // TODO(dkorolev) + TODO(mzhurovich): Think whether this might be a performance bottleneck.
         condition_variable_.notify_one();
       }
@@ -186,7 +186,7 @@ class MMQImpl {
 
   // Returns { circular buffer index, absolute 1-based message index, or zero if the message is dropped }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<DROP, std::pair<size_t, size_t>>::type PushMessageAllocate() {
+  typename std::enable_if<DROP, std::pair<size_t, size_t>>::type CircularBufferAllocate() {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
@@ -205,7 +205,7 @@ class MMQImpl {
 
   // Returns { circular buffer index, absolute message index }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<!DROP, std::pair<size_t, size_t>>::type PushMessageAllocate() {
+  typename std::enable_if<!DROP, std::pair<size_t, size_t>>::type CircularBufferAllocate() {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
@@ -228,7 +228,7 @@ class MMQImpl {
     return std::make_pair(index, total_messages_);
   }
 
-  void PushMessageCommit(const size_t index) {
+  void CircularBufferCommit(const size_t index) {
     // After the message has been copied over, mark it as `READY` for consumer.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);

@@ -105,18 +105,18 @@ constexpr auto HasFromInvalidJSON(int)
 }
 
 template <typename T, bool B>
-struct BricksParseJSONError {};
+struct ParseJSONErrorHandler {};
 
 template <typename T>
-struct BricksParseJSONError<T, false> {
-  static void HandleParseJSONError(const std::string& input_json, T&) {
+struct ParseJSONErrorHandler<T, false> {
+  static void HandleError(const std::string& input_json, T&) {
     BRICKS_THROW(bricks::ParseJSONException(input_json));
   }
 };
 
 template <typename T>
-struct BricksParseJSONError<T, true> {
-  static void HandleParseJSONError(const std::string& input_json, T& output_object) {
+struct ParseJSONErrorHandler<T, true> {
+  static void HandleError(const std::string& input_json, T& output_object) {
     output_object.FromInvalidJSON(input_json);
   }
 };
@@ -128,7 +128,7 @@ inline const T& ParseJSON(const std::string& input_json, T& output_object) {
     cereal::JSONInputArchive ar(is);
     ar(output_object);
   } catch (cereal::Exception&) {
-    BricksParseJSONError<T, HasFromInvalidJSON<decay<T>>(0)>::HandleParseJSONError(input_json, output_object);
+    ParseJSONErrorHandler<T, HasFromInvalidJSON<decay<T>>(0)>::HandleError(input_json, output_object);
   }
   return output_object;
 }

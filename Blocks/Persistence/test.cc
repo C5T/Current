@@ -74,13 +74,13 @@ struct PersistenceTestListener {
 
 TEST(PersistenceLayer, MemoryOnly) {
   typedef blocks::persistence::MemoryOnly<std::string> IMPL;
+  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
+  static_assert(blocks::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+  static_assert(!blocks::ss::IsPublisher<int>::value, "");
+  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   {
     IMPL impl(bricks::DefaultCloneFunction<std::string>());
-    static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-    static_assert(blocks::ss::IsEntryPublisher<IMPL, std::string>::value, "");
-    static_assert(!blocks::ss::IsPublisher<int>::value, "");
-    static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
     impl.Publish("foo");
     impl.Publish("bar");
@@ -135,6 +135,10 @@ TEST(PersistenceLayer, MemoryOnly) {
 
 TEST(PersistenceLayer, AppendToFile) {
   typedef blocks::persistence::AppendToFile<CerealizableString> IMPL;
+  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
+  static_assert(blocks::ss::IsEntryPublisher<IMPL, CerealizableString>::value, "");
+  static_assert(!blocks::ss::IsPublisher<int>::value, "");
+  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   const std::string fn = bricks::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
   bricks::FileSystem::RmFile(fn, bricks::FileSystem::RmFileParameters::Silent);
@@ -142,10 +146,6 @@ TEST(PersistenceLayer, AppendToFile) {
 
   {
     IMPL impl(bricks::DefaultCloneFunction<CerealizableString>(), fn);
-    static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-    static_assert(blocks::ss::IsEntryPublisher<IMPL, CerealizableString>::value, "");
-    static_assert(!blocks::ss::IsPublisher<int>::value, "");
-    static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
     impl.Publish("foo");
     impl.Publish("bar");

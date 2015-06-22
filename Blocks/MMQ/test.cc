@@ -68,7 +68,7 @@ struct SuspendableConsumer {
   std::vector<std::string> messages_;
   std::atomic_size_t processed_messages_;
   size_t expected_next_message_index_ = 0u;
-  size_t total_messages_pushed_into_the_queue_ = 0u;
+  size_t total_messages_accepted_by_the_queue_ = 0u;
   std::atomic_bool suspend_processing_;
   size_t processing_delay_ms_ = 0u;
   SuspendableConsumer() : processed_messages_(0u), suspend_processing_(false) {}
@@ -79,8 +79,8 @@ struct SuspendableConsumer {
       ;  // Spin lock.
     }
     messages_.push_back(s);
-    assert(total >= total_messages_pushed_into_the_queue_);
-    total_messages_pushed_into_the_queue_ = total;
+    assert(total >= total_messages_accepted_by_the_queue_);
+    total_messages_accepted_by_the_queue_ = total;
     if (processing_delay_ms_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(processing_delay_ms_));
     }
@@ -95,23 +95,23 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   // Queue with 10 at most messages in the buffer.
   MMQ<std::string, SuspendableConsumer, 10, true> mmq(c);
 
-  // Suspend the consumer temporarily while the first 25 messages are pushed.
+  // Suspend the consumer temporarily while the first 25 messages are published.
   c.suspend_processing_ = true;
 
-  // Push 25 messages, causing an overflow, of which 15 will be discarded.
-  size_t messages_pushed = 0u;
-  size_t messages_discarded = 0u;
+  // Publish 25 messages, causing an overflow, of which 15 will be discarded.
+  size_t messages_accepted = 0u;
+  size_t messages_dropped = 0u;
   for (size_t i = 0; i < 25; ++i) {
     if (mmq.Publish(bricks::strings::Printf("M%02d", static_cast<int>(i)))) {
-      ++messages_pushed;
+      ++messages_accepted;
     } else {
-      ++messages_discarded;
+      ++messages_dropped;
     }
   }
 
-  // Confirm that 10/25 messages were pushed, and 15/25 were discared.
-  EXPECT_EQ(10u, messages_pushed);
-  EXPECT_EQ(15u, messages_discarded);
+  // Confirm that 10/25 messages were accepted, and 15/25 were dropped.
+  EXPECT_EQ(10u, messages_accepted);
+  EXPECT_EQ(15u, messages_dropped);
 
   // Eliminate processing delay and wait until the complete queue of 10 messages is played through.
   c.suspend_processing_ = false;
@@ -126,9 +126,9 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
     ;  // Spin lock.
   }
 
-  // Eleven messages total: ten originally came through, plus one more.
+  // Eleven messages total: ten accepted originally, plus one more published later.
   EXPECT_EQ(c.messages_.size(), 11u);
-  EXPECT_EQ(c.total_messages_pushed_into_the_queue_, 11u);
+  EXPECT_EQ(c.total_messages_accepted_by_the_queue_, 11u);
   EXPECT_EQ(c.expected_next_message_index_, 11u);
 
   // Confirm that 11 messages have reached the consumer: first 10/25 and one more later.
@@ -160,7 +160,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
     p.join();
   }
 
-  // Since we push 100 messages and the size of the buffer is 10,
+  // Since we published 100 messages and the size of the buffer is 10,
   // we must see at least 90 messages processed by this moment.
   EXPECT_GE(c.processed_messages_, 90u);
 
@@ -170,7 +170,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   }
 
   // Confirm that none of the messages were dropped.
-  EXPECT_EQ(c.processed_messages_, c.total_messages_pushed_into_the_queue_);
+  EXPECT_EQ(c.processed_messages_, c.total_messages_accepted_by_the_queue_);
 
   // Ensure that all processed messages are indeed unique.
   std::set<std::string> messages(begin(c.messages_), end(c.messages_));
