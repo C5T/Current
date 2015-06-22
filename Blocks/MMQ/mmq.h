@@ -71,7 +71,6 @@ class MMQImpl {
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
-        total_messages_(0u),
         consumer_thread_(&MMQImpl::ConsumerThread, this) {}
 
   // Destructor waits for the consumer thread to terminate, which implies committing all the queued messages.
@@ -89,24 +88,24 @@ class MMQImpl {
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
   size_t DoPublish(const T_MESSAGE& message) {
-    const size_t index = PushMessageAllocate();
-    if (index != static_cast<size_t>(-1)) {
-      circular_buffer_[index].absolute_index = total_messages_;
-      circular_buffer_[index].message_body = message;
-      PushMessageCommit(index);
-      return ++total_messages_;
+    const std::pair<size_t, size_t> index = PushMessageAllocate();
+    if (index.second) {
+      circular_buffer_[index.first].absolute_index = index.second - 1u;
+      circular_buffer_[index.first].message_body = message;
+      PushMessageCommit(index.first);
+      return index.second;
     } else {
       return 0u;
     }
   }
 
   size_t DoPublish(T_MESSAGE&& message) {
-    const size_t index = PushMessageAllocate();
-    if (index != static_cast<size_t>(-1)) {
-      circular_buffer_[index].absolute_index = total_messages_;
-      circular_buffer_[index].message_body = std::move(message);
-      PushMessageCommit(index);
-      return ++total_messages_;
+    const std::pair<size_t, size_t> index = PushMessageAllocate();
+    if (index.second) {
+      circular_buffer_[index.first].absolute_index = index.second - 1u;
+      circular_buffer_[index.first].message_body = std::move(message);
+      PushMessageCommit(index.first);
+      return index.second;
     } else {
       return 0u;
     }
@@ -114,12 +113,12 @@ class MMQImpl {
 
   template <typename... ARGS>
   size_t DoEmplace(ARGS&&... args) {
-    const size_t index = PushMessageAllocate();
-    if (index != static_cast<size_t>(-1)) {
-      circular_buffer_[index].absolute_index = total_messages_;
-      circular_buffer_[index].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
-      PushMessageCommit(index);
-      return ++total_messages_;
+    const std::pair<size_t, size_t> index = PushMessageAllocate();
+    if (index.second) {
+      circular_buffer_[index.first].absolute_index = index.second - 1u;
+      circular_buffer_[index.first].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
+      PushMessageCommit(index.first);
+      return index.second;
     } else {
       return 0u;
     }
@@ -139,6 +138,7 @@ class MMQImpl {
   void ConsumerThread() {
     // The `tail` pointer is local to the procesing thread.
     size_t tail = 0u;
+    size_t save_total_messages;
 
     while (true) {
       {
@@ -156,6 +156,7 @@ class MMQImpl {
           return;  // LCOV_EXCL_LINE
         }
         circular_buffer_[tail].status = Entry::BEING_EXPORTED;
+        save_total_messages = total_messages_;
       }
 
       {
@@ -164,7 +165,7 @@ class MMQImpl {
         blocks::ss::DispatchEntryByRValue(consumer_,
                                           std::move(circular_buffer_[tail].message_body),
                                           circular_buffer_[tail].absolute_index,
-                                          total_messages_);
+                                          save_total_messages);
       }
 
       {
@@ -183,44 +184,48 @@ class MMQImpl {
     }
   }
 
+  // Returns { circular buffer index, absolute 1-based message index, or zero if the message is dropped }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<DROP, size_t>::type PushMessageAllocate() {
+  typename std::enable_if<DROP, std::pair<size_t, size_t>>::type PushMessageAllocate() {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
     if (circular_buffer_[head_].status == Entry::FREE) {
       // Regular case.
+      ++total_messages_;
       const size_t index = head_;
       Increment(head_);
       circular_buffer_[index].status = Entry::BEING_IMPORTED;
-      return index;
+      return std::make_pair(index, total_messages_);
     } else {
-      // Overflow. Discarding the message.
-      return static_cast<size_t>(-1);  // LCOV_EXCL_LINE
+      // Overflow. Discarding the message. The second `0u` indicates the message should be dropped.
+      return std::make_pair(0u, 0u);
     }
   }
 
+  // Returns { circular buffer index, absolute message index }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<!DROP, size_t>::type PushMessageAllocate() {
+  typename std::enable_if<!DROP, std::pair<size_t, size_t>>::type PushMessageAllocate() {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
     std::unique_lock<std::mutex> lock(mutex_);
     if (destructing_) {
-      return static_cast<size_t>(-1);  // LCOV_EXCL_LINE
+      return std::make_pair(0u, 0u);  // LCOV_EXCL_LINE
     }
     while (circular_buffer_[head_].status != Entry::FREE) {
       // Waiting for the next empty slot in the buffer.
       condition_variable_.wait(
           lock, [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
       if (destructing_) {
-        return static_cast<size_t>(-1);  // LCOV_EXCL_LINE
+        return std::make_pair(0u, 0u);  // LCOV_EXCL_LINE
       }
     }
     const size_t index = head_;
+    ++total_messages_;
     Increment(head_);
     circular_buffer_[index].status = Entry::BEING_IMPORTED;
-    return index;
+    return std::make_pair(index, total_messages_);
   }
 
   void PushMessageCommit(const size_t index) {
@@ -252,7 +257,7 @@ class MMQImpl {
   size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
-  std::atomic_size_t total_messages_;
+  size_t total_messages_ = 0u;
 
   // For safe thread destruction.
   bool destructing_ = false;
