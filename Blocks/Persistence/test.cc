@@ -38,14 +38,6 @@ SOFTWARE.
 
 DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
-using blocks::persistence::MemoryOnly;
-using blocks::persistence::AppendToFile;
-
-using blocks::ss::DispatchEntryByRValue;
-
-using bricks::DefaultCloneFunction;
-using bricks::FileSystem;
-
 using bricks::strings::Join;
 
 struct CerealizableString {
@@ -81,8 +73,14 @@ struct PersistenceTestListener {
 };
 
 TEST(PersistenceLayer, MemoryOnly) {
+  typedef blocks::persistence::MemoryOnly<std::string> IMPL;
+
   {
-    MemoryOnly<std::string> impl(DefaultCloneFunction<std::string>());
+    IMPL impl(bricks::DefaultCloneFunction<std::string>());
+    static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
+    static_assert(blocks::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+    static_assert(!blocks::ss::IsPublisher<int>::value, "");
+    static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
     impl.Publish("foo");
     impl.Publish("bar");
@@ -111,7 +109,7 @@ TEST(PersistenceLayer, MemoryOnly) {
   {
     // Obviously, no state is shared for `MemoryOnly` implementation.
     // The data starts from ground zero.
-    MemoryOnly<std::string> impl(DefaultCloneFunction<std::string>());
+    IMPL impl(bricks::DefaultCloneFunction<std::string>());
 
     std::atomic_bool stop(false);
     PersistenceTestListener test_listener;
@@ -136,12 +134,18 @@ TEST(PersistenceLayer, MemoryOnly) {
 }
 
 TEST(PersistenceLayer, AppendToFile) {
-  const std::string fn = FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
-  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
-  const auto file_remover = FileSystem::ScopedRmFile(fn);
+  typedef blocks::persistence::AppendToFile<CerealizableString> IMPL;
+
+  const std::string fn = bricks::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  bricks::FileSystem::RmFile(fn, bricks::FileSystem::RmFileParameters::Silent);
+  const auto file_remover = bricks::FileSystem::ScopedRmFile(fn);
 
   {
-    AppendToFile<CerealizableString> impl(DefaultCloneFunction<CerealizableString>(), fn);
+    IMPL impl(bricks::DefaultCloneFunction<CerealizableString>(), fn);
+    static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
+    static_assert(blocks::ss::IsEntryPublisher<IMPL, CerealizableString>::value, "");
+    static_assert(!blocks::ss::IsPublisher<int>::value, "");
+    static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
     impl.Publish("foo");
     impl.Publish("bar");
@@ -169,7 +173,7 @@ TEST(PersistenceLayer, AppendToFile) {
 
   {
     // Confirm that the data has been saved and can be replayed.
-    AppendToFile<CerealizableString> impl(DefaultCloneFunction<CerealizableString>(), fn);
+    IMPL impl(bricks::DefaultCloneFunction<CerealizableString>(), fn);
 
     std::atomic_bool stop(false);
     PersistenceTestListener test_listener;
@@ -208,7 +212,7 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
     std::string AsString() override { return "B"; }
     std::unique_ptr<BASE> Clone() override { return std::unique_ptr<BASE>(new B()); }
   };
-  MemoryOnly<std::unique_ptr<BASE>> test_clone(
+  blocks::persistence::MemoryOnly<std::unique_ptr<BASE>> test_clone(
       [](const std::unique_ptr<BASE>& input) { return input->Clone(); });
 
   test_clone.Publish(make_unique<A>());

@@ -22,14 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_CEREALIZE_H
-#define BRICKS_CEREALIZE_H
+#ifndef BRICKS_CEREALIZE_CEREALIZE_H
+#define BRICKS_CEREALIZE_CEREALIZE_H
 
 #include <fstream>
 #include <string>
 #include <sstream>
 
+#include "json.h"
 #include "exceptions.h"
+
+#include "../strings/is_string_type.h"
+#include "../rtti/dispatcher.h"
+#include "../template/decay.h"
+
+#include "../../Blocks/SS/ss.h"
 
 #include "../../3rdparty/cereal/include/types/string.hpp"
 #include "../../3rdparty/cereal/include/types/vector.hpp"
@@ -43,12 +50,6 @@ SOFTWARE.
 #include "../../3rdparty/cereal/include/archives/xml.hpp"
 
 #include "../../3rdparty/cereal/include/external/base64.hpp"
-
-#include "../strings/is_string_type.h"
-#include "../template/is_unique_ptr.h"
-#include "../util/null_deleter.h"
-#include "../rtti/dispatcher.h"
-#include "../template/decay.h"
 
 namespace bricks {
 namespace cerealize {
@@ -72,14 +73,6 @@ template <typename T>
 struct is_cerealizable {
   constexpr static bool value = is_read_cerealizable<T>::value && is_write_cerealizable<T>::value;
 };
-
-template <typename BASE, typename ENTRY>
-inline typename std::enable_if<std::is_base_of<BASE, ENTRY>::value,
-                               std::unique_ptr<const BASE, bricks::NullDeleter>>::type
-WithBaseType(const ENTRY& object) {
-  return std::unique_ptr<const BASE, NullDeleter>(reinterpret_cast<const BASE*>(&object),
-                                                  bricks::NullDeleter());
-}
 
 // Enumeration for compile-time format selection.
 enum class CerealFormat { Default = 0, Binary = 0, JSON };
@@ -133,14 +126,18 @@ class CerealFileAppenderBase {
 // Writes are performed using templated `operator <<(const T& entry)`.
 // If type `T` defines a typedef of `CEREAL_BASE_TYPE`, polymorphic serialization is used.
 template <typename T_ENTRY>
-class CerealBinaryFileAppender : public CerealFileAppenderBase {
+class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
  public:
-  explicit CerealBinaryFileAppender(const std::string& filename, bool append = true)
+  explicit CerealBinaryFileAppenderImpl(const std::string& filename, bool append = true)
       : CerealFileAppenderBase(filename, append), so_(cereal::BinaryOutputArchive(fo_)) {}
 
-  CerealBinaryFileAppender& operator<<(const T_ENTRY& entry) {
+  size_t DoPublish(const T_ENTRY& entry) {
     so_(entry);
-    ++entries_appended_;
+    return ++entries_appended_;
+  }
+
+  CerealBinaryFileAppenderImpl& operator<<(const T_ENTRY& entry) {
+    DoPublish(entry);
     return *this;
   }
 
@@ -148,11 +145,18 @@ class CerealBinaryFileAppender : public CerealFileAppenderBase {
   template <typename E,
             typename UNIQUE_PTR = T_ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
-                          CerealBinaryFileAppender&>::type
-  operator<<(const E& entry) {
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value, size_t>::type
+  DoPublish(const E& entry) {
     so_(WithBaseType<typename T_ENTRY::element_type>(entry));
-    ++entries_appended_;
+    return ++entries_appended_;
+  }
+  template <typename E,
+            typename UNIQUE_PTR = T_ENTRY,
+            typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
+                          CerealBinaryFileAppenderImpl&>::type
+  operator<<(const E& entry) {
+    DoPublish<E, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
     return *this;
   }
 
@@ -160,17 +164,31 @@ class CerealBinaryFileAppender : public CerealFileAppenderBase {
   cereal::BinaryOutputArchive so_;
 };
 
+template <typename E>
+using CerealBinaryFileAppender = blocks::ss::Publisher<CerealBinaryFileAppenderImpl<E>, E>;
+
 // `CerealJSONFileAppender` appends cereal-ized records to a file in JSON format.
 // Each entry is written as a separate line containing full JSON record.
 // Writes are performed using templated `operator <<(const T& entry)`.
 // If type `T` defines a typedef of `CEREAL_BASE_TYPE`, polymorphic serialization is used.
 template <typename T_ENTRY>
-class CerealJSONFileAppender : public CerealFileAppenderBase {
+class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
  public:
-  explicit CerealJSONFileAppender(const std::string& filename, bool append = true)
+  explicit CerealJSONFileAppenderImpl(const std::string& filename, bool append = true)
       : CerealFileAppenderBase(filename, append) {}
 
-  CerealJSONFileAppender& operator<<(const T_ENTRY& entry) {
+  size_t DoPublish(const T_ENTRY& entry) {
+    {
+      cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
+      so_(cereal::make_nvp("e", entry));  // "e" for "entry".
+    }
+    fo_ << '\n';
+    return ++entries_appended_;
+  }
+
+  CerealJSONFileAppenderImpl& operator<<(const T_ENTRY& entry) {
+    DoPublish(entry);
+    return *this;
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
       so_(cereal::make_nvp("e", entry));  // "e" for "entry".
@@ -184,19 +202,29 @@ class CerealJSONFileAppender : public CerealFileAppenderBase {
   template <typename E,
             typename UNIQUE_PTR = T_ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
-                          CerealJSONFileAppender&>::type
-  operator<<(const E& entry) {
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value, size_t>::type
+  DoPublish(const E& entry) {
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
       so_(cereal::make_nvp("p",
                            WithBaseType<typename T_ENTRY::element_type>(entry)));  // "p" for "polymorphic".
     }
     fo_ << '\n';
-    ++entries_appended_;
+    return ++entries_appended_;
+  }
+  template <typename E,
+            typename UNIQUE_PTR = T_ENTRY,
+            typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
+                          CerealJSONFileAppenderImpl&>::type
+  operator<<(const E& entry) {
+    DoPublish<E, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
     return *this;
   }
 };
+
+template <typename E>
+using CerealJSONFileAppender = blocks::ss::Publisher<CerealJSONFileAppenderImpl<E>, E>;
 
 template <typename E, CerealFormat>
 struct CerealGenericFileAppender {};
@@ -345,104 +373,7 @@ struct CerealGenericFileParser<T_ENTRY, CerealFormat::JSON> {
 template <typename T_ENTRY, CerealFormat T_FORMAT = CerealFormat::Default>
 using CerealFileParser = typename CerealGenericFileParser<T_ENTRY, T_FORMAT>::type;
 
-template <typename OSTREAM, typename T>
-inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {
-  cereal::JSONOutputArchive so(os);
-  so(object);
-  return os;
-}
-
-struct AsConstCharPtr {
-  static inline const char* Run(const char* s) { return s; }
-  static inline const char* Run(const std::string& s) { return s.c_str(); }
-};
-
-template <typename OSTREAM, typename T, typename S>
-inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object, S&& name) {
-  cereal::JSONOutputArchive so(os);
-  so(cereal::make_nvp<rmref<T>>(AsConstCharPtr::Run(name), object));
-  return os;
-}
-
-template <typename T>
-inline std::string JSON(T&& object) {
-  std::ostringstream os;
-  AppendAsJSON(os, std::forward<T>(object));
-  return os.str();
-}
-
-template <typename T, typename S>
-inline std::string JSON(T&& object, S&& name) {
-  std::ostringstream os;
-  AppendAsJSON(os, std::forward<T>(object), name);
-  return os.str();
-}
-
-// JSON parse error handling logic.
-// By default, an exception is thrown.
-// If a user class defines the `FromInvalidJSON()` method, ParseJSON() is a non-throwing call,
-// and that method will be called instead.
-
-template <typename T>
-struct HasFromInvalidJSON {
-  typedef char one;
-  typedef long two;
-
-  template <typename C>
-  static one test(decltype(&C::FromInvalidJSON));
-  template <typename C>
-  static two test(...);
-
-  constexpr static bool value = (sizeof(test<T>(0)) == sizeof(one));
-};
-
-template <typename T, bool B>
-struct BricksParseJSONError {};
-
-template <typename T>
-struct BricksParseJSONError<T, false> {
-  static void HandleParseJSONError(const std::string& input_json, T&) {
-    BRICKS_THROW(bricks::ParseJSONException(input_json));
-  }
-};
-
-template <typename T>
-struct BricksParseJSONError<T, true> {
-  static void HandleParseJSONError(const std::string& input_json, T& output_object) {
-    output_object.FromInvalidJSON(input_json);
-  }
-};
-
-template <typename T>
-inline const T& ParseJSON(const std::string& input_json, T& output_object) {
-  try {
-    std::istringstream is(input_json);
-    cereal::JSONInputArchive ar(is);
-    ar(output_object);
-  } catch (cereal::Exception&) {
-    BricksParseJSONError<T, HasFromInvalidJSON<rmref<T>>::value>::HandleParseJSONError(input_json,
-                                                                                       output_object);
-  }
-  return output_object;
-}
-
-template <typename T>
-inline T ParseJSON(const std::string& input_json) {
-  T placeholder;
-  ParseJSON(input_json, placeholder);
-  // Can not just do `return ParseJSON()`, since it would not handle ownership transfer for `std::unique_ptr<>`.
-  return placeholder;
-}
-
-inline std::string Base64Encode(const std::string& s) {
-  return base64::encode(reinterpret_cast<const unsigned char*>(s.c_str()), s.length());
-}
-
 }  // namespace cerealize
 }  // namespace bricks
 
-using bricks::cerealize::JSON;
-using bricks::cerealize::ParseJSON;
-using bricks::cerealize::WithBaseType;
-
-#endif  // BRICKS_CEREALIZE_H
+#endif  // BRICKS_CEREALIZE_CEREALIZE_H

@@ -266,6 +266,53 @@ inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
   return impl::DispatchEntryWithoutMakingACopy<F, E>(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
+// === `Publisher<IMPL, ENTRY>` ===
+// The generic interface to publish an entry to a stream of any kind.
+// For this interface, there is no difference between FileAppender, MMQ or a Sherlock stream,
+// as long as they accept entries to be published.
+// The main purpose of this wrapper is to eliminate unnecessary code and data copies. Specifically:
+// 1) To allow publishing a `const ENTRY&` into a stream that only accepts rvalue references.
+//    (The default clone method will be used.)
+// 2) To enable `EmplaceEntry()` for streams that only expose publish methods taking the entry itself.
+//    (The entry will be constructed by the wrapper and `std::move()`-d away into the stream.)
+// The convention is to return the 1-base index of the entry in the stream as `size_t`,
+// or zero if the entry can not be published (for example, if it has been discarded from an MMQ -- D.K.).
+
+struct GenericPublisher {};
+template <typename ENTRY>
+struct GenericEntryPublisher : GenericPublisher {};
+
+template <typename IMPL, typename ENTRY>
+class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
+ public:
+  template <typename... ARGS>
+  explicit Publisher(ARGS&&... args)
+      : IMPL(std::forward<ARGS>(args)...) {}
+
+  template <typename E>
+  inline size_t Publish(E&& e) {
+    // TODO(dkorolev): Actually support the case when `DoPublish()` only accepts an rvalue.
+    return IMPL::DoPublish(std::forward<E>(e));
+  }
+
+  template <typename... ARGS>
+  inline size_t Emplace(ARGS&&... args) {
+    // TODO(dkorolev): Actually support the case when `Emplace()` should internally use `Publish()`.
+    return IMPL::DoEmplace(std::forward<ARGS>(args)...);
+  }
+};
+
+// For `static_assert`-s.
+template <typename T>
+struct IsPublisher {
+  static constexpr bool value = std::is_base_of<GenericPublisher, T>::value;
+};
+
+template <typename T, typename E>
+struct IsEntryPublisher {
+  static constexpr bool value = std::is_base_of<GenericEntryPublisher<E>, T>::value;
+};
+
 // === `Terminate()` ===
 // If the listener implements `Terminate()` it is invoked as the listening is about to end.
 // The implementation of `Terminate()` in the listener can return `void` or `bool`.
