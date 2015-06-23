@@ -141,7 +141,6 @@ TEST(PersistenceLayer, AppendToFile) {
   static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
-  bricks::FileSystem::RmFile(persistence_file_name, bricks::FileSystem::RmFileParameters::Silent);
   const auto file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
