@@ -30,6 +30,7 @@ SOFTWARE.
 #include <sstream>
 
 #include "exceptions.h"
+#include "constants.h"
 
 #include "../template/decay.h"
 #include "../template/is_unique_ptr.h"
@@ -70,7 +71,7 @@ struct ExtractJSONEntryNameImpl {};
 
 template <typename T>
 struct ExtractJSONEntryNameImpl<T, false> {
-  static std::string DoIt() { return "data"; }
+  static std::string DoIt() { return Constants::DefaultJSONEntryName(); }
 };
 
 template <typename T>

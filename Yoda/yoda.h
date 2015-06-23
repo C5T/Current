@@ -133,7 +133,7 @@ struct APIWrapperSelector {
   typedef APIWrapper<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <typename... SUPPORTED_TYPES, template <typename> class PERSISTENCE>
+template <template <typename> class PERSISTENCE, typename... SUPPORTED_TYPES>
 struct APIWrapperSelector<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> {
   typedef APIWrapper<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> type;
 };

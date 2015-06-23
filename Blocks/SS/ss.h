@@ -304,7 +304,7 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
 
-  // Special case of publishing `const DERIVED&` into a stream of `std::unique_ptr<BASE>`.
+  // Special case of publishing `const DERIVED&` into a stream of `std::unique_ptr<ENTRY>`.
   template <typename DERIVED>
   typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED>::value, size_t>::type Publish(
       const DERIVED& e) {

@@ -31,6 +31,7 @@ SOFTWARE.
 #include <sstream>
 
 #include "json.h"
+#include "constants.h"
 #include "exceptions.h"
 
 #include "../strings/is_string_type.h"
@@ -202,7 +203,7 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
     return *this;
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
-      so_(cereal::make_nvp("e", entry));  // "e" for "entry".
+      so_(cereal::make_nvp(Constants::DefaultJSONSerializeNonPolymorphicEntryName(), entry));
     }
     fo_ << '\n';
     ++entries_appended_;
@@ -217,8 +218,8 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
   DoPublish(const E& entry) {
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
-      so_(cereal::make_nvp("p",
-                           WithBaseType<typename T_ENTRY::element_type>(entry)));  // "p" for "polymorphic".
+      so_(cereal::make_nvp(Constants::DefaultJSONSerializePolymorphicEntryName(),
+                           WithBaseType<typename T_ENTRY::element_type>(entry)));
     }
     fo_ << '\n';
     return ++entries_appended_;

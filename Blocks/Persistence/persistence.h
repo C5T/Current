@@ -162,7 +162,7 @@ class Logic {
     // the copy constructor. Instead, we go with Current-friendly clone implementation above.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
     // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_E>(entry)));
- 
+
     // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
     // COMMENTED OUT: list_.push_back(ParseJSON<E>(JSON(WithBaseType<typename E::element_type>(entry))));
