@@ -271,8 +271,8 @@ struct CTDerived2 : CTBase {
 };
 CEREAL_REGISTER_TYPE(CTDerived2);
 
-static_assert(!HasFromInvalidJSON<CTDerived1>::value, "");
-static_assert(HasFromInvalidJSON<CTDerived2>::value, "");
+static_assert(!HasFromInvalidJSON<CTDerived1>(0), "");
+static_assert(HasFromInvalidJSON<CTDerived2>(0), "");
 
 TEST(Cerealize, JSONStringifyWithBase) {
   CTDerived1 d1;

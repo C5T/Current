@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
+#include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
 
 namespace blocks {
@@ -42,39 +43,16 @@ namespace persistence {
 
 namespace impl {
 
-template <template <class> class T_PERSISTENCE_LAYER, typename E>
-class Impl final : public T_PERSISTENCE_LAYER<E> {
- private:
-  typedef T_PERSISTENCE_LAYER<E> PERSISTENCE_LAYER;
-
+template <class PERSISTENCE_LAYER, typename E>
+class Logic {
  public:
   template <typename... ARGS>
-  Impl(const std::function<E(const E&)> clone, ARGS&&... args)
-      : PERSISTENCE_LAYER(std::forward<ARGS>(args)...), clone_(clone) {
-    PERSISTENCE_LAYER::Replay([this](E&& e) { list_.push_back(std::move(e)); });
+  Logic(const std::function<E(const E&)> clone, ARGS&&... args)
+      : persistence_layer_(std::forward<ARGS>(args)...), clone_(clone) {
+    persistence_layer_.Replay([this](E&& e) { list_.push_back(std::move(e)); });
   }
 
-  Impl(const Impl&) = delete;
-
-  size_t Publish(const E& entry) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    PERSISTENCE_LAYER::Publish(entry);
-    list_.push_back(entry);
-    return list_.size() - 1;
-  }
-  size_t Publish(E&& entry) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    PERSISTENCE_LAYER::Publish(static_cast<const E&>(entry));
-    list_.push_back(std::move(entry));
-    return list_.size() - 1;
-  }
-  template <typename... ARGS>
-  size_t Emplace(ARGS&&... args) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    list_.emplace_back(std::forward<ARGS>(args)...);
-    PERSISTENCE_LAYER::Publish(list_.back());
-    return list_.size() - 1;
-  }
+  Logic(const Logic&) = delete;
 
   template <typename F>
   void SyncScanAllEntries(std::atomic_bool& stop, F&& f) {
@@ -153,48 +131,86 @@ class Impl final : public T_PERSISTENCE_LAYER<E> {
     }
   }
 
+ protected:
+  size_t DoPublish(const E& entry) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    persistence_layer_.Publish(entry);
+    list_.push_back(entry);
+    return list_.size() - 1;
+  }
+
+  size_t DoPublish(E&& entry) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    persistence_layer_.Publish(static_cast<const E&>(entry));
+    list_.push_back(std::move(entry));
+    return list_.size() - 1;
+  }
+
+  template <typename... ARGS>
+  size_t DoEmplace(ARGS&&... args) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    list_.emplace_back(std::forward<ARGS>(args)...);
+    persistence_layer_.Publish(list_.back());
+    return list_.size() - 1;
+  }
+
  private:
+  static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, E>::value, "");
+  PERSISTENCE_LAYER persistence_layer_;
+
   std::list<E> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
   std::mutex mutex_;
   const std::function<E(const E&)> clone_;
 };
 
+// The implementation of a "publisher into nowhere".
 template <typename E>
-struct MemoryOnlyImpl {
+struct DevNullPublisherImpl {
   void Replay(std::function<void(E&&)>) {}
-  void Publish(const E&) {}
+  size_t DoPublish(const E&) { return ++count_; }
+  size_t count_ = 0u;
 };
 
 template <typename E>
-class AppendToFileImpl {
- protected:
-  AppendToFileImpl(const std::string& filename) : filename_(filename) {}
+using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<E>, E>;
+
+// TODO(dkorolev): Move into Cerealize.
+template <typename E>
+struct AppendToFilePublisherImpl {
+  AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(E&&)> push) {
     // TODO(dkorolev): Try/catch here?
     assert(!appender_);
     bricks::cerealize::CerealJSONFileParser<E> parser(filename_);
     while (parser.Next(push)) {
-      ;
+      ++count_;
     }
     appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<E>>(filename_);
     assert(appender_);
   }
 
-  void Publish(const E& e) { (*appender_) << e; }
+  size_t DoPublish(const E& e) {
+    (*appender_) << e;
+    return ++count_;
+  }
 
  private:
   const std::string& filename_;
   std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<E>> appender_;
+  size_t count_ = 0u;
 };
+
+template <typename E>
+using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<E>, E>;
 
 }  // namespace blocks::persistence::impl
 
 template <typename E>
-using MemoryOnly = impl::Impl<impl::MemoryOnlyImpl, E>;
+using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<E>, E>, E>;
 
 template <typename E>
-using AppendToFile = impl::Impl<impl::AppendToFileImpl, E>;
+using AppendToFile = ss::Publisher<impl::Logic<impl::AppendToFilePublisher<E>, E>, E>;
 
 }  // namespace blocks::persistence
 }  // namespace blocks
