@@ -147,11 +147,12 @@ class Logic {
   }
 
   template <typename DERIVED_E>
-  size_t DoPublishDerived(const DERIVED_E&) {
+  size_t DoPublishDerivedByConstReference(const DERIVED_E&) {
     static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
     // Do something smart -- pass the entry down w/o making a copy.
     // TODO(dkorolev): Will implement it when doing Yoda persistence. Just fail so far.
     static_cast<void>(*static_cast<const char*>(0));
+    return static_cast<size_t>(-1);
   }
 
   template <typename... ARGS>

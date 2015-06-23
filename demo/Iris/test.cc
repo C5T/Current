@@ -57,7 +57,7 @@ size_t number_of_flowers = 0;
 std::map<size_t, std::string> dimension_names;
 
 TEST(Iris, Demo) {
-  typedef API<Dictionary<LabeledFlower>> TestAPI;
+  typedef MemoryOnlyAPI<Dictionary<LabeledFlower>> TestAPI;
   TestAPI api("labeled_flowers");
 
   HTTP(FLAGS_iris_port).Register("/import", [&api](Request request) {

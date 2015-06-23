@@ -42,6 +42,7 @@ SOFTWARE.
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(sherlock_http_test_port, 8090, "Local port to use for Sherlock unit test.");
+DEFINE_string(sherlock_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 using std::string;
 using std::atomic_bool;
@@ -351,8 +352,10 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 }
 
 TEST(Sherlock, PersistsToFile) {
+  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  bricks::FileSystem::RmFile(persistence_file_name, bricks::FileSystem::RmFileParameters::Silent);
   auto permanent =
-      sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", "work_in_progress.json");
+      sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", persistence_file_name);
 
   permanent.Publish(1);
   permanent.Publish(2);

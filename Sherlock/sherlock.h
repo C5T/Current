@@ -145,7 +145,7 @@ class StreamInstanceImpl {
 
   // `Publish()` and `Emplace()` return the index of the added entry.
   size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
-  size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }	
+  size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
   template <typename DERIVED_ENTRY>
   typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
