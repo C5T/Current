@@ -102,10 +102,12 @@ struct APIWrapper : APICalls<PERSISTENCE, YodaTypes<PERSISTENCE, ENTRIES_TYPELIS
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   APIWrapper(const std::string& stream_name)
       : APICalls<PERSISTENCE, YT>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE>(stream_name)),
+        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE>(
+            stream_name, bricks::DefaultCloneFunction<std::unique_ptr<Padawan>>())),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
-        mq_(mq_listener_),
+        mq_(bricks::DefaultCloneFunction<std::unique_ptr<typename YT::T_MQ_MESSAGE_INTERNAL_TYPEDEF>>(),
+            mq_listener_),
         stream_listener_(mq_),
         sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {}
 

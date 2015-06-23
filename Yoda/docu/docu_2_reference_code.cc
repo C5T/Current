@@ -629,14 +629,14 @@ HTTP(port).ResetAllHandlers();
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"key\":\"two\",\"value\":2}}}}\n",
+"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"key\":\"two\",\"value\":2}}}}\n",
 #else
     "... JSON represenation of the first entry ...",
 #endif
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
+"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif

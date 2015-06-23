@@ -70,7 +70,7 @@ struct ExtractJSONEntryNameImpl {};
 
 template <typename T>
 struct ExtractJSONEntryNameImpl<T, false> {
-  static std::string DoIt() { return "entry"; }
+  static std::string DoIt() { return "data"; }
 };
 
 template <typename T>

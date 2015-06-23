@@ -285,10 +285,8 @@ struct GenericEntryPublisher : GenericPublisher {};
 template <typename IMPL, typename ENTRY>
 class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
-  template <typename... EXTRA_PARAMS>
-  explicit Publisher(EXTRA_PARAMS&&... extra_params)
-      : IMPL(bricks::DefaultCloneFunction<ENTRY>(), std::forward<EXTRA_PARAMS>(extra_params)...) {}
-
+  // The best option to make this generic code build universally is to have `clone`
+  // always passed in explicitly as the first parameter. -- D.K.
   template <typename... EXTRA_PARAMS>
   explicit Publisher(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
       : IMPL(clone, std::forward<EXTRA_PARAMS>(extra_params)...) {}

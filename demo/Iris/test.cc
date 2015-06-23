@@ -53,14 +53,22 @@ DEFINE_int32(iris_port, 5000, "");
 DEFINE_bool(run, false, "Set to true to run indefinitely.");
 
 // Flower ID, global and auto-increasing, for test purposes.
-size_t number_of_flowers = 0;
+int run_index = 0u;
+size_t number_of_flowers;
 std::map<size_t, std::string> dimension_names;
 
 TEST(Iris, Demo) {
   typedef MemoryOnlyAPI<Dictionary<LabeledFlower>> TestAPI;
   TestAPI api("labeled_flowers");
 
-  HTTP(FLAGS_iris_port).Register("/import", [&api](Request request) {
+  // Allow running the test under `--gtest_repeat`.
+  // HTTP endpoints can be un-registered, but Sherlock streams are designed to live forever,
+  // and thus do not expose the way to release their HTTP subscription endpoint.
+  ++run_index;
+  number_of_flowers = 0;
+  dimension_names.clear();
+
+  HTTP(FLAGS_iris_port).Register(Printf("/import%d", run_index), [&api](Request request) {
     EXPECT_EQ("POST", request.method);
     const std::string body = request.body;
     api.Transaction([body](TestAPI::T_DATA data) {
@@ -93,16 +101,16 @@ TEST(Iris, Demo) {
 
   // The input file is in the `golden` directory for it to be successfully picked up by `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
-            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port),
+            HTTP(POSTFromFile(Printf("http://localhost:%d/import%d", FLAGS_iris_port, run_index),
                               bricks::FileSystem::JoinPath("golden", "dataset.tsv"),
                               "text/tsv")).body);
 
   // Ref.: http://localhost:3000/stream
-  api.ExposeViaHTTP(FLAGS_iris_port, "/stream");
+  api.ExposeViaHTTP(FLAGS_iris_port, Printf("/stream%d", run_index));
 
   // The very first flower.
   const auto result1 = ParseJSON<std::unique_ptr<Padawan>>(
-      HTTP(GET(Printf("http://localhost:%d/stream?cap=1", FLAGS_iris_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/stream%d?cap=1", FLAGS_iris_port, run_index))).body);
   const LabeledFlower& flower1 = *static_cast<const LabeledFlower*>(result1.get());
   EXPECT_DOUBLE_EQ(5.1, flower1.SL);
   EXPECT_DOUBLE_EQ(3.5, flower1.SW);
@@ -112,7 +120,7 @@ TEST(Iris, Demo) {
 
   // The very last flower.
   const auto result2 = ParseJSON<std::unique_ptr<Padawan>>(
-      HTTP(GET(Printf("http://localhost:%d/stream?n=1", FLAGS_iris_port))).body);
+      HTTP(GET(Printf("http://localhost:%d/stream%d?n=1", FLAGS_iris_port, run_index))).body);
   const LabeledFlower& flower2 = *static_cast<const LabeledFlower*>(result2.get());
   EXPECT_DOUBLE_EQ(5.9, flower2.SL);
   EXPECT_DOUBLE_EQ(3.0, flower2.SW);

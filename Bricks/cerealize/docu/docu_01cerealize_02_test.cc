@@ -44,7 +44,7 @@ TEST(Docu, Cereal02) {
   
   // `JSON(object)` converts a cerealize-able object into a JSON string.
   const std::string json = JSON(x);
-EXPECT_EQ("{\"value0\":{"
+EXPECT_EQ("{\"data\":{"
 "\"number\":42,\"string\":\"test passed\","
 "\"vector_int\":[1,2,3],"
 "\"map_int_string\":[{\"key\":1,\"value\":\"one\"},{\"key\":42,\"value\":\"the question\"}]}"

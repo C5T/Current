@@ -147,12 +147,27 @@ class Logic {
   }
 
   template <typename DERIVED_E>
-  size_t DoPublishDerivedByConstReference(const DERIVED_E&) {
+  size_t DoPublishDerivedByConstReference(const DERIVED_E& entry) {
     static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
-    // Do something smart -- pass the entry down w/o making a copy.
-    // TODO(dkorolev): Will implement it when doing Yoda persistence. Just fail so far.
-    static_cast<void>(*static_cast<const char*>(0));
-    return static_cast<size_t>(-1);
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // `std::unique_ptr<DERIVED>` can be implicitly converted into `std::unique_ptr<BASE>`.
+    // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
+    std::unique_ptr<DERIVED_E> copy(make_unique<DERIVED_E>());
+    *copy = bricks::DefaultCloneFunction<DERIVED_E>()(entry);
+    list_.push_back(std::move(copy));
+    persistence_layer_.Publish(list_.back());
+
+    // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
+    // the copy constructor. Instead, we go with Current-friendly clone implementation above.
+    // COMMENTED OUT: persistence_layer_.Publish(entry);
+    // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_E>(entry)));
+ 
+    // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
+    // COMMENTED OUT: persistence_layer_.Publish(entry);
+    // COMMENTED OUT: list_.push_back(ParseJSON<E>(JSON(WithBaseType<typename E::element_type>(entry))));
+
+    return list_.size() - 1;
   }
 
   template <typename... ARGS>
@@ -179,12 +194,13 @@ class Logic {
 template <typename E>
 struct DevNullPublisherImpl {
   DevNullPublisherImpl() = delete;
+  DevNullPublisherImpl(const DevNullPublisherImpl&) = delete;
   DevNullPublisherImpl(std::function<E(const E&)>) {}
   void Replay(std::function<void(E&&)>) {}
   size_t DoPublishByConstReference(const E&) { return ++count_; }
   size_t DoPublishByRValueReference(E&&) { return ++count_; }
   template <typename DERIVED_E>
-  size_t DoPublishDerived(const DERIVED_E&) {
+  size_t DoPublishDerivedByConstReference(const DERIVED_E&) {
     static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
     return ++count_;
   }
@@ -197,6 +213,8 @@ using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<E>, E>;
 // TODO(dkorolev): Move into Cerealize.
 template <typename E>
 struct AppendToFilePublisherImpl {
+  AppendToFilePublisherImpl() = delete;
+  AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
   AppendToFilePublisherImpl(std::function<E(const E&)> clone, const std::string& filename)
       : clone_(clone), filename_(filename) {}
 
@@ -212,8 +230,6 @@ struct AppendToFilePublisherImpl {
   }
 
   size_t DoPublishByConstReference(const E& e) {
-    // TODO(dkorolev): Remove this debug output.
-    std::cerr << "PUSLISHING " << JSON(e) << " INTO '" << filename_ << "'\n";
     (*appender_) << e;
     return ++count_;
   }
@@ -223,7 +239,6 @@ struct AppendToFilePublisherImpl {
   template <typename DERIVED_E>
   size_t DoPublishDerived(const DERIVED_E& e) {
     static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
-    std::cerr << "PUSLISHING POLMORPHIC " << JSON(e) << " INTO '" << filename_ << "'\n";
     (*appender_) << WithBaseType<E>(e);
     return ++count_;
   }

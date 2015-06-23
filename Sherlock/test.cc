@@ -277,7 +277,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     inline bool operator()(const RecordWithTimestamp& entry, size_t index, size_t total) {
       static_cast<void>(index);
       static_cast<void>(total);
-      data_.push_back(JSON(entry, "entry") + '\n');
+      data_.push_back(JSON(entry) + '\n');
       ++count_;
       return true;
     }
