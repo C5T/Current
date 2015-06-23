@@ -2,7 +2,7 @@
 
 *Your service should be up and running. Up and running, Karl!*
 
-Karl is Current's monitoring, alerting, and continous integration service.
+Karl is Current's monitoring, alerting, and continuous integration service.
 
 
 ## Motivation
@@ -22,7 +22,7 @@ Claire is a binary monitored by Karl.
 ```cpp
 // Registers a `/current` HTTP endpoint on the specified port. It responds with a JSON containing:
 // * `uptime_ms`:         The uptime of the binary.
-// * `state`:             "StartingUp", "Running", or "TearingDown" <=> HTTP 500, 200 and 404 codes.
+// * `state`:             "StartingUp", "Running", or "TearingDown" <=> HTTP 503, 200 and 404 codes.
 // * `state_uptime_ms`:   The time the binary has been running in this state, in millis.
 // * `local_time`:        To ensure NTP is up and running locally.
 // * `binary_build_time`: To track how up to date the presently running version is.
@@ -32,7 +32,7 @@ CLAIRE(FLAGS_port);
 Also, Claire enables continuous integration with no extra work.
 
 ```cpp
-// Checks whether another Claire-powered binary is already running on this port.
+// On startup, checks whether another Claire-powered binary is already running on this port.
 //
 // * If the same binary of the same build time is already running, it will keep running,
 //   and the binary that was starting on top of it will silently exit with success exit code.
@@ -190,7 +190,7 @@ Has a unique name. For the purposes of this doc, assume they have an e-mail addr
 
 **A collection of servers to monitor.**
 
-Has a unique name. Each Server to belongs to one and only Service.
+Has a unique name. Each Server belongs to one and only Service.
 
 #### Server: A URL to connect to a binary that should be up and running
 
