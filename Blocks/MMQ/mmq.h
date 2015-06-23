@@ -40,8 +40,7 @@ SOFTWARE.
 // at the next call to `Publish()` or `Emplace()`):
 //   1) Discard (drop) the message. In this case, the number of the messages dropped between the subseqent
 //      calls of the consumer may be passed as a second argument of `OnMessage()`.
-//   2) Block the publishing thread and wait until the next message to be consumed and free some space
-//      in the  buffer.
+//   2) Block the publishing thread and wait until the next message is consumed and frees room in the buffer.
 //      IMPORTANT NOTE: if there are several threads waiting to publish the message, MMQ DOES NOT guarantee that
 //      the messages will be added in the order in which the functions were called. However, for any particular
 //      thread, MMQ DOES GUARANTEE that the order of messages published from this thread will be respected.
