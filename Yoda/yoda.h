@@ -91,18 +91,18 @@ SOFTWARE.
 namespace yoda {
 
 // `yoda::APIWrapper` requires the list of specific entries to expose through the Yoda API.
-template <typename ENTRIES_TYPELIST>
-struct APIWrapper : APICalls<YodaTypes<ENTRIES_TYPELIST>> {
+template <template <typename> class PERSISTENCE, typename ENTRIES_TYPELIST>
+struct APIWrapper : APICalls<PERSISTENCE, YodaTypes<PERSISTENCE, ENTRIES_TYPELIST>> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
-  typedef YodaTypes<ENTRIES_TYPELIST> YT;
+  typedef YodaTypes<PERSISTENCE, ENTRIES_TYPELIST> YT;
 
  public:
   APIWrapper() = delete;
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   APIWrapper(const std::string& stream_name)
-      : APICalls<YT>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<Padawan>>(stream_name)),
+      : APICalls<PERSISTENCE, YT>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE>(stream_name)),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
         mq_(mq_listener_),
@@ -126,18 +126,21 @@ struct APIWrapper : APICalls<YodaTypes<ENTRIES_TYPELIST>> {
 };
 
 // `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
-template <typename... SUPPORTED_TYPES>
+template <template <typename> class PERSISTENCE, typename... SUPPORTED_TYPES>
 struct APIWrapperSelector {
-  typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
+  typedef APIWrapper<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <typename... SUPPORTED_TYPES>
-struct APIWrapperSelector<std::tuple<SUPPORTED_TYPES...>> {
-  typedef APIWrapper<std::tuple<SUPPORTED_TYPES...>> type;
+template <typename... SUPPORTED_TYPES, template <typename> class PERSISTENCE>
+struct APIWrapperSelector<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> {
+  typedef APIWrapper<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> type;
 };
 
+template <template <typename> class PERSISTENCE, typename... SUPPORTED_TYPES>
+using API = typename APIWrapperSelector<PERSISTENCE, SUPPORTED_TYPES...>::type;
+
 template <typename... SUPPORTED_TYPES>
-using API = typename APIWrapperSelector<SUPPORTED_TYPES...>::type;
+using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, SUPPORTED_TYPES...>;
 
 }  // namespace yoda
 

@@ -38,7 +38,7 @@ SOFTWARE.
 DEFINE_int32(yoda_docu_test_port, 8999, "");
 
 using yoda::Padawan;
-using yoda::API;
+using yoda::MemoryOnlyAPI;
 using yoda::Future;
 using yoda::Dictionary;
 using yoda::Matrix;
@@ -160,9 +160,9 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef API<Dictionary<StringIntTuple>,
-              Dictionary<Prime>,
-              Matrix<PrimeCell>> PrimesAPI;
+  typedef MemoryOnlyAPI<Dictionary<StringIntTuple>,
+                        Dictionary<Prime>,
+                        Matrix<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // Simple dictionary usecase, and a unit test for type system implementation.

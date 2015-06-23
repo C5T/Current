@@ -286,19 +286,31 @@ template <typename IMPL, typename ENTRY>
 class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
   template <typename... EXTRA_PARAMS>
+  explicit Publisher(EXTRA_PARAMS&&... extra_params)
+      : IMPL(bricks::DefaultCloneFunction<ENTRY>(), std::forward<EXTRA_PARAMS>(extra_params)...) {}
+
+  template <typename... EXTRA_PARAMS>
   explicit Publisher(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
       : IMPL(clone, std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
-  template <typename E>
-  inline size_t Publish(E&& e) {
-    // TODO(dkorolev): Actually support the case when `DoPublish()` only accepts an rvalue.
-    return IMPL::DoPublish(std::forward<E>(e));
+  inline size_t Publish(const ENTRY& e) { return IMPL::DoPublishByConstReference(e); }
+
+  inline size_t Publish(ENTRY&& e) {
+    // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
+    return IMPL::DoPublishByRValueReference(std::move(e));
   }
 
   template <typename... ARGS>
   inline size_t Emplace(ARGS&&... args) {
-    // TODO(dkorolev): Actually support the case when `Emplace()` should internally use `Publish()`.
+    // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
+  }
+
+  // Special case of publishing `const DERIVED&` into a stream of `std::unique_ptr<BASE>`.
+  template <typename DERIVED>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED>::value, size_t>::type Publish(
+      const DERIVED& e) {
+    return IMPL::DoPublishDerivedByConstReference(e);
   }
 };
 

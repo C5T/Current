@@ -351,7 +351,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 }
 
 TEST(Sherlock, PersistsToFile) {
-  auto permanent = sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", "workinprogress.json");
+  auto permanent =
+      sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", "work_in_progress.json");
 
   permanent.Publish(1);
   permanent.Publish(2);

@@ -132,18 +132,26 @@ class Logic {
   }
 
  protected:
-  size_t DoPublish(const E& entry) {
+  size_t DoPublishByConstReference(const E& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
     persistence_layer_.Publish(entry);
     list_.push_back(entry);
     return list_.size() - 1;
   }
 
-  size_t DoPublish(E&& entry) {
+  size_t DoPublishByRValueReference(E&& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
     persistence_layer_.Publish(static_cast<const E&>(entry));
     list_.push_back(std::move(entry));
     return list_.size() - 1;
+  }
+
+  template <typename DERIVED_E>
+  size_t DoPublishDerived(const DERIVED_E&) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
+    // Do something smart -- pass the entry down w/o making a copy.
+    // TODO(dkorolev): Will implement it when doing Yoda persistence. Just fail so far.
+    static_cast<void>(*static_cast<const char*>(0));
   }
 
   template <typename... ARGS>
@@ -172,7 +180,13 @@ struct DevNullPublisherImpl {
   DevNullPublisherImpl() = delete;
   DevNullPublisherImpl(std::function<E(const E&)>) {}
   void Replay(std::function<void(E&&)>) {}
-  size_t DoPublish(const E&) { return ++count_; }
+  size_t DoPublishByConstReference(const E&) { return ++count_; }
+  size_t DoPublishByRValueReference(E&&) { return ++count_; }
+  template <typename DERIVED_E>
+  size_t DoPublishDerived(const DERIVED_E&) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
+    return ++count_;
+  }
   size_t count_ = 0u;
 };
 
@@ -196,10 +210,20 @@ struct AppendToFilePublisherImpl {
     assert(appender_);
   }
 
-  size_t DoPublish(const E& e) {
+  size_t DoPublishByConstReference(const E& e) {
     // TODO(dkorolev): Remove this debug output.
     std::cerr << "PUSLISHING " << JSON(e) << " INTO '" << filename_ << "'\n";
     (*appender_) << e;
+    return ++count_;
+  }
+
+  size_t DoPublishByRValueReference(E&& e) { return DoPublishByConstReference(static_cast<const E&>(e)); }
+
+  template <typename DERIVED_E>
+  size_t DoPublishDerived(const DERIVED_E& e) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
+    std::cerr << "PUSLISHING POLMORPHIC " << JSON(e) << " INTO '" << filename_ << "'\n";
+    (*appender_) << WithBaseType<E>(e);
     return ++count_;
   }
 

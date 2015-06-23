@@ -67,8 +67,11 @@ class MMQImpl {
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   typedef CONSUMER T_CONSUMER;
 
-  explicit MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : consumer_(consumer),
+  MMQImpl(std::function<MESSAGE(const MESSAGE&)> clone,
+          T_CONSUMER& consumer,
+          size_t buffer_size = DEFAULT_BUFFER_SIZE)
+      : clone_(clone),
+        consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
         consumer_thread_(&MMQImpl::ConsumerThread, this) {}
@@ -91,7 +94,7 @@ class MMQImpl {
     const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
-      circular_buffer_[index.first].message_body = message;
+      circular_buffer_[index.first].message_body = std::move(clone_(message));
       CircularBufferCommit(index.first);
       return index.second;
     } else {
@@ -235,6 +238,9 @@ class MMQImpl {
     circular_buffer_[index].status = Entry::READY;
     condition_variable_.notify_all();
   }
+
+  // The method used to clone incoming entries.
+  std::function<MESSAGE(const MESSAGE&)> clone_;
 
   // The instance of the consuming side of the FIFO buffer.
   T_CONSUMER& consumer_;

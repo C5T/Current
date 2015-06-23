@@ -145,13 +145,16 @@ class StreamInstanceImpl {
 
   // `Publish()` and `Emplace()` return the index of the added entry.
   size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
+  size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }	
 
-  size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
-
-  template <typename E>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, E>::value, size_t>::type Publish(
-      const E& e) {
-    return storage_->Publish(std::move(Clone(e)));
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const DERIVED_ENTRY& e) {
+    // A tricky case where the persistence layer should be able to handle an incoming entry of a type
+    // different from the one specified as the template parameter. For example, template parameter
+    // for `T_ENTRY` may be `std::unique_ptr<Padawan>`, whereas the type of the entry coming in
+    // can be some user-defined `MyMagicDictionaryEntry`. Solution: allow it, carry the type all over.
+    return storage_->Publish(e);
   }
 
   template <typename... ARGS>
@@ -414,7 +417,7 @@ StreamInstance<ENTRY, PERSISTENCE_LAYER> Stream(const std::string& name, EXTRA_P
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER, typename... EXTRA_PARAMS>
 StreamInstance<ENTRY, PERSISTENCE_LAYER> Stream(const std::string& name,
-                                                const std::function<ENTRY(const ENTRY&)> clone,
+                                                std::function<ENTRY(const ENTRY&)> clone,
                                                 EXTRA_PARAMS&&... extra_params) {
   return StreamInstance<ENTRY, PERSISTENCE_LAYER>(new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>(
       name, clone, std::forward<EXTRA_PARAMS>(extra_params)...));
