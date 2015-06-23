@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <functional>
 
-#include "../cerealize/cerealize.h"
+#include "../cerealize/json.h"
 
 namespace bricks {
 
