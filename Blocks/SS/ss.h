@@ -287,7 +287,7 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   explicit Publisher(EXTRA_PARAMS&&... extra_params)
       : IMPL(std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
-  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   inline size_t Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
   inline size_t Publish(ENTRY&& e) { return IMPL::DoPublish(std::move(e)); }
 

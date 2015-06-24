@@ -141,7 +141,7 @@ class StreamInstanceImpl {
       : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAM>(extra_param))) {}
 
   // `Publish()` and `Emplace()` return the index of the added entry.
-  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
   size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
@@ -359,7 +359,7 @@ struct StreamInstance {
 
   explicit StreamInstance(StreamInstanceImpl<T_ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
 
-  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t Publish(const T_ENTRY& entry) { return impl_->Publish(entry); }
   size_t Publish(T_ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
 

@@ -134,7 +134,7 @@ class Logic {
   }
 
  protected:
-  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t DoPublish(const ENTRY& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
     list_.push_back(entry);
@@ -196,7 +196,7 @@ class Logic {
 template <typename ENTRY, class CLONER>
 struct DevNullPublisherImpl {
   void Replay(std::function<void(ENTRY&&)>) {}
-  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t DoPublish(const ENTRY&) { return ++count_; }
   size_t DoPublish(ENTRY&&) { return ++count_; }
   template <typename DERIVED_E>
@@ -228,7 +228,7 @@ struct AppendToFilePublisherImpl {
     assert(appender_);
   }
 
-  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t DoPublish(const ENTRY& entry) {
     (*appender_) << entry;
     return ++count_;
