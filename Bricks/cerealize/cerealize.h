@@ -237,7 +237,7 @@ struct CerealGenericFileAppender<E, CLONER, CerealFormat::Binary> {
   typedef CerealBinaryFileAppender<E, CLONER> type;
 };
 
-template <typename E, typename CLONER>
+template <typename E, class CLONER>
 struct CerealGenericFileAppender<E, CLONER, CerealFormat::JSON> {
   typedef CerealJSONFileAppender<E, CLONER> type;
 };
