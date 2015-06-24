@@ -93,7 +93,7 @@ using CWT = bricks::weed::call_with_type<T, TS...>;
 template <int N>
 struct CallWithNParameters;
 
-template<>
+template <>
 struct CallWithNParameters<3> {
   template <typename E, class F>
   static CWT<F, E, size_t, size_t> CallIt(F&& f, E&& e, size_t index, size_t total) {
@@ -101,30 +101,34 @@ struct CallWithNParameters<3> {
   }
 };
 
-template<>
+template <>
 struct CallWithNParameters<2> {
   template <typename E, class F>
-  static CWT<F, E, size_t> CallIt(F&& f, E&& e, size_t index, size_t) { return f(std::forward<E>(e), index); }
+  static CWT<F, E, size_t> CallIt(F&& f, E&& e, size_t index, size_t) {
+    return f(std::forward<E>(e), index);
+  }
 };
 
-template<>
+template <>
 struct CallWithNParameters<1> {
   template <typename E, class F>
-  static CWT<F, E> CallIt(F&& f, E&& e, size_t, size_t) { return f(std::forward<E>(e)); }
+  static CWT<F, E> CallIt(F&& f, E&& e, size_t, size_t) {
+    return f(std::forward<E>(e));
+  }
 };
 
 template <bool N1, bool N2, bool N3>
 struct FindMatchingSignature {};
 
-template<>
+template <>
 struct FindMatchingSignature<true, false, false> : CallWithNParameters<1> {
   enum { valid = true };
 };
-template<>
+template <>
 struct FindMatchingSignature<false, true, false> : CallWithNParameters<2> {
   enum { valid = true };
 };
-template<>
+template <>
 struct FindMatchingSignature<false, false, true> : CallWithNParameters<3> {
   enum { valid = true };
 };
@@ -134,11 +138,12 @@ using CallMatchingSignature = FindMatchingSignature<CW<F, E>::implemented,
                                                     CW<F, E, size_t>::implemented,
                                                     CW<F, E, size_t, size_t>::implemented>;
 
-template <typename R, typename E, class F>
+template <typename ORIGINAL_RETURN_TYPE>
 struct BoolOrTrueImpl;
 
-template <typename E, class F>
-struct BoolOrTrueImpl<bool, E, F> {
+template <>
+struct BoolOrTrueImpl<bool> {
+  template <typename E, class F>
   static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
     static_assert(CallMatchingSignature<E, F>::valid,
                   "The listener should expose only one signature of `operator()`.");
@@ -146,27 +151,29 @@ struct BoolOrTrueImpl<bool, E, F> {
   };
 };
 
-template <typename E, class F>
-struct BoolOrTrueImpl<void, E, F> {
+template <>
+struct BoolOrTrueImpl<void> {
+  template <typename E, class F>
   static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
     CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
     return true;
   };
 };
 
-template <typename E, class F>
 struct BoolOrTrue {
+  template <typename E, class F>
   static bool DoIt(F&& f, E&& e, size_t index, size_t total) {
-    return BoolOrTrueImpl<
-        decltype(CallMatchingSignature<E, F>::CallIt(std::declval<F>(), std::declval<E>(), 0, 0)),
-        E,
-        F>::MakeItBool(std::forward<F>(f), std::forward<E>(e), index, total);
+    return BoolOrTrueImpl<decltype(CallMatchingSignature<E, F>::CallIt(
+        std::declval<F>(), std::declval<E>(), 0, 0))>::MakeItBool(std::forward<F>(f),
+                                                                  std::forward<E>(e),
+                                                                  index,
+                                                                  total);
   }
 };
 
 template <typename E, class F>
 inline bool DispatchEntryToTheRightSignature(F&& f, E&& e, size_t index, size_t total) {
-  return BoolOrTrue<E, F>::DoIt(std::forward<F>(f), std::forward<E>(e), index, total);
+  return BoolOrTrue::DoIt(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
 template <typename E, class F>
