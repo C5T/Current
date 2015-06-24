@@ -90,7 +90,7 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  size_t DoPublishByConstReference(const T_MESSAGE& message) {
+  size_t DoPublish(const T_MESSAGE& message) {
     const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
@@ -102,7 +102,7 @@ class MMQImpl {
     }
   }
 
-  size_t DoPublishByRValueReference(T_MESSAGE&& message) {
+  size_t DoPublish(T_MESSAGE&& message) {
     const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;

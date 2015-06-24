@@ -144,16 +144,20 @@ class StreamInstanceImpl {
         storage_(std::make_shared<T_PERSISTENCE_LAYER>(clone, std::forward<EXTRA_PARAM>(extra_param))) {}
 
   // `Publish()` and `Emplace()` return the index of the added entry.
+  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
   size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
+  // Support two syntaxes of `Publish` for derived types: `const DERIVED&` and `const std::unique_ptr<DERIVED>&`.
   template <typename DERIVED_ENTRY>
   typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
-    // A tricky case where the persistence layer should be able to handle an incoming entry of a type
-    // different from the one specified as the template parameter. For example, template parameter
-    // for `T_ENTRY` may be `std::unique_ptr<Padawan>`, whereas the type of the entry coming in
-    // can be some user-defined `MyMagicDictionaryEntry`. Solution: allow it, carry the type all over.
+    return storage_->Publish(e);
+  }
+
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return storage_->Publish(e);
   }
 
@@ -357,9 +361,25 @@ struct StreamInstance {
 
   explicit StreamInstance(StreamInstanceImpl<T_ENTRY, PERSISTENCE_LAYER>* impl) : impl_(impl) {}
 
-  template <typename E>
-  size_t Publish(E&& entry) {
-    return impl_->Publish(std::forward<E>(entry));
+  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t Publish(const T_ENTRY& entry) {
+    return impl_->Publish(entry);
+  }
+  size_t Publish(T_ENTRY&& entry) {
+    return impl_->Publish(std::move(entry));
+  }
+
+  // Support two syntaxes of `Publish` as well.
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const DERIVED_ENTRY& e) {
+    return impl_->Publish(e);
+  }
+
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
+    return impl_->Publish(e);
   }
 
   template <typename... ARGS>

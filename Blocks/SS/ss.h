@@ -291,11 +291,12 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   explicit Publisher(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
       : IMPL(clone, std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
-  inline size_t Publish(const ENTRY& e) { return IMPL::DoPublishByConstReference(e); }
-
+  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  inline size_t Publish(const ENTRY& e) {
+    return IMPL::DoPublish(e);
+  }
   inline size_t Publish(ENTRY&& e) {
-    // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
-    return IMPL::DoPublishByRValueReference(std::move(e));
+    return IMPL::DoPublish(std::move(e));
   }
 
   template <typename... ARGS>
@@ -304,11 +305,19 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
 
-  // Special case of publishing `const DERIVED&` into a stream of `std::unique_ptr<ENTRY>`.
+  // Special case of publishing `const DERIVED&` or `const std::unique_ptr<DERIVED>&` into a stream
+  // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED`.
   template <typename DERIVED>
   typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED>::value, size_t>::type Publish(
       const DERIVED& e) {
-    return IMPL::DoPublishDerivedByConstReference(e);
+    return IMPL::DoPublishDerived(e);
+  }
+
+  template <typename DERIVED>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED>::value, size_t>::type Publish(
+      const std::unique_ptr<DERIVED>& e) {
+    assert(e);
+    return IMPL::DoPublishDerived(*e.get());
   }
 };
 

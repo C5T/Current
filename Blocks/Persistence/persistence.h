@@ -43,13 +43,13 @@ namespace persistence {
 
 namespace impl {
 
-template <class PERSISTENCE_LAYER, typename E>
+template <class PERSISTENCE_LAYER, typename ENTRY>
 class Logic {
  public:
   template <typename... EXTRA_PARAMS>
-  Logic(std::function<E(const E&)> clone, EXTRA_PARAMS&&... extra_params)
+  Logic(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
       : persistence_layer_(clone, std::forward<EXTRA_PARAMS>(extra_params)...), clone_(clone) {
-    persistence_layer_.Replay([this](E&& e) { list_.push_back(std::move(e)); });
+    persistence_layer_.Replay([this](ENTRY&& e) { list_.push_back(std::move(e)); });
   }
 
   Logic(const Logic&) = delete;
@@ -60,8 +60,8 @@ class Logic {
       bool at_end = true;
       size_t index = 0u;
       size_t total = 0u;
-      typename std::list<E>::const_iterator iterator;
-      static Cursor Next(const Cursor& current, const std::list<E>& exclusively_accessed_list) {
+      typename std::list<ENTRY>::const_iterator iterator;
+      static Cursor Next(const Cursor& current, const std::list<ENTRY>& exclusively_accessed_list) {
         Cursor next;
         if (current.at_end) {
           next.iterator = exclusively_accessed_list.begin();
@@ -132,23 +132,23 @@ class Logic {
   }
 
  protected:
-  size_t DoPublishByConstReference(const E& entry) {
+  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
-    persistence_layer_.Publish(entry);
     list_.push_back(entry);
+    persistence_layer_.Publish(entry);
     return list_.size() - 1;
   }
-
-  size_t DoPublishByRValueReference(E&& entry) {
+  size_t DoPublish(ENTRY&& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
-    persistence_layer_.Publish(static_cast<const E&>(entry));
     list_.push_back(std::move(entry));
+    persistence_layer_.Publish(static_cast<const ENTRY&>(list_.back()));
     return list_.size() - 1;
   }
 
   template <typename DERIVED_E>
-  size_t DoPublishDerivedByConstReference(const DERIVED_E& entry) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
+  size_t DoPublishDerived(const DERIVED_E& entry) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
     std::lock_guard<std::mutex> lock(mutex_);
 
     // `std::unique_ptr<DERIVED>` can be implicitly converted into `std::unique_ptr<BASE>`.
@@ -165,7 +165,7 @@ class Logic {
 
     // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
-    // COMMENTED OUT: list_.push_back(ParseJSON<E>(JSON(WithBaseType<typename E::element_type>(entry))));
+    // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename ENTRY::element_type>(entry))));
 
     return list_.size() - 1;
   }
@@ -179,87 +179,95 @@ class Logic {
   }
 
  private:
-  static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, E>::value, "");
+  static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, ENTRY>::value, "");
   PERSISTENCE_LAYER persistence_layer_;
 
-  std::list<E> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
+  std::list<ENTRY> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
   std::mutex mutex_;
-  const std::function<E(const E&)> clone_;
+  const std::function<ENTRY(const ENTRY&)> clone_;
 };
 
 // We keep the `clone` param part of the constructor signature of persistence layers.
 // Right now persistence layers don't need to clone incoming entries, but we never know. -- D.K.
 
 // The implementation of a "publisher into nowhere".
-template <typename E>
+template <typename ENTRY>
 struct DevNullPublisherImpl {
   DevNullPublisherImpl() = delete;
   DevNullPublisherImpl(const DevNullPublisherImpl&) = delete;
-  DevNullPublisherImpl(std::function<E(const E&)>) {}
-  void Replay(std::function<void(E&&)>) {}
-  size_t DoPublishByConstReference(const E&) { return ++count_; }
-  size_t DoPublishByRValueReference(E&&) { return ++count_; }
+  DevNullPublisherImpl(std::function<ENTRY(const ENTRY&)>) {}
+  void Replay(std::function<void(ENTRY&&)>) {}
+  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY&) {
+    return ++count_;
+  }
+  size_t DoPublish(ENTRY&&) {
+    return ++count_;
+  }
   template <typename DERIVED_E>
-  size_t DoPublishDerivedByConstReference(const DERIVED_E&) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
+  size_t DoPublishDerived(const DERIVED_E&) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
     return ++count_;
   }
   size_t count_ = 0u;
 };
 
-template <typename E>
-using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<E>, E>;
+template <typename ENTRY>
+using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY>, ENTRY>;
 
 // TODO(dkorolev): Move into Cerealize.
-template <typename E>
+template <typename ENTRY>
 struct AppendToFilePublisherImpl {
   AppendToFilePublisherImpl() = delete;
   AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
-  AppendToFilePublisherImpl(std::function<E(const E&)> clone, const std::string& filename)
+  AppendToFilePublisherImpl(std::function<ENTRY(const ENTRY&)> clone, const std::string& filename)
       : clone_(clone), filename_(filename) {}
 
-  void Replay(std::function<void(E&&)> push) {
+  void Replay(std::function<void(ENTRY&&)> push) {
     // TODO(dkorolev): Try/catch here?
     assert(!appender_);
-    bricks::cerealize::CerealJSONFileParser<E> parser(filename_);
+    bricks::cerealize::CerealJSONFileParser<ENTRY> parser(filename_);
     while (parser.Next(push)) {
       ++count_;
     }
-    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<E>>(clone_, filename_);
+    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<ENTRY>>(clone_, filename_);
     assert(appender_);
   }
 
-  size_t DoPublishByConstReference(const E& e) {
-    (*appender_) << e;
+  // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY& entry) {
+    (*appender_) << entry;
+    return ++count_;
+  }
+  size_t DoPublish(ENTRY&& entry) {
+    (*appender_) << entry;
     return ++count_;
   }
 
-  size_t DoPublishByRValueReference(E&& e) { return DoPublishByConstReference(static_cast<const E&>(e)); }
-
   template <typename DERIVED_E>
   size_t DoPublishDerived(const DERIVED_E& e) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<E, DERIVED_E>::value, "");
-    (*appender_) << WithBaseType<E>(e);
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
+    (*appender_) << WithBaseType<ENTRY>(e);
     return ++count_;
   }
 
  private:
-  const std::function<E(const E&)> clone_;
+  const std::function<ENTRY(const ENTRY&)> clone_;
   const std::string filename_;
-  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<E>> appender_;
+  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<ENTRY>> appender_;
   size_t count_ = 0u;
 };
 
-template <typename E>
-using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<E>, E>;
+template <typename ENTRY>
+using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<ENTRY>, ENTRY>;
 
 }  // namespace blocks::persistence::impl
 
-template <typename E>
-using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<E>, E>, E>;
+template <typename ENTRY>
+using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY>, ENTRY>, ENTRY>;
 
-template <typename E>
-using AppendToFile = ss::Publisher<impl::Logic<impl::AppendToFilePublisher<E>, E>, E>;
+template <typename ENTRY>
+using AppendToFile = ss::Publisher<impl::Logic<impl::AppendToFilePublisher<ENTRY>, ENTRY>, ENTRY>;
 
 }  // namespace blocks::persistence
 }  // namespace blocks
