@@ -189,9 +189,6 @@ class Logic {
   std::mutex mutex_;
 };
 
-// We keep the `clone` param part of the constructor signature of persistence layers.
-// Right now persistence layers don't need to clone incoming entries, but we never know. -- D.K.
-
 // The implementation of a "publisher into nowhere".
 template <typename ENTRY, class CLONER>
 struct DevNullPublisherImpl {

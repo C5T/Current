@@ -254,8 +254,8 @@ struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
 
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
-// Generic const reference usecase, which dispatches an entry that should be preserved.
-// It will be cloned if the listener requires an rvalue reference, a custom cloner method can be provided.
+// Generic const reference usecase, which dispatches an entry that should be preserved. It will
+// be cloned if the listener requires an rvalue reference, and custom cloner implementation can be provided.
 // Template parameter order is tweaked for more often specified to less often specified parameters.
 template <class CLONER = bricks::DefaultCloner, typename E, typename F>
 inline bool DispatchEntryByConstReference(F&& f, const E& e, size_t index, size_t total) {

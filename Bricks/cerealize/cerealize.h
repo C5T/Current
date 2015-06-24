@@ -144,21 +144,22 @@ class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
   }
 
   // Support direct serialization of derived types in polymorphic cases.
-  template <typename E,
+  template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = T_ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value, size_t>::type
-  DoPublish(const E& entry) {
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
+                          size_t>::type
+  DoPublish(const DERIVED_ENTRY& entry) {
     so_(WithBaseType<typename T_ENTRY::element_type>(entry));
     return ++entries_appended_;
   }
-  template <typename E,
+  template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = T_ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
                           CerealBinaryFileAppenderImpl&>::type
-  operator<<(const E& entry) {
-    DoPublish<E, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
+  operator<<(const DERIVED_ENTRY& entry) {
+    DoPublish<DERIVED_ENTRY, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
     return *this;
   }
 
@@ -166,8 +167,8 @@ class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
   cereal::BinaryOutputArchive so_;
 };
 
-template <typename E, class CLONER>
-using CerealBinaryFileAppender = blocks::ss::Publisher<CerealBinaryFileAppenderImpl<E, CLONER>, E>;
+template <typename ENTRY, class CLONER>
+using CerealBinaryFileAppender = blocks::ss::Publisher<CerealBinaryFileAppenderImpl<ENTRY, CLONER>, ENTRY>;
 
 // `CerealJSONFileAppender` appends cereal-ized records to a file in JSON format.
 // Each entry is written as a separate line containing full JSON record.
@@ -202,11 +203,12 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
   }
 
   // Support direct serialization of derived types in polymorphic cases.
-  template <typename E,
+  template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = T_ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value, size_t>::type
-  DoPublish(const E& entry) {
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
+                          size_t>::type
+  DoPublish(const DERIVED_ENTRY& entry) {
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
       so_(cereal::make_nvp(Constants::DefaultJSONSerializePolymorphicEntryName(),
@@ -215,35 +217,35 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
     fo_ << '\n';
     return ++entries_appended_;
   }
-  template <typename E,
+  template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = T_ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename E::CEREAL_BASE_TYPE>::value,
+  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
                           CerealJSONFileAppenderImpl&>::type
-  operator<<(const E& entry) {
-    DoPublish<E, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
+  operator<<(const DERIVED_ENTRY& entry) {
+    DoPublish<DERIVED_ENTRY, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
     return *this;
   }
 };
 
-template <typename E, class CLONER>
-using CerealJSONFileAppender = blocks::ss::Publisher<CerealJSONFileAppenderImpl<E, CLONER>, E>;
+template <typename ENTRY, class CLONER>
+using CerealJSONFileAppender = blocks::ss::Publisher<CerealJSONFileAppenderImpl<ENTRY, CLONER>, ENTRY>;
 
-template <typename E, class CLONER, CerealFormat>
+template <typename ENTRY, class CLONER, CerealFormat>
 struct CerealGenericFileAppender {};
 
-template <typename E, class CLONER>
-struct CerealGenericFileAppender<E, CLONER, CerealFormat::Binary> {
-  typedef CerealBinaryFileAppender<E, CLONER> type;
+template <typename ENTRY, class CLONER>
+struct CerealGenericFileAppender<ENTRY, CLONER, CerealFormat::Binary> {
+  typedef CerealBinaryFileAppender<ENTRY, CLONER> type;
 };
 
-template <typename E, class CLONER>
-struct CerealGenericFileAppender<E, CLONER, CerealFormat::JSON> {
-  typedef CerealJSONFileAppender<E, CLONER> type;
+template <typename ENTRY, class CLONER>
+struct CerealGenericFileAppender<ENTRY, CLONER, CerealFormat::JSON> {
+  typedef CerealJSONFileAppender<ENTRY, CLONER> type;
 };
 
-template <typename E, class CLONER, CerealFormat FORMAT = CerealFormat::Default>
-using CerealFileAppender = typename CerealGenericFileAppender<E, CLONER, FORMAT>::type;
+template <typename ENTRY, class CLONER, CerealFormat FORMAT = CerealFormat::Default>
+using CerealFileAppender = typename CerealGenericFileAppender<ENTRY, CLONER, FORMAT>::type;
 
 // `CerealBinaryFileParser` de-cereal-izes records from binary file given their type
 // and passes them over to `T_PROCESSOR`.
@@ -324,7 +326,7 @@ class CerealJSONFileParser {
   // for the next entry, or returns false.
   // Note that the actual entry type is being used in the calling method signature.
   // This also makes it implausible to pass in a lambda here, thus the parameter is only passed by reference.
-  // In order for RTTI dispatching to work, class T_PROCESSOR should define two type:
+  // In order for RTTI dispatching to work, class T_PROCESSOR should define two types:
   // 1) BASE_TYPE: The type of the base entry to de-serialize from the stream, and
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename T_PROCESSOR, typename T_ENTRY = ENTRY>

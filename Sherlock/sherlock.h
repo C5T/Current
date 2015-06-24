@@ -145,8 +145,9 @@ class StreamInstanceImpl {
   size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
   size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
-  // Support two syntaxes of `Publish` for derived types: `const DERIVED&` and `const
-  // std::unique_ptr<DERIVED>&`.
+  // Support two syntaxes of `Publish` for derived types:
+  // 1) `Publish(const DERIVED&)`, and
+  // 2) `Publish(conststd::unique_ptr<DERIVED>&)`.
   template <typename DERIVED_ENTRY>
   typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
@@ -413,7 +414,6 @@ struct StreamInstance {
 // TODO(dkorolev): Validate stream name, add exceptions and tests for it.
 // TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
 // TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
-// TODO(dkorolev): Add the persistence layer.
 
 template <typename ENTRY, class CLONER = bricks::DefaultCloner>
 using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
