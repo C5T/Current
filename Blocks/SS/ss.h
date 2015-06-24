@@ -90,48 +90,49 @@ using CW = bricks::weed::call_with<T, TS...>;
 template <typename T, typename... TS>
 using CWT = bricks::weed::call_with_type<T, TS...>;
 
-template <int N, typename E, class F>
+template <int N>
 struct CallWithNParameters;
 
-template <typename E, class F>
-struct CallWithNParameters<3, E, F> {
+template<>
+struct CallWithNParameters<3> {
+  template <typename E, class F>
   static CWT<F, E, size_t, size_t> CallIt(F&& f, E&& e, size_t index, size_t total) {
     return f(std::forward<E>(e), index, total);
   }
 };
 
-template <typename E, class F>
-struct CallWithNParameters<2, E, F> {
+template<>
+struct CallWithNParameters<2> {
+  template <typename E, class F>
   static CWT<F, E, size_t> CallIt(F&& f, E&& e, size_t index, size_t) { return f(std::forward<E>(e), index); }
 };
 
-template <typename E, class F>
-struct CallWithNParameters<1, E, F> {
+template<>
+struct CallWithNParameters<1> {
+  template <typename E, class F>
   static CWT<F, E> CallIt(F&& f, E&& e, size_t, size_t) { return f(std::forward<E>(e)); }
 };
 
-template <bool N1, bool N2, bool N3, typename E, class F>
+template <bool N1, bool N2, bool N3>
 struct FindMatchingSignature {};
 
-template <typename E, class F>
-struct FindMatchingSignature<true, false, false, E, F> : CallWithNParameters<1, E, F> {
+template<>
+struct FindMatchingSignature<true, false, false> : CallWithNParameters<1> {
   enum { valid = true };
 };
-template <typename E, class F>
-struct FindMatchingSignature<false, true, false, E, F> : CallWithNParameters<2, E, F> {
+template<>
+struct FindMatchingSignature<false, true, false> : CallWithNParameters<2> {
   enum { valid = true };
 };
-template <typename E, class F>
-struct FindMatchingSignature<false, false, true, E, F> : CallWithNParameters<3, E, F> {
+template<>
+struct FindMatchingSignature<false, false, true> : CallWithNParameters<3> {
   enum { valid = true };
 };
 
 template <typename E, class F>
-struct CallMatchingSignature : FindMatchingSignature<CW<F, E>::implemented,
-                                                     CW<F, E, size_t>::implemented,
-                                                     CW<F, E, size_t, size_t>::implemented,
-                                                     E,
-                                                     F> {};
+using CallMatchingSignature = FindMatchingSignature<CW<F, E>::implemented,
+                                                    CW<F, E, size_t>::implemented,
+                                                    CW<F, E, size_t, size_t>::implemented>;
 
 template <typename R, typename E, class F>
 struct BoolOrTrueImpl;
