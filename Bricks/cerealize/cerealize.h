@@ -26,7 +26,6 @@ SOFTWARE.
 #define BRICKS_CEREALIZE_CEREALIZE_H
 
 #include <fstream>
-#include <functional>
 #include <string>
 #include <sstream>
 
@@ -127,14 +126,10 @@ class CerealFileAppenderBase {
 // `CerealBinaryFileAppender` appends cereal-ized records to a file in binary format.
 // Writes are performed using templated `operator <<(const T& entry)`.
 // If type `T` defines a typedef of `CEREAL_BASE_TYPE`, polymorphic serialization is used.
-template <typename T_ENTRY>
+template <typename ENTRY, class CLONER>
 class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
  public:
-  explicit CerealBinaryFileAppenderImpl(std::function<T_ENTRY(const T_ENTRY&)>,
-                                        const std::string& filename,
-                                        bool append = true)
-      : CerealFileAppenderBase(filename, append), so_(cereal::BinaryOutputArchive(fo_)) {}
-
+  typedef ENTRY T_ENTRY;
   explicit CerealBinaryFileAppenderImpl(const std::string& filename, bool append = true)
       : CerealFileAppenderBase(filename, append), so_(cereal::BinaryOutputArchive(fo_)) {}
 
@@ -171,21 +166,17 @@ class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
   cereal::BinaryOutputArchive so_;
 };
 
-template <typename E>
-using CerealBinaryFileAppender = blocks::ss::Publisher<CerealBinaryFileAppenderImpl<E>, E>;
+template <typename E, class CLONER>
+using CerealBinaryFileAppender = blocks::ss::Publisher<CerealBinaryFileAppenderImpl<E, CLONER>, E>;
 
 // `CerealJSONFileAppender` appends cereal-ized records to a file in JSON format.
 // Each entry is written as a separate line containing full JSON record.
 // Writes are performed using templated `operator <<(const T& entry)`.
 // If type `T` defines a typedef of `CEREAL_BASE_TYPE`, polymorphic serialization is used.
-template <typename T_ENTRY>
+template <typename ENTRY, class CLONER>
 class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
  public:
-  CerealJSONFileAppenderImpl(std::function<T_ENTRY(const T_ENTRY&)>,
-                             const std::string& filename,
-                             bool append = true)
-      : CerealFileAppenderBase(filename, append) {}
-
+  typedef ENTRY T_ENTRY;
   explicit CerealJSONFileAppenderImpl(const std::string& filename, bool append = true)
       : CerealFileAppenderBase(filename, append) {}
 
@@ -235,30 +226,31 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
   }
 };
 
-template <typename E>
-using CerealJSONFileAppender = blocks::ss::Publisher<CerealJSONFileAppenderImpl<E>, E>;
+template <typename E, class CLONER>
+using CerealJSONFileAppender = blocks::ss::Publisher<CerealJSONFileAppenderImpl<E, CLONER>, E>;
 
-template <typename E, CerealFormat>
+template <typename E, class CLONER, CerealFormat>
 struct CerealGenericFileAppender {};
 
-template <typename E>
-struct CerealGenericFileAppender<E, CerealFormat::Binary> {
-  typedef CerealBinaryFileAppender<E> type;
+template <typename E, class CLONER>
+struct CerealGenericFileAppender<E, CLONER, CerealFormat::Binary> {
+  typedef CerealBinaryFileAppender<E, CLONER> type;
 };
 
-template <typename E>
-struct CerealGenericFileAppender<E, CerealFormat::JSON> {
-  typedef CerealJSONFileAppender<E> type;
+template <typename E, typename CLONER>
+struct CerealGenericFileAppender<E, CLONER, CerealFormat::JSON> {
+  typedef CerealJSONFileAppender<E, CLONER> type;
 };
 
-template <typename E, CerealFormat T_FORMAT = CerealFormat::Default>
-using CerealFileAppender = typename CerealGenericFileAppender<E, T_FORMAT>::type;
+template <typename E, class CLONER, CerealFormat FORMAT = CerealFormat::Default>
+using CerealFileAppender = typename CerealGenericFileAppender<E, CLONER, FORMAT>::type;
 
 // `CerealBinaryFileParser` de-cereal-izes records from binary file given their type
 // and passes them over to `T_PROCESSOR`.
-template <typename T_ENTRY>
+template <typename ENTRY>
 class CerealBinaryFileParser {
  public:
+  typedef ENTRY T_ENTRY;
   explicit CerealBinaryFileParser(const std::string& filename) : fi_(filename), si_(fi_) {}
 
   // `Next` calls `T_PROCESSOR::operator()(T_ENTRY)` for the next entry, or returns false.
@@ -311,9 +303,10 @@ class CerealBinaryFileParser {
 // `CerealJSONFileParser` de-cereal-izes records from JSON file given their type
 // and passes them over to `T_PROCESSOR`. Each line in the file expected to be a
 // full JSON record for one entry.
-template <typename T_ENTRY>
+template <typename ENTRY>
 class CerealJSONFileParser {
  public:
+  typedef ENTRY T_ENTRY;
   explicit CerealJSONFileParser(const std::string& filename) : fi_(filename) {}
 
   // `Next` calls `T_PROCESSOR::operator()(const T_ENTRY&)` for the next entry, or returns false.
@@ -334,8 +327,8 @@ class CerealJSONFileParser {
   // In order for RTTI dispatching to work, class T_PROCESSOR should define two type:
   // 1) BASE_TYPE: The type of the base entry to de-serialize from the stream, and
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
-  template <typename T_PROCESSOR, typename ENTRY = T_ENTRY>
-  typename std::enable_if<bricks::is_unique_ptr<ENTRY>::value, bool>::type NextWithDispatching(
+  template <typename T_PROCESSOR, typename T_ENTRY = ENTRY>
+  typename std::enable_if<bricks::is_unique_ptr<T_ENTRY>::value, bool>::type NextWithDispatching(
       T_PROCESSOR& processor) {
     try {
       bricks::rtti::RuntimeTupleDispatcher<
@@ -369,21 +362,21 @@ class CerealJSONFileParser {
   std::ifstream fi_;
 };
 
-template <typename T_ENTRY, CerealFormat>
+template <typename ENTRY, CerealFormat>
 struct CerealGenericFileParser {};
 
-template <typename T_ENTRY>
-struct CerealGenericFileParser<T_ENTRY, CerealFormat::Binary> {
-  typedef CerealBinaryFileParser<T_ENTRY> type;
+template <typename ENTRY>
+struct CerealGenericFileParser<ENTRY, CerealFormat::Binary> {
+  typedef CerealBinaryFileParser<ENTRY> type;
 };
 
-template <typename T_ENTRY>
-struct CerealGenericFileParser<T_ENTRY, CerealFormat::JSON> {
-  typedef CerealJSONFileParser<T_ENTRY> type;
+template <typename ENTRY>
+struct CerealGenericFileParser<ENTRY, CerealFormat::JSON> {
+  typedef CerealJSONFileParser<ENTRY> type;
 };
 
-template <typename T_ENTRY, CerealFormat T_FORMAT = CerealFormat::Default>
-using CerealFileParser = typename CerealGenericFileParser<T_ENTRY, T_FORMAT>::type;
+template <typename ENTRY, CerealFormat FORMAT = CerealFormat::Default>
+using CerealFileParser = typename CerealGenericFileParser<ENTRY, FORMAT>::type;
 
 }  // namespace cerealize
 }  // namespace bricks

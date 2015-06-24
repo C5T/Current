@@ -80,7 +80,7 @@ TEST(PersistenceLayer, MemoryOnly) {
   static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   {
-    IMPL impl(bricks::DefaultCloneFunction<std::string>());
+    IMPL impl;
 
     impl.Publish("foo");
     impl.Publish("bar");
@@ -109,7 +109,7 @@ TEST(PersistenceLayer, MemoryOnly) {
   {
     // Obviously, no state is shared for `MemoryOnly` implementation.
     // The data starts from ground zero.
-    IMPL impl(bricks::DefaultCloneFunction<std::string>());
+    IMPL impl;
 
     std::atomic_bool stop(false);
     PersistenceTestListener test_listener;
@@ -144,10 +144,10 @@ TEST(PersistenceLayer, AppendToFile) {
   const auto file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    IMPL impl(bricks::DefaultCloneFunction<CerealizableString>(), persistence_file_name);
+    IMPL impl(persistence_file_name);
 
     impl.Publish("foo");
-    impl.Publish("bar");
+    impl.Publish(std::move(CerealizableString("bar")));
 
     std::atomic_bool stop(false);
     PersistenceTestListener test_listener;
@@ -178,7 +178,7 @@ TEST(PersistenceLayer, AppendToFile) {
 
   {
     // Confirm that the data has been saved and can be replayed.
-    IMPL impl(bricks::DefaultCloneFunction<CerealizableString>(), persistence_file_name);
+    IMPL impl(persistence_file_name);
 
     std::atomic_bool stop(false);
     PersistenceTestListener test_listener;
@@ -207,18 +207,28 @@ TEST(PersistenceLayer, AppendToFile) {
 TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   struct BASE {
     virtual std::string AsString() = 0;
-    virtual std::unique_ptr<BASE> Clone() = 0;
+    virtual std::unique_ptr<BASE> DoClone() = 0;
+  };
+  struct A0 : BASE {
+    std::string AsString() override { return "A0"; }
+    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new A0()); }
+  };
+  struct B0 : BASE {
+    std::string AsString() override { return "B0"; }
+    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new B0()); }
   };
   struct A : BASE {
     std::string AsString() override { return "A"; }
-    std::unique_ptr<BASE> Clone() override { return std::unique_ptr<BASE>(new A()); }
+    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new A0()); }
   };
   struct B : BASE {
     std::string AsString() override { return "B"; }
-    std::unique_ptr<BASE> Clone() override { return std::unique_ptr<BASE>(new B()); }
+    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new B0()); }
   };
-  blocks::persistence::MemoryOnly<std::unique_ptr<BASE>> test_clone(
-      [](const std::unique_ptr<BASE>& input) { return input->Clone(); });
+  struct CustomCloner {
+    static std::unique_ptr<BASE> Clone(const std::unique_ptr<BASE>& input) { return input->DoClone(); }
+  };
+  blocks::persistence::MemoryOnly<std::unique_ptr<BASE>, CustomCloner> test_clone;
 
   test_clone.Publish(make_unique<A>());
   test_clone.Publish(make_unique<B>());
@@ -233,5 +243,5 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   });
 
   EXPECT_EQ(2u, counter);
-  EXPECT_EQ("A,B", Join(results, ","));
+  EXPECT_EQ("A0,B0", Join(results, ","));
 }

@@ -55,9 +55,15 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
+#include "../../Bricks/util/clone.h"
+
 namespace blocks {
 
-template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
+template <typename MESSAGE,
+          typename CONSUMER,
+          size_t DEFAULT_BUFFER_SIZE = 1024,
+          bool DROP_ON_OVERFLOW = false,
+          class CLONER = bricks::DefaultCloner>
 class MMQImpl {
  public:
   // Type of messages to store and dispatch.
@@ -67,11 +73,8 @@ class MMQImpl {
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   typedef CONSUMER T_CONSUMER;
 
-  MMQImpl(std::function<MESSAGE(const MESSAGE&)> clone,
-          T_CONSUMER& consumer,
-          size_t buffer_size = DEFAULT_BUFFER_SIZE)
-      : clone_(clone),
-        consumer_(consumer),
+  MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
+      : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
         consumer_thread_(&MMQImpl::ConsumerThread, this) {}
@@ -94,7 +97,7 @@ class MMQImpl {
     const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
-      circular_buffer_[index.first].message_body = std::move(clone_(message));
+      circular_buffer_[index.first].message_body = std::move(CLONER::Clone(message));
       CircularBufferCommit(index.first);
       return index.second;
     } else {
@@ -238,9 +241,6 @@ class MMQImpl {
     circular_buffer_[index].status = Entry::READY;
     condition_variable_.notify_all();
   }
-
-  // The method used to clone incoming entries.
-  std::function<MESSAGE(const MESSAGE&)> clone_;
 
   // The instance of the consuming side of the FIFO buffer.
   T_CONSUMER& consumer_;

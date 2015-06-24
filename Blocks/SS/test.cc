@@ -79,7 +79,9 @@ TEST(MQInterface, TestHelperClassSmokeTest) {
 TEST(MQInterface, SmokeTest) {
   using DDE = DispatchDemoEntry;
 
-  const std::function<DDE(const DDE& e)> clone_f = [](const DDE& e) -> DDE { return DDE(DDE::Clone(), e); };
+  struct CustomCloner {
+    static DDE Clone(const DDE& e) { return DDE(DDE::Clone(), e); }
+  };
 
   std::string text;
 
@@ -88,7 +90,7 @@ TEST(MQInterface, SmokeTest) {
     return false;
   };
 
-  const auto need_a_copy_lambda = [&text](DDE&& e, size_t count, size_t total) {
+  const auto needs_a_copy_lambda = [&text](DDE&& e, size_t count, size_t total) {
     text = Printf("%s, %d, %d", e.text.c_str(), int(count), int(total));
     e.text = "invalidated <" + e.text + ">";
     return false;
@@ -101,13 +103,13 @@ TEST(MQInterface, SmokeTest) {
   ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_lambda, e, 1, 4));
   EXPECT_EQ("Entry(), 1, 4", text);
 
-  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_lambda, e, 2, 3, clone_f));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_lambda, e, 2, 3));
   EXPECT_EQ("Entry(), 2, 3", text);
 
-  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(need_a_copy_lambda, e, 1, 2));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_lambda, e, 1, 2));
   EXPECT_EQ("Entry(copy of {Entry()}), 1, 2", text);
 
-  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(need_a_copy_lambda, e, 3, 4, clone_f));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_lambda, e, 3, 4));
   EXPECT_EQ("Entry(clone of {Entry()}), 3, 4", text);
 
   EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
@@ -117,7 +119,7 @@ TEST(MQInterface, SmokeTest) {
 
   EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
 
-  ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(need_a_copy_lambda, std::move(e), 2, 4));
+  ASSERT_FALSE(blocks::ss::DispatchEntryByRValue(needs_a_copy_lambda, std::move(e), 2, 4));
   EXPECT_EQ("Entry(), 2, 4", text);
 
   EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
@@ -132,7 +134,9 @@ TEST(MQInterface, SmokeTest) {
 TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
   using DDE = DispatchDemoEntry;
 
-  const std::function<DDE(const DDE& e)> clone_f = [](const DDE& e) -> DDE { return DDE(DDE::Clone(), e); };
+  struct CustomCloner {
+    static DDE Clone(const DDE& e) { return DDE(DDE::Clone(), e); }
+  };
 
   // The copy-paste of `SmokeTest`, as the boilerplate.
   {
@@ -166,13 +170,13 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 1, 4));
     EXPECT_EQ("Entry(), 1, 4", does_not_need_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 2, 3, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_2, e, 2, 3));
     EXPECT_EQ("Entry(), 2, 3", does_not_need_a_copy_2.text);
 
     ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 1, 2));
     EXPECT_EQ("Entry(copy of {Entry()}), 1, 2", needs_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 3, 4, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_2, e, 3, 4));
     EXPECT_EQ("Entry(clone of {Entry()}), 3, 4", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
@@ -218,13 +222,13 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 1, 4));
     EXPECT_EQ("Entry(), 1, 4", does_not_need_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 2, 3, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_2, e, 2, 3));
     EXPECT_EQ("Entry(), 2, 3", does_not_need_a_copy_2.text);
 
     ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 1, 2));
     EXPECT_EQ("Entry(copy of {Entry()}), 1, 2", needs_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 3, 4, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_2, e, 3, 4));
     EXPECT_EQ("Entry(clone of {Entry()}), 3, 4", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
@@ -272,13 +276,13 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 100, 0));
     EXPECT_EQ("Entry(), 100", does_not_need_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 101, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_2, e, 101, 0));
     EXPECT_EQ("Entry(), 101", does_not_need_a_copy_2.text);
 
     ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 102, 0));
     EXPECT_EQ("Entry(copy of {Entry()}), 102", needs_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 103, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_2, e, 103, 0));
     EXPECT_EQ("Entry(clone of {Entry()}), 103", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
@@ -322,13 +326,13 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 200, 0));
     EXPECT_EQ("Entry(), 200", does_not_need_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 201, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_2, e, 201, 0));
     EXPECT_EQ("Entry(), 201", does_not_need_a_copy_2.text);
 
     ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 202, 0));
     EXPECT_EQ("Entry(copy of {Entry()}), 202", needs_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 203, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_2, e, 203, 0));
     EXPECT_EQ("Entry(clone of {Entry()}), 203", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
@@ -376,13 +380,13 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 300, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 301, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_2, e, 301, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_2.text);
 
     ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 302, 0));
     EXPECT_EQ("Entry(copy of {Entry()})", needs_a_copy_1.text);
 
-    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 303, 0, clone_f));
+    ASSERT_FALSE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_2, e, 303, 0));
     EXPECT_EQ("Entry(clone of {Entry()})", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";
@@ -426,13 +430,13 @@ TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_1, e, 400, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(does_not_need_a_copy_2, e, 401, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(does_not_need_a_copy_2, e, 401, 0));
     EXPECT_EQ("Entry()", does_not_need_a_copy_2.text);
 
     ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_1, e, 402, 0));
     EXPECT_EQ("Entry(copy of {Entry()})", needs_a_copy_1.text);
 
-    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference(needs_a_copy_2, e, 403, 0, clone_f));
+    ASSERT_TRUE(blocks::ss::DispatchEntryByConstReference<CustomCloner>(needs_a_copy_2, e, 403, 0));
     EXPECT_EQ("Entry(clone of {Entry()})", needs_a_copy_2.text);
 
     EXPECT_EQ("Entry()", e.text) << "The original `DDE()` should stay immutable.";

@@ -124,31 +124,29 @@ SOFTWARE.
 
 namespace sherlock {
 
-template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>
+template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
 class StreamInstanceImpl {
  public:
   typedef ENTRY T_ENTRY;
-  typedef PERSISTENCE_LAYER<ENTRY> T_PERSISTENCE_LAYER;
+  typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
 
   // TODO(dkorolev): In constuctor: Register the stream under its name in a singleton.
   // TODO(dkorolev): In constuctor: Ensure the stream lives forever.
 
-  StreamInstanceImpl(const std::string& name, std::function<T_ENTRY(const T_ENTRY&)> clone)
-      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>(clone)) {}
+  StreamInstanceImpl(const std::string& name)
+      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
 
   template <typename EXTRA_PARAM>
-  StreamInstanceImpl(const std::string& name,
-                     std::function<T_ENTRY(const T_ENTRY&)> clone,
-                     EXTRA_PARAM&& extra_param)
-      : name_(name),
-        storage_(std::make_shared<T_PERSISTENCE_LAYER>(clone, std::forward<EXTRA_PARAM>(extra_param))) {}
+  StreamInstanceImpl(const std::string& name, EXTRA_PARAM&& extra_param)
+      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAM>(extra_param))) {}
 
   // `Publish()` and `Emplace()` return the index of the added entry.
   // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
   size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
-  // Support two syntaxes of `Publish` for derived types: `const DERIVED&` and `const std::unique_ptr<DERIVED>&`.
+  // Support two syntaxes of `Publish` for derived types: `const DERIVED&` and `const
+  // std::unique_ptr<DERIVED>&`.
   template <typename DERIVED_ENTRY>
   typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
@@ -352,22 +350,18 @@ class StreamInstanceImpl {
   void operator=(StreamInstanceImpl&&) = delete;
 };
 
-template <typename ENTRY, template <typename> class PERSISTENCE_LAYER>
+template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
 struct StreamInstance {
   typedef ENTRY T_ENTRY;
-  typedef PERSISTENCE_LAYER<ENTRY> T_PERSISTENCE_LAYER;
+  typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
 
-  StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>* impl_;
+  StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl_;
 
-  explicit StreamInstance(StreamInstanceImpl<T_ENTRY, PERSISTENCE_LAYER>* impl) : impl_(impl) {}
+  explicit StreamInstance(StreamInstanceImpl<T_ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
 
   // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const T_ENTRY& entry) {
-    return impl_->Publish(entry);
-  }
-  size_t Publish(T_ENTRY&& entry) {
-    return impl_->Publish(std::move(entry));
-  }
+  size_t Publish(const T_ENTRY& entry) { return impl_->Publish(entry); }
+  size_t Publish(T_ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
 
   // Support two syntaxes of `Publish` as well.
   template <typename DERIVED_ENTRY>
@@ -388,11 +382,12 @@ struct StreamInstance {
   }
 
   template <typename F>
-  using SyncListenerScope = typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>::template SyncListenerScope<
-      std::unique_ptr<F, bricks::NullDeleter>>;
+  using SyncListenerScope =
+      typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>::template SyncListenerScope<
+          std::unique_ptr<F, bricks::NullDeleter>>;
   template <typename F>
   using AsyncListenerScope =
-      typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>::template AsyncListenerScope<F>;
+      typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>::template AsyncListenerScope<F>;
 
   // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
   // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
@@ -420,27 +415,24 @@ struct StreamInstance {
 // TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
 // TODO(dkorolev): Add the persistence layer.
 
-template <typename ENTRY>
-using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY>;
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
 
-template <typename ENTRY>
-StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER> Stream(const std::string& name) {
-  return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER>(
-      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER>(name, bricks::DefaultCloneFunction<ENTRY>()));
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream(const std::string& name) {
+  return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(
+      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(name));
 }
 
-template <typename ENTRY, template <typename> class PERSISTENCE_LAYER, typename... EXTRA_PARAMS>
-StreamInstance<ENTRY, PERSISTENCE_LAYER> Stream(const std::string& name, EXTRA_PARAMS&&... extra_params) {
-  return StreamInstance<ENTRY, PERSISTENCE_LAYER>(new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>(
-      name, bricks::DefaultCloneFunction<ENTRY>(), std::forward<EXTRA_PARAMS>(extra_params)...));
-}
-
-template <typename ENTRY, template <typename> class PERSISTENCE_LAYER, typename... EXTRA_PARAMS>
-StreamInstance<ENTRY, PERSISTENCE_LAYER> Stream(const std::string& name,
-                                                std::function<ENTRY(const ENTRY&)> clone,
-                                                EXTRA_PARAMS&&... extra_params) {
-  return StreamInstance<ENTRY, PERSISTENCE_LAYER>(new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER>(
-      name, clone, std::forward<EXTRA_PARAMS>(extra_params)...));
+template <typename ENTRY,
+          template <typename, typename> class PERSISTENCE_LAYER,
+          class CLONER = bricks::DefaultCloner,
+          typename... EXTRA_PARAMS>
+StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(const std::string& name,
+                                                        EXTRA_PARAMS&&... extra_params) {
+  return StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER>(
+      new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>(name,
+                                                               std::forward<EXTRA_PARAMS>(extra_params)...));
 }
 
 }  // namespace sherlock

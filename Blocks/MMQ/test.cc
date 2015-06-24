@@ -53,7 +53,7 @@ TEST(InMemoryMQ, SmokeTest) {
   };
 
   Consumer c;
-  MMQ<std::string, Consumer> mmq(bricks::DefaultCloneFunction<std::string>(), c);
+  MMQ<std::string, Consumer> mmq(c);
   mmq.Publish("one");
   mmq.Publish("two");
   mmq.Publish("three");
@@ -93,7 +93,7 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   SuspendableConsumer c;
 
   // Queue with 10 at most messages in the buffer.
-  MMQ<std::string, SuspendableConsumer, 10, true> mmq(bricks::DefaultCloneFunction<std::string>(), c);
+  MMQ<std::string, SuspendableConsumer, 10, true> mmq(c);
 
   // Suspend the consumer temporarily while the first 25 messages are published.
   c.suspend_processing_ = true;
@@ -142,7 +142,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   c.SetProcessingDelayMillis(1u);
 
   // Queue with 10 events in the buffer.
-  MMQ<std::string, SuspendableConsumer, 10> mmq(bricks::DefaultCloneFunction<std::string>(), c);
+  MMQ<std::string, SuspendableConsumer, 10> mmq(c);
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {

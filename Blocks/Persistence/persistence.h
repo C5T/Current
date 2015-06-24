@@ -37,18 +37,19 @@ SOFTWARE.
 
 #include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
+#include "../../Bricks/util/clone.h"
 
 namespace blocks {
 namespace persistence {
 
 namespace impl {
 
-template <class PERSISTENCE_LAYER, typename ENTRY>
+template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
 class Logic {
  public:
   template <typename... EXTRA_PARAMS>
-  Logic(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
-      : persistence_layer_(clone, std::forward<EXTRA_PARAMS>(extra_params)...), clone_(clone) {
+  explicit Logic(EXTRA_PARAMS&&... extra_params)
+      : persistence_layer_(std::forward<EXTRA_PARAMS>(extra_params)...) {
     persistence_layer_.Replay([this](ENTRY&& e) { list_.push_back(std::move(e)); });
   }
 
@@ -100,8 +101,9 @@ class Logic {
         }
       }
       if (!current.at_end) {
-        if (!blocks::ss::DispatchEntryByConstReference(
-                f, *current.iterator, current.index, current.total, clone_)) {
+        // Only specify the `CLONER` template paramter, the rest are best to be inferred.
+        if (!blocks::ss::DispatchEntryByConstReference<CLONER>(
+                std::forward<F>(f), *current.iterator, current.index, current.total)) {
           break;
         }
         if (!replay_done && current.index + 1 >= size_at_start) {
@@ -165,7 +167,8 @@ class Logic {
 
     // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
-    // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename ENTRY::element_type>(entry))));
+    // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
+    // ENTRY::element_type>(entry))));
 
     return list_.size() - 1;
   }
@@ -184,26 +187,18 @@ class Logic {
 
   std::list<ENTRY> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
   std::mutex mutex_;
-  const std::function<ENTRY(const ENTRY&)> clone_;
 };
 
 // We keep the `clone` param part of the constructor signature of persistence layers.
 // Right now persistence layers don't need to clone incoming entries, but we never know. -- D.K.
 
 // The implementation of a "publisher into nowhere".
-template <typename ENTRY>
+template <typename ENTRY, class CLONER>
 struct DevNullPublisherImpl {
-  DevNullPublisherImpl() = delete;
-  DevNullPublisherImpl(const DevNullPublisherImpl&) = delete;
-  DevNullPublisherImpl(std::function<ENTRY(const ENTRY&)>) {}
   void Replay(std::function<void(ENTRY&&)>) {}
   // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t DoPublish(const ENTRY&) {
-    return ++count_;
-  }
-  size_t DoPublish(ENTRY&&) {
-    return ++count_;
-  }
+  size_t DoPublish(const ENTRY&) { return ++count_; }
+  size_t DoPublish(ENTRY&&) { return ++count_; }
   template <typename DERIVED_E>
   size_t DoPublishDerived(const DERIVED_E&) {
     static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
@@ -212,16 +207,15 @@ struct DevNullPublisherImpl {
   size_t count_ = 0u;
 };
 
-template <typename ENTRY>
-using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY>, ENTRY>;
+template <typename ENTRY, class CLONER>
+using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 // TODO(dkorolev): Move into Cerealize.
-template <typename ENTRY>
+template <typename ENTRY, class CLONER>
 struct AppendToFilePublisherImpl {
   AppendToFilePublisherImpl() = delete;
   AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
-  AppendToFilePublisherImpl(std::function<ENTRY(const ENTRY&)> clone, const std::string& filename)
-      : clone_(clone), filename_(filename) {}
+  explicit AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(ENTRY&&)> push) {
     // TODO(dkorolev): Try/catch here?
@@ -230,7 +224,7 @@ struct AppendToFilePublisherImpl {
     while (parser.Next(push)) {
       ++count_;
     }
-    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<ENTRY>>(clone_, filename_);
+    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
     assert(appender_);
   }
 
@@ -252,22 +246,22 @@ struct AppendToFilePublisherImpl {
   }
 
  private:
-  const std::function<ENTRY(const ENTRY&)> clone_;
   const std::string filename_;
-  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<ENTRY>> appender_;
+  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<ENTRY, CLONER>> appender_;
   size_t count_ = 0u;
 };
 
-template <typename ENTRY>
-using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<ENTRY>, ENTRY>;
+template <typename ENTRY, class CLONER>
+using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 }  // namespace blocks::persistence::impl
 
-template <typename ENTRY>
-using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY>, ENTRY>, ENTRY>;
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
-template <typename ENTRY>
-using AppendToFile = ss::Publisher<impl::Logic<impl::AppendToFilePublisher<ENTRY>, ENTRY>, ENTRY>;
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+using AppendToFile =
+    ss::Publisher<impl::Logic<impl::AppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
 }  // namespace blocks::persistence
 }  // namespace blocks

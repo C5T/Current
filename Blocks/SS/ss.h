@@ -25,7 +25,6 @@ SOFTWARE.
 #ifndef BLOCKS_SS_SS_H
 #define BLOCKS_SS_SS_H
 
-#include <functional>
 #include <utility>
 
 #include "../../Bricks/util/clone.h"
@@ -179,10 +178,9 @@ inline bool DispatchEntryWithoutMakingACopy(F&& f, E&& e, size_t index, size_t t
   return DispatchActualEntry(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
-template <typename F, typename E>
-inline bool DispatchEntryWithMakingACopy(
-    F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
-  return DispatchActualEntry(std::forward<F>(f), std::move(clone_f(e)), index, total);
+template <typename F, typename E, class CLONER>
+inline bool DispatchEntryWithMakingACopy(F&& f, const E& e, size_t index, size_t total) {
+  return DispatchActualEntry(std::forward<F>(f), std::move(CLONER::Clone(e)), index, total);
 }
 
 template <typename F, typename E>
@@ -222,22 +220,25 @@ template <typename F, typename E>
 constexpr static bool RequiresCopyOfEntry(int) {
   return RequiresCopyOfEntry3<F, E>(0) && RequiresCopyOfEntry2<F, E>(0) && RequiresCopyOfEntry1<F, E>(0);
 }
-template <bool REQUIRES_COPY>
+
+template <bool REQUIRES_COPY, class CLONER>
 struct DispatchEntryMakingACopyIfNecessary;
 
-template <>
-struct DispatchEntryMakingACopyIfNecessary<true> {
+template <class CLONER>
+struct DispatchEntryMakingACopyIfNecessary<true, CLONER> {
   template <typename F, typename E>
-  static bool DoIt(F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
-    return DispatchEntryWithMakingACopy<F, E>(std::forward<F>(f), e, index, total, clone_f);
+  static bool DoIt(F&& f, const E& e, size_t index, size_t total) {
+    return DispatchEntryWithMakingACopy<F, E, CLONER>(std::forward<F>(f), e, index, total);
   }
 };
 
-template <>
-struct DispatchEntryMakingACopyIfNecessary<false> {
+template <class CLONER>
+struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
   template <typename F, typename E>
-  static bool DoIt(F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)>) {
-    return DispatchEntryWithoutMakingACopy(std::forward<F>(f), e, index, total);
+  static bool DoIt(F&& f, const E& e, size_t index, size_t total) {
+    // IMPORTANT: Do not explicitly specify `E` as the template parameter, as it interferes
+    // with extended reference resolution rules, creating an unnecessary copy. -- D.K.
+    return DispatchEntryWithoutMakingACopy<F>(std::forward<F>(f), e, index, total);
   }
 };
 
@@ -246,22 +247,19 @@ struct DispatchEntryMakingACopyIfNecessary<false> {
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
 // Generic const reference usecase, which dispatches an entry that should be preserved.
-// It will be cloned if the listener requires an rvalue reference. Hence a custom `clone` method is required.
-template <typename F, typename E>
-inline bool DispatchEntryByConstReference(
-    F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
-  return impl::DispatchEntryMakingACopyIfNecessary<impl::RequiresCopyOfEntry<F, E>(0)>::template DoIt<F, E>(
-      std::forward<F>(f), e, index, total, clone_f);
-}
-
-// A special case of the above method; GCC doesn't handle default values for `std::function<>` parameters well.
-template <typename F, typename E>
+// It will be cloned if the listener requires an rvalue reference, a custom cloner method can be provided.
+// Template parameter order is tweaked for more often specified to less often specified parameters.
+template <class CLONER = bricks::DefaultCloner, typename E, typename F>
 inline bool DispatchEntryByConstReference(F&& f, const E& e, size_t index, size_t total) {
-  return DispatchEntryByConstReference(std::forward<F>(f), e, index, total, bricks::DefaultCloneFunction<E>());
+  // IMPORTANT: Do not explicitly specify template parameters to `DoIt`, as they interfere
+  // with extended reference resolution rules, resulting in an unnecessary copy. -- D.K.
+  return impl::DispatchEntryMakingACopyIfNecessary<impl::RequiresCopyOfEntry<F, E>(0), CLONER>::DoIt(
+      std::forward<F>(f), e, index, total);
 }
 
 // Generic rvalue reference usecase, which dispatches the entry that does not need to be reused later.
-template <typename F, typename E>
+// Template parameter order is tweaked to { E, F }, since `E` has to be specified more often than `F`.
+template <typename E, typename F>
 inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
   return impl::DispatchEntryWithoutMakingACopy<F, E>(std::forward<F>(f), std::forward<E>(e), index, total);
 }
@@ -285,19 +283,13 @@ struct GenericEntryPublisher : GenericPublisher {};
 template <typename IMPL, typename ENTRY>
 class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
-  // The best option to make this generic code build universally is to have `clone`
-  // always passed in explicitly as the first parameter. -- D.K.
   template <typename... EXTRA_PARAMS>
-  explicit Publisher(std::function<ENTRY(const ENTRY&)> clone, EXTRA_PARAMS&&... extra_params)
-      : IMPL(clone, std::forward<EXTRA_PARAMS>(extra_params)...) {}
+  explicit Publisher(EXTRA_PARAMS&&... extra_params)
+      : IMPL(std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
   // Deliverately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  inline size_t Publish(const ENTRY& e) {
-    return IMPL::DoPublish(e);
-  }
-  inline size_t Publish(ENTRY&& e) {
-    return IMPL::DoPublish(std::move(e));
-  }
+  inline size_t Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
+  inline size_t Publish(ENTRY&& e) { return IMPL::DoPublish(std::move(e)); }
 
   template <typename... ARGS>
   inline size_t Emplace(ARGS&&... args) {

@@ -43,6 +43,9 @@ SOFTWARE.
 
 #include "../../3rdparty/cereal/include/archives/json.hpp"
 
+// Empirically discovered to be necessary to enable serialization of `std::unique_ptr<>`-s. -- D.K.
+#include "../../3rdparty/cereal/include/types/polymorphic.hpp"
+
 #include "../../3rdparty/cereal/include/external/base64.hpp"
 
 namespace bricks {
@@ -113,7 +116,7 @@ inline std::string JSON(T&& object) {
 template <typename T, typename S>
 inline std::string JSON(T&& object, S&& name) {
   std::ostringstream os;
-  AppendAsJSON(os, std::forward<T>(object), name);
+  AppendAsJSON(os, std::forward<T>(object), std::forward<S>(name));
   return os.str();
 }
 

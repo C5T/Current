@@ -91,23 +91,21 @@ SOFTWARE.
 namespace yoda {
 
 // `yoda::APIWrapper` requires the list of specific entries to expose through the Yoda API.
-template <template <typename> class PERSISTENCE, typename ENTRIES_TYPELIST>
-struct APIWrapper : APICalls<PERSISTENCE, YodaTypes<PERSISTENCE, ENTRIES_TYPELIST>> {
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename ENTRIES_TYPELIST>
+struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER, ENTRIES_TYPELIST>> {
  private:
   static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
-  typedef YodaTypes<PERSISTENCE, ENTRIES_TYPELIST> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, ENTRIES_TYPELIST> YT;
 
  public:
   APIWrapper() = delete;
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   APIWrapper(const std::string& stream_name)
-      : APICalls<PERSISTENCE, YT>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE>(
-            stream_name, bricks::DefaultCloneFunction<std::unique_ptr<Padawan>>())),
+      : APICalls<PERSISTENCE, CLONER, YT>(mq_),
+        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(stream_name)),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
-        mq_(bricks::DefaultCloneFunction<std::unique_ptr<typename YT::T_MQ_MESSAGE_INTERNAL_TYPEDEF>>(),
-            mq_listener_),
+        mq_(mq_listener_),
         stream_listener_(mq_),
         sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {}
 
@@ -128,21 +126,21 @@ struct APIWrapper : APICalls<PERSISTENCE, YodaTypes<PERSISTENCE, ENTRIES_TYPELIS
 };
 
 // `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
-template <template <typename> class PERSISTENCE, typename... SUPPORTED_TYPES>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
 struct APIWrapperSelector {
-  typedef APIWrapper<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> type;
+  typedef APIWrapper<PERSISTENCE, CLONER, std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <template <typename> class PERSISTENCE, typename... SUPPORTED_TYPES>
-struct APIWrapperSelector<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> {
-  typedef APIWrapper<PERSISTENCE, std::tuple<SUPPORTED_TYPES...>> type;
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
+struct APIWrapperSelector<PERSISTENCE, CLONER, std::tuple<SUPPORTED_TYPES...>> {
+  typedef APIWrapper<PERSISTENCE, CLONER, std::tuple<SUPPORTED_TYPES...>> type;
 };
 
-template <template <typename> class PERSISTENCE, typename... SUPPORTED_TYPES>
-using API = typename APIWrapperSelector<PERSISTENCE, SUPPORTED_TYPES...>::type;
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
+using API = typename APIWrapperSelector<PERSISTENCE, CLONER, SUPPORTED_TYPES...>::type;
 
 template <typename... SUPPORTED_TYPES>
-using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, SUPPORTED_TYPES...>;
+using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, bricks::DefaultCloner, SUPPORTED_TYPES...>;
 
 }  // namespace yoda
 
