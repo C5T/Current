@@ -145,7 +145,7 @@ class StreamInstanceImpl {
   size_t Publish(const ENTRY& entry) { return storage_->Publish(entry); }
   size_t Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
-  // When `ENTRY` is n `unique_ptr<>`, support two more syntaxes for `Publish`-ing entries of derived types.
+  // When `ENTRY` is an `std::unique_ptr<>`, support two more `Publish()` syntaxes for entries of derived types.
   // 1) `Publish(const DERIVED_ENTRY&)`, and
   // 2) `Publish(conststd::unique_ptr<DERIVED_ENTRY>&)`.
   template <typename DERIVED_ENTRY>
