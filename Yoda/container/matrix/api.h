@@ -38,8 +38,8 @@ namespace yoda {
 
 using sfinae::ENTRY_ROW_TYPE;
 using sfinae::ENTRY_COL_TYPE;
+using sfinae::MAP_CONTAINER_TYPE;
 using sfinae::RowCol;
-using sfinae::T_MAP_TYPE;
 using sfinae::GetRow;
 using sfinae::GetCol;
 
@@ -50,16 +50,16 @@ struct Matrix {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
-  typedef ENTRY_ROW_TYPE<T_ENTRY> T_ROW;
-  typedef ENTRY_COL_TYPE<T_ENTRY> T_COL;
+  typedef ENTRY_ROW_TYPE<ENTRY> T_ROW;
+  typedef ENTRY_COL_TYPE<ENTRY> T_COL;
 
-  typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
+  typedef std::function<void(const ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_ROW&, const T_COL&)> T_CELL_CALLBACK;
   typedef std::function<void()> T_VOID_CALLBACK;
 
-  typedef CellNotFoundException<T_ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
-  typedef CellAlreadyExistsException<T_ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
-  typedef SubscriptException<T_ENTRY> T_SUBSCRIPT_EXCEPTION;
+  typedef CellNotFoundException<ENTRY> T_CELL_NOT_FOUND_EXCEPTION;
+  typedef CellAlreadyExistsException<ENTRY> T_CELL_ALREADY_EXISTS_EXCEPTION;
+  typedef SubscriptException<ENTRY> T_SUBSCRIPT_EXCEPTION;
 
   template <typename DATA>
   static decltype(std::declval<DATA>().template Accessor<Matrix<ENTRY>>()) Accessor(DATA&& c) {
@@ -82,12 +82,12 @@ class InnerMapAccessor final {
   template <typename T>
   using CF = bricks::copy_free<T>;
 
-  InnerMapAccessor(CF<OUTER_KEY> key, const T_SUBMAP& map) : key_(key), map_(map) {}
+  InnerMapAccessor(CF<OUTER_KEY> key, const SUBMAP& map) : key_(key), map_(map) {}
   InnerMapAccessor(InnerMapAccessor&&) = default;
   struct Iterator final {
-    typedef decltype(std::declval<T_SUBMAP>().cbegin()) T_ITERATOR;
-    T_ITERATOR iterator;
-    explicit Iterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
+    typedef decltype(std::declval<SUBMAP>().cbegin()) ITERATOR;
+    ITERATOR iterator;
+    explicit Iterator(ITERATOR&& iterator) : iterator(std::move(iterator)) {}
     void operator++() { ++iterator; }
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
@@ -115,7 +115,7 @@ class InnerMapAccessor final {
 
  private:
   const CF<OUTER_KEY> key_;
-  const T_SUBMAP& map_;
+  const SUBMAP& map_;
 };
 
 // `OUTER_KEY` and `INNER_KEY` are { T_ROW, T_COL } or { T_COL, T_ROW }, depending
@@ -123,9 +123,9 @@ class InnerMapAccessor final {
 template <typename YET, typename OUTER_KEY, typename INNER_KEY>
 class OuterMapAccessor final {
  public:
-  using T_INNER_MAP = T_MAP_TYPE<INNER_KEY, const typename YET::T_ENTRY*>;
+  using T_INNER_MAP = MAP_CONTAINER_TYPE<INNER_KEY, const typename YET::T_ENTRY*>;
   using T_INNER_MAP_ACCESSOR = InnerMapAccessor<YET, OUTER_KEY, T_INNER_MAP, INNER_KEY>;
-  using T_OUTER_MAP = T_MAP_TYPE<OUTER_KEY, T_INNER_MAP>;
+  using T_OUTER_MAP = MAP_CONTAINER_TYPE<OUTER_KEY, T_INNER_MAP>;
 
   template <typename T>
   using CF = bricks::copy_free<T>;
@@ -134,9 +134,9 @@ class OuterMapAccessor final {
   OuterMapAccessor(OuterMapAccessor&&) = default;
 
   struct OuterIterator final {
-    typedef decltype(std::declval<T_OUTER_MAP>().cbegin()) T_ITERATOR;
-    T_ITERATOR iterator;
-    explicit OuterIterator(T_ITERATOR&& iterator) : iterator(std::move(iterator)) {}
+    typedef decltype(std::declval<T_OUTER_MAP>().cbegin()) ITERATOR;
+    ITERATOR iterator;
+    explicit OuterIterator(ITERATOR&& iterator) : iterator(std::move(iterator)) {}
     void operator++() { ++iterator; }
     bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
@@ -242,14 +242,14 @@ struct Container<YT, Matrix<ENTRY>> {
     // TODO(dk+mz): Should per-row / per-col getters throw right away when row/col is not present?
     InnerMapAccessor<YET,
                      typename YET::T_ROW,
-                     T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
+                     MAP_CONTAINER_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
                      typename YET::T_COL>
     operator[](CF<typename YET::T_ROW> row) const {
       const auto submap_cit = immutable_.forward_.find(row);
       if (submap_cit != immutable_.forward_.end()) {
         return InnerMapAccessor<YET,
                                 typename YET::T_ROW,
-                                T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
+                                MAP_CONTAINER_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>,
                                 typename YET::T_COL>(submap_cit->first, submap_cit->second);
       } else {
         throw typename YET::T_SUBSCRIPT_EXCEPTION();
@@ -258,14 +258,14 @@ struct Container<YT, Matrix<ENTRY>> {
 
     InnerMapAccessor<YET,
                      typename YET::T_COL,
-                     T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
+                     MAP_CONTAINER_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
                      typename YET::T_ROW>
     operator[](CF<typename YET::T_COL> col) const {
       const auto submap_cit = immutable_.transposed_.find(col);
       if (submap_cit != immutable_.transposed_.end()) {
         return InnerMapAccessor<YET,
                                 typename YET::T_COL,
-                                T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
+                                MAP_CONTAINER_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>,
                                 typename YET::T_ROW>(submap_cit->first, submap_cit->second);
       } else {
         throw typename YET::T_SUBSCRIPT_EXCEPTION();
@@ -323,9 +323,11 @@ struct Container<YT, Matrix<ENTRY>> {
   }
 
  private:
-  T_MAP_TYPE<ROW_COL, std::unique_ptr<EntryWithIndex<typename YET::T_ENTRY>>> map_;
-  T_MAP_TYPE<typename YET::T_ROW, T_MAP_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>> forward_;
-  T_MAP_TYPE<typename YET::T_COL, T_MAP_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>> transposed_;
+  MAP_CONTAINER_TYPE<ROW_COL, std::unique_ptr<EntryWithIndex<typename YET::T_ENTRY>>> map_;
+  MAP_CONTAINER_TYPE<typename YET::T_ROW, MAP_CONTAINER_TYPE<typename YET::T_COL, const typename YET::T_ENTRY*>>
+      forward_;
+  MAP_CONTAINER_TYPE<typename YET::T_COL, MAP_CONTAINER_TYPE<typename YET::T_ROW, const typename YET::T_ENTRY*>>
+      transposed_;
 };
 
 }  // namespace yoda

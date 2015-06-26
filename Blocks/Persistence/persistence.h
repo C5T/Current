@@ -148,22 +148,23 @@ class Logic {
     return list_.size() - 1;
   }
 
-  template <typename DERIVED_E>
-  size_t DoPublishDerived(const DERIVED_E& entry) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
+  template <typename DERIVED_ENTRY>
+  size_t DoPublishDerived(const DERIVED_ENTRY& entry) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // `std::unique_ptr<DERIVED>` can be implicitly converted into `std::unique_ptr<BASE>`.
+    // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
+    // if `ENTRY` is the base class for `DERIVED_ENTRY`.
     // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
-    std::unique_ptr<DERIVED_E> copy(make_unique<DERIVED_E>());
-    *copy = bricks::DefaultCloneFunction<DERIVED_E>()(entry);
+    std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
+    *copy = bricks::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
     list_.push_back(std::move(copy));
     persistence_layer_.Publish(list_.back());
 
     // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
     // the copy constructor. Instead, we go with Current-friendly clone implementation above.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
-    // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_E>(entry)));
+    // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_ENTRY>(entry)));
 
     // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
@@ -196,9 +197,9 @@ struct DevNullPublisherImpl {
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t DoPublish(const ENTRY&) { return ++count_; }
   size_t DoPublish(ENTRY&&) { return ++count_; }
-  template <typename DERIVED_E>
-  size_t DoPublishDerived(const DERIVED_E&) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
+  template <typename DERIVED_ENTRY>
+  size_t DoPublishDerived(const DERIVED_ENTRY&) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     return ++count_;
   }
   size_t count_ = 0u;
@@ -235,9 +236,9 @@ struct AppendToFilePublisherImpl {
     return ++count_;
   }
 
-  template <typename DERIVED_E>
-  size_t DoPublishDerived(const DERIVED_E& e) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_E>::value, "");
+  template <typename DERIVED_ENTRY>
+  size_t DoPublishDerived(const DERIVED_ENTRY& e) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     (*appender_) << WithBaseType<ENTRY>(e);
     return ++count_;
   }

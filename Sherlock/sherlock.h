@@ -83,9 +83,9 @@ SOFTWARE.
 //
 //   The `my_listener` object should expose the following member functions:
 //
-//   1) `{void/bool} operator()({const T_ENTRY& / T_ENTRY&&} entry [, size_t index [, size_t total]]):
+//   1) `{void/bool} operator()({const ENTRY& / ENTRY&&} entry [, size_t index [, size_t total]]):
 //
-//      The `T_ENTRY` type is RTTI-dispatched against the supplied type list.
+//      The `ENTRY` type is RTTI-dispatched against the supplied type list.
 //      As long as `my_listener` returns `true`, it will keep receiving new entries,
 //      which may end up blocking the thread until new, yet unseen, entries have been published.
 //
@@ -142,20 +142,20 @@ class StreamInstanceImpl {
 
   // `Publish()` and `Emplace()` return the index of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const T_ENTRY& entry) { return storage_->Publish(entry); }
-  size_t Publish(T_ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
+  size_t Publish(const ENTRY& entry) { return storage_->Publish(entry); }
+  size_t Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
-  // Support two syntaxes of `Publish` for derived types:
-  // 1) `Publish(const DERIVED&)`, and
-  // 2) `Publish(conststd::unique_ptr<DERIVED>&)`.
+  // When `ENTRY` is n `unique_ptr<>`, support two more syntaxes for `Publish`-ing entries of derived types.
+  // 1) `Publish(const DERIVED_ENTRY&)`, and
+  // 2) `Publish(conststd::unique_ptr<DERIVED_ENTRY>&)`.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
     return storage_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return storage_->Publish(e);
   }
@@ -337,7 +337,7 @@ class StreamInstanceImpl {
   }
 
   void ServeDataViaHTTP(Request r) {
-    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<T_ENTRY>>(std::move(r))).Detach();
+    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<ENTRY>>(std::move(r))).Detach();
   }
 
  private:
@@ -358,21 +358,21 @@ struct StreamInstance {
 
   StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl_;
 
-  explicit StreamInstance(StreamInstanceImpl<T_ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
+  explicit StreamInstance(StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const T_ENTRY& entry) { return impl_->Publish(entry); }
-  size_t Publish(T_ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
+  size_t Publish(const ENTRY& entry) { return impl_->Publish(entry); }
+  size_t Publish(ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
 
   // Support two syntaxes of `Publish` as well.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
     return impl_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<T_ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return impl_->Publish(e);
   }

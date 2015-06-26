@@ -45,92 +45,92 @@ using CF = bricks::copy_free<T>;
 // Support two access methods:
 // - `.row / .col` data members,
 // - `.row() / set_row() / .col() / .set_col()` methods.
-template <typename T_ENTRY>
+template <typename ENTRY>
 constexpr bool HasRowFunction(char) {
   return false;
 }
 
-template <typename T_ENTRY>
-constexpr auto HasRowFunction(int) -> decltype(std::declval<const T_ENTRY>().row(), bool()) {
+template <typename ENTRY>
+constexpr auto HasRowFunction(int) -> decltype(std::declval<const ENTRY>().row(), bool()) {
   return true;
 }
 
-template <typename T_ENTRY, bool HAS_ROW_FUNCTION>
+template <typename ENTRY, bool HAS_ROW_FUNCTION>
 struct ROW_ACCESSOR_IMPL {};
 
-template <typename T_ENTRY>
-struct ROW_ACCESSOR_IMPL<T_ENTRY, false> {
-  typedef decltype(std::declval<T_ENTRY>().row) T_ROW;
-  static CF<T_ROW> GetRow(const T_ENTRY& entry) { return entry.row; }
-  static void SetRow(T_ENTRY& entry, CF<T_ROW> row) { entry.row = row; }
+template <typename ENTRY>
+struct ROW_ACCESSOR_IMPL<ENTRY, false> {
+  typedef decltype(std::declval<ENTRY>().row) T_ROW;
+  static CF<T_ROW> GetRow(const ENTRY& entry) { return entry.row; }
+  static void SetRow(ENTRY& entry, CF<T_ROW> row) { entry.row = row; }
 };
 
-template <typename T_ENTRY>
-struct ROW_ACCESSOR_IMPL<T_ENTRY, true> {
-  typedef decltype(std::declval<T_ENTRY>().row()) T_ROW;
+template <typename ENTRY>
+struct ROW_ACCESSOR_IMPL<ENTRY, true> {
+  typedef decltype(std::declval<ENTRY>().row()) T_ROW;
   // Can not return a reference to a temporary.
-  static const T_ROW GetRow(const T_ENTRY& entry) { return entry.row(); }
-  static void SetRow(T_ENTRY& entry, CF<T_ROW> row) { entry.set_row(row); }
+  static const T_ROW GetRow(const ENTRY& entry) { return entry.row(); }
+  static void SetRow(ENTRY& entry, CF<T_ROW> row) { entry.set_row(row); }
 };
 
-template <typename T_ENTRY>
-using ROW_ACCESSOR = ROW_ACCESSOR_IMPL<T_ENTRY, HasRowFunction<T_ENTRY>(0)>;
+template <typename ENTRY>
+using ROW_ACCESSOR = ROW_ACCESSOR_IMPL<ENTRY, HasRowFunction<ENTRY>(0)>;
 
-template <typename T_ENTRY>
-typename ROW_ACCESSOR<T_ENTRY>::T_ROW GetRow(const T_ENTRY& entry) {
-  return ROW_ACCESSOR<T_ENTRY>::GetRow(entry);
+template <typename ENTRY>
+typename ROW_ACCESSOR<ENTRY>::T_ROW GetRow(const ENTRY& entry) {
+  return ROW_ACCESSOR<ENTRY>::GetRow(entry);
 }
 
-template <typename T_ENTRY>
-using ENTRY_ROW_TYPE = bricks::decay<typename ROW_ACCESSOR<T_ENTRY>::T_ROW>;
+template <typename ENTRY>
+using ENTRY_ROW_TYPE = bricks::decay<typename ROW_ACCESSOR<ENTRY>::T_ROW>;
 
-template <typename T_ENTRY>
-void SetRow(T_ENTRY& entry, CF<ENTRY_ROW_TYPE<T_ENTRY>> row) {
-  ROW_ACCESSOR<T_ENTRY>::SetRow(entry, row);
+template <typename ENTRY>
+void SetRow(ENTRY& entry, CF<ENTRY_ROW_TYPE<ENTRY>> row) {
+  ROW_ACCESSOR<ENTRY>::SetRow(entry, row);
 }
 
-template <typename T_ENTRY>
+template <typename ENTRY>
 constexpr bool HasColFunction(char) {
   return false;
 }
 
-template <typename T_ENTRY>
-constexpr auto HasColFunction(int) -> decltype(std::declval<const T_ENTRY>().col(), bool()) {
+template <typename ENTRY>
+constexpr auto HasColFunction(int) -> decltype(std::declval<const ENTRY>().col(), bool()) {
   return true;
 }
 
-template <typename T_ENTRY, bool HAS_COL_FUNCTION>
+template <typename ENTRY, bool HAS_COL_FUNCTION>
 struct COL_ACCESSOR_IMPL {};
 
-template <typename T_ENTRY>
-struct COL_ACCESSOR_IMPL<T_ENTRY, false> {
-  typedef decltype(std::declval<T_ENTRY>().col) T_COL;
-  static CF<T_COL> GetCol(const T_ENTRY& entry) { return entry.col; }
-  static void SetCol(T_ENTRY& entry, T_COL col) { entry.col = col; }
+template <typename ENTRY>
+struct COL_ACCESSOR_IMPL<ENTRY, false> {
+  typedef decltype(std::declval<ENTRY>().col) T_COL;
+  static CF<T_COL> GetCol(const ENTRY& entry) { return entry.col; }
+  static void SetCol(ENTRY& entry, T_COL col) { entry.col = col; }
 };
 
-template <typename T_ENTRY>
-struct COL_ACCESSOR_IMPL<T_ENTRY, true> {
-  typedef decltype(std::declval<T_ENTRY>().col()) T_COL;
+template <typename ENTRY>
+struct COL_ACCESSOR_IMPL<ENTRY, true> {
+  typedef decltype(std::declval<ENTRY>().col()) T_COL;
   // Can not return a reference to a temporary.
-  static const T_COL GetCol(const T_ENTRY& entry) { return entry.col(); }
-  static void SetCol(T_ENTRY& entry, CF<T_COL> col) { entry.set_col(col); }
+  static const T_COL GetCol(const ENTRY& entry) { return entry.col(); }
+  static void SetCol(ENTRY& entry, CF<T_COL> col) { entry.set_col(col); }
 };
 
-template <typename T_ENTRY>
-using COL_ACCESSOR = COL_ACCESSOR_IMPL<T_ENTRY, HasColFunction<T_ENTRY>(0)>;
+template <typename ENTRY>
+using COL_ACCESSOR = COL_ACCESSOR_IMPL<ENTRY, HasColFunction<ENTRY>(0)>;
 
-template <typename T_ENTRY>
-typename COL_ACCESSOR<T_ENTRY>::T_COL GetCol(const T_ENTRY& entry) {
-  return COL_ACCESSOR<T_ENTRY>::GetCol(entry);
+template <typename ENTRY>
+typename COL_ACCESSOR<ENTRY>::T_COL GetCol(const ENTRY& entry) {
+  return COL_ACCESSOR<ENTRY>::GetCol(entry);
 }
 
-template <typename T_ENTRY>
-using ENTRY_COL_TYPE = bricks::decay<typename COL_ACCESSOR<T_ENTRY>::T_COL>;
+template <typename ENTRY>
+using ENTRY_COL_TYPE = bricks::decay<typename COL_ACCESSOR<ENTRY>::T_COL>;
 
-template <typename T_ENTRY>
-void SetCol(T_ENTRY& entry, CF<ENTRY_COL_TYPE<T_ENTRY>> col) {
-  COL_ACCESSOR<T_ENTRY>::SetCol(entry, col);
+template <typename ENTRY>
+void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {
+  COL_ACCESSOR<ENTRY>::SetCol(entry, col);
 }
 
 template <typename T_ROW,
@@ -150,7 +150,7 @@ struct RowColImpl<T_ROW, T_COL, true, ROW_HAS_OPERATOR_LESS, true, COL_HAS_OPERA
   T_ROW row;
   T_COL col;
   RowColImpl(CF<T_ROW> row, CF<T_COL> col) : row(row), col(col) {}
-  size_t Hash() const { return T_HASH_FUNCTION<T_ROW>()(row) ^ T_HASH_FUNCTION<T_COL>()(col); }
+  size_t Hash() const { return HASH_FUNCTION<T_ROW>()(row) ^ HASH_FUNCTION<T_COL>()(col); }
   bool operator==(const RowColImpl& rhs) const { return row == rhs.row && col == rhs.col; }
 };
 

@@ -37,164 +37,163 @@ namespace sfinae {
 
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Associative container type selector. Attempts to use:
-// 1) std::unordered_map<T_KEY, T_ENTRY, wrapper for `T_KEY::Hash()`>
-// 2) std::unordered_map<T_KEY, T_ENTRY [, std::hash<T_KEY>]>
-// 3) std::map<T_KEY, T_ENTRY>
+// 1) std::unordered_map<KEY, ENTRY, wrapper for `KEY::Hash()`>
+// 2) std::unordered_map<KEY, ENTRY [, std::hash<KEY>]>
+// 3) std::map<KEY, ENTRY>
 // in the above order.
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool HasHashFunction(char) {
   return false;
 }
 
-template <typename T_KEY>
-constexpr auto HasHashFunction(int) -> decltype(std::declval<T_KEY>().Hash(), bool()) {
+template <typename KEY>
+constexpr auto HasHashFunction(int) -> decltype(std::declval<KEY>().Hash(), bool()) {
   return true;
 }
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool HasStdHash(char) {
   return false;
 }
 
-template <typename T_KEY>
-constexpr auto HasStdHash(int) -> decltype(std::hash<T_KEY>(), bool()) {
+template <typename KEY>
+constexpr auto HasStdHash(int) -> decltype(std::hash<KEY>(), bool()) {
   return true;
 }
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool EnumHasStdHash(char) {
   return false;
 }
 
-template <typename T_KEY>
-constexpr auto EnumHasStdHash(int)
-    -> decltype(std::hash<typename std::underlying_type<T_KEY>::type>(), bool()) {
+template <typename KEY>
+constexpr auto EnumHasStdHash(int) -> decltype(std::hash<typename std::underlying_type<KEY>::type>(), bool()) {
   return true;
 }
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool HasOperatorEquals(char) {
   return false;
 }
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr auto HasOperatorEquals(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() == std::declval<T_KEY>()), bool()) {
+    -> decltype(static_cast<bool>(std::declval<KEY>() == std::declval<KEY>()), bool()) {
   return true;
 }
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool HasOperatorLess(char) {
   return false;
 }
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr auto HasOperatorLess(int)
-    -> decltype(static_cast<bool>(std::declval<T_KEY>() < std::declval<T_KEY>()), bool()) {
+    -> decltype(static_cast<bool>(std::declval<KEY>() < std::declval<KEY>()), bool()) {
   return true;
 }
 
 static_assert(HasOperatorLess<std::string>(0), "");
 
-template <typename T_KEY, bool IS_ENUM = false>
+template <typename KEY, bool IS_ENUM = false>
 struct GenericHasStdHash {
-  static constexpr bool value() { return HasStdHash<T_KEY>(0); }
+  static constexpr bool value() { return HasStdHash<KEY>(0); }
 };
 
-template <typename T_KEY>
-struct GenericHasStdHash<T_KEY, true> {
-  static constexpr bool value() { return EnumHasStdHash<T_KEY>(0); }
+template <typename KEY>
+struct GenericHasStdHash<KEY, true> {
+  static constexpr bool value() { return EnumHasStdHash<KEY>(0); }
 };
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool HasStdOrCustomHash() {
-  return GenericHasStdHash<T_KEY, std::is_enum<T_KEY>::value>::value() || HasHashFunction<T_KEY>(0);
+  return GenericHasStdHash<KEY, std::is_enum<KEY>::value>::value() || HasHashFunction<KEY>(0);
 };
 
-template <typename T_KEY>
+template <typename KEY>
 constexpr bool FitsAsKeyForUnorderedMap() {
-  return HasStdOrCustomHash<T_KEY>() && HasOperatorEquals<T_KEY>(0);
+  return HasStdOrCustomHash<KEY>() && HasOperatorEquals<KEY>(0);
 };
 
-template <typename T_KEY, bool HAS_CUSTOM_HASH_FUNCTION, bool IS_ENUM>
-struct T_HASH_SELECTOR;
+template <typename KEY, bool HAS_CUSTOM_HASH_FUNCTION, bool IS_ENUM>
+struct HASH_SELECTOR;
 
-template <typename T_KEY>
-struct T_HASH_SELECTOR<T_KEY, true, false> {
+template <typename KEY>
+struct HASH_SELECTOR<KEY, true, false> {
   struct HashFunction {
-    size_t operator()(const T_KEY& key) const { return static_cast<size_t>(key.Hash()); }
+    size_t operator()(const KEY& key) const { return static_cast<size_t>(key.Hash()); }
   };
   typedef HashFunction type;
 };
 
-template <typename T_KEY>
-struct T_HASH_SELECTOR<T_KEY, false, true> {
+template <typename KEY>
+struct HASH_SELECTOR<KEY, false, true> {
   struct HashFunction {
-    typedef typename std::underlying_type<T_KEY>::type UT;
-    size_t operator()(const T_KEY& key) const { return std::hash<UT>()(static_cast<UT>(key)); }
+    typedef typename std::underlying_type<KEY>::type UT;
+    size_t operator()(const KEY& key) const { return std::hash<UT>()(static_cast<UT>(key)); }
   };
   typedef HashFunction type;
 };
 
-template <typename T_KEY>
-struct T_HASH_SELECTOR<T_KEY, false, false> {
-  typedef std::hash<T_KEY> type;
+template <typename KEY>
+struct HASH_SELECTOR<KEY, false, false> {
+  typedef std::hash<KEY> type;
 };
 
-template <typename T_KEY>
-using T_HASH_FUNCTION =
-    typename T_HASH_SELECTOR<T_KEY, HasHashFunction<T_KEY>(0), std::is_enum<T_KEY>::value>::type;
+template <typename KEY>
+using HASH_FUNCTION = typename HASH_SELECTOR<KEY, HasHashFunction<KEY>(0), std::is_enum<KEY>::value>::type;
 
-template <typename T_KEY, typename T_ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR {};
+template <typename KEY, typename ENTRY, bool HAS_CUSTOM_HASH_FUNCTION, bool DEFINES_STD_HASH>
+struct MAP_TYPE_SELECTOR {};
 
-// `T_KEY::Hash()` and `T_KEY::operator==()` are defined, use std::unordered_map<> with user-defined hash
-// function.
-template <typename T_KEY, typename T_ENTRY, bool DEFINES_STD_HASH>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, true, DEFINES_STD_HASH> {
-  static_assert(HasOperatorEquals<T_KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY, T_HASH_FUNCTION<T_KEY>> type;
+// If `KEY::Hash()` and `operator==()` are defined, use `std::unordered_map<>` with `KEY::Hash()`.
+template <typename KEY, typename ENTRY, bool DEFINES_STD_HASH>
+struct MAP_TYPE_SELECTOR<KEY, ENTRY, true, DEFINES_STD_HASH> {
+  static_assert(HasOperatorEquals<KEY>(0), "The key type defines `Hash()`, but not `operator==()`.");
+  typedef std::unordered_map<KEY, ENTRY, HASH_FUNCTION<KEY>> type;
 };
 
-// `T_KEY::Hash()` is not defined, but `std::hash<>` (for either T_KEY or its underlying type) and
-// `T_KEY::operator==()` are, use std::unordered_map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, true> {
-  static_assert(HasOperatorEquals<T_KEY>(0),
-                "The key type supports `std::hash<T_KEY>`, but not `operator==()`.");
-  typedef std::unordered_map<T_KEY, T_ENTRY, T_HASH_FUNCTION<T_KEY>> type;
+// If `KEY::Hash()` is not defined, but both `std::hash<>` (for either KEY or its underlying type)
+// and `KEY::operator==()` are, use `std::unordered_map<>` with the default `std::hash<>`.
+template <typename KEY, typename ENTRY>
+struct MAP_TYPE_SELECTOR<KEY, ENTRY, false, true> {
+  static_assert(HasOperatorEquals<KEY>(0), "The key type supports `std::hash<KEY>`, but not `operator==()`.");
+  typedef std::unordered_map<KEY, ENTRY, HASH_FUNCTION<KEY>> type;
 };
 
-// Neither `T_KEY::Hash()` nor `std::hash<>` (for either T_KEY or its underlying type) are defined,
-// use std::map<>.
-template <typename T_KEY, typename T_ENTRY>
-struct T_MAP_TYPE_SELECTOR<T_KEY, T_ENTRY, false, false> {
-  static_assert(HasOperatorLess<T_KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
-  typedef std::map<T_KEY, T_ENTRY> type;
+// If neither `KEY::Hash()` nor `std::hash<>` (for either KEY or its underlying type) are defined,
+// use `std::map<>`.
+template <typename KEY, typename ENTRY>
+struct MAP_TYPE_SELECTOR<KEY, ENTRY, false, false> {
+  static_assert(HasOperatorLess<KEY>(0), "The key type defines neither `Hash()` nor `operator<()`.");
+  typedef std::map<KEY, ENTRY> type;
 };
 
-template <typename T_KEY, typename T_ENTRY>
-using T_MAP_TYPE =
-    typename T_MAP_TYPE_SELECTOR<T_KEY,
-                                 T_ENTRY,
-                                 HasHashFunction<T_KEY>(0),
-                                 GenericHasStdHash<T_KEY, std::is_enum<T_KEY>::value>::value()>::type;
+// `MAP_TYPE` is a reserved keyword in Ubuntu. What a shame. -- D.K.
+// L47 of `/usr/include/x86_64-linux-gnu/bits/mman.h`: `#define MAP_TYPE 0x0f  // Mask for type of mapping.`
+template <typename KEY, typename ENTRY>
+using MAP_CONTAINER_TYPE =
+    typename MAP_TYPE_SELECTOR<KEY,
+                               ENTRY,
+                               HasHashFunction<KEY>(0),
+                               GenericHasStdHash<KEY, std::is_enum<KEY>::value>::value()>::type;
 
 // Check that SFINAE does the magic right.
 namespace test {
-static_assert(std::is_same<std::unordered_map<int, int>, T_MAP_TYPE<int, int>>::value, "");
-static_assert(std::is_same<std::unordered_map<std::string, int>, T_MAP_TYPE<std::string, int>>::value, "");
+static_assert(std::is_same<std::unordered_map<int, int>, MAP_CONTAINER_TYPE<int, int>>::value, "");
+static_assert(std::is_same<std::unordered_map<std::string, int>, MAP_CONTAINER_TYPE<std::string, int>>::value,
+              "");
 
 enum class A : int;
-static_assert(std::is_same<std::unordered_map<A, int, typename T_HASH_SELECTOR<A, false, true>::type>,
-                           T_MAP_TYPE<A, int>>::value,
+static_assert(std::is_same<std::unordered_map<A, int, typename HASH_SELECTOR<A, false, true>::type>,
+                           MAP_CONTAINER_TYPE<A, int>>::value,
               "");
 
 struct B {
   bool operator<(const B&) const { return true; }
 };
-static_assert(std::is_same<std::map<B, int>, T_MAP_TYPE<B, int>>::value, "");
+static_assert(std::is_same<std::map<B, int>, MAP_CONTAINER_TYPE<B, int>>::value, "");
 }  // namespace test
 
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.

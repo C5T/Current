@@ -91,14 +91,14 @@ struct EntryNotFoundHTTPResponse {
   }
 };
 
-template <typename T_ENTRY>
+template <typename ENTRY>
 struct EntryWrapper {
   EntryWrapper() = default;
-  explicit EntryWrapper(const T_ENTRY& entry) : exists(true), entry(&entry) {}
+  explicit EntryWrapper(const ENTRY& entry) : exists(true), entry(&entry) {}
 
   operator bool() const { return exists; }
 
-  operator const T_ENTRY&() const {
+  operator const ENTRY&() const {
     if (exists) {
       return *entry;
     } else {
@@ -115,7 +115,7 @@ struct EntryWrapper {
 
  private:
   bool exists = false;
-  const T_ENTRY* entry = nullptr;
+  const ENTRY* entry = nullptr;
 };
 
 // Wrapper to expose user-friendly semantics.

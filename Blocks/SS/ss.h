@@ -66,8 +66,8 @@ namespace ss {
 // accepting entries. It can be stopped externally (via listener scope), or detached to run forever.
 //
 // C: Accept a const reference to an entry, or require a copy of which the listener will gain ownership.
-// C.1: `void/bool operator()(const T_ENTRY& entry [, index [, total]])`.
-// C.2: `void/bool operator()(T_ENTRY&& [, index [, total]])`.
+// C.1: `void/bool operator()(const ENTRY& entry [, index [, total]])`.
+// C.2: `void/bool operator()(ENTRY&& [, index [, total]])`.
 // One listener's usecase is to `std::move()` the received entry into a different message queue.
 // If the entry is passed in via a const reference, its ownership can not be transferred to the listener.
 // A clone of the entry is made in this case, for the listener to own. At the same time framworks
@@ -305,17 +305,17 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
 
-  // Special case of publishing `const DERIVED&` or `const std::unique_ptr<DERIVED>&` into a stream
-  // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED`.
-  template <typename DERIVED>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED>::value, size_t>::type Publish(
-      const DERIVED& e) {
+  // Special case of publishing `const DERIVED_ENTRY&` or `const std::unique_ptr<DERIVED_ENTRY>&` into a stream
+  // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED_ENTRY`.
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const DERIVED_ENTRY& e) {
     return IMPL::DoPublishDerived(e);
   }
 
-  template <typename DERIVED>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED>::value, size_t>::type Publish(
-      const std::unique_ptr<DERIVED>& e) {
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     assert(e);
     return IMPL::DoPublishDerived(*e.get());
   }

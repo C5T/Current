@@ -315,8 +315,8 @@ struct APICalls {
     const bricks::decay<UNDECAYED_KEY> key;
     TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
     typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
-        std::declval<bricks::decay<UNDECAYED_KEY>>())) T_RETVAL;
-    T_RETVAL operator()(DATA data) const {
+        std::declval<bricks::decay<UNDECAYED_KEY>>())) RETVAL;
+    RETVAL operator()(DATA data) const {
       // TODO(dkorolev): Use `std::move()` here.
       return YET::Accessor(data).Get(key);
     }
@@ -343,19 +343,19 @@ struct APICalls {
   // Asynchronous user function calling functionality.
   typedef YodaData<YT> T_DATA;
   template <typename RETURN_VALUE>
-  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
+  using USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
 
   template <typename RETURN_VALUE>
   struct MQMessageFunction : YodaMMQMessage<PERSISTENCE, CLONER, YT> {
     typedef RETURN_VALUE T_RETURN_VALUE;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
-    std::promise<T_RETURN_VALUE> promise;
+    USER_FUNCTION<RETURN_VALUE> function;
+    std::promise<RETURN_VALUE> promise;
 
-    MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
+    MQMessageFunction(USER_FUNCTION<RETURN_VALUE>&& function, std::promise<RETURN_VALUE> pr)
+        : function(std::forward<USER_FUNCTION<RETURN_VALUE>>(function)), promise(std::move(pr)) {}
 
     virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
-      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_data, promise);
+      CallAndSetPromiseImpl<RETURN_VALUE>::DoIt(function, container_data, promise);
     }
   };
 
@@ -363,12 +363,12 @@ struct APICalls {
   struct MQMessageFunctionWithNext : YodaMMQMessage<PERSISTENCE, CLONER, YT> {
     typedef RETURN_VALUE T_RETURN_VALUE;
     typedef NEXT T_NEXT;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
+    USER_FUNCTION<RETURN_VALUE> function;
     NEXT next;
     std::promise<void> promise;
 
-    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next, std::promise<void> pr)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)),
+    MQMessageFunctionWithNext(USER_FUNCTION<RETURN_VALUE>&& function, NEXT&& next, std::promise<void> pr)
+        : function(std::forward<USER_FUNCTION<RETURN_VALUE>>(function)),
           next(std::forward<NEXT>(next)),
           promise(std::move(pr)) {}
 
@@ -378,26 +378,24 @@ struct APICalls {
     }
   };
 
-  template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>> Transaction(T_TYPED_USER_FUNCTION&& function) {
-    using T_INTERMEDIATE_TYPE = bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
-    std::promise<T_INTERMEDIATE_TYPE> pr;
-    Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
-    mq_.Emplace(new MQMessageFunction<T_INTERMEDIATE_TYPE>(std::forward<T_TYPED_USER_FUNCTION>(function),
-                                                           std::move(pr)));
+  template <typename TYPED_USER_FUNCTION>
+  Future<bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>> Transaction(TYPED_USER_FUNCTION&& function) {
+    using INTERMEDIATE_TYPE = bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
+    std::promise<INTERMEDIATE_TYPE> pr;
+    Future<INTERMEDIATE_TYPE> future = pr.get_future();
+    mq_.Emplace(
+        new MQMessageFunction<INTERMEDIATE_TYPE>(std::forward<TYPED_USER_FUNCTION>(function), std::move(pr)));
     return future;
   }
 
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
-  template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
-  Future<void> Transaction(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
+  template <typename TYPED_USER_FUNCTION, typename NEXT_USER_FUNCTION>
+  Future<void> Transaction(TYPED_USER_FUNCTION&& function, NEXT_USER_FUNCTION&& next) {
+    using INTERMEDIATE_TYPE = bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
-    mq_.Emplace(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
-        std::forward<T_TYPED_USER_FUNCTION>(function),
-        std::forward<T_NEXT_USER_FUNCTION>(next),
-        std::move(pr)));
+    mq_.Emplace(new MQMessageFunctionWithNext<INTERMEDIATE_TYPE, NEXT_USER_FUNCTION>(
+        std::forward<TYPED_USER_FUNCTION>(function), std::forward<NEXT_USER_FUNCTION>(next), std::move(pr)));
     return future;
   }
 

@@ -43,48 +43,48 @@ using CF = bricks::copy_free<T>;
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
-template <typename T_ENTRY>
+template <typename ENTRY>
 constexpr bool HasKeyMethod(char) {
   return false;
 }
 
-template <typename T_ENTRY>
-constexpr auto HasKeyMethod(int) -> decltype(std::declval<const T_ENTRY>().key(), bool()) {
+template <typename ENTRY>
+constexpr auto HasKeyMethod(int) -> decltype(std::declval<const ENTRY>().key(), bool()) {
   return true;
 }
 
-template <typename T_ENTRY, bool HAS_KEY_FUNCTION>
+template <typename ENTRY, bool HAS_KEY_FUNCTION>
 struct KEY_ACCESSOR_IMPL {};
 
-template <typename T_ENTRY>
-struct KEY_ACCESSOR_IMPL<T_ENTRY, false> {
-  typedef decltype(std::declval<T_ENTRY>().key) T_KEY;
-  static CF<T_KEY> GetKey(const T_ENTRY& entry) { return entry.key; }
-  static void SetKey(T_ENTRY& entry, T_KEY key) { entry.key = key; }
+template <typename ENTRY>
+struct KEY_ACCESSOR_IMPL<ENTRY, false> {
+  typedef decltype(std::declval<ENTRY>().key) T_KEY;
+  static CF<T_KEY> GetKey(const ENTRY& entry) { return entry.key; }
+  static void SetKey(ENTRY& entry, T_KEY key) { entry.key = key; }
 };
 
-template <typename T_ENTRY>
-struct KEY_ACCESSOR_IMPL<T_ENTRY, true> {
-  typedef decltype(std::declval<T_ENTRY>().key()) T_KEY;
+template <typename ENTRY>
+struct KEY_ACCESSOR_IMPL<ENTRY, true> {
+  typedef decltype(std::declval<ENTRY>().key()) T_KEY;
   // Can not return a reference to a temporary.
-  static const T_KEY GetKey(const T_ENTRY& entry) { return entry.key(); }
-  static void SetKey(T_ENTRY& entry, CF<T_KEY> key) { entry.set_key(key); }
+  static const T_KEY GetKey(const ENTRY& entry) { return entry.key(); }
+  static void SetKey(ENTRY& entry, CF<T_KEY> key) { entry.set_key(key); }
 };
 
-template <typename T_ENTRY>
-using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<T_ENTRY, HasKeyMethod<T_ENTRY>(0)>;
+template <typename ENTRY>
+using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<ENTRY, HasKeyMethod<ENTRY>(0)>;
 
-template <typename T_ENTRY>
-typename KEY_ACCESSOR<T_ENTRY>::T_KEY GetKey(const T_ENTRY& entry) {
-  return KEY_ACCESSOR<T_ENTRY>::GetKey(entry);
+template <typename ENTRY>
+typename KEY_ACCESSOR<ENTRY>::T_KEY GetKey(const ENTRY& entry) {
+  return KEY_ACCESSOR<ENTRY>::GetKey(entry);
 }
 
-template <typename T_ENTRY>
-using ENTRY_KEY_TYPE = bricks::decay<typename KEY_ACCESSOR<T_ENTRY>::T_KEY>;
+template <typename ENTRY>
+using ENTRY_KEY_TYPE = bricks::decay<typename KEY_ACCESSOR<ENTRY>::T_KEY>;
 
-template <typename T_ENTRY>
-void SetKey(T_ENTRY& entry, CF<ENTRY_KEY_TYPE<T_ENTRY>> key) {
-  KEY_ACCESSOR<T_ENTRY>::SetKey(entry, key);
+template <typename ENTRY>
+void SetKey(ENTRY& entry, CF<ENTRY_KEY_TYPE<ENTRY>> key) {
+  KEY_ACCESSOR<ENTRY>::SetKey(entry, key);
 }
 
 }  // namespace sfinae
