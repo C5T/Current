@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "../port.h"
 
-#ifndef BRICKS_WINDOWS
+#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
 
 #include "regenerate_flag.cc"
 #include "docu/docu_04graph_02.cc"
@@ -36,6 +36,7 @@ SOFTWARE.
 
 #include "gnuplot.h"
 
-#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#endif  // !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
 
-#endif  // BRICKS_WINDOWS
+#include "../../Bricks/dflags/dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
