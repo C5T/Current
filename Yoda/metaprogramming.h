@@ -59,22 +59,22 @@ struct Container {};
 
 // An abstract type to derive message queue message types from.
 // All asynchronous events within one Yoda instance go through this message queue.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage;
 
 // Sherlock stream listener, responsible for converting every stream entry into a message queue one.
 // Encapsulates RTTI dynamic dispatching to bring all corresponding containers up-to-date.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct StreamListener;
 
 // Message queue listener: makes sure each message gets its `virtual Process()` method called,
 // in the right order of processing messages.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener;
 
 struct YodaTypesBase {};  // For `static_assert(std::is_base_of<...>)` compile-time checks.
 
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct YodaTypes : YodaTypesBase {
   static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
 
@@ -84,21 +84,21 @@ struct YodaTypes : YodaTypesBase {
   using SherlockEntryTypeFromYodaEntryType = typename T::T_ENTRY;
   typedef MP::map<SherlockEntryTypeFromYodaEntryType, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
 
-  typedef MQListener<T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
-  typedef MQMessage<T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
+  typedef MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
+  typedef MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
   typedef blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
 
-  typedef sherlock::StreamInstance<std::unique_ptr<Padawan>> T_STREAM_TYPE;
+  typedef sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER> T_STREAM_TYPE;
 
-  typedef StreamListener<T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
+  typedef StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
   typedef typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>
       T_SHERLOCK_LISTENER_SCOPE_TYPE;
 };
 
 // Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.
 // This enables external users to specify their types in a template-deducible manner.
-template <typename YT>
-using YodaMMQMessage = MQMessage<typename YT::T_SUPPORTED_TYPES_AS_TUPLE>;
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename YT>
+using YodaMMQMessage = MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>;
 
 template <typename YT>
 struct YodaContainerImpl {
@@ -204,22 +204,22 @@ struct YodaData {
 };
 
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQMessage {
-  typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
   virtual void Process(YodaContainer<YT>& container,
                        YodaData<YT> container_data,
                        typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 // Stream listener is passing entries from the Sherlock stream into the message queue.
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct StreamListener {
-  typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
 
   explicit StreamListener(typename YT::T_MQ& mq) : mq_(mq) {}
 
-  struct MQMessageEntry : MQMessage<typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
+  struct MQMessageEntry : MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
     std::unique_ptr<Padawan> entry;
     const size_t index;
 
@@ -246,16 +246,16 @@ struct StreamListener {
   typename YT::T_MQ& mq_;
 };
 
-template <typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
 struct MQListener {
-  typedef YodaTypes<SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
   explicit MQListener(YodaContainer<YT>& container,
                       YodaData<YT> container_data,
                       typename YT::T_STREAM_TYPE& stream)
       : container_(container), container_data_(container_data), stream_(stream) {}
 
   // MMQ consumer call.
-  void operator()(std::unique_ptr<YodaMMQMessage<YT>>&& message) {
+  void operator()(std::unique_ptr<YodaMMQMessage<PERSISTENCE, CLONER, YT>>&& message) {
     message->Process(container_, container_data_, stream_);
   }
 
@@ -293,7 +293,7 @@ struct CallAndSetPromiseImpl<void> {
   }
 };
 
-template <typename YT>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename YT>
 struct APICalls {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
@@ -315,8 +315,8 @@ struct APICalls {
     const bricks::decay<UNDECAYED_KEY> key;
     TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
     typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
-        std::declval<bricks::decay<UNDECAYED_KEY>>())) T_RETVAL;
-    T_RETVAL operator()(DATA data) const {
+        std::declval<bricks::decay<UNDECAYED_KEY>>())) RETVAL;
+    RETVAL operator()(DATA data) const {
       // TODO(dkorolev): Use `std::move()` here.
       return YET::Accessor(data).Get(key);
     }
@@ -343,32 +343,32 @@ struct APICalls {
   // Asynchronous user function calling functionality.
   typedef YodaData<YT> T_DATA;
   template <typename RETURN_VALUE>
-  using T_USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
+  using USER_FUNCTION = std::function<RETURN_VALUE(T_DATA container_data)>;
 
   template <typename RETURN_VALUE>
-  struct MQMessageFunction : YodaMMQMessage<YT> {
+  struct MQMessageFunction : YodaMMQMessage<PERSISTENCE, CLONER, YT> {
     typedef RETURN_VALUE T_RETURN_VALUE;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
-    std::promise<T_RETURN_VALUE> promise;
+    USER_FUNCTION<RETURN_VALUE> function;
+    std::promise<RETURN_VALUE> promise;
 
-    MQMessageFunction(T_USER_FUNCTION<T_RETURN_VALUE>&& function, std::promise<T_RETURN_VALUE> pr)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)), promise(std::move(pr)) {}
+    MQMessageFunction(USER_FUNCTION<RETURN_VALUE>&& function, std::promise<RETURN_VALUE> pr)
+        : function(std::forward<USER_FUNCTION<RETURN_VALUE>>(function)), promise(std::move(pr)) {}
 
     virtual void Process(YodaContainer<YT>&, T_DATA container_data, typename YT::T_STREAM_TYPE&) override {
-      CallAndSetPromiseImpl<T_RETURN_VALUE>::DoIt(function, container_data, promise);
+      CallAndSetPromiseImpl<RETURN_VALUE>::DoIt(function, container_data, promise);
     }
   };
 
   template <typename RETURN_VALUE, typename NEXT>
-  struct MQMessageFunctionWithNext : YodaMMQMessage<YT> {
+  struct MQMessageFunctionWithNext : YodaMMQMessage<PERSISTENCE, CLONER, YT> {
     typedef RETURN_VALUE T_RETURN_VALUE;
     typedef NEXT T_NEXT;
-    T_USER_FUNCTION<T_RETURN_VALUE> function;
+    USER_FUNCTION<RETURN_VALUE> function;
     NEXT next;
     std::promise<void> promise;
 
-    MQMessageFunctionWithNext(T_USER_FUNCTION<T_RETURN_VALUE>&& function, NEXT&& next, std::promise<void> pr)
-        : function(std::forward<T_USER_FUNCTION<T_RETURN_VALUE>>(function)),
+    MQMessageFunctionWithNext(USER_FUNCTION<RETURN_VALUE>&& function, NEXT&& next, std::promise<void> pr)
+        : function(std::forward<USER_FUNCTION<RETURN_VALUE>>(function)),
           next(std::forward<NEXT>(next)),
           promise(std::move(pr)) {}
 
@@ -378,26 +378,24 @@ struct APICalls {
     }
   };
 
-  template <typename T_TYPED_USER_FUNCTION>
-  Future<bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>> Transaction(T_TYPED_USER_FUNCTION&& function) {
-    using T_INTERMEDIATE_TYPE = bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
-    std::promise<T_INTERMEDIATE_TYPE> pr;
-    Future<T_INTERMEDIATE_TYPE> future = pr.get_future();
-    mq_.Emplace(new MQMessageFunction<T_INTERMEDIATE_TYPE>(std::forward<T_TYPED_USER_FUNCTION>(function),
-                                                           std::move(pr)));
+  template <typename TYPED_USER_FUNCTION>
+  Future<bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>> Transaction(TYPED_USER_FUNCTION&& function) {
+    using INTERMEDIATE_TYPE = bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
+    std::promise<INTERMEDIATE_TYPE> pr;
+    Future<INTERMEDIATE_TYPE> future = pr.get_future();
+    mq_.Emplace(
+        new MQMessageFunction<INTERMEDIATE_TYPE>(std::forward<TYPED_USER_FUNCTION>(function), std::move(pr)));
     return future;
   }
 
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
-  template <typename T_TYPED_USER_FUNCTION, typename T_NEXT_USER_FUNCTION>
-  Future<void> Transaction(T_TYPED_USER_FUNCTION&& function, T_NEXT_USER_FUNCTION&& next) {
-    using T_INTERMEDIATE_TYPE = bricks::decay<CWT<T_TYPED_USER_FUNCTION, T_DATA>>;
+  template <typename TYPED_USER_FUNCTION, typename NEXT_USER_FUNCTION>
+  Future<void> Transaction(TYPED_USER_FUNCTION&& function, NEXT_USER_FUNCTION&& next) {
+    using INTERMEDIATE_TYPE = bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
-    mq_.Emplace(new MQMessageFunctionWithNext<T_INTERMEDIATE_TYPE, T_NEXT_USER_FUNCTION>(
-        std::forward<T_TYPED_USER_FUNCTION>(function),
-        std::forward<T_NEXT_USER_FUNCTION>(next),
-        std::move(pr)));
+    mq_.Emplace(new MQMessageFunctionWithNext<INTERMEDIATE_TYPE, NEXT_USER_FUNCTION>(
+        std::forward<TYPED_USER_FUNCTION>(function), std::forward<NEXT_USER_FUNCTION>(next), std::move(pr)));
     return future;
   }
 

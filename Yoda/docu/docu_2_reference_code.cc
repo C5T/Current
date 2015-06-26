@@ -38,7 +38,7 @@ SOFTWARE.
 DEFINE_int32(yoda_docu_test_port, 8999, "");
 
 using yoda::Padawan;
-using yoda::API;
+using yoda::MemoryOnlyAPI;
 using yoda::Future;
 using yoda::Dictionary;
 using yoda::Matrix;
@@ -160,9 +160,9 @@ bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef API<Dictionary<StringIntTuple>,
-              Dictionary<Prime>,
-              Matrix<PrimeCell>> PrimesAPI;
+  typedef MemoryOnlyAPI<Dictionary<StringIntTuple>,
+                        Dictionary<Prime>,
+                        Matrix<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // Simple dictionary usecase, and a unit test for type system implementation.
@@ -629,14 +629,14 @@ HTTP(port).ResetAllHandlers();
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"key\":\"two\",\"value\":2}}}}\n",
+"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"key\":\"two\",\"value\":2}}}}\n",
 #else
     "... JSON represenation of the first entry ...",
 #endif
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"entry\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
+"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif

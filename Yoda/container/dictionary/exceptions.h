@@ -39,7 +39,7 @@ struct KeyNotFoundCoverException : bricks::Exception {};
 template <typename ENTRY>
 struct KeyNotFoundException : KeyNotFoundCoverException {
   typedef ENTRY T_ENTRY;
-  typedef sfinae::ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+  typedef sfinae::ENTRY_KEY_TYPE<ENTRY> T_KEY;
   const T_KEY key;
   explicit KeyNotFoundException(const T_KEY& key) : key(key) {}
 };
@@ -51,7 +51,7 @@ struct KeyAlreadyExistsCoverException : bricks::Exception {};
 template <typename ENTRY>
 struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {
   typedef ENTRY T_ENTRY;
-  typedef sfinae::ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+  typedef sfinae::ENTRY_KEY_TYPE<ENTRY> T_KEY;
   const T_KEY key;
   explicit KeyAlreadyExistsException(const T_KEY& key) : key(key) {}
 };

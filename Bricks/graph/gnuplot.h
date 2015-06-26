@@ -230,7 +230,8 @@ struct GNUPlot {
         f << "end" << std::endl;
       }
     }
-    ::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str()).c_str());
+    assert(!::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str())
+                         .c_str()));
     return bricks::FileSystem::ReadFileAsString(output_file_name.c_str());
   }
 };

@@ -37,19 +37,20 @@ SOFTWARE.
 
 #include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
+#include "../../Bricks/util/clone.h"
 
 namespace blocks {
 namespace persistence {
 
 namespace impl {
 
-template <class PERSISTENCE_LAYER, typename E>
+template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
 class Logic {
  public:
-  template <typename... ARGS>
-  Logic(const std::function<E(const E&)> clone, ARGS&&... args)
-      : persistence_layer_(std::forward<ARGS>(args)...), clone_(clone) {
-    persistence_layer_.Replay([this](E&& e) { list_.push_back(std::move(e)); });
+  template <typename... EXTRA_PARAMS>
+  explicit Logic(EXTRA_PARAMS&&... extra_params)
+      : persistence_layer_(std::forward<EXTRA_PARAMS>(extra_params)...) {
+    persistence_layer_.Replay([this](ENTRY&& e) { list_.push_back(std::move(e)); });
   }
 
   Logic(const Logic&) = delete;
@@ -60,8 +61,8 @@ class Logic {
       bool at_end = true;
       size_t index = 0u;
       size_t total = 0u;
-      typename std::list<E>::const_iterator iterator;
-      static Cursor Next(const Cursor& current, const std::list<E>& exclusively_accessed_list) {
+      typename std::list<ENTRY>::const_iterator iterator;
+      static Cursor Next(const Cursor& current, const std::list<ENTRY>& exclusively_accessed_list) {
         Cursor next;
         if (current.at_end) {
           next.iterator = exclusively_accessed_list.begin();
@@ -100,8 +101,9 @@ class Logic {
         }
       }
       if (!current.at_end) {
-        if (!blocks::ss::DispatchEntryByConstReference(
-                f, *current.iterator, current.index, current.total, clone_)) {
+        // Only specify the `CLONER` template paramter, the rest are best to be inferred.
+        if (!blocks::ss::DispatchEntryByConstReference<CLONER>(
+                std::forward<F>(f), *current.iterator, current.index, current.total)) {
           break;
         }
         if (!replay_done && current.index + 1 >= size_at_start) {
@@ -132,17 +134,43 @@ class Logic {
   }
 
  protected:
-  size_t DoPublish(const E& entry) {
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
-    persistence_layer_.Publish(entry);
     list_.push_back(entry);
+    persistence_layer_.Publish(entry);
+    return list_.size() - 1;
+  }
+  size_t DoPublish(ENTRY&& entry) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    list_.push_back(std::move(entry));
+    persistence_layer_.Publish(static_cast<const ENTRY&>(list_.back()));
     return list_.size() - 1;
   }
 
-  size_t DoPublish(E&& entry) {
+  template <typename DERIVED_ENTRY>
+  size_t DoPublishDerived(const DERIVED_ENTRY& entry) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     std::lock_guard<std::mutex> lock(mutex_);
-    persistence_layer_.Publish(static_cast<const E&>(entry));
-    list_.push_back(std::move(entry));
+
+    // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
+    // if `ENTRY` is the base class for `DERIVED_ENTRY`.
+    // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
+    std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
+    *copy = bricks::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
+    list_.push_back(std::move(copy));
+    persistence_layer_.Publish(list_.back());
+
+    // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
+    // the copy constructor. Instead, we go with Current-friendly clone implementation above.
+    // COMMENTED OUT: persistence_layer_.Publish(entry);
+    // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_ENTRY>(entry)));
+
+    // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
+    // COMMENTED OUT: persistence_layer_.Publish(entry);
+    // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
+    // ENTRY::element_type>(entry))));
+
     return list_.size() - 1;
   }
 
@@ -155,62 +183,83 @@ class Logic {
   }
 
  private:
-  static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, E>::value, "");
+  static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, ENTRY>::value, "");
   PERSISTENCE_LAYER persistence_layer_;
 
-  std::list<E> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
+  std::list<ENTRY> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
   std::mutex mutex_;
-  const std::function<E(const E&)> clone_;
 };
 
 // The implementation of a "publisher into nowhere".
-template <typename E>
+template <typename ENTRY, class CLONER>
 struct DevNullPublisherImpl {
-  void Replay(std::function<void(E&&)>) {}
-  size_t DoPublish(const E&) { return ++count_; }
+  void Replay(std::function<void(ENTRY&&)>) {}
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY&) { return ++count_; }
+  size_t DoPublish(ENTRY&&) { return ++count_; }
+  template <typename DERIVED_ENTRY>
+  size_t DoPublishDerived(const DERIVED_ENTRY&) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
+    return ++count_;
+  }
   size_t count_ = 0u;
 };
 
-template <typename E>
-using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<E>, E>;
+template <typename ENTRY, class CLONER>
+using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 // TODO(dkorolev): Move into Cerealize.
-template <typename E>
+template <typename ENTRY, class CLONER>
 struct AppendToFilePublisherImpl {
-  AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+  AppendToFilePublisherImpl() = delete;
+  AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
+  explicit AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
-  void Replay(std::function<void(E&&)> push) {
+  void Replay(std::function<void(ENTRY&&)> push) {
     // TODO(dkorolev): Try/catch here?
     assert(!appender_);
-    bricks::cerealize::CerealJSONFileParser<E> parser(filename_);
+    bricks::cerealize::CerealJSONFileParser<ENTRY> parser(filename_);
     while (parser.Next(push)) {
       ++count_;
     }
-    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<E>>(filename_);
+    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
     assert(appender_);
   }
 
-  size_t DoPublish(const E& e) {
-    (*appender_) << e;
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY& entry) {
+    (*appender_) << entry;
+    return ++count_;
+  }
+  size_t DoPublish(ENTRY&& entry) {
+    (*appender_) << entry;
+    return ++count_;
+  }
+
+  template <typename DERIVED_ENTRY>
+  size_t DoPublishDerived(const DERIVED_ENTRY& e) {
+    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
+    (*appender_) << WithBaseType<ENTRY>(e);
     return ++count_;
   }
 
  private:
-  const std::string& filename_;
-  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<E>> appender_;
+  const std::string filename_;
+  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<ENTRY, CLONER>> appender_;
   size_t count_ = 0u;
 };
 
-template <typename E>
-using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<E>, E>;
+template <typename ENTRY, class CLONER>
+using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 }  // namespace blocks::persistence::impl
 
-template <typename E>
-using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<E>, E>, E>;
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
-template <typename E>
-using AppendToFile = ss::Publisher<impl::Logic<impl::AppendToFilePublisher<E>, E>, E>;
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+using AppendToFile =
+    ss::Publisher<impl::Logic<impl::AppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
 }  // namespace blocks::persistence
 }  // namespace blocks

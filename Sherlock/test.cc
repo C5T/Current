@@ -32,6 +32,7 @@ SOFTWARE.
 #include <thread>
 
 #include "../Blocks/HTTP/api.h"
+#include "../Blocks/Persistence/persistence.h"
 
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/cerealize/cerealize.h"
@@ -41,6 +42,7 @@ SOFTWARE.
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(sherlock_http_test_port, 8090, "Local port to use for Sherlock unit test.");
+DEFINE_string(sherlock_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 using std::string;
 using std::atomic_bool;
@@ -275,7 +277,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     inline bool operator()(const RecordWithTimestamp& entry, size_t index, size_t total) {
       static_cast<void>(index);
       static_cast<void>(total);
-      data_.push_back(JSON(entry, "entry") + '\n');
+      data_.push_back(JSON(entry) + '\n');
       ++count_;
       return true;
     }
@@ -347,4 +349,30 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
+}
+
+TEST(Sherlock, PersistsToFile) {
+  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  bricks::FileSystem::RmFile(persistence_file_name, bricks::FileSystem::RmFileParameters::Silent);
+  auto permanent =
+      sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", persistence_file_name);
+
+  permanent.Publish(1);
+  permanent.Publish(2);
+  permanent.Publish(3);
+  Data d;
+  {
+    ASSERT_FALSE(d.listener_alive_);
+    SherlockTestProcessor p(d, false);
+    ASSERT_TRUE(d.listener_alive_);
+    permanent.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
+    EXPECT_EQ(3u, d.seen_);
+    ASSERT_TRUE(d.listener_alive_);
+  }
+  ASSERT_FALSE(d.listener_alive_);
+
+  // A careful condition, since the listener may process some or all entries before going out of scope.
+  EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
+              (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
+      << d.results_;
 }

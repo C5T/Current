@@ -19,7 +19,6 @@
 #include "./dflags/test.cc"
 #include "./file/test.cc"
 #include "./graph/test.cc"
-#include "./mq/inmemory/test.cc"
 #include "./net/http/test.cc"
 #include "./net/tcp/test.cc"
 #include "./rtti/docu/docu_06rtti_01_test.cc"

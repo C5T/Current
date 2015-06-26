@@ -22,21 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../port.h"
+#ifndef BRICKS_CEREALIZE_CONSTANTS_H
+#define BRICKS_CEREALIZE_CONSTANTS_H
 
-#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
-
-#include "regenerate_flag.cc"
-#include "docu/docu_04graph_02.cc"
-#include "docu/docu_04graph_04.cc"
-#include "docu/docu_04graph_06.cc"
-
-#include <vector>
 #include <string>
 
-#include "gnuplot.h"
+namespace bricks {
+namespace cerealize {
 
-#endif  // !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
+struct Constants {
+  // By default, when sealizing as JSON, use this top-level name instead of Cereal's default "value0".
+  static const char* DefaultJSONEntryName() { return "data"; }
+  // When using JSON serialization into (file) streams, use these shorter names instead.
+  static const char* DefaultJSONSerializeNonPolymorphicEntryName() { return "e"; }
+  static const char* DefaultJSONSerializePolymorphicEntryName() { return "p"; }
+};
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+}  // namespace cerealize
+}  // namespace bricks
+
+#endif  // BRICKS_CEREALIZE_CONSTANTS_H

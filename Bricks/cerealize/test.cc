@@ -108,7 +108,7 @@ struct CerealTestObject {
 };
 
 TEST(Cerealize, JSON) {
-  EXPECT_EQ("{\"value0\":{\"number\":42,\"unsigned_number\":100,\"text\":\"text\",\"array\":[1,2,3]}}",
+  EXPECT_EQ("{\"data\":{\"number\":42,\"unsigned_number\":100,\"text\":\"text\",\"array\":[1,2,3]}}",
             JSON(CerealTestObject()));
 }
 
@@ -126,13 +126,15 @@ TEST(Cerealize, BinarySerializesAndParses) {
   EventAppResume c;
 
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f1(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary> f1(
+        CurrentTestTempFileName());
     f1 << a << b;
     EXPECT_EQ(2u, f1.EntriesAppended());
     EXPECT_EQ(115u, f1.BytesAppended());
   }
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f2(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary> f2(
+        CurrentTestTempFileName());
     f2 << c;
     EXPECT_EQ(1u, f2.EntriesAppended());
     EXPECT_EQ(58u, f2.BytesAppended());
@@ -160,13 +162,15 @@ TEST(Cerealize, JSONSerializesAndParses) {
   EventAppResume c;
 
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::JSON> f1(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::JSON> f1(
+        CurrentTestTempFileName());
     f1 << a;
     EXPECT_EQ(1u, f1.EntriesAppended());
     EXPECT_EQ(164u, f1.BytesAppended());
   }
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::JSON> f2(CurrentTestTempFileName());
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::JSON> f2(
+        CurrentTestTempFileName());
     f2 << b << c;
     EXPECT_EQ(2u, f2.EntriesAppended());
     EXPECT_EQ(330u, f2.BytesAppended());
@@ -194,9 +198,12 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary>(CurrentTestTempFileName()) << a
-                                                                                                         << b;
-  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary>(CurrentTestTempFileName()) << c;
+  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary>(
+      CurrentTestTempFileName())
+      << a << b;
+  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary>(
+      CurrentTestTempFileName())
+      << c;
 
   CerealFileParser<std::unique_ptr<MapsYouEventBase>, CerealFormat::Binary> f(CurrentTestTempFileName());
 
@@ -277,17 +284,17 @@ static_assert(HasFromInvalidJSON<CTDerived2>(0), "");
 TEST(Cerealize, JSONStringifyWithBase) {
   CTDerived1 d1;
   d1.foo = "fffuuuuu";
-  EXPECT_EQ("{\"value0\":{\"number\":0,\"foo\":\"fffuuuuu\"}}", JSON(d1));
+  EXPECT_EQ("{\"data\":{\"number\":0,\"foo\":\"fffuuuuu\"}}", JSON(d1));
   EXPECT_EQ(
-      "{\"value0\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived1\","
+      "{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived1\","
       "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"number\":0,\"foo\":\"fffuuuuu\"}}}}",
       JSON(WithBaseType<CTBase>(d1)));
 
   CTDerived2 d2;
   d2.bar = "bwahaha";
-  EXPECT_EQ("{\"value0\":{\"number\":0,\"bar\":\"bwahaha\"}}", JSON(d2));
+  EXPECT_EQ("{\"data\":{\"number\":0,\"bar\":\"bwahaha\"}}", JSON(d2));
   EXPECT_EQ(
-      "{\"value0\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived2\","
+      "{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived2\","
       "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"number\":0,\"bar\":\"bwahaha\"}}}}",
       JSON(WithBaseType<CTBase>(d2)));
 }
@@ -339,6 +346,14 @@ TEST(Cerealize, ParseJSONThrowsOnError) {
 
 TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
   EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
+}
+
+TEST(Cerealize, ExtractJSONEntryName) { struct Foo { };
+  struct Bar {
+    static std::string JSONEntryName() { return "bar_entry_name"; }
+  };
+  EXPECT_EQ("data", ExtractJSONEntryName<Foo>());
+  EXPECT_EQ("bar_entry_name", ExtractJSONEntryName<Bar>());
 }
 
 TEST(Cerealize, Base64Encode) {

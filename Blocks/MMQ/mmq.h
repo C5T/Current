@@ -27,7 +27,7 @@ SOFTWARE.
 #define BLOCKS_MMQ_MMQ_H
 
 // MMQ is an efficient in-memory FIFO buffer.
-// One of the objectives of MMQ is to minimize the time for which the thread publishing the message is blocked for.
+// One of the objectives of MMQ is to minimize the time for which the thread publishing the message is blocked.
 //
 // Messages can be published into a MMQ via standard `Publish()` interface defined in `Blocks/SS/ss.h`.
 // The consumer is run in a separate thread, and is fed one message at a time via `OnMessage()`.
@@ -40,7 +40,7 @@ SOFTWARE.
 // at the next call to `Publish()` or `Emplace()`):
 //   1) Discard (drop) the message. In this case, the number of the messages dropped between the subseqent
 //      calls of the consumer may be passed as a second argument of `OnMessage()`.
-//   2) Block the publishing thread and wait for the next message to be consumed and free the space in the buffer.
+//   2) Block the publishing thread and wait until the next message is consumed and frees room in the buffer.
 //      IMPORTANT NOTE: if there are several threads waiting to publish the message, MMQ DOES NOT guarantee that
 //      the messages will be added in the order in which the functions were called. However, for any particular
 //      thread, MMQ DOES GUARANTEE that the order of messages published from this thread will be respected.
@@ -55,9 +55,15 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
+#include "../../Bricks/util/clone.h"
+
 namespace blocks {
 
-template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
+template <typename MESSAGE,
+          typename CONSUMER,
+          size_t DEFAULT_BUFFER_SIZE = 1024,
+          bool DROP_ON_OVERFLOW = false,
+          class CLONER = bricks::DefaultCloner>
 class MMQImpl {
  public:
   // Type of messages to store and dispatch.
@@ -67,7 +73,7 @@ class MMQImpl {
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   typedef CONSUMER T_CONSUMER;
 
-  explicit MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
+  MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
@@ -91,7 +97,7 @@ class MMQImpl {
     const std::pair<size_t, size_t> index = CircularBufferAllocate();
     if (index.second) {
       circular_buffer_[index.first].absolute_index = index.second - 1u;
-      circular_buffer_[index.first].message_body = message;
+      circular_buffer_[index.first].message_body = std::move(CLONER::Clone(message));
       CircularBufferCommit(index.first);
       return index.second;
     } else {

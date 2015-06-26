@@ -41,7 +41,7 @@ SOFTWARE.
 namespace yoda {
 
 using sfinae::ENTRY_KEY_TYPE;
-using sfinae::T_MAP_TYPE;
+using sfinae::MAP_CONTAINER_TYPE;
 using sfinae::GetKey;
 
 // User type interface: Use `Dictionary<MyEntry>` in Yoda's type list for required storage types
@@ -188,7 +188,7 @@ struct Container<YT, Dictionary<ENTRY>> {
   }
 
  private:
-  T_MAP_TYPE<typename YET::T_KEY, EntryWithIndex<typename YET::T_ENTRY>> map_;
+  MAP_CONTAINER_TYPE<typename YET::T_KEY, EntryWithIndex<typename YET::T_ENTRY>> map_;
 };
 
 }  // namespace yoda

@@ -668,7 +668,7 @@ TEST(HTTPAPI, ResponseSmokeTest) {
 
   const auto response4 = HTTP(GET(Printf("http://localhost:%d/response4", FLAGS_net_api_test_port)));
   EXPECT_EQ(202, static_cast<int>(response4.code));
-  EXPECT_EQ("{\"value0\":{\"x\":42,\"s\":\"foo\"}}\n", response4.body);
+  EXPECT_EQ("{\"data\":{\"x\":42,\"s\":\"foo\"}}\n", response4.body);
 
   const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", FLAGS_net_api_test_port)));
   EXPECT_EQ(201, static_cast<int>(response5.code));

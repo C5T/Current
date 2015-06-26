@@ -310,6 +310,7 @@ TEST(Util, Clone) {
   using namespace cloning_unit_test;
   using bricks::Clone;
   using bricks::DefaultCloneFunction;
+  using bricks::DefaultCloner;
 
   EXPECT_EQ("original", ClonableByRef().text);
   EXPECT_EQ("original", ClonableByPtr().text);
@@ -336,4 +337,9 @@ TEST(Util, Clone) {
   EXPECT_EQ("deserialized from original", clone_via_json(ClonableViaJSON()).text);
 
   EXPECT_EQ("deserialized from deserialized from original", Clone(Clone(make_unique<ClonableViaJSON>()))->text);
+
+  EXPECT_EQ("cloned by ref", DefaultCloner::Clone(ClonableByRef()).text);
+  EXPECT_EQ("cloned by ptr", DefaultCloner::Clone(ClonableByPtr()).text);
+  EXPECT_EQ("copy-constructed from original", DefaultCloner::Clone(ClonableByCtor()).text);
+  EXPECT_EQ("deserialized from original", DefaultCloner::Clone(ClonableViaJSON()).text);
 }

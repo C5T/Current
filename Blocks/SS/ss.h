@@ -25,7 +25,6 @@ SOFTWARE.
 #ifndef BLOCKS_SS_SS_H
 #define BLOCKS_SS_SS_H
 
-#include <functional>
 #include <utility>
 
 #include "../../Bricks/util/clone.h"
@@ -67,8 +66,8 @@ namespace ss {
 // accepting entries. It can be stopped externally (via listener scope), or detached to run forever.
 //
 // C: Accept a const reference to an entry, or require a copy of which the listener will gain ownership.
-// C.1: `void/bool operator()(const T_ENTRY& entry [, index [, total]])`.
-// C.2: `void/bool operator()(T_ENTRY&& [, index [, total]])`.
+// C.1: `void/bool operator()(const ENTRY& entry [, index [, total]])`.
+// C.2: `void/bool operator()(ENTRY&& [, index [, total]])`.
 // One listener's usecase is to `std::move()` the received entry into a different message queue.
 // If the entry is passed in via a const reference, its ownership can not be transferred to the listener.
 // A clone of the entry is made in this case, for the listener to own. At the same time framworks
@@ -91,152 +90,162 @@ using CW = bricks::weed::call_with<T, TS...>;
 template <typename T, typename... TS>
 using CWT = bricks::weed::call_with_type<T, TS...>;
 
-template <int N, typename F, typename E>
+template <int N>
 struct CallWithNParameters;
 
-template <typename F, typename E>
-struct CallWithNParameters<3, F, E> {
+template <>
+struct CallWithNParameters<3> {
+  template <typename E, class F>
   static CWT<F, E, size_t, size_t> CallIt(F&& f, E&& e, size_t index, size_t total) {
     return f(std::forward<E>(e), index, total);
   }
 };
 
-template <typename F, typename E>
-struct CallWithNParameters<2, F, E> {
-  static CWT<F, E, size_t> CallIt(F&& f, E&& e, size_t index, size_t) { return f(std::forward<E>(e), index); }
+template <>
+struct CallWithNParameters<2> {
+  template <typename E, class F>
+  static CWT<F, E, size_t> CallIt(F&& f, E&& e, size_t index, size_t) {
+    return f(std::forward<E>(e), index);
+  }
 };
 
-template <typename F, typename E>
-struct CallWithNParameters<1, F, E> {
-  static CWT<F, E> CallIt(F&& f, E&& e, size_t, size_t) { return f(std::forward<E>(e)); }
+template <>
+struct CallWithNParameters<1> {
+  template <typename E, class F>
+  static CWT<F, E> CallIt(F&& f, E&& e, size_t, size_t) {
+    return f(std::forward<E>(e));
+  }
 };
 
-template <bool N1, bool N2, bool N3, typename F, typename E>
+template <bool N1, bool N2, bool N3>
 struct FindMatchingSignature {};
 
-template <typename F, typename E>
-struct FindMatchingSignature<true, false, false, F, E> : CallWithNParameters<1, F, E> {
+template <>
+struct FindMatchingSignature<true, false, false> : CallWithNParameters<1> {
   enum { valid = true };
 };
-template <typename F, typename E>
-struct FindMatchingSignature<false, true, false, F, E> : CallWithNParameters<2, F, E> {
+template <>
+struct FindMatchingSignature<false, true, false> : CallWithNParameters<2> {
   enum { valid = true };
 };
-template <typename F, typename E>
-struct FindMatchingSignature<false, false, true, F, E> : CallWithNParameters<3, F, E> {
+template <>
+struct FindMatchingSignature<false, false, true> : CallWithNParameters<3> {
   enum { valid = true };
 };
 
-template <typename F, typename E>
-struct CallMatchingSignature : FindMatchingSignature<CW<F, E>::implemented,
-                                                     CW<F, E, size_t>::implemented,
-                                                     CW<F, E, size_t, size_t>::implemented,
-                                                     F,
-                                                     E> {};
+template <typename E, class F>
+using CallMatchingSignature = FindMatchingSignature<CW<F, E>::implemented,
+                                                    CW<F, E, size_t>::implemented,
+                                                    CW<F, E, size_t, size_t>::implemented>;
 
-template <typename R, typename F, typename E>
+template <typename ORIGINAL_RETURN_TYPE>
 struct BoolOrTrueImpl;
 
-template <typename F, typename E>
-struct BoolOrTrueImpl<bool, F, E> {
+template <>
+struct BoolOrTrueImpl<bool> {
+  template <typename E, class F>
   static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
-    static_assert(CallMatchingSignature<F, E>::valid,
+    static_assert(CallMatchingSignature<E, F>::valid,
                   "The listener should expose only one signature of `operator()`.");
-    return CallMatchingSignature<F, E>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
+    return CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
   };
 };
 
-template <typename F, typename E>
-struct BoolOrTrueImpl<void, F, E> {
+template <>
+struct BoolOrTrueImpl<void> {
+  template <typename E, class F>
   static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
-    CallMatchingSignature<F, E>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
+    CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
     return true;
   };
 };
 
-template <typename F, typename E>
 struct BoolOrTrue {
+  template <typename E, class F>
   static bool DoIt(F&& f, E&& e, size_t index, size_t total) {
-    return BoolOrTrueImpl<
-        decltype(CallMatchingSignature<F, E>::CallIt(std::declval<F>(), std::declval<E>(), 0, 0)),
-        F,
-        E>::MakeItBool(std::forward<F>(f), std::forward<E>(e), index, total);
+    return BoolOrTrueImpl<decltype(CallMatchingSignature<E, F>::CallIt(
+        std::declval<F>(), std::declval<E>(), 0, 0))>::MakeItBool(std::forward<F>(f),
+                                                                  std::forward<E>(e),
+                                                                  index,
+                                                                  total);
   }
 };
 
-template <typename F, typename E>
+template <typename E, class F>
 inline bool DispatchEntryToTheRightSignature(F&& f, E&& e, size_t index, size_t total) {
-  return BoolOrTrue<F, E>::DoIt(std::forward<F>(f), std::forward<E>(e), index, total);
+  return BoolOrTrue::DoIt(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 inline bool DispatchActualEntry(F&& f, E&& e, size_t index, size_t total) {
   return DispatchEntryToTheRightSignature(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 inline bool DispatchEntryWithoutMakingACopy(F&& f, E&& e, size_t index, size_t total) {
   return DispatchActualEntry(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
-template <typename F, typename E>
-inline bool DispatchEntryWithMakingACopy(
-    F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
-  return DispatchActualEntry(std::forward<F>(f), std::move(clone_f(e)), index, total);
+template <class CLONER, typename E, class F>
+inline bool DispatchEntryWithMakingACopy(F&& f, const E& e, size_t index, size_t total) {
+  return DispatchActualEntry(std::forward<F>(f), std::move(CLONER::Clone(e)), index, total);
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static bool RequiresCopyOfEntry3(char) {
   return true;
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static bool RequiresCopyOfEntry2(char) {
   return true;
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static bool RequiresCopyOfEntry1(char) {
   return true;
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static auto RequiresCopyOfEntry3(int)
     -> decltype(std::declval<F>()(std::declval<const E&>(), 0u, 0u), bool()) {
   return false;
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static auto RequiresCopyOfEntry2(int)
     -> decltype(std::declval<F>()(std::declval<const E&>(), 0u), bool()) {
   return false;
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static auto RequiresCopyOfEntry1(int)
     -> decltype(std::declval<F>()(std::declval<const E&>()), bool()) {
   return false;
 }
 
-template <typename F, typename E>
+template <typename E, class F>
 constexpr static bool RequiresCopyOfEntry(int) {
-  return RequiresCopyOfEntry3<F, E>(0) && RequiresCopyOfEntry2<F, E>(0) && RequiresCopyOfEntry1<F, E>(0);
+  return RequiresCopyOfEntry3<E, F>(0) && RequiresCopyOfEntry2<E, F>(0) && RequiresCopyOfEntry1<E, F>(0);
 }
-template <bool REQUIRES_COPY>
+
+template <bool REQUIRES_COPY, class CLONER>
 struct DispatchEntryMakingACopyIfNecessary;
 
-template <>
-struct DispatchEntryMakingACopyIfNecessary<true> {
-  template <typename F, typename E>
-  static bool DoIt(F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
-    return DispatchEntryWithMakingACopy<F, E>(std::forward<F>(f), e, index, total, clone_f);
+template <class CLONER>
+struct DispatchEntryMakingACopyIfNecessary<true, CLONER> {
+  template <typename E, class F>
+  static bool DoIt(F&& f, const E& e, size_t index, size_t total) {
+    return DispatchEntryWithMakingACopy<CLONER>(std::forward<F>(f), e, index, total);
   }
 };
 
-template <>
-struct DispatchEntryMakingACopyIfNecessary<false> {
-  template <typename F, typename E>
-  static bool DoIt(F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)>) {
+template <class CLONER>
+struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
+  template <typename E, class F>
+  static bool DoIt(F&& f, const E& e, size_t index, size_t total) {
+    // IMPORTANT: Do not explicitly specify `E` as the template parameter, as it interferes
+    // with extended reference resolution rules, creating an unnecessary copy. -- D.K.
     return DispatchEntryWithoutMakingACopy(std::forward<F>(f), e, index, total);
   }
 };
@@ -245,25 +254,22 @@ struct DispatchEntryMakingACopyIfNecessary<false> {
 
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
-// Generic const reference usecase, which dispatches an entry that should be preserved.
-// It will be cloned if the listener requires an rvalue reference. Hence a custom `clone` method is required.
-template <typename F, typename E>
-inline bool DispatchEntryByConstReference(
-    F&& f, const E& e, size_t index, size_t total, std::function<E(const E&)> clone_f) {
-  return impl::DispatchEntryMakingACopyIfNecessary<impl::RequiresCopyOfEntry<F, E>(0)>::template DoIt<F, E>(
-      std::forward<F>(f), e, index, total, clone_f);
-}
-
-// A special case of the above method; GCC doesn't handle default values for `std::function<>` parameters well.
-template <typename F, typename E>
+// Generic const reference usecase, which dispatches an entry that should be preserved. It will
+// be cloned if the listener requires an rvalue reference, and custom cloner implementation can be provided.
+// Template parameter order is tweaked for more often specified to less often specified parameters.
+template <class CLONER = bricks::DefaultCloner, typename E, typename F>
 inline bool DispatchEntryByConstReference(F&& f, const E& e, size_t index, size_t total) {
-  return DispatchEntryByConstReference(std::forward<F>(f), e, index, total, bricks::DefaultCloneFunction<E>());
+  // IMPORTANT: Do not explicitly specify template parameters to `DoIt`, as they interfere
+  // with extended reference resolution rules, resulting in an unnecessary copy. -- D.K.
+  return impl::DispatchEntryMakingACopyIfNecessary<impl::RequiresCopyOfEntry<E, F>(0), CLONER>::DoIt(
+      std::forward<F>(f), e, index, total);
 }
 
 // Generic rvalue reference usecase, which dispatches the entry that does not need to be reused later.
-template <typename F, typename E>
+// Template parameter order is tweaked to { E, F }, since `E` has to be specified more often than `F`.
+template <typename E, typename F>
 inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
-  return impl::DispatchEntryWithoutMakingACopy<F, E>(std::forward<F>(f), std::forward<E>(e), index, total);
+  return impl::DispatchEntryWithoutMakingACopy(std::forward<F>(f), std::forward<E>(e), index, total);
 }
 
 // === `Publisher<IMPL, ENTRY>` ===
@@ -285,20 +291,33 @@ struct GenericEntryPublisher : GenericPublisher {};
 template <typename IMPL, typename ENTRY>
 class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
-  template <typename... ARGS>
-  explicit Publisher(ARGS&&... args)
-      : IMPL(std::forward<ARGS>(args)...) {}
+  template <typename... EXTRA_PARAMS>
+  explicit Publisher(EXTRA_PARAMS&&... extra_params)
+      : IMPL(std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
-  template <typename E>
-  inline size_t Publish(E&& e) {
-    // TODO(dkorolev): Actually support the case when `DoPublish()` only accepts an rvalue.
-    return IMPL::DoPublish(std::forward<E>(e));
-  }
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  inline size_t Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
+  inline size_t Publish(ENTRY&& e) { return IMPL::DoPublish(std::move(e)); }
 
   template <typename... ARGS>
   inline size_t Emplace(ARGS&&... args) {
-    // TODO(dkorolev): Actually support the case when `Emplace()` should internally use `Publish()`.
+    // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
+  }
+
+  // Special case of publishing `const DERIVED_ENTRY&` or `const std::unique_ptr<DERIVED_ENTRY>&` into a stream
+  // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED_ENTRY`.
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const DERIVED_ENTRY& e) {
+    return IMPL::DoPublishDerived(e);
+  }
+
+  template <typename DERIVED_ENTRY>
+  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
+    assert(e);
+    return IMPL::DoPublishDerived(*e.get());
   }
 };
 

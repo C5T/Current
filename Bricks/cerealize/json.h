@@ -30,6 +30,7 @@ SOFTWARE.
 #include <sstream>
 
 #include "exceptions.h"
+#include "constants.h"
 
 #include "../template/decay.h"
 #include "../template/is_unique_ptr.h"
@@ -42,6 +43,9 @@ SOFTWARE.
 
 #include "../../3rdparty/cereal/include/archives/json.hpp"
 
+// Empirically discovered to be necessary to enable serialization of `std::unique_ptr<>`-s. -- D.K.
+#include "../../3rdparty/cereal/include/types/polymorphic.hpp"
+
 #include "../../3rdparty/cereal/include/external/base64.hpp"
 
 namespace bricks {
@@ -53,6 +57,34 @@ inline typename std::enable_if<std::is_base_of<BASE, ENTRY>::value,
 WithBaseType(const ENTRY& object) {
   return std::unique_ptr<const BASE, NullDeleter>(reinterpret_cast<const BASE*>(&object),
                                                   bricks::NullDeleter());
+}
+
+template <typename T>
+constexpr bool HasJSONEntryName(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasJSONEntryName(int) -> decltype(T::JSONEntryName(), bool()) {
+  return true;
+}
+
+template <typename T, bool HAS_JSON_ENTRY_NAME>
+struct ExtractJSONEntryNameImpl {};
+
+template <typename T>
+struct ExtractJSONEntryNameImpl<T, false> {
+  static std::string DoIt() { return Constants::DefaultJSONEntryName(); }
+};
+
+template <typename T>
+struct ExtractJSONEntryNameImpl<T, true> {
+  static std::string DoIt() { return T::JSONEntryName(); }
+};
+
+template <typename T>
+inline std::string ExtractJSONEntryName() {
+  return ExtractJSONEntryNameImpl<T, HasJSONEntryName<T>(0)>::DoIt();
 }
 
 template <typename OSTREAM, typename T>
@@ -77,14 +109,14 @@ inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object, S&& name) {
 template <typename T>
 inline std::string JSON(T&& object) {
   std::ostringstream os;
-  AppendAsJSON(os, std::forward<T>(object));
+  AppendAsJSON(os, std::forward<T>(object), ExtractJSONEntryName<T>());
   return os.str();
 }
 
 template <typename T, typename S>
 inline std::string JSON(T&& object, S&& name) {
   std::ostringstream os;
-  AppendAsJSON(os, std::forward<T>(object), name);
+  AppendAsJSON(os, std::forward<T>(object), std::forward<S>(name));
   return os.str();
 }
 
@@ -151,5 +183,6 @@ inline std::string Base64Encode(const std::string& s) {
 using bricks::cerealize::JSON;
 using bricks::cerealize::ParseJSON;
 using bricks::cerealize::WithBaseType;
+using bricks::cerealize::ExtractJSONEntryName;
 
 #endif  // BRICKS_CEREALIZE_JSON_H
