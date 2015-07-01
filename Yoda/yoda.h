@@ -77,6 +77,7 @@ SOFTWARE.
 
 #include <atomic>
 #include <future>
+#include <mutex>
 #include <string>
 #include <tuple>
 
@@ -100,14 +101,25 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
  public:
   APIWrapper() = delete;
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
-  APIWrapper(const std::string& stream_name)
+  template <typename... ARGS>
+  APIWrapper(const std::string& stream_name, ARGS&&... args)
       : APICalls<PERSISTENCE, CLONER, YT>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(stream_name)),
+        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(stream_name,
+                                                                                std::forward<ARGS>(args)...)),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
         mq_(mq_listener_),
-        stream_listener_(mq_),
-        sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {}
+        replay_done_(false),
+        replay_done_unique_lock_(replay_done_mutex_),
+        stream_listener_(mq_, &replay_done_, &replay_done_cv_),
+        sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {
+    // Wait in the constructor of Yoda until all the past entries have been replayed.
+    // TODO(dkorolev): Sync up with Max on whether this wait is best to put into pushing
+    // user-initiated transactions instead?
+    do {
+      replay_done_cv_.wait(replay_done_unique_lock_, [this]() { return static_cast<bool>(replay_done_); });
+    } while (!replay_done_);
+  }
 
   ~APIWrapper() { sherlock_listener_scope_.Join(); }
 
@@ -121,6 +133,10 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
   YodaData<YT> container_data_;
   typename YT::T_MQ_LISTENER mq_listener_;
   typename YT::T_MQ mq_;
+  std::atomic_bool replay_done_;
+  std::mutex replay_done_mutex_;
+  std::unique_lock<std::mutex> replay_done_unique_lock_;
+  std::condition_variable replay_done_cv_;
   typename YT::T_SHERLOCK_LISTENER stream_listener_;
   typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
 };
@@ -141,6 +157,9 @@ using API = typename APIWrapperSelector<PERSISTENCE, CLONER, SUPPORTED_TYPES...>
 
 template <typename... SUPPORTED_TYPES>
 using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, bricks::DefaultCloner, SUPPORTED_TYPES...>;
+
+template <typename... SUPPORTED_TYPES>
+using SingleFileAPI = API<blocks::persistence::AppendToFile, bricks::DefaultCloner, SUPPORTED_TYPES...>;
 
 }  // namespace yoda
 

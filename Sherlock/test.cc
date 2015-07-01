@@ -351,21 +351,39 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
+const std::string sherlock_golden_data = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
+
 TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
-  bricks::FileSystem::RmFile(persistence_file_name, bricks::FileSystem::RmFileParameters::Silent);
-  auto permanent =
-      sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", persistence_file_name);
+  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
-  permanent.Publish(1);
-  permanent.Publish(2);
-  permanent.Publish(3);
+  auto persisted =
+      sherlock::Stream<Record, blocks::persistence::AppendToFile>("persisted", persistence_file_name);
+
+  persisted.Publish(1);
+  persisted.Publish(2);
+  persisted.Publish(3);
+
+  while (bricks::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
+    ;  // Spin lock.
+  }
+
+  EXPECT_EQ(sherlock_golden_data, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+}
+
+TEST(Sherlock, ParsesFromFile) {
+  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+  bricks::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
+
+  auto parsed = sherlock::Stream<Record, blocks::persistence::AppendToFile>("parsed", persistence_file_name);
+
   Data d;
   {
     ASSERT_FALSE(d.listener_alive_);
     SherlockTestProcessor p(d, false);
     ASSERT_TRUE(d.listener_alive_);
-    permanent.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
+    parsed.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.listener_alive_);
   }
