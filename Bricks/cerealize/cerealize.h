@@ -184,21 +184,14 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
   size_t DoPublish(const ENTRY& entry) {
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
-      so_(cereal::make_nvp("e", entry));  // "e" for "entry".
+      so_(cereal::make_nvp(Constants::DefaultJSONSerializeNonPolymorphicEntryName(), entry));
     }
-    fo_ << '\n';
+    fo_ << '\n' << std::flush;
     return ++entries_appended_;
   }
 
   CerealJSONFileAppenderImpl& operator<<(const ENTRY& entry) {
     DoPublish(entry);
-    return *this;
-    {
-      cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
-      so_(cereal::make_nvp(Constants::DefaultJSONSerializeNonPolymorphicEntryName(), entry));
-    }
-    fo_ << '\n';
-    ++entries_appended_;
     return *this;
   }
 
@@ -214,7 +207,7 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
       so_(cereal::make_nvp(Constants::DefaultJSONSerializePolymorphicEntryName(),
                            WithBaseType<typename ENTRY::element_type>(entry)));
     }
-    fo_ << '\n';
+    fo_ << '\n' << std::flush;
     return ++entries_appended_;
   }
   template <typename DERIVED_ENTRY,

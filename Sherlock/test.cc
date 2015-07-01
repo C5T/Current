@@ -353,13 +353,22 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
 TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
-  bricks::FileSystem::RmFile(persistence_file_name, bricks::FileSystem::RmFileParameters::Silent);
+  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+
   auto permanent =
       sherlock::Stream<Record, blocks::persistence::AppendToFile>("permanent", persistence_file_name);
 
   permanent.Publish(1);
   permanent.Publish(2);
   permanent.Publish(3);
+
+  const std::string golden = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
+  while (bricks::FileSystem::GetFileSize(persistence_file_name) != golden.size()) {
+    ;  // Spin lock.
+  }
+
+  EXPECT_EQ(golden, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+
   Data d;
   {
     ASSERT_FALSE(d.listener_alive_);
