@@ -100,9 +100,11 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
  public:
   APIWrapper() = delete;
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
-  APIWrapper(const std::string& stream_name)
+  template <typename... ARGS>
+  APIWrapper(const std::string& stream_name, ARGS&&... args)
       : APICalls<PERSISTENCE, CLONER, YT>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(stream_name)),
+        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(stream_name,
+                                                                                std::forward<ARGS>(args)...)),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
         mq_(mq_listener_),
@@ -141,6 +143,9 @@ using API = typename APIWrapperSelector<PERSISTENCE, CLONER, SUPPORTED_TYPES...>
 
 template <typename... SUPPORTED_TYPES>
 using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, bricks::DefaultCloner, SUPPORTED_TYPES...>;
+
+template <typename... SUPPORTED_TYPES>
+using SingleFileAPI = API<blocks::persistence::AppendToFile, bricks::DefaultCloner, SUPPORTED_TYPES...>;
 
 }  // namespace yoda
 

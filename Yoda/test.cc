@@ -23,4 +23,44 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// Smoke test and example reference usage code.
 #include "docu/docu_2_reference_code.cc"
+
+
+// Persistence layer test.
+// Shamelessly use the fact that all the required headers have been `#include`-d above. -- D.K.
+struct YodaEntryToPersist : Padawan {
+  std::string key;
+  int number;
+  YodaEntryToPersist(const std::string& key = "", int number = 0) : key(key), number(number) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(key), CEREAL_NVP(number));
+  }
+};
+CEREAL_REGISTER_TYPE(YodaEntryToPersist);
+
+DEFINE_string(yoda_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
+
+TEST(Yoda, WritesToFile) {
+  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
+  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+
+  typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
+  PersistingAPI api("PersistingAPI", persistence_file_name);
+
+  api.Add(YodaEntryToPersist("one", 1));
+  api.Add(YodaEntryToPersist("two", 2));
+
+  const std::string golden =
+      "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+      "\"valid\":1,\"data\":{\"key\":\"one\",\"number\":1}}}}\n"
+      "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+      "\"valid\":1,\"data\":{\"key\":\"two\",\"number\":2}}}}\n";
+
+  while (bricks::FileSystem::GetFileSize(persistence_file_name) != golden.size()) {
+    ;  // Spin lock.
+  }
+
+  EXPECT_EQ(golden, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+}
