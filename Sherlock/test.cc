@@ -351,9 +351,9 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
-TEST(Sherlock, PersistsToFile) {
-  const std::string golden = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
+const std::string sherlock_golden_data = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
 
+TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
@@ -364,19 +364,17 @@ TEST(Sherlock, PersistsToFile) {
   persisted.Publish(2);
   persisted.Publish(3);
 
-  while (bricks::FileSystem::GetFileSize(persistence_file_name) != golden.size()) {
+  while (bricks::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
     ;  // Spin lock.
   }
 
-  EXPECT_EQ(golden, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+  EXPECT_EQ(sherlock_golden_data, bricks::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
 TEST(Sherlock, ParsesFromFile) {
-  const std::string input = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
-
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
-  bricks::FileSystem::WriteStringToFile(input, persistence_file_name.c_str());
+  bricks::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
   auto parsed = sherlock::Stream<Record, blocks::persistence::AppendToFile>("parsed", persistence_file_name);
 

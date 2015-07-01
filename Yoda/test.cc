@@ -26,7 +26,6 @@ SOFTWARE.
 // Smoke test and example reference usage code.
 #include "docu/docu_2_reference_code.cc"
 
-
 // Persistence layer test.
 // Shamelessly use the fact that all the required headers have been `#include`-d above. -- D.K.
 struct YodaEntryToPersist : Padawan {
@@ -42,25 +41,35 @@ CEREAL_REGISTER_TYPE(YodaEntryToPersist);
 
 DEFINE_string(yoda_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
+const std::string yoda_golden_data =
+    "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+    "\"valid\":1,\"data\":{\"key\":\"one\",\"number\":1}}}}\n"
+    "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+    "\"valid\":1,\"data\":{\"key\":\"two\",\"number\":2}}}}\n";
+
 TEST(Yoda, WritesToFile) {
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
-  PersistingAPI api("PersistingAPI", persistence_file_name);
+  PersistingAPI api("WritingToFileAPI", persistence_file_name);
 
   api.Add(YodaEntryToPersist("one", 1));
   api.Add(YodaEntryToPersist("two", 2));
-
-  const std::string golden =
-      "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
-      "\"valid\":1,\"data\":{\"key\":\"one\",\"number\":1}}}}\n"
-      "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
-      "\"valid\":1,\"data\":{\"key\":\"two\",\"number\":2}}}}\n";
-
-  while (bricks::FileSystem::GetFileSize(persistence_file_name) != golden.size()) {
+  while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
     ;  // Spin lock.
   }
 
-  EXPECT_EQ(golden, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+  EXPECT_EQ(yoda_golden_data, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+}
+
+TEST(Yoda, ReadsFromFile) {
+  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
+  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+  bricks::FileSystem::WriteStringToFile(yoda_golden_data, persistence_file_name.c_str());
+
+  typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
+  PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
+  EXPECT_EQ(1, static_cast<YodaEntryToPersist>(api.Get(std::string("one")).Go()).number);
+  EXPECT_EQ(2, static_cast<YodaEntryToPersist>(api.Get(std::string("two")).Go()).number);
 }

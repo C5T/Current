@@ -217,7 +217,11 @@ template <template <typename, typename> class PERSISTENCE, class CLONER, typenam
 struct StreamListener {
   typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
 
-  explicit StreamListener(typename YT::T_MQ& mq) : mq_(mq) {}
+  // TODO(dkorolev) || TODO(mzhurovich): `std::ref` + `std::reference_wrapper` ?
+  explicit StreamListener(typename YT::T_MQ& mq,
+                          std::atomic_bool* p_replay_done,
+                          std::condition_variable* p_replay_done_cv)
+      : mq_(mq), p_replay_done_(p_replay_done), p_replay_done_cv_(p_replay_done_cv) {}
 
   struct MQMessageEntry : MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
     std::unique_ptr<Padawan> entry;
@@ -242,8 +246,15 @@ struct StreamListener {
     // TODO(dkorolev): The above is coming soon.
   }
 
+  void ReplayDone() {
+    *p_replay_done_ = true;
+    p_replay_done_cv_->notify_one();
+  }
+
  private:
   typename YT::T_MQ& mq_;
+  std::atomic_bool* p_replay_done_;
+  std::condition_variable* p_replay_done_cv_;
 };
 
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>

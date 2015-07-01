@@ -91,7 +91,7 @@ struct Container<YT, Dictionary<ENTRY>> {
   // TODO(dkorolev): For this parameter to be an `ENTRY&&`, we'd need to clean up Bricks wrt RTTI.
   void operator()(ENTRY& entry, size_t index) {
     EntryWithIndex<ENTRY>& placeholder = map_[GetKey(entry)];
-    if (index > placeholder.index) {
+    if (placeholder.index == static_cast<size_t>(-1) || index > placeholder.index) {
       placeholder.Update(index, std::move(entry));
     }
   }
