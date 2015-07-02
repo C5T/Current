@@ -184,6 +184,9 @@ struct Container<YT, Matrix<ENTRY>> {
   // Event: The entry has been scanned from the stream.
   void operator()(ENTRY& entry, size_t index) {
     std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[ROW_COL(GetRow(entry), GetCol(entry))];
+    if (!placeholder) {
+      placeholder = std::unique_ptr<EntryWithIndex<ENTRY>>(new EntryWithIndex<ENTRY>());
+    }
     if (placeholder->index == static_cast<size_t>(-1) || index > placeholder->index) {
       placeholder->Update(index, std::move(entry));
       forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
