@@ -25,9 +25,10 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_WAITABLE_TERMINATE_SIGNAL_H
 #define BRICKS_UTIL_WAITABLE_TERMINATE_SIGNAL_H
 
-#include <atomic>
-#include <mutex>
+#include <cassert>
 #include <condition_variable>
+#include <mutex>
+#include <unordered_set>
 
 namespace bricks {
 
@@ -38,13 +39,26 @@ namespace bricks {
 // new entries should not be a simple wait on a conditional variable. `WaitableTerminateSignal` enables this.
 class WaitableTerminateSignal {
  public:
-  explicit WaitableTerminateSignal() : stop_signal_(false) {}
+  explicit WaitableTerminateSignal() {}
 
   // Can always check whether it is time to terminate. Thread-safe.
   operator bool() const { return stop_signal_; }
 
   // Sends the termination signal. Thread-safe.
-  void SignalExternalTermination() { stop_signal_ = true, condition_variable_.notify_all(); }
+  void SignalExternalTermination() {
+    // Important to do `notify_all()` from within a locked session guarding
+    // the external, client-supplied, mutex that has been passed
+    // into `WaitUntil()` in case one is active now.
+    std::lock_guard<std::mutex> guard(client_mutex_mutex_);
+    if (client_mutex_) {
+      std::lock_guard<std::mutex> client_mutex_guard(*client_mutex_);
+      stop_signal_ = true;
+      condition_variable_.notify_all();
+    } else {
+      stop_signal_ = true;
+      condition_variable_.notify_all();
+    }
+  }
 
   // To be called by external users that the thread using this `WaitableTerminateSignal` could wait upon.
   // Thread-safe.
@@ -53,6 +67,14 @@ class WaitableTerminateSignal {
   // Waits until the provided method returns `true`, or until `SignalExternalTermination()` has been called.
   template <typename F>
   bool WaitUntil(std::unique_lock<std::mutex>& lock, F&& external_condition) {
+    assert(lock.mutex());
+
+    {
+      std::lock_guard<std::mutex> guard(client_mutex_mutex_);
+      assert(!client_mutex_);
+      client_mutex_ = lock.mutex();
+    }
+
     // TODO(dkorolev): Remove the `while` once we confirm that "spurious awakenings" are not the problem here.
     // TODO(dkorolev): Here and in at least one more place in `Current` I remember of.
     // Appears safe to me to remove (http://en.cppreference.com/w/cpp/thread/condition_variable/wait),
@@ -61,20 +83,26 @@ class WaitableTerminateSignal {
     while (!stop_condition()) {
       condition_variable_.wait(lock, stop_condition);
     }
-    return stop_signal_;
-  }
 
-  template <typename F>
-  bool WaitUntil(F&& external_condition) {
-    std::mutex mutex;
-    std::unique_lock<std::mutex> lock(mutex);
-    return WaitUntil(lock, std::forward<F>(external_condition));
+    {
+      std::lock_guard<std::mutex> guard(client_mutex_mutex_);
+      assert(client_mutex_ == lock.mutex());
+      client_mutex_ = nullptr;
+    }
+
+    return stop_signal_;
   }
 
  private:
   WaitableTerminateSignal(const WaitableTerminateSignal&) = delete;
 
-  std::atomic_bool stop_signal_;
+  // To make sure `WaitUntil()` does not intersect with `SignalExternalTermination()`,
+  // keep a pointer to the top-level `std::mutex` used inside the `std::unique_lock`,
+  // which the client has been passed down to `WaitUntil()`.
+  std::mutex client_mutex_mutex_;
+  std::mutex* client_mutex_ = nullptr;
+
+  volatile bool stop_signal_ = false;
   std::condition_variable condition_variable_;
 };
 
