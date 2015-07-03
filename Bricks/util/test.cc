@@ -403,3 +403,47 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
   EXPECT_TRUE(result);
   EXPECT_TRUE(signal);
 }
+
+TEST(Util, WaitableTerminateSignalScopedRegisterer) {
+  using bricks::WaitableTerminateSignal;
+  using bricks::WaitableTerminateSignalBulkNotifier;
+
+  WaitableTerminateSignal signal1;
+  WaitableTerminateSignal signal2;
+  bool result1;
+  bool result2;
+  size_t counter = 0u;
+  std::mutex mutex;
+
+  std::thread thread1([&signal1, &counter, &mutex, &result1]() {
+    std::unique_lock<std::mutex> lock(mutex);
+    result1 = signal1.WaitUntil(lock, [&counter]() { return counter > 1000u; });
+  });
+
+  std::thread thread2([&signal2, &counter, &mutex, &result2]() {
+    std::unique_lock<std::mutex> lock(mutex);
+    result2 = signal2.WaitUntil(lock, [&counter]() { return counter > 1000u; });
+  });
+
+  WaitableTerminateSignalBulkNotifier bulk;
+  WaitableTerminateSignalBulkNotifier::Scope scope1(bulk, signal1);
+  WaitableTerminateSignalBulkNotifier::Scope scope2(bulk, signal2);
+
+  bool repeat = true;
+  while (repeat) {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      ++counter;
+      repeat = (counter < 2000u);
+    }
+    bulk.NotifyAllOfExternalWaitableEvent();
+  }
+
+  thread1.join();
+  thread2.join();
+
+  EXPECT_FALSE(result1);
+  EXPECT_FALSE(signal1);
+  EXPECT_FALSE(result2);
+  EXPECT_FALSE(signal2);
+}
