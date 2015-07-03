@@ -43,6 +43,7 @@ SOFTWARE.
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/clone.h"
 #include "../Bricks/util/null_deleter.h"
+#include "../Bricks/util/waitable_terminate_signal.h"
 
 // Sherlock is the overlord of data storage and processing in Current.
 // Its primary entity is the stream of data.
@@ -198,10 +199,11 @@ class StreamInstanceImpl {
     struct ListenerThreadSharedState {
       F listener;  // The ownership of the listener is transferred to instance of this class.
       std::shared_ptr<T_PERSISTENCE_LAYER> storage;
-      std::atomic_bool stop;
+
+      bricks::WaitableTerminateSignal terminate_signal;
 
       ListenerThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-          : listener(std::move(listener)), storage(storage), stop(false) {}
+          : listener(std::move(listener)), storage(storage) {}
 
       ListenerThreadSharedState() = delete;
       ListenerThreadSharedState(const ListenerThreadSharedState&) = delete;
@@ -226,8 +228,7 @@ class StreamInstanceImpl {
     void SafeJoinThread() {
       assert(thread_.joinable());  // TODO(dkorolev): Exception && test?
 
-      // TODO(dkorolev): Smart termination logic with notifiers, not delays.
-      state_->stop = true;
+      state_->terminate_signal.SignalExternalTermination();
 
       // Wait for the thread to terminate.
       // Note that this code will only be executed if neither `Join()` nor `Detach()` has been done before.
@@ -240,7 +241,7 @@ class StreamInstanceImpl {
     }
 
     static void StaticListenerThread(std::shared_ptr<ListenerThreadSharedState> state) {
-      state->storage->SyncScanAllEntries(state->stop, *state->listener);
+      state->storage->SyncScanAllEntries(state->terminate_signal, *state->listener);
     }
 
     std::shared_ptr<ListenerThreadSharedState> state_;

@@ -25,7 +25,6 @@ SOFTWARE.
 #ifndef BLOCKS_PERSISTENCE_PERSISTENCE_H
 #define BLOCKS_PERSISTENCE_PERSISTENCE_H
 
-#include <atomic>
 #include <cassert>
 #include <chrono>
 #include <functional>
@@ -38,6 +37,7 @@ SOFTWARE.
 #include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
 #include "../../Bricks/util/clone.h"
+#include "../../Bricks/util/waitable_terminate_signal.h"
 
 namespace blocks {
 namespace persistence {
@@ -45,7 +45,7 @@ namespace persistence {
 namespace impl {
 
 template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
-class Logic {
+class Logic : bricks::WaitableTerminateSignalBulkNotifier {
  public:
   template <typename... EXTRA_PARAMS>
   explicit Logic(EXTRA_PARAMS&&... extra_params)
@@ -56,7 +56,7 @@ class Logic {
   Logic(const Logic&) = delete;
 
   template <typename F>
-  void SyncScanAllEntries(std::atomic_bool& stop, F&& f) {
+  void SyncScanAllEntries(bricks::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
     struct Cursor {
       bool at_end = true;
       size_t index = 0u;
@@ -71,7 +71,7 @@ class Logic {
           assert(current.iterator != exclusively_accessed_list.end());
           next.iterator = current.iterator;
           ++next.iterator;
-          next.index = current.index + 1;
+          next.index = current.index + 1u;
         }
         next.total = exclusively_accessed_list.size();
         next.at_end = (next.iterator == exclusively_accessed_list.end());
@@ -94,26 +94,26 @@ class Logic {
 
     bool notified_about_termination = false;
     while (true) {
-      if (stop && !notified_about_termination) {
+      if (waitable_terminate_signal && !notified_about_termination) {
         notified_about_termination = true;
         if (blocks::ss::CallTerminate(f)) {
           return;
         }
       }
       if (!current.at_end) {
-        // Only specify the `CLONER` template paramter, the rest are best to be inferred.
+        // Only specify the `CLONER` template parameter, the rest are best to be inferred.
         if (!blocks::ss::DispatchEntryByConstReference<CLONER>(
                 std::forward<F>(f), *current.iterator, current.index, current.total)) {
           break;
         }
-        if (!replay_done && current.index + 1 >= size_at_start) {
+        if (!replay_done && current.index + 1u >= size_at_start) {
           blocks::ss::CallReplayDone(f);
           replay_done = true;
         }
       }
       Cursor next;
       do {
-        if (stop && !notified_about_termination) {
+        if (waitable_terminate_signal && !notified_about_termination) {
           notified_about_termination = true;
           if (blocks::ss::CallTerminate(f)) {
             return;
@@ -125,8 +125,17 @@ class Logic {
           return Cursor::Next(current, list_);
         }();
         if (next.at_end) {
-          // TODO(dkorolev): Wait for { `stop` || new data available } in a smart way.
-          std::this_thread::sleep_for(std::chrono::milliseconds(1));
+          // Wait until one of two events take place:
+          // 1) The number of messages in the `list_` exceeds `next.total`.
+          //    Note that this might happen between `next.total` was captured and now.
+          // 2) The listener thread has been externally requested to terminate.
+          [this, &next, &waitable_terminate_signal]() {
+            // LOCKED: Wait for either new data to become available or for an external termination request.
+            std::unique_lock<std::mutex> unique_lock(mutex_);
+            bricks::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
+            waitable_terminate_signal.WaitUntil(unique_lock,
+                                                [this, &next]() { return list_.size() > next.total; });
+          }();
         }
       } while (next.at_end);
       current = next;
@@ -139,13 +148,15 @@ class Logic {
     std::lock_guard<std::mutex> lock(mutex_);
     list_.push_back(entry);
     persistence_layer_.Publish(entry);
-    return list_.size() - 1;
+    NotifyAllOfExternalWaitableEvent();
+    return list_.size() - 1u;
   }
   size_t DoPublish(ENTRY&& entry) {
     std::lock_guard<std::mutex> lock(mutex_);
     list_.push_back(std::move(entry));
     persistence_layer_.Publish(static_cast<const ENTRY&>(list_.back()));
-    return list_.size() - 1;
+    NotifyAllOfExternalWaitableEvent();
+    return list_.size() - 1u;
   }
 
   template <typename DERIVED_ENTRY>
@@ -171,7 +182,8 @@ class Logic {
     // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
     // ENTRY::element_type>(entry))));
 
-    return list_.size() - 1;
+    NotifyAllOfExternalWaitableEvent();
+    return list_.size() - 1u;
   }
 
   template <typename... ARGS>
@@ -179,7 +191,8 @@ class Logic {
     std::lock_guard<std::mutex> lock(mutex_);
     list_.emplace_back(std::forward<ARGS>(args)...);
     persistence_layer_.Publish(list_.back());
-    return list_.size() - 1;
+    NotifyAllOfExternalWaitableEvent();
+    return list_.size() - 1u;
   }
 
  private:

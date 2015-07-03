@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include <atomic>
 #include <string>
 
 #include "persistence.h"
@@ -85,7 +86,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     impl.Publish("foo");
     impl.Publish("bar");
 
-    std::atomic_bool stop(false);
+    bricks::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -99,7 +100,7 @@ TEST(PersistenceLayer, MemoryOnly) {
       ;  // Spin lock.
     }
 
-    stop = true;
+    stop.SignalExternalTermination();
     t.join();
 
     EXPECT_EQ(3u, test_listener.seen);
@@ -111,7 +112,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     // The data starts from ground zero.
     IMPL impl;
 
-    std::atomic_bool stop(false);
+    bricks::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -125,7 +126,7 @@ TEST(PersistenceLayer, MemoryOnly) {
       ;  // Spin lock.
     }
 
-    stop = true;
+    stop.SignalExternalTermination();
     t.join();
 
     EXPECT_EQ(1u, test_listener.seen);
@@ -149,7 +150,7 @@ TEST(PersistenceLayer, AppendToFile) {
     impl.Publish("foo");
     impl.Publish(std::move(CerealizableString("bar")));
 
-    std::atomic_bool stop(false);
+    bricks::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -163,7 +164,7 @@ TEST(PersistenceLayer, AppendToFile) {
       ;  // Spin lock.
     }
 
-    stop = true;
+    stop.SignalExternalTermination();
     t.join();
 
     EXPECT_EQ(3u, test_listener.seen);
@@ -180,7 +181,7 @@ TEST(PersistenceLayer, AppendToFile) {
     // Confirm that the data has been saved and can be replayed.
     IMPL impl(persistence_file_name);
 
-    std::atomic_bool stop(false);
+    bricks::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -196,7 +197,7 @@ TEST(PersistenceLayer, AppendToFile) {
       ;  // Spin lock.
     }
 
-    stop = true;
+    stop.SignalExternalTermination();
     t.join();
 
     EXPECT_EQ(4u, test_listener.seen);
@@ -235,7 +236,7 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
 
   std::vector<std::string> results;
   size_t counter = 0u;
-  std::atomic_bool stop(false);
+  bricks::WaitableTerminateSignal stop;
   test_clone.SyncScanAllEntries(stop, [&results, &counter](std::unique_ptr<BASE>&& e) {
     results.push_back(e->AsString());
     ++counter;
