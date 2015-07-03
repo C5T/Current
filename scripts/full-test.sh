@@ -71,6 +71,7 @@ echo -e -n "\033[0m"
   echo -e "\033[32m\033[1mOK.\033[0m"
 
   echo -e "\033[1mRunning the tests and generating coverage info.\033[0m"
+  find . -name '*.gcda' -delete
   "./$ALL_TESTS_TOGETHER" || exit 1
   echo -e "\n\033[32m\033[1mALL TESTS PASS.\033[0m"
 

@@ -24,11 +24,12 @@ SOFTWARE.
 
 #define BRICKS_RANDOM_FIX_SEED
 
+#include "clone.h"
 #include "make_scope_guard.h"
 #include "random.h"
-#include "singleton.h"
 #include "sha256.h"
-#include "clone.h"
+#include "singleton.h"
+#include "waitable_terminate_signal.h"
 
 #include "../exception.h"
 
@@ -43,7 +44,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:41\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:42\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -60,7 +61,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:58\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:59\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -342,4 +343,107 @@ TEST(Util, Clone) {
   EXPECT_EQ("cloned by ptr", DefaultCloner::Clone(ClonableByPtr()).text);
   EXPECT_EQ("copy-constructed from original", DefaultCloner::Clone(ClonableByCtor()).text);
   EXPECT_EQ("deserialized from original", DefaultCloner::Clone(ClonableViaJSON()).text);
+}
+
+TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {
+  using bricks::WaitableTerminateSignal;
+
+  WaitableTerminateSignal signal;
+  size_t counter = 0u;
+  std::mutex mutex;
+  bool result;
+  std::thread thread([&signal, &counter, &result, &mutex]() {
+    std::unique_lock<std::mutex> lock(mutex);
+    result = signal.WaitUntil(lock, [&counter]() { return counter > 1000u; });
+  });
+
+  bool repeat = true;
+  while (repeat) {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      ++counter;  // Will eventually get to 1000, which the thread is waiting for.
+      repeat = (counter < 2000u);
+    }
+    signal.NotifyOfExternalWaitableEvent();
+  }
+
+  thread.join();
+
+  EXPECT_FALSE(result);
+  EXPECT_FALSE(signal);
+}
+
+TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
+  using bricks::WaitableTerminateSignal;
+
+  WaitableTerminateSignal signal;
+  size_t counter = 0u;
+  std::mutex mutex;
+  bool result;
+  std::thread thread([&signal, &counter, &mutex, &result]() {
+    std::unique_lock<std::mutex> lock(mutex);
+    result = signal.WaitUntil(lock, [&counter]() {
+      return counter > 1000u;  // Not going to happen in this test.
+    });
+  });
+
+  bool repeat = true;
+  while (repeat) {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      ++counter;
+      repeat = (counter < 500u);
+    }
+    signal.NotifyOfExternalWaitableEvent();
+  }
+
+  signal.SignalExternalTermination();
+  thread.join();
+
+  EXPECT_TRUE(result);
+  EXPECT_TRUE(signal);
+}
+
+TEST(Util, WaitableTerminateSignalScopedRegisterer) {
+  using bricks::WaitableTerminateSignal;
+  using bricks::WaitableTerminateSignalBulkNotifier;
+
+  WaitableTerminateSignal signal1;
+  WaitableTerminateSignal signal2;
+  bool result1;
+  bool result2;
+  size_t counter = 0u;
+  std::mutex mutex;
+
+  std::thread thread1([&signal1, &counter, &mutex, &result1]() {
+    std::unique_lock<std::mutex> lock(mutex);
+    result1 = signal1.WaitUntil(lock, [&counter]() { return counter > 1000u; });
+  });
+
+  std::thread thread2([&signal2, &counter, &mutex, &result2]() {
+    std::unique_lock<std::mutex> lock(mutex);
+    result2 = signal2.WaitUntil(lock, [&counter]() { return counter > 1000u; });
+  });
+
+  WaitableTerminateSignalBulkNotifier bulk;
+  WaitableTerminateSignalBulkNotifier::Scope scope1(bulk, signal1);
+  WaitableTerminateSignalBulkNotifier::Scope scope2(bulk, signal2);
+
+  bool repeat = true;
+  while (repeat) {
+    {
+      std::lock_guard<std::mutex> lock(mutex);
+      ++counter;
+      repeat = (counter < 2000u);
+    }
+    bulk.NotifyAllOfExternalWaitableEvent();
+  }
+
+  thread1.join();
+  thread2.join();
+
+  EXPECT_FALSE(result1);
+  EXPECT_FALSE(signal1);
+  EXPECT_FALSE(result2);
+  EXPECT_FALSE(signal2);
 }
