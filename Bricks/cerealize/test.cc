@@ -348,12 +348,35 @@ TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
   EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
 }
 
-TEST(Cerealize, ExtractJSONEntryName) { struct Foo { };
-  struct Bar {
-    static std::string JSONEntryName() { return "bar_entry_name"; }
-  };
-  EXPECT_EQ("data", ExtractJSONEntryName<Foo>());
-  EXPECT_EQ("bar_entry_name", ExtractJSONEntryName<Bar>());
+namespace json_unittest {
+struct Foo {
+  int x = 1;
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(x));
+  }
+};
+struct Bar {
+  int y = 1;
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(y));
+  }
+  static std::string JSONEntryName() { return "bar"; }
+};
+}  // namespace json_unittest
+
+TEST(Cerealize, ExtractJSONEntryName) {
+  EXPECT_EQ("data", ExtractJSONEntryName<json_unittest::Foo>());
+  EXPECT_EQ("bar", ExtractJSONEntryName<json_unittest::Bar>());
+  EXPECT_EQ("{\"data\":{\"x\":1}}", JSON(json_unittest::Foo()));
+  EXPECT_EQ("{\"bar\":{\"y\":1}}", JSON(json_unittest::Bar()));
+
+  // Need to test that the type is decayed prior to ensuring it exposes `JSONEntryName()`.
+  json_unittest::Bar instance;
+  instance.y = 2;
+  const json_unittest::Bar& const_reference(instance);
+  EXPECT_EQ("{\"bar\":{\"y\":2}}", JSON(const_reference));
 }
 
 TEST(Cerealize, Base64Encode) {

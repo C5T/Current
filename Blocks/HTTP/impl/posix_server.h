@@ -121,8 +121,7 @@ class HTTPServerPOSIX final {
   // * Pass `handler` by pointer to use the handler via pointer.
   //   This allows using passed in objects without making a copy of them.
   //   The lifetime of the object is then up to the user.
-  // Justification: `Register("/foo", InstanceOfFoo())` has no way of knowing for long should `InstanceOfFoo`
-  // live.
+  // Justification: `Register("/foo", FooInstance())` has no way of knowing how long should `FooInstance` live.
   void Register(const std::string& path, std::function<void(Request)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {

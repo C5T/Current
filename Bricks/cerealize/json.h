@@ -82,15 +82,16 @@ struct ExtractJSONEntryNameImpl<T, true> {
   static std::string DoIt() { return T::JSONEntryName(); }
 };
 
-template <typename T>
+template <typename UNDECAYED_T>
 inline std::string ExtractJSONEntryName() {
+  typedef decay<UNDECAYED_T> T;
   return ExtractJSONEntryNameImpl<T, HasJSONEntryName<T>(0)>::DoIt();
 }
 
 template <typename OSTREAM, typename T>
 inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object) {
   cereal::JSONOutputArchive so(os);
-  so(object);
+  so(cereal::make_nvp<rmref<T>>(ExtractJSONEntryName<T>().c_str(), object));
   return os;
 }
 
