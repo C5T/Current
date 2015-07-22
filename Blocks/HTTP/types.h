@@ -69,7 +69,7 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
-// A helper class to fill in request body as either plain text of JSON-ified object.
+// A helper class to fill in request body as either plain text or JSON-ified object.
 template <typename REQUEST, bool IS_STRING_TYPE>
 struct FillBody {};
 
