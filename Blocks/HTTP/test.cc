@@ -419,6 +419,15 @@ struct SerializableObject {
   }
 };
 
+struct NamedSerializableObject {
+  int y = 100;
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(y));
+  }
+  static const char* JSONEntryName() { return "custom_name"; }
+};
+
 TEST(HTTPAPI, PostCerealizableObject) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/post", [](Request r) {
@@ -427,6 +436,10 @@ TEST(HTTPAPI, PostCerealizableObject) {
   });
   EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
             HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
+
+  EXPECT_EQ(
+      "Data: {\"custom_name\":{\"y\":100}}",
+      HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), NamedSerializableObject())).body);
 }
 
 TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {

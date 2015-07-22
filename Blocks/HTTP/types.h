@@ -69,8 +69,8 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
-// A helper class to fill in request body as either plain text of JSON-ified object.
-template <typename REQUEST, bool IS_JSON>
+// A helper class to fill in request body as either plain text or JSON-ified object.
+template <typename REQUEST, bool IS_STRING_TYPE>
 struct FillBody {};
 
 // Body as string, default the type to "text/plain", when `is_string_type<T>::value == true`.
@@ -89,7 +89,7 @@ struct FillBody<REQUEST, false> {
   static void Fill(REQUEST& request, T&& object, const std::string& content_type) {
     static_assert(bricks::cerealize::is_write_cerealizable<T>::value,
                   "This form of POST() requires a cerealizable object as the second parameter.");
-    request.body = bricks::cerealize::JSON(object, "data");
+    request.body = bricks::cerealize::JSON(object);
     request.content_type = !content_type.empty() ? content_type : "application/json";
   }
 };
