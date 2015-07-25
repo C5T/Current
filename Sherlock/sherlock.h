@@ -45,8 +45,6 @@ SOFTWARE.
 #include "../Bricks/util/null_deleter.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
-#include "../Profiler/profiler.h"
-
 // Sherlock is the overlord of data storage and processing in Current.
 // Its primary entity is the stream of data.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records.
@@ -243,7 +241,6 @@ class StreamInstanceImpl {
     }
 
     static void StaticListenerThread(std::shared_ptr<ListenerThreadSharedState> state) {
-      PROFILER_SCOPE("Sherlock::StaticListenerThread()");
       state->storage->SyncScanAllEntries(state->terminate_signal, *state->listener);
     }
 
