@@ -39,10 +39,7 @@ SOFTWARE.
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
-// TODO(dkorolev): Either include our profiler or eliminate profiling altogether. Sync w/ Max.
-#ifndef PROFILER_SCOPE
-#define PROFILER_SCOPE(x)
-#endif
+#include "../../Profiler/profiler.h"
 
 namespace blocks {
 namespace persistence {
