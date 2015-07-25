@@ -39,8 +39,6 @@ SOFTWARE.
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
-#include "../../Profiler/profiler.h"
-
 namespace blocks {
 namespace persistence {
 
@@ -127,7 +125,6 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
 
     const size_t size_at_start = [this]() {
       // LOCKED: Get the number of entries before sending them to the listener.
-      PROFILER_SCOPE("SyncScanAllEntries() `size_at_start`");
       ThreeStageMutex::TopLevelScopedLock lock(three_stage_mutex_);
       return list_size_;
     }();
@@ -167,9 +164,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
         }
         next = [&current, this]() {
           // LOCKED: Move the cursor forward.
-          PROFILER_SCOPE("SyncScanAllEntries(), advance cursor");
           ThreeStageMutex::TopLevelScopedLock lock(three_stage_mutex_);
-          PROFILER_SCOPE("lock acquired");
           return Cursor::Next(current, list_, std::ref(list_size_));
         }();
         if (next.at_end) {
@@ -179,9 +174,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
           // 2) The listener thread has been externally requested to terminate.
           [this, &next, &waitable_terminate_signal]() {
             // LOCKED: Wait for either new data to become available or for an external termination request.
-            PROFILER_SCOPE("SyncScanAllEntries(), wait for new data");
             ThreeStageMutex::InnerLevelScopedUniqueLock unique_lock(three_stage_mutex_);
-            PROFILER_SCOPE("lock acquired");
             bricks::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
             waitable_terminate_signal.WaitUntil(unique_lock.GetUniqueLock(),
                                                 [this, &next]() { return list_size_ > next.total; });
@@ -195,150 +188,69 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
  protected:
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t DoPublish(const ENTRY& entry) {
-    PROFILER_SCOPE("DoPublish(const ENTRY&)");
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    {
-      PROFILER_SCOPE("lock acquired");
-      const size_t result = list_size_;
-      {
-        PROFILER_SCOPE("push_back");
-        ListPushBackImpl(entry);
-      }
-      {
-        PROFILER_SCOPE("promote lock 1->2");
-        lock.AdvanceToStageTwo();
-      }
-      {
-        PROFILER_SCOPE("publish");
-        persistence_layer_.Publish(entry);
-      }
-      {
-        PROFILER_SCOPE("promote lock 2->3");
-        lock.AdvanceToStageThree();
-      }
-      {
-        PROFILER_SCOPE("notify");
-        NotifyAllOfExternalWaitableEvent();
-      }
-      return result;
-    }
+    const size_t result = list_size_;
+    ListPushBackImpl(entry);
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(entry);
+    lock.AdvanceToStageThree();
+    NotifyAllOfExternalWaitableEvent();
+    return result;
   }
   size_t DoPublish(ENTRY&& entry) {
-    PROFILER_SCOPE("DoPublish(E&&)");
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    {
-      PROFILER_SCOPE("lock acquired");
-      const size_t result = list_size_;
-      {
-        PROFILER_SCOPE("push_back, std::move");
-        ListPushBackImpl(std::move(entry));
-      }
-      const ENTRY& pushed_entry = *list_back_;
-      {
-        PROFILER_SCOPE("promote lock 1->2");
-        lock.AdvanceToStageTwo();
-      }
-      {
-        PROFILER_SCOPE("publish");
-        persistence_layer_.Publish(pushed_entry);
-      }
-      {
-        PROFILER_SCOPE("1->3");
-        lock.AdvanceToStageThree();
-      }
-      {
-        PROFILER_SCOPE("notify");
-        NotifyAllOfExternalWaitableEvent();
-      }
-      return result;
-    }
+    const size_t result = list_size_;
+    ListPushBackImpl(std::move(entry));
+    const ENTRY& pushed_entry = *list_back_;
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(pushed_entry);
+    lock.AdvanceToStageThree();
+    NotifyAllOfExternalWaitableEvent();
+    return result;
   }
 
   template <typename DERIVED_ENTRY>
   size_t DoPublishDerived(const DERIVED_ENTRY& entry) {
     static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
 
-    PROFILER_SCOPE("DoPublishDerived(const DERIVED_ENTRY&)");
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
 
-    {
-      PROFILER_SCOPE("lock acquired");
+    // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
+    // if `ENTRY` is the base class for `DERIVED_ENTRY`.
+    // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
+    std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
+    *copy = bricks::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
+    const size_t result = list_size_;
+    ListPushBackImpl(std::move(copy));
+    const ENTRY& pushed_entry = *list_back_;
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(pushed_entry);
 
-      // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
-      // if `ENTRY` is the base class for `DERIVED_ENTRY`.
-      // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
-      std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
-      {
-        PROFILER_SCOPE("clone");
-        *copy = bricks::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
-      }
-      const size_t result = list_size_;
-      {
-        PROFILER_SCOPE("push_back, std::move");
-        ListPushBackImpl(std::move(copy));
-      }
-      const ENTRY& pushed_entry = *list_back_;
-      {
-        PROFILER_SCOPE("promote lock 1->2");
-        lock.AdvanceToStageTwo();
-      }
-      {
-        PROFILER_SCOPE("publish");
-        persistence_layer_.Publish(pushed_entry);
+    // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
+    // the copy constructor. Instead, we go with Current-friendly clone implementation above.
+    // COMMENTED OUT: persistence_layer_.Publish(entry);
+    // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_ENTRY>(entry)));
 
-        // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
-        // the copy constructor. Instead, we go with Current-friendly clone implementation above.
-        // COMMENTED OUT: persistence_layer_.Publish(entry);
-        // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_ENTRY>(entry)));
-
-        // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
-        // COMMENTED OUT: persistence_layer_.Publish(entry);
-        // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
-        // ENTRY::element_type>(entry))));
-      }
-      {
-        PROFILER_SCOPE("promote lock 2->3");
-        lock.AdvanceToStageThree();
-      }
-
-      {
-        PROFILER_SCOPE("notify");
-        NotifyAllOfExternalWaitableEvent();
-      }
-      return result;
-    }
+    // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
+    // COMMENTED OUT: persistence_layer_.Publish(entry);
+    // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
+    // ENTRY::element_type>(entry))));
+    lock.AdvanceToStageThree();
+    NotifyAllOfExternalWaitableEvent();
+    return result;
   }
 
   template <typename... ARGS>
   size_t DoEmplace(ARGS&&... args) {
-    PROFILER_SCOPE("DoEmplace(...)");
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    {
-      PROFILER_SCOPE("lock acquired");
-      const size_t result = list_size_;
-      {
-        PROFILER_SCOPE("emplace_back");
-        ListEmplaceBackImpl(std::forward<ARGS>(args)...);
-      }
-      const ENTRY& pushed_entry = *list_back_;
-      {
-        PROFILER_SCOPE("promote lock 1->2");
-        lock.AdvanceToStageTwo();
-      }
-      {
-        PROFILER_SCOPE("publish");
-        persistence_layer_.Publish(pushed_entry);
-      }
-      {
-        PROFILER_SCOPE("promote lock promote lock 2->3");
-        lock.AdvanceToStageThree();
-      }
-      {
-        PROFILER_SCOPE("notify");
-        NotifyAllOfExternalWaitableEvent();
-      }
-      return result;
-    }
+    const size_t result = list_size_;
+    ListEmplaceBackImpl(std::forward<ARGS>(args)...);
+    const ENTRY& pushed_entry = *list_back_;
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(pushed_entry);
+    lock.AdvanceToStageThree();
+    NotifyAllOfExternalWaitableEvent();
+    return result;
   }
 
  private:

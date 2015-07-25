@@ -56,8 +56,6 @@ SOFTWARE.
 
 #include "../../Bricks/util/clone.h"
 
-#include "../../Profiler/profiler.h"
-
 namespace blocks {
 
 template <typename MESSAGE,
@@ -143,8 +141,6 @@ class MMQImpl {
   // The thread which extracts fully populated messages from the tail of the buffer
   // and feeds them to the consumer.
   void ConsumerThread() {
-    PROFILER_SCOPE("MMQ::ConsumerThread");
-
     // The `tail` pointer is local to the procesing thread.
     size_t tail = 0u;
     size_t save_total_messages;
@@ -153,7 +149,6 @@ class MMQImpl {
       {
         // Get the next message, which is `READY` to be exported.
         // MUTEX-LOCKED, except for the condition variable part.
-        PROFILER_SCOPE("MMQ::ConsumerThread::Wait()");
         std::unique_lock<std::mutex> lock(mutex_);
         while (circular_buffer_[tail].status != Entry::READY) {
           if (destructing_) {
@@ -170,7 +165,6 @@ class MMQImpl {
       }
 
       {
-        PROFILER_SCOPE("MMQ::ConsumerThread::Dispatch()");
         // Then, export the message.
         // NO MUTEX REQUIRED.
         blocks::ss::DispatchEntryByRValue(consumer_,
@@ -180,7 +174,6 @@ class MMQImpl {
       }
 
       {
-        PROFILER_SCOPE("MMQ::ConsumerThread::Commit()");
         // Finally, mark the message entry in the buffer as `FREE` for overwriting.
         // MUTEX-LOCKED.
         {
@@ -221,9 +214,7 @@ class MMQImpl {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
-    PROFILER_SCOPE("MMQ::CircularBufferAllocate()");
     std::unique_lock<std::mutex> lock(mutex_);
-    PROFILER_SCOPE("lock acquired");
     if (destructing_) {
       return std::make_pair(0u, 0u);  // LCOV_EXCL_LINE
     }
@@ -235,7 +226,6 @@ class MMQImpl {
         return std::make_pair(0u, 0u);  // LCOV_EXCL_LINE
       }
     }
-    PROFILER_SCOPE("has empty slot");
     const size_t index = head_;
     ++total_messages_;
     Increment(head_);
@@ -246,9 +236,7 @@ class MMQImpl {
   void CircularBufferCommit(const size_t index) {
     // After the message has been copied over, mark it as `READY` for consumer.
     // MUTEX-LOCKED.
-    PROFILER_SCOPE("MMQ::CircularBufferCommit()");
     std::lock_guard<std::mutex> lock(mutex_);
-    PROFILER_SCOPE("lock acquired");
     circular_buffer_[index].status = Entry::READY;
     condition_variable_.notify_all();
   }
