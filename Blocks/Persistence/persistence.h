@@ -46,14 +46,14 @@ namespace persistence {
 
 namespace impl {
 
-class ThreeStageMutex {
+class ThreeStageMutex final {
  public:
-  struct TopLevelScopedLock {
+  struct TopLevelScopedLock final {
     explicit TopLevelScopedLock(ThreeStageMutex& parent) : guard_(parent.stage1_) {}
     std::lock_guard<std::mutex> guard_;
   };
 
-  struct ThreeStagesScopedLock {
+  struct ThreeStagesScopedLock final {
     explicit ThreeStagesScopedLock(ThreeStageMutex& parent) : parent_(parent) { parent_.stage1_.lock(); }
     void AdvanceToStageTwo() {
       assert(stage_ == 1);
@@ -93,9 +93,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
   template <typename... EXTRA_PARAMS>
   explicit Logic(EXTRA_PARAMS&&... extra_params)
       : persistence_layer_(std::forward<EXTRA_PARAMS>(extra_params)...) {
-    persistence_layer_.Replay([this](ENTRY&& e) {
-      ListPushBackImpl(std::move(e));
-    });
+    persistence_layer_.Replay([this](ENTRY&& e) { ListPushBackImpl(std::move(e)); });
   }
 
   Logic(const Logic&) = delete;

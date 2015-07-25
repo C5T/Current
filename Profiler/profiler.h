@@ -272,10 +272,10 @@ struct Profiler {
 #define PROFILER_SCOPE(scope) \
   Profiler::ScopedStateMaintainer PROFILER_SCOPE_CONCATENATE_HELPER(profiler_scope_, __LINE__)(scope)
 
-#define PROFILER_HTTP_ROUTE(port, route)                                       \
-  do {                                                                         \
-    std::cerr << "Profiler: http://localhost:" << port << route << std::endl;  \
-    HTTP(port).Register(route, Profiler::HTTPRoute);                           \
+#define PROFILER_HTTP_ROUTE(port, route)                                      \
+  do {                                                                        \
+    std::cerr << "Profiler: http://localhost:" << port << route << std::endl; \
+    HTTP(port).Register(route, Profiler::HTTPRoute);                          \
   } while (false)
 
 #endif
