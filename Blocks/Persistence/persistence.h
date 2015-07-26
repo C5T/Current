@@ -27,8 +27,8 @@ SOFTWARE.
 
 #include <cassert>
 #include <chrono>
+#include <forward_list>
 #include <functional>
-#include <list>
 #include <mutex>
 #include <thread>
 
@@ -44,13 +44,54 @@ namespace persistence {
 
 namespace impl {
 
+class ThreeStageMutex final {
+ public:
+  struct ContainerScopedLock final {
+    explicit ContainerScopedLock(ThreeStageMutex& parent) : guard_(parent.stage1_) {}
+    std::lock_guard<std::mutex> guard_;
+  };
+
+  struct ThreeStagesScopedLock final {
+    explicit ThreeStagesScopedLock(ThreeStageMutex& parent) : parent_(parent) { parent_.stage1_.lock(); }
+    void AdvanceToStageTwo() {
+      assert(stage_ == 1);
+      parent_.stage2_.lock();
+      parent_.stage1_.unlock();
+      stage_ = 2;
+    }
+    void AdvanceToStageThree() {
+      assert(stage_ == 2);
+      parent_.stage3_.lock();
+      parent_.stage2_.unlock();
+      stage_ = 3;
+    }
+    ~ThreeStagesScopedLock() {
+      assert(stage_ == 3);
+      parent_.stage3_.unlock();
+    }
+    int stage_ = 1;
+    ThreeStageMutex& parent_;
+  };
+
+  struct NotifiersScopedUniqueLock final {
+    explicit NotifiersScopedUniqueLock(ThreeStageMutex& parent) : unique_guard_(parent.stage3_) {}
+    std::unique_lock<std::mutex>& GetUniqueLock() { return unique_guard_; }
+    std::unique_lock<std::mutex> unique_guard_;
+  };
+
+ private:
+  std::mutex stage1_;  // Update internal container.
+  std::mutex stage2_;  // Publish the newly saved entry to the persistence layer.
+  std::mutex stage3_;  // Notify the listeners that a new entry is ready.
+};
+
 template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
 class Logic : bricks::WaitableTerminateSignalBulkNotifier {
  public:
   template <typename... EXTRA_PARAMS>
   explicit Logic(EXTRA_PARAMS&&... extra_params)
       : persistence_layer_(std::forward<EXTRA_PARAMS>(extra_params)...) {
-    persistence_layer_.Replay([this](ENTRY&& e) { list_.push_back(std::move(e)); });
+    persistence_layer_.Replay([this](ENTRY&& e) { ListPushBackImpl(std::move(e)); });
   }
 
   Logic(const Logic&) = delete;
@@ -61,8 +102,10 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
       bool at_end = true;
       size_t index = 0u;
       size_t total = 0u;
-      typename std::list<ENTRY>::const_iterator iterator;
-      static Cursor Next(const Cursor& current, const std::list<ENTRY>& exclusively_accessed_list) {
+      typename std::forward_list<ENTRY>::const_iterator iterator;
+      static Cursor Next(const Cursor& current,
+                         const std::forward_list<ENTRY>& exclusively_accessed_list,
+                         const size_t& exclusively_accessed_list_size) {
         Cursor next;
         if (current.at_end) {
           next.iterator = exclusively_accessed_list.begin();
@@ -73,7 +116,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
           ++next.iterator;
           next.index = current.index + 1u;
         }
-        next.total = exclusively_accessed_list.size();
+        next.total = exclusively_accessed_list_size;
         next.at_end = (next.iterator == exclusively_accessed_list.end());
         return next;
       }
@@ -82,8 +125,8 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
 
     const size_t size_at_start = [this]() {
       // LOCKED: Get the number of entries before sending them to the listener.
-      std::lock_guard<std::mutex> lock(mutex_);
-      return list_.size();
+      ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
+      return list_size_;
     }();
     bool replay_done = false;
 
@@ -121,8 +164,8 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
         }
         next = [&current, this]() {
           // LOCKED: Move the cursor forward.
-          std::lock_guard<std::mutex> lock(mutex_);
-          return Cursor::Next(current, list_);
+          ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
+          return Cursor::Next(current, list_, std::ref(list_size_));
         }();
         if (next.at_end) {
           // Wait until one of two events take place:
@@ -131,10 +174,10 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
           // 2) The listener thread has been externally requested to terminate.
           [this, &next, &waitable_terminate_signal]() {
             // LOCKED: Wait for either new data to become available or for an external termination request.
-            std::unique_lock<std::mutex> unique_lock(mutex_);
+            ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
             bricks::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
-            waitable_terminate_signal.WaitUntil(unique_lock,
-                                                [this, &next]() { return list_.size() > next.total; });
+            waitable_terminate_signal.WaitUntil(unique_lock.GetUniqueLock(),
+                                                [this, &next]() { return list_size_ > next.total; });
           }();
         }
       } while (next.at_end);
@@ -145,32 +188,43 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
  protected:
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   size_t DoPublish(const ENTRY& entry) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    list_.push_back(entry);
+    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
+    const size_t result = list_size_;
+    ListPushBackImpl(entry);
+    lock.AdvanceToStageTwo();
     persistence_layer_.Publish(entry);
+    lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return list_.size() - 1u;
+    return result;
   }
   size_t DoPublish(ENTRY&& entry) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    list_.push_back(std::move(entry));
-    persistence_layer_.Publish(static_cast<const ENTRY&>(list_.back()));
+    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
+    const size_t result = list_size_;
+    ListPushBackImpl(std::move(entry));
+    const ENTRY& pushed_entry = *list_back_;
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(pushed_entry);
+    lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return list_.size() - 1u;
+    return result;
   }
 
   template <typename DERIVED_ENTRY>
   size_t DoPublishDerived(const DERIVED_ENTRY& entry) {
     static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
-    std::lock_guard<std::mutex> lock(mutex_);
+
+    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
 
     // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
     // if `ENTRY` is the base class for `DERIVED_ENTRY`.
     // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
     std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
     *copy = bricks::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
-    list_.push_back(std::move(copy));
-    persistence_layer_.Publish(list_.back());
+    const size_t result = list_size_;
+    ListPushBackImpl(std::move(copy));
+    const ENTRY& pushed_entry = *list_back_;
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(pushed_entry);
 
     // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
     // the copy constructor. Instead, we go with Current-friendly clone implementation above.
@@ -181,26 +235,61 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
     // COMMENTED OUT: persistence_layer_.Publish(entry);
     // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
     // ENTRY::element_type>(entry))));
-
+    lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return list_.size() - 1u;
+    return result;
   }
 
   template <typename... ARGS>
   size_t DoEmplace(ARGS&&... args) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    list_.emplace_back(std::forward<ARGS>(args)...);
-    persistence_layer_.Publish(list_.back());
+    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
+    const size_t result = list_size_;
+    ListEmplaceBackImpl(std::forward<ARGS>(args)...);
+    const ENTRY& pushed_entry = *list_back_;
+    lock.AdvanceToStageTwo();
+    persistence_layer_.Publish(pushed_entry);
+    lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return list_.size() - 1u;
+    return result;
+  }
+
+ private:
+  // `std::forward_list<>` and its size + iterator management.
+  template <typename E>
+  void ListPushBackImpl(E&& e) {
+    if (list_size_) {
+      list_.insert_after(list_back_, std::forward<E>(e));
+      ++list_back_;
+    } else {
+      list_.push_front(std::forward<E>(e));
+      list_back_ = list_.begin();
+    }
+    ++list_size_;
+  }
+  template <typename... ARGS>
+  void ListEmplaceBackImpl(ARGS&&... args) {
+    if (list_size_) {
+      list_.emplace_after(list_back_, std::forward<ARGS>(args)...);
+      ++list_back_;
+    } else {
+      list_.emplace_front(std::forward<ARGS>(args)...);
+      list_back_ = list_.begin();
+    }
+    ++list_size_;
   }
 
  private:
   static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, ENTRY>::value, "");
   PERSISTENCE_LAYER persistence_layer_;
 
-  std::list<ENTRY> list_;  // `std::list<>` does not invalidate iterators as new elements are added.
-  std::mutex mutex_;
+  // `std::forward_list<>` does not invalidate iterators as new elements are added.
+  // Explicitly refrain from using an `std::list<>` due to its `.size()` complexity troubles on gcc/Linux.
+  std::forward_list<ENTRY> list_;
+  size_t list_size_ = 0;
+  typename std::forward_list<ENTRY>::const_iterator list_back_;  // Only valid iff `list_size_` > 0.
+
+  // To release the locks for the `std::forward_list<>` and the persistence layer ASAP.
+  ThreeStageMutex three_stage_mutex_;
 };
 
 // The implementation of a "publisher into nowhere".

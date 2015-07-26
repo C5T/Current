@@ -46,7 +46,6 @@ SOFTWARE.
 //      thread, MMQ DOES GUARANTEE that the order of messages published from this thread will be respected.
 //  Default behavior of MMQ is non-dropping and can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
-#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <string>
