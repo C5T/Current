@@ -46,8 +46,8 @@ namespace impl {
 
 class ThreeStageMutex final {
  public:
-  struct TopLevelScopedLock final {
-    explicit TopLevelScopedLock(ThreeStageMutex& parent) : guard_(parent.stage1_) {}
+  struct ContainerScopedLock final {
+    explicit ContainerScopedLock(ThreeStageMutex& parent) : guard_(parent.stage1_) {}
     std::lock_guard<std::mutex> guard_;
   };
 
@@ -73,8 +73,8 @@ class ThreeStageMutex final {
     ThreeStageMutex& parent_;
   };
 
-  struct InnerLevelScopedUniqueLock {
-    explicit InnerLevelScopedUniqueLock(ThreeStageMutex& parent) : unique_guard_(parent.stage3_) {}
+  struct NotifiersScopedUniqueLock final {
+    explicit NotifiersScopedUniqueLock(ThreeStageMutex& parent) : unique_guard_(parent.stage3_) {}
     std::unique_lock<std::mutex>& GetUniqueLock() { return unique_guard_; }
     std::unique_lock<std::mutex> unique_guard_;
   };
@@ -125,7 +125,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
 
     const size_t size_at_start = [this]() {
       // LOCKED: Get the number of entries before sending them to the listener.
-      ThreeStageMutex::TopLevelScopedLock lock(three_stage_mutex_);
+      ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
       return list_size_;
     }();
     bool replay_done = false;
@@ -164,7 +164,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
         }
         next = [&current, this]() {
           // LOCKED: Move the cursor forward.
-          ThreeStageMutex::TopLevelScopedLock lock(three_stage_mutex_);
+          ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
           return Cursor::Next(current, list_, std::ref(list_size_));
         }();
         if (next.at_end) {
@@ -174,7 +174,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
           // 2) The listener thread has been externally requested to terminate.
           [this, &next, &waitable_terminate_signal]() {
             // LOCKED: Wait for either new data to become available or for an external termination request.
-            ThreeStageMutex::InnerLevelScopedUniqueLock unique_lock(three_stage_mutex_);
+            ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
             bricks::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
             waitable_terminate_signal.WaitUntil(unique_lock.GetUniqueLock(),
                                                 [this, &next]() { return list_size_ > next.total; });
