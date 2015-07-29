@@ -169,7 +169,7 @@ typedef Subflow<InputPolicy::Accepts, OutputPolicy::Emits> SubflowVIA;
 class SetEmitHelper;
 class EmitterImpl {
  protected:
-  // `emit(message)`: Called by user code.
+  // `emit()` is the implementation of `emit(...)` called by the user from their code.
   void emit(int x) {
     assert(f_);
     f_(x);
