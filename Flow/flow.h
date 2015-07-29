@@ -91,7 +91,7 @@ struct CanBeSpawnedToEmit {
 };
 
 template <InputPolicy INPUT, OutputPolicy OUTPUT>
-struct SubflowRunner;  // {};
+struct SubflowRunner;
 
 template <>
 struct SubflowRunner<InputPolicy::DoesNotAccept, OutputPolicy::DoesNotEmit> {
