@@ -26,6 +26,8 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
+namespace current_flow_unittest {
+
 // `Foo`: The emitter of events. Emits the integers passed to its constructor.
 CURRENT_LHS(Foo) {
   Foo() {}
@@ -67,7 +69,11 @@ CURRENT_RHS(Baz) {
 };
 #define Baz(...) REGISTER_CURRENT_RHS(Baz, __VA_ARGS__)
 
+}  // namespace current_flow_unittest
+
 TEST(FlowLanguage, BasicSyntax) {
+  using namespace current_flow_unittest;
+
   EXPECT_EQ("Foo() | ...", (Foo()).Describe());
   EXPECT_EQ("... | Bar() | ...", (Bar()).Describe());
   EXPECT_EQ("... | Baz()", (Baz()).Describe());
@@ -94,12 +100,16 @@ TEST(FlowLanguage, BasicSyntax) {
 }
 
 TEST(FlowLanguage, SingleEdgeFlow) {
+  using namespace current_flow_unittest;
+
   std::ostringstream os;
   (Foo(1, 2, 3) | Baz(os)).Flow();
   EXPECT_EQ("1\n2\n3\n", os.str());
 }
 
 TEST(FlowLanguage, SingleChainFlow) {
+  using namespace current_flow_unittest;
+
   std::ostringstream os;
   (Foo(1, 2, 3) | Bar(10) | Bar(10) | Baz(os)).Flow();
   EXPECT_EQ("100\n200\n300\n", os.str());

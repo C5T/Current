@@ -34,6 +34,8 @@ SOFTWARE.
 using std::string;
 using std::tuple;
 
+namespace rtti_unittest {
+
 template <typename... TYPES>
 struct TypeList;
 
@@ -74,7 +76,10 @@ struct RTTITestProcessor {
   void operator()(Baz&) { s = "Baz&"; }
 };
 
+}  // namespace rtti_unittest
+
 TEST(RuntimeDispatcher, StaticCalls) {
+  using namespace rtti_unittest;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
   p(Base());
@@ -88,6 +93,7 @@ TEST(RuntimeDispatcher, StaticCalls) {
 }
 
 TEST(RuntimeDispatcher, ImmutableStaticCalls) {
+  using namespace rtti_unittest;
   const Base base;
   const Foo foo;
   const Bar bar;
@@ -105,6 +111,7 @@ TEST(RuntimeDispatcher, ImmutableStaticCalls) {
 }
 
 TEST(RuntimeDispatcher, MutableStaticCalls) {
+  using namespace rtti_unittest;
   Base base;
   Foo foo;
   Bar bar;
@@ -122,6 +129,7 @@ TEST(RuntimeDispatcher, MutableStaticCalls) {
 }
 
 TEST(RuntimeDispatcher, ImmutableWithoutDispatching) {
+  using namespace rtti_unittest;
   const Base base;
   const Foo foo;
   const Bar bar;
@@ -143,6 +151,7 @@ TEST(RuntimeDispatcher, ImmutableWithoutDispatching) {
 }
 
 TEST(RuntimeDispatcher, MutableWithoutDispatching) {
+  using namespace rtti_unittest;
   Base base;
   Foo foo;
   Bar bar;
@@ -164,6 +173,7 @@ TEST(RuntimeDispatcher, MutableWithoutDispatching) {
 }
 
 TEST(RuntimeDispatcher, ImmutableWithDispatching) {
+  using namespace rtti_unittest;
   const Base base;
   const Foo foo;
   const Bar bar;
@@ -189,6 +199,7 @@ TEST(RuntimeDispatcher, ImmutableWithDispatching) {
 }
 
 TEST(RuntimeDispatcher, MutableWithDispatching) {
+  using namespace rtti_unittest;
   Base base;
   Foo foo;
   Bar bar;
@@ -214,6 +225,7 @@ TEST(RuntimeDispatcher, MutableWithDispatching) {
 }
 
 TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
+  using namespace rtti_unittest;
   const Base base;
   const Foo foo;
   const Bar bar;
@@ -239,6 +251,7 @@ TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
 }
 
 TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
+  using namespace rtti_unittest;
   Base base;
   Foo foo;
   Bar bar;
