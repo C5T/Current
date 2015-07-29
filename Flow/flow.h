@@ -128,7 +128,7 @@ class Subflow : public SubflowRunner<INPUT, OUTPUT> {
 
   // The external, user-facing `Describe()` describes this subflow in human-readable text.
   // Applies beautification, such as "... | Logic()" and/or "Logic() | ...", for to-be-added inputs/outputs.
-  // Does not not mark this subflow as used, but marks it as the one that was described.
+  // Does not mark this subflow as used, but marks it as the one that was described.
   std::string Describe() const {
     MarkAsDescribeCalled();
     return BeautifyDescription<INPUT, OUTPUT>::run(description_);
