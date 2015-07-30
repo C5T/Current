@@ -225,7 +225,7 @@ class UserCodeLHS : public SubflowLHS {
     instance.run();
   }
 
-  // For the `CURRENT_IMPL` macro to be able to extract the underlying user-defined type.
+  // For the `CURRENT_USER_TYPE` macro to be able to extract the underlying user-defined type.
   USER_CLASS UnderlyingTypeExtractor();
 
  private:
@@ -256,7 +256,7 @@ class UserCodeVIA : public SubflowVIA {
     return [&instance](int x) { instance.f(x); };
   }
 
-  // For the `CURRENT_IMPL` macro to be able to extract the underlying user-defined type.
+  // For the `CURRENT_USER_TYPE` macro to be able to extract the underlying user-defined type.
   USER_CLASS UnderlyingTypeExtractor();
 
  private:
@@ -277,7 +277,7 @@ class UserCodeRHS : public SubflowRHS {
       : SubflowRHS(description),
         lazy_instance_(bricks::DelayedInstantiateFromTuple<USER_CLASS>(std::forward<ARGS_AS_TUPLE>(params))) {}
 
-  // For the `CURRENT_IMPL` macro to be able to extract the underlying user-defined type.
+  // For the `CURRENT_USER_TYPE` macro to be able to extract the underlying user-defined type.
   USER_CLASS UnderlyingTypeExtractor();
 
   std::function<void(int)> SpawnAcceptor(bricks::LazyInstantiationStrategy strategy) const override {
@@ -410,6 +410,6 @@ SubflowSequence<LHSInput, RHSOutput> operator|(const Subflow<LHSInput, OutputPol
                                                                         std::forward_as_tuple(__VA_ARGS__))
 
 // A helper macro to extract the underlying type of the user class, now registered as a Current Flow type.
-#define CURRENT_IMPL(name) decltype(name().UnderlyingTypeExtractor())
+#define CURRENT_USER_TYPE(name) decltype(name().UnderlyingTypeExtractor())
 
 #endif  // CURRENT_FLOW_H

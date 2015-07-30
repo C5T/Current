@@ -78,7 +78,6 @@ class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T> {
   }
 
   std::tuple<ARGS...> constructor_parameters_;
-  std::unique_ptr<T> instance_;
 };
 
 enum class LazyInstantiationStrategy { Flexible = 0, ShouldNotBeInitialized, ShouldAlreadyBeInitialized };
