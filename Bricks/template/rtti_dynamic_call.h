@@ -137,10 +137,10 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
 }
 
 // Returning values from RTTI-dispatched calls is not supported. Pass in another parameter by pointer/reference.
-template <typename TYPELIST, typename BASE, typename... ARGS>
-void RTTIDynamicCallImpl(BASE&& ref, ARGS&&... args) {
-  RTTIFindHandler<TYPELIST, BASE, ARGS...>(typeid(ref))
-      ->Handle(std::forward<BASE>(ref), std::forward<ARGS>(args)...);
+template <typename TYPELIST, typename BASE, typename... REST>
+void RTTIDynamicCallImpl(BASE&& ref, REST&&... rest) {
+  RTTIFindHandler<TYPELIST, BASE, REST...>(typeid(ref))
+      ->Handle(std::forward<BASE>(ref), std::forward<REST>(rest)...);
 }
 
 template <typename TYPELIST, typename BASE, typename... REST>
