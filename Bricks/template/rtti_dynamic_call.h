@@ -85,7 +85,8 @@ struct RTTIDispatcherBase {
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
 struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
   virtual void Handle(BASE&& ref, F&& f, ARGS&&... args) const override {
-    DERIVED* derived = dynamic_cast<DERIVED*>(&ref);
+    // `auto` to support both `const` and mutable.
+    auto derived = dynamic_cast_preserving_const<DERIVED>(&ref);
     if (derived) {
       f(*derived, std::forward<ARGS>(args)...);
     } else {
@@ -135,27 +136,18 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
   }
 }
 
-// TODO(dkorolev): Should we support return value from these calls?
-// TODO(dkorolev): Non-const `PTR` OK?
-// TODO(dkorolev): Should we require `F` to derive from a special class
-//                 that wraps all the types into pure virtual functions?
-//                 This way forgetting either of them would be a compile error.
-template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
-void RTTIDynamicCallImpl(BASE&& ref, F&& f, ARGS&&... args) {
-  RTTIFindHandler<TYPELIST, BASE, F, ARGS...>(typeid(ref))
-      ->Handle(std::forward<BASE>(ref), std::forward<F>(f), std::forward<ARGS>(args)...);
+// Returning values from RTTI-dispatched calls is not supported. Pass in another parameter by pointer/reference.
+template <typename TYPELIST, typename BASE, typename... REST>
+void RTTIDynamicCallImpl(BASE&& ref, REST&&... rest) {
+  RTTIFindHandler<TYPELIST, BASE, REST...>(typeid(ref))
+      ->Handle(std::forward<BASE>(ref), std::forward<REST>(rest)...);
 }
 
 template <typename TYPELIST, typename BASE, typename... REST>
 void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
-  typedef typename is_unique_ptr<BASE>::underlying_type ACTUAL_BASE;
-  RTTIDynamicCallImpl<TYPELIST, ACTUAL_BASE, REST...>(
-      std::forward<ACTUAL_BASE>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref))),
-      std::forward<REST>(rest)...);
+  RTTIDynamicCallImpl<TYPELIST>(is_unique_ptr<BASE>::extract(std::forward<BASE>(ref)),
+                                std::forward<REST>(rest)...);
 }
-
-// TODO(dkorolev): Consider whether RTTI-dispatched call might return a value.
-// TODO(dkorolev): Consider extending `RTTIDynamicCall` to support `const` inputs.
 
 }  // namespace metaprogramming
 }  // namespace bricks

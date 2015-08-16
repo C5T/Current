@@ -208,6 +208,10 @@ namespace rtti_unittest {
   struct A : virtual BASE {
     int a = 101;
     void foo(std::ostream& os) {
+      a += 1000;
+      os << "mutable a=" << a << std::endl;
+    }
+    void foo(std::ostream& os) const {
       os << "a=" << a << std::endl;
     }
   };
@@ -215,7 +219,7 @@ namespace rtti_unittest {
   // Inherit from `A` as well, just to show that we can.
   struct B : virtual A, virtual BASE {
     int b = 102;
-    void bar(std::ostream& os) {
+    void bar(std::ostream& os) const {
       os << "b=" << b << std::endl;
     }
   };
@@ -223,7 +227,7 @@ namespace rtti_unittest {
   // Even more "multiple" inheritance.
   struct C : virtual A, virtual B, virtual BASE {
     int c = 103;
-    void baz(std::ostream& os) {
+    void baz(std::ostream& os) const {
       os << "c=" << c << std::endl;
     }
   };
@@ -237,50 +241,67 @@ using bricks::metaprogramming::RTTIDynamicCall;
   B b;
   C c;
   
-  BASE& pa = a;
-  BASE& pb = b;
-  BASE& pc = c;
+  const BASE& const_pa = a;
+  const BASE& const_pb = b;
+  const BASE& const_pc = c;
+  
+  BASE& mutable_pa = a;
+  BASE& mutable_pb = b;
   
   struct call_foo_bar {
-    void operator()(A& a) {
+    void operator()(const A& a) {
       a.foo(os);
     }
-    void operator()(B& b) {
+    void operator()(A& a) {
+      // Mutable version.
+      a.foo(os);
+    }
+    void operator()(const B& b) {
       b.bar(os);
     }
     std::ostringstream os;
   } foo_bar;
   
-  RTTIDynamicCall<std::tuple<A, B>>(pa, foo_bar);
-  RTTIDynamicCall<std::tuple<A, B>>(pb, foo_bar);
+  RTTIDynamicCall<std::tuple<A, B>>(const_pa, foo_bar);
+  RTTIDynamicCall<std::tuple<A, B>>(const_pb, foo_bar);
   EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
+  RTTIDynamicCall<std::tuple<A, B>>(mutable_pa, foo_bar);
+  RTTIDynamicCall<std::tuple<A, B>>(mutable_pb, foo_bar);
+  EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\n", foo_bar.os.str());
+  RTTIDynamicCall<std::tuple<A, B>>(const_pa, foo_bar);
+  RTTIDynamicCall<std::tuple<A, B>>(const_pb, foo_bar);
+  EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\na=1101\nb=102\n", foo_bar.os.str());
   
   struct call_bar_baz {
-    void operator()(B& b) {
+    void operator()(const B& b) {
       b.bar(os);
     }
-    void operator()(C& c) {
+    void operator()(const C& c) {
       c.baz(os);
     }
     std::ostringstream os;
   } bar_baz;
   
-  RTTIDynamicCall<std::tuple<B, C>>(pb, bar_baz);
-  RTTIDynamicCall<std::tuple<B, C>>(pc, bar_baz);
+  RTTIDynamicCall<std::tuple<B, C>>(const_pb, bar_baz);
+  RTTIDynamicCall<std::tuple<B, C>>(const_pc, bar_baz);
   EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 
   struct call_foo_baz {
-    void operator()(A& a) {
+    void operator()(const A& a) {
       a.foo(os);
     }
-    void operator()(C& c) {
+    void operator()(A& a) {
+      // Mutable version.
+      a.foo(os);
+    }
+    void operator()(const C& c) {
       c.baz(os);
     }
-    void operator()(A& a, int x, const std::string& y) {
+    void operator()(const A& a, int x, const std::string& y) {
       a.foo(os);
       os << "[" << x << "]['" << y << "']\n";
     }
-    void operator()(C& c, int x, const std::string& y) {
+    void operator()(const C& c, int x, const std::string& y) {
       c.baz(os);
       os << "[" << x << "]['" << y << "']\n";
     }
@@ -292,12 +313,18 @@ using bricks::metaprogramming::RTTIDynamicCall;
   call_foo_baz foo_baz;
   RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
   RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
-  EXPECT_EQ("a=101\nc=103\n", foo_baz.os.str());
+  EXPECT_EQ("mutable a=1101\nc=103\n", foo_baz.os.str());
+  RTTIDynamicCall<std::tuple<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
+  RTTIDynamicCall<std::tuple<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
+  EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\n", foo_baz.os.str());
+  RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
+  RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
+  EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\nmutable a=2101\nc=103\n", foo_baz.os.str());
   
   call_foo_baz foo_baz2;
   RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz2, 1, std::string("one"));
   RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz2, 2, std::string("two"));
-  EXPECT_EQ("a=101\n[1]['one']\nc=103\n[2]['two']\n", foo_baz2.os.str());
+  EXPECT_EQ("a=2101\n[1]['one']\nc=103\n[2]['two']\n", foo_baz2.os.str());
 
 // TODO(dkorolev): Test all the corner cases with exceptions, wrong base types, etc.
 }
