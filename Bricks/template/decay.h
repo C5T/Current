@@ -32,6 +32,16 @@ SOFTWARE.
 
 namespace bricks {
 
+template <typename DERIVED, typename BASE>
+inline DERIVED* dynamic_cast_preserving_const(BASE* base) {
+  return dynamic_cast<DERIVED*>(base);
+}
+
+template <typename DERIVED, typename BASE>
+inline const DERIVED* dynamic_cast_preserving_const(const BASE* base) {
+  return dynamic_cast<const DERIVED*>(base);
+}
+
 template <typename T>
 struct rmref_impl {
   typedef typename std::remove_reference<T>::type type;
