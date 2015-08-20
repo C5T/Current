@@ -156,9 +156,9 @@ static_assert(std::is_same<TypeListImpl<int, double>,
                            Flatten<TypeListImpl<TypeListImpl<TypeListImpl<int>>, double>>>::value,
               "");
 
-// `DeduplicateImpl<TypeListImpl<LHS...>, TypeListImpl<REST...>>` appends the the types from `REST...`
+// `DeduplicateImpl<TypeListImpl<LHS...>, TypeListImpl<REST...>>` appends the types from `REST...`
 // that are not yet present in `LHS...` to `LHS...`.
-// It expects a flattened list of types as the second parameters.
+// It expects a flattened list of types as the second parameter.
 template <typename LHS, typename REST>
 struct DeduplicateImpl {};
 
