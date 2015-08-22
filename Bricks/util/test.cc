@@ -449,36 +449,41 @@ TEST(Util, WaitableTerminateSignalScopedRegisterer) {
   EXPECT_FALSE(signal2);
 }
 
-namespace bricks_util_unittest {
-
-struct Foo {
-  int foo;
-  Foo(int foo) : foo(foo) {}
-};
-
-}  // namespace bricks_util_unittest
-
 TEST(Util, LazyInstantiation) {
-  using namespace bricks_util_unittest;
+  using bricks::LazilyInstantiated;
   using bricks::DelayedInstantiate;
   using bricks::DelayedInstantiateFromTuple;
 
+  struct Foo {
+    int foo;
+    Foo(int foo) : foo(foo) {}
+  };
+
   int v = 2;
 
-  const auto foo_1 = DelayedInstantiate<Foo>(1);
-  const auto foo_x = DelayedInstantiate<Foo>(std::ref(v));
-  const auto foo_y = DelayedInstantiateFromTuple<Foo>(std::make_tuple(std::ref(v)));
-  const auto foo_z = DelayedInstantiateFromTuple<Foo>(std::forward_as_tuple(v));
+  const auto a_1 = DelayedInstantiate<Foo>(1);
+  const auto a_2 = DelayedInstantiate<Foo>(v);            // By value.
+  const auto a_3 = DelayedInstantiate<Foo>(std::ref(v));  // By reference.
 
-  EXPECT_EQ(1, foo_1.Instantiate()->foo);
-  EXPECT_EQ(2, foo_x.Instantiate()->foo);
-  EXPECT_EQ(2, foo_y.Instantiate()->foo);
-  EXPECT_EQ(2, foo_z.Instantiate()->foo);
+  const auto b_1 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(1));
+  const auto b_2 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(v));            // By value.
+  const auto b_3 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(std::ref(v)));  // By reference.
+
+  EXPECT_EQ(1, a_1.Instantiate()->foo);
+  EXPECT_EQ(2, a_2.Instantiate()->foo);
+  EXPECT_EQ(2, a_3.Instantiate()->foo);
+
+  EXPECT_EQ(1, b_1.Instantiate()->foo);
+  EXPECT_EQ(2, b_2.Instantiate()->foo);
+  EXPECT_EQ(2, b_3.Instantiate()->foo);
 
   v = 3;
 
-  EXPECT_EQ(1, foo_1.Instantiate()->foo);
-  EXPECT_EQ(3, foo_x.Instantiate()->foo);
-  EXPECT_EQ(3, foo_y.Instantiate()->foo);
-  EXPECT_EQ(3, foo_z.Instantiate()->foo);
+  EXPECT_EQ(1, a_1.Instantiate()->foo);
+  EXPECT_EQ(2, a_2.Instantiate()->foo);
+  EXPECT_EQ(3, a_3.Instantiate()->foo);
+
+  EXPECT_EQ(1, b_1.Instantiate()->foo);
+  EXPECT_EQ(2, b_2.Instantiate()->foo);
+  EXPECT_EQ(3, b_3.Instantiate()->foo);
 }
