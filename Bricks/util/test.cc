@@ -30,6 +30,7 @@ SOFTWARE.
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
+#include "lazy_instantiation.h"
 
 #include "../exception.h"
 
@@ -44,7 +45,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:42\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:43\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -61,7 +62,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:59\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:60\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -446,4 +447,38 @@ TEST(Util, WaitableTerminateSignalScopedRegisterer) {
   EXPECT_FALSE(signal1);
   EXPECT_FALSE(result2);
   EXPECT_FALSE(signal2);
+}
+
+namespace bricks_util_unittest {
+
+struct Foo {
+  int foo;
+  Foo(int foo) : foo(foo) {}
+};
+
+}  // namespace bricks_util_unittest
+
+TEST(Util, LazyInstantiation) {
+  using namespace bricks_util_unittest;
+  using bricks::DelayedInstantiate;
+  using bricks::DelayedInstantiateFromTuple;
+
+  int v = 2;
+
+  const auto foo_1 = DelayedInstantiate<Foo>(1);
+  const auto foo_x = DelayedInstantiate<Foo>(std::ref(v));
+  const auto foo_y = DelayedInstantiateFromTuple<Foo>(std::make_tuple(std::ref(v)));
+  const auto foo_z = DelayedInstantiateFromTuple<Foo>(std::forward_as_tuple(v));
+
+  EXPECT_EQ(1, foo_1.Instantiate()->foo);
+  EXPECT_EQ(2, foo_x.Instantiate()->foo);
+  EXPECT_EQ(2, foo_y.Instantiate()->foo);
+  EXPECT_EQ(2, foo_z.Instantiate()->foo);
+
+  v = 3;
+
+  EXPECT_EQ(1, foo_1.Instantiate()->foo);
+  EXPECT_EQ(3, foo_x.Instantiate()->foo);
+  EXPECT_EQ(3, foo_y.Instantiate()->foo);
+  EXPECT_EQ(3, foo_z.Instantiate()->foo);
 }

@@ -22,10 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Move into Bricks/util and add tests.
-
-#ifndef CURRENT_FLOW_LAZY_INSTANTIATION_H
-#define CURRENT_FLOW_LAZY_INSTANTIATION_H
+#ifndef BRICKS_UTIL_LAZY_INITIALIZATION_H
+#define BRICKS_UTIL_LAZY_INITIALIZATION_H
 
 #include "../port.h"
 
@@ -50,7 +48,7 @@ template <typename T, typename... ARGS>
 class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T> {
  public:
   LazyInstantiatorPerType(lazy_constructor_parameters::Variadic, ARGS&&... args)
-      : constructor_parameters_(args...) {}
+      : constructor_parameters_(std::forward<ARGS>(args)...) {}
 
   template <typename PASSED_IN_TUPLE>
   LazyInstantiatorPerType(lazy_constructor_parameters::Tuple, PASSED_IN_TUPLE&& args_as_tuple)
@@ -125,4 +123,4 @@ LazilyInstantiated<T> DelayedInstantiateFromTuple(std::tuple<ARGS...>&& args_as_
 
 }  // namespace bricks
 
-#endif  // CURRENT_FLOW_LAZY_INSTANTIATION_H
+#endif  // BRICKS_UTIL_LAZY_INITIALIZATION_H
