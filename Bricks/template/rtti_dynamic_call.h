@@ -34,6 +34,7 @@ SOFTWARE.
 
 #include "is_tuple.h"
 #include "is_unique_ptr.h"
+#include "typelist.h"
 
 #include "../exception.h"
 #include "../util/singleton.h"
@@ -116,16 +117,32 @@ struct PopulateRTTIHandlers<std::tuple<T, TS...>, BASE, F, ARGS...> {
   }
 };
 
+// Support both `std::tuple<>` and `TypeList<>` for now. -- D.K.
+// TODO(dkorolev): Revisit this once we will be retiring `std::tuple<>`'s use as typelist.
+template <typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers<TypeListImpl<>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>&) {}
+};
+
+template <typename T, typename... TS, typename BASE, typename F, typename... ARGS>
+struct PopulateRTTIHandlers<TypeListImpl<T, TS...>, BASE, F, ARGS...> {
+  static void DoIt(RTTIHandlersMap<BASE, F, ARGS...>& map) {
+    // TODO(dkorolev): Check for duplicate types in input type list? Throw an exception?
+    map[std::type_index(typeid(T))].reset(new RTTIDispatcher<BASE, F, T, ARGS...>());
+    PopulateRTTIHandlers<TypeListImpl<TS...>, BASE, F, ARGS...>::DoIt(map);
+  }
+};
+
 template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
 struct RTTIPopulatedHandlers {
-  static_assert(is_std_tuple<TYPELIST>::value, "");
+  static_assert(is_std_tuple<TYPELIST>::value || IsTypeList<TYPELIST>::value, "");
   RTTIHandlersMap<BASE, F, ARGS...> map;
   RTTIPopulatedHandlers() { PopulateRTTIHandlers<TYPELIST, BASE, F, ARGS...>::DoIt(map); }
 };
 
 template <typename TYPELIST, typename BASE, typename F, typename... ARGS>
 const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info& type) {
-  static_assert(is_std_tuple<TYPELIST>::value, "");
+  static_assert(is_std_tuple<TYPELIST>::value || IsTypeList<TYPELIST>::value, "");
   const RTTIHandlersMap<BASE, F, ARGS...>& map =
       ThreadLocalSingleton<RTTIPopulatedHandlers<TYPELIST, BASE, F, ARGS...>>().map;
   const auto handler = map.find(std::type_index(type));
@@ -151,5 +168,7 @@ void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
 
 }  // namespace metaprogramming
 }  // namespace bricks
+
+using bricks::metaprogramming::RTTIDynamicCall;
 
 #endif  // BRICKS_TEMPLATE_RTTI_DYNAMIC_CALL_H

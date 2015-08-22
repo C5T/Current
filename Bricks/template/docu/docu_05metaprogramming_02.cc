@@ -235,8 +235,6 @@ namespace rtti_unittest {
 
 TEST(TemplateMetaprogramming, RTTIDynamicCall) {
 using namespace rtti_unittest;
-using bricks::metaprogramming::RTTIDynamicCall;
-  
   A a;
   B b;
   C c;
@@ -262,14 +260,14 @@ using bricks::metaprogramming::RTTIDynamicCall;
     std::ostringstream os;
   } foo_bar;
   
-  RTTIDynamicCall<std::tuple<A, B>>(const_pa, foo_bar);
-  RTTIDynamicCall<std::tuple<A, B>>(const_pb, foo_bar);
+  RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
+  RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
   EXPECT_EQ("a=101\nb=102\n", foo_bar.os.str());
-  RTTIDynamicCall<std::tuple<A, B>>(mutable_pa, foo_bar);
-  RTTIDynamicCall<std::tuple<A, B>>(mutable_pb, foo_bar);
+  RTTIDynamicCall<TypeList<A, B>>(mutable_pa, foo_bar);
+  RTTIDynamicCall<TypeList<A, B>>(mutable_pb, foo_bar);
   EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\n", foo_bar.os.str());
-  RTTIDynamicCall<std::tuple<A, B>>(const_pa, foo_bar);
-  RTTIDynamicCall<std::tuple<A, B>>(const_pb, foo_bar);
+  RTTIDynamicCall<TypeList<A, B>>(const_pa, foo_bar);
+  RTTIDynamicCall<TypeList<A, B>>(const_pb, foo_bar);
   EXPECT_EQ("a=101\nb=102\nmutable a=1101\nb=102\na=1101\nb=102\n", foo_bar.os.str());
   
   struct call_bar_baz {
@@ -282,8 +280,8 @@ using bricks::metaprogramming::RTTIDynamicCall;
     std::ostringstream os;
   } bar_baz;
   
-  RTTIDynamicCall<std::tuple<B, C>>(const_pb, bar_baz);
-  RTTIDynamicCall<std::tuple<B, C>>(const_pc, bar_baz);
+  RTTIDynamicCall<TypeList<B, C>>(const_pb, bar_baz);
+  RTTIDynamicCall<TypeList<B, C>>(const_pc, bar_baz);
   EXPECT_EQ("b=102\nc=103\n", bar_baz.os.str());
 
   struct call_foo_baz {
@@ -311,19 +309,19 @@ using bricks::metaprogramming::RTTIDynamicCall;
   std::unique_ptr<BASE> unique_a(new A());
   std::unique_ptr<BASE> unique_c(new C());
   call_foo_baz foo_baz;
-  RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
-  RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
+  RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz);
+  RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz);
   EXPECT_EQ("mutable a=1101\nc=103\n", foo_baz.os.str());
-  RTTIDynamicCall<std::tuple<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
-  RTTIDynamicCall<std::tuple<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
+  RTTIDynamicCall<TypeList<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_a), foo_baz);
+  RTTIDynamicCall<TypeList<A, C>>(static_cast<const std::unique_ptr<BASE>&>(unique_c), foo_baz);
   EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\n", foo_baz.os.str());
-  RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz);
-  RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz);
+  RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz);
+  RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz);
   EXPECT_EQ("mutable a=1101\nc=103\na=1101\nc=103\nmutable a=2101\nc=103\n", foo_baz.os.str());
   
   call_foo_baz foo_baz2;
-  RTTIDynamicCall<std::tuple<A, C>>(unique_a, foo_baz2, 1, std::string("one"));
-  RTTIDynamicCall<std::tuple<A, C>>(unique_c, foo_baz2, 2, std::string("two"));
+  RTTIDynamicCall<TypeList<A, C>>(unique_a, foo_baz2, 1, std::string("one"));
+  RTTIDynamicCall<TypeList<A, C>>(unique_c, foo_baz2, 2, std::string("two"));
   EXPECT_EQ("a=2101\n[1]['one']\nc=103\n[2]['two']\n", foo_baz2.os.str());
 
 // TODO(dkorolev): Test all the corner cases with exceptions, wrong base types, etc.

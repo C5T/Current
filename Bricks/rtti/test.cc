@@ -36,9 +36,6 @@ using std::tuple;
 
 namespace rtti_unittest {
 
-template <typename... TYPES>
-struct TypeList;
-
 struct Base {
   // Empty constructor required by clang++.
   Base() {}
@@ -61,8 +58,6 @@ struct OtherBase {
   // Need to define at least one virtual method.
   virtual ~OtherBase() = default;
 };
-
-typedef TypeList<Foo, Bar, Baz> FooBarBazTypeList;
 
 struct RTTITestProcessor {
   string s;
