@@ -22,10 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Move into Bricks/util and add tests.
-
-#ifndef CURRENT_FLOW_LAZY_INSTANTIATION_H
-#define CURRENT_FLOW_LAZY_INSTANTIATION_H
+#ifndef BRICKS_UTIL_LAZY_INITIALIZATION_H
+#define BRICKS_UTIL_LAZY_INITIALIZATION_H
 
 #include "../port.h"
 
@@ -41,19 +39,11 @@ struct LazyInstantiatorAbstract {
   virtual std::shared_ptr<T> Instantiate() const = 0;
 };
 
-namespace lazy_constructor_parameters {
-struct Variadic {};
-struct Tuple {};
-}  // namespace lazy_constructor_parameters
-
 template <typename T, typename... ARGS>
 class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T> {
  public:
-  LazyInstantiatorPerType(lazy_constructor_parameters::Variadic, ARGS&&... args)
-      : constructor_parameters_(args...) {}
-
   template <typename PASSED_IN_TUPLE>
-  LazyInstantiatorPerType(lazy_constructor_parameters::Tuple, PASSED_IN_TUPLE&& args_as_tuple)
+  LazyInstantiatorPerType(PASSED_IN_TUPLE&& args_as_tuple)
       : constructor_parameters_(std::forward<std::tuple<ARGS...>>(args_as_tuple)) {}
 
   std::shared_ptr<T> Instantiate() const override {
@@ -110,19 +100,25 @@ class LazilyInstantiated {
 };
 
 // Construction from variadic future constructor parameters.
+// NOTE: Use `std::ref()` for parameters passed in by reference. Perfect forwarding does not play well
+// with delayed instantiation, since it captures constants as rvalue references, which do
+// get out of scope before the instantiation takes place.
 template <typename T, typename... ARGS>
-LazilyInstantiated<T> DelayedInstantiate(ARGS&&... args) {
-  return LazilyInstantiated<T>(std::move(make_unique<LazyInstantiatorPerType<T, ARGS...>>(
-      lazy_constructor_parameters::Variadic(), std::forward<ARGS>(args)...)));
+LazilyInstantiated<T> DelayedInstantiate(ARGS... args) {
+  return LazilyInstantiated<T>(
+      std::move(make_unique<LazyInstantiatorPerType<T, ARGS...>>(std::forward_as_tuple(args...))));
 }
 
 // Construction from future constructor parameters passed in as a tuple.
+// NOTE: Use `std::ref()` for parameters passed in by reference. Perfect forwarding does not play well
+// with delayed instantiation, since it captures constants as rvalue references, which do
+// get out of scope before the instantiation takes place.
 template <typename T, typename... ARGS>
 LazilyInstantiated<T> DelayedInstantiateFromTuple(std::tuple<ARGS...>&& args_as_tuple) {
-  return LazilyInstantiated<T>(std::move(make_unique<LazyInstantiatorPerType<T, ARGS...>>(
-      lazy_constructor_parameters::Tuple(), std::forward<std::tuple<ARGS...>>(args_as_tuple))));
+  return LazilyInstantiated<T>(std::move(
+      make_unique<LazyInstantiatorPerType<T, ARGS...>>(std::forward<std::tuple<ARGS...>>(args_as_tuple))));
 }
 
 }  // namespace bricks
 
-#endif  // CURRENT_FLOW_LAZY_INSTANTIATION_H
+#endif  // BRICKS_UTIL_LAZY_INITIALIZATION_H

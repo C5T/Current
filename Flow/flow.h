@@ -52,7 +52,7 @@ SOFTWARE.
 #include <tuple>
 #include <vector>
 
-#include "lazy_instantiation.h"
+#include "../Bricks/util/lazy_instantiation.h"
 
 namespace flow {
 

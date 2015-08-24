@@ -30,6 +30,7 @@ SOFTWARE.
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
+#include "lazy_instantiation.h"
 
 #include "../exception.h"
 
@@ -44,7 +45,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:42\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:43\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -61,7 +62,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:59\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:60\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -446,4 +447,43 @@ TEST(Util, WaitableTerminateSignalScopedRegisterer) {
   EXPECT_FALSE(signal1);
   EXPECT_FALSE(result2);
   EXPECT_FALSE(signal2);
+}
+
+TEST(Util, LazyInstantiation) {
+  using bricks::LazilyInstantiated;
+  using bricks::DelayedInstantiate;
+  using bricks::DelayedInstantiateFromTuple;
+
+  struct Foo {
+    int foo;
+    Foo(int foo) : foo(foo) {}
+  };
+
+  int v = 2;
+
+  const auto a_1 = DelayedInstantiate<Foo>(1);
+  const auto a_2 = DelayedInstantiate<Foo>(v);            // By value.
+  const auto a_3 = DelayedInstantiate<Foo>(std::ref(v));  // By reference.
+
+  const auto b_1 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(1));
+  const auto b_2 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(v));            // By value.
+  const auto b_3 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(std::ref(v)));  // By reference.
+
+  EXPECT_EQ(1, a_1.Instantiate()->foo);
+  EXPECT_EQ(2, a_2.Instantiate()->foo);
+  EXPECT_EQ(2, a_3.Instantiate()->foo);
+
+  EXPECT_EQ(1, b_1.Instantiate()->foo);
+  EXPECT_EQ(2, b_2.Instantiate()->foo);
+  EXPECT_EQ(2, b_3.Instantiate()->foo);
+
+  v = 3;
+
+  EXPECT_EQ(1, a_1.Instantiate()->foo);
+  EXPECT_EQ(2, a_2.Instantiate()->foo);
+  EXPECT_EQ(3, a_3.Instantiate()->foo);
+
+  EXPECT_EQ(1, b_1.Instantiate()->foo);
+  EXPECT_EQ(2, b_2.Instantiate()->foo);
+  EXPECT_EQ(3, b_3.Instantiate()->foo);
 }
