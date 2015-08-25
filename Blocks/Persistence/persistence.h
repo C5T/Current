@@ -66,8 +66,14 @@ class ThreeStageMutex final {
       stage_ = 3;
     }
     ~ThreeStagesScopedLock() {
-      assert(stage_ == 3);
-      parent_.stage3_.unlock();
+      if (stage_ == 1) {
+        parent_.stage1_.unlock();
+      } else if (stage_ == 2) {
+        parent_.stage2_.unlock();
+      } else {
+        assert(stage_ == 3);
+        parent_.stage3_.unlock();
+      }
     }
     int stage_ = 1;
     ThreeStageMutex& parent_;
