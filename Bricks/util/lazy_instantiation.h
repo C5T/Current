@@ -128,21 +128,21 @@ class LazilyInstantiated {
   LazilyInstantiated(std::unique_ptr<LazyInstantiatorAbstract<T, T_EXTRA_PARAMETER>>&& impl)
       : impl_(std::move(impl)) {}
 
-  // InstantiateAsSharedPtr as a `shared_ptr<T>`.
+  // Instantiates as a `shared_ptr<T>`.
   std::shared_ptr<T> InstantiateAsSharedPtr() const { return impl_->InstantiateAsSharedPtr(); }
   template <typename TT = T_EXTRA_PARAMETER>
   std::shared_ptr<T> InstantiateAsSharedPtrWithExtraParameter(const TT& parameter) const {
     return impl_->InstantiateAsSharedPtr(parameter);
   }
 
-  // InstantiateAsSharedPtr as a `unique_ptr<T>`.
+  // Instantiates as a `unique_ptr<T>`.
   std::unique_ptr<T> InstantiateAsUniquePtr() const { return impl_->InstantiateAsUniquePtr(); }
   template <typename TT = T_EXTRA_PARAMETER>
   std::unique_ptr<T> InstantiateAsUniquePtrWithExtraParameter(const TT& parameter) const {
     return impl_->InstantiateAsUniquePtr(parameter);
   }
 
-  // InstantiateAsSharedPtr and return a `T&`, using a passed in `shared_ptr<T>` as shared storage.
+  // Instantiates and return a `T&`, using a passed in `shared_ptr<T>` as shared storage.
   T& InstantiateAsSharedPtr(std::shared_ptr<T>& shared_instance,
                             LazyInstantiationStrategy strategy = LazyInstantiationStrategy::Flexible) const {
     if (strategy == LazyInstantiationStrategy::ShouldNotBeInitialized) {

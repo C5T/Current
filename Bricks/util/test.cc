@@ -506,7 +506,6 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ(3, b_3.InstantiateAsSharedPtr()->foo);
 
   int q = 0;
-
   const auto bar_1_q = DelayedInstantiate<Bar>(1, std::ref(q));
 
   q = 2;
@@ -515,6 +514,7 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("1:3", bar_1_q.InstantiateAsSharedPtr()->AsString());
 
   const auto bar_x_q = DelayedInstantiateWithExtraParameter<Bar, int>(std::cref(q));
+
   q = 4;
   EXPECT_EQ("100:4", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
   EXPECT_EQ("200:4", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
@@ -527,6 +527,7 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("400:5", bar_x_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
 
   const auto bar_y_q = DelayedInstantiateWithExtraParameterFromTuple<Bar, int>(std::make_tuple(std::cref(q)));
+
   q = 6;
   EXPECT_EQ("100:6", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
   EXPECT_EQ("200:6", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
