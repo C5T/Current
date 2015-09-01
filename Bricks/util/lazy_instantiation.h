@@ -142,7 +142,7 @@ class LazilyInstantiated {
     return impl_->InstantiateAsUniquePtr(parameter);
   }
 
-  // Instantiates and return a `T&`, using a passed in `shared_ptr<T>` as shared storage.
+  // Instantiates and returns a `T&`, using a passed in `shared_ptr<T>` as shared storage.
   T& InstantiateAsSharedPtr(std::shared_ptr<T>& shared_instance,
                             LazyInstantiationStrategy strategy = LazyInstantiationStrategy::Flexible) const {
     if (strategy == LazyInstantiationStrategy::ShouldNotBeInitialized) {
