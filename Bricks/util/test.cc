@@ -33,6 +33,7 @@ SOFTWARE.
 #include "lazy_instantiation.h"
 
 #include "../exception.h"
+#include "../strings/printf.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
@@ -45,7 +46,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:43\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:44\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -62,7 +63,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:60\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:61\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -453,37 +454,87 @@ TEST(Util, LazyInstantiation) {
   using bricks::LazilyInstantiated;
   using bricks::DelayedInstantiate;
   using bricks::DelayedInstantiateFromTuple;
+  using bricks::DelayedInstantiateWithExtraParameter;
+  using bricks::DelayedInstantiateWithExtraParameterFromTuple;
 
   struct Foo {
     int foo;
     Foo(int foo) : foo(foo) {}
   };
 
+  struct Bar {
+    int prefix;
+    int bar;
+    Bar(int prefix, int bar) : prefix(prefix), bar(bar) {}
+    std::string AsString() const { return bricks::strings::Printf("%d:%d", prefix, bar); }
+  };
+
   int v = 2;
 
   const auto a_1 = DelayedInstantiate<Foo>(1);
-  const auto a_2 = DelayedInstantiate<Foo>(v);            // By value.
-  const auto a_3 = DelayedInstantiate<Foo>(std::ref(v));  // By reference.
+  const auto a_2 = DelayedInstantiate<Foo>(v);             // By value.
+  const auto a_3 = DelayedInstantiate<Foo>(std::cref(v));  // By reference.
 
   const auto b_1 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(1));
-  const auto b_2 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(v));            // By value.
-  const auto b_3 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(std::ref(v)));  // By reference.
+  const auto b_2 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(v));             // By value.
+  const auto b_3 = DelayedInstantiateFromTuple<Foo>(std::make_tuple(std::cref(v)));  // By reference.
 
-  EXPECT_EQ(1, a_1.Instantiate()->foo);
-  EXPECT_EQ(2, a_2.Instantiate()->foo);
-  EXPECT_EQ(2, a_3.Instantiate()->foo);
+  EXPECT_EQ(1, a_1.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(2, a_2.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(2, a_3.InstantiateAsSharedPtr()->foo);
 
-  EXPECT_EQ(1, b_1.Instantiate()->foo);
-  EXPECT_EQ(2, b_2.Instantiate()->foo);
-  EXPECT_EQ(2, b_3.Instantiate()->foo);
+  EXPECT_EQ(1, b_1.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(2, b_2.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(2, b_3.InstantiateAsSharedPtr()->foo);
+
+  EXPECT_EQ(1, a_1.InstantiateAsUniquePtr()->foo);
+  EXPECT_EQ(2, a_2.InstantiateAsUniquePtr()->foo);
+  EXPECT_EQ(2, a_3.InstantiateAsUniquePtr()->foo);
+
+  EXPECT_EQ(1, b_1.InstantiateAsUniquePtr()->foo);
+  EXPECT_EQ(2, b_2.InstantiateAsUniquePtr()->foo);
+  EXPECT_EQ(2, b_3.InstantiateAsUniquePtr()->foo);
 
   v = 3;
 
-  EXPECT_EQ(1, a_1.Instantiate()->foo);
-  EXPECT_EQ(2, a_2.Instantiate()->foo);
-  EXPECT_EQ(3, a_3.Instantiate()->foo);
+  EXPECT_EQ(1, a_1.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(2, a_2.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(3, a_3.InstantiateAsSharedPtr()->foo);
 
-  EXPECT_EQ(1, b_1.Instantiate()->foo);
-  EXPECT_EQ(2, b_2.Instantiate()->foo);
-  EXPECT_EQ(3, b_3.Instantiate()->foo);
+  EXPECT_EQ(1, b_1.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(2, b_2.InstantiateAsSharedPtr()->foo);
+  EXPECT_EQ(3, b_3.InstantiateAsSharedPtr()->foo);
+
+  int q = 0;
+
+  const auto bar_1_q = DelayedInstantiate<Bar>(1, std::ref(q));
+
+  q = 2;
+  EXPECT_EQ("1:2", bar_1_q.InstantiateAsSharedPtr()->AsString());
+  q = 3;
+  EXPECT_EQ("1:3", bar_1_q.InstantiateAsSharedPtr()->AsString());
+
+  const auto bar_x_q = DelayedInstantiateWithExtraParameter<Bar, int>(std::cref(q));
+  q = 4;
+  EXPECT_EQ("100:4", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
+  EXPECT_EQ("200:4", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
+  EXPECT_EQ("300:4", bar_x_q.InstantiateAsUniquePtrWithExtraParameter(300)->AsString());
+  EXPECT_EQ("400:4", bar_x_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
+  q = 5;
+  EXPECT_EQ("100:5", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
+  EXPECT_EQ("200:5", bar_x_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
+  EXPECT_EQ("300:5", bar_x_q.InstantiateAsUniquePtrWithExtraParameter(300)->AsString());
+  EXPECT_EQ("400:5", bar_x_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
+
+  const auto bar_y_q = DelayedInstantiateWithExtraParameterFromTuple<Bar, int>(std::make_tuple(std::cref(q)));
+  q = 6;
+  EXPECT_EQ("100:6", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
+  EXPECT_EQ("200:6", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
+  EXPECT_EQ("300:6", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(300)->AsString());
+  EXPECT_EQ("400:6", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
+  q = 7;
+  EXPECT_EQ("100:7", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(100)->AsString());
+  EXPECT_EQ("200:7", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
+  EXPECT_EQ("300:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(300)->AsString());
+  EXPECT_EQ("400:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
 }
