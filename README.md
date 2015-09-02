@@ -1,7 +1,7 @@
 # Current
 
-#### [Flow](https://github.com/dkorolev/Current/tree/current_flow/Flow/README.md)
-A simple language to define continuous data pipelines.
+#### [RipCurrent](https://github.com/dkorolev/Current/tree/new_flow/RipCurrent/README.md)
+The language to define continuous data pipelines.
 
 #### [Sherlock](https://github.com/C5T/Current/blob/master/Sherlock/README.md)
 Structured, append-only, immutable data persistence layer with publish-subscribe.
