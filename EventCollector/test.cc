@@ -23,7 +23,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include <regex>
 #include <string>
 #include <sstream>
 #include <thread>
@@ -86,8 +85,13 @@ TEST(EventCollector, Smoke) {
   }
 
   // Strip headers from test output since they are platform dependent.
-  std::regex headers("\"h\":\\[.*\\],");
-  std::string log = std::regex_replace(os.str(), headers, "");
+  // Using dumb way since regex-es are broken in GCC 4.8.
+  std::string log = os.str();
+  size_t first = 0u;
+  while ((first = log.find("\"h\":[")) != std::string::npos) {
+    size_t last = log.find("],", first);
+    log.replace(first, last - first + 2u, "");
+  }
 
   EXPECT_EQ(
       "{\"log_entry\":{\"t\":12,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
