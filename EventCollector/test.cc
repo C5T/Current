@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include <regex>
 #include <string>
 #include <sstream>
 #include <thread>
@@ -83,12 +85,16 @@ TEST(EventCollector, Smoke) {
     ;  // Spin lock.
   }
 
+  // Strip headers from test output since they are platform dependent.
+  std::regex headers("\"h\":\\[.*\\],");
+  std::string log = std::regex_replace(os.str(), headers, "");
+
   EXPECT_EQ(
       "{\"log_entry\":{\"t\":12,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":112,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":178,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":278,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n",
-      os.str());
+      log);
   EXPECT_EQ(4u, er.count);
   EXPECT_EQ(278u, er.last_t);
 }
@@ -113,18 +119,15 @@ TEST(EventCollector, Body) {
   EXPECT_EQ("Yay!", ParseJSON<LogEntry>(os.str()).b);
 }
 
-// TODO(dkorolev): Add extra headers support into `net/api/types.h`. And test them on Mac.
-#if 0
-TEST(EventCollector, ExtraHeaders) {
+TEST(EventCollector, Headers) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, "/ctfo", "=");
+  EventCollectorHTTPServer collector(
+      FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/ctfo", "=");
   EXPECT_EQ("=",
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")
                      .SetHeader("baz", "meh")).body);
   auto e = ParseJSON<LogEntry>(os.str());
-  EXPECT_EQ(2u, e.h.size());
   EXPECT_EQ("bar", e.h["foo"]);
   EXPECT_EQ("meh", e.h["baz"]);
 }
-#endif

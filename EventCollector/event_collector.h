@@ -42,11 +42,9 @@ struct LogEntry {
   std::string m;                         // HTTP method.
   std::string u;                         // URL without fragments and query parameters.
   std::map<std::string, std::string> q;  // URL query parameters.
+  std::map<std::string, std::string> h;  // HTTP headers.
   std::string b;                         // HTTP body.
   std::string f;                         // URL fragment.
-
-  // TODO(dkorolev): Add HTTP headers support to Bricks `net/api/types.h` HTTP client.
-  // std::map<std::string, std::string> h;  // Extra HTTP headers.
 
   // TODO(dkorolev): Inbound IP address.
   // TODO(dkorolev): Everything else we can/should think of.
@@ -54,7 +52,7 @@ struct LogEntry {
 
   template <typename A>
   void serialize(A& ar) {
-    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(b), CEREAL_NVP(f));
+    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(h), CEREAL_NVP(b), CEREAL_NVP(f));
   }
 };
 
@@ -84,6 +82,7 @@ class EventCollectorHTTPServer {
         entry.m = r.method;
         entry.u = r.url.url_without_parameters;
         entry.q = r.url.AllQueryParameters();
+        entry.h = r.headers;
         entry.b = r.body;
         entry.f = r.url.fragment;
         // TODO(dkorolev): HTTP headers come here.

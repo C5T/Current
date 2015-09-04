@@ -50,6 +50,7 @@ template <typename T>
 struct HTTPRequestBase {
   std::string url;
   std::string custom_user_agent = "";
+  bricks::net::HTTPHeadersType custom_headers;
   bool allow_redirects = false;
 
   HTTPRequestBase(const std::string& url) : url(url) {}
@@ -61,6 +62,11 @@ struct HTTPRequestBase {
 
   T& AllowRedirects(bool allow_redirects_setting = true) {
     allow_redirects = allow_redirects_setting;
+    return static_cast<T&>(*this);
+  }
+
+  T& SetHeader(const std::string& key, const std::string& value) {
+    custom_headers.emplace_back(key, value);
     return static_cast<T&>(*this);
   }
 };
