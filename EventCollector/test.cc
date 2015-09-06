@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +42,7 @@ using bricks::strings::Printf;
 
 struct EventReceiver {
   EventReceiver() : count(0u), last_t(0ull) {}
-  void OnEvent(const LogEntry& e) {
+  void OnEvent(const LogEntryWithHeaders& e) {
     ++count;
     last_t = e.t;
   }
@@ -83,12 +84,21 @@ TEST(EventCollector, Smoke) {
     ;  // Spin lock.
   }
 
+  // Strip headers from test output since they are platform dependent.
+  // Using dumb way since regex-es are broken in GCC 4.8.
+  std::string log = os.str();
+  size_t first = 0u;
+  while ((first = log.find("\"h\":[")) != std::string::npos) {
+    size_t last = log.find("],", first);
+    log.replace(first, last - first + 2u, "");
+  }
+
   EXPECT_EQ(
       "{\"log_entry\":{\"t\":12,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":112,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":178,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n"
       "{\"log_entry\":{\"t\":278,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n",
-      os.str());
+      log);
   EXPECT_EQ(4u, er.count);
   EXPECT_EQ(278u, er.last_t);
 }
@@ -99,7 +109,7 @@ TEST(EventCollector, QueryParameters) {
       FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
-  auto e = ParseJSON<LogEntry>(os.str());
+  auto e = ParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ(2u, e.q.size());
   EXPECT_EQ("v", e.q["k"]);
   EXPECT_EQ("42", e.q["answer"]);
@@ -110,21 +120,18 @@ TEST(EventCollector, Body) {
   EventCollectorHTTPServer collector(
       FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
-  EXPECT_EQ("Yay!", ParseJSON<LogEntry>(os.str()).b);
+  EXPECT_EQ("Yay!", ParseJSON<LogEntryWithHeaders>(os.str()).b);
 }
 
-// TODO(dkorolev): Add extra headers support into `net/api/types.h`. And test them on Mac.
-#if 0
-TEST(EventCollector, ExtraHeaders) {
+TEST(EventCollector, Headers) {
   std::ostringstream os;
-  EventCollectorHTTPServer collector(FLAGS_event_collector_test_port, os, "/ctfo", "=");
+  EventCollectorHTTPServer collector(
+      FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/ctfo", "=");
   EXPECT_EQ("=",
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")
                      .SetHeader("baz", "meh")).body);
-  auto e = ParseJSON<LogEntry>(os.str());
-  EXPECT_EQ(2u, e.h.size());
+  auto e = ParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ("bar", e.h["foo"]);
   EXPECT_EQ("meh", e.h["baz"]);
 }
-#endif

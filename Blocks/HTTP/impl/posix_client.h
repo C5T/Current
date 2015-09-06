@@ -76,6 +76,9 @@ class HTTPClientPOSIX final {
       if (!request_user_agent_.empty()) {
         connection.BlockingWrite("User-Agent: " + request_user_agent_ + "\r\n", true);
       }
+      for (const auto& h : request_headers_) {
+        connection.BlockingWrite(h.first + ": " + h.second + "\r\n", true);
+      }
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
       }
@@ -116,6 +119,7 @@ class HTTPClientPOSIX final {
   bool request_has_body_ = false;  // TODO(dkorolev): Support this in ObjectiveC and Java code as well.
   std::string request_body_contents_ = "";
   std::string request_user_agent_ = "";
+  bricks::net::HTTPHeadersType request_headers_;
 
   // Output parameters.
   bricks::net::HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;
@@ -130,17 +134,15 @@ struct ImplWrapper<HTTPClientPOSIX> {
   inline static void PrepareInput(const GET& request, HTTPClientPOSIX& client) {
     client.request_method_ = "GET";
     client.request_url_ = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;
-    }
+    client.request_user_agent_ = request.custom_user_agent;
+    client.request_headers_ = request.custom_headers;
   }
 
   inline static void PrepareInput(const POST& request, HTTPClientPOSIX& client) {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
-    }
+    client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    client.request_headers_ = request.custom_headers;
     client.request_has_body_ = true;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
@@ -149,9 +151,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientPOSIX& client) {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
-    }
+    client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    client.request_headers_ = request.custom_headers;
     client.request_has_body_ = true;
     client.request_body_contents_ =
         bricks::FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
@@ -161,9 +162,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
   inline static void PrepareInput(const PUT& request, HTTPClientPOSIX& client) {
     client.request_method_ = "PUT";
     client.request_url_ = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
-    }
+    client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    client.request_headers_ = request.custom_headers;
     client.request_has_body_ = true;
     client.request_body_contents_ = request.body;
     client.request_body_content_type_ = request.content_type;
@@ -172,9 +172,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
   inline static void PrepareInput(const DELETE& request, HTTPClientPOSIX& client) {
     client.request_method_ = "DELETE";
     client.request_url_ = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
-    }
+    client.request_user_agent_ = request.custom_user_agent;  // LCOV_EXCL_LINE  -- tested in GET above.
+    client.request_headers_ = request.custom_headers;
   }
 
   inline static void PrepareInput(const KeepResponseInMemory&, HTTPClientPOSIX&) {}

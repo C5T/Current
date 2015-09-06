@@ -36,7 +36,7 @@ SOFTWARE.
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/cerealize/cerealize.h"
 
-// An entry to log. Keeps everything that is easy to dig out. :-)
+// Initial version of `LogEntry` structure.
 struct LogEntry {
   uint64_t t;                            // Unix epoch time in milliseconds.
   std::string m;                         // HTTP method.
@@ -45,8 +45,21 @@ struct LogEntry {
   std::string b;                         // HTTP body.
   std::string f;                         // URL fragment.
 
-  // TODO(dkorolev): Add HTTP headers support to Bricks `net/api/types.h` HTTP client.
-  // std::map<std::string, std::string> h;  // Extra HTTP headers.
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(b), CEREAL_NVP(f));
+  }
+};
+
+// Improved version with HTTP headers.
+struct LogEntryWithHeaders {
+  uint64_t t;                            // Unix epoch time in milliseconds.
+  std::string m;                         // HTTP method.
+  std::string u;                         // URL without fragments and query parameters.
+  std::map<std::string, std::string> q;  // URL query parameters.
+  std::map<std::string, std::string> h;  // HTTP headers.
+  std::string b;                         // HTTP body.
+  std::string f;                         // URL fragment.
 
   // TODO(dkorolev): Inbound IP address.
   // TODO(dkorolev): Everything else we can/should think of.
@@ -54,7 +67,7 @@ struct LogEntry {
 
   template <typename A>
   void serialize(A& ar) {
-    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(b), CEREAL_NVP(f));
+    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(h), CEREAL_NVP(b), CEREAL_NVP(f));
   }
 };
 
@@ -65,7 +78,7 @@ class EventCollectorHTTPServer {
                            const bricks::time::MILLISECONDS_INTERVAL tick_interval_ms,
                            const std::string& route = "/log",
                            const std::string& response_text = "OK\n",
-                           std::function<void(const LogEntry&)> callback = {})
+                           std::function<void(const LogEntryWithHeaders&)> callback = {})
       : http_port_(http_port),
         ostream_(ostream),
         route_(route),
@@ -77,17 +90,16 @@ class EventCollectorHTTPServer {
         events_pushed_(0u),
         timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
     HTTP(http_port_).Register(route_, [this](Request r) {
-      LogEntry entry;
+      LogEntryWithHeaders entry;
       {
         std::lock_guard<std::mutex> lock(mutex_);
         entry.t = static_cast<uint64_t>(bricks::time::Now());
         entry.m = r.method;
         entry.u = r.url.url_without_parameters;
         entry.q = r.url.AllQueryParameters();
+        entry.h = r.headers;
         entry.b = r.body;
         entry.f = r.url.fragment;
-        // TODO(dkorolev): HTTP headers come here.
-        // entry.h = { ... }
         ostream_ << JSON(entry, "log_entry") << std::endl;
         ++events_pushed_;
         last_event_t_ = entry.t;
@@ -113,7 +125,7 @@ class EventCollectorHTTPServer {
       const uint64_t now = static_cast<uint64_t>(bricks::time::Now());
       const uint64_t dt = now - last_event_t_;
       if (dt >= tick_interval_ms_) {
-        LogEntry entry;
+        LogEntryWithHeaders entry;
         entry.t = now;
         entry.m = "TICK";
         ostream_ << JSON(entry, "log_entry") << std::endl;
@@ -137,7 +149,7 @@ class EventCollectorHTTPServer {
   std::ostream& ostream_;
   const std::string route_;
   const std::string response_text_;
-  std::function<void(const LogEntry&)> callback_;
+  std::function<void(const LogEntryWithHeaders&)> callback_;
 
   const uint64_t tick_interval_ms_;
   std::atomic_bool send_ticks_;

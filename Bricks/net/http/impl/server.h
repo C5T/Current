@@ -82,7 +82,16 @@ class HTTPDefaultHelper {
   const HeadersType& headers() const { return headers_; }
 
  protected:
-  inline void OnHeader(const char* key, const char* value) { headers_[key] = value; }
+  inline void OnHeader(const char* key, const char* value) {
+    // https://tools.ietf.org/html/rfc7230#section-3.2
+    // TODO(mzhurovich): proper support of `Set-Cookie` via additional `cookies` member.
+    if (headers_.count(key)) {
+      headers_[key] += ",";
+      headers_[key] += value;
+    } else {
+      headers_[key] = value;
+    }
+  }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 

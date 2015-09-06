@@ -53,6 +53,7 @@ struct Request final {
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const URL& url;
   const std::string method;
+  const bricks::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const bricks::time::EPOCH_MILLISECONDS timestamp;
 
@@ -62,6 +63,7 @@ struct Request final {
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
         method(http_data.Method()),
+        headers(http_data.headers()),
         body(http_data.Body()),
         timestamp(bricks::time::Now()) {}
 
@@ -72,6 +74,7 @@ struct Request final {
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
         method(http_data.Method()),
+        headers(http_data.headers()),
         body(http_data.Body()),
         timestamp(rhs.timestamp) {}
 

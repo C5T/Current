@@ -44,6 +44,7 @@ struct HTTPClientApple {
   std::string url_received = "";
   int http_response_code = -1;
   std::string method = "";
+  bricks::net::HTTPHeadersType headers;
   std::string post_body = "";
   std::string post_file = "";
   std::string received_file = "";
@@ -62,17 +63,15 @@ struct ImplWrapper<HTTPClientApple> {
   inline static void PrepareInput(const GET& request, HTTPClientApple& client) {
     client.method = "GET";
     client.url_requested = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.user_agent = request.custom_user_agent;
-    }
+    client.user_agent = request.custom_user_agent;
+    client.headers = request.custom_headers;
   }
 
   inline static void PrepareInput(const POST& request, HTTPClientApple& client) {
     client.method = "POST";
     client.url_requested = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.user_agent = request.custom_user_agent;
-    }
+    client.user_agent = request.custom_user_agent;
+    client.headers = request.custom_headers;
     client.post_body = request.body;
     client.content_type = request.content_type;
   }
@@ -80,9 +79,8 @@ struct ImplWrapper<HTTPClientApple> {
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientApple& client) {
     client.method = "POST";
     client.url_requested = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.user_agent = request.custom_user_agent;
-    }
+    client.user_agent = request.custom_user_agent;
+    client.headers = request.custom_headers;
     client.post_file = request.file_name;
     client.content_type = request.content_type;
   }
@@ -90,9 +88,8 @@ struct ImplWrapper<HTTPClientApple> {
   inline static void PrepareInput(const PUT& request, HTTPClientApple& client) {
     client.method = "PUT";
     client.url_requested = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.user_agent = request.custom_user_agent;
-    }
+    client.user_agent = request.custom_user_agent;
+    client.headers = request.custom_headers;
     client.post_body = request.body;
     client.content_type = request.content_type;
   }
@@ -100,9 +97,8 @@ struct ImplWrapper<HTTPClientApple> {
   inline static void PrepareInput(const DELETE& request, HTTPClientApple& client) {
     client.method = "DELETE";
     client.url_requested = request.url;
-    if (!request.custom_user_agent.empty()) {
-      client.user_agent = request.custom_user_agent;
-    }
+    client.user_agent = request.custom_user_agent;
+    client.headers = request.custom_headers;
   }
 
   // Populating the fields of HTTPClientApple given response configuration parameters.

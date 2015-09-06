@@ -63,6 +63,11 @@ bool blocks::HTTPClientApple::Go() {
       [request setValue:[NSString stringWithUTF8String:user_agent.c_str()] forHTTPHeaderField:@"User-Agent"];
     }
 
+    for (const auto& h : headers) {
+      [request setValue:[NSString stringWithUTF8String:h.second.c_str()]
+          forHTTPHeaderField:[NSString stringWithUTF8String:h.first.c_str()]];
+    }
+
     if (!method.empty()) {
       request.HTTPMethod = [NSString stringWithUTF8String:method.c_str()];
     } else {
