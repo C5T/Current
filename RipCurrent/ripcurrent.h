@@ -300,7 +300,7 @@ template <InputPolicy INPUT, OutputPolicy OUTPUT>
 class AbstractCurrent : public SharedUniqueDefinition<INPUT, OUTPUT> {
  public:
   typedef SharedUniqueDefinition<INPUT, OUTPUT> T_DEFINITION;
-  static constexpr InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
+  constexpr static InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
 
   AbstractCurrent(T_DEFINITION definition) : T_DEFINITION(definition) {}
   virtual ~AbstractCurrent() = default;
@@ -320,7 +320,7 @@ template <InputPolicy INPUT, OutputPolicy OUTPUT>
 class SharedCurrent : public AbstractCurrent<INPUT, OUTPUT> {
  public:
   typedef AbstractCurrent<INPUT, OUTPUT> T_BASE;
-  static constexpr InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
+  constexpr static InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
 
   explicit SharedCurrent(std::shared_ptr<T_BASE> spawner)
       : T_BASE(spawner->GetUniqueDefinition()), shared_impl_spawner_(spawner) {}
@@ -350,7 +350,7 @@ class SharedCurrent : public AbstractCurrent<INPUT, OUTPUT> {
 
 // Helper code to initialize the next handler in the chain before the user code is constructed.
 // TL;DR: The user should be able to use `emit()` from constructor, no strings attached. Thus,
-// the destination fo this `emit()` should be initialized before the user code is.
+// the destination for this `emit()` should be initialized before the user code is.
 template <InputPolicy INPUT>
 class NextHandlerContainer {
  public:
@@ -414,7 +414,7 @@ class UserClassBase : public UserClassTopLevelBase<INPUT, OUTPUT>,
 template <InputPolicy INPUT, OutputPolicy OUTPUT, typename USER_CLASS>
 class GenericUserClassInstantiator : public AbstractCurrent<INPUT, OUTPUT> {
  public:
-  static constexpr InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
+  constexpr static InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
 
   template <class ARGS_AS_TUPLE>
   GenericUserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
@@ -564,7 +564,7 @@ class AbstractCurrentSequence : public AbstractCurrent<INPUT, OUTPUT> {
 template <InputPolicy INPUT, OutputPolicy OUTPUT>
 class GenericCurrentSequence : public AbstractCurrentSequence<INPUT, OUTPUT> {
  public:
-  static constexpr InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
+  constexpr static InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
 
   GenericCurrentSequence(SharedCurrent<INPUT, OutputPolicy::Emits> from,
                          SharedCurrent<InputPolicy::Accepts, OUTPUT> into)
