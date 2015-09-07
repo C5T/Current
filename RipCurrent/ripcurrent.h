@@ -302,7 +302,7 @@ class AbstractCurrent : public SharedUniqueDefinition<INPUT, OUTPUT> {
   typedef SharedUniqueDefinition<INPUT, OUTPUT> T_DEFINITION;
   constexpr static InputPolicy NEXT_INPUT = InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT;
 
-  AbstractCurrent(T_DEFINITION definition) : T_DEFINITION(definition) {}
+  explicit AbstractCurrent(T_DEFINITION definition) : T_DEFINITION(definition) {}
   virtual ~AbstractCurrent() = default;
   virtual std::shared_ptr<InstanceBeingRun<INPUT, OUTPUT>> SpawnAndRun(
       std::shared_ptr<EntriesConsumer<NEXT_INPUT>>) const = 0;
@@ -641,7 +641,7 @@ SharedCurrent<INPUT, OUTPUT> operator|(SharedCurrent<INPUT, OutputPolicy::Emits>
   ripcurrent::UserClass<InputPolicy::Accepts, OutputPolicy::Emits, T>( \
       ripcurrent::Definition(#T "(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple(__VA_ARGS__))
 
-// A helper macro to extract the underlying type of the user class, now registered as a RipCurrent blovk type.
+// A helper macro to extract the underlying type of the user class, now registered as a RipCurrent block type.
 #define CURRENT_USER_TYPE(T) decltype(T.UnderlyingType())
 
 // Types exposed to the end user.
