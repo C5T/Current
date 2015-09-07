@@ -583,7 +583,7 @@ class GenericCurrentSequence : public AbstractCurrentSequence<INPUT, OUTPUT> {
     void Accept(const ActualOrDummyEntryType<INPUT>& x) override { from_->Accept(x); }
 
    private:
-    // Construction / descruction order matters: { next, into, from }.
+    // Construction / destruction order matters: { next, into, from }.
     std::shared_ptr<EntriesConsumer<NEXT_INPUT>> next_;
     std::shared_ptr<InstanceBeingRun<InputPolicy::Accepts, OUTPUT>> into_;
     std::shared_ptr<InstanceBeingRun<INPUT, OutputPolicy::Emits>> from_;
