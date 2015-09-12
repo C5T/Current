@@ -179,6 +179,13 @@ struct YodaData {
   }
 
   template <typename ENTRY>
+  void Delete(ENTRY&& entry) {
+    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
+    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>().Delete(
+        std::forward<ENTRY>(entry));
+  }
+
+  template <typename ENTRY>
   YodaData& operator<<(ENTRY&& entry) {
     typedef bricks::decay<ENTRY> DECAYED_ENTRY;
     Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>() << std::forward<ENTRY>(entry);
