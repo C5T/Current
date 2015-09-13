@@ -164,6 +164,10 @@ struct Container<YT, Dictionary<ENTRY>> {
     }
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
+    // Non-throwing deleter.
+    // TODO(dkorolev): Persist the deletion and test it.
+    void Delete(bricks::copy_free<typename YET::T_KEY> key) { mutable_.map_.erase(key); }
+
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {
       // TODO(dkorolev): Make one, not two lookups in `map`.

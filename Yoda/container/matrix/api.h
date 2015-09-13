@@ -303,6 +303,24 @@ struct Container<YT, Matrix<ENTRY>> {
     }
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
+    // Non-throwing deleter.
+    // TODO(dkorolev): Persist the deletion and test it.
+    void Delete(bricks::copy_free<typename YET::T_ROW> row, bricks::copy_free<typename YET::T_COL> col) {
+      // Erase the entry if it existed.
+      mutable_.map_.erase(ROW_COL(row, col));
+      // Erase the pointer to the entry from forward and transposed matrices.
+      // Erase empty cols/rows too, so that `.size()` for rows/cols is always correct
+      // when it comes to not counting empty cols/rows.
+      mutable_.forward_[row].erase(col);
+      mutable_.transposed_[col].erase(row);
+      if (mutable_.forward_[row].empty()) {
+        mutable_.forward_.erase(row);
+      }
+      if (mutable_.transposed_[col].empty()) {
+        mutable_.transposed_.erase(col);
+      }
+    }
+
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {
       const auto key = ROW_COL(GetRow(entry), GetCol(entry));
