@@ -62,8 +62,9 @@ SOFTWARE.
 #include <vector>
 #include <tuple>
 
-#include "../Bricks/util/singleton.h"
+#include "../Bricks/template/typelist.h"
 #include "../Bricks/util/lazy_instantiation.h"
+#include "../Bricks/util/singleton.h"
 
 namespace ripcurrent {
 
@@ -618,13 +619,13 @@ SharedCurrent<INPUT, OUTPUT> operator|(SharedCurrent<INPUT, OutputPolicy::Emits>
 // Define a user class ready to be used as part of RipCurrent data pipeline.
 #define CURRENT_LHS(T, ...) \
   struct T final            \
-      : ripcurrent::UserClassBase<InputPolicy::DoesNotAccept, OutputPolicy::Emits, T, std::tuple<__VA_ARGS__>>
+      : ripcurrent::UserClassBase<InputPolicy::DoesNotAccept, OutputPolicy::Emits, T, TypeList<__VA_ARGS__>>
 #define CURRENT_RHS(T, ...) \
   struct T final            \
-      : ripcurrent::UserClassBase<InputPolicy::Accepts, OutputPolicy::DoesNotEmit, T, std::tuple<__VA_ARGS__>>
+      : ripcurrent::UserClassBase<InputPolicy::Accepts, OutputPolicy::DoesNotEmit, T, TypeList<__VA_ARGS__>>
 #define CURRENT_VIA(T, ...) \
   struct T final            \
-      : ripcurrent::UserClassBase<InputPolicy::Accepts, OutputPolicy::Emits, T, std::tuple<__VA_ARGS__>>
+      : ripcurrent::UserClassBase<InputPolicy::Accepts, OutputPolicy::Emits, T, TypeList<__VA_ARGS__>>
 
 // Declare a user class as a source of data entries.
 #define REGISTER_LHS(T, ...)                                           \

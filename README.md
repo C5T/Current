@@ -1,6 +1,6 @@
 # Current
 
-#### [RipCurrent](https://github.com/dkorolev/Current/tree/new_flow/RipCurrent/README.md)
+#### [RipCurrent](https://github.com/dkorolev/Current/tree/master/RipCurrent/README.md)
 The language to define continuous data pipelines.
 
 #### [Sherlock](https://github.com/C5T/Current/blob/master/Sherlock/README.md)
