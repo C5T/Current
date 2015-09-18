@@ -30,23 +30,18 @@ SOFTWARE.
 // or dismissed.
 // End-to-end blocks can be run with `(...).RipCurrent().Sync()`. TODO(dkorolev): Not only `.Sync()`.
 //
-// TOP PRIORITY (To use in pilot data crunching very soon, and in CTFO later):
-// TODO(dkorolev): Entry typing and RTTI instead of plain `int`-s.
-//
-// MID PRIORITY:
+// HI-PRI:
 // TODO(dkorolev): ParseFileByLines() and/or TailFileForever() as possible LHS.
 // TODO(dkorolev): Sherlock listener as possible LHS.
 // TODO(dkorolev): MMQ.
 // TODO(dkorolev): Threads and joins, run forever.
-// TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`).
-// TODO(dkorolev): Template metaprogramming to automatically distinguish between LHS, VIA, and RHS.
 // TODO(dkorolev): The `+`-combiner.
+// TODO(dkorolev): Syntax for no-MMQ and no-multithreading message passing (`| !foo`, `| ~foo`).
 // TODO(dkorolev): Run scoping strategies others than `.Sync()`.
 //
-// LOW PRIORITY:
-// TODO(dkorolev): Add GraphViz-based visualization.
+// LO-PRI:
 // TODO(dkorolev): Add debug output counters / HTTP endpoint for # of messages per typeid.
-// TODO(dkorolev): Should `+` should be able to handle `VIA + LHS` or `VIA + RHS`?
+// TODO(dkorolev): Add GraphViz-based visualization.
 
 #ifndef CURRENT_RIPCURRENT_H
 #define CURRENT_RIPCURRENT_H
@@ -67,6 +62,15 @@ SOFTWARE.
 #include "../Bricks/util/singleton.h"
 
 namespace ripcurrent {
+
+// A base class for all entries passing through the building blocks.
+// TODO(dkorolev): They will have to be serializable for MMQ-based implemetations. Padawan?
+/*
+struct H2O {
+  virtual ~H2O() = default;
+};
+*/
+typedef int H2O;
 
 // A singleton wrapping error handling logic, to allow mocking for the unit test.
 class RipCurrentMockableErrorHandler {
@@ -243,7 +247,7 @@ struct ActualOrDummyEntryTypeImpl<InputPolicy::DoesNotAccept> {
 
 template <>
 struct ActualOrDummyEntryTypeImpl<InputPolicy::Accepts> {
-  typedef int type;
+  typedef const H2O& type;
 };
 
 template <InputPolicy INPUT>
@@ -360,7 +364,7 @@ class NextHandlerContainer {
   void SetNextHandler(std::shared_ptr<EntriesConsumer<INPUT>> next) const { next_handler_ = next.get(); }
 
  protected:
-  void emit(int x) const { next_handler_->Accept(x); }
+  void emit(const H2O& x) const { next_handler_->Accept(x); }
 
  private:
   // NOTE(dkorolev): This field is pre-initialized by an instance of another helper class, which is
@@ -383,7 +387,8 @@ class NextHandlerInitializer {
   NextHandlerInitializer(std::shared_ptr<EntriesConsumer<INPUT>> next, ARGS&&... args)
       : early_initializer_(impl_, next), impl_(std::forward<ARGS>(args)...) {}
 
-  void Accept(const int& x) { impl_.f(x); }  // TODO(dkorolev): This won't be `int` very soon.
+  // TODO(dkorolev): Here be RTTI, per type than can be emitted.
+  void Accept(const H2O& x) { impl_.f(x); }
   void Accept(const DummyNoEntryType&) {}
 
  private:
@@ -656,6 +661,7 @@ SharedCurrent<INPUT, OUTPUT> operator|(SharedCurrent<INPUT, OutputPolicy::Emits>
 #define CURRENT_USER_TYPE(T) decltype(T.UnderlyingType())
 
 // Types exposed to the end user.
+using ripcurrent::H2O;
 using ripcurrent::InputPolicy;
 using ripcurrent::OutputPolicy;
 using ripcurrent::RipCurrentMockableErrorHandler;
