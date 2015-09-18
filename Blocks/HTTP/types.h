@@ -34,7 +34,7 @@ SOFTWARE.
 #include <string>
 
 #include "../../Bricks/net/exceptions.h"
-#include "../../Bricks/net/http/codes.h"
+#include "../../Bricks/net/http/http.h"
 #include "../../Bricks/strings/is_string_type.h"
 #include "../../Bricks/cerealize/cerealize.h"
 
