@@ -37,17 +37,17 @@ TEST(TemplateMetaprogramming, Map) {
   struct B { enum { x = 2 }; };
   struct C { enum { x = 3 }; };
   
-  std::tuple<A, B, C> before;
-  static_assert(std::tuple_size<decltype(before)>::value == 3, "");
-  EXPECT_EQ(1, std::get<0>(before).x);
-  EXPECT_EQ(2, std::get<1>(before).x);
-  EXPECT_EQ(3, std::get<2>(before).x);
+  typedef TypeList<A, B, C> TYPELIST_BEFORE;
+  static_assert(TypeListSize<TYPELIST_BEFORE>::value == 3, "");
+  static_assert(TypeListElement<0, TYPELIST_BEFORE>::x == 1, "");
+  static_assert(TypeListElement<1, TYPELIST_BEFORE>::x == 2, "");
+  static_assert(TypeListElement<2, TYPELIST_BEFORE>::x == 3, "");
   
-  bricks::metaprogramming::map<add_100, decltype(before)> after;
-  static_assert(std::tuple_size<decltype(after)>::value == 3, "");
-  EXPECT_EQ(101, std::get<0>(after).x);
-  EXPECT_EQ(102, std::get<1>(after).x);
-  EXPECT_EQ(103, std::get<2>(after).x);
+  typedef bricks::metaprogramming::map<add_100, TYPELIST_BEFORE> TYPELIST_AFTER;
+  static_assert(TypeListSize<TYPELIST_AFTER>::value == 3, "");
+  static_assert(TypeListElement<0, TYPELIST_AFTER>::x == 101, "");
+  static_assert(TypeListElement<1, TYPELIST_AFTER>::x == 102, "");
+  static_assert(TypeListElement<2, TYPELIST_AFTER>::x == 103, "");
 }
   
   // Filter.
@@ -57,17 +57,17 @@ TEST(TemplateMetaprogramming, Filter) {
   struct A { enum { y = 10 }; };
   struct B { enum { y = 15 }; };
   struct C { enum { y = 20 }; };
+ 
+  typedef TypeList<A, B, C> TYPELIST_BEFORE;
+  static_assert(TypeListSize<TYPELIST_BEFORE>::value == 3, "");
+  static_assert(TypeListElement<0, TYPELIST_BEFORE>::y == 10, "");
+  static_assert(TypeListElement<1, TYPELIST_BEFORE>::y == 15, "");
+  static_assert(TypeListElement<2, TYPELIST_BEFORE>::y == 20, "");
   
-  std::tuple<A, B, C> before;
-  static_assert(std::tuple_size<decltype(before)>::value == 3, "");
-  EXPECT_EQ(10, std::get<0>(before).y);
-  EXPECT_EQ(15, std::get<1>(before).y);
-  EXPECT_EQ(20, std::get<2>(before).y);
-  
-  bricks::metaprogramming::filter<y_is_even, decltype(before)> after;
-  static_assert(std::tuple_size<decltype(after)>::value == 2, "");
-  EXPECT_EQ(10, std::get<0>(after).y);
-  EXPECT_EQ(20, std::get<1>(after).y);
+  typedef bricks::metaprogramming::filter<y_is_even, TYPELIST_BEFORE> TYPELIST_AFTER;
+  static_assert(TypeListSize<TYPELIST_AFTER>::value == 2, "");
+  static_assert(TypeListElement<0, TYPELIST_AFTER>::y == 10, "");
+  static_assert(TypeListElement<1, TYPELIST_AFTER>::y == 20, "");
 }
     
   // Reduce.
@@ -79,8 +79,7 @@ TEST(TemplateMetaprogramming, Reduce) {
   struct A { static std::string s() { return "A"; } };
   struct B { static std::string s() { return "B"; } };
   struct C { static std::string s() { return "C"; } };
-  EXPECT_EQ("(A+(B+C))",
-            (bricks::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
+  EXPECT_EQ("(A+(B+C))", (bricks::metaprogramming::reduce<concatenate_s, TypeList<A, B, C>>::s()));
 }
     
 template <typename T> struct AsIntImpl {};
@@ -135,7 +134,7 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
   // A good way to make sure new names appear in one place only, since
   // using `using`-s would require writing them down at least twice each.
   struct UserFriendlyArithmetics :
-      bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> {
+      bricks::metaprogramming::combine<TypeList<NEG, ADD, MUL>> {
     int Neg(int x) {
       return operator()(NEG::TYPE(), x);
     }
@@ -169,7 +168,7 @@ TEST(TemplateMetaprogramming, Combine) {
   // the following construct will work just fine.
   EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
   
-  typedef bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
+  typedef bricks::metaprogramming::combine<TypeList<NEG, ADD, MUL>> Arithmetics;
   EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
   EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
   EXPECT_EQ(9, Arithmetics()(ADD::TYPE(), 2, 3, "4"));

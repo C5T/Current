@@ -28,6 +28,7 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_TYPELIST_H
 #define BRICKS_TEMPLATE_TYPELIST_H
 
+#include <cstdlib>
 #include <type_traits>
 
 namespace bricks {
@@ -75,6 +76,27 @@ static_assert(TypeListSize<TypeListImpl<>>::value == 0, "");
 static_assert(TypeListSize<TypeListImpl<int>>::value == 1, "");
 static_assert(TypeListSize<TypeListImpl<int, int>>::value == 2, "");
 static_assert(TypeListSize<TypeListImpl<int, int, int>>::value == 3, "");
+
+// `TypeListElement<N, TypeListImpl<TS....>>` evaluates to the N-th (0-based) type of `TS...`.
+template <size_t N, typename TYPE_LIST_IMPL>
+struct TypeListElementImpl;
+
+template <typename T, typename... TS>
+struct TypeListElementImpl<0, TypeListImpl<T, TS...>> {
+  typedef T type;
+};
+
+template <size_t N, typename T, typename... TS>
+struct TypeListElementImpl<N, TypeListImpl<T, TS...>> {
+  typedef typename TypeListElementImpl<N - 1, TypeListImpl<TS...>>::type type;
+};
+
+template <size_t N, typename TYPE_LIST_IMPL>
+using TypeListElement = typename TypeListElementImpl<N, TYPE_LIST_IMPL>::type;
+
+static_assert(std::is_same<int, TypeListElement<0, TypeListImpl<int>>>::value, "");
+static_assert(std::is_same<long, TypeListElement<0, TypeListImpl<long, char>>>::value, "");
+static_assert(std::is_same<char, TypeListElement<1, TypeListImpl<long, char>>>::value, "");
 
 // `TypeListContains<TypeListImpl<TS...>, T>::value` is true iff `T` is contained in `TS...`.
 template <typename TYPE_LIST_IMPL, typename TYPE>
@@ -246,6 +268,7 @@ using bricks::metaprogramming::TypeList;
 using bricks::metaprogramming::TypeListContains;
 using bricks::metaprogramming::IsTypeList;
 using bricks::metaprogramming::TypeListSize;
+using bricks::metaprogramming::TypeListElement;
 
 // Note: For equality and lack of discrimination reasons, the user may still use raw `TypeListImpl`,
 // if she prefers to not have flattening and deduplication take place.
