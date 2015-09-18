@@ -30,6 +30,10 @@ SOFTWARE.
 
 using bricks::strings::Join;
 
+// `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
+
+// clang-format off
+
 namespace ripcurrent_unittest {
 
 // `Foo`: The emitter of events. Emits the integers passed to its constructor.
@@ -58,8 +62,8 @@ CURRENT_VIA(Bar, int) {
 };
 #define Bar(...) REGISTER_VIA(Bar, __VA_ARGS__)
 
-// `Baz`: The destination of events. Collects the output integers. TODO(dkorolev): No typelist.
-CURRENT_RHS(Baz, int, double) {
+// `Baz`: The destination of events. Collects the output integers.
+CURRENT_RHS(Baz) {
   static std::string UnitTestClassName() { return "Baz"; }
   std::vector<int>* ptr;
   Baz() : ptr(nullptr) {}
@@ -73,14 +77,10 @@ CURRENT_RHS(Baz, int, double) {
 
 }  // namespace ripcurrent_unittest
 
+// clang-format on
+
 TEST(RipCurrent, NotLeftHanging) {
   // This test is best to keep first, since it depends on line numbers. -- D.K.
-
-  // ... three ...
-  // ... blank ...
-  // ... lines ...
-
-  // Because I'm lazy to change those line numbers in the golden data now. :-)
 
   using namespace ripcurrent_unittest;
 

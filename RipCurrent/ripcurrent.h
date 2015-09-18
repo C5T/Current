@@ -399,12 +399,22 @@ class NextHandlerInitializer {
 };
 
 // Base classes for user-defined code, for `is_base_of<>` `static_assert()`-s.
+template <OutputPolicy, typename EMITTABLE_TYPES_AS_TYPELIST>
+struct ConfirmRHSDoesNotEmit;
+
+template <>
+struct ConfirmRHSDoesNotEmit<OutputPolicy::DoesNotEmit, TypeListImpl<>> {};
+
+template <typename T, typename... TS>
+struct ConfirmRHSDoesNotEmit<OutputPolicy::Emits, TypeListImpl<T, TS...>> {};
+
 template <InputPolicy INPUT, OutputPolicy OUTPUT>
 class UserClassTopLevelBase {};
 
 template <InputPolicy INPUT, OutputPolicy OUTPUT, typename USER_CLASS, typename EMITTABLE_TYPES_AS_TYPELIST>
 class UserClassBase : public UserClassTopLevelBase<INPUT, OUTPUT>,
-                      public NextHandlerContainer<InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT> {
+                      public NextHandlerContainer<InputPolicyMatchingOutputPolicy<OUTPUT>::RESULT>,
+                      public ConfirmRHSDoesNotEmit<OUTPUT, EMITTABLE_TYPES_AS_TYPELIST> {
  public:
   virtual ~UserClassBase() = default;
   constexpr static InputPolicy INPUT_POLICY = INPUT;
@@ -628,17 +638,17 @@ SharedCurrent<INPUT, OUTPUT> operator|(SharedCurrent<INPUT, OutputPolicy::Emits>
       : ripcurrent::UserClassBase<InputPolicy::Accepts, OutputPolicy::Emits, T, TypeList<__VA_ARGS__>>
 
 // Declare a user class as a source of data entries.
-#define REGISTER_LHS(T, ...)                                           \
+#define REGISTER_LHS(T, ...)                                                 \
   ripcurrent::UserClass<InputPolicy::DoesNotAccept, OutputPolicy::Emits, T>( \
       ripcurrent::Definition(#T "(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple(__VA_ARGS__))
 
 // Declare a user class as a destination of data entries.
-#define REGISTER_RHS(T, ...)                                           \
+#define REGISTER_RHS(T, ...)                                                 \
   ripcurrent::UserClass<InputPolicy::Accepts, OutputPolicy::DoesNotEmit, T>( \
       ripcurrent::Definition(#T "(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple(__VA_ARGS__))
 
 // Declare a user class as a processor of data entries.
-#define REGISTER_VIA(T, ...)                                     \
+#define REGISTER_VIA(T, ...)                                           \
   ripcurrent::UserClass<InputPolicy::Accepts, OutputPolicy::Emits, T>( \
       ripcurrent::Definition(#T "(" #__VA_ARGS__ ")", __FILE__, __LINE__), std::make_tuple(__VA_ARGS__))
 
