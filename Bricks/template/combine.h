@@ -28,16 +28,18 @@ SOFTWARE.
 #include <tuple>
 #include <utility>
 
+#include "typelist.h"
 #include "weed.h"
 
 namespace bricks {
 namespace metaprogramming {
 
-// `combine<std::tuple<A, B, C>>` == a `struct` that internally contains all `A`, `B` and `C`
+// `combine<TypeListImpl<A, B, C>>` == a `struct` that internally contains all `A`, `B` and `C`
 // via "has-a" inheritance, and exposes `operator()`, calls to which are dispatched in compile time
 // to the instances of `A`, `B` or `C` respectively, based on type signature.
 // No matching invocation signature will result in compile-time error, same as the case
 // of more than one invocation signature matching the call.
+// For legacy reasons, `combine<std::tuple<...>>` is supported too.
 
 template <typename T>
 struct dispatch {
@@ -79,6 +81,12 @@ struct combine<std::tuple<T>> : dispatch<T> {};
 
 template <typename T, typename... TS>
 struct combine<std::tuple<T, TS...>> : inherit_from_both<dispatch<T>, combine<std::tuple<TS...>>> {};
+
+template <typename T>
+struct combine<TypeListImpl<T>> : dispatch<T> {};
+
+template <typename T, typename... TS>
+struct combine<TypeListImpl<T, TS...>> : inherit_from_both<dispatch<T>, combine<TypeListImpl<TS...>>> {};
 
 }  // namespace metaprogramming
 }  // namespace bricks

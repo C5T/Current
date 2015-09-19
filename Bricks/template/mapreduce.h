@@ -25,7 +25,10 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_MAPREDUCE_H
 #define BRICKS_TEMPLATE_MAPREDUCE_H
 
+#include <cstdlib>
 #include <tuple>
+
+#include "typelist.h"
 
 namespace bricks {
 namespace metaprogramming {
@@ -36,6 +39,11 @@ struct map_impl {};
 
 template <template <typename> class F, typename TS>
 using map = typename map_impl<F, TS>::type;
+
+template <template <typename> class F>
+struct map_impl<F, std::tuple<>> {
+  typedef std::tuple<> type;
+};
 
 template <template <typename> class F, typename T>
 struct map_impl<F, std::tuple<T>> {
@@ -48,12 +56,32 @@ struct map_impl<F, std::tuple<T, TS...>> {
       std::tuple_cat(std::declval<map<F, std::tuple<T>>>(), std::declval<map<F, std::tuple<TS...>>>())) type;
 };
 
+template <template <typename> class F>
+struct map_impl<F, TypeListImpl<>> {
+  typedef TypeListImpl<> type;
+};
+
+template <template <typename> class F, typename T>
+struct map_impl<F, TypeListImpl<T>> {
+  typedef TypeListImpl<F<T>> type;
+};
+
+template <template <typename> class F, typename T, typename... TS>
+struct map_impl<F, TypeListImpl<T, TS...>> {
+  typedef TypeList<F<T>, map<F, TypeListImpl<TS...>>> type;
+};
+
 // `filter<F<>, std::tuple<A, B, C>>` == `std::tuple<>` that only contains types where `F<i>::filter` is `true`.
 template <template <typename> class F, typename TS>
 struct filter_impl {};
 
 template <template <typename> class F, typename TS>
 using filter = typename filter_impl<F, TS>::type;
+
+template <template <typename> class F>
+struct filter_impl<F, std::tuple<>> {
+  typedef std::tuple<> type;
+};
 
 template <template <typename> class F, typename T>
 struct filter_impl<F, std::tuple<T>> {
@@ -64,6 +92,23 @@ template <template <typename> class F, typename T, typename... TS>
 struct filter_impl<F, std::tuple<T, TS...>> {
   typedef decltype(std::tuple_cat(std::declval<filter<F, std::tuple<T>>>(),
                                   std::declval<filter<F, std::tuple<TS...>>>())) type;
+};
+
+template <template <typename> class F>
+struct filter_impl<F, TypeListImpl<>> {
+  typedef TypeListImpl<> type;
+};
+
+template <template <typename> class F, typename T>
+struct filter_impl<F, TypeListImpl<T>> {
+  typedef typename std::conditional<F<T>::filter, TypeListImpl<T>, TypeListImpl<>>::type type;
+};
+
+template <template <typename> class F, typename T, typename... TS>
+struct filter_impl<F, TypeListImpl<T, TS...>> {
+  typedef typename std::conditional<F<T>::filter,
+                                    TypeList<T, filter<F, TypeListImpl<TS...>>>,
+                                    filter<F, TypeListImpl<TS...>>>::type type;
 };
 
 // `reduce<F<LHS, RHS>, std::tuple<A, B, C>>` == `F<A, F<B, C>>`.
@@ -81,6 +126,16 @@ struct reduce_impl<F, std::tuple<T>> {
 template <template <typename, typename> class F, typename T, typename... TS>
 struct reduce_impl<F, std::tuple<T, TS...>> {
   typedef F<T, reduce<F, std::tuple<TS...>>> type;
+};
+
+template <template <typename, typename> class F, typename T>
+struct reduce_impl<F, TypeListImpl<T>> {
+  typedef T type;
+};
+
+template <template <typename, typename> class F, typename T, typename... TS>
+struct reduce_impl<F, TypeListImpl<T, TS...>> {
+  typedef F<T, reduce<F, TypeListImpl<TS...>>> type;
 };
 
 }  // namespace metaprogramming
