@@ -197,7 +197,7 @@ TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
 
   std::vector<int> result;
 
-  RipCurrentLHS foo = Foo(42);
+  RipCurrentLHS<Integer> foo = Foo(42);
   EXPECT_EQ("Foo(42) | ...", foo.Describe());
 
   RipCurrentRHS baz = Baz(std::ref(result));
@@ -247,9 +247,9 @@ TEST(RipCurrent, BuildingBlocksCanBeReUsed) {
   std::vector<int> result1;
   std::vector<int> result2;
 
-  RipCurrentLHS foo1 = Foo(1);
-  RipCurrentLHS foo2 = Foo(2);
-  RipCurrentVIA bar = Bar(10);
+  RipCurrentLHS<Integer> foo1 = Foo(1);
+  RipCurrentLHS<Integer> foo2 = Foo(2);
+  RipCurrentVIA<Integer> bar = Bar(10);
   RipCurrentRHS baz1 = Baz(std::ref(result1));
   RipCurrentRHS baz2 = Baz(std::ref(result2));
 
@@ -298,8 +298,8 @@ TEST(RipCurrent, TypeSystemGuarantees) {
   using namespace ripcurrent_unittest;
 
   EXPECT_EQ("Foo", Foo::UnitTestClassName());
-  EXPECT_TRUE(Foo::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(Foo::OUTPUT_POLICY == OutputPolicy::Emits);
+  static_assert(Foo::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<Foo::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value, "");
 
   EXPECT_EQ("Foo", CURRENT_USER_TYPE(Foo())::UnitTestClassName());
 
@@ -307,8 +307,8 @@ TEST(RipCurrent, TypeSystemGuarantees) {
   EXPECT_EQ("Foo", CURRENT_USER_TYPE(foo)::UnitTestClassName());
 
   EXPECT_EQ("Bar", Bar::UnitTestClassName());
-  EXPECT_TRUE(Bar::INPUT_POLICY == InputPolicy::Accepts);
-  EXPECT_TRUE(Bar::OUTPUT_POLICY == OutputPolicy::Emits);
+  static_assert(Bar::INPUT_POLICY == InputPolicy::Accepts, "");
+  static_assert(std::is_same<Bar::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value, "");
 
   EXPECT_EQ("Bar", CURRENT_USER_TYPE(Bar())::UnitTestClassName());
 
@@ -316,8 +316,8 @@ TEST(RipCurrent, TypeSystemGuarantees) {
   EXPECT_EQ("Bar", CURRENT_USER_TYPE(bar)::UnitTestClassName());
 
   EXPECT_EQ("Baz", Baz::UnitTestClassName());
-  EXPECT_TRUE(Baz::INPUT_POLICY == InputPolicy::Accepts);
-  EXPECT_TRUE(Baz::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(Baz::INPUT_POLICY == InputPolicy::Accepts, "");
+  static_assert(std::is_same<Baz::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value, "");
 
   EXPECT_EQ("Baz", CURRENT_USER_TYPE(Baz())::UnitTestClassName());
 
@@ -334,32 +334,39 @@ TEST(RipCurrent, TypeSystemGuarantees) {
   const auto foo_bar_bar_baz_3 = ((foo | bar) | bar) | baz;
   const auto foo_bar_bar_baz_4 = foo | (bar | (bar | baz));
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar)::OUTPUT_POLICY == OutputPolicy::Emits);
+  static_assert(CURRENT_USER_TYPE(foo_bar)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar)::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value,
+                "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(bar_baz)::INPUT_POLICY == InputPolicy::Accepts);
-  EXPECT_TRUE(CURRENT_USER_TYPE(bar_baz)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(bar_baz)::INPUT_POLICY == InputPolicy::Accepts, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(bar_baz)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value, "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_baz)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_baz)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_baz)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_baz)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value, "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_baz_1)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_baz_1)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_bar_baz_1)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar_baz_1)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value,
+                "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_baz_2)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_baz_2)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_bar_baz_2)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar_baz_2)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value,
+                "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_1)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_1)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_bar_bar_baz_1)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar_bar_baz_1)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value,
+                "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_2)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_2)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_bar_bar_baz_2)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar_bar_baz_2)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value,
+                "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_3)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_3)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_bar_bar_baz_3)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar_bar_baz_3)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value,
+                "");
 
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_4)::INPUT_POLICY == InputPolicy::DoesNotAccept);
-  EXPECT_TRUE(CURRENT_USER_TYPE(foo_bar_bar_baz_4)::OUTPUT_POLICY == OutputPolicy::DoesNotEmit);
+  static_assert(CURRENT_USER_TYPE(foo_bar_bar_baz_4)::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<CURRENT_USER_TYPE(foo_bar_bar_baz_4)::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value,
+                "");
 
   foo_bar.Dismiss();
   bar_baz.Dismiss();
