@@ -30,21 +30,39 @@ SOFTWARE.
 
 using bricks::strings::Join;
 
+// `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
+
+// clang-format off
+
 namespace ripcurrent_unittest {
 
+typedef int Integer;
+
+/*
+// TODO(dkorolev): Typing and RTTI for messages flowing through is coming soon.
+struct Integer : H2O {
+  int value = 0;
+  Integer() = default;
+  Integer(int value) : value(value) {}
+};
+struct String : H2O {
+  ...
+};
+*/
+
 // `Foo`: The emitter of events. Emits the integers passed to its constructor.
-CURRENT_LHS(Foo, int) {
+CURRENT_LHS(Foo, Integer) {
   static std::string UnitTestClassName() { return "Foo"; }
   Foo() {}
-  Foo(int a) { emit(a); }
+  Foo(int a) { emit(Integer(a)); }
   Foo(int a, int b) {
-    emit(a);
-    emit(b);
+    emit(Integer(a));
+    emit(Integer(b));
   }
   Foo(int a, int b, int c) {
-    emit(a);
-    emit(b);
-    emit(c);
+    emit(Integer(a));
+    emit(Integer(b));
+    emit(Integer(c));
   }
 };
 #define Foo(...) REGISTER_LHS(Foo, __VA_ARGS__)
@@ -54,17 +72,17 @@ CURRENT_VIA(Bar, int) {
   static std::string UnitTestClassName() { return "Bar"; }
   int k;
   Bar(int k = 1) : k(k) {}
-  void f(int x) { emit(x * k); }
+  void f(Integer x) { emit(Integer(x * k)); }
 };
 #define Bar(...) REGISTER_VIA(Bar, __VA_ARGS__)
 
-// `Baz`: The destination of events. Collects the output integers. TODO(dkorolev): No typelist.
-CURRENT_RHS(Baz, int, double) {
+// `Baz`: The destination of events. Collects the output integers.
+CURRENT_RHS(Baz) {
   static std::string UnitTestClassName() { return "Baz"; }
   std::vector<int>* ptr;
   Baz() : ptr(nullptr) {}
   Baz(std::vector<int>& ref) : ptr(&ref) {}
-  void f(int x) {
+  void f(Integer x) {
     assert(ptr);
     ptr->push_back(x);
   }
@@ -73,14 +91,10 @@ CURRENT_RHS(Baz, int, double) {
 
 }  // namespace ripcurrent_unittest
 
+// clang-format on
+
 TEST(RipCurrent, NotLeftHanging) {
   // This test is best to keep first, since it depends on line numbers. -- D.K.
-
-  // ... three ...
-  // ... blank ...
-  // ... lines ...
-
-  // Because I'm lazy to change those line numbers in the golden data now. :-)
 
   using namespace ripcurrent_unittest;
 
@@ -93,37 +107,37 @@ TEST(RipCurrent, NotLeftHanging) {
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "Foo() | ...\n"
-      "Foo() from test.cc:92\n"
+      "Foo() from test.cc:106\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
   Bar();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "... | Bar() | ...\n"
-      "Bar() from test.cc:99\n"
+      "Bar() from test.cc:113\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
   Baz();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "... | Baz()\n"
-      "Baz() from test.cc:106\n"
+      "Baz() from test.cc:120\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
   Foo(1) | Bar(2);
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "Foo(1) | Bar(2) | ...\n"
-      "Foo(1) from test.cc:113\n"
-      "Bar(2) from test.cc:113\n"
+      "Foo(1) from test.cc:127\n"
+      "Bar(2) from test.cc:127\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
   Bar(3) | Baz();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "... | Bar(3) | Baz()\n"
-      "Bar(3) from test.cc:121\n"
-      "Baz() from test.cc:121\n"
+      "Bar(3) from test.cc:135\n"
+      "Baz() from test.cc:135\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
   std::vector<int> result;
@@ -131,9 +145,9 @@ TEST(RipCurrent, NotLeftHanging) {
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "Foo(42) | Bar(100) | Baz(std::ref(result))\n"
-      "Foo(42) from test.cc:130\n"
-      "Bar(100) from test.cc:130\n"
-      "Baz(std::ref(result)) from test.cc:130\n"
+      "Foo(42) from test.cc:144\n"
+      "Bar(100) from test.cc:144\n"
+      "Baz(std::ref(result)) from test.cc:144\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
 
@@ -141,9 +155,9 @@ TEST(RipCurrent, NotLeftHanging) {
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
       "Foo() | Bar(1) | Baz(std::ref(result))\n"
-      "Foo() from test.cc:140\n"
-      "Bar(1) from test.cc:140\n"
-      "Baz(std::ref(result)) from test.cc:140\n"
+      "Foo() from test.cc:154\n"
+      "Bar(1) from test.cc:154\n"
+      "Baz(std::ref(result)) from test.cc:154\n"
       "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
       captured_error_message);
 
