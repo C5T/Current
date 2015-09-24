@@ -671,7 +671,7 @@ class GenericCurrentSequence<INPUT,
   }
 };
 
-// `SubflowSequence` requres `INTERMEDIATE_TYPE_LIST` to not be an empty type list.
+// `SubflowSequence` requires `INTERMEDIATE_TYPE_LIST` to be a nonempty type list.
 // This is enforced by the `operator|()` declaration below.
 template <InputPolicy INPUT, class OUTPUT_TYPE_LIST, class INTERMEDIATE_TYPE_LIST>
 class SubflowSequence;
