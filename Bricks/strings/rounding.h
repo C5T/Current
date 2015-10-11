@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,17 +22,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifndef BRICKS_STRINGS_ROUNDING_H
+#define BRICKS_STRINGS_ROUNDING_H
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
-#include "util.h"
-#include "rounding.h"
+#include <cstring>
+#include <string>
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+namespace bricks {
+namespace strings {
+
+// Rounds the number to have `n_digits` significant digits.
+std::string RoundDoubleToString(double value, size_t n_digits) {
+  assert(n_digits >= 1);
+  assert(n_digits <= 100);
+  // `value` will be between `10^dim` and `10^(dim+1)`.
+  const int dim = static_cast<int>(std::floor((std::log(value) / std::log(10.0)) + 1e-6));
+  const double k = std::pow(10.0, static_cast<double>(dim - static_cast<int>(n_digits) + 1));
+  std::ostringstream os;
+  os << k * std::round(value / k);
+  return os.str();
+}
+
+inline std::string RoundDoubleToString(double value) {
+  static constexpr size_t DEFAULT_NUMBER_OF_SIGNIFICANT_DIGITS = 2;
+  return RoundDoubleToString(value, DEFAULT_NUMBER_OF_SIGNIFICANT_DIGITS);
+}
+
+}  // namespace strings
+}  // namespace bricks
+
+#endif  // BRICKS_STRINGS_ROUNDING_H
