@@ -22,9 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include <vector>
-#include <string>
+#include <cmath>
 #include <set>
+#include <string>
+#include <vector>
 
 #include "strings.h"
 
@@ -54,6 +55,7 @@ using bricks::strings::FastEditDistance;
 using bricks::strings::Chunk;
 using bricks::strings::UniqueChunk;
 using bricks::strings::ChunkDB;
+using bricks::strings::RoundDoubleToString;
 using bricks::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
@@ -455,6 +457,68 @@ TEST(Chunk, SmokeTest) {
   EXPECT_TRUE(db.Find("foo", unique_result));
   EXPECT_TRUE(unique_result == unique_foo_1);
   EXPECT_FALSE(db.Find("nope", unique_result));
+}
+
+TEST(Rounding, SmokeTest) {
+  const double pi = 2.0 * std::acos(0.0);
+  EXPECT_EQ("3.1", RoundDoubleToString(pi));
+  EXPECT_EQ("3", RoundDoubleToString(pi, 1));
+  EXPECT_EQ("3.1", RoundDoubleToString(pi, 2));
+  EXPECT_EQ("3.14", RoundDoubleToString(pi, 3));
+  EXPECT_EQ("3.142", RoundDoubleToString(pi, 4));
+  EXPECT_EQ("300", RoundDoubleToString(pi * 100, 1));
+  EXPECT_EQ("310", RoundDoubleToString(pi * 100, 2));
+  EXPECT_EQ("314", RoundDoubleToString(pi * 100, 3));
+  EXPECT_EQ("314.2", RoundDoubleToString(pi * 100, 4));
+  EXPECT_EQ("0.03", RoundDoubleToString(pi * 0.01, 1));
+  EXPECT_EQ("0.031", RoundDoubleToString(pi * 0.01, 2));
+  EXPECT_EQ("0.0314", RoundDoubleToString(pi * 0.01, 3));
+  EXPECT_EQ("0.03142", RoundDoubleToString(pi * 0.01, 4));
+
+  const double e = exp(1);
+  EXPECT_EQ("2.7", RoundDoubleToString(e));
+  EXPECT_EQ("3", RoundDoubleToString(e, 1));
+  EXPECT_EQ("2.7", RoundDoubleToString(e, 2));
+  EXPECT_EQ("2.72", RoundDoubleToString(e, 3));
+  EXPECT_EQ("2.718", RoundDoubleToString(e, 4));
+  EXPECT_EQ("300", RoundDoubleToString(e * 100, 1));
+  EXPECT_EQ("270", RoundDoubleToString(e * 100, 2));
+  EXPECT_EQ("272", RoundDoubleToString(e * 100, 3));
+  EXPECT_EQ("271.8", RoundDoubleToString(e * 100, 4));
+  EXPECT_EQ("0.03", RoundDoubleToString(e * 0.01, 1));
+  EXPECT_EQ("0.027", RoundDoubleToString(e * 0.01, 2));
+  EXPECT_EQ("0.0272", RoundDoubleToString(e * 0.01, 3));
+  EXPECT_EQ("0.02718", RoundDoubleToString(e * 0.01, 4));
+
+  EXPECT_EQ("1", RoundDoubleToString(1.0 - 1e-7, 1));
+  EXPECT_EQ("2", RoundDoubleToString(2.0 - 1e-7, 2));
+  EXPECT_EQ("3", RoundDoubleToString(3.0 - 1e-7, 3));
+  EXPECT_EQ("4", RoundDoubleToString(4.0 - 1e-7, 4));
+
+  EXPECT_EQ("5", RoundDoubleToString(5.0 + 1e-7, 1));
+  EXPECT_EQ("6", RoundDoubleToString(6.0 + 1e-7, 2));
+  EXPECT_EQ("7", RoundDoubleToString(7.0 + 1e-7, 3));
+  EXPECT_EQ("8", RoundDoubleToString(8.0 + 1e-7, 4));
+
+  EXPECT_EQ("1000", RoundDoubleToString(1000.0 - 1e-7, 1));
+  EXPECT_EQ("2000", RoundDoubleToString(2000.0 - 1e-7, 2));
+  EXPECT_EQ("3000", RoundDoubleToString(3000.0 - 1e-7, 3));
+  EXPECT_EQ("4000", RoundDoubleToString(4000.0 - 1e-7, 4));
+
+  EXPECT_EQ("5000", RoundDoubleToString(5000.0 + 1e-7, 1));
+  EXPECT_EQ("6000", RoundDoubleToString(6000.0 + 1e-7, 2));
+  EXPECT_EQ("7000", RoundDoubleToString(7000.0 + 1e-7, 3));
+  EXPECT_EQ("8000", RoundDoubleToString(8000.0 + 1e-7, 4));
+
+  EXPECT_EQ("0.001", RoundDoubleToString(0.001 - 1e-7, 1));
+  EXPECT_EQ("0.002", RoundDoubleToString(0.002 - 1e-7, 2));
+  EXPECT_EQ("0.003", RoundDoubleToString(0.003 - 1e-7, 3));
+  EXPECT_EQ("0.004", RoundDoubleToString(0.004 - 1e-7, 4));
+
+  EXPECT_EQ("0.005", RoundDoubleToString(0.005 + 1e-7, 1));
+  EXPECT_EQ("0.006", RoundDoubleToString(0.006 + 1e-7, 2));
+  EXPECT_EQ("0.007", RoundDoubleToString(0.007 + 1e-7, 3));
+  EXPECT_EQ("0.008", RoundDoubleToString(0.008 + 1e-7, 4));
 }
 
 TEST(IsStringType, StaticAsserts) {
