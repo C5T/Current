@@ -160,7 +160,7 @@ struct FileSystem {
           info.st_mode & _S_IFDIR
 #endif
     ) {
-// clang-format-on
+        // clang-format on
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -182,7 +182,7 @@ struct FileSystem {
         ::_mkdir(directory.c_str())
 #endif
     ) {
-// clang-format-on
+      // clang-format on
       if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
@@ -200,8 +200,11 @@ struct FileSystem {
   // TODO(dkorolev): Make OutputFile not as tightly coupled with std::ofstream as it is now.
   typedef std::ofstream OutputFile;
 
+  enum class ScanDirParameters { ListFilesOnly, ListFilesAndDirs };
   template <typename F>
-  static inline void ScanDirUntil(const std::string& directory, F&& f, bool include_dirs = false) {
+  static inline void ScanDirUntil(const std::string& directory,
+                                  F&& f,
+                                  ScanDirParameters parameters = ScanDirParameters::ListFilesOnly) {
 #ifdef BRICKS_WINDOWS
     WIN32_FIND_DATAA find_data;
     HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
@@ -215,7 +218,8 @@ struct FileSystem {
       };
       const ScopedCloseFindFileHandle closer(handle);
       do {
-        if (include_dirs || !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        if (parameters == ScanDirParameters::ListFilesAndDirs ||
+            !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
           if (!f(find_data.cFileName)) {
             return;
           }
@@ -236,7 +240,7 @@ struct FileSystem {
           // Proved to be required on Ubuntu running in Parallels on a Mac,
           // with Bricks' directory mounted from Mac's filesystem.
           // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
-          if (include_dirs || !IsDir(JoinPath(directory, filename))) {
+          if (parameters == ScanDirParameters::ListFilesAndDirs || !IsDir(JoinPath(directory, filename))) {
             if (!f(filename)) {
               return;
             }
@@ -256,11 +260,15 @@ struct FileSystem {
   }
 
   template <typename F>
-  static inline void ScanDir(const std::string& directory, F&& f, bool include_dirs = false) {
-    ScanDirUntil(directory, [&f](const std::string& filename) {
-      f(filename);
-      return true;
-    }, include_dirs);
+  static inline void ScanDir(const std::string& directory,
+                             F&& f,
+                             ScanDirParameters parameters = ScanDirParameters::ListFilesOnly) {
+    ScanDirUntil(directory,
+                 [&f](const std::string& filename) {
+                   f(filename);
+                   return true;
+                 },
+                 parameters);
   }
 
   enum class RmFileParameters { ThrowExceptionOnError, Silent };
@@ -294,14 +302,14 @@ struct FileSystem {
                            RmDirRecursive recursive = RmDirRecursive::No) {
     if (recursive == RmDirRecursive::No) {
       if (
-// clang-format-off
+// clang-format off
 #ifndef BRICKS_WINDOWS
           ::rmdir(directory.c_str())
 #else
           ::_rmdir(directory.c_str())
 #endif
       ) {
-// clang-format-on
+        // clang-format on
         if (parameters == RmDirParameters::ThrowExceptionOnError) {
           if (errno == ENOENT) {
             BRICKS_THROW(DirDoesNotExistException());
@@ -314,18 +322,21 @@ struct FileSystem {
       }
     } else {
       try {
-        ScanDir(directory, [&directory, parameters](const std::string& name) {
-          const std::string full_name = JoinPath(directory, name);
-          if (IsDir(full_name)) {
-            RmDir(full_name, parameters, RmDirRecursive::Yes);
-          } else {
-            RmFile(full_name, (parameters == RmDirParameters::ThrowExceptionOnError)
-                                  ? RmFileParameters::ThrowExceptionOnError
-                                  : RmFileParameters::Silent);
-          }
-        }, true);
+        ScanDir(directory,
+                [&directory, parameters](const std::string& name) {
+                  const std::string full_name = JoinPath(directory, name);
+                  if (IsDir(full_name)) {
+                    RmDir(full_name, parameters, RmDirRecursive::Yes);
+                  } else {
+                    RmFile(full_name,
+                           (parameters == RmDirParameters::ThrowExceptionOnError)
+                               ? RmFileParameters::ThrowExceptionOnError
+                               : RmFileParameters::Silent);
+                  }
+                },
+                ScanDirParameters::ListFilesAndDirs);
         RmDir(directory, parameters, RmDirRecursive::No);
-      } catch (...) {
+      } catch (const bricks::Exception&) {
         if (parameters == RmDirParameters::ThrowExceptionOnError) {
           throw;
         }
