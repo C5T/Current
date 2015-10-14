@@ -47,6 +47,10 @@ struct PathIsNotADirectoryException : FileException {
   PathIsNotADirectoryException() : FileException() {}
 };
 
+struct DirIsNotEmptyException : FileException {
+  DirIsNotEmptyException() : FileException() {}
+};
+
 }  // namespace bricks
 
 #endif  // BRICKS_FILE_EXCEPTIONS_H
