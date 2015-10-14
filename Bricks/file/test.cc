@@ -294,12 +294,14 @@ TEST(File, RmDirRecursive) {
   FileSystem::WriteStringToFile("3", f3.c_str());
   FileSystem::WriteStringToFile("4", f4.c_str());
 
-  FileSystem::RmDirRecursive(dir_x);
+  FileSystem::RmDir(dir_x, FileSystem::RmDirParameters::ThrowExceptionOnError, FileSystem::RmDirRecursive::Yes);
 
   ASSERT_THROW(FileSystem::WriteStringToFile("test", f3.c_str()), FileException);
   ASSERT_THROW(FileSystem::WriteStringToFile("test", f2.c_str()), FileException);
   ASSERT_THROW(FileSystem::WriteStringToFile("test", f1.c_str()), FileException);
-  ASSERT_THROW(FileSystem::RmDirRecursive(dir_x), DirDoesNotExistException);
+  ASSERT_THROW(FileSystem::RmDir(
+                   dir_x, FileSystem::RmDirParameters::ThrowExceptionOnError, FileSystem::RmDirRecursive::Yes),
+               DirDoesNotExistException);
 }
 
 TEST(File, ScopedRmDir) {

@@ -153,12 +153,14 @@ struct FileSystem {
       BRICKS_THROW(FileException());
     } else {
       if (
+// clang-format off
 #ifndef BRICKS_WINDOWS
           S_ISDIR(info.st_mode)
 #else
           info.st_mode & _S_IFDIR
 #endif
-              ) {
+    ) {
+// clang-format-on
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -173,12 +175,14 @@ struct FileSystem {
                            MkDirParameters parameters = MkDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     if (
+// clang-format off
 #ifndef BRICKS_WINDOWS
         ::mkdir(directory.c_str(), 0755)
 #else
         ::_mkdir(directory.c_str())
 #endif
-            ) {
+    ) {
+// clang-format-on
       if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
@@ -284,69 +288,66 @@ struct FileSystem {
   };
 
   enum class RmDirParameters { ThrowExceptionOnError, Silent };
+  enum class RmDirRecursive { No, Yes };
   static inline void RmDir(const std::string& directory,
-                           RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError) {
-    if (
+                           RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError,
+                           RmDirRecursive recursive = RmDirRecursive::No) {
+    if (recursive == RmDirRecursive::No) {
+      if (
+// clang-format-off
 #ifndef BRICKS_WINDOWS
-        ::rmdir(directory.c_str())
+          ::rmdir(directory.c_str())
 #else
-        ::_rmdir(directory.c_str())
+          ::_rmdir(directory.c_str())
 #endif
-            ) {
-      if (parameters == RmDirParameters::ThrowExceptionOnError) {
-        if (errno == ENOENT) {
-          BRICKS_THROW(DirDoesNotExistException());
-        } else if (errno == ENOTEMPTY) {
-          BRICKS_THROW(DirIsNotEmptyException());
-        } else {
-          BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
+      ) {
+// clang-format-on
+        if (parameters == RmDirParameters::ThrowExceptionOnError) {
+          if (errno == ENOENT) {
+            BRICKS_THROW(DirDoesNotExistException());
+          } else if (errno == ENOTEMPTY) {
+            BRICKS_THROW(DirIsNotEmptyException());
+          } else {
+            BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
+          }
         }
       }
-    }
-  }
-
-  static inline void RmDirRecursive(const std::string& directory,
-                                    RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError) {
-    try {
-      ScanDir(directory, [&directory, parameters](const std::string& name) {
-        const std::string full_name = JoinPath(directory, name);
-        if (IsDir(full_name)) {
-          RmDirRecursive(full_name, parameters);
-        } else {
-          RmFile(full_name, (parameters == RmDirParameters::ThrowExceptionOnError)
-                                ? RmFileParameters::ThrowExceptionOnError
-                                : RmFileParameters::Silent);
+    } else {
+      try {
+        ScanDir(directory, [&directory, parameters](const std::string& name) {
+          const std::string full_name = JoinPath(directory, name);
+          if (IsDir(full_name)) {
+            RmDir(full_name, parameters, RmDirRecursive::Yes);
+          } else {
+            RmFile(full_name, (parameters == RmDirParameters::ThrowExceptionOnError)
+                                  ? RmFileParameters::ThrowExceptionOnError
+                                  : RmFileParameters::Silent);
+          }
+        }, true);
+        RmDir(directory, parameters, RmDirRecursive::No);
+      } catch (...) {
+        if (parameters == RmDirParameters::ThrowExceptionOnError) {
+          throw;
         }
-      }, true);
-      RmDir(directory, parameters);
-    } catch (...) {
-      if (parameters == RmDirParameters::ThrowExceptionOnError) {
-        throw;
       }
     }
   }
 
   class ScopedRmDir final {
    public:
-    explicit ScopedRmDir(const std::string& directory, bool remove_now_as_well = true, bool recursive = true)
+    explicit ScopedRmDir(const std::string& directory,
+                         bool remove_now_as_well = true,
+                         RmDirRecursive recursive = RmDirRecursive::Yes)
         : directory_(directory), recursive_(recursive) {
       if (remove_now_as_well) {
-        RemoveDir();
+        RmDir(directory_, RmDirParameters::Silent, recursive_);
       }
     }
-    ~ScopedRmDir() { RemoveDir(); }
+    ~ScopedRmDir() { RmDir(directory_, RmDirParameters::Silent, recursive_); }
 
    private:
     std::string directory_;
-    bool recursive_;
-
-    void RemoveDir() {
-      if (recursive_) {
-        RmDirRecursive(directory_, RmDirParameters::Silent);
-      } else {
-        RmDir(directory_, RmDirParameters::Silent);
-      }
-    }
+    RmDirRecursive recursive_;
   };
 };
 
