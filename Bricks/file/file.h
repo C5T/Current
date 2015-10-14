@@ -158,7 +158,7 @@ struct FileSystem {
 #else
           info.st_mode & _S_IFDIR
 #endif
-          ) {
+              ) {
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -178,7 +178,7 @@ struct FileSystem {
 #else
         ::_mkdir(directory.c_str())
 #endif
-        ) {
+            ) {
       if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
@@ -292,7 +292,7 @@ struct FileSystem {
 #else
         ::_rmdir(directory.c_str())
 #endif
-        ) {
+            ) {
       if (parameters == RmDirParameters::ThrowExceptionOnError) {
         if (errno == ENOENT) {
           BRICKS_THROW(DirDoesNotExistException());
@@ -309,13 +309,15 @@ struct FileSystem {
                                     RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError) {
     try {
       ScanDir(directory, [&directory, parameters](const std::string& name) {
-                const std::string full_name = JoinPath(directory, name);
-                if (IsDir(full_name)) {
-                  RmDirRecursive(full_name, parameters);
-                } else {
-                  RmFile(full_name, (parameters == RmDirParameters::ThrowExceptionOnError) ? RmFileParameters::ThrowExceptionOnError : RmFileParameters::Silent);
-                }
-              }, true);
+        const std::string full_name = JoinPath(directory, name);
+        if (IsDir(full_name)) {
+          RmDirRecursive(full_name, parameters);
+        } else {
+          RmFile(full_name, (parameters == RmDirParameters::ThrowExceptionOnError)
+                                ? RmFileParameters::ThrowExceptionOnError
+                                : RmFileParameters::Silent);
+        }
+      }, true);
       RmDir(directory, parameters);
     } catch (...) {
       if (parameters == RmDirParameters::ThrowExceptionOnError) {
@@ -332,9 +334,7 @@ struct FileSystem {
         RemoveDir();
       }
     }
-    ~ScopedRmDir() {
-      RemoveDir();
-    }
+    ~ScopedRmDir() { RemoveDir(); }
 
    private:
     std::string directory_;
