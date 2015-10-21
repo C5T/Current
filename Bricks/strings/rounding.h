@@ -27,12 +27,15 @@ SOFTWARE.
 
 #include <cstring>
 #include <string>
+#include <sstream>
+#include <cmath>
+#include <cassert>
 
 namespace bricks {
 namespace strings {
 
 // Rounds the number to have `n_digits` significant digits.
-std::string RoundDoubleToString(double value, size_t n_digits) {
+inline std::string RoundDoubleToString(double value, size_t n_digits) {
   assert(n_digits >= 1);
   assert(n_digits <= 100);
   // `value` will be between `10^dim` and `10^(dim+1)`.
