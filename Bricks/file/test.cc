@@ -35,6 +35,7 @@ using bricks::FileSystem;
 using bricks::FileException;
 using bricks::DirDoesNotExistException;
 using bricks::PathIsNotADirectoryException;
+using bricks::DirIsNotEmptyException;
 
 DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
@@ -174,6 +175,7 @@ TEST(File, DirOperations) {
   FileSystem::RmDir(dir, FileSystem::RmDirParameters::Silent);
 
   ASSERT_THROW(FileSystem::WriteStringToFile("test", fn.c_str()), FileException);
+  ASSERT_THROW(FileSystem::RmDir(dir), DirDoesNotExistException);
 
   FileSystem::MkDir(dir);
   ASSERT_THROW(FileSystem::MkDir(dir), FileException);
@@ -184,7 +186,7 @@ TEST(File, DirOperations) {
 
   ASSERT_THROW(FileSystem::GetFileSize(dir), FileException);
 
-  ASSERT_THROW(FileSystem::RmDir(dir), FileException);
+  ASSERT_THROW(FileSystem::RmDir(dir), DirIsNotEmptyException);
   FileSystem::RmFile(fn);
   FileSystem::RmDir(dir);
 
@@ -270,4 +272,59 @@ TEST(File, ScanDir) {
             scanner_after_until.files_[0].second);
 
   FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
+}
+
+TEST(File, RmDirRecursive) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
+  const std::string& dir_x = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "x");
+  const std::string& f1 = FileSystem::JoinPath(dir_x, "1");
+  const std::string& dir_y = FileSystem::JoinPath(dir_x, "y");
+  const std::string& f2 = FileSystem::JoinPath(dir_y, "2");
+  const std::string& dir_z = FileSystem::JoinPath(dir_y, "z");
+  const std::string& f3 = FileSystem::JoinPath(dir_z, "3");
+  const std::string& f4 = FileSystem::JoinPath(dir_z, "4");
+
+  FileSystem::MkDir(dir_x);
+  FileSystem::WriteStringToFile("1", f1.c_str());
+  FileSystem::MkDir(dir_y);
+  FileSystem::WriteStringToFile("2", f2.c_str());
+  FileSystem::MkDir(dir_z);
+  FileSystem::WriteStringToFile("3", f3.c_str());
+  FileSystem::WriteStringToFile("4", f4.c_str());
+
+  FileSystem::RmDir(dir_x, FileSystem::RmDirParameters::ThrowExceptionOnError, FileSystem::RmDirRecursive::Yes);
+
+  ASSERT_THROW(FileSystem::WriteStringToFile("test", f3.c_str()), FileException);
+  ASSERT_THROW(FileSystem::WriteStringToFile("test", f2.c_str()), FileException);
+  ASSERT_THROW(FileSystem::WriteStringToFile("test", f1.c_str()), FileException);
+  ASSERT_THROW(FileSystem::RmDir(
+                   dir_x, FileSystem::RmDirParameters::ThrowExceptionOnError, FileSystem::RmDirRecursive::Yes),
+               DirDoesNotExistException);
+}
+
+TEST(File, ScopedRmDir) {
+  // Required for Windows tests.
+  FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
+
+  const std::string& dir_x = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "x");
+  const std::string& dir_y = FileSystem::JoinPath(dir_x, "y");
+  const std::string& dir_z = FileSystem::JoinPath(dir_y, "z");
+  const std::string& fn = FileSystem::JoinPath(dir_z, "test");
+
+  FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
+  ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
+  {
+    const auto dir_remover = FileSystem::ScopedRmDir(dir_x);
+    FileSystem::MkDir(dir_x);
+    FileSystem::MkDir(dir_y);
+    FileSystem::MkDir(dir_z);
+    FileSystem::WriteStringToFile("PASSED", fn.c_str());
+    EXPECT_EQ("PASSED", FileSystem::ReadFileAsString(fn));
+  }
+  ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
+  ASSERT_THROW(FileSystem::RmDir(dir_z), DirDoesNotExistException);
+  ASSERT_THROW(FileSystem::RmDir(dir_y), DirDoesNotExistException);
+  ASSERT_THROW(FileSystem::RmDir(dir_x), DirDoesNotExistException);
 }

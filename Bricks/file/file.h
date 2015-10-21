@@ -153,12 +153,14 @@ struct FileSystem {
       BRICKS_THROW(FileException());
     } else {
       if (
+// clang-format off
 #ifndef BRICKS_WINDOWS
           S_ISDIR(info.st_mode)
 #else
           info.st_mode & _S_IFDIR
 #endif
-          ) {
+    ) {
+        // clang-format on
         BRICKS_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
@@ -173,12 +175,14 @@ struct FileSystem {
                            MkDirParameters parameters = MkDirParameters::ThrowExceptionOnError) {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     if (
+// clang-format off
 #ifndef BRICKS_WINDOWS
         ::mkdir(directory.c_str(), 0755)
 #else
         ::_mkdir(directory.c_str())
 #endif
-        ) {
+    ) {
+      // clang-format on
       if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
         BRICKS_THROW(FileException());
@@ -196,8 +200,11 @@ struct FileSystem {
   // TODO(dkorolev): Make OutputFile not as tightly coupled with std::ofstream as it is now.
   typedef std::ofstream OutputFile;
 
+  enum class ScanDirParameters { ListFilesOnly, ListFilesAndDirs };
   template <typename F>
-  static inline void ScanDirUntil(const std::string& directory, F&& f) {
+  static inline void ScanDirUntil(const std::string& directory,
+                                  F&& f,
+                                  ScanDirParameters parameters = ScanDirParameters::ListFilesOnly) {
 #ifdef BRICKS_WINDOWS
     WIN32_FIND_DATAA find_data;
     HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
@@ -211,7 +218,8 @@ struct FileSystem {
       };
       const ScopedCloseFindFileHandle closer(handle);
       do {
-        if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        if (parameters == ScanDirParameters::ListFilesAndDirs ||
+            !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
           if (!f(find_data.cFileName)) {
             return;
           }
@@ -232,7 +240,7 @@ struct FileSystem {
           // Proved to be required on Ubuntu running in Parallels on a Mac,
           // with Bricks' directory mounted from Mac's filesystem.
           // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
-          if (!IsDir(JoinPath(directory, filename))) {
+          if (parameters == ScanDirParameters::ListFilesAndDirs || !IsDir(JoinPath(directory, filename))) {
             if (!f(filename)) {
               return;
             }
@@ -252,11 +260,15 @@ struct FileSystem {
   }
 
   template <typename F>
-  static inline void ScanDir(const std::string& directory, F&& f) {
-    ScanDirUntil(directory, [&f](const std::string& filename) {
-      f(filename);
-      return true;
-    });
+  static inline void ScanDir(const std::string& directory,
+                             F&& f,
+                             ScanDirParameters parameters = ScanDirParameters::ListFilesOnly) {
+    ScanDirUntil(directory,
+                 [&f](const std::string& filename) {
+                   f(filename);
+                   return true;
+                 },
+                 parameters);
   }
 
   enum class RmFileParameters { ThrowExceptionOnError, Silent };
@@ -284,21 +296,70 @@ struct FileSystem {
   };
 
   enum class RmDirParameters { ThrowExceptionOnError, Silent };
+  enum class RmDirRecursive { No, Yes };
   static inline void RmDir(const std::string& directory,
-                           RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError) {
-    if (
+                           RmDirParameters parameters = RmDirParameters::ThrowExceptionOnError,
+                           RmDirRecursive recursive = RmDirRecursive::No) {
+    if (recursive == RmDirRecursive::No) {
+      if (
+// clang-format off
 #ifndef BRICKS_WINDOWS
-        ::rmdir(directory.c_str())
+          ::rmdir(directory.c_str())
 #else
-        ::_rmdir(directory.c_str())
+          ::_rmdir(directory.c_str())
 #endif
-        ) {
-      if (parameters == RmDirParameters::ThrowExceptionOnError) {
-        // TODO(dkorolev): Analyze errno.
-        BRICKS_THROW(FileException());
+      ) {
+        // clang-format on
+        if (parameters == RmDirParameters::ThrowExceptionOnError) {
+          if (errno == ENOENT) {
+            BRICKS_THROW(DirDoesNotExistException());
+          } else if (errno == ENOTEMPTY) {
+            BRICKS_THROW(DirIsNotEmptyException());
+          } else {
+            BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
+          }
+        }
+      }
+    } else {
+      try {
+        ScanDir(directory,
+                [&directory, parameters](const std::string& name) {
+                  const std::string full_name = JoinPath(directory, name);
+                  if (IsDir(full_name)) {
+                    RmDir(full_name, parameters, RmDirRecursive::Yes);
+                  } else {
+                    RmFile(full_name,
+                           (parameters == RmDirParameters::ThrowExceptionOnError)
+                               ? RmFileParameters::ThrowExceptionOnError
+                               : RmFileParameters::Silent);
+                  }
+                },
+                ScanDirParameters::ListFilesAndDirs);
+        RmDir(directory, parameters, RmDirRecursive::No);
+      } catch (const bricks::Exception&) {
+        if (parameters == RmDirParameters::ThrowExceptionOnError) {
+          throw;
+        }
       }
     }
   }
+
+  class ScopedRmDir final {
+   public:
+    explicit ScopedRmDir(const std::string& directory,
+                         bool remove_now_as_well = true,
+                         RmDirRecursive recursive = RmDirRecursive::Yes)
+        : directory_(directory), recursive_(recursive) {
+      if (remove_now_as_well) {
+        RmDir(directory_, RmDirParameters::Silent, recursive_);
+      }
+    }
+    ~ScopedRmDir() { RmDir(directory_, RmDirParameters::Silent, recursive_); }
+
+   private:
+    std::string directory_;
+    RmDirRecursive recursive_;
+  };
 };
 
 }  // namespace bricks
