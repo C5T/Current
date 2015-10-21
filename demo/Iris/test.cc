@@ -42,7 +42,6 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #include "iris.h"
-CEREAL_REGISTER_TYPE(LabeledFlower);
 
 using namespace bricks::strings;
 using namespace bricks::gnuplot;

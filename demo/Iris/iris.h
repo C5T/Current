@@ -51,8 +51,6 @@ struct LabeledFlower : yoda::Padawan {
     ar(CEREAL_NVP(key), CEREAL_NVP(SL), CEREAL_NVP(SW), CEREAL_NVP(PL), CEREAL_NVP(PW), CEREAL_NVP(label));
   }
 };
-
-// To be added to a `.cc` file to not violate the one-definition rule.
-// CEREAL_REGISTER_TYPE(LabeledFlower);
+CEREAL_REGISTER_TYPE(LabeledFlower);
 
 #endif  // IRIS_H
