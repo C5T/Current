@@ -64,6 +64,7 @@ struct NonexistentEntryAccessed : bricks::Exception {};
 // Wrapper to have in-memory view not only contain the entries, but also the index with which this entry
 // has been pushed to the stream. This is to ensure that the in-memory view is kept up to date
 // in case of overwrites, when the value written earlier can come from the stream after it was overwritten.
+// TODO(dkorolev): Retire this index-based logic, as it's no longer going to be current.
 template <typename ENTRY>
 struct EntryWithIndex {
   size_t index;

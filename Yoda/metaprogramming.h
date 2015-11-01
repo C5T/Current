@@ -59,52 +59,53 @@ struct Container {};
 
 // An abstract type to derive message queue message types from.
 // All asynchronous events within one Yoda instance go through this message queue.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQMessage;
 
 // Sherlock stream listener, responsible for converting every stream entry into a message queue one.
 // Encapsulates RTTI dynamic dispatching to bring all corresponding containers up-to-date.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct StreamListener;
 
 // Message queue listener: makes sure each message gets its `virtual Process()` method called,
 // in the right order of processing messages.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQListener;
 
 struct YodaTypesBase {};  // For `static_assert(std::is_base_of<...>)` compile-time checks.
 
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct YodaTypes : YodaTypesBase {
-  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(IsTypeList<SUPPORTED_TYPES_LIST>::value, "");
 
-  typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
+  typedef SUPPORTED_TYPES_LIST T_SUPPORTED_TYPES_LIST;
 
   template <typename T>
-  using SherlockEntryTypeFromYodaEntryType = typename T::T_ENTRY;
-  typedef MP::map<SherlockEntryTypeFromYodaEntryType, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
+  using SherlockEntryTypeFromYodaEntryType = typename T::T_SHERLOCK_TYPES;
+  typedef TypeList<MP::map<SherlockEntryTypeFromYodaEntryType, T_SUPPORTED_TYPES_LIST>>
+      T_UNDERLYING_TYPES_AS_TUPLE;
 
-  typedef MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
-  typedef MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
+  typedef MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST> T_MQ_LISTENER;
+  typedef MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
   typedef blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
 
   typedef sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER> T_STREAM_TYPE;
 
-  typedef StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
-  typedef typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>
-      T_SHERLOCK_LISTENER_SCOPE_TYPE;
+  typedef StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST> T_SHERLOCK_LISTENER;
+  typedef
+      typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
 };
 
 // Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.
 // This enables external users to specify their types in a template-deducible manner.
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename YT>
-using YodaMMQMessage = MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>;
+using YodaMMQMessage = MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_LIST>;
 
 template <typename YT>
 struct YodaContainerImpl {
   template <typename T>
   using ContainerType = Container<YT, T>;
-  typedef MP::combine<MP::map<ContainerType, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>> type;
+  typedef MP::combine<MP::map<ContainerType, typename YT::T_SUPPORTED_TYPES_LIST>> type;
 };
 
 template <typename YT>
@@ -201,8 +202,8 @@ struct YodaData {
           [std::declval<bricks::decay<KEY>>()])
   operator[](KEY&& key) {
     typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<
-        CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(key)];
+    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(
+        key)];
   }
 
  private:
@@ -211,18 +212,18 @@ struct YodaData {
 };
 
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQMessage {
-  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST> YT;
   virtual void Process(YodaContainer<YT>& container,
                        YodaData<YT> container_data,
                        typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 // Stream listener is passing entries from the Sherlock stream into the message queue.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct StreamListener {
-  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST> YT;
 
   // TODO(dkorolev) || TODO(mzhurovich): `std::ref` + `std::reference_wrapper` ?
   explicit StreamListener(typename YT::T_MQ& mq,
@@ -230,7 +231,7 @@ struct StreamListener {
                           std::condition_variable* p_replay_done_cv)
       : mq_(mq), p_replay_done_(p_replay_done), p_replay_done_cv_(p_replay_done_cv) {}
 
-  struct MQMessageEntry : MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
+  struct MQMessageEntry : MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_LIST> {
     std::unique_ptr<Padawan> entry;
     const size_t index;
 
@@ -264,9 +265,9 @@ struct StreamListener {
   std::condition_variable* p_replay_done_cv_;
 };
 
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQListener {
-  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST> YT;
   explicit MQListener(YodaContainer<YT>& container,
                       YodaData<YT> container_data,
                       typename YT::T_STREAM_TYPE& stream)
@@ -484,6 +485,35 @@ struct APICalls {
   }
 
   typename YT::T_MQ& mq_;
+};
+
+template <typename...>
+struct GlobalDeleterPersister;
+
+// For `Dictionary<>`, might be worth moving into a respective dir, but meh. -- D.K.
+template <typename T>
+struct GlobalDeleterPersister<T> : Padawan {
+  T key_to_erase;
+  virtual ~GlobalDeleterPersister() {}
+  GlobalDeleterPersister(T key_to_erase = T()) : key_to_erase(key_to_erase) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(key_to_erase));
+  }
+};
+
+// For `Matrix<>`, might be worth moving into a respective dir, but meh. -- D.K.
+template <typename TR, typename TC>
+struct GlobalDeleterPersister<TR, TC> : Padawan {
+  TR row_to_erase;
+  TC col_to_erase;
+  virtual ~GlobalDeleterPersister() {}
+  GlobalDeleterPersister(TR row_to_erase = TR(), TC col_to_erase = TC())
+      : row_to_erase(row_to_erase), col_to_erase(col_to_erase) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(row_to_erase), CEREAL_NVP(col_to_erase));
+  }
 };
 
 }  // namespace yoda
