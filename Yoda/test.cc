@@ -26,29 +26,15 @@ SOFTWARE.
 // Smoke test and example reference usage code.
 #include "docu/docu_2_reference_code.cc"
 
-// Persistence layer test.
-// Shamelessly use the fact that all the required headers have been `#include`-d above. -- D.K.
-struct MagicStringKey {
-  // Must use a dedicated type for the key in this test, otherwise it won't compile
-  // along with the large one, that also declares `DeleterPersister` for the key being an `std::string`.
-  std::string magic;
-  MagicStringKey(const std::string& magic = "") : magic(magic) {}
-  MagicStringKey(const MagicStringKey& rhs) : magic(rhs.magic) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(magic));
-  }
-  bool operator<(const MagicStringKey& rhs) const { return magic < rhs.magic; }
-};
 struct YodaEntryToPersist : Padawan {
-  MagicStringKey key;  // Must not be std::string for the test to compile.
+  std::string key;
   int number;
-  YodaEntryToPersist(MagicStringKey key = {""}, int number = 0) : key(key), number(number) {}
+  YodaEntryToPersist(const std::string& key = "", int number = 0) : key(key), number(number) {}
   template <typename A>
   void serialize(A& ar) {
     ar(CEREAL_NVP(key), CEREAL_NVP(number));
   }
-  using DeleterPersister = yoda::GlobalDeleterPersister<MagicStringKey>;
+  using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<std::string, 1>;
 };
 CEREAL_REGISTER_TYPE(YodaEntryToPersist);
 CEREAL_REGISTER_TYPE(YodaEntryToPersist::DeleterPersister);
@@ -57,14 +43,14 @@ DEFINE_string(yoda_test_tmpdir, ".current", "Local path for the test to create t
 
 const std::string yoda_golden_data =
     "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
-    "\"valid\":1,\"data\":{\"key\":{\"magic\":\"one\"},\"number\":1}}}}\n{\"e\":{\"polymorphic_id\":2147483649,"
-    "\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"key\":{\"magic\":"
-    "\"two\"},\"number\":2}}}}\n";
+    "\"valid\":1,\"data\":{\"key\":\"one\",\"number\":1}}}}\n"
+    "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+    "\"valid\":1,\"data\":{\"key\":\"two\",\"number\":2}}}}\n";
 
 const std::string yoda_golden_data_after_delete =
     yoda_golden_data +
     "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist::DeleterPersister\",\"ptr_"
-    "wrapper\":{\"valid\":1,\"data\":{\"key_to_erase\":{\"magic\":\"one\"}}}}}\n";
+    "wrapper\":{\"valid\":1,\"data\":{\"key_to_erase\":\"one\"}}}}\n";
 
 TEST(Yoda, WritesToFile) {
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
@@ -73,15 +59,15 @@ TEST(Yoda, WritesToFile) {
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("WritingToFileAPI", persistence_file_name);
 
-  api.Add(YodaEntryToPersist(MagicStringKey("one"), 1));
-  api.Add(YodaEntryToPersist(MagicStringKey("two"), 2));
+  api.Add(YodaEntryToPersist("one", 1));
+  api.Add(YodaEntryToPersist("two", 2));
   while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
     ;  // Spin lock.
   }
   EXPECT_EQ(yoda_golden_data, bricks::FileSystem::ReadFileAsString(persistence_file_name));
 
   api.Transaction([](PersistingAPI::T_DATA data) {
-    Dictionary<YodaEntryToPersist>::Mutator(data).Delete(MagicStringKey("one"));
+    Dictionary<YodaEntryToPersist>::Mutator(data).Delete("one");
   }).Wait();
   while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data_after_delete.size()) {
     ;  // Spin lock.
@@ -96,10 +82,10 @@ TEST(Yoda, ReadsFromFile) {
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
-  EXPECT_TRUE(api.Has(MagicStringKey("one")).Go());
-  EXPECT_TRUE(api.Has(MagicStringKey("two")).Go());
-  EXPECT_EQ(1, static_cast<YodaEntryToPersist>(api.Get(MagicStringKey("one")).Go()).number);
-  EXPECT_EQ(2, static_cast<YodaEntryToPersist>(api.Get(MagicStringKey("two")).Go()).number);
+  EXPECT_TRUE(api.Has(std::string("one")).Go());
+  EXPECT_TRUE(api.Has(std::string("two")).Go());
+  EXPECT_EQ(1, static_cast<YodaEntryToPersist>(api.Get(std::string("one")).Go()).number);
+  EXPECT_EQ(2, static_cast<YodaEntryToPersist>(api.Get(std::string("two")).Go()).number);
 }
 
 TEST(Yoda, ReadsDeletionFromFile) {
@@ -109,6 +95,6 @@ TEST(Yoda, ReadsDeletionFromFile) {
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
-  EXPECT_FALSE(api.Has(MagicStringKey("one")).Go());
-  EXPECT_TRUE(api.Has(MagicStringKey("two")).Go());
+  EXPECT_FALSE(api.Has(std::string("one")).Go());
+  EXPECT_TRUE(api.Has(std::string("two")).Go());
 }

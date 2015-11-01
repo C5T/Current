@@ -188,6 +188,20 @@ using RowCol = RowColImpl<T_ROW,
                           HasOperatorLess<T_COL>(0)>;
 
 }  // namespace sfinae
+
+template <typename TR, typename TC, int Q>
+struct MatrixGlobalDeleterPersister : Padawan {
+  TR row_to_erase;
+  TC col_to_erase;
+  virtual ~MatrixGlobalDeleterPersister() {}
+  MatrixGlobalDeleterPersister(TR row_to_erase = TR(), TC col_to_erase = TC())
+      : row_to_erase(row_to_erase), col_to_erase(col_to_erase) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(row_to_erase), CEREAL_NVP(col_to_erase));
+  }
+};
+
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_CONTAINER_MATRIX_METAPROGRAMMING_H

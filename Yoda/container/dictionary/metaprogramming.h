@@ -88,6 +88,18 @@ void SetKey(ENTRY& entry, CF<ENTRY_KEY_TYPE<ENTRY>> key) {
 }
 
 }  // namespace sfinae
+
+template <typename T, int Q>
+struct DictionaryGlobalDeleterPersister : Padawan {
+  T key_to_erase;
+  virtual ~DictionaryGlobalDeleterPersister() {}
+  DictionaryGlobalDeleterPersister(T key_to_erase = T()) : key_to_erase(key_to_erase) {}
+  template <typename A>
+  void serialize(A& ar) {
+    ar(CEREAL_NVP(key_to_erase));
+  }
+};
+
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_CONTAINER_DICTIONARY_METAPROGRAMMING_H

@@ -487,35 +487,6 @@ struct APICalls {
   typename YT::T_MQ& mq_;
 };
 
-template <typename...>
-struct GlobalDeleterPersister;
-
-// For `Dictionary<>`, might be worth moving into a respective dir, but meh. -- D.K.
-template <typename T>
-struct GlobalDeleterPersister<T> : Padawan {
-  T key_to_erase;
-  virtual ~GlobalDeleterPersister() {}
-  GlobalDeleterPersister(T key_to_erase = T()) : key_to_erase(key_to_erase) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(key_to_erase));
-  }
-};
-
-// For `Matrix<>`, might be worth moving into a respective dir, but meh. -- D.K.
-template <typename TR, typename TC>
-struct GlobalDeleterPersister<TR, TC> : Padawan {
-  TR row_to_erase;
-  TC col_to_erase;
-  virtual ~GlobalDeleterPersister() {}
-  GlobalDeleterPersister(TR row_to_erase = TR(), TC col_to_erase = TC())
-      : row_to_erase(row_to_erase), col_to_erase(col_to_erase) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(row_to_erase), CEREAL_NVP(col_to_erase));
-  }
-};
-
 }  // namespace yoda
 
 #endif  // SHERLOCK_YODA_METAPROGRAMMING_H
