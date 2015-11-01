@@ -34,7 +34,7 @@ struct YodaEntryToPersist : Padawan {
   void serialize(A& ar) {
     ar(CEREAL_NVP(key), CEREAL_NVP(number));
   }
-  using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<std::string, 1>;
+  using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<std::string, __COUNTER__>;
 };
 CEREAL_REGISTER_TYPE(YodaEntryToPersist);
 CEREAL_REGISTER_TYPE(YodaEntryToPersist::DeleterPersister);

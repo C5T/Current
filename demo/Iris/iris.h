@@ -50,7 +50,10 @@ struct LabeledFlower : yoda::Padawan {
     Padawan::serialize(ar);
     ar(CEREAL_NVP(key), CEREAL_NVP(SL), CEREAL_NVP(SW), CEREAL_NVP(PL), CEREAL_NVP(PW), CEREAL_NVP(label));
   }
+
+  using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<size_t, __COUNTER__>;
 };
 CEREAL_REGISTER_TYPE(LabeledFlower);
+CEREAL_REGISTER_TYPE(LabeledFlower::DeleterPersister);
 
 #endif  // IRIS_H

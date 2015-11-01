@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <utility>
 
+#include "../../types.h"
 #include "../../metaprogramming.h"
 
 #include "../../../Bricks/template/pod.h"

@@ -117,7 +117,7 @@ return result;
       ar(CEREAL_NVP(prime), CEREAL_NVP(index));
     }
 
-    using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<PRIME, 1>;
+    using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<PRIME, __COUNTER__>;
   };
   CEREAL_REGISTER_TYPE(Prime);
   CEREAL_REGISTER_TYPE(Prime::DeleterPersister);
@@ -142,7 +142,7 @@ return result;
       ar(CEREAL_NVP(row), CEREAL_NVP(col), CEREAL_NVP(index));
     }
 
-    using DeleterPersister = yoda::MatrixGlobalDeleterPersister<Div10, Mod10, 2>;
+    using DeleterPersister = yoda::MatrixGlobalDeleterPersister<Div10, Mod10, __COUNTER__>;
   };
   CEREAL_REGISTER_TYPE(PrimeCell);
   CEREAL_REGISTER_TYPE(PrimeCell::DeleterPersister);
@@ -157,7 +157,7 @@ return result;
       Padawan::serialize(ar);
       ar(CEREAL_NVP(key), CEREAL_NVP(value));
     }
-    using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<std::string, 3>;
+    using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<std::string, __COUNTER__>;
   };
   CEREAL_REGISTER_TYPE(StringIntTuple);
   CEREAL_REGISTER_TYPE(StringIntTuple::DeleterPersister);

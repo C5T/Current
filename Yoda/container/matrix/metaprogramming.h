@@ -29,6 +29,7 @@ SOFTWARE.
 #include <tuple>
 #include <utility>
 
+#include "../../types.h"
 #include "../../metaprogramming.h"
 #include "../../sfinae.h"
 #include "../../../Bricks/template/pod.h"
