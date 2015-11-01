@@ -50,6 +50,7 @@ struct Matrix {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
+  typedef TypeList<ENTRY, typename ENTRY::DeleterPersister> T_SHERLOCK_TYPES;
   typedef ENTRY_ROW_TYPE<ENTRY> T_ROW;
   typedef ENTRY_COL_TYPE<ENTRY> T_COL;
 
@@ -193,6 +194,21 @@ struct Container<YT, Matrix<ENTRY>> {
       transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
     }
   }
+  void operator()(const typename YET::T_ENTRY::DeleterPersister& entry, size_t) {
+    // TODO(dkorolev): Yes, we don't care about indexes here.
+    map_.erase(ROW_COL(entry.row_to_erase, entry.col_to_erase));
+    // Erase the pointer to the entry from forward and transposed matrices.
+    // Erase empty cols/rows too, so that `.size()` for rows/cols is always correct
+    // when it comes to not counting empty cols/rows.
+    forward_[entry.row_to_erase].erase(entry.col_to_erase);
+    transposed_[entry.col_to_erase].erase(entry.row_to_erase);
+    if (forward_[entry.row_to_erase].empty()) {
+      forward_.erase(entry.row_to_erase);
+    }
+    if (transposed_[entry.col_to_erase].empty()) {
+      transposed_.erase(entry.col_to_erase);
+    }
+  }
 
   class Accessor {
    public:
@@ -306,6 +322,7 @@ struct Container<YT, Matrix<ENTRY>> {
     // Non-throwing deleter.
     // TODO(dkorolev): Persist the deletion and test it.
     void Delete(bricks::copy_free<typename YET::T_ROW> row, bricks::copy_free<typename YET::T_COL> col) {
+      stream_.Publish(typename YET::T_ENTRY::DeleterPersister(row, col));
       // Erase the entry if it existed.
       mutable_.map_.erase(ROW_COL(row, col));
       // Erase the pointer to the entry from forward and transposed matrices.

@@ -51,6 +51,7 @@ struct Dictionary {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
+  typedef TypeList<ENTRY, typename ENTRY::DeleterPersister> T_SHERLOCK_TYPES;
   typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
 
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
@@ -94,6 +95,10 @@ struct Container<YT, Dictionary<ENTRY>> {
     if (placeholder.index == static_cast<size_t>(-1) || index > placeholder.index) {
       placeholder.Update(index, std::move(entry));
     }
+  }
+  void operator()(const typename YET::T_ENTRY::DeleterPersister& entry, size_t) {
+    // TODO(dkorolev): Yes, we don't care about indexes here.
+    map_.erase(entry.key_to_erase);
   }
 
   class Accessor {
@@ -165,8 +170,10 @@ struct Container<YT, Dictionary<ENTRY>> {
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
     // Non-throwing deleter.
-    // TODO(dkorolev): Persist the deletion and test it.
-    void Delete(bricks::copy_free<typename YET::T_KEY> key) { mutable_.map_.erase(key); }
+    void Delete(bricks::copy_free<typename YET::T_KEY> key) {
+      stream_.Publish(typename YET::T_ENTRY::DeleterPersister(key));
+      mutable_.map_.erase(key);
+    }
 
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {

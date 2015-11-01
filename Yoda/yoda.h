@@ -95,7 +95,7 @@ namespace yoda {
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename ENTRIES_TYPELIST>
 struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER, ENTRIES_TYPELIST>> {
  private:
-  static_assert(bricks::metaprogramming::is_std_tuple<ENTRIES_TYPELIST>::value, "");
+  static_assert(IsTypeList<ENTRIES_TYPELIST>::value, "");
   typedef YodaTypes<PERSISTENCE, CLONER, ENTRIES_TYPELIST> YT;
 
  public:
@@ -141,15 +141,15 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
   typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
 };
 
-// `yoda::API` suports both a typelist and an `std::tuple<>` with parameter definition.
+// `yoda::API` suports both a typelist and an `TypeList<>` with parameter definition.
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
 struct APIWrapperSelector {
-  typedef APIWrapper<PERSISTENCE, CLONER, std::tuple<SUPPORTED_TYPES...>> type;
+  typedef APIWrapper<PERSISTENCE, CLONER, TypeList<SUPPORTED_TYPES...>> type;
 };
 
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
-struct APIWrapperSelector<PERSISTENCE, CLONER, std::tuple<SUPPORTED_TYPES...>> {
-  typedef APIWrapper<PERSISTENCE, CLONER, std::tuple<SUPPORTED_TYPES...>> type;
+struct APIWrapperSelector<PERSISTENCE, CLONER, TypeListImpl<SUPPORTED_TYPES...>> {
+  typedef APIWrapper<PERSISTENCE, CLONER, TypeListImpl<SUPPORTED_TYPES...>> type;
 };
 
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
