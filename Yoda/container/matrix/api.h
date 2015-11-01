@@ -50,7 +50,7 @@ struct Matrix {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
-  typedef TypeList<ENTRY, typename ENTRY::DeleterPersister> T_SHERLOCK_TYPES;
+  using T_SHERLOCK_TYPES = TypeListImpl<ENTRY, typename ENTRY::DeleterPersister>;
   typedef ENTRY_ROW_TYPE<ENTRY> T_ROW;
   typedef ENTRY_COL_TYPE<ENTRY> T_COL;
 

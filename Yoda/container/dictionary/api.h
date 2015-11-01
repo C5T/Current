@@ -51,8 +51,8 @@ struct Dictionary {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
-  typedef TypeList<ENTRY, typename ENTRY::DeleterPersister> T_SHERLOCK_TYPES;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+  using T_SHERLOCK_TYPES = TypeListImpl<ENTRY, typename ENTRY::DeleterPersister> ;
+  using T_KEY = ENTRY_KEY_TYPE<T_ENTRY>;
 
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;

@@ -41,7 +41,7 @@ namespace yoda {
 
 // All user entries, which are supposed to be stored in Yoda, should be derived from this base class.
 struct Padawan {
-  typedef Padawan CEREAL_BASE_TYPE;
+  using CEREAL_BASE_TYPE = Padawan;
 
   uint64_t ms;
   Padawan() : ms(static_cast<uint64_t>(bricks::time::Now())) {}

@@ -78,22 +78,22 @@ template <template <typename, typename> class PERSISTENCE, class CLONER, typenam
 struct YodaTypes : YodaTypesBase {
   static_assert(IsTypeList<SUPPORTED_TYPES_LIST>::value, "");
 
-  typedef SUPPORTED_TYPES_LIST T_SUPPORTED_TYPES_LIST;
+  using T_SUPPORTED_TYPES_LIST = SUPPORTED_TYPES_LIST;
 
   template <typename T>
   using SherlockEntryTypeFromYodaEntryType = typename T::T_SHERLOCK_TYPES;
-  typedef TypeList<MP::map<SherlockEntryTypeFromYodaEntryType, T_SUPPORTED_TYPES_LIST>>
-      T_UNDERLYING_TYPES_AS_TUPLE;
+  // Need to flatten all the types here, so no `TypeListImpl<>`, only `TypeList`.
+  using T_UNDERLYING_TYPES_LIST = TypeList<MP::map<SherlockEntryTypeFromYodaEntryType, T_SUPPORTED_TYPES_LIST>>;
 
-  typedef MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST> T_MQ_LISTENER;
-  typedef MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
-  typedef blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
+  using T_MQ_LISTENER = MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
+  using T_MQ_MESSAGE_INTERNAL_TYPEDEF = MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
+  using T_MQ = blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER>;
 
-  typedef sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER> T_STREAM_TYPE;
+  using T_STREAM_TYPE = sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>;
 
-  typedef StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST> T_SHERLOCK_LISTENER;
-  typedef
-      typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER> T_SHERLOCK_LISTENER_SCOPE_TYPE;
+  using T_SHERLOCK_LISTENER = StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
+  using T_SHERLOCK_LISTENER_SCOPE_TYPE =
+    typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>;
 };
 
 // Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.
@@ -176,7 +176,7 @@ struct StreamListener {
     virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
       // TODO(dkorolev): For this call, `entry`, the first parameter, should be `std::move()`-d,
       // but Bricks doesn't support it yet for `RTTIDynamicCall`.
-      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container, index);
+      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_LIST>(entry, container, index);
     }
   };
 

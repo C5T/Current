@@ -141,25 +141,22 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
   typename YT::T_SHERLOCK_LISTENER_SCOPE_TYPE sherlock_listener_scope_;
 };
 
-// `yoda::API` suports both a typelist and an `TypeList<>` with parameter definition.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
-struct APIWrapperSelector {
-  typedef APIWrapper<PERSISTENCE, CLONER, TypeList<SUPPORTED_TYPES...>> type;
-};
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPE_LIST>
+struct APIWrapperSelector;
 
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
 struct APIWrapperSelector<PERSISTENCE, CLONER, TypeListImpl<SUPPORTED_TYPES...>> {
   typedef APIWrapper<PERSISTENCE, CLONER, TypeListImpl<SUPPORTED_TYPES...>> type;
 };
 
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename... SUPPORTED_TYPES>
-using API = typename APIWrapperSelector<PERSISTENCE, CLONER, SUPPORTED_TYPES...>::type;
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
+using API = typename APIWrapperSelector<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST>::type;
 
 template <typename... SUPPORTED_TYPES>
-using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, bricks::DefaultCloner, SUPPORTED_TYPES...>;
+using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, bricks::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
 
 template <typename... SUPPORTED_TYPES>
-using SingleFileAPI = API<blocks::persistence::AppendToFile, bricks::DefaultCloner, SUPPORTED_TYPES...>;
+using SingleFileAPI = API<blocks::persistence::AppendToFile, bricks::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
 
 }  // namespace yoda
 
