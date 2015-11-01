@@ -81,12 +81,6 @@ struct Container<YT, Dictionary<ENTRY>> {
 
   typedef Dictionary<ENTRY> YET;
 
-  YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
-  YET operator()(type_inference::template YETFromK<typename YET::T_KEY>);
-  YET operator()(type_inference::template YETFromK<std::tuple<typename YET::T_KEY>>);
-  YET operator()(type_inference::template YETFromSubscript<typename YET::T_KEY>);
-  YET operator()(type_inference::template YETFromSubscript<std::tuple<typename YET::T_KEY>>);
-
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
   // TODO(dkorolev): For this parameter to be an `ENTRY&&`, we'd need to clean up Bricks wrt RTTI.

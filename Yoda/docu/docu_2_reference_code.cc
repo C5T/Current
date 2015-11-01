@@ -174,45 +174,53 @@ HTTP(port).ResetAllHandlers();
   PrimesAPI api("YodaExampleUsage");
   
   // Simple dictionary usecase, and a unit test for type system implementation.
-  api.Add(StringIntTuple("two", 2));
-  api.Add(static_cast<const StringIntTuple&>(StringIntTuple("three", 3)));
   api.Transaction([](PrimesAPI::T_DATA data) {
-    data.Add(StringIntTuple("five", 5));
-    data.Add(static_cast<const StringIntTuple&>(
+    auto adder = Dictionary<StringIntTuple>::Mutator(data);
+    adder.Add(StringIntTuple("two", 2));
+    adder.Add(static_cast<const StringIntTuple&>(StringIntTuple("three", 3)));
+    adder.Add(StringIntTuple("five", 5));
+    adder.Add(static_cast<const StringIntTuple&>(
       StringIntTuple("seven", 7)));
     EXPECT_EQ(3, static_cast<StringIntTuple>(
-      data.Get(std::string("three"))).value);
+      adder.Get(std::string("three"))).value);
     EXPECT_EQ(5, static_cast<StringIntTuple>(
-      data.Get(static_cast<const std::string&>(std::string("five")))).value);
+      adder.Get(static_cast<const std::string&>(std::string("five")))).value);
   });
-  EXPECT_EQ(2, static_cast<StringIntTuple>(
-    api.Get(std::string("two")).Go()).value);
-  EXPECT_EQ(7, static_cast<StringIntTuple>(
-    api.Get(static_cast<const std::string&>(std::string("seven"))).Go()).value);
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    const auto getter = Dictionary<StringIntTuple>::Accessor(data);
+    EXPECT_EQ(2, static_cast<StringIntTuple>(
+      getter.Get(std::string("two"))).value);
+    EXPECT_EQ(7, static_cast<StringIntTuple>(
+      getter.Get(static_cast<const std::string&>(std::string("seven")))).value);
+  }).Wait();
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    auto adder = Dictionary<Prime>::Mutator(data);
+    // `2` is the first prime.
+    // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
+    adder.Add(Prime(2, 1));
+    
+    // `3` is the second prime.
+    // `adder.Add()` never throws and silently overwrites.
+    adder.Add(Prime(3, 100));
+    adder.Add(Prime(3, 2));
+    
+    // `adder.Has()` supports both raw keys and tuples.
+    ASSERT_TRUE(adder.Has(static_cast<PRIME>(3)));
+    ASSERT_TRUE(adder.Has(std::make_tuple(static_cast<PRIME>(3))));
+    ASSERT_FALSE(adder.Has(static_cast<PRIME>(4)));
+
+    const auto getter = Dictionary<Prime>::Accessor(data);
+    // `getter.Get()` has multiple signatures, one or more per supported data type.
+    // It never throws, and returns a wrapper that can be cast to both `bool`
+    // and the underlying type.
+    ASSERT_TRUE(static_cast<bool>(getter.Get(static_cast<PRIME>(2))));
+    ASSERT_TRUE(static_cast<bool>(getter.Get(std::make_tuple(static_cast<PRIME>(2)))));
+    EXPECT_EQ(1, static_cast<const Prime&>(getter.Get(static_cast<PRIME>(2))).index);
+    ASSERT_TRUE(static_cast<bool>(getter.Get(static_cast<PRIME>(3))));
+    EXPECT_EQ(2, static_cast<const Prime&>(getter.Get(static_cast<PRIME>(3))).index);
+    ASSERT_FALSE(static_cast<bool>(getter.Get(static_cast<PRIME>(4))));
+  }).Wait();
   
-  // `2` is the first prime.
-  // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
-  api.Add(Prime(2, 1)).Go();
-  
-  // `3` is the second prime.
-  // `api.Add()` never throws and silently overwrites.
-  api.Add(Prime(3, 100));
-  api.Add(Prime(3, 2));
-  
-  // `api.Has()` supports both raw keys and tuples.
-  ASSERT_TRUE(api.Has(static_cast<PRIME>(3)).Go());
-  ASSERT_TRUE(api.Has(std::make_tuple(static_cast<PRIME>(3))).Go());
-  ASSERT_FALSE(api.Has(static_cast<PRIME>(4)).Go());
-  
-  // `api.Get()` has multiple signatures, one or more per supported data type.
-  // It never throws, and returns a wrapper that can be cast to both `bool`
-  // and the underlying type.
-  ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(2)).Go()));
-  ASSERT_TRUE(static_cast<bool>(api.Get(std::make_tuple(static_cast<PRIME>(2))).Go()));
-  EXPECT_EQ(1, static_cast<const Prime&>(api.Get(static_cast<PRIME>(2)).Go()).index);
-  ASSERT_TRUE(static_cast<bool>(api.Get(static_cast<PRIME>(3)).Go()));
-  EXPECT_EQ(2, static_cast<const Prime&>(api.Get(static_cast<PRIME>(3)).Go()).index);
-  ASSERT_FALSE(static_cast<bool>(api.Get(static_cast<PRIME>(4)).Go()));
   
   // Expanded syntax for `Add()`.
 {
@@ -290,7 +298,7 @@ HTTP(port).ResetAllHandlers();
     adder << Prime(17, 7) << Prime(19, 9);
     ASSERT_THROW(adder << Prime(19, 9), KeyAlreadyExistsException<Prime>);
     try {
-      data << Prime(19, 9);
+      adder << Prime(19, 9);
     } catch (const KeyAlreadyExistsException<Prime>& e) {
       EXPECT_EQ(19, static_cast<int>(e.key));
     }
@@ -322,19 +330,19 @@ HTTP(port).ResetAllHandlers();
     }
   
     // The syntax using `data` directly, without `Accessor` or `Mutator`.
-    data << Prime(23, 10) << Prime(29, 101);
-    ASSERT_THROW(data << Prime(29, 102),
+    adder << Prime(23, 10) << Prime(29, 101);
+    ASSERT_THROW(adder << Prime(29, 102),
                  KeyAlreadyExistsException<Prime>);
-    data.Add(Prime(29, 11));
-    ASSERT_TRUE(data.Has(std::make_tuple(static_cast<PRIME>(3))));
-    ASSERT_TRUE(data.Has(static_cast<PRIME>(3)));
-    ASSERT_TRUE(static_cast<bool>(data.Get(std::make_tuple(static_cast<PRIME>(3)))));
-    ASSERT_TRUE(static_cast<bool>(data.Get(static_cast<PRIME>(3))));
-    EXPECT_EQ(2, static_cast<const Prime&>(data.Get(static_cast<PRIME>(3))).index);
-    ASSERT_FALSE(data.Has(static_cast<PRIME>(4)));
-    ASSERT_FALSE(static_cast<bool>(data.Get(static_cast<PRIME>(4))));
-    EXPECT_EQ(3, data[static_cast<PRIME>(5)].index);
-    ASSERT_THROW(data[static_cast<PRIME>(9)],
+    adder.Add(Prime(29, 11));
+    ASSERT_TRUE(getter.Has(std::make_tuple(static_cast<PRIME>(3))));
+    ASSERT_TRUE(getter.Has(static_cast<PRIME>(3)));
+    ASSERT_TRUE(static_cast<bool>(getter.Get(std::make_tuple(static_cast<PRIME>(3)))));
+    ASSERT_TRUE(static_cast<bool>(getter.Get(static_cast<PRIME>(3))));
+    EXPECT_EQ(2, static_cast<const Prime&>(getter.Get(static_cast<PRIME>(3))).index);
+    ASSERT_FALSE(getter.Has(static_cast<PRIME>(4)));
+    ASSERT_FALSE(static_cast<bool>(getter.Get(static_cast<PRIME>(4))));
+    EXPECT_EQ(3, getter[static_cast<PRIME>(5)].index);
+    ASSERT_THROW(getter[static_cast<PRIME>(9)],
                  KeyNotFoundException<Prime>);
   
     // Traversal.
@@ -360,23 +368,27 @@ HTTP(port).ResetAllHandlers();
     }
     EXPECT_EQ(10u, c1);
     EXPECT_EQ(10u, c2);
-  }).Go();
+  }).Wait();
 }
   
 {
-  // Work with `Matrix<>` as well.
-  api.Add(PrimeCell(0, 2, 100));
-  api.Add(PrimeCell(0, 2, 1));  // Overwrite.
-  api.Add(PrimeCell(0, 3, 2));
-  
-  const EntryWrapper<PrimeCell> e2 = api.Get(Div10(0), Mod10(2)).Go();
-  const bool b2 = e2;
-  ASSERT_TRUE(b2);
-  ASSERT_TRUE(api.Has(Div10(0), Mod10(2)).Go());
-  const PrimeCell p2 = e2;
-  EXPECT_EQ(0, static_cast<int>(p2.row));
-  EXPECT_EQ(2, static_cast<int>(p2.col));
-  EXPECT_EQ(1, p2.index);
+  api.Transaction([](PrimesAPI::T_DATA data) {
+    auto adder = Matrix<PrimeCell>::Mutator(data);
+    // Work with `Matrix<>` as well.
+    adder.Add(PrimeCell(0, 2, 100));
+    adder.Add(PrimeCell(0, 2, 1));  // Overwrite.
+    adder.Add(PrimeCell(0, 3, 2));
+    
+    const auto getter = Matrix<PrimeCell>::Accessor(data);
+    const EntryWrapper<PrimeCell> e2 = getter.Get(Div10(0), Mod10(2));
+    const bool b2 = e2;
+    ASSERT_TRUE(b2);
+    ASSERT_TRUE(getter.Has(Div10(0), Mod10(2)));
+    const PrimeCell p2 = e2;
+    EXPECT_EQ(0, static_cast<int>(p2.row));
+    EXPECT_EQ(2, static_cast<int>(p2.col));
+    EXPECT_EQ(1, p2.index);
+  }).Wait();
   
   api.Transaction([](PrimesAPI::T_DATA data) {
     const auto getter = Matrix<PrimeCell>::Accessor(data);
@@ -401,11 +413,11 @@ HTTP(port).ResetAllHandlers();
     adder.Add(PrimeCell(0, 5, 3));
     adder.Add(std::tuple<PrimeCell>(PrimeCell(0, 5, 3)));
   
-    data.Add(PrimeCell(0, 7, 4));
+    adder.Add(PrimeCell(0, 7, 4));
   
     adder << PrimeCell(1, 1, 5) << PrimeCell(1, 3, 6);
-    data << PrimeCell(1, 7, 7);
-    ASSERT_THROW(data << PrimeCell(1, 7, 7),
+    adder << PrimeCell(1, 7, 7);
+    ASSERT_THROW(adder << PrimeCell(1, 7, 7),
                  CellAlreadyExistsException<PrimeCell>);
   
     const auto key1 = std::make_tuple(Div10(1), Mod10(7));
@@ -423,9 +435,9 @@ HTTP(port).ResetAllHandlers();
   
     EXPECT_EQ(7, adder[Mod10(7)][Div10(1)].index);
   
-    EXPECT_EQ(7, data[Div10(1)][Mod10(7)].index);
+    EXPECT_EQ(7, adder[Div10(1)][Mod10(7)].index);
   
-    EXPECT_EQ(7, data[Mod10(7)][Div10(1)].index);
+    EXPECT_EQ(7, adder[Mod10(7)][Div10(1)].index);
   }).Wait();
 }
     
@@ -457,9 +469,10 @@ HTTP(port).ResetAllHandlers();
 {
   // Fill in all the primes and traverse the matrix by rows and by cols.
   api.Transaction([&prime_index, &is_prime](PrimesAPI::T_DATA data) {
+    auto adder = Matrix<PrimeCell>::Mutator(data);
     for (int p = 2; p <= 99; ++p) {
       if (is_prime(p)) {
-        data.Add(PrimeCell(p / 10, p % 10, ++prime_index));
+        adder.Add(PrimeCell(p / 10, p % 10, ++prime_index));
       }
     }
   });  // No need to wait, tests that use this data are right here.
@@ -467,8 +480,9 @@ HTTP(port).ResetAllHandlers();
   // Primes that start with `4`.
   EXPECT_EQ("41,43,47",
             api.Transaction([](PrimesAPI::T_DATA data) {
+              const auto getter = Matrix<PrimeCell>::Mutator(data);
               std::set<int> values;
-              for (const auto cit : data[static_cast<Div10>(4)]) {
+              for (const auto cit : getter[static_cast<Div10>(4)]) {
                 values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
               }
@@ -478,8 +492,9 @@ HTTP(port).ResetAllHandlers();
   // Primes that end with `7`.
   EXPECT_EQ("7,17,37,47,67,97",
             api.Transaction([](PrimesAPI::T_DATA data) {
+              const auto getter = Matrix<PrimeCell>::Mutator(data);
               std::set<int> values;
-              for (const auto cit : data[Mod10(7)]) {
+              for (const auto cit : getter[Mod10(7)]) {
                 values.insert(static_cast<int>(cit.row) * 10 +
                               static_cast<int>(cit.col));
               }
@@ -552,9 +567,10 @@ HTTP(port).ResetAllHandlers();
   // not an `std::map<>`. To do so, add more prime numbers
   // and verify that their internal order is not lexicographical.
   api.Transaction([&prime_index, &is_prime](PrimesAPI::T_DATA data) {
+    auto adder = Matrix<PrimeCell>::Mutator(data);
     for (int p = 100; p <= 999; ++p) {
       if (is_prime(p)) {
-        data.Add(PrimeCell(p / 10, p % 10, ++prime_index));
+        adder.Add(PrimeCell(p / 10, p % 10, ++prime_index));
       }
     }
   }).Go();
@@ -596,8 +612,13 @@ HTTP(port).ResetAllHandlers();
   // into the processing thread.
   // Interestingly, a REST-ful endpoint is the easiest possible test.
   HTTP(port).Register("/key_entry", [&api](Request request) {
-    api.GetWithNext(static_cast<PRIME>(FromString<int>(request.url.query["p"])),
-                    std::move(request));
+    const int key = FromString<int>(request.url.query["p"]);
+    api.Transaction(
+      [key](PrimesAPI::T_DATA data) {
+        // Return an `EntryWrapper`, which wraps nicely into an HTTP response.
+        return Dictionary<Prime>::Accessor(data).Get(key);
+      },
+      std::move(request));
   });
   auto response_prime = HTTP(GET(Printf("http://localhost:%d/key_entry?p=7", port)));
   EXPECT_EQ(200, static_cast<int>(response_prime.code));
@@ -606,30 +627,24 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(404, static_cast<int>(response_composite.code));
   EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", response_composite.body);
   
-  HTTP(port).Register("/matrix_entry_1", [&api](Request request) {
+  HTTP(port).Register("/matrix_entry", [&api](Request request) {
     const auto a = Div10(FromString<int>(request.url.query["a"]));
     const auto b = Mod10(FromString<int>(request.url.query["b"]));
-    api.GetWithNext(std::tie(a, b), std::move(request));
+    const auto key = std::make_tuple(a, b);
+    api.Transaction(
+      [key](PrimesAPI::T_DATA data) {
+        // Return an `EntryWrapper`, which wraps nicely into an HTTP response.
+        return Matrix<PrimeCell>::Accessor(data).Get(key);
+      },
+      std::move(request));
   });
-  HTTP(port).Register("/matrix_entry_2", [&api](Request request) {
-    const auto a = Div10(FromString<int>(request.url.query["a"]));
-    const auto b = Mod10(FromString<int>(request.url.query["b"]));
-    api.GetWithNext(a, b, std::move(request));
-  });
-  auto cell_prime_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=3", port)));
-  EXPECT_EQ(200, static_cast<int>(cell_prime_1.code));
+  const auto cell_prime = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=3", port)));
+  EXPECT_EQ(200, static_cast<int>(cell_prime.code));
   EXPECT_EQ("{\"entry\":{\"ms\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
-            cell_prime_1.body);
-  auto cell_prime_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=3", port)));
-  EXPECT_EQ(200, static_cast<int>(cell_prime_2.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
-            cell_prime_2.body);
-  auto cell_composite_1 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_1?a=0&b=4", port)));
-  EXPECT_EQ(404, static_cast<int>(cell_composite_1.code));
-  EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite_1.body);
-  auto cell_composite_2 = HTTP(GET(Printf("http://localhost:%d/matrix_entry_2?a=0&b=4", port)));
-  EXPECT_EQ(404, static_cast<int>(cell_composite_2.code));
-  EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite_2.body);
+            cell_prime.body);
+  const auto cell_composite = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=4", port)));
+  EXPECT_EQ(404, static_cast<int>(cell_composite.code));
+  EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite.body);
 }
   
 {

@@ -59,8 +59,11 @@ TEST(Yoda, WritesToFile) {
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("WritingToFileAPI", persistence_file_name);
 
-  api.Add(YodaEntryToPersist("one", 1));
-  api.Add(YodaEntryToPersist("two", 2));
+  api.Transaction([](PersistingAPI::T_DATA data) {
+    auto adder = Dictionary<YodaEntryToPersist>::Mutator(data);
+    adder.Add(YodaEntryToPersist("one", 1));
+    adder.Add(YodaEntryToPersist("two", 2));
+  }).Wait();;
   while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
     ;  // Spin lock.
   }
@@ -82,10 +85,14 @@ TEST(Yoda, ReadsFromFile) {
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
-  EXPECT_TRUE(api.Has(std::string("one")).Go());
-  EXPECT_TRUE(api.Has(std::string("two")).Go());
-  EXPECT_EQ(1, static_cast<YodaEntryToPersist>(api.Get(std::string("one")).Go()).number);
-  EXPECT_EQ(2, static_cast<YodaEntryToPersist>(api.Get(std::string("two")).Go()).number);
+
+  api.Transaction([](PersistingAPI::T_DATA data) {
+    const auto getter = Dictionary<YodaEntryToPersist>::Accessor(data);
+    EXPECT_TRUE(getter.Has(std::string("one")));
+    EXPECT_TRUE(getter.Has(std::string("two")));
+    EXPECT_EQ(1, static_cast<YodaEntryToPersist>(getter.Get(std::string("one"))).number);
+    EXPECT_EQ(2, static_cast<YodaEntryToPersist>(getter.Get(std::string("two"))).number);
+  }).Wait();
 }
 
 TEST(Yoda, ReadsDeletionFromFile) {
@@ -95,6 +102,9 @@ TEST(Yoda, ReadsDeletionFromFile) {
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
-  EXPECT_FALSE(api.Has(std::string("one")).Go());
-  EXPECT_TRUE(api.Has(std::string("two")).Go());
+  api.Transaction([](PersistingAPI::T_DATA data) {
+    const auto getter = Dictionary<YodaEntryToPersist>::Accessor(data);
+    EXPECT_FALSE(getter.Has(std::string("one")));
+    EXPECT_TRUE(getter.Has(std::string("two")));
+  }).Wait();
 }

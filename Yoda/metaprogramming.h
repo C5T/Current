@@ -119,21 +119,6 @@ struct RetrieveAccessor {};
 template <typename T>
 struct RetrieveMutator {};
 
-// A wrapper to convert `T` into `Dictionary<T>`, `Matrix<T>`, etc., using `decltype()`.
-// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
-template <typename T>
-struct YETFromE {};
-
-// A wrapper to convert `T::T_KEY` into `Dictionary<T>`,
-// `std::tuple<T::T_ROW, T::T_COL>` into `Matrix<T>`, etc.
-// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
-template <typename K>
-struct YETFromK {};
-
-// A wrapper to convert subscript types into values or row/col accessors respectively.
-template <typename K>
-struct YETFromSubscript {};
-
 }  // namespace type_inference
 
 template <typename YT>
@@ -155,55 +140,6 @@ struct YodaData {
   CWT<YodaContainer<YT>, type_inference::RetrieveMutator<T>, std::reference_wrapper<typename YT::T_STREAM_TYPE>>
   Mutator() const {
     return container(type_inference::RetrieveMutator<T>(), std::ref(stream));
-  }
-
-  // Top-level methods and operators, dispatching by parameter type.
-  template <typename ENTRY>
-  void Add(ENTRY&& entry) {
-    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>().Add(std::forward<ENTRY>(entry));
-  }
-
-  template <typename KEY>
-  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<KEY>>>::T_ENTRY> Get(
-      KEY&& key) const {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Get(
-        std::forward<KEY>(key));
-  }
-
-  template <typename KEY>
-  bool Has(KEY&& key) const {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Has(
-        std::forward<KEY>(key));
-  }
-
-  template <typename ENTRY>
-  void Delete(ENTRY&& entry) {
-    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>().Delete(
-        std::forward<ENTRY>(entry));
-  }
-
-  template <typename ENTRY>
-  YodaData& operator<<(ENTRY&& entry) {
-    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>() << std::forward<ENTRY>(entry);
-    return *this;
-  }
-
-  // This scary `decltype(declval)` is just to extract the return type of `the_right_accessor[key]`.
-  template <typename KEY>
-  decltype(
-      std::declval<CWT<YodaContainer<YT>,
-                       type_inference::RetrieveAccessor<
-                           CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::decay<KEY>>>>>>()
-          [std::declval<bricks::decay<KEY>>()])
-  operator[](KEY&& key) {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(
-        key)];
   }
 
  private:
@@ -316,43 +252,6 @@ template <template <typename, typename> class PERSISTENCE, class CLONER, typenam
 struct APICalls {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
-  // `TopLevelAdd` accepts an undecayed type.
-  // It itself makes a copy of the entry to add, and passing in a non-decayed type
-  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
-  template <typename DATA, typename YET, typename UNDECAYED_ENTRY>
-  struct TopLevelAdd {
-    const bricks::decay<UNDECAYED_ENTRY> entry;
-    TopLevelAdd(UNDECAYED_ENTRY&& entry) : entry(std::forward<UNDECAYED_ENTRY>(entry)) {}
-    void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
-  };
-
-  // `TopLevelGet` accepts an undecayed type.
-  // It itself makes a copy of the key to query, and passing in a non-decayed type
-  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
-  template <typename DATA, typename YET, typename UNDECAYED_KEY>
-  struct TopLevelGet {
-    const bricks::decay<UNDECAYED_KEY> key;
-    TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
-    typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
-        std::declval<bricks::decay<UNDECAYED_KEY>>())) RETVAL;
-    RETVAL operator()(DATA data) const {
-      // TODO(dkorolev): Use `std::move()` here.
-      return YET::Accessor(data).Get(key);
-    }
-  };
-
-  // `TopLevelHas` accepts an undecayed type.
-  // It itself makes a copy of the key to query, and passing in a non-decayed type
-  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
-  template <typename DATA, typename YET, typename UNDECAYED_KEY>
-  struct TopLevelHas {
-    const bricks::decay<UNDECAYED_KEY> key;
-    TopLevelHas(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
-    bool operator()(DATA data) const {
-      return YET::Accessor(data).Has(key);
-    }  // TODO(dkorolev): Use `std::move()` here.
-  };
-
   template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
 
@@ -416,72 +315,6 @@ struct APICalls {
     mq_.Emplace(new MQMessageFunctionWithNext<INTERMEDIATE_TYPE, NEXT_USER_FUNCTION>(
         std::forward<TYPED_USER_FUNCTION>(function), std::forward<NEXT_USER_FUNCTION>(next), std::move(pr)));
     return future;
-  }
-
-  // Helper method to wrap `Add()` into `Transaction()`.
-  // Note: `TopLevelAdd` accepts an undecayed type.
-  // This is required to correctly handle both by-value and by-reference parameter types.
-  template <typename UNDECAYED_ENTRY>
-  Future<void> Add(UNDECAYED_ENTRY&& entry) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<bricks::decay<UNDECAYED_ENTRY>>> YET;
-    return Transaction(TopLevelAdd<YodaData<YT>, YET, UNDECAYED_ENTRY>(std::forward<UNDECAYED_ENTRY>(entry)));
-  }
-
-  // Helper method to wrap `Get()` into `Transaction()`. With one and with more than one parameter.
-  // Note: `TopLevelGet` accepts an undecayed type.
-  // This is required to correctly handle both by-value and by-reference parameter types.
-  template <typename UNDECAYED_KEY>
-  Future<EntryWrapper<
-      typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<UNDECAYED_KEY>>>::T_ENTRY>>
-  Get(UNDECAYED_KEY&& key) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<UNDECAYED_KEY>>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, UNDECAYED_KEY>(std::forward<UNDECAYED_KEY>(key)));
-  }
-
-  template <typename KEY, typename... KEYS>
-  Future<EntryWrapper<typename CWT<YodaContainer<YT>,
-                                   type_inference::YETFromK<bricks::decay<std::tuple<KEY, KEYS...>>>>::T_ENTRY>>
-  Get(KEY&& key, KEYS&&... keys) {
-    typedef std::tuple<KEY, KEYS...> TUPLE;
-    typedef bricks::decay<TUPLE> SAFE_TUPLE;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_TUPLE>(
-        std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
-  }
-
-  // Helper method to wrap `Has()` into `Transaction()`. With one and with more than one parameter.
-  // Note: `TopLevelHas` accepts an undecayed type.
-  // This is required to correctly handle both by-value and by-reference parameter types.
-  template <typename UNDECAYED_KEY>
-  Future<bool> Has(UNDECAYED_KEY&& key) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<UNDECAYED_KEY>>> YET;
-    return Transaction(TopLevelHas<YodaData<YT>, YET, UNDECAYED_KEY>(std::forward<UNDECAYED_KEY>(key)));
-  }
-
-  template <typename KEY, typename... KEYS>
-  Future<bool> Has(KEY&& key, KEYS&&... keys) {
-    typedef std::tuple<KEY, KEYS...> TUPLE;
-    typedef bricks::decay<TUPLE> SAFE_TUPLE;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
-    return Transaction(TopLevelHas<YodaData<YT>, YET, SAFE_TUPLE>(
-        std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
-  }
-
-  // Helper method to wrap `GetWithNext()` into `Transaction()`.
-  // Unlike `Get()`, the last parameter to `GetWithNext()` is the function,
-  // thus the user will have to tie the first ones using `std::tie()`.
-  template <typename KEY, typename F>
-  Future<void> GetWithNext(KEY&& key, F&& f) {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, DECAYED_KEY>(std::forward<DECAYED_KEY>(key)),
-                       std::forward<F>(f));
-  }
-
-  // Because I'm nice. :-) -- D.K.
-  template <typename KEY1, typename KEY2, typename F>
-  Future<void> GetWithNext(KEY1&& key1, KEY2&& key2, F&& f) {
-    return GetWithNext(std::tie(std::forward<KEY1>(key1), std::forward<KEY2>(key2)), std::forward<F>(f));
   }
 
   typename YT::T_MQ& mq_;

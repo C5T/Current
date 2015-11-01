@@ -175,13 +175,6 @@ struct Container<YT, Matrix<ENTRY>> {
   template <typename T>
   using CF = bricks::copy_free<T>;
 
-  YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
-  YET operator()(type_inference::template YETFromK<std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
-  YET operator()(
-      type_inference::template YETFromSubscript<std::tuple<typename YET::T_ROW, typename YET::T_COL>>);
-  YET operator()(type_inference::template YETFromSubscript<typename YET::T_ROW>);
-  YET operator()(type_inference::template YETFromSubscript<typename YET::T_COL>);
-
   // Event: The entry has been scanned from the stream.
   void operator()(ENTRY& entry, size_t index) {
     std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder = map_[ROW_COL(GetRow(entry), GetCol(entry))];
