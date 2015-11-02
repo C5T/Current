@@ -103,7 +103,7 @@ struct Cell final {
 //   DATABASE(UnitTestStorage) {
 //     TABLE(v ,Vector<PSYKHANOOL_test::Element>);
 //     TABLE(d, OrderedDictionary<PSYKHANOOL_test::Record>);
-//     TABLE(m, Matrix<PSYKHANOOL_test::Cell>);
+//     TABLE(m, LightweightLightweightMatrix<PSYKHANOOL_test::Cell>);
 //   };
 //   // F*ck yeah!
 //
@@ -117,7 +117,7 @@ struct UnitTestStorage final {
   // and respects initialization order. -- D.K.
   Vector<PSYKHANOOL_test::Element, POLICY> v{"v", instance};
   OrderedDictionary<PSYKHANOOL_test::Record, POLICY> d{"d", instance};
-  Matrix<PSYKHANOOL_test::Cell, POLICY> m{"m", instance};
+  LightweightMatrix<PSYKHANOOL_test::Cell, POLICY> m{"m", instance};
 
   template <typename... ARGS>
   UnitTestStorage(ARGS&&... args)
@@ -240,7 +240,7 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
 
   storage.d.Erase("two");
 
-  // Test the logic of `Matrix`.
+  // Test the logic of `LightweightMatrix`.
   EXPECT_TRUE(storage.m.Empty());
   EXPECT_EQ(0u, storage.m.Size());
   EXPECT_TRUE(storage.m.Rows().Empty());
@@ -261,6 +261,21 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   EXPECT_TRUE(storage.m.Has(1, "one"));
   EXPECT_TRUE(Exists(storage.m.Get(1, "one")));
   EXPECT_EQ(1, Value(storage.m.Get(1, "one")).phew);
+
+  {
+    std::vector<int> rows;
+    for (const auto& e : storage.m.Rows()) {
+      rows.push_back(e.Key());
+    }
+    EXPECT_EQ("1,2", bricks::strings::Join(rows, ','));
+  }
+  {
+    std::vector<std::string> cols;
+    for (const auto& e : storage.m.Cols()) {
+      cols.push_back(e.Key());
+    }
+    EXPECT_EQ("one,too,two", bricks::strings::Join(cols, ','));
+  }
 
   storage.m.Delete(1, "one");
   EXPECT_EQ(2u, storage.m.Size());

@@ -36,7 +36,7 @@ SOFTWARE.
 //   Empty(), Size(), operator[](key), Erase(key) [, iteration, {lower/upper}_bound].
 //   `T_KEY` is either the type of `T.key` or of `T.get_key()`.
 //
-// * Matrix<T> <=> { T_ROW, T_COL } -> T, three `std::map<>`-s.
+// * LightweightMatrix<T> <=> { T_ROW, T_COL } -> T, three `std::map<>`-s.
 //   Empty(), Size(), Rows()/Cols(), Add(cell), Delete(row, col) [, iteration, {lower/upper}_bound].
 //   `T_ROW` and `T_COL` are either the type of `T.row` / `T.col`, or of `T.get_row()` / `T.get_col()`.
 //
@@ -75,8 +75,6 @@ class ImmutableOptional final {
   ImmutableOptional(const T* object) : optional_object_(object) {}
   ImmutableOptional(std::unique_ptr<T>&& rhs)
       : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  //  ImmutableOptional(const T& object)
-  //      : optional_object_copy_(make_unique<T>(object)), optional_object_(optional_object_copy_.get()) {}
   bool Exists() const { return optional_object_ != nullptr; }
   const T& Value() const {
     if (optional_object_ != nullptr) {
@@ -188,9 +186,9 @@ class OrderedDictionaryAPI : protected OrderedDictionaryStorage<T> {
   typename PERSISTER::ImmutableOptionalType operator[](sfinae::CF<T_KEY> key) const {
     const auto iterator = OrderedDictionaryStorage<T>::map_.find(key);
     if (iterator != OrderedDictionaryStorage<T>::map_.end()) {
-      return typename PERSISTER::ImmutableOptionalType(&iterator->second);
+      return &iterator->second;
     } else {
-      return typename PERSISTER::ImmutableOptionalType(nullptr);
+      return nullptr;
     }
   }
 
@@ -224,7 +222,7 @@ class OrderedDictionaryAPI : protected OrderedDictionaryStorage<T> {
 };
 
 template <typename T>
-class MatrixStorage {
+class LightweightMatrixStorage {
  public:
   using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
   using T_COL = sfinae::ENTRY_COL_TYPE<T>;
@@ -255,18 +253,19 @@ class MatrixStorage {
 };
 
 template <typename T, typename PERSISTER>
-class MatrixAPI : protected MatrixStorage<T> {
+class LightweightMatrixAPI : protected LightweightMatrixStorage<T> {
  public:
-  typedef typename MatrixStorage<T>::T_ROW T_ROW;
-  typedef typename MatrixStorage<T>::T_COL T_COL;
-  explicit MatrixAPI(PERSISTER* persister) : persister_(*persister) {}
+  typedef typename LightweightMatrixStorage<T>::T_ROW T_ROW;
+  typedef typename LightweightMatrixStorage<T>::T_COL T_COL;
+  explicit LightweightMatrixAPI(PERSISTER* persister) : persister_(*persister) {}
 
-  bool Empty() const { return MatrixStorage<T>::map_.empty(); }
-  size_t Size() const { return MatrixStorage<T>::map_.size(); }
+  bool Empty() const { return LightweightMatrixStorage<T>::map_.empty(); }
+  size_t Size() const { return LightweightMatrixStorage<T>::map_.size(); }
 
-  template <typename INNER>
+  template <typename OUTER, typename INNER>
   struct InnerAccessor final {
     using T_MAP = std::map<INNER, const T*>;
+    const sfinae::CF<OUTER> key_;
     const T_MAP& map_;
 
     struct Iterator final {
@@ -281,11 +280,12 @@ class MatrixAPI : protected MatrixStorage<T> {
       const T* operator->() const { return iterator->second; }
     };
 
-    explicit InnerAccessor(const T_MAP& map) : map_(map) {}
+    InnerAccessor(sfinae::CF<OUTER> key, const T_MAP& map) : key_(key), map_(map) {}
 
     bool Empty() const { return map_.empty(); }
-
     size_t Size() const { return map_.size(); }
+
+    sfinae::CF<OUTER> Key() const { return key_; }
 
     bool Has(const INNER& x) const { return map_.find(x) != map_.end(); }
 
@@ -298,6 +298,19 @@ class MatrixAPI : protected MatrixStorage<T> {
     using T_MAP = std::map<OUTER, std::map<INNER, const T*>>;
     const T_MAP& map_;
 
+    struct OuterIterator final {
+      using T_ITERATOR = typename T_MAP::const_iterator;
+      T_ITERATOR iterator;
+      explicit OuterIterator(T_ITERATOR iterator) : iterator(iterator) {}
+      void operator++() { ++iterator; }
+      bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
+      bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
+      sfinae::CF<OUTER> key() const { return iterator->first; }
+      InnerAccessor<OUTER, INNER> operator*() const {
+        return InnerAccessor<OUTER, INNER>(iterator->first, iterator->second);
+      }
+    };
+
     explicit OuterAccessor(const T_MAP& map) : map_(map) {}
 
     bool Empty() const { return map_.empty(); }
@@ -306,41 +319,46 @@ class MatrixAPI : protected MatrixStorage<T> {
 
     bool Has(const OUTER& x) const { return map_.find(x) != map_.end(); }
 
-    ImmutableOptional<InnerAccessor<INNER>> operator[](sfinae::CF<OUTER> key) const {
+    ImmutableOptional<InnerAccessor<OUTER, INNER>> operator[](sfinae::CF<OUTER> key) const {
       const auto iterator = map_.find(key);
       if (iterator != map_.end()) {
-        return make_unique<InnerAccessor<INNER>>(map_.find(key)->second);
+        return std::move(make_unique<InnerAccessor<OUTER, INNER>>(key, iterator->second));
       } else {
         return nullptr;
       }
     }
+
+    OuterIterator begin() const { return OuterIterator(map_.cbegin()); }
+    OuterIterator end() const { return OuterIterator(map_.cend()); }
   };
 
-  OuterAccessor<T_ROW, T_COL> Rows() const { return OuterAccessor<T_ROW, T_COL>(MatrixStorage<T>::forward_); }
+  OuterAccessor<T_ROW, T_COL> Rows() const {
+    return OuterAccessor<T_ROW, T_COL>(LightweightMatrixStorage<T>::forward_);
+  }
 
   OuterAccessor<T_COL, T_ROW> Cols() const {
-    return OuterAccessor<T_COL, T_ROW>(MatrixStorage<T>::transposed_);
+    return OuterAccessor<T_COL, T_ROW>(LightweightMatrixStorage<T>::transposed_);
   }
 
   void Add(const T& object) {
     persister_.PersistAdd(object);
-    MatrixStorage<T>::DoAdd(object);
+    LightweightMatrixStorage<T>::DoAdd(object);
   }
 
   void Delete(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) {
     persister_.PersistDelete(row, col);
-    MatrixStorage<T>::DoDelete(row, col);
+    LightweightMatrixStorage<T>::DoDelete(row, col);
   }
 
   bool Has(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
-    return MatrixStorage<T>::map_.find(std::make_pair(row, col)) != MatrixStorage<T>::map_.end();
+    return LightweightMatrixStorage<T>::map_.find(std::make_pair(row, col)) !=
+           LightweightMatrixStorage<T>::map_.end();
   }
 
   ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
-    const auto result = MatrixStorage<T>::map_.find(std::make_pair(row, col));
-    if (result != MatrixStorage<T>::map_.end()) {
-      const T* const_ptr = result->second.get();  // Extract the type carefully to avoid casts. -- D.K.
-      return const_ptr;
+    const auto result = LightweightMatrixStorage<T>::map_.find(std::make_pair(row, col));
+    if (result != LightweightMatrixStorage<T>::map_.end()) {
+      return result->second.get();
     } else {
       return nullptr;
     }
@@ -384,7 +402,7 @@ struct InMemory final {
   };
 
   template <typename T>
-  class MatrixPersister {
+  class LightweightMatrixPersister {
    public:
     using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
     using T_COL = sfinae::ENTRY_COL_TYPE<T>;
@@ -392,7 +410,7 @@ struct InMemory final {
     using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
-    MatrixPersister(const std::string&, Instance&, MatrixStorage<T>&) {}
+    LightweightMatrixPersister(const std::string&, Instance&, LightweightMatrixStorage<T>&) {}
 
     void PersistAdd(const T&) {}
     void PersistDelete(const T_ROW&, const T_COL&) {}
@@ -478,9 +496,9 @@ struct ReplayFromAndAppendToFile final {
     }
 
     void PersistPushBack(size_t i, const T& x) {
-      instance_.Persist(hook_push_back_name_) << i << '\t' << JSON(x) << '\n';
+      instance_.Persist(hook_push_back_name_) << i << '\t' << JSON(x) << '\n' << std::flush;
     }
-    void PersistPopBack(size_t i) { instance_.Persist(hook_pop_back_name_) << i << '\n'; }
+    void PersistPopBack(size_t i) { instance_.Persist(hook_pop_back_name_) << i << '\n' << std::flush; }
 
    private:
     Instance& instance_;
@@ -506,9 +524,9 @@ struct ReplayFromAndAppendToFile final {
                             [&storage](const char* data) { storage.map_.erase(ParseJSON<T_KEY>(data)); });
     }
 
-    void PersistInsert(const T& x) { instance_.Persist(hook_insert_name_) << JSON(x) << '\n'; }
+    void PersistInsert(const T& x) { instance_.Persist(hook_insert_name_) << JSON(x) << '\n' << std::flush; }
 
-    void PersistErase(const T_KEY& k) { instance_.Persist(hook_erase_name_) << JSON(k) << '\n'; }
+    void PersistErase(const T_KEY& k) { instance_.Persist(hook_erase_name_) << JSON(k) << '\n' << std::flush; }
 
    private:
     Instance& instance_;
@@ -517,7 +535,7 @@ struct ReplayFromAndAppendToFile final {
   };
 
   template <typename T>
-  class MatrixPersister {
+  class LightweightMatrixPersister {
    public:
     using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
     using T_COL = sfinae::ENTRY_COL_TYPE<T>;
@@ -525,7 +543,9 @@ struct ReplayFromAndAppendToFile final {
     using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
-    MatrixPersister(const std::string& name, Instance& instance, MatrixStorage<T>& storage)
+    LightweightMatrixPersister(const std::string& name,
+                               Instance& instance,
+                               LightweightMatrixStorage<T>& storage)
         : instance_(instance), hook_add_name_(name + ".add"), hook_delete_name_(name + ".delete") {
       instance.RegisterHook(hook_add_name_,
                             [&storage](const char* data) { storage.DoAdd(ParseJSON<T>(data)); });
@@ -537,9 +557,9 @@ struct ReplayFromAndAppendToFile final {
                             });
     }
 
-    void PersistAdd(const T& x) { instance_.Persist(hook_add_name_) << JSON(x) << '\n'; }
+    void PersistAdd(const T& x) { instance_.Persist(hook_add_name_) << JSON(x) << '\n' << std::flush; }
     void PersistDelete(const T_ROW& row, const T_COL& col) {
-      instance_.Persist(hook_delete_name_) << JSON(row) << '\t' << JSON(col) << '\n';
+      instance_.Persist(hook_delete_name_) << JSON(row) << '\t' << JSON(col) << '\n' << std::flush;
     }
 
    private:
@@ -571,13 +591,14 @@ class OrderedDictionary final
 };
 
 template <typename T, class POLICY = InMemory>
-class Matrix final : public MatrixAPI<T, typename POLICY::template MatrixPersister<T>>,
-                     protected POLICY::template MatrixPersister<T> {
+class LightweightMatrix final
+    : public LightweightMatrixAPI<T, typename POLICY::template LightweightMatrixPersister<T>>,
+      protected POLICY::template LightweightMatrixPersister<T> {
  public:
   template <typename... ARGS>
-  Matrix(const std::string& name, typename POLICY::Instance& instance)
-      : MatrixAPI<T, typename POLICY::template MatrixPersister<T>>(this),
-        POLICY::template MatrixPersister<T>(name, instance, *this) {}
+  LightweightMatrix(const std::string& name, typename POLICY::Instance& instance)
+      : LightweightMatrixAPI<T, typename POLICY::template LightweightMatrixPersister<T>>(this),
+        POLICY::template LightweightMatrixPersister<T>(name, instance, *this) {}
 };
 
 template <typename T>
@@ -627,7 +648,7 @@ using PSYKHANOOL::MutableOptional;
 
 using PSYKHANOOL::Vector;
 using PSYKHANOOL::OrderedDictionary;
-using PSYKHANOOL::Matrix;
+using PSYKHANOOL::LightweightMatrix;
 
 using PSYKHANOOL::InMemory;
 using PSYKHANOOL::ReplayFromAndAppendToFile;
