@@ -25,7 +25,7 @@ SOFTWARE.
 // Current-friendly data manipulation types:
 //
 // * bool Exists(x) : non-throwing, always `true` for non-optionals.
-// * T Value(x)     : can throw `NoValue` if and only is `Exists(x)` is `false`.
+// * T Value(x)     : can throw `NoValue` if and only if `Exists(x)` is `false`.
 //
 // Current-friendly container types.
 //
