@@ -161,7 +161,7 @@ class OrderedDictionaryStorage {
   using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
   using T_MAP = std::map<T_KEY, T>;
   T_MAP map_;
-  void DoInsert(const T& object) { map_.insert(std::make_pair(sfinae::GetKey(object), object)); }
+  void DoInsert(const T& object) { map_[sfinae::GetKey(object)] = object; }
 };
 
 template <typename T, typename PERSISTER>
