@@ -40,6 +40,7 @@ SOFTWARE.
 //   Empty(), Size(), Rows()/Cols(), Add(cell), Delete(row, col) [, iteration, {lower/upper}_bound].
 //   `T_ROW` and `T_COL` are either the type of `T.row` / `T.col`, or of `T.get_row()` / `T.get_col()`.
 //
+// * TODO(dkorolev): UnorderedDictionary.
 // ...
 //
 // All Current-friendly types support persistence.
@@ -94,6 +95,7 @@ class MutableOptional final {
  public:
   MutableOptional() = delete;
   MutableOptional(T* object) : optional_object_(object) {}
+  // TODO(dkorolev): Think of how does passing in an `std::unique_ptr<T>&&` blend in.
   bool Exists() const { return optional_object_ != nullptr; }
   T& Value() {
     if (optional_object_ != nullptr) {
@@ -121,6 +123,7 @@ class VectorAPI : protected VectorStorage<T> {
   bool Empty() const { return VectorStorage<T>::vector_.empty(); }
   size_t Size() const { return VectorStorage<T>::vector_.size(); }
 
+  // TODO(dkorolev): This should not be here, since persistence would not happen!
   typename PERSISTER::MutableOptionalType operator[](size_t index) {
     if (index < VectorStorage<T>::vector_.size()) {
       return typename PERSISTER::MutableOptionalType(&VectorStorage<T>::vector_[index]);
