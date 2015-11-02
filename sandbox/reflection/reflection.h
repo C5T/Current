@@ -1,11 +1,13 @@
 #ifndef BRICKS_REFLECTION_REFLECTION_H
 #define BRICKS_REFLECTION_REFLECTION_H
 
-#include <iostream>
 #include <sstream>
 
 #include "struct.h"
 #include "types.h"
+
+namespace bricks {
+namespace reflection {
 
 struct ReflectedField {
   ReflectedField(const std::string& name, std::unique_ptr<ReflectedTypeImpl> reflected_type)
@@ -50,12 +52,15 @@ template <typename T>
 typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value, std::string>::type DescribeCppStruct() {
   std::ostringstream oss;
   auto r = ReflectStruct<T>();
-  oss << "struct " << r.name << " {" << std::endl;
+  oss << "struct " << r.name << " {\n";
   for (const auto& f : r.fields) {
-    oss << "  " << f.reflected_type->CppType() << " " << f.name << ";" << std::endl;
+    oss << "  " << f.reflected_type->CppType() << " " << f.name << ";\n";
   }
-  oss << "};" << std::endl;
+  oss << "};\n";
   return oss.str();
 }
+
+}  // namespace reflection
+}  // namespace bricks
 
 #endif  // BRICKS_REFLECTION_REFLECTION_H
