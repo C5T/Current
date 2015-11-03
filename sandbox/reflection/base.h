@@ -11,6 +11,7 @@ struct CurrentBaseType {
 // Instantiation types.
 struct DeclareFields {};
 struct CountFields {};
+typedef long long CountFieldsImplementationType;
 
 // Helper structs for reflection.
 class FieldType {};

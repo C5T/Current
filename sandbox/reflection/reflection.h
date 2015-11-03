@@ -1,64 +1,83 @@
 #ifndef BRICKS_REFLECTION_REFLECTION_H
 #define BRICKS_REFLECTION_REFLECTION_H
 
-#include <sstream>
+#include <typeindex>
+#include <unordered_map>
 
 #include "struct.h"
 #include "types.h"
 
+#include "../../Bricks/util/singleton.h"
+
 namespace bricks {
 namespace reflection {
 
-struct ReflectedField {
-  ReflectedField(const std::string& name, std::unique_ptr<ReflectedTypeImpl> reflected_type)
-      : name(name), reflected_type(std::move(reflected_type)) {}
+struct TypeReflector;
 
-  std::string name;
-  std::unique_ptr<ReflectedTypeImpl> reflected_type;
-};
+struct ReflectorImpl {
+  struct FieldReflector {
+    FieldReflector(StructFieldsVector& fields) : fields_(fields) {}
 
-struct ReflectedStruct {
-  std::string name;
-  std::vector<ReflectedField> fields;
-};
+    template <typename T>
+    void operator()(TypeWrapper<T>, const std::string& name) const {
+      fields_.emplace_back(ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>(), name);
+    }
 
-struct TypeReflector {
-  std::unique_ptr<ReflectedTypeImpl> operator()(TypeWrapper<uint64_t>) {
-    return std::unique_ptr<ReflectedTypeImpl>(new ReflectedType_UInt64());
-  }
-};
+   private:
+    StructFieldsVector& fields_;
+  };
 
-struct FieldReflector {
-  std::vector<ReflectedField> fields;
-  TypeReflector type_reflector;
+  struct TypeReflector {
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeWrapper<uint64_t>) {
+      return std::unique_ptr<ReflectedTypeImpl>(new ReflectedType_UInt64());
+    }
+
+    template <typename T>
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeWrapper<std::vector<T>>) {
+      std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Vector());
+      ReflectedType_Vector& v = dynamic_cast<ReflectedType_Vector&>(*result);
+      v.reflected_element_type = ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>();
+      v.type_id = CalculateTypeID(v);
+      return result;
+    }
+
+    template <typename T>
+    typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value,
+                            std::unique_ptr<ReflectedTypeImpl>>::type
+    operator()(TypeWrapper<T>) {
+      std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Struct());
+      ReflectedType_Struct& s = dynamic_cast<ReflectedType_Struct&>(*result);
+      s.name = T::template CURRENT_REFLECTION_HELPER<T>::name();
+      FieldReflector field_reflector(s.fields);
+      EnumFields<T, FieldTypeAndName>()(field_reflector);
+      s.type_id = CalculateTypeID(s);
+      return result;
+    }
+  };
 
   template <typename T>
-  void operator()(TypeWrapper<T> type_wrapper, const std::string& name) {
-    fields.emplace_back(name, type_reflector(type_wrapper));
+  ReflectedTypeImpl* ReflectType() {
+    std::type_index type_index = std::type_index(typeid(T));
+    if (reflected_types_.count(type_index) == 0u) {
+      reflected_types_[type_index] = std::move(type_reflector_(TypeWrapper<T>()));
+    }
+    return reflected_types_[type_index].get();
   }
+
+  template <typename T>
+  typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value, std::string>::type DescribeCppStruct() {
+    return dynamic_cast<ReflectedType_Struct*>(ReflectType<T>())->CppDeclaration();
+  }
+
+  // For testing purposes.
+  size_t KnownTypesCount() const { return reflected_types_.size(); }
+
+ private:
+  std::unordered_map<std::type_index, std::unique_ptr<ReflectedTypeImpl>> reflected_types_;
+  TypeReflector type_reflector_;
 };
 
-template <typename T>
-typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value, ReflectedStruct>::type ReflectStruct() {
-  FieldReflector field_reflector;
-  ReflectedStruct result;
-  result.name = T::template CURRENT_REFLECTION_HELPER<T>::name();
-  EnumFields<T, FieldTypeAndName>()(field_reflector);
-  result.fields = std::move(field_reflector.fields);
-  return result;
-}
-
-template <typename T>
-typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value, std::string>::type DescribeCppStruct() {
-  std::ostringstream oss;
-  auto r = ReflectStruct<T>();
-  oss << "struct " << r.name << " {\n";
-  for (const auto& f : r.fields) {
-    oss << "  " << f.reflected_type->CppType() << " " << f.name << ";\n";
-  }
-  oss << "};\n";
-  return oss.str();
-}
+inline ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
 
 }  // namespace reflection
 }  // namespace bricks
