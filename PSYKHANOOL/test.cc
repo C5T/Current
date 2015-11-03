@@ -103,7 +103,7 @@ struct Cell final {
 //   DATABASE(UnitTestStorage) {
 //     TABLE(v ,Vector<PSYKHANOOL_test::Element>);
 //     TABLE(d, OrderedDictionary<PSYKHANOOL_test::Record>);
-//     TABLE(m, LightweightLightweightMatrix<PSYKHANOOL_test::Cell>);
+//     TABLE(m, LightweightMatrix<PSYKHANOOL_test::Cell>);
 //   };
 //   // F*ck yeah!
 //
@@ -127,7 +127,7 @@ struct UnitTestStorage final {
 };
 
 // Unit-test that the storage can be used as a storage,
-// plus leave some entries handing upon exit to unit-test the persistence layer.
+// plus leave some entries hanging upon exit to unit-test the persistence layer.
 template <typename POLICY>
 void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = false) {
   using namespace PSYKHANOOL_test;
@@ -299,7 +299,7 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   EXPECT_FALSE(storage.m.Rows().Has(1));
   EXPECT_FALSE(storage.m.Cols().Has("one"));
 
-  // Test persistence. Leave some entries so that a restarted/replayed storage has some data to it.
+  // Test persistence. Leave some entries so that a restarted/replayed storage has some data to play with.
   EXPECT_TRUE(storage.v.Empty());
   EXPECT_TRUE(storage.d.Empty());
   EXPECT_TRUE(storage.m.Empty());
