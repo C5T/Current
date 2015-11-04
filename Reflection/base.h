@@ -25,9 +25,9 @@ class FieldNameAndMutableValueReference {};
 template <class T, int N>
 struct Index {};
 
-// `CURRENT_REFLECTION()` for `Index<FieldType, n>` calls `f(TypeWrapper<real_field_type>)`.
+// `CURRENT_REFLECTION()` for `Index<FieldType, n>` calls `f(TypeSelector<real_field_type>)`.
 template <typename T>
-struct TypeWrapper {};
+struct TypeSelector {};
 
 }  // namespace reflection
 }  // namespace current

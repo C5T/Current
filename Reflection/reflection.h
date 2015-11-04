@@ -21,7 +21,7 @@ struct ReflectorImpl {
     FieldReflector(StructFieldsVector& fields) : fields_(fields) {}
 
     template <typename T>
-    void operator()(TypeWrapper<T>, const std::string& name) const {
+    void operator()(TypeSelector<T>, const std::string& name) const {
       fields_.emplace_back(ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>(), name);
     }
 
@@ -30,12 +30,12 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeWrapper<uint64_t>) {
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<uint64_t>) {
       return std::unique_ptr<ReflectedTypeImpl>(new ReflectedType_UInt64());
     }
 
     template <typename T>
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeWrapper<std::vector<T>>) {
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
       std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Vector());
       ReflectedType_Vector& v = dynamic_cast<ReflectedType_Vector&>(*result);
       v.reflected_element_type = ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>();
@@ -46,7 +46,7 @@ struct ReflectorImpl {
     template <typename T>
     typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value,
                             std::unique_ptr<ReflectedTypeImpl>>::type
-    operator()(TypeWrapper<T>) {
+    operator()(TypeSelector<T>) {
       std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Struct());
       ReflectedType_Struct& s = dynamic_cast<ReflectedType_Struct&>(*result);
       s.name = T::template CURRENT_REFLECTION_HELPER<T>::name();
@@ -61,7 +61,7 @@ struct ReflectorImpl {
   ReflectedTypeImpl* ReflectType() {
     std::type_index type_index = std::type_index(typeid(T));
     if (reflected_types_.count(type_index) == 0u) {
-      reflected_types_[type_index] = std::move(type_reflector_(TypeWrapper<T>()));
+      reflected_types_[type_index] = std::move(type_reflector_(TypeSelector<T>()));
     }
     return reflected_types_[type_index].get();
   }

@@ -112,7 +112,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldType, idx>) { \
-    f(::current::reflection::TypeWrapper<type>());                                                             \
+    f(::current::reflection::TypeSelector<type>());                                                            \
   }                                                                                                            \
   template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldName, idx>) { \
@@ -121,7 +121,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
   template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& f,                                                                        \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
-    f(::current::reflection::TypeWrapper<type>(), #name);                                                      \
+    f(::current::reflection::TypeSelector<type>(), #name);                                                     \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldValue, idx>) const { \
