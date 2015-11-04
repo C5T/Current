@@ -4,8 +4,8 @@
 namespace current {
 namespace reflection {
 
-struct CurrentBaseType {
-  virtual ~CurrentBaseType() = default;
+struct CurrentSuper {
+  virtual ~CurrentSuper() = default;
 };
 
 // Instantiation types.

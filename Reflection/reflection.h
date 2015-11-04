@@ -48,8 +48,7 @@ struct ReflectorImpl {
     }
 
     template <typename T>
-    typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value,
-                            std::unique_ptr<ReflectedTypeImpl>>::type
+    typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
     operator()(TypeSelector<T>) {
       std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Struct());
       ReflectedType_Struct& s = dynamic_cast<ReflectedType_Struct&>(*result);
@@ -72,7 +71,7 @@ struct ReflectorImpl {
   }
 
   template <typename T>
-  typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value, std::string>::type DescribeCppStruct() {
+  typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::string>::type DescribeCppStruct() {
     return ReflectType<T>()->CppDeclaration();
   }
 
