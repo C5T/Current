@@ -118,7 +118,13 @@ TEST(Reflection, DescribeCppStruct) {
       "};\n",
       Reflector().DescribeCppStruct<Bar>());
 
-  EXPECT_EQ(6u, Reflector().KnownTypesCountForUnitTest());
+  EXPECT_EQ(
+      "struct DerivedFromFoo : Foo {\n"
+      "  Bar bar;\n"
+      "};\n",
+      Reflector().DescribeCppStruct<DerivedFromFoo>());
+
+  EXPECT_EQ(7u, Reflector().KnownTypesCountForUnitTest());
 }
 
 TEST(Reflection, TypeID) {

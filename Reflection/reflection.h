@@ -48,11 +48,24 @@ struct ReflectorImpl {
     }
 
     template <typename T>
+    typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value, std::string>::type
+    StructInheritanceString() {
+      return "";
+    }
+
+    template <typename T>
+    typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value, std::string>::type
+    StructInheritanceString() {
+      return std::string(" : ") + SuperType<T>::template CURRENT_REFLECTION_HELPER<SuperType<T>>::name();
+    }
+
+    template <typename T>
     typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
     operator()(TypeSelector<T>) {
       std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Struct());
       ReflectedType_Struct& s = dynamic_cast<ReflectedType_Struct&>(*result);
       s.name = T::template CURRENT_REFLECTION_HELPER<T>::name();
+      s.super_name = StructInheritanceString<T>();
       FieldReflector field_reflector(s.fields);
       EnumFields<T, FieldTypeAndName>()(field_reflector);
       s.type_id = CalculateTypeID(s);
