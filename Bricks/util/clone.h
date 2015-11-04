@@ -79,7 +79,7 @@ constexpr bool HasCloneByPtr(char) {
 }
 
 template <typename T>
-constexpr auto HasCloneByPtr(int) -> decltype(std::declval<const T&>() -> Clone(), bool()) {
+constexpr auto HasCloneByPtr(int) -> decltype(std::declval<const T&>()->Clone(), bool()) {
   return true;
 }
 

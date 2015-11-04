@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_UTIL_LAZY_INITIALIZATION_H
 
 #include "../port.h"
+#include "../template/variadic_indexes.h"
 
 #include <memory>
 #include <tuple>
@@ -47,17 +48,6 @@ struct LazyInstantiatorAbstract<T, void> {
   virtual std::unique_ptr<T> InstantiateAsUniquePtr() const = 0;
 };
 
-namespace variadic_indexes {
-template <int...>
-struct indexes {};
-template <int X, int... XS>
-struct indexes_generator : indexes_generator<X - 1, X - 1, XS...> {};
-template <int... XS>
-struct indexes_generator<0, XS...> {
-  typedef indexes<XS...> type;
-};
-}  // namespace variadic_indexes
-
 template <typename T, typename T_EXTRA_PARAMETER, typename... ARGS>
 class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, T_EXTRA_PARAMETER> {
  public:
@@ -66,25 +56,23 @@ class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, T_EXTRA_PARAM
       : constructor_parameters_(std::forward<std::tuple<ARGS...>>(args_as_tuple)) {}
 
   std::shared_ptr<T> InstantiateAsSharedPtr(const T_EXTRA_PARAMETER& parameter) const override {
-    return DoInstantiateShared(parameter,
-                               typename variadic_indexes::indexes_generator<sizeof...(ARGS)>::type());
+    return DoInstantiateShared(parameter, bricks::variadic_indexes::generate_indexes<sizeof...(ARGS)>());
   }
 
   std::unique_ptr<T> InstantiateAsUniquePtr(const T_EXTRA_PARAMETER& parameter) const override {
-    return DoInstantiateUnique(parameter,
-                               typename variadic_indexes::indexes_generator<sizeof...(ARGS)>::type());
+    return DoInstantiateUnique(parameter, bricks::variadic_indexes::generate_indexes<sizeof...(ARGS)>());
   }
 
  private:
   template <int... XS>
   std::shared_ptr<T> DoInstantiateShared(const T_EXTRA_PARAMETER& parameter,
-                                         variadic_indexes::indexes<XS...>) const {
+                                         bricks::variadic_indexes::indexes<XS...>) const {
     return std::make_shared<T>(parameter, std::get<XS>(constructor_parameters_)...);
   }
 
   template <int... XS>
   std::unique_ptr<T> DoInstantiateUnique(const T_EXTRA_PARAMETER& parameter,
-                                         variadic_indexes::indexes<XS...>) const {
+                                         bricks::variadic_indexes::indexes<XS...>) const {
     return make_unique<T>(parameter, std::get<XS>(constructor_parameters_)...);
   }
 
@@ -99,21 +87,21 @@ class LazyInstantiatorPerType<T, void, ARGS...> : public LazyInstantiatorAbstrac
       : constructor_parameters_(std::forward<std::tuple<ARGS...>>(args_as_tuple)) {}
 
   std::shared_ptr<T> InstantiateAsSharedPtr() const override {
-    return DoInstantiateShared(typename variadic_indexes::indexes_generator<sizeof...(ARGS)>::type());
+    return DoInstantiateShared(bricks::variadic_indexes::generate_indexes<sizeof...(ARGS)>());
   }
 
   std::unique_ptr<T> InstantiateAsUniquePtr() const override {
-    return DoInstantiateUnique(typename variadic_indexes::indexes_generator<sizeof...(ARGS)>::type());
+    return DoInstantiateUnique(bricks::variadic_indexes::generate_indexes<sizeof...(ARGS)>());
   }
 
  private:
   template <int... XS>
-  std::shared_ptr<T> DoInstantiateShared(variadic_indexes::indexes<XS...>) const {
+  std::shared_ptr<T> DoInstantiateShared(bricks::variadic_indexes::indexes<XS...>) const {
     return std::make_shared<T>(std::get<XS>(constructor_parameters_)...);
   }
 
   template <int... XS>
-  std::unique_ptr<T> DoInstantiateUnique(variadic_indexes::indexes<XS...>) const {
+  std::unique_ptr<T> DoInstantiateUnique(bricks::variadic_indexes::indexes<XS...>) const {
     return make_unique<T>(std::get<XS>(constructor_parameters_)...);
   }
 

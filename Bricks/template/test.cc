@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "variadic_indexes.h"
+
 // The internal test uses `std::tuple<>`, and not a single `TypeList`.
 // The one that goes into the documentation uses `TypeList<>`, and not a single `std::tuple<>`.
 
@@ -128,4 +130,14 @@ TEST(TemplateMetaprogrammingInternalTest, Combine) {
   Magic magic;
   UserFriendlyArithmetics().DispatchToAll(magic);
   EXPECT_EQ("NEG\nADD\nMUL\n", magic.result);
+}
+
+TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
+  using bricks::variadic_indexes::indexes;
+  using bricks::variadic_indexes::generate_indexes;
+
+  static_assert(std::is_same<indexes<>, generate_indexes<0>>::value, "");
+  static_assert(std::is_same<indexes<0>, generate_indexes<1>>::value, "");
+  static_assert(std::is_same<indexes<0,1>, generate_indexes<2>>::value, "");
+  static_assert(std::is_same<indexes<0,1,2>, generate_indexes<3>>::value, "");
 }

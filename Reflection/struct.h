@@ -6,6 +6,8 @@
 
 #include "base.h"
 
+#include "../Bricks/template/variadic_indexes.h"
+
 namespace current {
 namespace reflection {
 
@@ -155,23 +157,11 @@ struct FieldCounter {
   };
 };
 
-template <int...>
-struct indexes {};
-template <int X, int... XS>
-struct indexes_generator : indexes_generator<X - 1, X - 1, XS...> {};
-template <int... XS>
-struct indexes_generator<0, XS...> {
-  typedef indexes<XS...> type;
-};
-
-template <int N>
-using gen_indexes = typename indexes_generator<N>::type;
-
 template <typename T, typename INDEX_TYPE>
 struct EnumFields {
   static_assert(std::is_base_of<CurrentBaseType, T>::value,
                 "Template argument must be derived from `CurrentBaseType`.");
-  typedef gen_indexes<FieldCounter<T>::value> NUM_INDEXES;
+  typedef bricks::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
 
   template <typename F>
   void operator()(const F& f) {
@@ -181,14 +171,14 @@ struct EnumFields {
 
  private:
   template <typename F, int N, int... NS>
-  void Impl(const F& f, indexes<N, NS...>) {
-    static indexes<NS...> remaining_indexes;
+  void Impl(const F& f, bricks::variadic_indexes::indexes<N, NS...>) {
+    static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
     T::CURRENT_REFLECTION(f, Index<INDEX_TYPE, N>());
     Impl(f, remaining_indexes);
   }
 
   template <typename F>
-  void Impl(const F&, indexes<>) {}
+  void Impl(const F&, bricks::variadic_indexes::indexes<>) {}
 };
 
 }  // namespace reflection

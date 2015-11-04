@@ -189,10 +189,11 @@ TEST(Util, MakePointerScopeGuard) {
     EXPECT_EQ("custom_guarded_pointer\n", story);
     {
       Instance* pointer = new Instance(story);
-      const auto guard = bricks::MakePointerScopeGuard(pointer, [&story](Instance* p) {
-        story += "guarded_delete\n";
-        delete p;
-      });
+      const auto guard = bricks::MakePointerScopeGuard(pointer,
+                                                       [&story](Instance* p) {
+                                                         story += "guarded_delete\n";
+                                                         delete p;
+                                                       });
       EXPECT_EQ("custom_guarded_pointer\nconstructed\n", story);
     }
     EXPECT_EQ("custom_guarded_pointer\nconstructed\nguarded_delete\ndestructed\n", story);
@@ -384,9 +385,10 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
   bool result;
   std::thread thread([&signal, &counter, &mutex, &result]() {
     std::unique_lock<std::mutex> lock(mutex);
-    result = signal.WaitUntil(lock, [&counter]() {
-      return counter > 1000u;  // Not going to happen in this test.
-    });
+    result = signal.WaitUntil(lock,
+                              [&counter]() {
+                                return counter > 1000u;  // Not going to happen in this test.
+                              });
   });
 
   bool repeat = true;
