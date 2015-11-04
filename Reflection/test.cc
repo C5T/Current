@@ -3,11 +3,11 @@
 #include "../3rdparty/gtest/gtest-main.h"
 
 namespace reflection_test {
-CURRENT_STRUCT(Foo) { CURRENT_FIELD(uint64_t, i); };
+CURRENT_STRUCT(Foo) { CURRENT_FIELD(i, uint64_t); };
 CURRENT_STRUCT(Bar) {
-  CURRENT_FIELD(std::vector<uint64_t>, v1);
-  CURRENT_FIELD(std::vector<Foo>, v2);
-  CURRENT_FIELD(std::vector<std::vector<Foo>>, v3);
+  CURRENT_FIELD(v1, std::vector<uint64_t>);
+  CURRENT_FIELD(v2, std::vector<Foo>);
+  CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
 };
 
 static_assert(CURRENT_STRUCT_IS_VALID(Foo), "Struct `Foo` was not properly declared.");

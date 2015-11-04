@@ -99,13 +99,13 @@ struct CurrentStructFieldsConsistency<T, -1> {
 
 #define CURRENT_FIELD_SWITCH(_1, _2, _3, F, ...) F
 #define CURRENT_FIELD(...) \
-  CURRENT_FIELD_SWITCH(__VA_ARGS__, CURRENT_FIELD_WITH_VALUE, CURRENT_FIELD_NO_VALUE)(__VA_ARGS__)
+  CURRENT_FIELD_SWITCH(__VA_ARGS__, CURRENT_FIELD_WITH_VALUE, CURRENT_FIELD_WITH_NO_VALUE)(__VA_ARGS__)
 
-#define CURRENT_FIELD_NO_VALUE(type, name)                     \
+#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                \
   ::current::reflection::Field<INSTANTIATION_TYPE, type> name; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(type, name, value)                    \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                    \
   ::current::reflection::Field<INSTANTIATION_TYPE, type> name = value; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
