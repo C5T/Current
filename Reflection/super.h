@@ -1,9 +1,10 @@
-#ifndef CURRENT_REFLECTION_BASE_H
-#define CURRENT_REFLECTION_BASE_H
+#ifndef CURRENT_REFLECTION_SUPER_H
+#define CURRENT_REFLECTION_SUPER_H
 
 namespace current {
 namespace reflection {
 
+// The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
 struct CurrentSuper {
   virtual ~CurrentSuper() = default;
 };
@@ -32,4 +33,4 @@ struct TypeSelector {};
 }  // namespace reflection
 }  // namespace current
 
-#endif  // CURRENT_REFLECTION_BASE_H
+#endif  // CURRENT_REFLECTION_SUPER_H

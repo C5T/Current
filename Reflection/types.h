@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#include "base.h"
+#include "super.h"
 #include "crc32.h"
 
 namespace current {
@@ -85,6 +85,17 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
   return static_cast<TypeID>(TYPEID_COLLECTION_TYPE + crc32(v.reflected_element_type->CppType()));
+}
+
+// Enable `CalculateTypeID` for bare and smart pointers.
+template<typename T, typename DELETER> TypeID CalculateTypeID(const std::unique_ptr<T, DELETER>& ptr) {
+  return CalculateTypeID(*ptr);
+}
+template<typename T> TypeID CalculateTypeID(const std::shared_ptr<T>& ptr) {
+  return CalculateTypeID(*ptr);
+}
+template<typename T> TypeID CalculateTypeID(const T* ptr) {
+  return CalculateTypeID(*ptr);
 }
 
 }  // namespace reflection

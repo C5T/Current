@@ -9,6 +9,7 @@
 // TODO: move to Bricks/util/?
 
 #include <string>
+#include <cstring>
 
 namespace current {
 namespace reflection {
