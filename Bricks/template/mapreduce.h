@@ -33,7 +33,7 @@ SOFTWARE.
 namespace bricks {
 namespace metaprogramming {
 
-// `map<F<>, std::tuple<A, B, C>>` == `std::tuple<F<A>, F<B>, F<C>>`.
+// `map<F<>, TypeList<A, B, C>>` == `TypeList<F<A>, F<B>, F<C>>`.
 template <template <typename> class F, typename TS>
 struct map_impl {};
 
@@ -71,7 +71,7 @@ struct map_impl<F, TypeListImpl<T, TS...>> {
   typedef TypeList<F<T>, map<F, TypeListImpl<TS...>>> type;
 };
 
-// `filter<F<>, std::tuple<A, B, C>>` == `std::tuple<>` that only contains types where `F<i>::filter` is `true`.
+// `filter<F<>, TypeList<A, B, C>>` == `TypeList<...>` that only contains types where `F<i>::filter` is `true`.
 template <template <typename> class F, typename TS>
 struct filter_impl {};
 
@@ -111,7 +111,7 @@ struct filter_impl<F, TypeListImpl<T, TS...>> {
                                     filter<F, TypeListImpl<TS...>>>::type type;
 };
 
-// `reduce<F<LHS, RHS>, std::tuple<A, B, C>>` == `F<A, F<B, C>>`.
+// `reduce<F<LHS, RHS>, TypeListImpl<A, B, C>>` == `F<A, F<B, C>>`.
 template <template <typename, typename> class F, typename TS>
 struct reduce_impl {};
 
