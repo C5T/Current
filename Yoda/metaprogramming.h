@@ -59,52 +59,53 @@ struct Container {};
 
 // An abstract type to derive message queue message types from.
 // All asynchronous events within one Yoda instance go through this message queue.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQMessage;
 
 // Sherlock stream listener, responsible for converting every stream entry into a message queue one.
 // Encapsulates RTTI dynamic dispatching to bring all corresponding containers up-to-date.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct StreamListener;
 
 // Message queue listener: makes sure each message gets its `virtual Process()` method called,
 // in the right order of processing messages.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQListener;
 
 struct YodaTypesBase {};  // For `static_assert(std::is_base_of<...>)` compile-time checks.
 
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct YodaTypes : YodaTypesBase {
-  static_assert(MP::is_std_tuple<SUPPORTED_TYPES_AS_TUPLE>::value, "");
+  static_assert(IsTypeList<SUPPORTED_TYPES_LIST>::value, "");
 
-  typedef SUPPORTED_TYPES_AS_TUPLE T_SUPPORTED_TYPES_AS_TUPLE;
+  using T_SUPPORTED_TYPES_LIST = SUPPORTED_TYPES_LIST;
 
   template <typename T>
-  using SherlockEntryTypeFromYodaEntryType = typename T::T_ENTRY;
-  typedef MP::map<SherlockEntryTypeFromYodaEntryType, SUPPORTED_TYPES_AS_TUPLE> T_UNDERLYING_TYPES_AS_TUPLE;
+  using SherlockEntryTypeFromYodaEntryType = typename T::T_SHERLOCK_TYPES;
+  // Need to flatten all the types here, so no `TypeListImpl<>`, only `TypeList`.
+  using T_UNDERLYING_TYPES_LIST = TypeList<MP::map<SherlockEntryTypeFromYodaEntryType, T_SUPPORTED_TYPES_LIST>>;
 
-  typedef MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_LISTENER;
-  typedef MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_MQ_MESSAGE_INTERNAL_TYPEDEF;
-  typedef blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER> T_MQ;
+  using T_MQ_LISTENER = MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
+  using T_MQ_MESSAGE_INTERNAL_TYPEDEF = MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
+  using T_MQ = blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER>;
 
-  typedef sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER> T_STREAM_TYPE;
+  using T_STREAM_TYPE = sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>;
 
-  typedef StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_AS_TUPLE> T_SHERLOCK_LISTENER;
-  typedef typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>
-      T_SHERLOCK_LISTENER_SCOPE_TYPE;
+  using T_SHERLOCK_LISTENER = StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
+  using T_SHERLOCK_LISTENER_SCOPE_TYPE =
+    typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>;
 };
 
 // Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.
 // This enables external users to specify their types in a template-deducible manner.
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename YT>
-using YodaMMQMessage = MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>;
+using YodaMMQMessage = MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_LIST>;
 
 template <typename YT>
 struct YodaContainerImpl {
   template <typename T>
   using ContainerType = Container<YT, T>;
-  typedef MP::combine<MP::map<ContainerType, typename YT::T_SUPPORTED_TYPES_AS_TUPLE>> type;
+  typedef MP::combine<MP::map<ContainerType, typename YT::T_SUPPORTED_TYPES_LIST>> type;
 };
 
 template <typename YT>
@@ -117,21 +118,6 @@ template <typename T>
 struct RetrieveAccessor {};
 template <typename T>
 struct RetrieveMutator {};
-
-// A wrapper to convert `T` into `Dictionary<T>`, `Matrix<T>`, etc., using `decltype()`.
-// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
-template <typename T>
-struct YETFromE {};
-
-// A wrapper to convert `T::T_KEY` into `Dictionary<T>`,
-// `std::tuple<T::T_ROW, T::T_COL>` into `Matrix<T>`, etc.
-// Used to enable top-level `Add()`/`Get()` when passed in the entry only.
-template <typename K>
-struct YETFromK {};
-
-// A wrapper to convert subscript types into values or row/col accessors respectively.
-template <typename K>
-struct YETFromSubscript {};
 
 }  // namespace type_inference
 
@@ -156,73 +142,24 @@ struct YodaData {
     return container(type_inference::RetrieveMutator<T>(), std::ref(stream));
   }
 
-  // Top-level methods and operators, dispatching by parameter type.
-  template <typename ENTRY>
-  void Add(ENTRY&& entry) {
-    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>().Add(std::forward<ENTRY>(entry));
-  }
-
-  template <typename KEY>
-  EntryWrapper<typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<KEY>>>::T_ENTRY> Get(
-      KEY&& key) const {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Get(
-        std::forward<KEY>(key));
-  }
-
-  template <typename KEY>
-  bool Has(KEY&& key) const {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>>>().Has(
-        std::forward<KEY>(key));
-  }
-
-  template <typename ENTRY>
-  void Delete(ENTRY&& entry) {
-    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>().Delete(
-        std::forward<ENTRY>(entry));
-  }
-
-  template <typename ENTRY>
-  YodaData& operator<<(ENTRY&& entry) {
-    typedef bricks::decay<ENTRY> DECAYED_ENTRY;
-    Mutator<CWT<YodaContainer<YT>, type_inference::YETFromE<DECAYED_ENTRY>>>() << std::forward<ENTRY>(entry);
-    return *this;
-  }
-
-  // This scary `decltype(declval)` is just to extract the return type of `the_right_accessor[key]`.
-  template <typename KEY>
-  decltype(
-      std::declval<CWT<YodaContainer<YT>,
-                       type_inference::RetrieveAccessor<
-                           CWT<YodaContainer<YT>, type_inference::YETFromSubscript<bricks::decay<KEY>>>>>>()
-          [std::declval<bricks::decay<KEY>>()])
-  operator[](KEY&& key) {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    return Accessor<
-        CWT<YodaContainer<YT>, type_inference::YETFromSubscript<DECAYED_KEY>>>()[std::forward<KEY>(key)];
-  }
-
  private:
   YodaContainer<YT>& container;
   typename YT::T_STREAM_TYPE& stream;
 };
 
 // The logic to "interleave" updates from Sherlock stream with inbound Yoda API/SDK requests.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQMessage {
-  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST> YT;
   virtual void Process(YodaContainer<YT>& container,
                        YodaData<YT> container_data,
                        typename YT::T_STREAM_TYPE& stream) = 0;
 };
 
 // Stream listener is passing entries from the Sherlock stream into the message queue.
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct StreamListener {
-  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST> YT;
 
   // TODO(dkorolev) || TODO(mzhurovich): `std::ref` + `std::reference_wrapper` ?
   explicit StreamListener(typename YT::T_MQ& mq,
@@ -230,7 +167,7 @@ struct StreamListener {
                           std::condition_variable* p_replay_done_cv)
       : mq_(mq), p_replay_done_(p_replay_done), p_replay_done_cv_(p_replay_done_cv) {}
 
-  struct MQMessageEntry : MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_AS_TUPLE> {
+  struct MQMessageEntry : MQMessage<PERSISTENCE, CLONER, typename YT::T_SUPPORTED_TYPES_LIST> {
     std::unique_ptr<Padawan> entry;
     const size_t index;
 
@@ -239,7 +176,7 @@ struct StreamListener {
     virtual void Process(YodaContainer<YT>& container, YodaData<YT>, typename YT::T_STREAM_TYPE&) override {
       // TODO(dkorolev): For this call, `entry`, the first parameter, should be `std::move()`-d,
       // but Bricks doesn't support it yet for `RTTIDynamicCall`.
-      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_AS_TUPLE>(entry, container, index);
+      MP::RTTIDynamicCall<typename YT::T_UNDERLYING_TYPES_LIST>(entry, container, index);
     }
   };
 
@@ -264,9 +201,9 @@ struct StreamListener {
   std::condition_variable* p_replay_done_cv_;
 };
 
-template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_AS_TUPLE>
+template <template <typename, typename> class PERSISTENCE, class CLONER, typename SUPPORTED_TYPES_LIST>
 struct MQListener {
-  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_AS_TUPLE> YT;
+  typedef YodaTypes<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIST> YT;
   explicit MQListener(YodaContainer<YT>& container,
                       YodaData<YT> container_data,
                       typename YT::T_STREAM_TYPE& stream)
@@ -314,43 +251,6 @@ struct CallAndSetPromiseImpl<void> {
 template <template <typename, typename> class PERSISTENCE, class CLONER, typename YT>
 struct APICalls {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
-
-  // `TopLevelAdd` accepts an undecayed type.
-  // It itself makes a copy of the entry to add, and passing in a non-decayed type
-  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
-  template <typename DATA, typename YET, typename UNDECAYED_ENTRY>
-  struct TopLevelAdd {
-    const bricks::decay<UNDECAYED_ENTRY> entry;
-    TopLevelAdd(UNDECAYED_ENTRY&& entry) : entry(std::forward<UNDECAYED_ENTRY>(entry)) {}
-    void operator()(DATA data) const { YET::Mutator(data).Add(std::move(entry)); }
-  };
-
-  // `TopLevelGet` accepts an undecayed type.
-  // It itself makes a copy of the key to query, and passing in a non-decayed type
-  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
-  template <typename DATA, typename YET, typename UNDECAYED_KEY>
-  struct TopLevelGet {
-    const bricks::decay<UNDECAYED_KEY> key;
-    TopLevelGet(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
-    typedef decltype(std::declval<decltype(YET::Accessor(std::declval<DATA>()))>().Get(
-        std::declval<bricks::decay<UNDECAYED_KEY>>())) RETVAL;
-    RETVAL operator()(DATA data) const {
-      // TODO(dkorolev): Use `std::move()` here.
-      return YET::Accessor(data).Get(key);
-    }
-  };
-
-  // `TopLevelHas` accepts an undecayed type.
-  // It itself makes a copy of the key to query, and passing in a non-decayed type
-  // enables using `std::forward<>`, choosing between copy and move semantics at compile time.
-  template <typename DATA, typename YET, typename UNDECAYED_KEY>
-  struct TopLevelHas {
-    const bricks::decay<UNDECAYED_KEY> key;
-    TopLevelHas(UNDECAYED_KEY&& key) : key(std::forward<UNDECAYED_KEY>(key)) {}
-    bool operator()(DATA data) const {
-      return YET::Accessor(data).Has(key);
-    }  // TODO(dkorolev): Use `std::move()` here.
-  };
 
   template <typename T, typename... TS>
   using CWT = bricks::weed::call_with_type<T, TS...>;
@@ -415,72 +315,6 @@ struct APICalls {
     mq_.Emplace(new MQMessageFunctionWithNext<INTERMEDIATE_TYPE, NEXT_USER_FUNCTION>(
         std::forward<TYPED_USER_FUNCTION>(function), std::forward<NEXT_USER_FUNCTION>(next), std::move(pr)));
     return future;
-  }
-
-  // Helper method to wrap `Add()` into `Transaction()`.
-  // Note: `TopLevelAdd` accepts an undecayed type.
-  // This is required to correctly handle both by-value and by-reference parameter types.
-  template <typename UNDECAYED_ENTRY>
-  Future<void> Add(UNDECAYED_ENTRY&& entry) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromE<bricks::decay<UNDECAYED_ENTRY>>> YET;
-    return Transaction(TopLevelAdd<YodaData<YT>, YET, UNDECAYED_ENTRY>(std::forward<UNDECAYED_ENTRY>(entry)));
-  }
-
-  // Helper method to wrap `Get()` into `Transaction()`. With one and with more than one parameter.
-  // Note: `TopLevelGet` accepts an undecayed type.
-  // This is required to correctly handle both by-value and by-reference parameter types.
-  template <typename UNDECAYED_KEY>
-  Future<EntryWrapper<
-      typename CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<UNDECAYED_KEY>>>::T_ENTRY>>
-  Get(UNDECAYED_KEY&& key) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<UNDECAYED_KEY>>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, UNDECAYED_KEY>(std::forward<UNDECAYED_KEY>(key)));
-  }
-
-  template <typename KEY, typename... KEYS>
-  Future<EntryWrapper<typename CWT<YodaContainer<YT>,
-                                   type_inference::YETFromK<bricks::decay<std::tuple<KEY, KEYS...>>>>::T_ENTRY>>
-  Get(KEY&& key, KEYS&&... keys) {
-    typedef std::tuple<KEY, KEYS...> TUPLE;
-    typedef bricks::decay<TUPLE> SAFE_TUPLE;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, SAFE_TUPLE>(
-        std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
-  }
-
-  // Helper method to wrap `Has()` into `Transaction()`. With one and with more than one parameter.
-  // Note: `TopLevelHas` accepts an undecayed type.
-  // This is required to correctly handle both by-value and by-reference parameter types.
-  template <typename UNDECAYED_KEY>
-  Future<bool> Has(UNDECAYED_KEY&& key) {
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<bricks::decay<UNDECAYED_KEY>>> YET;
-    return Transaction(TopLevelHas<YodaData<YT>, YET, UNDECAYED_KEY>(std::forward<UNDECAYED_KEY>(key)));
-  }
-
-  template <typename KEY, typename... KEYS>
-  Future<bool> Has(KEY&& key, KEYS&&... keys) {
-    typedef std::tuple<KEY, KEYS...> TUPLE;
-    typedef bricks::decay<TUPLE> SAFE_TUPLE;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<SAFE_TUPLE>> YET;
-    return Transaction(TopLevelHas<YodaData<YT>, YET, SAFE_TUPLE>(
-        std::forward<SAFE_TUPLE>(SAFE_TUPLE(std::forward<KEY>(key), std::forward<KEYS>(keys)...))));
-  }
-
-  // Helper method to wrap `GetWithNext()` into `Transaction()`.
-  // Unlike `Get()`, the last parameter to `GetWithNext()` is the function,
-  // thus the user will have to tie the first ones using `std::tie()`.
-  template <typename KEY, typename F>
-  Future<void> GetWithNext(KEY&& key, F&& f) {
-    typedef bricks::decay<KEY> DECAYED_KEY;
-    typedef CWT<YodaContainer<YT>, type_inference::YETFromK<DECAYED_KEY>> YET;
-    return Transaction(TopLevelGet<YodaData<YT>, YET, DECAYED_KEY>(std::forward<DECAYED_KEY>(key)),
-                       std::forward<F>(f));
-  }
-
-  // Because I'm nice. :-) -- D.K.
-  template <typename KEY1, typename KEY2, typename F>
-  Future<void> GetWithNext(KEY1&& key1, KEY2&& key2, F&& f) {
-    return GetWithNext(std::tie(std::forward<KEY1>(key1), std::forward<KEY2>(key2)), std::forward<F>(f));
   }
 
   typename YT::T_MQ& mq_;

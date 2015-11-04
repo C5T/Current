@@ -51,7 +51,8 @@ struct Dictionary {
   static_assert(std::is_base_of<Padawan, ENTRY>::value, "Entry type must be derived from `yoda::Padawan`.");
 
   typedef ENTRY T_ENTRY;
-  typedef ENTRY_KEY_TYPE<T_ENTRY> T_KEY;
+  using T_SHERLOCK_TYPES = TypeListImpl<ENTRY, typename ENTRY::DeleterPersister> ;
+  using T_KEY = ENTRY_KEY_TYPE<T_ENTRY>;
 
   typedef std::function<void(const T_ENTRY&)> T_ENTRY_CALLBACK;
   typedef std::function<void(const T_KEY&)> T_KEY_CALLBACK;
@@ -80,12 +81,6 @@ struct Container<YT, Dictionary<ENTRY>> {
 
   typedef Dictionary<ENTRY> YET;
 
-  YET operator()(type_inference::template YETFromE<typename YET::T_ENTRY>);
-  YET operator()(type_inference::template YETFromK<typename YET::T_KEY>);
-  YET operator()(type_inference::template YETFromK<std::tuple<typename YET::T_KEY>>);
-  YET operator()(type_inference::template YETFromSubscript<typename YET::T_KEY>);
-  YET operator()(type_inference::template YETFromSubscript<std::tuple<typename YET::T_KEY>>);
-
   // Event: The entry has been scanned from the stream.
   // Save a copy! Stream provides copies of entries, that are desined to be `std::move()`-d away.
   // TODO(dkorolev): For this parameter to be an `ENTRY&&`, we'd need to clean up Bricks wrt RTTI.
@@ -94,6 +89,10 @@ struct Container<YT, Dictionary<ENTRY>> {
     if (placeholder.index == static_cast<size_t>(-1) || index > placeholder.index) {
       placeholder.Update(index, std::move(entry));
     }
+  }
+  void operator()(const typename YET::T_ENTRY::DeleterPersister& entry, size_t) {
+    // TODO(dkorolev): Yes, we don't care about indexes here.
+    map_.erase(entry.key_to_erase);
   }
 
   class Accessor {
@@ -165,8 +164,10 @@ struct Container<YT, Dictionary<ENTRY>> {
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
     // Non-throwing deleter.
-    // TODO(dkorolev): Persist the deletion and test it.
-    void Delete(bricks::copy_free<typename YET::T_KEY> key) { mutable_.map_.erase(key); }
+    void Delete(bricks::copy_free<typename YET::T_KEY> key) {
+      stream_.Publish(typename YET::T_ENTRY::DeleterPersister(key));
+      mutable_.map_.erase(key);
+    }
 
     // Throwing adder.
     Mutator& operator<<(const ENTRY& entry) {

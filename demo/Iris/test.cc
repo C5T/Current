@@ -86,12 +86,13 @@ TEST(Iris, Demo) {
                         }
                         first_line = false;
                         // Parse flower data and add it.
-                        data.Add(LabeledFlower(++number_of_flowers,
-                                               FromString<double>(flower_definition_fields[0]),
-                                               FromString<double>(flower_definition_fields[1]),
-                                               FromString<double>(flower_definition_fields[2]),
-                                               FromString<double>(flower_definition_fields[3]),
-                                               flower_definition_fields[4]));
+                        auto adder = Dictionary<LabeledFlower>::Mutator(data);
+                        adder.Add(LabeledFlower(++number_of_flowers,
+                                                FromString<double>(flower_definition_fields[0]),
+                                                FromString<double>(flower_definition_fields[1]),
+                                                FromString<double>(flower_definition_fields[2]),
+                                                FromString<double>(flower_definition_fields[3]),
+                                                flower_definition_fields[4]));
                       }
                       return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
                     },
@@ -131,7 +132,11 @@ TEST(Iris, Demo) {
     // Ref.: http://localhost:3000/get?id=42
     HTTP(FLAGS_iris_port).Register("/get", [&api](Request request) {
       const auto id = FromString<size_t>(request.url.query["id"]);
-      api.Transaction([id](TestAPI::T_DATA data) { return data[id]; }, std::move(request));
+      api.Transaction(
+        [id](TestAPI::T_DATA data) {
+          return Dictionary<LabeledFlower>::Accessor(data)[id];
+        },
+        std::move(request));
     });
 
     // Ref.: [POST] http://localhost:3000/add?label=setosa&sl=5&sw=5&pl=5&pw=5
@@ -145,7 +150,7 @@ TEST(Iris, Demo) {
       if (!label.empty()) {
         const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
         api.Transaction([flower](TestAPI::T_DATA data) {
-                          data.Add(flower);
+                          Dictionary<LabeledFlower>::Mutator(data).Add(flower);
                           return "OK\n";
                         },
                         std::move(request));
@@ -193,7 +198,7 @@ TEST(Iris, Demo) {
       api.Transaction([x_dim, y_dim](TestAPI::T_DATA data) {
                         PlotIrises::Info info;
                         for (size_t i = 1; i <= number_of_flowers; ++i) {
-                          const LabeledFlower& flower = data[i];  // `= data.Get(i);` works too.
+                          const LabeledFlower& flower = Dictionary<LabeledFlower>::Accessor(data)[i];
                           info.labeled_flowers[flower.label].emplace_back(flower.x[x_dim], flower.x[y_dim]);
                         }
                         info.x_label = dimension_names[x_dim];
