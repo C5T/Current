@@ -1,5 +1,5 @@
-#ifndef BRICKS_REFLECTION_CRC32_H
-#define BRICKS_REFLECTION_CRC32_H
+#ifndef CURRENT_REFLECTION_CRC32_H
+#define CURRENT_REFLECTION_CRC32_H
 
 // Based on original code by Gary S. Brown.
 // http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/libkern/crc32.c
@@ -7,7 +7,7 @@
 
 #include <string>
 
-namespace bricks {
+namespace current {
 namespace reflection {
 
 constexpr uint32_t crc32_table[256] = {
@@ -54,6 +54,6 @@ inline uint32_t crc32(const char* str) { return crc32(0, str, strlen(str)); }
 inline uint32_t crc32(const std::string& str) { return crc32(0, str.c_str(), str.length()); }
 
 }  // namespace reflection
-}  // namespace bricks
+}  // namespace current
 
-#endif  // BRICKS_REFLECTION_CRC32_H
+#endif  // CURRENT_REFLECTION_CRC32_H

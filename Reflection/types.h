@@ -1,5 +1,5 @@
-#ifndef BRICKS_REFLECTION_TYPES_H
-#define BRICKS_REFLECTION_TYPES_H
+#ifndef CURRENT_REFLECTION_TYPES_H
+#define CURRENT_REFLECTION_TYPES_H
 
 #include <cassert>
 #include <string>
@@ -9,7 +9,7 @@
 #include "base.h"
 #include "crc32.h"
 
-namespace bricks {
+namespace current {
 namespace reflection {
 
 constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
@@ -86,6 +86,6 @@ inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
 }
 
 }  // namespace reflection
-}  // namespace bricks
+}  // namespace current
 
-#endif  // BRICKS_REFLECTION_TYPES_H
+#endif  // CURRENT_REFLECTION_TYPES_H

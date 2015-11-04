@@ -1,5 +1,5 @@
-#ifndef BRICKS_REFLECTION_REFLECTION_H
-#define BRICKS_REFLECTION_REFLECTION_H
+#ifndef CURRENT_REFLECTION_REFLECTION_H
+#define CURRENT_REFLECTION_REFLECTION_H
 
 #include <typeindex>
 #include <unordered_map>
@@ -7,10 +7,12 @@
 #include "struct.h"
 #include "types.h"
 
-#include "../../Bricks/util/singleton.h"
+#include "../Bricks/util/singleton.h"
 
-namespace bricks {
+namespace current {
 namespace reflection {
+
+using bricks::ThreadLocalSingleton;
 
 struct TypeReflector;
 
@@ -80,6 +82,6 @@ struct ReflectorImpl {
 inline ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
 
 }  // namespace reflection
-}  // namespace bricks
+}  // namespace current
 
-#endif  // BRICKS_REFLECTION_REFLECTION_H
+#endif  // CURRENT_REFLECTION_REFLECTION_H

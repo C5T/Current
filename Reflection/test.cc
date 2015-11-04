@@ -1,6 +1,6 @@
 #include "reflection.h"
 
-#include "../../3rdparty/gtest/gtest-main.h"
+#include "../3rdparty/gtest/gtest-main.h"
 
 namespace reflection_test {
 CURRENT_STRUCT(Foo) { CURRENT_FIELD(uint64_t, i); };
@@ -22,7 +22,7 @@ static_assert(CURRENT_STRUCT_IS_VALID(::reflection_test::Bar), "Struct `Bar` was
 static_assert(CURRENT_STRUCT_IS_VALID(reflection_test::Foo), "Struct `Foo` was not properly declared.");
 static_assert(CURRENT_STRUCT_IS_VALID(reflection_test::Bar), "Struct `Bar` was not properly declared.");
 
-using bricks::reflection::Reflector;
+using current::reflection::Reflector;
 
 TEST(Reflection, DescribeCppStruct) {
   using namespace reflection_test;
@@ -46,9 +46,9 @@ TEST(Reflection, DescribeCppStruct) {
 
 TEST(Reflection, TypeID) {
   using namespace reflection_test;
-  using bricks::reflection::ReflectedType_Struct;
-  using bricks::reflection::TYPEID_COLLECTION_TYPE;
-  using bricks::reflection::TYPEID_TYPE_RANGE;
+  using current::reflection::ReflectedType_Struct;
+  using current::reflection::TYPEID_COLLECTION_TYPE;
+  using current::reflection::TYPEID_TYPE_RANGE;
 
   ReflectedType_Struct* bar = dynamic_cast<ReflectedType_Struct*>(Reflector().ReflectType<Bar>());
   EXPECT_LT(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[0].first->type_id));

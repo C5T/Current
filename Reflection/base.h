@@ -1,7 +1,7 @@
-#ifndef BRICKS_REFLECTION_BASE_H
-#define BRICKS_REFLECTION_BASE_H
+#ifndef CURRENT_REFLECTION_BASE_H
+#define CURRENT_REFLECTION_BASE_H
 
-namespace bricks {
+namespace current {
 namespace reflection {
 
 struct CurrentBaseType {
@@ -30,6 +30,6 @@ template <typename T>
 struct TypeWrapper {};
 
 }  // namespace reflection
-}  // namespace bricks
+}  // namespace current
 
-#endif  // BRICKS_REFLECTION_BASE_H
+#endif  // CURRENT_REFLECTION_BASE_H
