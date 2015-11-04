@@ -20,9 +20,11 @@ struct ReflectorImpl {
   struct FieldReflector {
     FieldReflector(StructFieldsVector& fields) : fields_(fields) {}
 
+    ReflectorImpl& Reflector() const { return ThreadLocalSingleton<ReflectorImpl>(); }
+
     template <typename T>
     void operator()(TypeSelector<T>, const std::string& name) const {
-      fields_.emplace_back(ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>(), name);
+      fields_.emplace_back(Reflector().ReflectType<T>(), name);
     }
 
    private:
@@ -30,6 +32,8 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
+    ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
+
     std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<uint64_t>) {
       return std::unique_ptr<ReflectedTypeImpl>(new ReflectedType_UInt64());
     }
@@ -38,7 +42,7 @@ struct ReflectorImpl {
     std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
       std::unique_ptr<ReflectedTypeImpl> result(new ReflectedType_Vector());
       ReflectedType_Vector& v = dynamic_cast<ReflectedType_Vector&>(*result);
-      v.reflected_element_type = ThreadLocalSingleton<ReflectorImpl>().ReflectType<T>();
+      v.reflected_element_type = Reflector().ReflectType<T>();
       v.type_id = CalculateTypeID(v);
       return result;
     }
@@ -59,20 +63,20 @@ struct ReflectorImpl {
 
   template <typename T>
   ReflectedTypeImpl* ReflectType() {
-    std::type_index type_index = std::type_index(typeid(T));
-    if (reflected_types_.count(type_index) == 0u) {
-      reflected_types_[type_index] = std::move(type_reflector_(TypeSelector<T>()));
+    const std::type_index type_index = std::type_index(typeid(T));
+    auto& placeholder = reflected_types_[type_index];
+    if (!placeholder) {
+      placeholder = std::move(type_reflector_(TypeSelector<T>()));
     }
-    return reflected_types_[type_index].get();
+    return placeholder.get();
   }
 
   template <typename T>
   typename std::enable_if<std::is_base_of<CurrentBaseType, T>::value, std::string>::type DescribeCppStruct() {
-    return dynamic_cast<ReflectedType_Struct*>(ReflectType<T>())->CppDeclaration();
+    return ReflectType<T>()->CppDeclaration();
   }
 
-  // For testing purposes.
-  size_t KnownTypesCount() const { return reflected_types_.size(); }
+  size_t KnownTypesCountForUnitTest() const { return reflected_types_.size(); }
 
  private:
   std::unordered_map<std::type_index, std::unique_ptr<ReflectedTypeImpl>> reflected_types_;

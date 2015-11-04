@@ -33,6 +33,7 @@ enum class TypeID : uint64_t {
 struct ReflectedTypeImpl {
   TypeID type_id;
   virtual std::string CppType() = 0;
+  virtual std::string CppDeclaration() { return ""; }
   virtual ~ReflectedTypeImpl() = default;
 };
 
@@ -61,7 +62,7 @@ struct ReflectedType_Struct : ReflectedTypeImpl {
 
   std::string CppType() override { return name; }
 
-  std::string CppDeclaration() {
+  std::string CppDeclaration() override {
     std::string result = "struct " + name + " {\n";
     for (const auto& f : fields) {
       result += "  " + f.first->CppType() + " " + f.second + ";\n";

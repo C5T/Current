@@ -3,6 +3,9 @@
 
 // Based on original code by Gary S. Brown.
 // http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/libkern/crc32.c
+//  *  COPYRIGHT (C) 1986 Gary S. Brown.  You may use this program, or
+//  *  code or tables extracted from it, as desired without restriction.
+//
 // TODO: move to Bricks/util/?
 
 #include <string>

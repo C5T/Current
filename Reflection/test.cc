@@ -10,17 +10,17 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
 };
 
-static_assert(CURRENT_STRUCT_IS_VALID(Foo), "Struct `Foo` was not properly declared.");
-static_assert(CURRENT_STRUCT_IS_VALID(Bar), "Struct `Bar` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Bar), "Struct `Bar` was not properly declared.");
 }  // namespace reflection_test
 
 namespace some_other_namespace {
-static_assert(CURRENT_STRUCT_IS_VALID(::reflection_test::Foo), "Struct `Foo` was not properly declared.");
-static_assert(CURRENT_STRUCT_IS_VALID(::reflection_test::Bar), "Struct `Bar` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(::reflection_test::Foo), "Struct `Foo` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(::reflection_test::Bar), "Struct `Bar` was not properly declared.");
 }  // namespace some_other_namespace
 
-static_assert(CURRENT_STRUCT_IS_VALID(reflection_test::Foo), "Struct `Foo` was not properly declared.");
-static_assert(CURRENT_STRUCT_IS_VALID(reflection_test::Bar), "Struct `Bar` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(reflection_test::Foo), "Struct `Foo` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(reflection_test::Bar), "Struct `Bar` was not properly declared.");
 
 using current::reflection::Reflector;
 
@@ -41,7 +41,7 @@ TEST(Reflection, DescribeCppStruct) {
       "};\n",
       Reflector().DescribeCppStruct<Bar>());
 
-  EXPECT_EQ(6u, Reflector().KnownTypesCount());
+  EXPECT_EQ(6u, Reflector().KnownTypesCountForUnitTest());
 }
 
 TEST(Reflection, TypeID) {
@@ -50,12 +50,13 @@ TEST(Reflection, TypeID) {
   using current::reflection::TYPEID_COLLECTION_TYPE;
   using current::reflection::TYPEID_TYPE_RANGE;
 
+  // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   ReflectedType_Struct* bar = dynamic_cast<ReflectedType_Struct*>(Reflector().ReflectType<Bar>());
-  EXPECT_LT(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[0].first->type_id));
+  EXPECT_LE(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[0].first->type_id));
   EXPECT_GT(TYPEID_COLLECTION_TYPE + TYPEID_TYPE_RANGE, static_cast<uint64_t>(bar->fields[0].first->type_id));
-  EXPECT_LT(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[1].first->type_id));
+  EXPECT_LE(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[1].first->type_id));
   EXPECT_GT(TYPEID_COLLECTION_TYPE + TYPEID_TYPE_RANGE, static_cast<uint64_t>(bar->fields[1].first->type_id));
-  EXPECT_LT(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[2].first->type_id));
+  EXPECT_LE(TYPEID_COLLECTION_TYPE, static_cast<uint64_t>(bar->fields[2].first->type_id));
   EXPECT_GT(TYPEID_COLLECTION_TYPE + TYPEID_TYPE_RANGE, static_cast<uint64_t>(bar->fields[2].first->type_id));
   EXPECT_NE(bar->fields[0].first->type_id, bar->fields[1].first->type_id);
   EXPECT_NE(bar->fields[1].first->type_id, bar->fields[2].first->type_id);

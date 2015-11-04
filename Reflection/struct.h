@@ -139,7 +139,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     f(#name, name);                                                                                            \
   }
 
-#define CURRENT_STRUCT_IS_VALID(s)                                                                      \
+#define IS_VALID_CURRENT_STRUCT(s)                                                                      \
   ::current::reflection::CurrentStructFieldsConsistency<s,                                              \
                                                         ::current::reflection::FieldCounter<s>::value - \
                                                             1>::Check()
