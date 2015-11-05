@@ -253,9 +253,7 @@ struct SaveIntoJSONImpl<std::vector<T>> {
     destination.SetArray();
     rapidjson::Value element_to_push;
     for (const auto& element : value) {
-      // AssignToRapidJSONValue(element_to_push, element);
-      SaveIntoJSONImpl<T>::Go(element_to_push, allocator, element);  // document.GetAllocator(), value);
-
+      SaveIntoJSONImpl<T>::Go(element_to_push, allocator, element);
       destination.PushBack(element_to_push, allocator);
     }
   }
