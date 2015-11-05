@@ -19,10 +19,10 @@ constexpr uint64_t TYPEID_COLLECTION_TYPE = 901u * TYPEID_TYPE_RANGE;
 constexpr uint64_t TYPEID_STRUCT_TYPE = 902u * TYPEID_TYPE_RANGE;
 
 enum class TypeID : uint64_t {
-#define CURRENT_BASIC_TYPE(typeid_index, unused_cpp_type, current_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
-#include "basic_types.dsl.h"
-#undef CURRENT_BASIC_TYPE
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
 };
 
 struct ReflectedTypeImpl {
@@ -32,13 +32,13 @@ struct ReflectedTypeImpl {
   virtual ~ReflectedTypeImpl() = default;
 };
 
-#define CURRENT_BASIC_TYPE(unused_typeid_index, cpp_type, current_type) \
-  struct ReflectedType_##current_type : ReflectedTypeImpl {             \
-    TypeID type_id = TypeID::current_type;                              \
-    std::string CppType() override { return #cpp_type; }                \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
+  struct ReflectedType_##current_type : ReflectedTypeImpl {                         \
+    TypeID type_id = TypeID::current_type;                                          \
+    std::string CppType() override { return #cpp_type; }                            \
   };
-#include "basic_types.dsl.h"
-#undef CURRENT_BASIC_TYPE
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
   constexpr static const char* cpp_typename = "std::vector";

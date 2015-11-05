@@ -177,10 +177,10 @@ CURRENT_STRUCT(ComplexSerializable) {
 // TODO(dkorolev): When doing serialization, iterate over the fields of the base class too.
 
 struct CollectFieldNames {
-  mutable std::vector<std::string> result;
+  std::vector<std::string>& output_;
   template <typename T>
   void operator()(current::reflection::TypeSelector<T>, const std::string& name) const {
-    result.push_back(name);
+    output_.push_back(name);
   }
 };
 
@@ -196,17 +196,119 @@ TEST(Reflection, VisitAllFields) {
       "};\n",
       Reflector().DescribeCppStruct<Serializable>());
   {
-    CollectFieldNames names;
-    current::reflection::VisitAllFields<Serializable, current::reflection::FieldTypeAndName>()(names);
-    EXPECT_EQ("i,s", bricks::strings::Join(names.result, ','));
+    std::vector<std::string> result;
+    CollectFieldNames names{result};
+    current::reflection::VisitAllFields<Serializable, current::reflection::FieldTypeAndName>::WithoutObject(
+        names);
+    EXPECT_EQ("i,s", bricks::strings::Join(result, ','));
   }
   {
-    CollectFieldNames names;
-    current::reflection::VisitAllFields<ComplexSerializable, current::reflection::FieldTypeAndName>()(names);
-    EXPECT_EQ("j,q,v,z", bricks::strings::Join(names.result, ','));
+    std::vector<std::string> result;
+    CollectFieldNames names{result};
+    current::reflection::VisitAllFields<ComplexSerializable,
+                                        current::reflection::FieldTypeAndName>::WithoutObject(names);
+    EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
   }
 }
 
+namespace reflection_json {
+
+template <typename T>
+struct SaveIntoJSONImpl;
+
+template <typename T>
+struct AssignToRapidJSONValueImpl {
+  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const T& value) {
+    destination = value;
+  }
+};
+
+template <>
+struct AssignToRapidJSONValueImpl<std::string> {
+  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const std::string& value) {
+    destination.SetString(value.c_str(), value.length());
+  }
+};
+
+template <typename T>
+void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
+  AssignToRapidJSONValueImpl<T>::WithDedicatedStringTreatment(destination, value);
+}
+
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
+  template <>                                                                              \
+  struct SaveIntoJSONImpl<cpp_type> {                                                      \
+    static void Go(rapidjson::Value& destination,                                          \
+                   rapidjson::Document::AllocatorType&,                                    \
+                   const cpp_type& value) {                                                \
+      AssignToRapidJSONValue(destination, value);                                          \
+    }                                                                                      \
+  };
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+// TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
+template <typename T>
+struct SaveIntoJSONImpl {
+  struct Visitor {
+    rapidjson::Value& destination_;
+    rapidjson::Document::AllocatorType& allocator_;
+
+    Visitor(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+        : destination_(destination), allocator_(allocator) {}
+
+    // IMPORTANT: Pass in `const char* name`, as `const std::string& name`
+    // would fail memory-allocation-wise due to over-smartness of RapidJSON.
+    template <typename U>
+    void operator()(const char* name, const U& value) const {
+      rapidjson::Value placeholder;
+      SaveIntoJSONImpl<U>::Go(placeholder, allocator_, value);
+      destination_.AddMember(name, placeholder, allocator_);
+    }
+  };
+
+  static void Go(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator, const T& value) {
+    destination.SetObject();
+
+    Visitor serializer(destination, allocator);
+    current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndImmutableValue>::
+        WithObject(value, serializer);
+  }
+};
+
+template <typename T>
+std::string JSON(const T& value) {
+  rapidjson::Document document;
+  rapidjson::Value& destination = document;
+
+  SaveIntoJSONImpl<T>::Go(destination, document.GetAllocator(), value);
+
+  std::ostringstream os;
+  auto stream = rapidjson::GenericWriteStream(os);
+  auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
+  document.Accept(writer);
+
+  return os.str();
+}
+
+}  // namespace reflection_json
+
+TEST(Reflection, SerializeIntoJSON) {
+  using namespace reflection_test;
+  using namespace reflection_json;
+
+  Serializable object;
+  object.i = 0;
+  object.s = "";
+
+  EXPECT_EQ("{\"i\":0,\"s\":\"\"}", JSON(object));
+
+  object.i = 42;
+  object.s = "foo";
+  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", JSON(object));
+}
+
+// RapidJSON examples framed as tests. One way we may wish to remove them. -- D.K.
 TEST(RapidJSON, Smoke) {
   using rapidjson::Document;
   using rapidjson::Value;
@@ -216,34 +318,34 @@ TEST(RapidJSON, Smoke) {
   std::string json;
 
   {
-    Document doc;
-    auto& allocator = doc.GetAllocator();
+    Document document;
+    auto& allocator = document.GetAllocator();
     Value foo("bar");
-    doc.SetObject().AddMember("foo", foo, allocator);
+    document.SetObject().AddMember("foo", foo, allocator);
 
-    EXPECT_TRUE(doc.IsObject());
-    EXPECT_TRUE(doc.HasMember("foo"));
-    EXPECT_TRUE(doc["foo"].IsString());
-    EXPECT_EQ("bar", doc["foo"].GetString());
+    EXPECT_TRUE(document.IsObject());
+    EXPECT_TRUE(document.HasMember("foo"));
+    EXPECT_TRUE(document["foo"].IsString());
+    EXPECT_EQ("bar", document["foo"].GetString());
 
     std::ostringstream os;
     auto stream = GenericWriteStream(os);
     auto writer = Writer<GenericWriteStream>(stream);
-    doc.Accept(writer);
+    document.Accept(writer);
     json = os.str();
   }
 
   EXPECT_EQ("{\"foo\":\"bar\"}", json);
 
   {
-    Document doc;
-    ASSERT_FALSE(doc.Parse<0>(json.c_str()).HasParseError());
-    EXPECT_TRUE(doc.IsObject());
-    EXPECT_TRUE(doc.HasMember("foo"));
-    EXPECT_TRUE(doc["foo"].IsString());
-    EXPECT_EQ(std::string("bar"), doc["foo"].GetString());
-    EXPECT_FALSE(doc.HasMember("bar"));
-    EXPECT_FALSE(doc.HasMember("meh"));
+    Document document;
+    ASSERT_FALSE(document.Parse<0>(json.c_str()).HasParseError());
+    EXPECT_TRUE(document.IsObject());
+    EXPECT_TRUE(document.HasMember("foo"));
+    EXPECT_TRUE(document["foo"].IsString());
+    EXPECT_EQ(std::string("bar"), document["foo"].GetString());
+    EXPECT_FALSE(document.HasMember("bar"));
+    EXPECT_FALSE(document.HasMember("meh"));
   }
 }
 
@@ -256,26 +358,27 @@ TEST(RapidJSON, NullInString) {
   std::string json;
 
   {
-    Document doc;
-    auto& allocator = doc.GetAllocator();
+    Document document;
+    auto& allocator = document.GetAllocator();
     Value s;
     s.SetString("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided"));
-    doc.SetObject().AddMember("s", s, allocator);
+    document.SetObject();
+    document.AddMember("s", s, allocator);
 
     std::ostringstream os;
     auto stream = GenericWriteStream(os);
     auto writer = Writer<GenericWriteStream>(stream);
-    doc.Accept(writer);
+    document.Accept(writer);
     json = os.str();
   }
 
   EXPECT_EQ("{\"s\":\"terrible\\u0000avoided\"}", json);
 
   {
-    Document doc;
-    ASSERT_FALSE(doc.Parse<0>(json.c_str()).HasParseError());
-    EXPECT_EQ(std::string("terrible"), doc["s"].GetString());
+    Document document;
+    ASSERT_FALSE(document.Parse<0>(json.c_str()).HasParseError());
+    EXPECT_EQ(std::string("terrible"), document["s"].GetString());
     EXPECT_EQ(std::string("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided")),
-              std::string(doc["s"].GetString(), doc["s"].GetStringLength()));
+              std::string(document["s"].GetString(), document["s"].GetStringLength()));
   }
 }
