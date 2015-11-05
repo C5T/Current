@@ -155,7 +155,7 @@ TEST(Reflection, CurrentStructInternals) {
 #include "../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
 #include "../3rdparty/cereal/include/external/rapidjson/genericstream.h"
 
-TEST(Reflection, TryingJSONSerialization) {
+TEST(Reflection, RapidJSONSmoke) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
@@ -192,5 +192,38 @@ TEST(Reflection, TryingJSONSerialization) {
     EXPECT_EQ(std::string("bar"), doc["foo"].GetString());
     EXPECT_FALSE(doc.HasMember("bar"));
     EXPECT_FALSE(doc.HasMember("meh"));
+  }
+}
+
+TEST(Reflection, RapidJSONNullInString) {
+  using rapidjson::Document;
+  using rapidjson::Value;
+  using rapidjson::Writer;
+  using rapidjson::GenericWriteStream;
+
+  std::string json;
+
+  {
+    Document doc;
+    auto& allocator = doc.GetAllocator();
+    Value s;
+    s.SetString("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided"));
+    doc.SetObject().AddMember("s", s, allocator);
+
+    std::ostringstream os;
+    auto stream = GenericWriteStream(os);
+    auto writer = Writer<GenericWriteStream>(stream);
+    doc.Accept(writer);
+    json = os.str();
+  }
+
+  EXPECT_EQ("{\"s\":\"terrible\\u0000avoided\"}", json);
+
+  {
+    Document doc;
+    ASSERT_FALSE(doc.Parse<0>(json.c_str()).HasParseError());
+    EXPECT_EQ(std::string("terrible"), doc["s"].GetString());
+    EXPECT_EQ(std::string("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided")),
+              std::string(doc["s"].GetString(), doc["s"].GetStringLength()));
   }
 }
