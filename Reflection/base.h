@@ -37,7 +37,13 @@ struct CurrentSuper {
 // Instantiation types.
 struct DeclareFields {};
 struct CountFields {};
-typedef long long CountFieldsImplementationType;
+
+// Dummy type for `CountFields` instantiation type.
+struct CountFieldsImplementationType {
+  template <typename... T>
+  CountFieldsImplementationType(T&&...) {}
+  long long x;
+};
 
 // Helper structs for reflection.
 class FieldTypeAndName {};
