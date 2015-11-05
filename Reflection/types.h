@@ -8,7 +8,8 @@
 #include <memory>
 
 #include "base.h"
-#include "crc32.h"
+
+#include "../Bricks/util/crc32.h"
 
 namespace current {
 namespace reflection {
@@ -72,17 +73,17 @@ struct ReflectedType_Struct : ReflectedTypeImpl {
 };
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
-  uint64_t hash = crc32(s.name);
+  uint64_t hash = bricks::CRC32(s.name);
   size_t i = 0u;
   for (const auto& f : s.fields) {
-    hash ^= (static_cast<uint64_t>(crc32(f.second)) << 8) ^
-            (static_cast<uint64_t>(crc32(f.first->CppType())) << (16 + (i++ % 17)));
+    hash ^= (static_cast<uint64_t>(bricks::CRC32(f.second)) << 8) ^
+            (static_cast<uint64_t>(bricks::CRC32(f.first->CppType())) << (16 + (i++ % 17)));
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  return static_cast<TypeID>(TYPEID_COLLECTION_TYPE + crc32(v.reflected_element_type->CppType()));
+  return static_cast<TypeID>(TYPEID_COLLECTION_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

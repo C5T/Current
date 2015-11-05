@@ -1,18 +1,39 @@
-#ifndef CURRENT_REFLECTION_CRC32_H
-#define CURRENT_REFLECTION_CRC32_H
+/*******************************************************************************
+The MIT License (MIT)
 
-// Based on original code by Gary S. Brown.
-// http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/libkern/crc32.c
-//  *  COPYRIGHT (C) 1986 Gary S. Brown.  You may use this program, or
-//  *  code or tables extracted from it, as desired without restriction.
-//
-// TODO: move to Bricks/util/?
+Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+
+Based on original code by Gary S. Brown:
+  http://www.opensource.apple.com/source/xnu/xnu-1456.1.26/bsd/libkern/crc32.c
+  *  COPYRIGHT (C) 1986 Gary S. Brown.  You may use this program, or
+  *  code or tables extracted from it, as desired without restriction.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
+#ifndef BRICKS_UTIL_CRC32_H
+#define BRICKS_UTIL_CRC32_H
 
 #include <string>
 #include <cstring>
 
-namespace current {
-namespace reflection {
+namespace bricks {
 
 constexpr uint32_t crc32_table[256] = {
     0x00000000, 0x77073096, 0xee0e612c, 0x990951ba, 0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3, 0x0edb8832,
@@ -45,7 +66,7 @@ constexpr uint32_t crc32_table[256] = {
     0x24b4a3a6, 0xbad03605, 0xcdd70693, 0x54de5729, 0x23d967bf, 0xb3667a2e, 0xc4614ab8, 0x5d681b02, 0x2a6f2b94,
     0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d};
 
-inline uint32_t crc32(uint32_t crc, const char* buf, size_t size) {
+inline uint32_t CRC32(uint32_t crc, const char* buf, size_t size) {
   crc ^= ~0u;
   while (size--) {
     crc = crc32_table[(crc ^ *buf++) & 0xFF] ^ (crc >> 8);
@@ -53,11 +74,10 @@ inline uint32_t crc32(uint32_t crc, const char* buf, size_t size) {
   return crc ^ ~0u;
 }
 
-inline uint32_t crc32(const char* str) { return crc32(0, str, strlen(str)); }
+inline uint32_t CRC32(const char* str) { return CRC32(0, str, strlen(str)); }
 
-inline uint32_t crc32(const std::string& str) { return crc32(0, str.c_str(), str.length()); }
+inline uint32_t CRC32(const std::string& str) { return CRC32(0, str.c_str(), str.length()); }
 
-}  // namespace reflection
-}  // namespace current
+}  // namespace bricks
 
-#endif  // CURRENT_REFLECTION_CRC32_H
+#endif  // BRICKS_UTIL_CRC32_H
