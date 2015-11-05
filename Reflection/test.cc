@@ -1,13 +1,32 @@
-#include <vector>
-#include <string>
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+          (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
+#include <cstdint>
 
 #include "reflection.h"
-#include "../Bricks/strings/join.h"
-
-// TODO(dkorolev): Use RapidJSON from outside Cereal.
-#include "../3rdparty/cereal/include/external/rapidjson/document.h"
-#include "../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
-#include "../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+#include "../Bricks/strings/strings.h"
 
 #include "../3rdparty/gtest/gtest-main.h"
 
@@ -125,33 +144,20 @@ TEST(Reflection, CurrentStructInternals) {
   static_assert(std::is_same<SuperType<Foo>, CurrentSuper>::value, "");
   EXPECT_EQ(1u, FieldCounter<Foo>::value);
 
-  std::string field_name;
-  Foo::CURRENT_REFLECTION([&field_name](const std::string& name) { field_name = name; }, Index<FieldName, 0>());
-  EXPECT_EQ("i", field_name);
-
-  bool field_type_correct = false;
-  Foo::CURRENT_REFLECTION([&field_type_correct](TypeSelector<uint64_t>) { field_type_correct = true; },
-                          Index<FieldType, 0>());
-  EXPECT_TRUE(field_type_correct);
+  Foo::CURRENT_REFLECTION([](TypeSelector<uint64_t>, const std::string& name) { EXPECT_EQ("i", name); },
+                          Index<FieldTypeAndName, 0>());
 
   Foo foo;
-  uint64_t field_value = 0u;
-  foo.CURRENT_REFLECTION([&field_value](uint64_t value) { field_value = value; }, Index<FieldValue, 0>());
-  EXPECT_EQ(42u, field_value);
-
   foo.i = 100u;
-  foo.CURRENT_REFLECTION([&field_name, &field_value](const std::string& name, const uint64_t& value) {
-    field_name = name;
-    field_value = value;
+  foo.CURRENT_REFLECTION([](const std::string& name, const uint64_t& value) {
+    EXPECT_EQ("i", name);
+    EXPECT_EQ(100u, value);
   }, Index<FieldNameAndImmutableValue, 0>());
-  EXPECT_EQ("i", field_name);
-  EXPECT_EQ(100u, field_value);
 
-  foo.CURRENT_REFLECTION([&field_name](const std::string& name, uint64_t& value) {
-    field_name = name;
+  foo.CURRENT_REFLECTION([](const std::string& name, uint64_t& value) {
+    EXPECT_EQ("i", name);
     value = 123u;
   }, Index<FieldNameAndMutableValue, 0>());
-  EXPECT_EQ("i", field_name);
   EXPECT_EQ(123u, foo.i);
 
   static_assert(std::is_same<SuperType<Bar>, CurrentSuper>::value, "");
@@ -162,23 +168,58 @@ TEST(Reflection, CurrentStructInternals) {
 
 namespace reflection_test {
 
-CURRENT_STRUCT(Serializable) {
-  CURRENT_FIELD(i, uint64_t);
-  CURRENT_FIELD(s, std::string);
-};
+// TODO: move these asserts into sources?
+static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
+static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 
-CURRENT_STRUCT(ComplexSerializable) {
-  CURRENT_FIELD(j, uint64_t);
-  CURRENT_FIELD(q, std::string);
-  CURRENT_FIELD(v, std::vector<std::string>);
-  CURRENT_FIELD(z, Serializable);
+CURRENT_STRUCT(StructWithAllSupportedTypes) {
+  // Integral.
+  CURRENT_FIELD(b, bool, true);
+  CURRENT_FIELD(c, char, 'Q');
+  CURRENT_FIELD(uint8, uint8_t, UINT8_MAX);
+  CURRENT_FIELD(uint16, uint16_t, UINT16_MAX);
+  CURRENT_FIELD(uint32, uint32_t, UINT32_MAX);
+  CURRENT_FIELD(uint64, uint64_t, UINT64_MAX);
+  CURRENT_FIELD(int8, int8_t, INT8_MIN);
+  CURRENT_FIELD(int16, int16_t, INT16_MIN);
+  CURRENT_FIELD(int32, int32_t, INT32_MIN);
+  CURRENT_FIELD(int64, int64_t, INT64_MIN);
+  // Floating point.
+  CURRENT_FIELD(flt, float, 1e38);
+  CURRENT_FIELD(dbl, double, 1e308);
+  // Other primitive types.
+  CURRENT_FIELD(s, std::string, "The String");
 };
+}
 
-struct CollectFieldNames {
+namespace reflection_test {
+
+struct CollectFieldValues {
   std::vector<std::string>& output_;
+
   template <typename T>
-  void operator()(current::reflection::TypeSelector<T>, const std::string& name) const {
-    output_.push_back(name);
+  void operator()(const std::string&, const T& value) const {
+    output_.push_back(bricks::strings::ToString(value));
+  }
+
+  // Output `bool` using boolalpha.
+  void operator()(const std::string&, bool value) const {
+    std::ostringstream oss;
+    oss << std::boolalpha << value;
+    output_.push_back(oss.str());
+  }
+
+  // Output floating types in scientific notation.
+  void operator()(const std::string&, float value) const {
+    std::ostringstream oss;
+    oss << value;
+    output_.push_back(oss.str());
+  }
+
+  void operator()(const std::string&, double value) const {
+    std::ostringstream oss;
+    oss << value;
+    output_.push_back(oss.str());
   }
 };
 
@@ -187,269 +228,18 @@ struct CollectFieldNames {
 TEST(Reflection, VisitAllFields) {
   using namespace reflection_test;
 
+  StructWithAllSupportedTypes all;
+
+  std::vector<std::string> result;
+  CollectFieldValues values{result};
+  current::reflection::VisitAllFields<StructWithAllSupportedTypes,
+                                      current::reflection::FieldNameAndImmutableValue>::WithObject(all, values);
   EXPECT_EQ(
-      "struct Serializable {\n"
-      "  uint64_t i;\n"
-      "  std::string s;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<Serializable>());
-  {
-    std::vector<std::string> result;
-    CollectFieldNames names{result};
-    current::reflection::VisitAllFields<Serializable, current::reflection::FieldTypeAndName>::WithoutObject(
-        names);
-    EXPECT_EQ("i,s", bricks::strings::Join(result, ','));
-  }
-  {
-    std::vector<std::string> result;
-    CollectFieldNames names{result};
-    current::reflection::VisitAllFields<ComplexSerializable,
-                                        current::reflection::FieldTypeAndName>::WithoutObject(names);
-    EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
-  }
-}
-
-namespace reflection_json {
-
-template <typename T>
-struct SaveIntoJSONImpl;
-
-template <typename T>
-struct AssignToRapidJSONValueImpl {
-  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const T& value) {
-    destination = value;
-  }
-};
-
-template <>
-struct AssignToRapidJSONValueImpl<std::string> {
-  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const std::string& value) {
-    destination.SetString(value.c_str(), value.length());
-  }
-};
-
-template <typename T>
-void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
-  AssignToRapidJSONValueImpl<T>::WithDedicatedStringTreatment(destination, value);
-}
-
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
-  template <>                                                                              \
-  struct SaveIntoJSONImpl<cpp_type> {                                                      \
-    static void Go(rapidjson::Value& destination,                                          \
-                   rapidjson::Document::AllocatorType&,                                    \
-                   const cpp_type& value) {                                                \
-      AssignToRapidJSONValue(destination, value);                                          \
-    }                                                                                      \
-  };
-#include "primitive_types.dsl.h"
-#undef CURRENT_DECLARE_PRIMITIVE_TYPE
-
-template <typename T>
-struct SaveIntoJSONImpl<std::vector<T>> {
-  static void Go(rapidjson::Value& destination,
-                 rapidjson::Document::AllocatorType& allocator,
-                 const std::vector<T>& value) {
-    destination.SetArray();
-    rapidjson::Value element_to_push;
-    for (const auto& element : value) {
-      SaveIntoJSONImpl<T>::Go(element_to_push, allocator, element);
-      destination.PushBack(element_to_push, allocator);
-    }
-  }
-};
-
-// TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
-template <typename T>
-struct SaveIntoJSONImpl {
-  struct Visitor {
-    rapidjson::Value& destination_;
-    rapidjson::Document::AllocatorType& allocator_;
-
-    Visitor(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
-        : destination_(destination), allocator_(allocator) {}
-
-    // IMPORTANT: Pass in `const char* name`, as `const std::string& name`
-    // would fail memory-allocation-wise due to over-smartness of RapidJSON.
-    template <typename U>
-    void operator()(const char* name, const U& value) const {
-      rapidjson::Value placeholder;
-      SaveIntoJSONImpl<U>::Go(placeholder, allocator_, value);
-      destination_.AddMember(name, placeholder, allocator_);
-    }
-  };
-
-  static void Go(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator, const T& value) {
-    destination.SetObject();
-
-    Visitor serializer(destination, allocator);
-    current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndImmutableValue>::
-        WithObject(value, serializer);
-  }
-};
-
-template <typename T>
-std::string JSON(const T& value) {
-  rapidjson::Document document;
-  rapidjson::Value& destination = document;
-
-  SaveIntoJSONImpl<T>::Go(destination, document.GetAllocator(), value);
-
-  std::ostringstream os;
-  auto stream = rapidjson::GenericWriteStream(os);
-  auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
-  document.Accept(writer);
-
-  return os.str();
-}
-
-}  // namespace reflection_json
-
-TEST(Reflection, SerializeIntoJSON) {
-  using namespace reflection_test;
-  using namespace reflection_json;
-
-  // Simple serialization.
-  Serializable simple_object;
-  simple_object.i = 0;
-  simple_object.s = "";
-
-  EXPECT_EQ("{\"i\":0,\"s\":\"\"}", JSON(simple_object));
-
-  simple_object.i = 42;
-  simple_object.s = "foo";
-  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", JSON(simple_object));
-
-  // Nested serialization.
-  ComplexSerializable complex_object;
-  complex_object.j = 43;
-  complex_object.q = "bar";
-  complex_object.v.push_back("one");
-  complex_object.v.push_back("two");
-  complex_object.z = simple_object;
-
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
-            JSON(complex_object));
-
-  // Complex serialization makes a copy.
-  simple_object.i = -1000;
-  EXPECT_EQ(42ull, complex_object.z.i);
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
-            JSON(complex_object));
-}
-
-TEST(Reflection, LOLWUT) {
-  // RapidJSON requires the top-level node to be an array or object.
-  // Thus, just `JSON(42)` or `JSON("foo")` doesn't work. But arrays do. ;-)
-  using namespace reflection_json;
-  EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
-  EXPECT_EQ("[[\"one\",\"two\"],[\"three\",\"four\"]]",
-            JSON(std::vector<std::vector<std::string>>({{"one", "two"}, {"three", "four"}})));
-}
-
-// RapidJSON examples framed as tests. One day we may wish to remove them. -- D.K.
-TEST(RapidJSON, Smoke) {
-  using rapidjson::Document;
-  using rapidjson::Value;
-  using rapidjson::Writer;
-  using rapidjson::GenericWriteStream;
-
-  std::string json;
-
-  {
-    Document document;
-    auto& allocator = document.GetAllocator();
-    Value foo("bar");
-    document.SetObject().AddMember("foo", foo, allocator);
-
-    EXPECT_TRUE(document.IsObject());
-    EXPECT_FALSE(document.IsArray());
-    EXPECT_TRUE(document.HasMember("foo"));
-    EXPECT_TRUE(document["foo"].IsString());
-    EXPECT_EQ("bar", document["foo"].GetString());
-
-    std::ostringstream os;
-    auto stream = GenericWriteStream(os);
-    auto writer = Writer<GenericWriteStream>(stream);
-    document.Accept(writer);
-    json = os.str();
-  }
-
-  EXPECT_EQ("{\"foo\":\"bar\"}", json);
-
-  {
-    Document document;
-    ASSERT_FALSE(document.Parse<0>(json.c_str()).HasParseError());
-    EXPECT_TRUE(document.IsObject());
-    EXPECT_TRUE(document.HasMember("foo"));
-    EXPECT_TRUE(document["foo"].IsString());
-    EXPECT_EQ(std::string("bar"), document["foo"].GetString());
-    EXPECT_FALSE(document.HasMember("bar"));
-    EXPECT_FALSE(document.HasMember("meh"));
-  }
-}
-
-TEST(RapidJSON, Array) {
-  using rapidjson::Document;
-  using rapidjson::Value;
-  using rapidjson::Writer;
-  using rapidjson::GenericWriteStream;
-
-  std::string json;
-
-  {
-    Document document;
-    auto& allocator = document.GetAllocator();
-    document.SetArray();
-    Value element;
-    element = 42;
-    document.PushBack(element, allocator);
-    element = "bar";
-    document.PushBack(element, allocator);
-
-    EXPECT_TRUE(document.IsArray());
-    EXPECT_FALSE(document.IsObject());
-
-    std::ostringstream os;
-    auto stream = GenericWriteStream(os);
-    auto writer = Writer<GenericWriteStream>(stream);
-    document.Accept(writer);
-    json = os.str();
-  }
-
-  EXPECT_EQ("[42,\"bar\"]", json);
-}
-
-TEST(RapidJSON, NullInString) {
-  using rapidjson::Document;
-  using rapidjson::Value;
-  using rapidjson::Writer;
-  using rapidjson::GenericWriteStream;
-
-  std::string json;
-
-  {
-    Document document;
-    auto& allocator = document.GetAllocator();
-    Value s;
-    s.SetString("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided"));
-    document.SetObject();
-    document.AddMember("s", s, allocator);
-
-    std::ostringstream os;
-    auto stream = GenericWriteStream(os);
-    auto writer = Writer<GenericWriteStream>(stream);
-    document.Accept(writer);
-    json = os.str();
-  }
-
-  EXPECT_EQ("{\"s\":\"terrible\\u0000avoided\"}", json);
-
-  {
-    Document document;
-    ASSERT_FALSE(document.Parse<0>(json.c_str()).HasParseError());
-    EXPECT_EQ(std::string("terrible"), document["s"].GetString());
-    EXPECT_EQ(std::string("terrible\0avoided", strlen("terrible") + 1 + strlen("avoided")),
-              std::string(document["s"].GetString(), document["s"].GetStringLength()));
-  }
+      "true,"
+      "Q,"
+      "255,65535,4294967295,18446744073709551615,"
+      "-128,-32768,-2147483648,-9223372036854775808,"
+      "1e+38,1e+308,"
+      "The String",
+      bricks::strings::Join(result, ','));
 }

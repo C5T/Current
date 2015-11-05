@@ -25,12 +25,13 @@ SOFTWARE.
 #define BRICKS_RANDOM_FIX_SEED
 
 #include "clone.h"
+#include "crc32.h"
+#include "lazy_instantiation.h"
 #include "make_scope_guard.h"
 #include "random.h"
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
-#include "lazy_instantiation.h"
 
 #include "../exception.h"
 #include "../strings/printf.h"
@@ -46,7 +47,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:44\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:45\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -63,7 +64,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:61\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:62\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -232,6 +233,12 @@ TEST(Util, ThreadLocalSingleton) {
   std::thread t2(add, 10);
   t1.join();
   t2.join();
+}
+
+TEST(Util, CRC32) {
+  const std::string test_string = "Test string";
+  EXPECT_EQ(2514197138u, bricks::CRC32(test_string));
+  EXPECT_EQ(2514197138u, bricks::CRC32(test_string.c_str()));
 }
 
 TEST(Util, SHA256) {

@@ -1,3 +1,28 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+          (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
 #ifndef CURRENT_REFLECTION_TYPES_H
 #define CURRENT_REFLECTION_TYPES_H
 
@@ -8,7 +33,8 @@
 #include <memory>
 
 #include "base.h"
-#include "crc32.h"
+
+#include "../Bricks/util/crc32.h"
 
 namespace current {
 namespace reflection {
@@ -56,13 +82,15 @@ typedef std::vector<std::pair<ReflectedTypeImpl*, std::string>> StructFieldsVect
 
 struct ReflectedType_Struct : ReflectedTypeImpl {
   std::string name;
+  // If struct is derived from another Current struct, `super_name` contains the base type name.
+  // Empty otherwise.
   std::string super_name;
   StructFieldsVector fields;
 
   std::string CppType() override { return name; }
 
   std::string CppDeclaration() override {
-    std::string result = "struct " + name + super_name + " {\n";
+    std::string result = "struct " + name + (super_name.empty() ? "" : " : " + super_name) + " {\n";
     for (const auto& f : fields) {
       result += "  " + f.first->CppType() + " " + f.second + ";\n";
     }
@@ -72,17 +100,17 @@ struct ReflectedType_Struct : ReflectedTypeImpl {
 };
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
-  uint64_t hash = crc32(s.name);
+  uint64_t hash = bricks::CRC32(s.name);
   size_t i = 0u;
   for (const auto& f : s.fields) {
-    hash ^= (static_cast<uint64_t>(crc32(f.second)) << 8) ^
-            (static_cast<uint64_t>(crc32(f.first->CppType())) << (16 + (i++ % 17)));
+    hash ^= (static_cast<uint64_t>(bricks::CRC32(f.second)) << 8) ^
+            (static_cast<uint64_t>(bricks::CRC32(f.first->CppType())) << (16 + (i++ % 17)));
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  return static_cast<TypeID>(TYPEID_COLLECTION_TYPE + crc32(v.reflected_element_type->CppType()));
+  return static_cast<TypeID>(TYPEID_COLLECTION_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

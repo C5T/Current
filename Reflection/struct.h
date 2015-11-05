@@ -1,3 +1,28 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+          (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
 #ifndef CURRENT_REFLECTION_STRUCT_H
 #define CURRENT_REFLECTION_STRUCT_H
 
@@ -48,7 +73,7 @@ struct CurrentStructFieldsConsistency {
   struct Dummy {};
   constexpr static bool CheckField(char) { return false; }
   constexpr static auto CheckField(int)
-      -> decltype(T::CURRENT_REFLECTION(Dummy(), Index<FieldType, N>()), bool()) {
+      -> decltype(T::CURRENT_REFLECTION(Dummy(), Index<FieldTypeAndName, N>()), bool()) {
     return true;
   }
   constexpr static bool Check() { return CheckField(0) && CurrentStructFieldsConsistency<T, N - 1>::Check(); }
@@ -108,26 +133,14 @@ struct CurrentStructFieldsConsistency<T, -1> {
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
 #define CURRENT_FIELD_WITH_VALUE(name, type, value)                    \
-  ::current::reflection::Field<INSTANTIATION_TYPE, type> name = value; \
+  ::current::reflection::Field<INSTANTIATION_TYPE, type> name {value}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldType, idx>) { \
-    f(::current::reflection::TypeSelector<type>());                                                            \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldName, idx>) { \
-    f(#name);                                                                                                  \
-  }                                                                                                            \
-  template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& f,                                                                        \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
     f(::current::reflection::TypeSelector<type>(), #name);                                                     \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldValue, idx>) const { \
-    f(name);                                                                                                   \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
