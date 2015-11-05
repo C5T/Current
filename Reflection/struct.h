@@ -133,7 +133,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
 #define CURRENT_FIELD_WITH_VALUE(name, type, value)                    \
-  ::current::reflection::Field<INSTANTIATION_TYPE, type> name = value; \
+  ::current::reflection::Field<INSTANTIATION_TYPE, type> name {value}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
