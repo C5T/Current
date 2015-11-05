@@ -170,12 +170,9 @@ CURRENT_STRUCT(Serializable) {
 CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(j, uint64_t);
   CURRENT_FIELD(q, std::string);
-  // TODO(dkorolev): Support `std::vector` during JSON serialization.
-  // CURRENT_FIELD(v, std::vector<std::string>);
+  CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(z, Serializable);
 };
-
-// TODO(dkorolev): When doing serialization, iterate over the fields of the base class too.
 
 struct CollectFieldNames {
   std::vector<std::string>& output_;
@@ -208,9 +205,7 @@ TEST(Reflection, VisitAllFields) {
     CollectFieldNames names{result};
     current::reflection::VisitAllFields<ComplexSerializable,
                                         current::reflection::FieldTypeAndName>::WithoutObject(names);
-    EXPECT_EQ("j,q,z", bricks::strings::Join(result, ','));
-    // TODO(dkorolev): Re-add `std::vector<>` into `ComplexSerializable`.
-    // EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
+    EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
   }
 }
 
@@ -249,6 +244,22 @@ void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
   };
 #include "primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+template <typename T>
+struct SaveIntoJSONImpl<std::vector<T>> {
+  static void Go(rapidjson::Value& destination,
+                 rapidjson::Document::AllocatorType& allocator,
+                 const std::vector<T>& value) {
+    destination.SetArray();
+    rapidjson::Value element_to_push;
+    for (const auto& element : value) {
+      // AssignToRapidJSONValue(element_to_push, element);
+      SaveIntoJSONImpl<T>::Go(element_to_push, allocator, element);  // document.GetAllocator(), value);
+
+      destination.PushBack(element_to_push, allocator);
+    }
+  }
+};
 
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
@@ -315,14 +326,27 @@ TEST(Reflection, SerializeIntoJSON) {
   ComplexSerializable complex_object;
   complex_object.j = 43;
   complex_object.q = "bar";
+  complex_object.v.push_back("one");
+  complex_object.v.push_back("two");
   complex_object.z = simple_object;
 
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"z\":{\"i\":42,\"s\":\"foo\"}}", JSON(complex_object));
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
+            JSON(complex_object));
 
   // Complex serialization makes a copy.
   simple_object.i = -1000;
   EXPECT_EQ(42ull, complex_object.z.i);
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"z\":{\"i\":42,\"s\":\"foo\"}}", JSON(complex_object));
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
+            JSON(complex_object));
+}
+
+TEST(Reflection, LOLWUT) {
+  // RapidJSON requires the top-level node to be an array or object.
+  // Thus, just `JSON(42)` or `JSON("foo")` doesn't work. But arrays do. ;-)
+  using namespace reflection_json;
+  EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
+  EXPECT_EQ("[[\"one\",\"two\"],[\"three\",\"four\"]]",
+            JSON(std::vector<std::vector<std::string>>({{"one", "two"}, {"three", "four"}})));
 }
 
 // RapidJSON examples framed as tests. One day we may wish to remove them. -- D.K.
@@ -341,6 +365,7 @@ TEST(RapidJSON, Smoke) {
     document.SetObject().AddMember("foo", foo, allocator);
 
     EXPECT_TRUE(document.IsObject());
+    EXPECT_FALSE(document.IsArray());
     EXPECT_TRUE(document.HasMember("foo"));
     EXPECT_TRUE(document["foo"].IsString());
     EXPECT_EQ("bar", document["foo"].GetString());
@@ -364,6 +389,37 @@ TEST(RapidJSON, Smoke) {
     EXPECT_FALSE(document.HasMember("bar"));
     EXPECT_FALSE(document.HasMember("meh"));
   }
+}
+
+TEST(RapidJSON, Array) {
+  using rapidjson::Document;
+  using rapidjson::Value;
+  using rapidjson::Writer;
+  using rapidjson::GenericWriteStream;
+
+  std::string json;
+
+  {
+    Document document;
+    auto& allocator = document.GetAllocator();
+    document.SetArray();
+    Value element;
+    element = 42;
+    document.PushBack(element, allocator);
+    element = "bar";
+    document.PushBack(element, allocator);
+
+    EXPECT_TRUE(document.IsArray());
+    EXPECT_FALSE(document.IsObject());
+
+    std::ostringstream os;
+    auto stream = GenericWriteStream(os);
+    auto writer = Writer<GenericWriteStream>(stream);
+    document.Accept(writer);
+    json = os.str();
+  }
+
+  EXPECT_EQ("[42,\"bar\"]", json);
 }
 
 TEST(RapidJSON, NullInString) {
