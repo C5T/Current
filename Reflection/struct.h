@@ -170,9 +170,9 @@ struct FieldCounter {
 };
 
 template <typename T, typename INDEX_TYPE>
-struct EnumFields {
+struct VisitAllFields {
   static_assert(std::is_base_of<CurrentSuper, T>::value,
-                "`EnumFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
+                "`VisitAllFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
   typedef bricks::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
 
   template <typename F>

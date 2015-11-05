@@ -1,4 +1,8 @@
+#include <vector>
+#include <string>
+
 #include "reflection.h"
+#include "../Bricks/strings/join.h"
 
 // TODO(dkorolev): Use RapidJSON from outside Cereal.
 #include "../3rdparty/cereal/include/external/rapidjson/document.h"
@@ -163,9 +167,26 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(s, std::string);
 };
 
+CURRENT_STRUCT(ComplexSerializable) {
+  CURRENT_FIELD(j, uint64_t);
+  CURRENT_FIELD(q, std::string);
+  CURRENT_FIELD(v, std::vector<std::string>);
+  CURRENT_FIELD(z, Serializable);
+};
+
+// TODO(dkorolev): When doing serialization, iterate over the fields of the base class too.
+
+struct CollectFieldNames {
+  mutable std::vector<std::string> result;
+  template <typename T>
+  void operator()(current::reflection::TypeSelector<T>, const std::string& name) const {
+    result.push_back(name);
+  }
+};
+
 }  // namespace reflection_test
 
-TEST(Reflection, Serialization) {
+TEST(Reflection, VisitAllFields) {
   using namespace reflection_test;
 
   EXPECT_EQ(
@@ -174,6 +195,16 @@ TEST(Reflection, Serialization) {
       "  std::string s;\n"
       "};\n",
       Reflector().DescribeCppStruct<Serializable>());
+  {
+    CollectFieldNames names;
+    current::reflection::VisitAllFields<Serializable, current::reflection::FieldTypeAndName>()(names);
+    EXPECT_EQ("i,s", bricks::strings::Join(names.result, ','));
+  }
+  {
+    CollectFieldNames names;
+    current::reflection::VisitAllFields<ComplexSerializable, current::reflection::FieldTypeAndName>()(names);
+    EXPECT_EQ("j,q,v,z", bricks::strings::Join(names.result, ','));
+  }
 }
 
 TEST(RapidJSON, Smoke) {

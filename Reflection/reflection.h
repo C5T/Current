@@ -66,7 +66,7 @@ struct ReflectorImpl {
       s->name = T::template CURRENT_REFLECTION_HELPER<T>::name();
       s->super_name = StructInheritanceString<T>();
       FieldReflector field_reflector(s->fields);
-      EnumFields<T, FieldTypeAndName>()(field_reflector);
+      VisitAllFields<T, FieldTypeAndName>()(field_reflector);
       s->type_id = CalculateTypeID(s);
       return std::move(s);
     }
