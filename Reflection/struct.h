@@ -4,7 +4,7 @@
 #include <memory>
 #include <type_traits>
 
-#include "super.h"
+#include "base.h"
 
 #include "../Bricks/template/variadic_indexes.h"
 
@@ -131,13 +131,12 @@ struct CurrentStructFieldsConsistency<T, -1> {
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
-      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValueReference, idx>)    \
-      const {                                                                                                  \
+      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>) const {     \
     f(#name, name);                                                                                            \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
-      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndMutableValueReference, idx>) {    \
+      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {             \
     f(#name, name);                                                                                            \
   }
 

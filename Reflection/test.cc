@@ -143,14 +143,14 @@ TEST(Reflection, CurrentStructInternals) {
   foo.CURRENT_REFLECTION([&field_name, &field_value](const std::string& name, const uint64_t& value) {
     field_name = name;
     field_value = value;
-  }, Index<FieldNameAndImmutableValueReference, 0>());
+  }, Index<FieldNameAndImmutableValue, 0>());
   EXPECT_EQ("i", field_name);
   EXPECT_EQ(100u, field_value);
 
   foo.CURRENT_REFLECTION([&field_name](const std::string& name, uint64_t& value) {
     field_name = name;
     value = 123u;
-  }, Index<FieldNameAndMutableValueReference, 0>());
+  }, Index<FieldNameAndMutableValue, 0>());
   EXPECT_EQ("i", field_name);
   EXPECT_EQ(123u, foo.i);
 
