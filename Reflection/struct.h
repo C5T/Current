@@ -4,7 +4,7 @@
 #include <memory>
 #include <type_traits>
 
-#include "base.h"
+#include "super.h"
 
 #include "../Bricks/template/variadic_indexes.h"
 
@@ -62,8 +62,8 @@ struct CurrentStructFieldsConsistency<T, -1> {
 }  // namespace reflection
 }  // namespace current
 
-#define CURRENT_EXPAND_MACRO_2(x) x
-#define CURRENT_EXPAND_MACRO(x) CURRENT_EXPAND_MACRO_2(x)
+#define CURRENT_EXPAND_MACRO_IMPL(x) x
+#define CURRENT_EXPAND_MACRO(x) CURRENT_EXPAND_MACRO_IMPL(x)
 
 // Macros for structure definition.
 #define CURRENT_STRUCT_SWITCH(_1, _2, F, ...) F
