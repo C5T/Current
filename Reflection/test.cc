@@ -170,7 +170,8 @@ CURRENT_STRUCT(Serializable) {
 CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(j, uint64_t);
   CURRENT_FIELD(q, std::string);
-  CURRENT_FIELD(v, std::vector<std::string>);
+  // TODO(dkorolev): Support `std::vector` during JSON serialization.
+  // CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(z, Serializable);
 };
 
@@ -207,7 +208,9 @@ TEST(Reflection, VisitAllFields) {
     CollectFieldNames names{result};
     current::reflection::VisitAllFields<ComplexSerializable,
                                         current::reflection::FieldTypeAndName>::WithoutObject(names);
-    EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
+    EXPECT_EQ("j,q,z", bricks::strings::Join(result, ','));
+    // TODO(dkorolev): Re-add `std::vector<>` into `ComplexSerializable`.
+    // EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
   }
 }
 
@@ -297,18 +300,32 @@ TEST(Reflection, SerializeIntoJSON) {
   using namespace reflection_test;
   using namespace reflection_json;
 
-  Serializable object;
-  object.i = 0;
-  object.s = "";
+  // Simple serialization.
+  Serializable simple_object;
+  simple_object.i = 0;
+  simple_object.s = "";
 
-  EXPECT_EQ("{\"i\":0,\"s\":\"\"}", JSON(object));
+  EXPECT_EQ("{\"i\":0,\"s\":\"\"}", JSON(simple_object));
 
-  object.i = 42;
-  object.s = "foo";
-  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", JSON(object));
+  simple_object.i = 42;
+  simple_object.s = "foo";
+  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", JSON(simple_object));
+
+  // Nested serialization.
+  ComplexSerializable complex_object;
+  complex_object.j = 43;
+  complex_object.q = "bar";
+  complex_object.z = simple_object;
+
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"z\":{\"i\":42,\"s\":\"foo\"}}", JSON(complex_object));
+
+  // Complex serialization makes a copy.
+  simple_object.i = -1000;
+  EXPECT_EQ(42ull, complex_object.z.i);
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"z\":{\"i\":42,\"s\":\"foo\"}}", JSON(complex_object));
 }
 
-// RapidJSON examples framed as tests. One way we may wish to remove them. -- D.K.
+// RapidJSON examples framed as tests. One day we may wish to remove them. -- D.K.
 TEST(RapidJSON, Smoke) {
   using rapidjson::Document;
   using rapidjson::Value;
