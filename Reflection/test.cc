@@ -23,11 +23,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include <vector>
-#include <string>
+#include <cstdint>
 
 #include "reflection.h"
-#include "../Bricks/strings/join.h"
+#include "../Bricks/strings/strings.h"
 
 #include "../3rdparty/gtest/gtest-main.h"
 
@@ -180,15 +179,60 @@ TEST(Reflection, CurrentStructInternals) {
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
 }
 
-// TODO: deprecate this test?
-#if 0
 namespace reflection_test {
 
-struct CollectFieldNames {
+// TODO: move these asserts into sources?
+static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
+static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
+
+CURRENT_STRUCT(StructWithAllSupportedTypes) {
+  // Integral.
+  CURRENT_FIELD(b, bool, true);
+  CURRENT_FIELD(c, char, 'Q');
+  CURRENT_FIELD(uint8, uint8_t, UINT8_MAX);
+  CURRENT_FIELD(uint16, uint16_t, UINT16_MAX);
+  CURRENT_FIELD(uint32, uint32_t, UINT32_MAX);
+  CURRENT_FIELD(uint64, uint64_t, UINT64_MAX);
+  CURRENT_FIELD(int8, int8_t, INT8_MIN);
+  CURRENT_FIELD(int16, int16_t, INT16_MIN);
+  CURRENT_FIELD(int32, int32_t, INT32_MIN);
+  CURRENT_FIELD(int64, int64_t, INT64_MIN);
+  // Floating point.
+  CURRENT_FIELD(flt, float, 1e38);
+  CURRENT_FIELD(dbl, double, 1e308);
+  // Other primitive types.
+  CURRENT_FIELD(s, std::string, "The String");
+};
+}
+
+namespace reflection_test {
+
+struct CollectFieldValues {
   std::vector<std::string>& output_;
+
   template <typename T>
-  void operator()(current::reflection::TypeSelector<T>, const std::string& name) const {
-    output_.push_back(name);
+  void operator()(const std::string&, const T& value) const {
+    output_.push_back(bricks::strings::ToString(value));
+  }
+
+  // Output `bool` using boolalpha.
+  void operator()(const std::string&, bool value) const {
+    std::ostringstream oss;
+    oss << std::boolalpha << value;
+    output_.push_back(oss.str());
+  }
+
+  // Output floating types in scientific notation.
+  void operator()(const std::string&, float value) const {
+    std::ostringstream oss;
+    oss << value;
+    output_.push_back(oss.str());
+  }
+
+  void operator()(const std::string&, double value) const {
+    std::ostringstream oss;
+    oss << value;
+    output_.push_back(oss.str());
   }
 };
 
@@ -197,26 +241,18 @@ struct CollectFieldNames {
 TEST(Reflection, VisitAllFields) {
   using namespace reflection_test;
 
-  EXPECT_EQ(
-      "struct Serializable {\n"
-      "  uint64_t i;\n"
-      "  std::string s;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<Serializable>());
-  {
-    std::vector<std::string> result;
-    CollectFieldNames names{result};
-    current::reflection::VisitAllFields<Serializable, current::reflection::FieldTypeAndName>::WithoutObject(
-        names);
-    EXPECT_EQ("i,s", bricks::strings::Join(result, ','));
-  }
-  {
-    std::vector<std::string> result;
-    CollectFieldNames names{result};
-    current::reflection::VisitAllFields<ComplexSerializable,
-                                        current::reflection::FieldTypeAndName>::WithoutObject(names);
-    EXPECT_EQ("j,q,v,z", bricks::strings::Join(result, ','));
-  }
-}
+  StructWithAllSupportedTypes all;
 
-#endif
+  std::vector<std::string> result;
+  CollectFieldValues values{result};
+  current::reflection::VisitAllFields<StructWithAllSupportedTypes,
+                                      current::reflection::FieldNameAndImmutableValue>::WithObject(all, values);
+  EXPECT_EQ(
+      "true,"
+      "Q,"
+      "255,65535,4294967295,18446744073709551615,"
+      "-128,-32768,-2147483648,-9223372036854775808,"
+      "1e+38,1e+308,"
+      "The String",
+      bricks::strings::Join(result, ','));
+}
