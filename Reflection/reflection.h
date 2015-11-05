@@ -32,8 +32,12 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
+    // TODO(dkorolev): Unify this part.
     std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<uint64_t>) {
       return make_unique<ReflectedType_UInt64>();
+    }
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::string>) {
+      return make_unique<ReflectedType_String>();
     }
 
     template <typename T>

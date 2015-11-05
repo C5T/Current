@@ -1,5 +1,10 @@
 #include "reflection.h"
 
+// TODO(dkorolev): Use RapidJSON from outside Cereal.
+#include "../3rdparty/cereal/include/external/rapidjson/document.h"
+#include "../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
+#include "../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+
 #include "../3rdparty/gtest/gtest-main.h"
 
 namespace reflection_test {
@@ -151,11 +156,27 @@ TEST(Reflection, CurrentStructInternals) {
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
 }
 
-#include "../3rdparty/cereal/include/external/rapidjson/document.h"
-#include "../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
-#include "../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+namespace reflection_test {
 
-TEST(Reflection, RapidJSONSmoke) {
+CURRENT_STRUCT(Serializable) {
+  CURRENT_FIELD(i, uint64_t);
+  CURRENT_FIELD(s, std::string);
+};
+
+}  // namespace reflection_test
+
+TEST(Reflection, Serialization) {
+  using namespace reflection_test;
+
+  EXPECT_EQ(
+      "struct Serializable {\n"
+      "  uint64_t i;\n"
+      "  std::string s;\n"
+      "};\n",
+      Reflector().DescribeCppStruct<Serializable>());
+}
+
+TEST(RapidJSON, Smoke) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
@@ -195,7 +216,7 @@ TEST(Reflection, RapidJSONSmoke) {
   }
 }
 
-TEST(Reflection, RapidJSONNullInString) {
+TEST(RapidJSON, NullInString) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;

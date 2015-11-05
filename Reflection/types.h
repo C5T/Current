@@ -27,7 +27,8 @@ enum class TypeID : uint64_t {
   Int32 = TYPEID_BASIC_TYPE + 23,
   Int64 = TYPEID_BASIC_TYPE + 24,
   Float = TYPEID_BASIC_TYPE + 31,
-  Double = TYPEID_BASIC_TYPE + 32
+  Double = TYPEID_BASIC_TYPE + 32,
+  String = TYPEID_BASIC_TYPE + 31
 };
 
 struct ReflectedTypeImpl {
@@ -37,9 +38,14 @@ struct ReflectedTypeImpl {
   virtual ~ReflectedTypeImpl() = default;
 };
 
+// TODO(dkorolev): Unify this part.
 struct ReflectedType_UInt64 : ReflectedTypeImpl {
   TypeID type_id = TypeID::UInt64;
   std::string CppType() override { return "uint64_t"; }
+};
+struct ReflectedType_String : ReflectedTypeImpl {
+  TypeID type_id = TypeID::String;
+  std::string CppType() override { return "std::string"; }
 };
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
@@ -88,13 +94,16 @@ inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.
-template<typename T, typename DELETER> TypeID CalculateTypeID(const std::unique_ptr<T, DELETER>& ptr) {
+template <typename T, typename DELETER>
+TypeID CalculateTypeID(const std::unique_ptr<T, DELETER>& ptr) {
   return CalculateTypeID(*ptr);
 }
-template<typename T> TypeID CalculateTypeID(const std::shared_ptr<T>& ptr) {
+template <typename T>
+TypeID CalculateTypeID(const std::shared_ptr<T>& ptr) {
   return CalculateTypeID(*ptr);
 }
-template<typename T> TypeID CalculateTypeID(const T* ptr) {
+template <typename T>
+TypeID CalculateTypeID(const T* ptr) {
   return CalculateTypeID(*ptr);
 }
 
