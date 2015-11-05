@@ -5,8 +5,9 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <memory>
 
-#include "super.h"
+#include "base.h"
 #include "crc32.h"
 
 namespace current {
@@ -18,16 +19,10 @@ constexpr uint64_t TYPEID_COLLECTION_TYPE = 901u * TYPEID_TYPE_RANGE;
 constexpr uint64_t TYPEID_STRUCT_TYPE = 902u * TYPEID_TYPE_RANGE;
 
 enum class TypeID : uint64_t {
-  UInt8 = TYPEID_BASIC_TYPE + 11,
-  UInt16 = TYPEID_BASIC_TYPE + 12,
-  UInt32 = TYPEID_BASIC_TYPE + 13,
-  UInt64 = TYPEID_BASIC_TYPE + 14,
-  Int8 = TYPEID_BASIC_TYPE + 21,
-  Int16 = TYPEID_BASIC_TYPE + 22,
-  Int32 = TYPEID_BASIC_TYPE + 23,
-  Int64 = TYPEID_BASIC_TYPE + 24,
-  Float = TYPEID_BASIC_TYPE + 31,
-  Double = TYPEID_BASIC_TYPE + 32
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
+  current_type = TYPEID_BASIC_TYPE + typeid_index,
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
 };
 
 struct ReflectedTypeImpl {
@@ -37,10 +32,13 @@ struct ReflectedTypeImpl {
   virtual ~ReflectedTypeImpl() = default;
 };
 
-struct ReflectedType_UInt64 : ReflectedTypeImpl {
-  TypeID type_id = TypeID::UInt64;
-  std::string CppType() override { return "uint64_t"; }
-};
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
+  struct ReflectedType_##current_type : ReflectedTypeImpl {                         \
+    TypeID type_id = TypeID::current_type;                                          \
+    std::string CppType() override { return #cpp_type; }                            \
+  };
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
   constexpr static const char* cpp_typename = "std::vector";
@@ -88,13 +86,16 @@ inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.
-template<typename T, typename DELETER> TypeID CalculateTypeID(const std::unique_ptr<T, DELETER>& ptr) {
+template <typename T, typename DELETER>
+TypeID CalculateTypeID(const std::unique_ptr<T, DELETER>& ptr) {
   return CalculateTypeID(*ptr);
 }
-template<typename T> TypeID CalculateTypeID(const std::shared_ptr<T>& ptr) {
+template <typename T>
+TypeID CalculateTypeID(const std::shared_ptr<T>& ptr) {
   return CalculateTypeID(*ptr);
 }
-template<typename T> TypeID CalculateTypeID(const T* ptr) {
+template <typename T>
+TypeID CalculateTypeID(const T* ptr) {
   return CalculateTypeID(*ptr);
 }
 

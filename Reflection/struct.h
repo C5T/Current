@@ -4,7 +4,7 @@
 #include <memory>
 #include <type_traits>
 
-#include "super.h"
+#include "base.h"
 
 #include "../Bricks/template/variadic_indexes.h"
 
@@ -131,13 +131,12 @@ struct CurrentStructFieldsConsistency<T, -1> {
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
-      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValueReference, idx>)    \
-      const {                                                                                                  \
+      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>) const {     \
     f(#name, name);                                                                                            \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
-      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndMutableValueReference, idx>) {    \
+      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {             \
     f(#name, name);                                                                                            \
   }
 
@@ -169,28 +168,46 @@ struct FieldCounter {
   };
 };
 
-template <typename T, typename INDEX_TYPE>
-struct EnumFields {
+template <typename T, typename VISITOR_TYPE>
+struct VisitAllFields {
   static_assert(std::is_base_of<CurrentSuper, T>::value,
-                "`EnumFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
+                "`VisitAllFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
   typedef bricks::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
 
+  // Visit all fields without an object. Used for enumerating fields and generating signatures.
   template <typename F>
-  void operator()(const F& f) {
+  static void WithoutObject(const F& f) {
     static NUM_INDEXES all_indexes;
-    Impl(f, all_indexes);
+    WithoutObjectImpl(f, all_indexes);
+  }
+
+  // Visit all fields with an object, const or mutable. Used for serialization.
+  template <typename TT, typename F>
+  static void WithObject(TT&& t, const F& f) {
+    static NUM_INDEXES all_indexes;
+    WithObjectImpl(std::forward<TT>(t), f, all_indexes);
   }
 
  private:
   template <typename F, int N, int... NS>
-  void Impl(const F& f, bricks::variadic_indexes::indexes<N, NS...>) {
+  static void WithoutObjectImpl(const F& f, bricks::variadic_indexes::indexes<N, NS...>) {
     static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
-    T::CURRENT_REFLECTION(f, Index<INDEX_TYPE, N>());
-    Impl(f, remaining_indexes);
+    T::CURRENT_REFLECTION(f, Index<VISITOR_TYPE, N>());
+    WithoutObjectImpl(f, remaining_indexes);
   }
 
   template <typename F>
-  void Impl(const F&, bricks::variadic_indexes::indexes<>) {}
+  static void WithoutObjectImpl(const F&, bricks::variadic_indexes::indexes<>) {}
+
+  template <typename TT, typename F, int N, int... NS>
+  static void WithObjectImpl(TT&& t, const F& f, bricks::variadic_indexes::indexes<N, NS...>) {
+    static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
+    t.CURRENT_REFLECTION(f, Index<VISITOR_TYPE, N>());
+    WithObjectImpl(std::forward<TT>(t), f, remaining_indexes);
+  }
+
+  template <typename TT, typename F>
+  static void WithObjectImpl(TT&&, const F&, bricks::variadic_indexes::indexes<>) {}
 };
 
 }  // namespace reflection

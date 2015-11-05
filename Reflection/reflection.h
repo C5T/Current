@@ -32,9 +32,12 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<uint64_t>) {
-      return make_unique<ReflectedType_UInt64>();
-    }
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
+  std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) {           \
+    return make_unique<ReflectedType_##current_type>();                             \
+  }
+#include "primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
     template <typename T>
     std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
@@ -63,7 +66,7 @@ struct ReflectorImpl {
       s->name = T::template CURRENT_REFLECTION_HELPER<T>::name();
       s->super_name = StructInheritanceString<T>();
       FieldReflector field_reflector(s->fields);
-      EnumFields<T, FieldTypeAndName>()(field_reflector);
+      VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
       s->type_id = CalculateTypeID(s);
       return std::move(s);
     }
