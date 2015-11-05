@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <memory>
 
 #include "super.h"
 #include "crc32.h"
@@ -18,17 +19,10 @@ constexpr uint64_t TYPEID_COLLECTION_TYPE = 901u * TYPEID_TYPE_RANGE;
 constexpr uint64_t TYPEID_STRUCT_TYPE = 902u * TYPEID_TYPE_RANGE;
 
 enum class TypeID : uint64_t {
-  UInt8 = TYPEID_BASIC_TYPE + 11,
-  UInt16 = TYPEID_BASIC_TYPE + 12,
-  UInt32 = TYPEID_BASIC_TYPE + 13,
-  UInt64 = TYPEID_BASIC_TYPE + 14,
-  Int8 = TYPEID_BASIC_TYPE + 21,
-  Int16 = TYPEID_BASIC_TYPE + 22,
-  Int32 = TYPEID_BASIC_TYPE + 23,
-  Int64 = TYPEID_BASIC_TYPE + 24,
-  Float = TYPEID_BASIC_TYPE + 31,
-  Double = TYPEID_BASIC_TYPE + 32,
-  String = TYPEID_BASIC_TYPE + 31
+#define CURRENT_BASIC_TYPE(typeid_index, unused_cpp_type, current_type) \
+  current_type = TYPEID_BASIC_TYPE + typeid_index,
+#include "basic_types.dsl.h"
+#undef CURRENT_BASIC_TYPE
 };
 
 struct ReflectedTypeImpl {
@@ -38,15 +32,13 @@ struct ReflectedTypeImpl {
   virtual ~ReflectedTypeImpl() = default;
 };
 
-// TODO(dkorolev): Unify this part.
-struct ReflectedType_UInt64 : ReflectedTypeImpl {
-  TypeID type_id = TypeID::UInt64;
-  std::string CppType() override { return "uint64_t"; }
-};
-struct ReflectedType_String : ReflectedTypeImpl {
-  TypeID type_id = TypeID::String;
-  std::string CppType() override { return "std::string"; }
-};
+#define CURRENT_BASIC_TYPE(unused_typeid_index, cpp_type, current_type) \
+  struct ReflectedType_##current_type : ReflectedTypeImpl {             \
+    TypeID type_id = TypeID::current_type;                              \
+    std::string CppType() override { return #cpp_type; }                \
+  };
+#include "basic_types.dsl.h"
+#undef CURRENT_BASIC_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
   constexpr static const char* cpp_typename = "std::vector";

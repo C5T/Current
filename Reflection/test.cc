@@ -109,9 +109,9 @@ TEST(Reflection, TypeID) {
 
   // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   const ReflectedType_Struct& bar = dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<Bar>());
-  EXPECT_EQ(9010000001031372545, static_cast<uint64_t>(bar.fields[0].first->type_id));
-  EXPECT_EQ(9010000003023971265, static_cast<uint64_t>(bar.fields[1].first->type_id));
-  EXPECT_EQ(9010000000769980382, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(9010000001031372545ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
+  EXPECT_EQ(9010000003023971265ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
+  EXPECT_EQ(9010000000769980382ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {

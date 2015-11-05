@@ -32,13 +32,12 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
-    // TODO(dkorolev): Unify this part.
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<uint64_t>) {
-      return make_unique<ReflectedType_UInt64>();
-    }
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::string>) {
-      return make_unique<ReflectedType_String>();
-    }
+#define CURRENT_BASIC_TYPE(unused_typeid_index, cpp_type, current_type)   \
+  std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) { \
+    return make_unique<ReflectedType_##current_type>();                   \
+  }
+#include "basic_types.dsl.h"
+#undef CURRENT_BASIC_TYPE
 
     template <typename T>
     std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
