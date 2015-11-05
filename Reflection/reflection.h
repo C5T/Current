@@ -73,27 +73,28 @@ struct ReflectorImpl {
     }
 
     template <typename T>
+    typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
+    operator()(TypeSelector<T>) {
+      auto s = make_unique<ReflectedType_Struct>();
+      s->name = T::template CURRENT_REFLECTION_HELPER<T>::name();
+      s->super_name = SuperNameIfNotCurrentSuper<T>();
+      FieldReflector field_reflector(s->fields);
+      VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
+      s->type_id = CalculateTypeID(s);
+      return std::move(s);
+    }
+
+   private:
+    template <typename T>
     typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value, std::string>::type
-    StructInheritanceString() {
+    SuperNameIfNotCurrentSuper() {
       return "";
     }
 
     template <typename T>
     typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value, std::string>::type
-    StructInheritanceString() {
-      return std::string(" : ") + SuperType<T>::template CURRENT_REFLECTION_HELPER<SuperType<T>>::name();
-    }
-
-    template <typename T>
-    typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
-    operator()(TypeSelector<T>) {
-      auto s = make_unique<ReflectedType_Struct>();
-      s->name = T::template CURRENT_REFLECTION_HELPER<T>::name();
-      s->super_name = StructInheritanceString<T>();
-      FieldReflector field_reflector(s->fields);
-      VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
-      s->type_id = CalculateTypeID(s);
-      return std::move(s);
+    SuperNameIfNotCurrentSuper() {
+      return SuperType<T>::template CURRENT_REFLECTION_HELPER<SuperType<T>>::name();
     }
   };
 

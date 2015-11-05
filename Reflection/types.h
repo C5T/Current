@@ -82,13 +82,15 @@ typedef std::vector<std::pair<ReflectedTypeImpl*, std::string>> StructFieldsVect
 
 struct ReflectedType_Struct : ReflectedTypeImpl {
   std::string name;
+  // If struct is derived from another Current struct, `super_name` contains the base type name.
+  // Empty otherwise.
   std::string super_name;
   StructFieldsVector fields;
 
   std::string CppType() override { return name; }
 
   std::string CppDeclaration() override {
-    std::string result = "struct " + name + super_name + " {\n";
+    std::string result = "struct " + name + (super_name.empty() ? "" : " : " + super_name) + " {\n";
     for (const auto& f : fields) {
       result += "  " + f.first->CppType() + " " + f.second + ";\n";
     }
