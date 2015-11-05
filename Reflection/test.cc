@@ -150,3 +150,30 @@ TEST(Reflection, CurrentStructInternals) {
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
 }
+
+#include "../3rdparty/cereal/include/external/rapidjson/document.h"
+#include "../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
+#include "../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+
+TEST(Reflection, TryingJSONSerialization) {
+  using rapidjson::Document;
+  using rapidjson::Value;
+  using rapidjson::Writer;
+  using rapidjson::GenericWriteStream;
+
+  Document doc;
+  auto& allocator = doc.GetAllocator();
+  Value foo("bar");
+  doc.SetObject().AddMember("foo", foo, allocator);
+
+  EXPECT_TRUE(doc.IsObject());
+  EXPECT_TRUE(doc.HasMember("foo"));
+  EXPECT_TRUE(doc["foo"].IsString());
+  EXPECT_EQ("bar", doc["foo"].GetString());
+
+  std::ostringstream os;
+  auto stream = GenericWriteStream(os);
+  auto writer = Writer<GenericWriteStream>(stream);
+  doc.Accept(writer);
+  EXPECT_EQ("{\"foo\":\"bar\"}", os.str());
+}
