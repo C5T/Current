@@ -161,19 +161,36 @@ TEST(Reflection, TryingJSONSerialization) {
   using rapidjson::Writer;
   using rapidjson::GenericWriteStream;
 
-  Document doc;
-  auto& allocator = doc.GetAllocator();
-  Value foo("bar");
-  doc.SetObject().AddMember("foo", foo, allocator);
+  std::string json;
 
-  EXPECT_TRUE(doc.IsObject());
-  EXPECT_TRUE(doc.HasMember("foo"));
-  EXPECT_TRUE(doc["foo"].IsString());
-  EXPECT_EQ("bar", doc["foo"].GetString());
+  {
+    Document doc;
+    auto& allocator = doc.GetAllocator();
+    Value foo("bar");
+    doc.SetObject().AddMember("foo", foo, allocator);
 
-  std::ostringstream os;
-  auto stream = GenericWriteStream(os);
-  auto writer = Writer<GenericWriteStream>(stream);
-  doc.Accept(writer);
-  EXPECT_EQ("{\"foo\":\"bar\"}", os.str());
+    EXPECT_TRUE(doc.IsObject());
+    EXPECT_TRUE(doc.HasMember("foo"));
+    EXPECT_TRUE(doc["foo"].IsString());
+    EXPECT_EQ("bar", doc["foo"].GetString());
+
+    std::ostringstream os;
+    auto stream = GenericWriteStream(os);
+    auto writer = Writer<GenericWriteStream>(stream);
+    doc.Accept(writer);
+    json = os.str();
+  }
+
+  EXPECT_EQ("{\"foo\":\"bar\"}", json);
+
+  {
+    Document doc;
+    ASSERT_FALSE(doc.Parse<0>(json.c_str()).HasParseError());
+    EXPECT_TRUE(doc.IsObject());
+    EXPECT_TRUE(doc.HasMember("foo"));
+    EXPECT_TRUE(doc["foo"].IsString());
+    EXPECT_EQ(std::string("bar"), doc["foo"].GetString());
+    EXPECT_FALSE(doc.HasMember("bar"));
+    EXPECT_FALSE(doc.HasMember("meh"));
+  }
 }
