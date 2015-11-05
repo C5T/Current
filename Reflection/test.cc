@@ -144,33 +144,20 @@ TEST(Reflection, CurrentStructInternals) {
   static_assert(std::is_same<SuperType<Foo>, CurrentSuper>::value, "");
   EXPECT_EQ(1u, FieldCounter<Foo>::value);
 
-  std::string field_name;
-  Foo::CURRENT_REFLECTION([&field_name](const std::string& name) { field_name = name; }, Index<FieldName, 0>());
-  EXPECT_EQ("i", field_name);
-
-  bool field_type_correct = false;
-  Foo::CURRENT_REFLECTION([&field_type_correct](TypeSelector<uint64_t>) { field_type_correct = true; },
-                          Index<FieldType, 0>());
-  EXPECT_TRUE(field_type_correct);
+  Foo::CURRENT_REFLECTION([](TypeSelector<uint64_t>, const std::string& name) { EXPECT_EQ("i", name); },
+                          Index<FieldTypeAndName, 0>());
 
   Foo foo;
-  uint64_t field_value = 0u;
-  foo.CURRENT_REFLECTION([&field_value](uint64_t value) { field_value = value; }, Index<FieldValue, 0>());
-  EXPECT_EQ(42u, field_value);
-
   foo.i = 100u;
-  foo.CURRENT_REFLECTION([&field_name, &field_value](const std::string& name, const uint64_t& value) {
-    field_name = name;
-    field_value = value;
+  foo.CURRENT_REFLECTION([](const std::string& name, const uint64_t& value) {
+    EXPECT_EQ("i", name);
+    EXPECT_EQ(100u, value);
   }, Index<FieldNameAndImmutableValue, 0>());
-  EXPECT_EQ("i", field_name);
-  EXPECT_EQ(100u, field_value);
 
-  foo.CURRENT_REFLECTION([&field_name](const std::string& name, uint64_t& value) {
-    field_name = name;
+  foo.CURRENT_REFLECTION([](const std::string& name, uint64_t& value) {
+    EXPECT_EQ("i", name);
     value = 123u;
   }, Index<FieldNameAndMutableValue, 0>());
-  EXPECT_EQ("i", field_name);
   EXPECT_EQ(123u, foo.i);
 
   static_assert(std::is_same<SuperType<Bar>, CurrentSuper>::value, "");

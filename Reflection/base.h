@@ -40,10 +40,7 @@ struct CountFields {};
 typedef long long CountFieldsImplementationType;
 
 // Helper structs for reflection.
-class FieldType {};
-class FieldName {};
 class FieldTypeAndName {};
-class FieldValue {};
 class FieldNameAndImmutableValue {};
 class FieldNameAndMutableValue {};
 

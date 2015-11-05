@@ -73,7 +73,7 @@ struct CurrentStructFieldsConsistency {
   struct Dummy {};
   constexpr static bool CheckField(char) { return false; }
   constexpr static auto CheckField(int)
-      -> decltype(T::CURRENT_REFLECTION(Dummy(), Index<FieldType, N>()), bool()) {
+      -> decltype(T::CURRENT_REFLECTION(Dummy(), Index<FieldTypeAndName, N>()), bool()) {
     return true;
   }
   constexpr static bool Check() { return CheckField(0) && CurrentStructFieldsConsistency<T, N - 1>::Check(); }
@@ -138,21 +138,9 @@ struct CurrentStructFieldsConsistency<T, -1> {
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldType, idx>) { \
-    f(::current::reflection::TypeSelector<type>());                                                            \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldName, idx>) { \
-    f(#name);                                                                                                  \
-  }                                                                                                            \
-  template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& f,                                                                        \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
     f(::current::reflection::TypeSelector<type>(), #name);                                                     \
-  }                                                                                                            \
-  template <class F>                                                                                           \
-  void CURRENT_REFLECTION(F&& f, ::current::reflection::Index<::current::reflection::FieldValue, idx>) const { \
-    f(name);                                                                                                   \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
