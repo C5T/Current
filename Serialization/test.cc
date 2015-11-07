@@ -32,6 +32,11 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
 
+  CONSTRUCTOR(int i, const std::string& s) {
+    this->i = i;
+    this->s = s;
+  }
+
   RETURNS(int) twice_i() const { return i + i; }
 };
 
@@ -40,6 +45,12 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(q, std::string);
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(z, Serializable);
+
+  CONSTRUCTOR(char a, char b) {
+    for (char c = a; c <= b; ++c) {
+      v.push_back(std::string(1, c));
+    }
+  }
 
   RETURNS(size_t) length_of_v() const { return v.size(); }
 };
@@ -61,8 +72,6 @@ TEST(Serialization, JSON) {
   const std::string simple_object_as_json = JSON(simple_object);
   EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", simple_object_as_json);
 
-  EXPECT_EQ(84, simple_object.twice_i());
-
   {
     Serializable a = ParseJSON<Serializable>(simple_object_as_json);
     EXPECT_EQ(42ull, a.i);
@@ -80,8 +89,6 @@ TEST(Serialization, JSON) {
   const std::string complex_object_as_json = JSON(complex_object);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
             complex_object_as_json);
-
-  EXPECT_EQ(2u, complex_object.length_of_v());
 
   {
     ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);
@@ -184,6 +191,21 @@ TEST(Serialization, JSONExceptions) {
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ(std::string("Expected string, got: {\"z.s\":0}"), e.what());
+  }
+}
+
+// TODO(dkorolev): Move this test outside `Serialization`.
+TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
+  using namespace serialization_test;
+  // TODO(dkorolev): This syntax should probably be clean up to:
+  // Serializable simple_object = CURRENT_CONSTRUCT(1, "foo");
+  {
+    Serializable simple_object(Serializable::Construct(1, "foo"));
+    EXPECT_EQ(2, simple_object.twice_i());
+  }
+  {
+    ComplexSerializable complex_object(ComplexSerializable::Construct('a', 'c'));
+    EXPECT_EQ(3u, complex_object.length_of_v());
   }
 }
 
