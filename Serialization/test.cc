@@ -32,12 +32,11 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
 
-  CONSTRUCTOR(int i, const std::string& s) {
-    this->i = i;
-    this->s = s;
-  }
+  // Note: The user has to define default constructor when defining custom ones.
+  CURRENT_DEFAULT_CONSTRUCTOR(Serializable) {}
+  CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s) : i(i), s(s) {}
 
-  RETURNS(int) twice_i() const { return i + i; }
+  RETURNS(uint64_t) twice_i() const { return i + i; }
 };
 
 CURRENT_STRUCT(ComplexSerializable) {
@@ -46,7 +45,8 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(z, Serializable);
 
-  CONSTRUCTOR(char a, char b) {
+  CURRENT_DEFAULT_CONSTRUCTOR(ComplexSerializable) {}
+  CURRENT_CONSTRUCTOR(ComplexSerializable)(char a, char b) {
     for (char c = a; c <= b; ++c) {
       v.push_back(std::string(1, c));
     }
@@ -197,14 +197,12 @@ TEST(Serialization, JSONExceptions) {
 // TODO(dkorolev): Move this test outside `Serialization`.
 TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
   using namespace serialization_test;
-  // TODO(dkorolev): This syntax should probably be clean up to:
-  // Serializable simple_object = CURRENT_CONSTRUCT(1, "foo");
   {
-    Serializable simple_object(Serializable::Construct(1, "foo"));
+    Serializable simple_object(1, "foo");
     EXPECT_EQ(2, simple_object.twice_i());
   }
   {
-    ComplexSerializable complex_object(ComplexSerializable::Construct('a', 'c'));
+    ComplexSerializable complex_object('a', 'c');
     EXPECT_EQ(3u, complex_object.length_of_v());
   }
 }

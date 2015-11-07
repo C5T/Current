@@ -191,11 +191,13 @@ struct ConvertibleInto {
   typename std::enable_if<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, \
                           RETURN_TYPE>::type
 
-#define CONSTRUCTOR                                                                             \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE>                              \
-  typename std::enable_if<                                                                      \
-      std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>::type \
-      CURRENT_STRUCT_CONSTRUCTOR
+#define CURRENT_CONSTRUCTOR(s) \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE, \
+            class = typename std::enable_if< \
+                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>::type> \
+  CURRENT_STRUCT_IMPL_##s
+
+#define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
 #define IS_VALID_CURRENT_STRUCT(s)                                                                      \
   ::current::reflection::CurrentStructFieldsConsistency<s,                                              \
