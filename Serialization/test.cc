@@ -31,6 +31,8 @@ namespace serialization_test {
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
+
+  RETURNS(int) twice_i() const { return i + i; }
 };
 
 CURRENT_STRUCT(ComplexSerializable) {
@@ -38,6 +40,8 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(q, std::string);
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(z, Serializable);
+
+  RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
 }  // namespace serialization_test
@@ -57,6 +61,8 @@ TEST(Serialization, JSON) {
   const std::string simple_object_as_json = JSON(simple_object);
   EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", simple_object_as_json);
 
+  EXPECT_EQ(84, simple_object.twice_i());
+
   {
     Serializable a = ParseJSON<Serializable>(simple_object_as_json);
     EXPECT_EQ(42ull, a.i);
@@ -74,6 +80,8 @@ TEST(Serialization, JSON) {
   const std::string complex_object_as_json = JSON(complex_object);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
             complex_object_as_json);
+
+  EXPECT_EQ(2u, complex_object.length_of_v());
 
   {
     ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);

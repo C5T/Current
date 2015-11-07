@@ -132,8 +132,8 @@ struct CurrentStructFieldsConsistency<T, -1> {
   ::current::reflection::Field<INSTANTIATION_TYPE, type> name; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(name, type, value)                    \
-  ::current::reflection::Field<INSTANTIATION_TYPE, type> name {value}; \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                   \
+  ::current::reflection::Field<INSTANTIATION_TYPE, type> name{value}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
@@ -152,6 +152,11 @@ struct CurrentStructFieldsConsistency<T, -1> {
       F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {             \
     f(#name, name);                                                                                            \
   }
+
+#define RETURNS(RETURN_TYPE)                                                                                  \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE>                                            \
+  typename std::enable_if<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, \
+                          RETURN_TYPE>::type
 
 #define IS_VALID_CURRENT_STRUCT(s)                                                                      \
   ::current::reflection::CurrentStructFieldsConsistency<s,                                              \
