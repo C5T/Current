@@ -36,7 +36,7 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_DEFAULT_CONSTRUCTOR(Serializable) {}
   CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s) : i(i), s(s) {}
 
-  RETURNS(uint64_t) twice_i() const { return i + i; }
+  CURRENT_RETURNS(uint64_t) twice_i() const { return i + i; }
 };
 
 CURRENT_STRUCT(ComplexSerializable) {
@@ -52,7 +52,7 @@ CURRENT_STRUCT(ComplexSerializable) {
     }
   }
 
-  RETURNS(size_t) length_of_v() const { return v.size(); }
+  CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
 }  // namespace serialization_test

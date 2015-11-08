@@ -153,7 +153,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     f(#name, name);                                                                                            \
   }
 
-#define RETURNS(RETURN_TYPE)                                                                                  \
+#define CURRENT_RETURNS(RETURN_TYPE)                                                                                  \
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE>                                            \
   typename std::enable_if<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, \
                           RETURN_TYPE>::type
