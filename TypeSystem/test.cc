@@ -62,7 +62,7 @@ static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::DerivedFromFoo),
 
 }  // namespace some_other_namespace
 
-namespace valid_struct_test {
+namespace struct_definition_test {
 
 // Properly declared structures.
 CURRENT_STRUCT(Empty){};
@@ -95,4 +95,4 @@ CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
 // static_assert(!IS_VALID_CURRENT_STRUCT(WrongUsesCOUNTERInternally),
 //               "`WrongUsesCOUNTERInternally` must not pass `IS_VALID_CURRENT_STRUCT` check.");
 
-}  // namespace valid_struct_test
+}  // namespace struct_definition_test

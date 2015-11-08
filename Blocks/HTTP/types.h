@@ -95,7 +95,7 @@ struct FillBody<REQUEST, false> {
   static void Fill(REQUEST& request, T&& object, const std::string& content_type) {
     static_assert(bricks::cerealize::is_write_cerealizable<T>::value,
                   "This form of POST() requires a cerealizable object as the second parameter.");
-    request.body = bricks::cerealize::JSON(object);
+    request.body = CerealizeJSON(object);
     request.content_type = !content_type.empty() ? content_type : "application/json";
   }
 };

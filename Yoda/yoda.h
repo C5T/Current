@@ -156,7 +156,8 @@ template <typename... SUPPORTED_TYPES>
 using MemoryOnlyAPI = API<blocks::persistence::MemoryOnly, bricks::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
 
 template <typename... SUPPORTED_TYPES>
-using SingleFileAPI = API<blocks::persistence::AppendToFile, bricks::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
+using SingleFileAPI =
+    API<blocks::persistence::AppendToFile, bricks::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
 
 }  // namespace yoda
 

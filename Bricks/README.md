@@ -49,7 +49,7 @@ struct SimpleType {
 };
 ```
 ```cpp
-// Use `JSON()` and `ParseJSON()` to create and parse JSON-s.
+// Use `CerealizeJSON()` and `CerealizeParseJSON()` to create and parse JSON-s.
 SimpleType x;
 x.number = 42;
 x.string = "test passed";
@@ -59,15 +59,15 @@ x.vector_int.push_back(3);
 x.map_int_string[1] = "one";
 x.map_int_string[42] = "the question";
 
-// `JSON(object)` converts a cerealize-able object into a JSON string.
-const std::string json = JSON(x);
+// `CerealizeJSON(object)` converts a cerealize-able object into a JSON string.
+const std::string json = CerealizeJSON(x);
 
-// `ParseJSON<T>(json)` creates an instance of T from a JSON.
-const SimpleType y = ParseJSON<SimpleType>(json);
+// `CerealizeParseJSON<T>(json)` creates an instance of T from a JSON.
+const SimpleType y = CerealizeParseJSON<SimpleType>(json);
 
-// `ParseJSON(json, T& out)` allows omitting the type.
+// `CerealizeParseJSON(json, T& out)` allows omitting the type.
 SimpleType z;
-ParseJSON(json, z);
+CerealizeParseJSON(json, z);
 ```
 ```cpp
 // Use `load()/save()` instead of `serialize()` to customize serialization.
@@ -89,7 +89,7 @@ struct LoadSaveType {
 LoadSaveType x;
 x.a = 2;
 x.b = 3;
-EXPECT_EQ(5, ParseJSON<LoadSaveType>(JSON(x)).sum);
+EXPECT_EQ(5, CerealizeParseJSON<LoadSaveType>(CerealizeJSON(x)).sum);
 ```
 ```cpp
 // The example below uses `Printf()`, include it.
@@ -142,16 +142,16 @@ struct ExamplePolymorphicDouble : ExamplePolymorphicType {
 CEREAL_REGISTER_TYPE(ExamplePolymorphicDouble);
 
 const std::string json_int =
-  JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
+  CerealizeJSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
 
 const std::string json_double =
-  JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
+  CerealizeJSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
 
 EXPECT_EQ("int, 42",
-          ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+          CerealizeParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
 
 EXPECT_EQ("double, 3.141593",
-          ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+          CerealizeParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 ```
 ## Visualization Library
 

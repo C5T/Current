@@ -32,7 +32,7 @@ using namespace bricks;
 using docu::SimpleType;
 
 TEST(Docu, Cereal02) {
-  // Use `JSON()` and `ParseJSON()` to create and parse JSON-s.
+  // Use `CerealizeJSON()` and `CerealizeParseJSON()` to create and parse JSON-s.
   SimpleType x;
   x.number = 42;
   x.string = "test passed";
@@ -42,24 +42,24 @@ TEST(Docu, Cereal02) {
   x.map_int_string[1] = "one";
   x.map_int_string[42] = "the question";
   
-  // `JSON(object)` converts a cerealize-able object into a JSON string.
-  const std::string json = JSON(x);
+  // `CerealizeJSON(object)` converts a cerealize-able object into a JSON string.
+  const std::string json = CerealizeJSON(x);
 EXPECT_EQ("{\"data\":{"
 "\"number\":42,\"string\":\"test passed\","
 "\"vector_int\":[1,2,3],"
 "\"map_int_string\":[{\"key\":1,\"value\":\"one\"},{\"key\":42,\"value\":\"the question\"}]}"
 "}", json);
   
-  // `ParseJSON<T>(json)` creates an instance of T from a JSON.
-  const SimpleType y = ParseJSON<SimpleType>(json);
+  // `CerealizeParseJSON<T>(json)` creates an instance of T from a JSON.
+  const SimpleType y = CerealizeParseJSON<SimpleType>(json);
 EXPECT_EQ(42, y.number);
 EXPECT_EQ("test passed", y.string);
 EXPECT_EQ(3u, y.vector_int.size());
 EXPECT_EQ(2u, y.map_int_string.size());
   
-  // `ParseJSON(json, T& out)` allows omitting the type.
+  // `CerealizeParseJSON(json, T& out)` allows omitting the type.
   SimpleType z;
-  ParseJSON(json, z);
+  CerealizeParseJSON(json, z);
 EXPECT_EQ(42, z.number);
 EXPECT_EQ("test passed", z.string);
 EXPECT_EQ(3u, z.vector_int.size());

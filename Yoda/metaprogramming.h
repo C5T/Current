@@ -93,7 +93,7 @@ struct YodaTypes : YodaTypesBase {
 
   using T_SHERLOCK_LISTENER = StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
   using T_SHERLOCK_LISTENER_SCOPE_TYPE =
-    typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>;
+      typename T_STREAM_TYPE::template SyncListenerScope<T_SHERLOCK_LISTENER>;
 };
 
 // Since container type depends on MMQ message type and vice versa, they are defined outside `YodaTypes`.

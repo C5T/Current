@@ -228,47 +228,55 @@ int main() {
 
   const int port = FLAGS_port;
 
-  HTTP(port).Register("/config", [](Request r) {
-    r(ExampleConfig(),
-      "config",
-      HTTPResponseCode.OK,
-      "application/json; charset=utf-8",
-      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
-  });
+  HTTP(port).Register("/config",
+                      [](Request r) {
+                        r(ExampleConfig(),
+                          "config",
+                          HTTPResponseCode.OK,
+                          "application/json; charset=utf-8",
+                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                      });
 
-  HTTP(port).Register("/layout/plot_data", [&time_series](Request r) {
-    time_series.AsyncSubscribe(make_unique<ServeJSONOverHTTP<DoublePoint> >(std::move(r))).Detach();
-  });
+  HTTP(port).Register("/layout/plot_data",
+                      [&time_series](Request r) {
+                        time_series.AsyncSubscribe(make_unique<ServeJSONOverHTTP<DoublePoint> >(std::move(r)))
+                            .Detach();
+                      });
 
-  HTTP(port).Register("/layout/pic_data", [&pic_series](Request r) {
-    pic_series.AsyncSubscribe(make_unique<ServeJSONOverHTTP<StringPoint> >(std::move(r))).Detach();
-  });
+  HTTP(port).Register("/layout/pic_data",
+                      [&pic_series](Request r) {
+                        pic_series.AsyncSubscribe(make_unique<ServeJSONOverHTTP<StringPoint> >(std::move(r)))
+                            .Detach();
+                      });
 
-  HTTP(port).Register("/layout/plot_meta", [](Request r) {
-    r(PlotMeta(),
-      "meta",
-      HTTPResponseCode.OK,
-      "application/json; charset=utf-8",
-      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
-  });
+  HTTP(port).Register("/layout/plot_meta",
+                      [](Request r) {
+                        r(PlotMeta(),
+                          "meta",
+                          HTTPResponseCode.OK,
+                          "application/json; charset=utf-8",
+                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                      });
 
-  HTTP(port).Register("/layout/pic_meta", [](Request r) {
-    r(PicMeta(),
-      "meta",
-      HTTPResponseCode.OK,
-      "application/json; charset=utf-8",
-      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
-  });
+  HTTP(port).Register("/layout/pic_meta",
+                      [](Request r) {
+                        r(PicMeta(),
+                          "meta",
+                          HTTPResponseCode.OK,
+                          "application/json; charset=utf-8",
+                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                      });
 
-  HTTP(port).Register("/layout", [](Request r) {
-    using namespace layout;
-    r(Layout(Col({Row({Cell("/plot_meta"), Cell("/pic_meta")}),
-                  Row({Cell("/pic_meta"), Cell("/pic_meta"), Cell("/pic_meta")})})),
-      "layout",
-      HTTPResponseCode.OK,
-      "application/json; charset=utf-8",
-      HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
-  });
+  HTTP(port).Register("/layout",
+                      [](Request r) {
+                        using namespace layout;
+                        r(Layout(Col({Row({Cell("/plot_meta"), Cell("/pic_meta")}),
+                                      Row({Cell("/pic_meta"), Cell("/pic_meta"), Cell("/pic_meta")})})),
+                          "layout",
+                          HTTPResponseCode.OK,
+                          "application/json; charset=utf-8",
+                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                      });
 
   const std::string dir = "Dashboard";  // Does not matter if it has a trailing slash or no here.
   HTTP(port).ServeStaticFilesFrom(dir, "/static/");

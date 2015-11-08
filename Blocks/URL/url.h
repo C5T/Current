@@ -173,14 +173,16 @@ struct URLParametersExtractor {
     const size_t question_mark_index = url.find('?');
     if (question_mark_index != std::string::npos) {
       auto& v = parameters_vector;
-      bricks::strings::Split(url.substr(question_mark_index + 1), '&', [&v](const std::string& chunk) {
-        const size_t i = chunk.find('=');
-        if (i != std::string::npos) {
-          v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
-        } else {
-          v.emplace_back(chunk, "");
-        }
-      });
+      bricks::strings::Split(url.substr(question_mark_index + 1),
+                             '&',
+                             [&v](const std::string& chunk) {
+                               const size_t i = chunk.find('=');
+                               if (i != std::string::npos) {
+                                 v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
+                               } else {
+                                 v.emplace_back(chunk, "");
+                               }
+                             });
       for (auto& it : parameters_vector) {
         it.first = DecodeURIComponent(it.first);
         it.second = DecodeURIComponent(it.second);

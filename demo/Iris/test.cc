@@ -67,37 +67,38 @@ TEST(Iris, Demo) {
   number_of_flowers = 0;
   dimension_names.clear();
 
-  HTTP(FLAGS_iris_port).Register(Printf("/import%d", run_index), [&api](Request request) {
-    EXPECT_EQ("POST", request.method);
-    const std::string body = request.body;
-    api.Transaction([body](TestAPI::T_DATA data) {
-                      // Skip the first line with labels.
-                      bool first_line = true;
-                      for (auto flower_definition_line : Split<ByLines>(body)) {
-                        std::vector<std::string> flower_definition_fields = Split(flower_definition_line, '\t');
-                        assert(flower_definition_fields.size() == 5u);
-                        if (first_line && flower_definition_fields.back() == "Label") {
-                          // For this example, just overwrite the labels on each `/import`.
-                          dimension_names.clear();
-                          for (size_t i = 0; i < flower_definition_fields.size() - 1; ++i) {
-                            dimension_names[i] = flower_definition_fields[i];
-                          }
-                          continue;
+  HTTP(FLAGS_iris_port)
+      .Register(Printf("/import%d", run_index),
+                [&api](Request request) {
+                  EXPECT_EQ("POST", request.method);
+                  const std::string body = request.body;
+                  api.Transaction([body](TestAPI::T_DATA data) {
+                    // Skip the first line with labels.
+                    bool first_line = true;
+                    for (auto flower_definition_line : Split<ByLines>(body)) {
+                      std::vector<std::string> flower_definition_fields = Split(flower_definition_line, '\t');
+                      assert(flower_definition_fields.size() == 5u);
+                      if (first_line && flower_definition_fields.back() == "Label") {
+                        // For this example, just overwrite the labels on each `/import`.
+                        dimension_names.clear();
+                        for (size_t i = 0; i < flower_definition_fields.size() - 1; ++i) {
+                          dimension_names[i] = flower_definition_fields[i];
                         }
-                        first_line = false;
-                        // Parse flower data and add it.
-                        auto adder = Dictionary<LabeledFlower>::Mutator(data);
-                        adder.Add(LabeledFlower(++number_of_flowers,
-                                                FromString<double>(flower_definition_fields[0]),
-                                                FromString<double>(flower_definition_fields[1]),
-                                                FromString<double>(flower_definition_fields[2]),
-                                                FromString<double>(flower_definition_fields[3]),
-                                                flower_definition_fields[4]));
+                        continue;
                       }
-                      return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
-                    },
-                    std::move(request));
-  });
+                      first_line = false;
+                      // Parse flower data and add it.
+                      auto adder = Dictionary<LabeledFlower>::Mutator(data);
+                      adder.Add(LabeledFlower(++number_of_flowers,
+                                              FromString<double>(flower_definition_fields[0]),
+                                              FromString<double>(flower_definition_fields[1]),
+                                              FromString<double>(flower_definition_fields[2]),
+                                              FromString<double>(flower_definition_fields[3]),
+                                              flower_definition_fields[4]));
+                    }
+                    return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
+                  }, std::move(request));
+                });
 
   // The input file is in the `golden` directory for it to be successfully picked up by `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
@@ -109,7 +110,7 @@ TEST(Iris, Demo) {
   api.ExposeViaHTTP(FLAGS_iris_port, Printf("/stream%d", run_index));
 
   // The very first flower.
-  const auto result1 = ParseJSON<std::unique_ptr<Padawan>>(
+  const auto result1 = CerealizeParseJSON<std::unique_ptr<Padawan>>(
       HTTP(GET(Printf("http://localhost:%d/stream%d?cap=1", FLAGS_iris_port, run_index))).body);
   const LabeledFlower& flower1 = *static_cast<const LabeledFlower*>(result1.get());
   EXPECT_DOUBLE_EQ(5.1, flower1.SL);
@@ -119,7 +120,7 @@ TEST(Iris, Demo) {
   EXPECT_EQ("setosa", flower1.label);
 
   // The very last flower.
-  const auto result2 = ParseJSON<std::unique_ptr<Padawan>>(
+  const auto result2 = CerealizeParseJSON<std::unique_ptr<Padawan>>(
       HTTP(GET(Printf("http://localhost:%d/stream%d?n=1", FLAGS_iris_port, run_index))).body);
   const LabeledFlower& flower2 = *static_cast<const LabeledFlower*>(result2.get());
   EXPECT_DOUBLE_EQ(5.9, flower2.SL);
@@ -130,83 +131,83 @@ TEST(Iris, Demo) {
 
   if (FLAGS_run) {
     // Ref.: http://localhost:3000/get?id=42
-    HTTP(FLAGS_iris_port).Register("/get", [&api](Request request) {
-      const auto id = FromString<size_t>(request.url.query["id"]);
-      api.Transaction(
-        [id](TestAPI::T_DATA data) {
-          return Dictionary<LabeledFlower>::Accessor(data)[id];
-        },
-        std::move(request));
-    });
+    HTTP(FLAGS_iris_port)
+        .Register("/get",
+                  [&api](Request request) {
+                    const auto id = FromString<size_t>(request.url.query["id"]);
+                    api.Transaction([id](TestAPI::T_DATA data) {
+                      return Dictionary<LabeledFlower>::Accessor(data)[id];
+                    }, std::move(request));
+                  });
 
     // Ref.: [POST] http://localhost:3000/add?label=setosa&sl=5&sw=5&pl=5&pw=5
-    HTTP(FLAGS_iris_port).Register("/add", [&api](Request request) {
-      const std::string label = request.url.query["label"];
-      const auto sl = FromString<double>(request.url.query["sl"]);
-      const auto sw = FromString<double>(request.url.query["sw"]);
-      const auto pl = FromString<double>(request.url.query["pl"]);
-      const auto pw = FromString<double>(request.url.query["pw"]);
-      // In real life this should be a POST.
-      if (!label.empty()) {
-        const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
-        api.Transaction([flower](TestAPI::T_DATA data) {
-                          Dictionary<LabeledFlower>::Mutator(data).Add(flower);
-                          return "OK\n";
-                        },
-                        std::move(request));
-      } else {
-        request("Need non-empty label, as well as sl/sw/pl/pw.\n");
-      }
-    });
+    HTTP(FLAGS_iris_port)
+        .Register("/add",
+                  [&api](Request request) {
+                    const std::string label = request.url.query["label"];
+                    const auto sl = FromString<double>(request.url.query["sl"]);
+                    const auto sw = FromString<double>(request.url.query["sw"]);
+                    const auto pl = FromString<double>(request.url.query["pl"]);
+                    const auto pw = FromString<double>(request.url.query["pw"]);
+                    // In real life this should be a POST.
+                    if (!label.empty()) {
+                      const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
+                      api.Transaction([flower](TestAPI::T_DATA data) {
+                        Dictionary<LabeledFlower>::Mutator(data).Add(flower);
+                        return "OK\n";
+                      }, std::move(request));
+                    } else {
+                      request("Need non-empty label, as well as sl/sw/pl/pw.\n");
+                    }
+                  });
 
     // Ref.: http://localhost:3000/viz
     // Ref.: http://localhost:3000/viz?x=1&y=2
-    HTTP(FLAGS_iris_port).Register("/viz", [&api](Request request) {
-      auto x_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("x", "0")));
-      auto y_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("y", "1")));
-      if (y_dim == x_dim) {
-        y_dim = (x_dim + 1) % 4;
-      }
-      struct PlotIrises {
-        struct Info {
-          std::string x_label;
-          std::string y_label;
-          std::map<std::string, std::vector<std::pair<double, double>>> labeled_flowers;
-        };
-        Request request;
-        explicit PlotIrises(Request request) : request(std::move(request)) {}
-        void operator()(Info info) {
-          GNUPlot graph;
-          graph.Title("Iris flower data set.")
-              .Grid("back")
-              .XLabel(info.x_label)
-              .YLabel(info.y_label)
-              .ImageSize(800)
-              .OutputFormat("pngcairo");
-          for (const auto& per_label : info.labeled_flowers) {
-            graph.Plot(WithMeta([&per_label](Plotter& p) {
-                                  for (const auto& xy : per_label.second) {
-                                    p(xy.first, xy.second);
-                                  }
-                                })
-                           .AsPoints()
-                           .Name(per_label.first));
-          }
-          request(graph);
-        }
-      };
-      api.Transaction([x_dim, y_dim](TestAPI::T_DATA data) {
-                        PlotIrises::Info info;
-                        for (size_t i = 1; i <= number_of_flowers; ++i) {
-                          const LabeledFlower& flower = Dictionary<LabeledFlower>::Accessor(data)[i];
-                          info.labeled_flowers[flower.label].emplace_back(flower.x[x_dim], flower.x[y_dim]);
+    HTTP(FLAGS_iris_port)
+        .Register("/viz",
+                  [&api](Request request) {
+                    auto x_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("x", "0")));
+                    auto y_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("y", "1")));
+                    if (y_dim == x_dim) {
+                      y_dim = (x_dim + 1) % 4;
+                    }
+                    struct PlotIrises {
+                      struct Info {
+                        std::string x_label;
+                        std::string y_label;
+                        std::map<std::string, std::vector<std::pair<double, double>>> labeled_flowers;
+                      };
+                      Request request;
+                      explicit PlotIrises(Request request) : request(std::move(request)) {}
+                      void operator()(Info info) {
+                        GNUPlot graph;
+                        graph.Title("Iris flower data set.")
+                            .Grid("back")
+                            .XLabel(info.x_label)
+                            .YLabel(info.y_label)
+                            .ImageSize(800)
+                            .OutputFormat("pngcairo");
+                        for (const auto& per_label : info.labeled_flowers) {
+                          graph.Plot(WithMeta([&per_label](Plotter& p) {
+                            for (const auto& xy : per_label.second) {
+                              p(xy.first, xy.second);
+                            }
+                          }).AsPoints().Name(per_label.first));
                         }
-                        info.x_label = dimension_names[x_dim];
-                        info.y_label = dimension_names[y_dim];
-                        return info;
-                      },
-                      PlotIrises(std::move(request)));
-    });
+                        request(graph);
+                      }
+                    };
+                    api.Transaction([x_dim, y_dim](TestAPI::T_DATA data) {
+                      PlotIrises::Info info;
+                      for (size_t i = 1; i <= number_of_flowers; ++i) {
+                        const LabeledFlower& flower = Dictionary<LabeledFlower>::Accessor(data)[i];
+                        info.labeled_flowers[flower.label].emplace_back(flower.x[x_dim], flower.x[y_dim]);
+                      }
+                      info.x_label = dimension_names[x_dim];
+                      info.y_label = dimension_names[y_dim];
+                      return info;
+                    }, PlotIrises(std::move(request)));
+                  });
 
     HTTP(FLAGS_iris_port).Join();
   }

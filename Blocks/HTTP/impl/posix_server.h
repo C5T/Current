@@ -150,19 +150,20 @@ class HTTPServerPOSIX final {
 
   void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
     // TODO(dkorolev): Add a scoped version of registerers.
-    bricks::FileSystem::ScanDir(dir, [this, &dir, &route_prefix](const std::string& file) {
-      const std::string content_type(bricks::net::GetFileMimeType(file, ""));
-      if (!content_type.empty()) {
-        // TODO(dkorolev): Wrap keeping file contents into a singleton
-        // that keeps a map from a (SHA256) hash to the contents.
-        Register(
-            route_prefix + file,
-            new StaticFileServer(bricks::FileSystem::ReadFileAsString(bricks::FileSystem::JoinPath(dir, file)),
-                                 content_type));
-      } else {
-        BRICKS_THROW(bricks::net::CannotServeStaticFilesOfUnknownMIMEType(file));
-      }
-    });
+    bricks::FileSystem::ScanDir(dir,
+                                [this, &dir, &route_prefix](const std::string& file) {
+                                  const std::string content_type(bricks::net::GetFileMimeType(file, ""));
+                                  if (!content_type.empty()) {
+                                    // TODO(dkorolev): Wrap keeping file contents into a singleton
+                                    // that keeps a map from a (SHA256) hash to the contents.
+                                    Register(route_prefix + file,
+                                             new StaticFileServer(bricks::FileSystem::ReadFileAsString(
+                                                                      bricks::FileSystem::JoinPath(dir, file)),
+                                                                  content_type));
+                                  } else {
+                                    BRICKS_THROW(bricks::net::CannotServeStaticFilesOfUnknownMIMEType(file));
+                                  }
+                                });
   }
 
   void ResetAllHandlers() {

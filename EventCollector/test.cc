@@ -109,7 +109,7 @@ TEST(EventCollector, QueryParameters) {
       FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
-  auto e = ParseJSON<LogEntryWithHeaders>(os.str());
+  auto e = CerealizeParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ(2u, e.q.size());
   EXPECT_EQ("v", e.q["k"]);
   EXPECT_EQ("42", e.q["answer"]);
@@ -120,7 +120,7 @@ TEST(EventCollector, Body) {
   EventCollectorHTTPServer collector(
       FLAGS_event_collector_test_port, os, static_cast<bricks::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
-  EXPECT_EQ("Yay!", ParseJSON<LogEntryWithHeaders>(os.str()).b);
+  EXPECT_EQ("Yay!", CerealizeParseJSON<LogEntryWithHeaders>(os.str()).b);
 }
 
 TEST(EventCollector, Headers) {
@@ -131,7 +131,7 @@ TEST(EventCollector, Headers) {
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")
                      .SetHeader("baz", "meh")).body);
-  auto e = ParseJSON<LogEntryWithHeaders>(os.str());
+  auto e = CerealizeParseJSON<LogEntryWithHeaders>(os.str());
   EXPECT_EQ("bar", e.h["foo"]);
   EXPECT_EQ("meh", e.h["baz"]);
 }

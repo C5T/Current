@@ -41,64 +41,9 @@ CURRENT_STRUCT(Bar) {
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
-static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(Bar), "Struct `Bar` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(DerivedFromFoo), "Struct `DerivedFromFoo` was not properly declared.");
+using current::reflection::Reflector;
 
 }  // namespace reflection_test
-
-// Confirm that Current data types defined in a namespace are accessible from outside it.
-static_assert(IS_VALID_CURRENT_STRUCT(reflection_test::Foo), "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(reflection_test::Bar), "Struct `Bar` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(reflection_test::DerivedFromFoo),
-              "Struct `DerivedFromFoo` was not properly declared.");
-
-namespace some_other_namespace {
-
-// Confirm that Current data types defined in one namespace are accessible from another one.
-static_assert(IS_VALID_CURRENT_STRUCT(::reflection_test::Foo), "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(::reflection_test::Bar), "Struct `Bar` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(::reflection_test::DerivedFromFoo),
-              "Struct `DerivedFromFoo` was not properly declared.");
-
-}  // namespace some_other_namespace
-
-namespace valid_struct_test {
-
-// Properly declared structures.
-CURRENT_STRUCT(Empty){};
-CURRENT_STRUCT(EmptyDerived, Empty){};
-
-static_assert(IS_VALID_CURRENT_STRUCT(Empty), "`Empty` must pass `IS_VALID_CURRENT_STRUCT` check.");
-static_assert(IS_VALID_CURRENT_STRUCT(EmptyDerived),
-              "`EmptyDerived` must pass `IS_VALID_CURRENT_STRUCT` check.");
-
-// Improperly declared structures.
-struct WrongStructNotCurrentStruct {
-  int x;
-};
-struct WrongDerivedStructNotCurrentStruct : ::current::reflection::CurrentSuper {};
-struct NotCurrentStructDerivedFromCurrentStruct : Empty {};
-
-CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
-  CURRENT_FIELD(i1, uint64_t);
-  static size_t GetCounter() { return __COUNTER__; }
-  CURRENT_FIELD(i2, uint64_t);
-};
-
-// The lines below don't compile with various errors.
-// static_assert(!IS_VALID_CURRENT_STRUCT(WrongStructNotCurrentStruct),
-//               "`WrongStructNotCurrentStruct` must NOT pass `IS_VALID_CURRENT_STRUCT` check.");
-// static_assert(!IS_VALID_CURRENT_STRUCT(WrongDerivedStructNotCurrentStruct),
-//               "`WrongDerivedStructNotCurrentStruct` must NOT pass `IS_VALID_CURRENT_STRUCT` check.");
-// static_assert(!IS_VALID_CURRENT_STRUCT(NotCurrentStructDerivedFromCurrentStruct),
-//               "`NotCurrentStructDerivedFromCurrentStruct` must NOT pass `IS_VALID_CURRENT_STRUCT` check.");
-// static_assert(!IS_VALID_CURRENT_STRUCT(WrongUsesCOUNTERInternally),
-//               "`WrongUsesCOUNTERInternally` must not pass `IS_VALID_CURRENT_STRUCT` check.");
-
-}  // namespace valid_struct_test
-
-using current::reflection::Reflector;
 
 TEST(Reflection, DescribeCppStruct) {
   using namespace reflection_test;

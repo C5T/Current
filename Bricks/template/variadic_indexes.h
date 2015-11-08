@@ -37,12 +37,10 @@ struct indexes_generator<0, XS...> {
   typedef indexes<XS...> type;
 };
 
-template<int N>
+template <int N>
 using generate_indexes = typename indexes_generator<N>::type;
 
 }  // namespace variadic_indexes
 }  // namespace bricks
 
 #endif  // BRICKS_TEMPLATE_VARIADIC_INDEXES_H
-
-

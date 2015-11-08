@@ -54,35 +54,33 @@ TEST(WaitableAtomic, Smoke) {
 
     // The `++x` thread uses mutable accessors.
     thread([&top_level_lock, &object](IntrusiveClient top_level_client) {
-             // Should be able to register another client for `top_level_lock`.
-             ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
-             while (top_level_client) {
-               // This loop will be terminated as `top_level_lock` will be leaving the scope.
-               ++object.MutableScopedAccessor()->x;
-               sleep_for(milliseconds(1));
-             }
-             // Should no longer be able to register another client for `top_level_lock`.
-             ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
-             sleep_for(milliseconds(10));
-             object.MutableScopedAccessor()->x_done = true;
-           },
-           top_level_lock.RegisterScopedClient()).detach();
+      // Should be able to register another client for `top_level_lock`.
+      ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
+      while (top_level_client) {
+        // This loop will be terminated as `top_level_lock` will be leaving the scope.
+        ++object.MutableScopedAccessor()->x;
+        sleep_for(milliseconds(1));
+      }
+      // Should no longer be able to register another client for `top_level_lock`.
+      ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
+      sleep_for(milliseconds(10));
+      object.MutableScopedAccessor()->x_done = true;
+    }, top_level_lock.RegisterScopedClient()).detach();
 
     // The `++y` thread uses the functional style.
     thread([&top_level_lock, &object](IntrusiveClient top_level_client) {
-             // Should be able to register another client for `top_level_lock`.
-             ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
-             while (top_level_client) {
-               // This loop will be terminated as `top_level_lock` will be leaving the scope.
-               object.MutableUse([](Object& object) { ++object.y; });
-               sleep_for(milliseconds(1));
-             }
-             // Should no longer be able to register another client for `top_level_lock`.
-             ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
-             sleep_for(milliseconds(10));
-             object.MutableUse([](Object& object) { object.y_done = true; });
-           },
-           top_level_lock.RegisterScopedClient()).detach();
+      // Should be able to register another client for `top_level_lock`.
+      ASSERT_TRUE(bool(top_level_lock.RegisterScopedClient()));
+      while (top_level_client) {
+        // This loop will be terminated as `top_level_lock` will be leaving the scope.
+        object.MutableUse([](Object& object) { ++object.y; });
+        sleep_for(milliseconds(1));
+      }
+      // Should no longer be able to register another client for `top_level_lock`.
+      ASSERT_FALSE(bool(top_level_lock.RegisterScopedClient()));
+      sleep_for(milliseconds(10));
+      object.MutableUse([](Object& object) { object.y_done = true; });
+    }, top_level_lock.RegisterScopedClient()).detach();
 
     // Let `++x` and `++y` threads run 25ms.
     sleep_for(milliseconds(25));

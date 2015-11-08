@@ -133,11 +133,11 @@ std::string JSON(const T& value) {
 }
 
 // TODO(dkorolev): {bricks/current}::Exception.
-struct ParseJSONException : std::exception {
-  virtual ~ParseJSONException() {}
+struct TypeSystemParseJSONException : std::exception {
+  virtual ~TypeSystemParseJSONException() {}
 };
 
-struct JSONSchemaException : ParseJSONException {
+struct JSONSchemaException : TypeSystemParseJSONException {
   // TODO(dkorolev): Eventually, only trace and dump `value` with full path in debug builds.
   const std::string expected_;
   const std::string actual_;
@@ -173,7 +173,7 @@ struct JSONSchemaException : ParseJSONException {
   virtual const char* what() const throw() { return ("Expected " + expected_ + ", got: " + actual_).c_str(); }
 };
 
-struct InvalidJSONException : ParseJSONException {
+struct InvalidJSONException : TypeSystemParseJSONException {
   const std::string erroneus_json_;
   explicit InvalidJSONException(const std::string& json) : erroneus_json_(json) {}
   // Apparently, `throw()` is required for the code to compile. -- D.K.
@@ -270,7 +270,6 @@ T ParseJSON(const std::string& json) {
 // Inject into global namespace.
 using current::serialization::JSON;
 using current::serialization::ParseJSON;
-using current::serialization::ParseJSONException;
 using current::serialization::JSONSchemaException;
 using current::serialization::InvalidJSONException;
 

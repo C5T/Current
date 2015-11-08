@@ -109,12 +109,12 @@ struct CerealTestObject {
 
 TEST(Cerealize, JSON) {
   EXPECT_EQ("{\"data\":{\"number\":42,\"unsigned_number\":100,\"text\":\"text\",\"array\":[1,2,3]}}",
-            JSON(CerealTestObject()));
+            CerealizeJSON(CerealTestObject()));
 }
 
 TEST(Cerealize, NamedJSON) {
   EXPECT_EQ("{\"BAZINGA\":{\"number\":42,\"unsigned_number\":100,\"text\":\"text\",\"array\":[1,2,3]}}",
-            JSON(CerealTestObject(), "BAZINGA"));
+            CerealizeJSON(CerealTestObject(), "BAZINGA"));
 }
 
 TEST(Cerealize, BinarySerializesAndParses) {
@@ -284,26 +284,26 @@ static_assert(HasFromInvalidJSON<CTDerived2>(0), "");
 TEST(Cerealize, JSONStringifyWithBase) {
   CTDerived1 d1;
   d1.foo = "fffuuuuu";
-  EXPECT_EQ("{\"data\":{\"number\":0,\"foo\":\"fffuuuuu\"}}", JSON(d1));
+  EXPECT_EQ("{\"data\":{\"number\":0,\"foo\":\"fffuuuuu\"}}", CerealizeJSON(d1));
   EXPECT_EQ(
       "{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived1\","
       "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"number\":0,\"foo\":\"fffuuuuu\"}}}}",
-      JSON(WithBaseType<CTBase>(d1)));
+      CerealizeJSON(WithBaseType<CTBase>(d1)));
 
   CTDerived2 d2;
   d2.bar = "bwahaha";
-  EXPECT_EQ("{\"data\":{\"number\":0,\"bar\":\"bwahaha\"}}", JSON(d2));
+  EXPECT_EQ("{\"data\":{\"number\":0,\"bar\":\"bwahaha\"}}", CerealizeJSON(d2));
   EXPECT_EQ(
       "{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"CTDerived2\","
       "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"number\":0,\"bar\":\"bwahaha\"}}}}",
-      JSON(WithBaseType<CTBase>(d2)));
+      CerealizeJSON(WithBaseType<CTBase>(d2)));
 }
 
 TEST(Cerealize, ParseJSONReturnValueSyntax) {
   CTDerived1 input;
   input.number = 42;
   input.foo = "string";
-  CTDerived1 output = ParseJSON<CTDerived1>(JSON(input));
+  CTDerived1 output = CerealizeParseJSON<CTDerived1>(CerealizeJSON(input));
   EXPECT_EQ(42, output.number);
   EXPECT_EQ("string", output.foo);
 }
@@ -313,7 +313,7 @@ TEST(Cerealize, ParseJSONReferenceSyntax) {
   input.number = 42;
   input.foo = "string";
   CTDerived1 output;
-  ParseJSON(JSON(input), output);
+  CerealizeParseJSON(CerealizeJSON(input), output);
   EXPECT_EQ(42, output.number);
   EXPECT_EQ("string", output.foo);
 }
@@ -328,24 +328,26 @@ TEST(Cerealize, ParseJSONSupportsPolymorphicTypes) {
 
   {
     EXPECT_EQ("Derived1(1,'foo')",
-              ParseJSON<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d1)))->AsString());
+              CerealizeParseJSON<std::unique_ptr<CTBase>>(CerealizeJSON(WithBaseType<CTBase>(d1)))->AsString());
     EXPECT_EQ("Derived2(2,'bar')",
-              ParseJSON<std::unique_ptr<CTBase>>(JSON(WithBaseType<CTBase>(d2)))->AsString());
+              CerealizeParseJSON<std::unique_ptr<CTBase>>(CerealizeJSON(WithBaseType<CTBase>(d2)))->AsString());
   }
 
   {
     std::unique_ptr<CTBase> placeholder;
-    EXPECT_EQ("Derived1(1,'foo')", ParseJSON(JSON(WithBaseType<CTBase>(d1)), placeholder)->AsString());
-    EXPECT_EQ("Derived2(2,'bar')", ParseJSON(JSON(WithBaseType<CTBase>(d2)), placeholder)->AsString());
+    EXPECT_EQ("Derived1(1,'foo')",
+              CerealizeParseJSON(CerealizeJSON(WithBaseType<CTBase>(d1)), placeholder)->AsString());
+    EXPECT_EQ("Derived2(2,'bar')",
+              CerealizeParseJSON(CerealizeJSON(WithBaseType<CTBase>(d2)), placeholder)->AsString());
   }
 }
 
 TEST(Cerealize, ParseJSONThrowsOnError) {
-  ASSERT_THROW(ParseJSON<CTDerived1>("surely not a valid JSON"), ParseJSONException);
+  ASSERT_THROW(CerealizeParseJSON<CTDerived1>("surely not a valid JSON"), ParseJSONException);
 }
 
 TEST(Cerealize, ParseJSONErrorCanBeMadeNonThrowing) {
-  EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", ParseJSON<CTDerived2>("BAZINGA").AsString());
+  EXPECT_EQ("Derived2(-1,'Invalid JSON: BAZINGA')", CerealizeParseJSON<CTDerived2>("BAZINGA").AsString());
 }
 
 namespace json_unittest {
@@ -369,14 +371,14 @@ struct Bar {
 TEST(Cerealize, ExtractJSONEntryName) {
   EXPECT_EQ("data", ExtractJSONEntryName<json_unittest::Foo>());
   EXPECT_EQ("bar", ExtractJSONEntryName<json_unittest::Bar>());
-  EXPECT_EQ("{\"data\":{\"x\":1}}", JSON(json_unittest::Foo()));
-  EXPECT_EQ("{\"bar\":{\"y\":1}}", JSON(json_unittest::Bar()));
+  EXPECT_EQ("{\"data\":{\"x\":1}}", CerealizeJSON(json_unittest::Foo()));
+  EXPECT_EQ("{\"bar\":{\"y\":1}}", CerealizeJSON(json_unittest::Bar()));
 
   // Need to test that the type is decayed prior to ensuring it exposes `JSONEntryName()`.
   json_unittest::Bar instance;
   instance.y = 2;
   const json_unittest::Bar& const_reference(instance);
-  EXPECT_EQ("{\"bar\":{\"y\":2}}", JSON(const_reference));
+  EXPECT_EQ("{\"bar\":{\"y\":2}}", CerealizeJSON(const_reference));
 }
 
 TEST(Cerealize, Base64Encode) {

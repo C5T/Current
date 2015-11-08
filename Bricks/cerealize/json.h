@@ -108,22 +108,22 @@ inline OSTREAM& AppendAsJSON(OSTREAM& os, T&& object, S&& name) {
 }
 
 template <typename T>
-inline std::string JSON(T&& object) {
+inline std::string CerealizeJSON(T&& object) {
   std::ostringstream os;
   AppendAsJSON(os, std::forward<T>(object), ExtractJSONEntryName<T>());
   return os.str();
 }
 
 template <typename T, typename S>
-inline std::string JSON(T&& object, S&& name) {
+inline std::string CerealizeJSON(T&& object, S&& name) {
   std::ostringstream os;
   AppendAsJSON(os, std::forward<T>(object), std::forward<S>(name));
   return os.str();
 }
 
-// JSON parse error handling logic.
+// CerealizeJSON parse error handling logic.
 // By default, an exception is thrown.
-// If a user class defines the `FromInvalidJSON()` method, ParseJSON() is a non-throwing call,
+// If a user class defines the `FromInvalidJSON()` method, CerealizeParseJSON() is a non-throwing call,
 // and that method will be called instead.
 
 template <typename T>
@@ -155,7 +155,7 @@ struct ParseJSONErrorHandler<T, true> {
 };
 
 template <typename T>
-inline const T& ParseJSON(const std::string& input_json, T& output_object) {
+inline const T& CerealizeParseJSON(const std::string& input_json, T& output_object) {
   try {
     std::istringstream is(input_json);
     cereal::JSONInputArchive ar(is);
@@ -167,10 +167,11 @@ inline const T& ParseJSON(const std::string& input_json, T& output_object) {
 }
 
 template <typename T>
-inline T ParseJSON(const std::string& input_json) {
+inline T CerealizeParseJSON(const std::string& input_json) {
   T placeholder;
-  ParseJSON(input_json, placeholder);
-  // Can not just do `return ParseJSON()`, since it would not handle ownership transfer for `std::unique_ptr<>`.
+  CerealizeParseJSON(input_json, placeholder);
+  // Can not just do `return CerealizeParseJSON()`, since
+  // it would not handle ownership transfer for `std::unique_ptr<>`.
   return placeholder;
 }
 
@@ -181,8 +182,8 @@ inline std::string Base64Encode(const std::string& s) {
 }  // namespace cerealize
 }  // namespace bricks
 
-using bricks::cerealize::JSON;
-using bricks::cerealize::ParseJSON;
+using bricks::cerealize::CerealizeJSON;
+using bricks::cerealize::CerealizeParseJSON;
 using bricks::cerealize::WithBaseType;
 using bricks::cerealize::ExtractJSONEntryName;
 
