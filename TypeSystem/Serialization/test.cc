@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "json.h"
 
-#include "../3rdparty/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main.h"
 
 namespace serialization_test {
 

@@ -23,16 +23,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_REFLECTION_REFLECTION_H
-#define CURRENT_REFLECTION_REFLECTION_H
+#ifndef CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
+#define CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H
 
 #include <typeindex>
 #include <unordered_map>
 
-#include "struct.h"
 #include "types.h"
 
-#include "../Bricks/util/singleton.h"
+#include "../struct.h"
+
+#include "../../Bricks/util/singleton.h"
 
 namespace current {
 namespace reflection {
@@ -61,7 +62,7 @@ struct ReflectorImpl {
   std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) {           \
     return make_unique<ReflectedType_##current_type>();                             \
   }
-#include "primitive_types.dsl.h"
+#include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
     template <typename T>
@@ -125,4 +126,4 @@ inline ReflectorImpl& Reflector() { return ReflectorImpl::Reflector(); }
 }  // namespace reflection
 }  // namespace current
 
-#endif  // CURRENT_REFLECTION_REFLECTION_H
+#endif  // CURRENT_TYPE_SYSTEM_REFLECTION_REFLECTION_H

@@ -22,16 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SERIALIZATION_JSON_H
-#define CURRENT_SERIALIZATION_JSON_H
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H
 
-#include "../Bricks/template/decay.h"
 #include "../Reflection/reflection.h"
 
+#include "../../Bricks/template/decay.h"
+
 // TODO(dkorolev): Use RapidJSON from outside Cereal.
-#include "../3rdparty/cereal/include/external/rapidjson/document.h"
-#include "../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
-#include "../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+#include "../../3rdparty/cereal/include/external/rapidjson/document.h"
+#include "../../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
+#include "../../3rdparty/cereal/include/external/rapidjson/genericstream.h"
 
 namespace current {
 namespace serialization {
@@ -67,7 +68,7 @@ void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
       AssignToRapidJSONValue(destination, value);                                          \
     }                                                                                      \
   };
-#include "../Reflection/primitive_types.dsl.h"
+#include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 template <typename T>
@@ -273,4 +274,4 @@ using current::serialization::ParseJSONException;
 using current::serialization::JSONSchemaException;
 using current::serialization::InvalidJSONException;
 
-#endif  // CURRENT_SERIALIZATION_JSON_H
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H

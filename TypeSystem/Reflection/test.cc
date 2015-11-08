@@ -26,9 +26,9 @@ SOFTWARE.
 #include <cstdint>
 
 #include "reflection.h"
-#include "../Bricks/strings/strings.h"
+#include "../../Bricks/strings/strings.h"
 
-#include "../3rdparty/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main.h"
 
 namespace reflection_test {
 

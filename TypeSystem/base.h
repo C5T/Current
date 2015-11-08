@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_REFLECTION_BASE_H
-#define CURRENT_REFLECTION_BASE_H
+#ifndef CURRENT_TYPE_SYSTEM_BASE_H
+#define CURRENT_TYPE_SYSTEM_BASE_H
 
 namespace current {
 namespace reflection {
@@ -61,4 +61,4 @@ struct TypeSelector {};
 }  // namespace reflection
 }  // namespace current
 
-#endif  // CURRENT_REFLECTION_BASE_H
+#endif  // CURRENT_TYPE_SYSTEM_BASE_H

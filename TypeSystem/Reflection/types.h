@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_REFLECTION_TYPES_H
-#define CURRENT_REFLECTION_TYPES_H
+#ifndef CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
+#define CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
 
 #include <cassert>
 #include <string>
@@ -32,9 +32,9 @@ SOFTWARE.
 #include <vector>
 #include <memory>
 
-#include "base.h"
+#include "../base.h"
 
-#include "../Bricks/util/crc32.h"
+#include "../../Bricks/util/crc32.h"
 
 namespace current {
 namespace reflection {
@@ -47,7 +47,7 @@ constexpr uint64_t TYPEID_STRUCT_TYPE = 902u * TYPEID_TYPE_RANGE;
 enum class TypeID : uint64_t {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
-#include "primitive_types.dsl.h"
+#include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 };
 
@@ -63,7 +63,7 @@ struct ReflectedTypeImpl {
     TypeID type_id = TypeID::current_type;                                          \
     std::string CppType() override { return #cpp_type; }                            \
   };
-#include "primitive_types.dsl.h"
+#include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
@@ -130,4 +130,4 @@ TypeID CalculateTypeID(const T* ptr) {
 }  // namespace reflection
 }  // namespace current
 
-#endif  // CURRENT_REFLECTION_TYPES_H
+#endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H
