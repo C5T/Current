@@ -95,21 +95,6 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CURRENT_STRUCT(...) \
   CURRENT_STRUCT_SWITCH(__VA_ARGS__, CURRENT_STRUCT_DERIVED, CURRENT_STRUCT_NOT_DERIVED)(__VA_ARGS__)
 
-template <typename T, typename IS>
-struct DoConstruct {};
-
-template <typename T, int... IS>
-struct DoConstruct<T, bricks::variadic_indexes::indexes<IS...>> {
-  template <typename T_ARGS_AS_TUPLE>
-  static T Run(const T_ARGS_AS_TUPLE& args) {
-    T object;
-    // Here's where I got stuck for today. Only supporting two-parameter "constructors" now. -- D.K.
-    static_assert(sizeof...(IS) == 2, "");
-    object.CURRENT_STRUCT_CONSTRUCTOR(std::get<0>(args), std::get<1>(args));  // std::get<IS...>(args));
-    return object;
-  }
-};
-
 #define CURRENT_STRUCT_HELPERS(s, super)                                                    \
   template <typename INSTANTIATION_TYPE>                                                    \
   struct CURRENT_STRUCT_IMPL_##s;                                                           \
