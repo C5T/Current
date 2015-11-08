@@ -61,9 +61,9 @@ void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
   template <>                                                                              \
   struct SaveIntoJSONImpl<cpp_type> {                                                      \
-    static void Go(rapidjson::Value& destination,                                          \
-                   rapidjson::Document::AllocatorType&,                                    \
-                   const cpp_type& value) {                                                \
+    static void Save(rapidjson::Value& destination,                                        \
+                     rapidjson::Document::AllocatorType&,                                  \
+                     const cpp_type& value) {                                              \
       AssignToRapidJSONValue(destination, value);                                          \
     }                                                                                      \
   };
@@ -72,13 +72,13 @@ void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
 
 template <typename T>
 struct SaveIntoJSONImpl<std::vector<T>> {
-  static void Go(rapidjson::Value& destination,
-                 rapidjson::Document::AllocatorType& allocator,
-                 const std::vector<T>& value) {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const std::vector<T>& value) {
     destination.SetArray();
     rapidjson::Value element_to_push;
     for (const auto& element : value) {
-      SaveIntoJSONImpl<T>::Go(element_to_push, allocator, element);
+      SaveIntoJSONImpl<T>::Save(element_to_push, allocator, element);
       destination.PushBack(element_to_push, allocator);
     }
   }
@@ -87,29 +87,32 @@ struct SaveIntoJSONImpl<std::vector<T>> {
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
 struct SaveIntoJSONImpl {
-  struct Visitor {
+  struct SaveFieldVisitor {
     rapidjson::Value& destination_;
     rapidjson::Document::AllocatorType& allocator_;
 
-    Visitor(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+    SaveFieldVisitor(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
         : destination_(destination), allocator_(allocator) {}
 
     // IMPORTANT: Pass in `const char* name`, as `const std::string& name`
     // would fail memory-allocation-wise due to over-smartness of RapidJSON.
     template <typename U>
-    void operator()(const char* name, const U& value) const {
+    void operator()(const char* name, const U& source) const {
       rapidjson::Value placeholder;
-      SaveIntoJSONImpl<U>::Go(placeholder, allocator_, value);
+      SaveIntoJSONImpl<U>::Save(placeholder, allocator_, source);
       destination_.AddMember(name, placeholder, allocator_);
     }
   };
 
-  static void Go(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator, const T& value) {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const T& source) {
     destination.SetObject();
 
-    Visitor serializer(destination, allocator);
-    current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndImmutableValue>::
-        WithObject(value, serializer);
+    SaveFieldVisitor visitor(destination, allocator);
+    current::reflection::VisitAllFields<bricks::decay<T>,
+                                        current::reflection::FieldNameAndImmutableValue>::WithObject(source,
+                                                                                                     visitor);
   }
 };
 
@@ -118,7 +121,7 @@ std::string JSON(const T& value) {
   rapidjson::Document document;
   rapidjson::Value& destination = document;
 
-  SaveIntoJSONImpl<T>::Go(destination, document.GetAllocator(), value);
+  SaveIntoJSONImpl<T>::Save(destination, document.GetAllocator(), value);
 
   std::ostringstream os;
   auto stream = rapidjson::GenericWriteStream(os);
@@ -128,10 +131,146 @@ std::string JSON(const T& value) {
   return os.str();
 }
 
+// TODO(dkorolev): {bricks/current}::Exception.
+struct ParseJSONException : std::exception {
+  virtual ~ParseJSONException() {}
+};
+
+struct JSONSchemaException : ParseJSONException {
+  // TODO(dkorolev): Eventually, only trace and dump `value` with full path in debug builds.
+  const std::string expected_;
+  const std::string actual_;
+  JSONSchemaException(const std::string& expected, rapidjson::Value& value, const std::string& path)
+      : expected_(expected + " for `" + path.substr(1u) + "`"),
+        actual_(NonThrowingFormatRapidJSONValueAsString(value, path.substr(1))) {}
+  static std::string NonThrowingFormatRapidJSONValueAsString(rapidjson::Value& value, const std::string& path) {
+    // Attempt to generate a human-readable description of the part of the JSON,
+    // that has been parsed but is of wrong schema.
+    try {
+      std::ostringstream os;
+      auto stream = rapidjson::GenericWriteStream(os);
+      auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
+      rapidjson::Document document;
+      if (value.IsObject() || value.IsArray()) {
+        // Objects and arrays can be dumped directly.
+        value.Accept(writer);
+        return os.str();
+      } else {
+        // Every other type of value has to be wrapped into an object or an array.
+        // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
+        document.SetArray();
+        document.PushBack(value, document.GetAllocator());
+        document.Accept(writer);
+        const std::string result = os.str();
+        return result.substr(1u, result.length() - 2u);
+      }
+    } catch (const std::exception& e) {
+      return "The `" + path + "` field could not be parsed.";
+    }
+  }
+  // Apparently, `throw()` is required for the code to compile. -- D.K.
+  virtual const char* what() const throw() { return ("Expected " + expected_ + ", got: " + actual_).c_str(); }
+};
+
+struct InvalidJSONException : ParseJSONException {
+  const std::string erroneus_json_;
+  explicit InvalidJSONException(const std::string& json) : erroneus_json_(json) {}
+  // Apparently, `throw()` is required for the code to compile. -- D.K.
+  virtual const char* what() const throw() { return erroneus_json_.c_str(); }
+};
+
+// TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
+template <typename T>
+struct LoadFromJSONImpl {
+  struct LoadFieldVisitor {
+    rapidjson::Value& source_;
+    const std::string& path_;
+
+    explicit LoadFieldVisitor(rapidjson::Value& source, const std::string& path)
+        : source_(source), path_(path) {}
+
+    // IMPORTANT: Pass in `const char* name`, as `const std::string& name`
+    // would fail memory-allocation-wise due to over-smartness of RapidJSON.
+    template <typename U>
+    void operator()(const char* name, U& value) const {
+      if (source_.HasMember(name)) {
+        LoadFromJSONImpl<U>::Load(source_[name], value, path_ + '.' + name);
+      } else {
+        throw JSONSchemaException("value", source_, path_ + '.' + name);
+      }
+    }
+  };
+
+  static void Load(rapidjson::Value& source, T& destination, const std::string& path) {
+    if (!source.IsObject()) {
+      throw JSONSchemaException("object", source, path);
+    }
+    LoadFieldVisitor visitor(source, path);
+    current::reflection::VisitAllFields<bricks::decay<T>,
+                                        current::reflection::FieldNameAndMutableValue>::WithObject(destination,
+                                                                                                   visitor);
+  }
+};
+template <>
+struct LoadFromJSONImpl<uint64_t> {
+  static void Load(rapidjson::Value& source, uint64_t& destination, const std::string& path) {
+    if (!source.IsNumber()) {
+      throw JSONSchemaException("number", source, path);
+    }
+    destination = source.GetUint64();
+  }
+};
+
+template <>
+struct LoadFromJSONImpl<std::string> {
+  static void Load(rapidjson::Value& source, std::string& destination, const std::string& path) {
+    if (!source.IsString()) {
+      throw JSONSchemaException("string", source, path);
+    }
+    destination.assign(source.GetString(), source.GetStringLength());
+  }
+};
+
+template <typename T>
+struct LoadFromJSONImpl<std::vector<T>> {
+  static void Load(rapidjson::Value& source, std::vector<T>& destination, const std::string& path) {
+    if (!source.IsArray()) {
+      throw JSONSchemaException("array", source, path);
+    }
+    const size_t n = source.Size();
+    destination.resize(n);
+    for (size_t i = 0; i < n; ++i) {
+      LoadFromJSONImpl<T>::Load(source[i], destination[i], path + '[' + std::to_string(i) + ']');
+    }
+  }
+};
+
+template <typename T>
+void ParseJSON(const std::string& json, T& destination) {
+  rapidjson::Document document;
+
+  if (document.Parse<0>(json.c_str()).HasParseError()) {
+    throw InvalidJSONException(json);
+  }
+
+  LoadFromJSONImpl<T>::Load(document, destination, "");
+}
+
+template <typename T>
+T ParseJSON(const std::string& json) {
+  T result;
+  ParseJSON<T>(json, result);
+  return result;
+}
+
 }  // namespace serialization
 }  // namespace current
 
 // Inject into global namespace.
 using current::serialization::JSON;
+using current::serialization::ParseJSON;
+using current::serialization::ParseJSONException;
+using current::serialization::JSONSchemaException;
+using current::serialization::InvalidJSONException;
 
 #endif  // CURRENT_SERIALIZATION_JSON_H

@@ -31,6 +31,12 @@ namespace serialization_test {
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
+
+  // Note: The user has to define default constructor when defining custom ones.
+  CURRENT_DEFAULT_CONSTRUCTOR(Serializable) {}
+  CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s) : i(i), s(s) {}
+
+  CURRENT_RETURNS(uint64_t) twice_i() const { return i + i; }
 };
 
 CURRENT_STRUCT(ComplexSerializable) {
@@ -38,11 +44,20 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_FIELD(q, std::string);
   CURRENT_FIELD(v, std::vector<std::string>);
   CURRENT_FIELD(z, Serializable);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(ComplexSerializable) {}
+  CURRENT_CONSTRUCTOR(ComplexSerializable)(char a, char b) {
+    for (char c = a; c <= b; ++c) {
+      v.push_back(std::string(1, c));
+    }
+  }
+
+  CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
 }  // namespace serialization_test
 
-TEST(Serialization, SerializeIntoJSON) {
+TEST(Serialization, JSON) {
   using namespace serialization_test;
 
   // Simple serialization.
@@ -54,7 +69,14 @@ TEST(Serialization, SerializeIntoJSON) {
 
   simple_object.i = 42;
   simple_object.s = "foo";
-  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", JSON(simple_object));
+  const std::string simple_object_as_json = JSON(simple_object);
+  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", simple_object_as_json);
+
+  {
+    Serializable a = ParseJSON<Serializable>(simple_object_as_json);
+    EXPECT_EQ(42ull, a.i);
+    EXPECT_EQ("foo", a.s);
+  }
 
   // Nested serialization.
   ComplexSerializable complex_object;
@@ -64,14 +86,147 @@ TEST(Serialization, SerializeIntoJSON) {
   complex_object.v.push_back("two");
   complex_object.z = simple_object;
 
+  const std::string complex_object_as_json = JSON(complex_object);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
-            JSON(complex_object));
+            complex_object_as_json);
+
+  {
+    ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);
+    EXPECT_EQ(43ull, b.j);
+    EXPECT_EQ("bar", b.q);
+    ASSERT_EQ(2u, b.v.size());
+    EXPECT_EQ("one", b.v[0]);
+    EXPECT_EQ("two", b.v[1]);
+    EXPECT_EQ(42ull, b.z.i);
+    EXPECT_EQ("foo", b.z.s);
+
+    ASSERT_THROW(ParseJSON<ComplexSerializable>("not a json"), ParseJSONException);
+  }
 
   // Complex serialization makes a copy.
   simple_object.i = -1000;
   EXPECT_EQ(42ull, complex_object.z.i);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
             JSON(complex_object));
+}
+
+TEST(Serialization, JSONExceptions) {
+  using namespace serialization_test;
+
+  // Invalid JSONs.
+  ASSERT_THROW(ParseJSON<Serializable>("not a json"), InvalidJSONException);
+  ASSERT_THROW(ParseJSON<ComplexSerializable>("not a json"), InvalidJSONException);
+
+  ASSERT_THROW(ParseJSON<Serializable>(""), InvalidJSONException);
+  ASSERT_THROW(ParseJSON<ComplexSerializable>(""), InvalidJSONException);
+
+  // Valid JSONs with missing fields, or with fields of wrong types.
+  try {
+    ParseJSON<Serializable>("{}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected value for `i`, got: {}"), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":\"boo\"}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected number for `i`, got: \"boo\""), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":[]}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected number for `i`, got: []"), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":{}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected number for `i`, got: {}"), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":42}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string, got: {\"s\":null}"), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":42,\"s\":42}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string for `s`, got: 42"), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":42,\"s\":[]}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string for `s`, got: []"), e.what());
+  }
+
+  try {
+    ParseJSON<Serializable>("{\"i\":42,\"s\":{}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string for `s`, got: {}"), e.what());
+  }
+
+  // Names of inner, nested, fields.
+  try {
+    ParseJSON<ComplexSerializable>(
+        "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":\"error\",\"s\":\"foo\"}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected number for `z.i`, got: \"error\""), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>(
+        "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected number for `z.i`, got: null"), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"s\":\"foo\"}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected value for `z.i`, got: {\"s\":\"foo\"}"), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",true],\"z\":{\"i\":0,\"s\":0}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string for `v[1]`, got: true"), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":0,\"s\":0}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string for `z.s`, got: 0"), e.what());
+  }
+}
+
+// TODO(dkorolev): Move this test outside `Serialization`.
+TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
+  using namespace serialization_test;
+  {
+    Serializable simple_object(1, "foo");
+    EXPECT_EQ(2, simple_object.twice_i());
+  }
+  {
+    ComplexSerializable complex_object('a', 'c');
+    EXPECT_EQ(3u, complex_object.length_of_v());
+  }
 }
 
 TEST(Serialization, LOLWUT) {
