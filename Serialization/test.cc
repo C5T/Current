@@ -125,28 +125,28 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<Serializable>("{}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, got: {\"i\":null}"), e.what());
+    EXPECT_EQ(std::string("Expected value for `i`, got: {}"), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":\"boo\"}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, got: {\"i\":\"boo\"}"), e.what());
+    EXPECT_EQ(std::string("Expected number for `i`, got: \"boo\""), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":[]}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, got: {\"i\":[]}"), e.what());
+    EXPECT_EQ(std::string("Expected number for `i`, got: []"), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":{}}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, got: {\"i\":{}}"), e.what());
+    EXPECT_EQ(std::string("Expected number for `i`, got: {}"), e.what());
   }
 
   try {
@@ -160,21 +160,21 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<Serializable>("{\"i\":42,\"s\":42}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string, got: {\"s\":42}"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: 42"), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":42,\"s\":[]}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string, got: {\"s\":[]}"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: []"), e.what());
   }
 
   try {
     ParseJSON<Serializable>("{\"i\":42,\"s\":{}}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string, got: {\"s\":{}}"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: {}"), e.what());
   }
 
   // Names of inner, nested, fields.
@@ -183,14 +183,36 @@ TEST(Serialization, JSONExceptions) {
         "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":\"error\",\"s\":\"foo\"}}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected number, got: {\"z.i\":\"error\"}"), e.what());
+    EXPECT_EQ(std::string("Expected number for `z.i`, got: \"error\""), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>(
+        "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":null,\"s\":\"foo\"}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected number for `z.i`, got: null"), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"s\":\"foo\"}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected value for `z.i`, got: {\"s\":\"foo\"}"), e.what());
+  }
+
+  try {
+    ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",true],\"z\":{\"i\":0,\"s\":0}}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ(std::string("Expected string for `v[1]`, got: true"), e.what());
   }
 
   try {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":0,\"s\":0}}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string, got: {\"z.s\":0}"), e.what());
+    EXPECT_EQ(std::string("Expected string for `z.s`, got: 0"), e.what());
   }
 }
 

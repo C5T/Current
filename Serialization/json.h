@@ -139,9 +139,10 @@ struct ParseJSONException : std::exception {
 struct JSONSchemaException : ParseJSONException {
   // TODO(dkorolev): Eventually, only trace and dump `value` with full path in debug builds.
   const std::string expected_;
-  const std::string value_;
+  const std::string actual_;
   JSONSchemaException(const std::string& expected, rapidjson::Value& value, const std::string& path)
-      : expected_(expected), value_(NonThrowingFormatRapidJSONValueAsString(value, path.substr(1))) {}
+      : expected_(expected + " for `" + path.substr(1u) + "`"),
+        actual_(NonThrowingFormatRapidJSONValueAsString(value, path.substr(1))) {}
   static std::string NonThrowingFormatRapidJSONValueAsString(rapidjson::Value& value, const std::string& path) {
     // Attempt to generate a human-readable description of the part of the JSON,
     // that has been parsed but is of wrong schema.
@@ -150,20 +151,31 @@ struct JSONSchemaException : ParseJSONException {
       auto stream = rapidjson::GenericWriteStream(os);
       auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
       rapidjson::Document document;
-      document.SetObject();
-      document.AddMember(path.c_str(), value, document.GetAllocator());
-      document.Accept(writer);
-      return os.str();
+      if (value.IsObject() || value.IsArray()) {
+        // Objects and arrays can be dumped directly.
+        value.Accept(writer);
+        return os.str();
+      } else {
+        // Every other type of value has to be wrapped into an object or an array.
+        // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
+        document.SetArray();
+        document.PushBack(value, document.GetAllocator());
+        document.Accept(writer);
+        const std::string result = os.str();
+        return result.substr(1u, result.length() - 2u);
+      }
     } catch (const std::exception& e) {
       return "The `" + path + "` field could not be parsed.";
     }
   }
-  virtual const char* what() const throw() { return ("Expected " + expected_ + ", got: " + value_).c_str(); }
+  // Apparently, `throw()` is required for the code to compile. -- D.K.
+  virtual const char* what() const throw() { return ("Expected " + expected_ + ", got: " + actual_).c_str(); }
 };
 
 struct InvalidJSONException : ParseJSONException {
   const std::string erroneus_json_;
   explicit InvalidJSONException(const std::string& json) : erroneus_json_(json) {}
+  // Apparently, `throw()` is required for the code to compile. -- D.K.
   virtual const char* what() const throw() { return erroneus_json_.c_str(); }
 };
 
@@ -181,7 +193,11 @@ struct LoadFromJSONImpl {
     // would fail memory-allocation-wise due to over-smartness of RapidJSON.
     template <typename U>
     void operator()(const char* name, U& value) const {
-      LoadFromJSONImpl<U>::Load(source_[name], value, path_ + '.' + name);
+      if (source_.HasMember(name)) {
+        LoadFromJSONImpl<U>::Load(source_[name], value, path_ + '.' + name);
+      } else {
+        throw JSONSchemaException("value", source_, path_ + '.' + name);
+      }
     }
   };
 
