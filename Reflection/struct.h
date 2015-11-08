@@ -110,20 +110,6 @@ struct DoConstruct<T, bricks::variadic_indexes::indexes<IS...>> {
   }
 };
 
-template <typename T, typename T_ARGS_AS_TUPLE>
-struct ConvertibleInto {
-  T_ARGS_AS_TUPLE constructor_parameters_;
-
-  template <typename T_ARGS_FORWARDED_AS_TUPLE>
-  explicit ConvertibleInto(T_ARGS_FORWARDED_AS_TUPLE&& params)
-      : constructor_parameters_(std::forward<T_ARGS_FORWARDED_AS_TUPLE>(params)) {}
-
-  operator T() {
-    return DoConstruct<T, bricks::variadic_indexes::generate_indexes<std::tuple_size<T_ARGS_AS_TUPLE>::value>>::
-        Run(constructor_parameters_);
-  }
-};
-
 #define CURRENT_STRUCT_HELPERS(s, super)                                                    \
   template <typename INSTANTIATION_TYPE>                                                    \
   struct CURRENT_STRUCT_IMPL_##s;                                                           \
@@ -136,10 +122,6 @@ struct ConvertibleInto {
     constexpr static const char* name() { return #s; }                                      \
     constexpr static size_t index_base = __COUNTER__;                                       \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> field_count_struct; \
-    template <typename... ARGS>                                                             \
-    static ConvertibleInto<s, std::tuple<ARGS...>> Construct(ARGS&&... args) {              \
-      return ConvertibleInto<s, std::tuple<ARGS...>>(std::forward_as_tuple(args...));       \
-    }                                                                                       \
   }
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                             \
