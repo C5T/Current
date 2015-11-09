@@ -30,6 +30,7 @@ SOFTWARE.
 #include <string>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <memory>
 
 #include "../base.h"
@@ -41,8 +42,9 @@ namespace reflection {
 
 constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
 constexpr uint64_t TYPEID_BASIC_TYPE = 900u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_COLLECTION_TYPE = 901u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_STRUCT_TYPE = 902u * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_STRUCT_TYPE = 920u * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_VECTOR_TYPE = 931u * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_MAP_TYPE = 932u * TYPEID_TYPE_RANGE;
 
 enum class TypeID : uint64_t {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
@@ -73,7 +75,22 @@ struct ReflectedType_Vector : ReflectedTypeImpl {
   std::string CppType() override {
     assert(reflected_element_type);
     std::ostringstream oss;
-    oss << cpp_typename << "<" << reflected_element_type->CppType() << ">";
+    oss << cpp_typename << '<' << reflected_element_type->CppType() << '>';
+    return oss.str();
+  }
+};
+
+struct ReflectedType_Map : ReflectedTypeImpl {
+  constexpr static const char* cpp_typename = "std::map";
+  ReflectedTypeImpl* reflected_key_type;
+  ReflectedTypeImpl* reflected_value_type;
+
+  std::string CppType() override {
+    assert(reflected_key_type);
+    assert(reflected_value_type);
+    std::ostringstream oss;
+    oss << cpp_typename << '<' << reflected_key_type->CppType() << ',' << reflected_value_type->CppType()
+        << '>';
     return oss.str();
   }
 };
@@ -110,7 +127,12 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  return static_cast<TypeID>(TYPEID_COLLECTION_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
+  return static_cast<TypeID>(TYPEID_VECTOR_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
+  return static_cast<TypeID>(
+      TYPEID_MAP_TYPE + bricks::CRC32(v.reflected_key_type->CppType() + v.reflected_value_type->CppType()));
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

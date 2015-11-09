@@ -85,6 +85,54 @@ struct SaveIntoJSONImpl<std::vector<T>> {
   }
 };
 
+template <typename T>
+struct IsPrimitiveJSONKeyType {
+  static constexpr bool value = false;
+};
+
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
+  template <>                                                                              \
+  struct IsPrimitiveJSONKeyType<cpp_type> {                                                \
+    static constexpr bool value = true;                                                    \
+  };
+#include "../primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+template <typename TK, typename TV>
+struct SaveIntoJSONImpl<std::map<TK, TV>> {
+  template <typename K = TK>
+  static typename std::enable_if<IsPrimitiveJSONKeyType<K>::value>::type Save(
+      rapidjson::Value& destination,
+      rapidjson::Document::AllocatorType& allocator,
+      const std::map<TK, TV>& value) {
+    destination.SetObject();
+    for (const auto& element : value) {
+      rapidjson::Value populated_value;
+      SaveIntoJSONImpl<TV>::Save(populated_value, allocator, element.second);
+      // TODO(dkorolev): Be careful with this `.c_str()`; might have to be allocated within `allocator`.
+      destination.AddMember(element.first.c_str(), populated_value, allocator);
+    }
+  }
+  template <typename K = TK>
+  static typename std::enable_if<!IsPrimitiveJSONKeyType<K>::value>::type Save(
+      rapidjson::Value& destination,
+      rapidjson::Document::AllocatorType& allocator,
+      const std::map<TK, TV>& value) {
+    destination.SetArray();
+    for (const auto& element : value) {
+      rapidjson::Value key_value_as_array;
+      key_value_as_array.SetArray();
+      rapidjson::Value populated_key;
+      rapidjson::Value populated_value;
+      SaveIntoJSONImpl<TK>::Save(populated_key, allocator, element.first);
+      SaveIntoJSONImpl<TV>::Save(populated_value, allocator, element.second);
+      key_value_as_array.PushBack(populated_key, allocator);
+      key_value_as_array.PushBack(populated_value, allocator);
+      destination.PushBack(key_value_as_array, allocator);
+    }
+  }
+};
+
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
 struct SaveIntoJSONImpl {
@@ -242,6 +290,44 @@ struct LoadFromJSONImpl<std::vector<T>> {
     destination.resize(n);
     for (size_t i = 0; i < n; ++i) {
       LoadFromJSONImpl<T>::Load(source[i], destination[i], path + '[' + std::to_string(i) + ']');
+    }
+  }
+};
+
+template <typename TK, typename TV>
+struct LoadFromJSONImpl<std::map<TK, TV>> {
+  template <typename K = TK>
+  static typename std::enable_if<IsPrimitiveJSONKeyType<K>::value>::type Load(rapidjson::Value& source,
+                                                                              std::map<TK, TV>& destination,
+                                                                              const std::string& path) {
+    if (!source.IsObject()) {
+      throw JSONSchemaException("map as object", source, path);
+    }
+    std::pair<TK, TV> entry;
+    for (rapidjson::Value::MemberIterator cit = source.MemberBegin(); cit != source.MemberEnd(); ++cit) {
+      LoadFromJSONImpl<TK>::Load(cit->name, entry.first, path);
+      LoadFromJSONImpl<TV>::Load(cit->value, entry.second, path);
+      destination.insert(entry);
+    }
+  }
+  template <typename K = TK>
+  static typename std::enable_if<!IsPrimitiveJSONKeyType<K>::value>::type Load(rapidjson::Value& source,
+                                                                               std::map<TK, TV>& destination,
+                                                                               const std::string& path) {
+    if (!source.IsArray()) {
+      throw JSONSchemaException("map as array", source, path);
+    }
+    std::pair<TK, TV> entry;
+    for (rapidjson::Value::ValueIterator cit = source.Begin(); cit != source.End(); ++cit) {
+      if (!cit->IsArray()) {
+        throw JSONSchemaException("map entry as array", source, path);
+      }
+      if (cit->Size() != 2u) {
+        throw JSONSchemaException("map entry as array of two elements", source, path);
+      }
+      LoadFromJSONImpl<TK>::Load((*cit)[static_cast<rapidjson::SizeType>(0)], entry.first, path);
+      LoadFromJSONImpl<TV>::Load((*cit)[static_cast<rapidjson::SizeType>(1)], entry.second, path);
+      destination.insert(entry);
     }
   }
 };

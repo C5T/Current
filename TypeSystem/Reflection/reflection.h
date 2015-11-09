@@ -73,6 +73,15 @@ struct ReflectorImpl {
       return std::move(v);
     }
 
+    template <typename TK, typename TV>
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::map<TK, TV>>) {
+      auto v = make_unique<ReflectedType_Map>();
+      v->reflected_key_type = Reflector().ReflectType<TK>();
+      v->reflected_value_type = Reflector().ReflectType<TV>();
+      v->type_id = CalculateTypeID(v);
+      return std::move(v);
+    }
+
     template <typename T>
     typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
     operator()(TypeSelector<T>) {
