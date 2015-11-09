@@ -22,11 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Current-friendly data manipulation types:
-//
-// * bool Exists(x) : non-throwing, always `true` for non-optionals.
-// * T Value(x)     : can throw `NoValue` if and only if `Exists(x)` is `false`.
-//
 // Current-friendly container types.
 //
 // * Vector<T> <=> std::vector<T>
@@ -47,8 +42,8 @@ SOFTWARE.
 //
 // Only allow default constructors for containers.
 
-#ifndef PSYKHANOOL_H
-#define PSYKHANOOL_H
+#ifndef CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
+#define CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
 
 #include <fstream>
 #include <vector>
@@ -56,40 +51,16 @@ SOFTWARE.
 #include <utility>
 
 #include "sfinae.h"
+#include "../TypeSystem/optional.h"
 
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/cerealize/cerealize.h"
 
-namespace PSYKHANOOL {
-
-struct NoValueException : std::exception {};
-typedef const NoValueException& NoValue;
+namespace current {
 
 struct CannotPopBackFromEmptyVectorException : std::exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
-
-template <typename T>
-class ImmutableOptional final {
- public:
-  ImmutableOptional() = delete;
-  ImmutableOptional(const T* object) : optional_object_(object) {}
-  ImmutableOptional(const T& object) : optional_object_(&object) {}
-  ImmutableOptional(std::unique_ptr<T>&& rhs)
-      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  bool Exists() const { return optional_object_ != nullptr; }
-  const T& Value() const {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueException();  // TBD: Derived detailed exception type.
-    }
-  }
-
- private:
-  std::unique_ptr<T> owned_optional_object_;
-  const T* optional_object_;
-};
 
 template <typename T>
 class VectorStorage {
@@ -568,48 +539,16 @@ class LightweightMatrix final
         POLICY::template LightweightMatrixPersister<T>(name, instance, *this) {}
 };
 
-template <typename T>
-bool Exists(const T&) {
-  return true;
-}
+}  // namespace current
 
-template <typename T>
-const T& Value(const T& x) {
-  return x;
-}
+using current::Vector;
+using current::OrderedDictionary;
+using current::LightweightMatrix;
 
-template <typename T>
-T& Value(T& x) {
-  return x;
-}
+using current::InMemory;
+using current::ReplayFromAndAppendToFile;
 
-template <typename T>
-bool Exists(const ImmutableOptional<T>& x) {
-  return x.Exists();
-}
+using current::CannotPopBackFromEmptyVector;
+using current::CannotPopBackFromEmptyVectorException;
 
-template <typename T>
-const T& Value(const ImmutableOptional<T>& x) {
-  return x.Value();
-}
-
-}  // namespace PSYKHANOOL
-
-using PSYKHANOOL::ImmutableOptional;
-
-using PSYKHANOOL::Vector;
-using PSYKHANOOL::OrderedDictionary;
-using PSYKHANOOL::LightweightMatrix;
-
-using PSYKHANOOL::InMemory;
-using PSYKHANOOL::ReplayFromAndAppendToFile;
-
-using PSYKHANOOL::NoValue;
-using PSYKHANOOL::NoValueException;
-using PSYKHANOOL::CannotPopBackFromEmptyVector;
-using PSYKHANOOL::CannotPopBackFromEmptyVectorException;
-
-using PSYKHANOOL::Exists;
-using PSYKHANOOL::Value;
-
-#endif  // PSYKHANOOL_H
+#endif  // CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
