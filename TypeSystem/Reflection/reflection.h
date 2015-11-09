@@ -73,6 +73,15 @@ struct ReflectorImpl {
       return std::move(v);
     }
 
+    template <typename TF, typename TS>
+    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::pair<TF, TS>>) {
+      auto p = make_unique<ReflectedType_Pair>();
+      p->reflected_first_type = Reflector().ReflectType<TF>();
+      p->reflected_second_type = Reflector().ReflectType<TS>();
+      p->type_id = CalculateTypeID(p);
+      return std::move(p);
+    }
+
     template <typename TK, typename TV>
     std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::map<TK, TV>>) {
       auto v = make_unique<ReflectedType_Map>();
@@ -87,7 +96,7 @@ struct ReflectorImpl {
     operator()(TypeSelector<T>) {
       auto s = make_unique<ReflectedType_Struct>();
       s->name = T::template CURRENT_REFLECTION_HELPER<T>::name();
-      s->super_name = SuperNameIfNotCurrentSuper<T>();
+      s->reflected_super = ReflectSuper<T>();
       FieldReflector field_reflector(s->fields);
       VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
       s->type_id = CalculateTypeID(s);
@@ -96,15 +105,15 @@ struct ReflectorImpl {
 
    private:
     template <typename T>
-    typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value, std::string>::type
-    SuperNameIfNotCurrentSuper() {
-      return "";
+    typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value, ReflectedType_Struct*>::type
+    ReflectSuper() {
+      return nullptr;
     }
 
     template <typename T>
-    typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value, std::string>::type
-    SuperNameIfNotCurrentSuper() {
-      return SuperType<T>::template CURRENT_REFLECTION_HELPER<SuperType<T>>::name();
+    typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value, ReflectedType_Struct*>::type
+    ReflectSuper() {
+      return dynamic_cast<ReflectedType_Struct*>(Reflector().ReflectType<SuperType<T>>());
     }
   };
 

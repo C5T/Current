@@ -26,6 +26,8 @@ SOFTWARE.
 #include <cstdint>
 
 #include "reflection.h"
+#include "schema.h"
+
 #include "../../Bricks/strings/strings.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -137,6 +139,13 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   CURRENT_FIELD(dbl, double, 1e308);
   // Other primitive types.
   CURRENT_FIELD(s, std::string, "The String");
+
+  // Complex types.
+  using pair_string_double = std::pair<std::string, double>;
+  CURRENT_FIELD(pair_strdbl, pair_string_double);
+  CURRENT_FIELD(vector_int32, std::vector<int32_t>);
+  using map_string_string = std::map<std::string, std::string>;
+  CURRENT_FIELD(map_strstr, map_string_string);
 };
 }
 
@@ -148,6 +157,33 @@ struct CollectFieldValues {
   template <typename T>
   void operator()(const std::string&, const T& value) const {
     output_.push_back(bricks::strings::ToString(value));
+  }
+
+  template <typename T>
+  void operator()(const std::string&, const std::vector<T>& value) const {
+    output_.push_back('[' + bricks::strings::Join(value, ',') + ']');
+  }
+
+  template <typename TF, typename TS>
+  void operator()(const std::string&, const std::pair<TF, TS>& value) const {
+    output_.push_back(bricks::strings::ToString(value.first) + ':' + bricks::strings::ToString(value.second));
+  }
+
+  template <typename TK, typename TV>
+  void operator()(const std::string&, const std::map<TK, TV>& value) const {
+    std::ostringstream oss;
+    oss << '[';
+    bool first = true;
+    for (const auto& cit : value) {
+      if (first) {
+        first = false;
+      } else {
+        oss << ',';
+      }
+      oss << cit.first << ':' << cit.second;
+    }
+    oss << ']';
+    output_.push_back(oss.str());
   }
 
   // Output `bool` using boolalpha.
@@ -177,6 +213,9 @@ TEST(Reflection, VisitAllFields) {
   using namespace reflection_test;
 
   StructWithAllSupportedTypes all;
+  all.pair_strdbl = {"Minus eight point five", -9.5};
+  all.vector_int32 = {-1, -2, -4};
+  all.map_strstr = {{"key1", "value1"}, {"key2", "value2"}};
 
   std::vector<std::string> result;
   CollectFieldValues values{result};
@@ -188,6 +227,34 @@ TEST(Reflection, VisitAllFields) {
       "255,65535,4294967295,18446744073709551615,"
       "-128,-32768,-2147483648,-9223372036854775808,"
       "1e+38,1e+308,"
-      "The String",
+      "The String,"
+      "Minus eight point five:-9.500000,"
+      "[-1,-2,-4],"
+      "[key1:value1,key2:value2]",
       bricks::strings::Join(result, ','));
+}
+
+namespace reflection_test {
+
+CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
+CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
+CURRENT_STRUCT(Z, Y) { CURRENT_FIELD(d, double); };
+}
+
+TEST(Reflection, FullTypeSchema) {
+  using namespace reflection_test;
+  using current::reflection::FullTypeSchema;
+
+  FullTypeSchema schema;
+  schema.AddStruct<Z>();
+  EXPECT_EQ(3u, schema.struct_schemas.size());
+  EXPECT_EQ("X", schema.struct_schemas[0].name);
+  EXPECT_EQ(9000000000000000023ull, schema.struct_schemas[0].fields[0].first);
+  EXPECT_EQ("i", schema.struct_schemas[0].fields[0].second);
+  EXPECT_EQ("Y", schema.struct_schemas[1].name);
+  EXPECT_EQ(9310000003081909835ull, schema.struct_schemas[1].fields[0].first);
+  EXPECT_EQ("v", schema.struct_schemas[1].fields[0].second);
+  EXPECT_EQ("Z", schema.struct_schemas[2].name);
+  EXPECT_EQ(9000000000000000032ull, schema.struct_schemas[2].fields[0].first);
+  EXPECT_EQ("d", schema.struct_schemas[2].fields[0].second);
 }

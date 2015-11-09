@@ -24,6 +24,9 @@ SOFTWARE.
 
 #include "json.h"
 
+#include "../Reflection/types.h"
+#include "../Reflection/reflection.h"
+
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace serialization_test {
@@ -283,6 +286,19 @@ TEST(Serialization, JSONExceptions) {
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ(std::string("Expected string for `z.s`, got: 0"), e.what());
   }
+}
+
+TEST(Serialization, StructSchema) {
+  using namespace serialization_test;
+  using current::reflection::Reflector;
+  using current::reflection::StructSchema;
+  using current::reflection::ReflectedType_Struct;
+
+  EXPECT_EQ(
+      "{\"type_id\":9201519070357365689,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"super_name\":"
+      "\"\",\"fields\":[[9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000003305690871,\"v\"],["
+      "9200483326952370863,\"z\"]]}",
+      JSON(StructSchema(Reflector().ReflectType<ComplexSerializable>())));
 }
 
 // TODO(dkorolev): Move this test outside `Serialization`.

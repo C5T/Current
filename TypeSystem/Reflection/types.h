@@ -34,6 +34,7 @@ SOFTWARE.
 #include <memory>
 
 #include "../base.h"
+#include "../struct.h"
 
 #include "../../Bricks/util/crc32.h"
 
@@ -44,17 +45,29 @@ constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
 constexpr uint64_t TYPEID_BASIC_TYPE = 900u * TYPEID_TYPE_RANGE;
 constexpr uint64_t TYPEID_STRUCT_TYPE = 920u * TYPEID_TYPE_RANGE;
 constexpr uint64_t TYPEID_VECTOR_TYPE = 931u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_MAP_TYPE = 932u * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_SET_TYPE = 932u * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_PAIR_TYPE = 933u * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_MAP_TYPE = 934u * TYPEID_TYPE_RANGE;
 
 enum class TypeID : uint64_t {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
+  INVALID_TYPE = 0u
 };
 
+struct TypeIDHash {
+  std::size_t operator()(const TypeID t) const { return static_cast<size_t>(t); }
+};
+
+inline bool IsTypeIDInRange(const TypeID type_id, const uint64_t id_range_base) {
+  return (static_cast<uint64_t>(type_id) >= id_range_base &&
+          static_cast<uint64_t>(type_id) < id_range_base + TYPEID_TYPE_RANGE);
+}
+
 struct ReflectedTypeImpl {
-  TypeID type_id;
+  TypeID type_id = TypeID::INVALID_TYPE;
   virtual std::string CppType() = 0;
   virtual std::string CppDeclaration() { return ""; }
   virtual ~ReflectedTypeImpl() = default;
@@ -62,7 +75,7 @@ struct ReflectedTypeImpl {
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
   struct ReflectedType_##current_type : ReflectedTypeImpl {                         \
-    TypeID type_id = TypeID::current_type;                                          \
+    ReflectedType_##current_type() { type_id = TypeID::current_type; }              \
     std::string CppType() override { return #cpp_type; }                            \
   };
 #include "../primitive_types.dsl.h"
@@ -95,24 +108,63 @@ struct ReflectedType_Map : ReflectedTypeImpl {
   }
 };
 
+struct ReflectedType_Pair : ReflectedTypeImpl {
+  constexpr static const char* cpp_typename = "std::pair";
+  ReflectedTypeImpl* reflected_first_type;
+  ReflectedTypeImpl* reflected_second_type;
+
+  std::string CppType() override {
+    assert(reflected_first_type);
+    assert(reflected_second_type);
+    std::ostringstream oss;
+    oss << cpp_typename << '<' << reflected_first_type->CppType() << ',' << reflected_second_type->CppType()
+        << '>';
+    return oss.str();
+  }
+};
+
 typedef std::vector<std::pair<ReflectedTypeImpl*, std::string>> StructFieldsVector;
 
 struct ReflectedType_Struct : ReflectedTypeImpl {
   std::string name;
-  // If struct is derived from another Current struct, `super_name` contains the base type name.
-  // Empty otherwise.
-  std::string super_name;
+  ReflectedType_Struct* reflected_super = nullptr;
   StructFieldsVector fields;
 
   std::string CppType() override { return name; }
 
   std::string CppDeclaration() override {
-    std::string result = "struct " + name + (super_name.empty() ? "" : " : " + super_name) + " {\n";
+    std::string result = "struct " + name + (reflected_super ? " : " + reflected_super->name : "") + " {\n";
     for (const auto& f : fields) {
       result += "  " + f.first->CppType() + " " + f.second + ";\n";
     }
     result += "};\n";
     return result;
+  }
+};
+
+CURRENT_STRUCT(StructSchema) {
+  CURRENT_FIELD(type_id, uint64_t, 0u);
+  CURRENT_FIELD(name, std::string, "");
+  CURRENT_FIELD(super_type_id, uint64_t, 0u);
+  CURRENT_FIELD(super_name, std::string, "");
+  using pair_id_name = std::pair<uint64_t, std::string>;
+  CURRENT_FIELD(fields, std::vector<pair_id_name>);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(StructSchema) {}
+  CURRENT_CONSTRUCTOR(StructSchema)(const ReflectedTypeImpl* r) {
+    const ReflectedType_Struct* reflected_struct = dynamic_cast<const ReflectedType_Struct*>(r);
+    if (reflected_struct != nullptr) {
+      type_id = static_cast<uint64_t>(reflected_struct->type_id);
+      name = reflected_struct->name;
+      const ReflectedType_Struct* super = reflected_struct->reflected_super;
+      if (super) {
+        super_type_id = static_cast<uint64_t>(super->type_id);
+        super_name = super->name;
+      }
+      for (const auto& f : reflected_struct->fields) {
+        fields.emplace_back(static_cast<uint64_t>(f.first->type_id), f.second);
+      }
+    }
   }
 };
 
@@ -128,6 +180,11 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
   return static_cast<TypeID>(TYPEID_VECTOR_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
+  return static_cast<TypeID>(
+      TYPEID_PAIR_TYPE + bricks::CRC32(v.reflected_first_type->CppType() + v.reflected_second_type->CppType()));
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
