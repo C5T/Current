@@ -168,28 +168,48 @@ CURRENT_STRUCT(StructSchema) {
   }
 };
 
+inline uint64_t rol64(const uint64_t value, const uint64_t nbits) {
+  return (value << nbits) | (value >> (-nbits & 63));
+}
+
+inline uint64_t rol64(const TypeID type_id, const uint64_t nbits) {
+  return rol64(static_cast<uint64_t>(type_id), nbits);
+}
+
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   uint64_t hash = bricks::CRC32(s.name);
   size_t i = 0u;
   for (const auto& f : s.fields) {
-    hash ^= (static_cast<uint64_t>(bricks::CRC32(f.second)) << 8) ^
-            (static_cast<uint64_t>(bricks::CRC32(f.first->CppType())) << (16 + (i++ % 17)));
+    assert(f.first);
+    assert(f.first->type_id != TypeID::INVALID_TYPE);
+    hash ^= rol64(f.first->type_id, i + 8) ^ rol64(bricks::CRC32(f.second), i + 16);
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  return static_cast<TypeID>(TYPEID_VECTOR_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
+  assert(v.reflected_element_type);
+  assert(v.reflected_element_type->type_id != TypeID::INVALID_TYPE);
+  return static_cast<TypeID>(TYPEID_VECTOR_TYPE +
+                             rol64(v.reflected_element_type->type_id, 1) % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
-  return static_cast<TypeID>(
-      TYPEID_PAIR_TYPE + bricks::CRC32(v.reflected_first_type->CppType() + v.reflected_second_type->CppType()));
+  assert(v.reflected_first_type);
+  assert(v.reflected_second_type);
+  assert(v.reflected_first_type->type_id != TypeID::INVALID_TYPE);
+  assert(v.reflected_second_type->type_id != TypeID::INVALID_TYPE);
+  uint64_t hash = rol64(v.reflected_first_type->type_id, 4) ^ rol64(v.reflected_second_type->type_id, 8);
+  return static_cast<TypeID>(TYPEID_PAIR_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
-  return static_cast<TypeID>(
-      TYPEID_MAP_TYPE + bricks::CRC32(v.reflected_key_type->CppType() + v.reflected_value_type->CppType()));
+  assert(v.reflected_key_type);
+  assert(v.reflected_value_type);
+  assert(v.reflected_key_type->type_id != TypeID::INVALID_TYPE);
+  assert(v.reflected_value_type->type_id != TypeID::INVALID_TYPE);
+  uint64_t hash = rol64(v.reflected_key_type->type_id, 4) ^ rol64(v.reflected_value_type->type_id, 8);
+  return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

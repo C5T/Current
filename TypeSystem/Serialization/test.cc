@@ -295,9 +295,9 @@ TEST(Serialization, StructSchema) {
   using current::reflection::ReflectedType_Struct;
 
   EXPECT_EQ(
-      "{\"type_id\":9201519070357365689,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"super_name\":"
-      "\"\",\"fields\":[[9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000003305690871,\"v\"],["
-      "9200483326952370863,\"z\"]]}",
+      "{\"type_id\":9200734974286293575,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"super_name\":"
+      "\"\",\"fields\":[[9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000000000000202,\"v\"],["
+      "9200278597787083695,\"z\"]]}",
       JSON(StructSchema(Reflector().ReflectType<ComplexSerializable>())));
 }
 

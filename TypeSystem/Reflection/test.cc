@@ -82,9 +82,9 @@ TEST(Reflection, TypeID) {
 
   // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   const ReflectedType_Struct& bar = dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<Bar>());
-  EXPECT_EQ(9310000001031372545ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
-  EXPECT_EQ(9310000003023971265ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
-  EXPECT_EQ(9310000000769980382ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(9310000000000000028ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
+  EXPECT_EQ(9317693294631279482ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
+  EXPECT_EQ(9318642515553007349ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {
@@ -252,7 +252,7 @@ TEST(Reflection, FullTypeSchema) {
   EXPECT_EQ(9000000000000000023ull, schema.struct_schemas[0].fields[0].first);
   EXPECT_EQ("i", schema.struct_schemas[0].fields[0].second);
   EXPECT_EQ("Y", schema.struct_schemas[1].name);
-  EXPECT_EQ(9310000003081909835ull, schema.struct_schemas[1].fields[0].first);
+  EXPECT_EQ(9317693294612922990ull, schema.struct_schemas[1].fields[0].first);
   EXPECT_EQ("v", schema.struct_schemas[1].fields[0].second);
   EXPECT_EQ("Z", schema.struct_schemas[2].name);
   EXPECT_EQ(9000000000000000032ull, schema.struct_schemas[2].fields[0].first);
