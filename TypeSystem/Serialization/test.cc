@@ -22,6 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// This `test.cc` file is `#include`-d from `../test.cc`, and thus needs a header guard.
+
+#ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
+#define CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
+
 #include "json.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -66,6 +71,12 @@ CURRENT_STRUCT(WithNontrivialMap) {
   // To dig into: http://stackoverflow.com/questions/13842468/comma-in-c-c-macro
   using map_serializable_string = std::map<Serializable, std::string>;  // Sigh. -- D.K.
   CURRENT_FIELD(q, map_serializable_string);
+};
+
+enum class MyMagicGUID : uint64_t {};
+CURRENT_STRUCT(WithEnumClass) {
+  CURRENT_FIELD(id1, MyMagicGUID);
+  CURRENT_FIELD(id2, MyMagicGUID, static_cast<MyMagicGUID>(1));
 };
 
 }  // namespace serialization_test
@@ -176,6 +187,18 @@ TEST(Serialization, JSON) {
     ASSERT_EQ(2u, parsed.q.size());
     EXPECT_EQ("prime", parsed.q.at(Serializable(3, "")));
     EXPECT_EQ("composite", parsed.q.at(Serializable(4, "")));
+  }
+
+  {
+    WithEnumClass with_enum_class;
+    EXPECT_EQ(1u, static_cast<uint64_t>(with_enum_class.id2));
+    with_enum_class.id1 = static_cast<MyMagicGUID>(101);
+    with_enum_class.id2 = static_cast<MyMagicGUID>(102);
+    EXPECT_EQ("{\"id1\":101,\"id2\":102}", JSON(with_enum_class));
+
+    const auto result = ParseJSON<WithEnumClass>("{\"id1\":201,\"id2\":202}");
+    EXPECT_EQ(201u, static_cast<uint64_t>(result.id1));
+    EXPECT_EQ(202u, static_cast<uint64_t>(result.id2));
   }
 }
 
@@ -298,13 +321,58 @@ TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
   }
 }
 
-TEST(Serialization, LOLWUT) {
+TEST(Serialization, JSONForCppTypes) {
   // RapidJSON requires the top-level node to be an array or object.
   // Thus, just `JSON(42)` or `JSON("foo")` doesn't work. But arrays do. ;-)
-  using namespace serialization_test;
+  EXPECT_EQ("true", JSON(true));
+  EXPECT_TRUE(ParseJSON<bool>("true"));
+  EXPECT_TRUE(ParseJSON<bool>("1"));
+
+  EXPECT_EQ("false", JSON(false));
+  EXPECT_FALSE(ParseJSON<bool>("false"));
+  EXPECT_FALSE(ParseJSON<bool>("0"));
+  EXPECT_FALSE(ParseJSON<bool>(""));
+
+  EXPECT_EQ("42", JSON(42));
+  EXPECT_EQ(42, ParseJSON<int>("42"));
+
+  EXPECT_EQ("forty two", JSON("forty two"));
+  EXPECT_EQ("forty two", ParseJSON<std::string>("forty two"));
+
+  EXPECT_EQ(std::string("a\0b", 3), JSON(std::string("a\0b", 3)));
+  EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>(std::string("c\0d", 3)));
+
+  EXPECT_EQ("[]", JSON(std::vector<uint64_t>()));
   EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
   EXPECT_EQ("[[\"one\",\"two\"],[\"three\",\"four\"]]",
             JSON(std::vector<std::vector<std::string>>({{"one", "two"}, {"three", "four"}})));
+  EXPECT_EQ(4u, ParseJSON<std::vector<std::vector<std::string>>>("[[],[],[],[]]").size());
+  EXPECT_EQ("blah", ParseJSON<std::vector<std::vector<std::string>>>("[[],[\"\",\"blah\"],[],[]]")[1][1]);
+
+  using map_int_int = std::map<int, int>;
+  using map_string_int = std::map<std::string, int>;
+  EXPECT_EQ("[]", JSON(map_int_int()));
+  EXPECT_EQ("{}", JSON(map_string_int()));
+
+  EXPECT_EQ(3u, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").size());
+  EXPECT_EQ(16, ParseJSON<map_int_int>("[[2,4],[3,9],[4,16]]").at(4));
+  ASSERT_THROW(ParseJSON<map_int_int>("{}"), JSONSchemaException);
+  try {
+    ParseJSON<map_int_int>("{}");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ("Expected map as array, got: {}", std::string(e.what()));
+  }
+
+  EXPECT_EQ(2u, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").size());
+  EXPECT_EQ(2, ParseJSON<map_string_int>("{\"a\":1,\"b\":2}").at("b"));
+  ASSERT_THROW(ParseJSON<map_string_int>("[]"), JSONSchemaException);
+  try {
+    ParseJSON<map_string_int>("[]");
+    ASSERT_TRUE(false);
+  } catch (const JSONSchemaException& e) {
+    EXPECT_EQ("Expected map as object, got: []", std::string(e.what()));
+  }
 }
 
 // RapidJSON examples framed as tests. One day we may wish to remove them. -- D.K.
@@ -413,3 +481,5 @@ TEST(RapidJSON, NullInString) {
               std::string(document["s"].GetString(), document["s"].GetStringLength()));
   }
 }
+
+#endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC

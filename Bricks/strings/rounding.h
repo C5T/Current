@@ -42,7 +42,7 @@ inline std::string RoundDoubleToString(double value, size_t n_digits) {
   const int dim = static_cast<int>(std::floor((std::log(value) / std::log(10.0)) + 1e-6));
   const double k = std::pow(10.0, static_cast<double>(dim - static_cast<int>(n_digits) + 1));
   std::ostringstream os;
-  os << k* std::round(value / k);
+  os << (k * std::round(value / k));
   return os.str();
 }
 
