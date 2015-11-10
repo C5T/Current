@@ -59,7 +59,7 @@ struct DefaultCloneImpl<T, false, false, true> {
 template <typename T>
 struct DefaultCloneImpl<T, false, false, false> {
   static std::function<T(const T&)> CloneImpl() {
-    return [](const T& t) { return ParseJSON<T>(JSON(t)); };
+    return [](const T& t) { return CerealizeParseJSON<T>(CerealizeJSON(t)); };
   }
 };
 

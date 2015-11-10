@@ -99,7 +99,7 @@ inline T_OUTPUT FromString(T_INPUT&& input) {
 }
 
 template <size_t N>
-constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const (&)[N]) {
+constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const(&)[N]) {
   return N - 1;
 }
 

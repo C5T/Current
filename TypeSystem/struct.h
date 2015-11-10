@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_REFLECTION_STRUCT_H
-#define CURRENT_REFLECTION_STRUCT_H
+#ifndef CURRENT_TYPE_SYSTEM_STRUCT_H
+#define CURRENT_TYPE_SYSTEM_STRUCT_H
 
 #include <memory>
 #include <type_traits>
@@ -153,7 +153,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     f(#name, name);                                                                                            \
   }
 
-#define CURRENT_RETURNS(RETURN_TYPE)                                                                                  \
+#define CURRENT_RETURNS(RETURN_TYPE)                                                                          \
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE>                                            \
   typename std::enable_if<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, \
                           RETURN_TYPE>::type
@@ -239,4 +239,4 @@ struct VisitAllFields {
 }  // namespace reflection
 }  // namespace current
 
-#endif  // CURRENT_REFLECTION_STRUCT_H
+#endif  // CURRENT_TYPE_SYSTEM_STRUCT_H

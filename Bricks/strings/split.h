@@ -153,20 +153,20 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
   Split(s,
         std::forward<T_FIELDS_SEPARATOR>(fields_separator),
         [&result, &key_value_separator, &throw_mode](std::string&& key_and_value_as_one_string) {
-    const std::vector<std::string> key_and_value =
-        Split(key_and_value_as_one_string, std::forward<T_KEY_VALUE_SEPARATOR>(key_value_separator));
-    if (key_and_value.size() >= 2) {
-      if (key_and_value.size() == 2) {
-        result.emplace_back(key_and_value[0], key_and_value[1]);
-      } else if (throw_mode == KeyValueParsing::Throw) {
-        BRICKS_THROW(KeyValueMultipleValuesException());
-      }
-    } else {
-      if (throw_mode == KeyValueParsing::Throw) {
-        BRICKS_THROW(KeyValueNoValueException());
-      }
-    }
-  });
+          const std::vector<std::string> key_and_value =
+              Split(key_and_value_as_one_string, std::forward<T_KEY_VALUE_SEPARATOR>(key_value_separator));
+          if (key_and_value.size() >= 2) {
+            if (key_and_value.size() == 2) {
+              result.emplace_back(key_and_value[0], key_and_value[1]);
+            } else if (throw_mode == KeyValueParsing::Throw) {
+              BRICKS_THROW(KeyValueMultipleValuesException());
+            }
+          } else {
+            if (throw_mode == KeyValueParsing::Throw) {
+              BRICKS_THROW(KeyValueNoValueException());
+            }
+          }
+        });
   return result;
 }
 

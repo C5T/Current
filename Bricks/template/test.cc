@@ -138,6 +138,6 @@ TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
 
   static_assert(std::is_same<indexes<>, generate_indexes<0>>::value, "");
   static_assert(std::is_same<indexes<0>, generate_indexes<1>>::value, "");
-  static_assert(std::is_same<indexes<0,1>, generate_indexes<2>>::value, "");
-  static_assert(std::is_same<indexes<0,1,2>, generate_indexes<3>>::value, "");
+  static_assert(std::is_same<indexes<0, 1>, generate_indexes<2>>::value, "");
+  static_assert(std::is_same<indexes<0, 1, 2>, generate_indexes<3>>::value, "");
 }

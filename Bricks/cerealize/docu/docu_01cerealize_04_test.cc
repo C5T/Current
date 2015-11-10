@@ -92,16 +92,16 @@ using strings::Printf;
   
 TEST(Docu, Cereal04) {
   const std::string json_int =
-    JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
+    CerealizeJSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
   
   const std::string json_double =
-    JSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
+    CerealizeJSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
   
   EXPECT_EQ("int, 42",
-            ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
+            CerealizeParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
   
   EXPECT_EQ("double, 3.141593",
-            ParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
+            CerealizeParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
 }
 
 #endif  // BRICKS_CEREALIZE_DOCU_01CEREALIZE_04_TEST_CC

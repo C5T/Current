@@ -24,7 +24,7 @@ SOFTWARE.
 
 #include "json.h"
 
-#include "../3rdparty/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main.h"
 
 namespace serialization_test {
 
@@ -100,7 +100,7 @@ TEST(Serialization, JSON) {
     EXPECT_EQ(42ull, b.z.i);
     EXPECT_EQ("foo", b.z.s);
 
-    ASSERT_THROW(ParseJSON<ComplexSerializable>("not a json"), ParseJSONException);
+    ASSERT_THROW(ParseJSON<ComplexSerializable>("not a json"), InvalidJSONException);
   }
 
   // Complex serialization makes a copy.

@@ -63,7 +63,8 @@ TEST(Yoda, WritesToFile) {
     auto adder = Dictionary<YodaEntryToPersist>::Mutator(data);
     adder.Add(YodaEntryToPersist("one", 1));
     adder.Add(YodaEntryToPersist("two", 2));
-  }).Wait();;
+  }).Wait();
+  ;
   while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
     ;  // Spin lock.
   }

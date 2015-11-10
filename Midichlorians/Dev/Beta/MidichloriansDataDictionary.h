@@ -58,7 +58,7 @@ struct MidichloriansEvent {
   virtual std::string EventAsString(const std::string& device_id, const std::string& client_id) const {
     SetDeviceId(device_id);
     SetClientId(client_id);
-    return JSON(WithBaseType<MidichloriansEvent>(*this));
+    return CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));
   }
 };
 
@@ -77,7 +77,7 @@ struct MidichloriansEvent {
     virtual std::string EventAsString(const std::string& did, const std::string& cid) const override { \
       SetDeviceId(did);                                                                                \
       SetClientId(cid);                                                                                \
-      return JSON(WithBaseType<MidichloriansEvent>(*this));                                            \
+      return CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));                                            \
     }                                                                                                  \
     template <class A>                                                                                 \
     void serialize(A& ar) {                                                                            \

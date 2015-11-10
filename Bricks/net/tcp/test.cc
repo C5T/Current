@@ -78,11 +78,15 @@ static void ExpectFromSocket(const std::string& golden,
                              const string& host,
                              const uint16_t port,
                              const string& message_to_send_from_client = "") {
-  ExpectFromSocket(golden, server_thread, host, port, [&message_to_send_from_client](Connection& connection) {
-    if (!message_to_send_from_client.empty()) {
-      connection.BlockingWrite(message_to_send_from_client, false);
-    }
-  });
+  ExpectFromSocket(golden,
+                   server_thread,
+                   host,
+                   port,
+                   [&message_to_send_from_client](Connection& connection) {
+                     if (!message_to_send_from_client.empty()) {
+                       connection.BlockingWrite(message_to_send_from_client, false);
+                     }
+                   });
 }
 
 static void ExpectFromSocket(const std::string& golden,
@@ -111,12 +115,11 @@ TEST(TCPTest, ReceiveMessageOfTwoParts) {
 
 TEST(TCPTest, ReceiveDelayedMessage) {
   thread server([](Socket socket) {
-                  Connection connection = socket.Accept();
-                  connection.BlockingWrite("BLA", true);
-                  sleep_for(milliseconds(1));
-                  connection.BlockingWrite("H", false);
-                },
-                Socket(FLAGS_net_tcp_test_port));
+    Connection connection = socket.Accept();
+    connection.BlockingWrite("BLA", true);
+    sleep_for(milliseconds(1));
+    connection.BlockingWrite("H", false);
+  }, Socket(FLAGS_net_tcp_test_port));
   Connection client(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   char response[5] = "????";
   ASSERT_EQ(4u, client.BlockingRead(response, 4, Connection::FillFullBuffer));
@@ -126,14 +129,13 @@ TEST(TCPTest, ReceiveDelayedMessage) {
 
 TEST(TCPTest, ReceiveMessageAsResponse) {
   thread server([](Socket socket) {
-                  Connection connection = socket.Accept();
-                  connection.BlockingWrite("{", true);
-                  char buffer[2];  // Wait for three incoming bytes before sending data out.
-                  ASSERT_EQ(2u, connection.BlockingRead(buffer, 2, Connection::FillFullBuffer));
-                  connection.BlockingWrite(buffer, 2, true);
-                  connection.BlockingWrite("}", false);
-                },
-                Socket(FLAGS_net_tcp_test_port));
+    Connection connection = socket.Accept();
+    connection.BlockingWrite("{", true);
+    char buffer[2];  // Wait for three incoming bytes before sending data out.
+    ASSERT_EQ(2u, connection.BlockingRead(buffer, 2, Connection::FillFullBuffer));
+    connection.BlockingWrite(buffer, 2, true);
+    connection.BlockingWrite("}", false);
+  }, Socket(FLAGS_net_tcp_test_port));
   Connection client(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   client.BlockingWrite("!?", false);
   char response[5] = "????";
@@ -144,12 +146,11 @@ TEST(TCPTest, ReceiveMessageAsResponse) {
 
 TEST(TCPTest, CanNotUseMovedAwayConnection) {
   thread server([](Socket socket) {
-                  Connection connection = socket.Accept();
-                  char buffer[3];  // Wait for three incoming bytes before sending data out.
-                  ASSERT_EQ(3u, connection.BlockingRead(buffer, 3, Connection::FillFullBuffer));
-                  connection.BlockingWrite("OK", false);
-                },
-                Socket(FLAGS_net_tcp_test_port));
+    Connection connection = socket.Accept();
+    char buffer[3];  // Wait for three incoming bytes before sending data out.
+    ASSERT_EQ(3u, connection.BlockingRead(buffer, 3, Connection::FillFullBuffer));
+    connection.BlockingWrite("OK", false);
+  }, Socket(FLAGS_net_tcp_test_port));
   Connection old_connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   old_connection.BlockingWrite("1", true);
   Connection new_connection(std::move(old_connection));
@@ -166,55 +167,50 @@ TEST(TCPTest, CanNotUseMovedAwayConnection) {
 TEST(TCPTest, ReceiveMessageOfTwoUInt16) {
   // Note: This tests endianness as well -- D.K.
   thread server_thread([](Socket socket) {
-                         socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233}, false);
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
+    socket.Accept().BlockingWrite(vector<uint16_t>{0x3031, 0x3233}, false);
+  }, Socket(FLAGS_net_tcp_test_port));
   ExpectFromSocket("1032", server_thread);
 }
 
 TEST(TCPTest, EchoMessage) {
   thread server_thread([](Socket socket) {
-                         Connection connection(socket.Accept());
-                         std::vector<char> s(7);
-                         ASSERT_EQ(s.size(),
-                                   connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
-                         connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
+    Connection connection(socket.Accept());
+    std::vector<char> s(7);
+    ASSERT_EQ(s.size(), connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
+    connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
+  }, Socket(FLAGS_net_tcp_test_port));
   ExpectFromSocket("ECHO: TEST OK", server_thread, std::string("TEST OK"));
 }
 
 TEST(TCPTest, EchoThreeMessages) {
   thread server_thread([](Socket socket) {
-                         const size_t block_length = 3;
-                         string s(block_length, ' ');
-                         Connection connection(socket.Accept());
-                         for (int i = 0; i < 3; ++i) {
-                           ASSERT_EQ(block_length,
-                                     connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer));
-                           connection.BlockingWrite(i > 0 ? "," : "ECHO: ", true);
-                           connection.BlockingWrite(s, false);
-                         }
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
-  ExpectFromSocket("ECHO: FOO,BAR,BAZ", server_thread, [](Connection& connection) {
-    connection.BlockingWrite("FOOBARB", true);
-    sleep_for(milliseconds(1));
-    connection.BlockingWrite("A", true);
-    sleep_for(milliseconds(1));
-    connection.BlockingWrite("Z", false);
-  });
+    const size_t block_length = 3;
+    string s(block_length, ' ');
+    Connection connection(socket.Accept());
+    for (int i = 0; i < 3; ++i) {
+      ASSERT_EQ(block_length, connection.BlockingRead(&s[0], block_length, Connection::FillFullBuffer));
+      connection.BlockingWrite(i > 0 ? "," : "ECHO: ", true);
+      connection.BlockingWrite(s, false);
+    }
+  }, Socket(FLAGS_net_tcp_test_port));
+  ExpectFromSocket("ECHO: FOO,BAR,BAZ",
+                   server_thread,
+                   [](Connection& connection) {
+                     connection.BlockingWrite("FOOBARB", true);
+                     sleep_for(milliseconds(1));
+                     connection.BlockingWrite("A", true);
+                     sleep_for(milliseconds(1));
+                     connection.BlockingWrite("Z", false);
+                   });
 }
 
 TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
   thread server_thread([](Socket socket) {
-                         Connection connection(socket.Accept());
-                         std::vector<char> s(10000);
-                         ASSERT_EQ(s.size(),
-                                   connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
-                         connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
+    Connection connection(socket.Accept());
+    std::vector<char> s(10000);
+    ASSERT_EQ(s.size(), connection.BlockingRead(&s[0], s.size(), Connection::FillFullBuffer));
+    connection.BlockingWrite("ECHO: " + std::string(s.begin(), s.end()), false);
+  }, Socket(FLAGS_net_tcp_test_port));
   std::string message;
   for (size_t i = 0; i < 10000; ++i) {
     message += '0' + (i % 10);
@@ -252,12 +248,11 @@ TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
 // Temporary disabled for Apple -- M.Z.
 TEST(TCPTest, WriteExceptionWhileWritingAVeryLongMessage) {
   thread server_thread([](Socket socket) {
-                         Connection connection(socket.Accept());
-                         char buffer[3];
-                         connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
-                         connection.BlockingWrite("Done, thanks.\n", false);
-                       },
-                       Socket(FLAGS_net_tcp_test_port));
+    Connection connection(socket.Accept());
+    char buffer[3];
+    connection.BlockingRead(buffer, 3, Connection::FillFullBuffer);
+    connection.BlockingWrite("Done, thanks.\n", false);
+  }, Socket(FLAGS_net_tcp_test_port));
   // Attempt to send a very long message to ensure it does not fit OS buffers.
   Connection connection(ClientSocket("localhost", FLAGS_net_tcp_test_port));
   ASSERT_THROW(connection.BlockingWrite(std::vector<char>(10 * 1000 * 1000, '!'), true),

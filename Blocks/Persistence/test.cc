@@ -237,11 +237,12 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   std::vector<std::string> results;
   size_t counter = 0u;
   bricks::WaitableTerminateSignal stop;
-  test_clone.SyncScanAllEntries(stop, [&results, &counter](std::unique_ptr<BASE>&& e) {
-    results.push_back(e->AsString());
-    ++counter;
-    return counter < 2u;
-  });
+  test_clone.SyncScanAllEntries(stop,
+                                [&results, &counter](std::unique_ptr<BASE>&& e) {
+                                  results.push_back(e->AsString());
+                                  ++counter;
+                                  return counter < 2u;
+                                });
 
   EXPECT_EQ(2u, counter);
   EXPECT_EQ("A0,B0", Join(results, ","));
