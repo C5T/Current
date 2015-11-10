@@ -26,8 +26,11 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_STRUCT_H
 #define CURRENT_TYPE_SYSTEM_STRUCT_H
 
+#include <map>
 #include <memory>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 #include "base.h"
 

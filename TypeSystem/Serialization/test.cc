@@ -37,6 +37,8 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s) : i(i), s(s) {}
 
   CURRENT_RETURNS(uint64_t) twice_i() const { return i + i; }
+
+  CURRENT_RETURNS(bool)operator<(const Serializable& rhs) const { return i < rhs.i; }
 };
 
 CURRENT_STRUCT(ComplexSerializable) {
@@ -53,6 +55,17 @@ CURRENT_STRUCT(ComplexSerializable) {
   }
 
   CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
+};
+
+CURRENT_STRUCT(WithTrivialMap) {
+  using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
+  CURRENT_FIELD(m, map_string_string);
+};
+
+CURRENT_STRUCT(WithNontrivialMap) {
+  // To dig into: http://stackoverflow.com/questions/13842468/comma-in-c-c-macro
+  using map_serializable_string = std::map<Serializable, std::string>;  // Sigh. -- D.K.
+  CURRENT_FIELD(q, map_serializable_string);
 };
 
 }  // namespace serialization_test
@@ -104,10 +117,66 @@ TEST(Serialization, JSON) {
   }
 
   // Complex serialization makes a copy.
-  simple_object.i = -1000;
+  simple_object.i = 1000;
   EXPECT_EQ(42ull, complex_object.z.i);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
             JSON(complex_object));
+
+  // Serializing an `std::map<>` with simple key type, which becomes a JSON object.
+  {
+    WithTrivialMap with_map;
+    EXPECT_EQ("{\"m\":{}}", JSON(with_map));
+    with_map.m["foo"] = "fizz";
+    with_map.m["bar"] = "buzz";
+    EXPECT_EQ("{\"m\":{\"bar\":\"buzz\",\"foo\":\"fizz\"}}", JSON(with_map));
+  }
+  {
+    const auto parsed = ParseJSON<WithTrivialMap>("{\"m\":{}}");
+    ASSERT_TRUE(parsed.m.empty());
+  }
+  {
+    try {
+      ParseJSON<WithTrivialMap>("{\"m\":[]}");
+      ASSERT_TRUE(false);
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected map as object for `m`, got: []"), e.what());
+    }
+  }
+  {
+    const auto parsed = ParseJSON<WithTrivialMap>("{\"m\":{\"spock\":\"LLandP\",\"jedi\":\"MTFBWY\"}}");
+    ASSERT_EQ(2u, parsed.m.size());
+    EXPECT_EQ("LLandP", parsed.m.at("spock"));
+    EXPECT_EQ("MTFBWY", parsed.m.at("jedi"));
+  }
+  // Serializing an `std::map<>` with complex key type, which becomes a JSON array of arrays.
+  {
+    WithNontrivialMap with_nontrivial_map;
+    EXPECT_EQ("{\"q\":[]}", JSON(with_nontrivial_map));
+    with_nontrivial_map.q[simple_object] = "wow";
+    EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\"},\"wow\"]]}", JSON(with_nontrivial_map));
+    with_nontrivial_map.q[Serializable(1, "one")] = "yes";
+    EXPECT_EQ("{\"q\":[[{\"i\":1,\"s\":\"one\"},\"yes\"],[{\"i\":1000,\"s\":\"foo\"},\"wow\"]]}",
+              JSON(with_nontrivial_map));
+  }
+  {
+    const auto parsed = ParseJSON<WithNontrivialMap>("{\"q\":[]}");
+    ASSERT_TRUE(parsed.q.empty());
+  }
+  {
+    try {
+      ParseJSON<WithNontrivialMap>("{\"q\":{}}");
+      ASSERT_TRUE(false);
+    } catch (const JSONSchemaException& e) {
+      EXPECT_EQ(std::string("Expected map as array for `q`, got: {}"), e.what());
+    }
+  }
+  {
+    const auto parsed = ParseJSON<WithNontrivialMap>(
+        "{\"q\":[[{\"i\":3,\"s\":\"three\"},\"prime\"],[{\"i\":4,\"s\":\"four\"},\"composite\"]]}");
+    ASSERT_EQ(2u, parsed.q.size());
+    EXPECT_EQ("prime", parsed.q.at(Serializable(3, "")));
+    EXPECT_EQ("composite", parsed.q.at(Serializable(4, "")));
+  }
 }
 
 TEST(Serialization, JSONExceptions) {
@@ -150,10 +219,10 @@ TEST(Serialization, JSONExceptions) {
   }
 
   try {
-    ParseJSON<Serializable>("{\"i\":42}");
+    ParseJSON<Serializable>("{\"i\":100}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected string, got: {\"s\":null}"), e.what());
+    EXPECT_EQ(std::string("Expected value for `s`, got: {\"i\":100}"), e.what());
   }
 
   try {
@@ -221,7 +290,7 @@ TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
   using namespace serialization_test;
   {
     Serializable simple_object(1, "foo");
-    EXPECT_EQ(2, simple_object.twice_i());
+    EXPECT_EQ(2u, simple_object.twice_i());
   }
   {
     ComplexSerializable complex_object('a', 'c');

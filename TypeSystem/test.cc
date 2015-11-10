@@ -27,6 +27,9 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
+#include "Reflection/test.cc"
+#include "Serialization/test.cc"
+
 namespace struct_definition_test {
 
 // A few properly defined Current data types.
@@ -35,6 +38,10 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
+  typedef std::map<std::string, std::string> map_string_string;  // Sigh. -- D.K.
+  CURRENT_FIELD(v4, map_string_string);
+  typedef std::map<Foo, int> map_foo_int;  // Sigh. -- D.K.
+  CURRENT_FIELD(v5, map_foo_int);
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 

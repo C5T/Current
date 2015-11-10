@@ -38,6 +38,8 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
+  using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
+  CURRENT_FIELD(v4, map_string_string);
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -59,6 +61,7 @@ TEST(Reflection, DescribeCppStruct) {
       "  std::vector<uint64_t> v1;\n"
       "  std::vector<Foo> v2;\n"
       "  std::vector<std::vector<Foo>> v3;\n"
+      "  std::map<std::string,std::string> v4;\n"
       "};\n",
       Reflector().DescribeCppStruct<Bar>());
 
@@ -68,7 +71,7 @@ TEST(Reflection, DescribeCppStruct) {
       "};\n",
       Reflector().DescribeCppStruct<DerivedFromFoo>());
 
-  EXPECT_EQ(7u, Reflector().KnownTypesCountForUnitTest());
+  EXPECT_EQ(9u, Reflector().KnownTypesCountForUnitTest());
 }
 
 TEST(Reflection, TypeID) {
@@ -77,9 +80,9 @@ TEST(Reflection, TypeID) {
 
   // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   const ReflectedType_Struct& bar = dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<Bar>());
-  EXPECT_EQ(9010000001031372545ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
-  EXPECT_EQ(9010000003023971265ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
-  EXPECT_EQ(9010000000769980382ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(9310000001031372545ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
+  EXPECT_EQ(9310000003023971265ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
+  EXPECT_EQ(9310000000769980382ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {
@@ -106,7 +109,7 @@ TEST(Reflection, CurrentStructInternals) {
   EXPECT_EQ(123u, foo.i);
 
   static_assert(std::is_same<SuperType<Bar>, CurrentSuper>::value, "");
-  EXPECT_EQ(3u, FieldCounter<Bar>::value);
+  EXPECT_EQ(4u, FieldCounter<Bar>::value);
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
 }
