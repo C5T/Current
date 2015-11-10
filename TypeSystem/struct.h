@@ -33,6 +33,7 @@ SOFTWARE.
 #include <vector>
 
 #include "base.h"
+#include "optional.h"
 
 #include "../Bricks/template/variadic_indexes.h"
 

@@ -22,11 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Current-friendly data manipulation types:
-//
-// * bool Exists(x) : non-throwing, always `true` for non-optionals.
-// * T Value(x)     : can throw `NoValue` if and only if `Exists(x)` is `false`.
-//
 // Current-friendly container types.
 //
 // * Vector<T> <=> std::vector<T>
@@ -47,8 +42,8 @@ SOFTWARE.
 //
 // Only allow default constructors for containers.
 
-#ifndef PSYKHANOOL_H
-#define PSYKHANOOL_H
+#ifndef CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
+#define CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
 
 #include <fstream>
 #include <vector>
@@ -56,58 +51,16 @@ SOFTWARE.
 #include <utility>
 
 #include "sfinae.h"
+#include "../TypeSystem/optional.h"
 
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/cerealize/cerealize.h"
 
-namespace PSYKHANOOL {
-
-struct NoValueException : std::exception {};
-typedef const NoValueException& NoValue;
+namespace current {
 
 struct CannotPopBackFromEmptyVectorException : std::exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
-
-template <typename T>
-class ImmutableOptional final {
- public:
-  ImmutableOptional() = delete;
-  ImmutableOptional(const T* object) : optional_object_(object) {}
-  ImmutableOptional(std::unique_ptr<T>&& rhs)
-      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  bool Exists() const { return optional_object_ != nullptr; }
-  const T& Value() const {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueException();  // TBD: Derived detailed exception type.
-    }
-  }
-
- private:
-  std::unique_ptr<T> owned_optional_object_;
-  const T* optional_object_;
-};
-
-template <typename T>
-class MutableOptional final {
- public:
-  MutableOptional() = delete;
-  MutableOptional(T* object) : optional_object_(object) {}
-  // TODO(dkorolev): Think of how does passing in an `std::unique_ptr<T>&&` blend in.
-  bool Exists() const { return optional_object_ != nullptr; }
-  T& Value() {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueException();  // TBD: Derived detailed exception type.
-    }
-  }
-
- private:
-  T* optional_object_;
-};
 
 template <typename T>
 class VectorStorage {
@@ -122,15 +75,6 @@ class VectorAPI : protected VectorStorage<T> {
 
   bool Empty() const { return VectorStorage<T>::vector_.empty(); }
   size_t Size() const { return VectorStorage<T>::vector_.size(); }
-
-  // TODO(dkorolev): This should not be here, since persistence would not happen!
-  typename PERSISTER::MutableOptionalType operator[](size_t index) {
-    if (index < VectorStorage<T>::vector_.size()) {
-      return typename PERSISTER::MutableOptionalType(&VectorStorage<T>::vector_[index]);
-    } else {
-      return typename PERSISTER::MutableOptionalType(nullptr);
-    }
-  }
 
   typename PERSISTER::ImmutableOptionalType operator[](size_t index) const {
     if (index < VectorStorage<T>::vector_.size()) {
@@ -176,15 +120,6 @@ class OrderedDictionaryAPI : protected OrderedDictionaryStorage<T> {
 
   bool Empty() const { return OrderedDictionaryStorage<T>::map_.empty(); }
   size_t Size() const { return OrderedDictionaryStorage<T>::map_.size(); }
-
-  typename PERSISTER::MutableOptionalType operator[](sfinae::CF<T_KEY> key) {
-    auto iterator = OrderedDictionaryStorage<T>::map_.find(key);
-    if (iterator != OrderedDictionaryStorage<T>::map_.end()) {
-      return typename PERSISTER::MutableOptionalType(&iterator->second);
-    } else {
-      return typename PERSISTER::MutableOptionalType(nullptr);
-    }
-  }
 
   typename PERSISTER::ImmutableOptionalType operator[](sfinae::CF<T_KEY> key) const {
     const auto iterator = OrderedDictionaryStorage<T>::map_.find(key);
@@ -380,7 +315,6 @@ struct InMemory final {
   template <typename T>
   class VectorPersister {
    public:
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     VectorPersister(const std::string&, Instance&, VectorStorage<T>&) {}
@@ -394,14 +328,12 @@ struct InMemory final {
    public:
     using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     OrderedDictionaryPersister(const std::string&, Instance&, OrderedDictionaryStorage<T>&) {}
 
     void PersistInsert(const T&) {}
-    template <typename X>
-    void PersistErase(X&&) {}  // `sfinae::CF<T_KEY>` results in a SEGFAULT in `clang++`. Takie dela. -- D.K.
+    void PersistErase(sfinae::CF<T_KEY>) {}
   };
 
   template <typename T>
@@ -410,7 +342,6 @@ struct InMemory final {
     using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
     using T_COL = sfinae::ENTRY_COL_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     LightweightMatrixPersister(const std::string&, Instance&, LightweightMatrixStorage<T>&) {}
@@ -474,7 +405,6 @@ struct ReplayFromAndAppendToFile final {
   template <typename T>
   class VectorPersister {
    public:
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     VectorPersister(const std::string& name, Instance& instance, VectorStorage<T>& storage)
@@ -514,7 +444,6 @@ struct ReplayFromAndAppendToFile final {
    public:
     using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     OrderedDictionaryPersister(const std::string& name,
@@ -548,7 +477,6 @@ struct ReplayFromAndAppendToFile final {
     using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
     using T_COL = sfinae::ENTRY_COL_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     LightweightMatrixPersister(const std::string& name,
@@ -611,64 +539,16 @@ class LightweightMatrix final
         POLICY::template LightweightMatrixPersister<T>(name, instance, *this) {}
 };
 
-template <typename T>
-bool Exists(const T&) {
-  return true;
-}
+}  // namespace current
 
-template <typename T>
-const T& Value(const T& x) {
-  return x;
-}
+using current::Vector;
+using current::OrderedDictionary;
+using current::LightweightMatrix;
 
-template <typename T>
-T& Value(T& x) {
-  return x;
-}
+using current::InMemory;
+using current::ReplayFromAndAppendToFile;
 
-template <typename T>
-bool Exists(const ImmutableOptional<T>& x) {
-  return x.Exists();
-}
+using current::CannotPopBackFromEmptyVector;
+using current::CannotPopBackFromEmptyVectorException;
 
-template <typename T>
-bool Exists(const MutableOptional<T>& x) {
-  return x.Exists();
-}
-
-template <typename T>
-const T& Value(const ImmutableOptional<T>& x) {
-  return x.Value();
-}
-
-template <typename T>
-T& Value(MutableOptional<T>& x) {
-  return x.Value();
-}
-
-template <typename T>
-T& Value(MutableOptional<T> x) {
-  return x.Value();
-}
-
-}  // namespace PSYKHANOOL
-
-using PSYKHANOOL::ImmutableOptional;
-using PSYKHANOOL::MutableOptional;
-
-using PSYKHANOOL::Vector;
-using PSYKHANOOL::OrderedDictionary;
-using PSYKHANOOL::LightweightMatrix;
-
-using PSYKHANOOL::InMemory;
-using PSYKHANOOL::ReplayFromAndAppendToFile;
-
-using PSYKHANOOL::NoValue;
-using PSYKHANOOL::NoValueException;
-using PSYKHANOOL::CannotPopBackFromEmptyVector;
-using PSYKHANOOL::CannotPopBackFromEmptyVectorException;
-
-using PSYKHANOOL::Exists;
-using PSYKHANOOL::Value;
-
-#endif  // PSYKHANOOL_H
+#endif  // CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H

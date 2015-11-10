@@ -22,17 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "PSYKHANOOL.h"
+#include "storage.h"
 
 #include "../Bricks/file/file.h"
 #include "../Bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_string(PSYKHANOOL_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
+DEFINE_string(transactional_storage_test_tmpdir,
+              ".current",
+              "Local path for the test to create temporary files in.");
 
 #define USE_KEY_METHODS
 
-namespace PSYKHANOOL_test {
+namespace transactional_storage_test {
 
 struct Element final {
   int x;
@@ -96,14 +98,14 @@ struct Cell final {
   }
 };
 
-}  // namespace PSYKHANOOL_test
+}  // namespace transactional_storage_test
 
 // TODO(dkorolev): Make the following work.
 //
 //   DATABASE(UnitTestStorage) {
-//     TABLE(v ,Vector<PSYKHANOOL_test::Element>);
-//     TABLE(d, OrderedDictionary<PSYKHANOOL_test::Record>);
-//     TABLE(m, LightweightMatrix<PSYKHANOOL_test::Cell>);
+//     TABLE(v ,Vector<transactional_storage_test::Element>);
+//     TABLE(d, OrderedDictionary<transactional_storage_test::Record>);
+//     TABLE(m, LightweightMatrix<transactional_storage_test::Cell>);
 //   };
 //   // F*ck yeah!
 //
@@ -115,9 +117,9 @@ struct UnitTestStorage final {
 
   // The initialization with `{instance}` works on both clang++ and g++,
   // and respects initialization order. -- D.K.
-  Vector<PSYKHANOOL_test::Element, POLICY> v{"v", instance};
-  OrderedDictionary<PSYKHANOOL_test::Record, POLICY> d{"d", instance};
-  LightweightMatrix<PSYKHANOOL_test::Cell, POLICY> m{"m", instance};
+  Vector<transactional_storage_test::Element, POLICY> v{"v", instance};
+  OrderedDictionary<transactional_storage_test::Record, POLICY> d{"d", instance};
+  LightweightMatrix<transactional_storage_test::Cell, POLICY> m{"m", instance};
 
   template <typename... ARGS>
   UnitTestStorage(ARGS&&... args)
@@ -130,7 +132,7 @@ struct UnitTestStorage final {
 // plus leave some entries hanging upon exit to unit-test the persistence layer.
 template <typename POLICY>
 void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = false) {
-  using namespace PSYKHANOOL_test;
+  using namespace transactional_storage_test;
 
   // Test the logic of `Vector`.
   EXPECT_TRUE(storage.v.Empty());
@@ -311,13 +313,14 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   }
 }
 
-TEST(PSYKHANOOL, InMemory) {
+TEST(TransactionalStorage, InMemory) {
   UnitTestStorage<InMemory> in_memory;
   RunUnitTest(in_memory);
 }
 
-TEST(PSYKHANOOL, OnDisk) {
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_PSYKHANOOL_test_tmpdir, "data");
+TEST(TransactionalStorage, OnDisk) {
+  const std::string persistence_file_name =
+      bricks::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
