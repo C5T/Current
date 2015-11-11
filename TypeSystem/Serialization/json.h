@@ -345,6 +345,17 @@ struct LoadFromJSONImpl<std::vector<T>> {
   }
 };
 
+template <typename TF, typename TS>
+struct LoadFromJSONImpl<std::pair<TF, TS>> {
+  static void Load(rapidjson::Value& source, std::pair<TF, TS>& destination, const std::string& path) {
+    if (!source.IsArray() || source.Size() != 2u) {
+      throw JSONSchemaException("pair as array", source, path);
+    }
+    LoadFromJSONImpl<TF>::Load(source[static_cast<rapidjson::SizeType>(0)], destination.first, path);
+    LoadFromJSONImpl<TS>::Load(source[static_cast<rapidjson::SizeType>(1)], destination.second, path);
+  }
+};
+
 template <typename TK, typename TV>
 struct LoadFromJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>

@@ -65,6 +65,11 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
+CURRENT_STRUCT(WithVectorOfPairs) {
+  using pair_int32_string = std::pair<int32_t, std::string>;
+  CURRENT_FIELD(v, std::vector<pair_int32_string>);
+};
+
 CURRENT_STRUCT(WithTrivialMap) {
   using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
   CURRENT_FIELD(m, map_string_string);
@@ -135,6 +140,24 @@ TEST(Serialization, JSON) {
   EXPECT_EQ(42ull, complex_object.z.i);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
             JSON(complex_object));
+
+  // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
+  {
+    WithVectorOfPairs with_vector_of_pairs;
+    with_vector_of_pairs.v.emplace_back(-1, "foo");
+    with_vector_of_pairs.v.emplace_back(1, "bar");
+    EXPECT_EQ("{\"v\":[[-1,\"foo\"],[1,\"bar\"]]}", JSON(with_vector_of_pairs));
+  }
+  {
+    const auto parsed = ParseJSON<WithVectorOfPairs>("{\"v\":[[-1,\"foo\"],[-2,\"bar\"],[100,\"baz\"]]}");
+    ASSERT_EQ(3u, parsed.v.size());
+    EXPECT_EQ(-1, parsed.v[0].first);
+    EXPECT_EQ("foo", parsed.v[0].second);
+    EXPECT_EQ(-2, parsed.v[1].first);
+    EXPECT_EQ("bar", parsed.v[1].second);
+    EXPECT_EQ(100, parsed.v[2].first);
+    EXPECT_EQ("baz", parsed.v[2].second);
+  }
 
   // Serializing an `std::map<>` with simple key type, which becomes a JSON object.
   {
