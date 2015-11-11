@@ -25,28 +25,27 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
 
-#include <unordered_set>
-
-#include "types.h"
 #include "reflection.h"
+
+#include "../../Bricks/strings/strings.h"
 
 namespace current {
 namespace reflection {
 
-CURRENT_STRUCT(TypeSchema) {
+CURRENT_STRUCT(TypeInfo) {
   CURRENT_FIELD(type_id, uint64_t, 0u);
   CURRENT_FIELD(included_types, std::vector<uint64_t>);
 };
 
-CURRENT_STRUCT(StructSchema) {
+CURRENT_STRUCT(StructInfo) {
   CURRENT_FIELD(type_id, uint64_t, 0u);
   CURRENT_FIELD(name, std::string, "");
   CURRENT_FIELD(super_type_id, uint64_t, 0u);
   using pair_id_name = std::pair<uint64_t, std::string>;
   CURRENT_FIELD(fields, std::vector<pair_id_name>);
 
-  CURRENT_DEFAULT_CONSTRUCTOR(StructSchema) {}
-  CURRENT_CONSTRUCTOR(StructSchema)(const ReflectedTypeImpl* r) {
+  CURRENT_DEFAULT_CONSTRUCTOR(StructInfo) {}
+  CURRENT_CONSTRUCTOR(StructInfo)(const ReflectedTypeImpl* r) {
     const ReflectedType_Struct* reflected_struct = dynamic_cast<const ReflectedType_Struct*>(r);
     if (reflected_struct != nullptr) {
       type_id = static_cast<uint64_t>(reflected_struct->type_id);
@@ -62,46 +61,63 @@ CURRENT_STRUCT(StructSchema) {
   }
 };
 
-CURRENT_STRUCT(FullTypeSchema) {
-  using map_typeid_structschema = std::map<uint64_t, StructSchema>;
-  CURRENT_FIELD(struct_schemas, map_typeid_structschema);
-  using map_typeid_typeschema = std::map<uint64_t, TypeSchema>;
-  CURRENT_FIELD(type_schemas, map_typeid_typeschema);
+CURRENT_STRUCT(SchemaInfo) {
+  using map_typeid_structinfo = std::map<uint64_t, StructInfo>;
+  CURRENT_FIELD(structs, map_typeid_structinfo);
+  using map_typeid_typeinfo = std::map<uint64_t, TypeInfo>;
+  CURRENT_FIELD(types, map_typeid_typeinfo);
   CURRENT_FIELD(ordered_struct_list, std::vector<uint64_t>);
+};
+
+struct StructSchema {
+  StructSchema() {
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type) \
+  primitive_type_id_name_[TYPEID_BASIC_TYPE + typeid_index] = #cpp_type;
+#include "../primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
+  }
+
+  StructSchema(const SchemaInfo& schema) : StructSchema() { schema_ = schema; }
 
   template <typename T>
   typename std::enable_if<std::is_base_of<CurrentSuper, T>::value>::type AddStruct() {
     TraverseType(Reflector().ReflectType<T>());
   }
 
-  std::string CppDescription(const uint64_t type_id_) {
-    const TypeID type_id = static_cast<TypeID>(type_id_);
-    if (IsTypeIDInRange(type_id, TYPEID_STRUCT_TYPE)) {
-      if (struct_schemas.count(type_id_) == 0u) {
+  const SchemaInfo& GetSchemaInfo() { return schema_; }
+
+  std::string CppDescription(const uint64_t type_id) {
+    const uint64_t type_prefix = TypePrefix(type_id);
+    if (type_prefix == TYPEID_STRUCT_PREFIX) {
+      if (schema_.structs.count(type_id) == 0u) {
         return "UNKNOWN_STRUCT";
       }
       std::ostringstream oss;
-      const StructSchema& struct_schema = struct_schemas[type_id_];
-      oss << "struct " << struct_schema.name;
-      if (struct_schema.super_type_id) {
-        oss << " : " << CppType(struct_schema.super_type_id);
+      const StructInfo& struct_info = schema_.structs[type_id];
+      oss << "struct " << struct_info.name;
+      if (struct_info.super_type_id) {
+        oss << " : " << CppType(struct_info.super_type_id);
       }
       oss << " {\n";
-      for (const auto& f : struct_schema.fields) {
+      for (const auto& f : struct_info.fields) {
         oss << "  " << CppType(f.first) << " " << f.second << ";\n";
       }
       oss << "};\n";
       return oss.str();
     } else {
-      return CppType(type_id_);
+      return CppType(type_id);
     }
   }
 
  private:
+  SchemaInfo schema_;
+  std::map<uint64_t, std::string> primitive_type_id_name_;
+
   void TraverseType(const ReflectedTypeImpl* reflected_type) {
     assert(reflected_type);
     const uint64_t type_id = static_cast<uint64_t>(reflected_type->type_id);
-    if (IsTypeIDInRange(reflected_type->type_id, TYPEID_STRUCT_TYPE) && struct_schemas.count(type_id) == 0u) {
+    const uint64_t type_prefix = TypePrefix(type_id);
+    if (type_prefix == TYPEID_STRUCT_PREFIX && schema_.structs.count(type_id) == 0u) {
       const ReflectedType_Struct* s = dynamic_cast<const ReflectedType_Struct*>(reflected_type);
       if (s->reflected_super) {
         TraverseType(s->reflected_super);
@@ -109,50 +125,50 @@ CURRENT_STRUCT(FullTypeSchema) {
       for (const auto& f : s->fields) {
         TraverseType(f.first);
       }
-      struct_schemas[type_id] = StructSchema(reflected_type);
-      ordered_struct_list.push_back(type_id);
+      schema_.structs[type_id] = StructInfo(reflected_type);
+      schema_.ordered_struct_list.push_back(type_id);
     }
 
-    if (type_schemas.count(type_id) == 0u) {
-      if (IsTypeIDInRange(reflected_type->type_id, TYPEID_VECTOR_TYPE)) {
+    if (schema_.types.count(type_id) == 0u) {
+      if (type_prefix == TYPEID_VECTOR_PREFIX) {
         ReflectedTypeImpl* reflected_element_type =
             dynamic_cast<const ReflectedType_Vector*>(reflected_type)->reflected_element_type;
         assert(reflected_element_type);
-        TypeSchema type_schema;
-        type_schema.type_id = type_id;
-        type_schema.included_types.push_back(static_cast<uint64_t>(reflected_element_type->type_id));
-        type_schemas[type_id] = type_schema;
+        TypeInfo type_info;
+        type_info.type_id = type_id;
+        type_info.included_types.push_back(static_cast<uint64_t>(reflected_element_type->type_id));
+        schema_.types[type_id] = type_info;
         TraverseType(reflected_element_type);
       }
 
-      if (IsTypeIDInRange(reflected_type->type_id, TYPEID_PAIR_TYPE)) {
+      if (type_prefix == TYPEID_PAIR_PREFIX) {
         ReflectedTypeImpl* reflected_first_type =
             dynamic_cast<const ReflectedType_Pair*>(reflected_type)->reflected_first_type;
         ReflectedTypeImpl* reflected_second_type =
             dynamic_cast<const ReflectedType_Pair*>(reflected_type)->reflected_second_type;
         assert(reflected_first_type);
         assert(reflected_second_type);
-        TypeSchema type_schema;
-        type_schema.type_id = type_id;
-        type_schema.included_types.push_back(static_cast<uint64_t>(reflected_first_type->type_id));
-        type_schema.included_types.push_back(static_cast<uint64_t>(reflected_second_type->type_id));
-        type_schemas[type_id] = type_schema;
+        TypeInfo type_info;
+        type_info.type_id = type_id;
+        type_info.included_types.push_back(static_cast<uint64_t>(reflected_first_type->type_id));
+        type_info.included_types.push_back(static_cast<uint64_t>(reflected_second_type->type_id));
+        schema_.types[type_id] = type_info;
         TraverseType(reflected_first_type);
         TraverseType(reflected_second_type);
       }
 
-      if (IsTypeIDInRange(reflected_type->type_id, TYPEID_MAP_TYPE)) {
+      if (type_prefix == TYPEID_MAP_PREFIX) {
         ReflectedTypeImpl* reflected_key_type =
             dynamic_cast<const ReflectedType_Map*>(reflected_type)->reflected_key_type;
         ReflectedTypeImpl* reflected_value_type =
             dynamic_cast<const ReflectedType_Map*>(reflected_type)->reflected_value_type;
         assert(reflected_key_type);
         assert(reflected_value_type);
-        TypeSchema type_schema;
-        type_schema.type_id = type_id;
-        type_schema.included_types.push_back(static_cast<uint64_t>(reflected_key_type->type_id));
-        type_schema.included_types.push_back(static_cast<uint64_t>(reflected_value_type->type_id));
-        type_schemas[type_id] = type_schema;
+        TypeInfo type_info;
+        type_info.type_id = type_id;
+        type_info.included_types.push_back(static_cast<uint64_t>(reflected_key_type->type_id));
+        type_info.included_types.push_back(static_cast<uint64_t>(reflected_value_type->type_id));
+        schema_.types[type_id] = type_info;
         TraverseType(reflected_key_type);
         TraverseType(reflected_value_type);
       }
@@ -161,34 +177,51 @@ CURRENT_STRUCT(FullTypeSchema) {
     }
   }
 
-  std::string CppType(const uint64_t type_id_) {
-    const TypeID type_id = static_cast<TypeID>(type_id_);
-    if (IsTypeIDInRange(type_id, TYPEID_STRUCT_TYPE)) {
-      if (struct_schemas.count(type_id_) == 0u) {
-        return "UNKNOWN_STRUCT";
+  std::string CppType(const uint64_t type_id) {
+    const uint64_t type_prefix = TypePrefix(type_id);
+    if (type_prefix == TYPEID_STRUCT_PREFIX) {
+      if (schema_.structs.count(type_id) == 0u) {
+        return "#unknown_struct_" + bricks::strings::ToString(type_id);
       }
-      return struct_schemas[type_id_].name;
+      return schema_.structs[type_id].name;
     } else {
-      if (IsTypeIDInRange(type_id, TYPEID_BASIC_TYPE)) {
-        if (type_id == TypeID::Double) {
-          return "double";
+      if (type_prefix == TYPEID_BASIC_PREFIX) {
+        if (primitive_type_id_name_.count(type_id) != 0u) {
+          return primitive_type_id_name_[type_id];
         }
-        // TODO: basic type names extraction.
-        return "basic_type";
+        return "#unknown_basic_type_" + bricks::strings::ToString(type_id);
       }
-      if (type_schemas.count(type_id_) == 0u) {
-        return "UNKNOWN";
+      if (schema_.types.count(type_id) == 0u) {
+        return "#unknown_intermediate_type_" + bricks::strings::ToString(type_id);
       }
-      if (IsTypeIDInRange(type_id, TYPEID_VECTOR_TYPE)) {
-        return DescribeCppVector(type_schemas[type_id_]);
+      if (type_prefix == TYPEID_VECTOR_PREFIX) {
+        return DescribeCppVector(schema_.types[type_id]);
       }
-      return "UNKNOWN";
+      if (type_prefix == TYPEID_PAIR_PREFIX) {
+        return DescribeCppPair(schema_.types[type_id]);
+      }
+      if (type_prefix == TYPEID_MAP_PREFIX) {
+        return DescribeCppMap(schema_.types[type_id]);
+      }
+      return "#unhandled_type_" + bricks::strings::ToString(type_id);
     }
   }
 
-  std::string DescribeCppVector(const TypeSchema& schema) {
-    assert(schema.included_types.size() == 1u);
-    return "std::vector<" + CppType(schema.included_types[0]) + ">";
+  std::string DescribeCppVector(const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 1u);
+    return "std::vector<" + CppType(type_info.included_types[0]) + '>';
+  }
+
+  std::string DescribeCppPair(const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 2u);
+    return "std::pair<" + CppType(type_info.included_types[0]) + ", " + CppType(type_info.included_types[1]) +
+           '>';
+  }
+
+  std::string DescribeCppMap(const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 2u);
+    return "std::map<" + CppType(type_info.included_types[0]) + ", " + CppType(type_info.included_types[1]) +
+           '>';
   }
 };
 

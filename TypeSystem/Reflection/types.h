@@ -41,13 +41,22 @@ SOFTWARE.
 namespace current {
 namespace reflection {
 
-constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
-constexpr uint64_t TYPEID_BASIC_TYPE = 900u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_STRUCT_TYPE = 920u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_VECTOR_TYPE = 931u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_SET_TYPE = 932u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_PAIR_TYPE = 933u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_MAP_TYPE = 934u * TYPEID_TYPE_RANGE;
+// clang-format off
+constexpr uint64_t TYPEID_BASIC_PREFIX  = 900u;
+constexpr uint64_t TYPEID_STRUCT_PREFIX = 920u;
+constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
+constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
+constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
+constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
+
+constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
+constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_BASIC_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_STRUCT_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_VECTOR_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_SET_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_PAIR_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_MAP_PREFIX * TYPEID_TYPE_RANGE;
+// clang-format on
 
 enum class TypeID : uint64_t {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
@@ -57,14 +66,9 @@ enum class TypeID : uint64_t {
   INVALID_TYPE = 0u
 };
 
-struct TypeIDHash {
-  std::size_t operator()(const TypeID t) const { return static_cast<size_t>(t); }
-};
+inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
 
-inline bool IsTypeIDInRange(const TypeID type_id, const uint64_t id_range_base) {
-  return (static_cast<uint64_t>(type_id) >= id_range_base &&
-          static_cast<uint64_t>(type_id) < id_range_base + TYPEID_TYPE_RANGE);
-}
+inline uint64_t TypePrefix(const TypeID type_id) { return TypePrefix(static_cast<uint64_t>(type_id)); }
 
 struct ReflectedTypeImpl {
   TypeID type_id = TypeID::INVALID_TYPE;

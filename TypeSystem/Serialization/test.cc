@@ -337,14 +337,29 @@ TEST(Serialization, JSONExceptions) {
 TEST(Serialization, StructSchema) {
   using namespace serialization_test;
   using current::reflection::Reflector;
+  using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
-  using current::reflection::ReflectedType_Struct;
 
+  StructSchema struct_schema;
+  struct_schema.AddStruct<ComplexSerializable>();
+  const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
   EXPECT_EQ(
+      "{\"structs\":[[9207121101994642474,{\"type_id\":9207121101994642474,\"name\":\"Serializable\",\"super_"
+      "type_id\":0,\"fields\":[[9000000000000000014,\"i\"],[9000000000000000101,\"s\"]]}],[9209545069565467078,"
       "{\"type_id\":9209545069565467078,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[["
       "9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000000000000202,\"v\"],[9207121101994642474,"
-      "\"z\"]]}",
-      JSON(StructSchema(Reflector().ReflectType<ComplexSerializable>())));
+      "\"z\"]]}]],\"types\":[[9310000000000000202,{\"type_id\":9310000000000000202,\"included_types\":["
+      "9000000000000000101]}]],\"ordered_struct_list\":[9207121101994642474,9209545069565467078]}",
+      schema_json);
+
+  const uint64_t serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
+  StructSchema loaded_schema(ParseJSON<SchemaInfo>(schema_json));
+  EXPECT_EQ(
+      "struct Serializable {\n"
+      "  uint64_t i;\n"
+      "  std::string s;\n"
+      "};\n",
+      loaded_schema.CppDescription(serializable_type_id));
 }
 
 // TODO(dkorolev): Move this test outside `Serialization`.

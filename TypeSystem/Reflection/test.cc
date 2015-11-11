@@ -249,36 +249,38 @@ CURRENT_STRUCT(Z, Y) {
 };
 }
 
-TEST(Reflection, FullTypeSchema) {
+TEST(Reflection, StructSchema) {
   using namespace reflection_test;
-  using current::reflection::FullTypeSchema;
+  using current::reflection::SchemaInfo;
+  using current::reflection::StructSchema;
 
-  FullTypeSchema schema;
-  schema.AddStruct<Z>();
+  StructSchema struct_schema;
+  struct_schema.AddStruct<Z>();
+  SchemaInfo schema = struct_schema.GetSchemaInfo();
   EXPECT_EQ(3u, schema.ordered_struct_list.size());
-  EXPECT_EQ(3u, schema.struct_schemas.size());
+  EXPECT_EQ(3u, schema.structs.size());
   const uint64_t x_type_id = schema.ordered_struct_list[0];
-  EXPECT_EQ("X", schema.struct_schemas[x_type_id].name);
-  EXPECT_EQ(9000000000000000023ull, schema.struct_schemas[x_type_id].fields[0].first);
-  EXPECT_EQ("i", schema.struct_schemas[x_type_id].fields[0].second);
+  EXPECT_EQ("X", schema.structs[x_type_id].name);
+  EXPECT_EQ(9000000000000000023ull, schema.structs[x_type_id].fields[0].first);
+  EXPECT_EQ("i", schema.structs[x_type_id].fields[0].second);
   const uint64_t y_type_id = schema.ordered_struct_list[1];
-  EXPECT_EQ("Y", schema.struct_schemas[y_type_id].name);
-  EXPECT_EQ(9317693294612922990ull, schema.struct_schemas[y_type_id].fields[0].first);
-  EXPECT_EQ("v", schema.struct_schemas[y_type_id].fields[0].second);
+  EXPECT_EQ("Y", schema.structs[y_type_id].name);
+  EXPECT_EQ(9317693294612922990ull, schema.structs[y_type_id].fields[0].first);
+  EXPECT_EQ("v", schema.structs[y_type_id].fields[0].second);
   const uint64_t z_type_id = schema.ordered_struct_list[2];
-  EXPECT_EQ("Z", schema.struct_schemas[z_type_id].name);
-  EXPECT_EQ(9000000000000000032ull, schema.struct_schemas[z_type_id].fields[0].first);
-  EXPECT_EQ("d", schema.struct_schemas[z_type_id].fields[0].second);
+  EXPECT_EQ("Z", schema.structs[z_type_id].name);
+  EXPECT_EQ(9000000000000000032ull, schema.structs[z_type_id].fields[0].first);
+  EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
 
-  EXPECT_EQ("std::vector<X>", schema.CppDescription(schema.struct_schemas[y_type_id].fields[0].first));
+  EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
   EXPECT_EQ("std::vector<std::vector<Y>>",
-            schema.CppDescription(schema.struct_schemas[z_type_id].fields[1].first));
+            struct_schema.CppDescription(schema.structs[z_type_id].fields[1].first));
   EXPECT_EQ(
       "struct Z : Y {\n"
       "  double d;\n"
       "  std::vector<std::vector<Y>> v2;\n"
       "};\n",
-      schema.CppDescription(z_type_id));
+      struct_schema.CppDescription(z_type_id));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
