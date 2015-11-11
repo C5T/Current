@@ -24,8 +24,8 @@ SOFTWARE.
 
 #include "json.h"
 
-#include "../Reflection/types.h"
 #include "../Reflection/reflection.h"
+#include "../Reflection/schema.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
@@ -295,9 +295,9 @@ TEST(Serialization, StructSchema) {
   using current::reflection::ReflectedType_Struct;
 
   EXPECT_EQ(
-      "{\"type_id\":9200734974286293575,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"super_name\":"
-      "\"\",\"fields\":[[9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000000000000202,\"v\"],["
-      "9200278597787083695,\"z\"]]}",
+      "{\"type_id\":9209545069565467078,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[["
+      "9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000000000000202,\"v\"],[9207121101994642474,"
+      "\"z\"]]}",
       JSON(StructSchema(Reflector().ReflectType<ComplexSerializable>())));
 }
 

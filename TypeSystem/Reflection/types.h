@@ -157,6 +157,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
     assert(f.first);
     assert(f.first->type_id != TypeID::INVALID_TYPE);
     hash ^= rol64(f.first->type_id, i + 8) ^ rol64(bricks::CRC32(f.second), i + 16);
+    ++i;
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }

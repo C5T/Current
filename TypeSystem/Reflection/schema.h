@@ -42,7 +42,6 @@ CURRENT_STRUCT(StructSchema) {
   CURRENT_FIELD(type_id, uint64_t, 0u);
   CURRENT_FIELD(name, std::string, "");
   CURRENT_FIELD(super_type_id, uint64_t, 0u);
-  CURRENT_FIELD(super_name, std::string, "");
   using pair_id_name = std::pair<uint64_t, std::string>;
   CURRENT_FIELD(fields, std::vector<pair_id_name>);
 
@@ -55,7 +54,6 @@ CURRENT_STRUCT(StructSchema) {
       const ReflectedType_Struct* super = reflected_struct->reflected_super;
       if (super) {
         super_type_id = static_cast<uint64_t>(super->type_id);
-        super_name = super->name;
       }
       for (const auto& f : reflected_struct->fields) {
         fields.emplace_back(static_cast<uint64_t>(f.first->type_id), f.second);
