@@ -58,6 +58,8 @@ using bricks::strings::ToString;
 using bricks::time::EPOCH_MILLISECONDS;
 using bricks::time::MILLISECONDS_INTERVAL;
 
+namespace sherlock_unittest {
+
 // The records we work with.
 // TODO(dkorolev): Support and test polymorphic types.
 struct Record {
@@ -82,6 +84,8 @@ struct RecordWithTimestamp {
 
   EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp_); }
 };
+
+}  // namespace sherlock_unittest
 
 // Struct `Data` should be outside struct `SherlockTestProcessor`,
 // since the latter is `std::move`-d away in some tests.
@@ -116,7 +120,7 @@ struct SherlockTestProcessor final {
     return *this;
   }
 
-  inline bool operator()(Record&& entry) {
+  inline bool operator()(sherlock_unittest::Record&& entry) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
@@ -135,6 +139,8 @@ struct SherlockTestProcessor final {
 };
 
 TEST(Sherlock, SubscribeAndProcessThreeEntries) {
+  using namespace sherlock_unittest;
+
   auto foo_stream = sherlock::Stream<Record>("foo");
   foo_stream.Publish(1);
   foo_stream.Publish(2);
@@ -157,6 +163,8 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
 }
 
 TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
+  using namespace sherlock_unittest;
+
   auto bar_stream = sherlock::Stream<Record>("bar");
   bar_stream.Publish(4);
   bar_stream.Publish(5);
@@ -179,6 +187,8 @@ TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
 }
 
 TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
+  using namespace sherlock_unittest;
+
   auto bar_stream = sherlock::Stream<Record>("bar");
   bar_stream.Publish(4);
   bar_stream.Publish(5);
@@ -200,6 +210,8 @@ TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
 }
 
 TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
+  using namespace sherlock_unittest;
+
   auto baz_stream = sherlock::Stream<Record>("baz");
   atomic_bool wait(true);
   thread delayed_publish_thread([&baz_stream, &wait]() {
@@ -230,6 +242,8 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
 }
 
 TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
+  using namespace sherlock_unittest;
+
   auto meh_stream = sherlock::Stream<Record>("meh");
   meh_stream.Publish(10);
   meh_stream.Publish(11);
@@ -256,6 +270,8 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
 }
 
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
+  using namespace sherlock_unittest;
+
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 seconds ago respectively.
   auto exposed_stream = sherlock::Stream<RecordWithTimestamp>("exposed");
@@ -354,6 +370,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 const std::string sherlock_golden_data = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
 
 TEST(Sherlock, PersistsToFile) {
+  using namespace sherlock_unittest;
+
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
@@ -372,6 +390,8 @@ TEST(Sherlock, PersistsToFile) {
 }
 
 TEST(Sherlock, ParsesFromFile) {
+  using namespace sherlock_unittest;
+
   const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
   bricks::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());

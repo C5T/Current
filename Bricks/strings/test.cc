@@ -145,14 +145,26 @@ TEST(Util, FromString) {
   EXPECT_EQ(0.0, FromString<double>(""));
   EXPECT_EQ(0.0, FromString<double>("bar"));
   EXPECT_EQ(0.0, FromString<double>("\t"));
+
+  EXPECT_EQ("one two", FromString<std::string>("one two"));
+  EXPECT_EQ("three four", FromString<std::string>(std::string("three four")));
+
+  EXPECT_TRUE(FromString<bool>("true"));
+  EXPECT_TRUE(FromString<bool>("1"));
+  EXPECT_FALSE(FromString<bool>("false"));
+  EXPECT_FALSE(FromString<bool>("0"));
 }
 
 TEST(ToString, SmokeTest) {
   EXPECT_EQ("foo", ToString("foo"));
   EXPECT_EQ("bar", ToString(std::string("bar")));
+  EXPECT_EQ("one two", ToString("one two"));
+  EXPECT_EQ("three four", ToString(std::string("three four")));
   EXPECT_EQ("42", ToString(42));
   EXPECT_EQ("0.500000", ToString(0.5));
   EXPECT_EQ("c", ToString('c'));
+  EXPECT_EQ("true", ToString(true));
+  EXPECT_EQ("false", ToString(false));
 }
 
 TEST(Util, ToUpperAndToLower) {

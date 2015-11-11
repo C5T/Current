@@ -39,6 +39,9 @@ SOFTWARE.
 
 #include "../../tcp/tcp.h"
 
+#include "../../../../TypeSystem/struct.h"
+#include "../../../../TypeSystem/Serialization/json.h"
+
 #include "../../../strings/util.h"
 #include "../../../cerealize/cerealize.h"
 
@@ -429,6 +432,7 @@ class HTTPServerConnection final {
                                const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
+
   // Support objects that can be serialized as JSON-s via Cereal.
   template <class T>
   inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
@@ -437,7 +441,7 @@ class HTTPServerConnection final {
       const std::string& content_type = DefaultJSONContentType(),
       const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = CerealizeJSON(object) + '\n';
+    const std::string s = CerealizeJSON(std::forward<T>(object)) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -452,6 +456,33 @@ class HTTPServerConnection final {
       const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = CerealizeJSON(object, name) + '\n';
+    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
+  }
+
+  // Support `CURRENT_STRUCT`-s.
+  template <class T>
+  inline typename std::enable_if<
+      std::is_base_of<::current::reflection::CurrentSuper, bricks::decay<T>>::value>::type
+  SendHTTPResponse(T&& object,
+                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                   const std::string& content_type = DefaultJSONContentType(),
+                   const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = JSON(std::forward<T>(object)) + '\n';
+    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
+  }
+
+  // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
+  // (For backwards compatibility only, really. -- D.K.)
+  template <class T>
+  inline typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type
+  SendHTTPResponse(T&& object,
+                   const std::string& name,
+                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
+                   const std::string& content_type = DefaultJSONContentType(),
+                   const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+    // TODO(dkorolev): We should probably make this not only correct but also efficient.
+    const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
   }
 
@@ -497,11 +528,23 @@ class HTTPServerConnection final {
       // Support objects that can be serialized as JSON-s via Cereal.
       template <class T>
       inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object) {
-        SendImpl(CerealizeJSON(object) + '\n');
+        SendImpl(CerealizeJSON(std::forward<T>(object)) + '\n');
       }
       template <class T, typename S>
       inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object, S&& name) {
-        SendImpl(CerealizeJSON(object, name) + '\n');
+        SendImpl(CerealizeJSON(std::forward<T>(object), name) + '\n');
+      }
+
+      // Support `CURRENT_STRUCT`-s.
+      template <class T>
+      inline typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type Send(
+          T&& object) {
+        SendImpl(JSON(std::forward<T>(object)) + '\n');
+      }
+      template <class T, typename S>
+      inline typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type Send(
+          T&& object, S&& name) {
+        SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n");
       }
 
       Connection& connection_;

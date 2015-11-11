@@ -69,6 +69,11 @@ struct ToStringImpl<char> {
   static std::string ToString(char c) { return std::string(1u, c); }
 };
 
+template <>
+struct ToStringImpl<bool> {
+  static std::string ToString(bool b) { return b ? "true" : "false"; }
+};
+
 // Keep the lowercase name to possibly act as a replacement for `std::to_string`.
 template <typename T>
 inline std::string to_string(T&& something) {
@@ -91,12 +96,26 @@ inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
   return output;
 }
 
+template <typename T_INPUT>
+inline const std::string& FromString(T_INPUT&& input, std::string& output) {
+  output = input;
+  return output;
+}
+
+template <typename T_INPUT>
+inline bool FromString(T_INPUT&& input, bool& output) {
+  output = (std::string("") != input && std::string("0") != input && std::string("false") != input);
+  return output;
+}
+
 template <typename T_OUTPUT, typename T_INPUT = std::string>
 inline T_OUTPUT FromString(T_INPUT&& input) {
   T_OUTPUT output;
   FromString(std::forward<T_INPUT>(input), output);
   return output;
 }
+
+inline std::string FromString(const std::string& input) { return input; }
 
 template <size_t N>
 constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const(&)[N]) {

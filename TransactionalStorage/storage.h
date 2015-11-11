@@ -22,11 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Current-friendly data manipulation types:
-//
-// * bool Exists(x) : non-throwing, always `true` for non-optionals.
-// * T Value(x)     : can throw `NoValue` if and only if `Exists(x)` is `false`.
-//
 // Current-friendly container types.
 //
 // * Vector<T> <=> std::vector<T>
@@ -47,8 +42,8 @@ SOFTWARE.
 //
 // Only allow default constructors for containers.
 
-#ifndef PSYKHANOOL_H
-#define PSYKHANOOL_H
+#ifndef CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
+#define CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
 
 #include <fstream>
 #include <vector>
@@ -57,57 +52,19 @@ SOFTWARE.
 
 #include "sfinae.h"
 
+#include "../TypeSystem/struct.h"
+#include "../TypeSystem/Serialization/json.h"
+#include "../TypeSystem/optional.h"
+
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
-#include "../Bricks/cerealize/cerealize.h"
 
-namespace PSYKHANOOL {
+namespace current {
 
-struct NoValueException : std::exception {};
-typedef const NoValueException& NoValue;
+namespace storage {
 
 struct CannotPopBackFromEmptyVectorException : std::exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
-
-template <typename T>
-class ImmutableOptional final {
- public:
-  ImmutableOptional() = delete;
-  ImmutableOptional(const T* object) : optional_object_(object) {}
-  ImmutableOptional(std::unique_ptr<T>&& rhs)
-      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  bool Exists() const { return optional_object_ != nullptr; }
-  const T& Value() const {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueException();  // TBD: Derived detailed exception type.
-    }
-  }
-
- private:
-  std::unique_ptr<T> owned_optional_object_;
-  const T* optional_object_;
-};
-
-template <typename T>
-class MutableOptional final {
- public:
-  MutableOptional() = delete;
-  MutableOptional(T* object) : optional_object_(object) {}
-  // TODO(dkorolev): Think of how does passing in an `std::unique_ptr<T>&&` blend in.
-  bool Exists() const { return optional_object_ != nullptr; }
-  T& Value() {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueException();  // TBD: Derived detailed exception type.
-    }
-  }
-
- private:
-  T* optional_object_;
-};
 
 template <typename T>
 class VectorStorage {
@@ -122,15 +79,6 @@ class VectorAPI : protected VectorStorage<T> {
 
   bool Empty() const { return VectorStorage<T>::vector_.empty(); }
   size_t Size() const { return VectorStorage<T>::vector_.size(); }
-
-  // TODO(dkorolev): This should not be here, since persistence would not happen!
-  typename PERSISTER::MutableOptionalType operator[](size_t index) {
-    if (index < VectorStorage<T>::vector_.size()) {
-      return typename PERSISTER::MutableOptionalType(&VectorStorage<T>::vector_[index]);
-    } else {
-      return typename PERSISTER::MutableOptionalType(nullptr);
-    }
-  }
 
   typename PERSISTER::ImmutableOptionalType operator[](size_t index) const {
     if (index < VectorStorage<T>::vector_.size()) {
@@ -176,15 +124,6 @@ class OrderedDictionaryAPI : protected OrderedDictionaryStorage<T> {
 
   bool Empty() const { return OrderedDictionaryStorage<T>::map_.empty(); }
   size_t Size() const { return OrderedDictionaryStorage<T>::map_.size(); }
-
-  typename PERSISTER::MutableOptionalType operator[](sfinae::CF<T_KEY> key) {
-    auto iterator = OrderedDictionaryStorage<T>::map_.find(key);
-    if (iterator != OrderedDictionaryStorage<T>::map_.end()) {
-      return typename PERSISTER::MutableOptionalType(&iterator->second);
-    } else {
-      return typename PERSISTER::MutableOptionalType(nullptr);
-    }
-  }
 
   typename PERSISTER::ImmutableOptionalType operator[](sfinae::CF<T_KEY> key) const {
     const auto iterator = OrderedDictionaryStorage<T>::map_.find(key);
@@ -380,7 +319,6 @@ struct InMemory final {
   template <typename T>
   class VectorPersister {
    public:
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     VectorPersister(const std::string&, Instance&, VectorStorage<T>&) {}
@@ -394,14 +332,12 @@ struct InMemory final {
    public:
     using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     OrderedDictionaryPersister(const std::string&, Instance&, OrderedDictionaryStorage<T>&) {}
 
     void PersistInsert(const T&) {}
-    template <typename X>
-    void PersistErase(X&&) {}  // `sfinae::CF<T_KEY>` results in a SEGFAULT in `clang++`. Takie dela. -- D.K.
+    void PersistErase(sfinae::CF<T_KEY>) {}
   };
 
   template <typename T>
@@ -410,7 +346,6 @@ struct InMemory final {
     using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
     using T_COL = sfinae::ENTRY_COL_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     LightweightMatrixPersister(const std::string&, Instance&, LightweightMatrixStorage<T>&) {}
@@ -474,7 +409,6 @@ struct ReplayFromAndAppendToFile final {
   template <typename T>
   class VectorPersister {
    public:
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     VectorPersister(const std::string& name, Instance& instance, VectorStorage<T>& storage)
@@ -487,7 +421,7 @@ struct ReplayFromAndAppendToFile final {
                               assert(index == storage.vector_.size());
                               const char* tab = std::find(data, data + strlen(data), '\t');
                               assert(*tab);
-                              storage.vector_.push_back(CerealizeParseJSON<T>(tab + 1));
+                              storage.vector_.push_back(ParseJSON<T>(tab + 1));
                             });
       instance.RegisterHook(hook_pop_back_name_,
                             [&storage](const char* data) {
@@ -499,7 +433,7 @@ struct ReplayFromAndAppendToFile final {
     }
 
     void PersistPushBack(size_t i, const T& x) {
-      instance_.Persist(hook_push_back_name_) << i << '\t' << CerealizeJSON(x) << '\n' << std::flush;
+      instance_.Persist(hook_push_back_name_) << i << '\t' << JSON(x) << '\n' << std::flush;
     }
     void PersistPopBack(size_t i) { instance_.Persist(hook_pop_back_name_) << i << '\n' << std::flush; }
 
@@ -514,7 +448,6 @@ struct ReplayFromAndAppendToFile final {
    public:
     using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     OrderedDictionaryPersister(const std::string& name,
@@ -522,19 +455,14 @@ struct ReplayFromAndAppendToFile final {
                                OrderedDictionaryStorage<T>& storage)
         : instance_(instance), hook_insert_name_(name + ".insert"), hook_erase_name_(name + ".erase") {
       instance.RegisterHook(hook_insert_name_,
-                            [&storage](const char* data) { storage.DoInsert(CerealizeParseJSON<T>(data)); });
-      instance.RegisterHook(
-          hook_erase_name_,
-          [&storage](const char* data) { storage.map_.erase(CerealizeParseJSON<T_KEY>(data)); });
+                            [&storage](const char* data) { storage.DoInsert(ParseJSON<T>(data)); });
+      instance.RegisterHook(hook_erase_name_,
+                            [&storage](const char* data) { storage.map_.erase(ParseJSON<T_KEY>(data)); });
     }
 
-    void PersistInsert(const T& x) {
-      instance_.Persist(hook_insert_name_) << CerealizeJSON(x) << '\n' << std::flush;
-    }
+    void PersistInsert(const T& x) { instance_.Persist(hook_insert_name_) << JSON(x) << '\n' << std::flush; }
 
-    void PersistErase(const T_KEY& k) {
-      instance_.Persist(hook_erase_name_) << CerealizeJSON(k) << '\n' << std::flush;
-    }
+    void PersistErase(const T_KEY& k) { instance_.Persist(hook_erase_name_) << JSON(k) << '\n' << std::flush; }
 
    private:
     Instance& instance_;
@@ -548,7 +476,6 @@ struct ReplayFromAndAppendToFile final {
     using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
     using T_COL = sfinae::ENTRY_COL_TYPE<T>;
 
-    using MutableOptionalType = MutableOptional<T>;
     using ImmutableOptionalType = ImmutableOptional<T>;
 
     LightweightMatrixPersister(const std::string& name,
@@ -556,20 +483,18 @@ struct ReplayFromAndAppendToFile final {
                                LightweightMatrixStorage<T>& storage)
         : instance_(instance), hook_add_name_(name + ".add"), hook_delete_name_(name + ".delete") {
       instance.RegisterHook(hook_add_name_,
-                            [&storage](const char* data) { storage.DoAdd(CerealizeParseJSON<T>(data)); });
+                            [&storage](const char* data) { storage.DoAdd(ParseJSON<T>(data)); });
       instance.RegisterHook(hook_delete_name_,
                             [&storage](const char* data) {
                               const std::vector<std::string> fields = bricks::strings::Split(data, '\t');
                               assert(fields.size() == 2);
-                              storage.DoDelete(CerealizeParseJSON<T_ROW>(fields[0]),
-                                               CerealizeParseJSON<T_COL>(fields[1]));
+                              storage.DoDelete(ParseJSON<T_ROW>(fields[0]), ParseJSON<T_COL>(fields[1]));
                             });
     }
 
-    void PersistAdd(const T& x) { instance_.Persist(hook_add_name_) << CerealizeJSON(x) << '\n' << std::flush; }
+    void PersistAdd(const T& x) { instance_.Persist(hook_add_name_) << JSON(x) << '\n' << std::flush; }
     void PersistDelete(const T_ROW& row, const T_COL& col) {
-      instance_.Persist(hook_delete_name_) << CerealizeJSON(row) << '\t' << CerealizeJSON(col) << '\n'
-                                           << std::flush;
+      instance_.Persist(hook_delete_name_) << JSON(row) << '\t' << JSON(col) << '\n' << std::flush;
     }
 
    private:
@@ -611,64 +536,18 @@ class LightweightMatrix final
         POLICY::template LightweightMatrixPersister<T>(name, instance, *this) {}
 };
 
-template <typename T>
-bool Exists(const T&) {
-  return true;
-}
+}  // namespace current::storage
 
-template <typename T>
-const T& Value(const T& x) {
-  return x;
-}
+}  // namespace current
 
-template <typename T>
-T& Value(T& x) {
-  return x;
-}
+using current::storage::Vector;
+using current::storage::OrderedDictionary;
+using current::storage::LightweightMatrix;
 
-template <typename T>
-bool Exists(const ImmutableOptional<T>& x) {
-  return x.Exists();
-}
+using current::storage::InMemory;
+using current::storage::ReplayFromAndAppendToFile;
 
-template <typename T>
-bool Exists(const MutableOptional<T>& x) {
-  return x.Exists();
-}
+using current::storage::CannotPopBackFromEmptyVector;
+using current::storage::CannotPopBackFromEmptyVectorException;
 
-template <typename T>
-const T& Value(const ImmutableOptional<T>& x) {
-  return x.Value();
-}
-
-template <typename T>
-T& Value(MutableOptional<T>& x) {
-  return x.Value();
-}
-
-template <typename T>
-T& Value(MutableOptional<T> x) {
-  return x.Value();
-}
-
-}  // namespace PSYKHANOOL
-
-using PSYKHANOOL::ImmutableOptional;
-using PSYKHANOOL::MutableOptional;
-
-using PSYKHANOOL::Vector;
-using PSYKHANOOL::OrderedDictionary;
-using PSYKHANOOL::LightweightMatrix;
-
-using PSYKHANOOL::InMemory;
-using PSYKHANOOL::ReplayFromAndAppendToFile;
-
-using PSYKHANOOL::NoValue;
-using PSYKHANOOL::NoValueException;
-using PSYKHANOOL::CannotPopBackFromEmptyVector;
-using PSYKHANOOL::CannotPopBackFromEmptyVectorException;
-
-using PSYKHANOOL::Exists;
-using PSYKHANOOL::Value;
-
-#endif  // PSYKHANOOL_H
+#endif  // CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H

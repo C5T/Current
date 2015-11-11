@@ -38,25 +38,18 @@ DEFINE_int32(docu_net_server_port_04, 8082, "Okay to keep the same as in net/api
 using bricks::strings::Printf;
 
   // An input record that would be passed in as a JSON.
-  struct PennyInput {
-    std::string op;
-    std::vector<int> x;
-    std::string error;  // Not serialized.
-    template <typename A> void serialize(A& ar) {
-      ar(CEREAL_NVP(op), CEREAL_NVP(x));
-    }
-    void FromInvalidJSON(const std::string& input_json) {
-      error = "JSON parse error: " + input_json;
-    }
+  CURRENT_STRUCT(PennyInput) {
+    CURRENT_FIELD(op, std::string);
+    CURRENT_FIELD(x, std::vector<int32_t>);
+    CURRENT_DEFAULT_CONSTRUCTOR(PennyInput) {}
+    CURRENT_CONSTRUCTOR(PennyInput)(const std::string& op, const std::vector<int32_t>& x) : op(op), x(x) {}
   };
   
   // An output record that would be sent back as a JSON.
-  struct PennyOutput {
-    std::string error;
-    int result;
-    template <typename A> void serialize(A& ar) {
-      ar(CEREAL_NVP(error), CEREAL_NVP(result));
-    }
+  CURRENT_STRUCT(PennyOutput) {
+    CURRENT_FIELD(error, std::string);
+    CURRENT_FIELD(result, int32_t);
+    CURRENT_CONSTRUCTOR(PennyOutput)(const std::string& error, int32_t result) : error(error), result(result) {}
   }; 
   
 TEST(Docu, HTTPServer04) {
@@ -64,10 +57,8 @@ const auto port = FLAGS_docu_net_server_port_04;
 HTTP(port).ResetAllHandlers();
   // Doing Penny-level arithmetics for fun and performance testing.
   HTTP(port).Register("/penny", [](Request r) {
-    const auto input = CerealizeParseJSON<PennyInput>(r.body);
-    if (!input.error.empty()) {
-      r(PennyOutput{input.error, 0});
-    } else {
+    try {
+      const auto input = ParseJSON<PennyInput>(r.body);
       if (input.op == "add") {
         if (!input.x.empty()) {
           int result = 0;
@@ -91,14 +82,18 @@ HTTP(port).ResetAllHandlers();
       } else {
         r(PennyOutput{"Unknown operation: " + input.op, 0});
       }
+    } catch (const std::exception& e) {
+      // TODO(dkorolev): Catch the right exception type.
+      r(PennyOutput{e.what(), 0});
     }
   });
-EXPECT_EQ("{\"data\":{\"error\":\"\",\"result\":5}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{2,3},""})).body);
-EXPECT_EQ("{\"data\":{\"error\":\"\",\"result\":6}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{2,3},""})).body);
-EXPECT_EQ("{\"data\":{\"error\":\"Unknown operation: sqrt\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"sqrt",{},""})).body);
-EXPECT_EQ("{\"data\":{\"error\":\"Not enough arguments for 'add'.\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{},""})).body);
-EXPECT_EQ("{\"data\":{\"error\":\"Not enough arguments for 'mul'.\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{},""})).body);
-EXPECT_EQ("{\"data\":{\"error\":\"JSON parse error: FFFUUUUU\",\"result\":0}}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), "FFFUUUUU", "text/plain")).body);
+EXPECT_EQ("{\"error\":\"\",\"result\":5}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{2,3}})).body);
+EXPECT_EQ("{\"error\":\"\",\"result\":6}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{2,3}})).body);
+EXPECT_EQ("{\"error\":\"Unknown operation: sqrt\",\"result\":0}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"sqrt",{}})).body);
+EXPECT_EQ("{\"error\":\"Not enough arguments for 'add'.\",\"result\":0}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"add",{}})).body);
+EXPECT_EQ("{\"error\":\"Not enough arguments for 'mul'.\",\"result\":0}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), PennyInput{"mul",{}})).body);
+// TODO(dkorolev): Make sure to test the proper, complete, error message.
+EXPECT_EQ("{\"error\":\"FFFUUUUU\",\"result\":0}\n", HTTP(POST(Printf("http://localhost:%d/penny", port), "FFFUUUUU", "text/plain")).body);
 }
 
 #endif  // BLOCKS_HTTP_DOCU_SERVER_04_TEST_CC

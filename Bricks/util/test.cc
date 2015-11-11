@@ -296,12 +296,19 @@ struct ClonableByCtor {
   ClonableByCtor(const ClonableByCtor& rhs) : text("copy-constructed from " + rhs.text) {}
 };
 
-// Fourth preference: `ParseJSON<T>(JSON(t))`.
+// Fourth preference: clone `CURRENT_STRUCT` using its native means.
+// TODO(dkorolev): Talk to Max re.:
+// 0) Do we need `Clone()` in this format?
+// 1) Automated CURRENT_STRUCT cloning.
+// 2) Automated CURRENT_STRUCT `operator==()` and `opeator<()`.
+// 3) Automated CURRENT_STRUCT `Hash()`.
+
+// Fifth preference: `CerealizeParseJSON<T>(CerealizeJSON(t))`.
 // Inefficient, but it's our shortest shortcut for Cereal-serializable `std::unique_ptr<>`-s. -- D.K.
-struct ClonableViaJSON {
+struct ClonableViaCerealizeJSON {
   std::string text;
-  ClonableViaJSON(const std::string& text = "original") : text(text) {}
-  ClonableViaJSON(const ClonableViaJSON&) = delete;
+  ClonableViaCerealizeJSON(const std::string& text = "original") : text(text) {}
+  ClonableViaCerealizeJSON(const ClonableViaCerealizeJSON&) = delete;
   template <typename A>
   void save(A& ar) const {
     ar(CEREAL_NVP(text));
@@ -311,8 +318,8 @@ struct ClonableViaJSON {
     ar(CEREAL_NVP(text));
     text = "deserialized from " + text;
   }
-  // Cereal needs this signature to exist to support serializing `ClonableViaJSON`.
-  ClonableViaJSON(ClonableViaJSON&&);
+  // Cereal needs this signature to exist to support serializing `ClonableViaCerealizeJSON`.
+  ClonableViaCerealizeJSON(ClonableViaCerealizeJSON&&);
 };
 
 }  // namespace cloning_unit_test
@@ -326,33 +333,35 @@ TEST(Util, Clone) {
   EXPECT_EQ("original", ClonableByRef().text);
   EXPECT_EQ("original", ClonableByPtr().text);
   EXPECT_EQ("original", ClonableByCtor().text);
-  EXPECT_EQ("original", ClonableViaJSON().text);
+  EXPECT_EQ("original", ClonableViaCerealizeJSON().text);
 
   EXPECT_EQ("cloned by ref", Clone(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", Clone(ClonableByPtr()).text);
   EXPECT_EQ("copy-constructed from original", Clone(ClonableByCtor()).text);
-  EXPECT_EQ("deserialized from original", Clone(ClonableViaJSON()).text);
+  EXPECT_EQ("deserialized from original", Clone(ClonableViaCerealizeJSON()).text);
 
   EXPECT_EQ("cloned by ref", DefaultCloneFunction<ClonableByRef>()(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", DefaultCloneFunction<ClonableByPtr>()(ClonableByPtr()).text);
   EXPECT_EQ("copy-constructed from original", DefaultCloneFunction<ClonableByCtor>()(ClonableByCtor()).text);
-  EXPECT_EQ("deserialized from original", DefaultCloneFunction<ClonableViaJSON>()(ClonableViaJSON()).text);
+  EXPECT_EQ("deserialized from original",
+            DefaultCloneFunction<ClonableViaCerealizeJSON>()(ClonableViaCerealizeJSON()).text);
 
   const auto clone_by_ref = DefaultCloneFunction<ClonableByRef>();
   const auto clone_by_ptr = DefaultCloneFunction<ClonableByPtr>();
   const auto clone_by_ctor = DefaultCloneFunction<ClonableByCtor>();
-  const auto clone_via_json = DefaultCloneFunction<ClonableViaJSON>();
+  const auto clone_via_json = DefaultCloneFunction<ClonableViaCerealizeJSON>();
   EXPECT_EQ("cloned by ref", clone_by_ref(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", clone_by_ptr(ClonableByPtr()).text);
   EXPECT_EQ("copy-constructed from original", clone_by_ctor(ClonableByCtor()).text);
-  EXPECT_EQ("deserialized from original", clone_via_json(ClonableViaJSON()).text);
+  EXPECT_EQ("deserialized from original", clone_via_json(ClonableViaCerealizeJSON()).text);
 
-  EXPECT_EQ("deserialized from deserialized from original", Clone(Clone(make_unique<ClonableViaJSON>()))->text);
+  EXPECT_EQ("deserialized from deserialized from original",
+            Clone(Clone(make_unique<ClonableViaCerealizeJSON>()))->text);
 
   EXPECT_EQ("cloned by ref", DefaultCloner::Clone(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", DefaultCloner::Clone(ClonableByPtr()).text);
   EXPECT_EQ("copy-constructed from original", DefaultCloner::Clone(ClonableByCtor()).text);
-  EXPECT_EQ("deserialized from original", DefaultCloner::Clone(ClonableViaJSON()).text);
+  EXPECT_EQ("deserialized from original", DefaultCloner::Clone(ClonableViaCerealizeJSON()).text);
 }
 
 TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {

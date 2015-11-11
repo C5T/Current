@@ -67,15 +67,11 @@ static void ExpectToReceive(const std::string& golden, Connection& connection) {
   }
 }
 
-struct HTTPTestObject {
-  int number;
-  std::string text;
-  std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
-  HTTPTestObject() : number(42), text("text"), array({1, 2, 3}) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
-  }
+CURRENT_STRUCT(HTTPTestObject) {
+  CURRENT_FIELD(number, int);
+  CURRENT_FIELD(text, std::string);
+  CURRENT_FIELD(array, std::vector<int>);
+  CURRENT_DEFAULT_CONSTRUCTOR(HTTPTestObject) : number(42), text("text"), array({1, 2, 3}) {}
 };
 
 TEST(PosixHTTPServerTest, Smoke) {
@@ -143,9 +139,9 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
       "Content-Type: application/json; charset=utf-8\r\n"
       "Connection: close\r\n"
       "Access-Control-Allow-Origin: *\r\n"
-      "Content-Length: 53\r\n"
+      "Content-Length: 44\r\n"
       "\r\n"
-      "{\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n",
+      "{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n",
       connection);
   t.join();
 }
@@ -199,8 +195,8 @@ TEST(PosixHTTPServerTest, SmokeChunkedResponse) {
       "onetwothree\r\n"
       "3\r\n"
       "foo\r\n"
-      "35\r\n"
-      "{\"data\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
+      "2C\r\n"
+      "{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}\n\r\n"
       "3B\r\n"
       "{\"epic_chunk\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n\r\n"
       "0\r\n",

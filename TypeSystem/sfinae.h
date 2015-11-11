@@ -22,36 +22,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_ROUNDING_H
-#define BRICKS_STRINGS_ROUNDING_H
+#ifndef CURRENT_TYPE_SYSTEM_SFINAE_H
+#define CURRENT_TYPE_SYSTEM_SFINAE_H
 
-#include <cstring>
-#include <string>
-#include <sstream>
-#include <cmath>
-#include <cassert>
+#include <utility>
 
-namespace bricks {
-namespace strings {
+namespace current {
 
-// Rounds the number to have `n_digits` significant digits.
-inline std::string RoundDoubleToString(double value, size_t n_digits) {
-  assert(n_digits >= 1);
-  assert(n_digits <= 100);
-  // `value` will be between `10^dim` and `10^(dim+1)`.
-  const int dim = static_cast<int>(std::floor((std::log(value) / std::log(10.0)) + 1e-6));
-  const double k = std::pow(10.0, static_cast<double>(dim - static_cast<int>(n_digits) + 1));
-  std::ostringstream os;
-  os << (k * std::round(value / k));
-  return os.str();
+namespace sfinae {
+
+// Whether an `Exists()` method is defined for a type.
+template <typename ENTRY>
+constexpr bool HasExistsMethod(char) {
+  return false;
 }
 
-inline std::string RoundDoubleToString(double value) {
-  static constexpr size_t DEFAULT_NUMBER_OF_SIGNIFICANT_DIGITS = 2;
-  return RoundDoubleToString(value, DEFAULT_NUMBER_OF_SIGNIFICANT_DIGITS);
+template <typename ENTRY>
+constexpr auto HasExistsMethod(int) -> decltype(std::declval<const ENTRY>().Exists(), bool()) {
+  return true;
 }
 
-}  // namespace strings
-}  // namespace bricks
+// Whether a `Value()` method is defined for a type.
+template <typename ENTRY>
+constexpr bool HasValueMethod(char) {
+  return false;
+}
 
-#endif  // BRICKS_STRINGS_ROUNDING_H
+template <typename ENTRY>
+constexpr auto HasValueMethod(int) -> decltype(std::declval<const ENTRY>().Value(), bool()) {
+  return true;
+}
+
+}  // namespace sfinae
+
+}  // namespace current
+
+#endif  // CURRENT_TYPE_SYSTEM_SFINAE_H

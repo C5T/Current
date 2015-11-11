@@ -22,14 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef PSYKHANOOL_SFINAE_H
-#define PSYKHANOOL_SFINAE_H
+#ifndef CURRENT_TRANSACTIONAL_STORAGE_SFINAE_H
+#define CURRENT_TRANSACTIONAL_STORAGE_SFINAE_H
 
 #include <utility>
 
 #include "../Bricks/template/metaprogramming.h"
 
-namespace PSYKHANOOL {
+namespace current {
 
 namespace sfinae {
 
@@ -176,6 +176,6 @@ void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {
 
 }  // namespace sfinae
 
-}  // namespace PSYKHANOOL
+}  // namespace current
 
-#endif  // PSYKHANOOL_SFINAE_H
+#endif  // CURRENT_TRANSACTIONAL_STORAGE_SFINAE_H

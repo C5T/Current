@@ -25,9 +25,13 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H
 
+#include <type_traits>
+#include <limits>
+
 #include "../Reflection/reflection.h"
 
 #include "../../Bricks/template/decay.h"
+#include "../../Bricks/strings/strings.h"
 
 // TODO(dkorolev): Use RapidJSON from outside Cereal.
 #include "../../3rdparty/cereal/include/external/rapidjson/document.h"
@@ -36,9 +40,6 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
-
-template <typename T>
-struct SaveIntoJSONImpl;
 
 template <typename T>
 struct AssignToRapidJSONValueImpl {
@@ -58,6 +59,9 @@ template <typename T>
 void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
   AssignToRapidJSONValueImpl<T>::WithDedicatedStringTreatment(destination, value);
 }
+
+template <typename T>
+struct SaveIntoJSONImpl;
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
   template <>                                                                              \
@@ -100,23 +104,10 @@ struct SaveIntoJSONImpl<std::pair<TF, TS>> {
   }
 };
 
-template <typename T>
-struct IsPrimitiveJSONKeyType {
-  static constexpr bool value = false;
-};
-
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
-  template <>                                                                              \
-  struct IsPrimitiveJSONKeyType<cpp_type> {                                                \
-    static constexpr bool value = true;                                                    \
-  };
-#include "../primitive_types.dsl.h"
-#undef CURRENT_DECLARE_PRIMITIVE_TYPE
-
 template <typename TK, typename TV>
 struct SaveIntoJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
-  static typename std::enable_if<IsPrimitiveJSONKeyType<K>::value>::type Save(
+  static typename std::enable_if<std::is_same<K, std::string>::value>::type Save(
       rapidjson::Value& destination,
       rapidjson::Document::AllocatorType& allocator,
       const std::map<TK, TV>& value) {
@@ -129,7 +120,7 @@ struct SaveIntoJSONImpl<std::map<TK, TV>> {
     }
   }
   template <typename K = TK>
-  static typename std::enable_if<!IsPrimitiveJSONKeyType<K>::value>::type Save(
+  static typename std::enable_if<!std::is_same<K, std::string>::value>::type Save(
       rapidjson::Value& destination,
       rapidjson::Document::AllocatorType& allocator,
       const std::map<TK, TV>& value) {
@@ -168,9 +159,10 @@ struct SaveIntoJSONImpl {
     }
   };
 
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const T& source) {
+  // `CURRENT_STRUCT`.
+  template <typename TT = T>
+  static typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, TT>::value>::type Save(
+      rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator, const T& source) {
     destination.SetObject();
 
     SaveFieldVisitor visitor(destination, allocator);
@@ -178,10 +170,18 @@ struct SaveIntoJSONImpl {
                                         current::reflection::FieldNameAndImmutableValue>::WithObject(source,
                                                                                                      visitor);
   }
+
+  // `enum` and `enum class`.
+  template <typename TT = T>
+  static typename std::enable_if<std::is_enum<TT>::value>::type Save(rapidjson::Value& destination,
+                                                                     rapidjson::Document::AllocatorType&,
+                                                                     const T& value) {
+    AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
+  }
 };
 
 template <typename T>
-std::string JSON(const T& value) {
+std::string CreateJSONViaRapidJSON(const T& value) {
   rapidjson::Document document;
   rapidjson::Value& destination = document;
 
@@ -205,8 +205,8 @@ struct JSONSchemaException : TypeSystemParseJSONException {
   const std::string expected_;
   const std::string actual_;
   JSONSchemaException(const std::string& expected, rapidjson::Value& value, const std::string& path)
-      : expected_(expected + " for `" + path.substr(1u) + "`"),
-        actual_(NonThrowingFormatRapidJSONValueAsString(value, path.substr(1))) {}
+      : expected_(expected + (path.empty() ? "" : " for `" + path.substr(1u) + "`")),
+        actual_(NonThrowingFormatRapidJSONValueAsString(value, path)) {}
   static std::string NonThrowingFormatRapidJSONValueAsString(rapidjson::Value& value, const std::string& path) {
     // Attempt to generate a human-readable description of the part of the JSON,
     // that has been parsed but is of wrong schema.
@@ -229,7 +229,11 @@ struct JSONSchemaException : TypeSystemParseJSONException {
         return result.substr(1u, result.length() - 2u);
       }
     } catch (const std::exception& e) {
-      return "The `" + path + "` field could not be parsed.";
+      if (!path.empty()) {
+        return "The `" + path.substr(1u) + "` field could not be parsed.";
+      } else {
+        return "Parse error.";
+      }
     }
   }
   // Apparently, `throw()` is required for the code to compile. -- D.K.
@@ -265,7 +269,11 @@ struct LoadFromJSONImpl {
     }
   };
 
-  static void Load(rapidjson::Value& source, T& destination, const std::string& path) {
+  // `CURRENT_STRUCT`.
+  template <typename TT = T>
+  static typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, TT>::value>::type Load(
+      rapidjson::Value& source, T& destination, const std::string& path) {
+    //  static void Load(rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsObject()) {
       throw JSONSchemaException("object", source, path);
     }
@@ -274,14 +282,42 @@ struct LoadFromJSONImpl {
                                         current::reflection::FieldNameAndMutableValue>::WithObject(destination,
                                                                                                    visitor);
   }
-};
-template <>
-struct LoadFromJSONImpl<uint64_t> {
-  static void Load(rapidjson::Value& source, uint64_t& destination, const std::string& path) {
+
+  // `uint*_t`.
+  template <typename TT = T>
+  static
+      typename std::enable_if<std::numeric_limits<TT>::is_integer && !std::numeric_limits<TT>::is_signed>::type
+      Load(rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsNumber()) {
       throw JSONSchemaException("number", source, path);
     }
-    destination = source.GetUint64();
+    destination = static_cast<T>(source.GetUint64());
+  }
+
+  // `int*_t`
+  template <typename TT = T>
+  static
+      typename std::enable_if<std::numeric_limits<TT>::is_integer && std::numeric_limits<TT>::is_signed>::type
+      Load(rapidjson::Value& source, T& destination, const std::string& path) {
+    if (!source.IsNumber()) {
+      throw JSONSchemaException("number", source, path);
+    }
+    destination = static_cast<T>(source.GetInt64());
+  }
+
+  // `enum` and `enum class`.
+  template <typename TT = T>
+  static typename std::enable_if<std::is_enum<TT>::value>::type Load(rapidjson::Value& source,
+                                                                     T& destination,
+                                                                     const std::string& path) {
+    if (!source.IsNumber()) {
+      throw JSONSchemaException("number", source, path);
+    }
+    if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
+      destination = static_cast<T>(source.GetInt64());
+    } else {
+      destination = static_cast<T>(source.GetUint64());
+    }
   }
 };
 
@@ -312,9 +348,9 @@ struct LoadFromJSONImpl<std::vector<T>> {
 template <typename TK, typename TV>
 struct LoadFromJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
-  static typename std::enable_if<IsPrimitiveJSONKeyType<K>::value>::type Load(rapidjson::Value& source,
-                                                                              std::map<TK, TV>& destination,
-                                                                              const std::string& path) {
+  static typename std::enable_if<std::is_same<std::string, K>::value>::type Load(rapidjson::Value& source,
+                                                                                 std::map<TK, TV>& destination,
+                                                                                 const std::string& path) {
     if (!source.IsObject()) {
       throw JSONSchemaException("map as object", source, path);
     }
@@ -326,9 +362,9 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
     }
   }
   template <typename K = TK>
-  static typename std::enable_if<!IsPrimitiveJSONKeyType<K>::value>::type Load(rapidjson::Value& source,
-                                                                               std::map<TK, TV>& destination,
-                                                                               const std::string& path) {
+  static typename std::enable_if<!std::is_same<std::string, K>::value>::type Load(rapidjson::Value& source,
+                                                                                  std::map<TK, TV>& destination,
+                                                                                  const std::string& path) {
     if (!source.IsArray()) {
       throw JSONSchemaException("map as array", source, path);
     }
@@ -348,7 +384,7 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
 };
 
 template <typename T>
-void ParseJSON(const std::string& json, T& destination) {
+void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
   rapidjson::Document document;
 
   if (document.Parse<0>(json.c_str()).HasParseError()) {
@@ -358,10 +394,53 @@ void ParseJSON(const std::string& json, T& destination) {
   LoadFromJSONImpl<T>::Load(document, destination, "");
 }
 
+// External user-facing `JSON` and `ParseJSON` methods. Since RapidJSON is not friendly
+// with serializing bare integers, strings, and booleans, make it happen explicitly.
+
+template <typename T, bool BYPASS_RAPIDJSON>
+struct ViaRapidJSONOrNatively {
+  static std::string Create(const T& source) { return CreateJSONViaRapidJSON(source); }
+  static void Parse(const std::string& source, T& destination) { ParseJSONViaRapidJSON(source, destination); }
+};
+
 template <typename T>
-T ParseJSON(const std::string& json) {
+struct ViaRapidJSONOrNatively<T, true> {
+  static std::string Create(const T& source) { return bricks::strings::ToString(source); }
+  static void Parse(const std::string& source, T& destination) {
+    bricks::strings::FromString(source, destination);
+  }
+};
+
+template <typename T>
+struct BypassRapidJSON {
+  static constexpr bool bypass = std::is_integral<T>::value;
+};
+
+// Note: Bare strings will not be escaped during serialization / deserialization.
+// Thus, not proper JSON. But one-to-one convertible to and from binary. -- D.K.
+template <>
+struct BypassRapidJSON<std::string> {
+  static constexpr bool bypass = true;
+};
+
+template <typename T>
+std::string JSON(const T& source) {
+  using DECAYED_T = bricks::decay<T>;
+  return ViaRapidJSONOrNatively<DECAYED_T, BypassRapidJSON<DECAYED_T>::bypass>::Create(source);
+}
+
+inline std::string JSON(const char* special_case_bare_c_string) { return special_case_bare_c_string; }
+
+template <typename T>
+inline T ParseJSON(const std::string& source, T& destination) {
+  using DECAYED_T = bricks::decay<T>;
+  ViaRapidJSONOrNatively<DECAYED_T, BypassRapidJSON<DECAYED_T>::bypass>::Parse(source, destination);
+}
+
+template <typename T>
+inline T ParseJSON(const std::string& source) {
   T result;
-  ParseJSON<T>(json, result);
+  ViaRapidJSONOrNatively<T, BypassRapidJSON<T>::bypass>::Parse(source, result);
   return result;
 }
 

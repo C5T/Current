@@ -92,10 +92,15 @@ struct FillBody<REQUEST, true> {
 template <typename REQUEST>
 struct FillBody<REQUEST, false> {
   template <typename T>
-  static void Fill(REQUEST& request, T&& object, const std::string& content_type) {
-    static_assert(bricks::cerealize::is_write_cerealizable<T>::value,
-                  "This form of POST() requires a cerealizable object as the second parameter.");
-    request.body = CerealizeJSON(object);
+  static typename std::enable_if<bricks::cerealize::is_write_cerealizable<T>::value>::type Fill(
+      REQUEST& request, T&& object, const std::string& content_type) {
+    request.body = CerealizeJSON(std::forward<T>(object));
+    request.content_type = !content_type.empty() ? content_type : "application/json";
+  }
+  template <typename T>
+  static typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type Fill(
+      REQUEST& request, T&& object, const std::string& content_type) {
+    request.body = JSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : "application/json";
   }
 };
@@ -107,7 +112,7 @@ struct POST : HTTPRequestBase<POST> {
   template <typename T>
   POST(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<POST, bricks::strings::is_string_type<T>::value>::Fill(*this, body, content_type);
+    FillBody<POST, bricks::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 
@@ -126,7 +131,7 @@ struct PUT : HTTPRequestBase<PUT> {
   template <typename T>
   PUT(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<PUT, bricks::strings::is_string_type<T>::value>::Fill(*this, body, content_type);
+    FillBody<PUT, bricks::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 

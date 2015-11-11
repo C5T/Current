@@ -102,7 +102,7 @@ struct ReflectedType_Map : ReflectedTypeImpl {
     assert(reflected_key_type);
     assert(reflected_value_type);
     std::ostringstream oss;
-    oss << cpp_typename << '<' << reflected_key_type->CppType() << ',' << reflected_value_type->CppType()
+    oss << cpp_typename << '<' << reflected_key_type->CppType() << ", " << reflected_value_type->CppType()
         << '>';
     return oss.str();
   }

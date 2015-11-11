@@ -23,6 +23,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// This `test.cc` file is `#include`-d from `../test.cc`, and thus needs a header guard.
+
+#ifndef CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
+#define CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
+
 #include <cstdint>
 
 #include "reflection.h"
@@ -63,7 +68,7 @@ TEST(Reflection, DescribeCppStruct) {
       "  std::vector<uint64_t> v1;\n"
       "  std::vector<Foo> v2;\n"
       "  std::vector<std::vector<Foo>> v3;\n"
-      "  std::map<std::string,std::string> v4;\n"
+      "  std::map<std::string, std::string> v4;\n"
       "};\n",
       Reflector().DescribeCppStruct<Bar>());
 
@@ -275,3 +280,5 @@ TEST(Reflection, FullTypeSchema) {
       "};\n",
       schema.CppDescription(z_type_id));
 }
+
+#endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
