@@ -39,11 +39,13 @@ SOFTWARE.
 
 #include "../URL/url.h"
 
+#include "../../TypeSystem/struct.h"
+
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/file/file.h"
-#include "../../Bricks/cerealize/cerealize.h"
+#include "../../Bricks/cerealize/json.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -76,15 +78,11 @@ DEFINE_int32(net_api_test_port,
              "lifetime of the binary.");
 DEFINE_string(net_api_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
-struct HTTPAPITestObject {
-  int number;
-  std::string text;
-  std::vector<int> array;  // Visual C++ does not support the `= { 1, 2, 3 };` non-static member initialization.
-  HTTPAPITestObject() : number(42), text("text"), array({1, 2, 3}) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(number), CEREAL_NVP(text), CEREAL_NVP(array));
-  }
+CURRENT_STRUCT(HTTPAPITestObject) {
+  CURRENT_FIELD(number, int32_t);
+  CURRENT_FIELD(text, std::string);
+  CURRENT_FIELD(array, std::vector<int>);
+  CURRENT_DEFAULT_CONSTRUCTOR(HTTPAPITestObject) : number(42), text("text"), array({1, 2, 3}) {}
 };
 
 #if !defined(BRICKS_COVERAGE_REPORT_MODE) && !defined(BRICKS_WINDOWS)
@@ -435,14 +433,10 @@ TEST(HTTPAPI, RespondWithStringAsConstCharPtrViaRequestDirectly) {
                       "")).body);
 }
 
-struct SerializableObject {
-  int x = 42;
-  std::string s = "foo";
+CURRENT_STRUCT(SerializableObject) {
+  CURRENT_FIELD(x, int, 42);
+  CURRENT_FIELD(s, std::string, "foo");
   std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(x), CEREAL_NVP(s));
-  }
 };
 
 struct NamedSerializableObject {
@@ -462,7 +456,7 @@ TEST(HTTPAPI, PostCerealizableObject) {
                   ASSERT_FALSE(r.body.empty());
                   r("Data: " + r.body);
                 });
-  EXPECT_EQ("Data: {\"data\":{\"x\":42,\"s\":\"foo\"}}",
+  EXPECT_EQ("Data: {\"x\":42,\"s\":\"foo\"}",
             HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
 
   EXPECT_EQ(
@@ -476,7 +470,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
       .Register("/post",
                 [](Request r) {
                   ASSERT_FALSE(r.body.empty());
-                  r("Data: " + CerealizeParseJSON<SerializableObject>(r.body).AsString());
+                  r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
                 });
   EXPECT_EQ("Data: 42:foo",
             HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
@@ -490,7 +484,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
                 [](Request r) {
                   ASSERT_FALSE(r.body.empty());
                   try {
-                    r("Data: " + CerealizeParseJSON<SerializableObject>(r.body).AsString());
+                    r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
                   } catch (const std::exception&) {
                     // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
                   }
@@ -584,7 +578,7 @@ TEST(HTTPAPI, PutCerealizableObject) {
                 });
   const auto response =
       HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
-  EXPECT_EQ("{\"data\":{\"x\":42,\"s\":\"foo\"}}", response.body);
+  EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}", response.body);
   EXPECT_EQ(201, static_cast<int>(response.code));
 }
 
@@ -599,7 +593,7 @@ TEST(HTTPAPI, DeleteObject) {
                   r(object);
                 });
   const auto response = HTTP(DELETE(Printf("http://localhost:%d/delete", FLAGS_net_api_test_port)));
-  EXPECT_EQ("42:foo", CerealizeParseJSON<SerializableObject>(response.body).AsString());
+  EXPECT_EQ("42:foo", ParseJSON<SerializableObject>(response.body).AsString());
   EXPECT_EQ(200, static_cast<int>(response.code));
 }
 
@@ -713,9 +707,8 @@ TEST(HTTPAPI, ResponseSmokeTest) {
   HTTP(FLAGS_net_api_test_port)
       .Register("/response7",
                 [send_response](Request r) {
-                  send_response(
-                      Response().CerealizableJSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK),
-                      std::move(r));
+                  send_response(Response().JSON(SerializableObject(), "magic").Code(HTTPResponseCode.OK),
+                                std::move(r));
                 });
   HTTP(FLAGS_net_api_test_port)
       .Register(
@@ -741,7 +734,7 @@ TEST(HTTPAPI, ResponseSmokeTest) {
 
   const auto response4 = HTTP(GET(Printf("http://localhost:%d/response4", FLAGS_net_api_test_port)));
   EXPECT_EQ(202, static_cast<int>(response4.code));
-  EXPECT_EQ("{\"data\":{\"x\":42,\"s\":\"foo\"}}\n", response4.body);
+  EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}\n", response4.body);
 
   const auto response5 = HTTP(GET(Printf("http://localhost:%d/response5", FLAGS_net_api_test_port)));
   EXPECT_EQ(201, static_cast<int>(response5.code));

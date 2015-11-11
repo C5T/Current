@@ -31,6 +31,8 @@ SOFTWARE.
 
 #include "request.h"
 
+#include "../../TypeSystem/struct.h"
+
 #include "../../Bricks/net/exceptions.h"
 #include "../../Bricks/net/http/http.h"
 #include "../../Bricks/strings/is_string_type.h"
@@ -101,7 +103,8 @@ struct Response {
 
   template <typename T>
   typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
-                          !(bricks::strings::is_string_type<T>::value)>::type
+                          !(bricks::strings::is_string_type<T>::value) &&
+                          !std::is_base_of<current::reflection::CurrentSuper, T>::value>::type
   Construct(T&& object,
             bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
             const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
@@ -113,12 +116,36 @@ struct Response {
 
   template <typename T>
   typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
-                          !(bricks::strings::is_string_type<T>::value)>::type
+                          !(bricks::strings::is_string_type<T>::value) &&
+                          !std::is_base_of<current::reflection::CurrentSuper, T>::value>::type
   Construct(T&& object,
             const std::string& object_name,
             bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
             const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
     this->body = CerealizeJSON(std::forward<T>(object), object_name) + '\n';
+    this->code = code;
+    this->content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_base_of<current::reflection::CurrentSuper, T>::value>::type Construct(
+      T&& object,
+      bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
+    this->body = current::serialization::JSON(std::forward<T>(object)) + '\n';
+    this->code = code;
+    this->content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  typename std::enable_if<std::is_base_of<current::reflection::CurrentSuper, T>::value>::type Construct(
+      T&& object,
+      const std::string& object_name,
+      bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
+    this->body = "{\"" + object_name + "\":" + current::serialization::JSON(std::forward<T>(object)) + "}\n";
     this->code = code;
     this->content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
     this->extra_headers = extra_headers;
@@ -141,6 +168,22 @@ struct Response {
   template <typename T>
   Response& CerealizableJSON(const T& object, const std::string& object_name) {
     body = CerealizeJSON(object, object_name) + '\n';
+    content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    initialized = true;
+    return *this;
+  }
+
+  template <typename T>
+  Response& JSON(const T& object) {
+    body = current::serialization::JSON(object) + '\n';
+    content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
+    initialized = true;
+    return *this;
+  }
+
+  template <typename T>
+  Response& JSON(const T& object, const std::string& object_name) {
+    body = "{\"" + object_name + "\":" + current::serialization::JSON(object) + "}\n";
     content_type = bricks::net::HTTPServerConnection::DefaultJSONContentType();
     initialized = true;
     return *this;

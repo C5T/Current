@@ -36,66 +36,54 @@ DEFINE_string(transactional_storage_test_tmpdir,
 
 namespace transactional_storage_test {
 
-struct Element final {
-  int x;
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(x));
-  }
+CURRENT_STRUCT(Element) {
+  CURRENT_FIELD(x, int32_t);
+  CURRENT_CONSTRUCTOR(Element)(int32_t x = 0) : x(x) {}
 };
 
-struct Record final {
+CURRENT_STRUCT(Record) {
 #ifdef USE_KEY_METHODS
-  std::string lhs;
-  const std::string& key() const { return lhs; }
-  void set_key(const std::string& key) { lhs = key; }
+  CURRENT_FIELD(lhs, std::string);
+  CURRENT_RETURNS(const std::string&)key() const { return lhs; }
+  CURRENT_RETURNS(void)set_key(const std::string& key) { lhs = key; }
 #else
-  std::string key;
+  CURRENT_FIELD(key, std::string);
 #endif
-  int rhs;
-  template <typename A>
-  void serialize(A& ar) {
-    ar(
+  CURRENT_FIELD(rhs, int32_t);
+
 #ifdef USE_KEY_METHODS
-        CEREAL_NVP(lhs),
+  CURRENT_CONSTRUCTOR(Record)(const std::string& lhs = "", int32_t rhs = 0) : lhs(lhs), rhs(rhs) {}
 #else
-        CEREAL_NVP(key),
+  CURRENT_CONSTRUCTOR(Record)(const std::string& key = "", int32_t rhs = 0) : key(key), rhs(rhs) {}
 #endif
-        CEREAL_NVP(rhs));
-  }
 };
 
-struct Cell final {
+CURRENT_STRUCT(Cell) {
 #ifdef USE_KEY_METHODS
-  int foo;
-  int row() const { return foo; }
-  void set_row(int row) { foo = row; }
+  CURRENT_FIELD(foo, int32_t);
+  CURRENT_RETURNS(int32_t) row() const { return foo; }
+  CURRENT_RETURNS(void)set_row(int32_t row) { foo = row; }
 #else
-  int row;
+  CURRENT_FIELD(row, int32_t);
 #endif
 
 #ifdef USE_KEY_METHODS
-  std::string bar;
-  const std::string& col() const { return bar; }
-  void set_col(const std::string& col) { bar = col; }
+  CURRENT_FIELD(bar, std::string);
+  CURRENT_RETURNS(const std::string&)col() const { return bar; }
+  CURRENT_RETURNS(void)set_col(const std::string& col) { bar = col; }
 #else
-  std::string col;
+  CURRENT_FIELD(col, std::string);
 #endif
 
-  int phew;
+  CURRENT_FIELD(phew, int32_t);
 
-  template <typename A>
-  void serialize(A& ar) {
-    ar(
 #ifdef USE_KEY_METHODS
-        CEREAL_NVP(foo),
-        CEREAL_NVP(bar),
+  CURRENT_CONSTRUCTOR(Cell)(int32_t foo = 0, const std::string& bar = "", int32_t phew = 0)
+      : foo(foo), bar(bar), phew(phew) {}
 #else
-        CEREAL_NVP(row),
-        CEREAL_NVP(col),
+  CURRENT_CONSTRUCTOR(Cell)(int32_t row = 0, const std::string& bar = "", int32_t phew = 0)
+      : row(row), bar(bar), phew(phew) {}
 #endif
-        CEREAL_NVP(phew));
-  }
 };
 
 }  // namespace transactional_storage_test
@@ -186,7 +174,7 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
 
   {
     size_t count = 0u;
-    int value = 0;
+    int32_t value = 0;
     for (const auto& e : storage.d) {
       ++count;
       value += e.rhs;
@@ -199,7 +187,7 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
 
   {
     size_t count = 0u;
-    int value = 0;
+    int32_t value = 0;
     for (const auto& e : storage.d) {
       ++count;
       value += e.rhs;
@@ -224,7 +212,7 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
 
   {
     size_t count = 0u;
-    int value = 0;
+    int32_t value = 0;
     for (const auto& e : storage.d) {
       ++count;
       value += e.rhs;
@@ -265,7 +253,7 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   EXPECT_EQ(1, Value(storage.m.Get(1, "one")).phew);
 
   {
-    std::vector<int> rows;
+    std::vector<int32_t> rows;
     for (const auto& e : storage.m.Rows()) {
       rows.push_back(e.Key());
     }
