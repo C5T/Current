@@ -342,12 +342,13 @@ TEST(Serialization, StructSchema) {
   struct_schema.AddStruct<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
   EXPECT_EQ(
-      "{\"structs\":[[9207121101994642474,{\"type_id\":9207121101994642474,\"name\":\"Serializable\",\"super_"
-      "type_id\":0,\"fields\":[[9000000000000000014,\"i\"],[9000000000000000101,\"s\"]]}],[9209545069565467078,"
-      "{\"type_id\":9209545069565467078,\"name\":\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[["
-      "9000000000000000014,\"j\"],[9000000000000000101,\"q\"],[9310000000000000202,\"v\"],[9207121101994642474,"
-      "\"z\"]]}]],\"types\":[[9310000000000000202,{\"type_id\":9310000000000000202,\"included_types\":["
-      "9000000000000000101]}]],\"ordered_struct_list\":[9207121101994642474,9209545069565467078]}",
+      "{\"structs\":[[9204126776251367878,{\"type_id\":9204126776251367878,\"name\":\"ComplexSerializable\","
+      "\"super_type_id\":0,\"fields\":[[9000000000000000014,\"j\"],[9000000000000000101,\"q\"],["
+      "9310000000000000202,\"v\"],[9209615721865857497,\"z\"]]}],[9209615721865857497,{\"type_id\":"
+      "9209615721865857497,\"name\":\"Serializable\",\"super_type_id\":0,\"fields\":[[9000000000000000014,"
+      "\"i\"],[9000000000000000101,\"s\"],[9000000000000000001,\"b\"]]}]],\"types\":[[9310000000000000202,{"
+      "\"type_id\":9310000000000000202,\"included_types\":[9000000000000000101]}]],\"ordered_struct_list\":["
+      "9209615721865857497,9204126776251367878]}",
       schema_json);
 
   const uint64_t serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
@@ -356,6 +357,7 @@ TEST(Serialization, StructSchema) {
       "struct Serializable {\n"
       "  uint64_t i;\n"
       "  std::string s;\n"
+      "  bool b;\n"
       "};\n",
       loaded_schema.CppDescription(serializable_type_id));
 }
