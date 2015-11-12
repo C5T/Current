@@ -65,21 +65,11 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
-CURRENT_STRUCT(WithVectorOfPairs) {
-  using pair_int32_string = std::pair<int32_t, std::string>;
-  CURRENT_FIELD(v, std::vector<pair_int32_string>);
-};
+CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
-CURRENT_STRUCT(WithTrivialMap) {
-  using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
-  CURRENT_FIELD(m, map_string_string);
-};
+CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
 
-CURRENT_STRUCT(WithNontrivialMap) {
-  // To dig into: http://stackoverflow.com/questions/13842468/comma-in-c-c-macro
-  using map_serializable_string = std::map<Serializable, std::string>;  // Sigh. -- D.K.
-  CURRENT_FIELD(q, map_serializable_string);
-};
+CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
 
 enum class MyMagicGUID : uint64_t {};
 CURRENT_STRUCT(WithEnumClass) {

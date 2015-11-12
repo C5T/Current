@@ -88,6 +88,14 @@ struct CurrentStructFieldsConsistency<T, -1> {
   constexpr static bool Check() { return true; }
 };
 
+template <typename T>
+struct WithoutParentheses;
+
+template <typename T>
+struct WithoutParentheses<int(T)> {
+  typedef T result;
+};
+
 }  // namespace reflection
 }  // namespace current
 
@@ -132,19 +140,24 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CURRENT_FIELD(...) \
   CURRENT_FIELD_SWITCH(__VA_ARGS__, CURRENT_FIELD_WITH_VALUE, CURRENT_FIELD_WITH_NO_VALUE)(__VA_ARGS__)
 
-#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                \
-  ::current::reflection::Field<INSTANTIATION_TYPE, type> name; \
+#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                                                             \
+  ::current::reflection::Field<INSTANTIATION_TYPE,                                                          \
+                               typename ::current::reflection::WithoutParentheses<int(type)>::result> name; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(name, type, value)                   \
-  ::current::reflection::Field<INSTANTIATION_TYPE, type> name{value}; \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                                         \
+  ::current::reflection::Field<INSTANTIATION_TYPE,                                                          \
+                               typename ::current::reflection::WithoutParentheses<int(type)>::result> name{ \
+      value};                                                                                               \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& f,                                                                        \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
-    f(::current::reflection::TypeSelector<type>(), #name);                                                     \
+    f(::current::reflection::TypeSelector<                                                                     \
+          typename ::current::reflection::WithoutParentheses<int(type)>::result>(),                            \
+      #name);                                                                                                  \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \

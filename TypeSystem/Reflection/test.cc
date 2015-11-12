@@ -45,8 +45,7 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
-  using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
-  CURRENT_FIELD(v4, map_string_string);
+  CURRENT_FIELD(v4, (std::map<std::string, std::string>));
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -119,11 +118,9 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   CURRENT_FIELD(s, std::string, "The String");
 
   // Complex types.
-  using pair_string_double = std::pair<std::string, double>;
-  CURRENT_FIELD(pair_strdbl, pair_string_double);
+  CURRENT_FIELD(pair_strdbl, (std::pair<std::string, double>));
   CURRENT_FIELD(vector_int32, std::vector<int32_t>);
-  using map_string_string = std::map<std::string, std::string>;
-  CURRENT_FIELD(map_strstr, map_string_string);
+  CURRENT_FIELD(map_strstr, (std::map<std::string, std::string>));
 };
 }
 

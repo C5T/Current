@@ -41,8 +41,7 @@ CURRENT_STRUCT(StructInfo) {
   CURRENT_FIELD(type_id, uint64_t, 0u);
   CURRENT_FIELD(name, std::string, "");
   CURRENT_FIELD(super_type_id, uint64_t, 0u);
-  using pair_id_name = std::pair<uint64_t, std::string>;
-  CURRENT_FIELD(fields, std::vector<pair_id_name>);
+  CURRENT_FIELD(fields, (std::vector<std::pair<uint64_t, std::string>>));
 
   CURRENT_DEFAULT_CONSTRUCTOR(StructInfo) {}
   CURRENT_CONSTRUCTOR(StructInfo)(const ReflectedTypeImpl* r) {
@@ -62,10 +61,8 @@ CURRENT_STRUCT(StructInfo) {
 };
 
 CURRENT_STRUCT(SchemaInfo) {
-  using map_typeid_structinfo = std::map<uint64_t, StructInfo>;
-  CURRENT_FIELD(structs, map_typeid_structinfo);
-  using map_typeid_typeinfo = std::map<uint64_t, TypeInfo>;
-  CURRENT_FIELD(types, map_typeid_typeinfo);
+  CURRENT_FIELD(structs, (std::map<uint64_t, StructInfo>));
+  CURRENT_FIELD(types, (std::map<uint64_t, TypeInfo>));
   CURRENT_FIELD(ordered_struct_list, std::vector<uint64_t>);
 };
 
