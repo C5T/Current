@@ -49,7 +49,8 @@ debug:
 all: ${BIN}
 
 clean:
-	rm -rf .current core impl/.current impl/core
+	find . -type d -name .current | xargs rm -rf
+	find . -name core | xargs rm -f
 
 .current/%: %.cc *.h
 	mkdir -p .current
