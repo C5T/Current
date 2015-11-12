@@ -59,6 +59,8 @@ SOFTWARE.
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
 
+#include "../Bricks/cerealize/cerealize.h"  // TODO(dkorolev): Deprecate.
+
 namespace current {
 
 namespace storage {
@@ -504,6 +506,163 @@ struct ReplayFromAndAppendToFile final {
   };
 };
 
+// TODO(dkorolev): Deprecate.
+struct ReplayFromAndAppendToFileUsingCereal final {
+  class Instance final {
+   public:
+    explicit Instance(const std::string& filename) : filename_(filename) {}
+    void Run() {
+      assert(!run_);
+      run_ = true;
+      assert(!output_file_);
+
+      {
+        std::ifstream fi(filename_);
+        for (std::string line; std::getline(fi, line);) {
+          // Format: TIMESTAMP + '\t' + HOOK_NAME '\t' + USER DATA.
+          const char* s = line.c_str();
+          const char* e = s + line.length();
+          const char* tab_between_timestamp_and_hook_name = std::find(s, e, '\t');
+          assert(*tab_between_timestamp_and_hook_name);
+          ++tab_between_timestamp_and_hook_name;
+          const char* tab_between_hook_name_and_data = std::find(tab_between_timestamp_and_hook_name, e, '\t');
+          assert(*tab_between_hook_name_and_data);
+          const auto hook =
+              hooks_.find(std::string(tab_between_timestamp_and_hook_name, tab_between_hook_name_and_data));
+          ++tab_between_hook_name_and_data;
+          assert(hook != hooks_.end());
+          hook->second(tab_between_hook_name_and_data);
+        }
+      }
+
+      output_file_.reset(new std::ofstream(filename_, std::fstream::app));
+      assert(output_file_->good());
+    }
+
+    void RegisterHook(const std::string& hook_name, std::function<void(const char*)> hook) {
+      assert(hook);
+      auto& placeholder = hooks_[hook_name];
+      assert(!placeholder);
+      placeholder = hook;
+    }
+
+    std::ostream& Persist(const std::string& hook_name) {
+      assert(output_file_);
+      return (*output_file_) << static_cast<uint64_t>(bricks::time::Now()) << '\t' << hook_name << '\t';
+    }
+
+   private:
+    bool run_ = false;
+    const std::string filename_;
+    std::unique_ptr<std::ofstream> output_file_;
+    std::map<std::string, std::function<void(const char*)>> hooks_;
+  };
+
+  template <typename T>
+  class VectorPersister {
+   public:
+    using ImmutableOptionalType = ImmutableOptional<T>;
+
+    VectorPersister(const std::string& name, Instance& instance, VectorStorage<T>& storage)
+        : instance_(instance),
+          hook_push_back_name_(name + ".push_back"),
+          hook_pop_back_name_(name + ".pop_back") {
+      instance.RegisterHook(hook_push_back_name_,
+                            [&storage](const char* data) {
+                              const auto index = bricks::strings::FromString<size_t>(data);
+                              assert(index == storage.vector_.size());
+                              const char* tab = std::find(data, data + strlen(data), '\t');
+                              assert(*tab);
+                              storage.vector_.push_back(CerealizeParseJSON<T>(tab + 1));
+                            });
+      instance.RegisterHook(hook_pop_back_name_,
+                            [&storage](const char* data) {
+                              const auto index = bricks::strings::FromString<size_t>(data);
+                              assert(index == storage.vector_.size());
+                              assert(!storage.vector_.empty());
+                              storage.vector_.pop_back();
+                            });
+    }
+
+    void PersistPushBack(size_t i, const T& x) {
+      instance_.Persist(hook_push_back_name_) << i << '\t' << CerealizeJSON(x) << '\n' << std::flush;
+    }
+    void PersistPopBack(size_t i) { instance_.Persist(hook_pop_back_name_) << i << '\n' << std::flush; }
+
+   private:
+    Instance& instance_;
+    const std::string hook_push_back_name_;
+    const std::string hook_pop_back_name_;
+  };
+
+  template <typename T>
+  class OrderedDictionaryPersister {
+   public:
+    using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
+
+    using ImmutableOptionalType = ImmutableOptional<T>;
+
+    OrderedDictionaryPersister(const std::string& name,
+                               Instance& instance,
+                               OrderedDictionaryStorage<T>& storage)
+        : instance_(instance), hook_insert_name_(name + ".insert"), hook_erase_name_(name + ".erase") {
+      instance.RegisterHook(hook_insert_name_,
+                            [&storage](const char* data) { storage.DoInsert(CerealizeParseJSON<T>(data)); });
+      instance.RegisterHook(
+          hook_erase_name_,
+          [&storage](const char* data) { storage.map_.erase(CerealizeParseJSON<T_KEY>(data)); });
+    }
+
+    void PersistInsert(const T& x) {
+      instance_.Persist(hook_insert_name_) << CerealizeJSON(x) << '\n' << std::flush;
+    }
+
+    void PersistErase(const T_KEY& k) {
+      instance_.Persist(hook_erase_name_) << CerealizeJSON(k) << '\n' << std::flush;
+    }
+
+   private:
+    Instance& instance_;
+    const std::string hook_insert_name_;
+    const std::string hook_erase_name_;
+  };
+
+  template <typename T>
+  class LightweightMatrixPersister {
+   public:
+    using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
+    using T_COL = sfinae::ENTRY_COL_TYPE<T>;
+
+    using ImmutableOptionalType = ImmutableOptional<T>;
+
+    LightweightMatrixPersister(const std::string& name,
+                               Instance& instance,
+                               LightweightMatrixStorage<T>& storage)
+        : instance_(instance), hook_add_name_(name + ".add"), hook_delete_name_(name + ".delete") {
+      instance.RegisterHook(hook_add_name_,
+                            [&storage](const char* data) { storage.DoAdd(CerealizeParseJSON<T>(data)); });
+      instance.RegisterHook(hook_delete_name_,
+                            [&storage](const char* data) {
+                              const std::vector<std::string> fields = bricks::strings::Split(data, '\t');
+                              assert(fields.size() == 2);
+                              storage.DoDelete(CerealizeParseJSON<T_ROW>(fields[0]),
+                                               CerealizeParseJSON<T_COL>(fields[1]));
+                            });
+    }
+
+    void PersistAdd(const T& x) { instance_.Persist(hook_add_name_) << CerealizeJSON(x) << '\n' << std::flush; }
+    void PersistDelete(const T_ROW& row, const T_COL& col) {
+      instance_.Persist(hook_delete_name_) << CerealizeJSON(row) << '\t' << CerealizeJSON(col) << '\n'
+                                           << std::flush;
+    }
+
+   private:
+    Instance& instance_;
+    const std::string hook_add_name_;
+    const std::string hook_delete_name_;
+  };
+};
+
 template <typename T, class POLICY = InMemory>
 class Vector final : public VectorAPI<T, typename POLICY::template VectorPersister<T>>,
                      protected POLICY::template VectorPersister<T> {
@@ -552,6 +711,7 @@ using ManyToMany = current::storage::LightweightMatrix<T, P>;
 
 using current::storage::InMemory;
 using current::storage::ReplayFromAndAppendToFile;
+using current::storage::ReplayFromAndAppendToFileUsingCereal;  // TODO(dkorolev): Deprecate.
 
 using current::storage::CannotPopBackFromEmptyVector;
 using current::storage::CannotPopBackFromEmptyVectorException;
