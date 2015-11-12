@@ -57,7 +57,7 @@ struct mt19937_64_wrapper {
 
 }  // namespace impl
 
-inline void SetSeed(const size_t seed) {
+inline void SetRandomSeed(const size_t seed) {
   ThreadLocalSingleton<impl::SeedImpl>().seed = seed;
   ThreadLocalSingleton<impl::SeedImpl>().is_set = true;
 }
@@ -102,5 +102,15 @@ inline double RandomDouble(const double a, const double b) { return RandomReal<d
 
 }  // namespace random
 }  // namespace bricks
+
+using bricks::random::RandomInt;
+using bricks::random::RandomLong;
+using bricks::random::RandomULong;
+using bricks::random::RandomInt64;
+using bricks::random::RandomUInt64;
+using bricks::random::RandomFloat;
+using bricks::random::RandomDouble;
+
+using bricks::random::SetRandomSeed;
 
 #endif  // BRICKS_UTIL_RANDOM_H

@@ -171,4 +171,7 @@ inline std::string ToUpper(const T& input) {
 }  // namespace strings
 }  // namespace bricks
 
+using bricks::strings::FromString;
+using bricks::strings::ToString;
+
 #endif  // BRICKS_STRINGS_UTIL_H

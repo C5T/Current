@@ -285,9 +285,9 @@ struct LoadFromJSONImpl {
 
   // `uint*_t`.
   template <typename TT = T>
-  static
-      typename std::enable_if<std::numeric_limits<TT>::is_integer && !std::numeric_limits<TT>::is_signed>::type
-      Load(rapidjson::Value& source, T& destination, const std::string& path) {
+  static typename std::enable_if<std::numeric_limits<TT>::is_integer && !std::numeric_limits<TT>::is_signed &&
+                                 !std::is_same<TT, bool>::value>::type
+  Load(rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsNumber()) {
       throw JSONSchemaException("number", source, path);
     }
@@ -303,6 +303,22 @@ struct LoadFromJSONImpl {
       throw JSONSchemaException("number", source, path);
     }
     destination = static_cast<T>(source.GetInt64());
+  }
+
+  // `float`.
+  static void Load(rapidjson::Value& source, float& destination, const std::string& path) {
+    if (!source.IsNumber()) {
+      throw JSONSchemaException("float", source, path);
+    }
+    destination = static_cast<float>(source.GetDouble());
+  }
+
+  // `double`.
+  static void Load(rapidjson::Value& source, double& destination, const std::string& path) {
+    if (!source.IsNumber()) {
+      throw JSONSchemaException("double", source, path);
+    }
+    destination = source.GetDouble();
   }
 
   // `enum` and `enum class`.
@@ -328,6 +344,16 @@ struct LoadFromJSONImpl<std::string> {
       throw JSONSchemaException("string", source, path);
     }
     destination.assign(source.GetString(), source.GetStringLength());
+  }
+};
+
+template <>
+struct LoadFromJSONImpl<bool> {
+  static void Load(rapidjson::Value& source, bool& destination, const std::string& path) {
+    if (!source.IsTrue() && !source.IsFalse()) {
+      throw JSONSchemaException("bool", source, path);
+    }
+    destination = source.IsTrue();
   }
 };
 
@@ -461,6 +487,7 @@ inline T ParseJSON(const std::string& source) {
 // Inject into global namespace.
 using current::serialization::JSON;
 using current::serialization::ParseJSON;
+using current::serialization::TypeSystemParseJSONException;
 using current::serialization::JSONSchemaException;
 using current::serialization::InvalidJSONException;
 
