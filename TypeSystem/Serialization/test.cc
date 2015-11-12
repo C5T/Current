@@ -36,10 +36,11 @@ namespace serialization_test {
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
+  CURRENT_FIELD(b, bool);
 
   // Note: The user has to define default constructor when defining custom ones.
   CURRENT_DEFAULT_CONSTRUCTOR(Serializable) {}
-  CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s) : i(i), s(s) {}
+  CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s, bool b) : i(i), s(s), b(b) {}
 
   CURRENT_RETURNS(uint64_t) twice_i() const { return i + i; }
 
@@ -88,18 +89,21 @@ TEST(Serialization, JSON) {
   Serializable simple_object;
   simple_object.i = 0;
   simple_object.s = "";
+  simple_object.b = false;
 
-  EXPECT_EQ("{\"i\":0,\"s\":\"\"}", JSON(simple_object));
+  EXPECT_EQ("{\"i\":0,\"s\":\"\",\"b\":false}", JSON(simple_object));
 
   simple_object.i = 42;
   simple_object.s = "foo";
+  simple_object.b = true;
   const std::string simple_object_as_json = JSON(simple_object);
-  EXPECT_EQ("{\"i\":42,\"s\":\"foo\"}", simple_object_as_json);
+  EXPECT_EQ("{\"i\":42,\"s\":\"foo\",\"b\":true}", simple_object_as_json);
 
   {
     Serializable a = ParseJSON<Serializable>(simple_object_as_json);
     EXPECT_EQ(42ull, a.i);
     EXPECT_EQ("foo", a.s);
+    EXPECT_TRUE(a.b);
   }
 
   // Nested serialization.
@@ -111,7 +115,7 @@ TEST(Serialization, JSON) {
   complex_object.z = simple_object;
 
   const std::string complex_object_as_json = JSON(complex_object);
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true}}",
             complex_object_as_json);
 
   {
@@ -130,7 +134,7 @@ TEST(Serialization, JSON) {
   // Complex serialization makes a copy.
   simple_object.i = 1000;
   EXPECT_EQ(42ull, complex_object.z.i);
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\"}}",
+  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true}}",
             JSON(complex_object));
 
   // Serializing an `std::map<>` with simple key type, which becomes a JSON object.
@@ -164,10 +168,12 @@ TEST(Serialization, JSON) {
     WithNontrivialMap with_nontrivial_map;
     EXPECT_EQ("{\"q\":[]}", JSON(with_nontrivial_map));
     with_nontrivial_map.q[simple_object] = "wow";
-    EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\"},\"wow\"]]}", JSON(with_nontrivial_map));
-    with_nontrivial_map.q[Serializable(1, "one")] = "yes";
-    EXPECT_EQ("{\"q\":[[{\"i\":1,\"s\":\"one\"},\"yes\"],[{\"i\":1000,\"s\":\"foo\"},\"wow\"]]}",
-              JSON(with_nontrivial_map));
+    EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\",\"b\":true},\"wow\"]]}", JSON(with_nontrivial_map));
+    with_nontrivial_map.q[Serializable(1, "one", false)] = "yes";
+    EXPECT_EQ(
+        "{\"q\":[[{\"i\":1,\"s\":\"one\",\"b\":false},\"yes\"],[{\"i\":1000,\"s\":\"foo\",\"b\":true},\"wow\"]]"
+        "}",
+        JSON(with_nontrivial_map));
   }
   {
     const auto parsed = ParseJSON<WithNontrivialMap>("{\"q\":[]}");
@@ -182,11 +188,13 @@ TEST(Serialization, JSON) {
     }
   }
   {
+    // FIXME(dkorolev): Forgetting the `bool` in the JSON below results in bad exception messages.
     const auto parsed = ParseJSON<WithNontrivialMap>(
-        "{\"q\":[[{\"i\":3,\"s\":\"three\"},\"prime\"],[{\"i\":4,\"s\":\"four\"},\"composite\"]]}");
+        "{\"q\":[[{\"i\":3,\"s\":\"three\",\"b\":true},\"prime\"],[{\"i\":4,\"s\":\"four\",\"b\":false},"
+        "\"composite\"]]}");
     ASSERT_EQ(2u, parsed.q.size());
-    EXPECT_EQ("prime", parsed.q.at(Serializable(3, "")));
-    EXPECT_EQ("composite", parsed.q.at(Serializable(4, "")));
+    EXPECT_EQ("prime", parsed.q.at(Serializable(3, "", true)));
+    EXPECT_EQ("composite", parsed.q.at(Serializable(4, "", false)));
   }
 
   {
@@ -312,7 +320,7 @@ TEST(Serialization, JSONExceptions) {
 TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
   using namespace serialization_test;
   {
-    Serializable simple_object(1, "foo");
+    Serializable simple_object(1, "foo", true);
     EXPECT_EQ(2u, simple_object.twice_i());
   }
   {
