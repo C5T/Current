@@ -105,7 +105,7 @@ inline double RandomDouble(const double a, const double b) { return RandomReal<d
 
 using bricks::random::RandomInt;
 using bricks::random::RandomLong;
-using bricks::random::RandomInt64;
+using bricks::random::RandomULong;
 using bricks::random::RandomInt64;
 using bricks::random::RandomUInt64;
 using bricks::random::RandomFloat;
