@@ -25,6 +25,7 @@ SOFTWARE.
 #include "ripcurrent.h"
 
 #include "../Bricks/strings/join.h"
+#include "../Bricks/strings/split.h"
 
 #include "../3rdparty/gtest/gtest-main.h"
 
@@ -92,89 +93,6 @@ CURRENT_RHS(Baz) {
 }  // namespace ripcurrent_unittest
 
 // clang-format on
-
-TEST(RipCurrent, NotLeftHanging) {
-  // This test is best to keep first, since it depends on line numbers. -- D.K.
-
-  using namespace ripcurrent_unittest;
-
-  std::string captured_error_message;
-  const auto scope = bricks::Singleton<RipCurrentMockableErrorHandler>().ScopedInjectHandler(
-      [&captured_error_message](const std::string& error_message) { captured_error_message = error_message; });
-
-  EXPECT_EQ("", captured_error_message);
-  Foo();
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "Foo() | ...\n"
-      "Foo() from test.cc:106\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-  Bar();
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "... | Bar() | ...\n"
-      "Bar() from test.cc:113\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-  Baz();
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "... | Baz()\n"
-      "Baz() from test.cc:120\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-  Foo(1) | Bar(2);
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "Foo(1) | Bar(2) | ...\n"
-      "Foo(1) from test.cc:127\n"
-      "Bar(2) from test.cc:127\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-  Bar(3) | Baz();
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "... | Bar(3) | Baz()\n"
-      "Bar(3) from test.cc:135\n"
-      "Baz() from test.cc:135\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-  std::vector<int> result;
-  Foo(42) | Bar(100) | Baz(std::ref(result));
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "Foo(42) | Bar(100) | Baz(std::ref(result))\n"
-      "Foo(42) from test.cc:144\n"
-      "Bar(100) from test.cc:144\n"
-      "Baz(std::ref(result)) from test.cc:144\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-
-  { const auto tmp = Foo() | Bar(1) | Baz(std::ref(result)); }
-  EXPECT_EQ(
-      "RipCurrent building block leaked.\n"
-      "Foo() | Bar(1) | Baz(std::ref(result))\n"
-      "Foo() from test.cc:154\n"
-      "Bar(1) from test.cc:154\n"
-      "Baz(std::ref(result)) from test.cc:154\n"
-      "Each building block should be run, described, used as part of a larger block, or dismissed.\n",
-      captured_error_message);
-
-  captured_error_message = "NO ERROR";
-  {
-    const auto tmp = Foo() | Bar(2) | Baz(std::ref(result));
-    tmp.Describe();
-  }
-  EXPECT_EQ("NO ERROR", captured_error_message);
-
-  captured_error_message = "NO ERROR ONCE AGAIN";
-  {
-    const auto tmp = Foo() | Bar(3) | Baz(std::ref(result));
-    tmp.Dismiss();
-  }
-  EXPECT_EQ("NO ERROR ONCE AGAIN", captured_error_message);
-}
 
 TEST(RipCurrent, SingleEdgeFlow) {
   using namespace ripcurrent_unittest;
@@ -377,4 +295,74 @@ TEST(RipCurrent, TypeSystemGuarantees) {
   foo_bar_bar_baz_2.Dismiss();
   foo_bar_bar_baz_3.Dismiss();
   foo_bar_bar_baz_4.Dismiss();
+}
+
+static std::string ExpectHasNAndReturnFirstTwoLines(size_t n, const std::string& s) {
+  const std::vector<std::string> lines = bricks::strings::Split<bricks::strings::ByLines>(s);
+  EXPECT_EQ(n, lines.size());
+  return bricks::strings::Join(
+      std::vector<std::string>(
+          lines.begin(), lines.begin() + std::min(static_cast<size_t>(lines.size()), static_cast<size_t>(2))),
+      '\n');
+}
+
+TEST(RipCurrent, NotLeftHanging) {
+  using namespace ripcurrent_unittest;
+
+  std::string captured_error_message;
+  const auto scope = bricks::Singleton<RipCurrentMockableErrorHandler>().ScopedInjectHandler(
+      [&captured_error_message](const std::string& error_message) { captured_error_message = error_message; });
+
+  EXPECT_EQ("", captured_error_message);
+  Foo();
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "Foo() | ...",
+      ExpectHasNAndReturnFirstTwoLines(4, captured_error_message));
+  Bar();
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "... | Bar() | ...",
+      ExpectHasNAndReturnFirstTwoLines(4, captured_error_message));
+  Baz();
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "... | Baz()",
+      ExpectHasNAndReturnFirstTwoLines(4, captured_error_message));
+  Foo(1) | Bar(2);
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "Foo(1) | Bar(2) | ...",
+      ExpectHasNAndReturnFirstTwoLines(5, captured_error_message));
+  Bar(3) | Baz();
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "... | Bar(3) | Baz()",
+      ExpectHasNAndReturnFirstTwoLines(5, captured_error_message));
+  std::vector<int> result;
+  Foo(42) | Bar(100) | Baz(std::ref(result));
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "Foo(42) | Bar(100) | Baz(std::ref(result))",
+      ExpectHasNAndReturnFirstTwoLines(6, captured_error_message));
+
+  { const auto tmp = Foo() | Bar(1) | Baz(std::ref(result)); }
+  EXPECT_EQ(
+      "RipCurrent building block leaked.\n"
+      "Foo() | Bar(1) | Baz(std::ref(result))",
+      ExpectHasNAndReturnFirstTwoLines(6, captured_error_message));
+
+  captured_error_message = "NO ERROR";
+  {
+    const auto tmp = Foo() | Bar(2) | Baz(std::ref(result));
+    tmp.Describe();
+  }
+  EXPECT_EQ("NO ERROR", captured_error_message);
+
+  captured_error_message = "NO ERROR ONCE AGAIN";
+  {
+    const auto tmp = Foo() | Bar(3) | Baz(std::ref(result));
+    tmp.Dismiss();
+  }
+  EXPECT_EQ("NO ERROR ONCE AGAIN", captured_error_message);
 }
