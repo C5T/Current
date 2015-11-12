@@ -262,6 +262,32 @@ TEST(Reflection, StructSchema) {
       "};\n",
       struct_schema.CppDescription(z_type_id));
 
+  EXPECT_EQ(
+      "struct X {\n"
+      "  int32_t i;\n"
+      "};\n",
+      struct_schema.CppDescription(x_type_id, true));
+  EXPECT_EQ(
+      "struct X {\n"
+      "  int32_t i;\n"
+      "};\n\n"
+      "struct Y {\n"
+      "  std::vector<X> v;\n"
+      "};\n",
+      struct_schema.CppDescription(y_type_id, true));
+  EXPECT_EQ(
+      "struct X {\n"
+      "  int32_t i;\n"
+      "};\n\n"
+      "struct Y {\n"
+      "  std::vector<X> v;\n"
+      "};\n\n"
+      "struct Z : Y {\n"
+      "  double d;\n"
+      "  std::vector<std::vector<Y>> v2;\n"
+      "};\n",
+      struct_schema.CppDescription(z_type_id, true));
+
   struct_schema.AddStruct<B>();
   SchemaInfo updated_schema = struct_schema.GetSchemaInfo();
   EXPECT_EQ(5u, updated_schema.ordered_struct_list.size());
