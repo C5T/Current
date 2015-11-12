@@ -544,6 +544,12 @@ using current::storage::Vector;
 using current::storage::OrderedDictionary;
 using current::storage::LightweightMatrix;
 
+template <typename T, typename P>
+using OneToOne = current::storage::OrderedDictionary<T, P>;
+
+template <typename T, typename P>
+using ManyToMany = current::storage::LightweightMatrix<T, P>;
+
 using current::storage::InMemory;
 using current::storage::ReplayFromAndAppendToFile;
 

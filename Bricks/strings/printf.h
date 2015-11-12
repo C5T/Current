@@ -59,4 +59,6 @@ inline std::string Printf(const char *fmt, ...) {
 }  // namespace strings
 }  // namespace bricks
 
+using bricks::strings::Printf;
+
 #endif  // BRICKS_STRINGS_PRINTF_H
