@@ -290,12 +290,20 @@ struct LoadFromJSONImpl {
     destination = static_cast<T>(source.GetInt64());
   }
 
+  // `float`.
+  static void Load(rapidjson::Value& source, float& destination, const std::string& path) {
+    if (!source.IsNumber()) {
+      throw JSONSchemaException("float", source, path);
+    }
+    destination = static_cast<float>(source.GetDouble());
+  }
+
   // `double`.
   static void Load(rapidjson::Value& source, double& destination, const std::string& path) {
     if (!source.IsNumber()) {
       throw JSONSchemaException("double", source, path);
     }
-    destination = static_cast<T>(source.GetDouble());
+    destination = source.GetDouble();
   }
 
   // `enum` and `enum class`.
