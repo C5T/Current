@@ -83,24 +83,29 @@ struct ReflectedTypeImpl {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
-  ReflectedTypeImpl* reflected_element_type;
+  const std::shared_ptr<ReflectedTypeImpl> reflected_element_type;
+  ReflectedType_Vector(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_element_type(re) {}
 };
 
 struct ReflectedType_Map : ReflectedTypeImpl {
-  ReflectedTypeImpl* reflected_key_type;
-  ReflectedTypeImpl* reflected_value_type;
+  const std::shared_ptr<ReflectedTypeImpl> reflected_key_type;
+  const std::shared_ptr<ReflectedTypeImpl> reflected_value_type;
+  ReflectedType_Map(const std::shared_ptr<ReflectedTypeImpl> rk, const std::shared_ptr<ReflectedTypeImpl> rv)
+      : reflected_key_type(rk), reflected_value_type(rv) {}
 };
 
 struct ReflectedType_Pair : ReflectedTypeImpl {
-  ReflectedTypeImpl* reflected_first_type;
-  ReflectedTypeImpl* reflected_second_type;
+  std::shared_ptr<ReflectedTypeImpl> reflected_first_type;
+  std::shared_ptr<ReflectedTypeImpl> reflected_second_type;
+  ReflectedType_Pair(const std::shared_ptr<ReflectedTypeImpl> rf, const std::shared_ptr<ReflectedTypeImpl> rs)
+      : reflected_first_type(rf), reflected_second_type(rs) {}
 };
 
-typedef std::vector<std::pair<ReflectedTypeImpl*, std::string>> StructFieldsVector;
+typedef std::vector<std::pair<std::shared_ptr<ReflectedTypeImpl>, std::string>> StructFieldsVector;
 
 struct ReflectedType_Struct : ReflectedTypeImpl {
   std::string name;
-  ReflectedType_Struct* reflected_super = nullptr;
+  std::shared_ptr<ReflectedType_Struct> reflected_super;
   StructFieldsVector fields;
 };
 

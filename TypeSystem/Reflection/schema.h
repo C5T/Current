@@ -44,13 +44,14 @@ CURRENT_STRUCT(StructInfo) {
   CURRENT_FIELD(fields, (std::vector<std::pair<uint64_t, std::string>>));
 
   CURRENT_DEFAULT_CONSTRUCTOR(StructInfo) {}
-  CURRENT_CONSTRUCTOR(StructInfo)(const ReflectedTypeImpl* r) {
-    const ReflectedType_Struct* reflected_struct = dynamic_cast<const ReflectedType_Struct*>(r);
+  CURRENT_CONSTRUCTOR(StructInfo)(const std::shared_ptr<ReflectedTypeImpl> r) {
+    const ReflectedType_Struct* reflected_struct = dynamic_cast<const ReflectedType_Struct*>(r.get());
     if (reflected_struct != nullptr) {
       type_id = static_cast<uint64_t>(reflected_struct->type_id);
       name = reflected_struct->name;
-      const ReflectedType_Struct* super = reflected_struct->reflected_super;
-      if (super) {
+      const ReflectedType_Struct* super =
+          dynamic_cast<const ReflectedType_Struct*>(reflected_struct->reflected_super.get());
+      if (super != nullptr) {
         super_type_id = static_cast<uint64_t>(super->type_id);
       }
       for (const auto& f : reflected_struct->fields) {
@@ -114,12 +115,12 @@ struct StructSchema {
   SchemaInfo schema_;
   const PrimitiveTypesList primitive_types_;
 
-  void TraverseType(const ReflectedTypeImpl* reflected_type) {
+  void TraverseType(const std::shared_ptr<ReflectedTypeImpl> reflected_type) {
     assert(reflected_type);
     const uint64_t type_id = static_cast<uint64_t>(reflected_type->type_id);
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX && schema_.structs.count(type_id) == 0u) {
-      const ReflectedType_Struct* s = dynamic_cast<const ReflectedType_Struct*>(reflected_type);
+      const ReflectedType_Struct* s = dynamic_cast<const ReflectedType_Struct*>(reflected_type.get());
       if (s->reflected_super) {
         TraverseType(s->reflected_super);
       }
@@ -132,8 +133,8 @@ struct StructSchema {
 
     if (schema_.types.count(type_id) == 0u) {
       if (type_prefix == TYPEID_VECTOR_PREFIX) {
-        ReflectedTypeImpl* reflected_element_type =
-            dynamic_cast<const ReflectedType_Vector*>(reflected_type)->reflected_element_type;
+        const std::shared_ptr<ReflectedTypeImpl> reflected_element_type =
+            std::dynamic_pointer_cast<ReflectedType_Vector>(reflected_type)->reflected_element_type;
         assert(reflected_element_type);
         TypeInfo type_info;
         type_info.type_id = type_id;
@@ -143,10 +144,10 @@ struct StructSchema {
       }
 
       if (type_prefix == TYPEID_PAIR_PREFIX) {
-        ReflectedTypeImpl* reflected_first_type =
-            dynamic_cast<const ReflectedType_Pair*>(reflected_type)->reflected_first_type;
-        ReflectedTypeImpl* reflected_second_type =
-            dynamic_cast<const ReflectedType_Pair*>(reflected_type)->reflected_second_type;
+        const std::shared_ptr<ReflectedTypeImpl> reflected_first_type =
+            std::dynamic_pointer_cast<ReflectedType_Pair>(reflected_type)->reflected_first_type;
+        const std::shared_ptr<ReflectedTypeImpl> reflected_second_type =
+            std::dynamic_pointer_cast<ReflectedType_Pair>(reflected_type)->reflected_second_type;
         assert(reflected_first_type);
         assert(reflected_second_type);
         TypeInfo type_info;
@@ -159,10 +160,10 @@ struct StructSchema {
       }
 
       if (type_prefix == TYPEID_MAP_PREFIX) {
-        ReflectedTypeImpl* reflected_key_type =
-            dynamic_cast<const ReflectedType_Map*>(reflected_type)->reflected_key_type;
-        ReflectedTypeImpl* reflected_value_type =
-            dynamic_cast<const ReflectedType_Map*>(reflected_type)->reflected_value_type;
+        std::shared_ptr<ReflectedTypeImpl> reflected_key_type =
+            std::dynamic_pointer_cast<ReflectedType_Map>(reflected_type)->reflected_key_type;
+        std::shared_ptr<ReflectedTypeImpl> reflected_value_type =
+            std::dynamic_pointer_cast<ReflectedType_Map>(reflected_type)->reflected_value_type;
         assert(reflected_key_type);
         assert(reflected_value_type);
         TypeInfo type_info;

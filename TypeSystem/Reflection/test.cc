@@ -217,6 +217,11 @@ CURRENT_STRUCT(Z, Y) {
   CURRENT_FIELD(d, double);
   CURRENT_FIELD(v2, std::vector<std::vector<Y>>);
 };
+CURRENT_STRUCT(A) { CURRENT_FIELD(i, uint32_t); };
+CURRENT_STRUCT(B) {
+  CURRENT_FIELD(x, X);
+  CURRENT_FIELD(a, A);
+};
 }
 
 TEST(Reflection, StructSchema) {
@@ -231,16 +236,21 @@ TEST(Reflection, StructSchema) {
   EXPECT_EQ(3u, schema.structs.size());
   const uint64_t x_type_id = schema.ordered_struct_list[0];
   EXPECT_EQ("X", schema.structs[x_type_id].name);
+  EXPECT_EQ(1u, schema.structs[x_type_id].fields.size());
   EXPECT_EQ(9000000000000000023ull, schema.structs[x_type_id].fields[0].first);
   EXPECT_EQ("i", schema.structs[x_type_id].fields[0].second);
   const uint64_t y_type_id = schema.ordered_struct_list[1];
   EXPECT_EQ("Y", schema.structs[y_type_id].name);
+  EXPECT_EQ(1u, schema.structs[y_type_id].fields.size());
   EXPECT_EQ(9317693294612922990ull, schema.structs[y_type_id].fields[0].first);
   EXPECT_EQ("v", schema.structs[y_type_id].fields[0].second);
   const uint64_t z_type_id = schema.ordered_struct_list[2];
   EXPECT_EQ("Z", schema.structs[z_type_id].name);
+  EXPECT_EQ(2u, schema.structs[z_type_id].fields.size());
   EXPECT_EQ(9000000000000000032ull, schema.structs[z_type_id].fields[0].first);
   EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
+  EXPECT_EQ(9311340417498587505ull, schema.structs[z_type_id].fields[1].first);
+  EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
 
   EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
   EXPECT_EQ("std::vector<std::vector<Y>>",
@@ -251,6 +261,23 @@ TEST(Reflection, StructSchema) {
       "  std::vector<std::vector<Y>> v2;\n"
       "};\n",
       struct_schema.CppDescription(z_type_id));
+
+  struct_schema.AddStruct<B>();
+  SchemaInfo updated_schema = struct_schema.GetSchemaInfo();
+  EXPECT_EQ(5u, updated_schema.ordered_struct_list.size());
+  EXPECT_EQ(5u, updated_schema.structs.size());
+  const uint64_t a_type_id = updated_schema.ordered_struct_list[3];
+  EXPECT_EQ("A", updated_schema.structs[a_type_id].name);
+  EXPECT_EQ(1u, updated_schema.structs[a_type_id].fields.size());
+  EXPECT_EQ(9000000000000000013ull, updated_schema.structs[a_type_id].fields[0].first);
+  EXPECT_EQ("i", updated_schema.structs[a_type_id].fields[0].second);
+  const uint64_t b_type_id = updated_schema.ordered_struct_list[4];
+  EXPECT_EQ("B", updated_schema.structs[b_type_id].name);
+  EXPECT_EQ(2u, updated_schema.structs[b_type_id].fields.size());
+  EXPECT_EQ(x_type_id, updated_schema.structs[b_type_id].fields[0].first);
+  EXPECT_EQ("x", updated_schema.structs[b_type_id].fields[0].second);
+  EXPECT_EQ(a_type_id, updated_schema.structs[b_type_id].fields[1].first);
+  EXPECT_EQ("a", updated_schema.structs[b_type_id].fields[1].second);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

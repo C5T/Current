@@ -59,78 +59,77 @@ struct ReflectorImpl {
 
   struct TypeReflector {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
-  std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) {           \
-    return make_unique<ReflectedType_##current_type>();                             \
+  std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) {           \
+    return std::make_shared<ReflectedType_##current_type>();                        \
   }
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
     template <typename T>
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
-      auto v = make_unique<ReflectedType_Vector>();
-      v->reflected_element_type = Reflector().ReflectType<T>();
+    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
+      auto v = std::make_shared<ReflectedType_Vector>(Reflector().ReflectType<T>());
       v->type_id = CalculateTypeID(v);
-      return std::move(v);
+      return v;
     }
 
     template <typename TF, typename TS>
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::pair<TF, TS>>) {
-      auto p = make_unique<ReflectedType_Pair>();
-      p->reflected_first_type = Reflector().ReflectType<TF>();
-      p->reflected_second_type = Reflector().ReflectType<TS>();
+    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::pair<TF, TS>>) {
+      auto p =
+          std::make_shared<ReflectedType_Pair>(Reflector().ReflectType<TF>(), Reflector().ReflectType<TS>());
       p->type_id = CalculateTypeID(p);
-      return std::move(p);
+      return p;
     }
 
     template <typename TK, typename TV>
-    std::unique_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::map<TK, TV>>) {
-      auto v = make_unique<ReflectedType_Map>();
-      v->reflected_key_type = Reflector().ReflectType<TK>();
-      v->reflected_value_type = Reflector().ReflectType<TV>();
+    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::map<TK, TV>>) {
+      auto v =
+          std::make_shared<ReflectedType_Map>(Reflector().ReflectType<TK>(), Reflector().ReflectType<TV>());
       v->type_id = CalculateTypeID(v);
-      return std::move(v);
+      return v;
     }
 
     template <typename T>
-    typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
+    typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::shared_ptr<ReflectedTypeImpl>>::type
     operator()(TypeSelector<T>) {
-      auto s = make_unique<ReflectedType_Struct>();
+      auto s = std::make_shared<ReflectedType_Struct>();
       s->name = StructName<T>();
       s->reflected_super = ReflectSuper<T>();
       FieldReflector field_reflector(s->fields);
       VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
       s->type_id = CalculateTypeID(s);
-      return std::move(s);
+      return s;
     }
 
    private:
     template <typename T>
-    typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value, ReflectedType_Struct*>::type
+    typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value,
+                            std::shared_ptr<ReflectedType_Struct>>::type
     ReflectSuper() {
-      return nullptr;
+      return std::shared_ptr<ReflectedType_Struct>();
     }
 
     template <typename T>
-    typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value, ReflectedType_Struct*>::type
+    typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value,
+                            std::shared_ptr<ReflectedType_Struct>>::type
     ReflectSuper() {
-      return dynamic_cast<ReflectedType_Struct*>(Reflector().ReflectType<SuperType<T>>());
+      return std::dynamic_pointer_cast<ReflectedType_Struct>(Reflector().ReflectType<SuperType<T>>());
     }
   };
 
   template <typename T>
-  ReflectedTypeImpl* ReflectType() {
+  std::shared_ptr<ReflectedTypeImpl> ReflectType() {
     const std::type_index type_index = std::type_index(typeid(T));
     auto& placeholder = reflected_types_[type_index];
     if (!placeholder) {
       placeholder = std::move(type_reflector_(TypeSelector<T>()));
     }
-    return placeholder.get();
+    return placeholder;
   }
 
   size_t KnownTypesCountForUnitTest() const { return reflected_types_.size(); }
 
  private:
-  std::unordered_map<std::type_index, std::unique_ptr<ReflectedTypeImpl>> reflected_types_;
+  std::unordered_map<std::type_index, std::shared_ptr<ReflectedTypeImpl>> reflected_types_;
   TypeReflector type_reflector_;
 };
 
