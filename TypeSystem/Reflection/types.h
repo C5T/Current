@@ -34,105 +34,125 @@ SOFTWARE.
 #include <memory>
 
 #include "../base.h"
+#include "../struct.h"
 
 #include "../../Bricks/util/crc32.h"
 
 namespace current {
 namespace reflection {
 
-constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
-constexpr uint64_t TYPEID_BASIC_TYPE = 900u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_STRUCT_TYPE = 920u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_VECTOR_TYPE = 931u * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_MAP_TYPE = 932u * TYPEID_TYPE_RANGE;
+// clang-format off
+constexpr uint64_t TYPEID_BASIC_PREFIX  = 900u;
+constexpr uint64_t TYPEID_STRUCT_PREFIX = 920u;
+constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
+constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
+constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
+constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
+
+constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
+constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_BASIC_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_STRUCT_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_VECTOR_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_SET_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_PAIR_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_MAP_PREFIX * TYPEID_TYPE_RANGE;
+// clang-format on
 
 enum class TypeID : uint64_t {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
+  INVALID_TYPE = 0u
 };
 
+inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
+
+inline uint64_t TypePrefix(const TypeID type_id) { return TypePrefix(static_cast<uint64_t>(type_id)); }
+
 struct ReflectedTypeImpl {
-  TypeID type_id;
-  virtual std::string CppType() = 0;
-  virtual std::string CppDeclaration() { return ""; }
+  TypeID type_id = TypeID::INVALID_TYPE;
   virtual ~ReflectedTypeImpl() = default;
 };
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
   struct ReflectedType_##current_type : ReflectedTypeImpl {                         \
-    TypeID type_id = TypeID::current_type;                                          \
-    std::string CppType() override { return #cpp_type; }                            \
+    ReflectedType_##current_type() { type_id = TypeID::current_type; }              \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
-  constexpr static const char* cpp_typename = "std::vector";
-  ReflectedTypeImpl* reflected_element_type;
-
-  std::string CppType() override {
-    assert(reflected_element_type);
-    std::ostringstream oss;
-    oss << cpp_typename << '<' << reflected_element_type->CppType() << '>';
-    return oss.str();
-  }
+  const std::shared_ptr<ReflectedTypeImpl> reflected_element_type;
+  ReflectedType_Vector(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_element_type(re) {}
 };
 
 struct ReflectedType_Map : ReflectedTypeImpl {
-  constexpr static const char* cpp_typename = "std::map";
-  ReflectedTypeImpl* reflected_key_type;
-  ReflectedTypeImpl* reflected_value_type;
-
-  std::string CppType() override {
-    assert(reflected_key_type);
-    assert(reflected_value_type);
-    std::ostringstream oss;
-    oss << cpp_typename << '<' << reflected_key_type->CppType() << ", " << reflected_value_type->CppType()
-        << '>';
-    return oss.str();
-  }
+  const std::shared_ptr<ReflectedTypeImpl> reflected_key_type;
+  const std::shared_ptr<ReflectedTypeImpl> reflected_value_type;
+  ReflectedType_Map(const std::shared_ptr<ReflectedTypeImpl> rk, const std::shared_ptr<ReflectedTypeImpl> rv)
+      : reflected_key_type(rk), reflected_value_type(rv) {}
 };
 
-typedef std::vector<std::pair<ReflectedTypeImpl*, std::string>> StructFieldsVector;
+struct ReflectedType_Pair : ReflectedTypeImpl {
+  std::shared_ptr<ReflectedTypeImpl> reflected_first_type;
+  std::shared_ptr<ReflectedTypeImpl> reflected_second_type;
+  ReflectedType_Pair(const std::shared_ptr<ReflectedTypeImpl> rf, const std::shared_ptr<ReflectedTypeImpl> rs)
+      : reflected_first_type(rf), reflected_second_type(rs) {}
+};
+
+typedef std::vector<std::pair<std::shared_ptr<ReflectedTypeImpl>, std::string>> StructFieldsVector;
 
 struct ReflectedType_Struct : ReflectedTypeImpl {
   std::string name;
-  // If struct is derived from another Current struct, `super_name` contains the base type name.
-  // Empty otherwise.
-  std::string super_name;
+  std::shared_ptr<ReflectedType_Struct> reflected_super;
   StructFieldsVector fields;
-
-  std::string CppType() override { return name; }
-
-  std::string CppDeclaration() override {
-    std::string result = "struct " + name + (super_name.empty() ? "" : " : " + super_name) + " {\n";
-    for (const auto& f : fields) {
-      result += "  " + f.first->CppType() + " " + f.second + ";\n";
-    }
-    result += "};\n";
-    return result;
-  }
 };
+
+inline uint64_t rol64(const uint64_t value, size_t nbits) {
+  nbits &= 63;
+  return (value << nbits) | (value >> (-nbits & 63));
+}
+
+inline uint64_t rol64(const TypeID type_id, size_t nbits) {
+  return rol64(static_cast<uint64_t>(type_id), nbits);
+}
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   uint64_t hash = bricks::CRC32(s.name);
   size_t i = 0u;
   for (const auto& f : s.fields) {
-    hash ^= (static_cast<uint64_t>(bricks::CRC32(f.second)) << 8) ^
-            (static_cast<uint64_t>(bricks::CRC32(f.first->CppType())) << (16 + (i++ % 17)));
+    assert(f.first);
+    assert(f.first->type_id != TypeID::INVALID_TYPE);
+    hash ^= rol64(f.first->type_id, i + 8) ^ rol64(bricks::CRC32(f.second), i + 16);
+    ++i;
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  return static_cast<TypeID>(TYPEID_VECTOR_TYPE + bricks::CRC32(v.reflected_element_type->CppType()));
+  assert(v.reflected_element_type);
+  assert(v.reflected_element_type->type_id != TypeID::INVALID_TYPE);
+  return static_cast<TypeID>(TYPEID_VECTOR_TYPE +
+                             rol64(v.reflected_element_type->type_id, 1) % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
+  assert(v.reflected_first_type);
+  assert(v.reflected_second_type);
+  assert(v.reflected_first_type->type_id != TypeID::INVALID_TYPE);
+  assert(v.reflected_second_type->type_id != TypeID::INVALID_TYPE);
+  uint64_t hash = rol64(v.reflected_first_type->type_id, 4) ^ rol64(v.reflected_second_type->type_id, 8);
+  return static_cast<TypeID>(TYPEID_PAIR_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
-  return static_cast<TypeID>(
-      TYPEID_MAP_TYPE + bricks::CRC32(v.reflected_key_type->CppType() + v.reflected_value_type->CppType()));
+  assert(v.reflected_key_type);
+  assert(v.reflected_value_type);
+  assert(v.reflected_key_type->type_id != TypeID::INVALID_TYPE);
+  assert(v.reflected_value_type->type_id != TypeID::INVALID_TYPE);
+  uint64_t hash = rol64(v.reflected_key_type->type_id, 4) ^ rol64(v.reflected_value_type->type_id, 8);
+  return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

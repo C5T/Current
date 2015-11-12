@@ -89,6 +89,21 @@ struct SaveIntoJSONImpl<std::vector<T>> {
   }
 };
 
+template <typename TF, typename TS>
+struct SaveIntoJSONImpl<std::pair<TF, TS>> {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const std::pair<TF, TS>& value) {
+    destination.SetArray();
+    rapidjson::Value first_value;
+    rapidjson::Value second_value;
+    SaveIntoJSONImpl<TF>::Save(first_value, allocator, value.first);
+    SaveIntoJSONImpl<TS>::Save(second_value, allocator, value.second);
+    destination.PushBack(first_value, allocator);
+    destination.PushBack(second_value, allocator);
+  }
+};
+
 template <typename TK, typename TV>
 struct SaveIntoJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
@@ -353,6 +368,17 @@ struct LoadFromJSONImpl<std::vector<T>> {
     for (size_t i = 0; i < n; ++i) {
       LoadFromJSONImpl<T>::Load(source[i], destination[i], path + '[' + std::to_string(i) + ']');
     }
+  }
+};
+
+template <typename TF, typename TS>
+struct LoadFromJSONImpl<std::pair<TF, TS>> {
+  static void Load(rapidjson::Value& source, std::pair<TF, TS>& destination, const std::string& path) {
+    if (!source.IsArray() || source.Size() != 2u) {
+      throw JSONSchemaException("pair as array", source, path);
+    }
+    LoadFromJSONImpl<TF>::Load(source[static_cast<rapidjson::SizeType>(0)], destination.first, path);
+    LoadFromJSONImpl<TS>::Load(source[static_cast<rapidjson::SizeType>(1)], destination.second, path);
   }
 };
 

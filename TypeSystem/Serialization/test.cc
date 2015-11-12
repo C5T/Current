@@ -29,6 +29,9 @@ SOFTWARE.
 
 #include "json.h"
 
+#include "../Reflection/reflection.h"
+#include "../Reflection/schema.h"
+
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace serialization_test {
@@ -63,16 +66,11 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
-CURRENT_STRUCT(WithTrivialMap) {
-  using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
-  CURRENT_FIELD(m, map_string_string);
-};
+CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
-CURRENT_STRUCT(WithNontrivialMap) {
-  // To dig into: http://stackoverflow.com/questions/13842468/comma-in-c-c-macro
-  using map_serializable_string = std::map<Serializable, std::string>;  // Sigh. -- D.K.
-  CURRENT_FIELD(q, map_serializable_string);
-};
+CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
+
+CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
 
 enum class MyMagicGUID : uint64_t {};
 CURRENT_STRUCT(WithEnumClass) {
@@ -136,6 +134,24 @@ TEST(Serialization, JSON) {
   EXPECT_EQ(42ull, complex_object.z.i);
   EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true}}",
             JSON(complex_object));
+
+  // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
+  {
+    WithVectorOfPairs with_vector_of_pairs;
+    with_vector_of_pairs.v.emplace_back(-1, "foo");
+    with_vector_of_pairs.v.emplace_back(1, "bar");
+    EXPECT_EQ("{\"v\":[[-1,\"foo\"],[1,\"bar\"]]}", JSON(with_vector_of_pairs));
+  }
+  {
+    const auto parsed = ParseJSON<WithVectorOfPairs>("{\"v\":[[-1,\"foo\"],[-2,\"bar\"],[100,\"baz\"]]}");
+    ASSERT_EQ(3u, parsed.v.size());
+    EXPECT_EQ(-1, parsed.v[0].first);
+    EXPECT_EQ("foo", parsed.v[0].second);
+    EXPECT_EQ(-2, parsed.v[1].first);
+    EXPECT_EQ("bar", parsed.v[1].second);
+    EXPECT_EQ(100, parsed.v[2].first);
+    EXPECT_EQ("baz", parsed.v[2].second);
+  }
 
   // Serializing an `std::map<>` with simple key type, which becomes a JSON object.
   {
@@ -314,6 +330,36 @@ TEST(Serialization, JSONExceptions) {
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ(std::string("Expected string for `z.s`, got: 0"), e.what());
   }
+}
+
+TEST(Serialization, StructSchema) {
+  using namespace serialization_test;
+  using current::reflection::Reflector;
+  using current::reflection::SchemaInfo;
+  using current::reflection::StructSchema;
+
+  StructSchema struct_schema;
+  struct_schema.AddStruct<ComplexSerializable>();
+  const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
+  EXPECT_EQ(
+      "{\"structs\":[[9204126776251367878,{\"type_id\":9204126776251367878,\"name\":\"ComplexSerializable\","
+      "\"super_type_id\":0,\"fields\":[[9000000000000000014,\"j\"],[9000000000000000101,\"q\"],["
+      "9310000000000000202,\"v\"],[9209615721865857497,\"z\"]]}],[9209615721865857497,{\"type_id\":"
+      "9209615721865857497,\"name\":\"Serializable\",\"super_type_id\":0,\"fields\":[[9000000000000000014,"
+      "\"i\"],[9000000000000000101,\"s\"],[9000000000000000001,\"b\"]]}]],\"types\":[[9310000000000000202,{"
+      "\"type_id\":9310000000000000202,\"included_types\":[9000000000000000101]}]],\"ordered_struct_list\":["
+      "9209615721865857497,9204126776251367878]}",
+      schema_json);
+
+  const uint64_t serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
+  StructSchema loaded_schema(ParseJSON<SchemaInfo>(schema_json));
+  EXPECT_EQ(
+      "struct Serializable {\n"
+      "  uint64_t i;\n"
+      "  std::string s;\n"
+      "  bool b;\n"
+      "};\n",
+      loaded_schema.CppDescription(serializable_type_id));
 }
 
 // TODO(dkorolev): Move this test outside `Serialization`.

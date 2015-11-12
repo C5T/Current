@@ -31,6 +31,8 @@ SOFTWARE.
 #include <cstdint>
 
 #include "reflection.h"
+#include "schema.h"
+
 #include "../../Bricks/strings/strings.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -43,8 +45,7 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
-  using map_string_string = std::map<std::string, std::string>;  // Sigh. -- D.K.
-  CURRENT_FIELD(v4, map_string_string);
+  CURRENT_FIELD(v4, (std::map<std::string, std::string>));
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -52,42 +53,15 @@ using current::reflection::Reflector;
 
 }  // namespace reflection_test
 
-TEST(Reflection, DescribeCppStruct) {
-  using namespace reflection_test;
-
-  EXPECT_EQ(
-      "struct Foo {\n"
-      "  uint64_t i;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<Foo>());
-
-  EXPECT_EQ(
-      "struct Bar {\n"
-      "  std::vector<uint64_t> v1;\n"
-      "  std::vector<Foo> v2;\n"
-      "  std::vector<std::vector<Foo>> v3;\n"
-      "  std::map<std::string, std::string> v4;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<Bar>());
-
-  EXPECT_EQ(
-      "struct DerivedFromFoo : Foo {\n"
-      "  Bar bar;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<DerivedFromFoo>());
-
-  EXPECT_EQ(9u, Reflector().KnownTypesCountForUnitTest());
-}
-
 TEST(Reflection, TypeID) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;
 
   // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   const ReflectedType_Struct& bar = dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<Bar>());
-  EXPECT_EQ(9310000001031372545ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
-  EXPECT_EQ(9310000003023971265ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
-  EXPECT_EQ(9310000000769980382ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(9310000000000000028ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
+  EXPECT_EQ(9317693294631279482ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
+  EXPECT_EQ(9318642515553007349ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {
@@ -142,6 +116,11 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   CURRENT_FIELD(dbl, double, 1e308);
   // Other primitive types.
   CURRENT_FIELD(s, std::string, "The String");
+
+  // Complex types.
+  CURRENT_FIELD(pair_strdbl, (std::pair<std::string, double>));
+  CURRENT_FIELD(vector_int32, std::vector<int32_t>);
+  CURRENT_FIELD(map_strstr, (std::map<std::string, std::string>));
 };
 }
 
@@ -153,6 +132,33 @@ struct CollectFieldValues {
   template <typename T>
   void operator()(const std::string&, const T& value) const {
     output_.push_back(bricks::strings::ToString(value));
+  }
+
+  template <typename T>
+  void operator()(const std::string&, const std::vector<T>& value) const {
+    output_.push_back('[' + bricks::strings::Join(value, ',') + ']');
+  }
+
+  template <typename TF, typename TS>
+  void operator()(const std::string&, const std::pair<TF, TS>& value) const {
+    output_.push_back(bricks::strings::ToString(value.first) + ':' + bricks::strings::ToString(value.second));
+  }
+
+  template <typename TK, typename TV>
+  void operator()(const std::string&, const std::map<TK, TV>& value) const {
+    std::ostringstream oss;
+    oss << '[';
+    bool first = true;
+    for (const auto& cit : value) {
+      if (first) {
+        first = false;
+      } else {
+        oss << ',';
+      }
+      oss << cit.first << ':' << cit.second;
+    }
+    oss << ']';
+    output_.push_back(oss.str());
   }
 
   // Output `bool` using boolalpha.
@@ -182,6 +188,9 @@ TEST(Reflection, VisitAllFields) {
   using namespace reflection_test;
 
   StructWithAllSupportedTypes all;
+  all.pair_strdbl = {"Minus eight point five", -9.5};
+  all.vector_int32 = {-1, -2, -4};
+  all.map_strstr = {{"key1", "value1"}, {"key2", "value2"}};
 
   std::vector<std::string> result;
   CollectFieldValues values{result};
@@ -193,8 +202,108 @@ TEST(Reflection, VisitAllFields) {
       "255,65535,4294967295,18446744073709551615,"
       "-128,-32768,-2147483648,-9223372036854775808,"
       "1e+38,1e+308,"
-      "The String",
+      "The String,"
+      "Minus eight point five:-9.500000,"
+      "[-1,-2,-4],"
+      "[key1:value1,key2:value2]",
       bricks::strings::Join(result, ','));
+}
+
+namespace reflection_test {
+
+CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
+CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
+CURRENT_STRUCT(Z, Y) {
+  CURRENT_FIELD(d, double);
+  CURRENT_FIELD(v2, std::vector<std::vector<Y>>);
+};
+CURRENT_STRUCT(A) { CURRENT_FIELD(i, uint32_t); };
+CURRENT_STRUCT(B) {
+  CURRENT_FIELD(x, X);
+  CURRENT_FIELD(a, A);
+};
+}
+
+TEST(Reflection, StructSchema) {
+  using namespace reflection_test;
+  using current::reflection::SchemaInfo;
+  using current::reflection::StructSchema;
+
+  StructSchema struct_schema;
+  struct_schema.AddStruct<Z>();
+  SchemaInfo schema = struct_schema.GetSchemaInfo();
+  EXPECT_EQ(3u, schema.ordered_struct_list.size());
+  EXPECT_EQ(3u, schema.structs.size());
+  const uint64_t x_type_id = schema.ordered_struct_list[0];
+  EXPECT_EQ("X", schema.structs[x_type_id].name);
+  EXPECT_EQ(1u, schema.structs[x_type_id].fields.size());
+  EXPECT_EQ(9000000000000000023ull, schema.structs[x_type_id].fields[0].first);
+  EXPECT_EQ("i", schema.structs[x_type_id].fields[0].second);
+  const uint64_t y_type_id = schema.ordered_struct_list[1];
+  EXPECT_EQ("Y", schema.structs[y_type_id].name);
+  EXPECT_EQ(1u, schema.structs[y_type_id].fields.size());
+  EXPECT_EQ(9317693294612922990ull, schema.structs[y_type_id].fields[0].first);
+  EXPECT_EQ("v", schema.structs[y_type_id].fields[0].second);
+  const uint64_t z_type_id = schema.ordered_struct_list[2];
+  EXPECT_EQ("Z", schema.structs[z_type_id].name);
+  EXPECT_EQ(2u, schema.structs[z_type_id].fields.size());
+  EXPECT_EQ(9000000000000000032ull, schema.structs[z_type_id].fields[0].first);
+  EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
+  EXPECT_EQ(9311340417498587505ull, schema.structs[z_type_id].fields[1].first);
+  EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
+
+  EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
+  EXPECT_EQ("std::vector<std::vector<Y>>",
+            struct_schema.CppDescription(schema.structs[z_type_id].fields[1].first));
+  EXPECT_EQ(
+      "struct Z : Y {\n"
+      "  double d;\n"
+      "  std::vector<std::vector<Y>> v2;\n"
+      "};\n",
+      struct_schema.CppDescription(z_type_id));
+
+  EXPECT_EQ(
+      "struct X {\n"
+      "  int32_t i;\n"
+      "};\n",
+      struct_schema.CppDescription(x_type_id, true));
+  EXPECT_EQ(
+      "struct X {\n"
+      "  int32_t i;\n"
+      "};\n\n"
+      "struct Y {\n"
+      "  std::vector<X> v;\n"
+      "};\n",
+      struct_schema.CppDescription(y_type_id, true));
+  EXPECT_EQ(
+      "struct X {\n"
+      "  int32_t i;\n"
+      "};\n\n"
+      "struct Y {\n"
+      "  std::vector<X> v;\n"
+      "};\n\n"
+      "struct Z : Y {\n"
+      "  double d;\n"
+      "  std::vector<std::vector<Y>> v2;\n"
+      "};\n",
+      struct_schema.CppDescription(z_type_id, true));
+
+  struct_schema.AddStruct<B>();
+  SchemaInfo updated_schema = struct_schema.GetSchemaInfo();
+  EXPECT_EQ(5u, updated_schema.ordered_struct_list.size());
+  EXPECT_EQ(5u, updated_schema.structs.size());
+  const uint64_t a_type_id = updated_schema.ordered_struct_list[3];
+  EXPECT_EQ("A", updated_schema.structs[a_type_id].name);
+  EXPECT_EQ(1u, updated_schema.structs[a_type_id].fields.size());
+  EXPECT_EQ(9000000000000000013ull, updated_schema.structs[a_type_id].fields[0].first);
+  EXPECT_EQ("i", updated_schema.structs[a_type_id].fields[0].second);
+  const uint64_t b_type_id = updated_schema.ordered_struct_list[4];
+  EXPECT_EQ("B", updated_schema.structs[b_type_id].name);
+  EXPECT_EQ(2u, updated_schema.structs[b_type_id].fields.size());
+  EXPECT_EQ(x_type_id, updated_schema.structs[b_type_id].fields[0].first);
+  EXPECT_EQ("x", updated_schema.structs[b_type_id].fields[0].second);
+  EXPECT_EQ(a_type_id, updated_schema.structs[b_type_id].fields[1].first);
+  EXPECT_EQ("a", updated_schema.structs[b_type_id].fields[1].second);
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
