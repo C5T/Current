@@ -72,59 +72,28 @@ inline uint64_t TypePrefix(const TypeID type_id) { return TypePrefix(static_cast
 
 struct ReflectedTypeImpl {
   TypeID type_id = TypeID::INVALID_TYPE;
-  virtual std::string CppType() = 0;
-  virtual std::string CppDeclaration() { return ""; }
   virtual ~ReflectedTypeImpl() = default;
 };
 
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
   struct ReflectedType_##current_type : ReflectedTypeImpl {                         \
     ReflectedType_##current_type() { type_id = TypeID::current_type; }              \
-    std::string CppType() override { return #cpp_type; }                            \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
-  constexpr static const char* cpp_typename = "std::vector";
   ReflectedTypeImpl* reflected_element_type;
-
-  std::string CppType() override {
-    assert(reflected_element_type);
-    std::ostringstream oss;
-    oss << cpp_typename << '<' << reflected_element_type->CppType() << '>';
-    return oss.str();
-  }
 };
 
 struct ReflectedType_Map : ReflectedTypeImpl {
-  constexpr static const char* cpp_typename = "std::map";
   ReflectedTypeImpl* reflected_key_type;
   ReflectedTypeImpl* reflected_value_type;
-
-  std::string CppType() override {
-    assert(reflected_key_type);
-    assert(reflected_value_type);
-    std::ostringstream oss;
-    oss << cpp_typename << '<' << reflected_key_type->CppType() << ", " << reflected_value_type->CppType()
-        << '>';
-    return oss.str();
-  }
 };
 
 struct ReflectedType_Pair : ReflectedTypeImpl {
-  constexpr static const char* cpp_typename = "std::pair";
   ReflectedTypeImpl* reflected_first_type;
   ReflectedTypeImpl* reflected_second_type;
-
-  std::string CppType() override {
-    assert(reflected_first_type);
-    assert(reflected_second_type);
-    std::ostringstream oss;
-    oss << cpp_typename << '<' << reflected_first_type->CppType() << ',' << reflected_second_type->CppType()
-        << '>';
-    return oss.str();
-  }
 };
 
 typedef std::vector<std::pair<ReflectedTypeImpl*, std::string>> StructFieldsVector;
@@ -133,17 +102,6 @@ struct ReflectedType_Struct : ReflectedTypeImpl {
   std::string name;
   ReflectedType_Struct* reflected_super = nullptr;
   StructFieldsVector fields;
-
-  std::string CppType() override { return name; }
-
-  std::string CppDeclaration() override {
-    std::string result = "struct " + name + (reflected_super ? " : " + reflected_super->name : "") + " {\n";
-    for (const auto& f : fields) {
-      result += "  " + f.first->CppType() + " " + f.second + ";\n";
-    }
-    result += "};\n";
-    return result;
-  }
 };
 
 inline uint64_t rol64(const uint64_t value, size_t nbits) {

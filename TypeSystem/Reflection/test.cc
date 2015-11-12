@@ -54,33 +54,6 @@ using current::reflection::Reflector;
 
 }  // namespace reflection_test
 
-TEST(Reflection, DescribeCppStruct) {
-  using namespace reflection_test;
-
-  EXPECT_EQ(
-      "struct Foo {\n"
-      "  uint64_t i;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<Foo>());
-
-  EXPECT_EQ(
-      "struct Bar {\n"
-      "  std::vector<uint64_t> v1;\n"
-      "  std::vector<Foo> v2;\n"
-      "  std::vector<std::vector<Foo>> v3;\n"
-      "  std::map<std::string, std::string> v4;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<Bar>());
-
-  EXPECT_EQ(
-      "struct DerivedFromFoo : Foo {\n"
-      "  Bar bar;\n"
-      "};\n",
-      Reflector().DescribeCppStruct<DerivedFromFoo>());
-
-  EXPECT_EQ(9u, Reflector().KnownTypesCountForUnitTest());
-}
-
 TEST(Reflection, TypeID) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;

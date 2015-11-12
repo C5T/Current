@@ -127,11 +127,6 @@ struct ReflectorImpl {
     return placeholder.get();
   }
 
-  template <typename T>
-  typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::string>::type DescribeCppStruct() {
-    return ReflectType<T>()->CppDeclaration();
-  }
-
   size_t KnownTypesCountForUnitTest() const { return reflected_types_.size(); }
 
  private:
