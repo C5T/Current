@@ -146,11 +146,12 @@ struct ReflectedType_Struct : ReflectedTypeImpl {
   }
 };
 
-inline uint64_t rol64(const uint64_t value, const uint64_t nbits) {
+inline uint64_t rol64(const uint64_t value, size_t nbits) {
+  nbits &= 63;
   return (value << nbits) | (value >> (-nbits & 63));
 }
 
-inline uint64_t rol64(const TypeID type_id, const uint64_t nbits) {
+inline uint64_t rol64(const TypeID type_id, size_t nbits) {
   return rol64(static_cast<uint64_t>(type_id), nbits);
 }
 

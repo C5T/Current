@@ -95,7 +95,7 @@ struct ReflectorImpl {
     typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::unique_ptr<ReflectedTypeImpl>>::type
     operator()(TypeSelector<T>) {
       auto s = make_unique<ReflectedType_Struct>();
-      s->name = T::template CURRENT_REFLECTION_HELPER<T>::name();
+      s->name = StructName<T>();
       s->reflected_super = ReflectSuper<T>();
       FieldReflector field_reflector(s->fields);
       VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);

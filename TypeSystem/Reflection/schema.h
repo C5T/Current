@@ -69,28 +69,32 @@ CURRENT_STRUCT(SchemaInfo) {
   CURRENT_FIELD(ordered_struct_list, std::vector<uint64_t>);
 };
 
-struct StructSchema {
-  StructSchema() {
+struct PrimitiveTypesList {
+  std::map<uint64_t, std::string> cpp_name;
+  PrimitiveTypesList() {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type) \
-  primitive_type_id_name_[TYPEID_BASIC_TYPE + typeid_index] = #cpp_type;
+  cpp_name[TYPEID_BASIC_TYPE + typeid_index] = #cpp_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
   }
+};
 
-  StructSchema(const SchemaInfo& schema) : StructSchema() { schema_ = schema; }
+struct StructSchema {
+  StructSchema() = default;
+  StructSchema(const SchemaInfo& schema) : schema_(schema) {}
 
   template <typename T>
   typename std::enable_if<std::is_base_of<CurrentSuper, T>::value>::type AddStruct() {
     TraverseType(Reflector().ReflectType<T>());
   }
 
-  const SchemaInfo& GetSchemaInfo() { return schema_; }
+  const SchemaInfo& GetSchemaInfo() const { return schema_; }
 
   std::string CppDescription(const uint64_t type_id) {
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       if (schema_.structs.count(type_id) == 0u) {
-        return "UNKNOWN_STRUCT";
+        return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
       }
       std::ostringstream oss;
       const StructInfo& struct_info = schema_.structs[type_id];
@@ -111,7 +115,7 @@ struct StructSchema {
 
  private:
   SchemaInfo schema_;
-  std::map<uint64_t, std::string> primitive_type_id_name_;
+  const PrimitiveTypesList primitive_types_;
 
   void TraverseType(const ReflectedTypeImpl* reflected_type) {
     assert(reflected_type);
@@ -181,18 +185,18 @@ struct StructSchema {
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       if (schema_.structs.count(type_id) == 0u) {
-        return "#unknown_struct_" + bricks::strings::ToString(type_id);
+        return "UNKNOWN_STRUCT_" + bricks::strings::ToString(type_id);
       }
       return schema_.structs[type_id].name;
     } else {
       if (type_prefix == TYPEID_BASIC_PREFIX) {
-        if (primitive_type_id_name_.count(type_id) != 0u) {
-          return primitive_type_id_name_[type_id];
+        if (primitive_types_.cpp_name.count(type_id) != 0u) {
+          return primitive_types_.cpp_name.at(type_id);
         }
-        return "#unknown_basic_type_" + bricks::strings::ToString(type_id);
+        return "UNKNOWN_BASIC_TYPE_" + bricks::strings::ToString(type_id);
       }
       if (schema_.types.count(type_id) == 0u) {
-        return "#unknown_intermediate_type_" + bricks::strings::ToString(type_id);
+        return "UNKNOWN_INTERMEDIATE_TYPE_" + bricks::strings::ToString(type_id);
       }
       if (type_prefix == TYPEID_VECTOR_PREFIX) {
         return DescribeCppVector(schema_.types[type_id]);
@@ -203,7 +207,7 @@ struct StructSchema {
       if (type_prefix == TYPEID_MAP_PREFIX) {
         return DescribeCppMap(schema_.types[type_id]);
       }
-      return "#unhandled_type_" + bricks::strings::ToString(type_id);
+      return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
     }
   }
 

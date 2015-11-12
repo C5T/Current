@@ -99,18 +99,18 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CURRENT_STRUCT(...) \
   CURRENT_STRUCT_SWITCH(__VA_ARGS__, CURRENT_STRUCT_DERIVED, CURRENT_STRUCT_NOT_DERIVED)(__VA_ARGS__)
 
-#define CURRENT_STRUCT_HELPERS(s, super)                                                    \
-  template <typename INSTANTIATION_TYPE>                                                    \
-  struct CURRENT_STRUCT_IMPL_##s;                                                           \
-  using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                  \
-  template <typename T>                                                                     \
-  struct CURRENT_REFLECTION_HELPER;                                                         \
-  template <>                                                                               \
-  struct CURRENT_REFLECTION_HELPER<s> {                                                     \
-    typedef super SUPER;                                                                    \
-    constexpr static const char* name() { return #s; }                                      \
-    constexpr static size_t index_base = __COUNTER__;                                       \
-    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> field_count_struct; \
+#define CURRENT_STRUCT_HELPERS(s, super)                                                            \
+  template <typename INSTANTIATION_TYPE>                                                            \
+  struct CURRENT_STRUCT_IMPL_##s;                                                                   \
+  using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
+  template <typename T>                                                                             \
+  struct CURRENT_REFLECTION_HELPER;                                                                 \
+  template <>                                                                                       \
+  struct CURRENT_REFLECTION_HELPER<s> {                                                             \
+    typedef super SUPER;                                                                            \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
+    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                             \
@@ -134,11 +134,11 @@ struct CurrentStructFieldsConsistency<T, -1> {
 
 #define CURRENT_FIELD_WITH_NO_VALUE(name, type)                \
   ::current::reflection::Field<INSTANTIATION_TYPE, type> name; \
-  CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
+  CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
 #define CURRENT_FIELD_WITH_VALUE(name, type, value)                   \
   ::current::reflection::Field<INSTANTIATION_TYPE, type> name{value}; \
-  CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - index_base - 1, type, name)
+  CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
@@ -193,10 +193,15 @@ struct FieldCounter {
   static_assert(std::is_base_of<CurrentSuper, T>::value,
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
   enum {
-    value = (sizeof(typename T::template CURRENT_REFLECTION_HELPER<T>::field_count_struct) /
+    value = (sizeof(typename T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_FIELD_COUNT_STRUCT) /
              sizeof(CountFieldsImplementationType))
   };
 };
+
+template <typename T>
+typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, const char*>::type StructName() {
+  return T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_STRUCT_NAME();
+}
 
 template <typename T, typename VISITOR_TYPE>
 struct VisitAllFields {
