@@ -27,12 +27,13 @@ SOFTWARE.
 #define CURRENT_TYPE_SYSTEM_BASE_H
 
 namespace current {
-namespace reflection {
 
 // The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
 struct CurrentSuper {
   virtual ~CurrentSuper() = default;
 };
+
+namespace reflection {
 
 // Instantiation types.
 struct DeclareFields {};

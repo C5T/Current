@@ -84,7 +84,7 @@ class VectorAPI : protected VectorStorage<T> {
 
   typename PERSISTER::ImmutableOptionalType operator[](size_t index) const {
     if (index < VectorStorage<T>::vector_.size()) {
-      return typename PERSISTER::ImmutableOptionalType(VectorStorage<T>::vector_[index]);
+      return typename PERSISTER::ImmutableOptionalType(&VectorStorage<T>::vector_[index]);
     } else {
       return typename PERSISTER::ImmutableOptionalType(nullptr);
     }

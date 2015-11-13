@@ -59,16 +59,16 @@ TEST(Reflection, TypeID) {
 
   // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   const ReflectedType_Struct& bar = dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<Bar>());
-  EXPECT_EQ(9310000000000000028ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
-  EXPECT_EQ(9317693294631279482ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
-  EXPECT_EQ(9318642515553007349ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(9310000000000000048ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
+  EXPECT_EQ(9317693294631286650ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
+  EXPECT_EQ(9318642515553021685ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {
   using namespace reflection_test;
   using namespace current::reflection;
 
-  static_assert(std::is_same<SuperType<Foo>, CurrentSuper>::value, "");
+  static_assert(std::is_same<SuperType<Foo>, ::current::CurrentSuper>::value, "");
   EXPECT_EQ(1u, FieldCounter<Foo>::value);
 
   Foo::CURRENT_REFLECTION([](TypeSelector<uint64_t>, const std::string& name) { EXPECT_EQ("i", name); },
@@ -87,7 +87,7 @@ TEST(Reflection, CurrentStructInternals) {
   }, Index<FieldNameAndMutableValue, 0>());
   EXPECT_EQ(123u, foo.i);
 
-  static_assert(std::is_same<SuperType<Bar>, CurrentSuper>::value, "");
+  static_assert(std::is_same<SuperType<Bar>, ::current::CurrentSuper>::value, "");
   EXPECT_EQ(4u, FieldCounter<Bar>::value);
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
@@ -237,19 +237,19 @@ TEST(Reflection, StructSchema) {
   const uint64_t x_type_id = schema.ordered_struct_list[0];
   EXPECT_EQ("X", schema.structs[x_type_id].name);
   EXPECT_EQ(1u, schema.structs[x_type_id].fields.size());
-  EXPECT_EQ(9000000000000000023ull, schema.structs[x_type_id].fields[0].first);
+  EXPECT_EQ(9000000000000000033ull, schema.structs[x_type_id].fields[0].first);
   EXPECT_EQ("i", schema.structs[x_type_id].fields[0].second);
   const uint64_t y_type_id = schema.ordered_struct_list[1];
   EXPECT_EQ("Y", schema.structs[y_type_id].name);
   EXPECT_EQ(1u, schema.structs[y_type_id].fields.size());
-  EXPECT_EQ(9317693294612922990ull, schema.structs[y_type_id].fields[0].first);
+  EXPECT_EQ(9317693294612917870ull, schema.structs[y_type_id].fields[0].first);
   EXPECT_EQ("v", schema.structs[y_type_id].fields[0].second);
   const uint64_t z_type_id = schema.ordered_struct_list[2];
   EXPECT_EQ("Z", schema.structs[z_type_id].name);
   EXPECT_EQ(2u, schema.structs[z_type_id].fields.size());
-  EXPECT_EQ(9000000000000000032ull, schema.structs[z_type_id].fields[0].first);
+  EXPECT_EQ(9000000000000000052ull, schema.structs[z_type_id].fields[0].first);
   EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
-  EXPECT_EQ(9311340417498587505ull, schema.structs[z_type_id].fields[1].first);
+  EXPECT_EQ(9311340417476567409ull, schema.structs[z_type_id].fields[1].first);
   EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
 
   EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
@@ -295,7 +295,7 @@ TEST(Reflection, StructSchema) {
   const uint64_t a_type_id = updated_schema.ordered_struct_list[3];
   EXPECT_EQ("A", updated_schema.structs[a_type_id].name);
   EXPECT_EQ(1u, updated_schema.structs[a_type_id].fields.size());
-  EXPECT_EQ(9000000000000000013ull, updated_schema.structs[a_type_id].fields[0].first);
+  EXPECT_EQ(9000000000000000023ull, updated_schema.structs[a_type_id].fields[0].first);
   EXPECT_EQ("i", updated_schema.structs[a_type_id].fields[0].second);
   const uint64_t b_type_id = updated_schema.ordered_struct_list[4];
   EXPECT_EQ("B", updated_schema.structs[b_type_id].name);

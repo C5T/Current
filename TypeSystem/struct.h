@@ -37,6 +37,8 @@ SOFTWARE.
 
 #include "../Bricks/template/variadic_indexes.h"
 
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
+
 namespace current {
 namespace reflection {
 
@@ -121,19 +123,18 @@ struct WithoutParentheses<int(T)> {
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                             \
-  CURRENT_STRUCT_HELPERS(s, ::current::reflection::CurrentSuper); \
-  template <typename INSTANTIATION_TYPE>                          \
-  struct CURRENT_STRUCT_IMPL_##s                                  \
-      : CURRENT_REFLECTION_HELPER<s>,                             \
-        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::reflection::CurrentSuper>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                 \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper); \
+  template <typename INSTANTIATION_TYPE>              \
+  struct CURRENT_STRUCT_IMPL_##s                      \
+      : CURRENT_REFLECTION_HELPER<s>,                 \
+        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentSuper>
 
-#define CURRENT_STRUCT_DERIVED(s, base)                                            \
-  static_assert(std::is_base_of<::current::reflection::CurrentSuper, base>::value, \
-                #base " must be derived from `CurrentSuper`.");                    \
-  CURRENT_STRUCT_HELPERS(s, base);                                                 \
-  template <typename INSTANTIATION_TYPE>                                           \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                   \
+#define CURRENT_STRUCT_DERIVED(s, base)                                                  \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentSuper`."); \
+  CURRENT_STRUCT_HELPERS(s, base);                                                       \
+  template <typename INSTANTIATION_TYPE>                                                 \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                         \
                                    ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, base>
 
 #define CURRENT_FIELD_SWITCH(_1, _2, _3, F, ...) F
@@ -193,7 +194,7 @@ namespace reflection {
 
 template <typename T>
 struct SuperTypeImpl {
-  static_assert(std::is_base_of<CurrentSuper, T>::value,
+  static_assert(IS_CURRENT_STRUCT(T),
                 "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
   typedef typename T::template CURRENT_REFLECTION_HELPER<T>::SUPER type;
 };
@@ -203,7 +204,7 @@ using SuperType = typename SuperTypeImpl<T>::type;
 
 template <typename T>
 struct FieldCounter {
-  static_assert(std::is_base_of<CurrentSuper, T>::value,
+  static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
   enum {
     value = (sizeof(typename T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_FIELD_COUNT_STRUCT) /
@@ -212,13 +213,13 @@ struct FieldCounter {
 };
 
 template <typename T>
-typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, const char*>::type StructName() {
+typename std::enable_if<IS_CURRENT_STRUCT(T), const char*>::type StructName() {
   return T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_STRUCT_NAME();
 }
 
 template <typename T, typename VISITOR_TYPE>
 struct VisitAllFields {
-  static_assert(std::is_base_of<CurrentSuper, T>::value,
+  static_assert(IS_CURRENT_STRUCT(T),
                 "`VisitAllFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
   typedef bricks::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
 
