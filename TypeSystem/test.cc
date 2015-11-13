@@ -38,10 +38,8 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
-  typedef std::map<std::string, std::string> map_string_string;  // Sigh. -- D.K.
-  CURRENT_FIELD(v4, map_string_string);
-  typedef std::map<Foo, int> map_foo_int;  // Sigh. -- D.K.
-  CURRENT_FIELD(v5, map_foo_int);
+  CURRENT_FIELD(v4, (std::map<std::string, std::string>));
+  CURRENT_FIELD(v5, (std::map<Foo, int>));
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -83,7 +81,7 @@ static_assert(IS_VALID_CURRENT_STRUCT(EmptyDerived),
 struct WrongStructNotCurrentStruct {
   int x;
 };
-struct WrongDerivedStructNotCurrentStruct : ::current::reflection::CurrentSuper {};
+struct WrongDerivedStructNotCurrentStruct : ::current::CurrentSuper {};
 struct NotCurrentStructDerivedFromCurrentStruct : Empty {};
 
 CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
@@ -103,3 +101,95 @@ CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
 //               "`WrongUsesCOUNTERInternally` must not pass `IS_VALID_CURRENT_STRUCT` check.");
 
 }  // namespace struct_definition_test
+
+TEST(TypeSystemTest, ImmutableOptional) {
+  {
+    int x = 1;
+    ASSERT_TRUE(Exists(x));
+    EXPECT_EQ(1, Value(x));
+    EXPECT_EQ(1, Value(Value(x)));
+  }
+  {
+    const int x = 2;
+    ASSERT_TRUE(Exists(x));
+    EXPECT_EQ(2, Value(x));
+    EXPECT_EQ(2, Value(Value(x)));
+  }
+  {
+    int y = 3;
+    int& x = y;
+    ASSERT_TRUE(Exists(x));
+    EXPECT_EQ(3, Value(x));
+    EXPECT_EQ(3, Value(Value(x)));
+    y = 4;
+    ASSERT_TRUE(Exists(x));
+    EXPECT_EQ(4, Value(x));
+    EXPECT_EQ(4, Value(Value(x)));
+  }
+  {
+    int y = 5;
+    const int& x = y;
+    ASSERT_TRUE(Exists(x));
+    EXPECT_EQ(5, Value(x));
+    EXPECT_EQ(5, Value(Value(x)));
+    y = 6;
+    ASSERT_TRUE(Exists(x));
+    EXPECT_EQ(6, Value(x));
+    EXPECT_EQ(6, Value(Value(x)));
+  }
+  {
+    ImmutableOptional<int> foo(make_unique<int>(100));
+    ASSERT_TRUE(Exists(foo));
+    EXPECT_EQ(100, foo.Value());
+    EXPECT_EQ(100, static_cast<int>(Value(foo)));
+    EXPECT_EQ(100, static_cast<int>(Value(Value(foo))));
+  }
+  {
+    ImmutableOptional<int> bar(nullptr);
+    ASSERT_FALSE(Exists(bar));
+    try {
+      Value(bar);
+      ASSERT_TRUE(false);
+    } catch (NoValue) {
+    }
+  }
+  {
+    ImmutableOptional<int> meh(nullptr);
+    ASSERT_FALSE(Exists(meh));
+    try {
+      Value(meh);
+      ASSERT_TRUE(false);
+    } catch (NoValueOfType<int>) {
+    }
+  }
+  {
+    struct_definition_test::Foo bare;
+    ASSERT_TRUE(Exists(bare));
+    EXPECT_EQ(42u, Value(bare).i);
+    EXPECT_EQ(42u, Value(Value(bare)).i);
+  }
+  {
+    struct_definition_test::Foo bare;
+    ImmutableOptional<struct_definition_test::Foo> wrapped(&bare);
+    ASSERT_TRUE(Exists(wrapped));
+    EXPECT_EQ(42u, wrapped.Value().i);
+    EXPECT_EQ(42u, Value(wrapped).i);
+    EXPECT_EQ(42u, Value(Value(wrapped)).i);
+  }
+  {
+    struct_definition_test::Foo bare;
+    ImmutableOptional<struct_definition_test::Foo> wrapped(&bare);
+    const ImmutableOptional<struct_definition_test::Foo>& double_wrapped(wrapped);
+    ASSERT_TRUE(Exists(double_wrapped));
+    EXPECT_EQ(42u, double_wrapped.Value().i);
+    EXPECT_EQ(42u, Value(double_wrapped).i);
+    EXPECT_EQ(42u, Value(Value(double_wrapped)).i);
+  }
+  {
+    const auto lambda =
+        [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(make_unique<int>(x)); };
+    ASSERT_TRUE(Exists(lambda(101)));
+    EXPECT_EQ(102, lambda(102).Value());
+    EXPECT_EQ(102, Value(lambda(102)));
+  }
+}

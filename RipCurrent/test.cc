@@ -51,44 +51,44 @@ struct String : H2O {
 };
 */
 
-// `Foo`: The emitter of events. Emits the integers passed to its constructor.
-CURRENT_LHS(Foo, Integer) {
-  static std::string UnitTestClassName() { return "Foo"; }
-  Foo() {}
-  Foo(int a) { emit(Integer(a)); }
-  Foo(int a, int b) {
+// `RCFoo`: The emitter of events. Emits the integers passed to its constructor.
+CURRENT_LHS(RCFoo, Integer) {
+  static std::string UnitTestClassName() { return "RCFoo"; }
+  RCFoo() {}
+  RCFoo(int a) { emit(Integer(a)); }
+  RCFoo(int a, int b) {
     emit(Integer(a));
     emit(Integer(b));
   }
-  Foo(int a, int b, int c) {
+  RCFoo(int a, int b, int c) {
     emit(Integer(a));
     emit(Integer(b));
     emit(Integer(c));
   }
 };
-#define Foo(...) REGISTER_LHS(Foo, __VA_ARGS__)
+#define RCFoo(...) REGISTER_LHS(RCFoo, __VA_ARGS__)
 
-// `Bar`: The processor of events. Multiplies each integer by what was passed to its constructor.
-CURRENT_VIA(Bar, int) {
-  static std::string UnitTestClassName() { return "Bar"; }
+// `RCBar`: The processor of events. Multiplies each integer by what was passed to its constructor.
+CURRENT_VIA(RCBar, int) {
+  static std::string UnitTestClassName() { return "RCBar"; }
   int k;
-  Bar(int k = 1) : k(k) {}
+  RCBar(int k = 1) : k(k) {}
   void f(Integer x) { emit(Integer(x * k)); }
 };
-#define Bar(...) REGISTER_VIA(Bar, __VA_ARGS__)
+#define RCBar(...) REGISTER_VIA(RCBar, __VA_ARGS__)
 
-// `Baz`: The destination of events. Collects the output integers.
-CURRENT_RHS(Baz) {
-  static std::string UnitTestClassName() { return "Baz"; }
+// `RCBaz`: The destination of events. Collects the output integers.
+CURRENT_RHS(RCBaz) {
+  static std::string UnitTestClassName() { return "RCBaz"; }
   std::vector<int>* ptr;
-  Baz() : ptr(nullptr) {}
-  Baz(std::vector<int>& ref) : ptr(&ref) {}
+  RCBaz() : ptr(nullptr) {}
+  RCBaz(std::vector<int>& ref) : ptr(&ref) {}
   void f(Integer x) {
     assert(ptr);
     ptr->push_back(x);
   }
 };
-#define Baz(...) REGISTER_RHS(Baz, __VA_ARGS__)
+#define RCBaz(...) REGISTER_RHS(RCBaz, __VA_ARGS__)
 
 }  // namespace ripcurrent_unittest
 
@@ -98,7 +98,7 @@ TEST(RipCurrent, SingleEdgeFlow) {
   using namespace ripcurrent_unittest;
 
   std::vector<int> result;
-  (Foo(1, 2, 3) | Baz(std::ref(result))).RipCurrent().Sync();
+  (RCFoo(1, 2, 3) | RCBaz(std::ref(result))).RipCurrent().Sync();
   EXPECT_EQ("1,2,3", Join(result, ','));
 }
 
@@ -106,7 +106,7 @@ TEST(RipCurrent, SingleChainFlow) {
   using namespace ripcurrent_unittest;
 
   std::vector<int> result;
-  (Foo(1, 2, 3) | Bar(10) | Bar(10) | Baz(std::ref(result))).RipCurrent().Sync();
+  (RCFoo(1, 2, 3) | RCBar(10) | RCBar(10) | RCBaz(std::ref(result))).RipCurrent().Sync();
   EXPECT_EQ("100,200,300", Join(result, ','));
 }
 
@@ -115,14 +115,14 @@ TEST(RipCurrent, DeclarationDoesNotRunConstructors) {
 
   std::vector<int> result;
 
-  RipCurrentLHS<Integer> foo = Foo(42);
-  EXPECT_EQ("Foo(42) | ...", foo.Describe());
+  RipCurrentLHS<Integer> foo = RCFoo(42);
+  EXPECT_EQ("RCFoo(42) | ...", foo.Describe());
 
-  RipCurrentRHS baz = Baz(std::ref(result));
-  EXPECT_EQ("... | Baz(std::ref(result))", baz.Describe());
+  RipCurrentRHS baz = RCBaz(std::ref(result));
+  EXPECT_EQ("... | RCBaz(std::ref(result))", baz.Describe());
 
   RipCurrent foo_baz = foo | baz;
-  EXPECT_EQ("Foo(42) | Baz(std::ref(result))", foo_baz.Describe());
+  EXPECT_EQ("RCFoo(42) | RCBaz(std::ref(result))", foo_baz.Describe());
 
   EXPECT_EQ("", Join(result, ','));
   foo_baz.RipCurrent().Sync();
@@ -135,12 +135,12 @@ TEST(RipCurrent, OrderDoesNotMatter) {
   std::vector<int> result;
 
   result.clear();
-  (Foo(1) | Bar(10) | Baz(std::ref(result))).RipCurrent().Sync();
+  (RCFoo(1) | RCBar(10) | RCBaz(std::ref(result))).RipCurrent().Sync();
   EXPECT_EQ("10", Join(result, ','));
 
-  const auto a = Foo(1);
-  const auto b = Bar(2);
-  const auto c = Baz(std::ref(result));
+  const auto a = RCFoo(1);
+  const auto b = RCBar(2);
+  const auto c = RCBaz(std::ref(result));
 
   result.clear();
   (a | b | b | c).RipCurrent().Sync();
@@ -165,11 +165,11 @@ TEST(RipCurrent, BuildingBlocksCanBeReUsed) {
   std::vector<int> result1;
   std::vector<int> result2;
 
-  RipCurrentLHS<Integer> foo1 = Foo(1);
-  RipCurrentLHS<Integer> foo2 = Foo(2);
-  RipCurrentVIA<Integer> bar = Bar(10);
-  RipCurrentRHS baz1 = Baz(std::ref(result1));
-  RipCurrentRHS baz2 = Baz(std::ref(result2));
+  RipCurrentLHS<Integer> foo1 = RCFoo(1);
+  RipCurrentLHS<Integer> foo2 = RCFoo(2);
+  RipCurrentVIA<Integer> bar = RCBar(10);
+  RipCurrentRHS baz1 = RCBaz(std::ref(result1));
+  RipCurrentRHS baz2 = RCBaz(std::ref(result2));
 
   (foo1 | bar | baz1).RipCurrent().Sync();
   (foo2 | bar | baz2).RipCurrent().Sync();
@@ -187,60 +187,61 @@ TEST(RipCurrent, BuildingBlocksCanBeReUsed) {
 TEST(RipCurrent, SynopsisAndDecorators) {
   using namespace ripcurrent_unittest;
 
-  EXPECT_EQ("Foo() | ...", (Foo()).Describe());
-  EXPECT_EQ("... | Bar() | ...", (Bar()).Describe());
-  EXPECT_EQ("... | Baz()", (Baz()).Describe());
+  EXPECT_EQ("RCFoo() | ...", (RCFoo()).Describe());
+  EXPECT_EQ("... | RCBar() | ...", (RCBar()).Describe());
+  EXPECT_EQ("... | RCBaz()", (RCBaz()).Describe());
 
-  EXPECT_EQ("Foo() | Baz()", (Foo() | Baz()).Describe());
-  EXPECT_EQ("Foo() | Bar() | Bar() | Bar() | Baz()", (Foo() | Bar() | Bar() | Bar() | Baz()).Describe());
+  EXPECT_EQ("RCFoo() | RCBaz()", (RCFoo() | RCBaz()).Describe());
+  EXPECT_EQ("RCFoo() | RCBar() | RCBar() | RCBar() | RCBaz()",
+            (RCFoo() | RCBar() | RCBar() | RCBar() | RCBaz()).Describe());
 
-  EXPECT_EQ("Foo() | Bar() | ...", (Foo() | Bar()).Describe());
-  EXPECT_EQ("Foo() | Bar() | Bar() | Bar() | ...", (Foo() | Bar() | Bar() | Bar()).Describe());
+  EXPECT_EQ("RCFoo() | RCBar() | ...", (RCFoo() | RCBar()).Describe());
+  EXPECT_EQ("RCFoo() | RCBar() | RCBar() | RCBar() | ...", (RCFoo() | RCBar() | RCBar() | RCBar()).Describe());
 
-  EXPECT_EQ("... | Bar() | Baz()", (Bar() | Baz()).Describe());
-  EXPECT_EQ("... | Bar() | Bar() | Bar() | Baz()", (Bar() | Bar() | Bar() | Baz()).Describe());
+  EXPECT_EQ("... | RCBar() | RCBaz()", (RCBar() | RCBaz()).Describe());
+  EXPECT_EQ("... | RCBar() | RCBar() | RCBar() | RCBaz()", (RCBar() | RCBar() | RCBar() | RCBaz()).Describe());
 
-  EXPECT_EQ("... | Bar() | Bar() | Bar() | ...", (Bar() | Bar() | Bar()).Describe());
+  EXPECT_EQ("... | RCBar() | RCBar() | RCBar() | ...", (RCBar() | RCBar() | RCBar()).Describe());
 
   const int blah = 5;
-  EXPECT_EQ("Foo(1) | Bar(2) | Bar(3 + 4) | Bar(blah) | Baz()",
-            (Foo(1) | Bar(2) | Bar(3 + 4) | Bar(blah) | Baz()).Describe());
+  EXPECT_EQ("RCFoo(1) | RCBar(2) | RCBar(3 + 4) | RCBar(blah) | RCBaz()",
+            (RCFoo(1) | RCBar(2) | RCBar(3 + 4) | RCBar(blah) | RCBaz()).Describe());
 
   const int x = 1;
   const int y = 1;
   const int z = 1;
-  EXPECT_EQ("Foo(x, y, z) | Baz()", (Foo(x, y, z) | Baz()).Describe());
+  EXPECT_EQ("RCFoo(x, y, z) | RCBaz()", (RCFoo(x, y, z) | RCBaz()).Describe());
 }
 
 TEST(RipCurrent, TypeSystemGuarantees) {
   using namespace ripcurrent_unittest;
 
-  EXPECT_EQ("Foo", Foo::UnitTestClassName());
-  static_assert(Foo::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
-  static_assert(std::is_same<Foo::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value, "");
+  EXPECT_EQ("RCFoo", RCFoo::UnitTestClassName());
+  static_assert(RCFoo::INPUT_POLICY == InputPolicy::DoesNotAccept, "");
+  static_assert(std::is_same<RCFoo::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value, "");
 
-  EXPECT_EQ("Foo", CURRENT_USER_TYPE(Foo())::UnitTestClassName());
+  EXPECT_EQ("RCFoo", CURRENT_USER_TYPE(RCFoo())::UnitTestClassName());
 
-  const auto foo = Foo();
-  EXPECT_EQ("Foo", CURRENT_USER_TYPE(foo)::UnitTestClassName());
+  const auto foo = RCFoo();
+  EXPECT_EQ("RCFoo", CURRENT_USER_TYPE(foo)::UnitTestClassName());
 
-  EXPECT_EQ("Bar", Bar::UnitTestClassName());
-  static_assert(Bar::INPUT_POLICY == InputPolicy::Accepts, "");
-  static_assert(std::is_same<Bar::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value, "");
+  EXPECT_EQ("RCBar", RCBar::UnitTestClassName());
+  static_assert(RCBar::INPUT_POLICY == InputPolicy::Accepts, "");
+  static_assert(std::is_same<RCBar::OUTPUT_TYPES_AS_TYPELIST, TypeList<Integer>>::value, "");
 
-  EXPECT_EQ("Bar", CURRENT_USER_TYPE(Bar())::UnitTestClassName());
+  EXPECT_EQ("RCBar", CURRENT_USER_TYPE(RCBar())::UnitTestClassName());
 
-  const auto bar = Bar();
-  EXPECT_EQ("Bar", CURRENT_USER_TYPE(bar)::UnitTestClassName());
+  const auto bar = RCBar();
+  EXPECT_EQ("RCBar", CURRENT_USER_TYPE(bar)::UnitTestClassName());
 
-  EXPECT_EQ("Baz", Baz::UnitTestClassName());
-  static_assert(Baz::INPUT_POLICY == InputPolicy::Accepts, "");
-  static_assert(std::is_same<Baz::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value, "");
+  EXPECT_EQ("RCBaz", RCBaz::UnitTestClassName());
+  static_assert(RCBaz::INPUT_POLICY == InputPolicy::Accepts, "");
+  static_assert(std::is_same<RCBaz::OUTPUT_TYPES_AS_TYPELIST, TypeList<>>::value, "");
 
-  EXPECT_EQ("Baz", CURRENT_USER_TYPE(Baz())::UnitTestClassName());
+  EXPECT_EQ("RCBaz", CURRENT_USER_TYPE(RCBaz())::UnitTestClassName());
 
-  const auto baz = Baz();
-  EXPECT_EQ("Baz", CURRENT_USER_TYPE(baz)::UnitTestClassName());
+  const auto baz = RCBaz();
+  EXPECT_EQ("RCBaz", CURRENT_USER_TYPE(baz)::UnitTestClassName());
 
   const auto foo_bar = foo | bar;
   const auto bar_baz = bar | baz;
@@ -314,54 +315,54 @@ TEST(RipCurrent, NotLeftHanging) {
       [&captured_error_message](const std::string& error_message) { captured_error_message = error_message; });
 
   EXPECT_EQ("", captured_error_message);
-  Foo();
+  RCFoo();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "Foo() | ...",
+      "RCFoo() | ...",
       ExpectHasNAndReturnFirstTwoLines(4, captured_error_message));
-  Bar();
+  RCBar();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "... | Bar() | ...",
+      "... | RCBar() | ...",
       ExpectHasNAndReturnFirstTwoLines(4, captured_error_message));
-  Baz();
+  RCBaz();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "... | Baz()",
+      "... | RCBaz()",
       ExpectHasNAndReturnFirstTwoLines(4, captured_error_message));
-  Foo(1) | Bar(2);
+  RCFoo(1) | RCBar(2);
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "Foo(1) | Bar(2) | ...",
+      "RCFoo(1) | RCBar(2) | ...",
       ExpectHasNAndReturnFirstTwoLines(5, captured_error_message));
-  Bar(3) | Baz();
+  RCBar(3) | RCBaz();
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "... | Bar(3) | Baz()",
+      "... | RCBar(3) | RCBaz()",
       ExpectHasNAndReturnFirstTwoLines(5, captured_error_message));
   std::vector<int> result;
-  Foo(42) | Bar(100) | Baz(std::ref(result));
+  RCFoo(42) | RCBar(100) | RCBaz(std::ref(result));
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "Foo(42) | Bar(100) | Baz(std::ref(result))",
+      "RCFoo(42) | RCBar(100) | RCBaz(std::ref(result))",
       ExpectHasNAndReturnFirstTwoLines(6, captured_error_message));
 
-  { const auto tmp = Foo() | Bar(1) | Baz(std::ref(result)); }
+  { const auto tmp = RCFoo() | RCBar(1) | RCBaz(std::ref(result)); }
   EXPECT_EQ(
       "RipCurrent building block leaked.\n"
-      "Foo() | Bar(1) | Baz(std::ref(result))",
+      "RCFoo() | RCBar(1) | RCBaz(std::ref(result))",
       ExpectHasNAndReturnFirstTwoLines(6, captured_error_message));
 
   captured_error_message = "NO ERROR";
   {
-    const auto tmp = Foo() | Bar(2) | Baz(std::ref(result));
+    const auto tmp = RCFoo() | RCBar(2) | RCBaz(std::ref(result));
     tmp.Describe();
   }
   EXPECT_EQ("NO ERROR", captured_error_message);
 
   captured_error_message = "NO ERROR ONCE AGAIN";
   {
-    const auto tmp = Foo() | Bar(3) | Baz(std::ref(result));
+    const auto tmp = RCFoo() | RCBar(3) | RCBaz(std::ref(result));
     tmp.Dismiss();
   }
   EXPECT_EQ("NO ERROR ONCE AGAIN", captured_error_message);

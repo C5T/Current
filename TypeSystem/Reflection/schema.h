@@ -88,7 +88,7 @@ struct StructSchema {
   StructSchema(const SchemaInfo& schema) : schema_(schema) {}
 
   template <typename T>
-  typename std::enable_if<std::is_base_of<CurrentSuper, T>::value>::type AddStruct() {
+  typename std::enable_if<IS_CURRENT_STRUCT(T)>::type AddStruct() {
     TraverseType(Reflector().ReflectType<T>());
   }
 
