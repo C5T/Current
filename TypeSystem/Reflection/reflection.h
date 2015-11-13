@@ -89,8 +89,8 @@ struct ReflectorImpl {
     }
 
     template <typename T>
-    typename std::enable_if<std::is_base_of<CurrentSuper, T>::value, std::shared_ptr<ReflectedTypeImpl>>::type
-    operator()(TypeSelector<T>) {
+    typename std::enable_if<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>>::type operator()(
+        TypeSelector<T>) {
       auto s = std::make_shared<ReflectedType_Struct>();
       s->name = StructName<T>();
       s->reflected_super = ReflectSuper<T>();

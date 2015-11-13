@@ -461,12 +461,11 @@ class HTTPServerConnection final {
 
   // Support `CURRENT_STRUCT`-s.
   template <class T>
-  inline typename std::enable_if<
-      std::is_base_of<::current::reflection::CurrentSuper, bricks::decay<T>>::value>::type
-  SendHTTPResponse(T&& object,
-                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                   const std::string& content_type = DefaultJSONContentType(),
-                   const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+  inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type SendHTTPResponse(
+      T&& object,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = DefaultJSONContentType(),
+      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -475,12 +474,12 @@ class HTTPServerConnection final {
   // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
   // (For backwards compatibility only, really. -- D.K.)
   template <class T>
-  inline typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type
-  SendHTTPResponse(T&& object,
-                   const std::string& name,
-                   HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                   const std::string& content_type = DefaultJSONContentType(),
-                   const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+  inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type SendHTTPResponse(
+      T&& object,
+      const std::string& name,
+      HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = DefaultJSONContentType(),
+      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -537,13 +536,11 @@ class HTTPServerConnection final {
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type Send(
-          T&& object) {
+      inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type Send(T&& object) {
         SendImpl(JSON(std::forward<T>(object)) + '\n');
       }
       template <class T, typename S>
-      inline typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, T>::value>::type Send(
-          T&& object, S&& name) {
+      inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type Send(T&& object, S&& name) {
         SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n");
       }
 

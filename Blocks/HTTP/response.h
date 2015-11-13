@@ -103,8 +103,7 @@ struct Response {
 
   template <typename T>
   typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
-                          !(bricks::strings::is_string_type<T>::value) &&
-                          !std::is_base_of<current::reflection::CurrentSuper, T>::value>::type
+                          !(bricks::strings::is_string_type<T>::value) && !IS_CURRENT_STRUCT(T)>::type
   Construct(T&& object,
             bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
             const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
@@ -116,8 +115,7 @@ struct Response {
 
   template <typename T>
   typename std::enable_if<!std::is_same<bricks::decay<T>, Response>::value &&
-                          !(bricks::strings::is_string_type<T>::value) &&
-                          !std::is_base_of<current::reflection::CurrentSuper, T>::value>::type
+                          !(bricks::strings::is_string_type<T>::value) && !IS_CURRENT_STRUCT(T)>::type
   Construct(T&& object,
             const std::string& object_name,
             bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -129,7 +127,7 @@ struct Response {
   }
 
   template <typename T>
-  typename std::enable_if<std::is_base_of<current::reflection::CurrentSuper, T>::value>::type Construct(
+  typename std::enable_if<IS_CURRENT_STRUCT(T)>::type Construct(
       T&& object,
       bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const bricks::net::HTTPHeadersType& extra_headers = bricks::net::HTTPHeadersType()) {
@@ -140,7 +138,7 @@ struct Response {
   }
 
   template <typename T>
-  typename std::enable_if<std::is_base_of<current::reflection::CurrentSuper, T>::value>::type Construct(
+  typename std::enable_if<IS_CURRENT_STRUCT(T)>::type Construct(
       T&& object,
       const std::string& object_name,
       bricks::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,

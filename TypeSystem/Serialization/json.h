@@ -161,7 +161,7 @@ struct SaveIntoJSONImpl {
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, TT>::value>::type Save(
+  static typename std::enable_if<IS_CURRENT_STRUCT(TT)>::type Save(
       rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator, const T& source) {
     destination.SetObject();
 
@@ -271,8 +271,9 @@ struct LoadFromJSONImpl {
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static typename std::enable_if<std::is_base_of<::current::reflection::CurrentSuper, TT>::value>::type Load(
-      rapidjson::Value& source, T& destination, const std::string& path) {
+  static typename std::enable_if<IS_CURRENT_STRUCT(TT)>::type Load(rapidjson::Value& source,
+                                                                   T& destination,
+                                                                   const std::string& path) {
     //  static void Load(rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsObject()) {
       throw JSONSchemaException("object", source, path);

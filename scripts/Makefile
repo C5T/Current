@@ -49,7 +49,8 @@ debug:
 all: ${BIN}
 
 clean:
-	rm -rf .current core impl/.current impl/core
+	find . -type d -name .current | xargs rm -rf
+	find . -name core | xargs rm -f
 
 .current/%: %.cc *.h
 	mkdir -p .current
@@ -67,3 +68,7 @@ coverage:
 # For Linux vs. Mac debugging purposes.
 readlink:
 	echo ${CURRENT_SCRIPTS_DIR}
+
+wc:
+	echo -n "Total files: " ; (find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | wc -l
+	(find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | xargs wc -l | sort -gr
