@@ -32,6 +32,7 @@ SOFTWARE.
 #include "../../debug_log.h"
 
 #include "../../../util/singleton.h"
+#include "../../../template/enable_if.h"
 
 #include <cassert>
 #include <cstring>
@@ -182,7 +183,7 @@ class Connection : public SocketHandle {
   // which will cause BlockingRead() to keep reading more data until all `max_elements` are read.
   enum BlockingReadPolicy { ReturnASAP = false, FillFullBuffer = true };
   template <typename T>
-  inline typename std::enable_if<sizeof(T) == 1, size_t>::type BlockingRead(
+  inline ENABLE_IF<sizeof(T) == 1, size_t> BlockingRead(
       T* output_buffer, size_t max_length, BlockingReadPolicy policy = BlockingReadPolicy::ReturnASAP) {
     if (max_length == 0) {
       return 0;  // LCOV_EXCL_LINE
@@ -317,8 +318,7 @@ class Connection : public SocketHandle {
   // Specialization for STL containers to allow calling BlockingWrite() on std::string, std::vector, etc.
   // The `std::enable_if<>` clause is required, otherwise `BlockingWrite(char[N])` becomes ambiguous.
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) != 0>::type BlockingWrite(const T& container,
-                                                                                          bool more) {
+  inline ENABLE_IF<sizeof(typename T::value_type) != 0> BlockingWrite(const T& container, bool more) {
     BlockingWrite(container.begin(), container.end(), more);
   }
 

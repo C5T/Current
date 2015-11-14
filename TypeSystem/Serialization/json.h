@@ -28,8 +28,11 @@ SOFTWARE.
 #include <type_traits>
 #include <limits>
 
+#include "exceptions.h"
+
 #include "../Reflection/reflection.h"
 
+#include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/template/decay.h"
 #include "../../Bricks/strings/strings.h"
 
@@ -107,10 +110,9 @@ struct SaveIntoJSONImpl<std::pair<TF, TS>> {
 template <typename TK, typename TV>
 struct SaveIntoJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
-  static typename std::enable_if<std::is_same<K, std::string>::value>::type Save(
-      rapidjson::Value& destination,
-      rapidjson::Document::AllocatorType& allocator,
-      const std::map<TK, TV>& value) {
+  static ENABLE_IF<std::is_same<K, std::string>::value> Save(rapidjson::Value& destination,
+                                                             rapidjson::Document::AllocatorType& allocator,
+                                                             const std::map<TK, TV>& value) {
     destination.SetObject();
     for (const auto& element : value) {
       rapidjson::Value populated_value;
@@ -120,10 +122,9 @@ struct SaveIntoJSONImpl<std::map<TK, TV>> {
     }
   }
   template <typename K = TK>
-  static typename std::enable_if<!std::is_same<K, std::string>::value>::type Save(
-      rapidjson::Value& destination,
-      rapidjson::Document::AllocatorType& allocator,
-      const std::map<TK, TV>& value) {
+  static ENABLE_IF<!std::is_same<K, std::string>::value> Save(rapidjson::Value& destination,
+                                                              rapidjson::Document::AllocatorType& allocator,
+                                                              const std::map<TK, TV>& value) {
     destination.SetArray();
     for (const auto& element : value) {
       rapidjson::Value key_value_as_array;
@@ -161,8 +162,9 @@ struct SaveIntoJSONImpl {
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static typename std::enable_if<IS_CURRENT_STRUCT(TT)>::type Save(
-      rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator, const T& source) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Save(rapidjson::Value& destination,
+                                               rapidjson::Document::AllocatorType& allocator,
+                                               const T& source) {
     destination.SetObject();
 
     SaveFieldVisitor visitor(destination, allocator);
@@ -173,9 +175,9 @@ struct SaveIntoJSONImpl {
 
   // `enum` and `enum class`.
   template <typename TT = T>
-  static typename std::enable_if<std::is_enum<TT>::value>::type Save(rapidjson::Value& destination,
-                                                                     rapidjson::Document::AllocatorType&,
-                                                                     const T& value) {
+  static ENABLE_IF<std::is_enum<TT>::value> Save(rapidjson::Value& destination,
+                                                 rapidjson::Document::AllocatorType&,
+                                                 const T& value) {
     AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
   }
 };
@@ -194,58 +196,6 @@ std::string CreateJSONViaRapidJSON(const T& value) {
 
   return os.str();
 }
-
-// TODO(dkorolev): {bricks/current}::Exception.
-struct TypeSystemParseJSONException : std::exception {
-  virtual ~TypeSystemParseJSONException() {}
-};
-
-struct JSONSchemaException : TypeSystemParseJSONException {
-  // TODO(dkorolev): Eventually, only trace and dump `value` with full path in debug builds.
-  const std::string expected_;
-  const std::string actual_;
-  JSONSchemaException(const std::string& expected, rapidjson::Value& value, const std::string& path)
-      : expected_(expected + (path.empty() ? "" : " for `" + path.substr(1u) + "`")),
-        actual_(NonThrowingFormatRapidJSONValueAsString(value, path)) {}
-  static std::string NonThrowingFormatRapidJSONValueAsString(rapidjson::Value& value, const std::string& path) {
-    // Attempt to generate a human-readable description of the part of the JSON,
-    // that has been parsed but is of wrong schema.
-    try {
-      std::ostringstream os;
-      auto stream = rapidjson::GenericWriteStream(os);
-      auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
-      rapidjson::Document document;
-      if (value.IsObject() || value.IsArray()) {
-        // Objects and arrays can be dumped directly.
-        value.Accept(writer);
-        return os.str();
-      } else {
-        // Every other type of value has to be wrapped into an object or an array.
-        // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
-        document.SetArray();
-        document.PushBack(value, document.GetAllocator());
-        document.Accept(writer);
-        const std::string result = os.str();
-        return result.substr(1u, result.length() - 2u);
-      }
-    } catch (const std::exception& e) {
-      if (!path.empty()) {
-        return "The `" + path.substr(1u) + "` field could not be parsed.";
-      } else {
-        return "Parse error.";
-      }
-    }
-  }
-  // Apparently, `throw()` is required for the code to compile. -- D.K.
-  virtual const char* what() const throw() { return ("Expected " + expected_ + ", got: " + actual_).c_str(); }
-};
-
-struct InvalidJSONException : TypeSystemParseJSONException {
-  const std::string erroneus_json_;
-  explicit InvalidJSONException(const std::string& json) : erroneus_json_(json) {}
-  // Apparently, `throw()` is required for the code to compile. -- D.K.
-  virtual const char* what() const throw() { return erroneus_json_.c_str(); }
-};
 
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
@@ -271,9 +221,9 @@ struct LoadFromJSONImpl {
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static typename std::enable_if<IS_CURRENT_STRUCT(TT)>::type Load(rapidjson::Value& source,
-                                                                   T& destination,
-                                                                   const std::string& path) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(rapidjson::Value& source,
+                                               T& destination,
+                                               const std::string& path) {
     //  static void Load(rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsObject()) {
       throw JSONSchemaException("object", source, path);
@@ -286,8 +236,8 @@ struct LoadFromJSONImpl {
 
   // `uint*_t`.
   template <typename TT = T>
-  static typename std::enable_if<std::numeric_limits<TT>::is_integer && !std::numeric_limits<TT>::is_signed &&
-                                 !std::is_same<TT, bool>::value>::type
+  static ENABLE_IF<std::numeric_limits<TT>::is_integer && !std::numeric_limits<TT>::is_signed &&
+                   !std::is_same<TT, bool>::value>
   Load(rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsNumber()) {
       throw JSONSchemaException("number", source, path);
@@ -297,9 +247,8 @@ struct LoadFromJSONImpl {
 
   // `int*_t`
   template <typename TT = T>
-  static
-      typename std::enable_if<std::numeric_limits<TT>::is_integer && std::numeric_limits<TT>::is_signed>::type
-      Load(rapidjson::Value& source, T& destination, const std::string& path) {
+  static ENABLE_IF<std::numeric_limits<TT>::is_integer && std::numeric_limits<TT>::is_signed> Load(
+      rapidjson::Value& source, T& destination, const std::string& path) {
     if (!source.IsNumber()) {
       throw JSONSchemaException("number", source, path);
     }
@@ -324,9 +273,9 @@ struct LoadFromJSONImpl {
 
   // `enum` and `enum class`.
   template <typename TT = T>
-  static typename std::enable_if<std::is_enum<TT>::value>::type Load(rapidjson::Value& source,
-                                                                     T& destination,
-                                                                     const std::string& path) {
+  static ENABLE_IF<std::is_enum<TT>::value> Load(rapidjson::Value& source,
+                                                 T& destination,
+                                                 const std::string& path) {
     if (!source.IsNumber()) {
       throw JSONSchemaException("number", source, path);
     }
@@ -386,9 +335,9 @@ struct LoadFromJSONImpl<std::pair<TF, TS>> {
 template <typename TK, typename TV>
 struct LoadFromJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
-  static typename std::enable_if<std::is_same<std::string, K>::value>::type Load(rapidjson::Value& source,
-                                                                                 std::map<TK, TV>& destination,
-                                                                                 const std::string& path) {
+  static ENABLE_IF<std::is_same<std::string, K>::value> Load(rapidjson::Value& source,
+                                                             std::map<TK, TV>& destination,
+                                                             const std::string& path) {
     if (!source.IsObject()) {
       throw JSONSchemaException("map as object", source, path);
     }
@@ -400,9 +349,9 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
     }
   }
   template <typename K = TK>
-  static typename std::enable_if<!std::is_same<std::string, K>::value>::type Load(rapidjson::Value& source,
-                                                                                  std::map<TK, TV>& destination,
-                                                                                  const std::string& path) {
+  static ENABLE_IF<!std::is_same<std::string, K>::value> Load(rapidjson::Value& source,
+                                                              std::map<TK, TV>& destination,
+                                                              const std::string& path) {
     if (!source.IsArray()) {
       throw JSONSchemaException("map as array", source, path);
     }

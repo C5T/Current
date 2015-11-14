@@ -36,7 +36,9 @@ SOFTWARE.
 #include "../base.h"
 #include "../struct.h"
 
+#include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/util/crc32.h"
+#include "../../Bricks/util/rol.h"
 
 namespace current {
 namespace reflection {
@@ -50,12 +52,12 @@ constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
 constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
 
 constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
-constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_BASIC_PREFIX * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_STRUCT_PREFIX * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_VECTOR_PREFIX * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_SET_PREFIX * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_PAIR_PREFIX * TYPEID_TYPE_RANGE;
-constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_MAP_PREFIX * TYPEID_TYPE_RANGE;
+constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
+constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
+constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
+constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
+constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
+constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_TYPE_RANGE * TYPEID_MAP_PREFIX;
 // clang-format on
 
 enum class TypeID : uint64_t {
@@ -109,13 +111,8 @@ struct ReflectedType_Struct : ReflectedTypeImpl {
   StructFieldsVector fields;
 };
 
-inline uint64_t rol64(const uint64_t value, size_t nbits) {
-  nbits &= 63;
-  return (value << nbits) | (value >> (-nbits & 63));
-}
-
-inline uint64_t rol64(const TypeID type_id, size_t nbits) {
-  return rol64(static_cast<uint64_t>(type_id), nbits);
+inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
+  return current::ROL64(static_cast<uint64_t>(type_id), nbits);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
@@ -124,7 +121,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
   for (const auto& f : s.fields) {
     assert(f.first);
     assert(f.first->type_id != TypeID::INVALID_TYPE);
-    hash ^= rol64(f.first->type_id, i + 8) ^ rol64(bricks::CRC32(f.second), i + 16);
+    hash ^= ROL64(f.first->type_id, i + 8) ^ current::ROL64(bricks::CRC32(f.second), i + 16);
     ++i;
   }
   return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
@@ -134,7 +131,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
   assert(v.reflected_element_type);
   assert(v.reflected_element_type->type_id != TypeID::INVALID_TYPE);
   return static_cast<TypeID>(TYPEID_VECTOR_TYPE +
-                             rol64(v.reflected_element_type->type_id, 1) % TYPEID_TYPE_RANGE);
+                             ROL64(v.reflected_element_type->type_id, 1) % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
@@ -142,7 +139,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
   assert(v.reflected_second_type);
   assert(v.reflected_first_type->type_id != TypeID::INVALID_TYPE);
   assert(v.reflected_second_type->type_id != TypeID::INVALID_TYPE);
-  uint64_t hash = rol64(v.reflected_first_type->type_id, 4) ^ rol64(v.reflected_second_type->type_id, 8);
+  uint64_t hash = ROL64(v.reflected_first_type->type_id, 4) ^ ROL64(v.reflected_second_type->type_id, 8);
   return static_cast<TypeID>(TYPEID_PAIR_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
@@ -151,7 +148,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
   assert(v.reflected_value_type);
   assert(v.reflected_key_type->type_id != TypeID::INVALID_TYPE);
   assert(v.reflected_value_type->type_id != TypeID::INVALID_TYPE);
-  uint64_t hash = rol64(v.reflected_key_type->type_id, 4) ^ rol64(v.reflected_value_type->type_id, 8);
+  uint64_t hash = ROL64(v.reflected_key_type->type_id, 4) ^ ROL64(v.reflected_value_type->type_id, 8);
   return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 

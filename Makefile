@@ -9,8 +9,8 @@ check:
 	./scripts/check-headers.sh
 
 wc:
-	echo -n "Total files: " ; (find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | wc -l
-	(find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | xargs wc -l | sort -gr
+	echo -n "Total files: " ; (find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | grep -v zzz_full_test | wc -l
+	(find . -name '*.cc' ; find . -iname '*.h') | grep -v 3rdparty | grep -v "/.current/" | grep -v zzz_full_test | xargs wc -l | sort -gr
 
 clean:
 	rm -rf $(shell find $(shell find . -name "zzz_*" -type d) -name coverage -type d)

@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "../strings/is_string_type.h"
 #include "../rtti/dispatcher.h"
+#include "../template/enable_if.h"
 #include "../template/decay.h"
 
 #include "../../Blocks/SS/ss.h"
@@ -147,17 +148,16 @@ class CerealBinaryFileAppenderImpl : public CerealFileAppenderBase {
   template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
-                          size_t>::type
-  DoPublish(const DERIVED_ENTRY& entry) {
+  ENABLE_IF<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value, size_t> DoPublish(
+      const DERIVED_ENTRY& entry) {
     so_(WithBaseType<typename ENTRY::element_type>(entry));
     return ++entries_appended_;
   }
   template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
-                          CerealBinaryFileAppenderImpl&>::type
+  ENABLE_IF<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
+            CerealBinaryFileAppenderImpl&>
   operator<<(const DERIVED_ENTRY& entry) {
     DoPublish<DERIVED_ENTRY, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
     return *this;
@@ -199,9 +199,8 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
   template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
-                          size_t>::type
-  DoPublish(const DERIVED_ENTRY& entry) {
+  ENABLE_IF<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value, size_t> DoPublish(
+      const DERIVED_ENTRY& entry) {
     {
       cereal::JSONOutputArchive so_(fo_, cereal::JSONOutputArchive::Options::NoIndent());
       so_(cereal::make_nvp(Constants::DefaultJSONSerializePolymorphicEntryName(),
@@ -213,8 +212,8 @@ class CerealJSONFileAppenderImpl : public CerealFileAppenderBase {
   template <typename DERIVED_ENTRY,
             typename UNIQUE_PTR = ENTRY,
             typename UNIQUE_PTR_ENTRY = typename UNIQUE_PTR::element_type>
-  typename std::enable_if<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
-                          CerealJSONFileAppenderImpl&>::type
+  ENABLE_IF<std::is_same<UNIQUE_PTR_ENTRY, typename DERIVED_ENTRY::CEREAL_BASE_TYPE>::value,
+            CerealJSONFileAppenderImpl&>
   operator<<(const DERIVED_ENTRY& entry) {
     DoPublish<DERIVED_ENTRY, UNIQUE_PTR, UNIQUE_PTR_ENTRY>(entry);
     return *this;
@@ -270,8 +269,7 @@ class CerealBinaryFileParser {
   // 1) BASE_TYPE: The type of the base entry to de-serialize from the stream, and
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename PROCESSOR>
-  typename std::enable_if<bricks::is_unique_ptr<ENTRY>::value, bool>::type NextWithDispatching(
-      PROCESSOR& processor) {
+  ENABLE_IF<bricks::is_unique_ptr<ENTRY>::value, bool> NextWithDispatching(PROCESSOR& processor) {
     if (fi_.peek() != std::char_traits<char>::eof()) {  // This is safe with any next byte in file.
       ENTRY entry;
       si_(entry);
@@ -323,8 +321,7 @@ class CerealJSONFileParser {
   // 1) BASE_TYPE: The type of the base entry to de-serialize from the stream, and
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename PROCESSOR, typename SFINAE_ENTRY = ENTRY>
-  typename std::enable_if<bricks::is_unique_ptr<SFINAE_ENTRY>::value, bool>::type NextWithDispatching(
-      PROCESSOR& processor) {
+  ENABLE_IF<bricks::is_unique_ptr<SFINAE_ENTRY>::value, bool> NextWithDispatching(PROCESSOR& processor) {
     try {
       bricks::rtti::RuntimeTupleDispatcher<
           typename PROCESSOR::BASE_TYPE,

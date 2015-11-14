@@ -37,4 +37,4 @@ indent:
 
 wc:
 	(for i in "*.cc" "*.h" "*.mm" "*.sh" Makefile; do find . -iname "$$i" -type f; done) \
-	| grep -v "/.current/" | grep -v "/3rdparty/" | xargs wc -l | sort -g
+	| grep -v "/.current/" | grep -v "/3rdparty/" | grep -v zzz_full_test | xargs wc -l | sort -gr

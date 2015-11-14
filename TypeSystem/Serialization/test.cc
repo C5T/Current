@@ -334,12 +334,13 @@ TEST(Serialization, JSONExceptions) {
 
 TEST(Serialization, StructSchema) {
   using namespace serialization_test;
+  using current::reflection::TypeID;
   using current::reflection::Reflector;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
 
   StructSchema struct_schema;
-  struct_schema.AddStruct<ComplexSerializable>();
+  struct_schema.AddType<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
   EXPECT_EQ(
       "{\"structs\":[[9204126776335348166,{\"type_id\":9204126776335348166,\"name\":\"ComplexSerializable\","
@@ -351,7 +352,7 @@ TEST(Serialization, StructSchema) {
       "9209615721865832921,9204126776335348166]}",
       schema_json);
 
-  const uint64_t serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
+  const TypeID serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
   StructSchema loaded_schema(ParseJSON<SchemaInfo>(schema_json));
   EXPECT_EQ(
       "struct Serializable {\n"
