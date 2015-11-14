@@ -49,7 +49,7 @@ namespace reflection {
 CURRENT_STRUCT(TypeInfo) {
   CURRENT_FIELD(type_id, TypeID, TypeID::INVALID_TYPE);
   // Used only for storing the name of `enum` types.
-  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(enum_name, std::string);
   // Ascending index order in vector corresponds to left-to-right order in the definition of the type,
   // i.e. for `map<int32_t, string>`:
   //   included_types[0] = TypeID::Int32
@@ -176,7 +176,7 @@ struct StructSchema {
       TypeInfo type_info;
       type_info.type_id = type_id;
       const ReflectedType_Enum* e = dynamic_cast<const ReflectedType_Enum*>(reflected_type.get());
-      type_info.name = e->name;
+      type_info.enum_name = e->name;
       type_info.included_types.push_back(e->reflected_underlying_type->type_id);
       schema_.types[type_id] = type_info;
       return;
@@ -290,7 +290,7 @@ struct StructSchema {
         return "UNKNOWN_INTERMEDIATE_TYPE_" + bricks::strings::ToString(type_id);
       }
       if (type_prefix == TYPEID_ENUM_PREFIX) {
-        return schema_.types[type_id].name;
+        return schema_.types[type_id].enum_name;
       }
       if (type_prefix == TYPEID_VECTOR_PREFIX) {
         return DescribeCppVector(schema_.types[type_id]);

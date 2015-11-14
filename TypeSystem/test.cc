@@ -196,8 +196,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
 }
 
 namespace enum_class_test {
-  enum class Fruits : uint32_t { APPLE = 1u, ORANGE = 2u };
-  CURRENT_REGISTER_ENUM(Fruits);
+CURRENT_ENUM(Fruits, uint32_t){APPLE = 1u, ORANGE = 2u};
 }
 
 TEST(TypeSystemTest, EnumRegistration) {

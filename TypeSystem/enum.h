@@ -25,8 +25,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_ENUM_H
 #define CURRENT_TYPE_SYSTEM_ENUM_H
 
+#include <iostream>
 #include <map>
-#include <mutex>
 #include <string>
 #include <typeindex>
 
@@ -39,7 +39,6 @@ namespace reflection {
 struct EnumNameSingletonImpl {
   template <typename T>
   ENABLE_IF<std::is_enum<T>::value> Register(const char* name) {
-    std::lock_guard<std::mutex> lock_guard(mutex_);
     names_[std::type_index(typeid(T))] = name;
   }
 
@@ -49,18 +48,17 @@ struct EnumNameSingletonImpl {
     if (names_.count(type_index) != 0u) {
       return names_.at(type_index);
     } else {
-      // TODO: exception?
-      return "";
+      std::cerr << "Enum is not registered in `EnumNameSingletonImpl`: " << typeid(T).name() << std::endl;
+      std::exit(-1);
     }
   }
 
  private:
   std::map<std::type_index, std::string> names_;
-  std::mutex mutex_;
 };
 
 template <typename T>
-inline ENABLE_IF<std::is_enum<T>::value> RegisterEnum(const char* name) { 
+inline ENABLE_IF<std::is_enum<T>::value> RegisterEnum(const char* name) {
   bricks::Singleton<EnumNameSingletonImpl>().Register<T>(name);
 };
 
@@ -72,12 +70,12 @@ inline ENABLE_IF<std::is_enum<T>::value, std::string> EnumName() {
 }  // namespace reflection
 }  // namespace current
 
-#define CURRENT_REGISTER_ENUM(c) \
-    struct CURRENT_ENUM_REGISTERER_##c { \
-      CURRENT_ENUM_REGISTERER_##c() { \
-        ::current::reflection::RegisterEnum<c>(#c); \
-      } \
-    }; \
-    static CURRENT_ENUM_REGISTERER_##c CURRENT_ENUM_REGISTERER_##c_INSTANCE;    
+#define CURRENT_ENUM(name, type)                                                        \
+  enum class name : type;                                                               \
+  struct CURRENT_ENUM_REGISTERER_##c {                                                  \
+    CURRENT_ENUM_REGISTERER_##c() { ::current::reflection::RegisterEnum<name>(#name); } \
+  };                                                                                    \
+  static CURRENT_ENUM_REGISTERER_##c CURRENT_ENUM_REGISTERER_##c_INSTANCE;              \
+  enum class name : type
 
 #endif  // CURRENT_TYPE_SYSTEM_ENUM_H

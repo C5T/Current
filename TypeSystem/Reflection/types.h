@@ -63,15 +63,12 @@ constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
 constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_TYPE_RANGE * TYPEID_MAP_PREFIX;
 // clang-format on
 
-enum class TypeID : uint64_t {
+CURRENT_ENUM(TypeID, uint64_t){
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, unused_cpp_type, current_type) \
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
-  INVALID_TYPE = 0u
-};
-
-CURRENT_REGISTER_ENUM(TypeID);
+    INVALID_TYPE = 0u};
 
 inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
 

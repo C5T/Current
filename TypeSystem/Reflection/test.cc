@@ -99,8 +99,7 @@ namespace reflection_test {
 static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
 static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 
-enum class Enum : uint32_t { Value1 = 1u, Value2 = 2u };
-CURRENT_REGISTER_ENUM(Enum);
+CURRENT_ENUM(Enum, uint32_t){Value1 = 1u, Value2 = 2u};
 
 CURRENT_STRUCT(StructWithAllSupportedTypes) {
   // Integral.

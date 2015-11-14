@@ -36,8 +36,7 @@ SOFTWARE.
 
 namespace serialization_test {
 
-enum class Enum : uint32_t { DEFAULT = 0u, SET = 100u };
-CURRENT_REGISTER_ENUM(Enum);
+CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
@@ -360,9 +359,10 @@ TEST(Serialization, StructSchema) {
       "\"b\"],[9010000002928410991,\"e\"]]}],[9206500345161216453,{\"type_id\":9206500345161216453,\"name\":"
       "\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[[9000000000000000024,\"j\"],["
       "9000000000000000042,\"q\"],[9310000000000000084,\"v\"],[9201855287122465329,\"z\"]]}]],\"types\":[["
-      "9010000002928410991,{\"type_id\":9010000002928410991,\"name\":\"Enum\",\"included_types\":["
-      "9000000000000000023]}],[9310000000000000084,{\"type_id\":9310000000000000084,\"name\":\"\",\"included_"
-      "types\":[9000000000000000042]}]],\"ordered_struct_list\":[9201855287122465329,9206500345161216453]}",
+      "9010000002928410991,{\"type_id\":9010000002928410991,\"enum_name\":\"Enum\",\"included_types\":["
+      "9000000000000000023]}],[9310000000000000084,{\"type_id\":9310000000000000084,\"enum_name\":\"\","
+      "\"included_types\":[9000000000000000042]}]],\"ordered_struct_list\":[9201855287122465329,"
+      "9206500345161216453]}",
       schema_json);
 
   const TypeID serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
