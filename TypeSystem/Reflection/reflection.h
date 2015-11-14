@@ -42,6 +42,7 @@ using bricks::ThreadLocalSingleton;
 
 struct TypeReflector;
 
+// `ReflectorImpl` is a thread-local singleton to generate reflected types metadata at runtime.
 struct ReflectorImpl {
   static ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
 
@@ -89,8 +90,7 @@ struct ReflectorImpl {
     }
 
     template <typename T>
-    typename std::enable_if<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>>::type operator()(
-        TypeSelector<T>) {
+    ENABLE_IF<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>> operator()(TypeSelector<T>) {
       auto s = std::make_shared<ReflectedType_Struct>();
       s->name = StructName<T>();
       s->reflected_super = ReflectSuper<T>();
@@ -102,15 +102,13 @@ struct ReflectorImpl {
 
    private:
     template <typename T>
-    typename std::enable_if<std::is_same<SuperType<T>, CurrentSuper>::value,
-                            std::shared_ptr<ReflectedType_Struct>>::type
+    ENABLE_IF<std::is_same<SuperType<T>, CurrentSuper>::value, std::shared_ptr<ReflectedType_Struct>>
     ReflectSuper() {
       return std::shared_ptr<ReflectedType_Struct>();
     }
 
     template <typename T>
-    typename std::enable_if<!std::is_same<SuperType<T>, CurrentSuper>::value,
-                            std::shared_ptr<ReflectedType_Struct>>::type
+    ENABLE_IF<!std::is_same<SuperType<T>, CurrentSuper>::value, std::shared_ptr<ReflectedType_Struct>>
     ReflectSuper() {
       return std::dynamic_pointer_cast<ReflectedType_Struct>(Reflector().ReflectType<SuperType<T>>());
     }
@@ -121,7 +119,7 @@ struct ReflectorImpl {
     const std::type_index type_index = std::type_index(typeid(T));
     auto& placeholder = reflected_types_[type_index];
     if (!placeholder) {
-      placeholder = std::move(type_reflector_(TypeSelector<T>()));
+      placeholder = type_reflector_(TypeSelector<T>());
     }
     return placeholder;
   }

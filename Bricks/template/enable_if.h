@@ -22,19 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Variadic methods. The convention is to use `std::tuple<>` for type lists.
+#ifndef BRICKS_TEMPLATE_ENABLE_IF_H
+#define BRICKS_TEMPLATE_ENABLE_IF_H
 
-#ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
-#define BRICKS_TEMPLATE_METAPROGRAMMING_H
+#include <utility>
 
-#include "decay.h"
-#include "pod.h"
-#include "is_tuple.h"
-#include "mapreduce.h"
-#include "combine.h"
-#include "rtti_dynamic_call.h"
-#include "weed.h"
-#include "typelist.h"
-#include "enable_if.h"
+template <bool B, typename T = void>
+using ENABLE_IF = typename std::enable_if<B, T>::type;
 
-#endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H
+#endif  // BRICKS_TEMPLATE_ENABLE_IF_H

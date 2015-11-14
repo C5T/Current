@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,19 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Variadic methods. The convention is to use `std::tuple<>` for type lists.
+#ifndef BRICKS_UTIL_ROL_H
+#define BRICKS_UTIL_ROL_H
 
-#ifndef BRICKS_TEMPLATE_METAPROGRAMMING_H
-#define BRICKS_TEMPLATE_METAPROGRAMMING_H
+#include <cstddef>
+#include <cstdint>
 
-#include "decay.h"
-#include "pod.h"
-#include "is_tuple.h"
-#include "mapreduce.h"
-#include "combine.h"
-#include "rtti_dynamic_call.h"
-#include "weed.h"
-#include "typelist.h"
-#include "enable_if.h"
+namespace current {
 
-#endif  // BRICKS_TEMPLATE_METAPROGRAMMING_H
+inline uint64_t ROL64(const uint64_t value, size_t nbits) {
+  nbits &= 63;
+  return (value << nbits) | (value >> (-nbits & 63));
+}
+
+}  // namespace current
+
+#endif  // BRICKS_UTIL_ROL_H

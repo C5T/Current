@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "clone.h"
 #include "crc32.h"
+#include "rol.h"
 #include "lazy_instantiation.h"
 #include "make_scope_guard.h"
 #include "random.h"
@@ -47,7 +48,7 @@ TEST(Util, BasicException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:45\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:46\tbricks::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -64,7 +65,7 @@ TEST(Util, CustomException) {
   } catch (bricks::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:62\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:63\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -244,6 +245,22 @@ TEST(Util, CRC32) {
 TEST(Util, SHA256) {
   EXPECT_EQ("a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
             static_cast<std::string>(bricks::SHA256("Hello World")));
+}
+
+TEST(Util, ROL64) {
+  EXPECT_EQ(0x1, current::ROL64(1, 0));
+  EXPECT_EQ(0x10, current::ROL64(1, 4));
+  EXPECT_EQ(0x100, current::ROL64(1, 8));
+
+  EXPECT_EQ(0x42, current::ROL64(0x42, 0));
+  EXPECT_EQ(0x420, current::ROL64(0x42, 4));
+  EXPECT_EQ(0x4200, current::ROL64(0x42, 8));
+
+  EXPECT_EQ(0x1, current::ROL64(0x10, -4));
+  EXPECT_EQ(0x1, current::ROL64(0x10, 64 - 4));
+
+  EXPECT_EQ(static_cast<uint64_t>(std::pow(2.0, 63)), current::ROL64(1, 63));
+  EXPECT_EQ(1, current::ROL64(static_cast<uint64_t>(std::pow(2.0, 63)), 1));
 }
 
 #if 0

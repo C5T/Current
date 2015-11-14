@@ -32,6 +32,7 @@ SOFTWARE.
 #include "exceptions.h"
 #include "constants.h"
 
+#include "../template/enable_if.h"
 #include "../template/decay.h"
 #include "../template/is_unique_ptr.h"
 #include "../util/null_deleter.h"
@@ -52,8 +53,7 @@ namespace bricks {
 namespace cerealize {
 
 template <typename BASE, typename ENTRY>
-inline typename std::enable_if<std::is_base_of<BASE, ENTRY>::value,
-                               std::unique_ptr<const BASE, bricks::NullDeleter>>::type
+inline ENABLE_IF<std::is_base_of<BASE, ENTRY>::value, std::unique_ptr<const BASE, bricks::NullDeleter>>
 WithBaseType(const ENTRY& object) {
   return std::unique_ptr<const BASE, NullDeleter>(reinterpret_cast<const BASE*>(&object),
                                                   bricks::NullDeleter());

@@ -32,6 +32,7 @@ SOFTWARE.
 #include <type_traits>
 
 #include "../exception.h"
+#include "../template/enable_if.h"
 #include "../template/decay.h"
 #include "../template/weed.h"
 
@@ -77,18 +78,16 @@ struct MatchImpl<std::string> {
 
 template <size_t N>
 struct MatchImpl<const char[N]> {
-  static typename std::enable_if<(N > 0), bool>::type Match(char c, const char s[N]) {
-    return std::find(s, s + N, c) != (s + N);
-  }
+  static ENABLE_IF<(N > 0), bool> Match(char c, const char s[N]) { return std::find(s, s + N, c) != (s + N); }
 };
 
 template <typename T>
-inline typename std::enable_if<!weed::call_with<T, char>::implemented, bool>::type Match(char a, T&& b) {
+inline ENABLE_IF<!weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
   return MatchImpl<rmref<T>>::Match(a, std::forward<T>(b));
 }
 
 template <typename T>
-inline typename std::enable_if<weed::call_with<T, char>::implemented, bool>::type Match(char a, T&& b) {
+inline ENABLE_IF<weed::call_with<T, char>::implemented, bool> Match(char a, T&& b) {
   return !b(a);
 }
 

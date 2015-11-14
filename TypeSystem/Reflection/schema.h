@@ -27,57 +27,71 @@ SOFTWARE.
 
 #include "reflection.h"
 
+#include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/strings/strings.h"
+
+namespace bricks {
+namespace strings {
+
+template <>
+struct ToStringImpl<::current::reflection::TypeID> {
+  static std::string ToString(::current::reflection::TypeID type_id) {
+    return ToStringImpl<uint64_t>::ToString(static_cast<uint64_t>(type_id));
+  }
+};
+
+}  // namespace strings
+}  // namespace bricks
 
 namespace current {
 namespace reflection {
 
 CURRENT_STRUCT(TypeInfo) {
-  CURRENT_FIELD(type_id, uint64_t, 0u);
+  CURRENT_FIELD(type_id, TypeID, TypeID::INVALID_TYPE);
   // Ascending index order in vector corresponds to left-to-right order in the definition of the type,
   // i.e. for `map<int32_t, string>`:
   //   included_types[0] = TypeID::Int32
   //   included_types[1] = TypeID::String
-  CURRENT_FIELD(included_types, std::vector<uint64_t>);
+  CURRENT_FIELD(included_types, std::vector<TypeID>);
 };
 
 CURRENT_STRUCT(StructInfo) {
-  CURRENT_FIELD(type_id, uint64_t, 0u);
+  CURRENT_FIELD(type_id, TypeID, TypeID::INVALID_TYPE);
   CURRENT_FIELD(name, std::string, "");
-  CURRENT_FIELD(super_type_id, uint64_t, 0u);
-  CURRENT_FIELD(fields, (std::vector<std::pair<uint64_t, std::string>>));
+  CURRENT_FIELD(super_type_id, TypeID, TypeID::INVALID_TYPE);
+  CURRENT_FIELD(fields, (std::vector<std::pair<TypeID, std::string>>));
 
   CURRENT_DEFAULT_CONSTRUCTOR(StructInfo) {}
   CURRENT_CONSTRUCTOR(StructInfo)(const std::shared_ptr<ReflectedTypeImpl> r) {
     const ReflectedType_Struct* reflected_struct = dynamic_cast<const ReflectedType_Struct*>(r.get());
     if (reflected_struct != nullptr) {
-      type_id = static_cast<uint64_t>(reflected_struct->type_id);
+      type_id = reflected_struct->type_id;
       name = reflected_struct->name;
       const ReflectedType_Struct* super =
           dynamic_cast<const ReflectedType_Struct*>(reflected_struct->reflected_super.get());
       if (super != nullptr) {
-        super_type_id = static_cast<uint64_t>(super->type_id);
+        super_type_id = super->type_id;
       }
       for (const auto& f : reflected_struct->fields) {
-        fields.emplace_back(static_cast<uint64_t>(f.first->type_id), f.second);
+        fields.emplace_back(f.first->type_id, f.second);
       }
     }
   }
 };
 
 CURRENT_STRUCT(SchemaInfo) {
-  CURRENT_FIELD(structs, (std::map<uint64_t, StructInfo>));
-  CURRENT_FIELD(types, (std::map<uint64_t, TypeInfo>));
+  CURRENT_FIELD(structs, (std::map<TypeID, StructInfo>));
+  CURRENT_FIELD(types, (std::map<TypeID, TypeInfo>));
   // List of the struct type_id's contained in schema.
   // Ascending index order corresponds to the order required for proper declaring of all the structs.
-  CURRENT_FIELD(ordered_struct_list, std::vector<uint64_t>);
+  CURRENT_FIELD(ordered_struct_list, std::vector<TypeID>);
 };
 
 struct PrimitiveTypesList {
-  std::map<uint64_t, std::string> cpp_name;
+  std::map<TypeID, std::string> cpp_name;
   PrimitiveTypesList() {
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type) \
-  cpp_name[TYPEID_BASIC_TYPE + typeid_index] = #cpp_type;
+  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
   }
@@ -88,13 +102,16 @@ struct StructSchema {
   StructSchema(const SchemaInfo& schema) : schema_(schema) {}
 
   template <typename T>
-  typename std::enable_if<IS_CURRENT_STRUCT(T)>::type AddStruct() {
+  ENABLE_IF<!IS_CURRENT_STRUCT(T)> AddType() {}
+
+  template <typename T>
+  ENABLE_IF<IS_CURRENT_STRUCT(T)> AddType() {
     TraverseType(Reflector().ReflectType<T>());
   }
 
   const SchemaInfo& GetSchemaInfo() const { return schema_; }
 
-  std::string CppDescription(const uint64_t type_id, bool with_dependencies = false) {
+  std::string CppDescription(const TypeID type_id, bool with_dependencies = false) {
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       if (schema_.structs.count(type_id) == 0u) {
@@ -104,14 +121,14 @@ struct StructSchema {
       std::ostringstream oss;
 
       if (with_dependencies) {
-        const std::vector<uint64_t> structs_to_describe = ListStructDependencies(type_id);
-        for (const uint64_t id : structs_to_describe) {
+        const std::vector<TypeID> structs_to_describe = ListStructDependencies(type_id);
+        for (const TypeID id : structs_to_describe) {
           oss << CppDescription(id) << "\n";
         }
       }
 
       oss << "struct " << struct_info.name;
-      if (struct_info.super_type_id) {
+      if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
         oss << " : " << CppType(struct_info.super_type_id);
       }
       oss << " {\n";
@@ -132,7 +149,7 @@ struct StructSchema {
   void TraverseType(const std::shared_ptr<ReflectedTypeImpl> reflected_type) {
     assert(reflected_type);
 
-    const uint64_t type_id = static_cast<uint64_t>(reflected_type->type_id);
+    const TypeID type_id = reflected_type->type_id;
     const uint64_t type_prefix = TypePrefix(type_id);
 
     // Do not process primitive or already known complex type or struct.
@@ -159,7 +176,7 @@ struct StructSchema {
       assert(reflected_element_type);
       TypeInfo type_info;
       type_info.type_id = type_id;
-      type_info.included_types.push_back(static_cast<uint64_t>(reflected_element_type->type_id));
+      type_info.included_types.push_back(reflected_element_type->type_id);
       schema_.types[type_id] = type_info;
       TraverseType(reflected_element_type);
       return;
@@ -174,8 +191,8 @@ struct StructSchema {
       assert(reflected_second_type);
       TypeInfo type_info;
       type_info.type_id = type_id;
-      type_info.included_types.push_back(static_cast<uint64_t>(reflected_first_type->type_id));
-      type_info.included_types.push_back(static_cast<uint64_t>(reflected_second_type->type_id));
+      type_info.included_types.push_back(reflected_first_type->type_id);
+      type_info.included_types.push_back(reflected_second_type->type_id);
       schema_.types[type_id] = type_info;
       TraverseType(reflected_first_type);
       TraverseType(reflected_second_type);
@@ -191,8 +208,8 @@ struct StructSchema {
       assert(reflected_value_type);
       TypeInfo type_info;
       type_info.type_id = type_id;
-      type_info.included_types.push_back(static_cast<uint64_t>(reflected_key_type->type_id));
-      type_info.included_types.push_back(static_cast<uint64_t>(reflected_value_type->type_id));
+      type_info.included_types.push_back(reflected_key_type->type_id);
+      type_info.included_types.push_back(reflected_value_type->type_id);
       schema_.types[type_id] = type_info;
       TraverseType(reflected_key_type);
       TraverseType(reflected_value_type);
@@ -200,16 +217,16 @@ struct StructSchema {
     }
   }
 
-  std::vector<uint64_t> ListStructDependencies(const uint64_t struct_type_id) {
-    std::vector<uint64_t> result;
+  std::vector<TypeID> ListStructDependencies(const TypeID struct_type_id) {
+    std::vector<TypeID> result;
     const uint64_t struct_type_prefix = TypePrefix(struct_type_id);
     assert(struct_type_prefix == TYPEID_STRUCT_PREFIX);
     RecursiveListStructDependencies(struct_type_id, result, false);
     return result;
   }
 
-  void RecursiveListStructDependencies(const uint64_t type_id,
-                                       std::vector<uint64_t>& dependency_list,
+  void RecursiveListStructDependencies(const TypeID type_id,
+                                       std::vector<TypeID>& dependency_list,
                                        bool should_be_listed = true) {
     const uint64_t type_prefix = TypePrefix(type_id);
     // Skip primitive types.
@@ -224,7 +241,7 @@ struct StructSchema {
         return;
       }
       const StructInfo& struct_info = schema_.structs[type_id];
-      if (struct_info.super_type_id != 0u) {
+      if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
         RecursiveListStructDependencies(struct_info.super_type_id, dependency_list);
       }
       for (const auto& cit : struct_info.fields) {
@@ -237,13 +254,13 @@ struct StructSchema {
       // Otherwise, this is a complex type, which must exist in `schema_.types`.
       assert(schema_.types.count(type_id));
       const TypeInfo& type_info = schema_.types[type_id];
-      for (const uint64_t included_type : type_info.included_types) {
+      for (const TypeID included_type : type_info.included_types) {
         RecursiveListStructDependencies(included_type, dependency_list);
       }
     }
   }
 
-  std::string CppType(const uint64_t type_id) {
+  std::string CppType(const TypeID type_id) {
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       if (schema_.structs.count(type_id) == 0u) {

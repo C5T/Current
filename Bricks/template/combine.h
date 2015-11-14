@@ -28,6 +28,7 @@ SOFTWARE.
 #include <tuple>
 #include <utility>
 
+#include "enable_if.h"
 #include "typelist.h"
 #include "weed.h"
 
@@ -46,8 +47,7 @@ struct dispatch {
   T instance;
 
   template <typename... XS>
-  typename std::enable_if<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>>::type
-  operator()(XS&&... params) {
+  ENABLE_IF<weed::call_with<T, XS...>::implemented, weed::call_with_type<T, XS...>> operator()(XS&&... params) {
     return instance(std::forward<XS>(params)...);
   }
 

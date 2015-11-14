@@ -51,6 +51,7 @@ SOFTWARE.
 #include "sfinae.h"
 
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/template/enable_if.h"
 #include "../Bricks/template/decay.h"
 
 namespace current {
@@ -104,13 +105,13 @@ template <typename T>
 struct ExistsImpl {
   // Primitive types.
   template <typename TT = T>
-  static typename std::enable_if<!current::sfinae::HasExistsMethod<TT>(0), bool>::type CallExists(TT&&) {
+  static ENABLE_IF<!current::sfinae::HasExistsMethod<TT>(0), bool> CallExists(TT&&) {
     return true;
   }
 
   // Special types.
   template <typename TT = T>
-  static typename std::enable_if<current::sfinae::HasExistsMethod<TT>(0), bool>::type CallExists(TT&& x) {
+  static ENABLE_IF<current::sfinae::HasExistsMethod<TT>(0), bool> CallExists(TT&& x) {
     return x.Exists();
   }
 };
@@ -124,15 +125,14 @@ template <typename T>
 struct ValueImpl {
   // Primitive types.
   template <typename TT = T>
-  static typename std::enable_if<!current::sfinae::HasValueMethod<TT>(0), T&&>::type CallValue(T&& x) {
+  static ENABLE_IF<!current::sfinae::HasValueMethod<TT>(0), T&&> CallValue(T&& x) {
     return x;
   }
 
   // Special types.
   template <typename TT = T>
-  static typename std::enable_if<current::sfinae::HasValueMethod<TT>(0),
-                                 decltype(std::declval<TT>().Value())>::type
-  CallValue(TT&& x) {
+  static ENABLE_IF<current::sfinae::HasValueMethod<TT>(0), decltype(std::declval<TT>().Value())> CallValue(
+      TT&& x) {
     return x.Value();
   }
 };

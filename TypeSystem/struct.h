@@ -35,6 +35,7 @@ SOFTWARE.
 #include "base.h"
 #include "optional.h"
 
+#include "../Bricks/template/decay.h"
 #include "../Bricks/template/variadic_indexes.h"
 
 #define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
@@ -171,15 +172,14 @@ struct WithoutParentheses<int(T)> {
     f(#name, name);                                                                                            \
   }
 
-#define CURRENT_RETURNS(RETURN_TYPE)                                                                          \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE>                                            \
-  typename std::enable_if<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, \
-                          RETURN_TYPE>::type
+#define CURRENT_RETURNS(RETURN_TYPE)                               \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE> \
+  ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, RETURN_TYPE>
 
-#define CURRENT_CONSTRUCTOR(s)                                                                             \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                         \
-            class = typename std::enable_if<                                                               \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>::type> \
+#define CURRENT_CONSTRUCTOR(s)                                                                                 \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
+            class =                                                                                            \
+                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CURRENT_STRUCT_IMPL_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
@@ -213,7 +213,7 @@ struct FieldCounter {
 };
 
 template <typename T>
-typename std::enable_if<IS_CURRENT_STRUCT(T), const char*>::type StructName() {
+ENABLE_IF<IS_CURRENT_STRUCT(T), const char*> StructName() {
   return T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_STRUCT_NAME();
 }
 

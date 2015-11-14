@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "is_string_type.h"
 
+#include "../template/enable_if.h"
 #include "../template/decay.h"
 
 namespace bricks {
@@ -39,7 +40,7 @@ namespace strings {
 
 template <typename DECAYED_T>
 struct ToStringImpl {
-  static typename std::enable_if<std::is_pod<DECAYED_T>::value, std::string>::type ToString(DECAYED_T value) {
+  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> ToString(DECAYED_T value) {
     return std::to_string(value);
   }
 };
@@ -118,7 +119,7 @@ inline T_OUTPUT FromString(T_INPUT&& input) {
 inline std::string FromString(const std::string& input) { return input; }
 
 template <size_t N>
-constexpr typename std::enable_if<(N > 0), size_t>::type CompileTimeStringLength(char const(&)[N]) {
+constexpr ENABLE_IF<(N > 0), size_t> CompileTimeStringLength(char const(&)[N]) {
   return N - 1;
 }
 

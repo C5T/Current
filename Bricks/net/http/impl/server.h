@@ -39,6 +39,8 @@ SOFTWARE.
 
 #include "../../tcp/tcp.h"
 
+#include "../../../template/enable_if.h"
+
 #include "../../../../TypeSystem/struct.h"
 #include "../../../../TypeSystem/Serialization/json.h"
 
@@ -408,7 +410,7 @@ class HTTPServerConnection final {
 
   // Only support STL containers of chars and bytes, this does not yet cover std::string.
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
+  inline ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       const T& begin,
       const T& end,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -417,7 +419,7 @@ class HTTPServerConnection final {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
-  inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type SendHTTPResponse(
+  inline ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       T&& container,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
@@ -435,7 +437,7 @@ class HTTPServerConnection final {
 
   // Support objects that can be serialized as JSON-s via Cereal.
   template <class T>
-  inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
+  inline ENABLE_IF<cerealize::is_write_cerealizable<T>::value> SendHTTPResponse(
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultJSONContentType(),
@@ -448,7 +450,7 @@ class HTTPServerConnection final {
   // Microsoft Visual Studio compiler is strict with overloads,
   // explicitly forbid std::string and std::vector<char> from this one.
   template <class T, typename S>
-  inline typename std::enable_if<cerealize::is_write_cerealizable<T>::value>::type SendHTTPResponse(
+  inline ENABLE_IF<cerealize::is_write_cerealizable<T>::value> SendHTTPResponse(
       T&& object,
       S&& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -461,7 +463,7 @@ class HTTPServerConnection final {
 
   // Support `CURRENT_STRUCT`-s.
   template <class T>
-  inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type SendHTTPResponse(
+  inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> SendHTTPResponse(
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultJSONContentType(),
@@ -474,7 +476,7 @@ class HTTPServerConnection final {
   // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
   // (For backwards compatibility only, really. -- D.K.)
   template <class T>
-  inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type SendHTTPResponse(
+  inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> SendHTTPResponse(
       T&& object,
       const std::string& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -517,7 +519,7 @@ class HTTPServerConnection final {
 
       // Only support STL containers of chars and bytes, this does not yet cover std::string.
       template <typename T>
-      inline typename std::enable_if<sizeof(typename T::value_type) == 1>::type Send(T&& data) {
+      inline ENABLE_IF<sizeof(typename T::value_type) == 1> Send(T&& data) {
         SendImpl(std::forward<T>(data));
       }
 
@@ -526,21 +528,21 @@ class HTTPServerConnection final {
 
       // Support objects that can be serialized as JSON-s via Cereal.
       template <class T>
-      inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object) {
+      inline ENABLE_IF<cerealize::is_cerealizable<T>::value> Send(T&& object) {
         SendImpl(CerealizeJSON(std::forward<T>(object)) + '\n');
       }
       template <class T, typename S>
-      inline typename std::enable_if<cerealize::is_cerealizable<T>::value>::type Send(T&& object, S&& name) {
+      inline ENABLE_IF<cerealize::is_cerealizable<T>::value> Send(T&& object, S&& name) {
         SendImpl(CerealizeJSON(std::forward<T>(object), name) + '\n');
       }
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type Send(T&& object) {
+      inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> Send(T&& object) {
         SendImpl(JSON(std::forward<T>(object)) + '\n');
       }
       template <class T, typename S>
-      inline typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type Send(T&& object, S&& name) {
+      inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> Send(T&& object, S&& name) {
         SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n");
       }
 
