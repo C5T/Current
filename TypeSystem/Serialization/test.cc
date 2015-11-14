@@ -36,14 +36,18 @@ SOFTWARE.
 
 namespace serialization_test {
 
+enum class Enum : uint32_t { DEFAULT = 0u, SET = 100u };
+CURRENT_REGISTER_ENUM(Enum);
+
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(b, bool);
+  CURRENT_FIELD(e, Enum);
 
   // Note: The user has to define default constructor when defining custom ones.
   CURRENT_DEFAULT_CONSTRUCTOR(Serializable) {}
-  CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s, bool b) : i(i), s(s), b(b) {}
+  CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s, bool b, Enum e) : i(i), s(s), b(b), e(e) {}
 
   CURRENT_RETURNS(uint64_t) twice_i() const { return i + i; }
 
@@ -88,14 +92,16 @@ TEST(Serialization, JSON) {
   simple_object.i = 0;
   simple_object.s = "";
   simple_object.b = false;
+  simple_object.e = Enum::DEFAULT;
 
-  EXPECT_EQ("{\"i\":0,\"s\":\"\",\"b\":false}", JSON(simple_object));
+  EXPECT_EQ("{\"i\":0,\"s\":\"\",\"b\":false,\"e\":0}", JSON(simple_object));
 
   simple_object.i = 42;
   simple_object.s = "foo";
   simple_object.b = true;
+  simple_object.e = Enum::SET;
   const std::string simple_object_as_json = JSON(simple_object);
-  EXPECT_EQ("{\"i\":42,\"s\":\"foo\",\"b\":true}", simple_object_as_json);
+  EXPECT_EQ("{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}", simple_object_as_json);
 
   {
     Serializable a = ParseJSON<Serializable>(simple_object_as_json);
@@ -113,8 +119,9 @@ TEST(Serialization, JSON) {
   complex_object.z = simple_object;
 
   const std::string complex_object_as_json = JSON(complex_object);
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true}}",
-            complex_object_as_json);
+  EXPECT_EQ(
+      "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
+      complex_object_as_json);
 
   {
     ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);
@@ -125,6 +132,8 @@ TEST(Serialization, JSON) {
     EXPECT_EQ("two", b.v[1]);
     EXPECT_EQ(42ull, b.z.i);
     EXPECT_EQ("foo", b.z.s);
+    EXPECT_TRUE(b.z.b);
+    EXPECT_EQ(Enum::SET, b.z.e);
 
     ASSERT_THROW(ParseJSON<ComplexSerializable>("not a json"), InvalidJSONException);
   }
@@ -132,8 +141,9 @@ TEST(Serialization, JSON) {
   // Complex serialization makes a copy.
   simple_object.i = 1000;
   EXPECT_EQ(42ull, complex_object.z.i);
-  EXPECT_EQ("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true}}",
-            JSON(complex_object));
+  EXPECT_EQ(
+      "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
+      JSON(complex_object));
 
   // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
   {
@@ -184,10 +194,11 @@ TEST(Serialization, JSON) {
     WithNontrivialMap with_nontrivial_map;
     EXPECT_EQ("{\"q\":[]}", JSON(with_nontrivial_map));
     with_nontrivial_map.q[simple_object] = "wow";
-    EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\",\"b\":true},\"wow\"]]}", JSON(with_nontrivial_map));
-    with_nontrivial_map.q[Serializable(1, "one", false)] = "yes";
+    EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"]]}", JSON(with_nontrivial_map));
+    with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
     EXPECT_EQ(
-        "{\"q\":[[{\"i\":1,\"s\":\"one\",\"b\":false},\"yes\"],[{\"i\":1000,\"s\":\"foo\",\"b\":true},\"wow\"]]"
+        "{\"q\":[[{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0},\"yes\"],[{\"i\":1000,\"s\":\"foo\",\"b\":true,"
+        "\"e\":100},\"wow\"]]"
         "}",
         JSON(with_nontrivial_map));
   }
@@ -206,11 +217,12 @@ TEST(Serialization, JSON) {
   {
     // FIXME(dkorolev): Forgetting the `bool` in the JSON below results in bad exception messages.
     const auto parsed = ParseJSON<WithNontrivialMap>(
-        "{\"q\":[[{\"i\":3,\"s\":\"three\",\"b\":true},\"prime\"],[{\"i\":4,\"s\":\"four\",\"b\":false},"
+        "{\"q\":[[{\"i\":3,\"s\":\"three\",\"b\":true,\"e\":100},\"prime\"],[{\"i\":4,\"s\":\"four\",\"b\":"
+        "false,\"e\":0},"
         "\"composite\"]]}");
     ASSERT_EQ(2u, parsed.q.size());
-    EXPECT_EQ("prime", parsed.q.at(Serializable(3, "", true)));
-    EXPECT_EQ("composite", parsed.q.at(Serializable(4, "", false)));
+    EXPECT_EQ("prime", parsed.q.at(Serializable(3, "", true, Enum::SET)));
+    EXPECT_EQ("composite", parsed.q.at(Serializable(4, "", false, Enum::DEFAULT)));
   }
 
   {
@@ -343,13 +355,14 @@ TEST(Serialization, StructSchema) {
   struct_schema.AddType<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
   EXPECT_EQ(
-      "{\"structs\":[[9204126776335348166,{\"type_id\":9204126776335348166,\"name\":\"ComplexSerializable\","
-      "\"super_type_id\":0,\"fields\":[[9000000000000000024,\"j\"],[9000000000000000042,\"q\"],["
-      "9310000000000000084,\"v\"],[9209615721865832921,\"z\"]]}],[9209615721865832921,{\"type_id\":"
-      "9209615721865832921,\"name\":\"Serializable\",\"super_type_id\":0,\"fields\":[[9000000000000000024,"
-      "\"i\"],[9000000000000000042,\"s\"],[9000000000000000011,\"b\"]]}]],\"types\":[[9310000000000000084,{"
-      "\"type_id\":9310000000000000084,\"included_types\":[9000000000000000042]}]],\"ordered_struct_list\":["
-      "9209615721865832921,9204126776335348166]}",
+      "{\"structs\":[[9201855287122465329,{\"type_id\":9201855287122465329,\"name\":\"Serializable\",\"super_"
+      "type_id\":0,\"fields\":[[9000000000000000024,\"i\"],[9000000000000000042,\"s\"],[9000000000000000011,"
+      "\"b\"],[9010000002928410991,\"e\"]]}],[9206500345161216453,{\"type_id\":9206500345161216453,\"name\":"
+      "\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[[9000000000000000024,\"j\"],["
+      "9000000000000000042,\"q\"],[9310000000000000084,\"v\"],[9201855287122465329,\"z\"]]}]],\"types\":[["
+      "9010000002928410991,{\"type_id\":9010000002928410991,\"name\":\"Enum\",\"included_types\":["
+      "9000000000000000023]}],[9310000000000000084,{\"type_id\":9310000000000000084,\"name\":\"\",\"included_"
+      "types\":[9000000000000000042]}]],\"ordered_struct_list\":[9201855287122465329,9206500345161216453]}",
       schema_json);
 
   const TypeID serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
@@ -359,6 +372,7 @@ TEST(Serialization, StructSchema) {
       "  uint64_t i;\n"
       "  std::string s;\n"
       "  bool b;\n"
+      "  Enum e;\n"
       "};\n",
       loaded_schema.CppDescription(serializable_type_id));
 }
@@ -367,7 +381,7 @@ TEST(Serialization, StructSchema) {
 TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
   using namespace serialization_test;
   {
-    Serializable simple_object(1, "foo", true);
+    Serializable simple_object(1, "foo", true, Enum::SET);
     EXPECT_EQ(2u, simple_object.twice_i());
   }
   {

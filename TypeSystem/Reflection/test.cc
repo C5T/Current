@@ -99,6 +99,9 @@ namespace reflection_test {
 static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
 static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 
+enum class Enum : uint32_t { Value1 = 1u, Value2 = 2u };
+CURRENT_REGISTER_ENUM(Enum);
+
 CURRENT_STRUCT(StructWithAllSupportedTypes) {
   // Integral.
   CURRENT_FIELD(b, bool, true);
@@ -116,6 +119,7 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   CURRENT_FIELD(dbl, double, 1e308);
   // Other primitive types.
   CURRENT_FIELD(s, std::string, "The String");
+  CURRENT_FIELD(e, Enum, Enum::Value2);
 
   // Complex types.
   CURRENT_FIELD(pair_strdbl, (std::pair<std::string, double>));
@@ -130,8 +134,13 @@ struct CollectFieldValues {
   std::vector<std::string>& output_;
 
   template <typename T>
-  void operator()(const std::string&, const T& value) const {
+  ENABLE_IF<!std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
     output_.push_back(bricks::strings::ToString(value));
+  }
+
+  template <typename T>
+  ENABLE_IF<std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
+    output_.push_back(bricks::strings::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
   }
 
   template <typename T>
@@ -203,6 +212,7 @@ TEST(Reflection, VisitAllFields) {
       "-128,-32768,-2147483648,-9223372036854775808,"
       "1e+38,1e+308,"
       "The String,"
+      "2,"
       "Minus eight point five:-9.500000,"
       "[-1,-2,-4],"
       "[key1:value1,key2:value2]",
@@ -215,8 +225,9 @@ CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
 CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
 CURRENT_STRUCT(Z, Y) {
   CURRENT_FIELD(d, double);
-  CURRENT_FIELD(v2, std::vector<std::vector<Y>>);
+  CURRENT_FIELD(v2, std::vector<std::vector<Enum>>);
 };
+
 CURRENT_STRUCT(A) { CURRENT_FIELD(i, uint32_t); };
 CURRENT_STRUCT(B) {
   CURRENT_FIELD(x, X);
@@ -272,16 +283,16 @@ TEST(Reflection, StructSchema) {
     EXPECT_EQ(2u, schema.structs[z_type_id].fields.size());
     EXPECT_EQ(9000000000000000052ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[0].first));
     EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
-    EXPECT_EQ(9311340417476567409ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[1].first));
+    EXPECT_EQ(9313255938004092349ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[1].first));
     EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
 
     EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
-    EXPECT_EQ("std::vector<std::vector<Y>>",
+    EXPECT_EQ("std::vector<std::vector<Enum>>",
               struct_schema.CppDescription(schema.structs[z_type_id].fields[1].first));
     EXPECT_EQ(
         "struct Z : Y {\n"
         "  double d;\n"
-        "  std::vector<std::vector<Y>> v2;\n"
+        "  std::vector<std::vector<Enum>> v2;\n"
         "};\n",
         struct_schema.CppDescription(z_type_id));
 
@@ -307,7 +318,7 @@ TEST(Reflection, StructSchema) {
         "};\n\n"
         "struct Z : Y {\n"
         "  double d;\n"
-        "  std::vector<std::vector<Y>> v2;\n"
+        "  std::vector<std::vector<Enum>> v2;\n"
         "};\n",
         struct_schema.CppDescription(z_type_id, true));
   }

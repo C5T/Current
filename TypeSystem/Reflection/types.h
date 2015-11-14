@@ -34,6 +34,7 @@ SOFTWARE.
 #include <memory>
 
 #include "../base.h"
+#include "../enum.h"
 #include "../struct.h"
 
 #include "../../Bricks/template/enable_if.h"
@@ -45,6 +46,7 @@ namespace reflection {
 
 // clang-format off
 constexpr uint64_t TYPEID_BASIC_PREFIX  = 900u;
+constexpr uint64_t TYPEID_ENUM_PREFIX   = 901u;
 constexpr uint64_t TYPEID_STRUCT_PREFIX = 920u;
 constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
 constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
@@ -53,6 +55,7 @@ constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
 
 constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
 constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
+constexpr uint64_t TYPEID_ENUM_TYPE   = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
 constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
 constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
 constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
@@ -67,6 +70,8 @@ enum class TypeID : uint64_t {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
   INVALID_TYPE = 0u
 };
+
+CURRENT_REGISTER_ENUM(TypeID);
 
 inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
 
@@ -83,6 +88,16 @@ struct ReflectedTypeImpl {
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+struct ReflectedType_Enum : ReflectedTypeImpl {
+  const std::string name;
+  const std::shared_ptr<ReflectedTypeImpl> reflected_underlying_type;
+  template <typename T>
+  ReflectedType_Enum(T, const std::shared_ptr<ReflectedTypeImpl> rt)
+      : name(EnumName<T>()), reflected_underlying_type(rt) {
+    type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + bricks::CRC32(name));
+  }
+};
 
 struct ReflectedType_Vector : ReflectedTypeImpl {
   const std::shared_ptr<ReflectedTypeImpl> reflected_element_type;
