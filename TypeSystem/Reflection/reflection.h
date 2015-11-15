@@ -67,6 +67,12 @@ struct ReflectorImpl {
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
     template <typename T>
+    ENABLE_IF<std::is_enum<T>::value, std::shared_ptr<ReflectedTypeImpl>> operator()(TypeSelector<T>) {
+      return std::make_shared<ReflectedType_Enum>(
+          T(), Reflector().ReflectType<typename std::underlying_type<T>::type>());
+    }
+
+    template <typename T>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
       auto v = std::make_shared<ReflectedType_Vector>(Reflector().ReflectType<T>());
       v->type_id = CalculateTypeID(v);

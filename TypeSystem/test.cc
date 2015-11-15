@@ -23,6 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "enum.h"
 #include "struct.h"
 
 #include "../3rdparty/gtest/gtest-main.h"
@@ -192,4 +193,13 @@ TEST(TypeSystemTest, ImmutableOptional) {
     EXPECT_EQ(102, lambda(102).Value());
     EXPECT_EQ(102, Value(lambda(102)));
   }
+}
+
+namespace enum_class_test {
+CURRENT_ENUM(Fruits, uint32_t){APPLE = 1u, ORANGE = 2u};
+}
+
+TEST(TypeSystemTest, EnumRegistration) {
+  using current::reflection::EnumName;
+  EXPECT_EQ("Fruits", EnumName<enum_class_test::Fruits>());
 }
