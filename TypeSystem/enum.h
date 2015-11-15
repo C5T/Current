@@ -70,12 +70,12 @@ inline ENABLE_IF<std::is_enum<T>::value, std::string> EnumName() {
 }  // namespace reflection
 }  // namespace current
 
-#define CURRENT_ENUM(name, type)                                                        \
-  enum class name : type;                                                               \
-  struct CURRENT_ENUM_REGISTERER_##c {                                                  \
-    CURRENT_ENUM_REGISTERER_##c() { ::current::reflection::RegisterEnum<name>(#name); } \
-  };                                                                                    \
-  static CURRENT_ENUM_REGISTERER_##c CURRENT_ENUM_REGISTERER_##c_INSTANCE;              \
+#define CURRENT_ENUM(name, type)                                                           \
+  enum class name : type;                                                                  \
+  struct CURRENT_ENUM_REGISTERER_##name {                                                  \
+    CURRENT_ENUM_REGISTERER_##name() { ::current::reflection::RegisterEnum<name>(#name); } \
+  };                                                                                       \
+  static CURRENT_ENUM_REGISTERER_##name CURRENT_ENUM_REGISTERER_##name##_INSTANCE;         \
   enum class name : type
 
 #endif  // CURRENT_TYPE_SYSTEM_ENUM_H

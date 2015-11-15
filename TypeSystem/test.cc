@@ -197,7 +197,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
 
 namespace enum_class_test {
 CURRENT_ENUM(Fruits, uint32_t){APPLE = 1u, ORANGE = 2u};
-}
+}  // namespace enum_class_test
 
 TEST(TypeSystemTest, EnumRegistration) {
   using current::reflection::EnumName;
