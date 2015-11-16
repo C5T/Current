@@ -27,10 +27,13 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
 
+#include "binary.h"
 #include "json.h"
 
 #include "../Reflection/reflection.h"
 #include "../Reflection/schema.h"
+
+#include "../../Bricks/file/file.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
@@ -82,6 +85,61 @@ CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std
 
 }  // namespace serialization_test
 
+TEST(Serialization, Binary) {
+  using namespace serialization_test;
+  const std::string tmp_file = bricks::FileSystem::GenTmpFileName();
+  const auto tmp_file_remover = bricks::FileSystem::ScopedRmFile(tmp_file);
+  {
+    std::ofstream ofs(tmp_file);
+
+    Serializable simple_object;
+    simple_object.i = 42;
+    simple_object.s = "foo";
+    simple_object.b = true;
+    simple_object.e = Enum::SET;
+    SaveIntoBinary(ofs, simple_object);
+
+    ComplexSerializable complex_object;
+    complex_object.j = 43;
+    complex_object.q = "bar";
+    complex_object.v.push_back("one");
+    complex_object.v.push_back("two");
+    complex_object.z = simple_object;
+    SaveIntoBinary(ofs, complex_object);
+
+    WithNontrivialMap with_nontrivial_map;
+    with_nontrivial_map.q[simple_object] = "wow";
+    with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
+    SaveIntoBinary(ofs, with_nontrivial_map);
+  }
+  {
+    std::ifstream ifs(tmp_file);
+    Serializable a = LoadFromBinary<Serializable>(ifs);
+    EXPECT_EQ(42ull, a.i);
+    EXPECT_EQ("foo", a.s);
+    EXPECT_TRUE(a.b);
+    EXPECT_EQ(Enum::SET, a.e);
+
+    ComplexSerializable b = LoadFromBinary<ComplexSerializable>(ifs);
+    EXPECT_EQ(43ull, b.j);
+    EXPECT_EQ("bar", b.q);
+    ASSERT_EQ(2u, b.v.size());
+    EXPECT_EQ("one", b.v[0]);
+    EXPECT_EQ("two", b.v[1]);
+    EXPECT_EQ(42ull, b.z.i);
+    EXPECT_EQ("foo", b.z.s);
+    EXPECT_TRUE(b.z.b);
+    EXPECT_EQ(Enum::SET, b.z.e);
+
+    WithNontrivialMap m = LoadFromBinary<WithNontrivialMap>(ifs);
+    EXPECT_EQ(2u, m.q.size());
+    EXPECT_EQ("yes", m.q[Serializable(1, "one", false, Enum::DEFAULT)]);
+
+    std::istringstream is("Invalid");
+    ASSERT_THROW(LoadFromBinary<ComplexSerializable>(is), BinaryLoadFromStreamException);
+  }
+}
+
 TEST(Serialization, JSON) {
   using namespace serialization_test;
 
@@ -106,6 +164,7 @@ TEST(Serialization, JSON) {
     EXPECT_EQ(42ull, a.i);
     EXPECT_EQ("foo", a.s);
     EXPECT_TRUE(a.b);
+    EXPECT_EQ(Enum::SET, a.e);
   }
 
   // Nested serialization.
