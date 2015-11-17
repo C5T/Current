@@ -207,9 +207,6 @@ TEST(Serialization, JSON) {
   //       Their string representation in C++ is platform-specific.
   //       Thus, this test now is GCC/clang-specific.
   {
-    static_assert(std::numeric_limits<float>::is_iec559, "`float` type is not IEC-559 compliant.");
-    static_assert(std::numeric_limits<double>::is_iec559, "`double` type is not IEC-559 compliant.");
-
     WithFloatingPoint floating_min;
     floating_min.f = std::numeric_limits<float>::min();
     floating_min.d = std::numeric_limits<double>::min();

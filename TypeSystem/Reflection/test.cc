@@ -95,10 +95,6 @@ TEST(Reflection, CurrentStructInternals) {
 
 namespace reflection_test {
 
-// TODO: move these asserts into sources?
-static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
-static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
-
 CURRENT_ENUM(Enum, uint32_t){Value1 = 1u, Value2 = 2u};
 
 CURRENT_STRUCT(StructWithAllSupportedTypes) {

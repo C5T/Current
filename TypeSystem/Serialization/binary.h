@@ -34,10 +34,11 @@ namespace serialization {
 
 // Using platform-independent size type for binary (de)serialization.
 typedef uint64_t BINARY_FORMAT_SIZE_TYPE;
+typedef uint8_t BINARY_FORMAT_BOOL_TYPE;
 
 inline void SaveSizeIntoBinary(std::ostream& ostream, const size_t size) {
-  BINARY_FORMAT_SIZE_TYPE save_size = size;
-  size_t bytes_written =
+  const BINARY_FORMAT_SIZE_TYPE save_size = size;
+  const size_t bytes_written =
       ostream.rdbuf()->sputn(reinterpret_cast<const char*>(&save_size), sizeof(BINARY_FORMAT_SIZE_TYPE));
   if (bytes_written != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
     throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_written);
@@ -46,7 +47,8 @@ inline void SaveSizeIntoBinary(std::ostream& ostream, const size_t size) {
 
 inline BINARY_FORMAT_SIZE_TYPE LoadSizeFromBinary(std::istream& istream) {
   BINARY_FORMAT_SIZE_TYPE result;
-  size_t bytes_read = istream.rdbuf()->sgetn(reinterpret_cast<char*>(&result), sizeof(BINARY_FORMAT_SIZE_TYPE));
+  const size_t bytes_read =
+      istream.rdbuf()->sgetn(reinterpret_cast<char*>(&result), sizeof(BINARY_FORMAT_SIZE_TYPE));
   if (bytes_read != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
     throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_read);
   }
@@ -63,6 +65,15 @@ struct SavePrimitiveTypeIntoBinary {
         ostream.rdbuf()->sputn(reinterpret_cast<const char*>(std::addressof(value)), sizeof(T));
     if (bytes_written != sizeof(T)) {
       throw BinarySaveToStreamException(sizeof(T), bytes_written);
+    }
+  }
+
+  static void Save(std::ostream& ostream, const bool& value) {
+    const BINARY_FORMAT_BOOL_TYPE b = static_cast<BINARY_FORMAT_BOOL_TYPE>(value);
+    const size_t bytes_written =
+        ostream.rdbuf()->sputn(reinterpret_cast<const char*>(&b), sizeof(BINARY_FORMAT_BOOL_TYPE));
+    if (bytes_written != sizeof(BINARY_FORMAT_BOOL_TYPE)) {
+      throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_written);
     }
   }
 
@@ -159,6 +170,16 @@ struct LoadPrimitiveTypeFromBinary {
     if (bytes_read != sizeof(T)) {
       throw BinaryLoadFromStreamException(sizeof(T), bytes_read);
     }
+  }
+
+  static void Load(std::istream& istream, bool& destination) {
+    BINARY_FORMAT_BOOL_TYPE b;
+    const size_t bytes_read =
+        istream.rdbuf()->sgetn(reinterpret_cast<char*>(&b), sizeof(BINARY_FORMAT_BOOL_TYPE));
+    if (bytes_read != sizeof(BINARY_FORMAT_BOOL_TYPE)) {
+      throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_read);
+    }
+    destination = static_cast<bool>(b);
   }
 
   static void Load(std::istream& istream, std::string& destination) {

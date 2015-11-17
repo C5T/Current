@@ -36,6 +36,7 @@ SOFTWARE.
 // I have not enconutered those yet. Uncomment once we confirm them. -- D.K.
 // #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
 
+#include <limits>  // For data type implementation details.
 #include <string>  // For architecture names.
 #include <memory>  // For `std::unique_ptr` and the mimic of `make_unique`.
 
@@ -120,6 +121,20 @@ SOFTWARE.
 #elif !defined(BRICKS_ANDROID)
 #define BRICKS_HAS_THREAD_LOCAL
 #endif
+
+// Current internals rely heavily on specific implementations of certain data types.
+static_assert(sizeof(uint8_t) == 1u, "`uint8_t` must be exactly 1 byte.");
+static_assert(sizeof(uint16_t) == 2u, "`uint16_t` must be exactly 2 bytes.");
+static_assert(sizeof(uint32_t) == 4u, "`uint32_t` must be exactly 4 bytes.");
+static_assert(sizeof(uint64_t) == 8u, "`uint64_t` must be exactly 8 bytes.");
+static_assert(sizeof(int8_t) == 1u, "`int8_t` must be exactly 1 byte.");
+static_assert(sizeof(int16_t) == 2u, "`int16_t` must be exactly 2 bytes.");
+static_assert(sizeof(int32_t) == 4u, "`int32_t` must be exactly 4 bytes.");
+static_assert(sizeof(int64_t) == 8u, "`int64_t` must be exactly 8 bytes.");
+static_assert(std::numeric_limits<float>::is_iec559, "`float` type is not IEC-559 compliant.");
+static_assert(std::numeric_limits<double>::is_iec559, "`double` type is not IEC-559 compliant.");
+static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
+static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 
 // `std::make_unique` exists in C++14, but for Bricks we'd like to see it "supported" in C++11. -- D.K.
 namespace make_unique_for_poor_cpp11_users_impl {

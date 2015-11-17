@@ -35,8 +35,10 @@ SOFTWARE.
 #include "base.h"
 #include "optional.h"
 
+#include "../port.h"
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/variadic_indexes.h"
+
 
 #define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
 
