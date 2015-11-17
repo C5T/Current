@@ -27,10 +27,13 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
 
+#include "binary.h"
 #include "json.h"
 
 #include "../Reflection/reflection.h"
 #include "../Reflection/schema.h"
+
+#include "../../Bricks/file/file.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
@@ -69,19 +72,73 @@ CURRENT_STRUCT(ComplexSerializable) {
   CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
 };
 
+CURRENT_STRUCT(WithFloatingPoint) {
+  CURRENT_FIELD(f, float);
+  CURRENT_FIELD(d, double);
+};
+
 CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
 CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
 
 CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
 
-enum class MyMagicGUID : uint64_t {};
-CURRENT_STRUCT(WithEnumClass) {
-  CURRENT_FIELD(id1, MyMagicGUID);
-  CURRENT_FIELD(id2, MyMagicGUID, static_cast<MyMagicGUID>(1));
-};
-
 }  // namespace serialization_test
+
+TEST(Serialization, Binary) {
+  using namespace serialization_test;
+  const std::string tmp_file = bricks::FileSystem::GenTmpFileName();
+  const auto tmp_file_remover = bricks::FileSystem::ScopedRmFile(tmp_file);
+  {
+    std::ofstream ofs(tmp_file);
+
+    Serializable simple_object;
+    simple_object.i = 42;
+    simple_object.s = "foo";
+    simple_object.b = true;
+    simple_object.e = Enum::SET;
+    SaveIntoBinary(ofs, simple_object);
+
+    ComplexSerializable complex_object;
+    complex_object.j = 43;
+    complex_object.q = "bar";
+    complex_object.v.push_back("one");
+    complex_object.v.push_back("two");
+    complex_object.z = simple_object;
+    SaveIntoBinary(ofs, complex_object);
+
+    WithNontrivialMap with_nontrivial_map;
+    with_nontrivial_map.q[simple_object] = "wow";
+    with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
+    SaveIntoBinary(ofs, with_nontrivial_map);
+  }
+  {
+    std::ifstream ifs(tmp_file);
+    Serializable a = LoadFromBinary<Serializable>(ifs);
+    EXPECT_EQ(42ull, a.i);
+    EXPECT_EQ("foo", a.s);
+    EXPECT_TRUE(a.b);
+    EXPECT_EQ(Enum::SET, a.e);
+
+    ComplexSerializable b = LoadFromBinary<ComplexSerializable>(ifs);
+    EXPECT_EQ(43ull, b.j);
+    EXPECT_EQ("bar", b.q);
+    ASSERT_EQ(2u, b.v.size());
+    EXPECT_EQ("one", b.v[0]);
+    EXPECT_EQ("two", b.v[1]);
+    EXPECT_EQ(42ull, b.z.i);
+    EXPECT_EQ("foo", b.z.s);
+    EXPECT_TRUE(b.z.b);
+    EXPECT_EQ(Enum::SET, b.z.e);
+
+    WithNontrivialMap m = LoadFromBinary<WithNontrivialMap>(ifs);
+    EXPECT_EQ(2u, m.q.size());
+    EXPECT_EQ("yes", m.q[Serializable(1, "one", false, Enum::DEFAULT)]);
+
+    std::istringstream is("Invalid");
+    ASSERT_THROW(LoadFromBinary<ComplexSerializable>(is), BinaryLoadFromStreamException);
+  }
+}
 
 TEST(Serialization, JSON) {
   using namespace serialization_test;
@@ -107,6 +164,7 @@ TEST(Serialization, JSON) {
     EXPECT_EQ(42ull, a.i);
     EXPECT_EQ("foo", a.s);
     EXPECT_TRUE(a.b);
+    EXPECT_EQ(Enum::SET, a.e);
   }
 
   // Nested serialization.
@@ -143,6 +201,49 @@ TEST(Serialization, JSON) {
   EXPECT_EQ(
       "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
       JSON(complex_object));
+
+  // Serialization of floating point types.
+  // TODO: Think of dealing with 'NaN' and `inf` - JSON standard does not allow them.
+  //       Their string representation in C++ is platform-specific.
+  //       Thus, this test now is GCC/clang-specific.
+  {
+    WithFloatingPoint floating_min;
+    floating_min.f = std::numeric_limits<float>::min();
+    floating_min.d = std::numeric_limits<double>::min();
+    const std::string serialized_fmin = JSON(floating_min);
+    EXPECT_EQ("{\"f\":1.175494350822287508e-38,\"d\":2.2250738585072013831e-308}", serialized_fmin);
+    WithFloatingPoint fmin_from_json = ParseJSON<WithFloatingPoint>(serialized_fmin);
+    EXPECT_FLOAT_EQ(std::numeric_limits<float>::min(), fmin_from_json.f);
+    // Due to precision issues, minimum double value becomes 0.
+    EXPECT_NEAR(std::numeric_limits<double>::min(), fmin_from_json.d, 2.2250738586e-308);
+
+    WithFloatingPoint floating_max;
+    floating_max.f = std::numeric_limits<float>::max();
+    floating_max.d = std::numeric_limits<double>::max();
+    const std::string serialized_fmax = JSON(floating_max);
+    EXPECT_EQ("{\"f\":3.4028234663852885981e+38,\"d\":1.7976931348623157081e+308}", serialized_fmax);
+    WithFloatingPoint fmax_from_json = ParseJSON<WithFloatingPoint>(serialized_fmax);
+    EXPECT_FLOAT_EQ(std::numeric_limits<float>::max(), fmax_from_json.f);
+    EXPECT_DOUBLE_EQ(std::numeric_limits<double>::max(), fmax_from_json.d);
+
+    WithFloatingPoint floating_inf;
+    floating_inf.f = std::numeric_limits<float>::infinity();
+    floating_inf.d = std::numeric_limits<double>::infinity();
+    const std::string serialized_finf = JSON(floating_inf);
+    EXPECT_EQ("{\"f\":inf,\"d\":inf}", serialized_finf);
+    WithFloatingPoint finf_from_json = ParseJSON<WithFloatingPoint>(serialized_finf);
+    EXPECT_TRUE(std::isinf(finf_from_json.f));
+    EXPECT_TRUE(std::isinf(finf_from_json.d));
+
+    WithFloatingPoint floating_nan;
+    floating_nan.f = std::numeric_limits<float>::quiet_NaN();
+    floating_nan.d = std::numeric_limits<double>::quiet_NaN();
+    const std::string serialized_fnan = JSON(floating_nan);
+    EXPECT_EQ("{\"f\":nan,\"d\":nan}", serialized_fnan);
+    WithFloatingPoint fnan_from_json = ParseJSON<WithFloatingPoint>(serialized_fnan);
+    EXPECT_TRUE(std::isnan(fnan_from_json.f));
+    EXPECT_TRUE(std::isnan(fnan_from_json.d));
+  }
 
   // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
   {
@@ -222,18 +323,6 @@ TEST(Serialization, JSON) {
     ASSERT_EQ(2u, parsed.q.size());
     EXPECT_EQ("prime", parsed.q.at(Serializable(3, "", true, Enum::SET)));
     EXPECT_EQ("composite", parsed.q.at(Serializable(4, "", false, Enum::DEFAULT)));
-  }
-
-  {
-    WithEnumClass with_enum_class;
-    EXPECT_EQ(1u, static_cast<uint64_t>(with_enum_class.id2));
-    with_enum_class.id1 = static_cast<MyMagicGUID>(101);
-    with_enum_class.id2 = static_cast<MyMagicGUID>(102);
-    EXPECT_EQ("{\"id1\":101,\"id2\":102}", JSON(with_enum_class));
-
-    const auto result = ParseJSON<WithEnumClass>("{\"id1\":201,\"id2\":202}");
-    EXPECT_EQ(201u, static_cast<uint64_t>(result.id1));
-    EXPECT_EQ(202u, static_cast<uint64_t>(result.id2));
   }
 }
 

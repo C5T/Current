@@ -27,6 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 #include "../../Bricks/exception.h"
+#include "../../Bricks/strings/strings.h"
 
 // TODO(dkorolev): Use RapidJSON from outside Cereal.
 #include "../../3rdparty/cereal/include/external/rapidjson/document.h"
@@ -37,8 +38,7 @@ namespace current {
 namespace serialization {
 
 struct TypeSystemParseJSONException : Exception {
-  explicit TypeSystemParseJSONException(const std::string& s) : Exception(s) {}
-  virtual ~TypeSystemParseJSONException() {}
+  using Exception::Exception;
 };
 
 struct JSONSchemaException : TypeSystemParseJSONException {
@@ -82,6 +82,24 @@ struct JSONSchemaException : TypeSystemParseJSONException {
 
 struct InvalidJSONException : TypeSystemParseJSONException {
   explicit InvalidJSONException(const std::string& json) : TypeSystemParseJSONException(json) {}
+};
+
+struct BinarySerializationException : Exception {
+  using Exception::Exception;
+};
+
+struct BinarySaveToStreamException : BinarySerializationException {
+  using BinarySerializationException::BinarySerializationException;
+  BinarySaveToStreamException(const size_t bytes_to_write, const size_t actually_wrote)
+      : BinarySerializationException("Failed to write " + bricks::strings::ToString(bytes_to_write) +
+                                     " bytes, wrote only " + bricks::strings::ToString(actually_wrote) + '.') {}
+};
+
+struct BinaryLoadFromStreamException : BinarySerializationException {
+  using BinarySerializationException::BinarySerializationException;
+  BinaryLoadFromStreamException(const size_t bytes_to_read, const size_t actually_read)
+      : BinarySerializationException("Failed to read " + bricks::strings::ToString(bytes_to_read) +
+                                     " bytes, read only " + bricks::strings::ToString(actually_read) + '.') {}
 };
 
 }  // namespace serialization

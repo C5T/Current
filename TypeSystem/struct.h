@@ -35,6 +35,7 @@ SOFTWARE.
 #include "base.h"
 #include "optional.h"
 
+#include "../port.h"
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/variadic_indexes.h"
 
@@ -155,21 +156,23 @@ struct WithoutParentheses<int(T)> {
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
-  static void CURRENT_REFLECTION(F&& f,                                                                        \
+  static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                           \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
-    f(::current::reflection::TypeSelector<                                                                     \
-          typename ::current::reflection::WithoutParentheses<int(type)>::result>(),                            \
-      #name);                                                                                                  \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<                                                        \
+                       typename ::current::reflection::WithoutParentheses<int(type)>::result>(),               \
+                   #name);                                                                                     \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
-      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>) const {     \
-    f(#name, name);                                                                                            \
+      F&& CURRENT_CALL_F,                                                                                      \
+      ::current::reflection::Index<::current::reflection::FieldNameAndImmutableValue, idx>) const {            \
+    CURRENT_CALL_F(#name, name);                                                                               \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
-      F&& f, ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {             \
-    f(#name, name);                                                                                            \
+      F&& CURRENT_CALL_F,                                                                                      \
+      ::current::reflection::Index<::current::reflection::FieldNameAndMutableValue, idx>) {                    \
+    CURRENT_CALL_F(#name, name);                                                                               \
   }
 
 #define CURRENT_RETURNS(RETURN_TYPE)                               \

@@ -411,7 +411,7 @@ struct BypassRapidJSON<std::string> {
 };
 
 template <typename T>
-std::string JSON(const T& source) {
+inline std::string JSON(const T& source) {
   using DECAYED_T = bricks::decay<T>;
   return ViaRapidJSONOrNatively<DECAYED_T, BypassRapidJSON<DECAYED_T>::bypass>::Create(source);
 }
