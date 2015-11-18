@@ -45,22 +45,24 @@ namespace current {
 namespace reflection {
 
 // clang-format off
-constexpr uint64_t TYPEID_BASIC_PREFIX  = 900u;
-constexpr uint64_t TYPEID_ENUM_PREFIX   = 901u;
-constexpr uint64_t TYPEID_STRUCT_PREFIX = 920u;
-constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
-constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
-constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
-constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
+constexpr uint64_t TYPEID_INCOMPLETE_PREFIX = 800u;
+constexpr uint64_t TYPEID_BASIC_PREFIX      = 900u;
+constexpr uint64_t TYPEID_ENUM_PREFIX       = 901u;
+constexpr uint64_t TYPEID_STRUCT_PREFIX     = 920u;
+constexpr uint64_t TYPEID_VECTOR_PREFIX     = 931u;
+constexpr uint64_t TYPEID_SET_PREFIX        = 932u;
+constexpr uint64_t TYPEID_PAIR_PREFIX       = 933u;
+constexpr uint64_t TYPEID_MAP_PREFIX        = 934u;
 
 constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
-constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
-constexpr uint64_t TYPEID_ENUM_TYPE   = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
-constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
-constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
-constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
-constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
-constexpr uint64_t TYPEID_MAP_TYPE    = TYPEID_TYPE_RANGE * TYPEID_MAP_PREFIX;
+constexpr uint64_t TYPEID_INCOMPLETE_TYPE  = TYPEID_TYPE_RANGE * TYPEID_INCOMPLETE_PREFIX;
+constexpr uint64_t TYPEID_BASIC_TYPE       = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
+constexpr uint64_t TYPEID_ENUM_TYPE        = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
+constexpr uint64_t TYPEID_STRUCT_TYPE      = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
+constexpr uint64_t TYPEID_VECTOR_TYPE      = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
+constexpr uint64_t TYPEID_SET_TYPE         = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
+constexpr uint64_t TYPEID_PAIR_TYPE        = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
+constexpr uint64_t TYPEID_MAP_TYPE         = TYPEID_TYPE_RANGE * TYPEID_MAP_PREFIX;
 // clang-format on
 
 CURRENT_ENUM(TypeID, uint64_t){
@@ -127,8 +129,11 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
   return current::ROL64(static_cast<uint64_t>(type_id), nbits);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
+inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete = false) {
   uint64_t hash = bricks::CRC32(s.name);
+  if (is_incomplete) {
+    return static_cast<TypeID>(TYPEID_INCOMPLETE_TYPE + hash);
+  }
   size_t i = 0u;
   for (const auto& f : s.fields) {
     assert(f.first);
