@@ -75,7 +75,7 @@ struct ReflectorImpl {
     template <typename T>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
       auto v = std::make_shared<ReflectedType_Vector>(Reflector().ReflectType<T>());
-      v->type_id = CalculateTypeID(v);
+      v->type_id = CalculateTypeID(*v);
       return v;
     }
 
@@ -83,26 +83,29 @@ struct ReflectorImpl {
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::pair<TF, TS>>) {
       auto p =
           std::make_shared<ReflectedType_Pair>(Reflector().ReflectType<TF>(), Reflector().ReflectType<TS>());
-      p->type_id = CalculateTypeID(p);
+      p->type_id = CalculateTypeID(*p);
       return p;
     }
 
     template <typename TK, typename TV>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::map<TK, TV>>) {
-      auto v =
+      auto m =
           std::make_shared<ReflectedType_Map>(Reflector().ReflectType<TK>(), Reflector().ReflectType<TV>());
-      v->type_id = CalculateTypeID(v);
-      return v;
+      m->type_id = CalculateTypeID(*m);
+      return m;
     }
 
     template <typename T>
-    ENABLE_IF<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>> operator()(TypeSelector<T>) {
-      auto s = std::make_shared<ReflectedType_Struct>();
-      s->name = StructName<T>();
-      s->reflected_super = ReflectSuper<T>();
-      FieldReflector field_reflector(s->fields);
-      VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
-      s->type_id = CalculateTypeID(s);
+    ENABLE_IF<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>> operator()(
+        TypeSelector<T>, std::shared_ptr<ReflectedType_Struct> s) {
+      if (TypePrefix(s->type_id) != TYPEID_INCOMPLETE_PREFIX) {
+        s->name = StructName<T>();
+        s->type_id = CalculateTypeID(*s, true);
+        s->reflected_super = ReflectSuper<T>();
+        FieldReflector field_reflector(s->fields);
+        VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
+        s->type_id = CalculateTypeID(*s);
+      }
       return s;
     }
 
@@ -121,11 +124,22 @@ struct ReflectorImpl {
   };
 
   template <typename T>
-  std::shared_ptr<ReflectedTypeImpl> ReflectType() {
+  ENABLE_IF<!IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>> ReflectType() {
     const std::type_index type_index = std::type_index(typeid(T));
     auto& placeholder = reflected_types_[type_index];
     if (!placeholder) {
       placeholder = type_reflector_(TypeSelector<T>());
+    }
+    return placeholder;
+  }
+
+  template <typename T>
+  ENABLE_IF<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>> ReflectType() {
+    const std::type_index type_index = std::type_index(typeid(T));
+    auto& placeholder = reflected_types_[type_index];
+    if (!placeholder) {
+      placeholder = std::make_shared<ReflectedType_Struct>();
+      type_reflector_(TypeSelector<T>(), std::dynamic_pointer_cast<ReflectedType_Struct>(placeholder));
     }
     return placeholder;
   }
