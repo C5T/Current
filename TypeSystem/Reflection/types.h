@@ -45,6 +45,7 @@ namespace current {
 namespace reflection {
 
 // clang-format off
+constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_PREFIX = 800u;
 constexpr uint64_t TYPEID_BASIC_PREFIX  = 900u;
 constexpr uint64_t TYPEID_ENUM_PREFIX   = 901u;
 constexpr uint64_t TYPEID_STRUCT_PREFIX = 920u;
@@ -54,6 +55,7 @@ constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
 constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
 
 constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
+constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_INCOMPLETE_STRUCT_PREFIX;
 constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
 constexpr uint64_t TYPEID_ENUM_TYPE   = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
 constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
@@ -127,23 +129,35 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
   return current::ROL64(static_cast<uint64_t>(type_id), nbits);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Struct& s) {
+inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete = false) {
   uint64_t hash = bricks::CRC32(s.name);
   size_t i = 0u;
-  for (const auto& f : s.fields) {
-    assert(f.first);
-    assert(f.first->type_id != TypeID::INVALID_TYPE);
-    hash ^= ROL64(f.first->type_id, i + 8) ^ current::ROL64(bricks::CRC32(f.second), i + 16);
-    ++i;
+  if (is_incomplete) {
+    // For incomplete structs we use only the names of the fields for hashing,
+    // since we don't know their real `type_id`-s.
+    // At this moment, reflected types of the fields should be empty.
+    for (const auto& f : s.fields) {
+      assert(!f.first);
+      hash ^= current::ROL64(bricks::CRC32(f.second), i + 19);
+      ++i;
+    }
+    return static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
+  } else {
+    for (const auto& f : s.fields) {
+      assert(f.first);
+      assert(f.first->type_id != TypeID::INVALID_TYPE);
+      hash ^= ROL64(f.first->type_id, i + 17) ^ current::ROL64(bricks::CRC32(f.second), i + 29);
+      ++i;
+    }
+    return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
   }
-  return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
   assert(v.reflected_element_type);
   assert(v.reflected_element_type->type_id != TypeID::INVALID_TYPE);
   return static_cast<TypeID>(TYPEID_VECTOR_TYPE +
-                             ROL64(v.reflected_element_type->type_id, 1) % TYPEID_TYPE_RANGE);
+                             ROL64(v.reflected_element_type->type_id, 3) % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
@@ -151,7 +165,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
   assert(v.reflected_second_type);
   assert(v.reflected_first_type->type_id != TypeID::INVALID_TYPE);
   assert(v.reflected_second_type->type_id != TypeID::INVALID_TYPE);
-  uint64_t hash = ROL64(v.reflected_first_type->type_id, 4) ^ ROL64(v.reflected_second_type->type_id, 8);
+  uint64_t hash = ROL64(v.reflected_first_type->type_id, 5) ^ ROL64(v.reflected_second_type->type_id, 11);
   return static_cast<TypeID>(TYPEID_PAIR_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
@@ -160,7 +174,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
   assert(v.reflected_value_type);
   assert(v.reflected_key_type->type_id != TypeID::INVALID_TYPE);
   assert(v.reflected_value_type->type_id != TypeID::INVALID_TYPE);
-  uint64_t hash = ROL64(v.reflected_key_type->type_id, 4) ^ ROL64(v.reflected_value_type->type_id, 8);
+  uint64_t hash = ROL64(v.reflected_key_type->type_id, 5) ^ ROL64(v.reflected_value_type->type_id, 11);
   return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 

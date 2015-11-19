@@ -161,13 +161,14 @@ struct StructSchema {
 
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       const ReflectedType_Struct* s = dynamic_cast<const ReflectedType_Struct*>(reflected_type.get());
+      // Fill `structs[type_id]` before traversing everything else to break possible circular dependencies.
+      schema_.structs[type_id] = StructInfo(reflected_type);
       if (s->reflected_super) {
         TraverseType(s->reflected_super);
       }
       for (const auto& f : s->fields) {
         TraverseType(f.first);
       }
-      schema_.structs[type_id] = StructInfo(reflected_type);
       schema_.ordered_struct_list.push_back(type_id);
       return;
     }
@@ -227,18 +228,21 @@ struct StructSchema {
       TraverseType(reflected_value_type);
       return;
     }
+    // Type left unhandled, this should never happen.
+    assert(false);
   }
 
   std::vector<TypeID> ListStructDependencies(const TypeID struct_type_id) {
     std::vector<TypeID> result;
     const uint64_t struct_type_prefix = TypePrefix(struct_type_id);
     assert(struct_type_prefix == TYPEID_STRUCT_PREFIX);
-    RecursiveListStructDependencies(struct_type_id, result, false);
+    RecursiveListStructDependencies(struct_type_id, result, TypeID::INVALID_TYPE, false);
     return result;
   }
 
   void RecursiveListStructDependencies(const TypeID type_id,
                                        std::vector<TypeID>& dependency_list,
+                                       const TypeID containing_struct_type_id,
                                        bool should_be_listed = true) {
     const uint64_t type_prefix = TypePrefix(type_id);
     // Skip primitive types.
@@ -249,15 +253,16 @@ struct StructSchema {
     // Process structs.
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       assert(schema_.structs.count(type_id));
-      if (std::find(dependency_list.begin(), dependency_list.end(), type_id) != dependency_list.end()) {
+      if (type_id == containing_struct_type_id ||
+          std::find(dependency_list.begin(), dependency_list.end(), type_id) != dependency_list.end()) {
         return;
       }
       const StructInfo& struct_info = schema_.structs[type_id];
       if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
-        RecursiveListStructDependencies(struct_info.super_type_id, dependency_list);
+        RecursiveListStructDependencies(struct_info.super_type_id, dependency_list, type_id);
       }
       for (const auto& cit : struct_info.fields) {
-        RecursiveListStructDependencies(cit.first, dependency_list);
+        RecursiveListStructDependencies(cit.first, dependency_list, type_id);
       }
       if (should_be_listed) {
         dependency_list.push_back(type_id);
@@ -267,7 +272,7 @@ struct StructSchema {
       assert(schema_.types.count(type_id));
       const TypeInfo& type_info = schema_.types[type_id];
       for (const TypeID included_type : type_info.included_types) {
-        RecursiveListStructDependencies(included_type, dependency_list);
+        RecursiveListStructDependencies(included_type, dependency_list, containing_struct_type_id);
       }
     }
   }

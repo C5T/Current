@@ -48,6 +48,12 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
+CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>); };
+CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
+CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
+  CURRENT_FIELD(v, std::vector<SelfContainingB>);
+  CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
+};
 
 using current::reflection::Reflector;
 
@@ -59,9 +65,28 @@ TEST(Reflection, TypeID) {
 
   // TODO(dkorolev): Migrate to `Polymorphic<>` and avoid `dynamic_cast<>` here.
   const ReflectedType_Struct& bar = dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<Bar>());
-  EXPECT_EQ(9310000000000000048ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
-  EXPECT_EQ(9317693294631286650ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
-  EXPECT_EQ(9318642515553021685ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(4u, bar.fields.size());
+  EXPECT_EQ(9319767778871345347ull, static_cast<uint64_t>(bar.fields[0].first->type_id));
+  EXPECT_EQ(9319865771553050731ull, static_cast<uint64_t>(bar.fields[1].first->type_id));
+  EXPECT_EQ(9311949877586199388ull, static_cast<uint64_t>(bar.fields[2].first->type_id));
+  EXPECT_EQ(9349351407460177576ull, static_cast<uint64_t>(bar.fields[3].first->type_id));
+
+  const ReflectedType_Struct& self_a =
+      dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<SelfContainingA>());
+  EXPECT_EQ(1u, self_a.fields.size());
+  EXPECT_EQ(9205901389225534299ull, static_cast<uint64_t>(self_a.type_id));
+  EXPECT_EQ(9317324759808216579ull, static_cast<uint64_t>(self_a.fields[0].first->type_id));
+  const ReflectedType_Struct& self_b =
+      dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<SelfContainingB>());
+  EXPECT_EQ(1u, self_b.fields.size());
+  EXPECT_EQ(9203772139816579809ull, static_cast<uint64_t>(self_b.type_id));
+  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_b.fields[0].first->type_id));
+  const ReflectedType_Struct& self_c =
+      dynamic_cast<const ReflectedType_Struct&>(*Reflector().ReflectType<SelfContainingC>());
+  EXPECT_EQ(2u, self_c.fields.size());
+  EXPECT_EQ(9200564679597442224ull, static_cast<uint64_t>(self_c.type_id));
+  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_c.fields[0].first->type_id));
+  EXPECT_EQ(9345487227046290999ull, static_cast<uint64_t>(self_c.fields[1].first->type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {
@@ -271,14 +296,14 @@ TEST(Reflection, StructSchema) {
     y_type_id = schema.ordered_struct_list[1];
     EXPECT_EQ("Y", schema.structs[y_type_id].name);
     EXPECT_EQ(1u, schema.structs[y_type_id].fields.size());
-    EXPECT_EQ(9317693294612917870ull, static_cast<uint64_t>(schema.structs[y_type_id].fields[0].first));
+    EXPECT_EQ(9319865772074171451ull, static_cast<uint64_t>(schema.structs[y_type_id].fields[0].first));
     EXPECT_EQ("v", schema.structs[y_type_id].fields[0].second);
     z_type_id = schema.ordered_struct_list[2];
     EXPECT_EQ("Z", schema.structs[z_type_id].name);
     EXPECT_EQ(2u, schema.structs[z_type_id].fields.size());
     EXPECT_EQ(9000000000000000052ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[0].first));
     EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
-    EXPECT_EQ(9313255938004092349ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[1].first));
+    EXPECT_EQ(9311166123550858204ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[1].first));
     EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
 
     EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
@@ -321,21 +346,42 @@ TEST(Reflection, StructSchema) {
   struct_schema.AddType<B>();
 
   {
-    SchemaInfo updated_schema = struct_schema.GetSchemaInfo();
-    EXPECT_EQ(5u, updated_schema.ordered_struct_list.size());
-    EXPECT_EQ(5u, updated_schema.structs.size());
-    const TypeID a_type_id = updated_schema.ordered_struct_list[3];
-    EXPECT_EQ("A", updated_schema.structs[a_type_id].name);
-    EXPECT_EQ(1u, updated_schema.structs[a_type_id].fields.size());
-    EXPECT_EQ(9000000000000000023ull, static_cast<uint64_t>(updated_schema.structs[a_type_id].fields[0].first));
-    EXPECT_EQ("i", updated_schema.structs[a_type_id].fields[0].second);
-    const TypeID b_type_id = updated_schema.ordered_struct_list[4];
-    EXPECT_EQ("B", updated_schema.structs[b_type_id].name);
-    EXPECT_EQ(2u, updated_schema.structs[b_type_id].fields.size());
-    EXPECT_EQ(x_type_id, updated_schema.structs[b_type_id].fields[0].first);
-    EXPECT_EQ("x", updated_schema.structs[b_type_id].fields[0].second);
-    EXPECT_EQ(a_type_id, updated_schema.structs[b_type_id].fields[1].first);
-    EXPECT_EQ("a", updated_schema.structs[b_type_id].fields[1].second);
+    SchemaInfo schema = struct_schema.GetSchemaInfo();
+    EXPECT_EQ(5u, schema.ordered_struct_list.size());
+    EXPECT_EQ(5u, schema.structs.size());
+    const TypeID a_type_id = schema.ordered_struct_list[3];
+    EXPECT_EQ("A", schema.structs[a_type_id].name);
+    EXPECT_EQ(1u, schema.structs[a_type_id].fields.size());
+    EXPECT_EQ(9000000000000000023ull, static_cast<uint64_t>(schema.structs[a_type_id].fields[0].first));
+    EXPECT_EQ("i", schema.structs[a_type_id].fields[0].second);
+    const TypeID b_type_id = schema.ordered_struct_list[4];
+    EXPECT_EQ("B", schema.structs[b_type_id].name);
+    EXPECT_EQ(2u, schema.structs[b_type_id].fields.size());
+    EXPECT_EQ(x_type_id, schema.structs[b_type_id].fields[0].first);
+    EXPECT_EQ("x", schema.structs[b_type_id].fields[0].second);
+    EXPECT_EQ(a_type_id, schema.structs[b_type_id].fields[1].first);
+    EXPECT_EQ("a", schema.structs[b_type_id].fields[1].second);
+  }
+
+  struct_schema.AddType<SelfContainingC>();
+
+  {
+    SchemaInfo schema = struct_schema.GetSchemaInfo();
+    EXPECT_EQ(8u, schema.ordered_struct_list.size());
+    EXPECT_EQ(8u, schema.structs.size());
+    const TypeID self1_type_id = schema.ordered_struct_list[7];
+    EXPECT_EQ(
+        "struct SelfContainingA {\n"
+        "  std::vector<SelfContainingA> v;\n"
+        "};\n\n"
+        "struct SelfContainingB {\n"
+        "  std::vector<SelfContainingB> v;\n"
+        "};\n\n"
+        "struct SelfContainingC : SelfContainingA {\n"
+        "  std::vector<SelfContainingB> v;\n"
+        "  std::map<std::string, SelfContainingC> m;\n"
+        "};\n",
+        struct_schema.CppDescription(self1_type_id, true));
   }
 }
 
