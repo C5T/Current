@@ -242,7 +242,7 @@ struct StructSchema {
 
   void RecursiveListStructDependencies(const TypeID type_id,
                                        std::vector<TypeID>& dependency_list,
-                                       const TypeID containig_struct_type_id,
+                                       const TypeID containing_struct_type_id,
                                        bool should_be_listed = true) {
     const uint64_t type_prefix = TypePrefix(type_id);
     // Skip primitive types.
@@ -253,7 +253,7 @@ struct StructSchema {
     // Process structs.
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       assert(schema_.structs.count(type_id));
-      if (type_id == containig_struct_type_id ||
+      if (type_id == containing_struct_type_id ||
           std::find(dependency_list.begin(), dependency_list.end(), type_id) != dependency_list.end()) {
         return;
       }
@@ -272,7 +272,7 @@ struct StructSchema {
       assert(schema_.types.count(type_id));
       const TypeInfo& type_info = schema_.types[type_id];
       for (const TypeID included_type : type_info.included_types) {
-        RecursiveListStructDependencies(included_type, dependency_list, containig_struct_type_id);
+        RecursiveListStructDependencies(included_type, dependency_list, containing_struct_type_id);
       }
     }
   }

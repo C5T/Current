@@ -47,15 +47,21 @@ struct ReflectorImpl {
   static ReflectorImpl& Reflector() { return ThreadLocalSingleton<ReflectorImpl>(); }
 
   struct FieldReflector {
-    FieldReflector(StructFieldsVector& fields) : fields_(fields) {}
+    FieldReflector(StructFieldsVector& fields, bool reflect_names_only)
+        : fields_(fields), reflect_names_only_(reflect_names_only) {}
 
     template <typename T>
     void operator()(TypeSelector<T>, const std::string& name) const {
-      fields_.emplace_back(Reflector().ReflectType<T>(), name);
+      if (reflect_names_only_) {
+        fields_.emplace_back(nullptr, name);
+      } else {
+        fields_.emplace_back(Reflector().ReflectType<T>(), name);
+      }
     }
 
    private:
     StructFieldsVector& fields_;
+    const bool reflect_names_only_;
   };
 
   struct TypeReflector {
@@ -98,11 +104,18 @@ struct ReflectorImpl {
     template <typename T>
     ENABLE_IF<IS_CURRENT_STRUCT(T), std::shared_ptr<ReflectedTypeImpl>> operator()(
         TypeSelector<T>, std::shared_ptr<ReflectedType_Struct> s) {
-      if (TypePrefix(s->type_id) != TYPEID_INCOMPLETE_PREFIX) {
+      // Two step reflection is needed to support self-referring structs.
+      if (TypePrefix(s->type_id) != TYPEID_INCOMPLETE_STRUCT_PREFIX) {
+        // First step: incomplete struct reflection using only field names.
+        FieldReflector field_names_reflector(s->fields, true);
+        VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_names_reflector);
         s->name = StructName<T>();
         s->type_id = CalculateTypeID(*s, true);
+
+        // Second step: full reflection with field types and names.
         s->reflected_super = ReflectSuper<T>();
-        FieldReflector field_reflector(s->fields);
+        s->fields.clear();
+        FieldReflector field_reflector(s->fields, false);
         VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
         s->type_id = CalculateTypeID(*s);
       }

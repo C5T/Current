@@ -443,15 +443,15 @@ TEST(Serialization, StructSchema) {
   struct_schema.AddType<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
   EXPECT_EQ(
-      "{\"structs\":[[9201855287122465329,{\"type_id\":9201855287122465329,\"name\":\"Serializable\",\"super_"
+      "{\"structs\":[[9201007113239016790,{\"type_id\":9201007113239016790,\"name\":\"Serializable\",\"super_"
       "type_id\":0,\"fields\":[[9000000000000000024,\"i\"],[9000000000000000042,\"s\"],[9000000000000000011,"
-      "\"b\"],[9010000002928410991,\"e\"]]}],[9206500345161216453,{\"type_id\":9206500345161216453,\"name\":"
+      "\"b\"],[9010000002928410991,\"e\"]]}],[9209412029115735895,{\"type_id\":9209412029115735895,\"name\":"
       "\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[[9000000000000000024,\"j\"],["
-      "9000000000000000042,\"q\"],[9310000000000000084,\"v\"],[9201855287122465329,\"z\"]]}]],\"types\":[["
+      "9000000000000000042,\"q\"],[9319767778871345491,\"v\"],[9201007113239016790,\"z\"]]}]],\"types\":[["
       "9010000002928410991,{\"type_id\":9010000002928410991,\"enum_name\":\"Enum\",\"included_types\":["
-      "9000000000000000023]}],[9310000000000000084,{\"type_id\":9310000000000000084,\"enum_name\":\"\","
-      "\"included_types\":[9000000000000000042]}]],\"ordered_struct_list\":[9201855287122465329,"
-      "9206500345161216453]}",
+      "9000000000000000023]}],[9319767778871345491,{\"type_id\":9319767778871345491,\"enum_name\":\"\","
+      "\"included_types\":[9000000000000000042]}]],\"ordered_struct_list\":[9201007113239016790,"
+      "9209412029115735895]}",
       schema_json);
 
   const TypeID serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
