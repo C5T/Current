@@ -110,7 +110,3 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	fi
 done
 echo "> DATA_TYPES;" >> $TYPELIST_DYNAMIC_TEST
-#for i in `seq 1 $STRUCT_COUNT`; do
-#	echo "EXPECT_EQ($i, (TypeListElement<$(($i - 1)), TYPELIST_DYNAMIC>::x));" >> $TYPELIST_DYNAMIC_TEST
-#done
-
