@@ -1,6 +1,7 @@
 #!/bin/bash
-COUNT_LIST=(10 100 500)
+COUNT_LIST=(10 100 200)
 TEST_LIST=('.current/current_struct'
+           '.current/struct_fields'
            '.current/typelist_impl'
            '.current/rtti_dynamic_call')
 # 20 structs for '.current/typelist' and 10 for '.current/typelist_dynamic' are killing my clang :( //MZ

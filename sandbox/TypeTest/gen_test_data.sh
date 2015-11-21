@@ -31,6 +31,19 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "};" >> $CURRENT_STRUCT_GOLDEN
 done
 
+# 'struct_fields.cc' test.
+STRUCT_FIELDS_HEADER="$INCLUDE_DIR/struct_fields.h"
+STRUCT_FIELDS_GOLDEN="$GOLDEN_DIR/struct_fields.cc"
+
+echo "CURRENT_STRUCT(StructWithManyFields) {" >> $STRUCT_FIELDS_HEADER
+echo "struct StructWithManyFields {" >> $STRUCT_FIELDS_GOLDEN
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "  CURRENT_FIELD(z$i, uint32_t);" >> $STRUCT_FIELDS_HEADER
+	echo "  uint32_t z$i;" >> $STRUCT_FIELDS_GOLDEN
+done
+echo "};" >> $STRUCT_FIELDS_HEADER
+echo "};" >> $STRUCT_FIELDS_GOLDEN
+
 # 'typelist.cc' test.
 TYPELIST_HEADER="$INCLUDE_DIR/typelist.h"
 TYPELIST_TEST="$INCLUDE_DIR/typelist.cc"
@@ -110,3 +123,5 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	fi
 done
 echo "> DATA_TYPES;" >> $TYPELIST_DYNAMIC_TEST
+
+touch dummy.h
