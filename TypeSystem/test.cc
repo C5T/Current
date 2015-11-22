@@ -25,6 +25,8 @@ SOFTWARE.
 
 #include "enum.h"
 #include "struct.h"
+#include "optional.h"
+#include "polymorphic.h"
 
 #include "../3rdparty/gtest/gtest-main.h"
 
@@ -34,7 +36,10 @@ SOFTWARE.
 namespace struct_definition_test {
 
 // A few properly defined Current data types.
-CURRENT_STRUCT(Foo) { CURRENT_FIELD(i, uint64_t, 42u); };
+CURRENT_STRUCT(Foo) {
+  CURRENT_FIELD(i, uint64_t, 0u);
+  CURRENT_CONSTRUCTOR(Foo)(uint64_t i = 42u) : i(i) {}
+};
 CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
@@ -140,6 +145,26 @@ TEST(TypeSystemTest, ExistsAndValueSemantics) {
   }
 }
 
+TEST(TypeSystemTest, CopyDoesItsJob) {
+  using namespace struct_definition_test;
+
+  Foo a;
+  Foo b;
+
+  a.i = 1u;
+  b.i = 2u;
+  EXPECT_EQ(1u, a.i);
+  EXPECT_EQ(2u, b.i);
+
+  a.i = 3u;
+  EXPECT_EQ(3u, a.i);
+  EXPECT_EQ(2u, b.i);
+
+  b = a;
+  EXPECT_EQ(3u, a.i);
+  EXPECT_EQ(3u, b.i);
+}
+
 TEST(TypeSystemTest, ImmutableOptional) {
   {
     ImmutableOptional<int> foo(make_unique<int>(100));
@@ -219,4 +244,107 @@ CURRENT_ENUM(Fruits, uint32_t){APPLE = 1u, ORANGE = 2u};
 TEST(TypeSystemTest, EnumRegistration) {
   using current::reflection::EnumName;
   EXPECT_EQ("Fruits", EnumName<enum_class_test::Fruits>());
+}
+
+TEST(TypeSystemTest, PolymorphicStaticAsserts) {
+  using namespace struct_definition_test;
+
+  static_assert(std::is_same<Polymorphic<Foo>, Polymorphic<Foo>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo>, Polymorphic<TypeList<Foo>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo>, Polymorphic<TypeList<Foo, Foo>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo>, Polymorphic<TypeListImpl<Foo>>>::value, "");
+  static_assert(Polymorphic<Foo>::T_TYPELIST_SIZE == 1u, "");
+  static_assert(std::is_same<Polymorphic<Foo>::T_TYPELIST, TypeListImpl<Foo>>::value, "");
+
+  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<Foo, Empty>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeList<Foo, Empty>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeList<Foo, Empty, Foo>>>::value, "");
+  static_assert(
+      std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeList<Foo, Empty, TypeList<Empty>>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeListImpl<Foo, Empty>>>::value, "");
+  static_assert(Polymorphic<Foo, Empty>::T_TYPELIST_SIZE == 2u, "");
+  static_assert(std::is_same<Polymorphic<Foo, Empty>::T_TYPELIST, TypeListImpl<Foo, Empty>>::value, "");
+}
+
+TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
+  using namespace struct_definition_test;
+
+  {
+    Polymorphic<Foo> p(make_unique<Foo>());
+    const Polymorphic<Foo>& cp(p);
+
+    {
+      ASSERT_TRUE(p.Has<Foo>());
+      const auto& foo = p.Value<Foo>();
+      EXPECT_EQ(42u, foo.i);
+    }
+    {
+      ASSERT_TRUE(cp.Has<Foo>());
+      const auto& foo = cp.Value<Foo>();
+      EXPECT_EQ(42u, foo.i);
+    }
+
+    ++p.Value<Foo>().i;
+
+    EXPECT_EQ(43u, p.Value<Foo>().i);
+    EXPECT_EQ(43u, cp.Value<Foo>().i);
+
+    p = Foo(100u);
+    EXPECT_EQ(100u, p.Value<Foo>().i);
+    EXPECT_EQ(100u, cp.Value<Foo>().i);
+
+    p = static_cast<const Foo&>(Foo(101u));
+    EXPECT_EQ(101u, p.Value<Foo>().i);
+    EXPECT_EQ(101u, cp.Value<Foo>().i);
+
+    p = std::move(Foo(102u));
+    EXPECT_EQ(102u, p.Value<Foo>().i);
+    EXPECT_EQ(102u, cp.Value<Foo>().i);
+
+    p = make_unique<Foo>(103u);
+    EXPECT_EQ(103u, p.Value<Foo>().i);
+    EXPECT_EQ(103u, cp.Value<Foo>().i);
+
+    // TODO(dkorolev): Unsafe? Remove?
+    p = new Foo(104u);
+    EXPECT_EQ(104u, p.Value<Foo>().i);
+    EXPECT_EQ(104u, cp.Value<Foo>().i);
+  }
+
+  {
+    struct Visitor {
+      std::string s;
+      void operator()(const Foo& foo) {
+        s += "Foo " + bricks::strings::ToString(foo.i) + '\n';
+      }
+    };
+    Visitor v;
+    {
+      Polymorphic<Foo> p(Foo(501u));
+      p.Match(v);
+      EXPECT_EQ("Foo 501\n", v.s);
+    }
+    {
+      const Polymorphic<Foo> p(Foo(502u));
+      p.Match(v);
+      EXPECT_EQ("Foo 501\nFoo 502\n", v.s);
+    }
+  }
+
+  {
+    std::string s;
+    const auto lambda = [&s](const Foo& foo) {
+      s += "lambda: Foo " + bricks::strings::ToString(foo.i) + '\n';
+    };
+    {
+      Polymorphic<Foo> p(Foo(601u));
+      p.Match(lambda);
+      EXPECT_EQ("lambda: Foo 601\n", s);
+    }
+    {
+      const Polymorphic<Foo> p(Foo(602u));
+      p.Match(lambda);
+      EXPECT_EQ("lambda: Foo 601\nlambda: Foo 602\n", s);
+    }
+  }
 }

@@ -29,6 +29,10 @@ SOFTWARE.
 
 #include "../struct.h"
 
+// TODO(dkorolev): Soon to be added.
+// #include "../optional.h"
+// #include "../polymorphic.h"
+
 namespace current {
 namespace serialization {
 

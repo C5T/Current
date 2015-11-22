@@ -30,6 +30,10 @@ SOFTWARE.
 
 #include "exceptions.h"
 
+#include "../struct.h"
+#include "../optional.h"
+#include "../polymorphic.h"
+
 #include "../Reflection/reflection.h"
 
 #include "../../Bricks/template/enable_if.h"
