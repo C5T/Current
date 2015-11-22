@@ -142,7 +142,7 @@ class Optional final {
     optional_object_ = ptr;
     return *this;
   }
-  Optional<T>& opreator(std::unique_ptr<T>&& value) {
+  Optional<T>& operator=(std::unique_ptr<T>&& value) {
     owned_optional_object_ = std::move(value);
     optional_object_ = owned_optional_object_.get();
     return *this;
