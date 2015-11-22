@@ -119,8 +119,7 @@ struct SaveIntoBinaryImpl<std::map<TK, TV>> {
   static void Save(std::ostream& ostream, const std::map<TK, TV>& value) {
     SaveSizeIntoBinary(ostream, value.size());
     for (const auto& element : value) {
-      SaveIntoBinaryImpl<TK>::Save(ostream, element.first);
-      SaveIntoBinaryImpl<TV>::Save(ostream, element.second);
+      SaveIntoBinaryImpl<std::pair<TK, TV>>::Save(ostream, element);
     }
   }
 };
@@ -258,11 +257,11 @@ struct LoadFromBinaryImpl<std::pair<TF, TS>> {
 template <typename TK, typename TV>
 struct LoadFromBinaryImpl<std::map<TK, TV>> {
   static void Load(std::istream& istream, std::map<TK, TV>& destination) {
+    destination.clear();
     BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
-    std::pair<TK, TV> entry;
     for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      LoadFromBinaryImpl<TK>::Load(istream, entry.first);
-      LoadFromBinaryImpl<TV>::Load(istream, entry.second);
+      std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
+      LoadFromBinaryImpl<std::pair<TK, TV>>::Load(istream, entry);
       destination.insert(entry);
     }
   }
