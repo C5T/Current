@@ -343,6 +343,20 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
       EXPECT_EQ("lambda: Foo 601\nlambda: Foo 602\n", s);
     }
   }
+
+  {
+    const Polymorphic<Foo> p((Foo()));
+    try {
+      p.Value<Empty>();
+      ASSERT_TRUE(false);
+    } catch (NoValue) {
+    }
+    try {
+      p.Value<Empty>();
+      ASSERT_TRUE(false);
+    } catch (NoValueOfType<Empty>) {
+    }
+  }
 }
 
 TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
@@ -374,6 +388,17 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     cp.Match(v);
     EXPECT_EQ("Foo 1", v.s);
 
+    try {
+      p.Value<Empty>();
+      ASSERT_TRUE(false);
+    } catch (NoValue) {
+    }
+    try {
+      p.Value<Empty>();
+      ASSERT_TRUE(false);
+    } catch (NoValueOfType<Empty>) {
+    }
+
     p = make_unique<DerivedFromFoo>();
     p.Match(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
@@ -385,5 +410,16 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
     cp.Match(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
+
+    try {
+      p.Value<Empty>();
+      ASSERT_TRUE(false);
+    } catch (NoValue) {
+    }
+    try {
+      p.Value<Empty>();
+      ASSERT_TRUE(false);
+    } catch (NoValueOfType<Empty>) {
+    }
   }
 }
