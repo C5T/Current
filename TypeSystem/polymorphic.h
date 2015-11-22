@@ -61,10 +61,15 @@ struct PolymorphicImpl<T, TS...> {
   // or a bare pointer (in which case it's captured).
   // TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
   struct TypeCheckedAsisgnment {
+    template <typename Z>
+    struct DerivedTypesDifferentiator {};
+
     template <typename X>
     struct Impl {
       // Copy `X`.
-      void operator()(const X& source, std::unique_ptr<CurrentSuper>& destination) {
+      void operator()(DerivedTypesDifferentiator<X>,
+                      const X& source,
+                      std::unique_ptr<CurrentSuper>& destination) {
         if (!destination || !dynamic_cast<X*>(destination.get())) {
           destination = make_unique<X>();
         }
@@ -72,7 +77,7 @@ struct PolymorphicImpl<T, TS...> {
         placeholder = source;
       }
       // Move `X`.
-      void operator()(X&& source, std::unique_ptr<CurrentSuper>& destination) {
+      void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
         if (!destination || !dynamic_cast<X*>(destination.get())) {
           destination = make_unique<X>();
         }
@@ -80,7 +85,9 @@ struct PolymorphicImpl<T, TS...> {
         placeholder = std::move(source);
       }
       // Move `std::unique_ptr`.
-      void operator()(std::unique_ptr<X>&& source, std::unique_ptr<CurrentSuper>& destination) {
+      void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
+                      std::unique_ptr<X>&& source,
+                      std::unique_ptr<CurrentSuper>& destination) {
         if (!source) {
           throw NoValueOfTypeException<X>();
         }
@@ -88,13 +95,15 @@ struct PolymorphicImpl<T, TS...> {
       }
       // Capture a bare `X*`.
       // TODO(dkorolev): Unsafe? Remove?
-      void operator()(X* source, std::unique_ptr<CurrentSuper>& destination) { destination.reset(source); }
+      void operator()(DerivedTypesDifferentiator<X*>, X* source, std::unique_ptr<CurrentSuper>& destination) {
+        destination.reset(source);
+      }
     };
     using Instance = bricks::metaprogramming::combine<bricks::metaprogramming::map<Impl, T_TYPELIST>>;
     template <typename Q>
     static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
       Instance instance;
-      instance(std::forward<Q>(source), destination);
+      instance(DerivedTypesDifferentiator<bricks::decay<Q>>(), std::forward<Q>(source), destination);
     }
   };
 
@@ -113,12 +122,12 @@ struct PolymorphicImpl<T, TS...> {
     TypeCheckedAsisgnment::Perform(std::forward<X>(input), object_);
   }
 
-  template<typename F>
+  template <typename F>
   void Match(F&& f) {
     bricks::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
-  template<typename F>
+  template <typename F>
   void Match(F&& f) const {
     bricks::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }

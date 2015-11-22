@@ -314,9 +314,7 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
   {
     struct Visitor {
       std::string s;
-      void operator()(const Foo& foo) {
-        s += "Foo " + bricks::strings::ToString(foo.i) + '\n';
-      }
+      void operator()(const Foo& foo) { s += "Foo " + bricks::strings::ToString(foo.i) + '\n'; }
     };
     Visitor v;
     {
@@ -333,9 +331,7 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
 
   {
     std::string s;
-    const auto lambda = [&s](const Foo& foo) {
-      s += "lambda: Foo " + bricks::strings::ToString(foo.i) + '\n';
-    };
+    const auto lambda = [&s](const Foo& foo) { s += "lambda: Foo " + bricks::strings::ToString(foo.i) + '\n'; };
     {
       Polymorphic<Foo> p(Foo(601u));
       p.Match(lambda);
@@ -346,5 +342,48 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
       p.Match(lambda);
       EXPECT_EQ("lambda: Foo 601\nlambda: Foo 602\n", s);
     }
+  }
+}
+
+TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
+  using namespace struct_definition_test;
+
+  struct Visitor {
+    std::string s;
+    void operator()(const Empty&) { s = "Empty"; }
+    void operator()(const Foo& foo) { s = "Foo " + bricks::strings::ToString(foo.i); }
+    void operator()(const DerivedFromFoo& object) {
+      s = "DerivedFromFoo [" + bricks::strings::ToString(object.bar.v1.size()) + "]";
+    }
+  };
+  Visitor v;
+
+  {
+    Polymorphic<Empty, Foo, DerivedFromFoo> p((Empty()));
+    const Polymorphic<Empty, Foo, DerivedFromFoo>& cp = p;
+
+    p.Match(v);
+    EXPECT_EQ("Empty", v.s);
+    cp.Match(v);
+    EXPECT_EQ("Empty", v.s);
+
+    p = Foo(1u);
+
+    p.Match(v);
+    EXPECT_EQ("Foo 1", v.s);
+    cp.Match(v);
+    EXPECT_EQ("Foo 1", v.s);
+
+    p = make_unique<DerivedFromFoo>();
+    p.Match(v);
+    EXPECT_EQ("DerivedFromFoo [0]", v.s);
+    cp.Match(v);
+    EXPECT_EQ("DerivedFromFoo [0]", v.s);
+
+    p.Value<DerivedFromFoo>().bar.v1.resize(3);
+    p.Match(v);
+    EXPECT_EQ("DerivedFromFoo [3]", v.s);
+    cp.Match(v);
+    EXPECT_EQ("DerivedFromFoo [3]", v.s);
   }
 }
