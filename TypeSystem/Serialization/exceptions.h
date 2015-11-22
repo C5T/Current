@@ -44,38 +44,37 @@ struct TypeSystemParseJSONException : Exception {
 struct JSONSchemaException : TypeSystemParseJSONException {
   const std::string expected_;
   const std::string actual_;
-  JSONSchemaException(const std::string& expected, rapidjson::Value& value, const std::string& path)
+  JSONSchemaException(const std::string& expected, rapidjson::Value* value, const std::string& path)
       : TypeSystemParseJSONException("Expected " +
                                      (expected + (path.empty() ? "" : " for `" + path.substr(1u) + "`")) +
-                                     ", got: " + NonThrowingFormatRapidJSONValueAsString(value, path)) {}
+                                     ", got: " + NonThrowingFormatRapidJSONValueAsString(value)) {}
   static std::string NonThrowingFormatRapidJSONValueAsString(
-      rapidjson::Value& value,
-      const std::string& path) {  // Attempt to generate a human-readable description of the part of the JSON,
+      rapidjson::Value* value) {  // Attempt to generate a human-readable description of the part of the JSON,
     // that has been parsed but is of wrong schema.
-    try {
-      std::ostringstream os;
-      auto stream = rapidjson::GenericWriteStream(os);
-      auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
-      rapidjson::Document document;
-      if (value.IsObject() || value.IsArray()) {
-        // Objects and arrays can be dumped directly.
-        value.Accept(writer);
-        return os.str();
-      } else {
-        // Every other type of value has to be wrapped into an object or an array.
-        // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
-        document.SetArray();
-        document.PushBack(value, document.GetAllocator());
-        document.Accept(writer);
-        const std::string result = os.str();
-        return result.substr(1u, result.length() - 2u);
+    if (value) {
+      try {
+        std::ostringstream os;
+        auto stream = rapidjson::GenericWriteStream(os);
+        auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
+        rapidjson::Document document;
+        if (value->IsObject() || value->IsArray()) {
+          // Objects and arrays can be dumped directly.
+          value->Accept(writer);
+          return os.str();
+        } else {
+          // Every other type of value has to be wrapped into an object or an array.
+          // Hack to extract the actual value: wrap into an array and peel off the '[' and ']'. -- D.K.
+          document.SetArray();
+          document.PushBack(*value, document.GetAllocator());
+          document.Accept(writer);
+          const std::string result = os.str();
+          return result.substr(1u, result.length() - 2u);
+        }
+      } catch (const std::exception& e) {
+        return "field can not be parsed.";
       }
-    } catch (const std::exception& e) {
-      if (!path.empty()) {
-        return "The `" + path.substr(1u) + "` field could not be parsed.";
-      } else {
-        return "Parse error.";
-      }
+    } else {
+      return "missing field.";
     }
   }
 };

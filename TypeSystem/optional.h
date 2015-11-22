@@ -102,6 +102,65 @@ class ImmutableOptional final {
 };
 
 template <typename T>
+class Optional final {
+ public:
+  Optional() = default;
+  Optional(const T* object) : optional_object_(object) {}
+
+  // NOTE: Constructors taking references or const references are a bad idea,
+  // since it makes it very easy to make a mistake of passing in a short-lived temporary.
+  // The users are advised to explicitly pass in a pointer if the object is externally owned,
+  // or `std::move()` an `std::unique_ptr<>` into an `Optional`.
+  // Another alternative is construct an `Optional<>` directly from `make_unique<>`.
+
+  // TODO(dkorolev): Discuss the semantics with @mzhurovich.
+
+  Optional(std::unique_ptr<T>&& rhs)
+      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
+  bool Exists() const { return optional_object_ != nullptr; }
+  const T& Value() const {
+    if (optional_object_ != nullptr) {
+      return *optional_object_;
+    } else {
+      throw NoValueOfTypeException<T>();
+    }
+  }
+  T& Value() {
+    if (optional_object_ != nullptr) {
+      return *optional_object_;
+    } else {
+      throw NoValueOfTypeException<T>();
+    }
+  }
+  Optional<T>& operator=(std::nullptr_t) {
+    owned_optional_object_ = nullptr;
+    optional_object_ = nullptr;
+    return *this;
+  }
+  Optional<T>& operator=(T* ptr) {
+    owned_optional_object_ = nullptr;
+    optional_object_ = ptr;
+    return *this;
+  }
+  Optional<T>& opreator(std::unique_ptr<T>&& value) {
+    owned_optional_object_ = std::move(value);
+    optional_object_ = owned_optional_object_.get();
+    return *this;
+  }
+
+  // TODO(dkorolev): Discuss this semantics with Max.
+  Optional<T>& operator=(const T& data) {
+    owned_optional_object_ = std::move(make_unique<T>(data));
+    optional_object_ = owned_optional_object_.get();
+    return *this;
+  }
+
+ private:
+  std::unique_ptr<T> owned_optional_object_;
+  T* optional_object_ = nullptr;
+};
+
+template <typename T>
 struct ExistsImpl {
   // Primitive types.
   template <typename TT = T>
@@ -145,6 +204,7 @@ auto Value(T&& x) -> decltype(ValueImpl<T>::CallValue(std::declval<T>())) {
 }  // namespace current
 
 using current::ImmutableOptional;
+using current::Optional;
 
 using current::NoValueException;
 using current::NoValueOfTypeException;

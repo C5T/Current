@@ -83,6 +83,11 @@ CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::st
 
 CURRENT_STRUCT(WithNontrivialMap) { CURRENT_FIELD(q, (std::map<Serializable, std::string>)); };
 
+CURRENT_STRUCT(WithOptional) {
+  CURRENT_FIELD(i, Optional<int>);
+  CURRENT_FIELD(b, Optional<bool>);
+};
+
 }  // namespace serialization_test
 
 TEST(Serialization, Binary) {
@@ -341,7 +346,7 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<Serializable>("{}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected value for `i`, got: {}"), e.what());
+    EXPECT_EQ(std::string("Expected number for `i`, got: missing field."), e.what());
   }
 
   try {
@@ -369,7 +374,7 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<Serializable>("{\"i\":100}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected value for `s`, got: {\"i\":100}"), e.what());
+    EXPECT_EQ(std::string("Expected string for `s`, got: missing field."), e.what());
   }
 
   try {
@@ -414,7 +419,7 @@ TEST(Serialization, JSONExceptions) {
     ParseJSON<ComplexSerializable>("{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"s\":\"foo\"}}");
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
-    EXPECT_EQ(std::string("Expected value for `z.i`, got: {\"s\":\"foo\"}"), e.what());
+    EXPECT_EQ(std::string("Expected number for `z.i`, got: missing field."), e.what());
   }
 
   try {
@@ -530,6 +535,63 @@ TEST(Serialization, JSONForCppTypes) {
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ("Expected map as object, got: []", std::string(e.what()));
+  }
+}
+
+TEST(Serialization, OptionalAsJSON) {
+  using namespace serialization_test;
+
+  WithOptional with_optional;
+  EXPECT_EQ("{\"i\":null,\"b\":null}", JSON(with_optional));
+  {
+    const auto parsed = ParseJSON<WithOptional>("{\"i\":null,\"b\":null}");
+    ASSERT_FALSE(Exists(parsed.i));
+    ASSERT_FALSE(Exists(parsed.b));
+  }
+  {
+    const auto parsed = ParseJSON<WithOptional>("{}");
+    ASSERT_FALSE(Exists(parsed.i));
+    ASSERT_FALSE(Exists(parsed.b));
+  }
+
+  with_optional.i = 42;
+  EXPECT_EQ("{\"i\":42,\"b\":null}", JSON(with_optional));
+  {
+    const auto parsed = ParseJSON<WithOptional>("{\"i\":42,\"b\":null}");
+    ASSERT_TRUE(Exists(parsed.i));
+    ASSERT_FALSE(Exists(parsed.b));
+    EXPECT_EQ(42, Value(parsed.i));
+  }
+  {
+    const auto parsed = ParseJSON<WithOptional>("{\"i\":42}");
+    ASSERT_TRUE(Exists(parsed.i));
+    ASSERT_FALSE(Exists(parsed.b));
+    EXPECT_EQ(42, Value(parsed.i));
+  }
+
+  with_optional.b = true;
+  EXPECT_EQ("{\"i\":42,\"b\":true}", JSON(with_optional));
+  {
+    const auto parsed = ParseJSON<WithOptional>("{\"i\":42,\"b\":true}");
+    ASSERT_TRUE(Exists(parsed.i));
+    ASSERT_TRUE(Exists(parsed.b));
+    EXPECT_EQ(42, Value(parsed.i));
+    EXPECT_TRUE(Value(parsed.b));
+  }
+
+  with_optional.i = nullptr;
+  EXPECT_EQ("{\"i\":null,\"b\":true}", JSON(with_optional));
+  {
+    const auto parsed = ParseJSON<WithOptional>("{\"i\":null,\"b\":true}");
+    ASSERT_FALSE(Exists(parsed.i));
+    ASSERT_TRUE(Exists(parsed.b));
+    EXPECT_TRUE(Value(parsed.b));
+  }
+  {
+    const auto parsed = ParseJSON<WithOptional>("{\"b\":true}");
+    ASSERT_FALSE(Exists(parsed.i));
+    ASSERT_TRUE(Exists(parsed.b));
+    EXPECT_TRUE(Value(parsed.b));
   }
 }
 

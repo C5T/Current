@@ -103,7 +103,7 @@ CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
 
 }  // namespace struct_definition_test
 
-TEST(TypeSystemTest, ImmutableOptional) {
+TEST(TypeSystemTest, ExistsAndValueSemantics) {
   {
     int x = 1;
     ASSERT_TRUE(Exists(x));
@@ -138,6 +138,9 @@ TEST(TypeSystemTest, ImmutableOptional) {
     EXPECT_EQ(6, Value(x));
     EXPECT_EQ(6, Value(Value(x)));
   }
+}
+
+TEST(TypeSystemTest, ImmutableOptional) {
   {
     ImmutableOptional<int> foo(make_unique<int>(100));
     ASSERT_TRUE(Exists(foo));
@@ -192,6 +195,20 @@ TEST(TypeSystemTest, ImmutableOptional) {
     ASSERT_TRUE(Exists(lambda(101)));
     EXPECT_EQ(102, lambda(102).Value());
     EXPECT_EQ(102, Value(lambda(102)));
+  }
+}
+
+TEST(TypeSystemTest, Optional) {
+  Optional<int> foo(make_unique<int>(200));
+  ASSERT_TRUE(Exists(foo));
+  EXPECT_EQ(200, foo.Value());
+  EXPECT_EQ(200, Value(foo));
+  foo = nullptr;
+  ASSERT_FALSE(Exists(foo));
+  try {
+    Value(foo);
+    ASSERT_TRUE(false);
+  } catch (NoValue) {
   }
 }
 
