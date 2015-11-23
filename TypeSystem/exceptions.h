@@ -22,39 +22,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_SFINAE_H
-#define CURRENT_TYPE_SYSTEM_SFINAE_H
+#ifndef CURRENT_TYPE_SYSTEM_EXCEPTIONS_H
+#define CURRENT_TYPE_SYSTEM_EXCEPTIONS_H
 
-#include <utility>
-
-#include "../Bricks/template/enable_if.h"
+#include <exception>
 
 namespace current {
-namespace sfinae {
 
-// Whether an `Exists()` method is defined for a type.
-template <typename ENTRY>
-constexpr bool HasExistsMethod(char) {
-  return false;
-}
+struct NoValueException : std::exception {};
+template <typename T>
+struct NoValueOfTypeException : NoValueException {};
 
-template <typename ENTRY>
-constexpr auto HasExistsMethod(int) -> decltype(std::declval<const ENTRY>().Exists(), bool()) {
-  return true;
-}
+typedef const NoValueException& NoValue;
 
-// Whether a `Value()` method is defined for a type.
-template <typename ENTRY>
-constexpr bool HasValueMethod(char) {
-  return false;
-}
+template <typename T>
+struct NoValueOfTypeExceptionWrapper {
+  using underlying_type = NoValueOfTypeException<T>;
+  typedef const underlying_type& const_reference_type;
+};
 
-template <typename ENTRY>
-constexpr auto HasValueMethod(int) -> decltype(std::declval<const ENTRY>().Value(), bool()) {
-  return true;
-}
+template <typename T>
+using NoValueOfType = typename NoValueOfTypeExceptionWrapper<T>::const_reference_type;
 
-}  // namespace sfinae
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_SFINAE_H
+using current::NoValueException;
+using current::NoValueOfTypeException;
+
+using current::NoValue;        // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
+using current::NoValueOfType;  // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
+
+#endif  // CURRENT_TYPE_SYSTEM_EXCEPTIONS_H

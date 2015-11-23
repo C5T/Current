@@ -33,7 +33,7 @@ SOFTWARE.
 #include <vector>
 
 #include "base.h"
-#include "optional.h"
+#include "helpers.h"
 
 #include "../port.h"
 #include "../Bricks/template/decay.h"
@@ -125,12 +125,14 @@ struct WithoutParentheses<int(T)> {
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                 \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper); \
-  template <typename INSTANTIATION_TYPE>              \
-  struct CURRENT_STRUCT_IMPL_##s                      \
-      : CURRENT_REFLECTION_HELPER<s>,                 \
-        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentSuper>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                                                 \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper);                                 \
+  template <typename INSTANTIATION_TYPE>                                              \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                      \
+                                   ::current::reflection::BaseTypeHelper<             \
+                                       INSTANTIATION_TYPE,                            \
+                                       ::current::CurrentSuperAllowingInitialization< \
+                                           CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>>>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                  \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentSuper`."); \
@@ -228,34 +230,34 @@ struct VisitAllFields {
 
   // Visit all fields without an object. Used for enumerating fields and generating signatures.
   template <typename F>
-  static void WithoutObject(const F& f) {
+  static void WithoutObject(F&& f) {
     static NUM_INDEXES all_indexes;
-    WithoutObjectImpl(f, all_indexes);
+    WithoutObjectImpl(std::forward<F>(f), all_indexes);
   }
 
   // Visit all fields with an object, const or mutable. Used for serialization.
   template <typename TT, typename F>
-  static void WithObject(TT&& t, const F& f) {
+  static void WithObject(TT&& t, F&& f) {
     static NUM_INDEXES all_indexes;
-    WithObjectImpl(std::forward<TT>(t), f, all_indexes);
+    WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), all_indexes);
   }
 
  private:
   template <typename F, int N, int... NS>
-  static void WithoutObjectImpl(const F& f, bricks::variadic_indexes::indexes<N, NS...>) {
+  static void WithoutObjectImpl(F&& f, bricks::variadic_indexes::indexes<N, NS...>) {
     static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
-    T::CURRENT_REFLECTION(f, Index<VISITOR_TYPE, N>());
-    WithoutObjectImpl(f, remaining_indexes);
+    T::CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
+    WithoutObjectImpl(std::forward<F>(f), remaining_indexes);
   }
 
   template <typename F>
   static void WithoutObjectImpl(const F&, bricks::variadic_indexes::indexes<>) {}
 
   template <typename TT, typename F, int N, int... NS>
-  static void WithObjectImpl(TT&& t, const F& f, bricks::variadic_indexes::indexes<N, NS...>) {
+  static void WithObjectImpl(TT&& t, F&& f, bricks::variadic_indexes::indexes<N, NS...>) {
     static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
-    t.CURRENT_REFLECTION(f, Index<VISITOR_TYPE, N>());
-    WithObjectImpl(std::forward<TT>(t), f, remaining_indexes);
+    t.CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
+    WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), remaining_indexes);
   }
 
   template <typename TT, typename F>

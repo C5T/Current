@@ -29,6 +29,10 @@ SOFTWARE.
 
 #include "../struct.h"
 
+// TODO(dkorolev): Soon to be added.
+// #include "../optional.h"
+// #include "../polymorphic.h"
+
 namespace current {
 namespace serialization {
 
@@ -185,7 +189,7 @@ struct LoadPrimitiveTypeFromBinary {
     BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
     destination.resize(static_cast<size_t>(size));
     // Should be legitimate since c++11 requires internal buffer to be contiguous.
-    const size_t bytes_read = istream.rdbuf()->sgetn(const_cast<char*>(destination.data()), size);
+    const size_t bytes_read = istream.rdbuf()->sgetn(&destination[0], size);
     if (bytes_read != static_cast<size_t>(size)) {
       throw BinaryLoadFromStreamException(size, bytes_read);
     }
@@ -259,8 +263,8 @@ struct LoadFromBinaryImpl<std::map<TK, TV>> {
   static void Load(std::istream& istream, std::map<TK, TV>& destination) {
     destination.clear();
     BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
+    std::pair<TK, TV> entry;
     for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
       LoadFromBinaryImpl<std::pair<TK, TV>>::Load(istream, entry);
       destination.insert(entry);
     }

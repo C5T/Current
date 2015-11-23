@@ -30,6 +30,10 @@ SOFTWARE.
 
 #include "exceptions.h"
 
+#include "../struct.h"
+#include "../optional.h"
+#include "../polymorphic.h"
+
 #include "../Reflection/reflection.h"
 
 #include "../../Bricks/template/enable_if.h"
@@ -239,7 +243,6 @@ struct LoadFromJSONImpl {
   static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(rapidjson::Value* source,
                                                T& destination,
                                                const std::string& path) {
-    //  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
     if (source && source->IsObject()) {
       LoadFieldVisitor visitor(*source, path);
       current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndMutableValue>::
@@ -333,9 +336,9 @@ template <typename T>
 struct LoadFromJSONImpl<std::vector<T>> {
   static void Load(rapidjson::Value* source, std::vector<T>& destination, const std::string& path) {
     if (source && source->IsArray()) {
-      const size_t n = source->Size();
-      destination.resize(n);
-      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(n); ++i) {
+      const size_t size = source->Size();
+      destination.resize(size);
+      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
         LoadFromJSONImpl<T>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
       }
     } else {
@@ -364,8 +367,8 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
                                                              const std::string& path) {
     if (source && source->IsObject()) {
       destination.clear();
+      std::pair<TK, TV> entry;
       for (rapidjson::Value::MemberIterator cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
-        std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
         LoadFromJSONImpl<TK>::Load(&cit->name, entry.first, path);
         LoadFromJSONImpl<TV>::Load(&cit->value, entry.second, path);
         destination.insert(entry);
@@ -380,8 +383,8 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
                                                               const std::string& path) {
     if (source && source->IsArray()) {
       destination.clear();
+      std::pair<TK, TV> entry;
       for (rapidjson::Value::ValueIterator cit = source->Begin(); cit != source->End(); ++cit) {
-        std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
         if (!cit->IsArray()) {
           throw JSONSchemaException("map entry as array", source, path);
         }

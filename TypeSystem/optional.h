@@ -48,34 +48,26 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_OPTIONAL_H
 #define CURRENT_TYPE_SYSTEM_OPTIONAL_H
 
-#include "sfinae.h"
+#include "../port.h"  // `make_unique<>`.
 
-#include "../Bricks/time/chrono.h"
+#include <memory>
+
+#include "exceptions.h"
+
 #include "../Bricks/template/enable_if.h"
 #include "../Bricks/template/decay.h"
 
 namespace current {
 
-struct NoValueException : std::exception {};
-template <typename T>
-struct NoValueOfTypeException : NoValueException {};
-
-typedef const NoValueException& NoValue;
-
-template <typename T>
-struct NoValueOfTypeExceptionWrapper {
-  using underlying_type = NoValueOfTypeException<T>;
-  typedef const underlying_type& const_reference_type;
-};
-
-template <typename T>
-using NoValueOfType = typename NoValueOfTypeExceptionWrapper<T>::const_reference_type;
+// A special constructor parameter to indicate `Optional` it should indeed
+// construct itself from a bare pointer.
+struct FromBarePointer {};
 
 template <typename T>
 class ImmutableOptional final {
  public:
   ImmutableOptional() = delete;
-  ImmutableOptional(const T* object) : optional_object_(object) {}
+  ImmutableOptional(const FromBarePointer&, const T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,
   // since it makes it very easy to make a mistake of passing in a short-lived temporary.
@@ -105,7 +97,7 @@ template <typename T>
 class Optional final {
  public:
   Optional() = default;
-  Optional(const T* object) : optional_object_(object) {}
+  Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,
   // since it makes it very easy to make a mistake of passing in a short-lived temporary.
@@ -160,59 +152,10 @@ class Optional final {
   T* optional_object_ = nullptr;
 };
 
-template <typename T>
-struct ExistsImpl {
-  // Primitive types.
-  template <typename TT = T>
-  static ENABLE_IF<!current::sfinae::HasExistsMethod<TT>(0), bool> CallExists(TT&&) {
-    return true;
-  }
-
-  // Special types.
-  template <typename TT = T>
-  static ENABLE_IF<current::sfinae::HasExistsMethod<TT>(0), bool> CallExists(TT&& x) {
-    return x.Exists();
-  }
-};
-
-template <typename T>
-bool Exists(T&& x) {
-  return ExistsImpl<T>::CallExists(std::forward<T>(x));
-}
-
-template <typename T>
-struct ValueImpl {
-  // Primitive types.
-  template <typename TT = T>
-  static ENABLE_IF<!current::sfinae::HasValueMethod<TT>(0), T&&> CallValue(T&& x) {
-    return x;
-  }
-
-  // Special types.
-  template <typename TT = T>
-  static ENABLE_IF<current::sfinae::HasValueMethod<TT>(0), decltype(std::declval<TT>().Value())> CallValue(
-      TT&& x) {
-    return x.Value();
-  }
-};
-
-template <typename T>
-auto Value(T&& x) -> decltype(ValueImpl<T>::CallValue(std::declval<T>())) {
-  return ValueImpl<T>::CallValue(std::forward<T>(x));
-}
-
 }  // namespace current
 
 using current::ImmutableOptional;
 using current::Optional;
-
-using current::NoValueException;
-using current::NoValueOfTypeException;
-
-using current::NoValue;        // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
-using current::NoValueOfType;  // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
-
-using current::Exists;
-using current::Value;
+using current::FromBarePointer;
 
 #endif  // CURRENT_TYPE_SYSTEM_OPTIONAL_H

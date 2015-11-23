@@ -30,6 +30,8 @@ SOFTWARE.
 #include "binary.h"
 #include "json.h"
 
+#include "../struct.h"
+
 #include "../Reflection/reflection.h"
 #include "../Reflection/schema.h"
 
