@@ -341,8 +341,9 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
     if (!source.IsObject()) {
       throw JSONSchemaException("map as object", source, path);
     }
-    std::pair<TK, TV> entry;
+    destination.clear();
     for (rapidjson::Value::MemberIterator cit = source.MemberBegin(); cit != source.MemberEnd(); ++cit) {
+      std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
       LoadFromJSONImpl<TK>::Load(cit->name, entry.first, path);
       LoadFromJSONImpl<TV>::Load(cit->value, entry.second, path);
       destination.insert(entry);
@@ -355,8 +356,9 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
     if (!source.IsArray()) {
       throw JSONSchemaException("map as array", source, path);
     }
-    std::pair<TK, TV> entry;
+    destination.clear();
     for (rapidjson::Value::ValueIterator cit = source.Begin(); cit != source.End(); ++cit) {
+      std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
       if (!cit->IsArray()) {
         throw JSONSchemaException("map entry as array", source, path);
       }
