@@ -97,7 +97,7 @@ template <typename T>
 class Optional final {
  public:
   Optional() = default;
-  Optional(const FromBarePointer&, const T* object) : optional_object_(object) {}
+  Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,
   // since it makes it very easy to make a mistake of passing in a short-lived temporary.

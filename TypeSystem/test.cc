@@ -319,12 +319,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
     Visitor v;
     {
       Polymorphic<Foo> p(Foo(501u));
-      p.Match(v);
+      p.Call(v);
       EXPECT_EQ("Foo 501\n", v.s);
     }
     {
       const Polymorphic<Foo> p(Foo(502u));
-      p.Match(v);
+      p.Call(v);
       EXPECT_EQ("Foo 501\nFoo 502\n", v.s);
     }
   }
@@ -334,12 +334,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
     const auto lambda = [&s](const Foo& foo) { s += "lambda: Foo " + bricks::strings::ToString(foo.i) + '\n'; };
     {
       Polymorphic<Foo> p(Foo(601u));
-      p.Match(lambda);
+      p.Call(lambda);
       EXPECT_EQ("lambda: Foo 601\n", s);
     }
     {
       const Polymorphic<Foo> p(Foo(602u));
-      p.Match(lambda);
+      p.Call(lambda);
       EXPECT_EQ("lambda: Foo 601\nlambda: Foo 602\n", s);
     }
   }
@@ -376,16 +376,16 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     Polymorphic<Empty, Foo, DerivedFromFoo> p((Empty()));
     const Polymorphic<Empty, Foo, DerivedFromFoo>& cp = p;
 
-    p.Match(v);
+    p.Call(v);
     EXPECT_EQ("Empty", v.s);
-    cp.Match(v);
+    cp.Call(v);
     EXPECT_EQ("Empty", v.s);
 
     p = Foo(1u);
 
-    p.Match(v);
+    p.Call(v);
     EXPECT_EQ("Foo 1", v.s);
-    cp.Match(v);
+    cp.Call(v);
     EXPECT_EQ("Foo 1", v.s);
 
     try {
@@ -400,15 +400,15 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     }
 
     p = make_unique<DerivedFromFoo>();
-    p.Match(v);
+    p.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
-    cp.Match(v);
+    cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
 
     p.Value<DerivedFromFoo>().bar.v1.resize(3);
-    p.Match(v);
+    p.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
-    cp.Match(v);
+    cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
 
     try {

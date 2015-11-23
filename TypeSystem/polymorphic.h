@@ -123,18 +123,20 @@ struct PolymorphicImpl<T, TS...> {
   }
 
   template <typename F>
-  void Match(F&& f) {
+  void Call(F&& f) {
     bricks::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
   template <typename F>
-  void Match(F&& f) const {
+  void Call(F&& f) const {
     bricks::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
   // Note that `Has()` and `Value()` do not check whether `X` is part of `T_TYPELIST`.
-  // This is a) for performance reasons, and b) to allow accessing base types from derived ones.
-  // Use `Match()` to run a strict check.
+  // More specifically, they pass if `dynamic_cast<>` succeeds, and thus will successfully
+  // retrieve a derived type as a base one, regardless of whether the derived one
+  // is present in `T_TYPELIST`.
+  // Use `Call()` to run a strict check.
   template <typename X>
   bool Has() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
