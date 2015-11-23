@@ -140,6 +140,21 @@ struct SaveIntoJSONImpl<std::map<TK, TV>> {
   }
 };
 
+template <typename T>
+struct SaveIntoJSONImpl<Optional<T>> {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const Optional<T>& value) {
+    if (Exists(value)) {
+      SaveIntoJSONImpl<T>::Save(destination, allocator, Value(value));
+    } else {
+      // Current's default JSON parser would accept a missing field as well for no value,
+      // but output it as `null` nonetheless, for clarity.
+      destination.SetNull_();
+    }
+  }
+};
+
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
 struct SaveIntoJSONImpl {
@@ -212,162 +227,185 @@ struct LoadFromJSONImpl {
     template <typename U>
     void operator()(const char* name, U& value) const {
       if (source_.HasMember(name)) {
-        LoadFromJSONImpl<U>::Load(source_[name], value, path_ + '.' + name);
+        LoadFromJSONImpl<U>::Load(&source_[name], value, path_ + '.' + name);
       } else {
-        throw JSONSchemaException("value", source_, path_ + '.' + name);
+        LoadFromJSONImpl<U>::Load(nullptr, value, path_ + '.' + name);
       }
     }
   };
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(rapidjson::Value& source,
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(rapidjson::Value* source,
                                                T& destination,
                                                const std::string& path) {
-    //  static void Load(rapidjson::Value& source, T& destination, const std::string& path) {
-    if (!source.IsObject()) {
+    //  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
+    if (source && source->IsObject()) {
+      LoadFieldVisitor visitor(*source, path);
+      current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndMutableValue>::
+          WithObject(destination, visitor);
+    } else {
       throw JSONSchemaException("object", source, path);
     }
-    LoadFieldVisitor visitor(source, path);
-    current::reflection::VisitAllFields<bricks::decay<T>,
-                                        current::reflection::FieldNameAndMutableValue>::WithObject(destination,
-                                                                                                   visitor);
   }
 
   // `uint*_t`.
   template <typename TT = T>
   static ENABLE_IF<std::numeric_limits<TT>::is_integer && !std::numeric_limits<TT>::is_signed &&
                    !std::is_same<TT, bool>::value>
-  Load(rapidjson::Value& source, T& destination, const std::string& path) {
-    if (!source.IsNumber()) {
+  Load(rapidjson::Value* source, T& destination, const std::string& path) {
+    if (source && source->IsNumber()) {
+      destination = static_cast<T>(source->GetUint64());
+    } else {
       throw JSONSchemaException("number", source, path);
     }
-    destination = static_cast<T>(source.GetUint64());
   }
 
   // `int*_t`
   template <typename TT = T>
   static ENABLE_IF<std::numeric_limits<TT>::is_integer && std::numeric_limits<TT>::is_signed> Load(
-      rapidjson::Value& source, T& destination, const std::string& path) {
-    if (!source.IsNumber()) {
+      rapidjson::Value* source, T& destination, const std::string& path) {
+    if (source && source->IsNumber()) {
+      destination = static_cast<T>(source->GetInt64());
+    } else {
       throw JSONSchemaException("number", source, path);
     }
-    destination = static_cast<T>(source.GetInt64());
   }
 
   // `float`.
-  static void Load(rapidjson::Value& source, float& destination, const std::string& path) {
-    if (!source.IsNumber()) {
+  static void Load(rapidjson::Value* source, float& destination, const std::string& path) {
+    if (source && source->IsNumber()) {
+      destination = static_cast<float>(source->GetDouble());
+    } else {
       throw JSONSchemaException("float", source, path);
     }
-    destination = static_cast<float>(source.GetDouble());
   }
 
   // `double`.
-  static void Load(rapidjson::Value& source, double& destination, const std::string& path) {
-    if (!source.IsNumber()) {
+  static void Load(rapidjson::Value* source, double& destination, const std::string& path) {
+    if (source && source->IsNumber()) {
+      destination = source->GetDouble();
+    } else {
       throw JSONSchemaException("double", source, path);
     }
-    destination = source.GetDouble();
   }
 
   // `enum` and `enum class`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_enum<TT>::value> Load(rapidjson::Value& source,
+  static ENABLE_IF<std::is_enum<TT>::value> Load(rapidjson::Value* source,
                                                  T& destination,
                                                  const std::string& path) {
-    if (!source.IsNumber()) {
-      throw JSONSchemaException("number", source, path);
-    }
-    if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
-      destination = static_cast<T>(source.GetInt64());
+    if (source && source->IsNumber()) {
+      if (std::numeric_limits<typename std::underlying_type<T>::type>::is_signed) {
+        destination = static_cast<T>(source->GetInt64());
+      } else {
+        destination = static_cast<T>(source->GetUint64());
+      }
     } else {
-      destination = static_cast<T>(source.GetUint64());
+      throw JSONSchemaException("number", source, path);
     }
   }
 };
 
 template <>
 struct LoadFromJSONImpl<std::string> {
-  static void Load(rapidjson::Value& source, std::string& destination, const std::string& path) {
-    if (!source.IsString()) {
+  static void Load(rapidjson::Value* source, std::string& destination, const std::string& path) {
+    if (source && source->IsString()) {
+      destination.assign(source->GetString(), source->GetStringLength());
+    } else {
       throw JSONSchemaException("string", source, path);
     }
-    destination.assign(source.GetString(), source.GetStringLength());
   }
 };
 
 template <>
 struct LoadFromJSONImpl<bool> {
-  static void Load(rapidjson::Value& source, bool& destination, const std::string& path) {
-    if (!source.IsTrue() && !source.IsFalse()) {
+  static void Load(rapidjson::Value* source, bool& destination, const std::string& path) {
+    if (source && (source->IsTrue() || source->IsFalse())) {
+      destination = source->IsTrue();
+    } else {
       throw JSONSchemaException("bool", source, path);
     }
-    destination = source.IsTrue();
   }
 };
 
 template <typename T>
 struct LoadFromJSONImpl<std::vector<T>> {
-  static void Load(rapidjson::Value& source, std::vector<T>& destination, const std::string& path) {
-    if (!source.IsArray()) {
+  static void Load(rapidjson::Value* source, std::vector<T>& destination, const std::string& path) {
+    if (source && source->IsArray()) {
+      const size_t n = source->Size();
+      destination.resize(n);
+      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(n); ++i) {
+        LoadFromJSONImpl<T>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
+      }
+    } else {
       throw JSONSchemaException("array", source, path);
-    }
-    const size_t n = source.Size();
-    destination.resize(n);
-    for (size_t i = 0; i < n; ++i) {
-      LoadFromJSONImpl<T>::Load(source[i], destination[i], path + '[' + std::to_string(i) + ']');
     }
   }
 };
 
 template <typename TF, typename TS>
 struct LoadFromJSONImpl<std::pair<TF, TS>> {
-  static void Load(rapidjson::Value& source, std::pair<TF, TS>& destination, const std::string& path) {
-    if (!source.IsArray() || source.Size() != 2u) {
+  static void Load(rapidjson::Value* source, std::pair<TF, TS>& destination, const std::string& path) {
+    if (source && source->IsArray() && source->Size() == 2u) {
+      LoadFromJSONImpl<TF>::Load(&((*source)[static_cast<rapidjson::SizeType>(0)]), destination.first, path);
+      LoadFromJSONImpl<TS>::Load(&((*source)[static_cast<rapidjson::SizeType>(1)]), destination.second, path);
+    } else {
       throw JSONSchemaException("pair as array", source, path);
     }
-    LoadFromJSONImpl<TF>::Load(source[static_cast<rapidjson::SizeType>(0)], destination.first, path);
-    LoadFromJSONImpl<TS>::Load(source[static_cast<rapidjson::SizeType>(1)], destination.second, path);
   }
 };
 
 template <typename TK, typename TV>
 struct LoadFromJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
-  static ENABLE_IF<std::is_same<std::string, K>::value> Load(rapidjson::Value& source,
+  static ENABLE_IF<std::is_same<std::string, K>::value> Load(rapidjson::Value* source,
                                                              std::map<TK, TV>& destination,
                                                              const std::string& path) {
-    if (!source.IsObject()) {
+    if (source && source->IsObject()) {
+      destination.clear();
+      for (rapidjson::Value::MemberIterator cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
+        std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
+        LoadFromJSONImpl<TK>::Load(&cit->name, entry.first, path);
+        LoadFromJSONImpl<TV>::Load(&cit->value, entry.second, path);
+        destination.insert(entry);
+      }
+    } else {
       throw JSONSchemaException("map as object", source, path);
-    }
-    destination.clear();
-    for (rapidjson::Value::MemberIterator cit = source.MemberBegin(); cit != source.MemberEnd(); ++cit) {
-      std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
-      LoadFromJSONImpl<TK>::Load(cit->name, entry.first, path);
-      LoadFromJSONImpl<TV>::Load(cit->value, entry.second, path);
-      destination.insert(entry);
     }
   }
   template <typename K = TK>
-  static ENABLE_IF<!std::is_same<std::string, K>::value> Load(rapidjson::Value& source,
+  static ENABLE_IF<!std::is_same<std::string, K>::value> Load(rapidjson::Value* source,
                                                               std::map<TK, TV>& destination,
                                                               const std::string& path) {
-    if (!source.IsArray()) {
+    if (source && source->IsArray()) {
+      destination.clear();
+      for (rapidjson::Value::ValueIterator cit = source->Begin(); cit != source->End(); ++cit) {
+        std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
+        if (!cit->IsArray()) {
+          throw JSONSchemaException("map entry as array", source, path);
+        }
+        if (cit->Size() != 2u) {
+          throw JSONSchemaException("map entry as array of two elements", source, path);
+        }
+        LoadFromJSONImpl<TK>::Load(&(*cit)[static_cast<rapidjson::SizeType>(0)], entry.first, path);
+        LoadFromJSONImpl<TV>::Load(&(*cit)[static_cast<rapidjson::SizeType>(1)], entry.second, path);
+        destination.insert(entry);
+      }
+    } else {
       throw JSONSchemaException("map as array", source, path);
     }
-    destination.clear();
-    for (rapidjson::Value::ValueIterator cit = source.Begin(); cit != source.End(); ++cit) {
-      std::pair<TK, TV> entry;  // TODO(dkorolev): Investigate.
-      if (!cit->IsArray()) {
-        throw JSONSchemaException("map entry as array", source, path);
-      }
-      if (cit->Size() != 2u) {
-        throw JSONSchemaException("map entry as array of two elements", source, path);
-      }
-      LoadFromJSONImpl<TK>::Load((*cit)[static_cast<rapidjson::SizeType>(0)], entry.first, path);
-      LoadFromJSONImpl<TV>::Load((*cit)[static_cast<rapidjson::SizeType>(1)], entry.second, path);
-      destination.insert(entry);
+  }
+};
+
+template <typename T>
+struct LoadFromJSONImpl<Optional<T>> {
+  static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
+    if (!source || source->IsNull_()) {
+      destination = nullptr;
+    } else {
+      destination = T();
+      LoadFromJSONImpl<T>::Load(source, Value(destination), path);
     }
   }
 };
@@ -380,7 +418,7 @@ void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
     throw InvalidJSONException(json);
   }
 
-  LoadFromJSONImpl<T>::Load(document, destination, "");
+  LoadFromJSONImpl<T>::Load(&document, destination, "");
 }
 
 // External user-facing `JSON` and `ParseJSON` methods. Since RapidJSON is not friendly
