@@ -109,7 +109,8 @@ struct PolymorphicImpl<T, TS...> {
 
   PolymorphicImpl() = delete;
 
-  // PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+  PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+
   template <typename X>
   PolymorphicImpl(X&& input) {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
