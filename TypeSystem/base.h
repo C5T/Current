@@ -31,6 +31,36 @@ namespace current {
 // The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
 struct CurrentSuper {
   virtual ~CurrentSuper() = default;
+
+  // Delete default constructors and assignment operators to eliminate the possiblilty
+  // of data loss by accidentally assigning to or constructing a CurrentSuper from a derived class.
+  CurrentSuper() = delete;
+  CurrentSuper(const CurrentSuper&) = delete;
+  CurrentSuper(CurrentSuper&&) = delete;
+  CurrentSuper& operator=(const CurrentSuper&) = delete;
+  CurrentSuper& operator=(CurrentSuper&&) = delete;
+
+  // Metaprogramming trick to allow "constructing" `CurrentSuper`,
+  // but only explicitly, in a way that is *really* hard to come up with randomly.
+  struct ShutUpAndConstructMe {};
+  CurrentSuper(const ShutUpAndConstructMe&) {}
+};
+
+template <typename T>
+struct CurrentSuperAllowingInitialization : CurrentSuper {
+  // Metaprogramming code to make sure no construction or assignment of the wrong type can happen.
+  CurrentSuperAllowingInitialization() : CurrentSuper(CurrentSuper::ShutUpAndConstructMe()) {}
+  CurrentSuperAllowingInitialization(const CurrentSuper&) = delete;
+
+  // Allow copy/move "construction" and assignment for the right type only.
+  // No data copy/move happens in the below construction, it just leverages
+  // C++ static typing to make sure *no logically incorrect assignment shall pass!*
+  CurrentSuperAllowingInitialization(const CurrentSuperAllowingInitialization&)
+      : CurrentSuperAllowingInitialization() {}
+  CurrentSuperAllowingInitialization(CurrentSuperAllowingInitialization&&)
+      : CurrentSuperAllowingInitialization() {}
+  CurrentSuperAllowingInitialization& operator=(const CurrentSuperAllowingInitialization&) { return *this; }
+  CurrentSuperAllowingInitialization& operator=(CurrentSuperAllowingInitialization&&) { return *this; }
 };
 
 namespace reflection {

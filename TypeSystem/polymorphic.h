@@ -73,16 +73,16 @@ struct PolymorphicImpl<T, TS...> {
         if (!destination || !dynamic_cast<X*>(destination.get())) {
           destination = make_unique<X>();
         }
-        X& placeholder = dynamic_cast<X&>(*destination.get());
-        placeholder = source;
+        // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
+        dynamic_cast<X&>(*destination.get()) = source;
       }
       // Move `X`.
       void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
         if (!destination || !dynamic_cast<X*>(destination.get())) {
           destination = make_unique<X>();
         }
-        X& placeholder = dynamic_cast<X&>(*destination.get());
-        placeholder = std::move(source);
+        // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
+        dynamic_cast<X&>(*destination.get()) = source;
       }
       // Move `std::unique_ptr`.
       void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
