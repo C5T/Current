@@ -27,10 +27,10 @@ SOFTWARE.
 
 #include "exceptions.h"
 
+#include "../optional.h"
 #include "../struct.h"
 
 // TODO(dkorolev): Soon to be added.
-// #include "../optional.h"
 // #include "../polymorphic.h"
 
 namespace current {
@@ -124,6 +124,17 @@ struct SaveIntoBinaryImpl<std::map<TK, TV>> {
     SaveSizeIntoBinary(ostream, value.size());
     for (const auto& element : value) {
       SaveIntoBinaryImpl<std::pair<TK, TV>>::Save(ostream, element);
+    }
+  }
+};
+
+template <typename T>
+struct SaveIntoBinaryImpl<Optional<T>> {
+  static void Save(std::ostream& ostream, const Optional<T>& value) {
+    const bool exists = Exists(value);
+    SaveIntoBinaryImpl<bool>::Save(ostream, exists);
+    if (exists) {
+      SaveIntoBinaryImpl<T>::Save(ostream, Value(value));
     }
   }
 };
@@ -267,6 +278,20 @@ struct LoadFromBinaryImpl<std::map<TK, TV>> {
     for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
       LoadFromBinaryImpl<std::pair<TK, TV>>::Load(istream, entry);
       destination.insert(entry);
+    }
+  }
+};
+
+template <typename T>
+struct LoadFromBinaryImpl<Optional<T>> {
+  static void Load(std::istream& istream, Optional<T>& destination) {
+    bool exists;
+    LoadFromBinaryImpl<bool>::Load(istream, exists);
+    if (exists) {
+      destination = T();
+      LoadFromBinaryImpl<T>::Load(istream, Value(destination));
+    } else {
+      destination = nullptr;
     }
   }
 };
