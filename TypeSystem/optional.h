@@ -59,11 +59,15 @@ SOFTWARE.
 
 namespace current {
 
+// A special constructor parameter to indicate `Optional` it should indeed
+// construct itself from a bare pointer.
+struct FromBarePointer {};
+
 template <typename T>
 class ImmutableOptional final {
  public:
   ImmutableOptional() = delete;
-  ImmutableOptional(const T* object) : optional_object_(object) {}
+  ImmutableOptional(const FromBarePointer&, const T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,
   // since it makes it very easy to make a mistake of passing in a short-lived temporary.
@@ -93,7 +97,7 @@ template <typename T>
 class Optional final {
  public:
   Optional() = default;
-  Optional(const T* object) : optional_object_(object) {}
+  Optional(const FromBarePointer&, const T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,
   // since it makes it very easy to make a mistake of passing in a short-lived temporary.
@@ -152,5 +156,6 @@ class Optional final {
 
 using current::ImmutableOptional;
 using current::Optional;
+using current::FromBarePointer;
 
 #endif  // CURRENT_TYPE_SYSTEM_OPTIONAL_H

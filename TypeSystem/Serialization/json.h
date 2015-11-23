@@ -243,7 +243,6 @@ struct LoadFromJSONImpl {
   static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(rapidjson::Value* source,
                                                T& destination,
                                                const std::string& path) {
-    //  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
     if (source && source->IsObject()) {
       LoadFieldVisitor visitor(*source, path);
       current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndMutableValue>::
@@ -337,9 +336,9 @@ template <typename T>
 struct LoadFromJSONImpl<std::vector<T>> {
   static void Load(rapidjson::Value* source, std::vector<T>& destination, const std::string& path) {
     if (source && source->IsArray()) {
-      const size_t n = source->Size();
-      destination.resize(n);
-      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(n); ++i) {
+      const size_t size = source->Size();
+      destination.resize(size);
+      for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
         LoadFromJSONImpl<T>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
       }
     } else {

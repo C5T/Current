@@ -199,7 +199,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
   }
   {
     struct_definition_test::Foo bare;
-    ImmutableOptional<struct_definition_test::Foo> wrapped(&bare);
+    ImmutableOptional<struct_definition_test::Foo> wrapped(FromBarePointer(), &bare);
     ASSERT_TRUE(Exists(wrapped));
     EXPECT_EQ(42u, wrapped.Value().i);
     EXPECT_EQ(42u, Value(wrapped).i);
@@ -207,7 +207,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
   }
   {
     struct_definition_test::Foo bare;
-    ImmutableOptional<struct_definition_test::Foo> wrapped(&bare);
+    ImmutableOptional<struct_definition_test::Foo> wrapped(FromBarePointer(), &bare);
     const ImmutableOptional<struct_definition_test::Foo>& double_wrapped(wrapped);
     ASSERT_TRUE(Exists(double_wrapped));
     EXPECT_EQ(42u, double_wrapped.Value().i);

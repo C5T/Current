@@ -57,10 +57,10 @@ struct PolymorphicImpl<T, TS...> {
 
   // Initializes an `std::unique_ptr<CurrentSuper>` given the object of the right type.
   // The input object could be an object itself (in which case it's copied),
-  // an `std::move()`-d `std::unique_ptr` to that object (in which cast it's moved),
+  // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
   // or a bare pointer (in which case it's captured).
   // TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
-  struct TypeCheckedAsisgnment {
+  struct TypeCheckedAssignment {
     template <typename Z>
     struct DerivedTypesDifferentiator {};
 
@@ -112,14 +112,14 @@ struct PolymorphicImpl<T, TS...> {
   // PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
   template <typename X>
   PolymorphicImpl(X&& input) {
-    TypeCheckedAsisgnment::Perform(std::forward<X>(input), object_);
+    TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
   }
 
   PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object)) {}
 
   template <typename X>
   void operator=(X&& input) {
-    TypeCheckedAsisgnment::Perform(std::forward<X>(input), object_);
+    TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
   }
 
   template <typename F>
