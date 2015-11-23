@@ -31,6 +31,7 @@ SOFTWARE.
 
 #include "types.h"
 
+#include "../optional.h"
 #include "../struct.h"
 
 #include "../../Bricks/util/singleton.h"
@@ -80,25 +81,32 @@ struct ReflectorImpl {
 
     template <typename T>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::vector<T>>) {
-      auto v = std::make_shared<ReflectedType_Vector>(Reflector().ReflectType<T>());
-      v->type_id = CalculateTypeID(*v);
-      return v;
+      auto result = std::make_shared<ReflectedType_Vector>(Reflector().ReflectType<T>());
+      result->type_id = CalculateTypeID(*result);
+      return result;
     }
 
     template <typename TF, typename TS>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::pair<TF, TS>>) {
-      auto p =
+      auto result =
           std::make_shared<ReflectedType_Pair>(Reflector().ReflectType<TF>(), Reflector().ReflectType<TS>());
-      p->type_id = CalculateTypeID(*p);
-      return p;
+      result->type_id = CalculateTypeID(*result);
+      return result;
     }
 
     template <typename TK, typename TV>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<std::map<TK, TV>>) {
-      auto m =
+      auto result =
           std::make_shared<ReflectedType_Map>(Reflector().ReflectType<TK>(), Reflector().ReflectType<TV>());
-      m->type_id = CalculateTypeID(*m);
-      return m;
+      result->type_id = CalculateTypeID(*result);
+      return result;
+    }
+
+    template <typename T>
+    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<Optional<T>>) {
+      auto result = std::make_shared<ReflectedType_Optional>(Reflector().ReflectType<T>());
+      result->type_id = CalculateTypeID(*result);
+      return result;
     }
 
     template <typename T>

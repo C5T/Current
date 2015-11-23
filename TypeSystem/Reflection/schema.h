@@ -228,6 +228,18 @@ struct StructSchema {
       TraverseType(reflected_value_type);
       return;
     }
+
+    if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
+      const std::shared_ptr<ReflectedTypeImpl> reflected_object_type =
+          std::dynamic_pointer_cast<ReflectedType_Optional>(reflected_type)->reflected_object_type;
+      assert(reflected_object_type);
+      TypeInfo type_info;
+      type_info.type_id = type_id;
+      type_info.included_types.push_back(reflected_object_type->type_id);
+      schema_.types[type_id] = type_info;
+      TraverseType(reflected_object_type);
+      return;
+    }
     // Type left unhandled, this should never happen.
     assert(false);
   }
@@ -306,6 +318,9 @@ struct StructSchema {
       if (type_prefix == TYPEID_MAP_PREFIX) {
         return DescribeCppMap(schema_.types[type_id]);
       }
+      if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
+        return DescribeCppOptional(schema_.types[type_id]);
+      }
       return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
     }
   }
@@ -325,6 +340,11 @@ struct StructSchema {
     assert(type_info.included_types.size() == 2u);
     return "std::map<" + CppType(type_info.included_types[0]) + ", " + CppType(type_info.included_types[1]) +
            '>';
+  }
+
+  std::string DescribeCppOptional(const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 1u);
+    return "Optional<" + CppType(type_info.included_types[0]) + '>';
   }
 };
 
