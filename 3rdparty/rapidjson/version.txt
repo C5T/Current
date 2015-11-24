@@ -1,0 +1,2 @@
+Source: https://github.com/c5t/rapidjson
+Commit: 292714e64a89b880b611c9b915c0ab07663668c9
