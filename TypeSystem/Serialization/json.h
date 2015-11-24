@@ -161,11 +161,20 @@ struct SaveIntoJSONImpl<Optional<T>> {
 
 template <typename... TS>
 struct SaveIntoJSONImpl<PolymorphicImpl<TS...>> {
+  struct Impl {
+    rapidjson::Value& destination;
+    rapidjson::Document::AllocatorType& allocator;
+    template <typename T>
+    void operator()(const T&) {
+      // TODO(dkorolev): Work in progress.
+      destination.SetObject();
+    }
+  };
   static void Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const PolymorphicImpl<TS...>& value) {
-    // TODO(dkorolev): Work in progress.
-    destination.SetObject();
+    Impl impl{destination, allocator};
+    value.Call(impl);
   }
 };
 

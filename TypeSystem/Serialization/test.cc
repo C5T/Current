@@ -43,7 +43,7 @@ namespace serialization_test {
 
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
-CURRENT_STRUCT(Empty) {};
+CURRENT_STRUCT(Empty){};
 
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
@@ -648,15 +648,15 @@ TEST(Serialization, OptionalAsJSON) {
   }
 }
 
-TEST(Serialization, PolymorphicAsJSON) {
+TEST(Serialization, WORK_IN_PROGRESS_PolymorphicAsJSON) {
   using namespace serialization_test;
   {
     const Polymorphic<Empty, Serializable, WithFloatingPoint> p1(make_unique<Empty>());
-    EXPECT_EQ("sadgfsdg", JSON(p1));
+    EXPECT_EQ("{}", JSON(p1));
   }
   {
     const Polymorphic<Empty, Serializable, WithFloatingPoint> p2(make_unique<Serializable>(42));
-    EXPECT_EQ("sadgfsdg", JSON(p2));
+    EXPECT_EQ("{}", JSON(p2));
   }
 }
 
