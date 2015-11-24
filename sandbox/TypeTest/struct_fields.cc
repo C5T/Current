@@ -38,16 +38,10 @@ namespace type_test {
 TEST(TypeTest, StructFields) {
   using namespace type_test;
   using current::reflection::StructSchema;
-  using current::reflection::SchemaInfo;
+  using current::reflection::Language;
 
   StructSchema schema;
   schema.AddType<StructWithManyFields>();
-
-  SchemaInfo schema_info = schema.GetSchemaInfo();
-  const std::string golden_cpp = bricks::FileSystem::ReadFileAsString("golden/struct_fields.cc");
-  std::string cpp;
-  for (size_t i = 0; i < schema_info.ordered_struct_list.size(); ++i) {
-    cpp += schema.CppDescription(schema_info.ordered_struct_list[i]);
-  }
-  EXPECT_EQ(cpp, golden_cpp);
+  EXPECT_EQ(bricks::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
+            schema.Describe(Language::CPP(), false));
 }

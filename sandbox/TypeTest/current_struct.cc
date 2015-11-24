@@ -37,16 +37,10 @@ namespace type_test {
 TEST(TypeTest, CurrentStruct) {
   using namespace type_test;
   using current::reflection::StructSchema;
-  using current::reflection::SchemaInfo;
+  using current::reflection::Language;
 
   StructSchema schema;
 #include "include/current_struct.cc"
-
-  SchemaInfo schema_info = schema.GetSchemaInfo();
-  const std::string golden_cpp = bricks::FileSystem::ReadFileAsString("golden/current_struct.cc");
-  std::string cpp;
-  for (size_t i = 0; i < schema_info.ordered_struct_list.size(); ++i) {
-    cpp += schema.CppDescription(schema_info.ordered_struct_list[i]);
-  }
-  EXPECT_EQ(cpp, golden_cpp);
+  EXPECT_EQ(bricks::FileSystem::ReadFileAsString("golden/current_struct.cc"),
+            schema.Describe(Language::CPP(), false));
 }

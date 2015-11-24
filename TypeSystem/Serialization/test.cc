@@ -445,6 +445,7 @@ TEST(Serialization, StructSchema) {
   using current::reflection::Reflector;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
+  using current::reflection::Language;
 
   StructSchema struct_schema;
   struct_schema.AddType<ComplexSerializable>();
@@ -461,7 +462,6 @@ TEST(Serialization, StructSchema) {
       "9209412029115735895]}",
       schema_json);
 
-  const TypeID serializable_type_id = struct_schema.GetSchemaInfo().ordered_struct_list[0];
   StructSchema loaded_schema(ParseJSON<SchemaInfo>(schema_json));
   EXPECT_EQ(
       "struct Serializable {\n"
@@ -469,8 +469,14 @@ TEST(Serialization, StructSchema) {
       "  std::string s;\n"
       "  bool b;\n"
       "  Enum e;\n"
+      "};\n"
+      "struct ComplexSerializable {\n"
+      "  uint64_t j;\n"
+      "  std::string q;\n"
+      "  std::vector<std::string> v;\n"
+      "  Serializable z;\n"
       "};\n",
-      loaded_schema.CppDescription(serializable_type_id));
+      loaded_schema.Describe(Language::CPP(), false));
 }
 
 // TODO(dkorolev): Move this test outside `Serialization`.
