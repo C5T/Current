@@ -601,11 +601,11 @@ TEST(Serialization, OptionalAsJSON) {
 TEST(Serialization, WORK_IN_PROGRESS_PolymorphicAsJSON) {
   using namespace serialization_test;
   {
-    const Polymorphic<Empty, Serializable, WithFloatingPoint> p1(make_unique<Empty>());
+    const Polymorphic<Empty, Serializable, ComplexSerializable> p1(make_unique<Empty>());
     EXPECT_EQ("{}", JSON(p1));
   }
   {
-    const Polymorphic<Empty, Serializable, WithFloatingPoint> p2(make_unique<Serializable>(42));
+    const Polymorphic<Empty, Serializable, ComplexSerializable> p2(make_unique<Serializable>(42));
     EXPECT_EQ("{}", JSON(p2));
   }
 }
