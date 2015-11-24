@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../optional.h"
 #include "../polymorphic.h"
 
+#include "../Reflection/types.h"
 #include "../Reflection/reflection.h"
 
 #include "../../Bricks/template/enable_if.h"
@@ -158,25 +159,6 @@ struct SaveIntoJSONImpl<Optional<T>> {
   }
 };
 
-template <typename... TS>
-struct SaveIntoJSONImpl<PolymorphicImpl<TS...>> {
-  struct Impl {
-    rapidjson::Value& destination;
-    rapidjson::Document::AllocatorType& allocator;
-    template <typename T>
-    void operator()(const T&) {
-      // TODO(dkorolev): Work in progress.
-      destination.SetObject();
-    }
-  };
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const PolymorphicImpl<TS...>& value) {
-    Impl impl{destination, allocator};
-    value.Call(impl);
-  }
-};
-
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
 struct SaveIntoJSONImpl {
@@ -201,11 +183,11 @@ struct SaveIntoJSONImpl {
   template <typename TT = T>
   static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Save(rapidjson::Value& destination,
                                                rapidjson::Document::AllocatorType& allocator,
-                                               const T& source) {
+                                               const TT& source) {
     destination.SetObject();
 
     SaveFieldVisitor visitor(destination, allocator);
-    current::reflection::VisitAllFields<bricks::decay<T>,
+    current::reflection::VisitAllFields<bricks::decay<TT>,
                                         current::reflection::FieldNameAndImmutableValue>::WithObject(source,
                                                                                                      visitor);
   }
@@ -214,8 +196,47 @@ struct SaveIntoJSONImpl {
   template <typename TT = T>
   static ENABLE_IF<std::is_enum<TT>::value> Save(rapidjson::Value& destination,
                                                  rapidjson::Document::AllocatorType&,
-                                                 const T& value) {
-    AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
+                                                 const TT& value) {
+    AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<TT>::type>(value));
+  }
+
+  // JSON format for polymorphic objects:
+  // * Contains TypeID.
+  // * Under an empty key, so can't confuse it with the actual struct name.
+  // * Contains a struct name too, making it easier to use our JSON from JavaScript++.
+  //   The actual data is the object with the key being the name of the struct, which *would* be ambiguous
+  //   in case of multiple namespaces, but internally we only use TypeID during the deserialization phase.
+  class SavePolymorphic {
+   public:
+    SavePolymorphic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+        : destination_(destination), allocator_(allocator) {}
+
+    template <typename X>
+    ENABLE_IF<IS_CURRENT_STRUCT(X)> operator()(const X& object) {
+      rapidjson::Value serialized_object;
+      Save(serialized_object, allocator_, object);
+
+      using namespace ::current::reflection;
+      rapidjson::Value serialized_type_id;
+      SaveIntoJSONImpl<TypeID>::Save(serialized_type_id, allocator_, Reflector().ReflectType<X>()->type_id);
+
+      destination_.SetObject();
+      destination_.AddMember(
+          rapidjson::Value(StructName<X>(), allocator_).Move(), serialized_object, allocator_);
+      destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+    }
+
+   private:
+    rapidjson::Value& destination_;
+    rapidjson::Document::AllocatorType& allocator_;
+  };
+
+  template <typename... TS>
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const PolymorphicImpl<TS...>& value) {
+    SavePolymorphic impl(destination, allocator);
+    value.Call(impl);
   }
 };
 
