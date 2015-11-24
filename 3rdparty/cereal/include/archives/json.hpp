@@ -89,8 +89,8 @@ namespace cereal
   {
     enum class NodeType { StartObject, InObject, StartArray, InArray };
 
-    typedef rapidjson::GenericWriteStream WriteStream;
-    typedef rapidjson::Writer<WriteStream> JSONWriter;  // Was `PrettyWriter`. D.K.
+    typedef rapidjson_cereal::GenericWriteStream WriteStream;
+    typedef rapidjson_cereal::Writer<WriteStream> JSONWriter;  // Was `PrettyWriter`. D.K.
 
     public:
       /*! @name Common Functionality
@@ -232,7 +232,7 @@ namespace cereal
       //! Saves a double to the current node
       void saveValue(double d)              { itsWriter.Double(d);                                                       }
       //! Saves a string to the current node
-      void saveValue(std::string const & s) { itsWriter.String(s.c_str(), static_cast<rapidjson::SizeType>( s.size() )); }
+      void saveValue(std::string const & s) { itsWriter.String(s.c_str(), static_cast<rapidjson_cereal::SizeType>( s.size() )); }
       //! Saves a const char * to the current node
       void saveValue(char const * s)        { itsWriter.String(s);                                                       }
 
@@ -391,11 +391,11 @@ namespace cereal
   class JSONInputArchive : public InputArchive<JSONInputArchive>, public traits::TextArchive
   {
     private:
-      typedef rapidjson::GenericReadStream ReadStream;
-      typedef rapidjson::GenericValue<rapidjson::UTF8<>> JSONValue;
+      typedef rapidjson_cereal::GenericReadStream ReadStream;
+      typedef rapidjson_cereal::GenericValue<rapidjson_cereal::UTF8<>> JSONValue;
       typedef JSONValue::ConstMemberIterator MemberIterator;
       typedef JSONValue::ConstValueIterator ValueIterator;
-      typedef rapidjson::Document::GenericValue GenericValue;
+      typedef rapidjson_cereal::Document::GenericValue GenericValue;
 
     public:
       /*! @name Common Functionality
@@ -684,7 +684,7 @@ namespace cereal
       const char * itsNextName;               //!< Next name set by NVP
       ReadStream itsReadStream;               //!< Rapidjson write stream
       std::vector<Iterator> itsIteratorStack; //!< 'Stack' of rapidJSON iterators
-      rapidjson::Document itsDocument;        //!< Rapidjson document
+      rapidjson_cereal::Document itsDocument;        //!< Rapidjson document
   };
 
   // ######################################################################

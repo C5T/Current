@@ -1,7 +1,7 @@
-#ifndef RAPIDJSON_POW10_
-#define RAPIDJSON_POW10_
+#ifndef RAPIDJSON_CEREAL_POW10_
+#define RAPIDJSON_CEREAL_POW10_
 
-namespace rapidjson {
+namespace rapidjson_cereal {
 namespace internal {
 
 //! Computes integer powers of 10 in double (10.0^n).
@@ -44,11 +44,11 @@ inline double Pow10(int n) {
 		1e+281,1e+282,1e+283,1e+284,1e+285,1e+286,1e+287,1e+288,1e+289,1e+290,1e+291,1e+292,1e+293,1e+294,1e+295,1e+296,1e+297,1e+298,1e+299,1e+300,
 		1e+301,1e+302,1e+303,1e+304,1e+305,1e+306,1e+307,1e+308
 	};
-	RAPIDJSON_ASSERT(n <= 308);
+	RAPIDJSON_CEREAL_ASSERT(n <= 308);
 	return n < -308 ? 0.0 : e[n + 308];
 }
 
 } // namespace internal
-} // namespace rapidjson
+} // namespace rapidjson_cereal
 
-#endif // RAPIDJSON_POW10_
+#endif // RAPIDJSON_CEREAL_POW10_

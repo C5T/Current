@@ -1,9 +1,9 @@
-#ifndef RAPIDJSON_FILESTREAM_H_
-#define RAPIDJSON_FILESTREAM_H_
+#ifndef RAPIDJSON_CEREAL_FILESTREAM_H_
+#define RAPIDJSON_CEREAL_FILESTREAM_H_
 
 #include <cstdio>
 
-namespace rapidjson {
+namespace rapidjson_cereal {
 
 //! Wrapper of C file stream for input or output.
 /*!
@@ -27,7 +27,7 @@ public:
 
 private:
 	void Read() {
-		RAPIDJSON_ASSERT(fp_ != 0);
+		RAPIDJSON_CEREAL_ASSERT(fp_ != 0);
 		int c = fgetc(fp_);
 		if (c != EOF) {
 			current_ = (char)c;
@@ -42,6 +42,6 @@ private:
 	size_t count_;
 };
 
-} // namespace rapidjson
+} // namespace rapidjson_cereal
 
-#endif // RAPIDJSON_FILESTREAM_H_
+#endif // RAPIDJSON_CEREAL_FILESTREAM_H_

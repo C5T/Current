@@ -40,10 +40,10 @@ SOFTWARE.
 #include "../../Bricks/template/decay.h"
 #include "../../Bricks/strings/strings.h"
 
-// TODO(dkorolev): Use RapidJSON from outside Cereal.
-#include "../../3rdparty/cereal/include/external/rapidjson/document.h"
-#include "../../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
-#include "../../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+#define RAPIDJSON_HAS_STDSTRING 1
+#include "../../3rdparty/rapidjson/document.h"
+#include "../../3rdparty/rapidjson/prettywriter.h"
+#include "../../3rdparty/rapidjson/streamwrapper.h"
 
 namespace current {
 namespace serialization {
@@ -58,7 +58,7 @@ struct AssignToRapidJSONValueImpl {
 template <>
 struct AssignToRapidJSONValueImpl<std::string> {
   static void WithDedicatedStringTreatment(rapidjson::Value& destination, const std::string& value) {
-    destination.SetString(value.c_str(), value.length());
+    destination = rapidjson::StringRef(value);
   }
 };
 
@@ -121,8 +121,7 @@ struct SaveIntoJSONImpl<std::map<TK, TV>> {
     for (const auto& element : value) {
       rapidjson::Value populated_value;
       SaveIntoJSONImpl<TV>::Save(populated_value, allocator, element.second);
-      // TODO(dkorolev): Be careful with this `.c_str()`; might have to be allocated within `allocator`.
-      destination.AddMember(element.first.c_str(), populated_value, allocator);
+      destination.AddMember(rapidjson::StringRef(element.first), populated_value, allocator);
     }
   }
   template <typename K = TK>
@@ -154,7 +153,7 @@ struct SaveIntoJSONImpl<Optional<T>> {
     } else {
       // Current's default JSON parser would accept a missing field as well for no value,
       // but output it as `null` nonetheless, for clarity.
-      destination.SetNull_();
+      destination.SetNull();
     }
   }
 };
@@ -194,7 +193,7 @@ struct SaveIntoJSONImpl {
     void operator()(const char* name, const U& source) const {
       rapidjson::Value placeholder;
       SaveIntoJSONImpl<U>::Save(placeholder, allocator_, source);
-      destination_.AddMember(name, placeholder, allocator_);
+      destination_.AddMember(rapidjson::StringRef(name), placeholder, allocator_);
     }
   };
 
@@ -228,8 +227,8 @@ std::string CreateJSONViaRapidJSON(const T& value) {
   SaveIntoJSONImpl<T>::Save(destination, document.GetAllocator(), value);
 
   std::ostringstream os;
-  auto stream = rapidjson::GenericWriteStream(os);
-  auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
+  rapidjson::OStreamWrapper stream(os);
+  rapidjson::Writer<rapidjson::OStreamWrapper> writer(stream);
   document.Accept(writer);
 
   return os.str();
@@ -423,7 +422,7 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
 template <typename T>
 struct LoadFromJSONImpl<Optional<T>> {
   static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
-    if (!source || source->IsNull_()) {
+    if (!source || source->IsNull()) {
       destination = nullptr;
     } else {
       destination = T();
@@ -436,60 +435,31 @@ template <typename T>
 void ParseJSONViaRapidJSON(const std::string& json, T& destination) {
   rapidjson::Document document;
 
-  if (document.Parse<0>(json.c_str()).HasParseError()) {
+  if (document.Parse(json.c_str()).HasParseError()) {
     throw InvalidJSONException(json);
   }
 
   LoadFromJSONImpl<T>::Load(&document, destination, "");
 }
 
-// External user-facing `JSON` and `ParseJSON` methods. Since RapidJSON is not friendly
-// with serializing bare integers, strings, and booleans, make it happen explicitly.
-
-template <typename T, bool BYPASS_RAPIDJSON>
-struct ViaRapidJSONOrNatively {
-  static std::string Create(const T& source) { return CreateJSONViaRapidJSON(source); }
-  static void Parse(const std::string& source, T& destination) { ParseJSONViaRapidJSON(source, destination); }
-};
-
-template <typename T>
-struct ViaRapidJSONOrNatively<T, true> {
-  static std::string Create(const T& source) { return bricks::strings::ToString(source); }
-  static void Parse(const std::string& source, T& destination) {
-    bricks::strings::FromString(source, destination);
-  }
-};
-
-template <typename T>
-struct BypassRapidJSON {
-  static constexpr bool bypass = std::is_integral<T>::value;
-};
-
-// Note: Bare strings will not be escaped during serialization / deserialization.
-// Thus, not proper JSON. But one-to-one convertible to and from binary. -- D.K.
-template <>
-struct BypassRapidJSON<std::string> {
-  static constexpr bool bypass = true;
-};
-
 template <typename T>
 inline std::string JSON(const T& source) {
-  using DECAYED_T = bricks::decay<T>;
-  return ViaRapidJSONOrNatively<DECAYED_T, BypassRapidJSON<DECAYED_T>::bypass>::Create(source);
+  return CreateJSONViaRapidJSON(source);
 }
 
-inline std::string JSON(const char* special_case_bare_c_string) { return special_case_bare_c_string; }
+inline std::string JSON(const char* special_case_bare_c_string) {
+  return JSON(std::string(special_case_bare_c_string));
+}
 
 template <typename T>
 inline T ParseJSON(const std::string& source, T& destination) {
-  using DECAYED_T = bricks::decay<T>;
-  ViaRapidJSONOrNatively<DECAYED_T, BypassRapidJSON<DECAYED_T>::bypass>::Parse(source, destination);
+  ParseJSONViaRapidJSON(source, destination);
 }
 
 template <typename T>
 inline T ParseJSON(const std::string& source) {
   T result;
-  ViaRapidJSONOrNatively<T, BypassRapidJSON<T>::bypass>::Parse(source, result);
+  ParseJSONViaRapidJSON(source, result);
   return result;
 }
 
