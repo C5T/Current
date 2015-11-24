@@ -140,11 +140,13 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   // Other primitive types.
   CURRENT_FIELD(s, std::string, "The String");
   CURRENT_FIELD(e, Enum, Enum::Value2);
-
-  // Complex types.
+  // STL containers.
   CURRENT_FIELD(pair_strdbl, (std::pair<std::string, double>));
   CURRENT_FIELD(vector_int32, std::vector<int32_t>);
   CURRENT_FIELD(map_strstr, (std::map<std::string, std::string>));
+  // Current complex types.
+  CURRENT_FIELD(optional_i, Optional<int32_t>);
+  CURRENT_FIELD(optional_b, Optional<bool>);
 };
 }
 
@@ -209,6 +211,18 @@ struct CollectFieldValues {
     oss << value;
     output_.push_back(oss.str());
   }
+
+  // Output `Optional`.
+  template <typename T>
+  void operator()(const std::string&, const Optional<T>& value) const {
+    std::ostringstream oss;
+    if (Exists(value)) {
+      oss << Value(value);
+    } else {
+      oss << "null";
+    }
+    output_.push_back(oss.str());
+  }
 };
 
 }  // namespace reflection_test
@@ -220,6 +234,7 @@ TEST(Reflection, VisitAllFields) {
   all.pair_strdbl = {"Minus eight point five", -9.5};
   all.vector_int32 = {-1, -2, -4};
   all.map_strstr = {{"key1", "value1"}, {"key2", "value2"}};
+  all.optional_i = 128;  // Leaving `optional_b` empty.
 
   std::vector<std::string> result;
   CollectFieldValues values{result};
@@ -235,7 +250,8 @@ TEST(Reflection, VisitAllFields) {
       "2,"
       "Minus eight point five:-9.500000,"
       "[-1,-2,-4],"
-      "[key1:value1,key2:value2]",
+      "[key1:value1,key2:value2],"
+      "128,null",
       bricks::strings::Join(result, ','));
 }
 
@@ -253,6 +269,7 @@ CURRENT_STRUCT(B) {
   CURRENT_FIELD(x, X);
   CURRENT_FIELD(a, A);
 };
+CURRENT_STRUCT(C) { CURRENT_FIELD(b, Optional<B>); };
 }
 
 TEST(Reflection, StructSchema) {
@@ -343,12 +360,12 @@ TEST(Reflection, StructSchema) {
         struct_schema.CppDescription(z_type_id, true));
   }
 
-  struct_schema.AddType<B>();
+  struct_schema.AddType<C>();
 
   {
     SchemaInfo schema = struct_schema.GetSchemaInfo();
-    EXPECT_EQ(5u, schema.ordered_struct_list.size());
-    EXPECT_EQ(5u, schema.structs.size());
+    EXPECT_EQ(6u, schema.ordered_struct_list.size());
+    EXPECT_EQ(6u, schema.structs.size());
     const TypeID a_type_id = schema.ordered_struct_list[3];
     EXPECT_EQ("A", schema.structs[a_type_id].name);
     EXPECT_EQ(1u, schema.structs[a_type_id].fields.size());
@@ -361,15 +378,25 @@ TEST(Reflection, StructSchema) {
     EXPECT_EQ("x", schema.structs[b_type_id].fields[0].second);
     EXPECT_EQ(a_type_id, schema.structs[b_type_id].fields[1].first);
     EXPECT_EQ("a", schema.structs[b_type_id].fields[1].second);
+    const TypeID c_type_id = schema.ordered_struct_list[5];
+    EXPECT_EQ("C", schema.structs[c_type_id].name);
+    EXPECT_EQ(1u, schema.structs[c_type_id].fields.size());
+    EXPECT_EQ(9215606518197310863ull, static_cast<uint64_t>(schema.structs[c_type_id].fields[0].first));
+    EXPECT_EQ("b", schema.structs[c_type_id].fields[0].second);
+    EXPECT_EQ(
+        "struct C {\n"
+        "  Optional<B> b;\n"
+        "};\n",
+        struct_schema.CppDescription(c_type_id));
   }
 
   struct_schema.AddType<SelfContainingC>();
 
   {
     SchemaInfo schema = struct_schema.GetSchemaInfo();
-    EXPECT_EQ(8u, schema.ordered_struct_list.size());
-    EXPECT_EQ(8u, schema.structs.size());
-    const TypeID self1_type_id = schema.ordered_struct_list[7];
+    EXPECT_EQ(9u, schema.ordered_struct_list.size());
+    EXPECT_EQ(9u, schema.structs.size());
+    const TypeID self1_type_id = schema.ordered_struct_list[8];
     EXPECT_EQ(
         "struct SelfContainingA {\n"
         "  std::vector<SelfContainingA> v;\n"

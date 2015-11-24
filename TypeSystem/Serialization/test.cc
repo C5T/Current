@@ -94,11 +94,11 @@ CURRENT_STRUCT(WithOptional) {
 
 TEST(Serialization, Binary) {
   using namespace serialization_test;
+
   const std::string tmp_file = bricks::FileSystem::GenTmpFileName();
   const auto tmp_file_remover = bricks::FileSystem::ScopedRmFile(tmp_file);
   {
     std::ofstream ofs(tmp_file);
-
     Serializable simple_object;
     simple_object.i = 42;
     simple_object.s = "foo";
@@ -537,6 +537,49 @@ TEST(Serialization, JSONForCppTypes) {
     ASSERT_TRUE(false);
   } catch (const JSONSchemaException& e) {
     EXPECT_EQ("Expected map as object, got: []", std::string(e.what()));
+  }
+}
+
+TEST(Serialization, OptionalAsBinary) {
+  using namespace serialization_test;
+
+  const std::string tmp_file = bricks::FileSystem::GenTmpFileName();
+  const auto tmp_file_remover = bricks::FileSystem::ScopedRmFile(tmp_file);
+  {
+    std::ofstream ofs(tmp_file);
+    WithOptional with_optional;
+    SaveIntoBinary(ofs, with_optional);
+
+    with_optional.i = 42;
+    SaveIntoBinary(ofs, with_optional);
+
+    with_optional.b = true;
+    SaveIntoBinary(ofs, with_optional);
+
+    with_optional.i = nullptr;
+    SaveIntoBinary(ofs, with_optional);
+  }
+  {
+    std::ifstream ifs(tmp_file);
+    const auto parsed_empty = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_FALSE(Exists(parsed_empty.i));
+    ASSERT_FALSE(Exists(parsed_empty.b));
+
+    const auto parsed_with_i = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_TRUE(Exists(parsed_with_i.i));
+    ASSERT_FALSE(Exists(parsed_with_i.b));
+    EXPECT_EQ(42, Value(parsed_with_i.i));
+
+    const auto parsed_with_both = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_TRUE(Exists(parsed_with_both.i));
+    ASSERT_TRUE(Exists(parsed_with_both.b));
+    EXPECT_EQ(42, Value(parsed_with_both.i));
+    EXPECT_TRUE(Value(parsed_with_both.b));
+
+    const auto parsed_with_b = LoadFromBinary<WithOptional>(ifs);
+    ASSERT_FALSE(Exists(parsed_with_b.i));
+    ASSERT_TRUE(Exists(parsed_with_b.b));
+    EXPECT_TRUE(Value(parsed_with_b.b));
   }
 }
 

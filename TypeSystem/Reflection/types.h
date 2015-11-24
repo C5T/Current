@@ -45,20 +45,33 @@ namespace current {
 namespace reflection {
 
 // clang-format off
+// Special type prefix for structs containing a reference to itself.
 constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_PREFIX = 800u;
-constexpr uint64_t TYPEID_BASIC_PREFIX  = 900u;
-constexpr uint64_t TYPEID_ENUM_PREFIX   = 901u;
-constexpr uint64_t TYPEID_STRUCT_PREFIX = 920u;
+// Basic types prefixes.
+constexpr uint64_t TYPEID_BASIC_PREFIX = 900u;
+constexpr uint64_t TYPEID_ENUM_PREFIX  = 901u;
+// Current complex types prefixes.
+constexpr uint64_t TYPEID_STRUCT_PREFIX      = 920u;
+constexpr uint64_t TYPEID_OPTIONAL_PREFIX    = 921u;
+constexpr uint64_t TYPEID_POLYMORPHIC_PREFIX = 922u;
+// STL containers prefixes.
 constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
 constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
 constexpr uint64_t TYPEID_PAIR_PREFIX   = 933u;
 constexpr uint64_t TYPEID_MAP_PREFIX    = 934u;
 
-constexpr uint64_t TYPEID_TYPE_RANGE  = static_cast<uint64_t>(1e16);
+// Range of possible TypeID-s for each prefix.
+constexpr uint64_t TYPEID_TYPE_RANGE = static_cast<uint64_t>(1e16);
+// Base TypeID for structs containing a reference to itself.
 constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_INCOMPLETE_STRUCT_PREFIX;
-constexpr uint64_t TYPEID_BASIC_TYPE  = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
-constexpr uint64_t TYPEID_ENUM_TYPE   = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
-constexpr uint64_t TYPEID_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
+// Base TypeID-s for basic types.
+constexpr uint64_t TYPEID_BASIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
+constexpr uint64_t TYPEID_ENUM_TYPE  = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
+// Base TypeID-s for Current complex types.
+constexpr uint64_t TYPEID_STRUCT_TYPE      = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
+constexpr uint64_t TYPEID_OPTIONAL_TYPE    = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
+constexpr uint64_t TYPEID_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_POLYMORPHIC_PREFIX;
+// Base TypeID-s for STL containers.
 constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
 constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
 constexpr uint64_t TYPEID_PAIR_TYPE   = TYPEID_TYPE_RANGE * TYPEID_PAIR_PREFIX;
@@ -115,6 +128,11 @@ struct ReflectedType_Pair : ReflectedTypeImpl {
   std::shared_ptr<ReflectedTypeImpl> reflected_second_type;
   ReflectedType_Pair(const std::shared_ptr<ReflectedTypeImpl> rf, const std::shared_ptr<ReflectedTypeImpl> rs)
       : reflected_first_type(rf), reflected_second_type(rs) {}
+};
+
+struct ReflectedType_Optional : ReflectedTypeImpl {
+  const std::shared_ptr<ReflectedTypeImpl> reflected_object_type;
+  ReflectedType_Optional(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_object_type(re) {}
 };
 
 typedef std::vector<std::pair<std::shared_ptr<ReflectedTypeImpl>, std::string>> StructFieldsVector;
@@ -176,6 +194,13 @@ inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
   assert(v.reflected_value_type->type_id != TypeID::INVALID_TYPE);
   uint64_t hash = ROL64(v.reflected_key_type->type_id, 5) ^ ROL64(v.reflected_value_type->type_id, 11);
   return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
+  assert(o.reflected_object_type);
+  assert(o.reflected_object_type->type_id != TypeID::INVALID_TYPE);
+  return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE +
+                             ROL64(o.reflected_object_type->type_id, 5) % TYPEID_TYPE_RANGE);
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.
