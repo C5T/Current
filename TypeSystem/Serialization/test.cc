@@ -43,6 +43,8 @@ namespace serialization_test {
 
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
+CURRENT_STRUCT(Empty) {};
+
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
   CURRENT_FIELD(s, std::string);
@@ -52,10 +54,10 @@ CURRENT_STRUCT(Serializable) {
   // Note: The user has to define default constructor when defining custom ones.
   CURRENT_DEFAULT_CONSTRUCTOR(Serializable) {}
   CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s, bool b, Enum e) : i(i), s(s), b(b), e(e) {}
+  CURRENT_CONSTRUCTOR(Serializable)(int i) : i(i), s(""), b(false), e(Enum::DEFAULT) {}
 
-  CURRENT_RETURNS(uint64_t) twice_i() const { return i + i; }
-
-  CURRENT_RETURNS(bool)operator<(const Serializable& rhs) const { return i < rhs.i; }
+  uint64_t twice_i() const { return i + i; }
+  bool operator<(const Serializable& rhs) const { return i < rhs.i; }
 };
 
 CURRENT_STRUCT(ComplexSerializable) {
@@ -71,7 +73,7 @@ CURRENT_STRUCT(ComplexSerializable) {
     }
   }
 
-  CURRENT_RETURNS(size_t) length_of_v() const { return v.size(); }
+  size_t length_of_v() const { return v.size(); }
 };
 
 CURRENT_STRUCT(WithFloatingPoint) {
@@ -643,6 +645,18 @@ TEST(Serialization, OptionalAsJSON) {
     ASSERT_FALSE(Exists(parsed.i));
     ASSERT_TRUE(Exists(parsed.b));
     EXPECT_TRUE(Value(parsed.b));
+  }
+}
+
+TEST(Serialization, PolymorphicAsJSON) {
+  using namespace serialization_test;
+  {
+    const Polymorphic<Empty, Serializable, WithFloatingPoint> p1(make_unique<Empty>());
+    EXPECT_EQ("sadgfsdg", JSON(p1));
+  }
+  {
+    const Polymorphic<Empty, Serializable, WithFloatingPoint> p2(make_unique<Serializable>(42));
+    EXPECT_EQ("sadgfsdg", JSON(p2));
   }
 }
 

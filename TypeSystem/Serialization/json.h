@@ -159,6 +159,16 @@ struct SaveIntoJSONImpl<Optional<T>> {
   }
 };
 
+template <typename... TS>
+struct SaveIntoJSONImpl<PolymorphicImpl<TS...>> {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const PolymorphicImpl<TS...>& value) {
+    // TODO(dkorolev): Work in progress.
+    destination.SetObject();
+  }
+};
+
 // TODO(dkorolev): A smart `enable_if` to not treat any non-primitive type as a `CURRENT_STRUCT`?
 template <typename T>
 struct SaveIntoJSONImpl {

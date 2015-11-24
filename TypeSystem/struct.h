@@ -177,10 +177,6 @@ struct WithoutParentheses<int(T)> {
     CURRENT_CALL_F(#name, name);                                                                               \
   }
 
-#define CURRENT_RETURNS(RETURN_TYPE)                               \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE> \
-  ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value, RETURN_TYPE>
-
 #define CURRENT_CONSTRUCTOR(s)                                                                                 \
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
             class =                                                                                            \

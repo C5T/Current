@@ -116,7 +116,7 @@ struct PolymorphicImpl<T, TS...> {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
   }
 
-  PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object)) {}
+  PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) {}
 
   template <typename X>
   void operator=(X&& input) {
