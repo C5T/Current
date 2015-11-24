@@ -648,15 +648,16 @@ TEST(Serialization, OptionalAsJSON) {
   }
 }
 
-TEST(Serialization, WORK_IN_PROGRESS_PolymorphicAsJSON) {
+TEST(Serialization, PolymorphicAsJSON) {
   using namespace serialization_test;
   {
     const Polymorphic<Empty, Serializable, WithFloatingPoint> p1(make_unique<Empty>());
-    EXPECT_EQ("{}", JSON(p1));
+    EXPECT_EQ("{\"Empty\":{},\"\":9200000002835747520}", JSON(p1));
   }
   {
     const Polymorphic<Empty, Serializable, WithFloatingPoint> p2(make_unique<Serializable>(42));
-    EXPECT_EQ("{}", JSON(p2));
+    EXPECT_EQ("{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":9201007113239016790}",
+              JSON(p2));
   }
 }
 
