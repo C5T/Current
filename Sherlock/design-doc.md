@@ -17,15 +17,7 @@ Streams are strongly typed. All entries within one stream have the same type. Th
 
 The type of entries in the stream is defined at stream declaration time. When serializing/deserializing streams to/from disk, a basic check of the signature of storage schema is performed for the sake of data integrity.
 
-Polymorphic types can be extended with more derived types, but it is the user's responsibilty that no binary attempts to deserialize entries of the type not supported by this particular version. (`TODO(dkorolev): See how strict we can be with this in V1.`)
-
-Entry stream type should be agnostic with respect to serialization. It should be guaranteed that an entry of this type can be serialized and deserialized, and that the very same entry will be constructed as a result of the serialization/deserialization cycle.
-
-Implemenation details:
-
-* Sherlock uses Cereal, JSON and binary formats.
-* Entries of polymorphic type are `std::unique_ptr<>`-s of `SomeBaseType`.
-* RTTI dispatching mechanisms from `Bricks` can be used for convenience of saving on virtual functions.
+Polymorphic types can be extended with more derived types, but strictly in the direction that is 100% backwards-compatible. In other words, new types can be added to the fields that have already been declared polymorphic, but that's about it.
 
 ## Consistency
 
@@ -153,7 +145,7 @@ TBD: A way to notify that the order key has updated without new entries being ad
 
 ## Background
 
-The reader of this design doc is expected to be familiar with `Current`, most notably, the Cereal part of it (`"Bricks/cerealize"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Bricks/mq/inmemory"`) and WaitableAtomic (`"Bricks/waitable_atomic"`).
+The reader of this design doc is expected to be familiar with `Current`, most notably, the TypeSystem part of it (`"TypeSystem/"`), the HTTP API (`"Blocks/HTTP"`), the in-memory message queue (`"Bricks/mq/inmemory"`) and WaitableAtomic (`"Bricks/waitable_atomic"`).
 
 ## Naming
 
@@ -161,7 +153,7 @@ Streams get names assigned at initialization. Stream names must be unique.
 
 ## Protocol
 
-HTTP chunked response. Cereal's binary or JSON format, controlled by the URL parameter.
+HTTP chunked response.
 
 HTTP endpoints are exposed automatically, based on stream names.
 

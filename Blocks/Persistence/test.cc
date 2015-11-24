@@ -41,15 +41,10 @@ DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to c
 
 using bricks::strings::Join;
 
-struct CerealizableString {
-  using CEREAL_BASE_TYPE = CerealizableString;
-  std::string s;
-  CerealizableString(const std::string& s = "") : s(s) {}
-  CerealizableString(const char* s) : s(s) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(s));
-  }
+CURRENT_STRUCT(StorableString) {
+  CURRENT_FIELD(s, std::string, "");
+  CURRENT_DEFAULT_CONSTRUCTOR(StorableString) {}
+  CURRENT_CONSTRUCTOR(StorableString)(const std::string& s) : s(s) {}
 };
 
 struct PersistenceTestListener {
@@ -65,7 +60,7 @@ struct PersistenceTestListener {
     ++seen;
   }
 
-  void operator()(const CerealizableString& message) { operator()(message.s); }
+  void operator()(const StorableString& message) { operator()(message.s); }
 
   void ReplayDone() {
     messages.push_back("MARKER");
@@ -135,9 +130,9 @@ TEST(PersistenceLayer, MemoryOnly) {
 }
 
 TEST(PersistenceLayer, AppendToFile) {
-  typedef blocks::persistence::AppendToFile<CerealizableString> IMPL;
+  typedef blocks::persistence::NewAppendToFile<StorableString> IMPL;
   static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-  static_assert(blocks::ss::IsEntryPublisher<IMPL, CerealizableString>::value, "");
+  static_assert(blocks::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
   static_assert(!blocks::ss::IsPublisher<int>::value, "");
   static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
@@ -147,8 +142,8 @@ TEST(PersistenceLayer, AppendToFile) {
   {
     IMPL impl(persistence_file_name);
 
-    impl.Publish("foo");
-    impl.Publish(std::move(CerealizableString("bar")));
+    impl.Publish(StorableString("foo"));
+    impl.Publish(std::move(StorableString("bar")));
 
     bricks::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
@@ -158,7 +153,7 @@ TEST(PersistenceLayer, AppendToFile) {
       ;  // Spin lock.
     }
 
-    impl.Publish("meh");
+    impl.Publish(StorableString("meh"));
 
     while (test_listener.seen < 3u) {
       ;  // Spin lock.
@@ -172,9 +167,9 @@ TEST(PersistenceLayer, AppendToFile) {
   }
 
   EXPECT_EQ(
-      "{\"e\":{\"s\":\"foo\"}}\n"
-      "{\"e\":{\"s\":\"bar\"}}\n"
-      "{\"e\":{\"s\":\"meh\"}}\n",
+      "{\"s\":\"foo\"}\n"
+      "{\"s\":\"bar\"}\n"
+      "{\"s\":\"meh\"}\n",
       bricks::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -191,7 +186,7 @@ TEST(PersistenceLayer, AppendToFile) {
 
     EXPECT_EQ("foo,bar,meh,MARKER", Join(test_listener.messages, ","));
 
-    impl.Publish("blah");
+    impl.Publish(StorableString("blah"));
 
     while (test_listener.seen < 4u) {
       ;  // Spin lock.
