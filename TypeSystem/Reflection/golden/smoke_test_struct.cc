@@ -1,12 +1,8 @@
 // g++ -c -std=c++11 current.cc
 
-#include <string>
-#include <cstdint>
-#include <vector>
-#include <map>
-#include <utility>
+#include "current.h"  // :TROLLFACE:
 
-namespace current {
+namespace current_userspace {
 struct Primitives {
   uint8_t a;
   uint16_t b;
@@ -29,4 +25,4 @@ struct FullTest {
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
 };
-}  // namespace current
+}  // namespace current_userspace

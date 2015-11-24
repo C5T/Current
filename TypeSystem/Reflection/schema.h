@@ -97,15 +97,11 @@ struct Language {
     static std::string Header() {
       return "// g++ -c -std=c++11 current.cc\n"
              "\n"
-             "#include <string>\n"
-             "#include <cstdint>\n"
-             "#include <vector>\n"
-             "#include <map>\n"
-             "#include <utility>\n"
+             "#include \"current.h\"  // :TROLLFACE:\n"
              "\n"
-             "namespace current {\n";
+             "namespace current_userspace {\n";
     }
-    static std::string Footer() { return "}  // namespace current\n"; }
+    static std::string Footer() { return "}  // namespace current_userspace\n"; }
     static std::string ErrorMessageWithTypeId(const TypeID type_id) {
       return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
     }
@@ -329,7 +325,7 @@ struct StructSchema {
     } else if (type_prefix == TYPEID_STRUCT_PREFIX) {
       const auto cit = schema_.structs.find(type_id);
       if (cit == schema_.structs.end()) {
-        return "UNKNOWN_STRUCT__" + bricks::strings::ToString(type_id);
+        return "UNKNOWN_STRUCT_" + bricks::strings::ToString(type_id);
       } else {
         return cit->second.name;
       }
@@ -386,6 +382,7 @@ struct StructSchema {
   }
   std::string DescribeMap(const Language::FSharp& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 2u);
+    // TODO(dkorolev): `System.Collections.Generic.Dictionary<>`? See how well does it play with `fsharpi`.
     return "UNSUPPORTED_MAP<" + TypePrintName(language, type_info.included_types[0]) + ", " +
            TypePrintName(language, type_info.included_types[1]) + '>';
   }
