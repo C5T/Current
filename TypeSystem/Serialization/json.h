@@ -40,6 +40,7 @@ SOFTWARE.
 #include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/template/decay.h"
 #include "../../Bricks/strings/strings.h"
+#include "../../Bricks/util/singleton.h"
 
 #define RAPIDJSON_HAS_STDSTRING 1
 #include "../../3rdparty/rapidjson/document.h"
@@ -48,6 +49,8 @@ SOFTWARE.
 
 namespace current {
 namespace serialization {
+
+using bricks::ThreadLocalSingleton;
 
 template <typename T>
 struct AssignToRapidJSONValueImpl {
@@ -347,6 +350,87 @@ struct LoadFromJSONImpl {
       throw JSONSchemaException("number", source, path);
     }
   }
+
+  template <typename... TS>
+  struct LoadPolymorphic {
+    class Impl {
+     public:
+      Impl() {
+        bricks::metaprogramming::combine<bricks::metaprogramming::map<Registerer, TypeListImpl<TS...>>>
+            bulk_deserializers_registerer;
+        bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+      }
+
+      void DoLoadPolymorphic(rapidjson::Value* source,
+                             PolymorphicImpl<TS...>& destination,
+                             const std::string& path) const {
+        using namespace ::current::reflection;
+        if (source && source->IsObject()) {
+          TypeID type_id;
+          if (source->HasMember("")) {
+            auto member = &(*source)[""];
+            LoadFromJSONImpl<TypeID>::Load(member, type_id, path + "[\"\"]");
+            const auto cit = deserializers_.find(type_id);
+            if (cit != deserializers_.end()) {
+              cit->second->Deserialize(source, destination, path);
+            } else {
+              throw JSONSchemaException("a type id listed in the type list", member, path);
+            }
+          } else {
+            throw JSONSchemaException("type id as value for an empty string", source, path);
+          }
+        } else {
+          throw JSONSchemaException("polymorphic type as object", source, path);
+        }
+      };
+
+     private:
+      struct GenericDeserializer {
+        virtual void Deserialize(rapidjson::Value* source,
+                                 PolymorphicImpl<TS...>& destination,
+                                 const std::string& path) = 0;
+      };
+
+      template <typename X>
+      struct TypedDeserializer : GenericDeserializer {
+        explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
+
+        void Deserialize(rapidjson::Value* source,
+                         PolymorphicImpl<TS...>& destination,
+                         const std::string& path) override {
+          if (source->HasMember(key_name_)) {
+            destination = make_unique<X>();
+            LoadFromJSONImpl<X>::Load(
+                &(*source)[key_name_], destination.template Value<X>(), path + "[\"" + key_name_ + "\"]");
+          } else {
+            throw JSONSchemaException("polymorphic value", source, path + "[\"" + key_name_ + "\"]");
+          }
+        }
+
+        const std::string key_name_;
+      };
+
+      using T_DESERIALIZERS_MAP =
+          std::unordered_map<::current::reflection::TypeID, std::unique_ptr<GenericDeserializer>>;
+      T_DESERIALIZERS_MAP deserializers_;
+
+      template <typename X>
+      struct Registerer {
+        void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+          using namespace ::current::reflection;
+          // Silently discard duplicate types in the input type list. They would be deserialized correctly.
+          deserializers[Reflector().ReflectType<X>()->type_id] =
+              make_unique<TypedDeserializer<X>>(StructName<X>());
+        }
+      };
+    };
+
+    static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
+  };
+  template <typename... TS>
+  static void Load(rapidjson::Value* source, PolymorphicImpl<TS...>& value, const std::string& path) {
+    LoadPolymorphic<TS...>::Instance().DoLoadPolymorphic(source, value, path);
+  }
 };
 
 template <>
@@ -478,10 +562,26 @@ inline T ParseJSON(const std::string& source, T& destination) {
 }
 
 template <typename T>
+struct ParseJSONImpl {
+  static T DoIt(const std::string& source) {
+    T result;
+    ParseJSONViaRapidJSON(source, result);
+    return result;
+  }
+};
+
+template <typename... TS>
+struct ParseJSONImpl<PolymorphicImpl<TS...>> {
+  static PolymorphicImpl<TS...> DoIt(const std::string& source) {
+    PolymorphicImpl<TS...> result((::current::TemporarilyUninitializedPolymorphic()));
+    ParseJSONViaRapidJSON(source, result);
+    return result;
+  }
+};
+
+template <typename T>
 inline T ParseJSON(const std::string& source) {
-  T result;
-  ParseJSONViaRapidJSON(source, result);
-  return result;
+  return ParseJSONImpl<T>::DoIt(source);
 }
 
 }  // namespace serialization
