@@ -1,5 +1,5 @@
-#ifndef RAPIDJSON_WRITER_H_
-#define RAPIDJSON_WRITER_H_
+#ifndef RAPIDJSON_CEREAL_WRITER_H_
+#define RAPIDJSON_CEREAL_WRITER_H_
 
 #include "rapidjson.h"
 #include "internal/stack.h"
@@ -13,7 +13,7 @@
 #pragma warning(disable : 4127) // conditional expression is constant
 #endif
 
-namespace rapidjson {
+namespace rapidjson_cereal {
 
 //! JSON writer
 /*! Writer implements the concept Handler.
@@ -82,8 +82,8 @@ public:
 
 	Writer& EndObject(SizeType memberCount = 0) {
 		(void)memberCount;
-		RAPIDJSON_ASSERT(level_stack_.GetSize() >= sizeof(Level));
-		RAPIDJSON_ASSERT(!level_stack_.template Top<Level>()->inArray);
+		RAPIDJSON_CEREAL_ASSERT(level_stack_.GetSize() >= sizeof(Level));
+		RAPIDJSON_CEREAL_ASSERT(!level_stack_.template Top<Level>()->inArray);
 		level_stack_.template Pop<Level>(1);
 		WriteEndObject();
 		return *this;
@@ -98,8 +98,8 @@ public:
 
 	Writer& EndArray(SizeType elementCount = 0) {
 		(void)elementCount;
-		RAPIDJSON_ASSERT(level_stack_.GetSize() >= sizeof(Level));
-		RAPIDJSON_ASSERT(level_stack_.template Top<Level>()->inArray);
+		RAPIDJSON_CEREAL_ASSERT(level_stack_.GetSize() >= sizeof(Level));
+		RAPIDJSON_CEREAL_ASSERT(level_stack_.template Top<Level>()->inArray);
 		level_stack_.template Pop<Level>(1);
 		WriteEndArray();
 		return *this;
@@ -216,7 +216,7 @@ protected:
 #else
 		int ret = snprintf(buffer, sizeof(buffer), double_format, d);
 #endif
-		RAPIDJSON_ASSERT(ret >= 1);
+		RAPIDJSON_CEREAL_ASSERT(ret >= 1);
 		for (int i = 0; i < ret; i++)
 			stream_.Put(buffer[i]);
 	}
@@ -228,7 +228,7 @@ protected:
 #else
 		int ret = snprintf(buffer, sizeof(buffer), long_double_format, d);
 #endif
-		RAPIDJSON_ASSERT(ret >= 1);
+		RAPIDJSON_CEREAL_ASSERT(ret >= 1);
 		for (int i = 0; i < ret; i++)
 			stream_.Put(buffer[i]);
 	}
@@ -240,7 +240,7 @@ protected:
 #else
 		int ret = snprintf(buffer, sizeof(buffer), "%lld", d);
 #endif
-		RAPIDJSON_ASSERT(ret >= 1);
+		RAPIDJSON_CEREAL_ASSERT(ret >= 1);
 		for (int i = 0; i < ret; i++)
 			stream_.Put(buffer[i]);
 	}
@@ -252,7 +252,7 @@ protected:
 #else
 		int ret = snprintf(buffer, sizeof(buffer), "%llu", d);
 #endif
-		RAPIDJSON_ASSERT(ret >= 1);
+		RAPIDJSON_CEREAL_ASSERT(ret >= 1);
 		for (int i = 0; i < ret; i++)
 			stream_.Put(buffer[i]);
 	}
@@ -306,11 +306,11 @@ protected:
 					stream_.Put((level->valueCount % 2 == 0) ? ',' : ':');
 			}
 			if (!level->inArray && level->valueCount % 2 == 0)
-				RAPIDJSON_ASSERT(type == kStringType);  // if it's in object, then even number should be a name
+				RAPIDJSON_CEREAL_ASSERT(type == kStringType);  // if it's in object, then even number should be a name
 			level->valueCount++;
 		}
 		else
-			RAPIDJSON_ASSERT(type == kObjectType || type == kArrayType);
+			RAPIDJSON_CEREAL_ASSERT(type == kObjectType || type == kArrayType);
 	}
 
 	Stream& stream_;
@@ -321,10 +321,10 @@ private:
 	Writer& operator=(const Writer& w);
 };
 
-} // namespace rapidjson
+} // namespace rapidjson_cereal
 
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
 
-#endif // RAPIDJSON_RAPIDJSON_H_
+#endif // RAPIDJSON_CEREAL_WRITER_H_

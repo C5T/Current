@@ -29,10 +29,10 @@ SOFTWARE.
 #include "../../Bricks/exception.h"
 #include "../../Bricks/strings/strings.h"
 
-// TODO(dkorolev): Use RapidJSON from outside Cereal.
-#include "../../3rdparty/cereal/include/external/rapidjson/document.h"
-#include "../../3rdparty/cereal/include/external/rapidjson/prettywriter.h"
-#include "../../3rdparty/cereal/include/external/rapidjson/genericstream.h"
+#define RAPIDJSON_HAS_STDSTRING 1
+#include "../../3rdparty/rapidjson/document.h"
+#include "../../3rdparty/rapidjson/prettywriter.h"
+#include "../../3rdparty/rapidjson/streamwrapper.h"
 
 namespace current {
 namespace serialization {
@@ -54,8 +54,8 @@ struct JSONSchemaException : TypeSystemParseJSONException {
     if (value) {
       try {
         std::ostringstream os;
-        auto stream = rapidjson::GenericWriteStream(os);
-        auto writer = rapidjson::Writer<rapidjson::GenericWriteStream>(stream);
+        rapidjson::OStreamWrapper stream(os);
+        rapidjson::Writer<rapidjson::OStreamWrapper> writer(stream);
         rapidjson::Document document;
         if (value->IsObject() || value->IsArray()) {
           // Objects and arrays can be dumped directly.

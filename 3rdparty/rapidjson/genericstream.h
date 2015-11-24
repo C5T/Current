@@ -1,11 +1,11 @@
 // Generic*Stream code from https://code.google.com/p/rapidjson/issues/detail?id=20
-#ifndef RAPIDJSON_CEREAL_GENERICSTREAM_H_
-#define RAPIDJSON_CEREAL_GENERICSTREAM_H_
+#ifndef RAPIDJSON_GENERICSTREAM_H_
+#define RAPIDJSON_GENERICSTREAM_H_
 
 #include "rapidjson.h"
 #include <iostream>
 
-namespace rapidjson_cereal {
+namespace rapidjson {
 
   //! Wrapper of std::istream for input.
   class GenericReadStream {
@@ -35,10 +35,10 @@ namespace rapidjson_cereal {
       }
 
       // Not implemented
-      void Put(Ch)       { RAPIDJSON_CEREAL_ASSERT(false); }
-      void Flush()       { RAPIDJSON_CEREAL_ASSERT(false); }
-      Ch* PutBegin()     { RAPIDJSON_CEREAL_ASSERT(false); return 0; }
-      size_t PutEnd(Ch*) { RAPIDJSON_CEREAL_ASSERT(false); return 0; }
+      void Put(Ch)       { RAPIDJSON_ASSERT(false); }
+      void Flush()       { RAPIDJSON_ASSERT(false); }
+      Ch* PutBegin()     { RAPIDJSON_ASSERT(false); return 0; }
+      size_t PutEnd(Ch*) { RAPIDJSON_ASSERT(false); return 0; }
 
       std::istream * is_;
   };
@@ -75,10 +75,10 @@ namespace rapidjson_cereal {
       }
 
       // Not implemented
-      char Peek() const    { RAPIDJSON_CEREAL_ASSERT(false); }
-      char Take()          { RAPIDJSON_CEREAL_ASSERT(false); }
-      char* PutBegin()     { RAPIDJSON_CEREAL_ASSERT(false); return 0; }
-      size_t PutEnd(char*) { RAPIDJSON_CEREAL_ASSERT(false); return 0; }
+      char Peek() const    { RAPIDJSON_ASSERT(false); }
+      char Take()          { RAPIDJSON_ASSERT(false); }
+      char* PutBegin()     { RAPIDJSON_ASSERT(false); return 0; }
+      size_t PutEnd(char*) { RAPIDJSON_ASSERT(false); return 0; }
 
     private:
       std::ostream& os_;
@@ -89,6 +89,6 @@ namespace rapidjson_cereal {
       stream.PutN(c, n);
     }
 
-} // namespace rapidjson_cereal
+} // namespace rapidjson
 
-#endif // RAPIDJSON_CEREAL_GENERICSTREAM_H_
+#endif // RAPIDJSON_GENERICSTREAM_H_

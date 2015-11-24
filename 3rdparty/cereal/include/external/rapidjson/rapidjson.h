@@ -1,5 +1,5 @@
-#ifndef RAPIDJSON_RAPIDJSON_H_
-#define RAPIDJSON_RAPIDJSON_H_
+#ifndef RAPIDJSON_RAPIDJSON_CEREAL_H_
+#define RAPIDJSON_RAPIDJSON_CEREAL_H_
 
 // Copyright (c) 2011-2012 Milo Yip (miloyip@gmail.com)
 // Version 0.11
@@ -8,86 +8,86 @@
 #include <cstring>	// memcpy()
 
 ///////////////////////////////////////////////////////////////////////////////
-// RAPIDJSON_NO_INT64DEFINE
+// RAPIDJSON_CEREAL_NO_INT64DEFINE
 
 // Here defines int64_t and uint64_t types in global namespace.
-// If user have their own definition, can define RAPIDJSON_NO_INT64DEFINE to disable this.
-#ifndef RAPIDJSON_NO_INT64DEFINE
+// If user have their own definition, can define RAPIDJSON_CEREAL_NO_INT64DEFINE to disable this.
+#ifndef RAPIDJSON_CEREAL_NO_INT64DEFINE
 #ifdef _MSC_VER
 typedef __int64 int64_t;
 typedef unsigned __int64 uint64_t;
 #else
 #include <inttypes.h>
 #endif
-#endif // RAPIDJSON_NO_INT64TYPEDEF
+#endif // RAPIDJSON_CEREAL_NO_INT64TYPEDEF
 
 ///////////////////////////////////////////////////////////////////////////////
-// RAPIDJSON_ENDIAN
-#define RAPIDJSON_LITTLEENDIAN	0	//!< Little endian machine
-#define RAPIDJSON_BIGENDIAN		1	//!< Big endian machine
+// RAPIDJSON_CEREAL_ENDIAN
+#define RAPIDJSON_CEREAL_LITTLEENDIAN	0	//!< Little endian machine
+#define RAPIDJSON_CEREAL_BIGENDIAN		1	//!< Big endian machine
 
 //! Endianness of the machine.
 /*!	GCC provided macro for detecting endianness of the target machine. But other
-	compilers may not have this. User can define RAPIDJSON_ENDIAN to either
-	RAPIDJSON_LITTLEENDIAN or RAPIDJSON_BIGENDIAN.
+	compilers may not have this. User can define RAPIDJSON_CEREAL_ENDIAN to either
+	RAPIDJSON_CEREAL_LITTLEENDIAN or RAPIDJSON_CEREAL_BIGENDIAN.
 */
-#ifndef RAPIDJSON_ENDIAN
+#ifndef RAPIDJSON_CEREAL_ENDIAN
 #ifdef __BYTE_ORDER__
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define RAPIDJSON_ENDIAN RAPIDJSON_LITTLEENDIAN
+#define RAPIDJSON_CEREAL_ENDIAN RAPIDJSON_CEREAL_LITTLEENDIAN
 #else
-#define RAPIDJSON_ENDIAN RAPIDJSON_BIGENDIAN
+#define RAPIDJSON_CEREAL_ENDIAN RAPIDJSON_CEREAL_BIGENDIAN
 #endif // __BYTE_ORDER__
 #else
-#define RAPIDJSON_ENDIAN RAPIDJSON_LITTLEENDIAN	// Assumes little endian otherwise.
+#define RAPIDJSON_CEREAL_ENDIAN RAPIDJSON_CEREAL_LITTLEENDIAN	// Assumes little endian otherwise.
 #endif
-#endif // RAPIDJSON_ENDIAN
+#endif // RAPIDJSON_CEREAL_ENDIAN
 
 ///////////////////////////////////////////////////////////////////////////////
-// RAPIDJSON_SSE2/RAPIDJSON_SSE42/RAPIDJSON_SIMD
+// RAPIDJSON_CEREAL_SSE2/RAPIDJSON_CEREAL_SSE42/RAPIDJSON_CEREAL_SIMD
 
 // Enable SSE2 optimization.
-//#define RAPIDJSON_SSE2
+//#define RAPIDJSON_CEREAL_SSE2
 
 // Enable SSE4.2 optimization.
-//#define RAPIDJSON_SSE42
+//#define RAPIDJSON_CEREAL_SSE42
 
-#if defined(RAPIDJSON_SSE2) || defined(RAPIDJSON_SSE42)
-#define RAPIDJSON_SIMD
+#if defined(RAPIDJSON_CEREAL_SSE2) || defined(RAPIDJSON_CEREAL_SSE42)
+#define RAPIDJSON_CEREAL_SIMD
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-// RAPIDJSON_NO_SIZETYPEDEFINE
+// RAPIDJSON_CEREAL_NO_SIZETYPEDEFINE
 
-#ifndef RAPIDJSON_NO_SIZETYPEDEFINE
-namespace rapidjson {
+#ifndef RAPIDJSON_CEREAL_NO_SIZETYPEDEFINE
+namespace rapidjson_cereal {
 //! Use 32-bit array/string indices even for 64-bit platform, instead of using size_t.
-/*! User may override the SizeType by defining RAPIDJSON_NO_SIZETYPEDEFINE.
+/*! User may override the SizeType by defining RAPIDJSON_CEREAL_NO_SIZETYPEDEFINE.
 */
 typedef unsigned SizeType;
-} // namespace rapidjson
+} // namespace rapidjson_cereal
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////
-// RAPIDJSON_ASSERT
+// RAPIDJSON_CEREAL_ASSERT
 
 //! Assertion.
 /*! By default, rapidjson uses C assert() for assertion.
-	User can override it by defining RAPIDJSON_ASSERT(x) macro.
+	User can override it by defining RAPIDJSON_CEREAL_ASSERT(x) macro.
 */
-#ifndef RAPIDJSON_ASSERT
+#ifndef RAPIDJSON_CEREAL_ASSERT
 #include <cassert>
-#define RAPIDJSON_ASSERT(x) assert(x)
-#endif // RAPIDJSON_ASSERT
+#define RAPIDJSON_CEREAL_ASSERT(x) assert(x)
+#endif // RAPIDJSON_CEREAL_ASSERT
 
 ///////////////////////////////////////////////////////////////////////////////
 // Helpers
 
-#define RAPIDJSON_MULTILINEMACRO_BEGIN do {  
-#define RAPIDJSON_MULTILINEMACRO_END \
+#define RAPIDJSON_CEREAL_MULTILINEMACRO_BEGIN do {  
+#define RAPIDJSON_CEREAL_MULTILINEMACRO_END \
 } while((void)0, 0)
 
-namespace rapidjson {
+namespace rapidjson_cereal {
 
 ///////////////////////////////////////////////////////////////////////////////
 // Allocator
@@ -186,8 +186,8 @@ public:
 	MemoryPoolAllocator(char *buffer, size_t size, size_t chunkSize = kDefaultChunkCapacity, BaseAllocator* baseAllocator = 0) :
 		chunkHead_(0), chunk_capacity_(chunkSize), userBuffer_(buffer), baseAllocator_(baseAllocator), ownBaseAllocator_(0)
 	{
-		RAPIDJSON_ASSERT(buffer != 0);
-		RAPIDJSON_ASSERT(size > sizeof(ChunkHeader));
+		RAPIDJSON_CEREAL_ASSERT(buffer != 0);
+		RAPIDJSON_CEREAL_ASSERT(size > sizeof(ChunkHeader));
 		chunkHead_ = (ChunkHeader*)buffer;
 		chunkHead_->capacity = size - sizeof(ChunkHeader);
 		chunkHead_->size = 0;
@@ -239,7 +239,7 @@ public:
 			AddChunk(chunk_capacity_ > size ? chunk_capacity_ : size);
 
 		char *buffer = (char *)(chunkHead_ + 1) + chunkHead_->size;
-		RAPIDJSON_ASSERT(((uintptr_t)buffer & 3) == 0);	// returned buffer is aligned to 4
+		RAPIDJSON_CEREAL_ASSERT(((uintptr_t)buffer & 3) == 0);	// returned buffer is aligned to 4
 		chunkHead_->size += size;
 
 		return buffer;
@@ -260,14 +260,14 @@ public:
 			increment = (increment + 3) & ~3;	// Force aligning size to 4
 			if (chunkHead_->size + increment <= chunkHead_->capacity) {
 				chunkHead_->size += increment;
-				RAPIDJSON_ASSERT(((uintptr_t)originalPtr & 3) == 0);	// returned buffer is aligned to 4
+				RAPIDJSON_CEREAL_ASSERT(((uintptr_t)originalPtr & 3) == 0);	// returned buffer is aligned to 4
 				return originalPtr;
 			}
 		}
 
 		// Realloc process: allocate and copy memory, do not free original buffer.
 		void* newBuffer = Malloc(newSize);
-		RAPIDJSON_ASSERT(newBuffer != 0);	// Do not handle out-of-memory explicitly.
+		RAPIDJSON_CEREAL_ASSERT(newBuffer != 0);	// Do not handle out-of-memory explicitly.
 		return memcpy(newBuffer, originalPtr, originalSize);
 	}
 
@@ -348,7 +348,7 @@ struct UTF8 {
 			*buffer++ = 0x80 | (codepoint & 0x3F);
 		}
 		else {
-			RAPIDJSON_ASSERT(codepoint <= 0x10FFFF);
+			RAPIDJSON_CEREAL_ASSERT(codepoint <= 0x10FFFF);
 			*buffer++ = 0xF0 | ((codepoint >> 18) & 0xFF);
 			*buffer++ = 0x80 | ((codepoint >> 12) & 0x3F);
 			*buffer++ = 0x80 | ((codepoint >> 6) & 0x3F);
@@ -372,11 +372,11 @@ struct UTF16 {
 
 	static Ch* Encode(Ch* buffer, unsigned codepoint) {
 		if (codepoint <= 0xFFFF) {
-			RAPIDJSON_ASSERT(codepoint < 0xD800 || codepoint > 0xDFFF); // Code point itself cannot be surrogate pair 
+			RAPIDJSON_CEREAL_ASSERT(codepoint < 0xD800 || codepoint > 0xDFFF); // Code point itself cannot be surrogate pair 
 			*buffer++ = static_cast<Ch>(codepoint);
 		}
 		else {
-			RAPIDJSON_ASSERT(codepoint <= 0x10FFFF);
+			RAPIDJSON_CEREAL_ASSERT(codepoint <= 0x10FFFF);
 			unsigned v = codepoint - 0x10000;
 			*buffer++ = static_cast<Ch>((v >> 10) + 0xD800);
 			*buffer++ = (v & 0x3FF) + 0xDC00;
@@ -398,7 +398,7 @@ struct UTF32 {
 	typedef CharType Ch;
 
 	static Ch *Encode(Ch* buffer, unsigned codepoint) {
-		RAPIDJSON_ASSERT(codepoint <= 0x10FFFF);
+		RAPIDJSON_CEREAL_ASSERT(codepoint <= 0x10FFFF);
 		*buffer++ = codepoint;
 		return buffer;
 	}
@@ -466,9 +466,9 @@ struct GenericStringStream {
 	Ch Take() { return *src_++; }
 	size_t Tell() const { return src_ - head_; }
 
-	Ch* PutBegin() { RAPIDJSON_ASSERT(false); return 0; }
-	void Put(Ch) { RAPIDJSON_ASSERT(false); }
-	size_t PutEnd(Ch*) { RAPIDJSON_ASSERT(false); return 0; }
+	Ch* PutBegin() { RAPIDJSON_CEREAL_ASSERT(false); return 0; }
+	void Put(Ch) { RAPIDJSON_CEREAL_ASSERT(false); }
+	size_t PutEnd(Ch*) { RAPIDJSON_CEREAL_ASSERT(false); return 0; }
 
 	const Ch* src_;		//!< Current read position.
 	const Ch* head_;	//!< Original head of the string.
@@ -496,7 +496,7 @@ struct GenericInsituStringStream {
 
 	// Write
 	Ch* PutBegin() { return dst_ = src_; }
-	void Put(Ch c) { RAPIDJSON_ASSERT(dst_ != 0); *dst_++ = c; }
+	void Put(Ch c) { RAPIDJSON_CEREAL_ASSERT(dst_ != 0); *dst_++ = c; }
 	size_t PutEnd(Ch* begin) { return dst_ - begin; }
 
 	Ch* src_;
@@ -520,6 +520,6 @@ enum Type {
 	kNumberType = 6,	//!< number
 };
 
-} // namespace rapidjson
+} // namespace rapidjson_cereal
 
-#endif // RAPIDJSON_RAPIDJSON_H_
+#endif // RAPIDJSON_RAPIDJSON_CEREAL_H_

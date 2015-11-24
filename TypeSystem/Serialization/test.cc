@@ -76,11 +76,6 @@ CURRENT_STRUCT(ComplexSerializable) {
   size_t length_of_v() const { return v.size(); }
 };
 
-CURRENT_STRUCT(WithFloatingPoint) {
-  CURRENT_FIELD(f, float);
-  CURRENT_FIELD(d, double);
-};
-
 CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
 CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
@@ -210,49 +205,6 @@ TEST(Serialization, JSON) {
   EXPECT_EQ(
       "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
       JSON(complex_object));
-
-  // Serialization of floating point types.
-  // TODO: Think of dealing with 'NaN' and `inf` - JSON standard does not allow them.
-  //       Their string representation in C++ is platform-specific.
-  //       Thus, this test now is GCC/clang-specific.
-  {
-    WithFloatingPoint floating_min;
-    floating_min.f = std::numeric_limits<float>::min();
-    floating_min.d = std::numeric_limits<double>::min();
-    const std::string serialized_fmin = JSON(floating_min);
-    EXPECT_EQ("{\"f\":1.175494350822287508e-38,\"d\":2.2250738585072013831e-308}", serialized_fmin);
-    WithFloatingPoint fmin_from_json = ParseJSON<WithFloatingPoint>(serialized_fmin);
-    EXPECT_FLOAT_EQ(std::numeric_limits<float>::min(), fmin_from_json.f);
-    // Due to precision issues, minimum double value becomes 0.
-    EXPECT_NEAR(std::numeric_limits<double>::min(), fmin_from_json.d, 2.2250738586e-308);
-
-    WithFloatingPoint floating_max;
-    floating_max.f = std::numeric_limits<float>::max();
-    floating_max.d = std::numeric_limits<double>::max();
-    const std::string serialized_fmax = JSON(floating_max);
-    EXPECT_EQ("{\"f\":3.4028234663852885981e+38,\"d\":1.7976931348623157081e+308}", serialized_fmax);
-    WithFloatingPoint fmax_from_json = ParseJSON<WithFloatingPoint>(serialized_fmax);
-    EXPECT_FLOAT_EQ(std::numeric_limits<float>::max(), fmax_from_json.f);
-    EXPECT_DOUBLE_EQ(std::numeric_limits<double>::max(), fmax_from_json.d);
-
-    WithFloatingPoint floating_inf;
-    floating_inf.f = std::numeric_limits<float>::infinity();
-    floating_inf.d = std::numeric_limits<double>::infinity();
-    const std::string serialized_finf = JSON(floating_inf);
-    EXPECT_EQ("{\"f\":inf,\"d\":inf}", serialized_finf);
-    WithFloatingPoint finf_from_json = ParseJSON<WithFloatingPoint>(serialized_finf);
-    EXPECT_TRUE(std::isinf(finf_from_json.f));
-    EXPECT_TRUE(std::isinf(finf_from_json.d));
-
-    WithFloatingPoint floating_nan;
-    floating_nan.f = std::numeric_limits<float>::quiet_NaN();
-    floating_nan.d = std::numeric_limits<double>::quiet_NaN();
-    const std::string serialized_fnan = JSON(floating_nan);
-    EXPECT_EQ("{\"f\":nan,\"d\":nan}", serialized_fnan);
-    WithFloatingPoint fnan_from_json = ParseJSON<WithFloatingPoint>(serialized_fnan);
-    EXPECT_TRUE(std::isnan(fnan_from_json.f));
-    EXPECT_TRUE(std::isnan(fnan_from_json.d));
-  }
 
   // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
   {
@@ -495,25 +447,23 @@ TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
 }
 
 TEST(Serialization, JSONForCppTypes) {
-  // RapidJSON requires the top-level node to be an array or object.
-  // Thus, just `JSON(42)` or `JSON("foo")` doesn't work. But arrays do. ;-)
   EXPECT_EQ("true", JSON(true));
   EXPECT_TRUE(ParseJSON<bool>("true"));
-  EXPECT_TRUE(ParseJSON<bool>("1"));
+  ASSERT_THROW(ParseJSON<bool>("1"), JSONSchemaException);
 
   EXPECT_EQ("false", JSON(false));
   EXPECT_FALSE(ParseJSON<bool>("false"));
-  EXPECT_FALSE(ParseJSON<bool>("0"));
-  EXPECT_FALSE(ParseJSON<bool>(""));
+  ASSERT_THROW(ParseJSON<bool>("0"), JSONSchemaException);
+  ASSERT_THROW(ParseJSON<bool>(""), InvalidJSONException);
 
   EXPECT_EQ("42", JSON(42));
   EXPECT_EQ(42, ParseJSON<int>("42"));
 
-  EXPECT_EQ("forty two", JSON("forty two"));
-  EXPECT_EQ("forty two", ParseJSON<std::string>("forty two"));
+  EXPECT_EQ("\"forty two\"", JSON("forty two"));
+  EXPECT_EQ("forty two", ParseJSON<std::string>("\"forty two\""));
 
-  EXPECT_EQ(std::string("a\0b", 3), JSON(std::string("a\0b", 3)));
-  EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>(std::string("c\0d", 3)));
+  EXPECT_EQ("\"a\\u0000b\"", JSON(std::string("a\0b", 3)));
+  EXPECT_EQ(std::string("c\0d", 3), ParseJSON<std::string>("\"c\\u0000d\""));
 
   EXPECT_EQ("[]", JSON(std::vector<uint64_t>()));
   EXPECT_EQ("[1,2,3]", JSON(std::vector<uint64_t>({1, 2, 3})));
@@ -651,11 +601,11 @@ TEST(Serialization, OptionalAsJSON) {
 TEST(Serialization, PolymorphicAsJSON) {
   using namespace serialization_test;
   {
-    const Polymorphic<Empty, Serializable, WithFloatingPoint> p1(make_unique<Empty>());
+    const Polymorphic<Empty, Serializable, ComplexSerializable> p1(make_unique<Empty>());
     EXPECT_EQ("{\"Empty\":{},\"\":9200000002835747520}", JSON(p1));
   }
   {
-    const Polymorphic<Empty, Serializable, WithFloatingPoint> p2(make_unique<Serializable>(42));
+    const Polymorphic<Empty, Serializable, ComplexSerializable> p2(make_unique<Serializable>(42));
     EXPECT_EQ("{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":9201007113239016790}",
               JSON(p2));
   }
@@ -666,7 +616,7 @@ TEST(RapidJSON, Smoke) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::GenericWriteStream;
+  using rapidjson::OStreamWrapper;
 
   std::string json;
 
@@ -683,8 +633,8 @@ TEST(RapidJSON, Smoke) {
     EXPECT_EQ("bar", document["foo"].GetString());
 
     std::ostringstream os;
-    auto stream = GenericWriteStream(os);
-    auto writer = Writer<GenericWriteStream>(stream);
+    OStreamWrapper stream(os);
+    Writer<OStreamWrapper> writer(stream);
     document.Accept(writer);
     json = os.str();
   }
@@ -707,7 +657,7 @@ TEST(RapidJSON, Array) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::GenericWriteStream;
+  using rapidjson::OStreamWrapper;
 
   std::string json;
 
@@ -725,8 +675,8 @@ TEST(RapidJSON, Array) {
     EXPECT_FALSE(document.IsObject());
 
     std::ostringstream os;
-    auto stream = GenericWriteStream(os);
-    auto writer = Writer<GenericWriteStream>(stream);
+    OStreamWrapper stream(os);
+    Writer<OStreamWrapper> writer(stream);
     document.Accept(writer);
     json = os.str();
   }
@@ -738,7 +688,7 @@ TEST(RapidJSON, NullInString) {
   using rapidjson::Document;
   using rapidjson::Value;
   using rapidjson::Writer;
-  using rapidjson::GenericWriteStream;
+  using rapidjson::OStreamWrapper;
 
   std::string json;
 
@@ -751,8 +701,8 @@ TEST(RapidJSON, NullInString) {
     document.AddMember("s", s, allocator);
 
     std::ostringstream os;
-    auto stream = GenericWriteStream(os);
-    auto writer = Writer<GenericWriteStream>(stream);
+    OStreamWrapper stream(os);
+    Writer<OStreamWrapper> writer(stream);
     document.Accept(writer);
     json = os.str();
   }

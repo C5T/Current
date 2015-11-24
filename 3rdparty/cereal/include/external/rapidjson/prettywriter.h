@@ -1,9 +1,9 @@
-#ifndef RAPIDJSON_PRETTYWRITER_H_
-#define RAPIDJSON_PRETTYWRITER_H_
+#ifndef RAPIDJSON_CEREAL_PRETTYWRITER_H_
+#define RAPIDJSON_CEREAL_PRETTYWRITER_H_
 
 #include "writer.h"
 
-namespace rapidjson {
+namespace rapidjson_cereal {
 
 //! Writer with indentation and spacing.
 /*!
@@ -31,7 +31,7 @@ public:
 		\note The default indentation is 4 spaces.
 	*/
 	PrettyWriter& SetIndent(Ch indentChar, unsigned indentCharCount) {
-		RAPIDJSON_ASSERT(indentChar == ' ' || indentChar == '\t' || indentChar == '\n' || indentChar == '\r');
+		RAPIDJSON_CEREAL_ASSERT(indentChar == ' ' || indentChar == '\t' || indentChar == '\n' || indentChar == '\r');
 		indentChar_ = indentChar;
 		indentCharCount_ = indentCharCount;
 		return *this;
@@ -64,8 +64,8 @@ public:
 
 	PrettyWriter& EndObject(SizeType memberCount = 0) {
 		(void)memberCount;
-		RAPIDJSON_ASSERT(Base::level_stack_.GetSize() >= sizeof(typename Base::Level));
-		RAPIDJSON_ASSERT(!Base::level_stack_.template Top<typename Base::Level>()->inArray);
+		RAPIDJSON_CEREAL_ASSERT(Base::level_stack_.GetSize() >= sizeof(typename Base::Level));
+		RAPIDJSON_CEREAL_ASSERT(!Base::level_stack_.template Top<typename Base::Level>()->inArray);
 		bool empty = Base::level_stack_.template Pop<typename Base::Level>(1)->valueCount == 0;
 
 		if (!empty) {
@@ -85,8 +85,8 @@ public:
 
 	PrettyWriter& EndArray(SizeType memberCount = 0) {
 		(void)memberCount;
-		RAPIDJSON_ASSERT(Base::level_stack_.GetSize() >= sizeof(typename Base::Level));
-		RAPIDJSON_ASSERT(Base::level_stack_.template Top<typename Base::Level>()->inArray);
+		RAPIDJSON_CEREAL_ASSERT(Base::level_stack_.GetSize() >= sizeof(typename Base::Level));
+		RAPIDJSON_CEREAL_ASSERT(Base::level_stack_.template Top<typename Base::Level>()->inArray);
 		bool empty = Base::level_stack_.template Pop<typename Base::Level>(1)->valueCount == 0;
 
 		if (!empty) {
@@ -135,11 +135,11 @@ protected:
 					WriteIndent();
 			}
 			if (!level->inArray && level->valueCount % 2 == 0)
-				RAPIDJSON_ASSERT(type == kStringType);  // if it's in object, then even number should be a name
+				RAPIDJSON_CEREAL_ASSERT(type == kStringType);  // if it's in object, then even number should be a name
 			level->valueCount++;
 		}
 		else
-			RAPIDJSON_ASSERT(type == kObjectType || type == kArrayType);
+			RAPIDJSON_CEREAL_ASSERT(type == kObjectType || type == kArrayType);
 	}
 
 	void WriteIndent()  {
@@ -151,6 +151,6 @@ protected:
 	unsigned indentCharCount_;
 };
 
-} // namespace rapidjson
+} // namespace rapidjson_cereal
 
-#endif // RAPIDJSON_RAPIDJSON_H_
+#endif // RAPIDJSON_CEREAL_PRETTYWRITER_H_
