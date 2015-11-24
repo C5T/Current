@@ -92,7 +92,7 @@ CURRENT_STRUCT(SchemaInfo) {
 struct PrimitiveTypesList {
   std::map<TypeID, std::string> cpp_name;
   PrimitiveTypesList() {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type) \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type, unused_fsharp_type) \
   cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

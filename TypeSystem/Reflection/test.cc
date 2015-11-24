@@ -360,6 +360,25 @@ TEST(Reflection, StructSchema) {
         struct_schema.CppDescription(z_type_id, true));
   }
 
+#if 0
+  {
+    EXPECT_EQ(
+        "type X = {\n"
+        "  i : int32\n"
+        "}\n",
+        struct_schema.FSharpDescription(x_type_id, true));
+    EXPECT_EQ(
+        "type X = {\n"
+        "  i : int32\n"
+        "}\n"
+        "\n"
+        "type Y = {\n"
+        "  v : X array\n"
+        "}\n",
+        struct_schema.FSharpDescription(y_type_id, true));
+  }
+#endif
+
   struct_schema.AddType<C>();
 
   {
