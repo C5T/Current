@@ -31,11 +31,17 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 
+#include "../TypeSystem/struct.h"
+
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
 
 #include "../Bricks/strings/strings.h"
+
+#if 0
 #include "../Bricks/cerealize/cerealize.h"
+#endif
+
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/dflags/dflags.h"
 
@@ -61,28 +67,19 @@ using bricks::time::MILLISECONDS_INTERVAL;
 namespace sherlock_unittest {
 
 // The records we work with.
-// TODO(dkorolev): Support and test polymorphic types.
-struct Record {
-  int x_;
-  Record(int x = 0) : x_(x) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(cereal::make_nvp("x", x_));
-  }
+CURRENT_STRUCT(Record) {
+  CURRENT_FIELD(x, int);
+  CURRENT_CONSTRUCTOR(Record)(int x = 0) : x(x) {}
 };
 
-struct RecordWithTimestamp {
+CURRENT_STRUCT(RecordWithTimestamp) {
   // TODO(dkorolev): Make the `EPOCH_MILLISECONDS` type serializable.
-  std::string s_;
-  uint64_t timestamp_;
-  RecordWithTimestamp(std::string s = "", EPOCH_MILLISECONDS timestamp = EPOCH_MILLISECONDS(0))
-      : s_(s), timestamp_(static_cast<uint64_t>(timestamp)) {}
-  template <typename A>
-  void serialize(A& ar) {
-    ar(cereal::make_nvp("s", s_), cereal::make_nvp("t", timestamp_));
-  }
-
-  EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp_); }
+  CURRENT_FIELD(s, std::string);
+  CURRENT_FIELD(t, uint64_t);
+  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
+                                           EPOCH_MILLISECONDS timestamp = EPOCH_MILLISECONDS(0))
+      : s(s), t(static_cast<uint64_t>(timestamp)) {}
+  EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(t); }
 };
 
 }  // namespace sherlock_unittest
@@ -124,7 +121,7 @@ struct SherlockTestProcessor final {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
-    data_.results_ += ToString(entry.x_);
+    data_.results_ += ToString(entry.x);
     ++data_.seen_;
     return data_.seen_ < max_to_process_;
   }
@@ -293,7 +290,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     inline bool operator()(const RecordWithTimestamp& entry, size_t index, size_t total) {
       static_cast<void>(index);
       static_cast<void>(total);
-      data_.push_back(CerealizeJSON(entry) + '\n');
+      data_.push_back(JSON(entry) + '\n');
       ++count_;
       return true;
     }
@@ -367,7 +364,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
-const std::string sherlock_golden_data = "{\"e\":{\"x\":1}}\n{\"e\":{\"x\":2}}\n{\"e\":{\"x\":3}}\n";
+const std::string sherlock_golden_data = "{\"x\":1}\n{\"x\":2}\n{\"x\":3}\n";
 
 TEST(Sherlock, PersistsToFile) {
   using namespace sherlock_unittest;
@@ -376,7 +373,7 @@ TEST(Sherlock, PersistsToFile) {
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
 
   auto persisted =
-      sherlock::Stream<Record, blocks::persistence::AppendToFile>("persisted", persistence_file_name);
+      sherlock::Stream<Record, blocks::persistence::NewAppendToFile>("persisted", persistence_file_name);
 
   persisted.Publish(1);
   persisted.Publish(2);
@@ -396,7 +393,7 @@ TEST(Sherlock, ParsesFromFile) {
   const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
   bricks::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
-  auto parsed = sherlock::Stream<Record, blocks::persistence::AppendToFile>("parsed", persistence_file_name);
+  auto parsed = sherlock::Stream<Record, blocks::persistence::NewAppendToFile>("parsed", persistence_file_name);
 
   Data d;
   {
