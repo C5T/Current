@@ -445,6 +445,7 @@ TEST(Serialization, StructSchema) {
   using current::reflection::Reflector;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
+  using current::reflection::Language;
 
   StructSchema struct_schema;
   struct_schema.AddType<ComplexSerializable>();
@@ -470,7 +471,7 @@ TEST(Serialization, StructSchema) {
       "  bool b;\n"
       "  Enum e;\n"
       "};\n",
-      loaded_schema.CppDescription(serializable_type_id));
+      loaded_schema.Description(Language::CPP(), serializable_type_id));
 }
 
 // TODO(dkorolev): Move this test outside `Serialization`.

@@ -277,8 +277,12 @@ TEST(Reflection, StructSchema) {
   using current::reflection::TypeID;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
+  using current::reflection::Language;
 
   StructSchema struct_schema;
+
+  Language::CPP cpp;
+  Language::FSharp fsharp;
 
   {
     SchemaInfo schema = struct_schema.GetSchemaInfo();
@@ -323,21 +327,21 @@ TEST(Reflection, StructSchema) {
     EXPECT_EQ(9311166123550858204ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[1].first));
     EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
 
-    EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
+    EXPECT_EQ("std::vector<X>", struct_schema.Description(cpp, schema.structs[y_type_id].fields[0].first));
     EXPECT_EQ("std::vector<std::vector<Enum>>",
-              struct_schema.CppDescription(schema.structs[z_type_id].fields[1].first));
+              struct_schema.Description(cpp, schema.structs[z_type_id].fields[1].first));
     EXPECT_EQ(
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
         "};\n",
-        struct_schema.CppDescription(z_type_id));
+        struct_schema.Description(cpp, z_type_id));
 
     EXPECT_EQ(
         "struct X {\n"
         "  int32_t i;\n"
         "};\n",
-        struct_schema.CppDescription(x_type_id, true));
+        struct_schema.Description(cpp, x_type_id, true));
     EXPECT_EQ(
         "struct X {\n"
         "  int32_t i;\n"
@@ -345,7 +349,7 @@ TEST(Reflection, StructSchema) {
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n",
-        struct_schema.CppDescription(y_type_id, true));
+        struct_schema.Description(cpp, y_type_id, true));
     EXPECT_EQ(
         "struct X {\n"
         "  int32_t i;\n"
@@ -357,16 +361,15 @@ TEST(Reflection, StructSchema) {
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
         "};\n",
-        struct_schema.CppDescription(z_type_id, true));
+        struct_schema.Description(cpp, z_type_id, true));
   }
 
-#if 0
   {
     EXPECT_EQ(
         "type X = {\n"
         "  i : int32\n"
         "}\n",
-        struct_schema.FSharpDescription(x_type_id, true));
+        struct_schema.Description(fsharp, x_type_id, true));
     EXPECT_EQ(
         "type X = {\n"
         "  i : int32\n"
@@ -375,9 +378,8 @@ TEST(Reflection, StructSchema) {
         "type Y = {\n"
         "  v : X array\n"
         "}\n",
-        struct_schema.FSharpDescription(y_type_id, true));
+        struct_schema.Description(fsharp, y_type_id, true));
   }
-#endif
 
   struct_schema.AddType<C>();
 
@@ -406,7 +408,7 @@ TEST(Reflection, StructSchema) {
         "struct C {\n"
         "  Optional<B> b;\n"
         "};\n",
-        struct_schema.CppDescription(c_type_id));
+        struct_schema.Description(cpp, c_type_id));
   }
 
   struct_schema.AddType<SelfContainingC>();
@@ -427,7 +429,7 @@ TEST(Reflection, StructSchema) {
         "  std::vector<SelfContainingB> v;\n"
         "  std::map<std::string, SelfContainingC> m;\n"
         "};\n",
-        struct_schema.CppDescription(self1_type_id, true));
+        struct_schema.Description(cpp, self1_type_id, true));
   }
 }
 

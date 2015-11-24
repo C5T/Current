@@ -89,13 +89,43 @@ CURRENT_STRUCT(SchemaInfo) {
   CURRENT_FIELD(ordered_struct_list, std::vector<TypeID>);
 };
 
+// Metaprogramming to make it easy to add support for new programming languages to include in the schema.
+// TODO(dkorolev): There should probably be more compile-time stuff.
+struct Language {
+  struct CPP {
+    static std::string ErrorMessageWithTypeId(const TypeID type_id) {
+      return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
+    }
+  };
+  struct FSharp {
+    static std::string ErrorMessageWithTypeId(const TypeID type_id) {
+      // TODO(dkorolev): Probably somewhat different syntax.
+      return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
+    }
+  };
+};
+
 struct PrimitiveTypesList {
   std::map<TypeID, std::string> cpp_name;
+  std::map<TypeID, std::string> fsharp_name;
   PrimitiveTypesList() {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type, unused_fsharp_type) \
-  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type, fsharp_type) \
+  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;                   \
+  fsharp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = fsharp_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
+  }
+  std::string PrimitiveTypeName(const Language::CPP&, const TypeID type_id) const {
+    if (cpp_name.count(type_id) != 0u) {
+      return cpp_name.at(type_id);
+    }
+    return "UNKNOWN_BASIC_TYPE_" + bricks::strings::ToString(type_id);
+  }
+  std::string PrimitiveTypeName(const Language::FSharp&, const TypeID type_id) const {
+    if (fsharp_name.count(type_id) != 0u) {
+      return fsharp_name.at(type_id);
+    }
+    return "UNKNOWN_BASIC_TYPE_" + bricks::strings::ToString(type_id);
   }
 };
 
@@ -113,11 +143,12 @@ struct StructSchema {
 
   const SchemaInfo& GetSchemaInfo() const { return schema_; }
 
-  std::string CppDescription(const TypeID type_id, bool with_dependencies = false) {
+  template <typename L>
+  std::string Description(const L& language, const TypeID type_id, bool with_dependencies = false) {
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       if (schema_.structs.count(type_id) == 0u) {
-        return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
+        return L::ErrorMessageWithTypeId(type_id);
       }
       const StructInfo& struct_info = schema_.structs[type_id];
       std::ostringstream oss;
@@ -125,22 +156,37 @@ struct StructSchema {
       if (with_dependencies) {
         const std::vector<TypeID> structs_to_describe = ListStructDependencies(type_id);
         for (const TypeID id : structs_to_describe) {
-          oss << CppDescription(id) << "\n";
+          oss << Description(language, id) << '\n';
         }
       }
 
-      oss << "struct " << struct_info.name;
-      if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
-        oss << " : " << CppType(struct_info.super_type_id);
+      if (std::is_same<L, Language::CPP>::value) {
+        oss << "struct " << struct_info.name;
+        if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
+          oss << " : " << TypeName(language, struct_info.super_type_id);
+        }
+        oss << " {\n";
+        for (const auto& f : struct_info.fields) {
+          oss << "  " << TypeName(language, f.first) << " " << f.second << ";\n";
+        }
+        oss << "};\n";
+      } else if (std::is_same<L, Language::FSharp>::value) {
+        oss << "type " << struct_info.name;
+        if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
+          oss << "  // With unsupported for now base type " << TypeName(language, struct_info.super_type_id);
+        }
+        oss << " = {\n";
+        for (const auto& f : struct_info.fields) {
+          oss << "  " << f.second << " : " << TypeName(language, f.first) << '\n';
+        }
+        oss << "}\n";
+
+      } else {
+        oss << "Runtime error. Which should really be a compilation error.\n";
       }
-      oss << " {\n";
-      for (const auto& f : struct_info.fields) {
-        oss << "  " << CppType(f.first) << " " << f.second << ";\n";
-      }
-      oss << "};\n";
       return oss.str();
     } else {
-      return CppType(type_id);
+      return TypeName(language, type_id);
     }
   }
 
@@ -289,7 +335,8 @@ struct StructSchema {
     }
   }
 
-  std::string CppType(const TypeID type_id) {
+  template <typename L>
+  std::string TypeName(const L& language, const TypeID type_id) {
     const uint64_t type_prefix = TypePrefix(type_id);
     if (type_prefix == TYPEID_STRUCT_PREFIX) {
       if (schema_.structs.count(type_id) == 0u) {
@@ -298,10 +345,7 @@ struct StructSchema {
       return schema_.structs[type_id].name;
     } else {
       if (type_prefix == TYPEID_BASIC_PREFIX) {
-        if (primitive_types_.cpp_name.count(type_id) != 0u) {
-          return primitive_types_.cpp_name.at(type_id);
-        }
-        return "UNKNOWN_BASIC_TYPE_" + bricks::strings::ToString(type_id);
+        return primitive_types_.PrimitiveTypeName(language, type_id);
       }
       if (schema_.types.count(type_id) == 0u) {
         return "UNKNOWN_INTERMEDIATE_TYPE_" + bricks::strings::ToString(type_id);
@@ -310,41 +354,59 @@ struct StructSchema {
         return schema_.types[type_id].enum_name;
       }
       if (type_prefix == TYPEID_VECTOR_PREFIX) {
-        return DescribeCppVector(schema_.types[type_id]);
+        return DescribeVector(language, schema_.types[type_id]);
       }
       if (type_prefix == TYPEID_PAIR_PREFIX) {
-        return DescribeCppPair(schema_.types[type_id]);
+        return DescribePair(language, schema_.types[type_id]);
       }
       if (type_prefix == TYPEID_MAP_PREFIX) {
-        return DescribeCppMap(schema_.types[type_id]);
+        return DescribeMap(language, schema_.types[type_id]);
       }
       if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
-        return DescribeCppOptional(schema_.types[type_id]);
+        return DescribeOptional(language, schema_.types[type_id]);
       }
       return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
     }
   }
 
-  std::string DescribeCppVector(const TypeInfo& type_info) {
+  std::string DescribeVector(const Language::CPP& language, const TypeInfo& type_info) {
     assert(type_info.included_types.size() == 1u);
-    return "std::vector<" + CppType(type_info.included_types[0]) + '>';
+    return "std::vector<" + TypeName(language, type_info.included_types[0]) + '>';
   }
-
-  std::string DescribeCppPair(const TypeInfo& type_info) {
-    assert(type_info.included_types.size() == 2u);
-    return "std::pair<" + CppType(type_info.included_types[0]) + ", " + CppType(type_info.included_types[1]) +
-           '>';
-  }
-
-  std::string DescribeCppMap(const TypeInfo& type_info) {
-    assert(type_info.included_types.size() == 2u);
-    return "std::map<" + CppType(type_info.included_types[0]) + ", " + CppType(type_info.included_types[1]) +
-           '>';
-  }
-
-  std::string DescribeCppOptional(const TypeInfo& type_info) {
+  std::string DescribeVector(const Language::FSharp& language, const TypeInfo& type_info) {
     assert(type_info.included_types.size() == 1u);
-    return "Optional<" + CppType(type_info.included_types[0]) + '>';
+    return TypeName(language, type_info.included_types[0]) + " array";
+  }
+
+  std::string DescribePair(const Language::CPP& language, const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 2u);
+    return "std::pair<" + TypeName(language, type_info.included_types[0]) + ", " +
+           TypeName(language, type_info.included_types[1]) + '>';
+  }
+  std::string DescribePair(const Language::FSharp& language, const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 2u);
+    return TypeName(language, type_info.included_types[0]) + " * " +
+           TypeName(language, type_info.included_types[1]);
+  }
+
+  std::string DescribeMap(const Language::CPP& language, const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 2u);
+    return "std::map<" + TypeName(language, type_info.included_types[0]) + ", " +
+           TypeName(language, type_info.included_types[1]) + '>';
+  }
+  std::string DescribeMap(const Language::FSharp& language, const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 2u);
+    return "UNSUPPORTED_MAP<" + TypeName(language, type_info.included_types[0]) + ", " +
+           TypeName(language, type_info.included_types[1]) + '>';
+  }
+
+  std::string DescribeOptional(const Language::CPP& language, const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 1u);
+    return "Optional<" + TypeName(language, type_info.included_types[0]) + '>';
+  }
+  std::string DescribeOptional(const Language::FSharp& language, const TypeInfo& type_info) {
+    assert(type_info.included_types.size() == 1u);
+    return TypeName(language, type_info.included_types[0]) + " option";
   }
 };
 
