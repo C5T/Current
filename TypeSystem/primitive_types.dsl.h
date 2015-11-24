@@ -43,7 +43,7 @@ CURRENT_DECLARE_PRIMITIVE_TYPE(32, int16_t, Int16, "int16")
 CURRENT_DECLARE_PRIMITIVE_TYPE(33, int32_t, Int32, "int32")
 CURRENT_DECLARE_PRIMITIVE_TYPE(34, int64_t, Int64, "int64")
 
-CURRENT_DECLARE_PRIMITIVE_TYPE(41, char, Char, "NON_PORTABLE_char")  // As F# chars are Unicode. -- D.K.
+CURRENT_DECLARE_PRIMITIVE_TYPE(41, char, Char, "char")  // Although F# chars are Unicode.
 CURRENT_DECLARE_PRIMITIVE_TYPE(42, std::string, String, "string")
 
 CURRENT_DECLARE_PRIMITIVE_TYPE(51, float, Float, "float")

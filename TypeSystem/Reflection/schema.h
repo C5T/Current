@@ -90,14 +90,36 @@ CURRENT_STRUCT(SchemaInfo) {
 };
 
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
-// TODO(dkorolev): There should probably be more compile-time stuff.
+// TODO(dkorolev): Some of the stuff below could be compile-time, it's just that struct specializations
+// are not allowed within other structs, while overloading does its job.
 struct Language {
   struct CPP {
+    static std::string Header() {
+      return "// g++ -c -std=c++11 current.cc\n"
+             "\n"
+             "#include <string>\n"
+             "#include <cstdint>\n"
+             "#include <vector>\n"
+             "#include <map>\n"
+             "#include <utility>\n"
+             "\n"
+             "namespace current {\n";
+    }
+    static std::string Footer() { return "}  // namespace current\n"; }
     static std::string ErrorMessageWithTypeId(const TypeID type_id) {
       return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
     }
   };
   struct FSharp {
+    static std::string Header() {
+      return "// fsharpi -r Newtonsoft.Json.dll current.fsx\n"
+             "\n"
+             "open Newtonsoft.Json\n"
+             "let inline JSON o = JsonConvert.SerializeObject(o)\n"
+             "let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
+             "\n";
+    }
+    static std::string Footer() { return ""; }
     static std::string ErrorMessageWithTypeId(const TypeID type_id) {
       // TODO(dkorolev): Probably somewhat different syntax.
       return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
@@ -141,52 +163,37 @@ struct StructSchema {
     TraverseType(Reflector().ReflectType<T>());
   }
 
+  // TODO(dkorolev): Polymorphic types.
+
   const SchemaInfo& GetSchemaInfo() const { return schema_; }
 
   template <typename L>
-  std::string Description(const L& language, const TypeID type_id, bool with_dependencies = false) {
-    const uint64_t type_prefix = TypePrefix(type_id);
-    if (type_prefix == TYPEID_STRUCT_PREFIX) {
-      if (schema_.structs.count(type_id) == 0u) {
-        return L::ErrorMessageWithTypeId(type_id);
-      }
-      const StructInfo& struct_info = schema_.structs[type_id];
-      std::ostringstream oss;
+  std::string Describe(const L& language, bool headers = true) const {
+    std::ostringstream oss;
+    Describe(language, oss, headers);
+    return oss.str();
+  }
 
-      if (with_dependencies) {
-        const std::vector<TypeID> structs_to_describe = ListStructDependencies(type_id);
-        for (const TypeID id : structs_to_describe) {
-          oss << Description(language, id) << '\n';
+  template <typename L>
+  void Describe(const L& language, std::ostream& os, bool headers = true) const {
+    if (headers) {
+      os << L::Header();
+    }
+    for (TypeID type_id : schema_.ordered_struct_list) {
+      const uint64_t type_prefix = TypePrefix(type_id);
+      if (type_prefix == TYPEID_STRUCT_PREFIX) {
+        const auto cit = schema_.structs.find(type_id);
+        if (cit == schema_.structs.end()) {
+          os << L::ErrorMessageWithTypeId(type_id);
         }
-      }
-
-      if (std::is_same<L, Language::CPP>::value) {
-        oss << "struct " << struct_info.name;
-        if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
-          oss << " : " << TypeName(language, struct_info.super_type_id);
-        }
-        oss << " {\n";
-        for (const auto& f : struct_info.fields) {
-          oss << "  " << TypeName(language, f.first) << " " << f.second << ";\n";
-        }
-        oss << "};\n";
-      } else if (std::is_same<L, Language::FSharp>::value) {
-        oss << "type " << struct_info.name;
-        if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
-          oss << "  // With unsupported for now base type " << TypeName(language, struct_info.super_type_id);
-        }
-        oss << " = {\n";
-        for (const auto& f : struct_info.fields) {
-          oss << "  " << f.second << " : " << TypeName(language, f.first) << '\n';
-        }
-        oss << "}\n";
-
+        DescribeStruct(language, cit->second, os);
       } else {
-        oss << "Runtime error. Which should really be a compilation error.\n";
+        os << "Runtime error. Which should really be a compilation error.\n";
+        throw std::logic_error("TODO(dkorolev): Refactor this code to make the check compile-time.");
       }
-      return oss.str();
-    } else {
-      return TypeName(language, type_id);
+    }
+    if (headers) {
+      os << L::Footer();
     }
   }
 
@@ -290,123 +297,106 @@ struct StructSchema {
     assert(false);
   }
 
-  std::vector<TypeID> ListStructDependencies(const TypeID struct_type_id) {
-    std::vector<TypeID> result;
-    const uint64_t struct_type_prefix = TypePrefix(struct_type_id);
-    assert(struct_type_prefix == TYPEID_STRUCT_PREFIX);
-    RecursiveListStructDependencies(struct_type_id, result, TypeID::INVALID_TYPE, false);
-    return result;
+  void DescribeStruct(const Language::CPP& language, const StructInfo& struct_info, std::ostream& os) const {
+    os << "struct " << struct_info.name;
+    if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
+      os << " : " << TypePrintName(language, struct_info.super_type_id);
+    }
+    os << " {\n";
+    for (const auto& f : struct_info.fields) {
+      os << "  " << TypePrintName(language, f.first) << " " << f.second << ";\n";
+    }
+    os << "};\n";
   }
 
-  void RecursiveListStructDependencies(const TypeID type_id,
-                                       std::vector<TypeID>& dependency_list,
-                                       const TypeID containing_struct_type_id,
-                                       bool should_be_listed = true) {
-    const uint64_t type_prefix = TypePrefix(type_id);
-    // Skip primitive types.
-    if (type_prefix == TYPEID_BASIC_PREFIX) {
-      return;
+  void DescribeStruct(const Language::FSharp& language, const StructInfo& struct_info, std::ostream& os) const {
+    os << "type " << struct_info.name;
+    if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
+      os << "  // With unsupported for now base type " << TypePrintName(language, struct_info.super_type_id);
     }
-
-    // Process structs.
-    if (type_prefix == TYPEID_STRUCT_PREFIX) {
-      assert(schema_.structs.count(type_id));
-      if (type_id == containing_struct_type_id ||
-          std::find(dependency_list.begin(), dependency_list.end(), type_id) != dependency_list.end()) {
-        return;
-      }
-      const StructInfo& struct_info = schema_.structs[type_id];
-      if (struct_info.super_type_id != TypeID::INVALID_TYPE) {
-        RecursiveListStructDependencies(struct_info.super_type_id, dependency_list, type_id);
-      }
-      for (const auto& cit : struct_info.fields) {
-        RecursiveListStructDependencies(cit.first, dependency_list, type_id);
-      }
-      if (should_be_listed) {
-        dependency_list.push_back(type_id);
-      }
-    } else {
-      // Otherwise, this is a complex type, which must exist in `schema_.types`.
-      assert(schema_.types.count(type_id));
-      const TypeInfo& type_info = schema_.types[type_id];
-      for (const TypeID included_type : type_info.included_types) {
-        RecursiveListStructDependencies(included_type, dependency_list, containing_struct_type_id);
-      }
+    os << " = {\n";
+    for (const auto& f : struct_info.fields) {
+      os << "  " << f.second << " : " << TypePrintName(language, f.first) << '\n';
     }
+    os << "}\n";
   }
 
   template <typename L>
-  std::string TypeName(const L& language, const TypeID type_id) {
+  std::string TypePrintName(const L& language, const TypeID type_id) const {
     const uint64_t type_prefix = TypePrefix(type_id);
-    if (type_prefix == TYPEID_STRUCT_PREFIX) {
-      if (schema_.structs.count(type_id) == 0u) {
-        return "UNKNOWN_STRUCT_" + bricks::strings::ToString(type_id);
+    if (type_prefix == TYPEID_BASIC_PREFIX) {
+      return primitive_types_.PrimitiveTypeName(language, type_id);
+    } else if (type_prefix == TYPEID_STRUCT_PREFIX) {
+      const auto cit = schema_.structs.find(type_id);
+      if (cit == schema_.structs.end()) {
+        return "UNKNOWN_STRUCT__" + bricks::strings::ToString(type_id);
+      } else {
+        return cit->second.name;
       }
-      return schema_.structs[type_id].name;
     } else {
-      if (type_prefix == TYPEID_BASIC_PREFIX) {
-        return primitive_types_.PrimitiveTypeName(language, type_id);
-      }
-      if (schema_.types.count(type_id) == 0u) {
+      const auto cit = schema_.types.find(type_id);
+      if (cit == schema_.types.end()) {
         return "UNKNOWN_INTERMEDIATE_TYPE_" + bricks::strings::ToString(type_id);
+      } else {
+        if (type_prefix == TYPEID_ENUM_PREFIX) {
+          return cit->second.enum_name;
+        } else {
+          if (type_prefix == TYPEID_VECTOR_PREFIX) {
+            return DescribeVector(language, cit->second);
+          }
+          if (type_prefix == TYPEID_PAIR_PREFIX) {
+            return DescribePair(language, cit->second);
+          }
+          if (type_prefix == TYPEID_MAP_PREFIX) {
+            return DescribeMap(language, cit->second);
+          }
+          if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
+            return DescribeOptional(language, cit->second);
+          }
+          return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
+        }
       }
-      if (type_prefix == TYPEID_ENUM_PREFIX) {
-        return schema_.types[type_id].enum_name;
-      }
-      if (type_prefix == TYPEID_VECTOR_PREFIX) {
-        return DescribeVector(language, schema_.types[type_id]);
-      }
-      if (type_prefix == TYPEID_PAIR_PREFIX) {
-        return DescribePair(language, schema_.types[type_id]);
-      }
-      if (type_prefix == TYPEID_MAP_PREFIX) {
-        return DescribeMap(language, schema_.types[type_id]);
-      }
-      if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
-        return DescribeOptional(language, schema_.types[type_id]);
-      }
-      return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
     }
   }
 
-  std::string DescribeVector(const Language::CPP& language, const TypeInfo& type_info) {
+  std::string DescribeVector(const Language::CPP& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 1u);
-    return "std::vector<" + TypeName(language, type_info.included_types[0]) + '>';
+    return "std::vector<" + TypePrintName(language, type_info.included_types[0]) + '>';
   }
-  std::string DescribeVector(const Language::FSharp& language, const TypeInfo& type_info) {
+  std::string DescribeVector(const Language::FSharp& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 1u);
-    return TypeName(language, type_info.included_types[0]) + " array";
+    return TypePrintName(language, type_info.included_types[0]) + " array";
   }
 
-  std::string DescribePair(const Language::CPP& language, const TypeInfo& type_info) {
+  std::string DescribePair(const Language::CPP& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 2u);
-    return "std::pair<" + TypeName(language, type_info.included_types[0]) + ", " +
-           TypeName(language, type_info.included_types[1]) + '>';
+    return "std::pair<" + TypePrintName(language, type_info.included_types[0]) + ", " +
+           TypePrintName(language, type_info.included_types[1]) + '>';
   }
-  std::string DescribePair(const Language::FSharp& language, const TypeInfo& type_info) {
+  std::string DescribePair(const Language::FSharp& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 2u);
-    return TypeName(language, type_info.included_types[0]) + " * " +
-           TypeName(language, type_info.included_types[1]);
+    return TypePrintName(language, type_info.included_types[0]) + " * " +
+           TypePrintName(language, type_info.included_types[1]);
   }
 
-  std::string DescribeMap(const Language::CPP& language, const TypeInfo& type_info) {
+  std::string DescribeMap(const Language::CPP& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 2u);
-    return "std::map<" + TypeName(language, type_info.included_types[0]) + ", " +
-           TypeName(language, type_info.included_types[1]) + '>';
+    return "std::map<" + TypePrintName(language, type_info.included_types[0]) + ", " +
+           TypePrintName(language, type_info.included_types[1]) + '>';
   }
-  std::string DescribeMap(const Language::FSharp& language, const TypeInfo& type_info) {
+  std::string DescribeMap(const Language::FSharp& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 2u);
-    return "UNSUPPORTED_MAP<" + TypeName(language, type_info.included_types[0]) + ", " +
-           TypeName(language, type_info.included_types[1]) + '>';
+    return "UNSUPPORTED_MAP<" + TypePrintName(language, type_info.included_types[0]) + ", " +
+           TypePrintName(language, type_info.included_types[1]) + '>';
   }
 
-  std::string DescribeOptional(const Language::CPP& language, const TypeInfo& type_info) {
+  std::string DescribeOptional(const Language::CPP& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 1u);
-    return "Optional<" + TypeName(language, type_info.included_types[0]) + '>';
+    return "Optional<" + TypePrintName(language, type_info.included_types[0]) + '>';
   }
-  std::string DescribeOptional(const Language::FSharp& language, const TypeInfo& type_info) {
+  std::string DescribeOptional(const Language::FSharp& language, const TypeInfo& type_info) const {
     assert(type_info.included_types.size() == 1u);
-    return TypeName(language, type_info.included_types[0]) + " option";
+    return TypePrintName(language, type_info.included_types[0]) + " option";
   }
 };
 
