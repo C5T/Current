@@ -44,8 +44,8 @@ CURRENT_STRUCT(Element) {
 CURRENT_STRUCT(Record) {
 #ifdef USE_KEY_METHODS
   CURRENT_FIELD(lhs, std::string);
-  CURRENT_RETURNS(const std::string&)key() const { return lhs; }
-  CURRENT_RETURNS(void)set_key(const std::string& key) { lhs = key; }
+  const std::string& key() const { return lhs; }
+  void set_key(const std::string& key) { lhs = key; }
 #else
   CURRENT_FIELD(key, std::string);
 #endif
@@ -61,16 +61,16 @@ CURRENT_STRUCT(Record) {
 CURRENT_STRUCT(Cell) {
 #ifdef USE_KEY_METHODS
   CURRENT_FIELD(foo, int32_t);
-  CURRENT_RETURNS(int32_t) row() const { return foo; }
-  CURRENT_RETURNS(void)set_row(int32_t row) { foo = row; }
+  int32_t row() const { return foo; }
+  void set_row(int32_t row) { foo = row; }
 #else
   CURRENT_FIELD(row, int32_t);
 #endif
 
 #ifdef USE_KEY_METHODS
   CURRENT_FIELD(bar, std::string);
-  CURRENT_RETURNS(const std::string&)col() const { return bar; }
-  CURRENT_RETURNS(void)set_col(const std::string& col) { bar = col; }
+  const std::string& col() const { return bar; }
+  void set_col(const std::string& col) { bar = col; }
 #else
   CURRENT_FIELD(col, std::string);
 #endif

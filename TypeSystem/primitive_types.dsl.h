@@ -25,28 +25,28 @@ SOFTWARE.
 
 // This file is used for mass registering of primitives type handlers in reflection and serialization routines.
 // Typical usecase:
-//    #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type) ...
+//    #define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fsharp_type) ...
 //    #include "primitive_types.dsl.h"
 //    #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
 #ifdef CURRENT_DECLARE_PRIMITIVE_TYPE  // To pass `make check`.
 
-CURRENT_DECLARE_PRIMITIVE_TYPE(11, bool, Bool)
+CURRENT_DECLARE_PRIMITIVE_TYPE(11, bool, Bool, "bool")
 
-CURRENT_DECLARE_PRIMITIVE_TYPE(21, uint8_t, UInt8)
-CURRENT_DECLARE_PRIMITIVE_TYPE(22, uint16_t, UInt16)
-CURRENT_DECLARE_PRIMITIVE_TYPE(23, uint32_t, UInt32)
-CURRENT_DECLARE_PRIMITIVE_TYPE(24, uint64_t, UInt64)
+CURRENT_DECLARE_PRIMITIVE_TYPE(21, uint8_t, UInt8, "byte")
+CURRENT_DECLARE_PRIMITIVE_TYPE(22, uint16_t, UInt16, "uint16")
+CURRENT_DECLARE_PRIMITIVE_TYPE(23, uint32_t, UInt32, "uint32")
+CURRENT_DECLARE_PRIMITIVE_TYPE(24, uint64_t, UInt64, "uint64")
 
-CURRENT_DECLARE_PRIMITIVE_TYPE(31, int8_t, Int8)
-CURRENT_DECLARE_PRIMITIVE_TYPE(32, int16_t, Int16)
-CURRENT_DECLARE_PRIMITIVE_TYPE(33, int32_t, Int32)
-CURRENT_DECLARE_PRIMITIVE_TYPE(34, int64_t, Int64)
+CURRENT_DECLARE_PRIMITIVE_TYPE(31, int8_t, Int8, "sbyte")
+CURRENT_DECLARE_PRIMITIVE_TYPE(32, int16_t, Int16, "int16")
+CURRENT_DECLARE_PRIMITIVE_TYPE(33, int32_t, Int32, "int32")
+CURRENT_DECLARE_PRIMITIVE_TYPE(34, int64_t, Int64, "int64")
 
-CURRENT_DECLARE_PRIMITIVE_TYPE(41, char, Char)
-CURRENT_DECLARE_PRIMITIVE_TYPE(42, std::string, String)
+CURRENT_DECLARE_PRIMITIVE_TYPE(41, char, Char, "char")  // Although F# chars are Unicode.
+CURRENT_DECLARE_PRIMITIVE_TYPE(42, std::string, String, "string")
 
-CURRENT_DECLARE_PRIMITIVE_TYPE(51, float, Float)
-CURRENT_DECLARE_PRIMITIVE_TYPE(52, double, Double)
+CURRENT_DECLARE_PRIMITIVE_TYPE(51, float, Float, "float")
+CURRENT_DECLARE_PRIMITIVE_TYPE(52, double, Double, "double")
 
 #endif

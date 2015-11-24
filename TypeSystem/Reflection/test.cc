@@ -34,8 +34,12 @@ SOFTWARE.
 #include "schema.h"
 
 #include "../../Bricks/strings/strings.h"
+#include "../../Bricks/file/file.h"
+#include "../../Bricks/dflags/dflags.h"
 
-#include "../../3rdparty/gtest/gtest-main.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+
+DEFINE_bool(write_reflection_golden_files, false, "Set to true to [over]write the golden files.");
 
 namespace reflection_test {
 
@@ -274,16 +278,17 @@ CURRENT_STRUCT(C) { CURRENT_FIELD(b, Optional<B>); };
 
 TEST(Reflection, StructSchema) {
   using namespace reflection_test;
-  using current::reflection::TypeID;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
+  using current::reflection::Language;
 
   StructSchema struct_schema;
 
   {
-    SchemaInfo schema = struct_schema.GetSchemaInfo();
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_TRUE(schema.ordered_struct_list.empty());
     EXPECT_TRUE(schema.structs.empty());
+    EXPECT_EQ("", struct_schema.Describe(Language::CPP(), false));
   }
 
   struct_schema.AddType<uint64_t>();
@@ -291,125 +296,109 @@ TEST(Reflection, StructSchema) {
   struct_schema.AddType<std::string>();
 
   {
-    SchemaInfo schema = struct_schema.GetSchemaInfo();
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_TRUE(schema.ordered_struct_list.empty());
     EXPECT_TRUE(schema.structs.empty());
+    EXPECT_EQ("", struct_schema.Describe(Language::CPP(), false));
   }
 
   struct_schema.AddType<Z>();
-  TypeID x_type_id;
-  TypeID y_type_id;
-  TypeID z_type_id;
 
   {
-    SchemaInfo schema = struct_schema.GetSchemaInfo();
-    EXPECT_EQ(3u, schema.ordered_struct_list.size());
-    EXPECT_EQ(3u, schema.structs.size());
-    x_type_id = schema.ordered_struct_list[0];
-    EXPECT_EQ("X", schema.structs[x_type_id].name);
-    EXPECT_EQ(1u, schema.structs[x_type_id].fields.size());
-    EXPECT_EQ(9000000000000000033ull, static_cast<uint64_t>(schema.structs[x_type_id].fields[0].first));
-    EXPECT_EQ("i", schema.structs[x_type_id].fields[0].second);
-    y_type_id = schema.ordered_struct_list[1];
-    EXPECT_EQ("Y", schema.structs[y_type_id].name);
-    EXPECT_EQ(1u, schema.structs[y_type_id].fields.size());
-    EXPECT_EQ(9319865772074171451ull, static_cast<uint64_t>(schema.structs[y_type_id].fields[0].first));
-    EXPECT_EQ("v", schema.structs[y_type_id].fields[0].second);
-    z_type_id = schema.ordered_struct_list[2];
-    EXPECT_EQ("Z", schema.structs[z_type_id].name);
-    EXPECT_EQ(2u, schema.structs[z_type_id].fields.size());
-    EXPECT_EQ(9000000000000000052ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[0].first));
-    EXPECT_EQ("d", schema.structs[z_type_id].fields[0].second);
-    EXPECT_EQ(9311166123550858204ull, static_cast<uint64_t>(schema.structs[z_type_id].fields[1].first));
-    EXPECT_EQ("v2", schema.structs[z_type_id].fields[1].second);
-
-    EXPECT_EQ("std::vector<X>", struct_schema.CppDescription(schema.structs[y_type_id].fields[0].first));
-    EXPECT_EQ("std::vector<std::vector<Enum>>",
-              struct_schema.CppDescription(schema.structs[z_type_id].fields[1].first));
     EXPECT_EQ(
+        "struct X {\n"
+        "  int32_t i;\n"
+        "};\n"
+        "struct Y {\n"
+        "  std::vector<X> v;\n"
+        "};\n"
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
         "};\n",
-        struct_schema.CppDescription(z_type_id));
-
-    EXPECT_EQ(
-        "struct X {\n"
-        "  int32_t i;\n"
-        "};\n",
-        struct_schema.CppDescription(x_type_id, true));
-    EXPECT_EQ(
-        "struct X {\n"
-        "  int32_t i;\n"
-        "};\n\n"
-        "struct Y {\n"
-        "  std::vector<X> v;\n"
-        "};\n",
-        struct_schema.CppDescription(y_type_id, true));
-    EXPECT_EQ(
-        "struct X {\n"
-        "  int32_t i;\n"
-        "};\n\n"
-        "struct Y {\n"
-        "  std::vector<X> v;\n"
-        "};\n\n"
-        "struct Z : Y {\n"
-        "  double d;\n"
-        "  std::vector<std::vector<Enum>> v2;\n"
-        "};\n",
-        struct_schema.CppDescription(z_type_id, true));
+        struct_schema.Describe(Language::CPP(), false));
   }
 
   struct_schema.AddType<C>();
 
   {
-    SchemaInfo schema = struct_schema.GetSchemaInfo();
-    EXPECT_EQ(6u, schema.ordered_struct_list.size());
-    EXPECT_EQ(6u, schema.structs.size());
-    const TypeID a_type_id = schema.ordered_struct_list[3];
-    EXPECT_EQ("A", schema.structs[a_type_id].name);
-    EXPECT_EQ(1u, schema.structs[a_type_id].fields.size());
-    EXPECT_EQ(9000000000000000023ull, static_cast<uint64_t>(schema.structs[a_type_id].fields[0].first));
-    EXPECT_EQ("i", schema.structs[a_type_id].fields[0].second);
-    const TypeID b_type_id = schema.ordered_struct_list[4];
-    EXPECT_EQ("B", schema.structs[b_type_id].name);
-    EXPECT_EQ(2u, schema.structs[b_type_id].fields.size());
-    EXPECT_EQ(x_type_id, schema.structs[b_type_id].fields[0].first);
-    EXPECT_EQ("x", schema.structs[b_type_id].fields[0].second);
-    EXPECT_EQ(a_type_id, schema.structs[b_type_id].fields[1].first);
-    EXPECT_EQ("a", schema.structs[b_type_id].fields[1].second);
-    const TypeID c_type_id = schema.ordered_struct_list[5];
-    EXPECT_EQ("C", schema.structs[c_type_id].name);
-    EXPECT_EQ(1u, schema.structs[c_type_id].fields.size());
-    EXPECT_EQ(9215606518197310863ull, static_cast<uint64_t>(schema.structs[c_type_id].fields[0].first));
-    EXPECT_EQ("b", schema.structs[c_type_id].fields[0].second);
     EXPECT_EQ(
+        "struct X {\n"
+        "  int32_t i;\n"
+        "};\n"
+        "struct Y {\n"
+        "  std::vector<X> v;\n"
+        "};\n"
+        "struct Z : Y {\n"
+        "  double d;\n"
+        "  std::vector<std::vector<Enum>> v2;\n"
+        "};\n"
+        "struct A {\n"
+        "  uint32_t i;\n"
+        "};\n"
+        "struct B {\n"
+        "  X x;\n"
+        "  A a;\n"
+        "};\n"
         "struct C {\n"
         "  Optional<B> b;\n"
         "};\n",
-        struct_schema.CppDescription(c_type_id));
+        struct_schema.Describe(Language::CPP(), false));
   }
+}
 
+TEST(Reflection, SelfContatiningStruct) {
+  using namespace reflection_test;
+  using current::reflection::StructSchema;
+  using current::reflection::Language;
+
+  StructSchema struct_schema;
   struct_schema.AddType<SelfContainingC>();
 
-  {
-    SchemaInfo schema = struct_schema.GetSchemaInfo();
-    EXPECT_EQ(9u, schema.ordered_struct_list.size());
-    EXPECT_EQ(9u, schema.structs.size());
-    const TypeID self1_type_id = schema.ordered_struct_list[8];
-    EXPECT_EQ(
-        "struct SelfContainingA {\n"
-        "  std::vector<SelfContainingA> v;\n"
-        "};\n\n"
-        "struct SelfContainingB {\n"
-        "  std::vector<SelfContainingB> v;\n"
-        "};\n\n"
-        "struct SelfContainingC : SelfContainingA {\n"
-        "  std::vector<SelfContainingB> v;\n"
-        "  std::map<std::string, SelfContainingC> m;\n"
-        "};\n",
-        struct_schema.CppDescription(self1_type_id, true));
+  EXPECT_EQ(
+      "struct SelfContainingA {\n"
+      "  std::vector<SelfContainingA> v;\n"
+      "};\n"
+      "struct SelfContainingB {\n"
+      "  std::vector<SelfContainingB> v;\n"
+      "};\n"
+      "struct SelfContainingC : SelfContainingA {\n"
+      "  std::vector<SelfContainingB> v;\n"
+      "  std::map<std::string, SelfContainingC> m;\n"
+      "};\n",
+      struct_schema.Describe(Language::CPP(), false));
+}
+
+#include "../Serialization/json.h"
+
+#define SMOKE_TEST_STRUCT_NAMESPACE smoke_test_struct_namespace
+#include "smoke_test_struct.h"
+#undef SMOKE_TEST_STRUCT_NAMESPACE
+
+TEST(Reflection, SmokeTestFullStruct) {
+  using bricks::FileSystem;
+  using current::reflection::StructSchema;
+  using current::reflection::SchemaInfo;
+  using current::reflection::Language;
+
+  StructSchema struct_schema;
+  struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
+
+  if (FLAGS_write_reflection_golden_files) {
+    FileSystem::WriteStringToFile(struct_schema.Describe(Language::CPP()), "golden/smoke_test_struct.cc");
+    FileSystem::WriteStringToFile(struct_schema.Describe(Language::FSharp()), "golden/smoke_test_struct.fsx");
+    FileSystem::WriteStringToFile(JSON(struct_schema.GetSchemaInfo()), "golden/smoke_test_struct.json");
   }
+
+  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"),
+            struct_schema.Describe(Language::CPP()));
+
+  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"),
+            struct_schema.Describe(Language::FSharp()));
+
+  // JSON is a special case, as it might be pretty-printed.
+  EXPECT_EQ(JSON(ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"))),
+            JSON(struct_schema.GetSchemaInfo()));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

@@ -67,6 +67,7 @@ template <typename T>
 class ImmutableOptional final {
  public:
   ImmutableOptional() = delete;
+  ImmutableOptional(std::nullptr_t) : optional_object_(nullptr) {}
   ImmutableOptional(const FromBarePointer&, const T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,
@@ -97,6 +98,7 @@ template <typename T>
 class Optional final {
  public:
   Optional() = default;
+  Optional(std::nullptr_t) : optional_object_(nullptr) {}
   Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
 
   // NOTE: Constructors taking references or const references are a bad idea,

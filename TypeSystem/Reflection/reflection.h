@@ -66,9 +66,9 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type) \
-  std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) {           \
-    return std::make_shared<ReflectedType_##current_type>();                        \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type, unused_fsharp_type) \
+  std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<cpp_type>) {                               \
+    return std::make_shared<ReflectedType_##current_type>();                                            \
   }
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

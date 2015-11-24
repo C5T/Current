@@ -84,7 +84,7 @@ class VectorAPI : protected VectorStorage<T> {
 
   typename PERSISTER::ImmutableOptionalType operator[](size_t index) const {
     if (index < VectorStorage<T>::vector_.size()) {
-      return typename PERSISTER::ImmutableOptionalType(&VectorStorage<T>::vector_[index]);
+      return typename PERSISTER::ImmutableOptionalType(FromBarePointer(), &VectorStorage<T>::vector_[index]);
     } else {
       return typename PERSISTER::ImmutableOptionalType(nullptr);
     }
@@ -130,7 +130,7 @@ class OrderedDictionaryAPI : protected OrderedDictionaryStorage<T> {
   typename PERSISTER::ImmutableOptionalType operator[](sfinae::CF<T_KEY> key) const {
     const auto iterator = OrderedDictionaryStorage<T>::map_.find(key);
     if (iterator != OrderedDictionaryStorage<T>::map_.end()) {
-      return &iterator->second;
+      return typename PERSISTER::ImmutableOptionalType(FromBarePointer(), &iterator->second);
     } else {
       return nullptr;
     }
@@ -302,7 +302,7 @@ class LightweightMatrixAPI : protected LightweightMatrixStorage<T> {
   ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
     const auto result = LightweightMatrixStorage<T>::map_.find(std::make_pair(row, col));
     if (result != LightweightMatrixStorage<T>::map_.end()) {
-      return result->second.get();
+      return ImmutableOptional<T>(FromBarePointer(), result->second.get());
     } else {
       return nullptr;
     }

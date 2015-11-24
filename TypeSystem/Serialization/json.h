@@ -70,14 +70,14 @@ void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
 template <typename T>
 struct SaveIntoJSONImpl;
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
-  template <>                                                                              \
-  struct SaveIntoJSONImpl<cpp_type> {                                                      \
-    static void Save(rapidjson::Value& destination,                                        \
-                     rapidjson::Document::AllocatorType&,                                  \
-                     const cpp_type& value) {                                              \
-      AssignToRapidJSONValue(destination, value);                                          \
-    }                                                                                      \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type, unused_fsharp_type) \
+  template <>                                                                                                  \
+  struct SaveIntoJSONImpl<cpp_type> {                                                                          \
+    static void Save(rapidjson::Value& destination,                                                            \
+                     rapidjson::Document::AllocatorType&,                                                      \
+                     const cpp_type& value) {                                                                  \
+      AssignToRapidJSONValue(destination, value);                                                              \
+    }                                                                                                          \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
@@ -155,6 +155,25 @@ struct SaveIntoJSONImpl<Optional<T>> {
       // but output it as `null` nonetheless, for clarity.
       destination.SetNull();
     }
+  }
+};
+
+template <typename... TS>
+struct SaveIntoJSONImpl<PolymorphicImpl<TS...>> {
+  struct Impl {
+    rapidjson::Value& destination;
+    rapidjson::Document::AllocatorType& allocator;
+    template <typename T>
+    void operator()(const T&) {
+      // TODO(dkorolev): Work in progress.
+      destination.SetObject();
+    }
+  };
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const PolymorphicImpl<TS...>& value) {
+    Impl impl{destination, allocator};
+    value.Call(impl);
   }
 };
 

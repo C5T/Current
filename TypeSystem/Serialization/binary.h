@@ -90,12 +90,12 @@ struct SavePrimitiveTypeIntoBinary {
   }
 };
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
-  template <>                                                                              \
-  struct SaveIntoBinaryImpl<cpp_type> {                                                    \
-    static void Save(std::ostream& ostream, const cpp_type& value) {                       \
-      SavePrimitiveTypeIntoBinary::Save(ostream, value);                                   \
-    }                                                                                      \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type, unused_fsharp_type) \
+  template <>                                                                                                  \
+  struct SaveIntoBinaryImpl<cpp_type> {                                                                        \
+    static void Save(std::ostream& ostream, const cpp_type& value) {                                           \
+      SavePrimitiveTypeIntoBinary::Save(ostream, value);                                                       \
+    }                                                                                                          \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
@@ -207,12 +207,12 @@ struct LoadPrimitiveTypeFromBinary {
   }
 };
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type) \
-  template <>                                                                              \
-  struct LoadFromBinaryImpl<cpp_type> {                                                    \
-    static void Load(std::istream& istream, cpp_type& destination) {                       \
-      LoadPrimitiveTypeFromBinary::Load(istream, destination);                             \
-    }                                                                                      \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type, unused_fsharp_type) \
+  template <>                                                                                                  \
+  struct LoadFromBinaryImpl<cpp_type> {                                                                        \
+    static void Load(std::istream& istream, cpp_type& destination) {                                           \
+      LoadPrimitiveTypeFromBinary::Load(istream, destination);                                                 \
+    }                                                                                                          \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
