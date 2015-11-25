@@ -279,16 +279,33 @@ struct StructSchema {
     }
 
     if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
-      const std::shared_ptr<ReflectedTypeImpl> reflected_object_type =
-          std::dynamic_pointer_cast<ReflectedType_Optional>(reflected_type)->reflected_object_type;
-      assert(reflected_object_type);
+      const std::shared_ptr<ReflectedTypeImpl> reflected_optional_type =
+          std::dynamic_pointer_cast<ReflectedType_Optional>(reflected_type)->reflected_optional_type;
+      assert(reflected_optional_type);
       TypeInfo type_info;
       type_info.type_id = type_id;
-      type_info.included_types.push_back(reflected_object_type->type_id);
+      type_info.included_types.push_back(reflected_optional_type->type_id);
       schema_.types[type_id] = type_info;
-      TraverseType(reflected_object_type);
+      TraverseType(reflected_optional_type);
       return;
     }
+
+    if (type_prefix == TYPEID_POLYMORPHIC_PREFIX) {
+      const std::shared_ptr<ReflectedType_Polymorphic> reflected_polymorphic_type =
+          std::dynamic_pointer_cast<ReflectedType_Polymorphic>(reflected_type);
+      assert(reflected_polymorphic_type);
+      TypeInfo type_info;
+      type_info.type_id = type_id;
+      for (auto t : reflected_polymorphic_type->cases) {
+        type_info.included_types.push_back(t->type_id);
+        TraverseType(t);
+      }
+      schema_.types[type_id] = type_info;
+      return;
+    }
+
+    std::cerr << "Unrecognized: " << static_cast<uint64_t>(type_id) << ", " << type_prefix << std::endl;
+
     // Type left unhandled, this should never happen.
     assert(false);
   }
@@ -349,6 +366,9 @@ struct StructSchema {
           if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
             return DescribeOptional(language, cit->second);
           }
+          if (type_prefix == TYPEID_POLYMORPHIC_PREFIX) {
+            return DescribePolymorphic(language, cit->second);
+          }
           return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
         }
       }
@@ -395,6 +415,22 @@ struct StructSchema {
     assert(type_info.included_types.size() == 1u);
     return TypePrintName(language, type_info.included_types[0]) + " option";
   }
+
+  std::string DescribePolymorphic(const Language::CPP& language, const TypeInfo& type_info) const {
+    std::vector<std::string> names;
+    for (auto t : type_info.included_types) {
+      names.push_back(TypePrintName(language, t));
+    }
+    return "Polymorphic<" + bricks::strings::Join(names, ", ") + '>';
+  }
+  std::string DescribePolymorphic(const Language::FSharp& language, const TypeInfo& type_info) const {
+    std::vector<std::string> names;
+    for (auto t : type_info.included_types) {
+      names.push_back(TypePrintName(language, t));
+    }
+    return "Polymorphic<" + bricks::strings::Join(names, ", ") + '>';
+  }
+
 };
 
 }  // namespace reflection

@@ -131,8 +131,12 @@ struct ReflectedType_Pair : ReflectedTypeImpl {
 };
 
 struct ReflectedType_Optional : ReflectedTypeImpl {
-  const std::shared_ptr<ReflectedTypeImpl> reflected_object_type;
-  ReflectedType_Optional(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_object_type(re) {}
+  const std::shared_ptr<ReflectedTypeImpl> reflected_optional_type;
+  ReflectedType_Optional(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_optional_type(re) {}
+};
+
+struct ReflectedType_Polymorphic : ReflectedTypeImpl {
+  std::vector<std::shared_ptr<ReflectedTypeImpl>> cases;
 };
 
 typedef std::vector<std::pair<std::shared_ptr<ReflectedTypeImpl>, std::string>> StructFieldsVector;
@@ -197,10 +201,20 @@ inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
-  assert(o.reflected_object_type);
-  assert(o.reflected_object_type->type_id != TypeID::INVALID_TYPE);
+  assert(o.reflected_optional_type);
+  assert(o.reflected_optional_type->type_id != TypeID::INVALID_TYPE);
   return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE +
-                             ROL64(o.reflected_object_type->type_id, 5) % TYPEID_TYPE_RANGE);
+                             ROL64(o.reflected_optional_type->type_id, 5) % TYPEID_TYPE_RANGE);
+}
+
+inline TypeID CalculateTypeID(const ReflectedType_Polymorphic& p) {
+  uint64_t hash = 0ull;
+  size_t i = 0u;
+  for (const auto& c : p.cases) {
+    hash ^= ROL64(c->type_id, i * 3u + 17u);
+    ++i;
+  }
+  return static_cast<TypeID>(TYPEID_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.
