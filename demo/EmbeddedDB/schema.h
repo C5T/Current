@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef DATA_DICTIONARY_H
-#define DATA_DICTIONARY_H
+#ifndef SCHEMA_H
+#define SCHEMA_H
 
 #include "../../TypeSystem/Reflection/schema.h"
 #include "../../Bricks/time/chrono.h"
@@ -67,9 +67,22 @@ CURRENT_STRUCT(Event) {
 
 // JSON response schema.
 
+CURRENT_STRUCT(UserNickname) {
+  CURRENT_FIELD(user_id, std::string);
+  CURRENT_FIELD(nickname, std::string);
+  CURRENT_CONSTRUCTOR(UserNickname)(const std::string& user_id, const std::string& nickname) : user_id(user_id), nickname(nickname) {}
+  // TODO(dkorolev): DEFAULT_HTTP_CODE() ?
+};
+
+CURRENT_STRUCT(UserNicknameNotFound) {
+  CURRENT_FIELD(user_id, std::string);
+  CURRENT_FIELD(error, std::string, "User not found.");
+  CURRENT_CONSTRUCTOR(UserNicknameNotFound)(const std::string& user_id) : user_id(user_id) {}
+};
+
 CURRENT_STRUCT(Error) {
   CURRENT_FIELD(error, std::string);
   CURRENT_CONSTRUCTOR(Error)(const std::string& error = "Internal error.") : error(error) {}
 };
 
-#endif  // DATA_DICTIONARY_H
+#endif  // SCHEMA_H
