@@ -30,7 +30,7 @@ SOFTWARE.
 
 using namespace current;
 
-CURRENT_STRUCT(Nop) {};
+// Storage schema, for persistence, publish, and subscribe.
 
 CURRENT_STRUCT(UserAdded) {
   CURRENT_FIELD(user_id, std::string);
@@ -48,14 +48,24 @@ CURRENT_STRUCT(UserLike) {
   CURRENT_FIELD(post_id, std::string);
 };
 
+// `Event` is the top-level message to persist.
+CURRENT_STRUCT(Nop){};  // Will go away, see below.
 CURRENT_STRUCT(Event) {
   CURRENT_FIELD(timestamp, uint64_t);
   CURRENT_FIELD(event, (Polymorphic<Nop, UserAdded, PostAdded, UserLike>));
 
+  // This will go away.
+  // Default construction is required for incoming JSON serialization as of now,
+  // and `Polymorphic` is strict to not be left uninitialized.
   CURRENT_DEFAULT_CONSTRUCTOR(Event) : event(Nop()) {}
 
+  // This will go away.
+  // Moving forward, `EPOCH_MICROSECONDS` is the [unique] key,
+  // and just keeping a `CURRENT_FIELD(timestamp, EPOCH_MICROSECONDS)` top-level field should be sufficient.
   EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp); }
 };
+
+// JSON response schema.
 
 CURRENT_STRUCT(Error) {
   CURRENT_FIELD(error, std::string);
