@@ -37,10 +37,8 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
-#if 0
 #include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
-#endif
 
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
@@ -322,14 +320,11 @@ struct DevNullPublisherImpl {
 template <typename ENTRY, class CLONER>
 using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY, CLONER>, ENTRY>;
 
-#if 0
-
-// TODO(dkorolev): Move into Cerealize.
 template <typename ENTRY, class CLONER>
-struct AppendToFilePublisherImpl {
-  AppendToFilePublisherImpl() = delete;
-  AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
-  explicit AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+struct CerealAppendToFilePublisherImpl {
+  CerealAppendToFilePublisherImpl() = delete;
+  CerealAppendToFilePublisherImpl(const CerealAppendToFilePublisherImpl&) = delete;
+  explicit CerealAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(ENTRY&&)> push) {
     // TODO(dkorolev): Try/catch here?
@@ -366,9 +361,7 @@ struct AppendToFilePublisherImpl {
 };
 
 template <typename ENTRY, class CLONER>
-using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
-
-#endif
+using CerealAppendToFilePublisher = ss::Publisher<impl::CerealAppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 template <typename ENTRY, class CLONER>
 struct NewAppendToFilePublisherImpl {
@@ -417,11 +410,9 @@ using NewAppendToFilePublisher = ss::Publisher<impl::NewAppendToFilePublisherImp
 template <typename ENTRY, class CLONER = bricks::DefaultCloner>
 using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
-#if 0
 template <typename ENTRY, class CLONER = bricks::DefaultCloner>
-using AppendToFile =
-    ss::Publisher<impl::Logic<impl::AppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
-#endif
+using CerealAppendToFile =
+    ss::Publisher<impl::Logic<impl::CerealAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
 template <typename ENTRY, class CLONER = bricks::DefaultCloner>
 using NewAppendToFile =
