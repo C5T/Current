@@ -47,11 +47,11 @@ SOFTWARE.
 
 namespace blocks {
 
-struct HandlerAlreadyExistsException : bricks::net::HTTPException {
+struct HandlerAlreadyExistsException : current::net::HTTPException {
   explicit HandlerAlreadyExistsException(const std::string& what) { SetWhat(what); }
 };
 
-struct HandlerDoesNotExistException : bricks::net::HTTPException {
+struct HandlerDoesNotExistException : current::net::HTTPException {
   explicit HandlerDoesNotExistException(const std::string& what) { SetWhat(what); }
 };
 
@@ -67,7 +67,7 @@ struct StaticFileServer {
       r.connection.SendHTTPResponse(body, HTTPResponseCode.OK, content_type);
     } else {
       r.connection.SendHTTPResponse(
-          bricks::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
+          current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
     }
   }
 };
@@ -79,7 +79,7 @@ class HTTPServerPOSIX final {
   // Since instances of `HTTPServerPOSIX` are created via a singleton,
   // a listening thread will only be created once per port, on the first access to that port.
   explicit HTTPServerPOSIX(int port)
-      : terminating_(false), port_(port), thread_(&HTTPServerPOSIX::Thread, this, bricks::net::Socket(port)) {}
+      : terminating_(false), port_(port), thread_(&HTTPServerPOSIX::Thread, this, current::net::Socket(port)) {}
 
   // The destructor closes the socket.
   // Note that the destructor will only be run on the shutdown of the binary,
@@ -92,9 +92,9 @@ class HTTPServerPOSIX final {
     try {
       // TODO(dkorolev): This should always use the POSIX implemenation of the client, nothing fancier.
       // It is a safe call, since the server itself is POSIX, so the architecture we are on is POSIX-friendly.
-      bricks::net::Connection(bricks::net::ClientSocket("localhost", port_))
+      current::net::Connection(current::net::ClientSocket("localhost", port_))
           .BlockingWrite("GET /healthz HTTP/1.1\r\n\r\n", true);
-    } catch (const bricks::Exception&) {
+    } catch (const current::Exception&) {
       // It is guaranteed that after `terminated_` is set the server will be terminated on the next request,
       // but it might so happen that that terminating request will happen between `terminating_ = true`
       // and the consecutive request. Which is perfectly fine, since it implies that the server has terminated.
@@ -150,20 +150,21 @@ class HTTPServerPOSIX final {
 
   void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
     // TODO(dkorolev): Add a scoped version of registerers.
-    bricks::FileSystem::ScanDir(dir,
-                                [this, &dir, &route_prefix](const std::string& file) {
-                                  const std::string content_type(bricks::net::GetFileMimeType(file, ""));
-                                  if (!content_type.empty()) {
-                                    // TODO(dkorolev): Wrap keeping file contents into a singleton
-                                    // that keeps a map from a (SHA256) hash to the contents.
-                                    Register(route_prefix + file,
-                                             new StaticFileServer(bricks::FileSystem::ReadFileAsString(
-                                                                      bricks::FileSystem::JoinPath(dir, file)),
-                                                                  content_type));
-                                  } else {
-                                    BRICKS_THROW(bricks::net::CannotServeStaticFilesOfUnknownMIMEType(file));
-                                  }
-                                });
+    current::FileSystem::ScanDir(
+        dir,
+        [this, &dir, &route_prefix](const std::string& file) {
+          const std::string content_type(current::net::GetFileMimeType(file, ""));
+          if (!content_type.empty()) {
+            // TODO(dkorolev): Wrap keeping file contents into a singleton
+            // that keeps a map from a (SHA256) hash to the contents.
+            Register(route_prefix + file,
+                     new StaticFileServer(
+                         current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)),
+                         content_type));
+          } else {
+            BRICKS_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
+          }
+        });
   }
 
   void ResetAllHandlers() {
@@ -177,12 +178,12 @@ class HTTPServerPOSIX final {
   }
 
  private:
-  void Thread(bricks::net::Socket socket) {
+  void Thread(current::net::Socket socket) {
     // TODO(dkorolev): Benchmark QPS.
     while (!terminating_) {
       try {
-        std::unique_ptr<bricks::net::HTTPServerConnection> connection(
-            new bricks::net::HTTPServerConnection(socket.Accept()));
+        std::unique_ptr<current::net::HTTPServerConnection> connection(
+            new current::net::HTTPServerConnection(socket.Accept()));
         if (terminating_) {
           // Already terminating. Will not send the response, and this
           // lack of response should not result in an exception.
@@ -217,7 +218,7 @@ class HTTPServerPOSIX final {
           //
           // It is the job of the user of this library to ensure no exceptions leave their code.
           //
-          // In practice, a top-level try-catch for `const bricks::Exception& e`,
+          // In practice, a top-level try-catch for `const current::Exception& e`,
           // or even `const std::exception& e`, with logging of `e.what()` is a good enough solution.
           try {
             handler(Request(std::move(connection)));
@@ -229,7 +230,7 @@ class HTTPServerPOSIX final {
           }
         } else {
           connection->SendHTTPResponse(
-              bricks::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
+              current::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
         }
       } catch (const std::exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.

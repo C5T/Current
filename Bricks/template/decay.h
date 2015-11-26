@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "mapreduce.h"
 
-namespace bricks {
+namespace current {
 
 template <typename DERIVED, typename BASE>
 inline DERIVED* dynamic_cast_preserving_const(BASE* base) {
@@ -206,6 +206,6 @@ static_assert(is_same<std::tuple<std::tuple<int>, std::tuple<int>, std::tuple<in
                                        std::tuple<int&&>&&>>>::value,
               "");
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_DECAY_H

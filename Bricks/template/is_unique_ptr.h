@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "decay.h"
 
-namespace bricks {
+namespace current {
 
 template <typename T>
 struct is_unique_ptr_impl {
@@ -88,8 +88,8 @@ static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, std::unique_pt
 static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<BASE>, std::unique_ptr<DERIVED>>::value, "");
 static_assert(!can_be_stored_in_unique_ptr<std::unique_ptr<DERIVED>, std::unique_ptr<DERIVED>>::value, "");
 
-}  // namespace bricks::selftest
+}  // namespace current::selftest
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_IS_UNIQUE_PTR_H

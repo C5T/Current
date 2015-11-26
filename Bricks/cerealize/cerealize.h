@@ -53,7 +53,7 @@ SOFTWARE.
 
 #include "../../3rdparty/cereal/include/external/base64.hpp"
 
-namespace bricks {
+namespace current {
 namespace cerealize {
 
 // Helper compile-time test that certain type can be serialized via cereal.
@@ -113,7 +113,7 @@ class CerealFileAppenderBase {
     if (p >= 0) {
       return static_cast<size_t>(p);
     } else {
-      BRICKS_THROW(bricks::CerealizeFileStreamErrorException());  // LCOV_EXCL_LINE
+      BRICKS_THROW(current::CerealizeFileStreamErrorException());  // LCOV_EXCL_LINE
     }
   }
 
@@ -269,13 +269,13 @@ class CerealBinaryFileParser {
   // 1) BASE_TYPE: The type of the base entry to de-serialize from the stream, and
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename PROCESSOR>
-  ENABLE_IF<bricks::is_unique_ptr<ENTRY>::value, bool> NextWithDispatching(PROCESSOR& processor) {
+  ENABLE_IF<current::is_unique_ptr<ENTRY>::value, bool> NextWithDispatching(PROCESSOR& processor) {
     if (fi_.peek() != std::char_traits<char>::eof()) {  // This is safe with any next byte in file.
       ENTRY entry;
       si_(entry);
-      bricks::rtti::RuntimeTupleDispatcher<typename PROCESSOR::BASE_TYPE,
-                                           typename PROCESSOR::DERIVED_TYPE_LIST>::DispatchCall(*entry.get(),
-                                                                                                processor);
+      current::rtti::RuntimeTupleDispatcher<typename PROCESSOR::BASE_TYPE,
+                                            typename PROCESSOR::DERIVED_TYPE_LIST>::DispatchCall(*entry.get(),
+                                                                                                 processor);
       return true;
     } else {
       return false;
@@ -321,9 +321,9 @@ class CerealJSONFileParser {
   // 1) BASE_TYPE: The type of the base entry to de-serialize from the stream, and
   // 2) DERIVED_TYPE_LIST: An std::tuple<TYPE1, TYPE2, TYPE3, ...> of all the types that have to be matched.
   template <typename PROCESSOR, typename SFINAE_ENTRY = ENTRY>
-  ENABLE_IF<bricks::is_unique_ptr<SFINAE_ENTRY>::value, bool> NextWithDispatching(PROCESSOR& processor) {
+  ENABLE_IF<current::is_unique_ptr<SFINAE_ENTRY>::value, bool> NextWithDispatching(PROCESSOR& processor) {
     try {
-      bricks::rtti::RuntimeTupleDispatcher<
+      current::rtti::RuntimeTupleDispatcher<
           typename PROCESSOR::BASE_TYPE,
           typename PROCESSOR::DERIVED_TYPE_LIST>::DispatchCall(*GetNextEntryOrThrow().get(), processor);
     } catch (const CerealizeFileStreamErrorException&) {
@@ -371,6 +371,6 @@ template <typename ENTRY, CerealFormat FORMAT = CerealFormat::Default>
 using CerealFileParser = typename CerealGenericFileParser<ENTRY, FORMAT>::type;
 
 }  // namespace cerealize
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_CEREALIZE_CEREALIZE_H

@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../exception.h"
 
-namespace bricks {
+namespace current {
 
 struct ParseJSONException : Exception {
   explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
@@ -36,6 +36,6 @@ struct ParseJSONException : Exception {
 // File stream during serialization got somehow corrupted.
 struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_CEREALIZE_EXCEPTIONS_H

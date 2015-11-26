@@ -257,14 +257,14 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
     for (const auto& e : storage.m.Rows()) {
       rows.push_back(e.Key());
     }
-    EXPECT_EQ("1,2", bricks::strings::Join(rows, ','));
+    EXPECT_EQ("1,2", current::strings::Join(rows, ','));
   }
   {
     std::vector<std::string> cols;
     for (const auto& e : storage.m.Cols()) {
       cols.push_back(e.Key());
     }
-    EXPECT_EQ("one,too,two", bricks::strings::Join(cols, ','));
+    EXPECT_EQ("one,too,two", current::strings::Join(cols, ','));
   }
 
   storage.m.Delete(1, "one");
@@ -308,8 +308,8 @@ TEST(TransactionalStorage, InMemory) {
 
 TEST(TransactionalStorage, OnDisk) {
   const std::string persistence_file_name =
-      bricks::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
-  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
     // First, run the unit test in a way that preserves the database intact.

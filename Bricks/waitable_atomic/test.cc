@@ -36,8 +36,8 @@ using std::thread;
 using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
-using bricks::WaitableAtomic;
-using bricks::IntrusiveClient;
+using current::WaitableAtomic;
+using current::IntrusiveClient;
 
 TEST(WaitableAtomic, Smoke) {
   struct Object {

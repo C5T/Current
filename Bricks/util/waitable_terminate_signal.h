@@ -30,7 +30,7 @@ SOFTWARE.
 #include <mutex>
 #include <unordered_set>
 
-namespace bricks {
+namespace current {
 
 // An instance of `WaitableTerminateSignal` is the logic allowing to send another thread a signal to tear down,
 // while making it possible for that thread to wait for some external event.
@@ -150,6 +150,6 @@ class WaitableTerminateSignalBulkNotifier {
   std::unordered_set<WaitableTerminateSignal*> active_signals_;
 };
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_UTIL_WAITABLE_TERMINATE_SIGNAL_H

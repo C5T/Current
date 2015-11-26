@@ -35,7 +35,7 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 struct FixedSizeSerializerEnabler {};
@@ -69,6 +69,6 @@ inline const T& UnpackFromString(std::string const& s, T& x) {
 }
 
 }  // namespace string
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_FIXED_SIZE_SERIALIZER_H

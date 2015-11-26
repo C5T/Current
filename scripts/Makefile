@@ -41,7 +41,7 @@ default: all
 	fi
 
 test: .current/test
-	.current/test --bricks_runtime_arch=${OS}
+	.current/test --current_runtime_arch=${OS}
 
 debug:
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)

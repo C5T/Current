@@ -181,16 +181,16 @@ TEST(RuntimeDispatcher, ImmutableWithDispatching) {
   const OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
   EXPECT_EQ("const Base&", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rfoo, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rfoo, p);
   EXPECT_EQ("const Foo&", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbar, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbar, p);
   EXPECT_EQ("const Bar&", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbaz, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbaz, p);
   EXPECT_EQ("const Baz&", p.s);
-  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
-               bricks::rtti::UnrecognizedPolymorphicType);
+  ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               current::rtti::UnrecognizedPolymorphicType);
 }
 
 TEST(RuntimeDispatcher, MutableWithDispatching) {
@@ -207,16 +207,16 @@ TEST(RuntimeDispatcher, MutableWithDispatching) {
   OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbase, p);
   EXPECT_EQ("Base&", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rfoo, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rfoo, p);
   EXPECT_EQ("Foo&", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbar, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbar, p);
   EXPECT_EQ("Bar&", p.s);
-  bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbaz, p);
+  current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rbaz, p);
   EXPECT_EQ("Baz&", p.s);
-  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
-               bricks::rtti::UnrecognizedPolymorphicType);
+  ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               current::rtti::UnrecognizedPolymorphicType);
 }
 
 TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
@@ -233,16 +233,16 @@ TEST(RuntimeDispatcher, ImmutableWithTupleTypeListDispatching) {
   const OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("const Base&", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
   EXPECT_EQ("const Foo&", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbar, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbar, p);
   EXPECT_EQ("const Bar&", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
   EXPECT_EQ("const Baz&", p.s);
-  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
-               bricks::rtti::UnrecognizedPolymorphicType);
+  ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               current::rtti::UnrecognizedPolymorphicType);
 }
 
 TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
@@ -259,14 +259,14 @@ TEST(RuntimeDispatcher, MutableWithTupleTypeListDispatching) {
   OtherBase& rother = other;
   RTTITestProcessor p;
   EXPECT_EQ("", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbase, p);
   EXPECT_EQ("Base&", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rfoo, p);
   EXPECT_EQ("Foo&", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbar, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbar, p);
   EXPECT_EQ("Bar&", p.s);
-  bricks::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
+  current::rtti::RuntimeTupleDispatcher<Base, tuple<Foo, Bar, Baz>>::DispatchCall(rbaz, p);
   EXPECT_EQ("Baz&", p.s);
-  ASSERT_THROW((bricks::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
-               bricks::rtti::UnrecognizedPolymorphicType);
+  ASSERT_THROW((current::rtti::RuntimeDispatcher<Base, Foo, Bar, Baz>::DispatchCall(rother, p)),
+               current::rtti::UnrecognizedPolymorphicType);
 }

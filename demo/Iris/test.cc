@@ -43,8 +43,8 @@ SOFTWARE.
 
 #include "iris.h"
 
-using namespace bricks::strings;
-using namespace bricks::gnuplot;
+using namespace current::strings;
+using namespace current::gnuplot;
 using namespace yoda;
 
 DEFINE_int32(iris_port, 5000, "");
@@ -103,7 +103,7 @@ TEST(Iris, Demo) {
   // The input file is in the `golden` directory for it to be successfully picked up by `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
             HTTP(POSTFromFile(Printf("http://localhost:%d/import%d", FLAGS_iris_port, run_index),
-                              bricks::FileSystem::JoinPath("golden", "dataset.tsv"),
+                              current::FileSystem::JoinPath("golden", "dataset.tsv"),
                               "text/tsv")).body);
 
   // Ref.: http://localhost:3000/stream

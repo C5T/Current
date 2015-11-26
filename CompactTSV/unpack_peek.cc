@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   assert(!FLAGS_input.empty());
-  const auto contents = bricks::FileSystem::ReadFileAsString(FLAGS_input);
+  const auto contents = current::FileSystem::ReadFileAsString(FLAGS_input);
 
   size_t count = 0u;
   CompactTSV::Unpack([&count](const std::vector<const char*>&) { ++count; }, contents);

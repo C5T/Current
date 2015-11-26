@@ -96,7 +96,7 @@ class ThreeStageMutex final {
 };
 
 template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
-class Logic : bricks::WaitableTerminateSignalBulkNotifier {
+class Logic : current::WaitableTerminateSignalBulkNotifier {
  public:
   template <typename... EXTRA_PARAMS>
   explicit Logic(EXTRA_PARAMS&&... extra_params)
@@ -107,7 +107,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
   Logic(const Logic&) = delete;
 
   template <typename F>
-  void SyncScanAllEntries(bricks::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
+  void SyncScanAllEntries(current::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
     struct Cursor {
       bool at_end = true;
       size_t index = 0u;
@@ -185,7 +185,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
           [this, &next, &waitable_terminate_signal]() {
             // LOCKED: Wait for either new data to become available or for an external termination request.
             ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
-            bricks::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
+            current::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
             waitable_terminate_signal.WaitUntil(unique_lock.GetUniqueLock(),
                                                 [this, &next]() { return list_size_ > next.total; });
           }();
@@ -221,7 +221,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
 
   template <typename DERIVED_ENTRY>
   size_t DoPublishDerived(const DERIVED_ENTRY& entry) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
+    static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
 
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
 
@@ -229,7 +229,7 @@ class Logic : bricks::WaitableTerminateSignalBulkNotifier {
     // if `ENTRY` is the base class for `DERIVED_ENTRY`.
     // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
     std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
-    *copy = bricks::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
+    *copy = current::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
     const size_t result = list_size_;
     ListPushBackImpl(std::move(copy));
     const ENTRY& pushed_entry = *list_back_;
@@ -311,7 +311,7 @@ struct DevNullPublisherImpl {
   size_t DoPublish(ENTRY&&) { return ++count_; }
   template <typename DERIVED_ENTRY>
   size_t DoPublishDerived(const DERIVED_ENTRY&) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
+    static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     return ++count_;
   }
   size_t count_ = 0u;
@@ -329,11 +329,11 @@ struct CerealAppendToFilePublisherImpl {
   void Replay(std::function<void(ENTRY&&)> push) {
     // TODO(dkorolev): Try/catch here?
     assert(!appender_);
-    bricks::cerealize::CerealJSONFileParser<ENTRY> parser(filename_);
+    current::cerealize::CerealJSONFileParser<ENTRY> parser(filename_);
     while (parser.Next(push)) {
       ++count_;
     }
-    appender_ = make_unique<bricks::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
+    appender_ = make_unique<current::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
     assert(appender_);
   }
 
@@ -349,14 +349,14 @@ struct CerealAppendToFilePublisherImpl {
 
   template <typename DERIVED_ENTRY>
   size_t DoPublishDerived(const DERIVED_ENTRY& e) {
-    static_assert(bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
+    static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     (*appender_) << WithBaseType<ENTRY>(e);
     return ++count_;
   }
 
  private:
   const std::string filename_;
-  std::unique_ptr<bricks::cerealize::CerealJSONFileAppender<ENTRY, CLONER>> appender_;
+  std::unique_ptr<current::cerealize::CerealJSONFileAppender<ENTRY, CLONER>> appender_;
   size_t count_ = 0u;
 };
 
@@ -407,14 +407,14 @@ using NewAppendToFilePublisher = ss::Publisher<impl::NewAppendToFilePublisherImp
 
 }  // namespace blocks::persistence::impl
 
-template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+template <typename ENTRY, class CLONER = current::DefaultCloner>
 using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
-template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+template <typename ENTRY, class CLONER = current::DefaultCloner>
 using CerealAppendToFile =
     ss::Publisher<impl::Logic<impl::CerealAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
-template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+template <typename ENTRY, class CLONER = current::DefaultCloner>
 using NewAppendToFile =
     ss::Publisher<impl::Logic<impl::NewAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 

@@ -51,23 +51,23 @@ SOFTWARE.
 
 using std::string;
 
-using bricks::strings::Printf;
-using bricks::Singleton;
-using bricks::FileSystem;
-using bricks::FileException;
+using current::strings::Printf;
+using current::Singleton;
+using current::FileSystem;
+using current::FileException;
 
-using bricks::net::Connection;
-using bricks::net::HTTPResponseCodeValue;
-using bricks::net::HTTPHeaders;
+using current::net::Connection;
+using current::net::HTTPResponseCodeValue;
+using current::net::HTTPHeaders;
 
-using bricks::net::DefaultInternalServerErrorMessage;
-using bricks::net::DefaultFourOhFourMessage;
-using bricks::net::DefaultMethodNotAllowedMessage;
+using current::net::DefaultInternalServerErrorMessage;
+using current::net::DefaultFourOhFourMessage;
+using current::net::DefaultMethodNotAllowedMessage;
 
-using bricks::net::HTTPRedirectNotAllowedException;
-using bricks::net::HTTPRedirectLoopException;
-using bricks::net::SocketResolveAddressException;
-using bricks::net::CannotServeStaticFilesOfUnknownMIMEType;
+using current::net::HTTPRedirectNotAllowedException;
+using current::net::HTTPRedirectLoopException;
+using current::net::SocketResolveAddressException;
+using current::net::CannotServeStaticFilesOfUnknownMIMEType;
 
 using namespace blocks;
 
@@ -87,7 +87,7 @@ CURRENT_STRUCT(HTTPAPITestObject) {
 
 #if !defined(BRICKS_COVERAGE_REPORT_MODE) && !defined(BRICKS_WINDOWS)
 TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
-  ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_bricks_runtime_arch);
+  ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_current_runtime_arch);
 }
 #endif
 
@@ -327,7 +327,7 @@ TEST(HTTPAPI, GetToFile) {
                     sleep();
                   }
                 });
-  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_test_file_for_http_get";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("http://localhost:%d/stars?n=3", FLAGS_net_api_test_port);
@@ -498,7 +498,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, PostFromInvalidFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string non_existent_file_name = FLAGS_net_api_test_tmpdir + "/non_existent_file";
   const auto test_file_scope = FileSystem::ScopedRmFile(non_existent_file_name);
   ASSERT_THROW(
@@ -516,7 +516,7 @@ TEST(HTTPAPI, PostFromFileToBuffer) {
                   ASSERT_FALSE(r.body.empty());
                   r("Voila: " + r.body);
                 });
-  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_input_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("http://localhost:%d/post", FLAGS_net_api_test_port);
@@ -534,7 +534,7 @@ TEST(HTTPAPI, PostFromBufferToFile) {
                   ASSERT_FALSE(r.body.empty());
                   r("Meh: " + r.body);
                 });
-  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string file_name = FLAGS_net_api_test_tmpdir + "/some_output_test_file_for_http_post";
   const auto test_file_scope = FileSystem::ScopedRmFile(file_name);
   const string url = Printf("http://localhost:%d/post", FLAGS_net_api_test_port);
@@ -551,7 +551,7 @@ TEST(HTTPAPI, PostFromFileToFile) {
                   ASSERT_FALSE(r.body.empty());
                   r("Phew: " + r.body);
                 });
-  bricks::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
+  current::FileSystem::MkDir(FLAGS_net_api_test_tmpdir, FileSystem::MkDirParameters::Silent);
   const string request_file_name = FLAGS_net_api_test_tmpdir + "/some_complex_request_test_file_for_http_post";
   const string response_file_name =
       FLAGS_net_api_test_tmpdir + "/some_complex_response_test_file_for_http_post";

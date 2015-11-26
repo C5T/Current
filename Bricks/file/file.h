@@ -50,7 +50,7 @@ SOFTWARE.
 
 #include "../util/make_scope_guard.h"
 
-namespace bricks {
+namespace current {
 
 // Platform-indepenent, injection-friendly filesystem wrapper.
 struct FileSystem {
@@ -336,7 +336,7 @@ struct FileSystem {
                 },
                 ScanDirParameters::ListFilesAndDirs);
         RmDir(directory, parameters, RmDirRecursive::No);
-      } catch (const bricks::Exception&) {
+      } catch (const current::Exception&) {
         if (parameters == RmDirParameters::ThrowExceptionOnError) {
           throw;
         }
@@ -362,6 +362,10 @@ struct FileSystem {
   };
 };
 
-}  // namespace bricks
+}  // namespace current
+
+namespace current {
+using current::FileSystem;
+}  // namespace current
 
 #endif  // BRICKS_FILE_FILE_H

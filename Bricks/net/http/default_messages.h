@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include <string>
 
-namespace bricks {
+namespace current {
 namespace net {
 
 // Looks plausible to keep error messages capitalized, with a newline at and end, and wrapped into an <h1>.
@@ -41,6 +41,6 @@ inline std::string DefaultInternalServerErrorMessage() { return "<h1>INTERNAL SE
 inline std::string DefaultMethodNotAllowedMessage() { return "<h1>METHOD NOT ALLOWED</h1>\n"; }
 
 }  // namespace net
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_NET_HTTP_DEFAULT_MESSAGES_H

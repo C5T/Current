@@ -112,7 +112,7 @@ struct internals_impl {
   }
 };
 
-inline internals_impl& internals_singleton() { return bricks::ThreadLocalSingleton<internals_impl>(); }
+inline internals_impl& internals_singleton() { return current::ThreadLocalSingleton<internals_impl>(); }
 
 inline std::vector<node_impl>& node_vector_singleton() { return internals_singleton().node_vector_; }
 

@@ -28,7 +28,7 @@ SOFTWARE.
 #include <string>
 #include <type_traits>
 
-namespace bricks {
+namespace current {
 
 template <typename T>
 using copy_free = typename std::conditional<std::is_pod<T>::value, T, const T&>::type;
@@ -36,6 +36,6 @@ using copy_free = typename std::conditional<std::is_pod<T>::value, T, const T&>:
 static_assert(std::is_same<int, copy_free<int>>::value, "");
 static_assert(std::is_same<const std::string&, copy_free<std::string>>::value, "");
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_POD_H

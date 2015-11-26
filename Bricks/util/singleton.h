@@ -34,7 +34,7 @@ SOFTWARE.
 #include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
 #endif
 
-namespace bricks {
+namespace current {
 
 template <typename T>
 inline T& Singleton() {
@@ -99,6 +99,6 @@ inline T& ThreadLocalSingleton() {
 }
 #endif
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_UTIL_SINGLETON_H

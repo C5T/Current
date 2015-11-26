@@ -30,14 +30,14 @@ SOFTWARE.
 
 #include "../../../3rdparty/gtest/gtest-main.h"
 
-using namespace bricks;
+using namespace current;
 using strings::Printf;
 
 // Should keep the indent for docu autogeneration.
 #if 0
   // The example below uses `Printf()`, include it.
   #include "strings/printf.h"
-  using bricks::strings::Printf;
+  using current::strings::Printf;
    
 #endif
 

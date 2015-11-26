@@ -40,7 +40,7 @@ namespace yoda {
 namespace sfinae {
 
 template <typename T>
-using CF = bricks::copy_free<T>;
+using CF = current::copy_free<T>;
 
 // Matrix row and column type extractors, getters and setters.
 // Support two access methods:
@@ -83,7 +83,7 @@ typename ROW_ACCESSOR<ENTRY>::T_ROW GetRow(const ENTRY& entry) {
 }
 
 template <typename ENTRY>
-using ENTRY_ROW_TYPE = bricks::decay<typename ROW_ACCESSOR<ENTRY>::T_ROW>;
+using ENTRY_ROW_TYPE = current::decay<typename ROW_ACCESSOR<ENTRY>::T_ROW>;
 
 template <typename ENTRY>
 void SetRow(ENTRY& entry, CF<ENTRY_ROW_TYPE<ENTRY>> row) {
@@ -127,7 +127,7 @@ typename COL_ACCESSOR<ENTRY>::T_COL GetCol(const ENTRY& entry) {
 }
 
 template <typename ENTRY>
-using ENTRY_COL_TYPE = bricks::decay<typename COL_ACCESSOR<ENTRY>::T_COL>;
+using ENTRY_COL_TYPE = current::decay<typename COL_ACCESSOR<ENTRY>::T_COL>;
 
 template <typename ENTRY>
 void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {

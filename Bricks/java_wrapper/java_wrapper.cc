@@ -29,7 +29,7 @@ SOFTWARE.
 
 extern "C" {
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void*) {
-  auto& JAVA = bricks::java_wrapper::JavaWrapper::Singleton();
+  auto& JAVA = current::java_wrapper::JavaWrapper::Singleton();
   JAVA.jvm = vm;
   return JNI_VERSION_1_6;
 }

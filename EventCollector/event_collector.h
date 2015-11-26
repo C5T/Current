@@ -75,7 +75,7 @@ class EventCollectorHTTPServer {
  public:
   EventCollectorHTTPServer(int http_port,
                            std::ostream& ostream,
-                           const bricks::time::MILLISECONDS_INTERVAL tick_interval_ms,
+                           const current::time::MILLISECONDS_INTERVAL tick_interval_ms,
                            const std::string& route = "/log",
                            const std::string& response_text = "OK\n",
                            std::function<void(const LogEntryWithHeaders&)> callback = {})
@@ -95,7 +95,7 @@ class EventCollectorHTTPServer {
                     LogEntryWithHeaders entry;
                     {
                       std::lock_guard<std::mutex> lock(mutex_);
-                      entry.t = static_cast<uint64_t>(bricks::time::Now());
+                      entry.t = static_cast<uint64_t>(current::time::Now());
                       entry.m = r.method;
                       entry.u = r.url.url_without_parameters;
                       entry.q = r.url.AllQueryParameters();
@@ -124,7 +124,7 @@ class EventCollectorHTTPServer {
   void TimerThreadFunction() {
     while (send_ticks_) {
       std::unique_lock<std::mutex> lock(mutex_);
-      const uint64_t now = static_cast<uint64_t>(bricks::time::Now());
+      const uint64_t now = static_cast<uint64_t>(current::time::Now());
       const uint64_t dt = now - last_event_t_;
       if (dt >= tick_interval_ms_) {
         LogEntryWithHeaders entry;

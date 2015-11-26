@@ -44,7 +44,7 @@ struct HTTPClientApple {
   std::string url_received = "";
   int http_response_code = -1;
   std::string method = "";
-  bricks::net::HTTPHeadersType headers;
+  current::net::HTTPHeadersType headers;
   std::string post_body = "";
   std::string post_file = "";
   std::string received_file = "";
@@ -52,7 +52,7 @@ struct HTTPClientApple {
   std::string content_type = "";
   std::string user_agent = "";
   bool request_succeeded = false;
-  bricks::WaitableAtomic<bool> async_request_completed;
+  current::WaitableAtomic<bool> async_request_completed;
 
   inline bool Go();
 };

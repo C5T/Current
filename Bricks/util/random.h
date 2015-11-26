@@ -30,7 +30,7 @@ SOFTWARE.
 #include "singleton.h"
 #include "../time/chrono.h"
 
-namespace bricks {
+namespace current {
 namespace random {
 
 #ifdef BRICKS_RANDOM_FIX_SEED
@@ -50,7 +50,7 @@ struct mt19937_64_wrapper {
 #else
   mt19937_64_wrapper()
       : instance(ThreadLocalSingleton<SeedImpl>().is_set ? ThreadLocalSingleton<SeedImpl>().seed
-                                                         : static_cast<size_t>(bricks::time::Now())) {}
+                                                         : static_cast<size_t>(current::time::Now())) {}
 #endif
   std::mt19937_64 instance;
 };
@@ -101,16 +101,16 @@ inline float RandomFloat(const float a, const float b) { return RandomReal<float
 inline double RandomDouble(const double a, const double b) { return RandomReal<double>(a, b); }
 
 }  // namespace random
-}  // namespace bricks
+}  // namespace current
 
-using bricks::random::RandomInt;
-using bricks::random::RandomLong;
-using bricks::random::RandomULong;
-using bricks::random::RandomInt64;
-using bricks::random::RandomUInt64;
-using bricks::random::RandomFloat;
-using bricks::random::RandomDouble;
+using current::random::RandomInt;
+using current::random::RandomLong;
+using current::random::RandomULong;
+using current::random::RandomInt64;
+using current::random::RandomUInt64;
+using current::random::RandomFloat;
+using current::random::RandomDouble;
 
-using bricks::random::SetRandomSeed;
+using current::random::SetRandomSeed;
 
 #endif  // BRICKS_UTIL_RANDOM_H

@@ -1,6 +1,5 @@
-// TODO(dkorolev): s/bricks/current.
-
-// TODO(dkorolev): Seamless copy of CURRENT_STRUCT-s with polymorphics.
+// TODO(dkorolev): Seamless copy of CURRENT_STRUCT-s.
+// TODO(dkorolev): Seamless copy of Polymorphic<>.
 
 // TODO(dkorolev): MMQ version too, with a stronly consistent model.
 // #include "../../Blocks/MMQ/mmq.h"
@@ -11,6 +10,8 @@
 //   }
 // };
 // static CallThatFunction call_that_function;
+//
+// TODO(dkorolev): Strongly consistent model on read-write mutexes and std::async.
 
 /*******************************************************************************
 The MIT License (MIT)
@@ -120,11 +121,11 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   auto stream = sherlock::Stream<Event, blocks::persistence::NewAppendToFile>(
-      "persistence", bricks::FileSystem::JoinPath(FLAGS_db_db_dir, FLAGS_db_db_filename));
+      "persistence", current::FileSystem::JoinPath(FLAGS_db_db_dir, FLAGS_db_db_filename));
 
   // Example command lines to get started.
   if (FLAGS_legend) {
-    const auto url = "localhost:" + bricks::strings::ToString(FLAGS_db_demo_port);
+    const auto url = "localhost:" + current::strings::ToString(FLAGS_db_demo_port);
 
     std::cerr << "Health check:\n\tcurl " << url << "/healthz" << std::endl;
     std::cerr << "Schema as F#:\n\tcurl " << url << "/schema.fs" << std::endl;
@@ -134,7 +135,7 @@ int main(int argc, char** argv) {
 
     {
       Event event;
-      event.timestamp = static_cast<uint64_t>(bricks::time::Now());
+      event.timestamp = static_cast<uint64_t>(current::time::Now());
       UserAdded body;
       body.user_id = "skywalker";
       body.nickname = "Luke";

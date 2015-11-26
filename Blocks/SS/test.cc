@@ -31,7 +31,7 @@ SOFTWARE.
 #include "../../Bricks/strings/printf.h"
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using bricks::strings::Printf;
+using current::strings::Printf;
 
 // A copy-able, move-able and clone-able entry.
 struct DispatchDemoEntry {

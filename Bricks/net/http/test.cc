@@ -41,20 +41,20 @@ using std::string;
 using std::thread;
 using std::to_string;
 
-using namespace bricks;
+using namespace current;
 
-using bricks::net::Socket;
-using bricks::net::ClientSocket;
-using bricks::net::Connection;
-using bricks::net::HTTPServerConnection;
-using bricks::net::HTTPRequestData;
-using bricks::net::HTTPResponseCodeValue;
-using bricks::net::HTTPResponseCodeAsString;
-using bricks::net::GetFileMimeType;
-using bricks::net::DefaultInternalServerErrorMessage;
-using bricks::net::SocketException;
-using bricks::net::ConnectionResetByPeer;
-using bricks::net::AttemptedToSendHTTPResponseMoreThanOnce;
+using current::net::Socket;
+using current::net::ClientSocket;
+using current::net::Connection;
+using current::net::HTTPServerConnection;
+using current::net::HTTPRequestData;
+using current::net::HTTPResponseCodeValue;
+using current::net::HTTPResponseCodeAsString;
+using current::net::GetFileMimeType;
+using current::net::DefaultInternalServerErrorMessage;
+using current::net::SocketException;
+using current::net::ConnectionResetByPeer;
+using current::net::AttemptedToSendHTTPResponseMoreThanOnce;
 
 static void ExpectToReceive(const std::string& golden, Connection& connection) {
   std::vector<char> response(golden.length());

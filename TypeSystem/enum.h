@@ -59,12 +59,12 @@ struct EnumNameSingletonImpl {
 
 template <typename T>
 inline ENABLE_IF<std::is_enum<T>::value> RegisterEnum(const char* name) {
-  bricks::Singleton<EnumNameSingletonImpl>().Register<T>(name);
+  current::Singleton<EnumNameSingletonImpl>().Register<T>(name);
 };
 
 template <typename T>
 inline ENABLE_IF<std::is_enum<T>::value, std::string> EnumName() {
-  return bricks::Singleton<EnumNameSingletonImpl>().GetName<T>();
+  return current::Singleton<EnumNameSingletonImpl>().GetName<T>();
 }
 
 }  // namespace reflection

@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "../../util/singleton.h"
 
-namespace bricks {
+namespace current {
 namespace net {
 
 enum class HTTPResponseCodeValue : int {
@@ -126,7 +126,7 @@ struct HTTPResponseCodeDotNotation {
   inline HTTPResponseCodeValue operator()(int code) { return static_cast<HTTPResponseCodeValue>(code); }
 };
 
-#define HTTPResponseCode (bricks::Singleton<bricks::net::HTTPResponseCodeDotNotation>())
+#define HTTPResponseCode (current::Singleton<current::net::HTTPResponseCodeDotNotation>())
 
 inline std::string HTTPResponseCodeAsString(HTTPResponseCodeValue code) {
   static const std::map<int, std::string> codes = {
@@ -181,6 +181,6 @@ inline std::string HTTPResponseCodeAsString(HTTPResponseCodeValue code) {
 }
 
 }  // namespace net
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_NET_HTTP_CODES_H

@@ -38,9 +38,9 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   assert(!FLAGS_input.empty());
-  const auto contents = bricks::FileSystem::ReadFileAsString(FLAGS_input);
+  const auto contents = current::FileSystem::ReadFileAsString(FLAGS_input);
 
   CompactTSV::Unpack(
-      [](const std::vector<std::string>& v) { std::cout << bricks::strings::Join(v, '\t') << std::endl; },
+      [](const std::vector<std::string>& v) { std::cout << current::strings::Join(v, '\t') << std::endl; },
       contents);
 }

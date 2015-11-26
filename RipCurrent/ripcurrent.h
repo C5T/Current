@@ -187,7 +187,7 @@ class UniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> final : public Defi
       FullDescription(os);
       os << "Each building block should be run, described, used as part of a larger block, or dismissed.\n";
 
-      bricks::Singleton<RipCurrentMockableErrorHandler>().HandleError(os.str());
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(os.str());
     }
   }
 
@@ -271,7 +271,7 @@ class DummyNoEntryTypeAcceptor : public EntriesConsumer<InputPolicy::DoesNotAcce
  public:
   virtual ~DummyNoEntryTypeAcceptor() = default;
   void Accept(const DummyNoEntryType&) override {
-    bricks::Singleton<RipCurrentMockableErrorHandler>().HandleError(
+    current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
         "Internal error: Attepmted to send entries into a non-accepting block.");
   }
 };
@@ -292,7 +292,7 @@ class RipCurrentRunContext {
   }
   ~RipCurrentRunContext() {
     if (!sync_called_) {
-      bricks::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);
     }
   }
 
@@ -453,7 +453,7 @@ class GenericUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CL
   template <class ARGS_AS_TUPLE>
   GenericUserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
       : AbstractCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>>(definition),
-        lazy_instance_(bricks::DelayedInstantiateWithExtraParameterFromTuple<
+        lazy_instance_(current::DelayedInstantiateWithExtraParameterFromTuple<
             NextHandlerInitializer<NEXT_INPUT, USER_CLASS>,
             std::shared_ptr<EntriesConsumer<NEXT_INPUT>>>(std::forward<ARGS_AS_TUPLE>(params))) {}
 
@@ -462,8 +462,8 @@ class GenericUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CL
     virtual ~Instance() = default;
 
     explicit Instance(
-        const bricks::LazilyInstantiated<NextHandlerInitializer<NEXT_INPUT, USER_CLASS>,
-                                         std::shared_ptr<EntriesConsumer<NEXT_INPUT>>>& lazy_instance,
+        const current::LazilyInstantiated<NextHandlerInitializer<NEXT_INPUT, USER_CLASS>,
+                                          std::shared_ptr<EntriesConsumer<NEXT_INPUT>>>& lazy_instance,
         std::shared_ptr<EntriesConsumer<NEXT_INPUT>> next)
         : next_(next),
           spawned_user_class_instance_(lazy_instance.InstantiateAsUniquePtrWithExtraParameter(
@@ -482,8 +482,8 @@ class GenericUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CL
   }
 
  private:
-  bricks::LazilyInstantiated<NextHandlerInitializer<NEXT_INPUT, USER_CLASS>,
-                             std::shared_ptr<EntriesConsumer<NEXT_INPUT>>> lazy_instance_;
+  current::LazilyInstantiated<NextHandlerInitializer<NEXT_INPUT, USER_CLASS>,
+                              std::shared_ptr<EntriesConsumer<NEXT_INPUT>>> lazy_instance_;
 };
 
 template <InputPolicy INPUT, class OUTPUT_TYPE_LIST, typename USER_CLASS>

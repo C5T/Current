@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_NULL_DELETER_H
 #define BRICKS_UTIL_NULL_DELETER_H
 
-namespace bricks {
+namespace current {
 
 struct NullDeleter {
   template <typename T>
@@ -37,6 +37,6 @@ struct TypedNullDeleter {
   void operator()(T*) {}
 };
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_UTIL_NULL_DELETER_H

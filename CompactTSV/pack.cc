@@ -33,7 +33,7 @@ int main() {
   std::string row_as_string;
   CompactTSV compact;
   while (std::getline(std::cin, row_as_string)) {
-    compact(bricks::strings::Split(row_as_string, '\t', bricks::strings::EmptyFields::Keep));
+    compact(current::strings::Split(row_as_string, '\t', current::strings::EmptyFields::Keep));
   }
   compact.Finalize();
   std::cout << compact.GetPackedString();

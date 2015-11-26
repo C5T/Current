@@ -107,10 +107,10 @@ y:0.183947}
 #include "../../Bricks/time/chrono.h"
 
 using namespace blocks;
-using namespace bricks::cerealize;
-using bricks::time::Now;
-using bricks::strings::Printf;
-using bricks::net::HTTPHeaders;
+using namespace current::cerealize;
+using current::time::Now;
+using current::strings::Printf;
+using current::net::HTTPHeaders;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 

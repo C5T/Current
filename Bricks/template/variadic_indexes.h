@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_VARIADIC_INDEXES_H
 #define BRICKS_TEMPLATE_VARIADIC_INDEXES_H
 
-namespace bricks {
+namespace current {
 namespace variadic_indexes {
 
 template <int...>
@@ -41,6 +41,6 @@ template <int N>
 using generate_indexes = typename indexes_generator<N>::type;
 
 }  // namespace variadic_indexes
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_VARIADIC_INDEXES_H

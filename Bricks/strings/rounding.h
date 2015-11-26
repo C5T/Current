@@ -31,7 +31,7 @@ SOFTWARE.
 #include <cmath>
 #include <cassert>
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 // Rounds the number to have `n_digits` significant digits.
@@ -52,6 +52,6 @@ inline std::string RoundDoubleToString(double value) {
 }
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_ROUNDING_H

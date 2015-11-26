@@ -31,7 +31,7 @@ SOFTWARE.
 
 #include <tuple>
 
-namespace bricks {
+namespace current {
 namespace rtti {
 
 template <typename BASE, typename DERIVED, typename... TAIL>
@@ -95,6 +95,6 @@ template <typename BASE, typename... TUPLE_TYPES>
 struct RuntimeTupleDispatcher<BASE, std::tuple<TUPLE_TYPES...>> : RuntimeDispatcher<BASE, TUPLE_TYPES...> {};
 
 }  // namespace rtti
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_RTTI_DISPATCHER_H

@@ -44,13 +44,13 @@ struct Padawan {
   using CEREAL_BASE_TYPE = Padawan;
 
   uint64_t ms;
-  Padawan() : ms(static_cast<uint64_t>(bricks::time::Now())) {}
+  Padawan() : ms(static_cast<uint64_t>(current::time::Now())) {}
   virtual ~Padawan() = default;
 
   // TODO(dk+mz): This should go away with SFINAE-based timestamp extraction in Sherlock.
   // We might even already have the code ;-)
-  bricks::time::EPOCH_MILLISECONDS ExtractTimestamp() const {
-    return static_cast<bricks::time::EPOCH_MILLISECONDS>(ms);
+  current::time::EPOCH_MILLISECONDS ExtractTimestamp() const {
+    return static_cast<current::time::EPOCH_MILLISECONDS>(ms);
   }
 
   template <typename A>
@@ -59,7 +59,7 @@ struct Padawan {
   }
 };
 
-struct NonexistentEntryAccessed : bricks::Exception {};
+struct NonexistentEntryAccessed : current::Exception {};
 
 // Wrapper to have in-memory view not only contain the entries, but also the index with which this entry
 // has been pushed to the stream. This is to ensure that the in-memory view is kept up to date

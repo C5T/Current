@@ -43,7 +43,7 @@ TEST(TemplateMetaprogramming, Map) {
   static_assert(TypeListElement<1, TYPELIST_BEFORE>::x == 2, "");
   static_assert(TypeListElement<2, TYPELIST_BEFORE>::x == 3, "");
   
-  typedef bricks::metaprogramming::map<add_100, TYPELIST_BEFORE> TYPELIST_AFTER;
+  typedef current::metaprogramming::map<add_100, TYPELIST_BEFORE> TYPELIST_AFTER;
   static_assert(TypeListSize<TYPELIST_AFTER>::value == 3, "");
   static_assert(TypeListElement<0, TYPELIST_AFTER>::x == 101, "");
   static_assert(TypeListElement<1, TYPELIST_AFTER>::x == 102, "");
@@ -64,7 +64,7 @@ TEST(TemplateMetaprogramming, Filter) {
   static_assert(TypeListElement<1, TYPELIST_BEFORE>::y == 15, "");
   static_assert(TypeListElement<2, TYPELIST_BEFORE>::y == 20, "");
   
-  typedef bricks::metaprogramming::filter<y_is_even, TYPELIST_BEFORE> TYPELIST_AFTER;
+  typedef current::metaprogramming::filter<y_is_even, TYPELIST_BEFORE> TYPELIST_AFTER;
   static_assert(TypeListSize<TYPELIST_AFTER>::value == 2, "");
   static_assert(TypeListElement<0, TYPELIST_AFTER>::y == 10, "");
   static_assert(TypeListElement<1, TYPELIST_AFTER>::y == 20, "");
@@ -79,7 +79,7 @@ TEST(TemplateMetaprogramming, Reduce) {
   struct A { static std::string s() { return "A"; } };
   struct B { static std::string s() { return "B"; } };
   struct C { static std::string s() { return "C"; } };
-  EXPECT_EQ("(A+(B+C))", (bricks::metaprogramming::reduce<concatenate_s, TypeList<A, B, C>>::s()));
+  EXPECT_EQ("(A+(B+C))", (current::metaprogramming::reduce<concatenate_s, TypeList<A, B, C>>::s()));
 }
     
 template <typename T> struct AsIntImpl {};
@@ -134,7 +134,7 @@ template <typename T> int AsInt(T x) { return AsIntImpl<T>::DoIt(x); }
   // A good way to make sure new names appear in one place only, since
   // using `using`-s would require writing them down at least twice each.
   struct UserFriendlyArithmetics :
-      bricks::metaprogramming::combine<TypeList<NEG, ADD, MUL>> {
+      current::metaprogramming::combine<TypeList<NEG, ADD, MUL>> {
     int Neg(int x) {
       return operator()(NEG::TYPE(), x);
     }
@@ -168,7 +168,7 @@ TEST(TemplateMetaprogramming, Combine) {
   // the following construct will work just fine.
   EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
   
-  typedef bricks::metaprogramming::combine<TypeList<NEG, ADD, MUL>> Arithmetics;
+  typedef current::metaprogramming::combine<TypeList<NEG, ADD, MUL>> Arithmetics;
   EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
   EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
   EXPECT_EQ(9, Arithmetics()(ADD::TYPE(), 2, 3, "4"));

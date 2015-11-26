@@ -94,7 +94,7 @@ EXPECT_EQ(5, CerealizeParseJSON<LoadSaveType>(CerealizeJSON(x)).sum);
 ```cpp
 // The example below uses `Printf()`, include it.
 #include "strings/printf.h"
-using bricks::strings::Printf;
+using current::strings::Printf;
  
 // Polymorphic types are supported with some caution.
 struct ExamplePolymorphicType {
@@ -160,7 +160,7 @@ Bricks has C++ bindings for [`gnuplot`](http://www.gnuplot.info/), [`#include "B
 External [`gnuplot`](http://www.gnuplot.info/) binary is invoked. The requirement is that it should be installed in the system and accessible in the `$PATH`.
 ```cpp
 // Where visualization meets love.
-using namespace bricks::gnuplot;
+using namespace current::gnuplot;
 const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Imagine all the people ...")
@@ -182,7 +182,7 @@ const std::string result = GNUPlot()
 ![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/graph/golden/love-Linux.png)
 ```cpp
 // Where visualization meets science.
-using namespace bricks::gnuplot;
+using namespace current::gnuplot;
 const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Graph 'title' with various \"quotes\"")
@@ -211,7 +211,7 @@ const std::string result = GNUPlot()
 #include "../../strings/printf.h"
 
 // Show labels on the plane.
-using namespace bricks::gnuplot;
+using namespace current::gnuplot;
 const size_t image_dim = 800;
 const std::string result = GNUPlot()
   .Title("Labeled Points")
@@ -225,7 +225,7 @@ const std::string result = GNUPlot()
     const int N = 7;
     for (int i = 0; i < N; ++i) {
       const double phi = M_PI * 2 * i / N;
-      p(cos(phi), sin(phi), bricks::strings::Printf("P%d", i));
+      p(cos(phi), sin(phi), current::strings::Printf("P%d", i));
     }
   }).AsLabels())
   .ImageSize(image_dim)
@@ -234,7 +234,7 @@ const std::string result = GNUPlot()
 ![](https://raw.githubusercontent.com/C5T/Current/master/Bricks/graph/golden/labels-Linux.png)
 ## Functional Template Library
 
-Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `bricks::metaprogramming`.
+Bricks makes extensive use of C++11 variadic templates. A few generic methods are exposed as `current::metaprogramming`.
 ```cpp
 // Map.
 template<typename T> struct add_100 { enum { x = T::x + 100 }; };
@@ -249,7 +249,7 @@ static_assert(TypeListElement<0, TYPELIST_BEFORE>::x == 1, "");
 static_assert(TypeListElement<1, TYPELIST_BEFORE>::x == 2, "");
 static_assert(TypeListElement<2, TYPELIST_BEFORE>::x == 3, "");
 
-typedef bricks::metaprogramming::map<add_100, TYPELIST_BEFORE> TYPELIST_AFTER;
+typedef current::metaprogramming::map<add_100, TYPELIST_BEFORE> TYPELIST_AFTER;
 static_assert(TypeListSize<TYPELIST_AFTER>::value == 3, "");
 static_assert(TypeListElement<0, TYPELIST_AFTER>::x == 101, "");
 static_assert(TypeListElement<1, TYPELIST_AFTER>::x == 102, "");
@@ -267,7 +267,7 @@ static_assert(TypeListElement<0, TYPELIST_BEFORE>::y == 10, "");
 static_assert(TypeListElement<1, TYPELIST_BEFORE>::y == 15, "");
 static_assert(TypeListElement<2, TYPELIST_BEFORE>::y == 20, "");
 
-typedef bricks::metaprogramming::filter<y_is_even, TYPELIST_BEFORE> TYPELIST_AFTER;
+typedef current::metaprogramming::filter<y_is_even, TYPELIST_BEFORE> TYPELIST_AFTER;
 static_assert(TypeListSize<TYPELIST_AFTER>::value == 2, "");
 static_assert(TypeListElement<0, TYPELIST_AFTER>::y == 10, "");
 static_assert(TypeListElement<1, TYPELIST_AFTER>::y == 20, "");
@@ -280,7 +280,7 @@ template<typename A, typename B> struct concatenate_s {
 struct A { static std::string s() { return "A"; } };
 struct B { static std::string s() { return "B"; } };
 struct C { static std::string s() { return "C"; } };
-EXPECT_EQ("(A+(B+C))", (bricks::metaprogramming::reduce<concatenate_s, TypeList<A, B, C>>::s()));
+EXPECT_EQ("(A+(B+C))", (current::metaprogramming::reduce<concatenate_s, TypeList<A, B, C>>::s()));
   
 // Combine.
 struct NEG {
@@ -325,7 +325,7 @@ struct MUL : ADD {
 // A good way to make sure new names appear in one place only, since
 // using `using`-s would require writing them down at least twice each.
 struct UserFriendlyArithmetics :
-    bricks::metaprogramming::combine<TypeList<NEG, ADD, MUL>> {
+    current::metaprogramming::combine<TypeList<NEG, ADD, MUL>> {
   int Neg(int x) {
     return operator()(NEG::TYPE(), x);
   }
@@ -357,7 +357,7 @@ EXPECT_EQ(120, MUL()(MUL::TYPE(), 4, 5, 6));
 // the following construct will work just fine.
 EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
 
-typedef bricks::metaprogramming::combine<TypeList<NEG, ADD, MUL>> Arithmetics;
+typedef current::metaprogramming::combine<TypeList<NEG, ADD, MUL>> Arithmetics;
 EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
 EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
 EXPECT_EQ(9, Arithmetics()(ADD::TYPE(), 2, 3, "4"));
@@ -516,7 +516,7 @@ Use the [`#include "Bricks/rtti/dispatcher.h"`](https://github.com/C5T/Current/b
 ```cpp
 // The example below uses `Printf()`, include it.
 #include "strings/printf.h"
-using bricks::strings::Printf;
+using current::strings::Printf;
  
 struct ExampleBase {
   virtual ~ExampleBase() = default;
@@ -543,7 +543,7 @@ struct ExampleProcessor {
   void operator()(const ExampleMoo&) { result = "moo!"; }
 };
 
-using bricks::rtti::RuntimeTupleDispatcher;
+using current::rtti::RuntimeTupleDispatcher;
 typedef RuntimeTupleDispatcher<ExampleBase,
                                tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
 

@@ -31,7 +31,7 @@ SOFTWARE.
 #include <cstdlib>
 #include <type_traits>
 
-namespace bricks {
+namespace current {
 namespace metaprogramming {
 
 // `TypeListImpl<...>` is the underlying class for type list.
@@ -261,17 +261,17 @@ static_assert(!IsTypeList<int>::value, "");
 static_assert(!IsTypeList<double>::value, "");
 
 }  // namespace metaprogramming
-}  // namespace bricks
+}  // namespace current
 
 // Export some symbols into global scope.
-using bricks::metaprogramming::TypeList;
-using bricks::metaprogramming::TypeListContains;
-using bricks::metaprogramming::IsTypeList;
-using bricks::metaprogramming::TypeListSize;
-using bricks::metaprogramming::TypeListElement;
+using current::metaprogramming::TypeList;
+using current::metaprogramming::TypeListContains;
+using current::metaprogramming::IsTypeList;
+using current::metaprogramming::TypeListSize;
+using current::metaprogramming::TypeListElement;
 
 // Note: For equality and lack of discrimination reasons, the user may still use raw `TypeListImpl`,
 // if she prefers to not have flattening and deduplication take place.
-using bricks::metaprogramming::TypeListImpl;
+using current::metaprogramming::TypeListImpl;
 
 #endif  // BRICKS_TEMPLATE_TYPELIST_H

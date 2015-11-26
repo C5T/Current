@@ -32,7 +32,7 @@ SOFTWARE.
 #include "typelist.h"
 #include "weed.h"
 
-namespace bricks {
+namespace current {
 namespace metaprogramming {
 
 // `combine<TypeListImpl<A, B, C>>` == a `struct` that internally contains all `A`, `B` and `C`
@@ -89,6 +89,6 @@ template <typename T, typename... TS>
 struct combine<TypeListImpl<T, TS...>> : inherit_from_both<dispatch<T>, combine<TypeListImpl<TS...>>> {};
 
 }  // namespace metaprogramming
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_COMBINE_H

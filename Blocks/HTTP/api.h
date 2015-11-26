@@ -77,8 +77,8 @@ typedef blocks::HTTPImpl<HTTP_CLIENT, blocks::HTTPServerPOSIX> HTTP_IMPL;
 namespace blocks {
 
 template <typename... TS>
-inline typename bricks::weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... params) {
-  return bricks::Singleton<HTTP_IMPL>()(std::forward<TS>(params)...);
+inline typename current::weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... params) {
+  return current::Singleton<HTTP_IMPL>()(std::forward<TS>(params)...);
 }
 
 }  // namespace blocks

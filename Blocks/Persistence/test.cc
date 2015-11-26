@@ -39,7 +39,7 @@ SOFTWARE.
 
 DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
-using bricks::strings::Join;
+using current::strings::Join;
 
 CURRENT_STRUCT(StorableString) {
   CURRENT_FIELD(s, std::string, "");
@@ -81,7 +81,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     impl.Publish("foo");
     impl.Publish("bar");
 
-    bricks::WaitableTerminateSignal stop;
+    current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -107,7 +107,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     // The data starts from ground zero.
     IMPL impl;
 
-    bricks::WaitableTerminateSignal stop;
+    current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -136,8 +136,9 @@ TEST(PersistenceLayer, AppendToFile) {
   static_assert(!blocks::ss::IsPublisher<int>::value, "");
   static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
 
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
-  const auto file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
     IMPL impl(persistence_file_name);
@@ -145,7 +146,7 @@ TEST(PersistenceLayer, AppendToFile) {
     impl.Publish(StorableString("foo"));
     impl.Publish(std::move(StorableString("bar")));
 
-    bricks::WaitableTerminateSignal stop;
+    current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -170,13 +171,13 @@ TEST(PersistenceLayer, AppendToFile) {
       "{\"s\":\"foo\"}\n"
       "{\"s\":\"bar\"}\n"
       "{\"s\":\"meh\"}\n",
-      bricks::FileSystem::ReadFileAsString(persistence_file_name));
+      current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
     // Confirm that the data has been saved and can be replayed.
     IMPL impl(persistence_file_name);
 
-    bricks::WaitableTerminateSignal stop;
+    current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
@@ -231,7 +232,7 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
 
   std::vector<std::string> results;
   size_t counter = 0u;
-  bricks::WaitableTerminateSignal stop;
+  current::WaitableTerminateSignal stop;
   test_clone.SyncScanAllEntries(stop,
                                 [&results, &counter](std::unique_ptr<BASE>&& e) {
                                   results.push_back(e->AsString());

@@ -35,41 +35,41 @@ SOFTWARE.
 #include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
 
-namespace bricks {
+namespace current {
 namespace time {
 
 enum class EPOCH_MILLISECONDS : uint64_t {};
 enum class MILLISECONDS_INTERVAL : uint64_t {};
 
-}  // namespace bricks::time
-}  // namespace bricks
+}  // namespace current::time
+}  // namespace current
 
-inline bricks::time::MILLISECONDS_INTERVAL operator-(bricks::time::EPOCH_MILLISECONDS lhs,
-                                                     bricks::time::EPOCH_MILLISECONDS rhs) {
-  return static_cast<bricks::time::MILLISECONDS_INTERVAL>(static_cast<int64_t>(lhs) -
-                                                          static_cast<int64_t>(rhs));
+inline current::time::MILLISECONDS_INTERVAL operator-(current::time::EPOCH_MILLISECONDS lhs,
+                                                      current::time::EPOCH_MILLISECONDS rhs) {
+  return static_cast<current::time::MILLISECONDS_INTERVAL>(static_cast<int64_t>(lhs) -
+                                                           static_cast<int64_t>(rhs));
 }
 
-inline bricks::time::MILLISECONDS_INTERVAL operator-(bricks::time::EPOCH_MILLISECONDS x) {
-  return static_cast<bricks::time::MILLISECONDS_INTERVAL>(-static_cast<int64_t>(x));
+inline current::time::MILLISECONDS_INTERVAL operator-(current::time::EPOCH_MILLISECONDS x) {
+  return static_cast<current::time::MILLISECONDS_INTERVAL>(-static_cast<int64_t>(x));
 }
 
-inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::EPOCH_MILLISECONDS lhs,
-                                                  bricks::time::MILLISECONDS_INTERVAL rhs) {
-  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
+inline current::time::EPOCH_MILLISECONDS operator+(current::time::EPOCH_MILLISECONDS lhs,
+                                                   current::time::MILLISECONDS_INTERVAL rhs) {
+  return static_cast<current::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
 }
 
-inline bricks::time::EPOCH_MILLISECONDS operator-(bricks::time::EPOCH_MILLISECONDS lhs,
-                                                  bricks::time::MILLISECONDS_INTERVAL rhs) {
-  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs));
+inline current::time::EPOCH_MILLISECONDS operator-(current::time::EPOCH_MILLISECONDS lhs,
+                                                   current::time::MILLISECONDS_INTERVAL rhs) {
+  return static_cast<current::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) - static_cast<int64_t>(rhs));
 }
 
-inline bricks::time::EPOCH_MILLISECONDS operator+(bricks::time::MILLISECONDS_INTERVAL lhs,
-                                                  bricks::time::EPOCH_MILLISECONDS rhs) {
-  return static_cast<bricks::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
+inline current::time::EPOCH_MILLISECONDS operator+(current::time::MILLISECONDS_INTERVAL lhs,
+                                                   current::time::EPOCH_MILLISECONDS rhs) {
+  return static_cast<current::time::EPOCH_MILLISECONDS>(static_cast<int64_t>(lhs) + static_cast<int64_t>(rhs));
 }
 
-namespace bricks {
+namespace current {
 namespace time {
 
 #ifdef BRICKS_MOCK_TIME
@@ -123,30 +123,36 @@ inline void SleepUntil(EPOCH_MILLISECONDS moment) {
 
 #endif  // BRICKS_MOCK_TIME
 
-}  // namespace bricks::time
+}  // namespace current::time
 
 namespace strings {
 
 template <>
-struct FixedSizeSerializer<bricks::time::EPOCH_MILLISECONDS> {
+struct FixedSizeSerializer<current::time::EPOCH_MILLISECONDS> {
   enum { size_in_bytes = std::numeric_limits<uint64_t>::digits10 + 1 };
-  static std::string PackToString(bricks::time::EPOCH_MILLISECONDS x) {
+  static std::string PackToString(current::time::EPOCH_MILLISECONDS x) {
     std::ostringstream os;
     os << std::setfill('0') << std::setw(size_in_bytes) << static_cast<uint64_t>(x);
     return os.str();
   }
-  static bricks::time::EPOCH_MILLISECONDS UnpackFromString(std::string const& s) {
+  static current::time::EPOCH_MILLISECONDS UnpackFromString(std::string const& s) {
     uint64_t x;
     std::istringstream is(s);
     is >> x;
-    return static_cast<bricks::time::EPOCH_MILLISECONDS>(x);
+    return static_cast<current::time::EPOCH_MILLISECONDS>(x);
   }
 };
 
-}  // namespace bricks::strings
+}  // namespace current::strings
 
-}  // namespace bricks
+}  // namespace current
 
-using bricks::time::EPOCH_MILLISECONDS;
+using current::time::EPOCH_MILLISECONDS;
+
+namespace current {
+
+using current::time::Now;
+
+}  // namespace current
 
 #endif  // BRICKS_TIME_CHRONO_H

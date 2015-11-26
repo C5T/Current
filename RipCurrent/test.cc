@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main.h"
 
-using bricks::strings::Join;
+using current::strings::Join;
 
 // `clang-format` messes up macro-defined class definitions, so disable it temporarily for this section. -- D.K.
 
@@ -299,9 +299,9 @@ TEST(RipCurrent, TypeSystemGuarantees) {
 }
 
 static std::string ExpectHasNAndReturnFirstTwoLines(size_t n, const std::string& s) {
-  const std::vector<std::string> lines = bricks::strings::Split<bricks::strings::ByLines>(s);
+  const std::vector<std::string> lines = current::strings::Split<current::strings::ByLines>(s);
   EXPECT_EQ(n, lines.size());
-  return bricks::strings::Join(
+  return current::strings::Join(
       std::vector<std::string>(
           lines.begin(), lines.begin() + std::min(static_cast<size_t>(lines.size()), static_cast<size_t>(2))),
       '\n');
@@ -311,7 +311,7 @@ TEST(RipCurrent, NotLeftHanging) {
   using namespace ripcurrent_unittest;
 
   std::string captured_error_message;
-  const auto scope = bricks::Singleton<RipCurrentMockableErrorHandler>().ScopedInjectHandler(
+  const auto scope = current::Singleton<RipCurrentMockableErrorHandler>().ScopedInjectHandler(
       [&captured_error_message](const std::string& error_message) { captured_error_message = error_message; });
 
   EXPECT_EQ("", captured_error_message);

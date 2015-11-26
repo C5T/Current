@@ -51,7 +51,7 @@ template <typename T>
 struct HTTPRequestBase {
   std::string url;
   std::string custom_user_agent = "";
-  bricks::net::HTTPHeadersType custom_headers;
+  current::net::HTTPHeadersType custom_headers;
   bool allow_redirects = false;
 
   HTTPRequestBase(const std::string& url) : url(url) {}
@@ -93,13 +93,13 @@ struct FillBody<REQUEST, true> {
 template <typename REQUEST>
 struct FillBody<REQUEST, false> {
   template <typename T>
-  static typename std::enable_if<bricks::cerealize::is_write_cerealizable<T>::value>::type Fill(
+  static typename std::enable_if<current::cerealize::is_write_cerealizable<T>::value>::type Fill(
       REQUEST& request, T&& object, const std::string& content_type) {
     request.body = CerealizeJSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : "application/json";
   }
   template <typename T>
-  static typename std::enable_if<IS_CURRENT_STRUCT(bricks::decay<T>)>::type Fill(
+  static typename std::enable_if<IS_CURRENT_STRUCT(current::decay<T>)>::type Fill(
       REQUEST& request, T&& object, const std::string& content_type) {
     request.body = JSON(std::forward<T>(object));
     request.content_type = !content_type.empty() ? content_type : "application/json";
@@ -113,7 +113,8 @@ struct POST : HTTPRequestBase<POST> {
   template <typename T>
   POST(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<POST, bricks::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
+    FillBody<POST, current::strings::is_string_type<T>::value>::Fill(
+        *this, std::forward<T>(body), content_type);
   }
 };
 
@@ -132,7 +133,7 @@ struct PUT : HTTPRequestBase<PUT> {
   template <typename T>
   PUT(const std::string& url, T&& body, const std::string& content_type = "")
       : HTTPRequestBase(url) {
-    FillBody<PUT, bricks::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
+    FillBody<PUT, current::strings::is_string_type<T>::value>::Fill(*this, std::forward<T>(body), content_type);
   }
 };
 
@@ -147,7 +148,7 @@ struct HTTPResponse {
   // The final URL. Will be equal to the original URL, unless redirects have been allowed and took place.
   std::string url;
   // HTTP response code.
-  bricks::net::HTTPResponseCodeValue code;
+  current::net::HTTPResponseCodeValue code;
 };
 
 struct HTTPResponseWithBuffer : HTTPResponse {
@@ -216,7 +217,7 @@ struct HTTPImpl {
     IMPL_HELPER::PrepareInput(response_params, impl);
     if (!impl.Go()) {
 #ifndef ANDROID
-      BRICKS_THROW(bricks::net::HTTPException());  // LCOV_EXCL_LINE
+      BRICKS_THROW(current::net::HTTPException());  // LCOV_EXCL_LINE
 #else
       // TODO(dkorolev): Chat with Alex. We can overcome the exception here, but should we?
       return typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE();

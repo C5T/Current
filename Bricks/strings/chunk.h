@@ -67,7 +67,7 @@ SOFTWARE.
 #include <unordered_map>
 #include <string>
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 class Chunk {
@@ -235,6 +235,6 @@ class ChunkDB {
 };
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_CHUNK_H

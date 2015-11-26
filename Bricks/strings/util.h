@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../template/enable_if.h"
 #include "../template/decay.h"
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 template <typename DECAYED_T>
@@ -78,13 +78,13 @@ struct ToStringImpl<bool> {
 // Keep the lowercase name to possibly act as a replacement for `std::to_string`.
 template <typename T>
 inline std::string to_string(T&& something) {
-  return ToStringImpl<bricks::decay<T>>::ToString(something);
+  return ToStringImpl<current::decay<T>>::ToString(something);
 }
 
 // Use camel-case `ToString()` within Bricks.
 template <typename T>
 inline std::string ToString(T&& something) {
-  return bricks::strings::to_string(something);
+  return current::strings::to_string(something);
 }
 
 template <typename T_OUTPUT, typename T_INPUT = std::string>
@@ -170,9 +170,9 @@ inline std::string ToUpper(const T& input) {
 }
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
-using bricks::strings::FromString;
-using bricks::strings::ToString;
+using current::strings::FromString;
+using current::strings::ToString;
 
 #endif  // BRICKS_STRINGS_UTIL_H

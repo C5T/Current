@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../exception.h"
 
-namespace bricks {
+namespace current {
 
 // TODO(dkorolev): Add more detailed exceptions for Read/Write/etc.
 struct FileException : Exception {
@@ -51,6 +51,6 @@ struct DirIsNotEmptyException : FileException {
   DirIsNotEmptyException() : FileException() {}
 };
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_FILE_EXCEPTIONS_H

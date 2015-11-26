@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <string>
 
-namespace bricks {
+namespace current {
 namespace cerealize {
 
 struct Constants {
@@ -39,6 +39,6 @@ struct Constants {
 };
 
 }  // namespace cerealize
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_CEREALIZE_CONSTANTS_H

@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../template/decay.h"
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 // Helper compile-type test to tell string-like types from cerealizable types.
@@ -81,6 +81,6 @@ struct is_string_type {
 };
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_IS_STRING_TYPE_H

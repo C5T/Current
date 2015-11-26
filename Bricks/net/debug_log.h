@@ -43,12 +43,12 @@ SOFTWARE.
 struct DebugLogMutex {
   std::mutex mutex;
 };
-#define BRICKS_NET_LOG(...)                                                        \
-  ([=] {                                                                           \
-    std::unique_lock<std::mutex> lock(::bricks::Singleton<DebugLogMutex>().mutex); \
-    std::cout << 'T' << std::this_thread::get_id() << ' ';                         \
-    printf(__VA_ARGS__);                                                           \
-    fflush(stdout);                                                                \
+#define BRICKS_NET_LOG(...)                                                         \
+  ([=] {                                                                            \
+    std::unique_lock<std::mutex> lock(::current::Singleton<DebugLogMutex>().mutex); \
+    std::cout << 'T' << std::this_thread::get_id() << ' ';                          \
+    printf(__VA_ARGS__);                                                            \
+    fflush(stdout);                                                                 \
   }())
 
 #endif
