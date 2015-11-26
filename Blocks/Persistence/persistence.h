@@ -28,14 +28,18 @@ SOFTWARE.
 #include <cassert>
 #include <chrono>
 #include <forward_list>
+#include <fstream>
 #include <functional>
 #include <mutex>
 #include <thread>
+
+#include "../../TypeSystem/Serialization/json.h"
 
 #include "../SS/ss.h"
 
 #include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
+
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
@@ -316,12 +320,11 @@ struct DevNullPublisherImpl {
 template <typename ENTRY, class CLONER>
 using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY, CLONER>, ENTRY>;
 
-// TODO(dkorolev): Move into Cerealize.
 template <typename ENTRY, class CLONER>
-struct AppendToFilePublisherImpl {
-  AppendToFilePublisherImpl() = delete;
-  AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
-  explicit AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+struct CerealAppendToFilePublisherImpl {
+  CerealAppendToFilePublisherImpl() = delete;
+  CerealAppendToFilePublisherImpl(const CerealAppendToFilePublisherImpl&) = delete;
+  explicit CerealAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(ENTRY&&)> push) {
     // TODO(dkorolev): Try/catch here?
@@ -358,7 +361,49 @@ struct AppendToFilePublisherImpl {
 };
 
 template <typename ENTRY, class CLONER>
-using AppendToFilePublisher = ss::Publisher<impl::AppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
+using CerealAppendToFilePublisher = ss::Publisher<impl::CerealAppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
+
+template <typename ENTRY, class CLONER>
+struct NewAppendToFilePublisherImpl {
+  NewAppendToFilePublisherImpl() = delete;
+  NewAppendToFilePublisherImpl(const NewAppendToFilePublisherImpl&) = delete;
+  explicit NewAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+
+  void Replay(std::function<void(ENTRY&&)> push) {
+    assert(!appender_);
+    std::ifstream fi(filename_);
+    if (fi.good()) {
+      std::string line;
+      while (std::getline(fi, line)) {
+        push(std::move(ParseJSON<ENTRY>(line)));
+        ++count_;
+      }
+      appender_ = make_unique<std::ofstream>(filename_, std::ofstream::app);
+    } else {
+      appender_ = make_unique<std::ofstream>(filename_, std::ofstream::trunc);
+    }
+    assert(appender_);
+    assert(appender_->good());
+  }
+
+  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
+  size_t DoPublish(const ENTRY& entry) {
+    (*appender_) << JSON(entry) << std::endl;
+    return ++count_;
+  }
+  size_t DoPublish(ENTRY&& entry) {
+    (*appender_) << JSON(entry) << std::endl;
+    return ++count_;
+  }
+
+ private:
+  const std::string filename_;
+  std::unique_ptr<std::ofstream> appender_;
+  size_t count_ = 0u;
+};
+
+template <typename ENTRY, class CLONER>
+using NewAppendToFilePublisher = ss::Publisher<impl::NewAppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 }  // namespace blocks::persistence::impl
 
@@ -366,8 +411,12 @@ template <typename ENTRY, class CLONER = bricks::DefaultCloner>
 using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
 template <typename ENTRY, class CLONER = bricks::DefaultCloner>
-using AppendToFile =
-    ss::Publisher<impl::Logic<impl::AppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
+using CerealAppendToFile =
+    ss::Publisher<impl::Logic<impl::CerealAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
+
+template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+using NewAppendToFile =
+    ss::Publisher<impl::Logic<impl::NewAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
 }  // namespace blocks::persistence
 }  // namespace blocks

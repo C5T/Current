@@ -32,6 +32,7 @@ SOFTWARE.
 #include "types.h"
 
 #include "../optional.h"
+#include "../polymorphic.h"
 #include "../struct.h"
 
 #include "../../Bricks/util/singleton.h"
@@ -105,6 +106,28 @@ struct ReflectorImpl {
     template <typename T>
     std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<Optional<T>>) {
       auto result = std::make_shared<ReflectedType_Optional>(Reflector().ReflectType<T>());
+      result->type_id = CalculateTypeID(*result);
+      return result;
+    }
+
+    template <typename... TS>
+    struct VisitAllPolymorphicTypes {
+      template <typename X>
+      struct VisitImpl {
+        static void DispatchToAll(std::shared_ptr<ReflectedType_Polymorphic>& destination) {
+          destination->cases.push_back(Reflector().ReflectType<X>());
+        }
+      };
+      static void Run(std::shared_ptr<ReflectedType_Polymorphic>& destination) {
+        bricks::metaprogramming::combine<bricks::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
+        impl.DispatchToAll(destination);
+      }
+    };
+
+    template <typename... TS>
+    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<PolymorphicImpl<TS...>>) {
+      auto result = std::make_shared<ReflectedType_Polymorphic>();
+      VisitAllPolymorphicTypes<TS...>::Run(result);
       result->type_id = CalculateTypeID(*result);
       return result;
     }

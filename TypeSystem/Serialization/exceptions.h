@@ -104,4 +104,7 @@ struct BinaryLoadFromStreamException : BinarySerializationException {
 }  // namespace serialization
 }  // namespace current
 
+using current::serialization::InvalidJSONException;
+using current::serialization::TypeSystemParseJSONException;
+
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H

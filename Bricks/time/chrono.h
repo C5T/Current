@@ -147,4 +147,6 @@ struct FixedSizeSerializer<bricks::time::EPOCH_MILLISECONDS> {
 
 }  // namespace bricks
 
+using bricks::time::EPOCH_MILLISECONDS;
+
 #endif  // BRICKS_TIME_CHRONO_H
