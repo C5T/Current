@@ -41,7 +41,7 @@ SOFTWARE.
 
 TEST(Graph, GNUPlotLabels) {
   // Show labels on the plane.
-  using namespace bricks::gnuplot;
+  using namespace current::gnuplot;
 #ifndef BRICKS_APPLE
 const char* const formats[2] = { "dumb", "pngcairo" };
 #else
@@ -66,7 +66,7 @@ const size_t image_dim = e ? 800 : 112;
       const int N = 7;
       for (int i = 0; i < N; ++i) {
         const double phi = M_PI * 2 * i / N;
-        p(cos(phi), sin(phi), bricks::strings::Printf("P%d", i));
+        p(cos(phi), sin(phi), current::strings::Printf("P%d", i));
       }
     }).AsLabels())
     .ImageSize(image_dim)
@@ -75,8 +75,8 @@ const size_t image_dim = e ? 800 : 112;
 #else
     .OutputFormat("svg");  // Although the one below is actually a "png".
 #endif
-if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, ("golden/labels-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
-if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/labels-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
+if (FLAGS_regenerate_golden_graphs) current::FileSystem::WriteStringToFile(result, ("golden/labels-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, current::FileSystem::ReadFileAsString("golden/labels-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
 }
 }
 

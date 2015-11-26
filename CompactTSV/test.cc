@@ -46,7 +46,7 @@ TEST(CompactTSV, Smoke) {
   std::string golden;
   std::ostringstream os;
 
-  const auto t_a_begin = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_a_begin = static_cast<uint64_t>(current::time::Now());
   CreateTSV([&os](const std::vector<size_t>& row) {
               for (size_t i = 0; i < row.size(); ++i) {
                 os << std::setw(2) << row[i] << ((i + 1) == row.size() ? '\n' : ' ');
@@ -56,7 +56,7 @@ TEST(CompactTSV, Smoke) {
             FLAGS_cols,
             FLAGS_scale,
             FLAGS_random_seed);
-  const auto t_a_end = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_a_end = static_cast<uint64_t>(current::time::Now());
 
   if (run_test) {
     golden =
@@ -76,11 +76,11 @@ TEST(CompactTSV, Smoke) {
   }
 
   CompactTSV fast;
-  const auto t_b_begin = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_b_begin = static_cast<uint64_t>(current::time::Now());
   CreateTSV([&fast](const std::vector<size_t>& row) {
               std::vector<std::string> row_of_strings(row.size());
               for (size_t i = 0; i < row.size(); ++i) {
-                row_of_strings[i] = bricks::strings::ToString(row[i]);
+                row_of_strings[i] = current::strings::ToString(row[i]);
               }
               fast(row_of_strings);
             },
@@ -88,11 +88,11 @@ TEST(CompactTSV, Smoke) {
             FLAGS_cols,
             FLAGS_scale,
             FLAGS_random_seed);
-  const auto t_b_end = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_b_end = static_cast<uint64_t>(current::time::Now());
   fast.Finalize();
 
   std::ostringstream os2;
-  const auto t_c_begin = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_c_begin = static_cast<uint64_t>(current::time::Now());
   EXPECT_EQ(FLAGS_rows,
             CompactTSV::Unpack([&os2](const std::vector<std::string>& row) {
                                  for (size_t i = 0; i < row.size(); ++i) {
@@ -101,23 +101,23 @@ TEST(CompactTSV, Smoke) {
                                },
                                fast.GetPackedString()));
   EXPECT_EQ(golden, os2.str());
-  const auto t_c_end = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_c_end = static_cast<uint64_t>(current::time::Now());
 
-  const auto t_d_begin = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_d_begin = static_cast<uint64_t>(current::time::Now());
   EXPECT_EQ(FLAGS_rows, CompactTSV::Unpack([](const std::vector<std::string>&) {}, fast.GetPackedString()));
-  const auto t_d_end = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_d_end = static_cast<uint64_t>(current::time::Now());
 
-  const auto t_e_begin = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_e_begin = static_cast<uint64_t>(current::time::Now());
   EXPECT_EQ(
       FLAGS_rows,
       CompactTSV::Unpack([](const std::vector<std::pair<const char*, size_t>>&) {}, fast.GetPackedString()));
-  const auto t_e_end = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_e_end = static_cast<uint64_t>(current::time::Now());
 
-  const auto t_f_begin = static_cast<uint64_t>(bricks::time::Now());
+  const auto t_f_begin = static_cast<uint64_t>(current::time::Now());
   EXPECT_EQ(
       FLAGS_rows,
-      CompactTSV::Unpack([](const std::vector<bricks::strings::UniqueChunk>&) {}, fast.GetPackedString()));
-  const auto t_f_end = static_cast<uint64_t>(bricks::time::Now());
+      CompactTSV::Unpack([](const std::vector<current::strings::UniqueChunk>&) {}, fast.GetPackedString()));
+  const auto t_f_end = static_cast<uint64_t>(current::time::Now());
 
   if (FLAGS_benchmark) {
     const size_t golden_size = golden.length();

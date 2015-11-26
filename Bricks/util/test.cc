@@ -43,26 +43,26 @@ SOFTWARE.
 
 TEST(Util, BasicException) {
   try {
-    BRICKS_THROW(bricks::Exception("Foo"));
+    BRICKS_THROW(current::Exception("Foo"));
     ASSERT_TRUE(false);
-  } catch (bricks::Exception& e) {
+  } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:46\tbricks::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:46\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
 }
 
-struct TestException : bricks::Exception {
-  TestException(const std::string& a, const std::string& b) : bricks::Exception(a + "&" + b) {}
+struct TestException : current::Exception {
+  TestException(const std::string& a, const std::string& b) : current::Exception(a + "&" + b) {}
 };
 
 TEST(Util, CustomException) {
   try {
     BRICKS_THROW(TestException("Bar", "Baz"));
     ASSERT_TRUE(false);
-  } catch (bricks::Exception& e) {
+  } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
     const std::string golden = "test.cc:63\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
@@ -98,7 +98,7 @@ TEST(Util, MakeScopeGuard) {
     EXPECT_EQ("lambda_begin\n", story);
     {
       EXPECT_EQ("lambda_begin\n", story);
-      const auto guard = bricks::MakeScopeGuard([&story]() { story += "lambda_end\n"; });
+      const auto guard = current::MakeScopeGuard([&story]() { story += "lambda_end\n"; });
       EXPECT_EQ("lambda_begin\n", story);
     }
     EXPECT_EQ("lambda_begin\nlambda_end\n", story);
@@ -132,7 +132,7 @@ TEST(Util, MakeScopeGuard) {
     Helper helper(story);
     {
       EXPECT_EQ("helper_begin\n", story);
-      const auto guard = bricks::MakeScopeGuard(helper);
+      const auto guard = current::MakeScopeGuard(helper);
       EXPECT_EQ("helper_begin\n", story);
       EXPECT_FALSE(helper.called_);
     }
@@ -180,7 +180,7 @@ TEST(Util, MakePointerScopeGuard) {
     EXPECT_EQ("guarded_pointer\n", story);
     {
       Instance* pointer = new Instance(story);
-      const auto guard = bricks::MakePointerScopeGuard(pointer);
+      const auto guard = current::MakePointerScopeGuard(pointer);
       EXPECT_EQ("guarded_pointer\nconstructed\n", story);
     }
     EXPECT_EQ("guarded_pointer\nconstructed\ndestructed\n", story);
@@ -191,11 +191,11 @@ TEST(Util, MakePointerScopeGuard) {
     EXPECT_EQ("custom_guarded_pointer\n", story);
     {
       Instance* pointer = new Instance(story);
-      const auto guard = bricks::MakePointerScopeGuard(pointer,
-                                                       [&story](Instance* p) {
-                                                         story += "guarded_delete\n";
-                                                         delete p;
-                                                       });
+      const auto guard = current::MakePointerScopeGuard(pointer,
+                                                        [&story](Instance* p) {
+                                                          story += "guarded_delete\n";
+                                                          delete p;
+                                                        });
       EXPECT_EQ("custom_guarded_pointer\nconstructed\n", story);
     }
     EXPECT_EQ("custom_guarded_pointer\nconstructed\nguarded_delete\ndestructed\n", story);
@@ -208,15 +208,15 @@ TEST(Util, Singleton) {
     void baz() { ++bar; }
     void reset() { bar = 0u; }
   };
-  EXPECT_EQ(0u, bricks::Singleton<Foo>().bar);
-  bricks::Singleton<Foo>().baz();
-  EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
-  const auto lambda = []() { bricks::Singleton<Foo>().baz(); };
-  EXPECT_EQ(1u, bricks::Singleton<Foo>().bar);
+  EXPECT_EQ(0u, current::Singleton<Foo>().bar);
+  current::Singleton<Foo>().baz();
+  EXPECT_EQ(1u, current::Singleton<Foo>().bar);
+  const auto lambda = []() { current::Singleton<Foo>().baz(); };
+  EXPECT_EQ(1u, current::Singleton<Foo>().bar);
   lambda();
-  EXPECT_EQ(2u, bricks::Singleton<Foo>().bar);
+  EXPECT_EQ(2u, current::Singleton<Foo>().bar);
   // Allow running the test multiple times, via --gtest_repeat.
-  bricks::Singleton<Foo>().reset();
+  current::Singleton<Foo>().reset();
 }
 
 TEST(Util, ThreadLocalSingleton) {
@@ -226,9 +226,9 @@ TEST(Util, ThreadLocalSingleton) {
   };
   const auto add = [](size_t n) {
     for (size_t i = 0; i < n; ++i) {
-      bricks::ThreadLocalSingleton<Foo>().baz();
+      current::ThreadLocalSingleton<Foo>().baz();
     }
-    EXPECT_EQ(n, bricks::ThreadLocalSingleton<Foo>().bar);
+    EXPECT_EQ(n, current::ThreadLocalSingleton<Foo>().bar);
   };
   std::thread t1(add, 50000);
   std::thread t2(add, 10);
@@ -238,13 +238,13 @@ TEST(Util, ThreadLocalSingleton) {
 
 TEST(Util, CRC32) {
   const std::string test_string = "Test string";
-  EXPECT_EQ(2514197138u, bricks::CRC32(test_string));
-  EXPECT_EQ(2514197138u, bricks::CRC32(test_string.c_str()));
+  EXPECT_EQ(2514197138u, current::CRC32(test_string));
+  EXPECT_EQ(2514197138u, current::CRC32(test_string.c_str()));
 }
 
 TEST(Util, SHA256) {
   EXPECT_EQ("a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e",
-            static_cast<std::string>(bricks::SHA256("Hello World")));
+            static_cast<std::string>(current::SHA256("Hello World")));
 }
 
 TEST(Util, ROL64) {
@@ -267,10 +267,10 @@ TEST(Util, ROL64) {
 // Test is disabled since even being initialized with constant seed, random number generator
 // returns different values on different platforms :(
 TEST(Util, RandomWithFixedSeed) {
-  EXPECT_EQ(114, bricks::random::RandomInt(-100, 200));
-  EXPECT_EQ(258833541435025064u, bricks::random::RandomUInt64(1e10, 1e18));
-  EXPECT_FLOAT_EQ(0.752145, bricks::random::RandomFloat(0.0, 1.0));
-  EXPECT_DOUBLE_EQ(-605.7885522709737, bricks::random::RandomDouble(-1024.5, 2048.1));
+  EXPECT_EQ(114, current::random::RandomInt(-100, 200));
+  EXPECT_EQ(258833541435025064u, current::random::RandomUInt64(1e10, 1e18));
+  EXPECT_FLOAT_EQ(0.752145, current::random::RandomFloat(0.0, 1.0));
+  EXPECT_DOUBLE_EQ(-605.7885522709737, current::random::RandomDouble(-1024.5, 2048.1));
 }
 #endif
 
@@ -343,9 +343,9 @@ struct ClonableViaCerealizeJSON {
 
 TEST(Util, Clone) {
   using namespace cloning_unit_test;
-  using bricks::Clone;
-  using bricks::DefaultCloneFunction;
-  using bricks::DefaultCloner;
+  using current::Clone;
+  using current::DefaultCloneFunction;
+  using current::DefaultCloner;
 
   EXPECT_EQ("original", ClonableByRef().text);
   EXPECT_EQ("original", ClonableByPtr().text);
@@ -382,7 +382,7 @@ TEST(Util, Clone) {
 }
 
 TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {
-  using bricks::WaitableTerminateSignal;
+  using current::WaitableTerminateSignal;
 
   WaitableTerminateSignal signal;
   size_t counter = 0u;
@@ -410,7 +410,7 @@ TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {
 }
 
 TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
-  using bricks::WaitableTerminateSignal;
+  using current::WaitableTerminateSignal;
 
   WaitableTerminateSignal signal;
   size_t counter = 0u;
@@ -442,8 +442,8 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
 }
 
 TEST(Util, WaitableTerminateSignalScopedRegisterer) {
-  using bricks::WaitableTerminateSignal;
-  using bricks::WaitableTerminateSignalBulkNotifier;
+  using current::WaitableTerminateSignal;
+  using current::WaitableTerminateSignalBulkNotifier;
 
   WaitableTerminateSignal signal1;
   WaitableTerminateSignal signal2;
@@ -486,11 +486,11 @@ TEST(Util, WaitableTerminateSignalScopedRegisterer) {
 }
 
 TEST(Util, LazyInstantiation) {
-  using bricks::LazilyInstantiated;
-  using bricks::DelayedInstantiate;
-  using bricks::DelayedInstantiateFromTuple;
-  using bricks::DelayedInstantiateWithExtraParameter;
-  using bricks::DelayedInstantiateWithExtraParameterFromTuple;
+  using current::LazilyInstantiated;
+  using current::DelayedInstantiate;
+  using current::DelayedInstantiateFromTuple;
+  using current::DelayedInstantiateWithExtraParameter;
+  using current::DelayedInstantiateWithExtraParameterFromTuple;
 
   struct Foo {
     int foo;
@@ -501,7 +501,7 @@ TEST(Util, LazyInstantiation) {
     int prefix;
     int bar;
     Bar(int prefix, int bar) : prefix(prefix), bar(bar) {}
-    std::string AsString() const { return bricks::strings::Printf("%d:%d", prefix, bar); }
+    std::string AsString() const { return current::strings::Printf("%d:%d", prefix, bar); }
   };
 
   int v = 2;

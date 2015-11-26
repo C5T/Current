@@ -28,7 +28,7 @@ SOFTWARE.
 #include <memory>
 #include <utility>
 
-namespace bricks {
+namespace current {
 
 template <typename POINTER, typename DELETER = std::default_delete<POINTER>>
 std::unique_ptr<POINTER, DELETER> MakePointerScopeGuard(POINTER* x, DELETER t = DELETER()) {
@@ -52,6 +52,6 @@ ScopeGuard<F> MakeScopeGuard(F&& f) {
   return ScopeGuard<F>(f);
 }
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_UTIL_MAKE_SCOPED_GUARD_H

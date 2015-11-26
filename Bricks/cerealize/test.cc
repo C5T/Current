@@ -55,7 +55,7 @@ SOFTWARE.
 #include "../dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using namespace bricks;
+using namespace current;
 using namespace cerealize;
 
 using strings::Printf;
@@ -126,14 +126,14 @@ TEST(Cerealize, BinarySerializesAndParses) {
   EventAppResume c;
 
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary> f1(
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, current::DefaultCloner, CerealFormat::Binary> f1(
         CurrentTestTempFileName());
     f1 << a << b;
     EXPECT_EQ(2u, f1.EntriesAppended());
     EXPECT_EQ(115u, f1.BytesAppended());
   }
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary> f2(
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, current::DefaultCloner, CerealFormat::Binary> f2(
         CurrentTestTempFileName());
     f2 << c;
     EXPECT_EQ(1u, f2.EntriesAppended());
@@ -162,14 +162,14 @@ TEST(Cerealize, JSONSerializesAndParses) {
   EventAppResume c;
 
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::JSON> f1(
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, current::DefaultCloner, CerealFormat::JSON> f1(
         CurrentTestTempFileName());
     f1 << a;
     EXPECT_EQ(1u, f1.EntriesAppended());
     EXPECT_EQ(164u, f1.BytesAppended());
   }
   {
-    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::JSON> f2(
+    CerealFileAppender<std::unique_ptr<MapsYouEventBase>, current::DefaultCloner, CerealFormat::JSON> f2(
         CurrentTestTempFileName());
     f2 << b << c;
     EXPECT_EQ(2u, f2.EntriesAppended());
@@ -198,10 +198,10 @@ TEST(Cerealize, ConsumerSupportsPolymorphicTypes) {
   EventAppSuspend b;
   EventAppResume c;
 
-  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary>(
+  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, current::DefaultCloner, CerealFormat::Binary>(
       CurrentTestTempFileName())
       << a << b;
-  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, bricks::DefaultCloner, CerealFormat::Binary>(
+  CerealFileAppender<std::unique_ptr<MapsYouEventBase>, current::DefaultCloner, CerealFormat::Binary>(
       CurrentTestTempFileName())
       << c;
 

@@ -34,7 +34,7 @@ namespace yoda {
 
 // Exception types for non-existent keys.
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
-struct KeyNotFoundCoverException : bricks::Exception {};
+struct KeyNotFoundCoverException : current::Exception {};
 
 template <typename ENTRY>
 struct KeyNotFoundException : KeyNotFoundCoverException {
@@ -46,7 +46,7 @@ struct KeyNotFoundException : KeyNotFoundCoverException {
 
 // Exception types for the existence of a particular key being a runtime error.
 // Cover exception type for all key types and templated, narrowed down exception types, one per entry key type.
-struct KeyAlreadyExistsCoverException : bricks::Exception {};
+struct KeyAlreadyExistsCoverException : current::Exception {};
 
 template <typename ENTRY>
 struct KeyAlreadyExistsException : KeyAlreadyExistsCoverException {

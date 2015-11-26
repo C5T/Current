@@ -31,11 +31,11 @@ SOFTWARE.
 #include "../dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using bricks::FileSystem;
-using bricks::FileException;
-using bricks::DirDoesNotExistException;
-using bricks::PathIsNotADirectoryException;
-using bricks::DirIsNotEmptyException;
+using current::FileSystem;
+using current::FileException;
+using current::DirDoesNotExistException;
+using current::PathIsNotADirectoryException;
+using current::DirIsNotEmptyException;
 
 DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 

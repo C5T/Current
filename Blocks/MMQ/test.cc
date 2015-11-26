@@ -102,7 +102,7 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   size_t messages_accepted = 0u;
   size_t messages_dropped = 0u;
   for (size_t i = 0; i < 25; ++i) {
-    if (mmq.Publish(bricks::strings::Printf("M%02d", static_cast<int>(i)))) {
+    if (mmq.Publish(current::strings::Printf("M%02d", static_cast<int>(i)))) {
       ++messages_accepted;
     } else {
       ++messages_dropped;
@@ -146,7 +146,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
 
   const auto producer = [&](char prefix, size_t count) {
     for (size_t i = 0; i < count; ++i) {
-      mmq.Publish(bricks::strings::Printf("%c%02d", prefix, static_cast<int>(i)));
+      mmq.Publish(current::strings::Printf("%c%02d", prefix, static_cast<int>(i)));
     }
   };
 

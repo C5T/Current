@@ -37,7 +37,7 @@ using sfinae::ENTRY_COL_TYPE;
 
 // Exception types for non-existent cells.
 // Cover exception type for entry types and templated, narrowed down exception types, one per entry key type.
-struct CellNotFoundCoverException : bricks::Exception {};  // TODO(dk+mz): YodaException.
+struct CellNotFoundCoverException : current::Exception {};  // TODO(dk+mz): YodaException.
 
 // TODO(dkorolev): Take into account 1) row vs. col, and 2) top- vs. inner-level [].
 struct SubscriptCoverException : CellNotFoundCoverException {};
@@ -57,7 +57,7 @@ struct CellNotFoundException : CellNotFoundCoverException {
 
 // Exception types for the existence of a particular cell being a runtime error.
 // Cover exception type for all entry types and templated, narrowed down exception types, one per entry type.
-struct CellAlreadyExistsCoverException : bricks::Exception {};
+struct CellAlreadyExistsCoverException : current::Exception {};
 
 template <typename ENTRY>
 struct CellAlreadyExistsException : CellAlreadyExistsCoverException {

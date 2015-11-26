@@ -31,32 +31,32 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using bricks::strings::Printf;
-using bricks::strings::FixedSizeSerializer;
-using bricks::strings::PackToString;
-using bricks::strings::UnpackFromString;
-using bricks::strings::CompileTimeStringLength;
-using bricks::strings::Trim;
-using bricks::strings::ToString;
-using bricks::strings::FromString;
-using bricks::strings::ToLower;
-using bricks::strings::ToUpper;
-using bricks::strings::Join;
-using bricks::strings::Split;
-using bricks::strings::SplitIntoKeyValuePairs;
-using bricks::strings::EmptyFields;
-using bricks::strings::KeyValueParsing;
-using bricks::strings::KeyValueNoValueException;
-using bricks::strings::KeyValueMultipleValuesException;
-using bricks::strings::ByWhitespace;
-using bricks::strings::ByLines;
-using bricks::strings::SlowEditDistance;
-using bricks::strings::FastEditDistance;
-using bricks::strings::Chunk;
-using bricks::strings::UniqueChunk;
-using bricks::strings::ChunkDB;
-using bricks::strings::RoundDoubleToString;
-using bricks::strings::is_string_type;
+using current::strings::Printf;
+using current::strings::FixedSizeSerializer;
+using current::strings::PackToString;
+using current::strings::UnpackFromString;
+using current::strings::CompileTimeStringLength;
+using current::strings::Trim;
+using current::strings::ToString;
+using current::strings::FromString;
+using current::strings::ToLower;
+using current::strings::ToUpper;
+using current::strings::Join;
+using current::strings::Split;
+using current::strings::SplitIntoKeyValuePairs;
+using current::strings::EmptyFields;
+using current::strings::KeyValueParsing;
+using current::strings::KeyValueNoValueException;
+using current::strings::KeyValueMultipleValuesException;
+using current::strings::ByWhitespace;
+using current::strings::ByLines;
+using current::strings::SlowEditDistance;
+using current::strings::FastEditDistance;
+using current::strings::Chunk;
+using current::strings::UniqueChunk;
+using current::strings::ChunkDB;
+using current::strings::RoundDoubleToString;
+using current::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
   EXPECT_EQ("Test: 42, 'Hello', 0000ABBA", Printf("Test: %d, '%s', %08X", 42, "Hello", 0xabba));

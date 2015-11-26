@@ -101,11 +101,11 @@ struct PolymorphicImpl<T, TS...> {
         destination.reset(source);
       }
     };
-    using Instance = bricks::metaprogramming::combine<bricks::metaprogramming::map<Impl, T_TYPELIST>>;
+    using Instance = current::metaprogramming::combine<current::metaprogramming::map<Impl, T_TYPELIST>>;
     template <typename Q>
     static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
       Instance instance;
-      instance(DerivedTypesDifferentiator<bricks::decay<Q>>(), std::forward<Q>(source), destination);
+      instance(DerivedTypesDifferentiator<current::decay<Q>>(), std::forward<Q>(source), destination);
     }
   };
 
@@ -130,12 +130,12 @@ struct PolymorphicImpl<T, TS...> {
 
   template <typename F>
   void Call(F&& f) {
-    bricks::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
+    current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
   template <typename F>
   void Call(F&& f) const {
-    bricks::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
+    current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
   // Note that `Has()` and `Value()` do not check whether `X` is part of `T_TYPELIST`.

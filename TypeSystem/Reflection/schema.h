@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/strings/strings.h"
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 template <>
@@ -41,7 +41,7 @@ struct ToStringImpl<::current::reflection::TypeID> {
 };
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 namespace current {
 namespace reflection {
@@ -103,7 +103,7 @@ struct Language {
     }
     static std::string Footer() { return "}  // namespace current_userspace\n"; }
     static std::string ErrorMessageWithTypeId(const TypeID type_id) {
-      return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
+      return "#error \"Unknown struct with `type_id` = " + current::strings::ToString(type_id) + "\"\n";
     }
   };
   struct FSharp {
@@ -118,7 +118,7 @@ struct Language {
     static std::string Footer() { return ""; }
     static std::string ErrorMessageWithTypeId(const TypeID type_id) {
       // TODO(dkorolev): Probably somewhat different syntax.
-      return "#error \"Unknown struct with `type_id` = " + bricks::strings::ToString(type_id) + "\"\n";
+      return "#error \"Unknown struct with `type_id` = " + current::strings::ToString(type_id) + "\"\n";
     }
   };
 };
@@ -137,13 +137,13 @@ struct PrimitiveTypesList {
     if (cpp_name.count(type_id) != 0u) {
       return cpp_name.at(type_id);
     }
-    return "UNKNOWN_BASIC_TYPE_" + bricks::strings::ToString(type_id);
+    return "UNKNOWN_BASIC_TYPE_" + current::strings::ToString(type_id);
   }
   std::string PrimitiveTypeName(const Language::FSharp&, const TypeID type_id) const {
     if (fsharp_name.count(type_id) != 0u) {
       return fsharp_name.at(type_id);
     }
-    return "UNKNOWN_BASIC_TYPE_" + bricks::strings::ToString(type_id);
+    return "UNKNOWN_BASIC_TYPE_" + current::strings::ToString(type_id);
   }
 };
 
@@ -342,14 +342,14 @@ struct StructSchema {
     } else if (type_prefix == TYPEID_STRUCT_PREFIX) {
       const auto cit = schema_.structs.find(type_id);
       if (cit == schema_.structs.end()) {
-        return "UNKNOWN_STRUCT_" + bricks::strings::ToString(type_id);
+        return "UNKNOWN_STRUCT_" + current::strings::ToString(type_id);
       } else {
         return cit->second.name;
       }
     } else {
       const auto cit = schema_.types.find(type_id);
       if (cit == schema_.types.end()) {
-        return "UNKNOWN_INTERMEDIATE_TYPE_" + bricks::strings::ToString(type_id);
+        return "UNKNOWN_INTERMEDIATE_TYPE_" + current::strings::ToString(type_id);
       } else {
         if (type_prefix == TYPEID_ENUM_PREFIX) {
           return cit->second.enum_name;
@@ -369,7 +369,7 @@ struct StructSchema {
           if (type_prefix == TYPEID_POLYMORPHIC_PREFIX) {
             return DescribePolymorphic(language, cit->second);
           }
-          return "UNHANDLED_TYPE_" + bricks::strings::ToString(type_id);
+          return "UNHANDLED_TYPE_" + current::strings::ToString(type_id);
         }
       }
     }
@@ -421,16 +421,15 @@ struct StructSchema {
     for (auto t : type_info.included_types) {
       names.push_back(TypePrintName(language, t));
     }
-    return "Polymorphic<" + bricks::strings::Join(names, ", ") + '>';
+    return "Polymorphic<" + current::strings::Join(names, ", ") + '>';
   }
   std::string DescribePolymorphic(const Language::FSharp& language, const TypeInfo& type_info) const {
     std::vector<std::string> names;
     for (auto t : type_info.included_types) {
       names.push_back(TypePrintName(language, t));
     }
-    return "Polymorphic<" + bricks::strings::Join(names, ", ") + '>';
+    return "Polymorphic<" + current::strings::Join(names, ", ") + '>';
   }
-
 };
 
 }  // namespace reflection

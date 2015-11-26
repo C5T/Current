@@ -28,7 +28,7 @@ SOFTWARE.
 #include <string>
 #include <tuple>
 
-namespace bricks {
+namespace current {
 namespace metaprogramming {
 
 template <typename... TS>
@@ -48,6 +48,6 @@ static_assert(!is_std_tuple<int>::value, "");
 static_assert(!is_std_tuple<std::string>::value, "");
 
 }  // namespace metaprogramming
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_IS_TUPLE_H

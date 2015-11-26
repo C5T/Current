@@ -34,7 +34,7 @@ namespace current {
 namespace sfinae {
 
 template <typename T>
-using CF = bricks::copy_free<T>;
+using CF = current::copy_free<T>;
 
 // Entry key type extractor, getter and setter.
 // Supports both `.key` data member and `.key() / .set_key()` methods.
@@ -75,7 +75,7 @@ typename KEY_ACCESSOR<ENTRY>::T_KEY GetKey(const ENTRY& entry) {
 }
 
 template <typename ENTRY>
-using ENTRY_KEY_TYPE = bricks::decay<typename KEY_ACCESSOR<ENTRY>::T_KEY>;
+using ENTRY_KEY_TYPE = current::decay<typename KEY_ACCESSOR<ENTRY>::T_KEY>;
 
 template <typename ENTRY>
 void SetKey(ENTRY& entry, CF<ENTRY_KEY_TYPE<ENTRY>> key) {
@@ -123,7 +123,7 @@ typename ROW_ACCESSOR<ENTRY>::T_ROW GetRow(const ENTRY& entry) {
 }
 
 template <typename ENTRY>
-using ENTRY_ROW_TYPE = bricks::decay<typename ROW_ACCESSOR<ENTRY>::T_ROW>;
+using ENTRY_ROW_TYPE = current::decay<typename ROW_ACCESSOR<ENTRY>::T_ROW>;
 
 template <typename ENTRY>
 void SetRow(ENTRY& entry, CF<ENTRY_ROW_TYPE<ENTRY>> row) {
@@ -167,7 +167,7 @@ typename COL_ACCESSOR<ENTRY>::T_COL GetCol(const ENTRY& entry) {
 }
 
 template <typename ENTRY>
-using ENTRY_COL_TYPE = bricks::decay<typename COL_ACCESSOR<ENTRY>::T_COL>;
+using ENTRY_COL_TYPE = current::decay<typename COL_ACCESSOR<ENTRY>::T_COL>;
 
 template <typename ENTRY>
 void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {

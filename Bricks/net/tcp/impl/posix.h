@@ -62,7 +62,7 @@ typedef int SOCKET;
 
 #endif
 
-namespace bricks {
+namespace current {
 namespace net {
 
 const size_t kMaxServerQueuedConnections = 1024;
@@ -476,6 +476,6 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
 }
 
 }  // namespace net
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_NET_TCP_IMPL_POSIX_H

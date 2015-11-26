@@ -49,7 +49,7 @@ SOFTWARE.
 
 #include "../../../../Blocks/URL/url.h"
 
-namespace bricks {
+namespace current {
 namespace net {
 
 // HTTP constants to parse the header and extract method, URL, headers and body.
@@ -352,7 +352,7 @@ class HTTPServerConnection final {
       try {
         SendHTTPResponse(
             DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
-      } catch (const std::exception& e) {
+      } catch (const Exception& e) {
         // No exception should ever leave the destructor.
         if (message_.RawPath() == "/healthz") {
           // Report nothing for "/healthz", since it's an internal URL, also used by the tests
@@ -463,7 +463,7 @@ class HTTPServerConnection final {
 
   // Support `CURRENT_STRUCT`-s.
   template <class T>
-  inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> SendHTTPResponse(
+  inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultJSONContentType(),
@@ -476,7 +476,7 @@ class HTTPServerConnection final {
   // Support `CURRENT_STRUCT`-s wrapper under a user-defined name.
   // (For backwards compatibility only, really. -- D.K.)
   template <class T>
-  inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> SendHTTPResponse(
+  inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
       T&& object,
       const std::string& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
@@ -498,7 +498,7 @@ class HTTPServerConnection final {
           connection_.BlockingWrite("0", true);
           connection_.BlockingWrite(kCRLF, false);
           connection_.BlockingWrite(kCRLF, false);  // We should send CRLF twice.
-        } catch (const std::exception& e) {         // LCOV_EXCL_LINE
+        } catch (const Exception& e) {              // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
         }
@@ -538,11 +538,11 @@ class HTTPServerConnection final {
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> Send(T&& object) {
+      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object) {
         SendImpl(JSON(std::forward<T>(object)) + '\n');
       }
       template <class T, typename S>
-      inline ENABLE_IF<IS_CURRENT_STRUCT(bricks::decay<T>)> Send(T&& object, S&& name) {
+      inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> Send(T&& object, S&& name) {
         SendImpl(std::string("{\"") + name + "\":" + JSON(std::forward<T>(object)) + "}\n");
       }
 
@@ -630,8 +630,8 @@ class HTTPServerConnection final {
 };
 
 }  // namespace net
-}  // namespace bricks
+}  // namespace current
 
-using bricks::net::HTTPHeaders;
+using current::net::HTTPHeaders;
 
 #endif  // BRICKS_NET_HTTP_IMPL_SERVER_H

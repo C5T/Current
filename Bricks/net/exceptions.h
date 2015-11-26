@@ -28,7 +28,7 @@ SOFTWARE.
 #include "../port.h"
 #include "../exception.h"
 
-namespace bricks {
+namespace current {
 namespace net {
 
 // All exceptions are derived from NetworkException.
@@ -80,6 +80,6 @@ struct CannotServeStaticFilesOfUnknownMIMEType : HTTPException {
 struct AttemptedToSendHTTPResponseMoreThanOnce : Exception {};
 
 }  // namespace net
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_NET_EXCEPTIONS_H

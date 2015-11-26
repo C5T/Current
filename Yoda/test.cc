@@ -53,8 +53,8 @@ const std::string yoda_golden_data_after_delete =
     "wrapper\":{\"valid\":1,\"data\":{\"key_to_erase\":\"one\"}}}}\n";
 
 TEST(Yoda, WritesToFile) {
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
-  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("WritingToFileAPI", persistence_file_name);
@@ -65,24 +65,24 @@ TEST(Yoda, WritesToFile) {
     adder.Add(YodaEntryToPersist("two", 2));
   }).Wait();
   ;
-  while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
+  while (current::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
     ;  // Spin lock.
   }
-  EXPECT_EQ(yoda_golden_data, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+  EXPECT_EQ(yoda_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
 
   api.Transaction([](PersistingAPI::T_DATA data) {
     Dictionary<YodaEntryToPersist>::Mutator(data).Delete("one");
   }).Wait();
-  while (bricks::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data_after_delete.size()) {
+  while (current::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data_after_delete.size()) {
     ;  // Spin lock.
   }
-  EXPECT_EQ(yoda_golden_data_after_delete, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+  EXPECT_EQ(yoda_golden_data_after_delete, current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
 TEST(Yoda, ReadsFromFile) {
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
-  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
-  bricks::FileSystem::WriteStringToFile(yoda_golden_data, persistence_file_name.c_str());
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+  current::FileSystem::WriteStringToFile(yoda_golden_data, persistence_file_name.c_str());
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
@@ -97,9 +97,9 @@ TEST(Yoda, ReadsFromFile) {
 }
 
 TEST(Yoda, ReadsDeletionFromFile) {
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
-  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
-  bricks::FileSystem::WriteStringToFile(yoda_golden_data_after_delete, persistence_file_name.c_str());
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+  current::FileSystem::WriteStringToFile(yoda_golden_data_after_delete, persistence_file_name.c_str());
 
   typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);

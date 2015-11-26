@@ -50,11 +50,11 @@ using yoda::CellNotFoundException;
 using yoda::CellAlreadyExistsException;
 using yoda::SubscriptException;
 
-using bricks::strings::Join;
-using bricks::strings::Printf;
-using bricks::strings::FromString;
+using current::strings::Join;
+using current::strings::Printf;
+using current::strings::FromString;
 
-template<typename T, typename... TS> using CWT = bricks::weed::call_with_type<T, TS...>;
+template<typename T, typename... TS> using CWT = current::weed::call_with_type<T, TS...>;
 
 // TODO(dkorolev): Productionize top-level `Has()` and `Value()`.
 // TODO(dkorolev): Productionize `Map()`, and also `Filter()` and `Reduce()`.
@@ -164,7 +164,7 @@ return result;
   
 TEST(YodaDocu, Test) {
 const int port = FLAGS_yoda_docu_test_port;
-bricks::time::SetNow(static_cast<bricks::time::EPOCH_MILLISECONDS>(42));
+current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.

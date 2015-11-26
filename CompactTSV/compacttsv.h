@@ -91,7 +91,7 @@ struct DispatcherImpl<false, false, true, false> : DispatcherStorage<std::pair<c
 };
 
 template <>
-struct DispatcherImpl<false, false, false, true> : DispatcherStorage<bricks::strings::UniqueChunk> {
+struct DispatcherImpl<false, false, false, true> : DispatcherStorage<current::strings::UniqueChunk> {
   template <typename L>
   void Update(size_t index, const char* string, L length) {
     GrowAsNeeded(index);
@@ -100,13 +100,13 @@ struct DispatcherImpl<false, false, false, true> : DispatcherStorage<bricks::str
 };
 
 template <typename T, typename... ARGS>
-using CW = bricks::weed::call_with<T, ARGS...>;
+using CW = current::weed::call_with<T, ARGS...>;
 
 template <typename F>
 using DispatcherImplSelector = DispatcherImpl<CW<F, std::vector<std::string>>::implemented,
                                               CW<F, std::vector<const char*>>::implemented,
                                               CW<F, std::vector<std::pair<const char*, size_t>>>::implemented,
-                                              CW<F, std::vector<bricks::strings::UniqueChunk>>::implemented>;
+                                              CW<F, std::vector<current::strings::UniqueChunk>>::implemented>;
 
 }  // namespace efficient_tsv_parser_dispatcher
 
@@ -217,7 +217,7 @@ class CompactTSV {
     const index_type storage = static_cast<index_type>(0) - 1;   // 0xff.
   };
 
-  static const Markers& markers() { return bricks::Singleton<Markers>(); }
+  static const Markers& markers() { return current::Singleton<Markers>(); }
 
   // Members.
   bool done_ = false;                 // Whether the TSV data is done.

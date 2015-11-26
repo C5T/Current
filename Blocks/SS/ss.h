@@ -85,10 +85,10 @@ namespace ss {
 namespace impl {
 
 template <typename T, typename... TS>
-using CW = bricks::weed::call_with<T, TS...>;
+using CW = current::weed::call_with<T, TS...>;
 
 template <typename T, typename... TS>
-using CWT = bricks::weed::call_with_type<T, TS...>;
+using CWT = current::weed::call_with_type<T, TS...>;
 
 template <int N>
 struct CallWithNParameters;
@@ -257,7 +257,7 @@ struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
 // Generic const reference usecase, which dispatches an entry that should be preserved. It will
 // be cloned if the listener requires an rvalue reference, and custom cloner implementation can be provided.
 // Template parameter order is tweaked for more often specified to less often specified parameters.
-template <class CLONER = bricks::DefaultCloner, typename E, typename F>
+template <class CLONER = current::DefaultCloner, typename E, typename F>
 inline bool DispatchEntryByConstReference(F&& f, const E& e, size_t index, size_t total) {
   // IMPORTANT: Do not explicitly specify template parameters to `DoIt`, as they interfere
   // with extended reference resolution rules, resulting in an unnecessary copy. -- D.K.
@@ -308,13 +308,13 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   // Special case of publishing `const DERIVED_ENTRY&` or `const std::unique_ptr<DERIVED_ENTRY>&` into a stream
   // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED_ENTRY`.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
     return IMPL::DoPublishDerived(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     assert(e);
     return IMPL::DoPublishDerived(*e.get());

@@ -39,7 +39,7 @@ namespace yoda {
 namespace sfinae {
 
 template <typename T>
-using CF = bricks::copy_free<T>;
+using CF = current::copy_free<T>;
 
 // TODO(dkorolev): Let's move this to Bricks once we merge repositories?
 // Entry key type extractor, getter and setter.
@@ -81,7 +81,7 @@ typename KEY_ACCESSOR<ENTRY>::T_KEY GetKey(const ENTRY& entry) {
 }
 
 template <typename ENTRY>
-using ENTRY_KEY_TYPE = bricks::decay<typename KEY_ACCESSOR<ENTRY>::T_KEY>;
+using ENTRY_KEY_TYPE = current::decay<typename KEY_ACCESSOR<ENTRY>::T_KEY>;
 
 template <typename ENTRY>
 void SetKey(ENTRY& entry, CF<ENTRY_KEY_TYPE<ENTRY>> key) {

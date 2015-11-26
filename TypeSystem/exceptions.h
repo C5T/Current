@@ -25,11 +25,11 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_EXCEPTIONS_H
 #define CURRENT_TYPE_SYSTEM_EXCEPTIONS_H
 
-#include <exception>
+#include "../Bricks/exception.h"
 
 namespace current {
 
-struct NoValueException : std::exception {};
+struct NoValueException : Exception {};
 template <typename T>
 struct NoValueOfTypeException : NoValueException {};
 

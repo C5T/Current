@@ -41,7 +41,7 @@ SOFTWARE.
 
 #include "../time/chrono.h"
 
-namespace bricks {
+namespace current {
 
 class CustomWaitableAtomicDestructor {
  public:
@@ -196,7 +196,7 @@ class WaitableAtomicImpl {
       return true;
     }
 
-    bool WaitFor(std::function<bool(const T_DATA&)> predicate, bricks::time::MILLISECONDS_INTERVAL ms) const {
+    bool WaitFor(std::function<bool(const T_DATA&)> predicate, current::time::MILLISECONDS_INTERVAL ms) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
       if (!predicate(data_)) {
         const T_DATA& data = std::ref(data_);
@@ -344,6 +344,6 @@ class WaitableAtomicImpl {
 template <typename DATA, bool INTRUSIVE = false>
 using WaitableAtomic = typename WaitableAtomicImpl<DATA, INTRUSIVE>::type;
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_WAITABLE_ATOMIC_H

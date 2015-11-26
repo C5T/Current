@@ -49,7 +49,7 @@ TEST(TemplateMetaprogrammingInternalTest, Map) {
   EXPECT_EQ(2, std::get<1>(before).x);
   EXPECT_EQ(3, std::get<2>(before).x);
 
-  bricks::metaprogramming::map<add_100, decltype(before)> after;
+  current::metaprogramming::map<add_100, decltype(before)> after;
   static_assert(std::tuple_size<decltype(after)>::value == 3, "");
   EXPECT_EQ(101, std::get<0>(after).x);
   EXPECT_EQ(102, std::get<1>(after).x);
@@ -73,7 +73,7 @@ TEST(TemplateMetaprogrammingInternalTest, Filter) {
   EXPECT_EQ(15, std::get<1>(before).y);
   EXPECT_EQ(20, std::get<2>(before).y);
 
-  bricks::metaprogramming::filter<y_is_even, decltype(before)> after;
+  current::metaprogramming::filter<y_is_even, decltype(before)> after;
   static_assert(std::tuple_size<decltype(after)>::value == 2, "");
   EXPECT_EQ(10, std::get<0>(after).y);
   EXPECT_EQ(20, std::get<1>(after).y);
@@ -89,7 +89,7 @@ TEST(TemplateMetaprogrammingInternalTest, Reduce) {
   struct C {
     static std::string s() { return "C"; }
   };
-  EXPECT_EQ("(A+(B+C))", (bricks::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
+  EXPECT_EQ("(A+(B+C))", (current::metaprogramming::reduce<concatenate_s, std::tuple<A, B, C>>::s()));
 }
 
 TEST(TemplateMetaprogrammingInternalTest, Combine) {
@@ -103,7 +103,7 @@ TEST(TemplateMetaprogrammingInternalTest, Combine) {
   // the following construct will work just fine.
   EXPECT_EQ(15, MUL().ADD::operator()(ADD::TYPE(), 7, 8));
 
-  typedef bricks::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
+  typedef current::metaprogramming::combine<std::tuple<NEG, ADD, MUL>> Arithmetics;
   EXPECT_EQ(-1, Arithmetics()(NEG::TYPE(), 1));
   EXPECT_EQ(5, Arithmetics()(ADD::TYPE(), 2, 3));
   EXPECT_EQ(9, Arithmetics()(ADD::TYPE(), 2, 3, "4"));
@@ -133,8 +133,8 @@ TEST(TemplateMetaprogrammingInternalTest, Combine) {
 }
 
 TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
-  using bricks::variadic_indexes::indexes;
-  using bricks::variadic_indexes::generate_indexes;
+  using current::variadic_indexes::indexes;
+  using current::variadic_indexes::generate_indexes;
 
   static_assert(std::is_same<indexes<>, generate_indexes<0>>::value, "");
   static_assert(std::is_same<indexes<0>, generate_indexes<1>>::value, "");

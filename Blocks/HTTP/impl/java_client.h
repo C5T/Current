@@ -48,7 +48,7 @@ class HTTPClientPlatformWrapper {
   };
 
  private:
-  friend class bricks::net::api::ImplWrapper<HTTPClientPlatformWrapper>;
+  friend class current::net::api::ImplWrapper<HTTPClientPlatformWrapper>;
 
   std::string url_requested_;
   // Contains final content's url taking redirects (if any) into an account.
@@ -75,10 +75,10 @@ class HTTPClientPlatformWrapper {
   // @returns true only if server answered with HTTP 200 OK
   // @note Implementations should transparently support all needed HTTP redirects
   bool Go() {
-    using bricks::MakePointerScopeGuard;
-    using bricks::java_wrapper::ToStdString;
+    using current::MakePointerScopeGuard;
+    using current::java_wrapper::ToStdString;
 
-    auto JAVA = bricks::java_wrapper::JavaWrapper::Singleton();
+    auto JAVA = current::java_wrapper::JavaWrapper::Singleton();
 
     // Attaching multiple times from the same thread is a no-op, which only gets good env for us.
     JavaVM* jvm = JAVA.jvm;
@@ -89,7 +89,7 @@ class HTTPClientPlatformWrapper {
     }
 
     // TODO(AlexZ): May need to refactor if this method will be agressively used from the same thread.
-    const auto detachThreadOnScopeExit = bricks::MakeScopeGuard([&jvm] { jvm->DetachCurrentThread(); });
+    const auto detachThreadOnScopeExit = current::MakeScopeGuard([&jvm] { jvm->DetachCurrentThread(); });
 
     // Convenience lambda.
     const auto deleteLocalRef = [&env](jobject o) { env->DeleteLocalRef(o); };

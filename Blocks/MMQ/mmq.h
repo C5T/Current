@@ -62,7 +62,7 @@ template <typename MESSAGE,
           typename CONSUMER,
           size_t DEFAULT_BUFFER_SIZE = 1024,
           bool DROP_ON_OVERFLOW = false,
-          class CLONER = bricks::DefaultCloner>
+          class CLONER = current::DefaultCloner>
 class MMQImpl {
  public:
   // Type of messages to store and dispatch.

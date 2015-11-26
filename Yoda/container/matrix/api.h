@@ -81,7 +81,7 @@ class InnerMapAccessor final {
   using T_SUBMAP = SUBMAP;
 
   template <typename T>
-  using CF = bricks::copy_free<T>;
+  using CF = current::copy_free<T>;
 
   InnerMapAccessor(CF<OUTER_KEY> key, const SUBMAP& map) : key_(key), map_(map) {}
   InnerMapAccessor(InnerMapAccessor&&) = default;
@@ -129,7 +129,7 @@ class OuterMapAccessor final {
   using T_OUTER_MAP = MAP_CONTAINER_TYPE<OUTER_KEY, T_INNER_MAP>;
 
   template <typename T>
-  using CF = bricks::copy_free<T>;
+  using CF = current::copy_free<T>;
 
   explicit OuterMapAccessor(const T_OUTER_MAP& outer_map) : outer_map_(outer_map) {}
   OuterMapAccessor(OuterMapAccessor&&) = default;
@@ -173,7 +173,7 @@ struct Container<YT, Matrix<ENTRY>> {
   typedef RowCol<typename YET::T_ROW, typename YET::T_COL> ROW_COL;
 
   template <typename T>
-  using CF = bricks::copy_free<T>;
+  using CF = current::copy_free<T>;
 
   // Event: The entry has been scanned from the stream.
   void operator()(ENTRY& entry, size_t index) {
@@ -314,7 +314,7 @@ struct Container<YT, Matrix<ENTRY>> {
 
     // Non-throwing deleter.
     // TODO(dkorolev): Persist the deletion and test it.
-    void Delete(bricks::copy_free<typename YET::T_ROW> row, bricks::copy_free<typename YET::T_COL> col) {
+    void Delete(current::copy_free<typename YET::T_ROW> row, current::copy_free<typename YET::T_COL> col) {
       stream_.Publish(typename YET::T_ENTRY::DeleterPersister(row, col));
       // Erase the entry if it existed.
       mutable_.map_.erase(ROW_COL(row, col));

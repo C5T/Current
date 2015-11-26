@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include <utility>
 
-namespace bricks {
+namespace current {
 namespace weed {
 
 namespace impl {
@@ -50,7 +50,7 @@ struct call_with_impl {
   }
 };
 
-}  // namespace bricks::weed::impl
+}  // namespace current::weed::impl
 
 template <typename T, typename... XS>
 struct call_with {
@@ -81,7 +81,7 @@ static_assert(!call_with<TEST2, int>::implemented, "");
 
 }  // namespace smoke_test
 
-}  // namespace bricks::weed
-}  // namespace bricks
+}  // namespace current::weed
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_WEED_H

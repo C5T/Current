@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../file/file.h"
 #include "../strings/util.h"
 
-namespace bricks {
+namespace current {
 namespace gnuplot {
 
 static inline std::string Escape(const std::string& s) {
@@ -50,8 +50,8 @@ static inline std::string Escape(const std::string& s) {
 }
 
 struct Plotter {
-  bricks::FileSystem::OutputFile& of_;
-  explicit Plotter(bricks::FileSystem::OutputFile& of) : of_(of) {}
+  current::FileSystem::OutputFile& of_;
+  explicit Plotter(current::FileSystem::OutputFile& of) : of_(of) {}
   template <typename T1, typename T2>
   void operator()(T1&& x, T2&& y) {
     of_ << x << ' ' << y << std::endl;
@@ -65,8 +65,8 @@ struct Plotter {
 
 struct PlotDataBase {
   virtual ~PlotDataBase() = default;
-  virtual void AppendData(bricks::FileSystem::OutputFile&) const = 0;
-  virtual void AppendMetadata(bricks::FileSystem::OutputFile&) const = 0;
+  virtual void AppendData(current::FileSystem::OutputFile&) const = 0;
+  virtual void AppendMetadata(current::FileSystem::OutputFile&) const = 0;
 };
 
 struct PlotDataFromFunction : PlotDataBase {
@@ -75,8 +75,8 @@ struct PlotDataFromFunction : PlotDataBase {
   explicit PlotDataFromFunction(std::function<void(Plotter&)> f,
                                 const std::string& meta = " t 'Graph' with lines lw 5")
       : f_(f), meta_(meta) {}
-  virtual void AppendMetadata(bricks::FileSystem::OutputFile& of) const override { of << ' ' << meta_; }
-  virtual void AppendData(bricks::FileSystem::OutputFile& of) const override {
+  virtual void AppendMetadata(current::FileSystem::OutputFile& of) const override { of << ' ' << meta_; }
+  virtual void AppendData(current::FileSystem::OutputFile& of) const override {
     Plotter p(of);
     f_(p);
   }
@@ -206,12 +206,12 @@ struct GNUPlot {
   operator std::string() const {
     assert(!plots_.empty());  // TODO(dkorolev): Exception?
 
-    const std::string input_file_name = bricks::FileSystem::GenTmpFileName();
-    const std::string output_file_name = bricks::FileSystem::GenTmpFileName();
-    const auto input_deleter = bricks::FileSystem::ScopedRmFile(input_file_name);
-    const auto output_file_deleter = bricks::FileSystem::ScopedRmFile(output_file_name);
+    const std::string input_file_name = current::FileSystem::GenTmpFileName();
+    const std::string output_file_name = current::FileSystem::GenTmpFileName();
+    const auto input_deleter = current::FileSystem::ScopedRmFile(input_file_name);
+    const auto output_file_deleter = current::FileSystem::ScopedRmFile(output_file_name);
     {
-      bricks::FileSystem::OutputFile f(input_file_name);
+      current::FileSystem::OutputFile f(input_file_name);
       f << "set term " << output_format_ << " size " << x_ << ',' << y_ << std::endl;
       for (const auto& p : parameters_) {
         if (!p.second.empty()) {
@@ -232,11 +232,11 @@ struct GNUPlot {
     }
     assert(!::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str())
                          .c_str()));
-    return bricks::FileSystem::ReadFileAsString(output_file_name.c_str());
+    return current::FileSystem::ReadFileAsString(output_file_name.c_str());
   }
 };
 
 }  // namespace gnuplot
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_GRAPH_GNUPLOT_H

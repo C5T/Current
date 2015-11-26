@@ -43,7 +43,7 @@ namespace blocks {
 
 class HTTPClientPOSIX final {
  private:
-  struct HTTPRedirectHelper : bricks::net::HTTPDefaultHelper {
+  struct HTTPRedirectHelper : current::net::HTTPDefaultHelper {
     std::string location = "";
     inline void OnHeader(const char* key, const char* value) {
       if (std::string("Location") == key) {
@@ -51,7 +51,7 @@ class HTTPClientPOSIX final {
       }
     }
   };
-  typedef bricks::net::TemplatedHTTPRequestData<HTTPRedirectHelper> HTTPRedirectableRequestData;
+  typedef current::net::TemplatedHTTPRequestData<HTTPRedirectHelper> HTTPRedirectableRequestData;
 
  public:
   // The actual implementation.
@@ -65,11 +65,11 @@ class HTTPClientPOSIX final {
       redirected = false;
       const std::string composed_url = parsed_url.ComposeURL();
       if (all_urls.count(composed_url)) {
-        BRICKS_THROW(bricks::net::HTTPRedirectLoopException());
+        BRICKS_THROW(current::net::HTTPRedirectLoopException());
       }
       all_urls.insert(composed_url);
-      bricks::net::Connection connection(
-          bricks::net::Connection(bricks::net::ClientSocket(parsed_url.host, parsed_url.port)));
+      current::net::Connection connection(
+          current::net::Connection(current::net::ClientSocket(parsed_url.host, parsed_url.port)));
       connection.BlockingWrite(
           request_method_ + ' ' + parsed_url.path + parsed_url.ComposeParameters() + " HTTP/1.1\r\n", true);
       connection.BlockingWrite("Host: " + parsed_url.host + "\r\n", true);
@@ -119,10 +119,10 @@ class HTTPClientPOSIX final {
   bool request_has_body_ = false;  // TODO(dkorolev): Support this in ObjectiveC and Java code as well.
   std::string request_body_contents_ = "";
   std::string request_user_agent_ = "";
-  bricks::net::HTTPHeadersType request_headers_;
+  current::net::HTTPHeadersType request_headers_;
 
   // Output parameters.
-  bricks::net::HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;
+  current::net::HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;
   std::string response_url_after_redirects_ = "";
 
  private:
@@ -155,7 +155,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_headers_ = request.custom_headers;
     client.request_has_body_ = true;
     client.request_body_contents_ =
-        bricks::FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
+        current::FileSystem::ReadFileAsString(request.file_name);  // Can throw FileException.
     client.request_body_content_type_ = request.content_type;
   }
 
@@ -188,7 +188,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
     if (!request_params.allow_redirects && request_params.url != response.response_url_after_redirects_) {
-      BRICKS_THROW(bricks::net::HTTPRedirectNotAllowedException());
+      BRICKS_THROW(current::net::HTTPRedirectNotAllowedException());
     }
     output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;
@@ -212,7 +212,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     // TODO(dkorolev): This is doubly inefficient. Should write the buffer or write in chunks instead.
     const auto& http_request = response.HTTPRequest();
-    bricks::FileSystem::WriteStringToFile(http_request.Body(), response_params.file_name.c_str());
+    current::FileSystem::WriteStringToFile(http_request.Body(), response_params.file_name.c_str());
     output.body_file_name = response_params.file_name;
   }
 };

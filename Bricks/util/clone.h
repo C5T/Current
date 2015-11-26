@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../cerealize/json.h"
 
-namespace bricks {
+namespace current {
 namespace impl {
 
 template <typename T, bool HAS_CLONE_BY_REF, bool HAS_CLONE_BY_PTR, bool HAS_COPY_CONSTRUCTOR>
@@ -93,7 +93,7 @@ constexpr auto HasCopyConstructor(int) -> decltype(T(std::declval<const T&>()), 
   return true;
 }
 
-}  // namespace bricks::impl
+}  // namespace current::impl
 
 // A wrapper returning an `std::function<>`.
 template <typename T>
@@ -115,10 +115,10 @@ T Clone(const T& object) {
 struct DefaultCloner {
   template <typename T>
   static T Clone(const T& input) {
-    return bricks::Clone(input);
+    return current::Clone(input);
   }
 };
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_UTIL_CLONE_H

@@ -31,11 +31,11 @@ SOFTWARE.
 
 #ifndef BRICKS_MOCK_TIME
 
-// This smoke test is flaky, but it does the job of comparing bricks::time::Now() to wall time.
+// This smoke test is flaky, but it does the job of comparing current::time::Now() to wall time.
 TEST(Time, SmokeTest) {
-  const bricks::time::EPOCH_MILLISECONDS a = bricks::time::Now();
+  const current::time::EPOCH_MILLISECONDS a = current::time::Now();
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  const bricks::time::EPOCH_MILLISECONDS b = bricks::time::Now();
+  const current::time::EPOCH_MILLISECONDS b = current::time::Now();
   const int64_t dt = static_cast<int64_t>(b - a);
 #if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
   const int64_t allowed_skew = 3;

@@ -27,12 +27,12 @@ SOFTWARE.
 
 #include "../exception.h"
 
-namespace bricks {
+namespace current {
 namespace rtti {
 
 struct UnrecognizedPolymorphicType : Exception {};
 
 }  // namespace rtti
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_RTTI_EXCEPTIONS_H

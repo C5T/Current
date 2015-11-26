@@ -50,7 +50,7 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 
-using bricks::ThreadLocalSingleton;
+using current::ThreadLocalSingleton;
 
 template <typename T>
 struct AssignToRapidJSONValueImpl {
@@ -190,7 +190,7 @@ struct SaveIntoJSONImpl {
     destination.SetObject();
 
     SaveFieldVisitor visitor(destination, allocator);
-    current::reflection::VisitAllFields<bricks::decay<TT>,
+    current::reflection::VisitAllFields<current::decay<TT>,
                                         current::reflection::FieldNameAndImmutableValue>::WithObject(source,
                                                                                                      visitor);
   }
@@ -287,7 +287,7 @@ struct LoadFromJSONImpl {
                                                const std::string& path) {
     if (source && source->IsObject()) {
       LoadFieldVisitor visitor(*source, path);
-      current::reflection::VisitAllFields<bricks::decay<T>, current::reflection::FieldNameAndMutableValue>::
+      current::reflection::VisitAllFields<current::decay<T>, current::reflection::FieldNameAndMutableValue>::
           WithObject(destination, visitor);
     } else {
       throw JSONSchemaException("object", source, path);
@@ -356,7 +356,7 @@ struct LoadFromJSONImpl {
     class Impl {
      public:
       Impl() {
-        bricks::metaprogramming::combine<bricks::metaprogramming::map<Registerer, TypeListImpl<TS...>>>
+        current::metaprogramming::combine<current::metaprogramming::map<Registerer, TypeListImpl<TS...>>>
             bulk_deserializers_registerer;
         bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
       }

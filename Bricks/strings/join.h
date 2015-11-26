@@ -34,7 +34,7 @@ SOFTWARE.
 #include "../template/enable_if.h"
 #include "../template/decay.h"
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 namespace impl {
@@ -99,7 +99,7 @@ struct IsContainerOfStringsImpl<T, false> {
 
 template <typename T>
 struct IsContainerOfStringsImpl<T, true> {
-  enum { value = std::is_same<std::string, bricks::decay<decltype(*std::declval<T>().begin())>>::value };
+  enum { value = std::is_same<std::string, current::decay<decltype(*std::declval<T>().begin())>>::value };
 };
 
 template <typename T>
@@ -151,6 +151,6 @@ std::string Join(const std::vector<std::string>& components, T_SEPARATOR&& separ
 }
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_JOIN_H

@@ -225,7 +225,7 @@ struct Profiler {
     }
 
    private:
-    static uint64_t Now() { return static_cast<uint64_t>(bricks::time::Now()); }
+    static uint64_t Now() { return static_cast<uint64_t>(current::time::Now()); }
 
     template <typename F>
     void Guarded(F&& f) {
@@ -252,16 +252,16 @@ struct Profiler {
     explicit ScopedStateMaintainer(const char* scope) : scope_(scope) {
       assert(scope);
       assert(*scope);
-      bricks::Singleton<StateMaintainer>().EnterScope(scope_);
+      current::Singleton<StateMaintainer>().EnterScope(scope_);
     }
-    ~ScopedStateMaintainer() { bricks::Singleton<StateMaintainer>().LeaveScope(scope_); }
+    ~ScopedStateMaintainer() { current::Singleton<StateMaintainer>().LeaveScope(scope_); }
 
    private:
     ScopedStateMaintainer() = delete;
     const char* const scope_;
   };
 
-  static void HTTPRoute(Request request) { bricks::Singleton<StateMaintainer>().Report(std::move(request)); }
+  static void HTTPRoute(Request request) { current::Singleton<StateMaintainer>().Report(std::move(request)); }
 };
 
 #define PROFILER_ENABLED true

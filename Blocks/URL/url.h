@@ -41,7 +41,7 @@ SOFTWARE.
 
 namespace blocks {
 
-struct EmptyURLException : bricks::Exception {};
+struct EmptyURLException : current::Exception {};
 // struct EmptyURLHostException : Exception {};
 
 // URL manages the mapping between the string and parsed representations of the URL. It manages:
@@ -173,16 +173,16 @@ struct URLParametersExtractor {
     const size_t question_mark_index = url.find('?');
     if (question_mark_index != std::string::npos) {
       auto& v = parameters_vector;
-      bricks::strings::Split(url.substr(question_mark_index + 1),
-                             '&',
-                             [&v](const std::string& chunk) {
-                               const size_t i = chunk.find('=');
-                               if (i != std::string::npos) {
-                                 v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
-                               } else {
-                                 v.emplace_back(chunk, "");
-                               }
-                             });
+      current::strings::Split(url.substr(question_mark_index + 1),
+                              '&',
+                              [&v](const std::string& chunk) {
+                                const size_t i = chunk.find('=');
+                                if (i != std::string::npos) {
+                                  v.emplace_back(chunk.substr(0, i), chunk.substr(i + 1));
+                                } else {
+                                  v.emplace_back(chunk, "");
+                                }
+                              });
       for (auto& it : parameters_vector) {
         it.first = DecodeURIComponent(it.first);
         it.second = DecodeURIComponent(it.second);
@@ -214,7 +214,7 @@ struct URLParametersExtractor {
       if (::isalpha(c) || ::isdigit(c)) {
         encoded += c;
       } else {
-        encoded += bricks::strings::Printf("%%%02X", static_cast<int>(c));
+        encoded += current::strings::Printf("%%%02X", static_cast<int>(c));
       }
     }
     return encoded;

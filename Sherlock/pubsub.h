@@ -44,21 +44,21 @@ class PubSubHTTPEndpoint final {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
-          r.timestamp - static_cast<bricks::time::MILLISECONDS_INTERVAL>(
-                            bricks::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
+          r.timestamp - static_cast<current::time::MILLISECONDS_INTERVAL>(
+                            current::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
     }
     if (http_request_.url.query.has("n")) {
       serving_ = false;  // Start in 'non-serving' mode when `n` is set.
-      bricks::strings::FromString(http_request_.url.query["n"], n_);
+      current::strings::FromString(http_request_.url.query["n"], n_);
       cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
     }
     if (http_request_.url.query.has("n_min")) {
       // `n_min` is same as `n`, but it does not set the cap; just the lower bound for `recent`.
       serving_ = false;  // Start in 'non-serving' mode when `n_min` is set.
-      bricks::strings::FromString(http_request_.url.query["n_min"], n_);
+      current::strings::FromString(http_request_.url.query["n_min"], n_);
     }
     if (http_request_.url.query.has("cap")) {
-      bricks::strings::FromString(http_request_.url.query["cap"], cap_);
+      current::strings::FromString(http_request_.url.query["cap"], cap_);
     }
   }
 
@@ -71,13 +71,13 @@ class PubSubHTTPEndpoint final {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        const bricks::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
+        const current::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
         // Respect `n`.
         if (total - index <= n_) {
           serving_ = true;
         }
         // Respect `recent`.
-        if (from_timestamp_ != static_cast<bricks::time::EPOCH_MILLISECONDS>(-1) &&
+        if (from_timestamp_ != static_cast<current::time::EPOCH_MILLISECONDS>(-1) &&
             timestamp >= from_timestamp_) {
           serving_ = true;
         }
@@ -92,7 +92,7 @@ class PubSubHTTPEndpoint final {
         }
       }
       return true;
-    } catch (const bricks::net::NetworkException&) {
+    } catch (const current::net::NetworkException&) {
       return false;
     }
   }
@@ -107,7 +107,7 @@ class PubSubHTTPEndpoint final {
   Request http_request_;
 
   // `http_response_`: the instance of the chunked response object to use.
-  bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+  current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
 
   // Conditions on which parts of the stream to serve.
   bool serving_ = true;
@@ -116,7 +116,7 @@ class PubSubHTTPEndpoint final {
   // If set, the hard limit on the maximum number of entries to output.
   size_t cap_ = 0;
   // If set, the timestamp from which the output should start.
-  bricks::time::EPOCH_MILLISECONDS from_timestamp_ = static_cast<bricks::time::EPOCH_MILLISECONDS>(-1);
+  current::time::EPOCH_MILLISECONDS from_timestamp_ = static_cast<current::time::EPOCH_MILLISECONDS>(-1);
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;

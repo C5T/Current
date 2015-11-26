@@ -40,7 +40,7 @@ SOFTWARE.
 namespace current {
 namespace reflection {
 
-using bricks::ThreadLocalSingleton;
+using current::ThreadLocalSingleton;
 
 struct TypeReflector;
 
@@ -119,7 +119,7 @@ struct ReflectorImpl {
         }
       };
       static void Run(std::shared_ptr<ReflectedType_Polymorphic>& destination) {
-        bricks::metaprogramming::combine<bricks::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
+        current::metaprogramming::combine<current::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
         impl.DispatchToAll(destination);
       }
     };

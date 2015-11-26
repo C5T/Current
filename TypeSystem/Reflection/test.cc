@@ -161,22 +161,22 @@ struct CollectFieldValues {
 
   template <typename T>
   ENABLE_IF<!std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
-    output_.push_back(bricks::strings::ToString(value));
+    output_.push_back(current::strings::ToString(value));
   }
 
   template <typename T>
   ENABLE_IF<std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
-    output_.push_back(bricks::strings::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
+    output_.push_back(current::strings::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
   }
 
   template <typename T>
   void operator()(const std::string&, const std::vector<T>& value) const {
-    output_.push_back('[' + bricks::strings::Join(value, ',') + ']');
+    output_.push_back('[' + current::strings::Join(value, ',') + ']');
   }
 
   template <typename TF, typename TS>
   void operator()(const std::string&, const std::pair<TF, TS>& value) const {
-    output_.push_back(bricks::strings::ToString(value.first) + ':' + bricks::strings::ToString(value.second));
+    output_.push_back(current::strings::ToString(value.first) + ':' + current::strings::ToString(value.second));
   }
 
   template <typename TK, typename TV>
@@ -256,7 +256,7 @@ TEST(Reflection, VisitAllFields) {
       "[-1,-2,-4],"
       "[key1:value1,key2:value2],"
       "128,null",
-      bricks::strings::Join(result, ','));
+      current::strings::Join(result, ','));
 }
 
 namespace reflection_test {
@@ -376,7 +376,7 @@ TEST(Reflection, SelfContatiningStruct) {
 #undef SMOKE_TEST_STRUCT_NAMESPACE
 
 TEST(Reflection, SmokeTestFullStruct) {
-  using bricks::FileSystem;
+  using current::FileSystem;
   using current::reflection::StructSchema;
   using current::reflection::SchemaInfo;
   using current::reflection::Language;

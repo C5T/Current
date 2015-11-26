@@ -56,6 +56,7 @@ SOFTWARE.
 #include "../TypeSystem/Serialization/json.h"
 #include "../TypeSystem/optional.h"
 
+#include "../Bricks/exception.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
 
@@ -65,7 +66,7 @@ namespace current {
 
 namespace storage {
 
-struct CannotPopBackFromEmptyVectorException : std::exception {};
+struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
 
 template <typename T>
@@ -398,7 +399,7 @@ struct ReplayFromAndAppendToFile final {
 
     std::ostream& Persist(const std::string& hook_name) {
       assert(output_file_);
-      return (*output_file_) << static_cast<uint64_t>(bricks::time::Now()) << '\t' << hook_name << '\t';
+      return (*output_file_) << static_cast<uint64_t>(current::time::Now()) << '\t' << hook_name << '\t';
     }
 
    private:
@@ -419,7 +420,7 @@ struct ReplayFromAndAppendToFile final {
           hook_pop_back_name_(name + ".pop_back") {
       instance.RegisterHook(hook_push_back_name_,
                             [&storage](const char* data) {
-                              const auto index = bricks::strings::FromString<size_t>(data);
+                              const auto index = current::strings::FromString<size_t>(data);
                               assert(index == storage.vector_.size());
                               const char* tab = std::find(data, data + strlen(data), '\t');
                               assert(*tab);
@@ -427,7 +428,7 @@ struct ReplayFromAndAppendToFile final {
                             });
       instance.RegisterHook(hook_pop_back_name_,
                             [&storage](const char* data) {
-                              const auto index = bricks::strings::FromString<size_t>(data);
+                              const auto index = current::strings::FromString<size_t>(data);
                               assert(index == storage.vector_.size());
                               assert(!storage.vector_.empty());
                               storage.vector_.pop_back();
@@ -488,7 +489,7 @@ struct ReplayFromAndAppendToFile final {
                             [&storage](const char* data) { storage.DoAdd(ParseJSON<T>(data)); });
       instance.RegisterHook(hook_delete_name_,
                             [&storage](const char* data) {
-                              const std::vector<std::string> fields = bricks::strings::Split(data, '\t');
+                              const std::vector<std::string> fields = current::strings::Split(data, '\t');
                               assert(fields.size() == 2);
                               storage.DoDelete(ParseJSON<T_ROW>(fields[0]), ParseJSON<T_COL>(fields[1]));
                             });
@@ -548,7 +549,7 @@ struct ReplayFromAndAppendToFileUsingCereal final {
 
     std::ostream& Persist(const std::string& hook_name) {
       assert(output_file_);
-      return (*output_file_) << static_cast<uint64_t>(bricks::time::Now()) << '\t' << hook_name << '\t';
+      return (*output_file_) << static_cast<uint64_t>(current::time::Now()) << '\t' << hook_name << '\t';
     }
 
    private:
@@ -569,7 +570,7 @@ struct ReplayFromAndAppendToFileUsingCereal final {
           hook_pop_back_name_(name + ".pop_back") {
       instance.RegisterHook(hook_push_back_name_,
                             [&storage](const char* data) {
-                              const auto index = bricks::strings::FromString<size_t>(data);
+                              const auto index = current::strings::FromString<size_t>(data);
                               assert(index == storage.vector_.size());
                               const char* tab = std::find(data, data + strlen(data), '\t');
                               assert(*tab);
@@ -577,7 +578,7 @@ struct ReplayFromAndAppendToFileUsingCereal final {
                             });
       instance.RegisterHook(hook_pop_back_name_,
                             [&storage](const char* data) {
-                              const auto index = bricks::strings::FromString<size_t>(data);
+                              const auto index = current::strings::FromString<size_t>(data);
                               assert(index == storage.vector_.size());
                               assert(!storage.vector_.empty());
                               storage.vector_.pop_back();
@@ -643,7 +644,7 @@ struct ReplayFromAndAppendToFileUsingCereal final {
                             [&storage](const char* data) { storage.DoAdd(CerealizeParseJSON<T>(data)); });
       instance.RegisterHook(hook_delete_name_,
                             [&storage](const char* data) {
-                              const std::vector<std::string> fields = bricks::strings::Split(data, '\t');
+                              const std::vector<std::string> fields = current::strings::Split(data, '\t');
                               assert(fields.size() == 2);
                               storage.DoDelete(CerealizeParseJSON<T_ROW>(fields[0]),
                                                CerealizeParseJSON<T_COL>(fields[1]));

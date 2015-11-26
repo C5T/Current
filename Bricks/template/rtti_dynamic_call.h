@@ -39,7 +39,7 @@ SOFTWARE.
 #include "../exception.h"
 #include "../util/singleton.h"
 
-namespace bricks {
+namespace current {
 namespace metaprogramming {
 
 struct RTTIException : Exception {
@@ -167,8 +167,8 @@ void RTTIDynamicCall(BASE&& ref, REST&&... rest) {
 }
 
 }  // namespace metaprogramming
-}  // namespace bricks
+}  // namespace current
 
-using bricks::metaprogramming::RTTIDynamicCall;
+using current::metaprogramming::RTTIDynamicCall;
 
 #endif  // BRICKS_TEMPLATE_RTTI_DYNAMIC_CALL_H

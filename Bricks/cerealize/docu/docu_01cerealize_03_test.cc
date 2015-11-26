@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../../../3rdparty/gtest/gtest-main.h"
 
-using namespace bricks;
+using namespace current;
 
 namespace docu {  // Should keep the indent for docu autogeneration.
   // Use `load()/save()` instead of `serialize()` to customize serialization.

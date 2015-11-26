@@ -92,8 +92,8 @@ CURRENT_STRUCT(WithOptional) {
 TEST(Serialization, Binary) {
   using namespace serialization_test;
 
-  const std::string tmp_file = bricks::FileSystem::GenTmpFileName();
-  const auto tmp_file_remover = bricks::FileSystem::ScopedRmFile(tmp_file);
+  const std::string tmp_file = current::FileSystem::GenTmpFileName();
+  const auto tmp_file_remover = current::FileSystem::ScopedRmFile(tmp_file);
   {
     std::ofstream ofs(tmp_file);
     Serializable simple_object;
@@ -501,8 +501,8 @@ TEST(Serialization, JSONForCppTypes) {
 TEST(Serialization, OptionalAsBinary) {
   using namespace serialization_test;
 
-  const std::string tmp_file = bricks::FileSystem::GenTmpFileName();
-  const auto tmp_file_remover = bricks::FileSystem::ScopedRmFile(tmp_file);
+  const std::string tmp_file = current::FileSystem::GenTmpFileName();
+  const auto tmp_file_remover = current::FileSystem::ScopedRmFile(tmp_file);
   {
     std::ofstream ofs(tmp_file);
     WithOptional with_optional;

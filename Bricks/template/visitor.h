@@ -35,7 +35,7 @@ SOFTWARE.
 
 #include "is_tuple.h"
 
-namespace bricks {
+namespace current {
 namespace metaprogramming {
 
 // Library code.
@@ -69,7 +69,7 @@ struct visitable : abstract_visitable<TYPELIST_AS_TUPLE> {
 };
 
 }  // namespace metaprogramming
-}  // namespace bricks
+}  // namespace current
 
 #endif
 

@@ -150,13 +150,13 @@ class StreamInstanceImpl {
   // 1) `Publish(const DERIVED_ENTRY&)`, and
   // 2) `Publish(conststd::unique_ptr<DERIVED_ENTRY>&)`.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
     return storage_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return storage_->Publish(e);
   }
@@ -200,7 +200,7 @@ class StreamInstanceImpl {
       F listener;  // The ownership of the listener is transferred to instance of this class.
       std::shared_ptr<T_PERSISTENCE_LAYER> storage;
 
-      bricks::WaitableTerminateSignal terminate_signal;
+      current::WaitableTerminateSignal terminate_signal;
 
       ListenerThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
           : listener(std::move(listener)), storage(storage) {}
@@ -331,10 +331,10 @@ class StreamInstanceImpl {
   }
 
   template <typename F>
-  SyncListenerScope<std::unique_ptr<F, bricks::NullDeleter>> SyncSubscribeImpl(F& listener) {
+  SyncListenerScope<std::unique_ptr<F, current::NullDeleter>> SyncSubscribeImpl(F& listener) {
     // RAAI, no `std::move()` needed.
-    return SyncListenerScope<std::unique_ptr<F, bricks::NullDeleter>>(
-        storage_, std::unique_ptr<F, bricks::NullDeleter>(&listener));
+    return SyncListenerScope<std::unique_ptr<F, current::NullDeleter>>(
+        storage_, std::unique_ptr<F, current::NullDeleter>(&listener));
   }
 
   void ServeDataViaHTTP(Request r) {
@@ -367,13 +367,13 @@ struct StreamInstance {
 
   // Support two syntaxes of `Publish` as well.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const DERIVED_ENTRY& e) {
     return impl_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<bricks::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return impl_->Publish(e);
   }
@@ -386,7 +386,7 @@ struct StreamInstance {
   template <typename F>
   using SyncListenerScope =
       typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>::template SyncListenerScope<
-          std::unique_ptr<F, bricks::NullDeleter>>;
+          std::unique_ptr<F, current::NullDeleter>>;
   template <typename F>
   using AsyncListenerScope =
       typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>::template AsyncListenerScope<F>;
@@ -396,7 +396,7 @@ struct StreamInstance {
   // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
   template <typename F>
-  SyncListenerScope<bricks::decay<F>> SyncSubscribe(F& listener) {
+  SyncListenerScope<current::decay<F>> SyncSubscribe(F& listener) {
     // No `std::move()` needed: RAAI.
     return impl_->SyncSubscribeImpl(listener);
   }
@@ -404,7 +404,7 @@ struct StreamInstance {
   // Aynchonous subscription: `listener` is a heap-allocated object, the ownership of which
   // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
   template <typename F>
-  AsyncListenerScope<bricks::decay<F>> AsyncSubscribe(F&& listener) {
+  AsyncListenerScope<current::decay<F>> AsyncSubscribe(F&& listener) {
     // No `std::move()` needed: RAAI.
     return impl_->AsyncSubscribeImpl(std::forward<F>(listener));
   }
@@ -416,10 +416,10 @@ struct StreamInstance {
 // TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
 // TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
 
-template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+template <typename ENTRY, class CLONER = current::DefaultCloner>
 using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
 
-template <typename ENTRY, class CLONER = bricks::DefaultCloner>
+template <typename ENTRY, class CLONER = current::DefaultCloner>
 StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream(const std::string& name) {
   return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(
       new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(name));
@@ -427,7 +427,7 @@ StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream(const std::strin
 
 template <typename ENTRY,
           template <typename, typename> class PERSISTENCE_LAYER,
-          class CLONER = bricks::DefaultCloner,
+          class CLONER = current::DefaultCloner,
           typename... EXTRA_PARAMS>
 StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(const std::string& name,
                                                         EXTRA_PARAMS&&... extra_params) {

@@ -156,7 +156,7 @@ struct SaveIntoBinaryImpl {
   template <typename TT = T>
   static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Save(std::ostream& ostream, const T& source) {
     SaveFieldVisitor visitor(ostream);
-    current::reflection::VisitAllFields<bricks::decay<T>,
+    current::reflection::VisitAllFields<current::decay<T>,
                                         current::reflection::FieldNameAndImmutableValue>::WithObject(source,
                                                                                                      visitor);
   }
@@ -169,7 +169,7 @@ struct SaveIntoBinaryImpl {
 
 template <typename T>
 inline void SaveIntoBinary(std::ostream& ostream, const T& source) {
-  using DECAYED_T = bricks::decay<T>;
+  using DECAYED_T = current::decay<T>;
   SaveIntoBinaryImpl<DECAYED_T>::Save(ostream, source);
 }
 
@@ -234,7 +234,7 @@ struct LoadFromBinaryImpl {
   template <typename TT = T>
   static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(std::istream& istream, T& destination) {
     LoadFieldVisitor visitor(istream);
-    current::reflection::VisitAllFields<bricks::decay<T>,
+    current::reflection::VisitAllFields<current::decay<T>,
                                         current::reflection::FieldNameAndMutableValue>::WithObject(destination,
                                                                                                    visitor);
   }

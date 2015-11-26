@@ -47,16 +47,16 @@ using std::vector;
 using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
-using bricks::strings::Printf;
-using bricks::Singleton;
-using bricks::net::Socket;
-using bricks::net::Connection;
-using bricks::net::ClientSocket;
+using current::strings::Printf;
+using current::Singleton;
+using current::net::Socket;
+using current::net::Connection;
+using current::net::ClientSocket;
 
-using bricks::net::AttemptedToUseMovedAwayConnection;
-using bricks::net::SocketBindException;
-using bricks::net::SocketCouldNotWriteEverythingException;
-using bricks::net::SocketResolveAddressException;
+using current::net::AttemptedToUseMovedAwayConnection;
+using current::net::SocketBindException;
+using current::net::SocketCouldNotWriteEverythingException;
+using current::net::SocketResolveAddressException;
 
 static void ExpectFromSocket(const std::string& golden,
                              thread& server_thread,

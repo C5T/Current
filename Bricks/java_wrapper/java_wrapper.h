@@ -54,7 +54,7 @@ SOFTWARE.
     return;                    \
   }
 
-namespace bricks {
+namespace current {
 namespace java_wrapper {
 
 struct JavaWrapper {
@@ -83,7 +83,7 @@ inline std::string ToStdString(JNIEnv* env, jstring str) {
 }
 
 }  // namespace java_wrapper
-}  // namespace bricks
+}  // namespace current
 
 #ifdef LINK_JAVA_ON_LOAD_INTO_SOURCE
 #include "java_wrapper.cc"

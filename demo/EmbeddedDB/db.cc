@@ -1,6 +1,5 @@
-// TODO(dkorolev): s/bricks/current.
-
-// TODO(dkorolev): Seamless copy of CURRENT_STRUCT-s with polymorphics.
+// TODO(dkorolev): Seamless copy of CURRENT_STRUCT-s.
+// TODO(dkorolev): Seamless copy of Polymorphic<>.
 
 // TODO(dkorolev): MMQ version too, with a stronly consistent model.
 // #include "../../Blocks/MMQ/mmq.h"
@@ -11,6 +10,13 @@
 //   }
 // };
 // static CallThatFunction call_that_function;
+
+// TODO(dkorolev): Strongly consistent model on read-write mutexes and std::async.
+
+// TODO(dkorolev): Re-register HTTP endpoints from `ReplayDone()`.
+// TODO(dkorolev): Scoped endpoint unregisterer.
+
+// TODO(dkorolev): Perftest, std::async() with read-write vs. read-only mutexes.
 
 /*******************************************************************************
 The MIT License (MIT)
@@ -43,29 +49,27 @@ SOFTWARE.
 
 using namespace current;
 
+DEFINE_bool(legend, true, "Print example usage patterns.");
+
 DEFINE_int32(db_demo_port, 8889, "Local port to spawn the server on.");
 DEFINE_string(db_db_dir, ".current", "Local path to the data storage location.");
 DEFINE_string(db_db_filename, "data.json", "File name for the persisted data.");
-DEFINE_bool(legend, true, "Run with `--legend=true` to see example command lines that work.");
 
 // Example eventually consistent read model.
 struct UserNicknamesReadModel {
-
   // The in-memory state and exclusive operations on it.
   struct State {
     // The mutable state.
     std::unordered_map<std::string, std::string> nicknames;
 
     // The mutator.
-    void operator()(const UserAdded& user) {
-      nicknames[user.user_id] = user.nickname;
-    }
+    void operator()(const UserAdded& user) { nicknames[user.user_id] = user.nickname; }
 
     // Ignore all other types of events.
     void operator()(const CurrentSuper&) {}
   };
 
-  // The message queue to interleave log-based mutations with external requests.
+  // Mutex-locked state for eventually consistent read model.
   State state_;
   std::mutex mutex_;
   const int port_;
@@ -120,11 +124,11 @@ int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
   auto stream = sherlock::Stream<Event, blocks::persistence::NewAppendToFile>(
-      "persistence", bricks::FileSystem::JoinPath(FLAGS_db_db_dir, FLAGS_db_db_filename));
+      "persistence", current::FileSystem::JoinPath(FLAGS_db_db_dir, FLAGS_db_db_filename));
 
   // Example command lines to get started.
   if (FLAGS_legend) {
-    const auto url = "localhost:" + bricks::strings::ToString(FLAGS_db_demo_port);
+    const auto url = "localhost:" + current::strings::ToString(FLAGS_db_demo_port);
 
     std::cerr << "Health check:\n\tcurl " << url << "/healthz" << std::endl;
     std::cerr << "Schema as F#:\n\tcurl " << url << "/schema.fs" << std::endl;
@@ -134,7 +138,7 @@ int main(int argc, char** argv) {
 
     {
       Event event;
-      event.timestamp = static_cast<uint64_t>(bricks::time::Now());
+      event.timestamp = static_cast<uint64_t>(current::time::Now());
       UserAdded body;
       body.user_id = "skywalker";
       body.nickname = "Luke";

@@ -32,7 +32,7 @@ SOFTWARE.
 
 DEFINE_int32(docu_net_client_port_01, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using bricks::strings::Printf;
+using current::strings::Printf;
 
 TEST(Docu, HTTPClient01A) {
 HTTP(FLAGS_docu_net_client_port_01).ResetAllHandlers();

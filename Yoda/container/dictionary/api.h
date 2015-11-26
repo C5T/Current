@@ -77,7 +77,7 @@ struct Container<YT, Dictionary<ENTRY>> {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
   template <typename T>
-  using CF = bricks::copy_free<T>;
+  using CF = current::copy_free<T>;
 
   typedef Dictionary<ENTRY> YET;
 
@@ -164,7 +164,7 @@ struct Container<YT, Dictionary<ENTRY>> {
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }
 
     // Non-throwing deleter.
-    void Delete(bricks::copy_free<typename YET::T_KEY> key) {
+    void Delete(current::copy_free<typename YET::T_KEY> key) {
       stream_.Publish(typename YET::T_ENTRY::DeleterPersister(key));
       mutable_.map_.erase(key);
     }

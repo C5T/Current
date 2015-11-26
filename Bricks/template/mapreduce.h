@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "typelist.h"
 
-namespace bricks {
+namespace current {
 namespace metaprogramming {
 
 // `map<F<>, std::tuple<A, B, C>>` == `std::tuple<F<A>, F<B>, F<C>>`.
@@ -139,6 +139,6 @@ struct reduce_impl<F, TypeListImpl<T, TS...>> {
 };
 
 }  // namespace metaprogramming
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_TEMPLATE_MAPREDUCE_H

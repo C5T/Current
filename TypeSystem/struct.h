@@ -222,7 +222,7 @@ template <typename T, typename VISITOR_TYPE>
 struct VisitAllFields {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`VisitAllFields` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  typedef bricks::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
+  typedef current::variadic_indexes::generate_indexes<FieldCounter<T>::value> NUM_INDEXES;
 
   // Visit all fields without an object. Used for enumerating fields and generating signatures.
   template <typename F>
@@ -240,24 +240,24 @@ struct VisitAllFields {
 
  private:
   template <typename F, int N, int... NS>
-  static void WithoutObjectImpl(F&& f, bricks::variadic_indexes::indexes<N, NS...>) {
-    static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
+  static void WithoutObjectImpl(F&& f, current::variadic_indexes::indexes<N, NS...>) {
+    static current::variadic_indexes::indexes<NS...> remaining_indexes;
     T::CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
     WithoutObjectImpl(std::forward<F>(f), remaining_indexes);
   }
 
   template <typename F>
-  static void WithoutObjectImpl(const F&, bricks::variadic_indexes::indexes<>) {}
+  static void WithoutObjectImpl(const F&, current::variadic_indexes::indexes<>) {}
 
   template <typename TT, typename F, int N, int... NS>
-  static void WithObjectImpl(TT&& t, F&& f, bricks::variadic_indexes::indexes<N, NS...>) {
-    static bricks::variadic_indexes::indexes<NS...> remaining_indexes;
+  static void WithObjectImpl(TT&& t, F&& f, current::variadic_indexes::indexes<N, NS...>) {
+    static current::variadic_indexes::indexes<NS...> remaining_indexes;
     t.CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
     WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), remaining_indexes);
   }
 
   template <typename TT, typename F>
-  static void WithObjectImpl(TT&&, const F&, bricks::variadic_indexes::indexes<>) {}
+  static void WithObjectImpl(TT&&, const F&, current::variadic_indexes::indexes<>) {}
 };
 
 }  // namespace reflection

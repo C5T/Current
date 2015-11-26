@@ -107,7 +107,7 @@ struct ReflectedType_Enum : ReflectedTypeImpl {
   template <typename T>
   ReflectedType_Enum(T, const std::shared_ptr<ReflectedTypeImpl> rt)
       : name(EnumName<T>()), reflected_underlying_type(rt) {
-    type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + bricks::CRC32(name));
+    type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + current::CRC32(name));
   }
 };
 
@@ -152,7 +152,7 @@ inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete = false) {
-  uint64_t hash = bricks::CRC32(s.name);
+  uint64_t hash = current::CRC32(s.name);
   size_t i = 0u;
   if (is_incomplete) {
     // For incomplete structs we use only the names of the fields for hashing,
@@ -160,7 +160,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete 
     // At this moment, reflected types of the fields should be empty.
     for (const auto& f : s.fields) {
       assert(!f.first);
-      hash ^= current::ROL64(bricks::CRC32(f.second), i + 19);
+      hash ^= current::ROL64(current::CRC32(f.second), i + 19);
       ++i;
     }
     return static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
@@ -168,7 +168,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete 
     for (const auto& f : s.fields) {
       assert(f.first);
       assert(f.first->type_id != TypeID::INVALID_TYPE);
-      hash ^= ROL64(f.first->type_id, i + 17) ^ current::ROL64(bricks::CRC32(f.second), i + 29);
+      hash ^= ROL64(f.first->type_id, i + 17) ^ current::ROL64(current::CRC32(f.second), i + 29);
       ++i;
     }
     return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);

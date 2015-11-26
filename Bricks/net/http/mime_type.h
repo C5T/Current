@@ -35,7 +35,7 @@ SOFTWARE.
 
 #include "../../file/file.h"
 
-namespace bricks {
+namespace current {
 namespace net {
 
 inline std::string GetFileMimeType(const std::string& file_name,
@@ -53,7 +53,7 @@ inline std::string GetFileMimeType(const std::string& file_name,
       {"gif", "image/gif"},
       {"svg", "image/svg+xml"}};
 
-  std::string extension = bricks::FileSystem::GetFileExtension(file_name);
+  std::string extension = current::FileSystem::GetFileExtension(file_name);
   std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
   const auto cit = file_extension_to_mime_type_map.find(extension);
   if (cit != file_extension_to_mime_type_map.end()) {
@@ -64,6 +64,6 @@ inline std::string GetFileMimeType(const std::string& file_name,
 }
 
 }  // namespace net
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_NET_HTTP_MIME_TYPE_H

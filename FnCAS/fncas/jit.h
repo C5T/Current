@@ -52,7 +52,7 @@
 #include "base.h"
 #include "node.h"
 
-using namespace bricks;
+using namespace current;
 
 namespace fncas {
 

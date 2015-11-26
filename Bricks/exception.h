@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "strings/printf.h"
 
-namespace bricks {
+namespace current {
 
 class Exception : public std::exception {
  public:
@@ -63,10 +63,6 @@ class Exception : public std::exception {
     throw e;                         \
   }
 
-}  // namespace bricks
-
-namespace current {
-using Exception = ::bricks::Exception;
 }  // namespace current
 
 #endif  // BRICKS_EXCEPTIONS_H

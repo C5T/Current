@@ -57,12 +57,12 @@ using std::thread;
 using std::this_thread::sleep_for;
 using std::chrono::milliseconds;
 
-using bricks::strings::Join;
-using bricks::strings::Printf;
-using bricks::strings::ToString;
+using current::strings::Join;
+using current::strings::Printf;
+using current::strings::ToString;
 
-using bricks::time::EPOCH_MILLISECONDS;
-using bricks::time::MILLISECONDS_INTERVAL;
+using current::time::EPOCH_MILLISECONDS;
+using current::time::MILLISECONDS_INTERVAL;
 
 namespace sherlock_unittest {
 
@@ -272,7 +272,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 seconds ago respectively.
   auto exposed_stream = sherlock::Stream<RecordWithTimestamp>("exposed");
-  const EPOCH_MILLISECONDS now = bricks::time::Now();
+  const EPOCH_MILLISECONDS now = current::time::Now();
   exposed_stream.Emplace("s[0]", now - MILLISECONDS_INTERVAL(40000));
   exposed_stream.Emplace("s[1]", now - MILLISECONDS_INTERVAL(30000));
   exposed_stream.Emplace("s[2]", now - MILLISECONDS_INTERVAL(20000));
@@ -369,8 +369,8 @@ const std::string sherlock_golden_data = "{\"x\":1}\n{\"x\":2}\n{\"x\":3}\n";
 TEST(Sherlock, PersistsToFile) {
   using namespace sherlock_unittest;
 
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
-  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   auto persisted =
       sherlock::Stream<Record, blocks::persistence::NewAppendToFile>("persisted", persistence_file_name);
@@ -379,19 +379,19 @@ TEST(Sherlock, PersistsToFile) {
   persisted.Publish(2);
   persisted.Publish(3);
 
-  while (bricks::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
+  while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
     ;  // Spin lock.
   }
 
-  EXPECT_EQ(sherlock_golden_data, bricks::FileSystem::ReadFileAsString(persistence_file_name));
+  EXPECT_EQ(sherlock_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
 }
 
 TEST(Sherlock, ParsesFromFile) {
   using namespace sherlock_unittest;
 
-  const std::string persistence_file_name = bricks::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
-  const auto persistence_file_remover = bricks::FileSystem::ScopedRmFile(persistence_file_name);
-  bricks::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
+  const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+  current::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
   auto parsed = sherlock::Stream<Record, blocks::persistence::NewAppendToFile>("parsed", persistence_file_name);
 

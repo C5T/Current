@@ -29,7 +29,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 // Computes the Levenshtein distance between two strings.
@@ -119,6 +119,6 @@ inline size_t FastEditDistance(const std::string& a, const std::string& b, size_
 }
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_DISTANCE_H

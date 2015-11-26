@@ -42,6 +42,6 @@ TEST(TypeTest, StructFields) {
 
   StructSchema schema;
   schema.AddType<StructWithManyFields>();
-  EXPECT_EQ(bricks::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
+  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/struct_fields.cc"),
             schema.Describe(Language::CPP(), false));
 }

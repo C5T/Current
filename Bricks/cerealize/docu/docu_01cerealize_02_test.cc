@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "docu_01cerealize_01_test.cc"
 
-using namespace bricks;
+using namespace current;
 
 using docu::SimpleType;
 

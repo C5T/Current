@@ -42,8 +42,8 @@ TEST(TypeTest, TypeListImpl) {
   using namespace type_test;
 #include "include/typelist_dynamic.cc"
 
-  using bricks::metaprogramming::map;
-  using bricks::metaprogramming::Flatten;
+  using current::metaprogramming::map;
+  using current::metaprogramming::Flatten;
   typedef Flatten<map<ST, DATA_TYPES>> STORAGE_TYPES;
 
   static_assert(IsTypeList<STORAGE_TYPES>::value, "");

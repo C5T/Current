@@ -38,7 +38,7 @@ SOFTWARE.
 
 TEST(Graph, GNUPlotScience) {
   // Where visualization meets science.
-  using namespace bricks::gnuplot;
+  using namespace current::gnuplot;
 #ifndef BRICKS_APPLE
 const char* const formats[2] = { "dumb", "pngcairo" };
 #else
@@ -76,8 +76,8 @@ const size_t image_dim = e ? 800 : 112;
 #else
     .OutputFormat("svg");  // Although the one below is actually a "png".
 #endif
-if (FLAGS_regenerate_golden_graphs) bricks::FileSystem::WriteStringToFile(result, ("golden/science-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
-if (!e) ASSERT_EQ(result, bricks::FileSystem::ReadFileAsString("golden/science-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
+if (FLAGS_regenerate_golden_graphs) current::FileSystem::WriteStringToFile(result, ("golden/science-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, current::FileSystem::ReadFileAsString("golden/science-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
 }
 }
 

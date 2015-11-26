@@ -38,5 +38,5 @@ namespace type_test {
 TEST(TypeTest, RTTIDynamicCall) {
   using namespace type_test;
 #include "include/rtti_dynamic_call.cc"
-  EXPECT_EQ(call_struct.oss.str(), bricks::FileSystem::ReadFileAsString("golden/rtti_dynamic_call.output"));
+  EXPECT_EQ(call_struct.oss.str(), current::FileSystem::ReadFileAsString("golden/rtti_dynamic_call.output"));
 }

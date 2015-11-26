@@ -46,18 +46,18 @@ constexpr static auto HasRespondViaHTTP(int)
 
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
-  std::unique_ptr<bricks::net::HTTPServerConnection> unique_connection;
+  std::unique_ptr<current::net::HTTPServerConnection> unique_connection;
 
-  bricks::net::HTTPServerConnection& connection;
-  const bricks::net::HTTPRequestData&
+  current::net::HTTPServerConnection& connection;
+  const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const URL& url;
   const std::string method;
-  const bricks::net::HTTPRequestData::HeadersType& headers;
+  const current::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
-  const bricks::time::EPOCH_MILLISECONDS timestamp;
+  const current::time::EPOCH_MILLISECONDS timestamp;
 
-  explicit Request(std::unique_ptr<bricks::net::HTTPServerConnection>&& connection)
+  explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection)
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
@@ -65,7 +65,7 @@ struct Request final {
         method(http_data.Method()),
         headers(http_data.headers()),
         body(http_data.Body()),
-        timestamp(bricks::time::Now()) {}
+        timestamp(current::time::Now()) {}
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
   Request(Request&& rhs)
@@ -80,7 +80,7 @@ struct Request final {
 
   // Support objects with user-defined HTTP response handlers.
   template <typename T>
-  inline typename std::enable_if<HasRespondViaHTTP<bricks::decay<T>>(0)>::type operator()(
+  inline typename std::enable_if<HasRespondViaHTTP<current::decay<T>>(0)>::type operator()(
       T&& that_dude_over_there) {
     that_dude_over_there.RespondViaHTTP(std::move(*this));
   }
@@ -91,7 +91,7 @@ struct Request final {
     connection.SendHTTPResponse(std::forward<TS>(params)...);
   }
 
-  bricks::net::HTTPServerConnection::ChunkedResponseSender SendChunkedResponse() {
+  current::net::HTTPServerConnection::ChunkedResponseSender SendChunkedResponse() {
     return connection.SendChunkedHTTPResponse();
   }
 

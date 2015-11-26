@@ -31,12 +31,12 @@ SOFTWARE.
 #include "../../../3rdparty/gtest/gtest-main.h"
 
 using std::tuple;
-using bricks::strings::Printf;
+using current::strings::Printf;
 
 #if 0
   // The example below uses `Printf()`, include it.
   #include "strings/printf.h"
-  using bricks::strings::Printf;
+  using current::strings::Printf;
    
 #endif
 
@@ -67,7 +67,7 @@ using bricks::strings::Printf;
   
 
 TEST(RTTIDocu, Docu01) {
-  using bricks::rtti::RuntimeTupleDispatcher;
+  using current::rtti::RuntimeTupleDispatcher;
   typedef RuntimeTupleDispatcher<ExampleBase,
                                  tuple<ExampleInt, ExampleString, ExampleMoo>> Dispatcher;
   

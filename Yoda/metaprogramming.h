@@ -48,7 +48,7 @@ SOFTWARE.
 namespace yoda {
 
 struct Padawan;
-namespace MP = bricks::metaprogramming;
+namespace MP = current::metaprogramming;
 
 // The container to keep the internal represenation of a particular entry type and all access methods
 // implemented via corresponding `operator()` overload.
@@ -124,7 +124,7 @@ struct RetrieveMutator {};
 template <typename YT>
 struct YodaData {
   template <typename T, typename... TS>
-  using CWT = bricks::weed::call_with_type<T, TS...>;
+  using CWT = current::weed::call_with_type<T, TS...>;
 
   YodaData(YodaContainer<YT>& container, typename YT::T_STREAM_TYPE& stream)
       : container(container), stream(stream) {}
@@ -253,7 +253,7 @@ struct APICalls {
   static_assert(std::is_base_of<YodaTypesBase, YT>::value, "");
 
   template <typename T, typename... TS>
-  using CWT = bricks::weed::call_with_type<T, TS...>;
+  using CWT = current::weed::call_with_type<T, TS...>;
 
   APICalls() = delete;
   explicit APICalls(typename YT::T_MQ& mq) : mq_(mq) {}
@@ -297,8 +297,8 @@ struct APICalls {
   };
 
   template <typename TYPED_USER_FUNCTION>
-  Future<bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>> Transaction(TYPED_USER_FUNCTION&& function) {
-    using INTERMEDIATE_TYPE = bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
+  Future<current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>> Transaction(TYPED_USER_FUNCTION&& function) {
+    using INTERMEDIATE_TYPE = current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<INTERMEDIATE_TYPE> pr;
     Future<INTERMEDIATE_TYPE> future = pr.get_future();
     mq_.Emplace(
@@ -309,7 +309,7 @@ struct APICalls {
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
   template <typename TYPED_USER_FUNCTION, typename NEXT_USER_FUNCTION>
   Future<void> Transaction(TYPED_USER_FUNCTION&& function, NEXT_USER_FUNCTION&& next) {
-    using INTERMEDIATE_TYPE = bricks::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
+    using INTERMEDIATE_TYPE = current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
     Future<void> future = pr.get_future();
     mq_.Emplace(new MQMessageFunctionWithNext<INTERMEDIATE_TYPE, NEXT_USER_FUNCTION>(

@@ -49,14 +49,14 @@ SOFTWARE.
 
 #include "../../3rdparty/cereal/include/external/base64.hpp"
 
-namespace bricks {
+namespace current {
 namespace cerealize {
 
 template <typename BASE, typename ENTRY>
-inline ENABLE_IF<std::is_base_of<BASE, ENTRY>::value, std::unique_ptr<const BASE, bricks::NullDeleter>>
+inline ENABLE_IF<std::is_base_of<BASE, ENTRY>::value, std::unique_ptr<const BASE, current::NullDeleter>>
 WithBaseType(const ENTRY& object) {
   return std::unique_ptr<const BASE, NullDeleter>(reinterpret_cast<const BASE*>(&object),
-                                                  bricks::NullDeleter());
+                                                  current::NullDeleter());
 }
 
 template <typename T>
@@ -143,7 +143,7 @@ struct ParseJSONErrorHandler {};
 template <typename T>
 struct ParseJSONErrorHandler<T, false> {
   static void HandleError(const std::string& input_json, T&) {
-    BRICKS_THROW(bricks::ParseJSONException(input_json));
+    BRICKS_THROW(current::ParseJSONException(input_json));
   }
 };
 
@@ -180,11 +180,11 @@ inline std::string Base64Encode(const std::string& s) {
 }
 
 }  // namespace cerealize
-}  // namespace bricks
+}  // namespace current
 
-using bricks::cerealize::CerealizeJSON;
-using bricks::cerealize::CerealizeParseJSON;
-using bricks::cerealize::WithBaseType;
-using bricks::cerealize::ExtractJSONEntryName;
+using current::cerealize::CerealizeJSON;
+using current::cerealize::CerealizeParseJSON;
+using current::cerealize::WithBaseType;
+using current::cerealize::ExtractJSONEntryName;
 
 #endif  // BRICKS_CEREALIZE_JSON_H

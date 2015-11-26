@@ -56,7 +56,7 @@ class ServeJSONOverHTTP {
     try {
       http_response_(entry, "point");
       return true;
-    } catch (const bricks::net::NetworkException&) {
+    } catch (const current::net::NetworkException&) {
       return false;
     }
   }
@@ -65,7 +65,7 @@ class ServeJSONOverHTTP {
 
  private:
   Request http_request_scope_;  // Need to keep `Request` in scope, for the lifetime of the chunked response.
-  bricks::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+  current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
 
   ServeJSONOverHTTP() = delete;
   ServeJSONOverHTTP(const ServeJSONOverHTTP&) = delete;
@@ -89,8 +89,8 @@ struct ExampleConfig {
   std::string dashboard_template;
 
   ExampleConfig()
-      : dashboard_template(bricks::FileSystem::ReadFileAsString(
-            bricks::FileSystem::JoinPath("static", "knowsheet-demo.html"))) {}
+      : dashboard_template(current::FileSystem::ReadFileAsString(
+            current::FileSystem::JoinPath("static", "knowsheet-demo.html"))) {}
 
   template <typename A>
   void save(A& ar) const {
@@ -209,7 +209,7 @@ int main() {
 
   std::thread points_populator([&time_series, &pic_series]() {
     while (true) {
-      const double x = static_cast<double>(bricks::time::Now());
+      const double x = static_cast<double>(current::time::Now());
       time_series.Publish(DoublePoint{x, 0.5 * (1.0 + sin(0.003 * x))});
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -218,9 +218,9 @@ int main() {
   std::thread pics_populator([&time_series, &pic_series]() {
     int index = 0;
     while (true) {
-      const double x = static_cast<double>(bricks::time::Now());
+      const double x = static_cast<double>(current::time::Now());
       pic_series.Publish(
-          StringPoint{x, bricks::strings::Printf("http://lorempixel.com/400/200/nature/%d/", index + 1)});
+          StringPoint{x, current::strings::Printf("http://lorempixel.com/400/200/nature/%d/", index + 1)});
       index = (index + 1) % 10;
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
@@ -282,10 +282,10 @@ int main() {
   HTTP(port).ServeStaticFilesFrom(dir, "/static/");
 
   // Need a dedicated handler for '/'.
-  HTTP(port).Register(
-      "/",
-      new blocks::StaticFileServer(
-          bricks::FileSystem::ReadFileAsString(bricks::FileSystem::JoinPath(dir, "index.html")), "text/html"));
+  HTTP(port).Register("/",
+                      new blocks::StaticFileServer(current::FileSystem::ReadFileAsString(
+                                                       current::FileSystem::JoinPath(dir, "index.html")),
+                                                   "text/html"));
 
   HTTP(port).Join();
 }

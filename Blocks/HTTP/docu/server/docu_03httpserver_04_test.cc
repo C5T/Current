@@ -35,7 +35,7 @@ SOFTWARE.
 
 DEFINE_int32(docu_net_server_port_04, 8082, "Okay to keep the same as in net/api/test.cc");
 
-using bricks::strings::Printf;
+using current::strings::Printf;
 
   // An input record that would be passed in as a JSON.
   CURRENT_STRUCT(PennyInput) {
@@ -82,7 +82,7 @@ HTTP(port).ResetAllHandlers();
       } else {
         r(PennyOutput{"Unknown operation: " + input.op, 0});
       }
-    } catch (const std::exception& e) {
+    } catch (const Exception& e) {
       // TODO(dkorolev): Catch the right exception type.
       r(PennyOutput{e.what(), 0});
     }

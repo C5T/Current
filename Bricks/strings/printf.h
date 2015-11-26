@@ -30,7 +30,7 @@ SOFTWARE.
 #include <string>
 #include <cstdarg>
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 inline std::string Printf(const char *fmt, ...) {
@@ -57,8 +57,8 @@ inline std::string Printf(const char *fmt, ...) {
 }
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
-using bricks::strings::Printf;
+using current::strings::Printf;
 
 #endif  // BRICKS_STRINGS_PRINTF_H

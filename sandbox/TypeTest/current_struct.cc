@@ -41,6 +41,6 @@ TEST(TypeTest, CurrentStruct) {
 
   StructSchema schema;
 #include "include/current_struct.cc"
-  EXPECT_EQ(bricks::FileSystem::ReadFileAsString("golden/current_struct.cc"),
+  EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/current_struct.cc"),
             schema.Describe(Language::CPP(), false));
 }

@@ -27,12 +27,12 @@ SOFTWARE.
 
 #include "../../3rdparty/stephan-brumme/sha256.h"
 
-namespace bricks {
+namespace current {
 
 inline std::string SHA256(const std::string& input) {
   return static_cast<std::string>(sha256_impl_by_StephanBrumme::SHA256(input));
 }
 
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_UTIL_SHA256_H

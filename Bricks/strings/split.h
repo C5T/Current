@@ -36,7 +36,7 @@ SOFTWARE.
 #include "../template/decay.h"
 #include "../template/weed.h"
 
-namespace bricks {
+namespace current {
 namespace strings {
 
 // Skip: Skip empty chunks, Keep: Keep empty fields.
@@ -178,6 +178,6 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
 }
 
 }  // namespace strings
-}  // namespace bricks
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_SPLIT_H
