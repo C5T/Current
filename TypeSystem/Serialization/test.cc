@@ -600,14 +600,21 @@ TEST(Serialization, OptionalAsJSON) {
 
 TEST(Serialization, PolymorphicAsJSON) {
   using namespace serialization_test;
+  using PolymorphicType = Polymorphic<Empty, Serializable, ComplexSerializable>;
   {
-    const Polymorphic<Empty, Serializable, ComplexSerializable> p1(make_unique<Empty>());
-    EXPECT_EQ("{\"Empty\":{},\"\":9200000002835747520}", JSON(p1));
+    const PolymorphicType object(make_unique<Empty>());
+    const std::string json = "{\"Empty\":{},\"\":9200000002835747520}";
+    EXPECT_EQ(json, JSON(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
   }
   {
-    const Polymorphic<Empty, Serializable, ComplexSerializable> p2(make_unique<Serializable>(42));
-    EXPECT_EQ("{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":9201007113239016790}",
-              JSON(p2));
+    const PolymorphicType object(make_unique<Serializable>(42));
+    const std::string json =
+        "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":9201007113239016790}";
+    EXPECT_EQ(json, JSON(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
   }
 }
 
