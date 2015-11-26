@@ -364,8 +364,4 @@ struct FileSystem {
 
 }  // namespace current
 
-namespace current {
-using current::FileSystem;
-}  // namespace current
-
 #endif  // BRICKS_FILE_FILE_H

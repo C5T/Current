@@ -149,10 +149,4 @@ struct FixedSizeSerializer<current::time::EPOCH_MILLISECONDS> {
 
 using current::time::EPOCH_MILLISECONDS;
 
-namespace current {
-
-using current::time::Now;
-
-}  // namespace current
-
 #endif  // BRICKS_TIME_CHRONO_H

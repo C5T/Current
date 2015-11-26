@@ -65,8 +65,4 @@ class Exception : public std::exception {
 
 }  // namespace current
 
-namespace current {
-using Exception = ::current::Exception;
-}  // namespace current
-
 #endif  // BRICKS_EXCEPTIONS_H
