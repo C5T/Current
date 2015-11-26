@@ -10,8 +10,13 @@
 //   }
 // };
 // static CallThatFunction call_that_function;
-//
+
 // TODO(dkorolev): Strongly consistent model on read-write mutexes and std::async.
+
+// TODO(dkorolev): Re-register HTTP endpoints from `ReplayDone()`.
+// TODO(dkorolev): Scoped endpoint unregisterer.
+
+// TODO(dkorolev): Perftest, std::async() with read-write vs. read-only mutexes.
 
 /*******************************************************************************
 The MIT License (MIT)
@@ -44,29 +49,27 @@ SOFTWARE.
 
 using namespace current;
 
+DEFINE_bool(legend, true, "Print example usage patterns.");
+
 DEFINE_int32(db_demo_port, 8889, "Local port to spawn the server on.");
 DEFINE_string(db_db_dir, ".current", "Local path to the data storage location.");
 DEFINE_string(db_db_filename, "data.json", "File name for the persisted data.");
-DEFINE_bool(legend, true, "Run with `--legend=true` to see example command lines that work.");
 
 // Example eventually consistent read model.
 struct UserNicknamesReadModel {
-
   // The in-memory state and exclusive operations on it.
   struct State {
     // The mutable state.
     std::unordered_map<std::string, std::string> nicknames;
 
     // The mutator.
-    void operator()(const UserAdded& user) {
-      nicknames[user.user_id] = user.nickname;
-    }
+    void operator()(const UserAdded& user) { nicknames[user.user_id] = user.nickname; }
 
     // Ignore all other types of events.
     void operator()(const CurrentSuper&) {}
   };
 
-  // The message queue to interleave log-based mutations with external requests.
+  // Mutex-locked state for eventually consistent read model.
   State state_;
   std::mutex mutex_;
   const int port_;
