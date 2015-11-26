@@ -56,6 +56,7 @@ SOFTWARE.
 #include "../TypeSystem/Serialization/json.h"
 #include "../TypeSystem/optional.h"
 
+#include "../Bricks/exception.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
 
@@ -65,7 +66,7 @@ namespace current {
 
 namespace storage {
 
-struct CannotPopBackFromEmptyVectorException : std::exception {};
+struct CannotPopBackFromEmptyVectorException : Exceptiion {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
 
 template <typename T>
