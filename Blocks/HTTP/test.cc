@@ -485,7 +485,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
                   ASSERT_FALSE(r.body.empty());
                   try {
                     r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
-                  } catch (const std::exception&) {
+                  } catch (const Exception&) {
                     // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
                   }
                 });

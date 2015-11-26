@@ -352,7 +352,7 @@ class HTTPServerConnection final {
       try {
         SendHTTPResponse(
             DefaultInternalServerErrorMessage(), HTTPResponseCode.InternalServerError, "text/html");
-      } catch (const std::exception& e) {
+      } catch (const Exception& e) {
         // No exception should ever leave the destructor.
         if (message_.RawPath() == "/healthz") {
           // Report nothing for "/healthz", since it's an internal URL, also used by the tests
@@ -498,7 +498,7 @@ class HTTPServerConnection final {
           connection_.BlockingWrite("0", true);
           connection_.BlockingWrite(kCRLF, false);
           connection_.BlockingWrite(kCRLF, false);  // We should send CRLF twice.
-        } catch (const std::exception& e) {         // LCOV_EXCL_LINE
+        } catch (const Exception& e) {              // LCOV_EXCL_LINE
           // TODO(dkorolev): More reliable logging.
           std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
         }

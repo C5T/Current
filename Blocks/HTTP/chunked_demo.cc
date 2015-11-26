@@ -222,7 +222,7 @@ int main() {
                           data = data.substr(n);
                         }
                       }
-                    } catch (const std::exception& e) {
+                    } catch (const current::Exception& e) {
                       std::cerr << "Exception in data serving thread: " << e.what() << std::endl;
                     }
                   }, std::move(r)).detach();

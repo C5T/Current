@@ -217,12 +217,10 @@ class HTTPServerPOSIX final {
           // and see what caused the error.
           //
           // It is the job of the user of this library to ensure no exceptions leave their code.
-          //
-          // In practice, a top-level try-catch for `const current::Exception& e`,
-          // or even `const std::exception& e`, with logging of `e.what()` is a good enough solution.
+          // In practice, a top-level try-catch for `const current::Exception& e` is good enough.
           try {
             handler(Request(std::move(connection)));
-          } catch (const std::exception& e) {  // LCOV_EXCL_LINE
+          } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
             // WARNING: This `catch` is really not sufficient, it just logs a message
             // if a user exception occurred in the same thread that ran the handler.
             // DO NOT COUNT ON IT.
@@ -232,7 +230,7 @@ class HTTPServerPOSIX final {
           connection->SendHTTPResponse(
               current::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
         }
-      } catch (const std::exception& e) {  // LCOV_EXCL_LINE
+      } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.
         std::cerr << "HTTP route failed: " << e.what() << "\n";  // LCOV_EXCL_LINE
       }

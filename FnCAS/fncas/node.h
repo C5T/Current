@@ -38,6 +38,7 @@
 
 #include "base.h"
 
+#include "../../Bricks/exception.h"
 #include "../../Bricks/util/singleton.h"
 
 // Admittedly, `sqr()` is kind of helpful in machine learning. -- D.K.
@@ -48,7 +49,7 @@ namespace fncas {
 // This exception is thrown when more than one expression per thread
 // is attempted to be evaluated concurrently under FNCAS.
 // This is not allowed. FNCAS keeps global state per thread, which leads to this constraint.
-struct FNCASConcurrentEvaluationAttemptException : std::exception {};
+struct FNCASConcurrentEvaluationAttemptException : Exception {};
 
 // Parsed expressions are stored in an array of node_impl objects.
 // Instances of node_impl take 10 bytes each and are packed.

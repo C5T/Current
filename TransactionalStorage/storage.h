@@ -66,7 +66,7 @@ namespace current {
 
 namespace storage {
 
-struct CannotPopBackFromEmptyVectorException : Exceptiion {};
+struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
 
 template <typename T>
