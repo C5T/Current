@@ -22,15 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef DATA_DICTIONARY_H
-#define DATA_DICTIONARY_H
+#ifndef SCHEMA_H
+#define SCHEMA_H
 
 #include "../../TypeSystem/Reflection/schema.h"
 #include "../../Bricks/time/chrono.h"
 
 using namespace current;
 
-CURRENT_STRUCT(Nop) {};
+// Storage schema, for persistence, publish, and subscribe.
 
 CURRENT_STRUCT(UserAdded) {
   CURRENT_FIELD(user_id, std::string);
@@ -48,13 +48,36 @@ CURRENT_STRUCT(UserLike) {
   CURRENT_FIELD(post_id, std::string);
 };
 
+// `Event` is the top-level message to persist.
+CURRENT_STRUCT(Nop){};  // Will go away, see below.
 CURRENT_STRUCT(Event) {
   CURRENT_FIELD(timestamp, uint64_t);
   CURRENT_FIELD(event, (Polymorphic<Nop, UserAdded, PostAdded, UserLike>));
 
+  // This will go away.
+  // Default construction is required for incoming JSON serialization as of now,
+  // and `Polymorphic` is strict to not be left uninitialized.
   CURRENT_DEFAULT_CONSTRUCTOR(Event) : event(Nop()) {}
 
+  // This will go away.
+  // Moving forward, `EPOCH_MICROSECONDS` is the [unique] key,
+  // and just keeping a `CURRENT_FIELD(timestamp, EPOCH_MICROSECONDS)` top-level field should be sufficient.
   EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp); }
+};
+
+// JSON response schema.
+
+CURRENT_STRUCT(UserNickname) {
+  CURRENT_FIELD(user_id, std::string);
+  CURRENT_FIELD(nickname, std::string);
+  CURRENT_CONSTRUCTOR(UserNickname)(const std::string& user_id, const std::string& nickname) : user_id(user_id), nickname(nickname) {}
+  // TODO(dkorolev): DEFAULT_HTTP_CODE() ?
+};
+
+CURRENT_STRUCT(UserNicknameNotFound) {
+  CURRENT_FIELD(user_id, std::string);
+  CURRENT_FIELD(error, std::string, "User not found.");
+  CURRENT_CONSTRUCTOR(UserNicknameNotFound)(const std::string& user_id) : user_id(user_id) {}
 };
 
 CURRENT_STRUCT(Error) {
@@ -62,4 +85,4 @@ CURRENT_STRUCT(Error) {
   CURRENT_CONSTRUCTOR(Error)(const std::string& error = "Internal error.") : error(error) {}
 };
 
-#endif  // DATA_DICTIONARY_H
+#endif  // SCHEMA_H
