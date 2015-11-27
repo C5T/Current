@@ -82,7 +82,7 @@ struct PolymorphicImpl<T, TS...> {
           destination = make_unique<X>();
         }
         // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
-        dynamic_cast<X&>(*destination.get()) = source;
+        dynamic_cast<X&>(*destination.get()) = std::move(source);
       }
       // Move `std::unique_ptr`.
       void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
@@ -117,6 +117,10 @@ struct PolymorphicImpl<T, TS...> {
   }
 
   PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) {}
+
+  void operator=(PolymorphicImpl&& rhs) {
+    object_ = std::move(rhs.object_);
+  }
 
   template <typename X>
   void operator=(X&& input) {
