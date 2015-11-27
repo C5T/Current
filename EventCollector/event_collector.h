@@ -84,7 +84,7 @@ class EventCollectorHTTPServer {
         route_(route),
         response_text_(response_text),
         callback_(callback),
-        tick_interval_us_(static_cast<uint64_t>(tick_interval_us)),
+        tick_interval_us_(tick_interval_us),
         send_ticks_(tick_interval_us_ > 0),
         last_event_t_(0u),
         events_pushed_(0u),
