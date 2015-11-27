@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// `MicroTimestampOf(x)` returns the timestamp of `x`. It support `CURRENT_STRUCT`-s with `CURRENT_TIMESTAMP()`
-// `Polymorphic<...>` objects (recursivelt), raw `Epoch{Micro/Milli}seconds, and custom implementations
+// `MicroTimestampOf(x)` returns the timestamp of `x`. It supports `CURRENT_STRUCT`-s with `CURRENT_TIMESTAMP()`
+// `Polymorphic<...>` objects (recursively), raw `Epoch{Micro/Milli}seconds, and custom implementations
 // of the `template<typename F> ReportTimestamp(F&& f) { f(timestamp); }` method.
 //
 // Purpose:
