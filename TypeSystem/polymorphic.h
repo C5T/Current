@@ -39,8 +39,6 @@ SOFTWARE.
 
 namespace current {
 
-struct TemporarilyUninitializedPolymorphic {};
-
 // Note: `Polymorphic<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -84,7 +82,7 @@ struct PolymorphicImpl<T, TS...> {
           destination = make_unique<X>();
         }
         // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
-        dynamic_cast<X&>(*destination.get()) = source;
+        dynamic_cast<X&>(*destination.get()) = std::move(source);
       }
       // Move `std::unique_ptr`.
       void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
@@ -109,10 +107,7 @@ struct PolymorphicImpl<T, TS...> {
     }
   };
 
-  PolymorphicImpl() = delete;
-
-  // `ParseJSON` needs to create a temporary object prior to populating it.
-  explicit PolymorphicImpl(TemporarilyUninitializedPolymorphic) : object_(nullptr) {}
+  PolymorphicImpl() {};
 
   PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
@@ -123,9 +118,17 @@ struct PolymorphicImpl<T, TS...> {
 
   PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) {}
 
+  void operator=(PolymorphicImpl&& rhs) {
+    object_ = std::move(rhs.object_);
+  }
+
   template <typename X>
   void operator=(X&& input) {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
+  }
+
+  void operator=(std::nullptr_t) {
+    object_ = nullptr;
   }
 
   template <typename F>
@@ -146,6 +149,10 @@ struct PolymorphicImpl<T, TS...> {
   template <typename X>
   bool Has() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
+  }
+
+  bool Exists() const {
+    return (object_.get() != nullptr);
   }
 
   template <typename X>

@@ -239,8 +239,12 @@ struct SaveIntoJSONImpl {
   static void Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const PolymorphicImpl<TS...>& value) {
-    SavePolymorphic impl(destination, allocator);
-    value.Call(impl);
+    if (Exists(value)) {
+      SavePolymorphic impl(destination, allocator);
+      value.Call(impl);
+    } else {
+      destination.SetNull();
+    }
   }
 };
 
@@ -448,7 +452,11 @@ struct LoadFromJSONImpl {
   };
   template <typename... TS>
   static void Load(rapidjson::Value* source, PolymorphicImpl<TS...>& value, const std::string& path) {
-    LoadPolymorphic<TS...>::Instance().DoLoadPolymorphic(source, value, path);
+    if (!source || source->IsNull()) {
+      value = nullptr;
+    } else {
+      LoadPolymorphic<TS...>::Instance().DoLoadPolymorphic(source, value, path);
+    }
   }
 };
 
@@ -606,7 +614,7 @@ struct ParseJSONImpl {
 template <typename... TS>
 struct ParseJSONImpl<PolymorphicImpl<TS...>> {
   static PolymorphicImpl<TS...> DoIt(const std::string& source) {
-    PolymorphicImpl<TS...> result((::current::TemporarilyUninitializedPolymorphic()));
+    PolymorphicImpl<TS...> result;
     ParseJSONViaRapidJSON(source, result);
     return result;
   }
