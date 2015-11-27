@@ -71,7 +71,7 @@ class PubSubHTTPEndpoint final {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        const EpochMicroseconds timestamp = MicroTimestampOf(entry);
+        const EpochMicroseconds timestamp = current::MicroTimestampOf(entry);
         // Respect `n`.
         if (total - index <= n_) {
           serving_ = true;

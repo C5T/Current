@@ -47,10 +47,9 @@ struct Padawan {
   Padawan() : us(EpochMicroseconds(current::time::Now()).us) {}
   virtual ~Padawan() = default;
 
-  // TODO(dk+mz): This should go away with SFINAE-based timestamp extraction in Sherlock.
-  // We might even already have the code ;-)
-  EpochMicroseconds ExtractTimestamp() const {
-    return EpochMicroseconds(us);
+  template<typename F>
+  void ReportTimestamp(F&& f) const {
+    f(us);
   }
 
   template <typename A>
