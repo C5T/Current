@@ -55,31 +55,31 @@ TEST(EventCollector, Smoke) {
   std::ostringstream os;
   EventReceiver er;
 
-  current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(0));
+  current::time::SetNow(EpochMicroseconds(0));
   EventCollectorHTTPServer collector(FLAGS_event_collector_test_port,
                                      os,
-                                     static_cast<current::time::MILLISECONDS_INTERVAL>(100),
+                                     100 * 1000,
                                      "/log",
                                      "OK\n",
                                      std::bind(&EventReceiver::OnEvent, &er, std::placeholders::_1));
 
-  current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(12));
+  current::time::SetNow(EpochMicroseconds(12000));
   const auto get_response = HTTP(GET(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port)));
   EXPECT_EQ(200, static_cast<int>(get_response.code));
   EXPECT_EQ("OK\n", get_response.body);
 
-  current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(112));
+  current::time::SetNow(EpochMicroseconds(112000));
   while (collector.EventsPushed() < 2u) {
     ;  // Spin lock.
   }
 
-  current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(178));
+  current::time::SetNow(EpochMicroseconds(178000));
   const auto post_response =
       HTTP(POST(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port), "meh"));
   EXPECT_EQ(200, static_cast<int>(post_response.code));
   EXPECT_EQ("OK\n", post_response.body);
 
-  current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(278));
+  current::time::SetNow(EpochMicroseconds(278000));
   while (collector.EventsPushed() < 4u) {
     ;  // Spin lock.
   }
@@ -94,19 +94,19 @@ TEST(EventCollector, Smoke) {
   }
 
   EXPECT_EQ(
-      "{\"log_entry\":{\"t\":12,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
-      "{\"log_entry\":{\"t\":112,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
-      "{\"log_entry\":{\"t\":178,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n"
-      "{\"log_entry\":{\"t\":278,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n",
+      "{\"log_entry\":{\"t\":12000,\"m\":\"GET\",\"u\":\"/log\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":112000,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":178000,\"m\":\"POST\",\"u\":\"/log\",\"q\":[],\"b\":\"meh\",\"f\":\"\"}}\n"
+      "{\"log_entry\":{\"t\":278000,\"m\":\"TICK\",\"u\":\"\",\"q\":[],\"b\":\"\",\"f\":\"\"}}\n",
       log);
   EXPECT_EQ(4u, er.count);
-  EXPECT_EQ(278u, er.last_t);
+  EXPECT_EQ(278000u, er.last_t);
 }
 
 TEST(EventCollector, QueryParameters) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, static_cast<current::time::MILLISECONDS_INTERVAL>(0), "/foo", "+");
+      FLAGS_event_collector_test_port, os, EpochMicroseconds::Delta(0), "/foo", "+");
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
   auto e = CerealizeParseJSON<LogEntryWithHeaders>(os.str());
@@ -118,7 +118,7 @@ TEST(EventCollector, QueryParameters) {
 TEST(EventCollector, Body) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, static_cast<current::time::MILLISECONDS_INTERVAL>(0), "/bar", "y");
+      FLAGS_event_collector_test_port, os, EpochMicroseconds::Delta(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
   EXPECT_EQ("Yay!", CerealizeParseJSON<LogEntryWithHeaders>(os.str()).b);
 }
@@ -126,7 +126,7 @@ TEST(EventCollector, Body) {
 TEST(EventCollector, Headers) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, static_cast<current::time::MILLISECONDS_INTERVAL>(0), "/ctfo", "=");
+      FLAGS_event_collector_test_port, os, EpochMicroseconds::Delta(0), "/ctfo", "=");
   EXPECT_EQ("=",
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")

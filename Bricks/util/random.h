@@ -50,7 +50,7 @@ struct mt19937_64_wrapper {
 #else
   mt19937_64_wrapper()
       : instance(ThreadLocalSingleton<SeedImpl>().is_set ? ThreadLocalSingleton<SeedImpl>().seed
-                                                         : static_cast<size_t>(current::time::Now())) {}
+                                                         : EpochMicroseconds(current::time::Now()).us) {}
 #endif
   std::mt19937_64 instance;
 };

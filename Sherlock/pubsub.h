@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include <utility>
 
-#include "extract_timestamp.h"
+#include "../TypeSystem/timestamp.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/time/chrono.h"
@@ -44,8 +44,8 @@ class PubSubHTTPEndpoint final {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
-          r.timestamp - static_cast<current::time::MILLISECONDS_INTERVAL>(
-                            current::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
+          r.timestamp -
+          EpochMicroseconds::Delta(current::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
     }
     if (http_request_.url.query.has("n")) {
       serving_ = false;  // Start in 'non-serving' mode when `n` is set.
@@ -71,14 +71,13 @@ class PubSubHTTPEndpoint final {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        const current::time::EPOCH_MILLISECONDS timestamp = ExtractTimestamp(entry);
+        const EpochMicroseconds timestamp = current::MicroTimestampOf(entry);
         // Respect `n`.
         if (total - index <= n_) {
           serving_ = true;
         }
         // Respect `recent`.
-        if (from_timestamp_ != static_cast<current::time::EPOCH_MILLISECONDS>(-1) &&
-            timestamp >= from_timestamp_) {
+        if (from_timestamp_ != EpochMicroseconds::Invalid() && timestamp >= from_timestamp_) {
           serving_ = true;
         }
       }
@@ -116,7 +115,7 @@ class PubSubHTTPEndpoint final {
   // If set, the hard limit on the maximum number of entries to output.
   size_t cap_ = 0;
   // If set, the timestamp from which the output should start.
-  current::time::EPOCH_MILLISECONDS from_timestamp_ = static_cast<current::time::EPOCH_MILLISECONDS>(-1);
+  EpochMicroseconds from_timestamp_ = EpochMicroseconds::Invalid();
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;

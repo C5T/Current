@@ -87,6 +87,11 @@ CURRENT_STRUCT(WithOptional) {
   CURRENT_FIELD(b, Optional<bool>);
 };
 
+CURRENT_STRUCT(WithTime) {
+  CURRENT_FIELD(millis, EpochMilliseconds);
+  CURRENT_FIELD(micros, EpochMicroseconds);
+};
+
 }  // namespace serialization_test
 
 TEST(Serialization, Binary) {
@@ -621,6 +626,51 @@ TEST(Serialization, PolymorphicAsJSON) {
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
+  }
+}
+
+TEST(Serialization, TimeAsJSON) {
+  using namespace serialization_test;
+
+  {
+    WithTime zero;
+    EXPECT_EQ("{\"millis\":0,\"micros\":0}", JSON(zero));
+  }
+
+  {
+    WithTime one;
+    one.millis.ms = 1ull;
+    one.micros.us = 2ull;
+    EXPECT_EQ("{\"millis\":1,\"micros\":2}", JSON(one));
+  }
+
+  {
+    const auto parsed = ParseJSON<WithTime>("{\"millis\":3,\"micros\":4}");
+    EXPECT_EQ(3ull, parsed.millis.ms);
+    EXPECT_EQ(4ull, parsed.micros.us);
+  }
+}
+
+TEST(Serialization, TimeAsBinary) {
+  using namespace serialization_test;
+
+  {
+    WithTime zero;
+    std::ostringstream oss;
+    SaveIntoBinary(oss, zero);
+    EXPECT_EQ(16u, oss.str().length());
+  }
+
+  {
+    WithTime one;
+    one.millis.ms = 5ull;
+    one.micros.us = 6ull;
+    std::ostringstream oss;
+    SaveIntoBinary(oss, one);
+    std::istringstream iss(oss.str());
+    const auto parsed = LoadFromBinary<WithTime>(iss);
+    EXPECT_EQ(5ull, parsed.millis.ms);
+    EXPECT_EQ(6ull, parsed.micros.us);
   }
 }
 

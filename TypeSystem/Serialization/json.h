@@ -40,6 +40,7 @@ SOFTWARE.
 #include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/template/decay.h"
 #include "../../Bricks/strings/strings.h"
+#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/singleton.h"
 
 #define RAPIDJSON_HAS_STDSTRING 1
@@ -244,6 +245,24 @@ struct SaveIntoJSONImpl {
     } else {
       destination.SetNull();
     }
+  }
+};
+
+template <>
+struct SaveIntoJSONImpl<EpochMilliseconds> {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const EpochMilliseconds& value) {
+    SaveIntoJSONImpl<uint64_t>::Save(destination, allocator, value.ms);
+  }
+};
+
+template <>
+struct SaveIntoJSONImpl<EpochMicroseconds> {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const EpochMicroseconds& value) {
+    SaveIntoJSONImpl<uint64_t>::Save(destination, allocator, value.us);
   }
 };
 
@@ -541,6 +560,20 @@ struct LoadFromJSONImpl<Optional<T>> {
       destination = T();
       LoadFromJSONImpl<T>::Load(source, Value(destination), path);
     }
+  }
+};
+
+template <>
+struct LoadFromJSONImpl<EpochMilliseconds> {
+  static void Load(rapidjson::Value* source, EpochMilliseconds& destination, const std::string& path) {
+    LoadFromJSONImpl<uint64_t>::Load(source, destination.ms, path);
+  }
+};
+
+template <>
+struct LoadFromJSONImpl<EpochMicroseconds> {
+  static void Load(rapidjson::Value* source, EpochMicroseconds& destination, const std::string& path) {
+    LoadFromJSONImpl<uint64_t>::Load(source, destination.us, path);
   }
 };
 

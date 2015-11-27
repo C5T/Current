@@ -196,12 +196,13 @@ class WaitableAtomicImpl {
       return true;
     }
 
-    bool WaitFor(std::function<bool(const T_DATA&)> predicate, current::time::MILLISECONDS_INTERVAL ms) const {
+    template<typename T>
+    bool WaitFor(std::function<bool(const T_DATA&)> predicate, T duration) const {
       std::unique_lock<std::mutex> lock(data_mutex_);
       if (!predicate(data_)) {
         const T_DATA& data = std::ref(data_);
         data_condition_variable_.wait_for(lock,
-                                          std::chrono::milliseconds(static_cast<uint64_t>(ms)),
+                                          duration,
                                           [&predicate, &data] { return predicate(data); });
       }
       return true;

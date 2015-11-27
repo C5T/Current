@@ -164,7 +164,7 @@ return result;
   
 TEST(YodaDocu, Test) {
 const int port = FLAGS_yoda_docu_test_port;
-current::time::SetNow(static_cast<current::time::EPOCH_MILLISECONDS>(42));
+current::time::SetNow(EpochMicroseconds(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
@@ -622,7 +622,7 @@ HTTP(port).ResetAllHandlers();
   });
   auto response_prime = HTTP(GET(Printf("http://localhost:%d/key_entry?p=7", port)));
   EXPECT_EQ(200, static_cast<int>(response_prime.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
+  EXPECT_EQ("{\"entry\":{\"us\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
   auto response_composite = HTTP(GET(Printf("http://localhost:%d/key_entry?p=9", port)));
   EXPECT_EQ(404, static_cast<int>(response_composite.code));
   EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", response_composite.body);
@@ -640,7 +640,7 @@ HTTP(port).ResetAllHandlers();
   });
   const auto cell_prime = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=3", port)));
   EXPECT_EQ(200, static_cast<int>(cell_prime.code));
-  EXPECT_EQ("{\"entry\":{\"ms\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
+  EXPECT_EQ("{\"entry\":{\"us\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
             cell_prime.body);
   const auto cell_composite = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=4", port)));
   EXPECT_EQ(404, static_cast<int>(cell_composite.code));
@@ -652,14 +652,14 @@ HTTP(port).ResetAllHandlers();
   api.ExposeViaHTTP(port, "/data");
   EXPECT_EQ(
 #if 1
-"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"key\":\"two\",\"value\":2}}}}\n",
+"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"StringIntTuple\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"us\":42,\"key\":\"two\",\"value\":2}}}}\n",
 #else
     "... JSON represenation of the first entry ...",
 #endif
     HTTP(GET(Printf("http://localhost:%d/data?cap=1", port))).body);
   EXPECT_EQ(
 #if 1
-"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"ms\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
+"{\"data\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"PrimeCell\",\"ptr_wrapper\":{\"valid\":1,\"data\":{\"us\":42,\"row\":{\"div10\":99},\"col\":{\"mod10\":7},\"index\":168}}}}\n",
 #else
     "... JSON represenation of the last entry ...",
 #endif

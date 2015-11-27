@@ -126,7 +126,7 @@ struct HTTPResponseCodeDotNotation {
   inline HTTPResponseCodeValue operator()(int code) { return static_cast<HTTPResponseCodeValue>(code); }
 };
 
-#define HTTPResponseCode (current::Singleton<current::net::HTTPResponseCodeDotNotation>())
+#define HTTPResponseCode (current::ThreadLocalSingleton<current::net::HTTPResponseCodeDotNotation>())
 
 inline std::string HTTPResponseCodeAsString(HTTPResponseCodeValue code) {
   static const std::map<int, std::string> codes = {
