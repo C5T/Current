@@ -30,6 +30,8 @@ SOFTWARE.
 #include "../optional.h"
 #include "../struct.h"
 
+#include "../../Bricks/time/chrono.h"
+
 // TODO(dkorolev): Soon to be added.
 // #include "../polymorphic.h"
 
@@ -167,6 +169,20 @@ struct SaveIntoBinaryImpl {
   }
 };
 
+template <>
+struct SaveIntoBinaryImpl<EpochMilliseconds> {
+  static void Save(std::ostream& ostream, const EpochMilliseconds& value) {
+    SaveIntoBinaryImpl<uint64_t>::Save(ostream, value.ms);
+  }
+};
+
+template <>
+struct SaveIntoBinaryImpl<EpochMicroseconds> {
+  static void Save(std::ostream& ostream, const EpochMicroseconds& value) {
+    SaveIntoBinaryImpl<uint64_t>::Save(ostream, value.us);
+  }
+};
+
 template <typename T>
 inline void SaveIntoBinary(std::ostream& ostream, const T& source) {
   using DECAYED_T = current::decay<T>;
@@ -293,6 +309,20 @@ struct LoadFromBinaryImpl<Optional<T>> {
     } else {
       destination = nullptr;
     }
+  }
+};
+
+template <>
+struct LoadFromBinaryImpl<EpochMilliseconds> {
+  static void Load(std::istream& istream, EpochMilliseconds& destination) {
+    LoadFromBinaryImpl<uint64_t>::Load(istream, destination.ms);
+  }
+};
+
+template <>
+struct LoadFromBinaryImpl<EpochMicroseconds> {
+  static void Load(std::istream& istream, EpochMicroseconds& destination) {
+    LoadFromBinaryImpl<uint64_t>::Load(istream, destination.us);
   }
 };
 
