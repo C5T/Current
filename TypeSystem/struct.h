@@ -156,6 +156,12 @@ struct WithoutParentheses<int(T)> {
       value};                                                                                               \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
+#define CURRENT_TIMESTAMP(field)      \
+  template <typename F>               \
+  void ReportTimestamp(F&& f) const { \
+    f(field);                         \
+  }
+
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \
   template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                           \

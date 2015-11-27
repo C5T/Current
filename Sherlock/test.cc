@@ -72,11 +72,10 @@ CURRENT_STRUCT(Record) {
 CURRENT_STRUCT(RecordWithTimestamp) {
   // TODO(dkorolev): Make the `EPOCH_MILLISECONDS` type serializable.
   CURRENT_FIELD(s, std::string);
-  CURRENT_FIELD(t, uint64_t);
-  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
-                                           EpochMicroseconds timestamp = EpochMicroseconds(0ull))
-      : s(s), t(static_cast<uint64_t>(timestamp)) {}
-  EpochMicroseconds ExtractTimestamp() const { return EpochMicroseconds(t); }
+  CURRENT_FIELD(t, EpochMicroseconds);
+  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "", EpochMicroseconds t = EpochMicroseconds(0ull))
+      : s(s), t(t) {}
+  CURRENT_TIMESTAMP(t);
 };
 
 }  // namespace sherlock_unittest

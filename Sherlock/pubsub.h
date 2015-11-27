@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include <utility>
 
-#include "extract_timestamp.h"
+#include "../TypeSystem/timestamp.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/time/chrono.h"
@@ -71,7 +71,7 @@ class PubSubHTTPEndpoint final {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        const EpochMicroseconds timestamp = ExtractTimestamp(entry);
+        const EpochMicroseconds timestamp = MicroTimestampOf(entry);
         // Respect `n`.
         if (total - index <= n_) {
           serving_ = true;
