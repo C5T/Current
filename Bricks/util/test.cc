@@ -248,19 +248,19 @@ TEST(Util, SHA256) {
 }
 
 TEST(Util, ROL64) {
-  EXPECT_EQ(0x1, current::ROL64(1, 0));
-  EXPECT_EQ(0x10, current::ROL64(1, 4));
-  EXPECT_EQ(0x100, current::ROL64(1, 8));
+  EXPECT_EQ(0x1ull, current::ROL64(1, 0));
+  EXPECT_EQ(0x10ull, current::ROL64(1, 4));
+  EXPECT_EQ(0x100ull, current::ROL64(1, 8));
 
-  EXPECT_EQ(0x42, current::ROL64(0x42, 0));
-  EXPECT_EQ(0x420, current::ROL64(0x42, 4));
-  EXPECT_EQ(0x4200, current::ROL64(0x42, 8));
+  EXPECT_EQ(0x42ull, current::ROL64(0x42, 0));
+  EXPECT_EQ(0x420ull, current::ROL64(0x42, 4));
+  EXPECT_EQ(0x4200ull, current::ROL64(0x42, 8));
 
-  EXPECT_EQ(0x1, current::ROL64(0x10, -4));
-  EXPECT_EQ(0x1, current::ROL64(0x10, 64 - 4));
+  EXPECT_EQ(0x1ull, current::ROL64(0x10, -4));
+  EXPECT_EQ(0x1ull, current::ROL64(0x10, 64 - 4));
 
   EXPECT_EQ(static_cast<uint64_t>(std::pow(2.0, 63)), current::ROL64(1, 63));
-  EXPECT_EQ(1, current::ROL64(static_cast<uint64_t>(std::pow(2.0, 63)), 1));
+  EXPECT_EQ(1ull, current::ROL64(static_cast<uint64_t>(std::pow(2.0, 63)), 1));
 }
 
 #if 0

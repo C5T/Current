@@ -128,12 +128,12 @@ int main(int argc, char** argv) {
       size_t TotalQueries() const { return queries_; }
 
      private:
-      static double NowInSeconds() { return 0.001 * static_cast<double>(time::Now()); }
+      static double NowInSeconds() { return 1e-6 * static_cast<double>(EpochMicroseconds(time::Now()).us); }
       void Thread() {
         const std::string url = strings::Printf(FLAGS_loadtest_url.c_str(), port_) + "/publish";
         const Event body = []() {
           Event event;
-          event.timestamp = static_cast<uint64_t>(time::Now());
+          event.timestamp = EpochMicroseconds(time::Now()).us;
           UserAdded body;
           body.user_id = std::string(' ', 10);
           body.nickname = std::string(' ', 4);
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
 
     {
       Event event;
-      event.timestamp = static_cast<uint64_t>(time::Now());
+      event.timestamp = EpochMicroseconds(time::Now()).us;
       UserAdded body;
       body.user_id = "skywalker";
       body.nickname = "Luke";

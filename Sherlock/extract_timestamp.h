@@ -38,7 +38,7 @@ struct ExtractTimestampImpl {};
 template <>
 struct ExtractTimestampImpl<false> {
   template <typename E>
-  static current::time::EPOCH_MILLISECONDS DoIt(E&& e) {
+  static EpochMicroseconds DoIt(E&& e) {
     return e.ExtractTimestamp();
   }
 };
@@ -46,13 +46,13 @@ struct ExtractTimestampImpl<false> {
 template <>
 struct ExtractTimestampImpl<true> {
   template <typename E>
-  static current::time::EPOCH_MILLISECONDS DoIt(E&& e) {
+  static EpochMicroseconds DoIt(E&& e) {
     return e->ExtractTimestamp();
   }
 };
 
 template <typename E>
-current::time::EPOCH_MILLISECONDS ExtractTimestamp(E&& entry) {
+EpochMicroseconds ExtractTimestamp(E&& entry) {
   return ExtractTimestampImpl<current::is_unique_ptr<E>::value>::template DoIt<E>(std::forward<E>(entry));
 }
 

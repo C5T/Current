@@ -61,9 +61,6 @@ using current::strings::Join;
 using current::strings::Printf;
 using current::strings::ToString;
 
-using current::time::EPOCH_MILLISECONDS;
-using current::time::MILLISECONDS_INTERVAL;
-
 namespace sherlock_unittest {
 
 // The records we work with.
@@ -77,9 +74,9 @@ CURRENT_STRUCT(RecordWithTimestamp) {
   CURRENT_FIELD(s, std::string);
   CURRENT_FIELD(t, uint64_t);
   CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
-                                           EPOCH_MILLISECONDS timestamp = EPOCH_MILLISECONDS(0))
+                                           EpochMicroseconds timestamp = EpochMicroseconds(0ull))
       : s(s), t(static_cast<uint64_t>(timestamp)) {}
-  EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(t); }
+  EpochMicroseconds ExtractTimestamp() const { return EpochMicroseconds(t); }
 };
 
 }  // namespace sherlock_unittest
@@ -272,11 +269,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 seconds ago respectively.
   auto exposed_stream = sherlock::Stream<RecordWithTimestamp>("exposed");
-  const EPOCH_MILLISECONDS now = current::time::Now();
-  exposed_stream.Emplace("s[0]", now - MILLISECONDS_INTERVAL(40000));
-  exposed_stream.Emplace("s[1]", now - MILLISECONDS_INTERVAL(30000));
-  exposed_stream.Emplace("s[2]", now - MILLISECONDS_INTERVAL(20000));
-  exposed_stream.Emplace("s[3]", now - MILLISECONDS_INTERVAL(10000));
+  const EpochMicroseconds now = current::time::Now();
+  exposed_stream.Emplace("s[0]", now - EpochMicroseconds::Delta(40000));
+  exposed_stream.Emplace("s[1]", now - EpochMicroseconds::Delta(30000));
+  exposed_stream.Emplace("s[2]", now - EpochMicroseconds::Delta(20000));
+  exposed_stream.Emplace("s[3]", now - EpochMicroseconds::Delta(10000));
 
   // Collect them and store as strings.
   // Required since we don't mock time for this test, and therefore can't do exact match.

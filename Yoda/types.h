@@ -43,19 +43,19 @@ namespace yoda {
 struct Padawan {
   using CEREAL_BASE_TYPE = Padawan;
 
-  uint64_t ms;
-  Padawan() : ms(static_cast<uint64_t>(current::time::Now())) {}
+  uint64_t us;
+  Padawan() : us(EpochMicroseconds(current::time::Now()).us) {}
   virtual ~Padawan() = default;
 
   // TODO(dk+mz): This should go away with SFINAE-based timestamp extraction in Sherlock.
   // We might even already have the code ;-)
-  current::time::EPOCH_MILLISECONDS ExtractTimestamp() const {
-    return static_cast<current::time::EPOCH_MILLISECONDS>(ms);
+  EpochMicroseconds ExtractTimestamp() const {
+    return EpochMicroseconds(us);
   }
 
   template <typename A>
   void serialize(A& ar) {
-    ar(CEREAL_NVP(ms));
+    ar(CEREAL_NVP(us));
   }
 };
 
