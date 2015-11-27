@@ -38,7 +38,7 @@ SOFTWARE.
 
 // Initial version of `LogEntry` structure.
 struct LogEntry {
-  uint64_t t;                            // Unix epoch time in milliseconds.
+  uint64_t t;                            // Unix epoch time in microseconds.
   std::string m;                         // HTTP method.
   std::string u;                         // URL without fragments and query parameters.
   std::map<std::string, std::string> q;  // URL query parameters.
@@ -53,7 +53,7 @@ struct LogEntry {
 
 // Improved version with HTTP headers.
 struct LogEntryWithHeaders {
-  uint64_t t;                            // Unix epoch time in milliseconds.
+  uint64_t t;                            // Unix epoch time in microseconds.
   std::string m;                         // HTTP method.
   std::string u;                         // URL without fragments and query parameters.
   std::map<std::string, std::string> q;  // URL query parameters.
@@ -75,7 +75,7 @@ class EventCollectorHTTPServer {
  public:
   EventCollectorHTTPServer(int http_port,
                            std::ostream& ostream,
-                           const current::time::MILLISECONDS_INTERVAL tick_interval_ms,
+                           const EpochMicroseconds::Delta tick_interval_us,
                            const std::string& route = "/log",
                            const std::string& response_text = "OK\n",
                            std::function<void(const LogEntryWithHeaders&)> callback = {})
@@ -84,8 +84,8 @@ class EventCollectorHTTPServer {
         route_(route),
         response_text_(response_text),
         callback_(callback),
-        tick_interval_ms_(static_cast<uint64_t>(tick_interval_ms)),
-        send_ticks_(tick_interval_ms_ > 0),
+        tick_interval_us_(tick_interval_us),
+        send_ticks_(tick_interval_us_ > 0),
         last_event_t_(0u),
         events_pushed_(0u),
         timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
@@ -95,7 +95,7 @@ class EventCollectorHTTPServer {
                     LogEntryWithHeaders entry;
                     {
                       std::lock_guard<std::mutex> lock(mutex_);
-                      entry.t = static_cast<uint64_t>(current::time::Now());
+                      entry.t = EpochMicroseconds(current::time::Now()).us;
                       entry.m = r.method;
                       entry.u = r.url.url_without_parameters;
                       entry.q = r.url.AllQueryParameters();
@@ -124,9 +124,9 @@ class EventCollectorHTTPServer {
   void TimerThreadFunction() {
     while (send_ticks_) {
       std::unique_lock<std::mutex> lock(mutex_);
-      const uint64_t now = static_cast<uint64_t>(current::time::Now());
+      const uint64_t now = EpochMicroseconds(current::time::Now()).us;
       const uint64_t dt = now - last_event_t_;
-      if (dt >= tick_interval_ms_) {
+      if (dt >= tick_interval_us_) {
         LogEntryWithHeaders entry;
         entry.t = now;
         entry.m = "TICK";
@@ -138,7 +138,7 @@ class EventCollectorHTTPServer {
         }
       } else {
         lock.unlock();
-        std::this_thread::sleep_for(std::chrono::milliseconds(tick_interval_ms_ - dt + 1));
+        std::this_thread::sleep_for(std::chrono::microseconds(tick_interval_us_ - dt + 1));
       }
     }
   }
@@ -153,7 +153,7 @@ class EventCollectorHTTPServer {
   const std::string response_text_;
   std::function<void(const LogEntryWithHeaders&)> callback_;
 
-  const uint64_t tick_interval_ms_;
+  const uint64_t tick_interval_us_;
   std::atomic_bool send_ticks_;
   uint64_t last_event_t_;
   std::atomic_size_t events_pushed_;

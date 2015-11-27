@@ -399,7 +399,7 @@ struct ReplayFromAndAppendToFile final {
 
     std::ostream& Persist(const std::string& hook_name) {
       assert(output_file_);
-      return (*output_file_) << static_cast<uint64_t>(current::time::Now()) << '\t' << hook_name << '\t';
+      return (*output_file_) << EpochMicroseconds(current::time::Now()).us << '\t' << hook_name << '\t';
     }
 
    private:
@@ -549,7 +549,7 @@ struct ReplayFromAndAppendToFileUsingCereal final {
 
     std::ostream& Persist(const std::string& hook_name) {
       assert(output_file_);
-      return (*output_file_) << static_cast<uint64_t>(current::time::Now()) << '\t' << hook_name << '\t';
+      return (*output_file_) << EpochMicroseconds(current::time::Now()).us << '\t' << hook_name << '\t';
     }
 
    private:

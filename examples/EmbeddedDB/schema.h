@@ -62,7 +62,7 @@ CURRENT_STRUCT(Event) {
   // TODO(dkorolev): This will go away.
   // Moving forward, `EPOCH_MICROSECONDS` is the [unique] key,
   // and just keeping a `CURRENT_FIELD(timestamp, EPOCH_MICROSECONDS)` top-level field should be sufficient.
-  EPOCH_MILLISECONDS ExtractTimestamp() const { return static_cast<EPOCH_MILLISECONDS>(timestamp); }
+  EpochMicroseconds ExtractTimestamp() const { return EpochMicroseconds(timestamp); }
 };
 
 // JSON responses schema.

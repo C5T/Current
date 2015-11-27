@@ -111,7 +111,7 @@ struct PolymorphicImpl<T, TS...> {
 
   PolymorphicImpl() = delete;
 
-  // `ParseJSON`, needs to create a temporary object prior to populating it.
+  // `ParseJSON` needs to create a temporary object prior to populating it.
   explicit PolymorphicImpl(TemporarilyUninitializedPolymorphic) : object_(nullptr) {}
 
   PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
