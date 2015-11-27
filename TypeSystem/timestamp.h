@@ -22,12 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// `MicroTimestampOf(x)` returns the timestamp of `x`, as monotonically increasing, microsecond since epoch.
-// `MicroTimestampOf(x)` support `CURRENT_STRUCT`-s that have a `TIMESTAMP_FIELD(field)` declared within
-// themselves, or `CURRENT_STRUCT`-s that implement the `ReportTimestamp(F f) { f(timestamp); }` method
-// manually.
-// As an impotant extension, `TIMESTAMP_FIELD(field)` may refer to a polymorphic field, in which case
-// the timestamp of the respective instance of that polymorphic field will be extracted.
+// `MicroTimestampOf(x)` returns the timestamp of `x`. It support `CURRENT_STRUCT`-s with `CURRENT_TIMESTAMP()`
+// `Polymorphic<...>` objects (recursivelt), raw `Epoch{Micro/Milli}seconds, and custom implementations
+// of the `template<typename F> ReportTimestamp(F&& f) { f(timestamp); }` method.
 //
 // Purpose:
 // 1) To timestamp stream entries and ensure they form a strictly increasing order.
