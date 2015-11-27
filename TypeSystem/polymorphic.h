@@ -39,8 +39,6 @@ SOFTWARE.
 
 namespace current {
 
-struct TemporarilyUninitializedPolymorphic {};
-
 // Note: `Polymorphic<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -109,10 +107,7 @@ struct PolymorphicImpl<T, TS...> {
     }
   };
 
-  PolymorphicImpl() = delete;
-
-  // `ParseJSON`, needs to create a temporary object prior to populating it.
-  explicit PolymorphicImpl(TemporarilyUninitializedPolymorphic) : object_(nullptr) {}
+  PolymorphicImpl() {};
 
   PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
@@ -126,6 +121,10 @@ struct PolymorphicImpl<T, TS...> {
   template <typename X>
   void operator=(X&& input) {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
+  }
+
+  void operator=(std::nullptr_t) {
+    object_ = nullptr;
   }
 
   template <typename F>
@@ -146,6 +145,10 @@ struct PolymorphicImpl<T, TS...> {
   template <typename X>
   bool Has() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
+  }
+
+  bool Exists() const {
+    return (object_.get() != nullptr);
   }
 
   template <typename X>

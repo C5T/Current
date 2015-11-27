@@ -602,6 +602,12 @@ TEST(Serialization, PolymorphicAsJSON) {
   using namespace serialization_test;
   using PolymorphicType = Polymorphic<Empty, Serializable, ComplexSerializable>;
   {
+    const PolymorphicType object;
+    const std::string json = "null";
+    EXPECT_EQ(json, JSON(object));
+    EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
+  }
+  {
     const PolymorphicType object(make_unique<Empty>());
     const std::string json = "{\"Empty\":{},\"\":9200000002835747520}";
     EXPECT_EQ(json, JSON(object));
