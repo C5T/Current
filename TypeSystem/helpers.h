@@ -117,9 +117,31 @@ auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
       INPUT>::AccessValue(std::forward<INPUT>(x));
 }
 
+// TODO(dkorolev): Migrate the older `Clone()` methods here, after cleaning them up.
+template <typename T>
+struct CloneImplCaller {
+  template <typename TT = T>
+  static ENABLE_IF<!current::sfinae::HasCloneImplMethod<TT>(0), T> CallCloneImpl(TT&& x) {
+    // Make sure `const std::string& cloned = Clone(original);` doesn't compile.
+    T result(x);
+    return std::move(result);
+  }
+
+  template <typename TT = T>
+  static ENABLE_IF<current::sfinae::HasCloneImplMethod<TT>(0), T> CallCloneImpl(TT&& x) {
+    return x.CloneImpl();
+  }
+};
+
+template <typename T>
+current::decay<T> Clone(T&& x) {
+  return CloneImplCaller<current::decay<T>>::CallCloneImpl(std::forward<T>(x));
+}
+
 }  // namespace current
 
 using current::Exists;
 using current::Value;
+using current::Clone;
 
 #endif  // CURRENT_TYPE_SYSTEM_HELPERS_H
