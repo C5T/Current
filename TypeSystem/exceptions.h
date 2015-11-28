@@ -44,12 +44,32 @@ struct NoValueOfTypeExceptionWrapper {
 template <typename T>
 using NoValueOfType = typename NoValueOfTypeExceptionWrapper<T>::const_reference_type;
 
+struct UninitializedRequiredPolymorphicException : Exception {};
+template <typename... TS>
+struct UninitializedRequiredPolymorphicOfTypeException : UninitializedRequiredPolymorphicException {};
+
+typedef const UninitializedRequiredPolymorphicException& UninitializedRequiredPolymorphic;
+
+template <typename... TS>
+struct UninitializedRequiredPolymorphicOfTypeExceptionWrapper {
+  using underlying_type = UninitializedRequiredPolymorphicOfTypeException<TS...>;
+  typedef const underlying_type& const_reference_type;
+};
+
+template <typename... TS>
+using UninitializedRequiredPolymorphicOfType =
+    typename UninitializedRequiredPolymorphicOfTypeExceptionWrapper<TS...>::const_reference_type;
+
 }  // namespace current
 
 using current::NoValueException;
 using current::NoValueOfTypeException;
+using current::UninitializedRequiredPolymorphicException;
+using current::UninitializedRequiredPolymorphicOfTypeException;
 
 using current::NoValue;        // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
 using current::NoValueOfType;  // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
+using current::UninitializedRequiredPolymorphic;  // == a const reference to `UninitializedRequiredPolymorphic`.
+using current::UninitializedRequiredPolymorphicOfType;  // == a const reference as well.
 
 #endif  // CURRENT_TYPE_SYSTEM_EXCEPTIONS_H

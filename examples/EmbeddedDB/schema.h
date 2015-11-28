@@ -48,18 +48,18 @@ CURRENT_STRUCT(UserLike) {
   CURRENT_FIELD(post_id, std::string);
 };
 
-// `Event` is the top-level message to persist.
-CURRENT_STRUCT(Nop){};  // TODO(dkorolev): Will go away, see below.
+// `Event` is the top-level message to persist. This structure is not default-constructible, not copyable,
+// and not assignable, since it contains a `Polymorphic<>`. It's serializable and movable though.
 CURRENT_STRUCT(Event) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds);
-  CURRENT_FIELD(event, (Polymorphic<Nop, UserAdded, PostAdded, UserLike>));
-
-  // TODO(dkorolev): This will go away.
-  // Default construction is required for incoming JSON serialization as of now,
-  // and `Polymorphic` is strict to not be left uninitialized.
-  CURRENT_DEFAULT_CONSTRUCTOR(Event) : event(Nop()) {}
+  CURRENT_FIELD(event, (Polymorphic<UserAdded, PostAdded, UserLike>));
 
   CURRENT_TIMESTAMP(timestamp);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(Event) {}
+  CURRENT_CONSTRUCTOR(Event)(std::chrono::microseconds timestamp,
+                             Polymorphic<UserAdded, PostAdded, UserLike> && event)
+      : timestamp(timestamp), event(std::move(event)) {}
 };
 
 // JSON responses schema.

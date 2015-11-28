@@ -62,9 +62,10 @@ struct ExtractTimestampImpl {
   }
 };
 
-template <typename... TS>
-struct ExtractTimestampImpl<PolymorphicImpl<TS...>> {
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, const PolymorphicImpl<TS...>& p) {
+template <bool REQUIRED, typename... TS>
+struct ExtractTimestampImpl<GenericPolymorphicImpl<REQUIRED, TS...>> {
+  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
+                                        const GenericPolymorphicImpl<REQUIRED, TS...>& p) {
     p.Call(functor);
   }
 };

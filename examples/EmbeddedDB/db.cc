@@ -132,8 +132,6 @@ int main(int argc, char** argv) {
       void Thread() {
         const std::string url = strings::Printf(FLAGS_loadtest_url.c_str(), port_) + "/publish";
         const Event body = []() {
-          Event event;
-          event.timestamp = time::Now();
           UserAdded body;
           body.user_id = std::string(' ', 10);
           body.nickname = std::string(' ', 4);
@@ -143,8 +141,7 @@ int main(int argc, char** argv) {
           for (auto& c : body.nickname) {
             c = random::RandomIntegral<char>('A', 'Z');
           }
-          event.event = body;
-          return event;
+          return Event(time::Now(), body);
         }();
         const double timestamp_begin = NowInSeconds();
         const double timestamp_end = timestamp_begin + seconds_to_run_;
@@ -188,12 +185,10 @@ int main(int argc, char** argv) {
               << "\n\tcurl " << url << "/data" << std::endl;
 
     {
-      Event event;
-      event.timestamp = time::Now();
       UserAdded body;
       body.user_id = "skywalker";
       body.nickname = "Luke";
-      event.event = body;
+      Event event(time::Now(), body);
       std::cerr << "Example publish:\n\tcurl -d '" << JSON(event) << "' " << url << "/publish" << std::endl;
     }
 
@@ -243,8 +238,7 @@ int main(int argc, char** argv) {
                 [&stream](Request r) {
                   if (r.method == "POST") {
                     try {
-                      auto event = ParseJSON<Event>(r.body);
-                      stream.Publish(std::move(event));
+                      stream.Publish(ParseJSON<Event>(r.body));
                       r("", HTTPResponseCode.NoContent);
                     } catch (const Exception& e) {
                       r(Error(e.What()), HTTPResponseCode.BadRequest);

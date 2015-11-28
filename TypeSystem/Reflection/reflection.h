@@ -125,8 +125,8 @@ struct ReflectorImpl {
       }
     };
 
-    template <typename... TS>
-    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<PolymorphicImpl<TS...>>) {
+    template <bool REQUIRED, typename... TS>
+    std::shared_ptr<ReflectedTypeImpl> operator()(TypeSelector<GenericPolymorphicImpl<REQUIRED, TS...>>) {
       auto result = std::make_shared<ReflectedType_Polymorphic>();
       VisitAllPolymorphicTypes<TS...>::Run(result);
       result->type_id = CalculateTypeID(*result);

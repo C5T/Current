@@ -605,27 +605,35 @@ TEST(Serialization, OptionalAsJSON) {
 
 TEST(Serialization, PolymorphicAsJSON) {
   using namespace serialization_test;
-  using PolymorphicType = Polymorphic<Empty, Serializable, ComplexSerializable>;
+  using RequiredPolymorphicType = Polymorphic<Empty, Serializable, ComplexSerializable>;
+  using OptionalPolymorphicType = OptionalPolymorphic<Empty, Serializable, ComplexSerializable>;
   {
-    const PolymorphicType object;
+    const OptionalPolymorphicType object;
     const std::string json = "null";
     EXPECT_EQ(json, JSON(object));
-    EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<OptionalPolymorphicType>(json)));
   }
   {
-    const PolymorphicType object(make_unique<Empty>());
+    try {
+      ParseJSON<RequiredPolymorphicType>("null");
+      ASSERT_TRUE(false);
+    } catch (JSONUninitializedPolymorphicObjectException) {
+    }
+  }
+  {
+    const RequiredPolymorphicType object(make_unique<Empty>());
     const std::string json = "{\"Empty\":{},\"\":9200000002835747520}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
   }
   {
-    const PolymorphicType object(make_unique<Serializable>(42));
+    const RequiredPolymorphicType object(make_unique<Serializable>(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":9201007113239016790}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<PolymorphicType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
   }
 }
 
