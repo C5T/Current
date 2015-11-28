@@ -32,38 +32,25 @@ using namespace current;
 
 // Storage schema, for persistence, publish, and subscribe.
 
-// TODO(dkorolev): Serialize the base class too.
-// CURRENT_STRUCT(BaseEvent) {
-//   CURRENT_FIELD(timestamp, std::chrono::microseconds);
-//   CURRENT_TIMESTAMP(timestamp);
-// };
-
-CURRENT_STRUCT(UserAdded) {  //, BaseEvent) {
-  CURRENT_FIELD(user_id, std::string);
-  CURRENT_FIELD(nickname, std::string);
-
-  // TODO(dkorolev): Serialize the base class too.
+CURRENT_STRUCT(BaseEvent) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds);
   CURRENT_TIMESTAMP(timestamp);
 };
 
-CURRENT_STRUCT(PostAdded) {  //, BaseEvent) {
+CURRENT_STRUCT(UserAdded, BaseEvent) {
+  CURRENT_FIELD(user_id, std::string);
+  CURRENT_FIELD(nickname, std::string);
+};
+
+CURRENT_STRUCT(PostAdded, BaseEvent) {
   CURRENT_FIELD(post_id, std::string);
   CURRENT_FIELD(content, std::string);
   CURRENT_FIELD(author_user_id, std::string);
-
-  // TODO(dkorolev): Serialize the base class too.
-  CURRENT_FIELD(timestamp, std::chrono::microseconds);
-  CURRENT_TIMESTAMP(timestamp);
 };
 
-CURRENT_STRUCT(UserLike) {  //, BaseEvent) {
+CURRENT_STRUCT(UserLike, BaseEvent) {
   CURRENT_FIELD(user_id, std::string);
   CURRENT_FIELD(post_id, std::string);
-
-  // TODO(dkorolev): Serialize the base class too.
-  CURRENT_FIELD(timestamp, std::chrono::microseconds);
-  CURRENT_TIMESTAMP(timestamp);
 };
 
 // `Event` is the top-level message to persist. This structure is not default-constructible, not copyable,
