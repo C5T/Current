@@ -52,7 +52,7 @@ CURRENT_STRUCT(Baz) {
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
   CURRENT_FIELD(v5, (std::map<Foo, int>));
 };
-CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Baz); };
+CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(baz, Baz); };
 
 static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(Baz), "Struct `Baz` was not properly declared.");
@@ -372,7 +372,7 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     void operator()(const Bar&) { s = "Bar"; }
     void operator()(const Foo& foo) { s = "Foo " + current::strings::ToString(foo.i); }
     void operator()(const DerivedFromFoo& object) {
-      s = "DerivedFromFoo [" + current::strings::ToString(object.bar.v1.size()) + "]";
+      s = "DerivedFromFoo [" + current::strings::ToString(object.baz.v1.size()) + "]";
     }
   };
   Visitor v;
@@ -410,7 +410,7 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
 
-    p.Value<DerivedFromFoo>().bar.v1.resize(3);
+    p.Value<DerivedFromFoo>().baz.v1.resize(3);
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
     cp.Call(v);
