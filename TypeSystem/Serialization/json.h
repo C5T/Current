@@ -249,15 +249,6 @@ struct SaveIntoJSONImpl {
 };
 
 template <>
-struct SaveIntoJSONImpl<EpochMilliseconds> {
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const EpochMilliseconds& value) {
-    SaveIntoJSONImpl<uint64_t>::Save(destination, allocator, value.ms);
-  }
-};
-
-template <>
 struct SaveIntoJSONImpl<EpochMicroseconds> {
   static void Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
@@ -560,13 +551,6 @@ struct LoadFromJSONImpl<Optional<T>> {
       destination = T();
       LoadFromJSONImpl<T>::Load(source, Value(destination), path);
     }
-  }
-};
-
-template <>
-struct LoadFromJSONImpl<EpochMilliseconds> {
-  static void Load(rapidjson::Value* source, EpochMilliseconds& destination, const std::string& path) {
-    LoadFromJSONImpl<uint64_t>::Load(source, destination.ms, path);
   }
 };
 

@@ -88,7 +88,7 @@ CURRENT_STRUCT(WithOptional) {
 };
 
 CURRENT_STRUCT(WithTime) {
-  CURRENT_FIELD(millis, EpochMilliseconds);
+  CURRENT_FIELD(number, uint64_t, 0ull);
   CURRENT_FIELD(micros, EpochMicroseconds);
 };
 
@@ -634,19 +634,19 @@ TEST(Serialization, TimeAsJSON) {
 
   {
     WithTime zero;
-    EXPECT_EQ("{\"millis\":0,\"micros\":0}", JSON(zero));
+    EXPECT_EQ("{\"number\":0,\"micros\":0}", JSON(zero));
   }
 
   {
     WithTime one;
-    one.millis.ms = 1ull;
+    one.number = 1ull;
     one.micros.us = 2ull;
-    EXPECT_EQ("{\"millis\":1,\"micros\":2}", JSON(one));
+    EXPECT_EQ("{\"number\":1,\"micros\":2}", JSON(one));
   }
 
   {
-    const auto parsed = ParseJSON<WithTime>("{\"millis\":3,\"micros\":4}");
-    EXPECT_EQ(3ull, parsed.millis.ms);
+    const auto parsed = ParseJSON<WithTime>("{\"number\":3,\"micros\":4}");
+    EXPECT_EQ(3ull, parsed.number);
     EXPECT_EQ(4ull, parsed.micros.us);
   }
 }
@@ -663,13 +663,13 @@ TEST(Serialization, TimeAsBinary) {
 
   {
     WithTime one;
-    one.millis.ms = 5ull;
+    one.number = 5ull;
     one.micros.us = 6ull;
     std::ostringstream oss;
     SaveIntoBinary(oss, one);
     std::istringstream iss(oss.str());
     const auto parsed = LoadFromBinary<WithTime>(iss);
-    EXPECT_EQ(5ull, parsed.millis.ms);
+    EXPECT_EQ(5ull, parsed.number);
     EXPECT_EQ(6ull, parsed.micros.us);
   }
 }

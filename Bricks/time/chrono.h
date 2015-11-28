@@ -38,32 +38,6 @@ SOFTWARE.
 namespace current {
 namespace time {
 
-struct EpochMilliseconds {
-  uint64_t ms;
-  EpochMilliseconds(uint64_t ms = 0ull) : ms(ms) {}
-  EpochMilliseconds(std::chrono::microseconds epoch) {
-    ms = std::chrono::duration_cast<std::chrono::milliseconds>(epoch).count();
-  }
-  static EpochMilliseconds Invalid() { return EpochMilliseconds(static_cast<uint64_t>(-1)); }
-  bool operator==(const EpochMilliseconds& rhs) const { return ms == rhs.ms; }
-  bool operator!=(const EpochMilliseconds& rhs) const { return ms != rhs.ms; }
-  bool operator<(const EpochMilliseconds& rhs) const { return ms < rhs.ms; }
-  bool operator>(const EpochMilliseconds& rhs) const { return ms > rhs.ms; }
-  bool operator<=(const EpochMilliseconds& rhs) const { return ms <= rhs.ms; }
-  bool operator>=(const EpochMilliseconds& rhs) const { return ms >= rhs.ms; }
-  operator uint64_t() const { return ms; }
-  struct Delta {
-    int64_t d;
-    Delta(int64_t d = 0ll) : d(d) {}
-    operator int64_t() const { return d; }
-  };
-  Delta operator-(const EpochMilliseconds& rhs) { return Delta(ms - rhs.ms); }
-  EpochMilliseconds operator+(const Delta& rhs) { return EpochMilliseconds(ms + rhs.d); }
-  EpochMilliseconds operator-(const Delta& rhs) { return EpochMilliseconds(ms - rhs.d); }
-  EpochMilliseconds& operator+=(const Delta& rhs) { ms += rhs.d; return *this; }
-  EpochMilliseconds& operator-=(const Delta& rhs) { ms -= rhs.d; return *this; }
-};
-
 struct EpochMicroseconds {
   uint64_t us = 0ull;
   EpochMicroseconds(uint64_t us = 0ull) : us(us) {}
@@ -109,7 +83,6 @@ inline MockNowImpl& MockNow() {
 
 inline const std::chrono::microseconds Now() { return MockNow().mock_now_value; }
 
-inline void SetNow(EpochMilliseconds ms) { MockNow().mock_now_value = std::chrono::milliseconds(ms); }
 inline void SetNow(EpochMicroseconds us) { MockNow().mock_now_value = std::chrono::microseconds(us); }
 
 template<typename T>
@@ -166,27 +139,10 @@ struct FixedSizeSerializer<current::time::EpochMicroseconds> {
   }
 };
 
-template <>
-struct FixedSizeSerializer<current::time::EpochMilliseconds> {
-  enum { size_in_bytes = std::numeric_limits<uint64_t>::digits10 + 1 };
-  static std::string PackToString(current::time::EpochMilliseconds x) {
-    std::ostringstream os;
-    os << std::setfill('0') << std::setw(size_in_bytes) << static_cast<uint64_t>(x.ms);
-    return os.str();
-  }
-  static current::time::EpochMilliseconds UnpackFromString(std::string const& s) {
-    uint64_t x;
-    std::istringstream is(s);
-    is >> x;
-    return current::time::EpochMilliseconds(x);
-  }
-};
-
 }  // namespace current::strings
 
 }  // namespace current
 
-using current::time::EpochMilliseconds;
 using current::time::EpochMicroseconds;
 
 #endif  // BRICKS_TIME_CHRONO_H

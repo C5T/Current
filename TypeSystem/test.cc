@@ -431,11 +431,6 @@ CURRENT_STRUCT(WithTimestampUS) {
   CURRENT_TIMESTAMP(t);
 };
 
-CURRENT_STRUCT(WithTimestampMS) {
-  CURRENT_FIELD(t, EpochMilliseconds);
-  CURRENT_TIMESTAMP(t);
-};
-
 CURRENT_STRUCT(WithTimestampUInt64) {
   CURRENT_FIELD(another_t, uint64_t);
   CURRENT_TIMESTAMP(another_t);
@@ -449,12 +444,6 @@ TEST(TypeSystemTest, TimestampSimple) {
     EXPECT_EQ(42ull, MicroTimestampOf(const_cast<const WithTimestampUS&>(a)));
   }
   {
-    WithTimestampMS b;
-    b.t = EpochMilliseconds(42ull);
-    EXPECT_EQ(42000ull, MicroTimestampOf(b));
-    EXPECT_EQ(42000ull, MicroTimestampOf(const_cast<const WithTimestampMS&>(b)));
-  }
-  {
     WithTimestampUInt64 x;
     x.another_t = 43ull;
     EXPECT_EQ(43ull, MicroTimestampOf(x));
@@ -463,9 +452,8 @@ TEST(TypeSystemTest, TimestampSimple) {
 }
 
 CURRENT_STRUCT(WithTimestampPolymorphic) {
-  CURRENT_FIELD(magic, (Polymorphic<WithTimestampUS, WithTimestampMS, WithTimestampUInt64>));
+  CURRENT_FIELD(magic, (Polymorphic<WithTimestampUS, WithTimestampUInt64>));
   CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampUS& magic) : magic(magic) {}
-  CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampMS& magic) : magic(magic) {}
   CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampUInt64& magic) : magic(magic) {}
   CURRENT_TIMESTAMP(magic);
 };
@@ -473,10 +461,8 @@ CURRENT_STRUCT(WithTimestampPolymorphic) {
 TEST(TypeSystemTest, TimestampPolymorphic) {
   WithTimestampUS a;
   a.t = 101ull;
-  WithTimestampMS b;
-  b.t = 102ull;  // Will be 1000x as microseconds.
-  WithTimestampUInt64 c;
-  c.another_t = 103ull;
+  WithTimestampUInt64 b;
+  b.another_t = 102ull;
 
   WithTimestampPolymorphic z1(a);
   EXPECT_EQ(101ull, MicroTimestampOf(z1));
@@ -484,12 +470,7 @@ TEST(TypeSystemTest, TimestampPolymorphic) {
   EXPECT_EQ(201ull, MicroTimestampOf(z1));
 
   WithTimestampPolymorphic z2(b);
-  EXPECT_EQ(102000ull, MicroTimestampOf(z2));
-  z2.magic.Value<WithTimestampMS>().t = 202ull;
-  EXPECT_EQ(202000ull, MicroTimestampOf(z2));
-
-  WithTimestampPolymorphic z3(c);
-  EXPECT_EQ(103ull, MicroTimestampOf(z3));
-  z3.magic.Value<WithTimestampUInt64>().another_t = 203ull;
-  EXPECT_EQ(203ull, MicroTimestampOf(z3));
+  EXPECT_EQ(102ull, MicroTimestampOf(z2));
+  z2.magic.Value<WithTimestampUInt64>().another_t = 202ull;
+  EXPECT_EQ(202ull, MicroTimestampOf(z2));
 }

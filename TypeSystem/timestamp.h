@@ -77,13 +77,6 @@ struct ExtractTimestampImpl<EpochMicroseconds> {
 };
 
 template <>
-struct ExtractTimestampImpl<EpochMilliseconds> {
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, const EpochMilliseconds& ms) {
-    functor.result = EpochMicroseconds(ms.ms * 1000ull);
-  }
-};
-
-template <>
 struct ExtractTimestampImpl<uint64_t> {
   static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, uint64_t us) {
     functor.result = EpochMicroseconds(us);
