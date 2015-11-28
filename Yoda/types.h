@@ -43,7 +43,7 @@ namespace yoda {
 struct Padawan {
   using CEREAL_BASE_TYPE = Padawan;
 
-  uint64_t us;  // Can't change this into `std::chrono::microseconds`, it's Cereal here. -- D.K.
+  int64_t us;  // Can't change this into `std::chrono::microseconds`, it's Cereal here. -- D.K.
   Padawan() : us(current::time::Now().count()) {}
   virtual ~Padawan() = default;
 
