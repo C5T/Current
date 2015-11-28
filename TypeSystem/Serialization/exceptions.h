@@ -83,6 +83,8 @@ struct InvalidJSONException : TypeSystemParseJSONException {
   explicit InvalidJSONException(const std::string& json) : TypeSystemParseJSONException(json) {}
 };
 
+struct JSONUninitializedPolymorphicObjectException : TypeSystemParseJSONException {};
+
 struct BinarySerializationException : Exception {
   using Exception::Exception;
 };
@@ -107,5 +109,6 @@ struct BinaryLoadFromStreamException : BinarySerializationException {
 
 using current::serialization::InvalidJSONException;
 using current::serialization::TypeSystemParseJSONException;
+using current::serialization::JSONUninitializedPolymorphicObjectException;
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H

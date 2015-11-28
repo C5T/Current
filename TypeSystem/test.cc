@@ -42,23 +42,27 @@ CURRENT_STRUCT(Foo) {
   CURRENT_CONSTRUCTOR(Foo)(uint64_t i = 42u) : i(i) {}
 };
 CURRENT_STRUCT(Bar) {
+  CURRENT_FIELD(j, uint64_t, 0u);
+  CURRENT_CONSTRUCTOR(Bar)(uint64_t j = 43u) : j(j) {}
+};
+CURRENT_STRUCT(Baz) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
   CURRENT_FIELD(v5, (std::map<Foo, int>));
 };
-CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
+CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(baz, Baz); };
 
 static_assert(IS_VALID_CURRENT_STRUCT(Foo), "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(Bar), "Struct `Bar` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(Baz), "Struct `Baz` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(DerivedFromFoo), "Struct `DerivedFromFoo` was not properly declared.");
 
 }  // namespace struct_definition_test
 
 // Confirm that Current data types defined in a namespace are accessible from outside it.
 static_assert(IS_VALID_CURRENT_STRUCT(struct_definition_test::Foo), "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(struct_definition_test::Bar), "Struct `Bar` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(struct_definition_test::Baz), "Struct `Baz` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(struct_definition_test::DerivedFromFoo),
               "Struct `DerivedFromFoo` was not properly declared.");
 
@@ -67,8 +71,8 @@ namespace some_other_namespace {
 // Confirm that Current data types defined in one namespace are accessible from another one.
 static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Foo),
               "Struct `Foo` was not properly declared.");
-static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Bar),
-              "Struct `Bar` was not properly declared.");
+static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::Baz),
+              "Struct `Baz` was not properly declared.");
 static_assert(IS_VALID_CURRENT_STRUCT(::struct_definition_test::DerivedFromFoo),
               "Struct `DerivedFromFoo` was not properly declared.");
 
@@ -257,14 +261,13 @@ TEST(TypeSystemTest, PolymorphicStaticAsserts) {
   static_assert(Polymorphic<Foo>::T_TYPELIST_SIZE == 1u, "");
   static_assert(std::is_same<Polymorphic<Foo>::T_TYPELIST, TypeListImpl<Foo>>::value, "");
 
-  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<Foo, Empty>>::value, "");
-  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeList<Foo, Empty>>>::value, "");
-  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeList<Foo, Empty, Foo>>>::value, "");
-  static_assert(
-      std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeList<Foo, Empty, TypeList<Empty>>>>::value, "");
-  static_assert(std::is_same<Polymorphic<Foo, Empty>, Polymorphic<TypeListImpl<Foo, Empty>>>::value, "");
-  static_assert(Polymorphic<Foo, Empty>::T_TYPELIST_SIZE == 2u, "");
-  static_assert(std::is_same<Polymorphic<Foo, Empty>::T_TYPELIST, TypeListImpl<Foo, Empty>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Bar>, Polymorphic<Foo, Bar>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Bar>, Polymorphic<TypeList<Foo, Bar>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Bar>, Polymorphic<TypeList<Foo, Bar, Foo>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Bar>, Polymorphic<TypeList<Foo, Bar, TypeList<Bar>>>>::value, "");
+  static_assert(std::is_same<Polymorphic<Foo, Bar>, Polymorphic<TypeListImpl<Foo, Bar>>>::value, "");
+  static_assert(Polymorphic<Foo, Bar>::T_TYPELIST_SIZE == 2u, "");
+  static_assert(std::is_same<Polymorphic<Foo, Bar>::T_TYPELIST, TypeListImpl<Foo, Bar>>::value, "");
 }
 
 TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
@@ -349,14 +352,14 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
   {
     const Polymorphic<Foo> p((Foo()));
     try {
-      p.Value<Empty>();
+      p.Value<Bar>();
       ASSERT_TRUE(false);
     } catch (NoValue) {
     }
     try {
-      p.Value<Empty>();
+      p.Value<Bar>();
       ASSERT_TRUE(false);
-    } catch (NoValueOfType<Empty>) {
+    } catch (NoValueOfType<Bar>) {
     }
   }
 }
@@ -366,22 +369,22 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
 
   struct Visitor {
     std::string s;
-    void operator()(const Empty&) { s = "Empty"; }
+    void operator()(const Bar&) { s = "Bar"; }
     void operator()(const Foo& foo) { s = "Foo " + current::strings::ToString(foo.i); }
     void operator()(const DerivedFromFoo& object) {
-      s = "DerivedFromFoo [" + current::strings::ToString(object.bar.v1.size()) + "]";
+      s = "DerivedFromFoo [" + current::strings::ToString(object.baz.v1.size()) + "]";
     }
   };
   Visitor v;
 
   {
-    Polymorphic<Empty, Foo, DerivedFromFoo> p((Empty()));
-    const Polymorphic<Empty, Foo, DerivedFromFoo>& cp = p;
+    Polymorphic<Bar, Foo, DerivedFromFoo> p((Bar()));
+    const Polymorphic<Bar, Foo, DerivedFromFoo>& cp = p;
 
     p.Call(v);
-    EXPECT_EQ("Empty", v.s);
+    EXPECT_EQ("Bar", v.s);
     cp.Call(v);
-    EXPECT_EQ("Empty", v.s);
+    EXPECT_EQ("Bar", v.s);
 
     p = Foo(1u);
 
@@ -391,14 +394,14 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     EXPECT_EQ("Foo 1", v.s);
 
     try {
-      p.Value<Empty>();
+      p.Value<Bar>();
       ASSERT_TRUE(false);
     } catch (NoValue) {
     }
     try {
-      p.Value<Empty>();
+      p.Value<Bar>();
       ASSERT_TRUE(false);
-    } catch (NoValueOfType<Empty>) {
+    } catch (NoValueOfType<Bar>) {
     }
 
     p = make_unique<DerivedFromFoo>();
@@ -407,89 +410,155 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
 
-    p.Value<DerivedFromFoo>().bar.v1.resize(3);
+    p.Value<DerivedFromFoo>().baz.v1.resize(3);
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
 
     try {
-      p.Value<Empty>();
+      p.Value<Bar>();
       ASSERT_TRUE(false);
     } catch (NoValue) {
     }
     try {
-      p.Value<Empty>();
+      p.Value<Bar>();
       ASSERT_TRUE(false);
-    } catch (NoValueOfType<Empty>) {
+    } catch (NoValueOfType<Bar>) {
     }
   }
 }
 
+TEST(TypeSystemTest, PolymorphicRequiredAndOptional) {
+  using namespace struct_definition_test;
+
+  static_assert(Polymorphic<Foo, Bar>::IS_REQUIRED, "");
+  static_assert(!Polymorphic<Foo, Bar>::IS_OPTIONAL, "");
+
+  static_assert(!OptionalPolymorphic<Foo, Bar>::IS_REQUIRED, "");
+  static_assert(OptionalPolymorphic<Foo, Bar>::IS_OPTIONAL, "");
+
+  {
+    Polymorphic<Foo, Bar> a = Foo(1);
+    EXPECT_EQ(1ull, a.Value<Foo>().i);
+
+    Polymorphic<Foo, Bar> b = std::move(a);
+    EXPECT_EQ(1ull, b.Value<Foo>().i);
+  }
+
+  {
+    OptionalPolymorphic<Foo, Bar> x;
+    const bool b1 = x;
+    EXPECT_FALSE(b1);
+    x = Bar(2);
+    const bool b2 = x;
+    EXPECT_TRUE(b2);
+
+    try {
+      x.Value<Foo>();
+      ASSERT_TRUE(false);
+    } catch (NoValueOfType<Foo>) {
+    }
+
+    Polymorphic<Foo, Bar> y = std::move(x);
+    static_cast<void>(y);
+  }
+
+  {
+    OptionalPolymorphic<Foo, Bar> p;
+    try {
+      Polymorphic<Foo, Bar> q = std::move(p);
+      ASSERT_TRUE(false);
+    } catch (UninitializedRequiredPolymorphic) {
+    }
+    try {
+      Polymorphic<Foo, Bar> r = std::move(p);
+      ASSERT_TRUE(false);
+    } catch (UninitializedRequiredPolymorphicOfType<Foo, Bar>) {
+    }
+  }
+}
+
+namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampUS) {
-  CURRENT_FIELD(t, EpochMicroseconds);
+  CURRENT_FIELD(t, std::chrono::microseconds);
   CURRENT_TIMESTAMP(t);
 };
-
-CURRENT_STRUCT(WithTimestampMS) {
-  CURRENT_FIELD(t, EpochMilliseconds);
-  CURRENT_TIMESTAMP(t);
-};
-
 CURRENT_STRUCT(WithTimestampUInt64) {
-  CURRENT_FIELD(another_t, uint64_t);
+  CURRENT_FIELD(another_t, int64_t);
   CURRENT_TIMESTAMP(another_t);
 };
+}  // namespace struct_definition_test
 
 TEST(TypeSystemTest, TimestampSimple) {
+  using namespace struct_definition_test;
   {
     WithTimestampUS a;
-    a.t = EpochMicroseconds(42ull);
-    EXPECT_EQ(42ull, MicroTimestampOf(a));
-    EXPECT_EQ(42ull, MicroTimestampOf(const_cast<const WithTimestampUS&>(a)));
-  }
-  {
-    WithTimestampMS b;
-    b.t = EpochMilliseconds(42ull);
-    EXPECT_EQ(42000ull, MicroTimestampOf(b));
-    EXPECT_EQ(42000ull, MicroTimestampOf(const_cast<const WithTimestampMS&>(b)));
+    a.t = std::chrono::microseconds(42ull);
+    EXPECT_EQ(42ll, MicroTimestampOf(a).count());
+    EXPECT_EQ(42ll, MicroTimestampOf(const_cast<const WithTimestampUS&>(a)).count());
   }
   {
     WithTimestampUInt64 x;
     x.another_t = 43ull;
-    EXPECT_EQ(43ull, MicroTimestampOf(x));
-    EXPECT_EQ(43ull, MicroTimestampOf(const_cast<const WithTimestampUInt64&>(x)));
+    EXPECT_EQ(43ll, MicroTimestampOf(x).count());
+    EXPECT_EQ(43ll, MicroTimestampOf(const_cast<const WithTimestampUInt64&>(x)).count());
   }
 }
 
+namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampPolymorphic) {
-  CURRENT_FIELD(magic, (Polymorphic<WithTimestampUS, WithTimestampMS, WithTimestampUInt64>));
+  CURRENT_FIELD(magic, (Polymorphic<WithTimestampUS, WithTimestampUInt64>));
   CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampUS& magic) : magic(magic) {}
-  CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampMS& magic) : magic(magic) {}
   CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampUInt64& magic) : magic(magic) {}
   CURRENT_TIMESTAMP(magic);
 };
+}  // namespace struct_definition_test
 
 TEST(TypeSystemTest, TimestampPolymorphic) {
+  using namespace struct_definition_test;
+
   WithTimestampUS a;
-  a.t = 101ull;
-  WithTimestampMS b;
-  b.t = 102ull;  // Will be 1000x as microseconds.
-  WithTimestampUInt64 c;
-  c.another_t = 103ull;
+  a.t = std::chrono::microseconds(101);
+  WithTimestampUInt64 b;
+  b.another_t = 102ull;
 
   WithTimestampPolymorphic z1(a);
-  EXPECT_EQ(101ull, MicroTimestampOf(z1));
-  z1.magic.Value<WithTimestampUS>().t = 201ull;
-  EXPECT_EQ(201ull, MicroTimestampOf(z1));
+  EXPECT_EQ(101ll, MicroTimestampOf(z1).count());
+  z1.magic.Value<WithTimestampUS>().t = std::chrono::microseconds(201);
+  EXPECT_EQ(201ll, MicroTimestampOf(z1).count());
 
   WithTimestampPolymorphic z2(b);
-  EXPECT_EQ(102000ull, MicroTimestampOf(z2));
-  z2.magic.Value<WithTimestampMS>().t = 202ull;
-  EXPECT_EQ(202000ull, MicroTimestampOf(z2));
+  EXPECT_EQ(102ll, MicroTimestampOf(z2).count());
+  z2.magic.Value<WithTimestampUInt64>().another_t = 202ull;
+  EXPECT_EQ(202ll, MicroTimestampOf(z2).count());
+}
 
-  WithTimestampPolymorphic z3(c);
-  EXPECT_EQ(103ull, MicroTimestampOf(z3));
-  z3.magic.Value<WithTimestampUInt64>().another_t = 203ull;
-  EXPECT_EQ(203ull, MicroTimestampOf(z3));
+namespace struct_definition_test {
+CURRENT_STRUCT(DisabledDefaultConstructor) { CURRENT_FIELD(meh, (Polymorphic<Foo, Bar>)); };
+}  // namespace struct_definition_test
+
+TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
+  using namespace struct_definition_test;
+
+  {
+    using original = decltype(std::declval<Foo>().i);
+    using modified = decltype(std::declval<Foo::DEFAULT_CONSTRUCTIBLE_TYPE>().i);
+    static_assert(std::is_same<original, uint64_t>::value, "");
+    static_assert(std::is_same<modified, uint64_t>::value, "");
+  }
+
+  {
+    using original = decltype(std::declval<Baz>().v2);
+    using modified = decltype(std::declval<Baz::DEFAULT_CONSTRUCTIBLE_TYPE>().v2);
+    static_assert(std::is_same<original, std::vector<Foo>>::value, "");
+    static_assert(std::is_same<modified, std::vector<Foo>>::value, "");
+  }
+
+  {
+    using original = decltype(std::declval<DisabledDefaultConstructor>().meh);
+    using modified = decltype(std::declval<DisabledDefaultConstructor::DEFAULT_CONSTRUCTIBLE_TYPE>().meh);
+    static_assert(std::is_same<original, Polymorphic<Foo, Bar>>::value, "");
+    static_assert(std::is_same<modified, OptionalPolymorphic<Foo, Bar>>::value, "");
+  }
 }

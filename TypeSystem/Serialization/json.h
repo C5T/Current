@@ -55,21 +55,33 @@ using current::ThreadLocalSingleton;
 
 template <typename T>
 struct AssignToRapidJSONValueImpl {
-  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const T& value) {
-    destination = value;
-  }
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const T& value) { destination = value; }
 };
 
 template <>
 struct AssignToRapidJSONValueImpl<std::string> {
-  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const std::string& value) {
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::string& value) {
     destination = rapidjson::StringRef(value);
+  }
+};
+
+template <>
+struct AssignToRapidJSONValueImpl<std::chrono::microseconds> {
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::chrono::microseconds& value) {
+    destination.SetInt64(value.count());
+  }
+};
+
+template <>
+struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::chrono::milliseconds& value) {
+    destination.SetInt64(value.count());
   }
 };
 
 template <typename T>
 void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
-  AssignToRapidJSONValueImpl<T>::WithDedicatedStringTreatment(destination, value);
+  AssignToRapidJSONValueImpl<T>::WithDedicatedTreatment(destination, value);
 }
 
 template <typename T>
@@ -235,34 +247,16 @@ struct SaveIntoJSONImpl {
     rapidjson::Document::AllocatorType& allocator_;
   };
 
-  template <typename... TS>
+  template <bool REQUIRED, typename... TS>
   static void Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
-                   const PolymorphicImpl<TS...>& value) {
+                   const GenericPolymorphicImpl<REQUIRED, TS...>& value) {
     if (Exists(value)) {
       SavePolymorphic impl(destination, allocator);
       value.Call(impl);
     } else {
       destination.SetNull();
     }
-  }
-};
-
-template <>
-struct SaveIntoJSONImpl<EpochMilliseconds> {
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const EpochMilliseconds& value) {
-    SaveIntoJSONImpl<uint64_t>::Save(destination, allocator, value.ms);
-  }
-};
-
-template <>
-struct SaveIntoJSONImpl<EpochMicroseconds> {
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const EpochMicroseconds& value) {
-    SaveIntoJSONImpl<uint64_t>::Save(destination, allocator, value.us);
   }
 };
 
@@ -374,7 +368,7 @@ struct LoadFromJSONImpl {
     }
   }
 
-  template <typename... TS>
+  template <bool REQUIRED, typename... TS>
   struct LoadPolymorphic {
     class Impl {
      public:
@@ -385,7 +379,7 @@ struct LoadFromJSONImpl {
       }
 
       void DoLoadPolymorphic(rapidjson::Value* source,
-                             PolymorphicImpl<TS...>& destination,
+                             GenericPolymorphicImpl<REQUIRED, TS...>& destination,
                              const std::string& path) const {
         using namespace ::current::reflection;
         if (source && source->IsObject()) {
@@ -410,7 +404,7 @@ struct LoadFromJSONImpl {
      private:
       struct GenericDeserializer {
         virtual void Deserialize(rapidjson::Value* source,
-                                 PolymorphicImpl<TS...>& destination,
+                                 GenericPolymorphicImpl<REQUIRED, TS...>& destination,
                                  const std::string& path) = 0;
       };
 
@@ -419,7 +413,7 @@ struct LoadFromJSONImpl {
         explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
         void Deserialize(rapidjson::Value* source,
-                         PolymorphicImpl<TS...>& destination,
+                         GenericPolymorphicImpl<REQUIRED, TS...>& destination,
                          const std::string& path) override {
           if (source->HasMember(key_name_)) {
             destination = make_unique<X>();
@@ -450,12 +444,14 @@ struct LoadFromJSONImpl {
 
     static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
   };
-  template <typename... TS>
-  static void Load(rapidjson::Value* source, PolymorphicImpl<TS...>& value, const std::string& path) {
+  template <bool REQUIRED, typename... TS>
+  static void Load(rapidjson::Value* source,
+                   GenericPolymorphicImpl<REQUIRED, TS...>& value,
+                   const std::string& path) {
     if (!source || source->IsNull()) {
       value = nullptr;
     } else {
-      LoadPolymorphic<TS...>::Instance().DoLoadPolymorphic(source, value, path);
+      LoadPolymorphic<REQUIRED, TS...>::Instance().DoLoadPolymorphic(source, value, path);
     }
   }
 };
@@ -564,16 +560,11 @@ struct LoadFromJSONImpl<Optional<T>> {
 };
 
 template <>
-struct LoadFromJSONImpl<EpochMilliseconds> {
-  static void Load(rapidjson::Value* source, EpochMilliseconds& destination, const std::string& path) {
-    LoadFromJSONImpl<uint64_t>::Load(source, destination.ms, path);
-  }
-};
-
-template <>
-struct LoadFromJSONImpl<EpochMicroseconds> {
-  static void Load(rapidjson::Value* source, EpochMicroseconds& destination, const std::string& path) {
-    LoadFromJSONImpl<uint64_t>::Load(source, destination.us, path);
+struct LoadFromJSONImpl<std::chrono::microseconds> {
+  static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
+    uint64_t value_as_uint64;
+    LoadFromJSONImpl<uint64_t>::Load(source, value_as_uint64, path);
+    destination = std::chrono::microseconds(value_as_uint64);
   }
 };
 
@@ -599,30 +590,59 @@ inline std::string JSON(const char* special_case_bare_c_string) {
 
 template <typename T>
 inline T ParseJSON(const std::string& source, T& destination) {
-  ParseJSONViaRapidJSON(source, destination);
+  try {
+    ParseJSONViaRapidJSON(source, destination);
+  } catch (UninitializedRequiredPolymorphic) {
+    throw JSONUninitializedPolymorphicObjectException();
+  }
 }
+
+// TODO(dkorolev) + TODO(mzhurovich): Refactor and mirror this "mirroring" logic for binary too.
+template <typename T>
+constexpr bool HasDefaultConstructibleType(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasDefaultConstructibleType(int)
+    -> decltype(sizeof(typename T::DEFAULT_CONSTRUCTIBLE_TYPE), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct DefaultConstructibleMirrorTypeImpl {
+  typedef T type;
+};
+
+template <typename T>
+struct DefaultConstructibleMirrorTypeImpl<T, true> {
+  typedef typename T::DEFAULT_CONSTRUCTIBLE_TYPE type;
+};
+
+template <typename T>
+using DefaultConstructibleMirrorType =
+    typename DefaultConstructibleMirrorTypeImpl<T, HasDefaultConstructibleType<T>(0)>::type;
 
 template <typename T>
 struct ParseJSONImpl {
   static T DoIt(const std::string& source) {
-    T result;
+    // First, deserialize into a type that does not have the default constructor disabled.
+    // Effectively, this deserializes a `Polymorphic<>` as an `OptionalPolymorphic<>`, leaving the rest intact.
+    DefaultConstructibleMirrorType<T> result;
     ParseJSONViaRapidJSON(source, result);
-    return result;
-  }
-};
-
-template <typename... TS>
-struct ParseJSONImpl<PolymorphicImpl<TS...>> {
-  static PolymorphicImpl<TS...> DoIt(const std::string& source) {
-    PolymorphicImpl<TS...> result;
-    ParseJSONViaRapidJSON(source, result);
-    return result;
+    // As original and modified types are the same, down to a possibly disabled constructor, the cast does it.
+    static_assert(sizeof(T) == sizeof(DefaultConstructibleMirrorType<T>), "");
+    return std::move(*reinterpret_cast<T*>(&result));
   }
 };
 
 template <typename T>
 inline T ParseJSON(const std::string& source) {
-  return ParseJSONImpl<T>::DoIt(source);
+  try {
+    return ParseJSONImpl<T>::DoIt(source);
+  } catch (UninitializedRequiredPolymorphic) {
+    throw JSONUninitializedPolymorphicObjectException();
+  }
 }
 
 }  // namespace serialization
@@ -631,8 +651,10 @@ inline T ParseJSON(const std::string& source) {
 // Inject into global namespace.
 using current::serialization::JSON;
 using current::serialization::ParseJSON;
+
 using current::serialization::TypeSystemParseJSONException;
 using current::serialization::JSONSchemaException;
 using current::serialization::InvalidJSONException;
+using current::serialization::JSONUninitializedPolymorphicObjectException;
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H

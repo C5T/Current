@@ -32,37 +32,49 @@ using namespace current;
 
 // Storage schema, for persistence, publish, and subscribe.
 
-CURRENT_STRUCT(UserAdded) {
+// TODO(dkorolev): Serialize the base class too.
+// CURRENT_STRUCT(BaseEvent) {
+//   CURRENT_FIELD(timestamp, std::chrono::microseconds);
+//   CURRENT_TIMESTAMP(timestamp);
+// };
+
+CURRENT_STRUCT(UserAdded) {  //, BaseEvent) {
   CURRENT_FIELD(user_id, std::string);
   CURRENT_FIELD(nickname, std::string);
+
+  // TODO(dkorolev): Serialize the base class too.
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_TIMESTAMP(timestamp);
 };
 
-CURRENT_STRUCT(PostAdded) {
+CURRENT_STRUCT(PostAdded) {  //, BaseEvent) {
   CURRENT_FIELD(post_id, std::string);
   CURRENT_FIELD(content, std::string);
   CURRENT_FIELD(author_user_id, std::string);
+
+  // TODO(dkorolev): Serialize the base class too.
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_TIMESTAMP(timestamp);
 };
 
-CURRENT_STRUCT(UserLike) {
+CURRENT_STRUCT(UserLike) {  //, BaseEvent) {
   CURRENT_FIELD(user_id, std::string);
   CURRENT_FIELD(post_id, std::string);
+
+  // TODO(dkorolev): Serialize the base class too.
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_TIMESTAMP(timestamp);
 };
 
-// `Event` is the top-level message to persist.
-CURRENT_STRUCT(Nop){};  // TODO(dkorolev): Will go away, see below.
+// `Event` is the top-level message to persist. This structure is not default-constructible, not copyable,
+// and not assignable, since it contains a `Polymorphic<>`. It's serializable and movable though.
 CURRENT_STRUCT(Event) {
-  CURRENT_FIELD(timestamp, uint64_t);
-  CURRENT_FIELD(event, (Polymorphic<Nop, UserAdded, PostAdded, UserLike>));
+  CURRENT_FIELD(event, (Polymorphic<UserAdded, PostAdded, UserLike>));
 
-  // TODO(dkorolev): This will go away.
-  // Default construction is required for incoming JSON serialization as of now,
-  // and `Polymorphic` is strict to not be left uninitialized.
-  CURRENT_DEFAULT_CONSTRUCTOR(Event) : event(Nop()) {}
+  CURRENT_TIMESTAMP(event);
 
-  // TODO(dkorolev): This will go away.
-  // Moving forward, `EPOCH_MICROSECONDS` is the [unique] key,
-  // and just keeping a `CURRENT_FIELD(timestamp, EPOCH_MICROSECONDS)` top-level field should be sufficient.
-  EpochMicroseconds ExtractTimestamp() const { return EpochMicroseconds(timestamp); }
+  CURRENT_DEFAULT_CONSTRUCTOR(Event) {}
+  CURRENT_CONSTRUCTOR(Event)(Polymorphic<UserAdded, PostAdded, UserLike> && event) : event(std::move(event)) {}
 };
 
 // JSON responses schema.

@@ -67,6 +67,7 @@ namespace reflection {
 
 // Instantiation types.
 struct DeclareFields {};
+struct DeclareDefaultConstructibleFields {};
 struct CountFields {};
 
 // Dummy type for `CountFields` instantiation type.

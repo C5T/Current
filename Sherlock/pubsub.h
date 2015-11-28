@@ -45,7 +45,11 @@ class PubSubHTTPEndpoint final {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
           r.timestamp -
-          EpochMicroseconds::Delta(current::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
+          std::chrono::microseconds(current::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
+    } else if (http_request_.url.query.has("since")) {
+      serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
+      from_timestamp_ =
+          std::chrono::microseconds(current::strings::FromString<uint64_t>(http_request_.url.query["since"]));
     }
     if (http_request_.url.query.has("n")) {
       serving_ = false;  // Start in 'non-serving' mode when `n` is set.
@@ -71,13 +75,13 @@ class PubSubHTTPEndpoint final {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        const EpochMicroseconds timestamp = current::MicroTimestampOf(entry);
+        const std::chrono::microseconds timestamp = current::MicroTimestampOf(entry);
         // Respect `n`.
         if (total - index <= n_) {
           serving_ = true;
         }
         // Respect `recent`.
-        if (from_timestamp_ != EpochMicroseconds::Invalid() && timestamp >= from_timestamp_) {
+        if (from_timestamp_.count() && timestamp >= from_timestamp_) {
           serving_ = true;
         }
       }
@@ -115,7 +119,7 @@ class PubSubHTTPEndpoint final {
   // If set, the hard limit on the maximum number of entries to output.
   size_t cap_ = 0;
   // If set, the timestamp from which the output should start.
-  EpochMicroseconds from_timestamp_ = EpochMicroseconds::Invalid();
+  std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;

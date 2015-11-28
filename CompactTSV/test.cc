@@ -46,17 +46,13 @@ TEST(CompactTSV, Smoke) {
   std::string golden;
   std::ostringstream os;
 
-  const auto t_a_begin = EpochMilliseconds(current::time::Now());
-  CreateTSV([&os](const std::vector<size_t>& row) {
-              for (size_t i = 0; i < row.size(); ++i) {
-                os << std::setw(2) << row[i] << ((i + 1) == row.size() ? '\n' : ' ');
-              }
-            },
-            FLAGS_rows,
-            FLAGS_cols,
-            FLAGS_scale,
-            FLAGS_random_seed);
-  const auto t_a_end = EpochMilliseconds(current::time::Now());
+  const auto t_a_begin = current::time::Now();
+  CreateTSV([&os](const std::vector<size_t> &row) {
+    for (size_t i = 0; i < row.size(); ++i) {
+      os << std::setw(2) << row[i] << ((i + 1) == row.size() ? '\n' : ' ');
+    }
+  }, FLAGS_rows, FLAGS_cols, FLAGS_scale, FLAGS_random_seed);
+  const auto t_a_end = current::time::Now();
 
   if (run_test) {
     golden =
@@ -76,59 +72,55 @@ TEST(CompactTSV, Smoke) {
   }
 
   CompactTSV fast;
-  const auto t_b_begin = EpochMilliseconds(current::time::Now());
-  CreateTSV([&fast](const std::vector<size_t>& row) {
-              std::vector<std::string> row_of_strings(row.size());
-              for (size_t i = 0; i < row.size(); ++i) {
-                row_of_strings[i] = current::strings::ToString(row[i]);
-              }
-              fast(row_of_strings);
-            },
-            FLAGS_rows,
-            FLAGS_cols,
-            FLAGS_scale,
-            FLAGS_random_seed);
-  const auto t_b_end = EpochMilliseconds(current::time::Now());
+  const auto t_b_begin = current::time::Now();
+  CreateTSV([&fast](const std::vector<size_t> &row) {
+    std::vector<std::string> row_of_strings(row.size());
+    for (size_t i = 0; i < row.size(); ++i) {
+      row_of_strings[i] = current::strings::ToString(row[i]);
+    }
+    fast(row_of_strings);
+  }, FLAGS_rows, FLAGS_cols, FLAGS_scale, FLAGS_random_seed);
+  const auto t_b_end = current::time::Now();
   fast.Finalize();
 
   std::ostringstream os2;
-  const auto t_c_begin = EpochMilliseconds(current::time::Now());
+  const auto t_c_begin = current::time::Now();
   EXPECT_EQ(FLAGS_rows,
-            CompactTSV::Unpack([&os2](const std::vector<std::string>& row) {
-                                 for (size_t i = 0; i < row.size(); ++i) {
-                                   os2 << std::setw(2) << row[i] << ((i + 1) == row.size() ? '\n' : ' ');
-                                 }
-                               },
-                               fast.GetPackedString()));
+            CompactTSV::Unpack([&os2](const std::vector<std::string> &row) {
+              for (size_t i = 0; i < row.size(); ++i) {
+                os2 << std::setw(2) << row[i] << ((i + 1) == row.size() ? '\n' : ' ');
+              }
+            }, fast.GetPackedString()));
   EXPECT_EQ(golden, os2.str());
-  const auto t_c_end = EpochMilliseconds(current::time::Now());
+  const auto t_c_end = current::time::Now();
 
-  const auto t_d_begin = EpochMilliseconds(current::time::Now());
-  EXPECT_EQ(FLAGS_rows, CompactTSV::Unpack([](const std::vector<std::string>&) {}, fast.GetPackedString()));
-  const auto t_d_end = EpochMilliseconds(current::time::Now());
+  const auto t_d_begin = current::time::Now();
+  EXPECT_EQ(FLAGS_rows, CompactTSV::Unpack([](const std::vector<std::string> &) {}, fast.GetPackedString()));
+  const auto t_d_end = current::time::Now();
 
-  const auto t_e_begin = EpochMilliseconds(current::time::Now());
+  const auto t_e_begin = current::time::Now();
   EXPECT_EQ(
       FLAGS_rows,
-      CompactTSV::Unpack([](const std::vector<std::pair<const char*, size_t>>&) {}, fast.GetPackedString()));
-  const auto t_e_end = EpochMilliseconds(current::time::Now());
+      CompactTSV::Unpack([](const std::vector<std::pair<const char *, size_t>> &) {}, fast.GetPackedString()));
+  const auto t_e_end = current::time::Now();
 
-  const auto t_f_begin = EpochMilliseconds(current::time::Now());
+  const auto t_f_begin = current::time::Now();
   EXPECT_EQ(
       FLAGS_rows,
-      CompactTSV::Unpack([](const std::vector<current::strings::UniqueChunk>&) {}, fast.GetPackedString()));
-  const auto t_f_end = EpochMilliseconds(current::time::Now());
+      CompactTSV::Unpack([](const std::vector<current::strings::UniqueChunk> &) {}, fast.GetPackedString()));
+  const auto t_f_end = current::time::Now();
 
   if (FLAGS_benchmark) {
     const size_t golden_size = golden.length();
     const size_t packed_size = fast.GetPackedString().length();
     std::cerr << "Original TSV size:\t" << golden_size << "b, or\t" << golden_size / (1024u * 1024u) << "MB.\n";
     std::cerr << "Packed   TSV size:\t" << packed_size << "b, or\t" << packed_size / (1024u * 1024u) << "MB.\n";
-    std::cerr << "Generate:                                   " << (t_a_end - t_a_begin) << "ms.\n";
-    std::cerr << "Pack:                                       " << (t_b_end - t_b_begin) << "ms.\n";
-    std::cerr << "Unpack into std::ostringstream:             " << (t_c_end - t_c_begin) << "ms.\n";
-    std::cerr << "Unpack into std::string-s:                  " << (t_d_end - t_d_begin) << "ms.\n";
-    std::cerr << "Unpack into std::pair<const char*, size_t>: " << (t_e_end - t_e_begin) << "ms.\n";
-    std::cerr << "Unpack into UniqueChunk-s:                  " << (t_f_end - t_f_begin) << "ms.\n";
+    const double K = 1e-3;  // microseconds -> milliseconds.
+    std::cerr << "Generate:                                   " << K *(t_a_end - t_a_begin).count() << "ms.\n";
+    std::cerr << "Pack:                                       " << K *(t_b_end - t_b_begin).count() << "ms.\n";
+    std::cerr << "Unpack into std::ostringstream:             " << K *(t_c_end - t_c_begin).count() << "ms.\n";
+    std::cerr << "Unpack into std::string-s:                  " << K *(t_d_end - t_d_begin).count() << "ms.\n";
+    std::cerr << "Unpack into std::pair<const char*, size_t>: " << K *(t_e_end - t_e_begin).count() << "ms.\n";
+    std::cerr << "Unpack into UniqueChunk-s:                  " << K *(t_f_end - t_f_begin).count() << "ms.\n";
   }
 }

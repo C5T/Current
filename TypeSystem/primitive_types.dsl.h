@@ -49,4 +49,7 @@ CURRENT_DECLARE_PRIMITIVE_TYPE(42, std::string, String, "string")
 CURRENT_DECLARE_PRIMITIVE_TYPE(51, float, Float, "float")
 CURRENT_DECLARE_PRIMITIVE_TYPE(52, double, Double, "double")
 
+CURRENT_DECLARE_PRIMITIVE_TYPE(61, std::chrono::microseconds, Microseconds, "int64  // microseconds.")
+CURRENT_DECLARE_PRIMITIVE_TYPE(62, std::chrono::milliseconds, Milliseconds, "int64  // milliseconds.")
+
 #endif

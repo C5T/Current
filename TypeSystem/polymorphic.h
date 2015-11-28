@@ -44,14 +44,31 @@ namespace current {
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
 // instead of a `TypeListImpl<...>` in such a case, to ensure type de-duplication takes place.
 
-// Explicitly disable an empty `Polymorphic<>`.
-template <typename... TS>
-struct PolymorphicImpl;
+struct DisableDefaultConstructorForRequired {};
 
-template <typename T, typename... TS>
-struct PolymorphicImpl<T, TS...> {
+template <bool REQUIRED>
+struct DefaultConstructorGuard {
+  DefaultConstructorGuard() = default;
+  DefaultConstructorGuard(const DisableDefaultConstructorForRequired&) = delete;
+};
+
+template <>
+struct DefaultConstructorGuard<false> {
+  DefaultConstructorGuard() = default;
+  DefaultConstructorGuard(const DisableDefaultConstructorForRequired&) {}
+};
+
+// Explicitly disable an empty `Polymorphic<>`.
+template <bool REQUIRED, typename... TS>
+struct GenericPolymorphicImpl;
+
+template <bool REQUIRED, typename T, typename... TS>
+struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQUIRED> {
   using T_TYPELIST = TypeListImpl<T, TS...>;
   enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
+  enum { IS_REQUIRED = REQUIRED, IS_OPTIONAL = !REQUIRED };
+
+  typedef GenericPolymorphicImpl<false, T, TS...> DEFAULT_CONSTRUCTIBLE_TYPE;
 
   std::unique_ptr<CurrentSuper> object_;
 
@@ -107,19 +124,30 @@ struct PolymorphicImpl<T, TS...> {
     }
   };
 
-  PolymorphicImpl() {};
+  // Would not compile if `REQUIRED == true`.
+  GenericPolymorphicImpl() : DefaultConstructorGuard<REQUIRED>(DisableDefaultConstructorForRequired()) {}
 
-  PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+  operator bool() const { return object_ ? true : false; }
+
+  GenericPolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
   template <typename X>
-  PolymorphicImpl(X&& input) {
+  GenericPolymorphicImpl(X&& input) {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
   }
 
-  PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) {}
+  GenericPolymorphicImpl(GenericPolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) { Check(); }
+  GenericPolymorphicImpl(GenericPolymorphicImpl<!REQUIRED, T, TS...>&& rhs) : object_(std::move(rhs.object_)) {
+    Check();
+  }
 
-  void operator=(PolymorphicImpl&& rhs) {
+  void operator=(GenericPolymorphicImpl&& rhs) {
     object_ = std::move(rhs.object_);
+    Check();
+  }
+  void operator=(GenericPolymorphicImpl<!REQUIRED, T, TS...>&& rhs) {
+    object_ = std::move(rhs.object_);
+    Check();
   }
 
   template <typename X>
@@ -127,17 +155,20 @@ struct PolymorphicImpl<T, TS...> {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
   }
 
-  void operator=(std::nullptr_t) {
+  template <bool ENABLE = !REQUIRED>
+  ENABLE_IF<ENABLE> operator=(std::nullptr_t) {
     object_ = nullptr;
   }
 
   template <typename F>
   void Call(F&& f) {
+    Check();
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
   template <typename F>
   void Call(F&& f) const {
+    Check();
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
@@ -151,7 +182,8 @@ struct PolymorphicImpl<T, TS...> {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
-  bool Exists() const {
+  template <bool ENABLE = !REQUIRED>
+  ENABLE_IF<ENABLE, bool> Exists() const {
     return (object_.get() != nullptr);
   }
 
@@ -174,24 +206,45 @@ struct PolymorphicImpl<T, TS...> {
       throw NoValueOfTypeException<X>();
     }
   }
+
+  void Check() const {
+    if (REQUIRED && !object_) {
+      throw UninitializedRequiredPolymorphicOfTypeException<T, TS...>();
+    }
+  }
 };
 
 // `Polymorphic<...>` can accept either a list of types, or a `TypeList<...>`.
 template <typename... TS>
 struct PolymorphicSelector {
-  using type = PolymorphicImpl<TS...>;
+  using type = GenericPolymorphicImpl<true, TS...>;
 };
 
 template <typename... TS>
 struct PolymorphicSelector<TypeListImpl<TS...>> {
-  using type = PolymorphicImpl<TS...>;
+  using type = GenericPolymorphicImpl<true, TS...>;
 };
 
 template <typename... TS>
 using Polymorphic = typename PolymorphicSelector<TS...>::type;
 
+// `OptionalPolymorphic<...>` can accept either a list of types, or a `TypeList<...>`.
+template <typename... TS>
+struct OptionalPolymorphicSelector {
+  using type = GenericPolymorphicImpl<false, TS...>;
+};
+
+template <typename... TS>
+struct OptionalPolymorphicSelector<TypeListImpl<TS...>> {
+  using type = GenericPolymorphicImpl<false, TS...>;
+};
+
+template <typename... TS>
+using OptionalPolymorphic = typename OptionalPolymorphicSelector<TS...>::type;
+
 }  // namespace current
 
 using current::Polymorphic;
+using current::OptionalPolymorphic;
 
 #endif  // CURRENT_TYPE_SYSTEM_POLYMORPHIC_H

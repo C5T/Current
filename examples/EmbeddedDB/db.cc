@@ -128,13 +128,12 @@ int main(int argc, char** argv) {
       size_t TotalQueries() const { return queries_; }
 
      private:
-      static double NowInSeconds() { return 1e-6 * static_cast<double>(EpochMicroseconds(time::Now()).us); }
+      static double NowInSeconds() { return 1e-6 * static_cast<double>(time::Now().count()); }
       void Thread() {
         const std::string url = strings::Printf(FLAGS_loadtest_url.c_str(), port_) + "/publish";
         const Event body = []() {
-          Event event;
-          event.timestamp = EpochMicroseconds(time::Now()).us;
           UserAdded body;
+          body.timestamp = time::Now();
           body.user_id = std::string(' ', 10);
           body.nickname = std::string(' ', 4);
           for (auto& c : body.user_id) {
@@ -143,8 +142,7 @@ int main(int argc, char** argv) {
           for (auto& c : body.nickname) {
             c = random::RandomIntegral<char>('A', 'Z');
           }
-          event.event = body;
-          return event;
+          return Event(body);
         }();
         const double timestamp_begin = NowInSeconds();
         const double timestamp_end = timestamp_begin + seconds_to_run_;
@@ -188,13 +186,13 @@ int main(int argc, char** argv) {
               << "\n\tcurl " << url << "/data" << std::endl;
 
     {
-      Event event;
-      event.timestamp = EpochMicroseconds(time::Now()).us;
       UserAdded body;
+      body.timestamp = time::Now();
       body.user_id = "skywalker";
       body.nickname = "Luke";
-      event.event = body;
-      std::cerr << "Example publish:\n\tcurl -d '" << JSON(event) << "' " << url << "/publish" << std::endl;
+      Event event(body);
+      std::cerr << "Example publish (timestamp will be overwritten):\n"
+                << "\tcurl -d '" << JSON(event) << "' " << url << "/publish" << std::endl;
     }
 
     std::cerr << "Read model:\n\tcurl '" << url << "/nickname?id=skywalker'" << std::flush << std::endl;
@@ -244,6 +242,7 @@ int main(int argc, char** argv) {
                   if (r.method == "POST") {
                     try {
                       auto event = ParseJSON<Event>(r.body);
+                      SetMicroTimestamp(event, time::Now());
                       stream.Publish(std::move(event));
                       r("", HTTPResponseCode.NoContent);
                     } catch (const Exception& e) {

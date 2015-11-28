@@ -33,17 +33,17 @@ SOFTWARE.
 
 // This smoke test is flaky, but it does the job of comparing current::time::Now() to wall time.
 TEST(Time, SmokeTest) {
-  const EpochMilliseconds a = current::time::Now();
+  const std::chrono::microseconds a = current::time::Now();
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  const EpochMilliseconds b = current::time::Now();
+  const std::chrono::microseconds b = current::time::Now();
   const int64_t dt = static_cast<int64_t>(b - a);
 #if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
-  const int64_t allowed_skew = 3;
+  const int64_t allowed_skew = 3000;
 #else
-  const int64_t allowed_skew = 25;  // Some systems are slower in regard to this test.
+  const int64_t allowed_skew = 25000;  // Some systems are slower in regard to this test.
 #endif
-  EXPECT_GE(dt, 50 - allowed_skew);
-  EXPECT_LE(dt, 50 + allowed_skew);
+  EXPECT_GE(dt, 50000 - allowed_skew);
+  EXPECT_LE(dt, 50000 + allowed_skew);
 }
 
 #else

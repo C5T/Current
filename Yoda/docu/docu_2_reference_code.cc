@@ -164,7 +164,7 @@ return result;
   
 TEST(YodaDocu, Test) {
 const int port = FLAGS_yoda_docu_test_port;
-current::time::SetNow(EpochMicroseconds(42));
+current::time::SetNow(std::chrono::microseconds(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.

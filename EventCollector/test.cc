@@ -55,31 +55,31 @@ TEST(EventCollector, Smoke) {
   std::ostringstream os;
   EventReceiver er;
 
-  current::time::SetNow(EpochMicroseconds(0));
+  current::time::SetNow(std::chrono::microseconds(0));
   EventCollectorHTTPServer collector(FLAGS_event_collector_test_port,
                                      os,
-                                     100 * 1000,
+                                     std::chrono::milliseconds(100),
                                      "/log",
                                      "OK\n",
                                      std::bind(&EventReceiver::OnEvent, &er, std::placeholders::_1));
 
-  current::time::SetNow(EpochMicroseconds(12000));
+  current::time::SetNow(std::chrono::microseconds(12000));
   const auto get_response = HTTP(GET(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port)));
   EXPECT_EQ(200, static_cast<int>(get_response.code));
   EXPECT_EQ("OK\n", get_response.body);
 
-  current::time::SetNow(EpochMicroseconds(112000));
+  current::time::SetNow(std::chrono::microseconds(112000));
   while (collector.EventsPushed() < 2u) {
     ;  // Spin lock.
   }
 
-  current::time::SetNow(EpochMicroseconds(178000));
+  current::time::SetNow(std::chrono::microseconds(178000));
   const auto post_response =
       HTTP(POST(Printf("http://localhost:%d/log", FLAGS_event_collector_test_port), "meh"));
   EXPECT_EQ(200, static_cast<int>(post_response.code));
   EXPECT_EQ("OK\n", post_response.body);
 
-  current::time::SetNow(EpochMicroseconds(278000));
+  current::time::SetNow(std::chrono::microseconds(278000));
   while (collector.EventsPushed() < 4u) {
     ;  // Spin lock.
   }
@@ -106,7 +106,7 @@ TEST(EventCollector, Smoke) {
 TEST(EventCollector, QueryParameters) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, EpochMicroseconds::Delta(0), "/foo", "+");
+      FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/foo", "+");
   EXPECT_EQ("+",
             HTTP(GET(Printf("http://localhost:%d/foo?k=v&answer=42", FLAGS_event_collector_test_port))).body);
   auto e = CerealizeParseJSON<LogEntryWithHeaders>(os.str());
@@ -118,7 +118,7 @@ TEST(EventCollector, QueryParameters) {
 TEST(EventCollector, Body) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, EpochMicroseconds::Delta(0), "/bar", "y");
+      FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/bar", "y");
   EXPECT_EQ("y", HTTP(POST(Printf("http://localhost:%d/bar", FLAGS_event_collector_test_port), "Yay!")).body);
   EXPECT_EQ("Yay!", CerealizeParseJSON<LogEntryWithHeaders>(os.str()).b);
 }
@@ -126,7 +126,7 @@ TEST(EventCollector, Body) {
 TEST(EventCollector, Headers) {
   std::ostringstream os;
   EventCollectorHTTPServer collector(
-      FLAGS_event_collector_test_port, os, EpochMicroseconds::Delta(0), "/ctfo", "=");
+      FLAGS_event_collector_test_port, os, std::chrono::microseconds(0), "/ctfo", "=");
   EXPECT_EQ("=",
             HTTP(GET(Printf("http://localhost:%d/ctfo", FLAGS_event_collector_test_port))
                      .SetHeader("foo", "bar")

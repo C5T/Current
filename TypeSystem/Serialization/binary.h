@@ -169,20 +169,6 @@ struct SaveIntoBinaryImpl {
   }
 };
 
-template <>
-struct SaveIntoBinaryImpl<EpochMilliseconds> {
-  static void Save(std::ostream& ostream, const EpochMilliseconds& value) {
-    SaveIntoBinaryImpl<uint64_t>::Save(ostream, value.ms);
-  }
-};
-
-template <>
-struct SaveIntoBinaryImpl<EpochMicroseconds> {
-  static void Save(std::ostream& ostream, const EpochMicroseconds& value) {
-    SaveIntoBinaryImpl<uint64_t>::Save(ostream, value.us);
-  }
-};
-
 template <typename T>
 inline void SaveIntoBinary(std::ostream& ostream, const T& source) {
   using DECAYED_T = current::decay<T>;
@@ -220,6 +206,18 @@ struct LoadPrimitiveTypeFromBinary {
     if (bytes_read != static_cast<size_t>(size)) {
       throw BinaryLoadFromStreamException(size, bytes_read);
     }
+  }
+
+  static void Load(std::istream& istream, std::chrono::microseconds& destination) {
+    int64_t value;
+    Load<int64_t>(istream, value);
+    destination = std::chrono::microseconds(value);
+  }
+
+  static void Load(std::istream& istream, std::chrono::milliseconds& destination) {
+    int64_t value;
+    Load<int64_t>(istream, value);
+    destination = std::chrono::milliseconds(value);
   }
 };
 
@@ -309,20 +307,6 @@ struct LoadFromBinaryImpl<Optional<T>> {
     } else {
       destination = nullptr;
     }
-  }
-};
-
-template <>
-struct LoadFromBinaryImpl<EpochMilliseconds> {
-  static void Load(std::istream& istream, EpochMilliseconds& destination) {
-    LoadFromBinaryImpl<uint64_t>::Load(istream, destination.ms);
-  }
-};
-
-template <>
-struct LoadFromBinaryImpl<EpochMicroseconds> {
-  static void Load(std::istream& istream, EpochMicroseconds& destination) {
-    LoadFromBinaryImpl<uint64_t>::Load(istream, destination.us);
   }
 };
 

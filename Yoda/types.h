@@ -43,11 +43,11 @@ namespace yoda {
 struct Padawan {
   using CEREAL_BASE_TYPE = Padawan;
 
-  uint64_t us;
-  Padawan() : us(EpochMicroseconds(current::time::Now()).us) {}
+  int64_t us;  // Can't change this into `std::chrono::microseconds`, it's Cereal here. -- D.K.
+  Padawan() : us(current::time::Now().count()) {}
   virtual ~Padawan() = default;
 
-  template<typename F>
+  template <typename F>
   void ReportTimestamp(F&& f) const {
     f(us);
   }
