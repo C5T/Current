@@ -43,44 +43,68 @@ SOFTWARE.
 namespace current {
 
 template <typename T>
-struct ExtractTimestampImpl;
+struct TimestampAccessorImpl;
 
 struct ExtractTimestampFunctor {
   std::chrono::microseconds& result;
   ExtractTimestampFunctor(std::chrono::microseconds& result) : result(result) {}
   template <typename T>
   void operator()(T&& x) {
-    ExtractTimestampImpl<current::decay<T>>::DirectlyOrFromPolymorphic(*this, std::forward<T>(x));
+    TimestampAccessorImpl<current::decay<T>>::ExtractDirectlyOrFromPolymorphic(*this, std::forward<T>(x));
+  }
+};
+
+struct UpdateTimestampFunctor {
+  std::chrono::microseconds value;
+  UpdateTimestampFunctor(std::chrono::microseconds value) : value(value) {}
+  template <typename T>
+  void operator()(T&& x) {
+    TimestampAccessorImpl<current::decay<T>>::UpdateDirectlyOrInPolymorphic(*this, std::forward<T>(x));
   }
 };
 
 template <typename T>
-struct ExtractTimestampImpl {
+struct TimestampAccessorImpl {
   template <typename E>
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, E&& e) {
+  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, E&& e) {
+    e.ReportTimestamp(functor);
+  }
+  template <typename E>
+  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor, E& e) {
     e.ReportTimestamp(functor);
   }
 };
 
 template <bool REQUIRED, typename... TS>
-struct ExtractTimestampImpl<GenericPolymorphicImpl<REQUIRED, TS...>> {
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
-                                        const GenericPolymorphicImpl<REQUIRED, TS...>& p) {
+struct TimestampAccessorImpl<GenericPolymorphicImpl<REQUIRED, TS...>> {
+  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
+                                               const GenericPolymorphicImpl<REQUIRED, TS...>& p) {
+    p.Call(functor);
+  }
+  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor,
+                                            GenericPolymorphicImpl<REQUIRED, TS...>& p) {
     p.Call(functor);
   }
 };
 
 template <>
-struct ExtractTimestampImpl<std::chrono::microseconds> {
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, const std::chrono::microseconds& us) {
+struct TimestampAccessorImpl<std::chrono::microseconds> {
+  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
+                                               const std::chrono::microseconds& us) {
     functor.result = us;
+  }
+  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor, std::chrono::microseconds& us) {
+    us = functor.value;
   }
 };
 
 template <>
-struct ExtractTimestampImpl<uint64_t> {
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, uint64_t us) {
+struct TimestampAccessorImpl<int64_t> {
+  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, int64_t us) {
     functor.result = std::chrono::microseconds(us);
+  }
+  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor, int64_t& us) {
+    us = functor.value.count();
   }
 };
 
@@ -114,6 +138,21 @@ template <typename E>
 std::chrono::microseconds MicroTimestampOf(E&& entry) {
   return ExtractTimestampFromUniquePtrAsWell<current::is_unique_ptr<E>::value>::template DoIt<E>(
       std::forward<E>(entry));
+}
+
+template <typename E>
+static std::chrono::microseconds DoIt(E&& e) {
+  std::chrono::microseconds result;
+  ExtractTimestampFunctor impl(result);
+  e.ReportTimestamp(impl);
+  return result;
+}
+
+// TODO(dkorolev): Test this function too, not just use it from `examples/EmbeddedDB`.
+template <typename E>
+void SetMicroTimestamp(E& entry, std::chrono::microseconds timestamp) {
+  UpdateTimestampFunctor impl(timestamp);
+  entry.ReportTimestamp(impl);
 }
 
 }  // namespace current

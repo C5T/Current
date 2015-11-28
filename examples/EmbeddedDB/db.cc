@@ -133,6 +133,7 @@ int main(int argc, char** argv) {
         const std::string url = strings::Printf(FLAGS_loadtest_url.c_str(), port_) + "/publish";
         const Event body = []() {
           UserAdded body;
+          body.timestamp = time::Now();
           body.user_id = std::string(' ', 10);
           body.nickname = std::string(' ', 4);
           for (auto& c : body.user_id) {
@@ -141,7 +142,7 @@ int main(int argc, char** argv) {
           for (auto& c : body.nickname) {
             c = random::RandomIntegral<char>('A', 'Z');
           }
-          return Event(time::Now(), body);
+          return Event(body);
         }();
         const double timestamp_begin = NowInSeconds();
         const double timestamp_end = timestamp_begin + seconds_to_run_;
@@ -186,10 +187,12 @@ int main(int argc, char** argv) {
 
     {
       UserAdded body;
+      body.timestamp = time::Now();
       body.user_id = "skywalker";
       body.nickname = "Luke";
-      Event event(time::Now(), body);
-      std::cerr << "Example publish:\n\tcurl -d '" << JSON(event) << "' " << url << "/publish" << std::endl;
+      Event event(body);
+      std::cerr << "Example publish (timestamp will be overwritten):\n"
+                << "\tcurl -d '" << JSON(event) << "' " << url << "/publish" << std::endl;
     }
 
     std::cerr << "Read model:\n\tcurl '" << url << "/nickname?id=skywalker'" << std::flush << std::endl;
@@ -238,7 +241,9 @@ int main(int argc, char** argv) {
                 [&stream](Request r) {
                   if (r.method == "POST") {
                     try {
-                      stream.Publish(ParseJSON<Event>(r.body));
+                      auto event = ParseJSON<Event>(r.body);
+                      SetMicroTimestamp(event, time::Now());
+                      stream.Publish(std::move(event));
                       r("", HTTPResponseCode.NoContent);
                     } catch (const Exception& e) {
                       r(Error(e.What()), HTTPResponseCode.BadRequest);

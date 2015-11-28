@@ -189,6 +189,10 @@ struct WithoutParentheses<int(T)> {
   template <typename F>               \
   void ReportTimestamp(F&& f) const { \
     f(field);                         \
+  }                                   \
+  template <typename F>               \
+  void ReportTimestamp(F&& f) {       \
+    f(field);                         \
   }
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \

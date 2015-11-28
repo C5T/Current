@@ -485,7 +485,7 @@ CURRENT_STRUCT(WithTimestampUS) {
   CURRENT_TIMESTAMP(t);
 };
 CURRENT_STRUCT(WithTimestampUInt64) {
-  CURRENT_FIELD(another_t, uint64_t);
+  CURRENT_FIELD(another_t, int64_t);
   CURRENT_TIMESTAMP(another_t);
 };
 }  // namespace struct_definition_test

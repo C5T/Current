@@ -32,34 +32,49 @@ using namespace current;
 
 // Storage schema, for persistence, publish, and subscribe.
 
-CURRENT_STRUCT(UserAdded) {
+// TODO(dkorolev): Serialize the base class too.
+// CURRENT_STRUCT(BaseEvent) {
+//   CURRENT_FIELD(timestamp, std::chrono::microseconds);
+//   CURRENT_TIMESTAMP(timestamp);
+// };
+
+CURRENT_STRUCT(UserAdded) {  //, BaseEvent) {
   CURRENT_FIELD(user_id, std::string);
   CURRENT_FIELD(nickname, std::string);
+
+  // TODO(dkorolev): Serialize the base class too.
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_TIMESTAMP(timestamp);
 };
 
-CURRENT_STRUCT(PostAdded) {
+CURRENT_STRUCT(PostAdded) {  //, BaseEvent) {
   CURRENT_FIELD(post_id, std::string);
   CURRENT_FIELD(content, std::string);
   CURRENT_FIELD(author_user_id, std::string);
+
+  // TODO(dkorolev): Serialize the base class too.
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_TIMESTAMP(timestamp);
 };
 
-CURRENT_STRUCT(UserLike) {
+CURRENT_STRUCT(UserLike) {  //, BaseEvent) {
   CURRENT_FIELD(user_id, std::string);
   CURRENT_FIELD(post_id, std::string);
+
+  // TODO(dkorolev): Serialize the base class too.
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_TIMESTAMP(timestamp);
 };
 
 // `Event` is the top-level message to persist. This structure is not default-constructible, not copyable,
 // and not assignable, since it contains a `Polymorphic<>`. It's serializable and movable though.
 CURRENT_STRUCT(Event) {
-  CURRENT_FIELD(timestamp, std::chrono::microseconds);
   CURRENT_FIELD(event, (Polymorphic<UserAdded, PostAdded, UserLike>));
 
-  CURRENT_TIMESTAMP(timestamp);
+  CURRENT_TIMESTAMP(event);
 
   CURRENT_DEFAULT_CONSTRUCTOR(Event) {}
-  CURRENT_CONSTRUCTOR(Event)(std::chrono::microseconds timestamp,
-                             Polymorphic<UserAdded, PostAdded, UserLike> && event)
-      : timestamp(timestamp), event(std::move(event)) {}
+  CURRENT_CONSTRUCTOR(Event)(Polymorphic<UserAdded, PostAdded, UserLike> && event) : event(std::move(event)) {}
 };
 
 // JSON responses schema.
