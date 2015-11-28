@@ -532,7 +532,7 @@ HTTP(port).Register("/key_entry", [&api](Request request) {
 });
 auto response_prime = HTTP(GET(Printf("http://localhost:%d/key_entry?p=7", port)));
 EXPECT_EQ(200, static_cast<int>(response_prime.code));
-EXPECT_EQ("{\"entry\":{\"ms\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
+EXPECT_EQ("{\"entry\":{\"us\":42,\"prime\":7,\"index\":4}}\n", response_prime.body);
 auto response_composite = HTTP(GET(Printf("http://localhost:%d/key_entry?p=9", port)));
 EXPECT_EQ(404, static_cast<int>(response_composite.code));
 EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", response_composite.body);
@@ -550,7 +550,7 @@ HTTP(port).Register("/matrix_entry", [&api](Request request) {
 });
 const auto cell_prime = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=3", port)));
 EXPECT_EQ(200, static_cast<int>(cell_prime.code));
-EXPECT_EQ("{\"entry\":{\"ms\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
+EXPECT_EQ("{\"entry\":{\"us\":42,\"row\":{\"div10\":0},\"col\":{\"mod10\":3},\"index\":2}}\n",
           cell_prime.body);
 const auto cell_composite = HTTP(GET(Printf("http://localhost:%d/matrix_entry?a=0&b=4", port)));
 EXPECT_EQ(404, static_cast<int>(cell_composite.code));

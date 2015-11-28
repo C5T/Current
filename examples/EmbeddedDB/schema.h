@@ -51,7 +51,7 @@ CURRENT_STRUCT(UserLike) {
 // `Event` is the top-level message to persist.
 CURRENT_STRUCT(Nop){};  // TODO(dkorolev): Will go away, see below.
 CURRENT_STRUCT(Event) {
-  CURRENT_FIELD(timestamp, uint64_t);
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
   CURRENT_FIELD(event, (Polymorphic<Nop, UserAdded, PostAdded, UserLike>));
 
   // TODO(dkorolev): This will go away.
@@ -59,10 +59,7 @@ CURRENT_STRUCT(Event) {
   // and `Polymorphic` is strict to not be left uninitialized.
   CURRENT_DEFAULT_CONSTRUCTOR(Event) : event(Nop()) {}
 
-  // TODO(dkorolev): This will go away.
-  // Moving forward, `EPOCH_MICROSECONDS` is the [unique] key,
-  // and just keeping a `CURRENT_FIELD(timestamp, EPOCH_MICROSECONDS)` top-level field should be sufficient.
-  EpochMicroseconds ExtractTimestamp() const { return EpochMicroseconds(timestamp); }
+  CURRENT_TIMESTAMP(timestamp);
 };
 
 // JSON responses schema.

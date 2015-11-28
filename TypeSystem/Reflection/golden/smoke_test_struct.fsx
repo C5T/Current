@@ -18,6 +18,8 @@ type Primitives = {
   k : float
   l : double
   m : bool
+  n : int64  // microseconds.
+  o : int64  // milliseconds.
 }
 type FullTest = {
   primitives : Primitives

@@ -209,7 +209,7 @@ int main() {
 
   std::thread points_populator([&time_series, &pic_series]() {
     while (true) {
-      const double x = static_cast<double>(EpochMicroseconds(current::time::Now()).us);
+      const double x = static_cast<double>(current::time::Now().count());
       time_series.Publish(DoublePoint{x, 0.5 * (1.0 + sin(0.003 * x))});
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
@@ -218,7 +218,7 @@ int main() {
   std::thread pics_populator([&time_series, &pic_series]() {
     int index = 0;
     while (true) {
-      const double x = static_cast<double>(EpochMicroseconds(current::time::Now()).us);
+      const double x = static_cast<double>(current::time::Now().count());
       pic_series.Publish(
           StringPoint{x, current::strings::Printf("http://lorempixel.com/400/200/nature/%d/", index + 1)});
       index = (index + 1) % 10;

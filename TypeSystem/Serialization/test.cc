@@ -89,7 +89,7 @@ CURRENT_STRUCT(WithOptional) {
 
 CURRENT_STRUCT(WithTime) {
   CURRENT_FIELD(number, uint64_t, 0ull);
-  CURRENT_FIELD(micros, EpochMicroseconds);
+  CURRENT_FIELD(micros, std::chrono::microseconds, std::chrono::microseconds(0));
 };
 
 }  // namespace serialization_test
@@ -640,14 +640,14 @@ TEST(Serialization, TimeAsJSON) {
   {
     WithTime one;
     one.number = 1ull;
-    one.micros.us = 2ull;
+    one.micros = std::chrono::microseconds(2);
     EXPECT_EQ("{\"number\":1,\"micros\":2}", JSON(one));
   }
 
   {
     const auto parsed = ParseJSON<WithTime>("{\"number\":3,\"micros\":4}");
     EXPECT_EQ(3ull, parsed.number);
-    EXPECT_EQ(4ull, parsed.micros.us);
+    EXPECT_EQ(4ll, parsed.micros.count());
   }
 }
 
@@ -664,13 +664,13 @@ TEST(Serialization, TimeAsBinary) {
   {
     WithTime one;
     one.number = 5ull;
-    one.micros.us = 6ull;
+    one.micros = std::chrono::microseconds(6);
     std::ostringstream oss;
     SaveIntoBinary(oss, one);
     std::istringstream iss(oss.str());
     const auto parsed = LoadFromBinary<WithTime>(iss);
     EXPECT_EQ(5ull, parsed.number);
-    EXPECT_EQ(6ull, parsed.micros.us);
+    EXPECT_EQ(6ll, parsed.micros.count());
   }
 }
 

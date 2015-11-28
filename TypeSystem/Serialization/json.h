@@ -55,21 +55,33 @@ using current::ThreadLocalSingleton;
 
 template <typename T>
 struct AssignToRapidJSONValueImpl {
-  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const T& value) {
-    destination = value;
-  }
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const T& value) { destination = value; }
 };
 
 template <>
 struct AssignToRapidJSONValueImpl<std::string> {
-  static void WithDedicatedStringTreatment(rapidjson::Value& destination, const std::string& value) {
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::string& value) {
     destination = rapidjson::StringRef(value);
+  }
+};
+
+template <>
+struct AssignToRapidJSONValueImpl<std::chrono::microseconds> {
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::chrono::microseconds& value) {
+    destination.SetInt64(value.count());
+  }
+};
+
+template <>
+struct AssignToRapidJSONValueImpl<std::chrono::milliseconds> {
+  static void WithDedicatedTreatment(rapidjson::Value& destination, const std::chrono::milliseconds& value) {
+    destination.SetInt64(value.count());
   }
 };
 
 template <typename T>
 void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
-  AssignToRapidJSONValueImpl<T>::WithDedicatedStringTreatment(destination, value);
+  AssignToRapidJSONValueImpl<T>::WithDedicatedTreatment(destination, value);
 }
 
 template <typename T>
@@ -245,15 +257,6 @@ struct SaveIntoJSONImpl {
     } else {
       destination.SetNull();
     }
-  }
-};
-
-template <>
-struct SaveIntoJSONImpl<EpochMicroseconds> {
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const EpochMicroseconds& value) {
-    SaveIntoJSONImpl<uint64_t>::Save(destination, allocator, value.us);
   }
 };
 
@@ -555,9 +558,11 @@ struct LoadFromJSONImpl<Optional<T>> {
 };
 
 template <>
-struct LoadFromJSONImpl<EpochMicroseconds> {
-  static void Load(rapidjson::Value* source, EpochMicroseconds& destination, const std::string& path) {
-    LoadFromJSONImpl<uint64_t>::Load(source, destination.us, path);
+struct LoadFromJSONImpl<std::chrono::microseconds> {
+  static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
+    uint64_t value_as_uint64;
+    LoadFromJSONImpl<uint64_t>::Load(source, value_as_uint64, path);
+    destination = std::chrono::microseconds(value_as_uint64);
   }
 };
 

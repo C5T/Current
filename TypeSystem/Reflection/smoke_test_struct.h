@@ -16,6 +16,8 @@ CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(k, float);
   CURRENT_FIELD(l, double);
   CURRENT_FIELD(m, bool);
+  CURRENT_FIELD(n, std::chrono::microseconds);
+  CURRENT_FIELD(o, std::chrono::milliseconds);
 };
 
 CURRENT_STRUCT(FullTest) {

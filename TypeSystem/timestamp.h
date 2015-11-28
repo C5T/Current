@@ -46,8 +46,8 @@ template <typename T>
 struct ExtractTimestampImpl;
 
 struct ExtractTimestampFunctor {
-  EpochMicroseconds& result;
-  ExtractTimestampFunctor(EpochMicroseconds& result) : result(result) {}
+  std::chrono::microseconds& result;
+  ExtractTimestampFunctor(std::chrono::microseconds& result) : result(result) {}
   template <typename T>
   void operator()(T&& x) {
     ExtractTimestampImpl<current::decay<T>>::DirectlyOrFromPolymorphic(*this, std::forward<T>(x));
@@ -70,8 +70,8 @@ struct ExtractTimestampImpl<PolymorphicImpl<TS...>> {
 };
 
 template <>
-struct ExtractTimestampImpl<EpochMicroseconds> {
-  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, const EpochMicroseconds& us) {
+struct ExtractTimestampImpl<std::chrono::microseconds> {
+  static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, const std::chrono::microseconds& us) {
     functor.result = us;
   }
 };
@@ -79,7 +79,7 @@ struct ExtractTimestampImpl<EpochMicroseconds> {
 template <>
 struct ExtractTimestampImpl<uint64_t> {
   static void DirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, uint64_t us) {
-    functor.result = EpochMicroseconds(us);
+    functor.result = std::chrono::microseconds(us);
   }
 };
 
@@ -90,8 +90,8 @@ struct ExtractTimestampFromUniquePtrAsWell {};
 template <>
 struct ExtractTimestampFromUniquePtrAsWell<false> {
   template <typename E>
-  static EpochMicroseconds DoIt(E&& e) {
-    EpochMicroseconds result;
+  static std::chrono::microseconds DoIt(E&& e) {
+    std::chrono::microseconds result;
     ExtractTimestampFunctor impl(result);
     e.ReportTimestamp(impl);
     return result;
@@ -101,8 +101,8 @@ struct ExtractTimestampFromUniquePtrAsWell<false> {
 template <>
 struct ExtractTimestampFromUniquePtrAsWell<true> {
   template <typename E>
-  static EpochMicroseconds DoIt(E&& e) {
-    EpochMicroseconds result;
+  static std::chrono::microseconds DoIt(E&& e) {
+    std::chrono::microseconds result;
     ExtractTimestampFunctor impl(result);
     e->ReportTimestamp(impl);
     return result;
@@ -110,7 +110,7 @@ struct ExtractTimestampFromUniquePtrAsWell<true> {
 };
 
 template <typename E>
-EpochMicroseconds MicroTimestampOf(E&& entry) {
+std::chrono::microseconds MicroTimestampOf(E&& entry) {
   return ExtractTimestampFromUniquePtrAsWell<current::is_unique_ptr<E>::value>::template DoIt<E>(
       std::forward<E>(entry));
 }

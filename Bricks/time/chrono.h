@@ -38,38 +38,6 @@ SOFTWARE.
 namespace current {
 namespace time {
 
-struct EpochMicroseconds {
-  uint64_t us = 0ull;
-  EpochMicroseconds(uint64_t us = 0ull) : us(us) {}
-  EpochMicroseconds(std::chrono::microseconds epoch) {
-    us = std::chrono::duration_cast<std::chrono::microseconds>(epoch).count();
-  }
-  static EpochMicroseconds Invalid() { return EpochMicroseconds(static_cast<uint64_t>(-1)); }
-  bool operator==(const EpochMicroseconds& rhs) const { return us == rhs.us; }
-  bool operator!=(const EpochMicroseconds& rhs) const { return us != rhs.us; }
-  bool operator<(const EpochMicroseconds& rhs) const { return us < rhs.us; }
-  bool operator>(const EpochMicroseconds& rhs) const { return us > rhs.us; }
-  bool operator<=(const EpochMicroseconds& rhs) const { return us <= rhs.us; }
-  bool operator>=(const EpochMicroseconds& rhs) const { return us >= rhs.us; }
-  operator uint64_t() const { return us; }
-  struct Delta {
-    int64_t d;
-    Delta(int64_t d = 0ll) : d(d) {}
-    operator int64_t() const { return d; }
-  };
-  Delta operator-(const EpochMicroseconds& rhs) { return Delta(us - rhs.us); }
-  EpochMicroseconds operator+(const Delta& rhs) { return EpochMicroseconds(us + rhs.d); }
-  EpochMicroseconds operator-(const Delta& rhs) { return EpochMicroseconds(us - rhs.d); }
-  EpochMicroseconds& operator+=(const Delta& rhs) { us += rhs.d; return *this; }
-  EpochMicroseconds& operator-=(const Delta& rhs) { us -= rhs.d; return *this; }
-};
-
-}  // namespace current::time
-}  // namespace current
-
-namespace current {
-namespace time {
-
 #ifdef BRICKS_MOCK_TIME
 
 struct MockNowImpl {
@@ -83,9 +51,9 @@ inline MockNowImpl& MockNow() {
 
 inline const std::chrono::microseconds Now() { return MockNow().mock_now_value; }
 
-inline void SetNow(EpochMicroseconds us) { MockNow().mock_now_value = std::chrono::microseconds(us); }
+inline void SetNow(std::chrono::microseconds us) { MockNow().mock_now_value = us; }
 
-template<typename T>
+template <typename T>
 void SleepUntil(T) {}
 
 #else
@@ -96,9 +64,8 @@ struct EpochClockGuaranteeingMonotonicity {
   struct Impl {
     mutable uint64_t monotonic_now_us = 0ull;
     inline std::chrono::microseconds Now() const {
-      const uint64_t now_us =
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              std::chrono::system_clock::now().time_since_epoch()).count();
+      const uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                  std::chrono::system_clock::now().time_since_epoch()).count();
       monotonic_now_us = std::max(monotonic_now_us + 1, now_us);
       return std::chrono::microseconds(monotonic_now_us);
     }
@@ -108,12 +75,12 @@ struct EpochClockGuaranteeingMonotonicity {
 
 inline std::chrono::microseconds Now() { return EpochClockGuaranteeingMonotonicity::Singleton().Now(); }
 
-template<typename T>
+template <typename T>
 inline void SleepUntil(T moment) {
-  const auto now = EpochMicroseconds(Now());
-  const auto desired = EpochMicroseconds(moment);
+  const auto now = Now();
+  const auto desired = std::chrono::microseconds(moment);
   if (now < desired) {
-    std::this_thread::sleep_for(std::chrono::microseconds(desired.us - now.us));
+    std::this_thread::sleep_for(std::chrono::microseconds(desired - now));
   }
 }
 
@@ -124,25 +91,23 @@ inline void SleepUntil(T moment) {
 namespace strings {
 
 template <>
-struct FixedSizeSerializer<current::time::EpochMicroseconds> {
+struct FixedSizeSerializer<std::chrono::microseconds> {
   enum { size_in_bytes = std::numeric_limits<uint64_t>::digits10 + 1 };
-  static std::string PackToString(current::time::EpochMicroseconds x) {
+  static std::string PackToString(std::chrono::microseconds x) {
     std::ostringstream os;
-    os << std::setfill('0') << std::setw(size_in_bytes) << static_cast<uint64_t>(x.us);
+    os << std::setfill('0') << std::setw(size_in_bytes) << static_cast<uint64_t>(x.count());
     return os.str();
   }
-  static current::time::EpochMicroseconds UnpackFromString(std::string const& s) {
+  static std::chrono::microseconds UnpackFromString(std::string const& s) {
     uint64_t x;
     std::istringstream is(s);
     is >> x;
-    return current::time::EpochMicroseconds(x);
+    return std::chrono::microseconds(x);
   }
 };
 
 }  // namespace current::strings
 
 }  // namespace current
-
-using current::time::EpochMicroseconds;
 
 #endif  // BRICKS_TIME_CHRONO_H

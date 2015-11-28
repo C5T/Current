@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   assert(!FLAGS_input.empty());
   const auto contents = current::FileSystem::ReadFileAsString(FLAGS_input);
 
-  CompactTSV::Unpack(
-      [](const std::vector<std::string>& v) { std::cout << current::strings::Join(v, '\t') << std::endl; },
-      contents);
+  CompactTSV::Unpack([](const std::vector<std::string>& v) {
+    std::cout << current::strings::Join(v, '\t') << std::endl;
+  }, contents);
 }

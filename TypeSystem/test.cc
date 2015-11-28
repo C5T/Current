@@ -427,7 +427,7 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
 }
 
 CURRENT_STRUCT(WithTimestampUS) {
-  CURRENT_FIELD(t, EpochMicroseconds);
+  CURRENT_FIELD(t, std::chrono::microseconds);
   CURRENT_TIMESTAMP(t);
 };
 
@@ -439,15 +439,15 @@ CURRENT_STRUCT(WithTimestampUInt64) {
 TEST(TypeSystemTest, TimestampSimple) {
   {
     WithTimestampUS a;
-    a.t = EpochMicroseconds(42ull);
-    EXPECT_EQ(42ull, MicroTimestampOf(a));
-    EXPECT_EQ(42ull, MicroTimestampOf(const_cast<const WithTimestampUS&>(a)));
+    a.t = std::chrono::microseconds(42ull);
+    EXPECT_EQ(42ll, MicroTimestampOf(a).count());
+    EXPECT_EQ(42ll, MicroTimestampOf(const_cast<const WithTimestampUS&>(a)).count());
   }
   {
     WithTimestampUInt64 x;
     x.another_t = 43ull;
-    EXPECT_EQ(43ull, MicroTimestampOf(x));
-    EXPECT_EQ(43ull, MicroTimestampOf(const_cast<const WithTimestampUInt64&>(x)));
+    EXPECT_EQ(43ll, MicroTimestampOf(x).count());
+    EXPECT_EQ(43ll, MicroTimestampOf(const_cast<const WithTimestampUInt64&>(x)).count());
   }
 }
 
@@ -460,17 +460,17 @@ CURRENT_STRUCT(WithTimestampPolymorphic) {
 
 TEST(TypeSystemTest, TimestampPolymorphic) {
   WithTimestampUS a;
-  a.t = 101ull;
+  a.t = std::chrono::microseconds(101);
   WithTimestampUInt64 b;
   b.another_t = 102ull;
 
   WithTimestampPolymorphic z1(a);
-  EXPECT_EQ(101ull, MicroTimestampOf(z1));
-  z1.magic.Value<WithTimestampUS>().t = 201ull;
-  EXPECT_EQ(201ull, MicroTimestampOf(z1));
+  EXPECT_EQ(101ll, MicroTimestampOf(z1).count());
+  z1.magic.Value<WithTimestampUS>().t = std::chrono::microseconds(201);
+  EXPECT_EQ(201ll, MicroTimestampOf(z1).count());
 
   WithTimestampPolymorphic z2(b);
-  EXPECT_EQ(102ull, MicroTimestampOf(z2));
+  EXPECT_EQ(102ll, MicroTimestampOf(z2).count());
   z2.magic.Value<WithTimestampUInt64>().another_t = 202ull;
-  EXPECT_EQ(202ull, MicroTimestampOf(z2));
+  EXPECT_EQ(202ll, MicroTimestampOf(z2).count());
 }

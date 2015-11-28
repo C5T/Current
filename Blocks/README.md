@@ -47,33 +47,24 @@ HTTP(port).Register("/found", [](Request r) {
 ```
 ```cpp
 // An input record that would be passed in as a JSON.
-struct PennyInput {
-  std::string op;
-  std::vector<int> x;
-  std::string error;  // Not serialized.
-  template <typename A> void serialize(A& ar) {
-    ar(CEREAL_NVP(op), CEREAL_NVP(x));
-  }
-  void FromInvalidJSON(const std::string& input_json) {
-    error = "JSON parse error: " + input_json;
-  }
+CURRENT_STRUCT(PennyInput) {
+  CURRENT_FIELD(op, std::string);
+  CURRENT_FIELD(x, std::vector<int32_t>);
+  CURRENT_DEFAULT_CONSTRUCTOR(PennyInput) {}
+  CURRENT_CONSTRUCTOR(PennyInput)(const std::string& op, const std::vector<int32_t>& x) : op(op), x(x) {}
 };
 
 // An output record that would be sent back as a JSON.
-struct PennyOutput {
-  std::string error;
-  int result;
-  template <typename A> void serialize(A& ar) {
-    ar(CEREAL_NVP(error), CEREAL_NVP(result));
-  }
+CURRENT_STRUCT(PennyOutput) {
+  CURRENT_FIELD(error, std::string);
+  CURRENT_FIELD(result, int32_t);
+  CURRENT_CONSTRUCTOR(PennyOutput)(const std::string& error, int32_t result) : error(error), result(result) {}
 }; 
 
 // Doing Penny-level arithmetics for fun and performance testing.
 HTTP(port).Register("/penny", [](Request r) {
-  const auto input = CerealizeParseJSON<PennyInput>(r.body);
-  if (!input.error.empty()) {
-    r(PennyOutput{input.error, 0});
-  } else {
+  try {
+    const auto input = ParseJSON<PennyInput>(r.body);
     if (input.op == "add") {
       if (!input.x.empty()) {
         int result = 0;
@@ -97,6 +88,9 @@ HTTP(port).Register("/penny", [](Request r) {
     } else {
       r(PennyOutput{"Unknown operation: " + input.op, 0});
     }
+  } catch (const Exception& e) {
+    // TODO(dkorolev): Catch the right exception type.
+    r(PennyOutput{e.what(), 0});
   }
 });
 ```

@@ -75,7 +75,7 @@ class EventCollectorHTTPServer {
  public:
   EventCollectorHTTPServer(int http_port,
                            std::ostream& ostream,
-                           const EpochMicroseconds::Delta tick_interval_us,
+                           std::chrono::microseconds tick_interval_us,
                            const std::string& route = "/log",
                            const std::string& response_text = "OK\n",
                            std::function<void(const LogEntryWithHeaders&)> callback = {})
@@ -85,7 +85,7 @@ class EventCollectorHTTPServer {
         response_text_(response_text),
         callback_(callback),
         tick_interval_us_(tick_interval_us),
-        send_ticks_(tick_interval_us_ > 0),
+        send_ticks_(tick_interval_us_.count() > 0),
         last_event_t_(0u),
         events_pushed_(0u),
         timer_thread_(&EventCollectorHTTPServer::TimerThreadFunction, this) {
@@ -94,8 +94,9 @@ class EventCollectorHTTPServer {
                   [this](Request r) {
                     LogEntryWithHeaders entry;
                     {
+                      const auto now = current::time::Now();
                       std::lock_guard<std::mutex> lock(mutex_);
-                      entry.t = EpochMicroseconds(current::time::Now()).us;
+                      entry.t = now.count();
                       entry.m = r.method;
                       entry.u = r.url.url_without_parameters;
                       entry.q = r.url.AllQueryParameters();
@@ -104,7 +105,7 @@ class EventCollectorHTTPServer {
                       entry.f = r.url.fragment;
                       ostream_ << CerealizeJSON(entry, "log_entry") << std::endl;
                       ++events_pushed_;
-                      last_event_t_ = entry.t;
+                      last_event_t_ = now;
                       if (callback_) {
                         callback_(entry);
                       }
@@ -124,21 +125,21 @@ class EventCollectorHTTPServer {
   void TimerThreadFunction() {
     while (send_ticks_) {
       std::unique_lock<std::mutex> lock(mutex_);
-      const uint64_t now = EpochMicroseconds(current::time::Now()).us;
-      const uint64_t dt = now - last_event_t_;
+      const std::chrono::microseconds now = current::time::Now();
+      const std::chrono::microseconds dt = now - last_event_t_;
       if (dt >= tick_interval_us_) {
         LogEntryWithHeaders entry;
-        entry.t = now;
+        entry.t = now.count();
         entry.m = "TICK";
         ostream_ << CerealizeJSON(entry, "log_entry") << std::endl;
         ++events_pushed_;
-        last_event_t_ = entry.t;
+        last_event_t_ = now;
         if (callback_) {
           callback_(entry);
         }
       } else {
         lock.unlock();
-        std::this_thread::sleep_for(std::chrono::microseconds(tick_interval_us_ - dt + 1));
+        std::this_thread::sleep_for(tick_interval_us_ - dt + std::chrono::microseconds(1));
       }
     }
   }
@@ -153,9 +154,9 @@ class EventCollectorHTTPServer {
   const std::string response_text_;
   std::function<void(const LogEntryWithHeaders&)> callback_;
 
-  const uint64_t tick_interval_us_;
+  const std::chrono::microseconds tick_interval_us_;
   std::atomic_bool send_ticks_;
-  uint64_t last_event_t_;
+  std::chrono::microseconds last_event_t_;
   std::atomic_size_t events_pushed_;
   std::thread timer_thread_;
 };

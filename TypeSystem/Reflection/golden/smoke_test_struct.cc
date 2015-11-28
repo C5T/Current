@@ -17,6 +17,8 @@ struct Primitives {
   float k;
   double l;
   bool m;
+  std::chrono::microseconds n;
+  std::chrono::milliseconds o;
 };
 struct FullTest {
   Primitives primitives;

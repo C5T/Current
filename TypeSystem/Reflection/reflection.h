@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../optional.h"
 #include "../polymorphic.h"
 #include "../struct.h"
+#include "../timestamp.h"
 
 #include "../../Bricks/util/singleton.h"
 

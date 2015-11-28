@@ -72,8 +72,9 @@ CURRENT_STRUCT(Record) {
 CURRENT_STRUCT(RecordWithTimestamp) {
   // TODO(dkorolev): Make the `EPOCH_MILLISECONDS` type serializable.
   CURRENT_FIELD(s, std::string);
-  CURRENT_FIELD(t, EpochMicroseconds);
-  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "", EpochMicroseconds t = EpochMicroseconds(0ull))
+  CURRENT_FIELD(t, std::chrono::microseconds);
+  CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
+                                           std::chrono::microseconds t = std::chrono::microseconds(0ull))
       : s(s), t(t) {}
   CURRENT_TIMESTAMP(t);
 };
@@ -268,11 +269,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 seconds ago respectively.
   auto exposed_stream = sherlock::Stream<RecordWithTimestamp>("exposed");
-  const EpochMicroseconds now = current::time::Now();
-  exposed_stream.Emplace("s[0]", now - EpochMicroseconds::Delta(40000));
-  exposed_stream.Emplace("s[1]", now - EpochMicroseconds::Delta(30000));
-  exposed_stream.Emplace("s[2]", now - EpochMicroseconds::Delta(20000));
-  exposed_stream.Emplace("s[3]", now - EpochMicroseconds::Delta(10000));
+  const std::chrono::microseconds now = current::time::Now();
+  exposed_stream.Emplace("s[0]", now - std::chrono::microseconds(40000));
+  exposed_stream.Emplace("s[1]", now - std::chrono::microseconds(30000));
+  exposed_stream.Emplace("s[2]", now - std::chrono::microseconds(20000));
+  exposed_stream.Emplace("s[3]", now - std::chrono::microseconds(10000));
 
   // Collect them and store as strings.
   // Required since we don't mock time for this test, and therefore can't do exact match.

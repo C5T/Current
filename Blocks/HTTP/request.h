@@ -55,7 +55,7 @@ struct Request final {
   const std::string method;
   const current::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
-  const EpochMicroseconds timestamp;
+  const std::chrono::microseconds timestamp;
 
   explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection)
       : unique_connection(std::move(connection)),

@@ -100,7 +100,8 @@ TEST(Iris, Demo) {
                   }, std::move(request));
                 });
 
-  // The input file is in the `golden` directory for it to be successfully picked up by `scripts/full-test.sh`.
+  // The input file is in the `golden` directory for it to be successfully picked up by
+  // `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
             HTTP(POSTFromFile(Printf("http://localhost:%d/import%d", FLAGS_iris_port, run_index),
                               current::FileSystem::JoinPath("golden", "dataset.tsv"),

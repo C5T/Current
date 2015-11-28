@@ -107,7 +107,7 @@ struct PolymorphicImpl<T, TS...> {
     }
   };
 
-  PolymorphicImpl() {};
+  PolymorphicImpl(){};
 
   PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
@@ -118,18 +118,14 @@ struct PolymorphicImpl<T, TS...> {
 
   PolymorphicImpl(PolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) {}
 
-  void operator=(PolymorphicImpl&& rhs) {
-    object_ = std::move(rhs.object_);
-  }
+  void operator=(PolymorphicImpl&& rhs) { object_ = std::move(rhs.object_); }
 
   template <typename X>
   void operator=(X&& input) {
     TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
   }
 
-  void operator=(std::nullptr_t) {
-    object_ = nullptr;
-  }
+  void operator=(std::nullptr_t) { object_ = nullptr; }
 
   template <typename F>
   void Call(F&& f) {
@@ -151,9 +147,7 @@ struct PolymorphicImpl<T, TS...> {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
-  bool Exists() const {
-    return (object_.get() != nullptr);
-  }
+  bool Exists() const { return (object_.get() != nullptr); }
 
   template <typename X>
   X& Value() {
