@@ -195,17 +195,30 @@ struct SaveIntoJSONImpl {
     }
   };
 
+  // No-op function for `CurrentSuper`.
+  template <typename TT = T>
+  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Save(rapidjson::Value&,
+                                                               rapidjson::Document::AllocatorType&,
+                                                               const TT&,
+                                                               bool) {}
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Save(rapidjson::Value& destination,
-                                               rapidjson::Document::AllocatorType& allocator,
-                                               const TT& source) {
-    destination.SetObject();
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Save(
+      rapidjson::Value& destination,
+      rapidjson::Document::AllocatorType& allocator,
+      const TT& source,
+      bool set_object_already_called = false) {
+    using DECAYED_T = current::decay<TT>;
+    using SUPER = current::reflection::SuperType<DECAYED_T>;
+
+    if (!set_object_already_called) {
+      destination.SetObject();
+    }
+    SaveIntoJSONImpl<SUPER>::Save(destination, allocator, dynamic_cast<const SUPER&>(source), true);
 
     SaveFieldVisitor visitor(destination, allocator);
-    current::reflection::VisitAllFields<current::decay<TT>,
-                                        current::reflection::FieldNameAndImmutableValue>::WithObject(source,
-                                                                                                     visitor);
+    current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(
+        source, visitor);
   }
 
   // `enum` and `enum class`.
@@ -297,15 +310,24 @@ struct LoadFromJSONImpl {
     }
   };
 
+  // No-op function required for compilation.
+  template <typename TT = T>
+  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Load(rapidjson::Value*, T&, const std::string&) {}
+
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(rapidjson::Value* source,
-                                               T& destination,
-                                               const std::string& path) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Load(
+      rapidjson::Value* source, T& destination, const std::string& path) {
+    using DECAYED_T = current::decay<TT>;
+    using SUPER = current::reflection::SuperType<DECAYED_T>;
+
     if (source && source->IsObject()) {
+      if (!std::is_same<SUPER, CurrentSuper>::value) {
+        LoadFromJSONImpl<SUPER>::Load(source, destination, path);
+      }
       LoadFieldVisitor visitor(*source, path);
-      current::reflection::VisitAllFields<current::decay<T>, current::reflection::FieldNameAndMutableValue>::
-          WithObject(destination, visitor);
+      current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndMutableValue>::WithObject(
+          destination, visitor);
     } else {
       throw JSONSchemaException("object", source, path);
     }

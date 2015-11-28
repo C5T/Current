@@ -76,6 +76,8 @@ CURRENT_STRUCT(ComplexSerializable) {
   size_t length_of_v() const { return v.size(); }
 };
 
+CURRENT_STRUCT(DerivedSerializable, Serializable) { CURRENT_FIELD(d, double); };
+
 CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 
 CURRENT_STRUCT(WithTrivialMap) { CURRENT_FIELD(m, (std::map<std::string, std::string>)); };
@@ -116,6 +118,14 @@ TEST(Serialization, Binary) {
     complex_object.z = simple_object;
     SaveIntoBinary(ofs, complex_object);
 
+    DerivedSerializable derived_object;
+    derived_object.i = 48;
+    derived_object.s = "baz";
+    derived_object.b = true;
+    derived_object.e = Enum::SET;
+    derived_object.d = 0.125;
+    SaveIntoBinary(ofs, derived_object);
+
     WithNontrivialMap with_nontrivial_map;
     with_nontrivial_map.q[simple_object] = "wow";
     with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
@@ -123,13 +133,13 @@ TEST(Serialization, Binary) {
   }
   {
     std::ifstream ifs(tmp_file);
-    Serializable a = LoadFromBinary<Serializable>(ifs);
+    const Serializable a = LoadFromBinary<Serializable>(ifs);
     EXPECT_EQ(42ull, a.i);
     EXPECT_EQ("foo", a.s);
     EXPECT_TRUE(a.b);
     EXPECT_EQ(Enum::SET, a.e);
 
-    ComplexSerializable b = LoadFromBinary<ComplexSerializable>(ifs);
+    const ComplexSerializable b = LoadFromBinary<ComplexSerializable>(ifs);
     EXPECT_EQ(43ull, b.j);
     EXPECT_EQ("bar", b.q);
     ASSERT_EQ(2u, b.v.size());
@@ -140,9 +150,16 @@ TEST(Serialization, Binary) {
     EXPECT_TRUE(b.z.b);
     EXPECT_EQ(Enum::SET, b.z.e);
 
-    WithNontrivialMap m = LoadFromBinary<WithNontrivialMap>(ifs);
+    const DerivedSerializable c = LoadFromBinary<DerivedSerializable>(ifs);
+    EXPECT_EQ(48ull, c.i);
+    EXPECT_EQ("baz", c.s);
+    EXPECT_TRUE(c.b);
+    EXPECT_EQ(Enum::SET, c.e);
+    EXPECT_DOUBLE_EQ(0.125, c.d);
+
+    const WithNontrivialMap m = LoadFromBinary<WithNontrivialMap>(ifs);
     EXPECT_EQ(2u, m.q.size());
-    EXPECT_EQ("yes", m.q[Serializable(1, "one", false, Enum::DEFAULT)]);
+    EXPECT_EQ("yes", m.q.at(Serializable(1, "one", false, Enum::DEFAULT)));
 
     std::istringstream is("Invalid");
     ASSERT_THROW(LoadFromBinary<ComplexSerializable>(is), BinaryLoadFromStreamException);
@@ -169,7 +186,7 @@ TEST(Serialization, JSON) {
   EXPECT_EQ("{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}", simple_object_as_json);
 
   {
-    Serializable a = ParseJSON<Serializable>(simple_object_as_json);
+    const Serializable a = ParseJSON<Serializable>(simple_object_as_json);
     EXPECT_EQ(42ull, a.i);
     EXPECT_EQ("foo", a.s);
     EXPECT_TRUE(a.b);
@@ -190,7 +207,7 @@ TEST(Serialization, JSON) {
       complex_object_as_json);
 
   {
-    ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);
+    const ComplexSerializable b = ParseJSON<ComplexSerializable>(complex_object_as_json);
     EXPECT_EQ(43ull, b.j);
     EXPECT_EQ("bar", b.q);
     ASSERT_EQ(2u, b.v.size());
@@ -210,6 +227,25 @@ TEST(Serialization, JSON) {
   EXPECT_EQ(
       "{\"j\":43,\"q\":\"bar\",\"v\":[\"one\",\"two\"],\"z\":{\"i\":42,\"s\":\"foo\",\"b\":true,\"e\":100}}",
       JSON(complex_object));
+
+  // Derived struct serialization.
+  DerivedSerializable derived_object;
+  derived_object.i = 48;
+  derived_object.s = "baz";
+  derived_object.b = true;
+  derived_object.e = Enum::SET;
+  derived_object.d = 0.125;
+  const std::string derived_object_as_json = JSON(derived_object);
+  EXPECT_EQ("{\"i\":48,\"s\":\"baz\",\"b\":true,\"e\":100,\"d\":0.125}", derived_object_as_json);
+
+  {
+    const DerivedSerializable c = ParseJSON<DerivedSerializable>(derived_object_as_json);
+    EXPECT_EQ(48ull, c.i);
+    EXPECT_EQ("baz", c.s);
+    EXPECT_TRUE(c.b);
+    EXPECT_EQ(Enum::SET, c.e);
+    EXPECT_DOUBLE_EQ(0.125, c.d);
+  }
 
   // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
   {
