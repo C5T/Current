@@ -32,25 +32,36 @@ SOFTWARE.
 namespace current {
 namespace sfinae {
 
-// Whether an `Exists()` method is defined for a type.
+// Whether an `ExistsImpl()` method is defined for a type.
 template <typename ENTRY>
-constexpr bool HasExistsMethod(char) {
+constexpr bool HasExistsImplMethod(char) {
   return false;
 }
 
 template <typename ENTRY>
-constexpr auto HasExistsMethod(int) -> decltype(std::declval<const ENTRY>().Exists(), bool()) {
+constexpr auto HasExistsImplMethod(int) -> decltype(std::declval<const ENTRY>().ExistsImpl(), bool()) {
   return true;
 }
 
-// Whether a `Value()` method is defined for a type.
+// Whether a `ValueImpl()` method is defined for a type.
 template <typename ENTRY>
-constexpr bool HasValueMethod(char) {
+constexpr bool HasValueImplMethod(char) {
   return false;
 }
 
 template <typename ENTRY>
-constexpr auto HasValueMethod(int) -> decltype(std::declval<const ENTRY>().Value(), bool()) {
+constexpr auto HasValueImplMethod(int) -> decltype(std::declval<const ENTRY>().ValueImpl(), bool()) {
+  return true;
+}
+
+// Whether a `CloneImpl()` method is defined for a type.
+template <typename ENTRY>
+constexpr bool HasCloneImplMethod(char) {
+  return false;
+}
+
+template <typename ENTRY>
+constexpr auto HasCloneImplMethod(int) -> decltype(std::declval<const ENTRY>().CloneImpl(), bool()) {
   return true;
 }
 

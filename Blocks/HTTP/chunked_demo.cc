@@ -206,11 +206,11 @@ int main() {
                           "application/json; charset=utf-8",
                           {{"Connection", "keep-alive"}, {"Access-Control-Allow-Origin", "*"}});
                       std::string data;
-                      const double begin = static_cast<double>(Now());
+                      const double begin = static_cast<double>(Now().count());
                       const double t = atof(r.url.query["t"].c_str());
                       const double end = (t > 0) ? (begin + t * 1e3) : 1e18;
                       double current;
-                      while ((current = static_cast<double>(Now())) < end) {
+                      while ((current = static_cast<double>(Now().count())) < end) {
                         std::this_thread::sleep_for(std::chrono::milliseconds(rand() % 100 + 100));
                         const double x = current;
                         const double y = sin(5e-3 * (current - begin));

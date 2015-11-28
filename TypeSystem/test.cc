@@ -174,7 +174,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
   {
     ImmutableOptional<int> foo(make_unique<int>(100));
     ASSERT_TRUE(Exists(foo));
-    EXPECT_EQ(100, foo.Value());
+    EXPECT_EQ(100, foo.ValueImpl());
     EXPECT_EQ(100, static_cast<int>(Value(foo)));
     EXPECT_EQ(100, static_cast<int>(Value(Value(foo))));
   }
@@ -206,7 +206,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
     struct_definition_test::Foo bare;
     ImmutableOptional<struct_definition_test::Foo> wrapped(FromBarePointer(), &bare);
     ASSERT_TRUE(Exists(wrapped));
-    EXPECT_EQ(42u, wrapped.Value().i);
+    EXPECT_EQ(42u, wrapped.ValueImpl().i);
     EXPECT_EQ(42u, Value(wrapped).i);
     EXPECT_EQ(42u, Value(Value(wrapped)).i);
   }
@@ -215,7 +215,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
     ImmutableOptional<struct_definition_test::Foo> wrapped(FromBarePointer(), &bare);
     const ImmutableOptional<struct_definition_test::Foo>& double_wrapped(wrapped);
     ASSERT_TRUE(Exists(double_wrapped));
-    EXPECT_EQ(42u, double_wrapped.Value().i);
+    EXPECT_EQ(42u, double_wrapped.ValueImpl().i);
     EXPECT_EQ(42u, Value(double_wrapped).i);
     EXPECT_EQ(42u, Value(Value(double_wrapped)).i);
   }
@@ -223,7 +223,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
     const auto lambda =
         [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(make_unique<int>(x)); };
     ASSERT_TRUE(Exists(lambda(101)));
-    EXPECT_EQ(102, lambda(102).Value());
+    EXPECT_EQ(102, lambda(102).ValueImpl());
     EXPECT_EQ(102, Value(lambda(102)));
   }
 }
@@ -231,7 +231,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
 TEST(TypeSystemTest, Optional) {
   Optional<int> foo(make_unique<int>(200));
   ASSERT_TRUE(Exists(foo));
-  EXPECT_EQ(200, foo.Value());
+  EXPECT_EQ(200, foo.ValueImpl());
   EXPECT_EQ(200, Value(foo));
   foo = nullptr;
   ASSERT_FALSE(Exists(foo));
@@ -278,41 +278,51 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
     const Polymorphic<Foo>& cp(p);
 
     {
-      ASSERT_TRUE(p.Has<Foo>());
-      const auto& foo = p.Value<Foo>();
+      ASSERT_TRUE(p.PolymorphicExistsImpl<Foo>());
+      const auto& foo = p.PolymorphicValueImpl<Foo>();
       EXPECT_EQ(42u, foo.i);
     }
     {
-      ASSERT_TRUE(cp.Has<Foo>());
-      const auto& foo = cp.Value<Foo>();
+      ASSERT_TRUE(cp.PolymorphicExistsImpl<Foo>());
+      const auto& foo = cp.PolymorphicValueImpl<Foo>();
+      EXPECT_EQ(42u, foo.i);
+    }
+    {
+      ASSERT_TRUE(p.PolymorphicExistsImpl<Foo>());
+      const auto& foo = Value<Foo>(p);
+      EXPECT_EQ(42u, foo.i);
+    }
+    {
+      ASSERT_TRUE(cp.PolymorphicExistsImpl<Foo>());
+      const auto& foo = Value<Foo>(cp);
       EXPECT_EQ(42u, foo.i);
     }
 
-    ++p.Value<Foo>().i;
+    ++p.PolymorphicValueImpl<Foo>().i;
 
-    EXPECT_EQ(43u, p.Value<Foo>().i);
-    EXPECT_EQ(43u, cp.Value<Foo>().i);
+    EXPECT_EQ(43u, p.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(43u, cp.PolymorphicValueImpl<Foo>().i);
 
     p = Foo(100u);
-    EXPECT_EQ(100u, p.Value<Foo>().i);
-    EXPECT_EQ(100u, cp.Value<Foo>().i);
+    EXPECT_EQ(100u, p.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(100u, cp.PolymorphicValueImpl<Foo>().i);
 
     p = static_cast<const Foo&>(Foo(101u));
-    EXPECT_EQ(101u, p.Value<Foo>().i);
-    EXPECT_EQ(101u, cp.Value<Foo>().i);
+    EXPECT_EQ(101u, p.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(101u, cp.PolymorphicValueImpl<Foo>().i);
 
     p = std::move(Foo(102u));
-    EXPECT_EQ(102u, p.Value<Foo>().i);
-    EXPECT_EQ(102u, cp.Value<Foo>().i);
+    EXPECT_EQ(102u, p.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(102u, cp.PolymorphicValueImpl<Foo>().i);
 
     p = make_unique<Foo>(103u);
-    EXPECT_EQ(103u, p.Value<Foo>().i);
-    EXPECT_EQ(103u, cp.Value<Foo>().i);
+    EXPECT_EQ(103u, p.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(103u, cp.PolymorphicValueImpl<Foo>().i);
 
     // TODO(dkorolev): Unsafe? Remove?
     p = new Foo(104u);
-    EXPECT_EQ(104u, p.Value<Foo>().i);
-    EXPECT_EQ(104u, cp.Value<Foo>().i);
+    EXPECT_EQ(104u, p.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(104u, cp.PolymorphicValueImpl<Foo>().i);
   }
 
   {
@@ -352,12 +362,22 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
   {
     const Polymorphic<Foo> p((Foo()));
     try {
-      p.Value<Bar>();
+      p.PolymorphicValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
-      p.Value<Bar>();
+      p.PolymorphicValueImpl<Bar>();
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (NoValueOfType<Bar>) {
+    }
+    try {
+      Value<Bar>(p);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
+    } catch (NoValue) {
+    }
+    try {
+      Value<Bar>(p);
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
@@ -394,12 +414,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     EXPECT_EQ("Foo 1", v.s);
 
     try {
-      p.Value<Bar>();
+      p.PolymorphicValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
-      p.Value<Bar>();
+      p.PolymorphicValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
@@ -410,19 +430,19 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
 
-    p.Value<DerivedFromFoo>().baz.v1.resize(3);
+    p.PolymorphicValueImpl<DerivedFromFoo>().baz.v1.resize(3);
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
 
     try {
-      p.Value<Bar>();
+      p.PolymorphicValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
-      p.Value<Bar>();
+      p.PolymorphicValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
@@ -440,10 +460,10 @@ TEST(TypeSystemTest, PolymorphicRequiredAndOptional) {
 
   {
     Polymorphic<Foo, Bar> a = Foo(1);
-    EXPECT_EQ(1ull, a.Value<Foo>().i);
+    EXPECT_EQ(1ull, a.PolymorphicValueImpl<Foo>().i);
 
     Polymorphic<Foo, Bar> b = std::move(a);
-    EXPECT_EQ(1ull, b.Value<Foo>().i);
+    EXPECT_EQ(1ull, b.PolymorphicValueImpl<Foo>().i);
   }
 
   {
@@ -455,7 +475,7 @@ TEST(TypeSystemTest, PolymorphicRequiredAndOptional) {
     EXPECT_TRUE(b2);
 
     try {
-      x.Value<Foo>();
+      x.PolymorphicValueImpl<Foo>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Foo>) {
     }
@@ -525,12 +545,12 @@ TEST(TypeSystemTest, TimestampPolymorphic) {
 
   WithTimestampPolymorphic z1(a);
   EXPECT_EQ(101ll, MicroTimestampOf(z1).count());
-  z1.magic.Value<WithTimestampUS>().t = std::chrono::microseconds(201);
+  z1.magic.PolymorphicValueImpl<WithTimestampUS>().t = std::chrono::microseconds(201);
   EXPECT_EQ(201ll, MicroTimestampOf(z1).count());
 
   WithTimestampPolymorphic z2(b);
   EXPECT_EQ(102ll, MicroTimestampOf(z2).count());
-  z2.magic.Value<WithTimestampUInt64>().another_t = 202ull;
+  z2.magic.PolymorphicValueImpl<WithTimestampUInt64>().another_t = 202ull;
   EXPECT_EQ(202ll, MicroTimestampOf(z2).count());
 }
 
