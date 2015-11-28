@@ -77,11 +77,13 @@ class RipCurrentMockableErrorHandler {
  public:
   typedef std::function<void(const std::string& error_message)> handler_type;
 
+  // LCOV_EXCL_START
   RipCurrentMockableErrorHandler()
       : handler_([](const std::string& error_message) {
           std::cerr << error_message;
           std::exit(-1);
         }) {}
+  // LCOV_EXCL_STOP
 
   void HandleError(const std::string& error_message) const { handler_(error_message); }
 
@@ -270,10 +272,12 @@ class EntriesConsumer {
 class DummyNoEntryTypeAcceptor : public EntriesConsumer<InputPolicy::DoesNotAccept> {
  public:
   virtual ~DummyNoEntryTypeAcceptor() = default;
+  // LCOV_EXCL_START
   void Accept(const DummyNoEntryType&) override {
     current::Singleton<RipCurrentMockableErrorHandler>().HandleError(
         "Internal error: Attepmted to send entries into a non-accepting block.");
   }
+  // LCOV_EXCL_STOP
 };
 
 // Run context for RipCurrent allows to run it in background, foreground, or scoped.
@@ -292,7 +296,7 @@ class RipCurrentRunContext {
   }
   ~RipCurrentRunContext() {
     if (!sync_called_) {
-      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);
+      current::Singleton<RipCurrentMockableErrorHandler>().HandleError(error_message_);  // LCOV_EXCL_LINE
     }
   }
 
@@ -405,7 +409,7 @@ class NextHandlerInitializer {
 
   // TODO(dkorolev): Here be RTTI, per type than can be emitted.
   void Accept(const H2O& x) { impl_.f(x); }
-  void Accept(const DummyNoEntryType&) {}
+  void Accept(const DummyNoEntryType&) {}  // LCOV_EXCL_LINE
 
  private:
   struct NextHandlerEarlyInitializer {

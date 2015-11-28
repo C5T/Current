@@ -48,8 +48,10 @@ struct EnumNameSingletonImpl {
     if (names_.count(type_index) != 0u) {
       return names_.at(type_index);
     } else {
+      // LCOV_EXCL_START
       std::cerr << "Enum is not registered in `EnumNameSingletonImpl`: " << typeid(T).name() << std::endl;
       std::exit(-1);
+      // LCOV_EXCL_STOP
     }
   }
 

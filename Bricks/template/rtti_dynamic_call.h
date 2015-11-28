@@ -42,6 +42,7 @@ SOFTWARE.
 namespace current {
 namespace metaprogramming {
 
+// LCOV_EXCL_START
 struct RTTIException : Exception {
   RTTIException() = delete;
   explicit RTTIException(const std::string& s) : Exception(s) {}
@@ -78,9 +79,13 @@ struct SpecificUncastableTypeException : UncastableTypeException {
       : UncastableTypeException(typeid(BASE).name() + std::string(" -> ") + typeid(DERIVED).name()) {}
 };
 
+// LCOV_EXCL_STOP
+
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase {
-  virtual void Handle(BASE&&, F&&, ARGS&&...) const { throw SpecificUnhandledTypeException<BASE>(); }
+  virtual void Handle(BASE&&, F&&, ARGS&&...) const {
+    throw SpecificUnhandledTypeException<BASE>();  // LCOV_EXCL_LINE
+  }
 };
 
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
@@ -91,7 +96,7 @@ struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
     if (derived) {
       f(*derived, std::forward<ARGS>(args)...);
     } else {
-      throw SpecificUncastableTypeException<BASE, DERIVED>();
+      throw SpecificUncastableTypeException<BASE, DERIVED>();  // LCOV_EXCL_LINE
     }
   }
 };
@@ -149,7 +154,7 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
   if (handler != map.end()) {
     return handler->second.get();
   } else {
-    throw SpecificUnlistedTypeException<BASE>();
+    throw SpecificUnlistedTypeException<BASE>();  // LCOV_EXCL_LINE
   }
 }
 

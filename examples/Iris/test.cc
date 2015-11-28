@@ -130,6 +130,7 @@ TEST(Iris, Demo) {
   EXPECT_DOUBLE_EQ(1.8, flower2.PW);
   EXPECT_EQ("virginica", flower2.label);
 
+  // LCOV_EXCL_START
   if (FLAGS_run) {
     // Ref.: http://localhost:3000/get?id=42
     HTTP(FLAGS_iris_port)
@@ -212,4 +213,5 @@ TEST(Iris, Demo) {
 
     HTTP(FLAGS_iris_port).Join();
   }
+  // LCOV_EXCL_STOP
 }

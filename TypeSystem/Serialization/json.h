@@ -329,7 +329,7 @@ struct LoadFromJSONImpl {
       current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndMutableValue>::WithObject(
           destination, visitor);
     } else {
-      throw JSONSchemaException("object", source, path);
+      throw JSONSchemaException("object", source, path);  // LCOV_EXCL_LINE
     }
   }
 
@@ -341,7 +341,7 @@ struct LoadFromJSONImpl {
     if (source && source->IsNumber()) {
       destination = static_cast<T>(source->GetUint64());
     } else {
-      throw JSONSchemaException("number", source, path);
+      throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
     }
   }
 
@@ -352,7 +352,7 @@ struct LoadFromJSONImpl {
     if (source && source->IsNumber()) {
       destination = static_cast<T>(source->GetInt64());
     } else {
-      throw JSONSchemaException("number", source, path);
+      throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
     }
   }
 
@@ -361,7 +361,7 @@ struct LoadFromJSONImpl {
     if (source && source->IsNumber()) {
       destination = static_cast<float>(source->GetDouble());
     } else {
-      throw JSONSchemaException("float", source, path);
+      throw JSONSchemaException("float", source, path);  // LCOV_EXCL_LINE
     }
   }
 
@@ -370,7 +370,7 @@ struct LoadFromJSONImpl {
     if (source && source->IsNumber()) {
       destination = source->GetDouble();
     } else {
-      throw JSONSchemaException("double", source, path);
+      throw JSONSchemaException("double", source, path);  // LCOV_EXCL_LINE
     }
   }
 
@@ -386,7 +386,7 @@ struct LoadFromJSONImpl {
         destination = static_cast<T>(source->GetUint64());
       }
     } else {
-      throw JSONSchemaException("number", source, path);
+      throw JSONSchemaException("number", source, path);  // LCOV_EXCL_LINE
     }
   }
 
@@ -413,13 +413,13 @@ struct LoadFromJSONImpl {
             if (cit != deserializers_.end()) {
               cit->second->Deserialize(source, destination, path);
             } else {
-              throw JSONSchemaException("a type id listed in the type list", member, path);
+              throw JSONSchemaException("a type id listed in the type list", member, path);  // LCOV_EXCL_LINE
             }
           } else {
-            throw JSONSchemaException("type id as value for an empty string", source, path);
+            throw JSONSchemaException("type id as value for an empty string", source, path);  // LCOV_EXCL_LINE
           }
         } else {
-          throw JSONSchemaException("polymorphic type as object", source, path);
+          throw JSONSchemaException("polymorphic type as object", source, path);  // LCOV_EXCL_LINE
         }
       };
 
@@ -442,7 +442,9 @@ struct LoadFromJSONImpl {
             LoadFromJSONImpl<X>::Load(
                 &(*source)[key_name_], destination.template Value<X>(), path + "[\"" + key_name_ + "\"]");
           } else {
+            // LCOV_EXCL_START
             throw JSONSchemaException("polymorphic value", source, path + "[\"" + key_name_ + "\"]");
+            // LCOV_EXCL_STOP
           }
         }
 
@@ -484,7 +486,7 @@ struct LoadFromJSONImpl<std::string> {
     if (source && source->IsString()) {
       destination.assign(source->GetString(), source->GetStringLength());
     } else {
-      throw JSONSchemaException("string", source, path);
+      throw JSONSchemaException("string", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
@@ -495,7 +497,7 @@ struct LoadFromJSONImpl<bool> {
     if (source && (source->IsTrue() || source->IsFalse())) {
       destination = source->IsTrue();
     } else {
-      throw JSONSchemaException("bool", source, path);
+      throw JSONSchemaException("bool", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
@@ -510,7 +512,7 @@ struct LoadFromJSONImpl<std::vector<T>> {
         LoadFromJSONImpl<T>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
       }
     } else {
-      throw JSONSchemaException("array", source, path);
+      throw JSONSchemaException("array", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
@@ -522,7 +524,7 @@ struct LoadFromJSONImpl<std::pair<TF, TS>> {
       LoadFromJSONImpl<TF>::Load(&((*source)[static_cast<rapidjson::SizeType>(0)]), destination.first, path);
       LoadFromJSONImpl<TS>::Load(&((*source)[static_cast<rapidjson::SizeType>(1)]), destination.second, path);
     } else {
-      throw JSONSchemaException("pair as array", source, path);
+      throw JSONSchemaException("pair as array", source, path);  // LCOV_EXCL_LINE
     }
   }
 };
@@ -542,7 +544,7 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
         destination.insert(entry);
       }
     } else {
-      throw JSONSchemaException("map as object", source, path);
+      throw JSONSchemaException("map as object", source, path);  // LCOV_EXCL_LINE
     }
   }
   template <typename K = TK>
@@ -554,17 +556,17 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
       std::pair<TK, TV> entry;
       for (rapidjson::Value::ValueIterator cit = source->Begin(); cit != source->End(); ++cit) {
         if (!cit->IsArray()) {
-          throw JSONSchemaException("map entry as array", source, path);
+          throw JSONSchemaException("map entry as array", source, path);  // LCOV_EXCL_LINE
         }
         if (cit->Size() != 2u) {
-          throw JSONSchemaException("map entry as array of two elements", source, path);
+          throw JSONSchemaException("map entry as array of two elements", source, path);  // LCOV_EXCL_LINE
         }
         LoadFromJSONImpl<TK>::Load(&(*cit)[static_cast<rapidjson::SizeType>(0)], entry.first, path);
         LoadFromJSONImpl<TV>::Load(&(*cit)[static_cast<rapidjson::SizeType>(1)], entry.second, path);
         destination.insert(entry);
       }
     } else {
-      throw JSONSchemaException("map as array", source, path);
+      throw JSONSchemaException("map as array", source, path);  // LCOV_EXCL_LINE
     }
   }
 };

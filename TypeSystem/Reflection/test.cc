@@ -385,9 +385,11 @@ TEST(Reflection, SmokeTestFullStruct) {
   struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
 
   if (FLAGS_write_reflection_golden_files) {
+    // LCOV_EXCL_START
     FileSystem::WriteStringToFile(struct_schema.Describe(Language::CPP()), "golden/smoke_test_struct.cc");
     FileSystem::WriteStringToFile(struct_schema.Describe(Language::FSharp()), "golden/smoke_test_struct.fsx");
     FileSystem::WriteStringToFile(JSON(struct_schema.GetSchemaInfo()), "golden/smoke_test_struct.json");
+    // LCOV_EXCL_STOP
   }
 
   EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"),

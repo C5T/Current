@@ -47,7 +47,7 @@ inline void SaveSizeIntoBinary(std::ostream& ostream, const size_t size) {
   const size_t bytes_written =
       ostream.rdbuf()->sputn(reinterpret_cast<const char*>(&save_size), sizeof(BINARY_FORMAT_SIZE_TYPE));
   if (bytes_written != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
-    throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_written);
+    throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_written);  // LCOV_EXCL_LINE
   }
 };
 
@@ -56,7 +56,7 @@ inline BINARY_FORMAT_SIZE_TYPE LoadSizeFromBinary(std::istream& istream) {
   const size_t bytes_read =
       istream.rdbuf()->sgetn(reinterpret_cast<char*>(&result), sizeof(BINARY_FORMAT_SIZE_TYPE));
   if (bytes_read != sizeof(BINARY_FORMAT_SIZE_TYPE)) {
-    throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_read);
+    throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_SIZE_TYPE), bytes_read);  // LCOV_EXCL_LINE
   }
   return result;
 }
@@ -70,7 +70,7 @@ struct SavePrimitiveTypeIntoBinary {
     const size_t bytes_written =
         ostream.rdbuf()->sputn(reinterpret_cast<const char*>(std::addressof(value)), sizeof(T));
     if (bytes_written != sizeof(T)) {
-      throw BinarySaveToStreamException(sizeof(T), bytes_written);
+      throw BinarySaveToStreamException(sizeof(T), bytes_written);  // LCOV_EXCL_LINE
     }
   }
 
@@ -79,7 +79,7 @@ struct SavePrimitiveTypeIntoBinary {
     const size_t bytes_written =
         ostream.rdbuf()->sputn(reinterpret_cast<const char*>(&b), sizeof(BINARY_FORMAT_BOOL_TYPE));
     if (bytes_written != sizeof(BINARY_FORMAT_BOOL_TYPE)) {
-      throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_written);
+      throw BinarySaveToStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_written);  // LCOV_EXCL_LINE
     }
   }
 
@@ -87,7 +87,7 @@ struct SavePrimitiveTypeIntoBinary {
     SaveSizeIntoBinary(ostream, value.size());
     const size_t bytes_written = ostream.rdbuf()->sputn(value.data(), value.size());
     if (bytes_written != value.size()) {
-      throw BinarySaveToStreamException(value.size(), bytes_written);
+      throw BinarySaveToStreamException(value.size(), bytes_written);  // LCOV_EXCL_LINE
     }
   }
 };
@@ -193,7 +193,7 @@ struct LoadPrimitiveTypeFromBinary {
     const size_t bytes_read =
         istream.rdbuf()->sgetn(reinterpret_cast<char*>(std::addressof(destination)), sizeof(T));
     if (bytes_read != sizeof(T)) {
-      throw BinaryLoadFromStreamException(sizeof(T), bytes_read);
+      throw BinaryLoadFromStreamException(sizeof(T), bytes_read);  // LCOV_EXCL_LINE
     }
   }
 
@@ -202,7 +202,7 @@ struct LoadPrimitiveTypeFromBinary {
     const size_t bytes_read =
         istream.rdbuf()->sgetn(reinterpret_cast<char*>(&b), sizeof(BINARY_FORMAT_BOOL_TYPE));
     if (bytes_read != sizeof(BINARY_FORMAT_BOOL_TYPE)) {
-      throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_read);
+      throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_read);  // LCOV_EXCL_LINE
     }
     destination = static_cast<bool>(b);
   }
@@ -213,7 +213,7 @@ struct LoadPrimitiveTypeFromBinary {
     // Should be legitimate since c++11 requires internal buffer to be contiguous.
     const size_t bytes_read = istream.rdbuf()->sgetn(&destination[0], size);
     if (bytes_read != static_cast<size_t>(size)) {
-      throw BinaryLoadFromStreamException(size, bytes_read);
+      throw BinaryLoadFromStreamException(size, bytes_read);  // LCOV_EXCL_LINE
     }
   }
 
@@ -280,7 +280,7 @@ struct LoadFromBinaryImpl {
     const size_t bytes_read =
         istream.rdbuf()->sgetn(reinterpret_cast<char*>(std::addressof(destination)), sizeof(T_UNDERLYING));
     if (bytes_read != sizeof(T_UNDERLYING)) {
-      throw BinaryLoadFromStreamException(sizeof(T_UNDERLYING), bytes_read);
+      throw BinaryLoadFromStreamException(sizeof(T_UNDERLYING), bytes_read);  // LCOV_EXCL_LINE
     }
   }
 };

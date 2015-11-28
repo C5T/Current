@@ -176,8 +176,10 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
     size_t count = 0u;
     int32_t value = 0;
     for (const auto& e : storage.d) {
+      // LCOV_EXCL_START
       ++count;
       value += e.rhs;
+      // LCOV_EXCL_STOP
     }
     EXPECT_EQ(0u, count);
     EXPECT_EQ(0, value);

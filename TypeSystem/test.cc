@@ -183,7 +183,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
     ASSERT_FALSE(Exists(bar));
     try {
       Value(bar);
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
   }
@@ -192,7 +192,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
     ASSERT_FALSE(Exists(meh));
     try {
       Value(meh);
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<int>) {
     }
   }
@@ -237,7 +237,7 @@ TEST(TypeSystemTest, Optional) {
   ASSERT_FALSE(Exists(foo));
   try {
     Value(foo);
-    ASSERT_TRUE(false);
+    ASSERT_TRUE(false);  // LCOV_EXCL_LINE
   } catch (NoValue) {
   }
 }
@@ -353,12 +353,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
     const Polymorphic<Foo> p((Foo()));
     try {
       p.Value<Bar>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
       p.Value<Bar>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
   }
@@ -395,12 +395,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
 
     try {
       p.Value<Bar>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
       p.Value<Bar>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
 
@@ -418,12 +418,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
 
     try {
       p.Value<Bar>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
       p.Value<Bar>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
   }
@@ -456,7 +456,7 @@ TEST(TypeSystemTest, PolymorphicRequiredAndOptional) {
 
     try {
       x.Value<Foo>();
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Foo>) {
     }
 
@@ -468,12 +468,12 @@ TEST(TypeSystemTest, PolymorphicRequiredAndOptional) {
     OptionalPolymorphic<Foo, Bar> p;
     try {
       Polymorphic<Foo, Bar> q = std::move(p);
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (UninitializedRequiredPolymorphic) {
     }
     try {
       Polymorphic<Foo, Bar> r = std::move(p);
-      ASSERT_TRUE(false);
+      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (UninitializedRequiredPolymorphicOfType<Foo, Bar>) {
     }
   }
