@@ -154,13 +154,24 @@ struct SaveIntoBinaryImpl {
     }
   };
 
+  // No-op function required for compilation.
+  template <typename TT = T>
+  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Save(std::ostream&, const T&) {}
+
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Save(std::ostream& ostream, const T& source) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Save(std::ostream& ostream,
+                                                                                         const T& source) {
+    using DECAYED_T = current::decay<TT>;
+    using SUPER = current::reflection::SuperType<DECAYED_T>;
+
+    if (!std::is_same<SUPER, CurrentSuper>::value) {
+      SaveIntoBinaryImpl<SUPER>::Save(ostream, dynamic_cast<const SUPER&>(source));
+    }
+
     SaveFieldVisitor visitor(ostream);
-    current::reflection::VisitAllFields<current::decay<T>,
-                                        current::reflection::FieldNameAndImmutableValue>::WithObject(source,
-                                                                                                     visitor);
+    current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(
+        source, visitor);
   }
 
   template <typename TT = T>
@@ -244,9 +255,21 @@ struct LoadFromBinaryImpl {
     }
   };
 
+  // No-op function required for compilation.
+  template <typename TT = T>
+  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Load(std::istream&, T&) {}
+
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT)> Load(std::istream& istream, T& destination) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Load(std::istream& istream,
+                                                                                         T& destination) {
+    using DECAYED_T = current::decay<TT>;
+    using SUPER = current::reflection::SuperType<DECAYED_T>;
+
+    if (!std::is_same<SUPER, CurrentSuper>::value) {
+      LoadFromBinaryImpl<SUPER>::Load(istream, destination);
+    }
+
     LoadFieldVisitor visitor(istream);
     current::reflection::VisitAllFields<current::decay<T>,
                                         current::reflection::FieldNameAndMutableValue>::WithObject(destination,
