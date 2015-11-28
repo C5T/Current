@@ -123,7 +123,7 @@ TEST(Serialization, Binary) {
     derived_object.s = "baz";
     derived_object.b = true;
     derived_object.e = Enum::SET;
-    derived_object.d = 3.14;
+    derived_object.d = 0.125;
     SaveIntoBinary(ofs, derived_object);
 
     WithNontrivialMap with_nontrivial_map;
@@ -155,7 +155,7 @@ TEST(Serialization, Binary) {
     EXPECT_EQ("baz", c.s);
     EXPECT_TRUE(c.b);
     EXPECT_EQ(Enum::SET, c.e);
-    EXPECT_DOUBLE_EQ(3.14, c.d);
+    EXPECT_DOUBLE_EQ(0.125, c.d);
 
     const WithNontrivialMap m = LoadFromBinary<WithNontrivialMap>(ifs);
     EXPECT_EQ(2u, m.q.size());
@@ -234,9 +234,9 @@ TEST(Serialization, JSON) {
   derived_object.s = "baz";
   derived_object.b = true;
   derived_object.e = Enum::SET;
-  derived_object.d = 3.14;
+  derived_object.d = 0.125;
   const std::string derived_object_as_json = JSON(derived_object);
-  EXPECT_EQ("{\"i\":48,\"s\":\"baz\",\"b\":true,\"e\":100,\"d\":3.14}", derived_object_as_json);
+  EXPECT_EQ("{\"i\":48,\"s\":\"baz\",\"b\":true,\"e\":100,\"d\":0.125}", derived_object_as_json);
 
   {
     const DerivedSerializable c = ParseJSON<DerivedSerializable>(derived_object_as_json);
@@ -244,7 +244,7 @@ TEST(Serialization, JSON) {
     EXPECT_EQ("baz", c.s);
     EXPECT_TRUE(c.b);
     EXPECT_EQ(Enum::SET, c.e);
-    EXPECT_DOUBLE_EQ(3.14, c.d);
+    EXPECT_DOUBLE_EQ(0.125, c.d);
   }
 
   // Serializitaion/deserialization of `std::vector<std::pair<...>>`.

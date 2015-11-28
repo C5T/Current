@@ -154,7 +154,7 @@ struct SaveIntoBinaryImpl {
     }
   };
 
-  // No-op function required for compilation.
+  // No-op function for `CurrentSuper`.
   template <typename TT = T>
   static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Save(std::ostream&, const T&) {}
 
@@ -165,9 +165,7 @@ struct SaveIntoBinaryImpl {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
-    if (!std::is_same<SUPER, CurrentSuper>::value) {
-      SaveIntoBinaryImpl<SUPER>::Save(ostream, dynamic_cast<const SUPER&>(source));
-    }
+    SaveIntoBinaryImpl<SUPER>::Save(ostream, dynamic_cast<const SUPER&>(source));
 
     SaveFieldVisitor visitor(ostream);
     current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(

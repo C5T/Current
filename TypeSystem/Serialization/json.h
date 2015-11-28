@@ -195,7 +195,7 @@ struct SaveIntoJSONImpl {
     }
   };
 
-  // No-op function required for compilation.
+  // No-op function for `CurrentSuper`.
   template <typename TT = T>
   static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Save(rapidjson::Value&,
                                                                rapidjson::Document::AllocatorType&,
@@ -207,16 +207,14 @@ struct SaveIntoJSONImpl {
       rapidjson::Value& destination,
       rapidjson::Document::AllocatorType& allocator,
       const TT& source,
-      bool save_as_super = false) {
+      bool set_object_already_called = false) {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
-    if (!save_as_super) {
+    if (!set_object_already_called) {
       destination.SetObject();
     }
-    if (!std::is_same<SUPER, CurrentSuper>::value) {
-      SaveIntoJSONImpl<SUPER>::Save(destination, allocator, dynamic_cast<const SUPER&>(source), true);
-    }
+    SaveIntoJSONImpl<SUPER>::Save(destination, allocator, dynamic_cast<const SUPER&>(source), true);
 
     SaveFieldVisitor visitor(destination, allocator);
     current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(
