@@ -33,7 +33,9 @@ SOFTWARE.
 using namespace current;
 
 DEFINE_double(seconds, 2.5, "Run the load test for this many seconds.");
-DEFINE_string(url, "http://localhost:%d", "The URL for the load test, default to localhost:${FLAGS_port}.");
+DEFINE_string(url,
+              "http://localhost:%d",
+              "The URL for the load test, default to `http://localhost:${FLAGS_port}`.");
 DEFINE_int32(port, 8889, "The port to use, if `--url` includes it.");
 DEFINE_int32(threads, 100, "The number of threads to run requests from.");
 

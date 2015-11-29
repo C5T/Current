@@ -197,7 +197,7 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
   // By design, `PolymorphicExistsImpl<T>()` and `PolymorphicValueImpl<T>()` do not check
   // whether `X` is part of `T_TYPELIST`. More specifically, they pass if `dynamic_cast<>` succeeds,
   // and thus will successfully retrieve a derived type as a base one,
-  // regardless of whether the derived one is present in `T_TYPELIST`.
+  // regardless of whether the base one is present in `T_TYPELIST`.
   // Use `Call()` to run a strict check.
   template <bool ENABLE = !REQUIRED>
   ENABLE_IF<ENABLE, bool> ExistsImpl() const {
