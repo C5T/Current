@@ -97,7 +97,7 @@ struct Language {
     static std::string Header() {
       return "// g++ -c -std=c++11 current.cc\n"
              "\n"
-             "#include \"current.h\"  // :TROLLFACE:\n"
+             "#include \"current.h\"\n"
              "\n"
              "namespace current_userspace {\n";
     }
@@ -290,7 +290,7 @@ struct StructSchema {
       return;
     }
 
-    if (type_prefix == TYPEID_POLYMORPHIC_PREFIX) {
+    if (type_prefix == TYPEID_POLYMORPHIC_PREFIX || type_prefix == TYPEID_OPTIONAL_POLYMORPHIC_PREFIX) {
       const std::shared_ptr<ReflectedType_Polymorphic> reflected_polymorphic_type =
           std::dynamic_pointer_cast<ReflectedType_Polymorphic>(reflected_type);
       assert(reflected_polymorphic_type);
@@ -366,7 +366,7 @@ struct StructSchema {
           if (type_prefix == TYPEID_OPTIONAL_PREFIX) {
             return DescribeOptional(language, cit->second);
           }
-          if (type_prefix == TYPEID_POLYMORPHIC_PREFIX) {
+          if (type_prefix == TYPEID_POLYMORPHIC_PREFIX || type_prefix == TYPEID_OPTIONAL_POLYMORPHIC_PREFIX) {
             return DescribePolymorphic(language, cit->second);
           }
           return "UNHANDLED_TYPE_" + current::strings::ToString(type_id);
@@ -421,14 +421,18 @@ struct StructSchema {
     for (auto t : type_info.included_types) {
       names.push_back(TypePrintName(language, t));
     }
-    return "Polymorphic<" + current::strings::Join(names, ", ") + '>';
+    const bool required = (TypePrefix(type_info.type_id) == TYPEID_POLYMORPHIC_PREFIX);
+    const std::string class_name = std::string(required ? "" : "Optional") + "Polymorphic<";
+    return class_name + current::strings::Join(names, ", ") + '>';
   }
   std::string DescribePolymorphic(const Language::FSharp& language, const TypeInfo& type_info) const {
     std::vector<std::string> names;
     for (auto t : type_info.included_types) {
       names.push_back(TypePrintName(language, t));
     }
-    return "Polymorphic<" + current::strings::Join(names, ", ") + '>';
+    const bool required = (TypePrefix(type_info.type_id) == TYPEID_POLYMORPHIC_PREFIX);
+    const std::string class_name = std::string(required ? "" : "Optional") + "Polymorphic<";
+    return class_name + current::strings::Join(names, ", ") + '>';
   }
 };
 

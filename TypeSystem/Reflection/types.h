@@ -51,9 +51,10 @@ constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_PREFIX = 800u;
 constexpr uint64_t TYPEID_BASIC_PREFIX = 900u;
 constexpr uint64_t TYPEID_ENUM_PREFIX  = 901u;
 // Current complex types prefixes.
-constexpr uint64_t TYPEID_STRUCT_PREFIX      = 920u;
-constexpr uint64_t TYPEID_OPTIONAL_PREFIX    = 921u;
-constexpr uint64_t TYPEID_POLYMORPHIC_PREFIX = 922u;
+constexpr uint64_t TYPEID_STRUCT_PREFIX               = 920u;
+constexpr uint64_t TYPEID_OPTIONAL_PREFIX             = 921u;
+constexpr uint64_t TYPEID_POLYMORPHIC_PREFIX          = 922u;
+constexpr uint64_t TYPEID_OPTIONAL_POLYMORPHIC_PREFIX = 923u;
 // STL containers prefixes.
 constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
 constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
@@ -71,6 +72,7 @@ constexpr uint64_t TYPEID_ENUM_TYPE  = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
 constexpr uint64_t TYPEID_STRUCT_TYPE      = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
 constexpr uint64_t TYPEID_OPTIONAL_TYPE    = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
 constexpr uint64_t TYPEID_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_POLYMORPHIC_PREFIX;
+constexpr uint64_t TYPEID_OPTIONAL_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_POLYMORPHIC_PREFIX;
 // Base TypeID-s for STL containers.
 constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
 constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
@@ -137,6 +139,7 @@ struct ReflectedType_Optional : ReflectedTypeImpl {
 
 struct ReflectedType_Polymorphic : ReflectedTypeImpl {
   std::vector<std::shared_ptr<ReflectedTypeImpl>> cases;
+  bool required;
 };
 
 typedef std::vector<std::pair<std::shared_ptr<ReflectedTypeImpl>, std::string>> StructFieldsVector;
@@ -214,7 +217,11 @@ inline TypeID CalculateTypeID(const ReflectedType_Polymorphic& p) {
     hash ^= ROL64(c->type_id, i * 3u + 17u);
     ++i;
   }
-  return static_cast<TypeID>(TYPEID_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
+  if (p.required) {
+    return static_cast<TypeID>(TYPEID_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
+  } else {
+    return static_cast<TypeID>(TYPEID_OPTIONAL_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
+  }
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

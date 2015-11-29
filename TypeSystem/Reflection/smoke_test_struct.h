@@ -20,12 +20,24 @@ CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(o, std::chrono::milliseconds);
 };
 
+CURRENT_STRUCT(A) { CURRENT_FIELD(a, int32_t); };
+
+CURRENT_STRUCT(B, A) { CURRENT_FIELD(b, int32_t); };
+
+CURRENT_STRUCT(X) { CURRENT_FIELD(x, int32_t); };
+
+CURRENT_STRUCT(Y) { CURRENT_FIELD(x, int32_t); };
+
+CURRENT_STRUCT(C) { CURRENT_FIELD(c, (Polymorphic<X, Y>)); };
+
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
   CURRENT_FIELD(v1, std::vector<std::string>);
   CURRENT_FIELD(v2, std::vector<Primitives>);
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
+  CURRENT_FIELD(q, (Polymorphic<A, B, C>));
+  CURRENT_FIELD(r, (OptionalPolymorphic<A, B, C>));
 };
 
 }  // namespace

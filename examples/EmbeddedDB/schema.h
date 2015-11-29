@@ -25,8 +25,7 @@ SOFTWARE.
 #ifndef SCHEMA_H
 #define SCHEMA_H
 
-#include "../../TypeSystem/Reflection/schema.h"
-#include "../../Bricks/time/chrono.h"
+#include "../../current.h"
 
 using namespace current;
 

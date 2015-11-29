@@ -384,6 +384,20 @@ TEST(Reflection, SmokeTestFullStruct) {
   StructSchema struct_schema;
   struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
 
+  if (false) {
+    // LCOV_EXCL_START
+    // This will not run, but should compile.
+    smoke_test_struct_namespace::FullTest original =
+        current::FromIncomplete<smoke_test_struct_namespace::FullTest>(
+            current::Incomplete<smoke_test_struct_namespace::FullTest>());
+    smoke_test_struct_namespace::FullTest moved(std::move(original));
+    // TODO(dkorolev): These would not even compile yet.
+    // Best idea I have in mind so far is for `Clone()` to create a blank result as `Incomplete<T>`,
+    // and then copy it field-by-field via reflection and calling `Clone()` recursively.
+    // smoke_test_struct_namespace::FullTest cloned(current::Clone(moved));
+    // original = Clone(cloned);
+    // LCOV_EXCL_STOP
+  }
   if (FLAGS_write_reflection_golden_files) {
     // LCOV_EXCL_START
     FileSystem::WriteStringToFile(struct_schema.Describe(Language::CPP()), "golden/smoke_test_struct.cc");

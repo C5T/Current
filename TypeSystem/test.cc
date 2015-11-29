@@ -635,24 +635,25 @@ CURRENT_STRUCT(DisabledDefaultConstructor) { CURRENT_FIELD(meh, (Polymorphic<Foo
 
 TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
   using namespace struct_definition_test;
+  using current::Incomplete;
 
   {
     using original = decltype(std::declval<Foo>().i);
-    using modified = decltype(std::declval<Foo::DEFAULT_CONSTRUCTIBLE_TYPE>().i);
+    using modified = decltype(std::declval<Incomplete<Foo>>().i);
     static_assert(std::is_same<original, uint64_t>::value, "");
     static_assert(std::is_same<modified, uint64_t>::value, "");
   }
 
   {
     using original = decltype(std::declval<Baz>().v2);
-    using modified = decltype(std::declval<Baz::DEFAULT_CONSTRUCTIBLE_TYPE>().v2);
+    using modified = decltype(std::declval<Incomplete<Baz>>().v2);
     static_assert(std::is_same<original, std::vector<Foo>>::value, "");
     static_assert(std::is_same<modified, std::vector<Foo>>::value, "");
   }
 
   {
     using original = decltype(std::declval<DisabledDefaultConstructor>().meh);
-    using modified = decltype(std::declval<DisabledDefaultConstructor::DEFAULT_CONSTRUCTIBLE_TYPE>().meh);
+    using modified = decltype(std::declval<Incomplete<DisabledDefaultConstructor>>().meh);
     static_assert(std::is_same<original, Polymorphic<Foo, Bar>>::value, "");
     static_assert(std::is_same<modified, OptionalPolymorphic<Foo, Bar>>::value, "");
   }
