@@ -85,70 +85,77 @@ CURRENT_ENUM(TypeID, uint64_t){
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
-    INVALID_TYPE = 0u};
+    INVALID_TYPE = 0u, CurrentSuper = 1u};
 
 inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
 
 inline uint64_t TypePrefix(const TypeID type_id) { return TypePrefix(static_cast<uint64_t>(type_id)); }
 
-struct ReflectedTypeImpl {
-  TypeID type_id = TypeID::INVALID_TYPE;
-  virtual ~ReflectedTypeImpl() = default;
+CURRENT_STRUCT(ReflectedTypeBase) { CURRENT_FIELD(type_id, TypeID, TypeID::INVALID_TYPE); };
+
+CURRENT_STRUCT(ReflectedType_Primitive, ReflectedTypeBase){
+    // Default constructor required for using in `Polymorphic`, here and in the structs below.
+    CURRENT_CONSTRUCTOR(ReflectedType_Primitive)(TypeID id = TypeID::INVALID_TYPE){
+        ReflectedTypeBase::type_id = id;
+}
 };
 
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type, unused_fsharp_type) \
-  struct ReflectedType_##current_type : ReflectedTypeImpl {                                             \
-    ReflectedType_##current_type() { type_id = TypeID::current_type; }                                  \
-  };
-#include "../primitive_types.dsl.h"
-#undef CURRENT_DECLARE_PRIMITIVE_TYPE
-
-struct ReflectedType_Enum : ReflectedTypeImpl {
-  const std::string name;
-  const std::shared_ptr<ReflectedTypeImpl> reflected_underlying_type;
-  template <typename T>
-  ReflectedType_Enum(T, const std::shared_ptr<ReflectedTypeImpl> rt)
-      : name(EnumName<T>()), reflected_underlying_type(rt) {
-    type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + current::CRC32(name));
+CURRENT_STRUCT(ReflectedType_Enum, ReflectedTypeBase) {
+  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(underlying_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_Enum)(const std::string& name = "", TypeID rt = TypeID::INVALID_TYPE)
+      : name(name), underlying_type(rt) {
+    ReflectedTypeBase::type_id = static_cast<TypeID>(TYPEID_ENUM_TYPE + current::CRC32(name));
   }
 };
 
-struct ReflectedType_Vector : ReflectedTypeImpl {
-  const std::shared_ptr<ReflectedTypeImpl> reflected_element_type;
-  ReflectedType_Vector(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_element_type(re) {}
+CURRENT_STRUCT(ReflectedType_Vector, ReflectedTypeBase) {
+  CURRENT_FIELD(element_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_Vector)(TypeID re = TypeID::INVALID_TYPE) : element_type(re) {}
 };
 
-struct ReflectedType_Map : ReflectedTypeImpl {
-  const std::shared_ptr<ReflectedTypeImpl> reflected_key_type;
-  const std::shared_ptr<ReflectedTypeImpl> reflected_value_type;
-  ReflectedType_Map(const std::shared_ptr<ReflectedTypeImpl> rk, const std::shared_ptr<ReflectedTypeImpl> rv)
-      : reflected_key_type(rk), reflected_value_type(rv) {}
+CURRENT_STRUCT(ReflectedType_Map, ReflectedTypeBase) {
+  CURRENT_FIELD(key_type, TypeID);
+  CURRENT_FIELD(value_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_Map)(TypeID rk = TypeID::INVALID_TYPE, TypeID rv = TypeID::INVALID_TYPE)
+      : key_type(rk), value_type(rv) {}
 };
 
-struct ReflectedType_Pair : ReflectedTypeImpl {
-  std::shared_ptr<ReflectedTypeImpl> reflected_first_type;
-  std::shared_ptr<ReflectedTypeImpl> reflected_second_type;
-  ReflectedType_Pair(const std::shared_ptr<ReflectedTypeImpl> rf, const std::shared_ptr<ReflectedTypeImpl> rs)
-      : reflected_first_type(rf), reflected_second_type(rs) {}
+CURRENT_STRUCT(ReflectedType_Pair, ReflectedTypeBase) {
+  CURRENT_FIELD(first_type, TypeID);
+  CURRENT_FIELD(second_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_Pair)(TypeID rf = TypeID::INVALID_TYPE, TypeID rs = TypeID::INVALID_TYPE)
+      : first_type(rf), second_type(rs) {}
 };
 
-struct ReflectedType_Optional : ReflectedTypeImpl {
-  const std::shared_ptr<ReflectedTypeImpl> reflected_optional_type;
-  ReflectedType_Optional(const std::shared_ptr<ReflectedTypeImpl> re) : reflected_optional_type(re) {}
+CURRENT_STRUCT(ReflectedType_Optional, ReflectedTypeBase) {
+  CURRENT_FIELD(optional_type, TypeID);
+  CURRENT_CONSTRUCTOR(ReflectedType_Optional)(TypeID ro = TypeID::INVALID_TYPE) : optional_type(ro) {}
 };
 
-struct ReflectedType_Polymorphic : ReflectedTypeImpl {
-  std::vector<std::shared_ptr<ReflectedTypeImpl>> cases;
-  bool required;
+CURRENT_STRUCT(ReflectedType_Polymorphic, ReflectedTypeBase) {
+  CURRENT_FIELD(cases, std::vector<TypeID>);
+  CURRENT_FIELD(required, bool);
+  CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Polymorphic) {}
 };
 
-typedef std::vector<std::pair<std::shared_ptr<ReflectedTypeImpl>, std::string>> StructFieldsVector;
+using StructFieldsVector = std::vector<std::pair<TypeID, std::string>>;
 
-struct ReflectedType_Struct : ReflectedTypeImpl {
-  std::string name;
-  std::shared_ptr<ReflectedType_Struct> reflected_super;
-  StructFieldsVector fields;
+CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
+  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(super_id, TypeID);
+  CURRENT_FIELD(fields, StructFieldsVector);
+  CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct) {}
 };
+
+using ReflectedType = Polymorphic<ReflectedType_Primitive,
+                                  ReflectedType_Enum,
+                                  ReflectedType_Vector,
+                                  ReflectedType_Map,
+                                  ReflectedType_Pair,
+                                  ReflectedType_Optional,
+                                  ReflectedType_Polymorphic,
+                                  ReflectedType_Struct>;
 
 inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
   return current::ROL64(static_cast<uint64_t>(type_id), nbits);
@@ -162,16 +169,15 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete 
     // since we don't know their real `type_id`-s.
     // At this moment, reflected types of the fields should be empty.
     for (const auto& f : s.fields) {
-      assert(!f.first);
-      hash ^= current::ROL64(current::CRC32(f.second), i + 19);
+      assert(f.first == TypeID::INVALID_TYPE);
+      hash ^= current::ROL64(current::CRC32(f.second), i + 19u);
       ++i;
     }
     return static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
   } else {
     for (const auto& f : s.fields) {
-      assert(f.first);
-      assert(f.first->type_id != TypeID::INVALID_TYPE);
-      hash ^= ROL64(f.first->type_id, i + 17) ^ current::ROL64(current::CRC32(f.second), i + 29);
+      assert(f.first != TypeID::INVALID_TYPE);
+      hash ^= ROL64(f.first, i + 17u) ^ current::ROL64(current::CRC32(f.second), i + 29u);
       ++i;
     }
     return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
@@ -179,42 +185,34 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete 
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Vector& v) {
-  assert(v.reflected_element_type);
-  assert(v.reflected_element_type->type_id != TypeID::INVALID_TYPE);
-  return static_cast<TypeID>(TYPEID_VECTOR_TYPE +
-                             ROL64(v.reflected_element_type->type_id, 3) % TYPEID_TYPE_RANGE);
+  assert(v.element_type != TypeID::INVALID_TYPE);
+  return static_cast<TypeID>(TYPEID_VECTOR_TYPE + ROL64(v.element_type, 3u) % TYPEID_TYPE_RANGE);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Pair& v) {
-  assert(v.reflected_first_type);
-  assert(v.reflected_second_type);
-  assert(v.reflected_first_type->type_id != TypeID::INVALID_TYPE);
-  assert(v.reflected_second_type->type_id != TypeID::INVALID_TYPE);
-  uint64_t hash = ROL64(v.reflected_first_type->type_id, 5) ^ ROL64(v.reflected_second_type->type_id, 11);
+inline TypeID CalculateTypeID(const ReflectedType_Pair& p) {
+  assert(p.first_type != TypeID::INVALID_TYPE);
+  assert(p.second_type != TypeID::INVALID_TYPE);
+  uint64_t hash = ROL64(p.first_type, 5u) ^ ROL64(p.second_type, 11u);
   return static_cast<TypeID>(TYPEID_PAIR_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Map& v) {
-  assert(v.reflected_key_type);
-  assert(v.reflected_value_type);
-  assert(v.reflected_key_type->type_id != TypeID::INVALID_TYPE);
-  assert(v.reflected_value_type->type_id != TypeID::INVALID_TYPE);
-  uint64_t hash = ROL64(v.reflected_key_type->type_id, 5) ^ ROL64(v.reflected_value_type->type_id, 11);
+inline TypeID CalculateTypeID(const ReflectedType_Map& m) {
+  assert(m.key_type != TypeID::INVALID_TYPE);
+  assert(m.value_type != TypeID::INVALID_TYPE);
+  uint64_t hash = ROL64(m.key_type, 5u) ^ ROL64(m.value_type, 11u);
   return static_cast<TypeID>(TYPEID_MAP_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
-  assert(o.reflected_optional_type);
-  assert(o.reflected_optional_type->type_id != TypeID::INVALID_TYPE);
-  return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE +
-                             ROL64(o.reflected_optional_type->type_id, 5) % TYPEID_TYPE_RANGE);
+  assert(o.optional_type != TypeID::INVALID_TYPE);
+  return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE + ROL64(o.optional_type, 5u) % TYPEID_TYPE_RANGE);
 }
 
 inline TypeID CalculateTypeID(const ReflectedType_Polymorphic& p) {
   uint64_t hash = 0ull;
   size_t i = 0u;
   for (const auto& c : p.cases) {
-    hash ^= ROL64(c->type_id, i * 3u + 17u);
+    hash ^= ROL64(c, i * 3u + 17u);
     ++i;
   }
   if (p.required) {
@@ -225,6 +223,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Polymorphic& p) {
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.
+// TODO(dk+mz): remove?
 template <typename T, typename DELETER>
 TypeID CalculateTypeID(const std::unique_ptr<T, DELETER>& ptr) {
   return CalculateTypeID(*ptr);
