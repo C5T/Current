@@ -104,18 +104,18 @@ std::function<T(const T&)> DefaultCloneFunction() {
                                 impl::HasCopyConstructor<T>(0)>::CloneImpl();
 }
 
-// A top-level `Clone()` method.
+// A top-level `ObsoleteClone()` method.
 template <typename T>
-T Clone(const T& object) {
+T ObsoleteClone(const T& object) {
   return DefaultCloneFunction<T>()(object);
 }
 
 // A templated version of the above, to allow compile-time cloner specification
-// without having to inject and/or carry over an `std::function<>` performing the `Clone()`.
+// without having to inject and/or carry over an `std::function<>` performing the `ObsoleteClone()`.
 struct DefaultCloner {
   template <typename T>
   static T Clone(const T& input) {
-    return current::Clone(input);
+    return current::ObsoleteClone(input);
   }
 };
 

@@ -343,7 +343,7 @@ struct ClonableViaCerealizeJSON {
 
 TEST(Util, Clone) {
   using namespace cloning_unit_test;
-  using current::Clone;
+  using current::ObsoleteClone;
   using current::DefaultCloneFunction;
   using current::DefaultCloner;
 
@@ -352,10 +352,10 @@ TEST(Util, Clone) {
   EXPECT_EQ("original", ClonableByCtor().text);
   EXPECT_EQ("original", ClonableViaCerealizeJSON().text);
 
-  EXPECT_EQ("cloned by ref", Clone(ClonableByRef()).text);
-  EXPECT_EQ("cloned by ptr", Clone(ClonableByPtr()).text);
-  EXPECT_EQ("copy-constructed from original", Clone(ClonableByCtor()).text);
-  EXPECT_EQ("deserialized from original", Clone(ClonableViaCerealizeJSON()).text);
+  EXPECT_EQ("cloned by ref", ObsoleteClone(ClonableByRef()).text);
+  EXPECT_EQ("cloned by ptr", ObsoleteClone(ClonableByPtr()).text);
+  EXPECT_EQ("copy-constructed from original", ObsoleteClone(ClonableByCtor()).text);
+  EXPECT_EQ("deserialized from original", ObsoleteClone(ClonableViaCerealizeJSON()).text);
 
   EXPECT_EQ("cloned by ref", DefaultCloneFunction<ClonableByRef>()(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", DefaultCloneFunction<ClonableByPtr>()(ClonableByPtr()).text);
@@ -373,7 +373,7 @@ TEST(Util, Clone) {
   EXPECT_EQ("deserialized from original", clone_via_json(ClonableViaCerealizeJSON()).text);
 
   EXPECT_EQ("deserialized from deserialized from original",
-            Clone(Clone(make_unique<ClonableViaCerealizeJSON>()))->text);
+            ObsoleteClone(ObsoleteClone(make_unique<ClonableViaCerealizeJSON>()))->text);
 
   EXPECT_EQ("cloned by ref", DefaultCloner::Clone(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", DefaultCloner::Clone(ClonableByPtr()).text);

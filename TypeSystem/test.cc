@@ -170,6 +170,81 @@ TEST(TypeSystemTest, CopyDoesItsJob) {
   EXPECT_EQ(3u, b.i);
 }
 
+TEST(TypeSystemTest, CloneDoesItsJob) {
+  using namespace struct_definition_test;
+
+  {
+    struct Tracker {
+      std::string& s;
+      Tracker(std::string& s) : s(s) {}
+      Tracker(const Tracker& rhs) : s(rhs.s) { s += "Tracker(const Tracker&)\n"; }
+      Tracker(Tracker&& rhs) : s(rhs.s) { s += "Tracker(Tracker&&)\n"; }
+      void operator=(const Tracker&) { s += "operator=(const Tracker&)\n"; }
+      void operator=(Tracker&&) { s += "operator=(Tracker&&)\n"; }
+    };
+    {
+      std::string s;
+      Tracker t(s);
+      EXPECT_EQ("", s);
+      Tracker t2(t);
+      EXPECT_EQ("Tracker(const Tracker&)\n", s);
+      t = t2;
+      EXPECT_EQ("Tracker(const Tracker&)\noperator=(const Tracker&)\n", s);
+    }
+    {
+      std::string s;
+      Tracker t(s);
+      EXPECT_EQ("", s);
+      Tracker t2(std::move(t));
+      EXPECT_EQ("Tracker(Tracker&&)\n", s);
+      t = std::move(t2);
+      EXPECT_EQ("Tracker(Tracker&&)\noperator=(Tracker&&)\n", s);
+    }
+    {
+      std::string s;
+      Tracker t(s);
+      EXPECT_EQ("", s);
+      Clone(t);
+      EXPECT_EQ("Tracker(const Tracker&)\nTracker(Tracker&&)\n", s);
+    }
+    {
+      std::string s;
+      const Tracker t(s);
+      EXPECT_EQ("", s);
+      Tracker t2 = Clone(t);
+      static_cast<void>(t2);
+      EXPECT_EQ("Tracker(const Tracker&)\nTracker(Tracker&&)\n", s);
+    }
+  }
+
+  {
+    const Foo a(100u);
+    auto b = Clone(a);
+    EXPECT_EQ(100u, b.i);
+  }
+
+  {
+    const Polymorphic<Foo, Bar> p1(Foo(1u));
+    EXPECT_EQ(1u, Value<Foo>(p1).i);
+
+    const Polymorphic<Foo, Bar> p2(Clone(p1));
+    EXPECT_EQ(1u, Value<Foo>(p2).i);
+  }
+
+  {
+    Polymorphic<Foo, Bar> p1(Foo(2u));
+    EXPECT_EQ(2u, Value<Foo>(p1).i);
+
+    const Polymorphic<Foo, Bar> p2(Clone(p1));
+    EXPECT_EQ(2u, Value<Foo>(p2).i);
+
+    p1 = Bar(3u);
+    EXPECT_TRUE(Exists<Bar>(p1));
+    EXPECT_TRUE(Exists<Foo>(p2));
+    EXPECT_EQ(2u, Value<Foo>(p2).i);
+  }
+}
+
 TEST(TypeSystemTest, ImmutableOptional) {
   {
     ImmutableOptional<int> foo(make_unique<int>(100));

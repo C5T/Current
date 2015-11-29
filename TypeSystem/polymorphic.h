@@ -127,6 +127,10 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
   // Would not compile if `REQUIRED == true`.
   GenericPolymorphicImpl() : DefaultConstructorGuard<REQUIRED>(DisableDefaultConstructorForRequired()) {}
 
+  // For `CloneImpl()`.
+  struct ConstructDespitePossiblyDisabled {};
+  GenericPolymorphicImpl(ConstructDespitePossiblyDisabled) {}
+
   operator bool() const { return object_ ? true : false; }
 
   GenericPolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
@@ -170,6 +174,24 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
   void Call(F&& f) const {
     Check();
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
+  }
+
+  // Support `Clone()` for polymorphics.
+  struct TypeAwareClone {
+    GenericPolymorphicImpl<REQUIRED, T, TS...>& result;
+    TypeAwareClone(GenericPolymorphicImpl<REQUIRED, T, TS...>& result) : result(result) {}
+    template <typename TT>
+    void operator()(const TT& instance) {
+      result = Clone(instance);
+    }
+  };
+  GenericPolymorphicImpl CloneImpl() const {
+    Check();
+    GenericPolymorphicImpl<REQUIRED, T, TS...> result((ConstructDespitePossiblyDisabled()));
+    TypeAwareClone cloner(result);
+    current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, cloner);
+    result.Check();
+    return std::move(result);
   }
 
   // By design, `PolymorphicExistsImpl<T>()` and `PolymorphicValueImpl<T>()` do not check
