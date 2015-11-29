@@ -33,6 +33,7 @@ SOFTWARE.
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
+#include "scoped_registerer.h"
 
 #include "../exception.h"
 #include "../strings/printf.h"
@@ -48,7 +49,7 @@ TEST(Util, BasicException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:46\tcurrent::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:47\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -65,7 +66,7 @@ TEST(Util, CustomException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:63\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:64\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -573,4 +574,57 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("200:7", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
   EXPECT_EQ("300:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(300)->AsString());
   EXPECT_EQ("400:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
+}
+
+TEST(AccumulativeScopedDeleter, Smoke) {
+  using current::AccumulativeScopedDeleter;
+
+  std::string tracker;
+  {
+    AccumulativeScopedDeleter<void> deleter;
+    deleter += AccumulativeScopedDeleter<void>([&tracker]() { tracker += 'a'; });
+    EXPECT_EQ("", tracker);
+  }
+  EXPECT_EQ("a", tracker);
+}
+
+TEST(AccumulativeScopedDeleter, MovesAway) {
+  using current::AccumulativeScopedDeleter;
+
+  std::string tracker;
+
+  {
+    AccumulativeScopedDeleter<void> top_level_deleter;
+    {
+      AccumulativeScopedDeleter<void> deleter;
+      deleter += AccumulativeScopedDeleter<void>([&tracker]() { tracker += 'b'; });
+      EXPECT_EQ("", tracker);
+      top_level_deleter = std::move(deleter);
+      EXPECT_EQ("", tracker);
+    }
+    EXPECT_EQ("", tracker);
+  }
+  EXPECT_EQ("b", tracker);
+}
+
+TEST(AccumulativeScopedDeleter, RegistersMultiple) {
+  using current::AccumulativeScopedDeleter;
+
+  std::string tracker;
+
+  {
+    AccumulativeScopedDeleter<void> top_level_deleter;
+    {
+      AccumulativeScopedDeleter<void> deleter;
+      deleter += AccumulativeScopedDeleter<void>([&tracker]() { tracker += 'c'; });
+      deleter += AccumulativeScopedDeleter<void>([&tracker]() { tracker += 'd'; }) +
+                 (AccumulativeScopedDeleter<void>([&tracker]() { tracker += 'e'; }) +
+                  AccumulativeScopedDeleter<void>([&tracker]() { tracker += 'f'; }));
+      EXPECT_EQ("", tracker);
+      top_level_deleter = std::move(deleter);
+      EXPECT_EQ("", tracker);
+    }
+    EXPECT_EQ("", tracker);
+  }
+  EXPECT_EQ("fedc", tracker);
 }
