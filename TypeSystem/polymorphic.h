@@ -172,23 +172,23 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
-  // Note that `Has()` and `Value()` do not check whether `X` is part of `T_TYPELIST`.
-  // More specifically, they pass if `dynamic_cast<>` succeeds, and thus will successfully
-  // retrieve a derived type as a base one, regardless of whether the derived one
-  // is present in `T_TYPELIST`.
+  // By design, `PolymorphicExistsImpl<T>()` and `PolymorphicValueImpl<T>()` do not check
+  // whether `X` is part of `T_TYPELIST`. More specifically, they pass if `dynamic_cast<>` succeeds,
+  // and thus will successfully retrieve a derived type as a base one,
+  // regardless of whether the derived one is present in `T_TYPELIST`.
   // Use `Call()` to run a strict check.
-  template <typename X>
-  bool Has() const {
-    return dynamic_cast<const X*>(object_.get()) != nullptr;
-  }
-
   template <bool ENABLE = !REQUIRED>
-  ENABLE_IF<ENABLE, bool> Exists() const {
+  ENABLE_IF<ENABLE, bool> ExistsImpl() const {
     return (object_.get() != nullptr);
   }
 
   template <typename X>
-  X& Value() {
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, bool> PolymorphicExistsImpl() const {
+    return dynamic_cast<const X*>(object_.get()) != nullptr;
+  }
+
+  template <typename X>
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, X&> PolymorphicValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -198,7 +198,7 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
   }
 
   template <typename X>
-  const X& Value() const {
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, const X&> PolymorphicValueImpl() const {
     const X* ptr = dynamic_cast<const X*>(object_.get());
     if (ptr) {
       return *ptr;

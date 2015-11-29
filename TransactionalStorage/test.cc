@@ -125,10 +125,8 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   // Test the logic of `Vector`.
   EXPECT_TRUE(storage.v.Empty());
   EXPECT_EQ(0u, storage.v.Size());
-  EXPECT_TRUE(!storage.v[0].Exists());
   EXPECT_TRUE(!Exists(storage.v[0]));
   ASSERT_THROW(Value(storage.v[0]), NoValueException);
-  ASSERT_THROW(storage.v[0].Value(), NoValueException);
 
   storage.v.PushBack(Element{42});
 
@@ -137,7 +135,6 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   EXPECT_TRUE(Exists(storage.v[0]));
   EXPECT_EQ(42, Value(storage.v[0]).x);
   ASSERT_THROW(Value(storage.v[1]), NoValueException);
-  ASSERT_THROW(storage.v[1].Value(), NoValueException);
 
   storage.v.PushBack(Element{1});
   storage.v.PushBack(Element{2});
@@ -167,10 +164,8 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   // Test the logic of `OrderedDictionary`.
   EXPECT_TRUE(storage.d.Empty());
   EXPECT_EQ(0u, storage.d.Size());
-  EXPECT_TRUE(!storage.d["one"].Exists());
   EXPECT_TRUE(!Exists(storage.d["one"]));
   ASSERT_THROW(Value(storage.d["one"]), NoValueException);
-  ASSERT_THROW(storage.d["one"].Value(), NoValueException);
 
   {
     size_t count = 0u;
@@ -200,10 +195,8 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
 
   EXPECT_FALSE(storage.d.Empty());
   EXPECT_EQ(1u, storage.d.Size());
-  EXPECT_TRUE(storage.d["one"].Exists());
   EXPECT_TRUE(Exists(storage.d["one"]));
   EXPECT_EQ(1, Value(storage.d["one"]).rhs);
-  EXPECT_EQ(1, storage.d["one"].Value().rhs);
 
   storage.d.Insert(Record{"two", 2});
 
@@ -340,7 +333,6 @@ TEST(TransactionalStorage, OnDisk) {
     EXPECT_EQ(100, Value(resumed.v[0]).x);
 
     EXPECT_EQ(1u, resumed.d.Size());
-    EXPECT_TRUE(resumed.d["answer"].Exists());
     EXPECT_TRUE(Exists(resumed.d["answer"]));
     EXPECT_EQ(42, Value(resumed.d["answer"]).rhs);
 

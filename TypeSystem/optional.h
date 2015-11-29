@@ -22,19 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Current-friendly data accessors:
-//
-// * bool Exists(x) : non-throwing, always `true` for non-optionals.
-// * T Value(x)     : can throw `NoValue` if and only if `Exists(x)` is `false`.
-//
-// For primitive types, `Exists()` is always `true`, and `Value(x)` is equivalent to `x`.
-// For types that can be optional, `Exists()` may be `false`, and `Value(x)` would then throw.
-//
-// The exception type is derived from `NoValueException`, alias as `NoValue = const NoValueException&`.
-// Catching on this top-level type is type-safe.
-//
-// TODO(dkorolev): Alternatively, a type-specific `catch (NoSpecificValue<T>) { ... }` can be used.
-//
 // User-friendly types that can be optional are `Optional<T>` and `ImmutableOptional<T>`.
 //
 // Other types may behave as optionals, for example, an `operator[]`-style getter on a container.
@@ -80,8 +67,8 @@ class ImmutableOptional final {
 
   ImmutableOptional(std::unique_ptr<T>&& rhs)
       : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  bool Exists() const { return optional_object_ != nullptr; }
-  const T& Value() const {
+  bool ExistsImpl() const { return optional_object_ != nullptr; }
+  const T& ValueImpl() const {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
@@ -111,15 +98,15 @@ class Optional final {
 
   Optional(std::unique_ptr<T>&& rhs)
       : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  bool Exists() const { return optional_object_ != nullptr; }
-  const T& Value() const {
+  bool ExistsImpl() const { return optional_object_ != nullptr; }
+  const T& ValueImpl() const {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
       throw NoValueOfTypeException<T>();
     }
   }
-  T& Value() {
+  T& ValueImpl() {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {

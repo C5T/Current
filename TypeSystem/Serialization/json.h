@@ -440,7 +440,7 @@ struct LoadFromJSONImpl {
           if (source->HasMember(key_name_)) {
             destination = make_unique<X>();
             LoadFromJSONImpl<X>::Load(
-                &(*source)[key_name_], destination.template Value<X>(), path + "[\"" + key_name_ + "\"]");
+                &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
           } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("polymorphic value", source, path + "[\"" + key_name_ + "\"]");
