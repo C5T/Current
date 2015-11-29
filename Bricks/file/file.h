@@ -27,6 +27,8 @@ SOFTWARE.
 #ifndef BRICKS_FILE_FILE_H
 #define BRICKS_FILE_FILE_H
 
+#include "../port.h"
+
 #include <cassert>
 #include <cstdio>
 #include <fstream>
@@ -34,8 +36,6 @@ SOFTWARE.
 #include <cstring>
 
 #include <errno.h>
-
-#include "../port.h"
 
 #ifndef BRICKS_WINDOWS
 #include <dirent.h>

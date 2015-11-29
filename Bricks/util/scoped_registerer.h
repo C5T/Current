@@ -32,17 +32,20 @@ SOFTWARE.
 
 namespace current {
 
-template <class DIFFERENTIATOR>
+template <class DIFFERENTIATOR, bool SHOULD_DELETE = true>
 class AccumulativeScopedDeleter {
  public:
   // Construction by move only, no copy.
   AccumulativeScopedDeleter() = default;
   AccumulativeScopedDeleter(std::function<void()> f) : captured_{f} {}
 
-  AccumulativeScopedDeleter(AccumulativeScopedDeleter&& rhs) : captured_(std::move(rhs.captured_)) {
+  template <bool B>
+  AccumulativeScopedDeleter(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs)
+      : captured_(std::move(rhs.captured_)) {
     rhs.captured_.clear();
   }
-  AccumulativeScopedDeleter& operator=(AccumulativeScopedDeleter&& rhs) {
+  template <bool B>
+  AccumulativeScopedDeleter& operator=(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs) {
     ReleaseCaptured();
     captured_.swap(rhs.captured_);
     return *this;
@@ -54,31 +57,39 @@ class AccumulativeScopedDeleter {
   // Destruction unregisters previously added instances.
   ~AccumulativeScopedDeleter() { ReleaseCaptured(); }
 
-  // Add a instance, or a set of instances, erasing them from the `rhs`.
-  AccumulativeScopedDeleter& operator+=(AccumulativeScopedDeleter&& rhs) {
+  // Adds an instance, or a set of instances, erasing them from the `rhs`.
+  template <bool B>
+  AccumulativeScopedDeleter& operator+=(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs) {
     for (const auto& instance : rhs.captured_) {
-      captured_.push_back(instance);
+      captured_.emplace_back(std::move(instance));
     }
     rhs.captured_.clear();
     return *this;
   }
 
-  // Return a new object containing both current and `rhs` instances, clean up `this`.
-  // Used to intialize `AccumulativeScopedDeleter` using initializer list, with multiple instances.
-  AccumulativeScopedDeleter operator+(AccumulativeScopedDeleter&& rhs) {
-    operator+=(std::move(rhs));
-    return AccumulativeScopedDeleter(std::move(*this));
+  // Returns a new object containing both current and `rhs` instances, cleans up `this`.
+  // Used to intialize `AccumulativeScopedDeleter` with multiple instances, in an initializer list.
+  template <bool B>
+  AccumulativeScopedDeleter<DIFFERENTIATOR, SHOULD_DELETE || B> operator+(
+      AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs) {
+    AccumulativeScopedDeleter<DIFFERENTIATOR, SHOULD_DELETE || B> result;
+    result += std::move(*this);
+    result += std::move(rhs);
+    return result;
   }
 
  private:
   void ReleaseCaptured() {
-    // Release in LIFO order.
-    for (auto rit = captured_.rbegin(); rit != captured_.rend(); ++rit) {
-      (*rit)();
+    if (SHOULD_DELETE) {
+      // Release in LIFO order.
+      for (auto rit = captured_.rbegin(); rit != captured_.rend(); ++rit) {
+        (*rit)();
+      }
     }
     captured_.clear();
   }
 
+  friend class AccumulativeScopedDeleter<DIFFERENTIATOR, !SHOULD_DELETE>;
   std::vector<std::function<void()>> captured_;
 };
 

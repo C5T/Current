@@ -592,7 +592,6 @@ TEST(AccumulativeScopedDeleter, MovesAway) {
   using current::AccumulativeScopedDeleter;
 
   std::string tracker;
-
   {
     AccumulativeScopedDeleter<void> top_level_deleter;
     {
@@ -611,7 +610,6 @@ TEST(AccumulativeScopedDeleter, RegistersMultiple) {
   using current::AccumulativeScopedDeleter;
 
   std::string tracker;
-
   {
     AccumulativeScopedDeleter<void> top_level_deleter;
     {
@@ -627,4 +625,68 @@ TEST(AccumulativeScopedDeleter, RegistersMultiple) {
     EXPECT_EQ("", tracker);
   }
   EXPECT_EQ("fedc", tracker);
+}
+
+TEST(AccumulativeScopedDeleter, DoesNotDeleteWhatShouldStay) {
+  using current::AccumulativeScopedDeleter;
+
+  {
+    std::string tracker;
+    {
+      AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'b'; });
+      EXPECT_EQ("", tracker);
+    }
+    EXPECT_EQ("", tracker);
+  }
+
+  {
+    std::string tracker;
+    AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'c'; }) +
+        AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'd'; });
+    EXPECT_EQ("", tracker);
+  }
+
+  {
+    // Initializing a real, AccumulativeScopedDeleter<>, object does invoke the deleter.
+    std::string tracker;
+    {
+      AccumulativeScopedDeleter<void> scope =
+          std::move(AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'e'; }));
+      EXPECT_EQ("", tracker);
+    }
+    EXPECT_EQ("e", tracker);
+  }
+
+  {
+    // Initializing a real, AccumulativeScopedDeleter<>, object via `operator=` does invoke the deleter.
+    std::string tracker;
+    {
+      AccumulativeScopedDeleter<void> scope;
+      scope = AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'f'; });
+      EXPECT_EQ("", tracker);
+    }
+    EXPECT_EQ("f", tracker);
+  }
+
+  {
+    std::string tracker;
+    const auto f =
+        [&tracker]() { return AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'g'; }); };
+    {
+      // Just returning another object from a function does not invoke the deleter.
+      {
+        f();
+        EXPECT_EQ("", tracker);
+      }
+      EXPECT_EQ("", tracker);
+    }
+    {
+      // Storing the object returned from the function does invoke the deleter.
+      {
+        AccumulativeScopedDeleter<void> scope = f();
+        EXPECT_EQ("", tracker);
+      }
+      EXPECT_EQ("g", tracker);
+    }
+  }
 }

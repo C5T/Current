@@ -27,11 +27,12 @@ SOFTWARE.
 #ifndef BRICKS_TIME_CHRONO_H
 #define BRICKS_TIME_CHRONO_H
 
+#include "../port.h"
+
 #include <algorithm>
 #include <thread>
 #include <chrono>
 
-#include "../port.h"
 #include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
 

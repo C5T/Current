@@ -106,19 +106,57 @@ TEST(HTTPAPI, Register) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
 }
 
-TEST(HTTPAPI, UnRegister) {
+TEST(HTTPAPI, UnRegisterAndReRegister) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+
   HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("bar"); });
-  auto tmp_handler = [](Request) {};  // LCOV_EXCL_LINE
+
+  auto tmp_handler = [](Request r) { r("baz"); };
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", tmp_handler), HandlerAlreadyExistsException);
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/foo", &tmp_handler), HandlerAlreadyExistsException);
-  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
+  EXPECT_EQ("bar", HTTP(GET(url)).body);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+
+  HTTP(FLAGS_net_api_test_port).Register<ReRegisterRoute::SilentlyUpdate>("/foo", tmp_handler);
+  EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
+  EXPECT_EQ("baz", HTTP(GET(url)).body);
+
   HTTP(FLAGS_net_api_test_port).UnRegister("/foo");
   EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
   EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).UnRegister("/foo"), HandlerDoesNotExistException);
+}
+
+TEST(HTTPAPI, ScopedUnRegister) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+
+  {
+    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    HTTPRoutesScope registerer = HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("bar"); });
+    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
+    EXPECT_EQ("bar", HTTP(GET(url)).body);
+  }
+
+  {
+    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    HTTPRoutesScope registerer;
+    registerer += HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("baz"); });
+    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
+    EXPECT_EQ("baz", HTTP(GET(url)).body);
+  }
+
+  {
+    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
+  }
 }
 
 TEST(HTTPAPI, URLParameters) {

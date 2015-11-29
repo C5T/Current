@@ -41,6 +41,10 @@ SOFTWARE.
 
 namespace blocks {
 
+// The policy for registering HTTP endpoints.
+// TODO(dkorolev): Add another option, to throw if the handler does not exist, while it's expected to?
+enum class ReRegisterRoute { ThrowOnAttempt, SilentlyUpdate };
+
 // Structures to define HTTP requests.
 // Support GET and POST.
 // The syntax for creating an instance of a GET request is GET is `GET(url)`.
