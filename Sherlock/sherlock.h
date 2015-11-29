@@ -220,8 +220,10 @@ class StreamInstanceImpl {
     ~ListenerThread() {
       if (thread_.joinable()) {
         // TODO(dkorolev): Phrase the error message better.
+        // LCOV_EXCL_START
         std::cerr << "Unrecoverable error in destructor: ListenerThread was not joined/detached.\n";
         std::exit(-1);
+        // LCOV_EXCL_STOP
       }
     }
 
@@ -300,8 +302,10 @@ class StreamInstanceImpl {
 
     ~SyncListenerScope() {
       if (!joined_) {
+        // LCOV_EXCL_START
         std::cerr << "Unrecoverable error in destructor: Join() was not called on for SyncListener.\n";
         std::exit(-1);
+        // LCOV_EXCL_STOP
       }
     }
 

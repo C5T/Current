@@ -111,6 +111,7 @@ TEST(CompactTSV, Smoke) {
   const auto t_f_end = current::time::Now();
 
   if (FLAGS_benchmark) {
+    // LCOV_EXCL_START
     const size_t golden_size = golden.length();
     const size_t packed_size = fast.GetPackedString().length();
     std::cerr << "Original TSV size:\t" << golden_size << "b, or\t" << golden_size / (1024u * 1024u) << "MB.\n";
@@ -122,5 +123,6 @@ TEST(CompactTSV, Smoke) {
     std::cerr << "Unpack into std::string-s:                  " << K *(t_d_end - t_d_begin).count() << "ms.\n";
     std::cerr << "Unpack into std::pair<const char*, size_t>: " << K *(t_e_end - t_e_begin).count() << "ms.\n";
     std::cerr << "Unpack into UniqueChunk-s:                  " << K *(t_f_end - t_f_begin).count() << "ms.\n";
+    // LCOV_EXCL_STOP
   }
 }

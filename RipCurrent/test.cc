@@ -54,7 +54,7 @@ struct String : H2O {
 // `RCFoo`: The emitter of events. Emits the integers passed to its constructor.
 CURRENT_LHS(RCFoo, Integer) {
   static std::string UnitTestClassName() { return "RCFoo"; }
-  RCFoo() {}
+  RCFoo() {}  // LCOV_EXCL_LINE
   RCFoo(int a) { emit(Integer(a)); }
   RCFoo(int a, int b) {
     emit(Integer(a));
@@ -81,7 +81,7 @@ CURRENT_VIA(RCBar, int) {
 CURRENT_RHS(RCBaz) {
   static std::string UnitTestClassName() { return "RCBaz"; }
   std::vector<int>* ptr;
-  RCBaz() : ptr(nullptr) {}
+  RCBaz() : ptr(nullptr) {}  // LCOV_EXCL_LINE
   RCBaz(std::vector<int>& ref) : ptr(&ref) {}
   void f(Integer x) {
     assert(ptr);
