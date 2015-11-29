@@ -21,10 +21,27 @@ type Primitives = {
   n : int64  // microseconds.
   o : int64  // milliseconds.
 }
+type A = {
+  a : int32
+}
+type B  // With unsupported for now base type A = {
+  b : int32
+}
+type X = {
+  x : int32
+}
+type Y = {
+  x : int32
+}
+type C = {
+  c : Polymorphic<X, Y>
+}
 type FullTest = {
   primitives : Primitives
   v1 : string array
   v2 : Primitives array
   p : string * Primitives
   o : Primitives option
+  q : Polymorphic<A, B, C>
+  r : OptionalPolymorphic<A, B, C>
 }

@@ -1,6 +1,6 @@
 // g++ -c -std=c++11 current.cc
 
-#include "current.h"  // :TROLLFACE:
+#include "current.h"
 
 namespace current_userspace {
 struct Primitives {
@@ -20,11 +20,28 @@ struct Primitives {
   std::chrono::microseconds n;
   std::chrono::milliseconds o;
 };
+struct A {
+  int32_t a;
+};
+struct B : A {
+  int32_t b;
+};
+struct X {
+  int32_t x;
+};
+struct Y {
+  int32_t x;
+};
+struct C {
+  Polymorphic<X, Y> c;
+};
 struct FullTest {
   Primitives primitives;
   std::vector<std::string> v1;
   std::vector<Primitives> v2;
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
+  Polymorphic<A, B, C> q;
+  OptionalPolymorphic<A, B, C> r;
 };
 }  // namespace current_userspace
