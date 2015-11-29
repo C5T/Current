@@ -264,7 +264,7 @@ struct StructSchema {
 
   void DescribeStruct(const Language::FSharp& language, const ReflectedType_Struct& s, std::ostream& os) const {
     os << "type " << s.name;
-    if (s.super_id != TypeID::INVALID_TYPE) {
+    if (s.super_id != TypeID::CurrentSuper) {
       os << "  // With unsupported for now base type " << TypePrintName(language, s.super_id);
     }
     os << " = {\n";
