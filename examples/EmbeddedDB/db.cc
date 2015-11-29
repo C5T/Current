@@ -22,11 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "schema.h"
+#include "../../current.h"
 
-#include "../../Sherlock/sherlock.h"
-#include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/util/random.h"
+#include "schema.h"
 
 using namespace current;
 
