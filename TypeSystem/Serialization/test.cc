@@ -446,15 +446,16 @@ TEST(Serialization, StructSchema) {
   struct_schema.AddType<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
   EXPECT_EQ(
-      "{\"structs\":[[9201007113239016790,{\"type_id\":9201007113239016790,\"name\":\"Serializable\",\"super_"
-      "type_id\":0,\"fields\":[[9000000000000000024,\"i\"],[9000000000000000042,\"s\"],[9000000000000000011,"
-      "\"b\"],[9010000002928410991,\"e\"]]}],[9209412029115735895,{\"type_id\":9209412029115735895,\"name\":"
-      "\"ComplexSerializable\",\"super_type_id\":0,\"fields\":[[9000000000000000024,\"j\"],["
-      "9000000000000000042,\"q\"],[9319767778871345491,\"v\"],[9201007113239016790,\"z\"]]}]],\"types\":[["
-      "9010000002928410991,{\"type_id\":9010000002928410991,\"enum_name\":\"Enum\",\"included_types\":["
-      "9000000000000000023]}],[9319767778871345491,{\"type_id\":9319767778871345491,\"enum_name\":\"\","
-      "\"included_types\":[9000000000000000042]}]],\"ordered_struct_list\":[9201007113239016790,"
-      "9209412029115735895]}",
+      "{\"structs\":[[\"T9201007113239016790\",{\"type_id\":\"T9201007113239016790\",\"name\":\"Serializable\","
+      "\"super_type_id\":\"T0\",\"fields\":[[\"T9000000000000000024\",\"i\"],[\"T9000000000000000042\",\"s\"],["
+      "\"T9000000000000000011\",\"b\"],[\"T9010000002928410991\",\"e\"]]}],[\"T9209412029115735895\",{\"type_"
+      "id\":\"T9209412029115735895\",\"name\":\"ComplexSerializable\",\"super_type_id\":\"T0\",\"fields\":[["
+      "\"T9000000000000000024\",\"j\"],[\"T9000000000000000042\",\"q\"],[\"T9319767778871345491\",\"v\"],["
+      "\"T9201007113239016790\",\"z\"]]}]],\"types\":[[\"T9010000002928410991\",{\"type_id\":"
+      "\"T9010000002928410991\",\"enum_name\":\"Enum\",\"included_types\":[\"T9000000000000000023\"]}],["
+      "\"T9319767778871345491\",{\"type_id\":\"T9319767778871345491\",\"enum_name\":\"\",\"included_types\":["
+      "\"T9000000000000000042\"]}]],\"ordered_struct_list\":[\"T9201007113239016790\",\"T9209412029115735895\"]"
+      "}",
       schema_json);
 
   StructSchema loaded_schema(ParseJSON<SchemaInfo>(schema_json));
@@ -658,7 +659,7 @@ TEST(Serialization, PolymorphicAsJSON) {
   }
   {
     const RequiredPolymorphicType object(make_unique<Empty>());
-    const std::string json = "{\"Empty\":{},\"\":9200000002835747520}";
+    const std::string json = "{\"Empty\":{},\"\":\"T9200000002835747520\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
@@ -666,7 +667,7 @@ TEST(Serialization, PolymorphicAsJSON) {
   {
     const RequiredPolymorphicType object(make_unique<Serializable>(42));
     const std::string json =
-        "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":9201007113239016790}";
+        "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));

@@ -99,6 +99,15 @@ struct SaveIntoJSONImpl;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
+template <>
+struct SaveIntoJSONImpl<reflection::TypeID> {
+  static void Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   reflection::TypeID value) {
+    destination.SetString("T" + strings::ToString(static_cast<uint64_t>(value)), allocator);
+  }
+};
+
 template <typename T>
 struct SaveIntoJSONImpl<std::vector<T>> {
   static void Save(rapidjson::Value& destination,
@@ -371,6 +380,15 @@ struct LoadFromJSONImpl {
       destination = source->GetDouble();
     } else {
       throw JSONSchemaException("double", source, path);  // LCOV_EXCL_LINE
+    }
+  }
+
+  // `TypeID`.
+  static void Load(rapidjson::Value* source, reflection::TypeID& destination, const std::string& path) {
+    if (source && source->IsString() && *source->GetString() == 'T') {
+      destination = static_cast<reflection::TypeID>(strings::FromString<uint64_t>(source->GetString() + 1));
+    } else {
+      throw JSONSchemaException("TypeID", source, path);  // LCOV_EXCL_LINE
     }
   }
 
