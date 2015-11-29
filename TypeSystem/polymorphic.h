@@ -68,7 +68,7 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
   enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
   enum { IS_REQUIRED = REQUIRED, IS_OPTIONAL = !REQUIRED };
 
-  typedef GenericPolymorphicImpl<false, T, TS...> DEFAULT_CONSTRUCTIBLE_TYPE;
+  using INCOMPLETE_TYPE = GenericPolymorphicImpl<false, T, TS...>;
 
   std::unique_ptr<CurrentSuper> object_;
 

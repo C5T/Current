@@ -621,42 +621,14 @@ inline T ParseJSON(const std::string& source, T& destination) {
   }
 }
 
-// TODO(dkorolev) + TODO(mzhurovich): Refactor and mirror this "mirroring" logic for binary too.
-template <typename T>
-constexpr bool HasDefaultConstructibleType(char) {
-  return false;
-}
-
-template <typename T>
-constexpr auto HasDefaultConstructibleType(int)
-    -> decltype(sizeof(typename T::DEFAULT_CONSTRUCTIBLE_TYPE), bool()) {
-  return true;
-}
-
-template <typename T, bool>
-struct DefaultConstructibleMirrorTypeImpl {
-  typedef T type;
-};
-
-template <typename T>
-struct DefaultConstructibleMirrorTypeImpl<T, true> {
-  typedef typename T::DEFAULT_CONSTRUCTIBLE_TYPE type;
-};
-
-template <typename T>
-using DefaultConstructibleMirrorType =
-    typename DefaultConstructibleMirrorTypeImpl<T, HasDefaultConstructibleType<T>(0)>::type;
-
 template <typename T>
 struct ParseJSONImpl {
   static T DoIt(const std::string& source) {
-    // First, deserialize into a type that does not have the default constructor disabled.
-    // Effectively, this deserializes a `Polymorphic<>` as an `OptionalPolymorphic<>`, leaving the rest intact.
-    DefaultConstructibleMirrorType<T> result;
+    // The `Incomplete<T>` and `FromIncomplete<T>` magic is to be able to `ParseJSON` for the types
+    // that have their default constructor disabled.
+    Incomplete<T> result;
     ParseJSONViaRapidJSON(source, result);
-    // As original and modified types are the same, down to a possibly disabled constructor, the cast does it.
-    static_assert(sizeof(T) == sizeof(DefaultConstructibleMirrorType<T>), "");
-    return std::move(*reinterpret_cast<T*>(&result));
+    return FromIncomplete<T>(std::move(result));
   }
 };
 

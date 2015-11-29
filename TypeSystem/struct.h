@@ -132,23 +132,22 @@ struct WithoutParentheses<int(T)> {
   template <typename INSTANTIATION_TYPE>                                                            \
   struct CURRENT_STRUCT_IMPL_##s;                                                                   \
   using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
+  using CURRENT_INCOMPLETE_##s =                                                                    \
+      CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareDefaultConstructibleFields>;            \
   template <typename T>                                                                             \
   struct CURRENT_REFLECTION_HELPER;                                                                 \
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>> { \
-    typedef super SUPER;                                                                            \
-    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareDefaultConstructibleFields>       \
-        DEFAULT_CONSTRUCTIBLE_TYPE;                                                                 \
+    using SUPER = super;                                                                            \
+    using INCOMPLETE_TYPE = CURRENT_INCOMPLETE_##s;                                                 \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__ + 1;                             \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   };                                                                                                \
   template <>                                                                                       \
-  struct CURRENT_REFLECTION_HELPER<                                                                 \
-      CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareDefaultConstructibleFields>> {          \
-    typedef super SUPER;                                                                            \
-    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareDefaultConstructibleFields>       \
-        DEFAULT_CONSTRUCTIBLE_TYPE;                                                                 \
+  struct CURRENT_REFLECTION_HELPER<CURRENT_INCOMPLETE_##s> {                                        \
+    using SUPER = super;                                                                            \
+    using INCOMPLETE_TYPE = CURRENT_INCOMPLETE_##s;                                                 \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
@@ -302,6 +301,38 @@ struct VisitAllFields {
 };
 
 }  // namespace reflection
+
+template <typename T>
+constexpr bool HasIncompleteType(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasIncompleteType(int) -> decltype(sizeof(typename T::INCOMPLETE_TYPE), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct IncompleteTypeImpl {
+  typedef T type;
+};
+
+template <typename T>
+struct IncompleteTypeImpl<T, true> {
+  typedef typename T::INCOMPLETE_TYPE type;
+};
+
+template <typename T>
+using Incomplete = typename IncompleteTypeImpl<T, HasIncompleteType<T>(0)>::type;
+
+template <typename T>
+T&& FromIncomplete(Incomplete<T>&& input) {
+  // `reinterpret_cast<>` does it since the types are the same down to
+  // the compile-time check of whether the default constructor is explicitly disabled.
+  static_assert(sizeof(T) == sizeof(Incomplete<T>), "");
+  return std::move(*reinterpret_cast<T*>(&input));
+}
+
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_STRUCT_H
