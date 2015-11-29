@@ -97,7 +97,7 @@ struct Language {
     static std::string Header() {
       return "// g++ -c -std=c++11 current.cc\n"
              "\n"
-             "#include \"current.h\"  // :TROLLFACE:\n"
+             "#include \"current.h\"\n"
              "\n"
              "namespace current_userspace {\n";
     }
