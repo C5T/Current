@@ -31,15 +31,9 @@ SOFTWARE.
 #include <cstdint>
 
 #include "reflection.h"
-#include "schema.h"
 
 #include "../../Bricks/strings/strings.h"
-#include "../../Bricks/file/file.h"
-#include "../../Bricks/dflags/dflags.h"
-
-#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
-
-DEFINE_bool(write_reflection_golden_files, false, "Set to true to [over]write the golden files.");
+#include "../../3rdparty/gtest/gtest-main.h"
 
 namespace reflection_test {
 
@@ -52,6 +46,7 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
+
 CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>); };
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
@@ -149,9 +144,6 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   CURRENT_FIELD(optional_i, Optional<int32_t>);
   CURRENT_FIELD(optional_b, Optional<bool>);
 };
-}
-
-namespace reflection_test {
 
 struct CollectFieldValues {
   std::vector<std::string>& output_;
@@ -275,174 +267,6 @@ TEST(Reflection, ShouldNotCompile) {
 #endif  // THIS_SHOULD_NOT_COMPILE
 
 #undef THIS_SHOULD_NOT_COMPILE
-}
-
-namespace reflection_test {
-
-CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
-CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
-CURRENT_STRUCT(Z, Y) {
-  CURRENT_FIELD(d, double);
-  CURRENT_FIELD(v2, std::vector<std::vector<Enum>>);
-};
-
-CURRENT_STRUCT(A) { CURRENT_FIELD(i, uint32_t); };
-CURRENT_STRUCT(B) {
-  CURRENT_FIELD(x, X);
-  CURRENT_FIELD(a, A);
-};
-CURRENT_STRUCT(C) { CURRENT_FIELD(b, Optional<B>); };
-}
-
-TEST(Reflection, StructSchema) {
-  using namespace reflection_test;
-  using current::reflection::SchemaInfo;
-  using current::reflection::StructSchema;
-  using current::reflection::Language;
-
-  StructSchema struct_schema;
-  {
-    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
-    EXPECT_TRUE(schema.order.empty());
-    EXPECT_TRUE(schema.types.empty());
-    EXPECT_EQ("", struct_schema.Describe(Language::CPP(), false));
-  }
-
-  struct_schema.AddType<uint64_t>();
-  struct_schema.AddType<double>();
-  struct_schema.AddType<std::string>();
-
-  {
-    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
-    EXPECT_TRUE(schema.order.empty());
-    EXPECT_TRUE(schema.types.empty());
-    EXPECT_EQ("", struct_schema.Describe(Language::CPP(), false));
-  }
-
-  struct_schema.AddType<Z>();
-
-  {
-    EXPECT_EQ(
-        "struct X {\n"
-        "  int32_t i;\n"
-        "};\n"
-        "struct Y {\n"
-        "  std::vector<X> v;\n"
-        "};\n"
-        "struct Z : Y {\n"
-        "  double d;\n"
-        "  std::vector<std::vector<Enum>> v2;\n"
-        "};\n",
-        struct_schema.Describe(Language::CPP(), false));
-  }
-
-  struct_schema.AddType<C>();
-
-  {
-    EXPECT_EQ(
-        "struct X {\n"
-        "  int32_t i;\n"
-        "};\n"
-        "struct Y {\n"
-        "  std::vector<X> v;\n"
-        "};\n"
-        "struct Z : Y {\n"
-        "  double d;\n"
-        "  std::vector<std::vector<Enum>> v2;\n"
-        "};\n"
-        "struct A {\n"
-        "  uint32_t i;\n"
-        "};\n"
-        "struct B {\n"
-        "  X x;\n"
-        "  A a;\n"
-        "};\n"
-        "struct C {\n"
-        "  Optional<B> b;\n"
-        "};\n",
-        struct_schema.Describe(Language::CPP(), false));
-  }
-}
-
-TEST(Reflection, SelfContatiningStruct) {
-  using namespace reflection_test;
-  using current::reflection::StructSchema;
-  using current::reflection::Language;
-
-  StructSchema struct_schema;
-  struct_schema.AddType<SelfContainingC>();
-
-  EXPECT_EQ(
-      "struct SelfContainingA {\n"
-      "  std::vector<SelfContainingA> v;\n"
-      "};\n"
-      "struct SelfContainingB {\n"
-      "  std::vector<SelfContainingB> v;\n"
-      "};\n"
-      "struct SelfContainingC : SelfContainingA {\n"
-      "  std::vector<SelfContainingB> v;\n"
-      "  std::map<std::string, SelfContainingC> m;\n"
-      "};\n",
-      struct_schema.Describe(Language::CPP(), false));
-}
-
-#include "../Serialization/json.h"
-
-#define SMOKE_TEST_STRUCT_NAMESPACE smoke_test_struct_namespace
-#include "smoke_test_struct.h"
-#undef SMOKE_TEST_STRUCT_NAMESPACE
-
-TEST(Reflection, SmokeTestFullStruct) {
-  using current::FileSystem;
-  using current::reflection::StructSchema;
-  using current::reflection::SchemaInfo;
-  using current::reflection::Language;
-
-  StructSchema struct_schema;
-  struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
-
-  if (false) {
-    // This will not run, but should compile.
-    // LCOV_EXCL_START
-    {
-      using namespace smoke_test_struct_namespace;
-      A a;
-      B b;
-      X x;
-      C c(x);
-      FullTest original(std::move(a), std::move(c));
-
-      if (false) {
-        smoke_test_struct_namespace::FullTest clone_initialized(Clone(original));
-        smoke_test_struct_namespace::FullTest* clone_copied;
-        *clone_copied = Clone(original);
-      }
-
-      if (false) {
-        smoke_test_struct_namespace::FullTest move_initialized(std::move(original));
-        smoke_test_struct_namespace::FullTest* move_copied;
-        *move_copied = std::move(original);
-      }
-    }
-    // LCOV_EXCL_STOP
-  }
-  if (FLAGS_write_reflection_golden_files) {
-    // LCOV_EXCL_START
-    FileSystem::WriteStringToFile(struct_schema.Describe(Language::CPP()), "golden/smoke_test_struct.cc");
-    FileSystem::WriteStringToFile(struct_schema.Describe(Language::FSharp()), "golden/smoke_test_struct.fsx");
-    FileSystem::WriteStringToFile(JSON(struct_schema.GetSchemaInfo()), "golden/smoke_test_struct.json");
-    // LCOV_EXCL_STOP
-  }
-
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"),
-            struct_schema.Describe(Language::CPP()));
-
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"),
-            struct_schema.Describe(Language::FSharp()));
-
-  // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
-  EXPECT_EQ(JSON(ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"))),
-            JSON(struct_schema.GetSchemaInfo()));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
