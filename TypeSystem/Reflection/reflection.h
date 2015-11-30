@@ -146,6 +146,7 @@ struct ReflectorImpl {
         VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_names_reflector);
         s.name = StructName<T>();
         s.type_id = CalculateTypeID(s, true);
+        const TypeID incomplete_id = s.type_id;
 
         // Second step: full reflection with field types and names.
         s.super_id = ReflectSuper<T>();
@@ -153,6 +154,7 @@ struct ReflectorImpl {
         FieldReflector field_reflector(s.fields, false);
         VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_reflector);
         s.type_id = CalculateTypeID(s);
+        Reflector().FixIncompleteTypeIDs(incomplete_id, s.type_id);
       }
     }
 
@@ -205,6 +207,72 @@ struct ReflectorImpl {
   std::unordered_map<std::type_index, ReflectedType> reflected_cpp_types_;
   std::unordered_map<TypeID, std::reference_wrapper<ReflectedType>> reflected_type_by_type_id_;
   TypeReflector type_reflector_;
+
+  void FixIncompleteTypeIDs(const TypeID incomplete_id, const TypeID real_id) {
+    struct Impl {
+      const TypeID from_;
+      const TypeID to_;
+      Impl(TypeID from, TypeID to) : from_(from), to_(to) {}
+
+      void operator()(ReflectedType_Struct& s) const {
+        if (s.super_id == from_) {
+          s.super_id = to_;
+        }
+        for (auto& f : s.fields) {
+          if (f.first == from_) {
+            f.first = to_;
+          }
+        }
+      }
+
+      void operator()(ReflectedType_Primitive&) const {}
+
+      void operator()(ReflectedType_Enum&) const {}
+
+      void operator()(ReflectedType_Vector& v) const {
+        if (v.element_type == from_) {
+          v.element_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_Map& m) const {
+        if (m.key_type == from_) {
+          m.key_type = to_;
+        }
+        if (m.value_type == from_) {
+          m.value_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_Pair& p) const {
+        if (p.first_type == from_) {
+          p.first_type = to_;
+        }
+        if (p.second_type == from_) {
+          p.second_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_Optional& o) const {
+        if (o.optional_type == from_) {
+          o.optional_type = to_;
+        }
+      }
+
+      void operator()(ReflectedType_Polymorphic& p) const {
+        for (auto& c : p.cases) {
+          if (c == from_) {
+            c = to_;
+          }
+        }
+      }
+    };
+
+    Impl impl(incomplete_id, real_id);
+    for (auto& t : reflected_cpp_types_) {
+      t.second.Call(impl);
+    }
+  }
 };
 
 inline ReflectorImpl& Reflector() { return ReflectorImpl::Reflector(); }

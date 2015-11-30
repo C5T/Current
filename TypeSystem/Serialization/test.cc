@@ -33,7 +33,7 @@ SOFTWARE.
 #include "../struct.h"
 
 #include "../Reflection/reflection.h"
-#include "../Reflection/schema.h"
+#include "../Schema/schema.h"
 
 #include "../../Bricks/file/file.h"
 

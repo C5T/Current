@@ -26,7 +26,7 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
 #define CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
 
-#include "reflection.h"
+#include "../Reflection/reflection.h"
 
 #include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/strings/strings.h"
