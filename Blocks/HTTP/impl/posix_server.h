@@ -44,6 +44,7 @@ SOFTWARE.
 #include "../../../Bricks/net/http/http.h"
 #include "../../../Bricks/time/chrono.h"
 #include "../../../Bricks/strings/printf.h"
+#include "../../../Bricks/util/scoped_registerer.h"
 
 namespace blocks {
 
@@ -114,6 +115,11 @@ class HTTPServerPOSIX final {
   }
   // LCOV_EXCL_STOP
 
+  // Scoped de-registerer of routes, of its own type.
+  struct ScopedRegistererDifferentiator {};
+  using HTTPRoutesScope = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator>;
+  using HTTPRoutesScopeEntry = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator, false>;
+
   // The philosophy of Register(path, handler):
   // * Pass `handler` by value to make its copy.
   //   This is done for lambdas and std::function<>-s.
@@ -122,21 +128,34 @@ class HTTPServerPOSIX final {
   //   This allows using passed in objects without making a copy of them.
   //   The lifetime of the object is then up to the user.
   // Justification: `Register("/foo", FooInstance())` has no way of knowing how long should `FooInstance` live.
-  void Register(const std::string& path, std::function<void(Request)> handler) {
+  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
+  HTTPRoutesScopeEntry Register(const std::string& path, std::function<void(Request)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {
-      BRICKS_THROW(HandlerAlreadyExistsException(path));
+      if (POLICY == ReRegisterRoute::SilentlyUpdate) {
+        handlers_[path] = handler;
+        return HTTPRoutesScopeEntry();
+      } else {
+        BRICKS_THROW(HandlerAlreadyExistsException(path));
+      }
     }
     handlers_[path] = handler;
+    return HTTPRoutesScopeEntry([this, path]() { UnRegister(path); });
   }
-  template <typename F>
-  void Register(const std::string& path, F* ptr_to_handler) {
+  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
+  HTTPRoutesScopeEntry Register(const std::string& path, F* ptr_to_handler) {
     // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) != handlers_.end()) {
-      BRICKS_THROW(HandlerAlreadyExistsException(path));
+      if (POLICY == ReRegisterRoute::SilentlyUpdate) {
+        handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
+        return HTTPRoutesScopeEntry();
+      } else {
+        BRICKS_THROW(HandlerAlreadyExistsException(path));
+      }
     }
     handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
+    return HTTPRoutesScopeEntry([this, path]() { UnRegister(path); });
   }
 
   void UnRegister(const std::string& path) {

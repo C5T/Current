@@ -54,43 +54,40 @@ struct UserNicknamesReadModel {
 
   // Mutex-locked state for eventually consistent read model.
   State state_;
-  std::mutex mutex_;
-  const int port_;
+  mutable std::mutex mutex_;
   std::atomic_bool replay_done_;
+  HTTPRoutesScope endpoints_;
 
-  void NotYetReady(Request r) {
+  UserNicknamesReadModel(int port)
+      : replay_done_(false),
+        endpoints_(HTTP(port).Register("/ready", [this](Request r) { OnReady(std::move(r)); }) +
+                   HTTP(port).Register("/nickname", [this](Request r) { OnNickname(std::move(r)); })) {}
+
+  void OnReady(Request r) const {
+    if (replay_done_) {
+      r("", HTTPResponseCode.NoContent);
+    } else {
+      NotYetReady(std::move(r));
+    }
+  }
+
+  void OnNickname(Request r) const {
+    if (replay_done_) {
+      const std::string user_id = r.url.query["id"];
+      std::lock_guard<std::mutex> lock(mutex_);
+      const auto cit = state_.nicknames.find(user_id);
+      if (cit != state_.nicknames.end()) {
+        r(UserNickname(user_id, cit->second));
+      } else {
+        r(UserNicknameNotFound(user_id), HTTPResponseCode.NotFound);
+      }
+    } else {
+      NotYetReady(std::move(r));
+    }
+  }
+
+  void NotYetReady(Request r) const {
     r(Error("Nicknames read model is still replaying the log. Try again soon."), HTTPResponseCode.BadRequest);
-  }
-
-  UserNicknamesReadModel(int port) : port_(port), replay_done_(false) {
-    HTTP(port_).Register("/ready",
-                         [this](Request r) {
-                           if (replay_done_) {
-                             r("", HTTPResponseCode.NoContent);
-                           } else {
-                             NotYetReady(std::move(r));
-                           }
-                         });
-    HTTP(port_).Register("/nickname",
-                         [this](Request r) {
-                           if (replay_done_) {
-                             const std::string user_id = r.url.query["id"];
-                             std::lock_guard<std::mutex> lock(mutex_);
-                             const auto cit = state_.nicknames.find(user_id);
-                             if (cit != state_.nicknames.end()) {
-                               r(UserNickname(user_id, cit->second));
-                             } else {
-                               r(UserNicknameNotFound(user_id), HTTPResponseCode.NotFound);
-                             }
-                           } else {
-                             NotYetReady(std::move(r));
-                           }
-                         });
-  }
-
-  ~UserNicknamesReadModel() {
-    HTTP(port_).UnRegister("/nickname");
-    HTTP(port_).UnRegister("/ready");
   }
 
   // A new event from the event log. Process it in a polymorphic way, ignore everything but `UserAdded`.

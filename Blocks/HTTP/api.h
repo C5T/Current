@@ -48,11 +48,12 @@ SOFTWARE.
 #ifndef BLOCKS_HTTP_API_H
 #define BLOCKS_HTTP_API_H
 
+#include "../../port.h"
+
 #include "request.h"
 #include "response.h"
 #include "types.h"
 
-#include "../../port.h"
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/template/weed.h"
 
@@ -86,5 +87,7 @@ inline typename current::weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... par
 using blocks::HTTP;
 using blocks::Request;
 using blocks::Response;
+using blocks::ReRegisterRoute;
+using HTTPRoutesScope = typename HTTP_IMPL::T_SERVER_IMPL::HTTPRoutesScope;
 
 #endif  // BLOCKS_HTTP_API_H
