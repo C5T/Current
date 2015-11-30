@@ -465,8 +465,7 @@ TEST(Serialization, StructSchemaSerialization) {
       "\"T9010000002928410991\",\"T9201007113239016790\",\"T9209412029115735895\"]}",
       schema_json);
 
-  const SchemaInfo loaded_schema_info(ParseJSON<SchemaInfo>(schema_json));
-  const StructSchema loaded_schema(loaded_schema_info);
+  const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
 
   EXPECT_EQ(
       "struct Serializable {\n"
