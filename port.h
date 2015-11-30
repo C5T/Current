@@ -145,4 +145,13 @@ std::unique_ptr<T> make_unique(PARAMS&&... params) {
 }  // namespace make_unique_for_poor_cpp11_users_impl
 using namespace make_unique_for_poor_cpp11_users_impl;
 
+// The best way I found to have clang++ dump the actual type in error message. -- D.K.
+// Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
+// TODO(dkorolev): Chat with Max, remove or move it into Bricks.
+template <typename T1, typename T2>
+struct is_same_or_compile_error {
+  enum { value = std::is_same<T1, T2>::value };
+  char is_same_static_assert_failed[value ? 1 : -1];
+};
+
 #endif

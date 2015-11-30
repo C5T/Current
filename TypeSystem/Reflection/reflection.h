@@ -127,8 +127,9 @@ struct ReflectorImpl {
       }
     };
 
-    template <bool REQUIRED, typename... TS>
-    ReflectedType operator()(TypeSelector<GenericPolymorphicImpl<REQUIRED, TS...>>) {
+    template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
+    ReflectedType operator()(
+        TypeSelector<GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>>) {
       ReflectedType_Polymorphic result;
       result.required = REQUIRED;
       VisitAllPolymorphicTypes<TS...>::Run(result);

@@ -196,14 +196,6 @@ struct B {
 static_assert(std::is_same<std::map<B, int>, MAP_CONTAINER_TYPE<B, int>>::value, "");
 }  // namespace test
 
-// The best way I found to have clang++ dump the actual type in error message. -- D.K.
-// Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
-// TODO(dkorolev): Chat with Max, remove or move it into Bricks.
-template <typename T1, typename T2>
-struct is_same_or_compile_error {
-  char c[std::is_same<T1, T2>::value ? 1 : -1];
-};
-
 }  // namespace sfinae
 }  // namespace yoda
 

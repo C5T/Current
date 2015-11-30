@@ -28,12 +28,10 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../optional.h"
+#include "../polymorphic.h"
 #include "../struct.h"
 
 #include "../../Bricks/time/chrono.h"
-
-// TODO(dkorolev): Soon to be added.
-// #include "../polymorphic.h"
 
 namespace current {
 namespace serialization {
@@ -114,7 +112,8 @@ struct SaveIntoBinaryImpl<std::vector<T>> {
 
 template <typename TF, typename TS>
 struct SaveIntoBinaryImpl<std::pair<TF, TS>> {
-  static void Save(std::ostream& ostream, const std::pair<TF, TS>& value) {
+  template <typename PAIR>  // To support std::pair<[const] TF, [const] TS>.
+  static void Save(std::ostream& ostream, const PAIR& value) {
     SaveIntoBinaryImpl<TF>::Save(ostream, value.first);
     SaveIntoBinaryImpl<TS>::Save(ostream, value.second);
   }
@@ -122,7 +121,8 @@ struct SaveIntoBinaryImpl<std::pair<TF, TS>> {
 
 template <typename TK, typename TV>
 struct SaveIntoBinaryImpl<std::map<TK, TV>> {
-  static void Save(std::ostream& ostream, const std::map<TK, TV>& value) {
+  template <typename MAP>  // To support std::map<[const] TK, [const] TV>.
+  static void Save(std::ostream& ostream, const MAP& value) {
     SaveSizeIntoBinary(ostream, value.size());
     for (const auto& element : value) {
       SaveIntoBinaryImpl<std::pair<TK, TV>>::Save(ostream, element);
@@ -130,9 +130,9 @@ struct SaveIntoBinaryImpl<std::map<TK, TV>> {
   }
 };
 
-template <typename T>
-struct SaveIntoBinaryImpl<Optional<T>> {
-  static void Save(std::ostream& ostream, const Optional<T>& value) {
+template <typename T, bool STRIPPED>
+struct SaveIntoBinaryImpl<Optional<T, STRIPPED>> {
+  static void Save(std::ostream& ostream, const Optional<T, STRIPPED>& value) {
     const bool exists = Exists(value);
     SaveIntoBinaryImpl<bool>::Save(ostream, exists);
     if (exists) {
@@ -253,7 +253,7 @@ struct LoadFromBinaryImpl {
     }
   };
 
-  // No-op function required for compilation.
+  // No-op function for `CurrentSuper`.
   template <typename TT = T>
   static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Load(std::istream&, T&) {}
 
@@ -309,17 +309,19 @@ struct LoadFromBinaryImpl<std::map<TK, TV>> {
   static void Load(std::istream& istream, std::map<TK, TV>& destination) {
     destination.clear();
     BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
-    std::pair<TK, TV> entry;
+    Stripped<TK> k;
+    Stripped<TV> v;
     for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      LoadFromBinaryImpl<std::pair<TK, TV>>::Load(istream, entry);
-      destination.insert(entry);
+      LoadFromBinaryImpl<Stripped<TK>>::Load(istream, k);
+      LoadFromBinaryImpl<Stripped<TV>>::Load(istream, v);
+      destination.emplace(MoveFromStripped<TK>(std::move(k)), MoveFromStripped<TV>(std::move(v)));
     }
   }
 };
 
-template <typename T>
-struct LoadFromBinaryImpl<Optional<T>> {
-  static void Load(std::istream& istream, Optional<T>& destination) {
+template <typename T, bool STRIPPED>
+struct LoadFromBinaryImpl<Optional<T, STRIPPED>> {
+  static void Load(std::istream& istream, Optional<T, STRIPPED>& destination) {
     bool exists;
     LoadFromBinaryImpl<bool>::Load(istream, exists);
     if (exists) {

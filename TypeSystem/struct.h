@@ -57,7 +57,7 @@ struct BaseTypeHelperImpl<DeclareFields, T> {
 };
 
 template <typename T>
-struct BaseTypeHelperImpl<DeclareDefaultConstructibleFields, T> {
+struct BaseTypeHelperImpl<DeclareStrippedFields, T> {
   typedef T type;
 };
 
@@ -74,13 +74,8 @@ struct FieldImpl<DeclareFields, T> {
 };
 
 template <typename T>
-struct FieldImpl<DeclareDefaultConstructibleFields, T> {
-  typedef T type;
-};
-
-template <typename... TS>
-struct FieldImpl<DeclareDefaultConstructibleFields, GenericPolymorphicImpl<true, TS...>> {
-  typedef GenericPolymorphicImpl<false, TS...> type;
+struct FieldImpl<DeclareStrippedFields, T> {
+  typedef Stripped<decay<T>> type;
 };
 
 template <typename T>
@@ -132,35 +127,34 @@ struct WithoutParentheses<int(T)> {
   template <typename INSTANTIATION_TYPE>                                                            \
   struct CURRENT_STRUCT_IMPL_##s;                                                                   \
   using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
-  using CURRENT_INCOMPLETE_##s =                                                                    \
-      CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareDefaultConstructibleFields>;            \
+  using CURRENT_PROTO_##s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareStrippedFields>;  \
   template <typename T>                                                                             \
   struct CURRENT_REFLECTION_HELPER;                                                                 \
   template <>                                                                                       \
-  struct CURRENT_REFLECTION_HELPER<CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>> { \
+  struct CURRENT_REFLECTION_HELPER<s> {                                                             \
     using SUPER = super;                                                                            \
-    using INCOMPLETE_TYPE = CURRENT_INCOMPLETE_##s;                                                 \
+    using STRIPPED_TYPE = CURRENT_PROTO_##s;                                                        \
+    using UNSTRIPPED_TYPE = s;                                                                      \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__ + 1;                             \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   };                                                                                                \
   template <>                                                                                       \
-  struct CURRENT_REFLECTION_HELPER<CURRENT_INCOMPLETE_##s> {                                        \
+  struct CURRENT_REFLECTION_HELPER<CURRENT_PROTO_##s> {                                             \
     using SUPER = super;                                                                            \
-    using INCOMPLETE_TYPE = CURRENT_INCOMPLETE_##s;                                                 \
+    using STRIPPED_TYPE = CURRENT_PROTO_##s;                                                        \
+    using UNSTRIPPED_TYPE = s;                                                                      \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                                                 \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper);                                 \
-  template <typename INSTANTIATION_TYPE>                                              \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                      \
-                                   ::current::reflection::BaseTypeHelper<             \
-                                       INSTANTIATION_TYPE,                            \
-                                       ::current::CurrentSuperAllowingInitialization< \
-                                           CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>>>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                 \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper); \
+  template <typename INSTANTIATION_TYPE>              \
+  struct CURRENT_STRUCT_IMPL_##s                      \
+      : CURRENT_REFLECTION_HELPER<s>,                 \
+        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentSuper>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                  \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentSuper`."); \
@@ -215,12 +209,11 @@ struct WithoutParentheses<int(T)> {
     CURRENT_CALL_F(#name, name);                                                                               \
   }
 
-#define CURRENT_CONSTRUCTOR(s)                                                                                \
-  template <                                                                                                  \
-      typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                                  \
-      class = ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value || \
-                        std::is_same<INSTANTIATION_TYPE_IMPL,                                                 \
-                                     ::current::reflection::DeclareDefaultConstructibleFields>::value>>       \
+#define CURRENT_CONSTRUCTOR(s)                                                                               \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                           \
+            class = ENABLE_IF<                                                                               \
+                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value ||        \
+                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareStrippedFields>::value>> \
   CURRENT_STRUCT_IMPL_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
@@ -301,37 +294,6 @@ struct VisitAllFields {
 };
 
 }  // namespace reflection
-
-template <typename T>
-constexpr bool HasIncompleteType(char) {
-  return false;
-}
-
-template <typename T>
-constexpr auto HasIncompleteType(int) -> decltype(sizeof(typename T::INCOMPLETE_TYPE), bool()) {
-  return true;
-}
-
-template <typename T, bool>
-struct IncompleteTypeImpl {
-  typedef T type;
-};
-
-template <typename T>
-struct IncompleteTypeImpl<T, true> {
-  typedef typename T::INCOMPLETE_TYPE type;
-};
-
-template <typename T>
-using Incomplete = typename IncompleteTypeImpl<T, HasIncompleteType<T>(0)>::type;
-
-template <typename T>
-T&& FromIncomplete(Incomplete<T>&& input) {
-  // `reinterpret_cast<>` does it since the types are the same down to
-  // the compile-time check of whether the default constructor is explicitly disabled.
-  static_assert(sizeof(T) == sizeof(Incomplete<T>), "");
-  return std::move(*reinterpret_cast<T*>(&input));
-}
 
 }  // namespace current
 

@@ -56,7 +56,6 @@ CURRENT_STRUCT(Serializable) {
   CURRENT_CONSTRUCTOR(Serializable)(int i, const std::string& s, bool b, Enum e) : i(i), s(s), b(b), e(e) {}
   CURRENT_CONSTRUCTOR(Serializable)(int i) : i(i), s(""), b(false), e(Enum::DEFAULT) {}
 
-  uint64_t twice_i() const { return i + i; }
   bool operator<(const Serializable& rhs) const { return i < rhs.i; }
 };
 
@@ -72,8 +71,6 @@ CURRENT_STRUCT(ComplexSerializable) {
       v.push_back(std::string(1, c));
     }
   }
-
-  size_t length_of_v() const { return v.size(); }
 };
 
 CURRENT_STRUCT(DerivedSerializable, Serializable) { CURRENT_FIELD(d, double); };
@@ -115,7 +112,8 @@ TEST(Serialization, Binary) {
     complex_object.q = "bar";
     complex_object.v.push_back("one");
     complex_object.v.push_back("two");
-    complex_object.z = simple_object;
+    complex_object.z = Clone(simple_object);
+
     SaveIntoBinary(ofs, complex_object);
 
     DerivedSerializable derived_object;
@@ -127,7 +125,8 @@ TEST(Serialization, Binary) {
     SaveIntoBinary(ofs, derived_object);
 
     WithNontrivialMap with_nontrivial_map;
-    with_nontrivial_map.q[simple_object] = "wow";
+    auto tmp = Clone(simple_object);
+    with_nontrivial_map.q[std::move(tmp)] = "wow";
     with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
     SaveIntoBinary(ofs, with_nontrivial_map);
   }
@@ -199,7 +198,7 @@ TEST(Serialization, JSON) {
   complex_object.q = "bar";
   complex_object.v.push_back("one");
   complex_object.v.push_back("two");
-  complex_object.z = simple_object;
+  complex_object.z = Clone(simple_object);
 
   const std::string complex_object_as_json = JSON(complex_object);
   EXPECT_EQ(
@@ -247,7 +246,7 @@ TEST(Serialization, JSON) {
     EXPECT_DOUBLE_EQ(0.125, c.d);
   }
 
-  // Serializitaion/deserialization of `std::vector<std::pair<...>>`.
+  // Serialization/deserialization of `std::vector<std::pair<...>>`.
   {
     WithVectorOfPairs with_vector_of_pairs;
     with_vector_of_pairs.v.emplace_back(-1, "foo");
@@ -295,7 +294,7 @@ TEST(Serialization, JSON) {
   {
     WithNontrivialMap with_nontrivial_map;
     EXPECT_EQ("{\"q\":[]}", JSON(with_nontrivial_map));
-    with_nontrivial_map.q[simple_object] = "wow";
+    with_nontrivial_map.q[Clone(simple_object)] = "wow";
     EXPECT_EQ("{\"q\":[[{\"i\":1000,\"s\":\"foo\",\"b\":true,\"e\":100},\"wow\"]]}", JSON(with_nontrivial_map));
     with_nontrivial_map.q[Serializable(1, "one", false, Enum::DEFAULT)] = "yes";
     EXPECT_EQ(
@@ -434,7 +433,7 @@ TEST(Serialization, JSONExceptions) {
   }
 }
 
-TEST(Serialization, StructSchema) {
+TEST(Serialization, StructSchemaSerialization) {
   using namespace serialization_test;
   using current::reflection::TypeID;
   using current::reflection::Reflector;
@@ -445,20 +444,31 @@ TEST(Serialization, StructSchema) {
   StructSchema struct_schema;
   struct_schema.AddType<ComplexSerializable>();
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
+
   EXPECT_EQ(
-      "{\"structs\":[[\"T9201007113239016790\",{\"type_id\":\"T9201007113239016790\",\"name\":\"Serializable\","
-      "\"super_type_id\":\"T0\",\"fields\":[[\"T9000000000000000024\",\"i\"],[\"T9000000000000000042\",\"s\"],["
-      "\"T9000000000000000011\",\"b\"],[\"T9010000002928410991\",\"e\"]]}],[\"T9209412029115735895\",{\"type_"
-      "id\":\"T9209412029115735895\",\"name\":\"ComplexSerializable\",\"super_type_id\":\"T0\",\"fields\":[["
-      "\"T9000000000000000024\",\"j\"],[\"T9000000000000000042\",\"q\"],[\"T9319767778871345491\",\"v\"],["
-      "\"T9201007113239016790\",\"z\"]]}]],\"types\":[[\"T9010000002928410991\",{\"type_id\":"
-      "\"T9010000002928410991\",\"enum_name\":\"Enum\",\"included_types\":[\"T9000000000000000023\"]}],["
-      "\"T9319767778871345491\",{\"type_id\":\"T9319767778871345491\",\"enum_name\":\"\",\"included_types\":["
-      "\"T9000000000000000042\"]}]],\"ordered_struct_list\":[\"T9201007113239016790\",\"T9209412029115735895\"]"
-      "}",
+      "{\"types\":[[\"T9000000000000000011\",{\"ReflectedType_Primitive\":{\"type_id\":"
+      "\"T9000000000000000011\"},\"\":\"T9200000000887757410\"}],[\"T9000000000000000023\",{\"ReflectedType_"
+      "Primitive\":{\"type_id\":\"T9000000000000000023\"},\"\":\"T9200000000887757410\"}],["
+      "\"T9000000000000000024\",{\"ReflectedType_Primitive\":{\"type_id\":\"T9000000000000000024\"},\"\":"
+      "\"T9200000000887757410\"}],[\"T9000000000000000042\",{\"ReflectedType_Primitive\":{\"type_id\":"
+      "\"T9000000000000000042\"},\"\":\"T9200000000887757410\"}],[\"T9010000002928410991\",{\"ReflectedType_"
+      "Enum\":{\"type_id\":\"T9010000002928410991\",\"name\":\"Enum\",\"underlying_type\":"
+      "\"T9000000000000000023\"},\"\":\"T9200284389866084350\"}],[\"T9201007113239016790\",{\"ReflectedType_"
+      "Struct\":{\"type_id\":\"T9201007113239016790\",\"name\":\"Serializable\",\"super_id\":\"T1\",\"fields\":"
+      "[[\"T9000000000000000024\",\"i\"],[\"T9000000000000000042\",\"s\"],[\"T9000000000000000011\",\"b\"],["
+      "\"T9010000002928410991\",\"e\"]]},\"\":\"T9204383916472223645\"}],[\"T9209412029115735895\",{"
+      "\"ReflectedType_Struct\":{\"type_id\":\"T9209412029115735895\",\"name\":\"ComplexSerializable\",\"super_"
+      "id\":\"T1\",\"fields\":[[\"T9000000000000000024\",\"j\"],[\"T9000000000000000042\",\"q\"],["
+      "\"T9319767778871345491\",\"v\"],[\"T9201007113239016790\",\"z\"]]},\"\":\"T9204383916472223645\"}],["
+      "\"T9319767778871345491\",{\"ReflectedType_Vector\":{\"type_id\":\"T9319767778871345491\",\"element_"
+      "type\":\"T9000000000000000042\"},\"\":\"T9209585172575626540\"}]],\"order\":[\"T9319767778871345491\","
+      "\"T9010000002928410991\",\"T9201007113239016790\",\"T9209412029115735895\"]}",
       schema_json);
 
-  StructSchema loaded_schema(ParseJSON<SchemaInfo>(schema_json));
+  const SchemaInfo loaded_schema_info(ParseJSON<SchemaInfo>(schema_json));
+
+#if 0
+  // TODO(mzhurovich): Make this run.
   EXPECT_EQ(
       "struct Serializable {\n"
       "  uint64_t i;\n"
@@ -472,20 +482,8 @@ TEST(Serialization, StructSchema) {
       "  std::vector<std::string> v;\n"
       "  Serializable z;\n"
       "};\n",
-      loaded_schema.Describe(Language::CPP(), false));
-}
-
-// TODO(dkorolev): Move this test outside `Serialization`.
-TEST(NotReallySerialization, ConstructorsAndMemberFunctions) {
-  using namespace serialization_test;
-  {
-    Serializable simple_object(1, "foo", true, Enum::SET);
-    EXPECT_EQ(2u, simple_object.twice_i());
-  }
-  {
-    ComplexSerializable complex_object('a', 'c');
-    EXPECT_EQ(3u, complex_object.length_of_v());
-  }
+      loaded_schema_info.Describe(Language::CPP(), false));
+#endif
 }
 
 TEST(Serialization, JSONForCppTypes) {

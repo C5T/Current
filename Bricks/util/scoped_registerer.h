@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include <set>
+#include <vector>
 #include <functional>
 
 namespace current {
@@ -57,7 +57,7 @@ class AccumulativeScopedDeleter {
   // Destruction unregisters previously added instances.
   ~AccumulativeScopedDeleter() { ReleaseCaptured(); }
 
-  // Adds an instance, or a set of instances, erasing them from the `rhs`.
+  // Adds an instance, or several instances, erasing them from the `rhs`.
   template <bool B>
   AccumulativeScopedDeleter& operator+=(AccumulativeScopedDeleter<DIFFERENTIATOR, B>&& rhs) {
     for (const auto& instance : rhs.captured_) {

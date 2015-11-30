@@ -34,7 +34,7 @@ type Y = {
   x : int32
 }
 type C = {
-  c : Polymorphic<X, Y>
+  c : OptionalPolymorphic<X, Y>
 }
 type FullTest = {
   primitives : Primitives
