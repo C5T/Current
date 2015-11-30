@@ -30,6 +30,7 @@ SOFTWARE.
 #include <memory>
 
 #include "base.h"
+#include "helpers.h"
 #include "exceptions.h"
 
 #include "../Bricks/template/combine.h"
@@ -46,117 +47,118 @@ namespace current {
 
 struct DisableDefaultConstructorForRequired {};
 
-template <bool REQUIRED>
+template <bool ENABLED>
 struct DefaultConstructorGuard {
   DefaultConstructorGuard() = default;
   DefaultConstructorGuard(const DisableDefaultConstructorForRequired&) = delete;
 };
 
 template <>
-struct DefaultConstructorGuard<false> {
+struct DefaultConstructorGuard<true> {
   DefaultConstructorGuard() = default;
   DefaultConstructorGuard(const DisableDefaultConstructorForRequired&) {}
 };
 
-// Explicitly disable an empty `Polymorphic<>`.
-template <bool REQUIRED, typename... TS>
+// Initializes an `std::unique_ptr<CurrentSuper>` given the object of the right type.
+// The input object could be an object itself (in which case it's copied),
+// an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
+// or a bare pointer (in which case it's captured).
+// TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
+template <class TYPELIST>
+struct PolymorphicTypeCheckedAssignment {
+  template <typename Z>
+  struct DerivedTypesDifferentiator {};
+
+  template <typename X>
+  struct Impl {
+    // Copy `X`.
+    void operator()(DerivedTypesDifferentiator<X>,
+                    const X& source,
+                    std::unique_ptr<CurrentSuper>& destination) {
+      if (!destination || !dynamic_cast<X*>(destination.get())) {
+        destination = make_unique<X>();
+      }
+      // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
+      dynamic_cast<X&>(*destination.get()) = Clone(source);
+    }
+    // Move `X`.
+    void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
+      if (!destination || !dynamic_cast<X*>(destination.get())) {
+        destination = make_unique<X>();
+      }
+      // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
+      dynamic_cast<X&>(*destination.get()) = std::move(source);
+    }
+    // Move `std::unique_ptr`.
+    void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
+                    std::unique_ptr<X>&& source,
+                    std::unique_ptr<CurrentSuper>& destination) {
+      if (!source) {
+        throw NoValueOfTypeException<X>();
+      }
+      destination = std::move(source);
+    }
+    // Capture a bare `X*`.
+    // TODO(dkorolev): Unsafe? Remove?
+    void operator()(DerivedTypesDifferentiator<X*>, X* source, std::unique_ptr<CurrentSuper>& destination) {
+      destination.reset(source);
+    }
+  };
+  using Instance = current::metaprogramming::combine<current::metaprogramming::map<Impl, TYPELIST>>;
+  template <typename Q>
+  static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
+    Instance instance;
+    instance(DerivedTypesDifferentiator<current::decay<Q>>(), std::forward<Q>(source), destination);
+  }
+};
+
+template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
 struct GenericPolymorphicImpl;
 
-template <bool REQUIRED, typename T, typename... TS>
-struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQUIRED> {
-  using T_TYPELIST = TypeListImpl<T, TS...>;
+template <bool REQUIRED, typename... TYPES>
+struct GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<TYPES...>, TypeListImpl<TYPES...>>
+    : DefaultConstructorGuard<!REQUIRED> {
+  using T_TYPELIST = TypeListImpl<TYPES...>;
   enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
   enum { IS_REQUIRED = REQUIRED, IS_OPTIONAL = !REQUIRED };
 
-  using INCOMPLETE_TYPE = GenericPolymorphicImpl<false, T, TS...>;
+  using STRIPPED_TYPE =
+      GenericPolymorphicImpl<true, REQUIRED, metaprogramming::map<Stripped, T_TYPELIST>, T_TYPELIST>;
+
+  using UNSTRIPPED_TYPE = GenericPolymorphicImpl<false, REQUIRED, T_TYPELIST, T_TYPELIST>;
 
   std::unique_ptr<CurrentSuper> object_;
 
-  // Initializes an `std::unique_ptr<CurrentSuper>` given the object of the right type.
-  // The input object could be an object itself (in which case it's copied),
-  // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
-  // or a bare pointer (in which case it's captured).
-  // TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
-  struct TypeCheckedAssignment {
-    template <typename Z>
-    struct DerivedTypesDifferentiator {};
+  GenericPolymorphicImpl() : DefaultConstructorGuard<!REQUIRED>(DisableDefaultConstructorForRequired()) {}
 
-    template <typename X>
-    struct Impl {
-      // Copy `X`.
-      void operator()(DerivedTypesDifferentiator<X>,
-                      const X& source,
-                      std::unique_ptr<CurrentSuper>& destination) {
-        if (!destination || !dynamic_cast<X*>(destination.get())) {
-          destination = make_unique<X>();
-        }
-        // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
-        dynamic_cast<X&>(*destination.get()) = source;
-      }
-      // Move `X`.
-      void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
-        if (!destination || !dynamic_cast<X*>(destination.get())) {
-          destination = make_unique<X>();
-        }
-        // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
-        dynamic_cast<X&>(*destination.get()) = std::move(source);
-      }
-      // Move `std::unique_ptr`.
-      void operator()(DerivedTypesDifferentiator<std::unique_ptr<X>>,
-                      std::unique_ptr<X>&& source,
-                      std::unique_ptr<CurrentSuper>& destination) {
-        if (!source) {
-          throw NoValueOfTypeException<X>();
-        }
-        destination = std::move(source);
-      }
-      // Capture a bare `X*`.
-      // TODO(dkorolev): Unsafe? Remove?
-      void operator()(DerivedTypesDifferentiator<X*>, X* source, std::unique_ptr<CurrentSuper>& destination) {
-        destination.reset(source);
-      }
-    };
-    using Instance = current::metaprogramming::combine<current::metaprogramming::map<Impl, T_TYPELIST>>;
-    template <typename Q>
-    static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
-      Instance instance;
-      instance(DerivedTypesDifferentiator<current::decay<Q>>(), std::forward<Q>(source), destination);
-    }
-  };
-
-  // Would not compile if `REQUIRED == true`.
-  GenericPolymorphicImpl() : DefaultConstructorGuard<REQUIRED>(DisableDefaultConstructorForRequired()) {}
-
-  // For `CloneImpl()`.
-  struct ConstructDespitePossiblyDisabled {};
-  GenericPolymorphicImpl(ConstructDespitePossiblyDisabled) {}
-
-  operator bool() const { return object_ ? true : false; }
+  template <bool ENABLE = !REQUIRED, class = ENABLE_IF<ENABLE>>
+  operator bool() const {
+    return object_ ? true : false;
+  }
 
   GenericPolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
   template <typename X>
   GenericPolymorphicImpl(X&& input) {
-    TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
+    PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
   }
 
-  GenericPolymorphicImpl(GenericPolymorphicImpl&& rhs) : object_(std::move(rhs.object_)) { Check(); }
-  GenericPolymorphicImpl(GenericPolymorphicImpl<!REQUIRED, T, TS...>&& rhs) : object_(std::move(rhs.object_)) {
-    Check();
+  template <bool U, bool R, class TL>
+  GenericPolymorphicImpl(GenericPolymorphicImpl<U, R, TL, T_TYPELIST>&& rhs)
+      : object_(std::move(rhs.object_)) {
+    CheckIntegrityImpl();
   }
 
-  void operator=(GenericPolymorphicImpl&& rhs) {
+  template <bool U, bool R, class TL>
+  GenericPolymorphicImpl& operator=(GenericPolymorphicImpl<U, R, TL, T_TYPELIST>&& rhs) {
     object_ = std::move(rhs.object_);
-    Check();
-  }
-  void operator=(GenericPolymorphicImpl<!REQUIRED, T, TS...>&& rhs) {
-    object_ = std::move(rhs.object_);
-    Check();
+    CheckIntegrityImpl();
+    return *this;
   }
 
   template <typename X>
   void operator=(X&& input) {
-    TypeCheckedAssignment::Perform(std::forward<X>(input), object_);
+    PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
   }
 
   template <bool ENABLE = !REQUIRED>
@@ -166,32 +168,123 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
 
   template <typename F>
   void Call(F&& f) {
-    Check();
+    CheckIntegrityImpl();
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
   template <typename F>
   void Call(F&& f) const {
-    Check();
+    CheckIntegrityImpl();
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
-  // Support `Clone()` for polymorphics.
+  // By design, `PolymorphicExistsImpl<T>()` and `PolymorphicValueImpl<T>()` do not check
+  // whether `X` is part of `T_TYPELIST`. More specifically, they pass if `dynamic_cast<>` succeeds,
+  // and thus will successfully retrieve a derived type as a base one,
+  // regardless of whether the base one is present in `T_TYPELIST`.
+  // Use `Call()` to run a strict check.
+
+  template <bool ENABLE = !REQUIRED>
+  ENABLE_IF<ENABLE, bool> ExistsImpl() const {
+    return (object_.get() != nullptr);
+  }
+
+  template <typename X>
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, bool> PolymorphicExistsImpl() const {
+    return dynamic_cast<const X*>(object_.get()) != nullptr;
+  }
+
+  template <typename X>
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, X&> PolymorphicValueImpl() {
+    X* ptr = dynamic_cast<X*>(object_.get());
+    if (ptr) {
+      return *ptr;
+    } else {
+      throw NoValueOfTypeException<X>();
+    }
+  }
+
+  template <typename X>
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, const X&> PolymorphicValueImpl() const {
+    const X* ptr = dynamic_cast<const X*>(object_.get());
+    if (ptr) {
+      return *ptr;
+    } else {
+      throw NoValueOfTypeException<X>();
+    }
+  }
+
+  void CheckIntegrityImpl() const {
+    if (REQUIRED && !object_) {
+      throw UninitializedRequiredPolymorphicOfTypeException<TYPES...>();
+    }
+  }
+};
+
+// This specialiation completely resolves the problem of non-redeclarable constructors. -- D.K.
+template <bool REQUIRED, typename... TYPES, typename... ORIGINAL_TYPES>
+struct GenericPolymorphicImpl<true, REQUIRED, TypeListImpl<TYPES...>, TypeListImpl<ORIGINAL_TYPES...>> {
+  using T_JOINED_TYPELIST = TypeListImpl<TYPES..., ORIGINAL_TYPES...>;
+
+  using STRIPPED_TYPE =
+      GenericPolymorphicImpl<true, REQUIRED, TypeListImpl<TYPES...>, TypeListImpl<ORIGINAL_TYPES...>>;
+  using UNSTRIPPED_TYPE =
+      GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<ORIGINAL_TYPES...>, TypeListImpl<ORIGINAL_TYPES...>>;
+
+  std::unique_ptr<CurrentSuper> object_;
+
+  GenericPolymorphicImpl() = default;
+
+  operator bool() const { return object_ ? true : false; }
+
+  GenericPolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+
+  template <typename X>
+  GenericPolymorphicImpl(X&& input) {
+    PolymorphicTypeCheckedAssignment<T_JOINED_TYPELIST>::Perform(std::forward<X>(input), object_);
+  }
+
+  template <bool U, bool R, class TL1, class TL2>
+  GenericPolymorphicImpl(GenericPolymorphicImpl<U, R, TL1, TL2>&& rhs)
+      : object_(std::move(rhs.object_)) {}
+
+  template <bool U, bool R, class TL1, class TL2>
+  GenericPolymorphicImpl& operator=(GenericPolymorphicImpl<U, R, TL1, TL2>&& rhs) {
+    object_ = std::move(rhs.object_);
+    return *this;
+  }
+
+  template <typename X>
+  void operator=(X&& input) {
+    PolymorphicTypeCheckedAssignment<T_JOINED_TYPELIST>::Perform(std::forward<X>(input), object_);
+  }
+
+  GenericPolymorphicImpl& operator=(std::nullptr_t) {
+    object_ = nullptr;
+    return *this;
+  }
+
   struct TypeAwareClone {
-    GenericPolymorphicImpl<REQUIRED, T, TS...>& result;
-    TypeAwareClone(GenericPolymorphicImpl<REQUIRED, T, TS...>& result) : result(result) {}
+    GenericPolymorphicImpl<true, REQUIRED, TypeListImpl<TYPES...>, TypeListImpl<ORIGINAL_TYPES...>>& result;
+    TypeAwareClone(
+        GenericPolymorphicImpl<true, REQUIRED, TypeListImpl<TYPES...>, TypeListImpl<ORIGINAL_TYPES...>>& result)
+        : result(result) {}
     template <typename TT>
     void operator()(const TT& instance) {
       result = Clone(instance);
     }
   };
-  GenericPolymorphicImpl CloneImpl() const {
-    Check();
-    GenericPolymorphicImpl<REQUIRED, T, TS...> result((ConstructDespitePossiblyDisabled()));
-    TypeAwareClone cloner(result);
-    current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, cloner);
-    result.Check();
-    return std::move(result);
+
+  // Copy constructor and assignment operator are legal for stripped versions.
+  GenericPolymorphicImpl(const GenericPolymorphicImpl& rhs) {
+    TypeAwareClone cloner(*this);
+    current::metaprogramming::RTTIDynamicCall<T_JOINED_TYPELIST>(*rhs.object_, cloner);
+  }
+
+  GenericPolymorphicImpl& operator=(const GenericPolymorphicImpl& rhs) {
+    TypeAwareClone cloner(*this);
+    current::metaprogramming::RTTIDynamicCall<T_JOINED_TYPELIST>(*rhs.object_, cloner);
+    return *this;
   }
 
   // By design, `PolymorphicExistsImpl<T>()` and `PolymorphicValueImpl<T>()` do not check
@@ -228,37 +321,33 @@ struct GenericPolymorphicImpl<REQUIRED, T, TS...> : DefaultConstructorGuard<REQU
       throw NoValueOfTypeException<X>();
     }
   }
-
-  void Check() const {
-    if (REQUIRED && !object_) {
-      throw UninitializedRequiredPolymorphicOfTypeException<T, TS...>();
-    }
-  }
 };
+
+// Explicitly disable an empty `Polymorphic<>`.
 
 // `Polymorphic<...>` can accept either a list of types, or a `TypeList<...>`.
-template <typename... TS>
+template <typename T, typename... TS>
 struct PolymorphicSelector {
-  using type = GenericPolymorphicImpl<true, TS...>;
+  using type = GenericPolymorphicImpl<false, true, TypeListImpl<T, TS...>, TypeListImpl<T, TS...>>;
 };
 
-template <typename... TS>
-struct PolymorphicSelector<TypeListImpl<TS...>> {
-  using type = GenericPolymorphicImpl<true, TS...>;
+template <typename T, typename... TS>
+struct PolymorphicSelector<TypeListImpl<T, TS...>> {
+  using type = GenericPolymorphicImpl<false, true, TypeListImpl<T, TS...>, TypeListImpl<T, TS...>>;
 };
 
 template <typename... TS>
 using Polymorphic = typename PolymorphicSelector<TS...>::type;
 
 // `OptionalPolymorphic<...>` can accept either a list of types, or a `TypeList<...>`.
-template <typename... TS>
+template <typename T, typename... TS>
 struct OptionalPolymorphicSelector {
-  using type = GenericPolymorphicImpl<false, TS...>;
+  using type = GenericPolymorphicImpl<false, false, TypeListImpl<T, TS...>, TypeListImpl<T, TS...>>;
 };
 
-template <typename... TS>
-struct OptionalPolymorphicSelector<TypeListImpl<TS...>> {
-  using type = GenericPolymorphicImpl<false, TS...>;
+template <typename T, typename... TS>
+struct OptionalPolymorphicSelector<TypeListImpl<T, TS...>> {
+  using type = GenericPolymorphicImpl<false, false, TypeListImpl<T, TS...>, TypeListImpl<T, TS...>>;
 };
 
 template <typename... TS>

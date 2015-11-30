@@ -137,12 +137,12 @@ struct SaveIntoJSONImpl<std::pair<TF, TS>> {
   }
 };
 
-template <typename TK, typename TV>
-struct SaveIntoJSONImpl<std::map<TK, TV>> {
+template <typename TK, typename TV, typename CMP>
+struct SaveIntoJSONImpl<std::map<TK, TV, CMP>> {
   template <typename K = TK>
   static ENABLE_IF<std::is_same<K, std::string>::value> Save(rapidjson::Value& destination,
                                                              rapidjson::Document::AllocatorType& allocator,
-                                                             const std::map<TK, TV>& value) {
+                                                             const std::map<TK, TV, CMP>& value) {
     destination.SetObject();
     for (const auto& element : value) {
       rapidjson::Value populated_value;
@@ -153,7 +153,7 @@ struct SaveIntoJSONImpl<std::map<TK, TV>> {
   template <typename K = TK>
   static ENABLE_IF<!std::is_same<K, std::string>::value> Save(rapidjson::Value& destination,
                                                               rapidjson::Document::AllocatorType& allocator,
-                                                              const std::map<TK, TV>& value) {
+                                                              const std::map<TK, TV, CMP>& value) {
     destination.SetArray();
     for (const auto& element : value) {
       rapidjson::Value key_value_as_array;
@@ -169,11 +169,11 @@ struct SaveIntoJSONImpl<std::map<TK, TV>> {
   }
 };
 
-template <typename T>
-struct SaveIntoJSONImpl<Optional<T>> {
+template <typename T, bool STRIPPED>
+struct SaveIntoJSONImpl<Optional<T, STRIPPED>> {
   static void Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
-                   const Optional<T>& value) {
+                   const Optional<T, STRIPPED>& value) {
     if (Exists(value)) {
       SaveIntoJSONImpl<T>::Save(destination, allocator, Value(value));
     } else {
@@ -270,10 +270,11 @@ struct SaveIntoJSONImpl {
     rapidjson::Document::AllocatorType& allocator_;
   };
 
-  template <bool REQUIRED, typename... TS>
-  static void Save(rapidjson::Value& destination,
-                   rapidjson::Document::AllocatorType& allocator,
-                   const GenericPolymorphicImpl<REQUIRED, TS...>& value) {
+  template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
+  static void Save(
+      rapidjson::Value& destination,
+      rapidjson::Document::AllocatorType& allocator,
+      const GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value) {
     if (Exists(value)) {
       SavePolymorphic impl(destination, allocator);
       value.Call(impl);
@@ -321,8 +322,7 @@ struct LoadFromJSONImpl {
   };
 
   // No-op function required for compilation.
-  template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Load(rapidjson::Value*, T&, const std::string&) {}
+  static void Load(rapidjson::Value*, CurrentSuper&, const std::string&) {}
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
@@ -409,7 +409,7 @@ struct LoadFromJSONImpl {
     }
   }
 
-  template <bool REQUIRED, typename... TS>
+  template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
   struct LoadPolymorphic {
     class Impl {
      public:
@@ -419,9 +419,10 @@ struct LoadFromJSONImpl {
         bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
       }
 
-      void DoLoadPolymorphic(rapidjson::Value* source,
-                             GenericPolymorphicImpl<REQUIRED, TS...>& destination,
-                             const std::string& path) const {
+      void DoLoadPolymorphic(
+          rapidjson::Value* source,
+          GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
+          const std::string& path) const {
         using namespace ::current::reflection;
         if (source && source->IsObject()) {
           TypeID type_id;
@@ -444,18 +445,20 @@ struct LoadFromJSONImpl {
 
      private:
       struct GenericDeserializer {
-        virtual void Deserialize(rapidjson::Value* source,
-                                 GenericPolymorphicImpl<REQUIRED, TS...>& destination,
-                                 const std::string& path) = 0;
+        virtual void Deserialize(
+            rapidjson::Value* source,
+            GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
+            const std::string& path) = 0;
       };
 
       template <typename X>
       struct TypedDeserializer : GenericDeserializer {
         explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
-        void Deserialize(rapidjson::Value* source,
-                         GenericPolymorphicImpl<REQUIRED, TS...>& destination,
-                         const std::string& path) override {
+        void Deserialize(
+            rapidjson::Value* source,
+            GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
+            const std::string& path) override {
           if (source->HasMember(key_name_)) {
             destination = make_unique<X>();
             LoadFromJSONImpl<X>::Load(
@@ -487,14 +490,15 @@ struct LoadFromJSONImpl {
 
     static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
   };
-  template <bool REQUIRED, typename... TS>
+  template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
   static void Load(rapidjson::Value* source,
-                   GenericPolymorphicImpl<REQUIRED, TS...>& value,
+                   GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value,
                    const std::string& path) {
     if (!source || source->IsNull()) {
       value = nullptr;
     } else {
-      LoadPolymorphic<REQUIRED, TS...>::Instance().DoLoadPolymorphic(source, value, path);
+      LoadPolymorphic<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TS...>::Instance().DoLoadPolymorphic(
+          source, value, path);
     }
   }
 };
@@ -548,31 +552,31 @@ struct LoadFromJSONImpl<std::pair<TF, TS>> {
   }
 };
 
-template <typename TK, typename TV>
-struct LoadFromJSONImpl<std::map<TK, TV>> {
-  template <typename K = TK>
+template <typename TK, typename TV, typename CMP>
+struct LoadFromJSONImpl<std::map<TK, TV, CMP>> {
+  template <typename K, typename V>
   static ENABLE_IF<std::is_same<std::string, K>::value> Load(rapidjson::Value* source,
-                                                             std::map<TK, TV>& destination,
+                                                             std::map<K, V, CMP>& destination,
                                                              const std::string& path) {
     if (source && source->IsObject()) {
       destination.clear();
-      std::pair<TK, TV> entry;
+      Stripped<K> k;
+      Stripped<V> v;
       for (rapidjson::Value::MemberIterator cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
-        LoadFromJSONImpl<TK>::Load(&cit->name, entry.first, path);
-        LoadFromJSONImpl<TV>::Load(&cit->value, entry.second, path);
-        destination.insert(entry);
+        LoadFromJSONImpl<Stripped<K>>::Load(&cit->name, k, path);
+        LoadFromJSONImpl<Stripped<V>>::Load(&cit->value, v, path);
+        destination.emplace(MoveFromStripped<K>(std::move(k)), MoveFromStripped<V>(std::move(v)));
       }
     } else {
       throw JSONSchemaException("map as object", source, path);  // LCOV_EXCL_LINE
     }
   }
-  template <typename K = TK>
+  template <typename K, typename V>
   static ENABLE_IF<!std::is_same<std::string, K>::value> Load(rapidjson::Value* source,
-                                                              std::map<TK, TV>& destination,
+                                                              std::map<K, V, CMP>& destination,
                                                               const std::string& path) {
     if (source && source->IsArray()) {
       destination.clear();
-      std::pair<TK, TV> entry;
       for (rapidjson::Value::ValueIterator cit = source->Begin(); cit != source->End(); ++cit) {
         if (!cit->IsArray()) {
           throw JSONSchemaException("map entry as array", source, path);  // LCOV_EXCL_LINE
@@ -580,9 +584,11 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
         if (cit->Size() != 2u) {
           throw JSONSchemaException("map entry as array of two elements", source, path);  // LCOV_EXCL_LINE
         }
-        LoadFromJSONImpl<TK>::Load(&(*cit)[static_cast<rapidjson::SizeType>(0)], entry.first, path);
-        LoadFromJSONImpl<TV>::Load(&(*cit)[static_cast<rapidjson::SizeType>(1)], entry.second, path);
-        destination.insert(entry);
+        Stripped<K> k;
+        Stripped<V> v;
+        LoadFromJSONImpl<Stripped<K>>::Load(&(*cit)[static_cast<rapidjson::SizeType>(0)], k, path);
+        LoadFromJSONImpl<Stripped<V>>::Load(&(*cit)[static_cast<rapidjson::SizeType>(1)], v, path);
+        destination.emplace(MoveFromStripped<K>(std::move(k)), MoveFromStripped<V>(std::move(v)));
       }
     } else {
       throw JSONSchemaException("map as array", source, path);  // LCOV_EXCL_LINE
@@ -590,9 +596,9 @@ struct LoadFromJSONImpl<std::map<TK, TV>> {
   }
 };
 
-template <typename T>
-struct LoadFromJSONImpl<Optional<T>> {
-  static void Load(rapidjson::Value* source, Optional<T>& destination, const std::string& path) {
+template <typename T, bool STRIPPED>
+struct LoadFromJSONImpl<Optional<T, STRIPPED>> {
+  static void Load(rapidjson::Value* source, Optional<T, STRIPPED>& destination, const std::string& path) {
     if (!source || source->IsNull()) {
       destination = nullptr;
     } else {
@@ -632,29 +638,23 @@ inline std::string JSON(const char* special_case_bare_c_string) {
 }
 
 template <typename T>
-inline T ParseJSON(const std::string& source, T& destination) {
+inline void ParseJSON(const std::string& source, T& destination) {
   try {
-    ParseJSONViaRapidJSON(source, destination);
+    ParseJSONViaRapidJSON(source, *reinterpret_cast<Stripped<T>*>(&destination));
+    CheckIntegrity(destination);
   } catch (UninitializedRequiredPolymorphic) {
     throw JSONUninitializedPolymorphicObjectException();
   }
 }
 
 template <typename T>
-struct ParseJSONImpl {
-  static T DoIt(const std::string& source) {
-    // The `Incomplete<T>` and `FromIncomplete<T>` magic is to be able to `ParseJSON` for the types
-    // that have their default constructor disabled.
-    Incomplete<T> result;
-    ParseJSONViaRapidJSON(source, result);
-    return FromIncomplete<T>(std::move(result));
-  }
-};
-
-template <typename T>
 inline T ParseJSON(const std::string& source) {
   try {
-    return ParseJSONImpl<T>::DoIt(source);
+    Stripped<T> result;
+    ParseJSONViaRapidJSON(source, result);
+    T& result_to_return = *reinterpret_cast<T*>(&result);
+    CheckIntegrity(result_to_return);
+    return MoveFromStripped<T>(std::move(result));
   } catch (UninitializedRequiredPolymorphic) {
     throw JSONUninitializedPolymorphicObjectException();
   }

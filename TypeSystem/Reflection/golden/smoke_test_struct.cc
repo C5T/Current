@@ -33,7 +33,7 @@ struct Y {
   int32_t x;
 };
 struct C {
-  Polymorphic<X, Y> c;
+  OptionalPolymorphic<X, Y> c;
 };
 struct FullTest {
   Primitives primitives;

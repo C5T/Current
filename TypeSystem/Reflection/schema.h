@@ -48,22 +48,21 @@ namespace current {
 namespace reflection {
 
 CURRENT_STRUCT(SchemaInfo) {
-  CURRENT_FIELD(types, (std::map<TypeID, ReflectedType>));
   // List of all type_id's contained in schema.
-  // Ascending index order corresponds to the order required for proper declaring of all the structs.
+  CURRENT_FIELD(types, (std::map<TypeID, ReflectedType>));
+  // The types in `order` are topologically sorted with respect to all directly and indirectly included types.
   CURRENT_FIELD(order, std::vector<TypeID>);
   CURRENT_DEFAULT_CONSTRUCTOR(SchemaInfo) {}
-  CURRENT_CONSTRUCTOR(SchemaInfo)(const SchemaInfo& rhs) : order(rhs.order) {
-    for (const auto& cit : rhs.types) {
-      types.insert(std::make_pair(cit.first, Clone(cit.second)));
-    }
-  }
+  CURRENT_CONSTRUCTOR(SchemaInfo)(SchemaInfo && x) : types(std::move(x.types)), order(std::move(x.order)) {}
+#if 0
+  // TODO(mzhurovich) + TODO(dkorolev): We don't need it now, as we have the almighty `Clone()`, right?
   void operator=(const SchemaInfo& rhs) {
     order = rhs.order;
     for (const auto& cit : rhs.types) {
       types.insert(std::make_pair(cit.first, Clone(cit.second)));
     }
   }
+#endif
 };
 
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
@@ -133,7 +132,7 @@ struct StructSchema {
         return;
       }
       // Fill `types[type_id]` before traversing everything else to break possible circular dependencies.
-      schema_.types.emplace(s.type_id, s);
+      schema_.types.emplace(s.type_id, Clone(s));
       if (s.super_id != TypeID::CurrentSuper) {
         Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
       }
@@ -206,8 +205,8 @@ struct StructSchema {
   };
 
   StructSchema() = default;
-  // Temporary disabled => doesn't compile :(
-  // StructSchema(const SchemaInfo& schema) : schema_(schema) {}
+  StructSchema(const SchemaInfo& schema) : schema_(Clone(schema)) {}
+  StructSchema(SchemaInfo&& schema) : schema_(std::move(schema)) {}
 
   template <typename T>
   ENABLE_IF<!IS_CURRENT_STRUCT(T)> AddType() {}

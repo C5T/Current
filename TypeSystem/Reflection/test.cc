@@ -256,6 +256,27 @@ TEST(Reflection, VisitAllFields) {
       current::strings::Join(result, ','));
 }
 
+TEST(Reflection, ShouldNotCompile) {
+  using namespace reflection_test;
+
+#undef THIS_SHOULD_NOT_COMPILE
+//#define THIS_SHOULD_NOT_COMPILE
+
+#ifndef THIS_SHOULD_NOT_COMPILE
+  StructWithAllSupportedTypes one;
+  StructWithAllSupportedTypes two(Clone(one));
+  StructWithAllSupportedTypes three;
+  three = Clone(one);
+#else   // THIS_SHOULD_NOT_COMPILE
+  StructWithAllSupportedTypes one;
+  StructWithAllSupportedTypes two(one);  // Copy construction is prohibited.
+  StructWithAllSupportedTypes three;
+  three = one;  // Assignment is prohibited.
+#endif  // THIS_SHOULD_NOT_COMPILE
+
+#undef THIS_SHOULD_NOT_COMPILE
+}
+
 namespace reflection_test {
 
 CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
@@ -280,9 +301,8 @@ TEST(Reflection, StructSchema) {
   using current::reflection::Language;
 
   StructSchema struct_schema;
-#if 0
   {
-    const SchemaInfo schema = struct_schema.GetSchemaInfo();
+    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
     EXPECT_EQ("", struct_schema.Describe(Language::CPP(), false));
@@ -293,12 +313,12 @@ TEST(Reflection, StructSchema) {
   struct_schema.AddType<std::string>();
 
   {
-    const SchemaInfo schema = struct_schema.GetSchemaInfo();
+    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
     EXPECT_EQ("", struct_schema.Describe(Language::CPP(), false));
   }
-#endif
+
   struct_schema.AddType<Z>();
 
   {
@@ -345,6 +365,7 @@ TEST(Reflection, StructSchema) {
 }
 
 #if 0
+// TODO(mzhurovich): Fix self-referring types.
 TEST(Reflection, SelfContatiningStruct) {
   using namespace reflection_test;
   using current::reflection::StructSchema;
@@ -366,6 +387,7 @@ TEST(Reflection, SelfContatiningStruct) {
       "};\n",
       struct_schema.Describe(Language::CPP(), false));
 }
+#endif
 
 #include "../Serialization/json.h"
 
@@ -383,17 +405,28 @@ TEST(Reflection, SmokeTestFullStruct) {
   struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
 
   if (false) {
-    // LCOV_EXCL_START
     // This will not run, but should compile.
-    smoke_test_struct_namespace::FullTest original =
-        current::FromIncomplete<smoke_test_struct_namespace::FullTest>(
-            current::Incomplete<smoke_test_struct_namespace::FullTest>());
-    smoke_test_struct_namespace::FullTest moved(std::move(original));
-    // TODO(dkorolev): These would not even compile yet.
-    // Best idea I have in mind so far is for `Clone()` to create a blank result as `Incomplete<T>`,
-    // and then copy it field-by-field via reflection and calling `Clone()` recursively.
-    // smoke_test_struct_namespace::FullTest cloned(current::Clone(moved));
-    // original = Clone(cloned);
+    // LCOV_EXCL_START
+    {
+      using namespace smoke_test_struct_namespace;
+      A a;
+      B b;
+      X x;
+      C c(x);
+      FullTest original(std::move(a), std::move(c));
+
+      if (false) {
+        smoke_test_struct_namespace::FullTest clone_initialized(Clone(original));
+        smoke_test_struct_namespace::FullTest* clone_copied;
+        *clone_copied = Clone(original);
+      }
+
+      if (false) {
+        smoke_test_struct_namespace::FullTest move_initialized(std::move(original));
+        smoke_test_struct_namespace::FullTest* move_copied;
+        *move_copied = std::move(original);
+      }
+    }
     // LCOV_EXCL_STOP
   }
   if (FLAGS_write_reflection_golden_files) {
@@ -410,10 +443,9 @@ TEST(Reflection, SmokeTestFullStruct) {
   EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"),
             struct_schema.Describe(Language::FSharp()));
 
-  // JSON is a special case, as it might be pretty-printed.
+  // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
   EXPECT_EQ(JSON(ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"))),
             JSON(struct_schema.GetSchemaInfo()));
 }
-#endif
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

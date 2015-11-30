@@ -75,14 +75,14 @@ struct TimestampAccessorImpl {
   }
 };
 
-template <bool REQUIRED, typename... TS>
-struct TimestampAccessorImpl<GenericPolymorphicImpl<REQUIRED, TS...>> {
+template <bool STRIPPED, bool REQUIRED, typename... TS>
+struct TimestampAccessorImpl<GenericPolymorphicImpl<STRIPPED, REQUIRED, TS...>> {
   static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
-                                               const GenericPolymorphicImpl<REQUIRED, TS...>& p) {
+                                               const GenericPolymorphicImpl<STRIPPED, REQUIRED, TS...>& p) {
     p.Call(functor);
   }
   static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor,
-                                            GenericPolymorphicImpl<REQUIRED, TS...>& p) {
+                                            GenericPolymorphicImpl<STRIPPED, REQUIRED, TS...>& p) {
     p.Call(functor);
   }
 };
