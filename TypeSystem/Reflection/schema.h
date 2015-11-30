@@ -48,9 +48,9 @@ namespace current {
 namespace reflection {
 
 CURRENT_STRUCT(SchemaInfo) {
-  CURRENT_FIELD(types, (std::map<TypeID, ReflectedType>));
   // List of all type_id's contained in schema.
-  // Ascending index order corresponds to the order required for proper declaration of all the structs.
+  CURRENT_FIELD(types, (std::map<TypeID, ReflectedType>));
+  // The types in `order` are topologically sorted with respect to all directly and indirectly included types.
   CURRENT_FIELD(order, std::vector<TypeID>);
   CURRENT_DEFAULT_CONSTRUCTOR(SchemaInfo) {}
   CURRENT_CONSTRUCTOR(SchemaInfo)(SchemaInfo && x) : types(std::move(x.types)), order(std::move(x.order)) {}
