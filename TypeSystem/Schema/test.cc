@@ -215,8 +215,16 @@ TEST(Schema, SmokeTestFullStruct) {
             struct_schema.Describe(Language::FSharp()));
 
   // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
-  EXPECT_EQ(JSON(ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"))),
-            JSON(struct_schema.GetSchemaInfo()));
+  auto schema = ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"));
+  EXPECT_EQ(JSON(schema), JSON(struct_schema.GetSchemaInfo()));
+
+  const StructSchema restored_schema(std::move(schema));
+
+  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"),
+            restored_schema.Describe(Language::CPP()));
+
+  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"),
+            restored_schema.Describe(Language::FSharp()));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC
