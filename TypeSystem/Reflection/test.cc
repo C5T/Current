@@ -364,8 +364,6 @@ TEST(Reflection, StructSchema) {
   }
 }
 
-#if 0
-// TODO(mzhurovich): Fix self-referring types.
 TEST(Reflection, SelfContatiningStruct) {
   using namespace reflection_test;
   using current::reflection::StructSchema;
@@ -387,7 +385,6 @@ TEST(Reflection, SelfContatiningStruct) {
       "};\n",
       struct_schema.Describe(Language::CPP(), false));
 }
-#endif
 
 #include "../Serialization/json.h"
 
