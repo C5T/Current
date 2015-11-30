@@ -205,8 +205,8 @@ struct StructSchema {
   };
 
   StructSchema() = default;
-  // Temporary disabled => doesn't compile :(
-  // StructSchema(const SchemaInfo& schema) : schema_(schema) {}
+  StructSchema(const SchemaInfo& schema) : schema_(Clone(schema)) {}
+  StructSchema(SchemaInfo&& schema) : schema_(std::move(schema)) {}
 
   template <typename T>
   ENABLE_IF<!IS_CURRENT_STRUCT(T)> AddType() {}

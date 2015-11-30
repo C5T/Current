@@ -466,9 +466,8 @@ TEST(Serialization, StructSchemaSerialization) {
       schema_json);
 
   const SchemaInfo loaded_schema_info(ParseJSON<SchemaInfo>(schema_json));
+  const StructSchema loaded_schema(loaded_schema_info);
 
-#if 0
-  // TODO(mzhurovich): Make this run.
   EXPECT_EQ(
       "struct Serializable {\n"
       "  uint64_t i;\n"
@@ -482,8 +481,7 @@ TEST(Serialization, StructSchemaSerialization) {
       "  std::vector<std::string> v;\n"
       "  Serializable z;\n"
       "};\n",
-      loaded_schema_info.Describe(Language::CPP(), false));
-#endif
+      loaded_schema.Describe(Language::CPP(), false));
 }
 
 TEST(Serialization, JSONForCppTypes) {
