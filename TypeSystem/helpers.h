@@ -49,7 +49,11 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_HELPERS_H
 #define CURRENT_TYPE_SYSTEM_HELPERS_H
 
-#include "sfinae.h"
+#include "../port.h"
+
+#include <memory>
+
+#include "types.h"
 #include "../Bricks/template/decay.h"
 
 namespace current {

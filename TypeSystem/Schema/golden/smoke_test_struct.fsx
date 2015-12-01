@@ -21,27 +21,54 @@ type Primitives = {
   n : int64  // microseconds.
   o : int64  // milliseconds.
 }
+
 type A = {
   a : int32
 }
-type B  // With unsupported for now base type A = {
+
+type B = {
+  a : int32
   b : int32
 }
+
+type Empty = class end
+
 type X = {
   x : int32
 }
+
 type Y = {
   x : int32
 }
+
+type DU_None_X_Y =
+| None
+| X of X
+| Y of Y
+
 type C = {
-  c : OptionalPolymorphic<X, Y>
+  e : Empty
+  c : DU_None_X_Y
 }
+
+type DU_A_B_C_Empty =
+| A of A
+| B of B
+| C of C
+| Empty of Empty
+
+type DU_None_A_B_C =
+| None
+| A of A
+| B of B
+| C of C
+
 type FullTest = {
   primitives : Primitives
   v1 : string array
   v2 : Primitives array
   p : string * Primitives
   o : Primitives option
-  q : Polymorphic<A, B, C>
-  r : OptionalPolymorphic<A, B, C>
+  q : DU_A_B_C_Empty
+  r : DU_None_A_B_C
 }

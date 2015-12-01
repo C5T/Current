@@ -25,13 +25,39 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SFINAE_H
 #define CURRENT_TYPE_SYSTEM_SFINAE_H
 
+#include "../port.h"
+
 #include <map>
+#include <memory>
 #include <utility>
 
 #include "../Bricks/template/pod.h"
 #include "../Bricks/template/enable_if.h"
 
 namespace current {
+
+// The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
+struct CurrentSuper {
+  virtual ~CurrentSuper() = default;
+};
+
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
+
+struct ForceDefaultConstructionDespiteDeletedConstructor {};
+
+template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
+struct GenericPolymorphicImpl;
+
+template <typename T>
+struct IS_POLYMORPHIC {
+  enum { value = false };
+};
+
+template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
+struct IS_POLYMORPHIC<GenericPolymorphicImpl<STRIPPED, REQUIRED, TYPELIST, ORIGINAL_TYPELIST>> {
+  enum { value = true };
+};
+
 namespace sfinae {
 
 // Whether an `ExistsImpl()` method is defined for a type.
@@ -153,11 +179,46 @@ T&& MoveFromStripped(Stripped<T>&& input) {
   return std::move(*reinterpret_cast<T*>(&input));
 }
 
+template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_POLYMORPHIC>
+struct CurrentMakeUniqueImpl {
+  static std::unique_ptr<T> DoSmartMakeUnique() { return make_unique<T>(); }
+};
+
+template <typename T>
+struct CurrentMakeUniqueImpl<T, false, true> {
+  static std::unique_ptr<T> DoSmartMakeUnique() {
+    return make_unique<T>(ForceDefaultConstructionDespiteDeletedConstructor());
+  }
+};
+
+template <typename T>
+struct CurrentMakeUniqueImpl<T, true, false> {
+  static std::unique_ptr<T> DoSmartMakeUnique() {
+    // Empty constructor for `T` may be disabled, but the move one is always available,
+    // and thus the below construct does the job.
+    auto x = make_unique<Stripped<T>>();
+    return make_unique<T>(std::move(*(reinterpret_cast<T*>(x.get()))));
+  }
+};
+
+template <typename T>
+struct MakeUniqueImpl {
+  static std::unique_ptr<T> DoIt() {
+    return CurrentMakeUniqueImpl<T, IS_CURRENT_STRUCT(T), IS_POLYMORPHIC<T>::value>::DoSmartMakeUnique();
+  }
+};
+
+template <typename T>
+std::unique_ptr<T> MakeUnique() {
+  return std::move(MakeUniqueImpl<T>::DoIt());
+}
+
 }  // namespace sfinae
 
 using sfinae::Stripped;
 using sfinae::Unstripped;
 using sfinae::MoveFromStripped;
+using sfinae::MakeUnique;
 
 }  // namespace current
 

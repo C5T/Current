@@ -37,11 +37,6 @@ struct CountFields {};
 
 }  // namespace reflection
 
-// The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
-struct CurrentSuper {
-  virtual ~CurrentSuper() = default;
-};
-
 namespace reflection {
 
 // Dummy type for `CountFields` instantiation type.

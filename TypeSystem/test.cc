@@ -647,7 +647,38 @@ TEST(TypeSystemTest, TimestampPolymorphic) {
 namespace struct_definition_test {
 CURRENT_STRUCT(DisabledDefaultConstructor) { CURRENT_FIELD(meh, (Polymorphic<Foo, Bar>)); };
 CURRENT_STRUCT(MapOfComplexTypes) { CURRENT_FIELD(blah, (std::map<Foo, Polymorphic<Bar, Foo>>)); };
+CURRENT_STRUCT(DU1) { CURRENT_FIELD(one, (Polymorphic<Foo, Bar>)); };
+CURRENT_STRUCT(DU2) { CURRENT_FIELD(two, (Polymorphic<Bar, Foo>)); };
+CURRENT_STRUCT(DUofDU) { CURRENT_FIELD(value, (Polymorphic<DU1, DU2>)); };
 }  // namespace struct_definition_test
+
+template <typename original, typename stripped>
+void StaticAssertOriginalAndStrippedTypesBehave() {
+  if (false) {
+    original* a;
+    Clone(*a);
+    static_cast<void>(a);
+  }
+  if (false) {
+    stripped* a;
+    stripped* b;
+    *a = *b;
+    static_cast<void>(a);
+  }
+  if (false) {
+    stripped* a;
+    stripped b(*a);
+    static_cast<void>(b);
+  }
+  if (false) {
+    stripped instance1;
+    stripped instance2(instance1);
+    stripped instance3;
+    instance3 = instance1;
+    static_cast<void>(instance2);
+    static_cast<void>(instance3);
+  }
+}
 
 TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
   using namespace struct_definition_test;
@@ -660,6 +691,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
     static_assert(is_same_or_compile_error<original, uint64_t>::value, "");
     static_assert(is_same_or_compile_error<stripped, uint64_t>::value, "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -668,6 +700,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
     static_assert(is_same_or_compile_error<original, std::vector<Foo>>::value, "");
     static_assert(is_same_or_compile_error<stripped, std::vector<Foo>>::value, "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -684,6 +717,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
             GenericPolymorphicImpl<true, true, TypeListImpl<Stripped<Foo>>, TypeListImpl<Foo>>>::value,
         "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -702,6 +736,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
                                                                   TypeListImpl<Foo, Bar>>>::value,
                   "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -724,6 +759,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
                                                                   TypeListImpl<Foo, Bar>>>>::value,
         "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -745,6 +781,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
                                            double>>::value,
         "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -769,6 +806,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
                                           ComparatorForStrippedType<uint64_t>>>::value,
         "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -782,6 +820,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
                                  std::map<Stripped<Foo>, char, ComparatorForStrippedType<Foo>>>::value,
         "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -795,6 +834,7 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
     static_assert(
         is_same_or_compile_error<stripped, GenericPolymorphicImpl<true, true, ExFooBar, FooBar>>::value, "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 
   {
@@ -816,6 +856,79 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
                                                     ComparatorForStrippedType<Foo>>>::value,
                   "");
     static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
+  }
+
+  // A dedicated test for a discriminated union within a discriminated union.
+  // Since each field requires a type name (TODO(dkorolev): Change it?), we have to go deeper.
+  {
+    using original_full_type = DU1;
+    using stripped_full_type = Stripped<DU1>;
+    using original = decltype(std::declval<original_full_type>().one);
+    using stripped = decltype(std::declval<stripped_full_type>().one);
+    using current::GenericPolymorphicImpl;
+    using FooBar = TypeListImpl<Foo, Bar>;
+    using ExFooBar = TypeListImpl<Stripped<Foo>, Stripped<Bar>>;
+    using FullFooBar = GenericPolymorphicImpl<false, true, FooBar, FooBar>;
+    using FullExFooBar = GenericPolymorphicImpl<true, true, ExFooBar, FooBar>;
+    static_assert(is_same_or_compile_error<original, FullFooBar>::value, "");
+    static_assert(is_same_or_compile_error<stripped, FullExFooBar>::value, "");
+    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
+  }
+
+  {
+    using original_full_type = DU2;
+    using stripped_full_type = Stripped<DU2>;
+    using original = decltype(std::declval<original_full_type>().two);
+    using stripped = decltype(std::declval<stripped_full_type>().two);
+    using current::GenericPolymorphicImpl;
+    using BarFoo = TypeListImpl<Bar, Foo>;
+    using ExBarFoo = TypeListImpl<Stripped<Bar>, Stripped<Foo>>;
+    using FullBarFoo = GenericPolymorphicImpl<false, true, BarFoo, BarFoo>;
+    using FullExBarFoo = GenericPolymorphicImpl<true, true, ExBarFoo, BarFoo>;
+    static_assert(is_same_or_compile_error<original, FullBarFoo>::value, "");
+    static_assert(is_same_or_compile_error<stripped, FullExBarFoo>::value, "");
+    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
+  }
+
+  {
+    using original = Polymorphic<DU1, DU2>;  // Polymorphic straight within another polymorphic.
+    using stripped = Stripped<original>;
+    using current::GenericPolymorphicImpl;
+    static_assert(
+        is_same_or_compile_error<
+            original,
+            GenericPolymorphicImpl<false, true, TypeListImpl<DU1, DU2>, TypeListImpl<DU1, DU2>>>::value,
+        "");
+    static_assert(is_same_or_compile_error<stripped,
+                                           GenericPolymorphicImpl<true,
+                                                                  true,
+                                                                  TypeListImpl<Stripped<DU1>, Stripped<DU2>>,
+                                                                  TypeListImpl<DU1, DU2>>>::value,
+                  "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
+  }
+
+  {
+    using original_full_type = DUofDU;
+    using stripped_full_type = Stripped<DUofDU>;
+    using original = decltype(std::declval<original_full_type>().value);
+    using stripped = decltype(std::declval<stripped_full_type>().value);
+    using current::GenericPolymorphicImpl;
+    static_assert(
+        is_same_or_compile_error<
+            original,
+            GenericPolymorphicImpl<false, true, TypeListImpl<DU1, DU2>, TypeListImpl<DU1, DU2>>>::value,
+        "");
+    static_assert(is_same_or_compile_error<stripped,
+                                           GenericPolymorphicImpl<true,
+                                                                  true,
+                                                                  TypeListImpl<Stripped<DU1>, Stripped<DU2>>,
+                                                                  TypeListImpl<DU1, DU2>>>::value,
+                  "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
   }
 }
 
