@@ -667,6 +667,16 @@ TEST(Serialization, PolymorphicAsJSON) {
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
   }
+
+// TODO(dkorolev): This should compile.
+#if 0
+  if (false) {
+    using WeHaveToGoDeeper = Polymorphic<RequiredPolymorphicType, OptionalPolymorphicType>;
+    ParseJSON<WeHaveToGoDeeper>("This should compile.");
+    WeHaveToGoDeeper* this_should_compile_too;
+    JSON(*this_should_compile_too);
+  }
+#endif
 }
 
 TEST(Serialization, TimeAsJSON) {

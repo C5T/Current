@@ -144,7 +144,7 @@ struct ReflectorImpl {
         // First step: incomplete struct reflection using only field names.
         FieldReflector field_names_reflector(s.fields, true);
         VisitAllFields<T, FieldTypeAndName>::WithoutObject(field_names_reflector);
-        s.name = StructName<T>();
+        s.name = CurrentTypeName<T>();
         s.type_id = CalculateTypeID(s, true);
         const TypeID incomplete_id = s.type_id;
 

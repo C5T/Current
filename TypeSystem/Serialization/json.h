@@ -261,7 +261,7 @@ struct SaveIntoJSONImpl {
 
       destination_.SetObject();
       destination_.AddMember(
-          rapidjson::Value(StructName<X>(), allocator_).Move(), serialized_object, allocator_);
+          rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(), serialized_object, allocator_);
       destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
     }
 
@@ -483,7 +483,7 @@ struct LoadFromJSONImpl {
           using namespace ::current::reflection;
           // Silently discard duplicate types in the input type list. They would be deserialized correctly.
           deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
-              make_unique<TypedDeserializer<X>>(StructName<X>());
+              make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
         }
       };
     };
