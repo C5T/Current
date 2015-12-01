@@ -506,7 +506,7 @@ struct LoadFromJSONImpl {
                    GenericPolymorphicImpl<STRIPPED, true, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value,
                    const std::string& path) {
     if (!source || source->IsNull()) {
-      throw JSONSchemaException("required polymorphic object", source, path);  // LCOV_EXCL_LINE
+      throw JSONUninitializedPolymorphicObjectException();
     } else {
       LoadPolymorphic<STRIPPED, true, STRIPPED_TYPE_LIST, TS...>::Instance().DoLoadPolymorphic(
           source, value, path);

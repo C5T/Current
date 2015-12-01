@@ -894,6 +894,24 @@ TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
   }
 
   {
+    using original = Polymorphic<DU1, DU2>;  // Polymorphic straight within another polymorphic.
+    using stripped = Stripped<original>;
+    using current::GenericPolymorphicImpl;
+    static_assert(
+        is_same_or_compile_error<
+            original,
+            GenericPolymorphicImpl<false, true, TypeListImpl<DU1, DU2>, TypeListImpl<DU1, DU2>>>::value,
+        "");
+    static_assert(is_same_or_compile_error<stripped,
+                                           GenericPolymorphicImpl<true,
+                                                                  true,
+                                                                  TypeListImpl<Stripped<DU1>, Stripped<DU2>>,
+                                                                  TypeListImpl<DU1, DU2>>>::value,
+                  "");
+    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
+  }
+
+  {
     using original_full_type = DUofDU;
     using stripped_full_type = Stripped<DUofDU>;
     using original = decltype(std::declval<original_full_type>().value);

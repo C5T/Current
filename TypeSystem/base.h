@@ -28,21 +28,6 @@ SOFTWARE.
 
 namespace current {
 
-template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
-struct GenericPolymorphicImpl;
-
-template <typename T>
-struct IS_POLYMORPHIC {
-  enum { value = false };
-};
-
-template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
-struct IS_POLYMORPHIC<GenericPolymorphicImpl<STRIPPED, REQUIRED, TYPELIST, ORIGINAL_TYPELIST>> {
-  enum { value = true };
-};
-
-struct ForceDefaultConstructionDespiteDeletedConstructor {};
-
 namespace reflection {
 
 // Instantiation types.
@@ -51,13 +36,6 @@ struct DeclareStrippedFields {};
 struct CountFields {};
 
 }  // namespace reflection
-
-// The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
-struct CurrentSuper {
-  virtual ~CurrentSuper() = default;
-};
-
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
 
 namespace reflection {
 

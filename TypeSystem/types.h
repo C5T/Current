@@ -25,13 +25,39 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SFINAE_H
 #define CURRENT_TYPE_SYSTEM_SFINAE_H
 
+#include "../port.h"
+
 #include <map>
+#include <memory>
 #include <utility>
 
 #include "../Bricks/template/pod.h"
 #include "../Bricks/template/enable_if.h"
 
 namespace current {
+
+// The superclass for all Current-defined types, to enable polymorphic serialization and deserialization.
+struct CurrentSuper {
+  virtual ~CurrentSuper() = default;
+};
+
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
+
+struct ForceDefaultConstructionDespiteDeletedConstructor {};
+
+template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
+struct GenericPolymorphicImpl;
+
+template <typename T>
+struct IS_POLYMORPHIC {
+  enum { value = false };
+};
+
+template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
+struct IS_POLYMORPHIC<GenericPolymorphicImpl<STRIPPED, REQUIRED, TYPELIST, ORIGINAL_TYPELIST>> {
+  enum { value = true };
+};
+
 namespace sfinae {
 
 // Whether an `ExistsImpl()` method is defined for a type.
