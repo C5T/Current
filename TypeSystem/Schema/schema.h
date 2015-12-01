@@ -63,7 +63,7 @@ struct PrimitiveTypesListImpl {
 };
 
 inline const PrimitiveTypesListImpl& PrimitiveTypesList() {
-  return current::ThreadLocalSingleton<PrimitiveTypesListImpl>();
+  return current::Singleton<PrimitiveTypesListImpl>();
 }
 
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
