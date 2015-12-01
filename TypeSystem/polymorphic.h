@@ -188,7 +188,8 @@ struct GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<TYPES...>, TypeListI
   // Use `Call()` to run a strict check.
 
   template <bool ENABLE = !REQUIRED>
-  ENABLE_IF<ENABLE, bool> ExistsImpl() const {
+  ENABLE_IF<ENABLE, bool>
+  ExistsImpl() const {
     return (object_.get() != nullptr);
   }
 

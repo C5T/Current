@@ -660,12 +660,31 @@ TEST(Serialization, PolymorphicAsJSON) {
     EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
   }
   {
+    const RequiredPolymorphicType object(make_unique<Empty>());
+    const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
+    EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(json,
+              JSON<JSONFormat::NewtonsoftFSharp>(
+                  ParseJSON<RequiredPolymorphicType, JSONFormat::NewtonsoftFSharp>(json)));
+  }
+  {
     const RequiredPolymorphicType object(make_unique<Serializable>(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
+  }
+  {
+    const RequiredPolymorphicType object(make_unique<Serializable>(42));
+    const std::string json =
+        "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
+    EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(json,
+              JSON<JSONFormat::NewtonsoftFSharp>(
+                  ParseJSON<RequiredPolymorphicType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
 // TODO(dkorolev): This should compile.
