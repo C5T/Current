@@ -341,8 +341,9 @@ class StreamInstanceImpl {
         storage_, std::unique_ptr<F, current::NullDeleter>(&listener));
   }
 
+  template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
-    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<ENTRY>>(std::move(r))).Detach();
+    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
   }
 
  private:
@@ -413,7 +414,12 @@ struct StreamInstance {
     return impl_->AsyncSubscribeImpl(std::forward<F>(listener));
   }
 
-  void operator()(Request r) { impl_->ServeDataViaHTTP(std::move(r)); }
+  template <JSONFormat J = JSONFormat::Current>
+  void ServeDataViaHTTP(Request r) {
+    impl_->template ServeDataViaHTTP<J>(std::move(r));
+  }
+
+  void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
 };
 
 // TODO(dkorolev): Validate stream name, add exceptions and tests for it.
