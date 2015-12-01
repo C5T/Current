@@ -68,7 +68,7 @@ TEST(Schema, StructSchema) {
     const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
-    EXPECT_EQ("", schema.Describe(Language::CPP(), false));
+    EXPECT_EQ("", schema.Describe<Language::CPP>(false));
   }
 
   struct_schema.AddType<uint64_t>();
@@ -79,7 +79,7 @@ TEST(Schema, StructSchema) {
     const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
-    EXPECT_EQ("", schema.Describe(Language::CPP(), false));
+    EXPECT_EQ("", schema.Describe<Language::CPP>(false));
   }
 
   struct_schema.AddType<Z>();
@@ -97,7 +97,7 @@ TEST(Schema, StructSchema) {
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
         "};\n",
-        schema.Describe(Language::CPP(), false));
+        schema.Describe<Language::CPP>(false));
   }
 
   struct_schema.AddType<C>();
@@ -125,7 +125,7 @@ TEST(Schema, StructSchema) {
         "struct C {\n"
         "  Optional<B> b;\n"
         "};\n",
-        schema.Describe(Language::CPP(), false));
+        schema.Describe<Language::CPP>(false));
   }
 }
 
@@ -161,7 +161,7 @@ TEST(Schema, SelfContatiningStruct) {
       "  std::vector<SelfContainingB> v;\n"
       "  std::map<std::string, SelfContainingC> m;\n"
       "};\n",
-      schema.Describe(Language::CPP(), false));
+      schema.Describe<Language::CPP>(false));
 }
 
 #include "../Serialization/json.h"
@@ -207,25 +207,26 @@ TEST(Schema, SmokeTestFullStruct) {
   }
   if (FLAGS_write_reflection_golden_files) {
     // LCOV_EXCL_START
-    FileSystem::WriteStringToFile(schema.Describe(Language::CPP()), "golden/smoke_test_struct.cc");
-    FileSystem::WriteStringToFile(schema.Describe(Language::FSharp()), "golden/smoke_test_struct.fsx");
-    FileSystem::WriteStringToFile(JSON(struct_schema.GetSchemaInfo()), "golden/smoke_test_struct.json");
+    FileSystem::WriteStringToFile(schema.Describe<Language::CPP>(), "golden/smoke_test_struct.cc");
+    FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), "golden/smoke_test_struct.fsx");
+    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), "golden/smoke_test_struct.json");
+    // `schema.Describe<Language::JSON>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
     // LCOV_EXCL_STOP
   }
 
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"), schema.Describe(Language::CPP()));
+  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"), schema.Describe<Language::CPP>());
 
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"), schema.Describe(Language::FSharp()));
+  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"), schema.Describe<Language::FSharp>());
 
   // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
   auto restored_schema = ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"));
   EXPECT_EQ(JSON(schema), JSON(struct_schema.GetSchemaInfo()));
 
   EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"),
-            restored_schema.Describe(Language::CPP()));
+            restored_schema.Describe<Language::CPP>());
 
   EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"),
-            restored_schema.Describe(Language::FSharp()));
+            restored_schema.Describe<Language::FSharp>());
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC

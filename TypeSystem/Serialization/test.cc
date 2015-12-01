@@ -480,7 +480,7 @@ TEST(Serialization, StructSchemaSerialization) {
       "  std::vector<std::string> v;\n"
       "  Serializable z;\n"
       "};\n",
-      loaded_schema.Describe(Language::CPP(), false));
+      loaded_schema.Describe<Language::CPP>(false));
 }
 
 TEST(Serialization, JSONForCppTypes) {
