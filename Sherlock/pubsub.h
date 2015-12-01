@@ -36,7 +36,7 @@ SOFTWARE.
 
 namespace sherlock {
 
-template <typename E>
+template <typename E, JSONFormat J = JSONFormat::Current>
 class PubSubHTTPEndpoint final {
  public:
   explicit PubSubHTTPEndpoint(Request r)
@@ -86,7 +86,7 @@ class PubSubHTTPEndpoint final {
         }
       }
       if (serving_) {
-        http_response_(entry);
+        http_response_(JSON<J>(entry) + '\n');  // TODO(dkorolev): "\r\n" ?
         if (cap_) {
           --cap_;
           if (!cap_) {
