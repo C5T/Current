@@ -460,7 +460,7 @@ struct LoadFromJSONImpl {
             GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
             const std::string& path) override {
           if (source->HasMember(key_name_)) {
-            destination = make_unique<X>();
+            destination = MakeUnique<X>();
             LoadFromJSONImpl<X>::Load(
                 &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
           } else {
@@ -490,14 +490,25 @@ struct LoadFromJSONImpl {
 
     static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
   };
-  template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
+  template <bool STRIPPED, typename STRIPPED_TYPE_LIST, typename... TS>
   static void Load(rapidjson::Value* source,
-                   GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value,
+                   GenericPolymorphicImpl<STRIPPED, false, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value,
                    const std::string& path) {
     if (!source || source->IsNull()) {
       value = nullptr;
     } else {
-      LoadPolymorphic<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TS...>::Instance().DoLoadPolymorphic(
+      LoadPolymorphic<STRIPPED, false, STRIPPED_TYPE_LIST, TS...>::Instance().DoLoadPolymorphic(
+          source, value, path);
+    }
+  }
+  template <bool STRIPPED, typename STRIPPED_TYPE_LIST, typename... TS>
+  static void Load(rapidjson::Value* source,
+                   GenericPolymorphicImpl<STRIPPED, true, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value,
+                   const std::string& path) {
+    if (!source || source->IsNull()) {
+      throw JSONSchemaException("required polymorphic object", source, path);  // LCOV_EXCL_LINE
+    } else {
+      LoadPolymorphic<STRIPPED, true, STRIPPED_TYPE_LIST, TS...>::Instance().DoLoadPolymorphic(
           source, value, path);
     }
   }

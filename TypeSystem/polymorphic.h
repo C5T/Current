@@ -76,7 +76,7 @@ struct PolymorphicTypeCheckedAssignment {
                     const X& source,
                     std::unique_ptr<CurrentSuper>& destination) {
       if (!destination || !dynamic_cast<X*>(destination.get())) {
-        destination = make_unique<X>();
+        destination = MakeUnique<X>();
       }
       // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
       dynamic_cast<X&>(*destination.get()) = Clone(source);
@@ -84,7 +84,7 @@ struct PolymorphicTypeCheckedAssignment {
     // Move `X`.
     void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
       if (!destination || !dynamic_cast<X*>(destination.get())) {
-        destination = make_unique<X>();
+        destination = MakeUnique<X>();
       }
       // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
       dynamic_cast<X&>(*destination.get()) = std::move(source);
@@ -112,9 +112,6 @@ struct PolymorphicTypeCheckedAssignment {
   }
 };
 
-template <bool STRIPPED, bool REQUIRED, typename TYPELIST, typename ORIGINAL_TYPELIST>
-struct GenericPolymorphicImpl;
-
 template <bool REQUIRED, typename... TYPES>
 struct GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<TYPES...>, TypeListImpl<TYPES...>>
     : DefaultConstructorGuard<!REQUIRED> {
@@ -130,6 +127,7 @@ struct GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<TYPES...>, TypeListI
   std::unique_ptr<CurrentSuper> object_;
 
   GenericPolymorphicImpl() : DefaultConstructorGuard<!REQUIRED>(DisableDefaultConstructorForRequired()) {}
+  GenericPolymorphicImpl(ForceDefaultConstructionDespiteDeletedConstructor) {}
 
   template <bool ENABLE = !REQUIRED, class = ENABLE_IF<ENABLE>>
   operator bool() const {
@@ -137,11 +135,6 @@ struct GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<TYPES...>, TypeListI
   }
 
   GenericPolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
-
-  template <typename X>
-  GenericPolymorphicImpl(X&& input) {
-    PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
-  }
 
   template <bool U, bool R, class TL>
   GenericPolymorphicImpl(GenericPolymorphicImpl<U, R, TL, T_TYPELIST>&& rhs)
@@ -156,9 +149,19 @@ struct GenericPolymorphicImpl<false, REQUIRED, TypeListImpl<TYPES...>, TypeListI
     return *this;
   }
 
-  template <typename X>
+  template <typename X,
+            bool ENABLE = !IS_POLYMORPHIC<current::decay<X>>::value,
+            class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
     PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+  }
+
+  template <typename X,
+            bool ENABLE = !IS_POLYMORPHIC<current::decay<X>>::value,
+            class SFINAE = ENABLE_IF<ENABLE>>
+  GenericPolymorphicImpl(X&& input) {
+    PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+    CheckIntegrityImpl();
   }
 
   template <bool ENABLE = !REQUIRED>
@@ -239,10 +242,9 @@ struct GenericPolymorphicImpl<true, REQUIRED, TypeListImpl<TYPES...>, TypeListIm
 
   GenericPolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
-  template <typename X>
-  GenericPolymorphicImpl(X&& input) {
-    PolymorphicTypeCheckedAssignment<T_JOINED_TYPELIST>::Perform(std::forward<X>(input), object_);
-  }
+  template <bool U, bool R, class TL1, class TL2>
+  GenericPolymorphicImpl(const GenericPolymorphicImpl<U, R, TL1, TL2>& rhs)
+      : object_(std::move(rhs.object_)) {}
 
   template <bool U, bool R, class TL1, class TL2>
   GenericPolymorphicImpl(GenericPolymorphicImpl<U, R, TL1, TL2>&& rhs)
@@ -254,7 +256,16 @@ struct GenericPolymorphicImpl<true, REQUIRED, TypeListImpl<TYPES...>, TypeListIm
     return *this;
   }
 
-  template <typename X>
+  template <typename X,
+            bool ENABLE = !IS_POLYMORPHIC<current::decay<X>>::value,
+            class SFINAE = ENABLE_IF<ENABLE>>
+  GenericPolymorphicImpl(X&& input) {
+    PolymorphicTypeCheckedAssignment<T_JOINED_TYPELIST>::Perform(std::forward<X>(input), object_);
+  }
+
+  template <typename X,
+            bool ENABLE = !IS_POLYMORPHIC<current::decay<X>>::value,
+            class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
     PolymorphicTypeCheckedAssignment<T_JOINED_TYPELIST>::Perform(std::forward<X>(input), object_);
   }
