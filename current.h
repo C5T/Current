@@ -36,6 +36,6 @@ SOFTWARE.
 #include "Sherlock/sherlock.h"
 
 #include "TypeSystem/struct.h"
-#include "TypeSystem/Reflection/schema.h"
+#include "TypeSystem/Schema/schema.h"
 
 #endif  // CURRENT_H
