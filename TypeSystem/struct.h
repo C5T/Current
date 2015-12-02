@@ -254,10 +254,11 @@ struct CurrentTypeNameImpl<T, true, false> {
   }
 };
 
-template <typename T>
-struct CurrentTypeNameImpl<T, false, true> {
-  static const char* GetCurrentTypeName() { return "Polymorphic"; }
-};
+// Commented out the **really confusing** part for now. -- D.K.
+// template <typename T>
+// struct CurrentTypeNameImpl<T, false, true> {
+//   static const char* GetCurrentTypeName() { return "Polymorphic"; }
+// };
 
 template <typename T>
 inline const char* CurrentTypeName() {
