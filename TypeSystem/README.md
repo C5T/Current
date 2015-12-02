@@ -1,6 +1,7 @@
 # Current Framework Type System
 
-**Current** framework uses its own type system to define data structures and schemas. The main building block is structure, which natively supports reflection and serialization into binary and JSON formats.
+**Current** framework uses its own type system to define data structures and schemas. The main building block is the structure, which natively supports reflection with strong type identification.
+[All the philosophy goes here.]
 
 ## Structures
  
@@ -33,7 +34,7 @@ CURRENT_FIELD(FieldName, FieldType[, DefaultValue]);
 ```
 **Important notes**: 
 * pure C++ declaration of member variables is **not allowed** for Current structures;
-* if field type contains commas, it should be put into parentheses:
+* if the field type contains commas, it should be put into parentheses:
 ```cpp
 CURRENT_FIELD(m, (std::map<uint32_t, std::string>));
 ```
@@ -49,15 +50,19 @@ CURRENT_FIELD(m, (std::map<uint32_t, std::string>));
   * `float` (32-bit)
   * `double` (64-bit)
 * STL containers
-  * `std::pair`
   * `std::map`
   * `std::vector`
+  * `std::pair`
 * `std::string`
 * `std::chrono::milliseconds/microseconds`
-* `enum class`-es declared via `CURRENT_ENUM`:
+* `enum class`-es declared via `CURRENT_ENUM`
+
+#### Enums
+To be used in Current structures, enumerated types must be declared via `CURRENT_ENUM(EnumName, UnderlyingType)` macro:
 ```cpp
 CURRENT_ENUM(Fruits, uint32_t) {APPLE = 1u, ORANGE = 2u};
-``` 
+```
+This macro de-facto declares `enum class` type and registers it inside the Current framework.
 
 ### Constructors
 There are two special macros to define default and parametrized constructors:

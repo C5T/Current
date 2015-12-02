@@ -1,6 +1,8 @@
 # Current
+#### [TypeSystem](https://github.com/C5T/Current/blob/master/TypeSystem/README.md)
+The type system used in Current framework.
 
-#### [RipCurrent](https://github.com/dkorolev/Current/tree/master/RipCurrent/README.md)
+#### [RipCurrent](https://github.com/C5T/Current/blob/master/RipCurrent/README.md)
 The language to define continuous data pipelines.
 
 #### [Sherlock](https://github.com/C5T/Current/blob/master/Sherlock/README.md)
