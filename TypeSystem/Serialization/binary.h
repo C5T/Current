@@ -112,8 +112,7 @@ struct SaveIntoBinaryImpl<std::vector<T>> {
 
 template <typename TF, typename TS>
 struct SaveIntoBinaryImpl<std::pair<TF, TS>> {
-  template <typename PAIR>  // To support std::pair<[const] TF, [const] TS>.
-  static void Save(std::ostream& ostream, const PAIR& value) {
+  static void Save(std::ostream& ostream, const std::pair<TF, TS>& value) {
     SaveIntoBinaryImpl<TF>::Save(ostream, value.first);
     SaveIntoBinaryImpl<TS>::Save(ostream, value.second);
   }
@@ -121,8 +120,7 @@ struct SaveIntoBinaryImpl<std::pair<TF, TS>> {
 
 template <typename TK, typename TV>
 struct SaveIntoBinaryImpl<std::map<TK, TV>> {
-  template <typename MAP>  // To support std::map<[const] TK, [const] TV>.
-  static void Save(std::ostream& ostream, const MAP& value) {
+  static void Save(std::ostream& ostream, const std::map<TK, TV>& value) {
     SaveSizeIntoBinary(ostream, value.size());
     for (const auto& element : value) {
       SaveIntoBinaryImpl<std::pair<TK, TV>>::Save(ostream, element);
@@ -165,7 +163,7 @@ struct SaveIntoBinaryImpl {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
-    SaveIntoBinaryImpl<SUPER>::Save(ostream, dynamic_cast<const SUPER&>(source));
+    SaveIntoBinaryImpl<SUPER>::Save(ostream, source);
 
     SaveFieldVisitor visitor(ostream);
     current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(

@@ -113,12 +113,11 @@ TEST(Serialization, Binary) {
     complex_object.v.push_back("one");
     complex_object.v.push_back("two");
     complex_object.z = Clone(simple_object);
-
     SaveIntoBinary(ofs, complex_object);
 
     DerivedSerializable derived_object;
     derived_object.i = 48;
-    derived_object.s = "baz";
+    derived_object.s = "baz\0baz";
     derived_object.b = true;
     derived_object.e = Enum::SET;
     derived_object.d = 0.125;
@@ -151,7 +150,7 @@ TEST(Serialization, Binary) {
 
     const DerivedSerializable c = LoadFromBinary<DerivedSerializable>(ifs);
     EXPECT_EQ(48ull, c.i);
-    EXPECT_EQ("baz", c.s);
+    EXPECT_EQ("baz\0baz", c.s);
     EXPECT_TRUE(c.b);
     EXPECT_EQ(Enum::SET, c.e);
     EXPECT_DOUBLE_EQ(0.125, c.d);
