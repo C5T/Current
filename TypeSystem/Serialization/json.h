@@ -51,7 +51,24 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 
-enum class JSONFormat : int { Current, NewtonsoftFSharp };
+// Current: as human- and JavaScript-readable as possible, with strong struct signature checking.
+// Used internally, and is the default for exposed API endpoints.
+// * `CURRENT_STRUCT`-s as objects with field names as keys.
+// * `map<string, X>` as `{"k1":<v1>, "k2":<v2>, ...}`, `map<K, V>` as `[[<k1>, <v1>], [<k2>, <v2>], ...]`.
+// * `Polymorphic<A, B, C> x = A(...)` as `{"A":<body>, "":<type ID of A>}`.
+//
+// Minimalistic: same as `Current` above except for polymorphism.
+// Less strict. Used primarily to import data into Current from a trusted source, ex. a local Python script.
+// * Does not serialize Type ID into the empty key.
+// * Relies on the name of the top-level object only when doing polymorphic deserialization.
+//
+// NewtonsoftFSharp: the format friendly with `import Newtonsoft.JSON` from F#.
+// Used to communicate with F# and/or Visual Studio.
+// Difference from `Current`:
+// * Polymorphic types are stored as `{"Case":"A", "Fields":[ { <fields of A> } ]}`.
+// * TODO(dkorolev): Confirm `map<K, V>` does what it should. Untested as of now; `vector<T>` works fine.
+
+enum class JSONFormat : int { Current, Minimalistic, NewtonsoftFSharp };
 
 using current::ThreadLocalSingleton;
 
@@ -246,6 +263,7 @@ struct SaveIntoJSONImpl {
   // * Contains a struct name too, making it easier to use our JSON from JavaScript++.
   //   The actual data is the object with the key being the name of the struct, which *would* be ambiguous
   //   in case of multiple namespaces, but internally we only use TypeID during the deserialization phase.
+  template <bool SAVE_TYPEID_AS_EMPTY_STRING_KEY>
   class SavePolymorphic {
    public:
     SavePolymorphic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
@@ -264,7 +282,10 @@ struct SaveIntoJSONImpl {
       destination_.SetObject();
       destination_.AddMember(
           rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(), serialized_object, allocator_);
-      destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+
+      if (SAVE_TYPEID_AS_EMPTY_STRING_KEY) {
+        destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
+      }
     }
 
    private:
@@ -308,8 +329,12 @@ struct SaveIntoJSONImpl {
       const GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value) {
     // TODO(dkorolev): This call might be worth splitting into two, with and without REQUIRED. Later.
     if (Exists(value)) {
-      typename std::conditional<J == JSONFormat::Current, SavePolymorphic, SavePolymorphicFSharp>::type impl(
-          destination, allocator);
+      typename std::conditional<J == JSONFormat::Current,
+                                SavePolymorphic<true>,
+                                typename std::conditional<J == JSONFormat::Minimalistic,
+                                                          SavePolymorphic<false>,
+                                                          SavePolymorphicFSharp>::type>::type impl(destination,
+                                                                                                   allocator);
       value.Call(impl);
     } else {
       destination.SetNull();
@@ -525,6 +550,95 @@ struct LoadFromJSONImpl {
   };
 
   template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
+  struct LoadPolymorphicMinimalistic {
+    class ImplMinimalistic {
+     public:
+      ImplMinimalistic() {
+        current::metaprogramming::combine<current::metaprogramming::map<RegistererByName, TypeListImpl<TS...>>>
+            bulk_deserializers_registerer;
+        bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+      }
+
+      void DoLoadPolymorphic(
+          rapidjson::Value* source,
+          GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
+          const std::string& path) const {
+        using namespace ::current::reflection;
+        if (source && source->IsObject()) {
+          std::string case_name = "";
+          rapidjson::Value* value = nullptr;
+          for (auto cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
+            if (!cit->name.IsString()) {
+              // Should never happen, just a sanity check. -- D.K.
+              throw JSONSchemaException("key name as string", source, path);
+            }
+            const std::string key = cit->name.GetString();
+            // Skip empty key for "backwards" compatibility with the "Current" format.
+            if (!key.empty()) {
+              if (!value) {
+                case_name = key;
+                value = &cit->value;
+              } else {
+                // LCOV_EXCL_START
+                throw JSONSchemaException(
+                    std::string("no other key after `") + case_name + "`, seeing `" + key + "`", source, path);
+                // LCOV_EXCL_STOP
+              }
+            }
+          }
+          if (!value) {
+            throw JSONSchemaException("a key-value entry with a polymorphic type", source, path);
+          } else {
+            const auto cit = deserializers_.find(case_name);
+            if (cit != deserializers_.end()) {
+              cit->second->Deserialize(value, destination, path);
+            } else {
+              throw JSONSchemaException("the value for the polymorphic type", value, path);  // LCOV_EXCL_LINE
+            }
+          }
+        } else {
+          throw JSONSchemaException("polymorphic type as object", source, path);  // LCOV_EXCL_LINE
+        }
+      };
+
+     private:
+      struct GenericDeserializerMinimalistic {
+        virtual void Deserialize(
+            rapidjson::Value* source,
+            GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
+            const std::string& path) = 0;
+      };
+
+      template <typename X>
+      struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
+        void Deserialize(
+            rapidjson::Value* source,
+            GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& destination,
+            const std::string& path) override {
+          destination = MakeUnique<X>();
+          LoadFromJSONImpl<X, J>::Load(source, Value<X>(destination), path);
+        }
+      };
+
+      using T_DESERIALIZERS_MAP =
+          std::unordered_map<std::string, std::unique_ptr<GenericDeserializerMinimalistic>>;
+      T_DESERIALIZERS_MAP deserializers_;
+
+      template <typename X>
+      struct RegistererByName {
+        void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+          using namespace ::current::reflection;
+          // Silently discard duplicate types in the input type list.
+          // TODO(dkorolev): This is oh so wrong here.
+          deserializers[CurrentTypeName<X>()] = make_unique<TypedDeserializerMinimalistic<X>>();
+        }
+      };
+    };
+
+    static const ImplMinimalistic& Instance() { return ThreadLocalSingleton<ImplMinimalistic>(); }
+  };
+
+  template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
   struct LoadPolymorphicFSharp {
     class ImplFSharp {
      public:
@@ -543,7 +657,7 @@ struct LoadFromJSONImpl {
           if (source->HasMember("Case")) {
             rapidjson::Value* member = &(*source)["Case"];
             std::string case_name;
-            LoadFromJSONImpl<std::string, J>::Load(member, case_name, path + "[\"Case\"]");
+            LoadFromJSONImpl<std::string, J>::Load(member, case_name, path + ".[\"Case\"]");
             const auto cit = deserializers_.find(case_name);
             if (cit != deserializers_.end()) {
               cit->second->Deserialize(source, destination, path);
@@ -607,6 +721,17 @@ struct LoadFromJSONImpl {
     static const ImplFSharp& Instance() { return ThreadLocalSingleton<ImplFSharp>(); }
   };
 
+  template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
+  using LoadPolymorphicPicker = typename std::conditional<
+      J == JSONFormat::Current,
+      LoadPolymorphic<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TS...>,
+      typename std::conditional<J == JSONFormat::Minimalistic,
+                                LoadPolymorphicMinimalistic<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TS...>,
+                                LoadPolymorphicFSharp<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TS...>>::type>::
+      type;
+
+  // `Load<Polymorphic>` requires two specializations, one for the required polymorphic,
+  // and one for the optional one, because required polymorphics correctly do not expose `value = nullptr`.
   template <bool STRIPPED, typename STRIPPED_TYPE_LIST, typename... TS>
   static void Load(rapidjson::Value* source,
                    GenericPolymorphicImpl<STRIPPED, false, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>& value,
@@ -614,10 +739,7 @@ struct LoadFromJSONImpl {
     if (!source || source->IsNull()) {
       value = nullptr;
     } else {
-      typedef typename std::conditional<J == JSONFormat::Current,
-                                        LoadPolymorphic<STRIPPED, false, STRIPPED_TYPE_LIST, TS...>,
-                                        LoadPolymorphicFSharp<STRIPPED, false, STRIPPED_TYPE_LIST, TS...>>::type
-          LOADER;
+      using LOADER = LoadPolymorphicPicker<STRIPPED, false, STRIPPED_TYPE_LIST, TS...>;
       LOADER::Instance().DoLoadPolymorphic(source, value, path);
     }
   }
@@ -628,10 +750,7 @@ struct LoadFromJSONImpl {
     if (!source || source->IsNull()) {
       throw JSONUninitializedPolymorphicObjectException();
     } else {
-      typedef typename std::conditional<J == JSONFormat::Current,
-                                        LoadPolymorphic<STRIPPED, true, STRIPPED_TYPE_LIST, TS...>,
-                                        LoadPolymorphicFSharp<STRIPPED, true, STRIPPED_TYPE_LIST, TS...>>::type
-          LOADER;
+      using LOADER = LoadPolymorphicPicker<STRIPPED, true, STRIPPED_TYPE_LIST, TS...>;
       LOADER::Instance().DoLoadPolymorphic(source, value, path);
     }
   }
