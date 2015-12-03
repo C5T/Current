@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_POLYMORPHIC_H
-#define CURRENT_TYPE_SYSTEM_POLYMORPHIC_H
+#ifndef CURRENT_TYPE_SYSTEM_VARIANT_H
+#define CURRENT_TYPE_SYSTEM_VARIANT_H
 
 #include "../port.h"  // `make_unique`.
 
@@ -40,7 +40,7 @@ SOFTWARE.
 
 namespace current {
 
-// Note: `Polymorphic<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
+// Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
 // instead of a `TypeListImpl<...>` in such a case, to ensure type de-duplication takes place.
@@ -51,7 +51,7 @@ namespace current {
 // or a bare pointer (in which case it's captured).
 // TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
 template <class TYPELIST>
-struct PolymorphicTypeCheckedAssignment {
+struct VariantTypeCheckedAssignment {
   template <typename Z>
   struct DerivedTypesDifferentiator {};
 
@@ -99,44 +99,40 @@ struct PolymorphicTypeCheckedAssignment {
 };
 
 template <typename... TYPES>
-struct PolymorphicImpl<TypeListImpl<TYPES...>> {
+struct VariantImpl<TypeListImpl<TYPES...>> {
   using T_TYPELIST = TypeListImpl<TYPES...>;
   enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
 
   std::unique_ptr<CurrentSuper> object_;
 
-  PolymorphicImpl() {}
+  VariantImpl() {}
 
   operator bool() const { return object_ ? true : false; }
 
-  PolymorphicImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
+  VariantImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
-  PolymorphicImpl(const PolymorphicImpl<T_TYPELIST>& rhs) { CopyFrom(rhs); }
+  VariantImpl(const VariantImpl<T_TYPELIST>& rhs) { CopyFrom(rhs); }
 
-  PolymorphicImpl(PolymorphicImpl<T_TYPELIST>&& rhs) : object_(std::move(rhs.object_)) {}
+  VariantImpl(VariantImpl<T_TYPELIST>&& rhs) : object_(std::move(rhs.object_)) {}
 
-  PolymorphicImpl& operator=(const PolymorphicImpl<T_TYPELIST>& rhs) {
+  VariantImpl& operator=(const VariantImpl<T_TYPELIST>& rhs) {
     CopyFrom(rhs);
     return *this;
   }
 
-  PolymorphicImpl& operator=(PolymorphicImpl<T_TYPELIST>&& rhs) {
+  VariantImpl& operator=(VariantImpl<T_TYPELIST>&& rhs) {
     object_ = std::move(rhs.object_);
     return *this;
   }
 
-  template <typename X,
-            bool ENABLE = !IS_POLYMORPHIC<current::decay<X>>::value,
-            class SFINAE = ENABLE_IF<ENABLE>>
+  template <typename X, bool ENABLE = !IS_VARIANT<current::decay<X>>::value, class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
-    PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+    VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
   }
 
-  template <typename X,
-            bool ENABLE = !IS_POLYMORPHIC<current::decay<X>>::value,
-            class SFINAE = ENABLE_IF<ENABLE>>
-  PolymorphicImpl(X&& input) {
-    PolymorphicTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+  template <typename X, bool ENABLE = !IS_VARIANT<current::decay<X>>::value, class SFINAE = ENABLE_IF<ENABLE>>
+  VariantImpl(X&& input) {
+    VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
     CheckIntegrityImpl();
   }
 
@@ -154,7 +150,7 @@ struct PolymorphicImpl<TypeListImpl<TYPES...>> {
     current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
   }
 
-  // By design, `PolymorphicExistsImpl<T>()` and `PolymorphicValueImpl<T>()` do not check
+  // By design, `VariantExistsImpl<T>()` and `VariantValueImpl<T>()` do not check
   // whether `X` is part of `T_TYPELIST`. More specifically, they pass if `dynamic_cast<>` succeeds,
   // and thus will successfully retrieve a derived type as a base one,
   // regardless of whether the base one is present in `T_TYPELIST`.
@@ -163,12 +159,12 @@ struct PolymorphicImpl<TypeListImpl<TYPES...>> {
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, bool> PolymorphicExistsImpl() const {
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, X&> PolymorphicValueImpl() {
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, X&> VariantValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -178,7 +174,7 @@ struct PolymorphicImpl<TypeListImpl<TYPES...>> {
   }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, const X&> PolymorphicValueImpl() const {
+  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, const X&> VariantValueImpl() const {
     const X* ptr = dynamic_cast<const X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -189,14 +185,14 @@ struct PolymorphicImpl<TypeListImpl<TYPES...>> {
 
   void CheckIntegrityImpl() const {
     if (!object_) {
-      throw UninitializedRequiredPolymorphicOfTypeException<TYPES...>();
+      throw UninitializedRequiredVariantOfTypeException<TYPES...>();
     }
   }
 
  private:
   struct TypeAwareClone {
-    PolymorphicImpl<TypeListImpl<TYPES...>>& result;
-    TypeAwareClone(PolymorphicImpl<TypeListImpl<TYPES...>>& result) : result(result) {}
+    VariantImpl<TypeListImpl<TYPES...>>& result;
+    TypeAwareClone(VariantImpl<TypeListImpl<TYPES...>>& result) : result(result) {}
 
     template <typename TT>
     void operator()(const TT& instance) {
@@ -204,7 +200,7 @@ struct PolymorphicImpl<TypeListImpl<TYPES...>> {
     }
   };
 
-  void CopyFrom(const PolymorphicImpl<TypeListImpl<TYPES...>>& rhs) {
+  void CopyFrom(const VariantImpl<TypeListImpl<TYPES...>>& rhs) {
     if (rhs.object_) {
       TypeAwareClone cloner(*this);
       rhs.Call(cloner);
@@ -215,22 +211,22 @@ struct PolymorphicImpl<TypeListImpl<TYPES...>> {
   }
 };
 
-// `Polymorphic<...>` can accept either a list of types, or a `TypeList<...>`.
+// `Variant<...>` can accept either a list of types, or a `TypeList<...>`.
 template <typename T, typename... TS>
-struct PolymorphicSelector {
-  using type = PolymorphicImpl<TypeListImpl<T, TS...>>;
+struct VariantSelector {
+  using type = VariantImpl<TypeListImpl<T, TS...>>;
 };
 
 template <typename T, typename... TS>
-struct PolymorphicSelector<TypeListImpl<T, TS...>> {
-  using type = PolymorphicImpl<TypeListImpl<T, TS...>>;
+struct VariantSelector<TypeListImpl<T, TS...>> {
+  using type = VariantImpl<TypeListImpl<T, TS...>>;
 };
 
 template <typename... TS>
-using Polymorphic = typename PolymorphicSelector<TS...>::type;
+using Variant = typename VariantSelector<TS...>::type;
 
 }  // namespace current
 
-using current::Polymorphic;
+using current::Variant;
 
-#endif  // CURRENT_TYPE_SYSTEM_POLYMORPHIC_H
+#endif  // CURRENT_TYPE_SYSTEM_VARIANT_H

@@ -36,7 +36,6 @@ SOFTWARE.
 
 #include "base.h"
 #include "helpers.h"
-#include "polymorphic.h"
 
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/variadic_indexes.h"
@@ -221,7 +220,7 @@ struct FieldCounter {
   };
 };
 
-template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_POLYMORPHIC>
+template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT>
 struct CurrentTypeNameImpl;
 
 template <typename T>
@@ -234,12 +233,12 @@ struct CurrentTypeNameImpl<T, true, false> {
 // Commented out the **really confusing** part for now. -- D.K.
 // template <typename T>
 // struct CurrentTypeNameImpl<T, false, true> {
-//   static const char* GetCurrentTypeName() { return "Polymorphic"; }
+//   static const char* GetCurrentTypeName() { return "Variant"; }
 // };
 
 template <typename T>
 inline const char* CurrentTypeName() {
-  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_POLYMORPHIC<T>::value>::GetCurrentTypeName();
+  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_VARIANT<T>::value>::GetCurrentTypeName();
 }
 
 template <typename T, typename VISITOR_TYPE>

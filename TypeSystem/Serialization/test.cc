@@ -634,81 +634,79 @@ TEST(Serialization, OptionalAsJSON) {
   }
 }
 
-TEST(Serialization, PolymorphicAsJSON) {
+TEST(Serialization, VariantAsJSON) {
   using namespace serialization_test;
-  using RequiredPolymorphicType = Polymorphic<Empty, Serializable, ComplexSerializable>;
+  using RequiredVariantType = Variant<Empty, Serializable, ComplexSerializable>;
   {
     try {
-      ParseJSON<RequiredPolymorphicType>("null");
+      ParseJSON<RequiredVariantType>("null");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (JSONUninitializedPolymorphicObjectException) {
+    } catch (JSONUninitializedVariantObjectException) {
     }
   }
   {
-    const RequiredPolymorphicType object(make_unique<Empty>());
+    const RequiredVariantType object(make_unique<Empty>());
     const std::string json = "{\"Empty\":{},\"\":\"T9200000002835747520\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<RequiredVariantType>(json)));
   }
   {
-    const RequiredPolymorphicType object(make_unique<Empty>());
+    const RequiredVariantType object(make_unique<Empty>());
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(
-        json,
-        JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(json)));
   }
   {
-    const RequiredPolymorphicType object(make_unique<Empty>());
+    const RequiredVariantType object(make_unique<Empty>());
     const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::NewtonsoftFSharp>(
-                  ParseJSON<RequiredPolymorphicType, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(
+        json,
+        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<RequiredVariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
-    const RequiredPolymorphicType object(make_unique<Serializable>(42));
+    const RequiredVariantType object(make_unique<Serializable>(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<RequiredVariantType>(json)));
   }
   {
-    const RequiredPolymorphicType object(make_unique<Serializable>(42));
+    const RequiredVariantType object(make_unique<Serializable>(42));
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(
-        json,
-        JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(json)));
 
     // An extra test that `Minimalistic` parser accepts the standard `Current` JSON format.
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(json)));
     const std::string ok2 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":false}";
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(ok2)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(ok2)));
     const std::string ok3 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":42}";
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(ok3)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(ok3)));
   }
   {
-    const RequiredPolymorphicType object(make_unique<Serializable>(42));
+    const RequiredVariantType object(make_unique<Serializable>(42));
     const std::string json =
         "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::NewtonsoftFSharp>(
-                  ParseJSON<RequiredPolymorphicType, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(
+        json,
+        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<RequiredVariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
-// TODO(dk+mz): This should compile. Problem is that we use `unique_ptr<CurrentSuper>` in Polymorphic.
+// TODO(dk+mz): This should compile. Problem is that we use `unique_ptr<CurrentSuper>` in Variant.
 #if 0
   if (false) {
-    using OtherRequiredPolymorphicType = Polymorphic<WithVectorOfPairs, WithOptional>;
-    using WeHaveToGoDeeper = Polymorphic<RequiredPolymorphicType, OtherRequiredPolymorphicType>;
+    using OtherRequiredVariantType = Variant<WithVectorOfPairs, WithOptional>;
+    using WeHaveToGoDeeper = Variant<RequiredVariantType, OtherRequiredVariantType>;
     ParseJSON<WeHaveToGoDeeper>("This should compile.");
     WeHaveToGoDeeper* this_should_compile_too;
     JSON(*this_should_compile_too);

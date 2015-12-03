@@ -28,7 +28,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../optional.h"
-#include "../polymorphic.h"
+#include "../variant.h"
 #include "../struct.h"
 
 #include "../../Bricks/time/chrono.h"

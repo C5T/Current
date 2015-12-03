@@ -33,7 +33,7 @@ SOFTWARE.
 #include "types.h"
 
 #include "../optional.h"
-#include "../polymorphic.h"
+#include "../variant.h"
 #include "../struct.h"
 #include "../timestamp.h"
 
@@ -114,23 +114,23 @@ struct ReflectorImpl {
     }
 
     template <typename... TS>
-    struct VisitAllPolymorphicTypes {
+    struct VisitAllVariantTypes {
       template <typename X>
       struct VisitImpl {
-        static void DispatchToAll(ReflectedType_Polymorphic& destination) {
+        static void DispatchToAll(ReflectedType_Variant& destination) {
           destination.cases.push_back(Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
         }
       };
-      static void Run(ReflectedType_Polymorphic& destination) {
+      static void Run(ReflectedType_Variant& destination) {
         current::metaprogramming::combine<current::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
         impl.DispatchToAll(destination);
       }
     };
 
     template <typename... TS>
-    ReflectedType operator()(TypeSelector<PolymorphicImpl<TypeListImpl<TS...>>>) {
-      ReflectedType_Polymorphic result;
-      VisitAllPolymorphicTypes<TS...>::Run(result);
+    ReflectedType operator()(TypeSelector<VariantImpl<TypeListImpl<TS...>>>) {
+      ReflectedType_Variant result;
+      VisitAllVariantTypes<TS...>::Run(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
     }
@@ -257,7 +257,7 @@ struct ReflectorImpl {
         }
       }
 
-      void operator()(ReflectedType_Polymorphic& p) const {
+      void operator()(ReflectedType_Variant& p) const {
         for (auto& c : p.cases) {
           if (c == from_) {
             c = to_;

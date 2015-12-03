@@ -26,7 +26,7 @@ SOFTWARE.
 #include "enum.h"
 #include "struct.h"
 #include "optional.h"
-#include "polymorphic.h"
+#include "variant.h"
 #include "timestamp.h"
 
 #include "../Bricks/strings/strings.h"
@@ -262,82 +262,79 @@ TEST(TypeSystemTest, EnumRegistration) {
   EXPECT_EQ("Fruits", EnumName<enum_class_test::Fruits>());
 }
 
-TEST(TypeSystemTest, PolymorphicStaticAsserts) {
+TEST(TypeSystemTest, VariantStaticAsserts) {
   using namespace struct_definition_test;
 
-  static_assert(is_same_or_compile_error<Polymorphic<Foo>, Polymorphic<Foo>>::value, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo>, Polymorphic<TypeList<Foo>>>::value, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo>, Polymorphic<TypeList<Foo, Foo>>>::value, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo>, Polymorphic<TypeListImpl<Foo>>>::value, "");
-  static_assert(Polymorphic<Foo>::T_TYPELIST_SIZE == 1u, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo>::T_TYPELIST, TypeListImpl<Foo>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo>, Variant<Foo>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo>, Variant<TypeList<Foo>>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo>, Variant<TypeList<Foo, Foo>>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo>, Variant<TypeListImpl<Foo>>>::value, "");
+  static_assert(Variant<Foo>::T_TYPELIST_SIZE == 1u, "");
+  static_assert(is_same_or_compile_error<Variant<Foo>::T_TYPELIST, TypeListImpl<Foo>>::value, "");
 
-  static_assert(is_same_or_compile_error<Polymorphic<Foo, Bar>, Polymorphic<Foo, Bar>>::value, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo, Bar>, Polymorphic<TypeList<Foo, Bar>>>::value, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo, Bar>, Polymorphic<TypeList<Foo, Bar, Foo>>>::value,
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<Foo, Bar>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar>>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar, Foo>>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar, TypeList<Bar>>>>::value,
                 "");
-  static_assert(
-      is_same_or_compile_error<Polymorphic<Foo, Bar>, Polymorphic<TypeList<Foo, Bar, TypeList<Bar>>>>::value,
-      "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo, Bar>, Polymorphic<TypeListImpl<Foo, Bar>>>::value,
-                "");
-  static_assert(Polymorphic<Foo, Bar>::T_TYPELIST_SIZE == 2u, "");
-  static_assert(is_same_or_compile_error<Polymorphic<Foo, Bar>::T_TYPELIST, TypeListImpl<Foo, Bar>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeListImpl<Foo, Bar>>>::value, "");
+  static_assert(Variant<Foo, Bar>::T_TYPELIST_SIZE == 2u, "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>::T_TYPELIST, TypeListImpl<Foo, Bar>>::value, "");
 }
 
-TEST(TypeSystemTest, PolymorphicCreateAndCopy) {
+TEST(TypeSystemTest, VariantCreateAndCopy) {
   using namespace struct_definition_test;
 
   // Move empty.
   {
-    Polymorphic<Foo, Bar> empty;
-    Polymorphic<Foo, Bar> moved(std::move(empty));
+    Variant<Foo, Bar> empty;
+    Variant<Foo, Bar> moved(std::move(empty));
     EXPECT_FALSE(moved.ExistsImpl());
   }
   {
-    Polymorphic<Foo, Bar> empty;
-    Polymorphic<Foo, Bar> moved;
+    Variant<Foo, Bar> empty;
+    Variant<Foo, Bar> moved;
     moved = std::move(empty);
     EXPECT_FALSE(moved.ExistsImpl());
   }
 
   // Copy empty.
   {
-    Polymorphic<Foo, Bar> empty;
-    Polymorphic<Foo, Bar> copied(empty);
+    Variant<Foo, Bar> empty;
+    Variant<Foo, Bar> copied(empty);
     EXPECT_FALSE(copied.ExistsImpl());
   }
   {
-    Polymorphic<Foo, Bar> empty;
-    Polymorphic<Foo, Bar> copied;
+    Variant<Foo, Bar> empty;
+    Variant<Foo, Bar> copied;
     copied = empty;
     EXPECT_FALSE(copied.ExistsImpl());
   }
 
   // Move non-empty.
   {
-    Polymorphic<Foo, Bar> foo(Foo(100u));
-    Polymorphic<Foo, Bar> moved(std::move(foo));
+    Variant<Foo, Bar> foo(Foo(100u));
+    Variant<Foo, Bar> moved(std::move(foo));
     EXPECT_EQ(100u, Value<Foo>(moved).i);
   }
   {
-    Polymorphic<Foo, Bar> foo(Foo(101u));
-    Polymorphic<Foo, Bar> moved;
+    Variant<Foo, Bar> foo(Foo(101u));
+    Variant<Foo, Bar> moved;
     moved = std::move(foo);
     EXPECT_EQ(101u, Value<Foo>(moved).i);
   }
 
   // Copy non-empty.
   {
-    Polymorphic<Foo, Bar> foo(Foo(100u));
-    Polymorphic<Foo, Bar> copied(foo);
+    Variant<Foo, Bar> foo(Foo(100u));
+    Variant<Foo, Bar> copied(foo);
     Value<Foo>(foo).i = 101u;
     EXPECT_EQ(100u, Value<Foo>(copied).i);
     EXPECT_EQ(101u, Value<Foo>(foo).i);
   }
   {
-    Polymorphic<Foo, Bar> bar(Bar(100u));
-    Polymorphic<Foo, Bar> copied;
+    Variant<Foo, Bar> bar(Bar(100u));
+    Variant<Foo, Bar> copied;
     copied = bar;
     Value<Bar>(bar).j = 101u;
     EXPECT_EQ(100u, Value<Bar>(copied).j);
@@ -345,59 +342,59 @@ TEST(TypeSystemTest, PolymorphicCreateAndCopy) {
   }
 }
 
-TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
+TEST(TypeSystemTest, VariantSmokeTestOneType) {
   using namespace struct_definition_test;
 
   {
-    Polymorphic<Foo> p(make_unique<Foo>());
-    const Polymorphic<Foo>& cp(p);
+    Variant<Foo> p(make_unique<Foo>());
+    const Variant<Foo>& cp(p);
 
     {
-      ASSERT_TRUE(p.PolymorphicExistsImpl<Foo>());
-      const auto& foo = p.PolymorphicValueImpl<Foo>();
+      ASSERT_TRUE(p.VariantExistsImpl<Foo>());
+      const auto& foo = p.VariantValueImpl<Foo>();
       EXPECT_EQ(42u, foo.i);
     }
     {
-      ASSERT_TRUE(cp.PolymorphicExistsImpl<Foo>());
-      const auto& foo = cp.PolymorphicValueImpl<Foo>();
+      ASSERT_TRUE(cp.VariantExistsImpl<Foo>());
+      const auto& foo = cp.VariantValueImpl<Foo>();
       EXPECT_EQ(42u, foo.i);
     }
     {
-      ASSERT_TRUE(p.PolymorphicExistsImpl<Foo>());
+      ASSERT_TRUE(p.VariantExistsImpl<Foo>());
       const auto& foo = Value<Foo>(p);
       EXPECT_EQ(42u, foo.i);
     }
     {
-      ASSERT_TRUE(cp.PolymorphicExistsImpl<Foo>());
+      ASSERT_TRUE(cp.VariantExistsImpl<Foo>());
       const auto& foo = Value<Foo>(cp);
       EXPECT_EQ(42u, foo.i);
     }
 
-    ++p.PolymorphicValueImpl<Foo>().i;
+    ++p.VariantValueImpl<Foo>().i;
 
-    EXPECT_EQ(43u, p.PolymorphicValueImpl<Foo>().i);
-    EXPECT_EQ(43u, cp.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(43u, p.VariantValueImpl<Foo>().i);
+    EXPECT_EQ(43u, cp.VariantValueImpl<Foo>().i);
 
     p = Foo(100u);
-    EXPECT_EQ(100u, p.PolymorphicValueImpl<Foo>().i);
-    EXPECT_EQ(100u, cp.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(100u, p.VariantValueImpl<Foo>().i);
+    EXPECT_EQ(100u, cp.VariantValueImpl<Foo>().i);
 
     p = static_cast<const Foo&>(Foo(101u));
-    EXPECT_EQ(101u, p.PolymorphicValueImpl<Foo>().i);
-    EXPECT_EQ(101u, cp.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(101u, p.VariantValueImpl<Foo>().i);
+    EXPECT_EQ(101u, cp.VariantValueImpl<Foo>().i);
 
     p = std::move(Foo(102u));
-    EXPECT_EQ(102u, p.PolymorphicValueImpl<Foo>().i);
-    EXPECT_EQ(102u, cp.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(102u, p.VariantValueImpl<Foo>().i);
+    EXPECT_EQ(102u, cp.VariantValueImpl<Foo>().i);
 
     p = make_unique<Foo>(103u);
-    EXPECT_EQ(103u, p.PolymorphicValueImpl<Foo>().i);
-    EXPECT_EQ(103u, cp.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(103u, p.VariantValueImpl<Foo>().i);
+    EXPECT_EQ(103u, cp.VariantValueImpl<Foo>().i);
 
     // TODO(dkorolev): Unsafe? Remove?
     p = new Foo(104u);
-    EXPECT_EQ(104u, p.PolymorphicValueImpl<Foo>().i);
-    EXPECT_EQ(104u, cp.PolymorphicValueImpl<Foo>().i);
+    EXPECT_EQ(104u, p.VariantValueImpl<Foo>().i);
+    EXPECT_EQ(104u, cp.VariantValueImpl<Foo>().i);
   }
 
   {
@@ -407,12 +404,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
     };
     Visitor v;
     {
-      Polymorphic<Foo> p(Foo(501u));
+      Variant<Foo> p(Foo(501u));
       p.Call(v);
       EXPECT_EQ("Foo 501\n", v.s);
     }
     {
-      const Polymorphic<Foo> p(Foo(502u));
+      const Variant<Foo> p(Foo(502u));
       p.Call(v);
       EXPECT_EQ("Foo 501\nFoo 502\n", v.s);
     }
@@ -423,26 +420,26 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
     const auto lambda =
         [&s](const Foo& foo) { s += "lambda: Foo " + current::strings::ToString(foo.i) + '\n'; };
     {
-      Polymorphic<Foo> p(Foo(601u));
+      Variant<Foo> p(Foo(601u));
       p.Call(lambda);
       EXPECT_EQ("lambda: Foo 601\n", s);
     }
     {
-      const Polymorphic<Foo> p(Foo(602u));
+      const Variant<Foo> p(Foo(602u));
       p.Call(lambda);
       EXPECT_EQ("lambda: Foo 601\nlambda: Foo 602\n", s);
     }
   }
 
   {
-    const Polymorphic<Foo> p((Foo()));
+    const Variant<Foo> p((Foo()));
     try {
-      p.PolymorphicValueImpl<Bar>();
+      p.VariantValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
-      p.PolymorphicValueImpl<Bar>();
+      p.VariantValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
@@ -459,7 +456,7 @@ TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
   }
 }
 
-TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
+TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
   using namespace struct_definition_test;
 
   struct Visitor {
@@ -473,8 +470,8 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
   Visitor v;
 
   {
-    Polymorphic<Bar, Foo, DerivedFromFoo> p((Bar()));
-    const Polymorphic<Bar, Foo, DerivedFromFoo>& cp = p;
+    Variant<Bar, Foo, DerivedFromFoo> p((Bar()));
+    const Variant<Bar, Foo, DerivedFromFoo>& cp = p;
 
     p.Call(v);
     EXPECT_EQ("Bar", v.s);
@@ -489,12 +486,12 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     EXPECT_EQ("Foo 1", v.s);
 
     try {
-      p.PolymorphicValueImpl<Bar>();
+      p.VariantValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
-      p.PolymorphicValueImpl<Bar>();
+      p.VariantValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
@@ -505,19 +502,19 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
 
-    p.PolymorphicValueImpl<DerivedFromFoo>().baz.v1.resize(3);
+    p.VariantValueImpl<DerivedFromFoo>().baz.v1.resize(3);
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
     cp.Call(v);
     EXPECT_EQ("DerivedFromFoo [3]", v.s);
 
     try {
-      p.PolymorphicValueImpl<Bar>();
+      p.VariantValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValue) {
     }
     try {
-      p.PolymorphicValueImpl<Bar>();
+      p.VariantValueImpl<Bar>();
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (NoValueOfType<Bar>) {
     }
@@ -552,15 +549,15 @@ TEST(TypeSystemTest, TimestampSimple) {
 }
 
 namespace struct_definition_test {
-CURRENT_STRUCT(WithTimestampPolymorphic) {
-  CURRENT_FIELD(magic, (Polymorphic<WithTimestampUS, WithTimestampUInt64>));
-  CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampUS& magic) : magic(magic) {}
-  CURRENT_CONSTRUCTOR(WithTimestampPolymorphic)(const WithTimestampUInt64& magic) : magic(magic) {}
+CURRENT_STRUCT(WithTimestampVariant) {
+  CURRENT_FIELD(magic, (Variant<WithTimestampUS, WithTimestampUInt64>));
+  CURRENT_CONSTRUCTOR(WithTimestampVariant)(const WithTimestampUS& magic) : magic(magic) {}
+  CURRENT_CONSTRUCTOR(WithTimestampVariant)(const WithTimestampUInt64& magic) : magic(magic) {}
   CURRENT_TIMESTAMP(magic);
 };
 }  // namespace struct_definition_test
 
-TEST(TypeSystemTest, TimestampPolymorphic) {
+TEST(TypeSystemTest, TimestampVariant) {
   using namespace struct_definition_test;
 
   WithTimestampUS a;
@@ -568,14 +565,14 @@ TEST(TypeSystemTest, TimestampPolymorphic) {
   WithTimestampUInt64 b;
   b.another_t = 102ull;
 
-  WithTimestampPolymorphic z1(a);
+  WithTimestampVariant z1(a);
   EXPECT_EQ(101ll, MicroTimestampOf(z1).count());
-  z1.magic.PolymorphicValueImpl<WithTimestampUS>().t = std::chrono::microseconds(201);
+  z1.magic.VariantValueImpl<WithTimestampUS>().t = std::chrono::microseconds(201);
   EXPECT_EQ(201ll, MicroTimestampOf(z1).count());
 
-  WithTimestampPolymorphic z2(b);
+  WithTimestampVariant z2(b);
   EXPECT_EQ(102ll, MicroTimestampOf(z2).count());
-  z2.magic.PolymorphicValueImpl<WithTimestampUInt64>().another_t = 202ull;
+  z2.magic.VariantValueImpl<WithTimestampUInt64>().another_t = 202ull;
   EXPECT_EQ(202ll, MicroTimestampOf(z2).count());
 }
 
@@ -596,9 +593,9 @@ TEST(TypeSystemTest, ConstructorsAndMemberFunctions) {
 
 namespace struct_definition_test {
 
-CURRENT_STRUCT(WithPolymorphic) {
-  CURRENT_FIELD(p, (Polymorphic<Foo, Bar>));
-  CURRENT_CONSTRUCTOR(WithPolymorphic)(Foo foo) : p(foo) {}
+CURRENT_STRUCT(WithVariant) {
+  CURRENT_FIELD(p, (Variant<Foo, Bar>));
+  CURRENT_CONSTRUCTOR(WithVariant)(Foo foo) : p(foo) {}
 };
 
 }  // namespace struct_definition_test
@@ -607,14 +604,14 @@ TEST(TypeSystemTest, ComplexCloneCases) {
   using namespace struct_definition_test;
 
   {
-    Polymorphic<Foo, Bar> x(Foo(1));
-    Polymorphic<Foo, Bar> y = Clone(x);
+    Variant<Foo, Bar> x(Foo(1));
+    Variant<Foo, Bar> y = Clone(x);
     EXPECT_EQ(1u, Value<Foo>(y).i);
   }
 
   {
-    WithPolymorphic x(Foo(2));
-    WithPolymorphic y = Clone(x);
+    WithVariant x(Foo(2));
+    WithVariant y = Clone(x);
     EXPECT_EQ(2u, Value<Foo>(y.p).i);
   }
 }

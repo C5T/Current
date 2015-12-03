@@ -44,15 +44,15 @@ struct CurrentSuper {
 #define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
 
 template <typename TYPELIST>
-struct PolymorphicImpl;
+struct VariantImpl;
 
 template <typename T>
-struct IS_POLYMORPHIC {
+struct IS_VARIANT {
   enum { value = false };
 };
 
 template <typename TYPELIST>
-struct IS_POLYMORPHIC<PolymorphicImpl<TYPELIST>> {
+struct IS_VARIANT<VariantImpl<TYPELIST>> {
   enum { value = true };
 };
 

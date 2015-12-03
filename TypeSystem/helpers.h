@@ -62,7 +62,7 @@ template <typename TEST, typename T>
 struct ExistsImplCaller {
   template <typename TT = T>
   static bool CallExistsImpl(TT&& x) {
-    return x.template PolymorphicExistsImpl<TEST>();
+    return x.template VariantExistsImpl<TEST>();
   }
 };
 
@@ -92,9 +92,9 @@ bool Exists(T&& x) {
 template <typename OUTPUT, typename INPUT>
 struct PowerfulValueImplCaller {
   using DECAYED_INPUT = current::decay<INPUT>;
-  static OUTPUT& AccessValue(DECAYED_INPUT& x) { return x.template PolymorphicValueImpl<OUTPUT>(); }
-  static const OUTPUT& AccessValue(const DECAYED_INPUT& x) { return x.template PolymorphicValueImpl<OUTPUT>(); }
-  static OUTPUT&& AccessValue(DECAYED_INPUT&& x) { return x.template PolymorphicValueImpl<OUTPUT>(); }
+  static OUTPUT& AccessValue(DECAYED_INPUT& x) { return x.template VariantValueImpl<OUTPUT>(); }
+  static const OUTPUT& AccessValue(const DECAYED_INPUT& x) { return x.template VariantValueImpl<OUTPUT>(); }
+  static OUTPUT&& AccessValue(DECAYED_INPUT&& x) { return x.template VariantValueImpl<OUTPUT>(); }
 };
 
 // For `OUTPUT == INPUT`, it's either plain `return x;`, or `return x.ValueImpl()`.

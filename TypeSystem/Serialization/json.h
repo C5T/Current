@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "../struct.h"
 #include "../optional.h"
-#include "../polymorphic.h"
+#include "../variant.h"
 
 #include "../Reflection/types.h"
 #include "../Reflection/reflection.h"
@@ -55,17 +55,17 @@ namespace serialization {
 // Used internally, and is the default for exposed API endpoints.
 // * `CURRENT_STRUCT`-s as objects with field names as keys.
 // * `map<string, X>` as `{"k1":<v1>, "k2":<v2>, ...}`, `map<K, V>` as `[[<k1>, <v1>], [<k2>, <v2>], ...]`.
-// * `Polymorphic<A, B, C> x = A(...)` as `{"A":<body>, "":<type ID of A>}`.
+// * `Variant<A, B, C> x = A(...)` as `{"A":<body>, "":<type ID of A>}`.
 //
-// Minimalistic: same as `Current` above except for polymorphism.
+// Minimalistic: same as `Current` above except for treating `Variant`s.
 // Less strict. Used primarily to import data into Current from a trusted source, ex. a local Python script.
 // * Does not serialize Type ID into the empty key.
-// * Relies on the name of the top-level object only when doing polymorphic deserialization.
+// * Relies on the name of the top-level object only when doing `Variant` deserialization.
 //
 // NewtonsoftFSharp: the format friendly with `import Newtonsoft.JSON` from F#.
 // Used to communicate with F# and/or Visual Studio.
 // Difference from `Current`:
-// * Polymorphic types are stored as `{"Case":"A", "Fields":[ { <fields of A> } ]}`.
+// * Variant types are stored as `{"Case":"A", "Fields":[ { <fields of A> } ]}`.
 // * TODO(dkorolev): Confirm `map<K, V>` does what it should. Untested as of now; `vector<T>` works fine.
 
 enum class JSONFormat : int { Current, Minimalistic, NewtonsoftFSharp };
@@ -257,16 +257,16 @@ struct SaveIntoJSONImpl {
     AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<TT>::type>(value));
   }
 
-  // JSON format for polymorphic objects:
+  // JSON format for `Variant` objects:
   // * Contains TypeID.
   // * Under an empty key, so can't confuse it with the actual struct name.
   // * Contains a struct name too, making it easier to use our JSON from JavaScript++.
   //   The actual data is the object with the key being the name of the struct, which *would* be ambiguous
   //   in case of multiple namespaces, but internally we only use TypeID during the deserialization phase.
   template <bool SAVE_TYPEID_AS_EMPTY_STRING_KEY>
-  class SavePolymorphic {
+  class SaveVariant {
    public:
-    SavePolymorphic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+    SaveVariant(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
@@ -293,10 +293,10 @@ struct SaveIntoJSONImpl {
     rapidjson::Document::AllocatorType& allocator_;
   };
 
-  // Polymorphic objects are serialized in a different way for F#.
-  class SavePolymorphicFSharp {
+  // Variant objects are serialized in a different way for F#.
+  class SaveVariantFSharp {
    public:
-    SavePolymorphicFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+    SaveVariantFSharp(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
@@ -325,15 +325,15 @@ struct SaveIntoJSONImpl {
   template <typename... TS>
   static void Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
-                   const PolymorphicImpl<TypeListImpl<TS...>>& value) {
+                   const VariantImpl<TypeListImpl<TS...>>& value) {
     // TODO(dkorolev): This call might be worth splitting into two, with and without REQUIRED. Later.
     if (Exists(value)) {
       typename std::conditional<J == JSONFormat::Current,
-                                SavePolymorphic<true>,
+                                SaveVariant<true>,
                                 typename std::conditional<J == JSONFormat::Minimalistic,
-                                                          SavePolymorphic<false>,
-                                                          SavePolymorphicFSharp>::type>::type impl(destination,
-                                                                                                   allocator);
+                                                          SaveVariant<false>,
+                                                          SaveVariantFSharp>::type>::type impl(destination,
+                                                                                               allocator);
       value.Call(impl);
     } else {
       destination.SetNull();
@@ -467,7 +467,7 @@ struct LoadFromJSONImpl {
   }
 
   template <typename... TS>
-  struct LoadPolymorphic {
+  struct LoadVariant {
     class Impl {
      public:
       Impl() {
@@ -476,9 +476,9 @@ struct LoadFromJSONImpl {
         bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
       }
 
-      void DoLoadPolymorphic(rapidjson::Value* source,
-                             PolymorphicImpl<TypeListImpl<TS...>>& destination,
-                             const std::string& path) const {
+      void DoLoadVariant(rapidjson::Value* source,
+                         VariantImpl<TypeListImpl<TS...>>& destination,
+                         const std::string& path) const {
         using namespace ::current::reflection;
         if (source && source->IsObject()) {
           TypeID type_id;
@@ -495,14 +495,14 @@ struct LoadFromJSONImpl {
             throw JSONSchemaException("type id as value for an empty string", source, path);  // LCOV_EXCL_LINE
           }
         } else {
-          throw JSONSchemaException("polymorphic type as object", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
         }
       };
 
      private:
       struct GenericDeserializer {
         virtual void Deserialize(rapidjson::Value* source,
-                                 PolymorphicImpl<TypeListImpl<TS...>>& destination,
+                                 VariantImpl<TypeListImpl<TS...>>& destination,
                                  const std::string& path) = 0;
       };
 
@@ -511,7 +511,7 @@ struct LoadFromJSONImpl {
         explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
         void Deserialize(rapidjson::Value* source,
-                         PolymorphicImpl<TypeListImpl<TS...>>& destination,
+                         VariantImpl<TypeListImpl<TS...>>& destination,
                          const std::string& path) override {
           if (source->HasMember(key_name_)) {
             destination = make_unique<X>();
@@ -519,7 +519,7 @@ struct LoadFromJSONImpl {
                 &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
           } else {
             // LCOV_EXCL_START
-            throw JSONSchemaException("polymorphic value", source, path + "[\"" + key_name_ + "\"]");
+            throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
             // LCOV_EXCL_STOP
           }
         }
@@ -546,7 +546,7 @@ struct LoadFromJSONImpl {
   };
 
   template <typename... TS>
-  struct LoadPolymorphicMinimalistic {
+  struct LoadVariantMinimalistic {
     class ImplMinimalistic {
      public:
       ImplMinimalistic() {
@@ -555,9 +555,9 @@ struct LoadFromJSONImpl {
         bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
       }
 
-      void DoLoadPolymorphic(rapidjson::Value* source,
-                             PolymorphicImpl<TypeListImpl<TS...>>& destination,
-                             const std::string& path) const {
+      void DoLoadVariant(rapidjson::Value* source,
+                         VariantImpl<TypeListImpl<TS...>>& destination,
+                         const std::string& path) const {
         using namespace ::current::reflection;
         if (source && source->IsObject()) {
           std::string case_name = "";
@@ -582,31 +582,31 @@ struct LoadFromJSONImpl {
             }
           }
           if (!value) {
-            throw JSONSchemaException("a key-value entry with a polymorphic type", source, path);
+            throw JSONSchemaException("a key-value entry with a variant type", source, path);
           } else {
             const auto cit = deserializers_.find(case_name);
             if (cit != deserializers_.end()) {
               cit->second->Deserialize(value, destination, path);
             } else {
-              throw JSONSchemaException("the value for the polymorphic type", value, path);  // LCOV_EXCL_LINE
+              throw JSONSchemaException("the value for the variant type", value, path);  // LCOV_EXCL_LINE
             }
           }
         } else {
-          throw JSONSchemaException("polymorphic type as object", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
         }
       };
 
      private:
       struct GenericDeserializerMinimalistic {
         virtual void Deserialize(rapidjson::Value* source,
-                                 PolymorphicImpl<TypeListImpl<TS...>>& destination,
+                                 VariantImpl<TypeListImpl<TS...>>& destination,
                                  const std::string& path) = 0;
       };
 
       template <typename X>
       struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
         void Deserialize(rapidjson::Value* source,
-                         PolymorphicImpl<TypeListImpl<TS...>>& destination,
+                         VariantImpl<TypeListImpl<TS...>>& destination,
                          const std::string& path) override {
           destination = make_unique<X>();
           LoadFromJSONImpl<X, J>::Load(source, Value<X>(destination), path);
@@ -632,7 +632,7 @@ struct LoadFromJSONImpl {
   };
 
   template <typename... TS>
-  struct LoadPolymorphicFSharp {
+  struct LoadVariantFSharp {
     class ImplFSharp {
      public:
       ImplFSharp() {
@@ -641,9 +641,9 @@ struct LoadFromJSONImpl {
         bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
       }
 
-      void DoLoadPolymorphic(rapidjson::Value* source,
-                             PolymorphicImpl<TypeListImpl<TS...>>& destination,
-                             const std::string& path) const {
+      void DoLoadVariant(rapidjson::Value* source,
+                         VariantImpl<TypeListImpl<TS...>>& destination,
+                         const std::string& path) const {
         using namespace ::current::reflection;
         if (source && source->IsObject()) {
           if (source->HasMember("Case")) {
@@ -660,21 +660,21 @@ struct LoadFromJSONImpl {
             throw JSONSchemaException("a type name in \"Case\"", source, path);  // LCOV_EXCL_LINE
           }
         } else {
-          throw JSONSchemaException("polymorphic type as object", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
         }
       };
 
      private:
       struct GenericDeserializerFSharp {
         virtual void Deserialize(rapidjson::Value* source,
-                                 PolymorphicImpl<TypeListImpl<TS...>>& destination,
+                                 VariantImpl<TypeListImpl<TS...>>& destination,
                                  const std::string& path) = 0;
       };
 
       template <typename X>
       struct TypedDeserializerFSharp : GenericDeserializerFSharp {
         void Deserialize(rapidjson::Value* source,
-                         PolymorphicImpl<TypeListImpl<TS...>>& destination,
+                         VariantImpl<TypeListImpl<TS...>>& destination,
                          const std::string& path) override {
           if (source->HasMember("Fields")) {
             rapidjson::Value* fields = &(*source)["Fields"];
@@ -712,22 +712,20 @@ struct LoadFromJSONImpl {
   };
 
   template <typename... TS>
-  using LoadPolymorphicPicker =
+  using LoadVariantPicker =
       typename std::conditional<J == JSONFormat::Current,
-                                LoadPolymorphic<TS...>,
+                                LoadVariant<TS...>,
                                 typename std::conditional<J == JSONFormat::Minimalistic,
-                                                          LoadPolymorphicMinimalistic<TS...>,
-                                                          LoadPolymorphicFSharp<TS...>>::type>::type;
+                                                          LoadVariantMinimalistic<TS...>,
+                                                          LoadVariantFSharp<TS...>>::type>::type;
 
   template <typename... TS>
-  static void Load(rapidjson::Value* source,
-                   PolymorphicImpl<TypeListImpl<TS...>>& value,
-                   const std::string& path) {
+  static void Load(rapidjson::Value* source, VariantImpl<TypeListImpl<TS...>>& value, const std::string& path) {
     if (!source || source->IsNull()) {
-      throw JSONUninitializedPolymorphicObjectException();
+      throw JSONUninitializedVariantObjectException();
     } else {
-      using LOADER = LoadPolymorphicPicker<TS...>;
-      LOADER::Instance().DoLoadPolymorphic(source, value, path);
+      using LOADER = LoadVariantPicker<TS...>;
+      LOADER::Instance().DoLoadVariant(source, value, path);
     }
   }
 };
@@ -873,8 +871,8 @@ inline void ParseJSON(const std::string& source, T& destination) {
   try {
     ParseJSONViaRapidJSON<J>(source, destination);
     CheckIntegrity(destination);
-  } catch (UninitializedRequiredPolymorphic) {
-    throw JSONUninitializedPolymorphicObjectException();
+  } catch (UninitializedRequiredVariant) {
+    throw JSONUninitializedVariantObjectException();
   }
 }
 
@@ -885,8 +883,8 @@ inline T ParseJSON(const std::string& source) {
     ParseJSONViaRapidJSON<J>(source, result);
     CheckIntegrity(result);
     return result;
-  } catch (UninitializedRequiredPolymorphic) {
-    throw JSONUninitializedPolymorphicObjectException();
+  } catch (UninitializedRequiredVariant) {
+    throw JSONUninitializedVariantObjectException();
   }
 }
 
@@ -903,6 +901,6 @@ using current::serialization::TypeSystemParseJSONException;
 
 using current::serialization::JSONSchemaException;
 using current::serialization::InvalidJSONException;
-using current::serialization::JSONUninitializedPolymorphicObjectException;
+using current::serialization::JSONUninitializedVariantObjectException;
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H

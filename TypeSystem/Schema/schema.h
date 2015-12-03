@@ -153,12 +153,12 @@ struct LanguageSyntaxImpl<Language::CPP> {
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << "Optional<" << self_.TypeName(o.optional_type) << '>';
           }
-          void operator()(const ReflectedType_Polymorphic& p) const {
+          void operator()(const ReflectedType_Variant& p) const {
             std::vector<std::string> cases;
             for (TypeID c : p.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            oss_ << "Polymorphic<" << current::strings::Join(cases, ", ") << '>';
+            oss_ << "Variant<" << current::strings::Join(cases, ", ") << '>';
           }
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
@@ -180,7 +180,7 @@ struct LanguageSyntaxImpl<Language::CPP> {
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
-    void operator()(const ReflectedType_Polymorphic&) const {}
+    void operator()(const ReflectedType_Variant&) const {}
     void operator()(const ReflectedType_Struct& s) const {
       os_ << "struct " << s.name;
       if (s.super_id != TypeID::CurrentSuper) {
@@ -251,7 +251,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << self_.TypeName(o.optional_type) << " option";
           }
-          void operator()(const ReflectedType_Polymorphic& p) const {
+          void operator()(const ReflectedType_Variant& p) const {
             std::vector<std::string> cases;
             for (TypeID c : p.cases) {
               cases.push_back(self_.TypeName(c));
@@ -279,7 +279,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
-    void operator()(const ReflectedType_Polymorphic& p) const {
+    void operator()(const ReflectedType_Variant& p) const {
       std::vector<std::string> cases;
       for (TypeID c : p.cases) {
         cases.push_back(TypeName(c));
@@ -415,7 +415,7 @@ struct StructSchema {
       }
     }
 
-    void operator()(const ReflectedType_Polymorphic& p) {
+    void operator()(const ReflectedType_Variant& p) {
       if (!schema_.types.count(p.type_id)) {
         schema_.types.emplace(p.type_id, p);
         for (TypeID c : p.cases) {
