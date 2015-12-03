@@ -660,6 +660,15 @@ TEST(Serialization, PolymorphicAsJSON) {
   }
   {
     const RequiredPolymorphicType object(make_unique<Empty>());
+    const std::string json = "{\"Empty\":{}}";
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(
+        json,
+        JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(json)));
+  }
+  {
+    const RequiredPolymorphicType object(make_unique<Empty>());
     const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
@@ -674,6 +683,22 @@ TEST(Serialization, PolymorphicAsJSON) {
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<RequiredPolymorphicType>(json)));
+  }
+  {
+    const RequiredPolymorphicType object(make_unique<Serializable>(42));
+    const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
+    // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
+    EXPECT_EQ(
+        json,
+        JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(json)));
+
+    // An extra test that `Minimalistic` parser accepts the standard `Current` JSON format.
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(json)));
+    const std::string ok2 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":false}";
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(ok2)));
+    const std::string ok3 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":42}";
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredPolymorphicType, JSONFormat::Minimalistic>(ok3)));
   }
   {
     const RequiredPolymorphicType object(make_unique<Serializable>(42));
