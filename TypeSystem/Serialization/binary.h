@@ -128,9 +128,9 @@ struct SaveIntoBinaryImpl<std::map<TK, TV>> {
   }
 };
 
-template <typename T, bool STRIPPED>
-struct SaveIntoBinaryImpl<Optional<T, STRIPPED>> {
-  static void Save(std::ostream& ostream, const Optional<T, STRIPPED>& value) {
+template <typename T>
+struct SaveIntoBinaryImpl<Optional<T>> {
+  static void Save(std::ostream& ostream, const Optional<T>& value) {
     const bool exists = Exists(value);
     SaveIntoBinaryImpl<bool>::Save(ostream, exists);
     if (exists) {
@@ -307,19 +307,19 @@ struct LoadFromBinaryImpl<std::map<TK, TV>> {
   static void Load(std::istream& istream, std::map<TK, TV>& destination) {
     destination.clear();
     BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
-    Stripped<TK> k;
-    Stripped<TV> v;
+    TK k;
+    TV v;
     for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      LoadFromBinaryImpl<Stripped<TK>>::Load(istream, k);
-      LoadFromBinaryImpl<Stripped<TV>>::Load(istream, v);
-      destination.emplace(MoveFromStripped<TK>(std::move(k)), MoveFromStripped<TV>(std::move(v)));
+      LoadFromBinaryImpl<TK>::Load(istream, k);
+      LoadFromBinaryImpl<TV>::Load(istream, v);
+      destination.emplace(k, v);
     }
   }
 };
 
-template <typename T, bool STRIPPED>
-struct LoadFromBinaryImpl<Optional<T, STRIPPED>> {
-  static void Load(std::istream& istream, Optional<T, STRIPPED>& destination) {
+template <typename T>
+struct LoadFromBinaryImpl<Optional<T>> {
+  static void Load(std::istream& istream, Optional<T>& destination) {
     bool exists;
     LoadFromBinaryImpl<bool>::Load(istream, exists);
     if (exists) {

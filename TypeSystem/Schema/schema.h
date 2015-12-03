@@ -158,8 +158,7 @@ struct LanguageSyntaxImpl<Language::CPP> {
             for (TypeID c : p.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            oss_ << (p.required ? "" : "Optional") << "Polymorphic<" << current::strings::Join(cases, ", ")
-                 << '>';
+            oss_ << "Polymorphic<" << current::strings::Join(cases, ", ") << '>';
           }
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
@@ -257,7 +256,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
             for (TypeID c : p.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            oss_ << "DU_" << (p.required ? "" : "None_") << current::strings::Join(cases, '_');
+            oss_ << "DU_" << current::strings::Join(cases, '_');
           }
 
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
@@ -285,8 +284,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
       for (TypeID c : p.cases) {
         cases.push_back(TypeName(c));
       }
-      os_ << "\ntype DU_" << (p.required ? "" : "None_") << current::strings::Join(cases, '_') << " =\n"
-          << (p.required ? "" : "| None\n");
+      os_ << "\ntype DU_" << current::strings::Join(cases, '_') << " =\n";
       for (const auto& s : cases) {
         os_ << "| " << s << " of " << s << '\n';
       }
@@ -358,7 +356,7 @@ struct StructSchema {
     void operator()(const ReflectedType_Struct& s) {
       if (!schema_.types.count(s.type_id)) {
         // Fill `types[type_id]` before traversing everything else to break possible circular dependencies.
-        schema_.types.emplace(s.type_id, Clone(s));
+        schema_.types.emplace(s.type_id, s);
         if (s.super_id != TypeID::CurrentSuper) {
           Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
         }
@@ -432,7 +430,7 @@ struct StructSchema {
   };
 
   StructSchema() = default;
-  StructSchema(const SchemaInfo& schema) : schema_(Clone(schema)) {}
+  StructSchema(const SchemaInfo& schema) : schema_(schema) {}
   StructSchema(SchemaInfo&& schema) : schema_(std::move(schema)) {}
 
   template <typename T>

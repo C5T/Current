@@ -54,11 +54,6 @@ struct BaseTypeHelperImpl<DeclareFields, T> {
   typedef T type;
 };
 
-template <typename T>
-struct BaseTypeHelperImpl<DeclareStrippedFields, T> {
-  typedef T type;
-};
-
 template <typename INSTANTIATION_TYPE, typename T>
 using BaseTypeHelper = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
 
@@ -69,11 +64,6 @@ struct FieldImpl;
 template <typename T>
 struct FieldImpl<DeclareFields, T> {
   typedef T type;
-};
-
-template <typename T>
-struct FieldImpl<DeclareStrippedFields, T> {
-  typedef Stripped<decay<T>> type;
 };
 
 template <typename T>
@@ -125,23 +115,11 @@ struct WithoutParentheses<int(T)> {
   template <typename INSTANTIATION_TYPE>                                                            \
   struct CURRENT_STRUCT_IMPL_##s;                                                                   \
   using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
-  using CURRENT_PROTO_##s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareStrippedFields>;  \
   template <typename T>                                                                             \
   struct CURRENT_REFLECTION_HELPER;                                                                 \
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
     using SUPER = super;                                                                            \
-    using STRIPPED_TYPE = CURRENT_PROTO_##s;                                                        \
-    using UNSTRIPPED_TYPE = s;                                                                      \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__ + 1;                             \
-    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
-  };                                                                                                \
-  template <>                                                                                       \
-  struct CURRENT_REFLECTION_HELPER<CURRENT_PROTO_##s> {                                             \
-    using SUPER = super;                                                                            \
-    using STRIPPED_TYPE = CURRENT_PROTO_##s;                                                        \
-    using UNSTRIPPED_TYPE = s;                                                                      \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
@@ -207,11 +185,10 @@ struct WithoutParentheses<int(T)> {
     CURRENT_CALL_F(#name, name);                                                                               \
   }
 
-#define CURRENT_CONSTRUCTOR(s)                                                                               \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                           \
-            class = ENABLE_IF<                                                                               \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value ||        \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareStrippedFields>::value>> \
+#define CURRENT_CONSTRUCTOR(s)                                                                                 \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
+            class =                                                                                            \
+                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CURRENT_STRUCT_IMPL_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()

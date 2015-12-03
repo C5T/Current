@@ -26,8 +26,7 @@ struct A {
 struct B : A {
   int32_t b;
 };
-struct Empty {
-};
+struct Empty {};
 struct X {
   int32_t x;
 };
@@ -36,7 +35,7 @@ struct Y {
 };
 struct C {
   Empty e;
-  OptionalPolymorphic<X, Y> c;
+  Polymorphic<X, Y> c;
 };
 struct FullTest {
   Primitives primitives;
@@ -45,6 +44,5 @@ struct FullTest {
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
   Polymorphic<A, B, C, Empty> q;
-  OptionalPolymorphic<A, B, C> r;
 };
 }  // namespace current_userspace

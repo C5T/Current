@@ -32,7 +32,7 @@ CURRENT_STRUCT(Empty){};
 
 CURRENT_STRUCT(C) {
   CURRENT_FIELD(e, Empty);
-  CURRENT_FIELD(c, (OptionalPolymorphic<X, Y>));
+  CURRENT_FIELD(c, (Polymorphic<X, Y>));
   CURRENT_DEFAULT_CONSTRUCTOR(C) {}
   CURRENT_CONSTRUCTOR(C)(Polymorphic<X, Y> && c) : c(std::move(c)) {}
 };
@@ -44,9 +44,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
   CURRENT_FIELD(q, (Polymorphic<A, B, C, Empty>));
-  CURRENT_FIELD(r, (OptionalPolymorphic<A, B, C>));
-  CURRENT_CONSTRUCTOR(FullTest)(Polymorphic<A, B, C, Empty> && q, OptionalPolymorphic<A, B, C> && r)
-      : q(std::move(q)), r(std::move(r)) {}
+  CURRENT_CONSTRUCTOR(FullTest)(Polymorphic<A, B, C, Empty> && q) : q(std::move(q)) {}
 };
 
 }  // namespace

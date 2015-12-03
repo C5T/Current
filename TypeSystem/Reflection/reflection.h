@@ -127,11 +127,9 @@ struct ReflectorImpl {
       }
     };
 
-    template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
-    ReflectedType operator()(
-        TypeSelector<GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>>) {
+    template <typename... TS>
+    ReflectedType operator()(TypeSelector<PolymorphicImpl<TypeListImpl<TS...>>>) {
       ReflectedType_Polymorphic result;
-      result.required = REQUIRED;
       VisitAllPolymorphicTypes<TS...>::Run(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));

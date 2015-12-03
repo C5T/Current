@@ -637,13 +637,6 @@ TEST(Serialization, OptionalAsJSON) {
 TEST(Serialization, PolymorphicAsJSON) {
   using namespace serialization_test;
   using RequiredPolymorphicType = Polymorphic<Empty, Serializable, ComplexSerializable>;
-  using OptionalPolymorphicType = OptionalPolymorphic<Empty, Serializable, ComplexSerializable>;
-  {
-    const OptionalPolymorphicType object;
-    const std::string json = "null";
-    EXPECT_EQ(json, JSON(object));
-    EXPECT_EQ(json, JSON(ParseJSON<OptionalPolymorphicType>(json)));
-  }
   {
     try {
       ParseJSON<RequiredPolymorphicType>("null");
@@ -711,10 +704,11 @@ TEST(Serialization, PolymorphicAsJSON) {
                   ParseJSON<RequiredPolymorphicType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
-// TODO(dkorolev): This should compile.
+// TODO(dk+mz): This should compile. Problem is that we use `unique_ptr<CurrentSuper>` in Polymorphic.
 #if 0
   if (false) {
-    using WeHaveToGoDeeper = Polymorphic<RequiredPolymorphicType, OptionalPolymorphicType>;
+    using OtherRequiredPolymorphicType = Polymorphic<WithVectorOfPairs, WithOptional>;
+    using WeHaveToGoDeeper = Polymorphic<RequiredPolymorphicType, OtherRequiredPolymorphicType>;
     ParseJSON<WeHaveToGoDeeper>("This should compile.");
     WeHaveToGoDeeper* this_should_compile_too;
     JSON(*this_should_compile_too);

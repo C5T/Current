@@ -162,98 +162,23 @@ TEST(TypeSystemTest, ExistsAndValueSemantics) {
 TEST(TypeSystemTest, CopyDoesItsJob) {
   using namespace struct_definition_test;
 
-  Foo a;
-  Foo b;
-
-  a.i = 1u;
-  b.i = 2u;
+  Foo a(1u);
+  Foo b(a);
   EXPECT_EQ(1u, a.i);
-  EXPECT_EQ(2u, b.i);
+  EXPECT_EQ(1u, b.i);
 
   a.i = 3u;
   EXPECT_EQ(3u, a.i);
-  EXPECT_EQ(2u, b.i);
+  EXPECT_EQ(1u, b.i);
 
-  b = a;
+  Foo c;
+  c = a;
   EXPECT_EQ(3u, a.i);
-  EXPECT_EQ(3u, b.i);
-}
+  EXPECT_EQ(3u, c.i);
 
-TEST(TypeSystemTest, CloneForSimpleTypes) {
-  {
-    struct Tracker {
-      std::string& s;
-      Tracker(std::string& s) : s(s) {}
-      Tracker(const Tracker& rhs) : s(rhs.s) { s += "Tracker(const Tracker&)\n"; }
-      Tracker(Tracker&& rhs) : s(rhs.s) { s += "Tracker(Tracker&&)\n"; }
-      void operator=(const Tracker&) { s += "operator=(const Tracker&)\n"; }
-      void operator=(Tracker&&) { s += "operator=(Tracker&&)\n"; }
-    };
-    {
-      std::string s;
-      Tracker t(s);
-      EXPECT_EQ("", s);
-      Tracker t2(t);
-      EXPECT_EQ("Tracker(const Tracker&)\n", s);
-      t = t2;
-      EXPECT_EQ("Tracker(const Tracker&)\noperator=(const Tracker&)\n", s);
-    }
-    {
-      std::string s;
-      Tracker t(s);
-      EXPECT_EQ("", s);
-      Tracker t2(std::move(t));
-      EXPECT_EQ("Tracker(Tracker&&)\n", s);
-      t = std::move(t2);
-      EXPECT_EQ("Tracker(Tracker&&)\noperator=(Tracker&&)\n", s);
-    }
-    {
-      std::string s;
-      Tracker t(s);
-      EXPECT_EQ("", s);
-      Clone(t);
-      EXPECT_EQ("Tracker(const Tracker&)\nTracker(Tracker&&)\n", s);
-    }
-    {
-      std::string s;
-      const Tracker t(s);
-      EXPECT_EQ("", s);
-      Tracker t2 = Clone(t);
-      static_cast<void>(t2);
-      EXPECT_EQ("Tracker(const Tracker&)\nTracker(Tracker&&)\n", s);
-    }
-  }
-}
-
-TEST(TypeSystemTest, CloneForCurrentTypes) {
-  using namespace struct_definition_test;
-
-  {
-    const Foo a(100u);
-    auto b = Clone(a);
-    EXPECT_EQ(100u, b.i);
-  }
-
-  {
-    const Polymorphic<Foo, Bar> p1(Foo(1u));
-    EXPECT_EQ(1u, Value<Foo>(p1).i);
-
-    const Polymorphic<Foo, Bar> p2(Clone(p1));
-    EXPECT_EQ(1u, Value<Foo>(p2).i);
-  }
-
-  {
-    Polymorphic<Foo, Bar> p1(Foo(2u));
-    EXPECT_EQ(2u, Value<Foo>(p1).i);
-
-    const Polymorphic<Foo, Bar> p2(Clone(p1));
-    EXPECT_EQ(2u, Value<Foo>(p2).i);
-
-    p1 = Bar(3u);
-    EXPECT_TRUE(Exists<Bar>(p1));
-    EXPECT_TRUE(Exists<Foo>(p2));
-    EXPECT_EQ(2u, Value<Foo>(p2).i);
-  }
+  a.i = 5u;
+  EXPECT_EQ(5u, a.i);
+  EXPECT_EQ(3u, c.i);
 }
 
 TEST(TypeSystemTest, ImmutableOptional) {
@@ -358,6 +283,66 @@ TEST(TypeSystemTest, PolymorphicStaticAsserts) {
                 "");
   static_assert(Polymorphic<Foo, Bar>::T_TYPELIST_SIZE == 2u, "");
   static_assert(is_same_or_compile_error<Polymorphic<Foo, Bar>::T_TYPELIST, TypeListImpl<Foo, Bar>>::value, "");
+}
+
+TEST(TypeSystemTest, PolymorphicCreateAndCopy) {
+  using namespace struct_definition_test;
+
+  // Move empty.
+  {
+    Polymorphic<Foo, Bar> empty;
+    Polymorphic<Foo, Bar> moved(std::move(empty));
+    EXPECT_FALSE(moved.ExistsImpl());
+  }
+  {
+    Polymorphic<Foo, Bar> empty;
+    Polymorphic<Foo, Bar> moved;
+    moved = std::move(empty);
+    EXPECT_FALSE(moved.ExistsImpl());
+  }
+
+  // Copy empty.
+  {
+    Polymorphic<Foo, Bar> empty;
+    Polymorphic<Foo, Bar> copied(empty);
+    EXPECT_FALSE(copied.ExistsImpl());
+  }
+  {
+    Polymorphic<Foo, Bar> empty;
+    Polymorphic<Foo, Bar> copied;
+    copied = empty;
+    EXPECT_FALSE(copied.ExistsImpl());
+  }
+
+  // Move non-empty.
+  {
+    Polymorphic<Foo, Bar> foo(Foo(100u));
+    Polymorphic<Foo, Bar> moved(std::move(foo));
+    EXPECT_EQ(100u, Value<Foo>(moved).i);
+  }
+  {
+    Polymorphic<Foo, Bar> foo(Foo(101u));
+    Polymorphic<Foo, Bar> moved;
+    moved = std::move(foo);
+    EXPECT_EQ(101u, Value<Foo>(moved).i);
+  }
+
+  // Copy non-empty.
+  {
+    Polymorphic<Foo, Bar> foo(Foo(100u));
+    Polymorphic<Foo, Bar> copied(foo);
+    Value<Foo>(foo).i = 101u;
+    EXPECT_EQ(100u, Value<Foo>(copied).i);
+    EXPECT_EQ(101u, Value<Foo>(foo).i);
+  }
+  {
+    Polymorphic<Foo, Bar> bar(Bar(100u));
+    Polymorphic<Foo, Bar> copied;
+    copied = bar;
+    Value<Bar>(bar).j = 101u;
+    EXPECT_EQ(100u, Value<Bar>(copied).j);
+    EXPECT_EQ(101u, Value<Bar>(bar).j);
+  }
 }
 
 TEST(TypeSystemTest, PolymorphicSmokeTestOneType) {
@@ -539,56 +524,6 @@ TEST(TypeSystemTest, PolymorphicSmokeTestMultipleTypes) {
   }
 }
 
-TEST(TypeSystemTest, PolymorphicRequiredAndOptional) {
-  using namespace struct_definition_test;
-
-  static_assert(Polymorphic<Foo, Bar>::IS_REQUIRED, "");
-  static_assert(!Polymorphic<Foo, Bar>::IS_OPTIONAL, "");
-
-  static_assert(!OptionalPolymorphic<Foo, Bar>::IS_REQUIRED, "");
-  static_assert(OptionalPolymorphic<Foo, Bar>::IS_OPTIONAL, "");
-
-  {
-    Polymorphic<Foo, Bar> a = Foo(1);
-    EXPECT_EQ(1ull, a.PolymorphicValueImpl<Foo>().i);
-
-    Polymorphic<Foo, Bar> b = std::move(a);
-    EXPECT_EQ(1ull, b.PolymorphicValueImpl<Foo>().i);
-  }
-
-  {
-    OptionalPolymorphic<Foo, Bar> x;
-    const bool b1 = x;
-    EXPECT_FALSE(b1);
-    x = Bar(2);
-    const bool b2 = x;
-    EXPECT_TRUE(b2);
-
-    try {
-      x.PolymorphicValueImpl<Foo>();
-      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (NoValueOfType<Foo>) {
-    }
-
-    Polymorphic<Foo, Bar> y = std::move(x);
-    static_cast<void>(y);
-  }
-
-  {
-    OptionalPolymorphic<Foo, Bar> p;
-    try {
-      Polymorphic<Foo, Bar> q = std::move(p);
-      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (UninitializedRequiredPolymorphic) {
-    }
-    try {
-      Polymorphic<Foo, Bar> r = std::move(p);
-      ASSERT_TRUE(false);  // LCOV_EXCL_LINE
-    } catch (UninitializedRequiredPolymorphicOfType<Foo, Bar>) {
-    }
-  }
-}
-
 namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampUS) {
   CURRENT_FIELD(t, std::chrono::microseconds);
@@ -642,294 +577,6 @@ TEST(TypeSystemTest, TimestampPolymorphic) {
   EXPECT_EQ(102ll, MicroTimestampOf(z2).count());
   z2.magic.PolymorphicValueImpl<WithTimestampUInt64>().another_t = 202ull;
   EXPECT_EQ(202ll, MicroTimestampOf(z2).count());
-}
-
-namespace struct_definition_test {
-CURRENT_STRUCT(DisabledDefaultConstructor) { CURRENT_FIELD(meh, (Polymorphic<Foo, Bar>)); };
-CURRENT_STRUCT(MapOfComplexTypes) { CURRENT_FIELD(blah, (std::map<Foo, Polymorphic<Bar, Foo>>)); };
-CURRENT_STRUCT(DU1) { CURRENT_FIELD(one, (Polymorphic<Foo, Bar>)); };
-CURRENT_STRUCT(DU2) { CURRENT_FIELD(two, (Polymorphic<Bar, Foo>)); };
-CURRENT_STRUCT(DUofDU) { CURRENT_FIELD(value, (Polymorphic<DU1, DU2>)); };
-}  // namespace struct_definition_test
-
-template <typename original, typename stripped>
-void StaticAssertOriginalAndStrippedTypesBehave() {
-  if (false) {
-    original* a;
-    Clone(*a);
-    static_cast<void>(a);
-  }
-  if (false) {
-    stripped* a;
-    stripped* b;
-    *a = *b;
-    static_cast<void>(a);
-  }
-  if (false) {
-    stripped* a;
-    stripped b(*a);
-    static_cast<void>(b);
-  }
-  if (false) {
-    stripped instance1;
-    stripped instance2(instance1);
-    stripped instance3;
-    instance3 = instance1;
-    static_cast<void>(instance2);
-    static_cast<void>(instance3);
-  }
-}
-
-TEST(TypeSystemTest, CanWorkAroundDisabledDefaultConstructor) {
-  using namespace struct_definition_test;
-  using current::Stripped;
-  using current::Unstripped;
-
-  {
-    using original = decltype(std::declval<Foo>().i);
-    using stripped = decltype(std::declval<Stripped<Foo>>().i);
-    static_assert(is_same_or_compile_error<original, uint64_t>::value, "");
-    static_assert(is_same_or_compile_error<stripped, uint64_t>::value, "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = decltype(std::declval<Baz>().v2);
-    using stripped = decltype(std::declval<Stripped<Baz>>().v2);
-    static_assert(is_same_or_compile_error<original, std::vector<Foo>>::value, "");
-    static_assert(is_same_or_compile_error<stripped, std::vector<Foo>>::value, "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = Polymorphic<Foo>;
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    static_assert(is_same_or_compile_error<
-                      original,
-                      GenericPolymorphicImpl<false, true, TypeListImpl<Foo>, TypeListImpl<Foo>>>::value,
-                  "");
-    static_assert(
-        is_same_or_compile_error<
-            stripped,
-            GenericPolymorphicImpl<true, true, TypeListImpl<Stripped<Foo>>, TypeListImpl<Foo>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = Polymorphic<Foo, Bar>;
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    static_assert(
-        is_same_or_compile_error<
-            original,
-            GenericPolymorphicImpl<false, true, TypeListImpl<Foo, Bar>, TypeListImpl<Foo, Bar>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<stripped,
-                                           GenericPolymorphicImpl<true,
-                                                                  true,
-                                                                  TypeListImpl<Stripped<Foo>, Stripped<Bar>>,
-                                                                  TypeListImpl<Foo, Bar>>>::value,
-                  "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = std::pair<std::string, Polymorphic<Foo, Bar>>;
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    static_assert(
-        is_same_or_compile_error<
-            original,
-            std::pair<std::string,
-                      GenericPolymorphicImpl<false, true, TypeListImpl<Foo, Bar>, TypeListImpl<Foo, Bar>>>>::
-            value,
-        "");
-    static_assert(
-        is_same_or_compile_error<stripped,
-                                 std::pair<std::string,
-                                           GenericPolymorphicImpl<true,
-                                                                  true,
-                                                                  TypeListImpl<Stripped<Foo>, Stripped<Bar>>,
-                                                                  TypeListImpl<Foo, Bar>>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = std::pair<Polymorphic<Foo, Bar>, double>;
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    static_assert(
-        is_same_or_compile_error<
-            original,
-            std::pair<GenericPolymorphicImpl<false, true, TypeListImpl<Foo, Bar>, TypeListImpl<Foo, Bar>>,
-                      double>>::value,
-        "");
-    static_assert(
-        is_same_or_compile_error<stripped,
-                                 std::pair<GenericPolymorphicImpl<true,
-                                                                  true,
-                                                                  TypeListImpl<Stripped<Foo>, Stripped<Bar>>,
-                                                                  TypeListImpl<Foo, Bar>>,
-                                           double>>::value,
-        "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = std::map<uint64_t, Polymorphic<Foo, Bar>>;
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    using current::sfinae::ComparatorForStrippedType;
-    static_assert(
-        is_same_or_compile_error<
-            original,
-            std::map<uint64_t,
-                     GenericPolymorphicImpl<false, true, TypeListImpl<Foo, Bar>, TypeListImpl<Foo, Bar>>>>::
-            value,
-        "");
-    static_assert(
-        is_same_or_compile_error<stripped,
-                                 std::map<uint64_t,
-                                          GenericPolymorphicImpl<true,
-                                                                 true,
-                                                                 TypeListImpl<Stripped<Foo>, Stripped<Bar>>,
-                                                                 TypeListImpl<Foo, Bar>>,
-                                          ComparatorForStrippedType<uint64_t>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = std::map<Foo, char>;
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    using current::sfinae::ComparatorForStrippedType;
-    static_assert(is_same_or_compile_error<original, std::map<Foo, char>>::value, "");
-    static_assert(
-        is_same_or_compile_error<stripped,
-                                 std::map<Stripped<Foo>, char, ComparatorForStrippedType<Foo>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = decltype(std::declval<DisabledDefaultConstructor>().meh);
-    using stripped = decltype(std::declval<Stripped<DisabledDefaultConstructor>>().meh);
-    using current::GenericPolymorphicImpl;
-    using FooBar = TypeListImpl<Foo, Bar>;
-    using ExFooBar = TypeListImpl<Stripped<Foo>, Stripped<Bar>>;
-    static_assert(
-        is_same_or_compile_error<original, GenericPolymorphicImpl<false, true, FooBar, FooBar>>::value, "");
-    static_assert(
-        is_same_or_compile_error<stripped, GenericPolymorphicImpl<true, true, ExFooBar, FooBar>>::value, "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original_full_type = MapOfComplexTypes;
-    using stripped_full_type = Stripped<MapOfComplexTypes>;
-    using original = decltype(std::declval<original_full_type>().blah);
-    using stripped = decltype(std::declval<stripped_full_type>().blah);
-    using current::GenericPolymorphicImpl;
-    using current::sfinae::ComparatorForStrippedType;
-    using BarFoo = TypeListImpl<Bar, Foo>;
-    using ExBarFoo = TypeListImpl<Stripped<Bar>, Stripped<Foo>>;
-    static_assert(
-        is_same_or_compile_error<original,
-                                 std::map<Foo, GenericPolymorphicImpl<false, true, BarFoo, BarFoo>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<stripped,
-                                           std::map<Stripped<Foo>,
-                                                    GenericPolymorphicImpl<true, true, ExBarFoo, BarFoo>,
-                                                    ComparatorForStrippedType<Foo>>>::value,
-                  "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  // A dedicated test for a discriminated union within a discriminated union.
-  // Since each field requires a type name (TODO(dkorolev): Change it?), we have to go deeper.
-  {
-    using original_full_type = DU1;
-    using stripped_full_type = Stripped<DU1>;
-    using original = decltype(std::declval<original_full_type>().one);
-    using stripped = decltype(std::declval<stripped_full_type>().one);
-    using current::GenericPolymorphicImpl;
-    using FooBar = TypeListImpl<Foo, Bar>;
-    using ExFooBar = TypeListImpl<Stripped<Foo>, Stripped<Bar>>;
-    using FullFooBar = GenericPolymorphicImpl<false, true, FooBar, FooBar>;
-    using FullExFooBar = GenericPolymorphicImpl<true, true, ExFooBar, FooBar>;
-    static_assert(is_same_or_compile_error<original, FullFooBar>::value, "");
-    static_assert(is_same_or_compile_error<stripped, FullExFooBar>::value, "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original_full_type = DU2;
-    using stripped_full_type = Stripped<DU2>;
-    using original = decltype(std::declval<original_full_type>().two);
-    using stripped = decltype(std::declval<stripped_full_type>().two);
-    using current::GenericPolymorphicImpl;
-    using BarFoo = TypeListImpl<Bar, Foo>;
-    using ExBarFoo = TypeListImpl<Stripped<Bar>, Stripped<Foo>>;
-    using FullBarFoo = GenericPolymorphicImpl<false, true, BarFoo, BarFoo>;
-    using FullExBarFoo = GenericPolymorphicImpl<true, true, ExBarFoo, BarFoo>;
-    static_assert(is_same_or_compile_error<original, FullBarFoo>::value, "");
-    static_assert(is_same_or_compile_error<stripped, FullExBarFoo>::value, "");
-    static_assert(is_same_or_compile_error<original, Unstripped<stripped>>::value, "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original = Polymorphic<DU1, DU2>;  // Polymorphic straight within another polymorphic.
-    using stripped = Stripped<original>;
-    using current::GenericPolymorphicImpl;
-    static_assert(
-        is_same_or_compile_error<
-            original,
-            GenericPolymorphicImpl<false, true, TypeListImpl<DU1, DU2>, TypeListImpl<DU1, DU2>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<stripped,
-                                           GenericPolymorphicImpl<true,
-                                                                  true,
-                                                                  TypeListImpl<Stripped<DU1>, Stripped<DU2>>,
-                                                                  TypeListImpl<DU1, DU2>>>::value,
-                  "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
-
-  {
-    using original_full_type = DUofDU;
-    using stripped_full_type = Stripped<DUofDU>;
-    using original = decltype(std::declval<original_full_type>().value);
-    using stripped = decltype(std::declval<stripped_full_type>().value);
-    using current::GenericPolymorphicImpl;
-    static_assert(
-        is_same_or_compile_error<
-            original,
-            GenericPolymorphicImpl<false, true, TypeListImpl<DU1, DU2>, TypeListImpl<DU1, DU2>>>::value,
-        "");
-    static_assert(is_same_or_compile_error<stripped,
-                                           GenericPolymorphicImpl<true,
-                                                                  true,
-                                                                  TypeListImpl<Stripped<DU1>, Stripped<DU2>>,
-                                                                  TypeListImpl<DU1, DU2>>>::value,
-                  "");
-    StaticAssertOriginalAndStrippedTypesBehave<original, stripped>();
-  }
 }
 
 TEST(TypeSystemTest, ConstructorsAndMemberFunctions) {

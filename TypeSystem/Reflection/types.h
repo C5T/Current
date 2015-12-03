@@ -54,7 +54,6 @@ constexpr uint64_t TYPEID_ENUM_PREFIX  = 901u;
 constexpr uint64_t TYPEID_STRUCT_PREFIX               = 920u;
 constexpr uint64_t TYPEID_OPTIONAL_PREFIX             = 921u;
 constexpr uint64_t TYPEID_POLYMORPHIC_PREFIX          = 922u;
-constexpr uint64_t TYPEID_OPTIONAL_POLYMORPHIC_PREFIX = 923u;
 // STL containers prefixes.
 constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
 constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
@@ -72,7 +71,6 @@ constexpr uint64_t TYPEID_ENUM_TYPE  = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
 constexpr uint64_t TYPEID_STRUCT_TYPE      = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
 constexpr uint64_t TYPEID_OPTIONAL_TYPE    = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
 constexpr uint64_t TYPEID_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_POLYMORPHIC_PREFIX;
-constexpr uint64_t TYPEID_OPTIONAL_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_POLYMORPHIC_PREFIX;
 // Base TypeID-s for STL containers.
 constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
 constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
@@ -135,7 +133,6 @@ CURRENT_STRUCT(ReflectedType_Optional, ReflectedTypeBase) {
 
 CURRENT_STRUCT(ReflectedType_Polymorphic, ReflectedTypeBase) {
   CURRENT_FIELD(cases, std::vector<TypeID>);
-  CURRENT_FIELD(required, bool);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Polymorphic) {}
 };
 
@@ -215,11 +212,7 @@ inline TypeID CalculateTypeID(const ReflectedType_Polymorphic& p) {
     hash ^= ROL64(c, i * 3u + 17u);
     ++i;
   }
-  if (p.required) {
-    return static_cast<TypeID>(TYPEID_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
-  } else {
-    return static_cast<TypeID>(TYPEID_OPTIONAL_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
-  }
+  return static_cast<TypeID>(TYPEID_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

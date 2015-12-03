@@ -189,7 +189,7 @@ TEST(Schema, SmokeTestFullStruct) {
       B b;
       X x;
       C c(x);
-      FullTest original(std::move(a), std::move(c));
+      FullTest original(std::move(c));
 
       if (false) {
         smoke_test_struct_namespace::FullTest clone_initialized(Clone(original));

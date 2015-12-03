@@ -137,19 +137,10 @@ void CheckIntegrity(T&& x) {
   CheckIntegrityImplCaller<T>::CallCheckIntegrityImpl(std::forward<T>(x));
 }
 
-// TODO(dkorolev): Migrate the older `Clone()` methods here, after cleaning them up.
+// Temporary no-op `Clone`.
 template <typename T>
-decay<T> Clone(T&& x) {
-  using DECAYED_T = decay<T>;
-  static_assert(sizeof(DECAYED_T) == sizeof(Stripped<DECAYED_T>), "");
-  // This `Clone()` method operates on three assumptions:
-  // 1) `Stripped<T>` exists.
-  // 2) `Stripped<T>` has a copy constructor.
-  // 3) `T` has a move constructor.
-  const Stripped<DECAYED_T>& copyable_x = *reinterpret_cast<const Stripped<DECAYED_T>*>(&x);
-  Stripped<DECAYED_T> copy(copyable_x);
-  DECAYED_T& returnable_copy(*reinterpret_cast<DECAYED_T*>(&copy));
-  return std::move(returnable_copy);
+T& Clone(T& x) {
+  return x;
 }
 
 }  // namespace current

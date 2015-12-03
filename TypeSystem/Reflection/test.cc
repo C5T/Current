@@ -248,25 +248,4 @@ TEST(Reflection, VisitAllFields) {
       current::strings::Join(result, ','));
 }
 
-TEST(Reflection, ShouldNotCompile) {
-  using namespace reflection_test;
-
-#undef THIS_SHOULD_NOT_COMPILE
-//#define THIS_SHOULD_NOT_COMPILE
-
-#ifndef THIS_SHOULD_NOT_COMPILE
-  StructWithAllSupportedTypes one;
-  StructWithAllSupportedTypes two(Clone(one));
-  StructWithAllSupportedTypes three;
-  three = Clone(one);
-#else   // THIS_SHOULD_NOT_COMPILE
-  StructWithAllSupportedTypes one;
-  StructWithAllSupportedTypes two(one);  // Copy construction is prohibited.
-  StructWithAllSupportedTypes three;
-  three = one;  // Assignment is prohibited.
-#endif  // THIS_SHOULD_NOT_COMPILE
-
-#undef THIS_SHOULD_NOT_COMPILE
-}
-
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC
