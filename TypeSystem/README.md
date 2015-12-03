@@ -55,10 +55,10 @@ CURRENT_FIELD(m, (std::map<uint32_t, std::string>));
   * `std::pair`
 * `std::string`
 * `std::chrono::milliseconds/microseconds`
-* `enum class`-es declared via the `CURRENT_ENUM`
+* `enum class`-es declared via `CURRENT_ENUM`
 
 #### Enums
-To be used in Current structures, enumerated types must be declared via `CURRENT_ENUM(EnumName, UnderlyingType)` macro:
+To be used in Current structures, enumerated types must be declared via the `CURRENT_ENUM(EnumName, UnderlyingType)` macro:
 ```cpp
 CURRENT_ENUM(Fruits, uint32_t) {APPLE = 1u, ORANGE = 2u};
 ```

@@ -149,7 +149,9 @@ int main(int argc, char** argv) {
                 [](Request r) {
                   StructSchema schema;
                   schema.AddType<Event>();
-                  r(schema.Describe(Language::CPP()), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+                  r(schema.GetSchemaInfo().Describe<Language::CPP>(),
+                    HTTPResponseCode.OK,
+                    "text/plain; charset=us-ascii");
                 });
 
   HTTP(FLAGS_db_demo_port)
@@ -157,7 +159,9 @@ int main(int argc, char** argv) {
                 [](Request r) {
                   StructSchema schema;
                   schema.AddType<Event>();
-                  r(schema.Describe(Language::FSharp()), HTTPResponseCode.OK, "text/plain; charset=us-ascii");
+                  r(schema.GetSchemaInfo().Describe<Language::FSharp>(),
+                    HTTPResponseCode.OK,
+                    "text/plain; charset=us-ascii");
                 });
 
   HTTP(FLAGS_db_demo_port)
