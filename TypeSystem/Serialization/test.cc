@@ -702,8 +702,7 @@ TEST(Serialization, VariantAsJSON) {
         JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<RequiredVariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
-// TODO(dk+mz): This should compile. Problem is that we use `unique_ptr<CurrentSuper>` in Variant.
-#if 0
+  // TODO(dk+mz): This should compile. And it compiles. Does it work properly?
   if (false) {
     using OtherRequiredVariantType = Variant<WithVectorOfPairs, WithOptional>;
     using WeHaveToGoDeeper = Variant<RequiredVariantType, OtherRequiredVariantType>;
@@ -711,7 +710,6 @@ TEST(Serialization, VariantAsJSON) {
     WeHaveToGoDeeper* this_should_compile_too;
     JSON(*this_should_compile_too);
   }
-#endif
 }
 
 TEST(Serialization, TimeAsJSON) {

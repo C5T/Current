@@ -158,12 +158,12 @@ struct ReflectorImpl {
 
    private:
     template <typename T>
-    ENABLE_IF<std::is_same<SuperType<T>, CurrentSuper>::value, TypeID> ReflectSuper() {
-      return TypeID::CurrentSuper;
+    ENABLE_IF<std::is_same<SuperType<T>, CurrentStructSuper>::value, TypeID> ReflectSuper() {
+      return TypeID::CurrentStructSuper;
     }
 
     template <typename T>
-    ENABLE_IF<!std::is_same<SuperType<T>, CurrentSuper>::value, TypeID> ReflectSuper() {
+    ENABLE_IF<!std::is_same<SuperType<T>, CurrentStructSuper>::value, TypeID> ReflectSuper() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<SuperType<T>>()).type_id;
     }
   };

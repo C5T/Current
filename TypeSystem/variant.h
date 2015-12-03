@@ -99,7 +99,10 @@ struct VariantTypeCheckedAssignment {
 };
 
 template <typename... TYPES>
-struct VariantImpl<TypeListImpl<TYPES...>> {
+struct VariantImpl;
+
+template <typename... TYPES>
+struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariantSuper {
   using T_TYPELIST = TypeListImpl<TYPES...>;
   enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
 
@@ -125,12 +128,16 @@ struct VariantImpl<TypeListImpl<TYPES...>> {
     return *this;
   }
 
-  template <typename X, bool ENABLE = !IS_VARIANT<current::decay<X>>::value, class SFINAE = ENABLE_IF<ENABLE>>
+  template <typename X,
+            bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
+            class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
     VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
   }
 
-  template <typename X, bool ENABLE = !IS_VARIANT<current::decay<X>>::value, class SFINAE = ENABLE_IF<ENABLE>>
+  template <typename X,
+            bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
+            class SFINAE = ENABLE_IF<ENABLE>>
   VariantImpl(X&& input) {
     VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
     CheckIntegrityImpl();
@@ -159,12 +166,12 @@ struct VariantImpl<TypeListImpl<TYPES...>> {
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, bool> VariantExistsImpl() const {
+  ENABLE_IF<!std::is_same<X, CurrentStructSuper>::value, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentSuper>::value, X&> VariantValueImpl() {
+  ENABLE_IF<!std::is_same<X, CurrentStructSuper>::value, X&> VariantValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
     if (ptr) {
       return *ptr;

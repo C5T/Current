@@ -124,18 +124,18 @@ struct WithoutParentheses<int(T)> {
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                 \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper); \
-  template <typename INSTANTIATION_TYPE>              \
-  struct CURRENT_STRUCT_IMPL_##s                      \
-      : CURRENT_REFLECTION_HELPER<s>,                 \
-        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentSuper>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                       \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper); \
+  template <typename INSTANTIATION_TYPE>                    \
+  struct CURRENT_STRUCT_IMPL_##s                            \
+      : CURRENT_REFLECTION_HELPER<s>,                       \
+        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentStructSuper>
 
-#define CURRENT_STRUCT_DERIVED(s, base)                                                  \
-  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentSuper`."); \
-  CURRENT_STRUCT_HELPERS(s, base);                                                       \
-  template <typename INSTANTIATION_TYPE>                                                 \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                         \
+#define CURRENT_STRUCT_DERIVED(s, base)                                                        \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStructSuper`."); \
+  CURRENT_STRUCT_HELPERS(s, base);                                                             \
+  template <typename INSTANTIATION_TYPE>                                                       \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                               \
                                    ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, base>
 
 #define CURRENT_FIELD_SWITCH(_1, _2, _3, F, ...) F
@@ -230,15 +230,16 @@ struct CurrentTypeNameImpl<T, true, false> {
   }
 };
 
-// Commented out the **really confusing** part for now. -- D.K.
-// template <typename T>
-// struct CurrentTypeNameImpl<T, false, true> {
-//   static const char* GetCurrentTypeName() { return "Variant"; }
-// };
+// UNcommented out the **really confusing** part for now to make test work. -- M.Z.
+// TODO(dkorolev): refactor it, pls.
+template <typename T>
+struct CurrentTypeNameImpl<T, false, true> {
+  static const char* GetCurrentTypeName() { return "Variant"; }
+};
 
 template <typename T>
 inline const char* CurrentTypeName() {
-  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_VARIANT<T>::value>::GetCurrentTypeName();
+  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_VARIANT(T)>::GetCurrentTypeName();
 }
 
 template <typename T, typename VISITOR_TYPE>

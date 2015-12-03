@@ -41,20 +41,15 @@ struct CurrentSuper {
   virtual ~CurrentSuper() = default;
 };
 
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentSuper, T>::value)
+// The superclass for all Current structures.
+struct CurrentStructSuper : CurrentSuper {};
 
-template <typename TYPELIST>
-struct VariantImpl;
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStructSuper, T>::value)
 
-template <typename T>
-struct IS_VARIANT {
-  enum { value = false };
-};
+// The superclass for `Variant` type.
+struct CurrentVariantSuper : CurrentSuper {};
 
-template <typename TYPELIST>
-struct IS_VARIANT<VariantImpl<TYPELIST>> {
-  enum { value = true };
-};
+#define IS_VARIANT(T) (std::is_base_of<::current::CurrentVariantSuper, T>::value)
 
 namespace sfinae {
 

@@ -84,7 +84,7 @@ CURRENT_ENUM(TypeID, uint64_t){
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
-    INVALID_TYPE = 0u, CurrentSuper = 1u};
+    INVALID_TYPE = 0u, CurrentStructSuper = 1u};
 
 inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
 

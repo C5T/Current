@@ -223,15 +223,15 @@ struct SaveIntoJSONImpl {
     }
   };
 
-  // No-op function for `CurrentSuper`.
+  // No-op function for `CurrentStructSuper`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Save(rapidjson::Value&,
-                                                               rapidjson::Document::AllocatorType&,
-                                                               const TT&,
-                                                               bool) {}
+  static ENABLE_IF<std::is_same<TT, CurrentStructSuper>::value> Save(rapidjson::Value&,
+                                                                     rapidjson::Document::AllocatorType&,
+                                                                     const TT&,
+                                                                     bool) {}
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Save(
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStructSuper>::value> Save(
       rapidjson::Value& destination,
       rapidjson::Document::AllocatorType& allocator,
       const TT& source,
@@ -270,7 +270,7 @@ struct SaveIntoJSONImpl {
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT(X)> operator()(const X& object) {
+    ENABLE_IF<IS_CURRENT_STRUCT(X) || IS_VARIANT(X)> operator()(const X& object) {
       rapidjson::Value serialized_object;
       Save(serialized_object, allocator_, object);
 
@@ -379,17 +379,17 @@ struct LoadFromJSONImpl {
   };
 
   // No-op function required for compilation.
-  static void Load(rapidjson::Value*, CurrentSuper&, const std::string&) {}
+  static void Load(rapidjson::Value*, CurrentStructSuper&, const std::string&) {}
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Load(
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStructSuper>::value> Load(
       rapidjson::Value* source, T& destination, const std::string& path) {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
     if (source && source->IsObject()) {
-      if (!std::is_same<SUPER, CurrentSuper>::value) {
+      if (!std::is_same<SUPER, CurrentStructSuper>::value) {
         LoadFromJSONImpl<SUPER, J>::Load(source, destination, path);
       }
       LoadFieldVisitor visitor(*source, path);

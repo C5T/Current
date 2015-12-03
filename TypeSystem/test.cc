@@ -101,7 +101,7 @@ static_assert(IS_VALID_CURRENT_STRUCT(EmptyDerived),
 struct WrongStructNotCurrentStruct {
   int x;
 };
-struct WrongDerivedStructNotCurrentStruct : ::current::CurrentSuper {};
+struct WrongDerivedStructNotCurrentStruct : ::current::CurrentStructSuper {};
 struct NotCurrentStructDerivedFromCurrentStruct : Empty {};
 
 CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
@@ -519,6 +519,22 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
     } catch (NoValueOfType<Bar>) {
     }
   }
+}
+
+TEST(TypeSystemTest, NestedVariants) {
+  using namespace struct_definition_test;
+
+  using V_FOO_DERIVED = Variant<Foo, DerivedFromFoo>;
+  using V_BAR_BAZ = Variant<Bar, Baz>;
+  using V_NESTED = Variant<V_FOO_DERIVED, V_BAR_BAZ>;
+
+  V_FOO_DERIVED foo(Foo(1u));
+  V_NESTED nested_foo(foo);
+  EXPECT_EQ(1u, Value<Foo>(Value<V_FOO_DERIVED>(nested_foo)).i);
+
+  V_BAR_BAZ bar(Bar(2u));
+  V_NESTED nested_bar(bar);
+  EXPECT_EQ(2u, Value<Bar>(Value<V_BAR_BAZ>(nested_bar)).j);
 }
 
 namespace struct_definition_test {

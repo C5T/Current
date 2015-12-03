@@ -183,7 +183,7 @@ struct LanguageSyntaxImpl<Language::CPP> {
     void operator()(const ReflectedType_Variant&) const {}
     void operator()(const ReflectedType_Struct& s) const {
       os_ << "struct " << s.name;
-      if (s.super_id != TypeID::CurrentSuper) {
+      if (s.super_id != TypeID::CurrentStructSuper) {
         os_ << " : " << TypeName(s.super_id);
       }
       os_ << " {\n";
@@ -293,7 +293,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
     // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
     // all base class variables are hoisted to the top of the record.
     void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentSuper) {
+      if (s.super_id != TypeID::CurrentStructSuper) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
         RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
@@ -357,7 +357,7 @@ struct StructSchema {
       if (!schema_.types.count(s.type_id)) {
         // Fill `types[type_id]` before traversing everything else to break possible circular dependencies.
         schema_.types.emplace(s.type_id, s);
-        if (s.super_id != TypeID::CurrentSuper) {
+        if (s.super_id != TypeID::CurrentStructSuper) {
           Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
         }
         for (const auto& f : s.fields) {
