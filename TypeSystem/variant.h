@@ -102,7 +102,7 @@ template <typename... TYPES>
 struct VariantImpl;
 
 template <typename... TYPES>
-struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariantSuper {
+struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
   using T_TYPELIST = TypeListImpl<TYPES...>;
   enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
 
@@ -166,12 +166,12 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariantSuper {
   bool ExistsImpl() const { return (object_.get() != nullptr); }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentStructSuper>::value, bool> VariantExistsImpl() const {
+  ENABLE_IF<!std::is_same<X, CurrentStruct>::value, bool> VariantExistsImpl() const {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
   template <typename X>
-  ENABLE_IF<!std::is_same<X, CurrentStructSuper>::value, X&> VariantValueImpl() {
+  ENABLE_IF<!std::is_same<X, CurrentStruct>::value, X&> VariantValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
     if (ptr) {
       return *ptr;
@@ -192,7 +192,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariantSuper {
 
   void CheckIntegrityImpl() const {
     if (!object_) {
-      throw UninitializedRequiredVariantOfTypeException<TYPES...>();
+      throw UninitializedVariantOfTypeException<TYPES...>();
     }
   }
 

@@ -153,34 +153,34 @@ struct WithoutParentheses<int(T)> {
 
 #ifndef _MSC_VER
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                       \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper); \
-  template <typename INSTANTIATION_TYPE>                    \
-  struct CURRENT_STRUCT_IMPL_##s                            \
-      : CURRENT_REFLECTION_HELPER<s>,                       \
-        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentStructSuper>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                  \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct); \
+  template <typename INSTANTIATION_TYPE>               \
+  struct CURRENT_STRUCT_IMPL_##s                       \
+      : CURRENT_REFLECTION_HELPER<s>,                  \
+        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentStruct>
 
-#define CURRENT_STRUCT_DERIVED(s, base)                                                        \
-  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStructSuper`."); \
-  CURRENT_STRUCT_HELPERS(s, base);                                                             \
-  template <typename INSTANTIATION_TYPE>                                                       \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                               \
+#define CURRENT_STRUCT_DERIVED(s, base)                                                   \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
+  CURRENT_STRUCT_HELPERS(s, base);                                                        \
+  template <typename INSTANTIATION_TYPE>                                                  \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                          \
                                    ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, base>
 
 #else  // _MSC_VER
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                                                                  \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper);                                            \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                                 \
   template <typename INSTANTIATION_TYPE>                                                               \
   struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, \
                                                                          INSTANTIATION_TYPE,           \
-                                                                         ::current::CurrentStructSuper>
+                                                                         ::current::CurrentStruct>
 
-#define CURRENT_STRUCT_DERIVED(s, base)                                                        \
-  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStructSuper`."); \
-  CURRENT_STRUCT_HELPERS(s, base);                                                             \
-  template <typename INSTANTIATION_TYPE>                                                       \
-  struct CURRENT_STRUCT_IMPL_##s                                                               \
+#define CURRENT_STRUCT_DERIVED(s, base)                                                   \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
+  CURRENT_STRUCT_HELPERS(s, base);                                                        \
+  template <typename INSTANTIATION_TYPE>                                                  \
+  struct CURRENT_STRUCT_IMPL_##s                                                          \
       : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
 
 #endif  // _MSC_VER
