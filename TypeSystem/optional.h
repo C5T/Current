@@ -101,7 +101,11 @@ class Optional final {
       : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
 
   Optional(const Optional<T>& rhs) {
-    owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+    if (rhs.ExistsImpl()) {
+      owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+    } else {
+      owned_optional_object_ = nullptr;
+    }
     optional_object_ = owned_optional_object_.get();
   }
 
@@ -122,7 +126,11 @@ class Optional final {
   }
 
   Optional<T>& operator=(const Optional<T>& rhs) {
-    owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+    if (rhs.ExistsImpl()) {
+      owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+    } else {
+      owned_optional_object_ = nullptr;
+    }
     optional_object_ = owned_optional_object_.get();
     return *this;
   }
