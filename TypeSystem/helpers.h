@@ -66,16 +66,17 @@ struct ExistsImplCaller {
   }
 };
 
+// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
 template <typename T>
 struct ExistsImplCaller<T, T> {
   // Primitive types.
-  template <typename TT = T>
-  static ENABLE_IF<!current::sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&&) {
+  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasExistsImplMethod<TT>(0)>>
+  static bool CallExistsImpl(TT&&) {
     return true;
   }
 
   // Special types.
-  template <typename TT = T>
+  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasExistsImplMethod<TT>(0)>>
   static ENABLE_IF<current::sfinae::HasExistsImplMethod<TT>(0), bool> CallExistsImpl(TT&& x) {
     return x.ExistsImpl();
   }
@@ -121,12 +122,13 @@ auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
       INPUT>::AccessValue(std::forward<INPUT>(x));
 }
 
+// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
 template <typename T>
 struct CheckIntegrityImplCaller {
-  template <typename TT = T>
-  static ENABLE_IF<!current::sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&&) {}
+  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
+  static void CallCheckIntegrityImpl(TT&&) {}
 
-  template <typename TT = T>
+  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
   static ENABLE_IF<current::sfinae::HasCheckIntegrityImplMethod<TT>(0)> CallCheckIntegrityImpl(TT&& x) {
     x.CheckIntegrityImpl();
   }

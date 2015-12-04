@@ -92,11 +92,11 @@ inline uint64_t TypePrefix(const TypeID type_id) { return TypePrefix(static_cast
 
 CURRENT_STRUCT(ReflectedTypeBase) { CURRENT_FIELD(type_id, TypeID, TypeID::INVALID_TYPE); };
 
-CURRENT_STRUCT(ReflectedType_Primitive, ReflectedTypeBase){
-    // Default constructor required for using in `Variant`, here and in the structs below.
-    CURRENT_CONSTRUCTOR(ReflectedType_Primitive)(TypeID id = TypeID::INVALID_TYPE){
-        ReflectedTypeBase::type_id = id;
-}
+CURRENT_STRUCT(ReflectedType_Primitive, ReflectedTypeBase) {
+  // Default constructor required for using in `Variant`, here and in the structs below.
+  CURRENT_CONSTRUCTOR(ReflectedType_Primitive)(TypeID id = TypeID::INVALID_TYPE) {
+    ReflectedTypeBase::type_id = id;
+  }
 };
 
 CURRENT_STRUCT(ReflectedType_Enum, ReflectedTypeBase) {

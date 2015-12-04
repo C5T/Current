@@ -42,7 +42,7 @@ namespace reflection {
 struct CountFieldsImplementationType {
   template <typename... T>
   CountFieldsImplementationType(T&&...) {}
-  long long x;
+  long long x[100];  // TODO(dkorolev): Fix JSON parse/serialize on Windows. Gotta go deeper. -- D.K.
 };
 
 // Helper structs for reflection.

@@ -32,7 +32,7 @@ namespace current {
 
 inline uint64_t ROL64(const uint64_t value, size_t nbits) {
   nbits &= 63;
-  return (value << nbits) | (value >> (-nbits & 63));
+  return (value << nbits) | (value >> (-static_cast<int>(nbits) & 63));
 }
 
 }  // namespace current
