@@ -192,7 +192,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariantSuper {
 
   void CheckIntegrityImpl() const {
     if (!object_) {
-      throw UninitializedRequiredVariantOfTypeException<TYPES...>();
+      throw UninitializedVariantOfTypeException<TYPES...>();
     }
   }
 

@@ -638,76 +638,76 @@ TEST(Serialization, OptionalAsJSON) {
 
 TEST(Serialization, VariantAsJSON) {
   using namespace serialization_test;
-  using RequiredVariantType = Variant<Empty, Serializable, ComplexSerializable>;
+  using VariantType = Variant<Empty, Serializable, ComplexSerializable>;
   {
     try {
-      ParseJSON<RequiredVariantType>("null");
+      ParseJSON<VariantType>("null");
       ASSERT_TRUE(false);  // LCOV_EXCL_LINE
     } catch (JSONUninitializedVariantObjectException) {
     }
   }
   {
-    const RequiredVariantType object(make_unique<Empty>());
+    const VariantType object(make_unique<Empty>());
     const std::string json = "{\"Empty\":{},\"\":\"T9200000002835747520\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<RequiredVariantType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<VariantType>(json)));
   }
   {
-    const RequiredVariantType object(make_unique<Empty>());
+    const VariantType object(make_unique<Empty>());
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
-              JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(json)));
+              JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
   }
   {
-    const RequiredVariantType object(make_unique<Empty>());
+    const VariantType object(make_unique<Empty>());
     const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(
         json,
-        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<RequiredVariantType, JSONFormat::NewtonsoftFSharp>(json)));
+        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
-    const RequiredVariantType object(make_unique<Serializable>(42));
+    const VariantType object(make_unique<Serializable>(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json, JSON(ParseJSON<RequiredVariantType>(json)));
+    EXPECT_EQ(json, JSON(ParseJSON<VariantType>(json)));
   }
   {
-    const RequiredVariantType object(make_unique<Serializable>(42));
+    const VariantType object(make_unique<Serializable>(42));
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
-              JSON<JSONFormat::Minimalistic>(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(json)));
+              JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
 
     // An extra test that `Minimalistic` parser accepts the standard `Current` JSON format.
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
     const std::string ok2 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":false}";
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(ok2)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(ok2)));
     const std::string ok3 = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":42}";
-    EXPECT_EQ(JSON(object), JSON(ParseJSON<RequiredVariantType, JSONFormat::Minimalistic>(ok3)));
+    EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(ok3)));
   }
   {
-    const RequiredVariantType object(make_unique<Serializable>(42));
+    const VariantType object(make_unique<Serializable>(42));
     const std::string json =
         "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(
         json,
-        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<RequiredVariantType, JSONFormat::NewtonsoftFSharp>(json)));
+        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
   // TODO(dk+mz): This should compile. And it compiles. Does it work properly?
   if (false) {
-    using OtherRequiredVariantType = Variant<WithVectorOfPairs, WithOptional>;
-    using WeHaveToGoDeeper = Variant<RequiredVariantType, OtherRequiredVariantType>;
+    using OtherVariantType = Variant<WithVectorOfPairs, WithOptional>;
+    using WeHaveToGoDeeper = Variant<VariantType, OtherVariantType>;
     ParseJSON<WeHaveToGoDeeper>("This should compile.");
     WeHaveToGoDeeper* this_should_compile_too;
     JSON(*this_should_compile_too);

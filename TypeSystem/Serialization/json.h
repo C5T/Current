@@ -871,7 +871,7 @@ inline void ParseJSON(const std::string& source, T& destination) {
   try {
     ParseJSONViaRapidJSON<J>(source, destination);
     CheckIntegrity(destination);
-  } catch (UninitializedRequiredVariant) {
+  } catch (UninitializedVariant) {
     throw JSONUninitializedVariantObjectException();
   }
 }
@@ -883,7 +883,7 @@ inline T ParseJSON(const std::string& source) {
     ParseJSONViaRapidJSON<J>(source, result);
     CheckIntegrity(result);
     return result;
-  } catch (UninitializedRequiredVariant) {
+  } catch (UninitializedVariant) {
     throw JSONUninitializedVariantObjectException();
   }
 }
