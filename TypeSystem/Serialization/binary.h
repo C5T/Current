@@ -28,7 +28,7 @@ SOFTWARE.
 #include "exceptions.h"
 
 #include "../optional.h"
-#include "../polymorphic.h"
+#include "../variant.h"
 #include "../struct.h"
 
 #include "../../Bricks/time/chrono.h"
@@ -128,9 +128,9 @@ struct SaveIntoBinaryImpl<std::map<TK, TV>> {
   }
 };
 
-template <typename T, bool STRIPPED>
-struct SaveIntoBinaryImpl<Optional<T, STRIPPED>> {
-  static void Save(std::ostream& ostream, const Optional<T, STRIPPED>& value) {
+template <typename T>
+struct SaveIntoBinaryImpl<Optional<T>> {
+  static void Save(std::ostream& ostream, const Optional<T>& value) {
     const bool exists = Exists(value);
     SaveIntoBinaryImpl<bool>::Save(ostream, exists);
     if (exists) {
@@ -152,14 +152,14 @@ struct SaveIntoBinaryImpl {
     }
   };
 
-  // No-op function for `CurrentSuper`.
+  // No-op function for `CurrentStructSuper`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Save(std::ostream&, const T&) {}
+  static ENABLE_IF<std::is_same<TT, CurrentStructSuper>::value> Save(std::ostream&, const T&) {}
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Save(std::ostream& ostream,
-                                                                                         const T& source) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStructSuper>::value> Save(
+      std::ostream& ostream, const T& source) {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
@@ -251,18 +251,18 @@ struct LoadFromBinaryImpl {
     }
   };
 
-  // No-op function for `CurrentSuper`.
+  // No-op function for `CurrentStructSuper`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentSuper>::value> Load(std::istream&, T&) {}
+  static ENABLE_IF<std::is_same<TT, CurrentStructSuper>::value> Load(std::istream&, T&) {}
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentSuper>::value> Load(std::istream& istream,
-                                                                                         T& destination) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStructSuper>::value> Load(
+      std::istream& istream, T& destination) {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
-    if (!std::is_same<SUPER, CurrentSuper>::value) {
+    if (!std::is_same<SUPER, CurrentStructSuper>::value) {
       LoadFromBinaryImpl<SUPER>::Load(istream, destination);
     }
 
@@ -307,19 +307,19 @@ struct LoadFromBinaryImpl<std::map<TK, TV>> {
   static void Load(std::istream& istream, std::map<TK, TV>& destination) {
     destination.clear();
     BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
-    Stripped<TK> k;
-    Stripped<TV> v;
+    TK k;
+    TV v;
     for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
-      LoadFromBinaryImpl<Stripped<TK>>::Load(istream, k);
-      LoadFromBinaryImpl<Stripped<TV>>::Load(istream, v);
-      destination.emplace(MoveFromStripped<TK>(std::move(k)), MoveFromStripped<TV>(std::move(v)));
+      LoadFromBinaryImpl<TK>::Load(istream, k);
+      LoadFromBinaryImpl<TV>::Load(istream, v);
+      destination.emplace(k, v);
     }
   }
 };
 
-template <typename T, bool STRIPPED>
-struct LoadFromBinaryImpl<Optional<T, STRIPPED>> {
-  static void Load(std::istream& istream, Optional<T, STRIPPED>& destination) {
+template <typename T>
+struct LoadFromBinaryImpl<Optional<T>> {
+  static void Load(std::istream& istream, Optional<T>& destination) {
     bool exists;
     LoadFromBinaryImpl<bool>::Load(istream, exists);
     if (exists) {

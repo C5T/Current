@@ -36,7 +36,7 @@ struct Y {
 };
 struct C {
   Empty e;
-  OptionalPolymorphic<X, Y> c;
+  Variant<X, Y> c;
 };
 struct FullTest {
   Primitives primitives;
@@ -44,7 +44,6 @@ struct FullTest {
   std::vector<Primitives> v2;
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
-  Polymorphic<A, B, C, Empty> q;
-  OptionalPolymorphic<A, B, C> r;
+  Variant<A, B, C, Empty> q;
 };
 }  // namespace current_userspace

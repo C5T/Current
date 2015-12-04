@@ -153,13 +153,12 @@ struct LanguageSyntaxImpl<Language::CPP> {
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << "Optional<" << self_.TypeName(o.optional_type) << '>';
           }
-          void operator()(const ReflectedType_Polymorphic& p) const {
+          void operator()(const ReflectedType_Variant& p) const {
             std::vector<std::string> cases;
             for (TypeID c : p.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            oss_ << (p.required ? "" : "Optional") << "Polymorphic<" << current::strings::Join(cases, ", ")
-                 << '>';
+            oss_ << "Variant<" << current::strings::Join(cases, ", ") << '>';
           }
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
@@ -181,10 +180,10 @@ struct LanguageSyntaxImpl<Language::CPP> {
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
-    void operator()(const ReflectedType_Polymorphic&) const {}
+    void operator()(const ReflectedType_Variant&) const {}
     void operator()(const ReflectedType_Struct& s) const {
       os_ << "struct " << s.name;
-      if (s.super_id != TypeID::CurrentSuper) {
+      if (s.super_id != TypeID::CurrentStructSuper) {
         os_ << " : " << TypeName(s.super_id);
       }
       os_ << " {\n";
@@ -252,12 +251,12 @@ struct LanguageSyntaxImpl<Language::FSharp> {
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << self_.TypeName(o.optional_type) << " option";
           }
-          void operator()(const ReflectedType_Polymorphic& p) const {
+          void operator()(const ReflectedType_Variant& p) const {
             std::vector<std::string> cases;
             for (TypeID c : p.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            oss_ << "DU_" << (p.required ? "" : "None_") << current::strings::Join(cases, '_');
+            oss_ << "DU_" << current::strings::Join(cases, '_');
           }
 
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
@@ -280,13 +279,12 @@ struct LanguageSyntaxImpl<Language::FSharp> {
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
-    void operator()(const ReflectedType_Polymorphic& p) const {
+    void operator()(const ReflectedType_Variant& p) const {
       std::vector<std::string> cases;
       for (TypeID c : p.cases) {
         cases.push_back(TypeName(c));
       }
-      os_ << "\ntype DU_" << (p.required ? "" : "None_") << current::strings::Join(cases, '_') << " =\n"
-          << (p.required ? "" : "| None\n");
+      os_ << "\ntype DU_" << current::strings::Join(cases, '_') << " =\n";
       for (const auto& s : cases) {
         os_ << "| " << s << " of " << s << '\n';
       }
@@ -295,7 +293,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
     // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
     // all base class variables are hoisted to the top of the record.
     void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentSuper) {
+      if (s.super_id != TypeID::CurrentStructSuper) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
         RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
@@ -358,8 +356,8 @@ struct StructSchema {
     void operator()(const ReflectedType_Struct& s) {
       if (!schema_.types.count(s.type_id)) {
         // Fill `types[type_id]` before traversing everything else to break possible circular dependencies.
-        schema_.types.emplace(s.type_id, Clone(s));
-        if (s.super_id != TypeID::CurrentSuper) {
+        schema_.types.emplace(s.type_id, s);
+        if (s.super_id != TypeID::CurrentStructSuper) {
           Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
         }
         for (const auto& f : s.fields) {
@@ -417,7 +415,7 @@ struct StructSchema {
       }
     }
 
-    void operator()(const ReflectedType_Polymorphic& p) {
+    void operator()(const ReflectedType_Variant& p) {
       if (!schema_.types.count(p.type_id)) {
         schema_.types.emplace(p.type_id, p);
         for (TypeID c : p.cases) {
@@ -432,7 +430,7 @@ struct StructSchema {
   };
 
   StructSchema() = default;
-  StructSchema(const SchemaInfo& schema) : schema_(Clone(schema)) {}
+  StructSchema(const SchemaInfo& schema) : schema_(schema) {}
   StructSchema(SchemaInfo&& schema) : schema_(std::move(schema)) {}
 
   template <typename T>

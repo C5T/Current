@@ -23,7 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 // `MicroTimestampOf(x)` returns the timestamp of `x`. It supports `CURRENT_STRUCT`-s with `CURRENT_TIMESTAMP()`
-// `Polymorphic<...>` objects (recursively), raw `Epoch{Micro/Milli}seconds, and custom implementations
+// `Variant<...>` objects (recursively), raw `Epoch{Micro/Milli}seconds, and custom implementations
 // of the `template<typename F> ReportTimestamp(F&& f) { f(timestamp); }` method.
 //
 // Purpose:
@@ -35,7 +35,7 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "polymorphic.h"
+#include "variant.h"
 
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/template/is_unique_ptr.h"
@@ -50,7 +50,7 @@ struct ExtractTimestampFunctor {
   ExtractTimestampFunctor(std::chrono::microseconds& result) : result(result) {}
   template <typename T>
   void operator()(T&& x) {
-    TimestampAccessorImpl<current::decay<T>>::ExtractDirectlyOrFromPolymorphic(*this, std::forward<T>(x));
+    TimestampAccessorImpl<current::decay<T>>::ExtractDirectlyOrFromVariant(*this, std::forward<T>(x));
   }
 };
 
@@ -59,56 +59,54 @@ struct UpdateTimestampFunctor {
   UpdateTimestampFunctor(std::chrono::microseconds value) : value(value) {}
   template <typename T>
   void operator()(T&& x) {
-    TimestampAccessorImpl<current::decay<T>>::UpdateDirectlyOrInPolymorphic(*this, std::forward<T>(x));
+    TimestampAccessorImpl<current::decay<T>>::UpdateDirectlyOrInVariant(*this, std::forward<T>(x));
   }
 };
 
 template <typename T>
 struct TimestampAccessorImpl {
   template <typename E>
-  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, E&& e) {
+  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, E&& e) {
     e.ReportTimestamp(functor);
   }
   template <typename E>
-  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor, E& e) {
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, E& e) {
     e.ReportTimestamp(functor);
   }
 };
 
-template <bool STRIPPED, bool REQUIRED, typename... TS>
-struct TimestampAccessorImpl<GenericPolymorphicImpl<STRIPPED, REQUIRED, TS...>> {
-  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
-                                               const GenericPolymorphicImpl<STRIPPED, REQUIRED, TS...>& p) {
+template <typename... TS>
+struct TimestampAccessorImpl<VariantImpl<TS...>> {
+  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, const VariantImpl<TS...>& p) {
     p.Call(functor);
   }
-  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor,
-                                            GenericPolymorphicImpl<STRIPPED, REQUIRED, TS...>& p) {
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, VariantImpl<TS...>& p) {
     p.Call(functor);
   }
 };
 
 template <>
 struct TimestampAccessorImpl<std::chrono::microseconds> {
-  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor,
-                                               const std::chrono::microseconds& us) {
+  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor,
+                                           const std::chrono::microseconds& us) {
     functor.result = us;
   }
-  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor, std::chrono::microseconds& us) {
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, std::chrono::microseconds& us) {
     us = functor.value;
   }
 };
 
 template <>
 struct TimestampAccessorImpl<int64_t> {
-  static void ExtractDirectlyOrFromPolymorphic(ExtractTimestampFunctor& functor, int64_t us) {
+  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, int64_t us) {
     functor.result = std::chrono::microseconds(us);
   }
-  static void UpdateDirectlyOrInPolymorphic(UpdateTimestampFunctor& functor, int64_t& us) {
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, int64_t& us) {
     us = functor.value.count();
   }
 };
 
-// TODO(dkorolev): The `IS_UNIQUE_PTR` helper is going away as we move off Cereal to our Polymorphic<>.
+// TODO(dkorolev): The `IS_UNIQUE_PTR` helper is going away as we move off Cereal to our Variant<>.
 template <bool IS_UNIQUE_PTR>
 struct ExtractTimestampFromUniquePtrAsWell {};
 

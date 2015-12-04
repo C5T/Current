@@ -41,14 +41,13 @@ type Y = {
   x : int32
 }
 
-type DU_None_X_Y =
-| None
+type DU_X_Y =
 | X of X
 | Y of Y
 
 type C = {
   e : Empty
-  c : DU_None_X_Y
+  c : DU_X_Y
 }
 
 type DU_A_B_C_Empty =
@@ -57,12 +56,6 @@ type DU_A_B_C_Empty =
 | C of C
 | Empty of Empty
 
-type DU_None_A_B_C =
-| None
-| A of A
-| B of B
-| C of C
-
 type FullTest = {
   primitives : Primitives
   v1 : string array
@@ -70,5 +63,4 @@ type FullTest = {
   p : string * Primitives
   o : Primitives option
   q : DU_A_B_C_Empty
-  r : DU_None_A_B_C
 }

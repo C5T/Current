@@ -32,7 +32,6 @@ namespace reflection {
 
 // Instantiation types.
 struct DeclareFields {};
-struct DeclareStrippedFields {};
 struct CountFields {};
 
 }  // namespace reflection

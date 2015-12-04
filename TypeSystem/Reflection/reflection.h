@@ -33,7 +33,7 @@ SOFTWARE.
 #include "types.h"
 
 #include "../optional.h"
-#include "../polymorphic.h"
+#include "../variant.h"
 #include "../struct.h"
 #include "../timestamp.h"
 
@@ -114,25 +114,23 @@ struct ReflectorImpl {
     }
 
     template <typename... TS>
-    struct VisitAllPolymorphicTypes {
+    struct VisitAllVariantTypes {
       template <typename X>
       struct VisitImpl {
-        static void DispatchToAll(ReflectedType_Polymorphic& destination) {
+        static void DispatchToAll(ReflectedType_Variant& destination) {
           destination.cases.push_back(Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
         }
       };
-      static void Run(ReflectedType_Polymorphic& destination) {
+      static void Run(ReflectedType_Variant& destination) {
         current::metaprogramming::combine<current::metaprogramming::map<VisitImpl, TypeListImpl<TS...>>> impl;
         impl.DispatchToAll(destination);
       }
     };
 
-    template <bool STRIPPED, bool REQUIRED, typename STRIPPED_TYPE_LIST, typename... TS>
-    ReflectedType operator()(
-        TypeSelector<GenericPolymorphicImpl<STRIPPED, REQUIRED, STRIPPED_TYPE_LIST, TypeListImpl<TS...>>>) {
-      ReflectedType_Polymorphic result;
-      result.required = REQUIRED;
-      VisitAllPolymorphicTypes<TS...>::Run(result);
+    template <typename... TS>
+    ReflectedType operator()(TypeSelector<VariantImpl<TypeListImpl<TS...>>>) {
+      ReflectedType_Variant result;
+      VisitAllVariantTypes<TS...>::Run(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
     }
@@ -160,12 +158,12 @@ struct ReflectorImpl {
 
    private:
     template <typename T>
-    ENABLE_IF<std::is_same<SuperType<T>, CurrentSuper>::value, TypeID> ReflectSuper() {
-      return TypeID::CurrentSuper;
+    ENABLE_IF<std::is_same<SuperType<T>, CurrentStructSuper>::value, TypeID> ReflectSuper() {
+      return TypeID::CurrentStructSuper;
     }
 
     template <typename T>
-    ENABLE_IF<!std::is_same<SuperType<T>, CurrentSuper>::value, TypeID> ReflectSuper() {
+    ENABLE_IF<!std::is_same<SuperType<T>, CurrentStructSuper>::value, TypeID> ReflectSuper() {
       return Value<ReflectedTypeBase>(Reflector().ReflectType<SuperType<T>>()).type_id;
     }
   };
@@ -259,7 +257,7 @@ struct ReflectorImpl {
         }
       }
 
-      void operator()(ReflectedType_Polymorphic& p) const {
+      void operator()(ReflectedType_Variant& p) const {
         for (auto& c : p.cases) {
           if (c == from_) {
             c = to_;

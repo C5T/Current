@@ -89,7 +89,7 @@ TEST(Reflection, CurrentStructInternals) {
   using namespace reflection_test;
   using namespace current::reflection;
 
-  static_assert(std::is_same<SuperType<Foo>, ::current::CurrentSuper>::value, "");
+  static_assert(std::is_same<SuperType<Foo>, ::current::CurrentStructSuper>::value, "");
   EXPECT_EQ(1u, FieldCounter<Foo>::value);
 
   Foo::CURRENT_REFLECTION([](TypeSelector<uint64_t>, const std::string& name) { EXPECT_EQ("i", name); },
@@ -108,7 +108,7 @@ TEST(Reflection, CurrentStructInternals) {
   }, Index<FieldNameAndMutableValue, 0>());
   EXPECT_EQ(123u, foo.i);
 
-  static_assert(std::is_same<SuperType<Bar>, ::current::CurrentSuper>::value, "");
+  static_assert(std::is_same<SuperType<Bar>, ::current::CurrentStructSuper>::value, "");
   EXPECT_EQ(4u, FieldCounter<Bar>::value);
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
@@ -246,27 +246,6 @@ TEST(Reflection, VisitAllFields) {
       "[key1:value1,key2:value2],"
       "128,null",
       current::strings::Join(result, ','));
-}
-
-TEST(Reflection, ShouldNotCompile) {
-  using namespace reflection_test;
-
-#undef THIS_SHOULD_NOT_COMPILE
-//#define THIS_SHOULD_NOT_COMPILE
-
-#ifndef THIS_SHOULD_NOT_COMPILE
-  StructWithAllSupportedTypes one;
-  StructWithAllSupportedTypes two(Clone(one));
-  StructWithAllSupportedTypes three;
-  three = Clone(one);
-#else   // THIS_SHOULD_NOT_COMPILE
-  StructWithAllSupportedTypes one;
-  StructWithAllSupportedTypes two(one);  // Copy construction is prohibited.
-  StructWithAllSupportedTypes three;
-  three = one;  // Assignment is prohibited.
-#endif  // THIS_SHOULD_NOT_COMPILE
-
-#undef THIS_SHOULD_NOT_COMPILE
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

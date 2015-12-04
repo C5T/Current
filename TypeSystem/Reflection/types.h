@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../base.h"
 #include "../enum.h"
 #include "../struct.h"
+#include "../variant.h"
 
 #include "../../Bricks/template/enable_if.h"
 #include "../../Bricks/util/crc32.h"
@@ -51,10 +52,9 @@ constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_PREFIX = 800u;
 constexpr uint64_t TYPEID_BASIC_PREFIX = 900u;
 constexpr uint64_t TYPEID_ENUM_PREFIX  = 901u;
 // Current complex types prefixes.
-constexpr uint64_t TYPEID_STRUCT_PREFIX               = 920u;
-constexpr uint64_t TYPEID_OPTIONAL_PREFIX             = 921u;
-constexpr uint64_t TYPEID_POLYMORPHIC_PREFIX          = 922u;
-constexpr uint64_t TYPEID_OPTIONAL_POLYMORPHIC_PREFIX = 923u;
+constexpr uint64_t TYPEID_STRUCT_PREFIX   = 920u;
+constexpr uint64_t TYPEID_OPTIONAL_PREFIX = 921u;
+constexpr uint64_t TYPEID_VARIANT_PREFIX  = 922u;
 // STL containers prefixes.
 constexpr uint64_t TYPEID_VECTOR_PREFIX = 931u;
 constexpr uint64_t TYPEID_SET_PREFIX    = 932u;
@@ -69,10 +69,9 @@ constexpr uint64_t TYPEID_INCOMPLETE_STRUCT_TYPE = TYPEID_TYPE_RANGE * TYPEID_IN
 constexpr uint64_t TYPEID_BASIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_BASIC_PREFIX;
 constexpr uint64_t TYPEID_ENUM_TYPE  = TYPEID_TYPE_RANGE * TYPEID_ENUM_PREFIX;
 // Base TypeID-s for Current complex types.
-constexpr uint64_t TYPEID_STRUCT_TYPE      = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
-constexpr uint64_t TYPEID_OPTIONAL_TYPE    = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
-constexpr uint64_t TYPEID_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_POLYMORPHIC_PREFIX;
-constexpr uint64_t TYPEID_OPTIONAL_POLYMORPHIC_TYPE = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_POLYMORPHIC_PREFIX;
+constexpr uint64_t TYPEID_STRUCT_TYPE   = TYPEID_TYPE_RANGE * TYPEID_STRUCT_PREFIX;
+constexpr uint64_t TYPEID_OPTIONAL_TYPE = TYPEID_TYPE_RANGE * TYPEID_OPTIONAL_PREFIX;
+constexpr uint64_t TYPEID_VARIANT_TYPE  = TYPEID_TYPE_RANGE * TYPEID_VARIANT_PREFIX;
 // Base TypeID-s for STL containers.
 constexpr uint64_t TYPEID_VECTOR_TYPE = TYPEID_TYPE_RANGE * TYPEID_VECTOR_PREFIX;
 constexpr uint64_t TYPEID_SET_TYPE    = TYPEID_TYPE_RANGE * TYPEID_SET_PREFIX;
@@ -85,7 +84,7 @@ CURRENT_ENUM(TypeID, uint64_t){
   current_type = TYPEID_BASIC_TYPE + typeid_index,
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
-    INVALID_TYPE = 0u, CurrentSuper = 1u};
+    INVALID_TYPE = 0u, CurrentStructSuper = 1u};
 
 inline uint64_t TypePrefix(const uint64_t type_id) { return type_id / TYPEID_TYPE_RANGE; }
 
@@ -94,7 +93,7 @@ inline uint64_t TypePrefix(const TypeID type_id) { return TypePrefix(static_cast
 CURRENT_STRUCT(ReflectedTypeBase) { CURRENT_FIELD(type_id, TypeID, TypeID::INVALID_TYPE); };
 
 CURRENT_STRUCT(ReflectedType_Primitive, ReflectedTypeBase){
-    // Default constructor required for using in `Polymorphic`, here and in the structs below.
+    // Default constructor required for using in `Variant`, here and in the structs below.
     CURRENT_CONSTRUCTOR(ReflectedType_Primitive)(TypeID id = TypeID::INVALID_TYPE){
         ReflectedTypeBase::type_id = id;
 }
@@ -133,10 +132,9 @@ CURRENT_STRUCT(ReflectedType_Optional, ReflectedTypeBase) {
   CURRENT_CONSTRUCTOR(ReflectedType_Optional)(TypeID ro = TypeID::INVALID_TYPE) : optional_type(ro) {}
 };
 
-CURRENT_STRUCT(ReflectedType_Polymorphic, ReflectedTypeBase) {
+CURRENT_STRUCT(ReflectedType_Variant, ReflectedTypeBase) {
   CURRENT_FIELD(cases, std::vector<TypeID>);
-  CURRENT_FIELD(required, bool);
-  CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Polymorphic) {}
+  CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Variant) {}
 };
 
 using StructFieldsVector = std::vector<std::pair<TypeID, std::string>>;
@@ -148,14 +146,14 @@ CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct) {}
 };
 
-using ReflectedType = Polymorphic<ReflectedType_Primitive,
-                                  ReflectedType_Enum,
-                                  ReflectedType_Vector,
-                                  ReflectedType_Map,
-                                  ReflectedType_Pair,
-                                  ReflectedType_Optional,
-                                  ReflectedType_Polymorphic,
-                                  ReflectedType_Struct>;
+using ReflectedType = Variant<ReflectedType_Primitive,
+                              ReflectedType_Enum,
+                              ReflectedType_Vector,
+                              ReflectedType_Map,
+                              ReflectedType_Pair,
+                              ReflectedType_Optional,
+                              ReflectedType_Variant,
+                              ReflectedType_Struct>;
 
 inline uint64_t ROL64(const TypeID type_id, size_t nbits) {
   return current::ROL64(static_cast<uint64_t>(type_id), nbits);
@@ -208,18 +206,14 @@ inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
   return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE + ROL64(o.optional_type, 5u) % TYPEID_TYPE_RANGE);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Polymorphic& p) {
+inline TypeID CalculateTypeID(const ReflectedType_Variant& p) {
   uint64_t hash = 0ull;
   size_t i = 0u;
   for (const auto& c : p.cases) {
     hash ^= ROL64(c, i * 3u + 17u);
     ++i;
   }
-  if (p.required) {
-    return static_cast<TypeID>(TYPEID_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
-  } else {
-    return static_cast<TypeID>(TYPEID_OPTIONAL_POLYMORPHIC_TYPE + hash % TYPEID_TYPE_RANGE);
-  }
+  return static_cast<TypeID>(TYPEID_VARIANT_TYPE + hash % TYPEID_TYPE_RANGE);
 }
 
 // Enable `CalculateTypeID` for bare and smart pointers.

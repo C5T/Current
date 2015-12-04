@@ -82,12 +82,9 @@ class ImmutableOptional final {
   const T* optional_object_;
 };
 
-template <typename T, bool = false>
+template <typename T>
 class Optional final {
  public:
-  using STRIPPED_TYPE = Optional<T, true>;
-  using UNSTRIPPED_TYPE = Optional<T, false>;
-
   Optional() = default;
   Optional(std::nullptr_t) : optional_object_(nullptr) {}
   Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
@@ -102,21 +99,12 @@ class Optional final {
 
   Optional(std::unique_ptr<T>&& rhs)
       : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
-  bool ExistsImpl() const { return optional_object_ != nullptr; }
-  const T& ValueImpl() const {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueOfTypeException<T>();
-    }
+
+  Optional(const Optional<T>& rhs) {
+    owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+    optional_object_ = owned_optional_object_.get();
   }
-  T& ValueImpl() {
-    if (optional_object_ != nullptr) {
-      return *optional_object_;
-    } else {
-      throw NoValueOfTypeException<T>();
-    }
-  }
+
   Optional<T>& operator=(std::nullptr_t) {
     owned_optional_object_ = nullptr;
     optional_object_ = nullptr;
@@ -133,6 +121,12 @@ class Optional final {
     return *this;
   }
 
+  Optional<T>& operator=(const Optional<T>& rhs) {
+    owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+    optional_object_ = owned_optional_object_.get();
+    return *this;
+  }
+
   // TODO(dkorolev): Discuss this semantics with Max.
   Optional<T>& operator=(const T& data) {
     owned_optional_object_ = std::move(make_unique<T>(data));
@@ -140,56 +134,8 @@ class Optional final {
     return *this;
   }
 
- private:
-  std::unique_ptr<T> owned_optional_object_;
-  T* optional_object_ = nullptr;
-};
-
-// Copy-paste again, to avoid the { `ENABLE_IF<>` + constructors } problem. -- D.K.
-template <typename T>
-class Optional<T, true> final {
- public:
-  using STRIPPED_TYPE = Optional<T, true>;
-  using UNSTRIPPED_TYPE = Optional<T, false>;
-
-  Optional() = default;
-  Optional(std::nullptr_t) : optional_object_(nullptr) {}
-  Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
-
-  // Template doesn't nail it here. -- D.K.
-  Optional(const Optional<T, false>& rhs) { Assign(rhs); }
-  Optional(const Optional<T, true>& rhs) { Assign(rhs); }
-
-  // Template doesn't nail it here. -- D.K.
-  Optional& operator=(const Optional<T, false>& rhs) {
-    Assign(rhs);
-    return *this;
-  }
-  Optional& operator=(const Optional<T, true>& rhs) {
-    Assign(rhs);
-    return *this;
-  }
-
-  template <bool RHS_STRIPPED>
-  void Assign(const Optional<T, RHS_STRIPPED>& rhs) {
-    if (rhs.ExistsImpl()) {
-      owned_optional_object_.reset(reinterpret_cast<T*>(new Stripped<T>()));
-      *owned_optional_object_ = std::move(Clone(rhs.ValueImpl()));
-      optional_object_ = owned_optional_object_.get();
-    }
-  }
-
-  // NOTE: Constructors taking references or const references are a bad idea,
-  // since it makes it very easy to make a mistake of passing in a short-lived temporary.
-  // The users are advised to explicitly pass in a pointer if the object is externally owned,
-  // or `std::move()` an `std::unique_ptr<>` into an `Optional`.
-  // Another alternative is construct an `Optional<>` directly from `make_unique<>`.
-
-  // TODO(dkorolev): Discuss the semantics with @mzhurovich.
-
-  Optional(std::unique_ptr<T>&& rhs)
-      : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
   bool ExistsImpl() const { return optional_object_ != nullptr; }
+
   const T& ValueImpl() const {
     if (optional_object_ != nullptr) {
       return *optional_object_;
@@ -197,34 +143,13 @@ class Optional<T, true> final {
       throw NoValueOfTypeException<T>();
     }
   }
+
   T& ValueImpl() {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
       throw NoValueOfTypeException<T>();
     }
-  }
-  Optional<T, true>& operator=(std::nullptr_t) {
-    owned_optional_object_ = nullptr;
-    optional_object_ = nullptr;
-    return *this;
-  }
-  Optional<T, true>& operator=(T* ptr) {
-    owned_optional_object_ = nullptr;
-    optional_object_ = ptr;
-    return *this;
-  }
-  Optional<T, true>& operator=(std::unique_ptr<T>&& value) {
-    owned_optional_object_ = std::move(value);
-    optional_object_ = owned_optional_object_.get();
-    return *this;
-  }
-
-  // TODO(dkorolev): Discuss this semantics with Max.
-  Optional<T, true>& operator=(const T& data) {
-    owned_optional_object_ = std::move(make_unique<T>(data));
-    optional_object_ = owned_optional_object_.get();
-    return *this;
   }
 
  private:

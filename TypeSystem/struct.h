@@ -36,7 +36,6 @@ SOFTWARE.
 
 #include "base.h"
 #include "helpers.h"
-#include "polymorphic.h"
 
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/variadic_indexes.h"
@@ -54,11 +53,6 @@ struct BaseTypeHelperImpl<DeclareFields, T> {
   typedef T type;
 };
 
-template <typename T>
-struct BaseTypeHelperImpl<DeclareStrippedFields, T> {
-  typedef T type;
-};
-
 template <typename INSTANTIATION_TYPE, typename T>
 using BaseTypeHelper = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
 
@@ -69,11 +63,6 @@ struct FieldImpl;
 template <typename T>
 struct FieldImpl<DeclareFields, T> {
   typedef T type;
-};
-
-template <typename T>
-struct FieldImpl<DeclareStrippedFields, T> {
-  typedef Stripped<decay<T>> type;
 };
 
 template <typename T>
@@ -125,40 +114,28 @@ struct WithoutParentheses<int(T)> {
   template <typename INSTANTIATION_TYPE>                                                            \
   struct CURRENT_STRUCT_IMPL_##s;                                                                   \
   using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
-  using CURRENT_PROTO_##s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareStrippedFields>;  \
   template <typename T>                                                                             \
   struct CURRENT_REFLECTION_HELPER;                                                                 \
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
     using SUPER = super;                                                                            \
-    using STRIPPED_TYPE = CURRENT_PROTO_##s;                                                        \
-    using UNSTRIPPED_TYPE = s;                                                                      \
-    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__ + 1;                             \
-    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
-  };                                                                                                \
-  template <>                                                                                       \
-  struct CURRENT_REFLECTION_HELPER<CURRENT_PROTO_##s> {                                             \
-    using SUPER = super;                                                                            \
-    using STRIPPED_TYPE = CURRENT_PROTO_##s;                                                        \
-    using UNSTRIPPED_TYPE = s;                                                                      \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                 \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentSuper); \
-  template <typename INSTANTIATION_TYPE>              \
-  struct CURRENT_STRUCT_IMPL_##s                      \
-      : CURRENT_REFLECTION_HELPER<s>,                 \
-        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentSuper>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                       \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper); \
+  template <typename INSTANTIATION_TYPE>                    \
+  struct CURRENT_STRUCT_IMPL_##s                            \
+      : CURRENT_REFLECTION_HELPER<s>,                       \
+        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentStructSuper>
 
-#define CURRENT_STRUCT_DERIVED(s, base)                                                  \
-  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentSuper`."); \
-  CURRENT_STRUCT_HELPERS(s, base);                                                       \
-  template <typename INSTANTIATION_TYPE>                                                 \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                         \
+#define CURRENT_STRUCT_DERIVED(s, base)                                                        \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStructSuper`."); \
+  CURRENT_STRUCT_HELPERS(s, base);                                                             \
+  template <typename INSTANTIATION_TYPE>                                                       \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                               \
                                    ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, base>
 
 #define CURRENT_FIELD_SWITCH(_1, _2, _3, F, ...) F
@@ -207,11 +184,10 @@ struct WithoutParentheses<int(T)> {
     CURRENT_CALL_F(#name, name);                                                                               \
   }
 
-#define CURRENT_CONSTRUCTOR(s)                                                                               \
-  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                           \
-            class = ENABLE_IF<                                                                               \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value ||        \
-                std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareStrippedFields>::value>> \
+#define CURRENT_CONSTRUCTOR(s)                                                                                 \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
+            class =                                                                                            \
+                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CURRENT_STRUCT_IMPL_##s
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
@@ -244,7 +220,7 @@ struct FieldCounter {
   };
 };
 
-template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_POLYMORPHIC>
+template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT>
 struct CurrentTypeNameImpl;
 
 template <typename T>
@@ -254,15 +230,16 @@ struct CurrentTypeNameImpl<T, true, false> {
   }
 };
 
-// Commented out the **really confusing** part for now. -- D.K.
-// template <typename T>
-// struct CurrentTypeNameImpl<T, false, true> {
-//   static const char* GetCurrentTypeName() { return "Polymorphic"; }
-// };
+// UNcommented out the **really confusing** part for now to make test work. -- M.Z.
+// TODO(dkorolev): refactor it, pls.
+template <typename T>
+struct CurrentTypeNameImpl<T, false, true> {
+  static const char* GetCurrentTypeName() { return "Variant"; }
+};
 
 template <typename T>
 inline const char* CurrentTypeName() {
-  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_POLYMORPHIC<T>::value>::GetCurrentTypeName();
+  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_VARIANT(T)>::GetCurrentTypeName();
 }
 
 template <typename T, typename VISITOR_TYPE>

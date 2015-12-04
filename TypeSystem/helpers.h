@@ -62,7 +62,7 @@ template <typename TEST, typename T>
 struct ExistsImplCaller {
   template <typename TT = T>
   static bool CallExistsImpl(TT&& x) {
-    return x.template PolymorphicExistsImpl<TEST>();
+    return x.template VariantExistsImpl<TEST>();
   }
 };
 
@@ -92,9 +92,9 @@ bool Exists(T&& x) {
 template <typename OUTPUT, typename INPUT>
 struct PowerfulValueImplCaller {
   using DECAYED_INPUT = current::decay<INPUT>;
-  static OUTPUT& AccessValue(DECAYED_INPUT& x) { return x.template PolymorphicValueImpl<OUTPUT>(); }
-  static const OUTPUT& AccessValue(const DECAYED_INPUT& x) { return x.template PolymorphicValueImpl<OUTPUT>(); }
-  static OUTPUT&& AccessValue(DECAYED_INPUT&& x) { return x.template PolymorphicValueImpl<OUTPUT>(); }
+  static OUTPUT& AccessValue(DECAYED_INPUT& x) { return x.template VariantValueImpl<OUTPUT>(); }
+  static const OUTPUT& AccessValue(const DECAYED_INPUT& x) { return x.template VariantValueImpl<OUTPUT>(); }
+  static OUTPUT&& AccessValue(DECAYED_INPUT&& x) { return x.template VariantValueImpl<OUTPUT>(); }
 };
 
 // For `OUTPUT == INPUT`, it's either plain `return x;`, or `return x.ValueImpl()`.
@@ -137,19 +137,10 @@ void CheckIntegrity(T&& x) {
   CheckIntegrityImplCaller<T>::CallCheckIntegrityImpl(std::forward<T>(x));
 }
 
-// TODO(dkorolev): Migrate the older `Clone()` methods here, after cleaning them up.
+// Temporary no-op `Clone`.
 template <typename T>
-decay<T> Clone(T&& x) {
-  using DECAYED_T = decay<T>;
-  static_assert(sizeof(DECAYED_T) == sizeof(Stripped<DECAYED_T>), "");
-  // This `Clone()` method operates on three assumptions:
-  // 1) `Stripped<T>` exists.
-  // 2) `Stripped<T>` has a copy constructor.
-  // 3) `T` has a move constructor.
-  const Stripped<DECAYED_T>& copyable_x = *reinterpret_cast<const Stripped<DECAYED_T>*>(&x);
-  Stripped<DECAYED_T> copy(copyable_x);
-  DECAYED_T& returnable_copy(*reinterpret_cast<DECAYED_T*>(&copy));
-  return std::move(returnable_copy);
+T& Clone(T& x) {
+  return x;
 }
 
 }  // namespace current
