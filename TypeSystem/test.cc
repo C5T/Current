@@ -101,7 +101,7 @@ static_assert(IS_VALID_CURRENT_STRUCT(EmptyDerived),
 struct WrongStructNotCurrentStruct {
   int x;
 };
-struct WrongDerivedStructNotCurrentStruct : ::current::CurrentStructSuper {};
+struct WrongDerivedStructNotCurrentStruct : ::current::CurrentStruct {};
 struct NotCurrentStructDerivedFromCurrentStruct : Empty {};
 
 CURRENT_STRUCT(WrongUsesCOUNTERInternally) {

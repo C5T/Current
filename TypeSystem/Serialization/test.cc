@@ -658,17 +658,15 @@ TEST(Serialization, VariantAsJSON) {
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
   }
   {
     const VariantType object(make_unique<Empty>());
     const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(
-        json,
-        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
     const VariantType object(make_unique<Serializable>(42));
@@ -683,8 +681,7 @@ TEST(Serialization, VariantAsJSON) {
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(json,
-              JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
+    EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
 
     // An extra test that `Minimalistic` parser accepts the standard `Current` JSON format.
     EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
@@ -699,9 +696,8 @@ TEST(Serialization, VariantAsJSON) {
         "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
-    EXPECT_EQ(
-        json,
-        JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
+    EXPECT_EQ(json,
+              JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
   // TODO(dk+mz): This should compile. And it compiles. Does it work properly?

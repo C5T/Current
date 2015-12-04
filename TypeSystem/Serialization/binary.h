@@ -152,14 +152,14 @@ struct SaveIntoBinaryImpl {
     }
   };
 
-  // No-op function for `CurrentStructSuper`.
+  // No-op function for `CurrentStruct`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentStructSuper>::value> Save(std::ostream&, const T&) {}
+  static ENABLE_IF<std::is_same<TT, CurrentStruct>::value> Save(std::ostream&, const T&) {}
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStructSuper>::value> Save(
-      std::ostream& ostream, const T& source) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStruct>::value> Save(std::ostream& ostream,
+                                                                                          const T& source) {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
@@ -251,18 +251,18 @@ struct LoadFromBinaryImpl {
     }
   };
 
-  // No-op function for `CurrentStructSuper`.
+  // No-op function for `CurrentStruct`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentStructSuper>::value> Load(std::istream&, T&) {}
+  static ENABLE_IF<std::is_same<TT, CurrentStruct>::value> Load(std::istream&, T&) {}
 
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStructSuper>::value> Load(
-      std::istream& istream, T& destination) {
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStruct>::value> Load(std::istream& istream,
+                                                                                          T& destination) {
     using DECAYED_T = current::decay<TT>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
-    if (!std::is_same<SUPER, CurrentStructSuper>::value) {
+    if (!std::is_same<SUPER, CurrentStruct>::value) {
       LoadFromBinaryImpl<SUPER>::Load(istream, destination);
     }
 

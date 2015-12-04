@@ -67,9 +67,9 @@ using current::NoValueOfTypeException;
 using current::UninitializedVariantException;
 using current::UninitializedVariantOfTypeException;
 
-using current::NoValue;        // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
-using current::NoValueOfType;  // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
-using current::UninitializedVariant;        // == a const reference to `UninitializedVariant`.
+using current::NoValue;               // == `const NoValueException&` for cleaner `catch (NoValue)` syntax.
+using current::NoValueOfType;         // == `const NoValueOfTypeException<T>&` for cleaner `catch ()` syntax.
+using current::UninitializedVariant;  // == a const reference to `UninitializedVariant`.
 using current::UninitializedVariantOfType;  // == a const reference as well.
 
 #endif  // CURRENT_TYPE_SYSTEM_EXCEPTIONS_H

@@ -89,7 +89,7 @@ TEST(Reflection, CurrentStructInternals) {
   using namespace reflection_test;
   using namespace current::reflection;
 
-  static_assert(std::is_same<SuperType<Foo>, ::current::CurrentStructSuper>::value, "");
+  static_assert(std::is_same<SuperType<Foo>, ::current::CurrentStruct>::value, "");
   EXPECT_EQ(1u, FieldCounter<Foo>::value);
 
   Foo::CURRENT_REFLECTION([](TypeSelector<uint64_t>, const std::string& name) { EXPECT_EQ("i", name); },
@@ -108,7 +108,7 @@ TEST(Reflection, CurrentStructInternals) {
   }, Index<FieldNameAndMutableValue, 0>());
   EXPECT_EQ(123u, foo.i);
 
-  static_assert(std::is_same<SuperType<Bar>, ::current::CurrentStructSuper>::value, "");
+  static_assert(std::is_same<SuperType<Bar>, ::current::CurrentStruct>::value, "");
   EXPECT_EQ(4u, FieldCounter<Bar>::value);
   static_assert(std::is_same<SuperType<DerivedFromFoo>, Foo>::value, "");
   EXPECT_EQ(1u, FieldCounter<DerivedFromFoo>::value);
