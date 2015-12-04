@@ -700,13 +700,22 @@ TEST(Serialization, VariantAsJSON) {
               JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
 
-  // TODO(dk+mz): This should compile. And it compiles. Does it work properly?
-  if (false) {
+  {
     using OtherVariantType = Variant<WithVectorOfPairs, WithOptional>;
     using WeHaveToGoDeeper = Variant<VariantType, OtherVariantType>;
-    ParseJSON<WeHaveToGoDeeper>("This should compile.");
-    WeHaveToGoDeeper* this_should_compile_too;
-    JSON(*this_should_compile_too);
+    WithOptional with_optional;
+    with_optional.i = 42;
+    OtherVariantType inner_variant(with_optional);
+    WeHaveToGoDeeper outer_variant(inner_variant);
+    const std::string json = JSON(outer_variant);
+    EXPECT_EQ(
+        "{\"Variant\":{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
+        "\"T9227628135528596528\"}",
+        json);
+    const WeHaveToGoDeeper parsed_object = ParseJSON<WeHaveToGoDeeper>(json);
+    const WithOptional& inner_parsed_object = Value<WithOptional>(Value<OtherVariantType>(parsed_object));
+    EXPECT_EQ(42, Value(inner_parsed_object.i));
+    EXPECT_FALSE(Exists(inner_parsed_object.b));
   }
 }
 
