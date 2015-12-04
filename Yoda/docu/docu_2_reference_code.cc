@@ -646,7 +646,9 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(404, static_cast<int>(cell_composite.code));
   EXPECT_EQ("{\"error\":{\"message\":\"NOT_FOUND\"}}\n", cell_composite.body);
 }
-  
+ 
+#if 0
+// TODO(dkorolev): Retire Cereal.
 {
   // Confirm that the stream is indeed populated.
   api.ExposeViaHTTP(port, "/data");
@@ -665,4 +667,5 @@ HTTP(port).ResetAllHandlers();
 #endif
     HTTP(GET(Printf("http://localhost:%d/data?n=1", port))).body);
 }
+#endif
 }

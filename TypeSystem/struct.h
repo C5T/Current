@@ -144,7 +144,7 @@ struct WithoutParentheses<int(T)> {
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
     using SUPER = super;                                                                            \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
-    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                             \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
@@ -170,7 +170,7 @@ struct WithoutParentheses<int(T)> {
 #else  // _MSC_VER
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                                                                  \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper);                                                  \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper);                                            \
   template <typename INSTANTIATION_TYPE>                                                               \
   struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, \
                                                                          INSTANTIATION_TYPE,           \

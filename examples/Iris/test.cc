@@ -107,6 +107,8 @@ TEST(Iris, Demo) {
                               current::FileSystem::JoinPath("golden", "dataset.tsv"),
                               "text/tsv")).body);
 
+#if 0
+  // TODO(dkorolev): Retire Cereal from here.
   // Ref.: http://localhost:3000/stream
   api.ExposeViaHTTP(FLAGS_iris_port, Printf("/stream%d", run_index));
 
@@ -214,4 +216,5 @@ TEST(Iris, Demo) {
     HTTP(FLAGS_iris_port).Join();
   }
   // LCOV_EXCL_STOP
+#endif
 }

@@ -53,14 +53,14 @@ CURRENT_STRUCT(UserLike, BaseEvent) {
 };
 
 // `Event` is the top-level message to persist. This structure is not default-constructible, not copyable,
-// and not assignable, since it contains a `Polymorphic<>`. It's serializable and movable though.
+// and not assignable, since it contains a `Variant<>`. It's serializable and movable though.
 CURRENT_STRUCT(Event) {
-  CURRENT_FIELD(event, (Polymorphic<UserAdded, PostAdded, UserLike>));
+  CURRENT_FIELD(event, (Variant<UserAdded, PostAdded, UserLike>));
 
   CURRENT_TIMESTAMP(event);
 
   CURRENT_DEFAULT_CONSTRUCTOR(Event) {}
-  CURRENT_CONSTRUCTOR(Event)(Polymorphic<UserAdded, PostAdded, UserLike> && event) : event(std::move(event)) {}
+  CURRENT_CONSTRUCTOR(Event)(Variant<UserAdded, PostAdded, UserLike> && event) : event(std::move(event)) {}
 };
 
 // JSON responses schema.
