@@ -36,6 +36,7 @@ SOFTWARE.
 
 #include "base.h"
 #include "helpers.h"
+#include "variant.h"
 
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/variadic_indexes.h"
@@ -53,8 +54,20 @@ struct BaseTypeHelperImpl<DeclareFields, T> {
   typedef T type;
 };
 
+// `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`, and
+// its scope resolution for derived structs differs between Visual C++ and g++/clang++.
+// Confusing but works. -- D.K.
+#ifndef _MSC_VER
 template <typename INSTANTIATION_TYPE, typename T>
 using BaseTypeHelper = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
+#else
+template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T>
+struct BaseTypeHelper : REFLECTION_HELPER, BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type {
+  using SUPER = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
+  using REFLECTION_HELPER::CURRENT_FIELD_INDEX_BASE;
+  using REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
+};
+#endif
 
 // Fields declaration and counting.
 template <typename INSTANTIATION_TYPE, typename T>
@@ -105,10 +118,21 @@ struct WithoutParentheses<int(T)> {
 #define CURRENT_EXPAND_MACRO_IMPL(x) x
 #define CURRENT_EXPAND_MACRO(x) CURRENT_EXPAND_MACRO_IMPL(x)
 
-// Macros for structure definition.
-#define CURRENT_STRUCT_SWITCH(_1, _2, F, ...) F
-#define CURRENT_STRUCT(...) \
-  CURRENT_STRUCT_SWITCH(__VA_ARGS__, CURRENT_STRUCT_DERIVED, CURRENT_STRUCT_NOT_DERIVED)(__VA_ARGS__)
+// MSVS-friendly macros for structure definition.
+#define CS_IMPL1(a) CURRENT_STRUCT_NOT_DERIVED(a)
+#define CS_IMPL2(a, b) CURRENT_STRUCT_DERIVED(a, b)
+
+#define CS_N_ARGS_IMPL2(_1, _2, n, ...) n
+#define CS_N_ARGS_IMPL(args) CS_N_ARGS_IMPL2 args
+
+#define CS_NARGS(...) CS_N_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
+
+#define CS_CHOOSER2(n) CS_IMPL##n
+#define CS_CHOOSER1(n) CS_CHOOSER2(n)
+#define CS_CHOOSERX(n) CS_CHOOSER1(n)
+
+#define CS_SWITCH(x, y) x y
+#define CURRENT_STRUCT(...) CS_SWITCH(CS_CHOOSERX(CS_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 #define CURRENT_STRUCT_HELPERS(s, super)                                                            \
   template <typename INSTANTIATION_TYPE>                                                            \
@@ -124,6 +148,11 @@ struct WithoutParentheses<int(T)> {
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
+// `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`,
+// and its scope resolution for derives structs differs between Visual C++ and g++/clang++. -- D.K.
+
+#ifndef _MSC_VER
+
 #define CURRENT_STRUCT_NOT_DERIVED(s)                       \
   CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper); \
   template <typename INSTANTIATION_TYPE>                    \
@@ -138,9 +167,38 @@ struct WithoutParentheses<int(T)> {
   struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                               \
                                    ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, base>
 
-#define CURRENT_FIELD_SWITCH(_1, _2, _3, F, ...) F
-#define CURRENT_FIELD(...) \
-  CURRENT_FIELD_SWITCH(__VA_ARGS__, CURRENT_FIELD_WITH_VALUE, CURRENT_FIELD_WITH_NO_VALUE)(__VA_ARGS__)
+#else  // _MSC_VER
+
+#define CURRENT_STRUCT_NOT_DERIVED(s)                                                                  \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStructSuper);                                            \
+  template <typename INSTANTIATION_TYPE>                                                               \
+  struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, \
+                                                                         INSTANTIATION_TYPE,           \
+                                                                         ::current::CurrentStructSuper>
+
+#define CURRENT_STRUCT_DERIVED(s, base)                                                        \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStructSuper`."); \
+  CURRENT_STRUCT_HELPERS(s, base);                                                             \
+  template <typename INSTANTIATION_TYPE>                                                       \
+  struct CURRENT_STRUCT_IMPL_##s                                                               \
+      : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
+
+#endif  // _MSC_VER
+
+#define CF_IMPL2(a, b) CURRENT_FIELD_WITH_NO_VALUE(a, b)
+#define CF_IMPL3(a, b, c) CURRENT_FIELD_WITH_VALUE(a, b, c)
+
+#define CF_N_ARGS_IMPL3(_1, _2, _3, n, ...) n
+#define CF_NARGS_IMPL(args) CF_N_ARGS_IMPL3 args
+
+#define CF_NARGS(...) CF_NARGS_IMPL((__VA_ARGS__, 3, 2, 1, 0))
+
+#define CF_CHOOSER2(n) CF_IMPL##n
+#define CF_CHOOSER1(n) CF_CHOOSER2(n)
+#define CF_CHOOSERX(n) CF_CHOOSER1(n)
+
+#define CF_SWITCH(x, y) x y
+#define CURRENT_FIELD(...) CF_SWITCH(CF_CHOOSERX(CF_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 #define CURRENT_FIELD_WITH_NO_VALUE(name, type)                                                             \
   ::current::reflection::Field<INSTANTIATION_TYPE,                                                          \
@@ -204,7 +262,11 @@ template <typename T>
 struct SuperTypeImpl {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
+#ifndef _MSC_VER
   typedef typename T::template CURRENT_REFLECTION_HELPER<T>::SUPER type;
+#else
+  typedef typename T::SUPER type;
+#endif
 };
 
 template <typename T>
@@ -215,8 +277,12 @@ struct FieldCounter {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
   enum {
+#ifndef _MSC_VER
     value = (sizeof(typename T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_FIELD_COUNT_STRUCT) /
              sizeof(CountFieldsImplementationType))
+#else
+    value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
+#endif  // _MSC_VER
   };
 };
 

@@ -70,7 +70,7 @@ struct JSONSchemaException : TypeSystemParseJSONException {
           const std::string result = os.str();
           return result.substr(1u, result.length() - 2u);
         }
-      } catch (const std::exception& e) {
+      } catch (const std::exception&) {
         return "field can not be parsed.";
       }
     } else {

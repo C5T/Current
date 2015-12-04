@@ -445,6 +445,7 @@ TEST(Serialization, StructSchemaSerialization) {
   const std::string schema_json = JSON(struct_schema.GetSchemaInfo());
 
   EXPECT_EQ(
+
       "{\"types\":[[\"T9000000000000000011\",{\"ReflectedType_Primitive\":{\"type_id\":"
       "\"T9000000000000000011\"},\"\":\"T9200000000887757410\"}],[\"T9000000000000000023\",{\"ReflectedType_"
       "Primitive\":{\"type_id\":\"T9000000000000000023\"},\"\":\"T9200000000887757410\"}],["
@@ -462,6 +463,7 @@ TEST(Serialization, StructSchemaSerialization) {
       "\"T9319767778871345491\",{\"ReflectedType_Vector\":{\"type_id\":\"T9319767778871345491\",\"element_"
       "type\":\"T9000000000000000042\"},\"\":\"T9209585172575626540\"}]],\"order\":[\"T9319767778871345491\","
       "\"T9010000002928410991\",\"T9201007113239016790\",\"T9209412029115735895\"]}",
+
       schema_json);
 
   const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
