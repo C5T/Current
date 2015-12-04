@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../TypeSystem/Reflection/schema.h"
+#include "../../TypeSystem/Schema/schema.h"
 
 #include "../../Bricks/file/file.h"
 
@@ -42,5 +42,5 @@ TEST(TypeTest, CurrentStruct) {
   StructSchema schema;
 #include "include/current_struct.cc"
   EXPECT_EQ(current::FileSystem::ReadFileAsString("golden/current_struct.cc"),
-            schema.Describe(Language::CPP(), false));
+            schema.GetSchemaInfo().Describe<Language::CPP>(false));
 }

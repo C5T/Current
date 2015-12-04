@@ -3,8 +3,8 @@ COUNT_LIST=(10 100 200)
 TEST_LIST=('.current/current_struct'
            '.current/struct_fields'
            '.current/typelist_impl'
-           '.current/rtti_dynamic_call')
-# 20 structs for '.current/typelist' and 10 for '.current/typelist_dynamic' are killing my clang :( //MZ
+	   '.current/rtti_dynamic_call')
+# 20 structs for '.current/typelist|variant' and 10 for '.current/typelist_dynamic' are killing my clang :( //MZ
 
 for c in ${COUNT_LIST[@]}; do
 	(./gen_test_data.sh $c;	make clean >/dev/null)

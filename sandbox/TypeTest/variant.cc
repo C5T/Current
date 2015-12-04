@@ -23,20 +23,18 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "../../Bricks/file/file.h"
-#include "../../Bricks/template/rtti_dynamic_call.h"
-#include "../../Bricks/template/typelist.h"
 #include "../../TypeSystem/struct.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace type_test {
 
-#include "include/rtti_dynamic_call.h"
+#include "include/variant.h"
 
 }  // namespace type_test
 
-TEST(TypeTest, RTTIDynamicCall) {
+TEST(TypeTest, Variant) {
   using namespace type_test;
-#include "include/rtti_dynamic_call.cc"
-  EXPECT_EQ(call_struct.oss.str(), current::FileSystem::ReadFileAsString("golden/rtti_dynamic_call.output"));
+#include "include/variant.cc"
+  EXPECT_EQ(call_struct.oss.str(), current::FileSystem::ReadFileAsString("golden/variant.output"));
 }
