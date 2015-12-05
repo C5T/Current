@@ -45,15 +45,9 @@ struct map_impl<F, std::tuple<>> {
   typedef std::tuple<> type;
 };
 
-template <template <typename> class F, typename T>
-struct map_impl<F, std::tuple<T>> {
-  typedef std::tuple<F<T>> type;
-};
-
-template <template <typename> class F, typename T, typename... TS>
-struct map_impl<F, std::tuple<T, TS...>> {
-  typedef decltype(
-      std::tuple_cat(std::declval<map<F, std::tuple<T>>>(), std::declval<map<F, std::tuple<TS...>>>())) type;
+template <template <typename> class F, typename... TS>
+struct map_impl<F, std::tuple<TS...>> {
+  typedef std::tuple<F<TS>...> type;
 };
 
 template <template <typename> class F>
@@ -61,14 +55,9 @@ struct map_impl<F, TypeListImpl<>> {
   typedef TypeListImpl<> type;
 };
 
-template <template <typename> class F, typename T>
-struct map_impl<F, TypeListImpl<T>> {
-  typedef TypeListImpl<F<T>> type;
-};
-
-template <template <typename> class F, typename T, typename... TS>
-struct map_impl<F, TypeListImpl<T, TS...>> {
-  typedef TypeList<F<T>, map<F, TypeListImpl<TS...>>> type;
+template <template <typename> class F, typename... TS>
+struct map_impl<F, TypeListImpl<TS...>> {
+  typedef TypeListImpl<F<TS>...> type;
 };
 
 // `filter<F<>, std::tuple<A, B, C>>` == `std::tuple<>` that only contains types where `F<i>::filter` is `true`.

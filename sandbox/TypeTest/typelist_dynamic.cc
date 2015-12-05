@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../TypeSystem/Reflection/schema.h"
+#include "../../TypeSystem/struct.h"
 
 #include "../../Bricks/template/mapreduce.h"
 #include "../../Bricks/template/typelist.h"

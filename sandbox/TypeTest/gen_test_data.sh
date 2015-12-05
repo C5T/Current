@@ -124,4 +124,36 @@ for i in `seq 1 $STRUCT_COUNT`; do
 done
 echo "> DATA_TYPES;" >> $TYPELIST_DYNAMIC_TEST
 
+#`variant.cc` test
+VARIANT_HEADER="$INCLUDE_DIR/variant.h"
+VARIANT_TEST="$INCLUDE_DIR/variant.cc"
+VARIANT_GOLDEN="$GOLDEN_DIR/variant.output"
+echo "typedef Variant<" >> $VARIANT_TEST
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "CURRENT_STRUCT(Struct$i) {" >> $VARIANT_HEADER
+	echo "  CURRENT_FIELD(x$i, uint32_t, $i);" >> $VARIANT_HEADER
+	echo "  void print_x$i(std::ostream& os) const { os << \"x$i=\" << x$i; };" >> $VARIANT_HEADER
+	echo "};" >> $VARIANT_HEADER
+
+	echo -n "Struct$i" >> $VARIANT_TEST
+	if [[ $i -ne $STRUCT_COUNT ]]; then
+		echo "," >> $VARIANT_TEST
+	fi
+
+	echo -n "x$i=$i" >> $VARIANT_GOLDEN
+done
+echo "> VARIANT_TYPE;" >> $VARIANT_TEST
+echo "struct CallStruct {" >> $VARIANT_HEADER
+echo "  std::ostringstream oss;" >> $VARIANT_HEADER
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "  void operator()(const Struct$i& s) { s.print_x$i(oss); }" >> $VARIANT_HEADER
+done
+echo "};" >> $VARIANT_HEADER
+
+echo "CallStruct call_struct;" >> $VARIANT_TEST
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "VARIANT_TYPE v$i((Struct$i()));" >> $VARIANT_TEST
+	echo "v$i.Call(call_struct);" >> $VARIANT_TEST
+done
+
 touch dummy.h
