@@ -61,44 +61,52 @@ struct map_impl<F, TypeListImpl<TS...>> {
 };
 
 // `filter<F<>, std::tuple<A, B, C>>` == `std::tuple<>` that only contains types where `F<i>::filter` is `true`.
-template <template <typename> class F, typename TS>
+template <template <typename> class F, typename RESULT_SO_FAR, typename TS>
 struct filter_impl {};
 
-template <template <typename> class F, typename TS>
-using filter = typename filter_impl<F, TS>::type;
+template <template <typename> class F, typename... RESULT_SO_FAR>
+struct filter_impl<F, std::tuple<RESULT_SO_FAR...>, std::tuple<>> {
+  using result = std::tuple<RESULT_SO_FAR...>;
+};
 
-template <template <typename> class F>
-struct filter_impl<F, std::tuple<>> {
-  typedef std::tuple<> type;
+template <template <typename> class F, typename... RESULT_SO_FAR, typename T, typename... TS>
+struct filter_impl<F, std::tuple<RESULT_SO_FAR...>, std::tuple<T, TS...>> {
+  using result = typename filter_impl<F,
+                                      typename std::conditional<F<T>::filter,
+                                                                std::tuple<RESULT_SO_FAR..., T>,
+                                                                std::tuple<RESULT_SO_FAR...>>::type,
+                                      std::tuple<TS...>>::result;
+};
+
+template <template <typename> class F, typename... RESULT_SO_FAR>
+struct filter_impl<F, TypeListImpl<RESULT_SO_FAR...>, TypeListImpl<>> {
+  using result = TypeListImpl<RESULT_SO_FAR...>;
+};
+
+template <template <typename> class F, typename... RESULT_SO_FAR, typename T, typename... TS>
+struct filter_impl<F, TypeListImpl<RESULT_SO_FAR...>, TypeListImpl<T, TS...>> {
+  using result = typename filter_impl<F,
+                                      typename std::conditional<F<T>::filter,
+                                                                TypeListImpl<RESULT_SO_FAR..., T>,
+                                                                TypeListImpl<RESULT_SO_FAR...>>::type,
+                                      TypeListImpl<TS...>>::result;
+};
+
+template <template <typename> class, typename T>
+struct filter_impl_selector;
+
+template <template <typename> class F, typename... TS>
+struct filter_impl_selector<F, std::tuple<TS...>> {
+  using type = typename filter_impl<F, std::tuple<>, std::tuple<TS...>>::result;
+};
+
+template <template <typename> class F, typename... TS>
+struct filter_impl_selector<F, TypeListImpl<TS...>> {
+  using type = typename filter_impl<F, TypeListImpl<>, TypeListImpl<TS...>>::result;
 };
 
 template <template <typename> class F, typename T>
-struct filter_impl<F, std::tuple<T>> {
-  typedef typename std::conditional<F<T>::filter, std::tuple<T>, std::tuple<>>::type type;
-};
-
-template <template <typename> class F, typename T, typename... TS>
-struct filter_impl<F, std::tuple<T, TS...>> {
-  typedef decltype(std::tuple_cat(std::declval<filter<F, std::tuple<T>>>(),
-                                  std::declval<filter<F, std::tuple<TS...>>>())) type;
-};
-
-template <template <typename> class F>
-struct filter_impl<F, TypeListImpl<>> {
-  typedef TypeListImpl<> type;
-};
-
-template <template <typename> class F, typename T>
-struct filter_impl<F, TypeListImpl<T>> {
-  typedef typename std::conditional<F<T>::filter, TypeListImpl<T>, TypeListImpl<>>::type type;
-};
-
-template <template <typename> class F, typename T, typename... TS>
-struct filter_impl<F, TypeListImpl<T, TS...>> {
-  typedef typename std::conditional<F<T>::filter,
-                                    TypeList<T, filter<F, TypeListImpl<TS...>>>,
-                                    filter<F, TypeListImpl<TS...>>>::type type;
-};
+using filter = typename filter_impl_selector<F, T>::type;
 
 // `reduce<F<LHS, RHS>, std::tuple<A, B, C>>` == `F<A, F<B, C>>`.
 template <template <typename, typename> class F, typename TS>

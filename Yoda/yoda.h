@@ -154,11 +154,11 @@ using API = typename APIWrapperSelector<PERSISTENCE, CLONER, SUPPORTED_TYPES_LIS
 
 template <typename... SUPPORTED_TYPES>
 using MemoryOnlyAPI =
-    API<blocks::persistence::MemoryOnly, current::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
+    API<blocks::persistence::MemoryOnly, current::DefaultCloner, SlowTypeList<SUPPORTED_TYPES...>>;
 
 template <typename... SUPPORTED_TYPES>
 using SingleFileAPI =
-    API<blocks::persistence::CerealAppendToFile, current::DefaultCloner, TypeList<SUPPORTED_TYPES...>>;
+    API<blocks::persistence::CerealAppendToFile, current::DefaultCloner, SlowTypeList<SUPPORTED_TYPES...>>;
 
 }  // namespace yoda
 

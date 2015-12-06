@@ -223,26 +223,36 @@ static_assert(std::is_same<TypeListImpl<int, double>, Deduplicate<TypeListImpl<i
 static_assert(std::is_same<TypeListImpl<double, int>, Deduplicate<TypeListImpl<double, int, double>>>::value,
               "");
 
+// Performance alert, @dkorolev @mzhurovich 12/5/2015.
+// The implementation of `TypeList` deduplication+flattening is very inefficient as of now.
+// We are making the default behavior of `TypeList` a non-deduplicating non-flattening one, and introducing
+// a special syntax of `SlowTypeList` for the case where deduplication and/or flattening is indeed requred.
+
 // User-facing `TypeList<TS...>` creates a type list that contains the union of all passed in types,
 // performing flattening and deduplication of all input types.
 template <typename... TS>
-using TypeList = Deduplicate<Flatten<TypeListImpl<TS...>>>;
+using SlowTypeList = Deduplicate<Flatten<TypeListImpl<TS...>>>;
 
-static_assert(std::is_same<TypeListImpl<>, TypeList<>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, TypeList<int>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, TypeList<TypeList<TypeList<int>>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, TypeList<int, int>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, TypeList<int, TypeList<int>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int>, TypeList<int, TypeList<TypeList<int>>>>::value, "");
-static_assert(std::is_same<TypeListImpl<int, double>, TypeList<int, TypeList<TypeList<int>, double>>>::value,
-              "");
-static_assert(std::is_same<TypeListImpl<int, double>, TypeList<int, int, double, double>>::value, "");
-static_assert(std::is_same<TypeListImpl<int, double>, TypeList<int, double, int>>::value, "");
-static_assert(std::is_same<TypeListImpl<int, double>, TypeList<int, double, int, double>>::value, "");
-static_assert(std::is_same<TypeListImpl<int, double>, TypeList<TypeList<int, double, int, double>>>::value, "");
+template <typename... TS>
+using TypeList = TypeListImpl<TS...>;
 
-static_assert(!std::is_same<TypeListImpl<int>, TypeList<double>>::value, "");
-static_assert(!std::is_same<TypeListImpl<int, double>, TypeList<double, int>>::value, "");
+static_assert(std::is_same<TypeListImpl<>, SlowTypeList<>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, SlowTypeList<int>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, SlowTypeList<SlowTypeList<SlowTypeList<int>>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, SlowTypeList<int, int>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, SlowTypeList<int, SlowTypeList<int>>>::value, "");
+static_assert(std::is_same<TypeListImpl<int>, SlowTypeList<int, SlowTypeList<SlowTypeList<int>>>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int, double>, SlowTypeList<int, SlowTypeList<SlowTypeList<int>, double>>>::value,
+    "");
+static_assert(std::is_same<TypeListImpl<int, double>, SlowTypeList<int, int, double, double>>::value, "");
+static_assert(std::is_same<TypeListImpl<int, double>, SlowTypeList<int, double, int>>::value, "");
+static_assert(std::is_same<TypeListImpl<int, double>, SlowTypeList<int, double, int, double>>::value, "");
+static_assert(
+    std::is_same<TypeListImpl<int, double>, SlowTypeList<SlowTypeList<int, double, int, double>>>::value, "");
+
+static_assert(!std::is_same<TypeListImpl<int>, SlowTypeList<double>>::value, "");
+static_assert(!std::is_same<TypeListImpl<int, double>, SlowTypeList<double, int>>::value, "");
 
 template <typename... TS>
 struct IsTypeList {
@@ -265,6 +275,7 @@ static_assert(!IsTypeList<double>::value, "");
 
 // Export some symbols into global scope.
 using current::metaprogramming::TypeList;
+using current::metaprogramming::SlowTypeList;
 using current::metaprogramming::TypeListContains;
 using current::metaprogramming::IsTypeList;
 using current::metaprogramming::TypeListSize;

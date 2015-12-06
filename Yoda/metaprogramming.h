@@ -82,8 +82,9 @@ struct YodaTypes : YodaTypesBase {
 
   template <typename T>
   using SherlockEntryTypeFromYodaEntryType = typename T::T_SHERLOCK_TYPES;
-  // Need to flatten all the types here, so no `TypeListImpl<>`, only `TypeList`.
-  using T_UNDERLYING_TYPES_LIST = TypeList<MP::map<SherlockEntryTypeFromYodaEntryType, T_SUPPORTED_TYPES_LIST>>;
+  // Need to flatten all the types here, so no `TypeListImpl<>`, only `SlowTypeList`.
+  using T_UNDERLYING_TYPES_LIST =
+      SlowTypeList<MP::map<SherlockEntryTypeFromYodaEntryType, T_SUPPORTED_TYPES_LIST>>;
 
   using T_MQ_LISTENER = MQListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
   using T_MQ_MESSAGE_INTERNAL_TYPEDEF = MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;

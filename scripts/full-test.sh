@@ -48,7 +48,7 @@ echo
 
 
 echo -n -e "\033[0m\033[1mTests:\033[0m\033[36m"
-for i in $(find . -iname "*test.cc" | grep -v 3rdparty | grep -v "/.current/" | sort -g); do
+for i in $(find . -iname "*test.cc" | grep -v "/3rdparty/" | grep -v "/.current/" | grep -v "/sandbox/" | sort -g); do
   echo "#include \"$i\"" >> "$FULL_TEST_DIR_NAME/$ALL_TESTS_TOGETHER.cc"
   echo -n " $i"
 done
@@ -56,7 +56,7 @@ done
 # Allow this one test to rule them all to access all the `golden/` files.
 mkdir -p "$GOLDEN_FULL_PATH"
 echo -e "\n\n\033[0m\033[1mGolden files\033[0m: \033[35m"
-for dirname in $(find . -iname "$GOLDEN_DIR_NAME" -type d | grep -v 3rdparty | grep -v "/.current/" | grep -v "$FULL_TEST_DIR_NAME"); do
+for dirname in $(find . -iname "$GOLDEN_DIR_NAME" -type d | grep -v "/3rdparty/" | grep -v "/.current/" | grep -v "/sandbox/" | grep -v "$FULL_TEST_DIR_NAME"); do
   (cd $dirname; for filename in * ; do cp -v "$PWD/$filename" "$GOLDEN_FULL_PATH" ; done)
 done
 echo -e -n "\033[0m"
