@@ -43,14 +43,17 @@ namespace current {
 // A high-octane version of `current::metaprogramming::combine.
 namespace variant_high_octane_tmp {
 
+template <typename T>
+struct fast_combine;
+
 template <typename T, typename... TS>
-struct fast_combine : fast_combine<T>, fast_combine<TS...> {
-  using fast_combine<T>::operator();
-  using fast_combine<TS...>::operator();
+struct fast_combine<TypeListImpl<T, TS...>> : fast_combine<TypeListImpl<T>>, fast_combine<TypeListImpl<TS...>> {
+  using fast_combine<TypeListImpl<T>>::operator();
+  using fast_combine<TypeListImpl<TS...>>::operator();
 };
 
 template <typename T>
-struct fast_combine<T> {
+struct fast_combine<TypeListImpl<T>> {
   T instance;
 
   template <typename PARAM>
@@ -120,7 +123,7 @@ struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
     }
   };
 
-  using Instance = variant_high_octane_tmp::fast_combine<Impl<TS>...>;
+  using Instance = variant_high_octane_tmp::fast_combine<TypeListImpl<Impl<TS>...>>;
 
   template <typename Q>
   static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
