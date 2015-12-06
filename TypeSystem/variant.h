@@ -43,13 +43,16 @@ namespace current {
 // A high-octane version of `current::metaprogramming::combine.
 namespace variant_high_octane_tmp {
 
+using current::metaprogramming::EvensOnly;
+
 template <typename T>
 struct fast_combine;
 
 template <typename T, typename... TS>
-struct fast_combine<TypeListImpl<T, TS...>> : fast_combine<TypeListImpl<T>>, fast_combine<TypeListImpl<TS...>> {
-  using fast_combine<TypeListImpl<T>>::operator();
-  using fast_combine<TypeListImpl<TS...>>::operator();
+struct fast_combine<TypeListImpl<T, TS...>> : fast_combine<EvensOnly<TypeListImpl<T, TS...>>>,
+                                              fast_combine<EvensOnly<TypeListImpl<TS...>>> {
+  using fast_combine<EvensOnly<TypeListImpl<T, TS...>>>::operator();
+  using fast_combine<EvensOnly<TypeListImpl<TS...>>>::operator();
 };
 
 template <typename T>
