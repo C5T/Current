@@ -142,8 +142,9 @@ TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
   static_assert(std::is_same<indexes<0, 1, 2>, generate_indexes<3>>::value, "");
 }
 
-TEST(TemplateMetaprogrammingInternalTest, OddIndexes) { struct A { };
+TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
   using current::metaprogramming::EvensOnly;
+  struct A { };
   struct B {};
   struct C {};
   struct D {};
