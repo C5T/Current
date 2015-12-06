@@ -41,38 +41,28 @@ SOFTWARE.
 namespace current {
 
 // A high-octane version of `current::metaprogramming::combine.
-// A "poor man's version" for higher performance.
 namespace variant_high_octane_tmp {
 
+template <typename T, typename... TS>
+struct fast_combine : fast_combine<T>, fast_combine<TS...> {
+  using fast_combine<T>::operator();
+  using fast_combine<TS...>::operator();
+};
+
 template <typename T>
-struct fast_dispatch {
+struct fast_combine<T> {
   T instance;
 
-  template <typename P2, typename P3>
-  void operator()(typename T::enabled_type_1 selector, P2&& p2, P3&& p3) {
-    instance.operator()(selector, std::forward<P2>(p2), std::forward<P3>(p3));
+  template <typename PARAM>
+  void operator()(typename T::first_parameter_1 first, PARAM&& param, typename T::third_parameter& third) {
+    instance.operator()(first, std::forward<PARAM>(param), third);
   }
 
-  template <typename P2, typename P3>
-  void operator()(typename T::enabled_type_2 selector, P2&& p2, P3&& p3) {
-    instance.operator()(selector, std::forward<P2>(p2), std::forward<P3>(p3));
+  template <typename PARAM>
+  void operator()(typename T::first_parameter_2 first, PARAM&& param, typename T::third_parameter& third) {
+    instance.operator()(first, std::forward<PARAM>(param), third);
   }
 };
-
-template <typename T1, typename T2>
-struct fast_inherit_from_both : T1, T2 {
-  using T1::operator();
-  using T2::operator();
-};
-
-template <typename T>
-struct fast_combine {};
-
-template <typename T>
-struct fast_combine<TypeListImpl<T>> : fast_dispatch<T> {};
-
-template <typename T, typename... TS>
-struct fast_combine<TypeListImpl<T, TS...>> : fast_inherit_from_both<fast_dispatch<T>, fast_combine<TypeListImpl<TS...>>> {};
 
 }  // namespace variant_high_octane_tmp
 
@@ -86,15 +76,20 @@ struct fast_combine<TypeListImpl<T, TS...>> : fast_inherit_from_both<fast_dispat
 // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
 // or a bare pointer (in which case it's captured).
 // TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
-template <class TYPELIST>
-struct VariantTypeCheckedAssignment {
+template <typename TYPELIST>
+struct VariantTypeCheckedAssignment;
+
+template <typename... TS>
+struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
   template <typename Z>
   struct DerivedTypesDifferentiator {};
 
   template <typename X>
   struct Impl {
-    using enabled_type_1 = DerivedTypesDifferentiator<X>;
-    using enabled_type_2 = DerivedTypesDifferentiator<std::unique_ptr<X>>;
+    // Legal parameter types, for high-octane metaprogramming.
+    using first_parameter_1 = DerivedTypesDifferentiator<X>;
+    using first_parameter_2 = DerivedTypesDifferentiator<std::unique_ptr<X>>;
+    using third_parameter = std::unique_ptr<CurrentSuper>;
 
     // Copy `X`.
     void operator()(DerivedTypesDifferentiator<X>,
@@ -125,7 +120,7 @@ struct VariantTypeCheckedAssignment {
     }
   };
 
-  using Instance = variant_high_octane_tmp::fast_combine<current::metaprogramming::map<Impl, TYPELIST>>;
+  using Instance = variant_high_octane_tmp::fast_combine<Impl<TS>...>;
 
   template <typename Q>
   static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
