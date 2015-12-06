@@ -40,6 +40,32 @@ SOFTWARE.
 
 namespace current {
 
+// A high-octane version of `current::metaprogramming::combine.
+namespace variant_high_octane_tmp {
+
+template <typename T, typename... TS>
+struct fast_combine : fast_combine<T>, fast_combine<TS...> {
+  using fast_combine<T>::operator();
+  using fast_combine<TS...>::operator();
+};
+
+template <typename T>
+struct fast_combine<T> {
+  T instance;
+
+  template <typename PARAM>
+  void operator()(typename T::first_parameter_1 first, PARAM&& param, typename T::third_parameter& third) {
+    instance.operator()(first, std::forward<PARAM>(param), third);
+  }
+
+  template <typename PARAM>
+  void operator()(typename T::first_parameter_2 first, PARAM&& param, typename T::third_parameter& third) {
+    instance.operator()(first, std::forward<PARAM>(param), third);
+  }
+};
+
+}  // namespace variant_high_octane_tmp
+
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -50,13 +76,21 @@ namespace current {
 // an `std::move()`-d `std::unique_ptr` to that object (in which case it's moved),
 // or a bare pointer (in which case it's captured).
 // TODO(dkorolev): The bare pointer one is sure unsafe -- consult with @mzhurovich.
-template <class TYPELIST>
-struct VariantTypeCheckedAssignment {
+template <typename TYPELIST>
+struct VariantTypeCheckedAssignment;
+
+template <typename... TS>
+struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
   template <typename Z>
   struct DerivedTypesDifferentiator {};
 
   template <typename X>
   struct Impl {
+    // Legal parameter types, for high-octane metaprogramming.
+    using first_parameter_1 = DerivedTypesDifferentiator<X>;
+    using first_parameter_2 = DerivedTypesDifferentiator<std::unique_ptr<X>>;
+    using third_parameter = std::unique_ptr<CurrentSuper>;
+
     // Copy `X`.
     void operator()(DerivedTypesDifferentiator<X>,
                     const X& source,
@@ -84,13 +118,10 @@ struct VariantTypeCheckedAssignment {
       }
       destination = std::move(source);
     }
-    // Capture a bare `X*`.
-    // TODO(dkorolev): Unsafe? Remove?
-    void operator()(DerivedTypesDifferentiator<X*>, X* source, std::unique_ptr<CurrentSuper>& destination) {
-      destination.reset(source);
-    }
   };
-  using Instance = current::metaprogramming::combine<current::metaprogramming::map<Impl, TYPELIST>>;
+
+  using Instance = variant_high_octane_tmp::fast_combine<Impl<TS>...>;
+
   template <typename Q>
   static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
     Instance instance;
