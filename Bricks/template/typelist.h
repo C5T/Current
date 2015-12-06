@@ -270,6 +270,28 @@ static_assert(IsTypeList<TypeListImpl<int, double>>::value, "");
 static_assert(!IsTypeList<int>::value, "");
 static_assert(!IsTypeList<double>::value, "");
 
+// `EvensOnly<TypeListImpl<...>>` extracts only the types at even 1-based indexes: first, third, etc.
+template <typename, typename>
+struct EvensOnlyImpl;
+
+template <typename EVENS_TYPELIST>
+struct EvensOnlyImpl<EVENS_TYPELIST, TypeListImpl<>> {
+  using result = EVENS_TYPELIST;
+};
+
+template <typename... EVENS, typename GOOD>
+struct EvensOnlyImpl<TypeListImpl<EVENS...>, TypeListImpl<GOOD>> {
+  using result = TypeListImpl<EVENS..., GOOD>;
+};
+
+template <typename... EVENS, typename GOOD, typename BAD, typename... UGLY>
+struct EvensOnlyImpl<TypeListImpl<EVENS...>, TypeListImpl<GOOD, BAD, UGLY...>> {
+  using result = typename EvensOnlyImpl<TypeListImpl<EVENS..., GOOD>, TypeListImpl<UGLY...>>::result;
+};
+
+template <typename T>
+using EvensOnly = typename EvensOnlyImpl<TypeListImpl<>, T>::result;
+
 }  // namespace metaprogramming
 }  // namespace current
 

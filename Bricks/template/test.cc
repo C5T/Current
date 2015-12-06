@@ -141,3 +141,17 @@ TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
   static_assert(std::is_same<indexes<0, 1>, generate_indexes<2>>::value, "");
   static_assert(std::is_same<indexes<0, 1, 2>, generate_indexes<3>>::value, "");
 }
+
+TEST(TemplateMetaprogrammingInternalTest, OddIndexes) { struct A { };
+  using current::metaprogramming::EvensOnly;
+  struct B {};
+  struct C {};
+  struct D {};
+  struct E {};
+  static_assert(std::is_same<TypeList<>, EvensOnly<TypeList<>>>::value, "");
+  static_assert(std::is_same<TypeList<A>, EvensOnly<TypeList<A>>>::value, "");
+  static_assert(std::is_same<TypeList<A>, EvensOnly<TypeList<A, B>>>::value, "");
+  static_assert(std::is_same<TypeList<A, C>, EvensOnly<TypeList<A, B, C>>>::value, "");
+  static_assert(std::is_same<TypeList<A, C>, EvensOnly<TypeList<A, B, C, D>>>::value, "");
+  static_assert(std::is_same<TypeList<A, C, E>, EvensOnly<TypeList<A, B, C, D, E>>>::value, "");
+};
