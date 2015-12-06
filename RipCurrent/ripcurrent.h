@@ -714,12 +714,12 @@ SharedCurrent<INPUT, OUTPUT_TYPE_LIST> operator|(
 
 // Define a user class ready to be used as part of RipCurrent data pipeline.
 #define CURRENT_LHS(T, X, ...) \
-  struct T final : ripcurrent::UserClassBase<InputPolicy::DoesNotAccept, TypeList<X, TypeList<__VA_ARGS__>>, T>
+  struct T final : ripcurrent::UserClassBase<InputPolicy::DoesNotAccept, SlowTypeList<X, SlowTypeList<__VA_ARGS__>>, T>
 
 #define CURRENT_RHS(T) struct T final : ripcurrent::UserClassBase<InputPolicy::Accepts, TypeListImpl<>, T>
 
 #define CURRENT_VIA(T, X, ...) \
-  struct T final : ripcurrent::UserClassBase<InputPolicy::Accepts, TypeList<X, TypeList<__VA_ARGS__>>, T>
+  struct T final : ripcurrent::UserClassBase<InputPolicy::Accepts, SlowTypeList<X, SlowTypeList<__VA_ARGS__>>, T>
 
 // Declare a user class as a source of data entries.
 #define REGISTER_LHS(T, ...)                                                                  \

@@ -267,16 +267,16 @@ TEST(TypeSystemTest, VariantStaticAsserts) {
 
   static_assert(is_same_or_compile_error<Variant<Foo>, Variant<Foo>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo>, Variant<TypeList<Foo>>>::value, "");
-  static_assert(is_same_or_compile_error<Variant<Foo>, Variant<TypeList<Foo, Foo>>>::value, "");
+  static_assert(is_same_or_compile_error<Variant<Foo>, Variant<SlowTypeList<Foo, Foo>>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo>, Variant<TypeListImpl<Foo>>>::value, "");
   static_assert(Variant<Foo>::T_TYPELIST_SIZE == 1u, "");
   static_assert(is_same_or_compile_error<Variant<Foo>::T_TYPELIST, TypeListImpl<Foo>>::value, "");
 
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<Foo, Bar>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar>>>::value, "");
-  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar, Foo>>>::value, "");
-  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeList<Foo, Bar, TypeList<Bar>>>>::value,
-                "");
+  static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<SlowTypeList<Foo, Bar, Foo>>>::value, "");
+  static_assert(
+      is_same_or_compile_error<Variant<Foo, Bar>, Variant<SlowTypeList<Foo, Bar, TypeList<Bar>>>>::value, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>, Variant<TypeListImpl<Foo, Bar>>>::value, "");
   static_assert(Variant<Foo, Bar>::T_TYPELIST_SIZE == 2u, "");
   static_assert(is_same_or_compile_error<Variant<Foo, Bar>::T_TYPELIST, TypeListImpl<Foo, Bar>>::value, "");

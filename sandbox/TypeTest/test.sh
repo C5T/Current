@@ -1,12 +1,14 @@
 #!/bin/bash
-COUNT_LIST=(10 100 200)
-TEST_LIST=('.current/current_struct'
-           '.current/struct_fields'
-           '.current/typelist_impl'
-           '.current/typelist_dynamic'
-	   '.current/rtti_dynamic_call'
-	   '.current/variant')
-# 20 structs for '.current/typelist' are killing my clang :( //MZ
+COUNT_LIST=(10 25 100 500)
+TEST_LIST=(
+    '.current/current_struct'
+    '.current/struct_fields'
+    '.current/typelist'  # This is cheating as `TypeList` now effectively is `TypeListImpl`.
+    '.current/typelist_impl'
+    '.current/typelist_dynamic'
+    '.current/rtti_dynamic_call'
+    '.current/variant'
+)
 
 for c in ${COUNT_LIST[@]}; do
 	(./gen_test_data.sh $c;	make clean >/dev/null)
