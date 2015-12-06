@@ -40,6 +40,42 @@ SOFTWARE.
 
 namespace current {
 
+// A high-octane version of `current::metaprogramming::combine.
+// A "poor man's version" for higher performance.
+namespace variant_high_octane_tmp {
+
+template <typename T>
+struct fast_dispatch {
+  T instance;
+
+  template <typename P2, typename P3>
+  void operator()(typename T::enabled_type_1 selector, P2&& p2, P3&& p3) {
+    instance.operator()(selector, std::forward<P2>(p2), std::forward<P3>(p3));
+  }
+
+  template <typename P2, typename P3>
+  void operator()(typename T::enabled_type_2 selector, P2&& p2, P3&& p3) {
+    instance.operator()(selector, std::forward<P2>(p2), std::forward<P3>(p3));
+  }
+};
+
+template <typename T1, typename T2>
+struct fast_inherit_from_both : T1, T2 {
+  using T1::operator();
+  using T2::operator();
+};
+
+template <typename T>
+struct fast_combine {};
+
+template <typename T>
+struct fast_combine<TypeListImpl<T>> : fast_dispatch<T> {};
+
+template <typename T, typename... TS>
+struct fast_combine<TypeListImpl<T, TS...>> : fast_inherit_from_both<fast_dispatch<T>, fast_combine<TypeListImpl<TS...>>> {};
+
+}  // namespace variant_high_octane_tmp
+
 // Note: `Variant<...>` never uses `TypeList<...>`, only `TypeListImpl<...>`.
 // Thus, it emphasizes performance over correctness.
 // The user hold the risk of having duplicate types, and it's their responsibility to pass in a `TypeList<...>`
@@ -57,6 +93,9 @@ struct VariantTypeCheckedAssignment {
 
   template <typename X>
   struct Impl {
+    using enabled_type_1 = DerivedTypesDifferentiator<X>;
+    using enabled_type_2 = DerivedTypesDifferentiator<std::unique_ptr<X>>;
+
     // Copy `X`.
     void operator()(DerivedTypesDifferentiator<X>,
                     const X& source,
@@ -84,13 +123,10 @@ struct VariantTypeCheckedAssignment {
       }
       destination = std::move(source);
     }
-    // Capture a bare `X*`.
-    // TODO(dkorolev): Unsafe? Remove?
-    void operator()(DerivedTypesDifferentiator<X*>, X* source, std::unique_ptr<CurrentSuper>& destination) {
-      destination.reset(source);
-    }
   };
-  using Instance = current::metaprogramming::combine<current::metaprogramming::map<Impl, TYPELIST>>;
+
+  using Instance = variant_high_octane_tmp::fast_combine<current::metaprogramming::map<Impl, TYPELIST>>;
+
   template <typename Q>
   static void Perform(Q&& source, std::unique_ptr<CurrentSuper>& destination) {
     Instance instance;

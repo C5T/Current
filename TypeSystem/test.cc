@@ -390,11 +390,6 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
     p = make_unique<Foo>(103u);
     EXPECT_EQ(103u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(103u, cp.VariantValueImpl<Foo>().i);
-
-    // TODO(dkorolev): Unsafe? Remove?
-    p = new Foo(104u);
-    EXPECT_EQ(104u, p.VariantValueImpl<Foo>().i);
-    EXPECT_EQ(104u, cp.VariantValueImpl<Foo>().i);
   }
 
   {
