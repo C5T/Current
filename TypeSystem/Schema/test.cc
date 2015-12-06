@@ -40,7 +40,7 @@ DEFINE_bool(write_reflection_golden_files, false, "Set to true to [over]write th
 
 namespace schema_test {
 
-CURRENT_ENUM(Enum, uint64_t){};
+CURRENT_ENUM(Enum, uint32_t){};
 
 CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
 CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
