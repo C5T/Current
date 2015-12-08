@@ -43,7 +43,12 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
+#ifndef _MSC_VER
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
+#else
+  typedef std::map<std::string, std::string> t_map_string_string;
+  CURRENT_FIELD(v4, t_map_string_string);
+#endif
 };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -51,7 +56,12 @@ CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>)
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
+#ifndef _MSC_VER
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
+#else
+  typedef std::map<std::string, SelfContainingC> t_map_string_c;
+  CURRENT_FIELD(m, t_map_string_c);
+#endif
 };
 
 using current::reflection::Reflector;
@@ -131,15 +141,24 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   CURRENT_FIELD(int32, int32_t, INT32_MIN);
   CURRENT_FIELD(int64, int64_t, INT64_MIN);
   // Floating point.
-  CURRENT_FIELD(flt, float, 1e38);
+  CURRENT_FIELD(flt, float, 1e38f);
   CURRENT_FIELD(dbl, double, 1e308);
   // Other primitive types.
   CURRENT_FIELD(s, std::string, "The String");
   CURRENT_FIELD(e, Enum, Enum::Value2);
+#ifndef _MSC_VER
   // STL containers.
   CURRENT_FIELD(pair_strdbl, (std::pair<std::string, double>));
   CURRENT_FIELD(vector_int32, std::vector<int32_t>);
   CURRENT_FIELD(map_strstr, (std::map<std::string, std::string>));
+#else
+  // STL containers.
+  typedef std::map<std::string, std::string> t_pair_string_string;
+  typedef std::pair<std::string, double> t_pair_string_double;
+  CURRENT_FIELD(pair_strdbl, t_pair_string_double);
+  CURRENT_FIELD(vector_int32, std::vector<int32_t>);
+  CURRENT_FIELD(map_strstr, t_pair_string_string);
+#endif
   // Current complex types.
   CURRENT_FIELD(optional_i, Optional<int32_t>);
   CURRENT_FIELD(optional_b, Optional<bool>);

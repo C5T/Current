@@ -25,6 +25,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_ENUM_H
 #define CURRENT_TYPE_SYSTEM_ENUM_H
 
+#include "../port.h"
+
 #include <iostream>
 #include <map>
 #include <string>

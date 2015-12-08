@@ -330,12 +330,19 @@ struct LanguageDescribeCaller {
 // and dependencies. It can describe the whole schema via `Describe()` method in any supported
 // language. `SchemaInfo` acts independently, therefore can be easily saved/loaded using {de}serialization.
 CURRENT_STRUCT(SchemaInfo) {
+#ifndef _MSC_VER
   // List of all type_id's contained in schema.
   CURRENT_FIELD(types, (std::map<TypeID, ReflectedType>));
+#else
+  // List of all type_id's contained in schema.
+  typedef std::map<TypeID, ReflectedType> t_types_map;
+  CURRENT_FIELD(types, t_types_map);
+#endif
   // The types in `order` are topologically sorted with respect to all directly and indirectly included types.
   CURRENT_FIELD(order, std::vector<TypeID>);
 
   CURRENT_DEFAULT_CONSTRUCTOR(SchemaInfo) {}
+  CURRENT_CONSTRUCTOR(SchemaInfo)(const SchemaInfo& x) : types(x.types), order(x.order) {}
   CURRENT_CONSTRUCTOR(SchemaInfo)(SchemaInfo && x) : types(std::move(x.types)), order(std::move(x.order)) {}
 
   template <Language L>
