@@ -64,6 +64,7 @@ using BaseTypeHelper = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
 template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T>
 struct BaseTypeHelper : REFLECTION_HELPER, BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type {
   using SUPER = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
+  using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
   using REFLECTION_HELPER::CURRENT_FIELD_INDEX_BASE;
   using REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
 };
@@ -292,7 +293,11 @@ struct CurrentTypeNameImpl;
 template <typename T>
 struct CurrentTypeNameImpl<T, true, false> {
   static const char* GetCurrentTypeName() {
+#ifndef _MSC_VER
     return T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_STRUCT_NAME();
+#else
+    return T::CURRENT_STRUCT_NAME();
+#endif
   }
 };
 

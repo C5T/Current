@@ -32,6 +32,10 @@ SOFTWARE.
 
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 
+#ifdef _MSC_VER
+#pragma warning (disable:4503)  // "decorated name length exceeded ...", duh.
+#endif
+
 // TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,
 // I have not enconutered those yet. Uncomment once we confirm them. -- D.K.
 // #define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0

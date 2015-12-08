@@ -135,7 +135,12 @@ CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>)
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
+#ifndef _MSC_VER
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
+#else
+  typedef std::map<std::string, SelfContainingC> t_m;
+  CURRENT_FIELD(m, t_m);
+#endif
 };
 
 }  // namespace schema_test
@@ -176,6 +181,8 @@ TEST(Schema, SmokeTestFullStruct) {
   using current::reflection::SchemaInfo;
   using current::reflection::Language;
 
+  const auto Golden = [](const std::string& s) { return FileSystem::JoinPath("golden", s); };
+
   StructSchema struct_schema;
   struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
   const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
@@ -205,27 +212,28 @@ TEST(Schema, SmokeTestFullStruct) {
     }
     // LCOV_EXCL_STOP
   }
+
   if (FLAGS_write_reflection_golden_files) {
     // LCOV_EXCL_START
-    FileSystem::WriteStringToFile(schema.Describe<Language::CPP>(), "golden/smoke_test_struct.cc");
-    FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), "golden/smoke_test_struct.fsx");
-    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), "golden/smoke_test_struct.json");
+    FileSystem::WriteStringToFile(schema.Describe<Language::CPP>(), Golden("smoke_test_struct.cc").c_str());
+    FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), Golden("smoke_test_struct.fsx").c_str());
+    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), Golden("smoke_test_struct.json").c_str());
     // `schema.Describe<Language::JSON>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
     // LCOV_EXCL_STOP
   }
 
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"), schema.Describe<Language::CPP>());
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.cc")), schema.Describe<Language::CPP>());
 
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"), schema.Describe<Language::FSharp>());
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.fsx")), schema.Describe<Language::FSharp>());
 
   // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
-  auto restored_schema = ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString("golden/smoke_test_struct.json"));
+  auto restored_schema = ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
   EXPECT_EQ(JSON(schema), JSON(struct_schema.GetSchemaInfo()));
 
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.cc"),
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.cc")),
             restored_schema.Describe<Language::CPP>());
 
-  EXPECT_EQ(FileSystem::ReadFileAsString("golden/smoke_test_struct.fsx"),
+  EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.fsx")),
             restored_schema.Describe<Language::FSharp>());
 }
 

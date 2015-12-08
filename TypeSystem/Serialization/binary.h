@@ -202,7 +202,7 @@ struct LoadPrimitiveTypeFromBinary {
     if (bytes_read != sizeof(BINARY_FORMAT_BOOL_TYPE)) {
       throw BinaryLoadFromStreamException(sizeof(BINARY_FORMAT_BOOL_TYPE), bytes_read);  // LCOV_EXCL_LINE
     }
-    destination = static_cast<bool>(b);
+    destination = b ? true : false;
   }
 
   static void Load(std::istream& istream, std::string& destination) {

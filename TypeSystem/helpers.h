@@ -101,13 +101,12 @@ struct PowerfulValueImplCaller {
 // For `OUTPUT == INPUT`, it's either plain `return x;`, or `return x.ValueImpl()`.
 template <typename T>
 struct PowerfulValueImplCaller<T, T> {
-  template <typename TT = T>
-  static ENABLE_IF<!current::sfinae::HasValueImplMethod<TT>(0), T&&> AccessValue(T&& x) {
+  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasValueImplMethod<TT>(0)>>
+  static T&& AccessValue(T&& x) {
     return x;
   }
-  template <typename TT = T>
-  static ENABLE_IF<current::sfinae::HasValueImplMethod<TT>(0), decltype(std::declval<TT>().ValueImpl())>
-  AccessValue(TT&& x) {
+  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasValueImplMethod<TT>(0)>>
+  static decltype(std::declval<TT>().ValueImpl()) AccessValue(TT&& x) {
     return x.ValueImpl();
   }
 };
