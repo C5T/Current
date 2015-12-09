@@ -99,6 +99,22 @@ CURRENT_STRUCT(Cell) {
 //
 // That simple.
 
+CURRENT_STORAGE(NewStorageDefinition) {
+  CURRENT_STORAGE_TABLE(v, Vector, transactional_storage_test::Element);
+};
+
+TEST(TransactionalStorage, NewStorageDefinition) {
+  using namespace transactional_storage_test;
+  using NewStorage = NewStorageDefinition<InMemory>;
+  NewStorage storage;
+  storage.Transaction([](Tables<NewStorage> tables) {
+    EXPECT_TRUE(tables.v.Empty());
+    tables.v.PushBack(Element(42));
+    EXPECT_EQ(1u, tables.v.Size());
+    EXPECT_EQ(42, Value(tables.v[0]).x);
+  });
+}
+
 template <typename POLICY>
 struct UnitTestStorage final {
   typename POLICY::Instance instance;

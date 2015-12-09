@@ -63,8 +63,39 @@ SOFTWARE.
 #include "../Bricks/cerealize/cerealize.h"  // TODO(dkorolev): Deprecate.
 
 namespace current {
-
 namespace storage {
+
+template <typename POLICY>
+struct TablesBase {
+  typename POLICY::Instance policy_instance;
+};
+
+#define CURRENT_STORAGE(name)                                                      \
+  template <typename POLICY>                                                       \
+  struct CURRENT_STORAGE_TABLES_##name;                                            \
+  template <typename POLICY, template <typename> class TABLES>                     \
+  struct CURRENT_STORAGE_IMPL_##name {                                             \
+    using T_TABLES = TABLES<POLICY>&;                                              \
+    template <typename F>                                                          \
+    void Transaction(F&& f) {                                                      \
+      f(tables);                                                                   \
+    }                                                                              \
+                                                                                   \
+   private:                                                                        \
+    TABLES<POLICY> tables;                                                         \
+  };                                                                               \
+  template <typename POLICY>                                                       \
+  using name = CURRENT_STORAGE_IMPL_##name<POLICY, CURRENT_STORAGE_TABLES_##name>; \
+  template <typename POLICY>                                                       \
+  struct CURRENT_STORAGE_TABLES_##name : ::current::storage::TablesBase<POLICY>
+
+#define CURRENT_STORAGE_TABLE(table_name, table_type, item_class)            \
+  table_type<item_class, POLICY> table_name {                                \
+    #table_name, ::current::storage::TablesBase < POLICY > ::policy_instance \
+  }
+
+template <typename STORAGE>
+using Tables = typename STORAGE::T_TABLES;
 
 struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
@@ -699,6 +730,8 @@ class LightweightMatrix final
 }  // namespace current::storage
 
 }  // namespace current
+
+using current::storage::Tables;
 
 using current::storage::Vector;
 using current::storage::OrderedDictionary;
