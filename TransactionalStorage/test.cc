@@ -86,6 +86,13 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
+CURRENT_STRUCT(ElementAdder, Element){};
+CURRENT_STRUCT(ElementDeleter, Element){};
+
+CURRENT_STORAGE(NewStorageDefinition) {
+  CURRENT_STORAGE_FIELD(v, Vector, Element, ElementAdder, ElementDeleter);
+};
+
 }  // namespace transactional_storage_test
 
 // TODO(dkorolev): Make the following work.
@@ -99,19 +106,16 @@ CURRENT_STRUCT(Cell) {
 //
 // That simple.
 
-CURRENT_STORAGE(NewStorageDefinition) {
-  CURRENT_STORAGE_TABLE(v, Vector, transactional_storage_test::Element);
-};
-
 TEST(TransactionalStorage, NewStorageDefinition) {
   using namespace transactional_storage_test;
   using NewStorage = NewStorageDefinition<InMemory>;
   NewStorage storage;
-  storage.Transaction([](Tables<NewStorage> tables) {
-    EXPECT_TRUE(tables.v.Empty());
-    tables.v.PushBack(Element(42));
-    EXPECT_EQ(1u, tables.v.Size());
-    EXPECT_EQ(42, Value(tables.v[0]).x);
+  EXPECT_EQ(1u, storage.FieldsCount());
+  storage.Transaction([](Fields<NewStorage> fields) {
+    EXPECT_TRUE(fields.v.Empty());
+    fields.v.PushBack(Element(42));
+    EXPECT_EQ(1u, fields.v.Size());
+    EXPECT_EQ(42, Value(fields.v[0]).x);
   });
 }
 

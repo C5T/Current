@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +51,7 @@ SOFTWARE.
 #include <map>
 #include <utility>
 
+#include "base.h"
 #include "sfinae.h"
 
 #include "../TypeSystem/struct.h"
@@ -65,37 +67,64 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
-template <typename POLICY>
-struct TablesBase {
-  typename POLICY::Instance policy_instance;
-};
-
-#define CURRENT_STORAGE(name)                                                      \
+#define CURRENT_STORAGE_FIELDS_HELPERS(name)                                       \
+  template <typename T>                                                            \
+  struct CURRENT_STORAGE_FIELDS_HELPER;                                            \
   template <typename POLICY>                                                       \
-  struct CURRENT_STORAGE_TABLES_##name;                                            \
-  template <typename POLICY, template <typename> class TABLES>                     \
-  struct CURRENT_STORAGE_IMPL_##name {                                             \
-    using T_TABLES = TABLES<POLICY>&;                                              \
-    template <typename F>                                                          \
-    void Transaction(F&& f) {                                                      \
-      f(tables);                                                                   \
-    }                                                                              \
-                                                                                   \
-   private:                                                                        \
-    TABLES<POLICY> tables;                                                         \
-  };                                                                               \
-  template <typename POLICY>                                                       \
-  using name = CURRENT_STORAGE_IMPL_##name<POLICY, CURRENT_STORAGE_TABLES_##name>; \
-  template <typename POLICY>                                                       \
-  struct CURRENT_STORAGE_TABLES_##name : ::current::storage::TablesBase<POLICY>
-
-#define CURRENT_STORAGE_TABLE(table_name, table_type, item_class)            \
-  table_type<item_class, POLICY> table_name {                                \
-    #table_name, ::current::storage::TablesBase < POLICY > ::policy_instance \
+  struct CURRENT_STORAGE_FIELDS_HELPER<                                            \
+      CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields, POLICY>> {  \
+    constexpr static size_t CURRENT_STORAGE_FIELD_INDEX_BASE = __COUNTER__;        \
+    typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields, POLICY> \
+        CURRENT_STORAGE_FIELD_COUNT_STRUCT;                                        \
   }
 
+#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
+  template <typename INSTANTIATION_TYPE, typename POLICY>                                                    \
+  struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
+  template <typename POLICY, template <typename, typename> class FIELDS>                                     \
+  struct CURRENT_STORAGE_IMPL_##name {                                                                       \
+    using T_FIELDS = FIELDS<::current::storage::DeclareFields, POLICY>&;                                     \
+    template <typename F>                                                                                    \
+    void Transaction(F&& f) {                                                                                \
+      f(fields);                                                                                             \
+    }                                                                                                        \
+    size_t FieldsCount() const { return fields_count; }                                                      \
+                                                                                                             \
+   private:                                                                                                  \
+    FIELDS<::current::storage::DeclareFields, POLICY> fields;                                                \
+    constexpr static size_t fields_count =                                                                   \
+        ::current::storage::FieldCounter<FIELDS<::current::storage::DeclareFields, POLICY>>::value;          \
+    using T_FIELDS_TYPE_LIST =                                                                               \
+        ::current::storage::FieldsTypeList<FIELDS<::current::storage::DeclareFields, POLICY>, fields_count>; \
+  };                                                                                                         \
+  template <typename POLICY>                                                                                 \
+  using name = CURRENT_STORAGE_IMPL_##name<POLICY, CURRENT_STORAGE_FIELDS_##name>;                           \
+  CURRENT_STORAGE_FIELDS_HELPERS(name)
+
+#ifndef _MSC_VER
+
+#define CURRENT_STORAGE(name)                             \
+  CURRENT_STORAGE_IMPLEMENTATION(name);                   \
+  template <typename INSTANTIATION_TYPE, typename POLICY> \
+  struct CURRENT_STORAGE_FIELDS_##name                    \
+      : ::current::storage::FieldsBase<POLICY>,           \
+        CURRENT_STORAGE_FIELDS_HELPER<                    \
+            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields, POLICY>>
+
+#define CURRENT_STORAGE_FIELD(field_name, field_type, item_type, item_adder_type, item_deleter_type) \
+  ::current::storage::FieldInfo<item_adder_type, item_deleter_type> operator()(                      \
+      ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__)>) const {                          \
+    return ::current::storage::FieldInfo<item_adder_type, item_deleter_type>();                      \
+  }                                                                                                  \
+  ::current::storage::Field<INSTANTIATION_TYPE, field_type<item_type, POLICY>> field_name {          \
+    #field_name, ::current::storage::FieldsBase < POLICY > ::policy_instance                         \
+  }
+
+#else   // _MSC_VER
+#endif  // _MSC_VER
+
 template <typename STORAGE>
-using Tables = typename STORAGE::T_TABLES;
+using Fields = typename STORAGE::T_FIELDS;
 
 struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
@@ -731,7 +760,7 @@ class LightweightMatrix final
 
 }  // namespace current
 
-using current::storage::Tables;
+using current::storage::Fields;
 
 using current::storage::Vector;
 using current::storage::OrderedDictionary;
