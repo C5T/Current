@@ -143,14 +143,12 @@ namespace storage {
   CURRENT_STORAGE_FIELDS_HELPERS(name)
 // clang-format on
 
-#ifndef _MSC_VER
-
 #define CURRENT_STORAGE(name)            \
   CURRENT_STORAGE_IMPLEMENTATION(name);  \
   template <typename INSTANTIATION_TYPE> \
   struct CURRENT_STORAGE_FIELDS_##name   \
-      : ::current::storage::FieldsBase,  \
-        CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>
+      : ::current::storage::FieldsBase<  \
+            CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>>
 
 #define CURRENT_STORAGE_FIELD(field_name, field_type, item_alias)                                             \
   ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER> operator()(                       \
@@ -164,10 +162,6 @@ namespace storage {
   T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);        \
   void operator()(const item_alias::T_ADDER& adder) { field_name(adder); }                                    \
   void operator()(const item_alias::T_DELETER& deleter) { field_name(deleter); }
-
-#else  // _MSC_VER
-
-#endif  // _MSC_VER
 
 template <typename STORAGE>
 using FieldsByReference = typename STORAGE::T_FIELDS_BY_REFERENCE;

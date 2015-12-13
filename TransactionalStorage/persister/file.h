@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <fstream>
 
+#include "../base.h"
 #include "../../TypeSystem/Serialization/json.h"
 
 namespace current {

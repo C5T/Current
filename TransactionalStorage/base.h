@@ -73,11 +73,7 @@ using Field = typename FieldImpl<INSTANTIATION_TYPE, T>::type;
 template <typename T>
 struct FieldCounter {
   enum {
-#ifndef _MSC_VER
-    value = (sizeof(typename T::template CURRENT_STORAGE_FIELDS_HELPER<T>::CURRENT_STORAGE_FIELD_COUNT_STRUCT) /
-             sizeof(CountFieldsImplementationType))
-#else
-#endif  // _MSC_VER
+    value = sizeof(typename T::CURRENT_STORAGE_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)
   };
 };
 
@@ -124,7 +120,8 @@ struct MutationJournal {
   }
 };
 
-struct FieldsBase {
+template <typename BASE>
+struct FieldsBase : BASE {
  protected:
   MutationJournal current_storage_mutation_journal_;
 };
