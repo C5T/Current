@@ -54,6 +54,10 @@ SOFTWARE.
 #include "base.h"
 #include "sfinae.h"
 
+#include "container/vector.h"
+
+#include "persister/file.h"
+
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/Serialization/json.h"
 #include "../TypeSystem/optional.h"
@@ -67,58 +71,85 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
-#define CURRENT_STORAGE_FIELDS_HELPERS(name)                                       \
-  template <typename T>                                                            \
-  struct CURRENT_STORAGE_FIELDS_HELPER;                                            \
-  template <typename POLICY>                                                       \
-  struct CURRENT_STORAGE_FIELDS_HELPER<                                            \
-      CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields, POLICY>> {  \
-    constexpr static size_t CURRENT_STORAGE_FIELD_INDEX_BASE = __COUNTER__;        \
-    typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields, POLICY> \
-        CURRENT_STORAGE_FIELD_COUNT_STRUCT;                                        \
+#define CURRENT_STORAGE_STRUCT_ALIAS(s, alias)                                          \
+  CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, s){                                     \
+    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias){} CURRENT_CONSTRUCTOR(   \
+        CURRENT_STORAGE_ADDER_##alias)(const s& value) : s(value){}                     \
+  };                                                                                    \
+  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias, s){                                   \
+    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias){} CURRENT_CONSTRUCTOR( \
+        CURRENT_STORAGE_DELETER_##alias)(const s& value) : s(value){}                   \
+  };                                                                                    \
+  struct alias {                                                                        \
+    using T_ENTRY = s;                                                                  \
+    using T_ADDER = CURRENT_STORAGE_ADDER_##alias;                                      \
+    using T_DELETER = CURRENT_STORAGE_DELETER_##alias;                                  \
   }
 
-#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
-  template <typename INSTANTIATION_TYPE, typename POLICY>                                                    \
-  struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
-  template <typename POLICY, template <typename, typename> class FIELDS>                                     \
-  struct CURRENT_STORAGE_IMPL_##name {                                                                       \
-    using T_FIELDS = FIELDS<::current::storage::DeclareFields, POLICY>&;                                     \
-    template <typename F>                                                                                    \
-    void Transaction(F&& f) {                                                                                \
-      f(fields);                                                                                             \
-    }                                                                                                        \
-    size_t FieldsCount() const { return fields_count; }                                                      \
-                                                                                                             \
-   private:                                                                                                  \
-    FIELDS<::current::storage::DeclareFields, POLICY> fields;                                                \
-    constexpr static size_t fields_count =                                                                   \
-        ::current::storage::FieldCounter<FIELDS<::current::storage::DeclareFields, POLICY>>::value;          \
-    using T_FIELDS_TYPE_LIST =                                                                               \
-        ::current::storage::FieldsTypeList<FIELDS<::current::storage::DeclareFields, POLICY>, fields_count>; \
-  };                                                                                                         \
-  template <typename POLICY>                                                                                 \
-  using name = CURRENT_STORAGE_IMPL_##name<POLICY, CURRENT_STORAGE_FIELDS_##name>;                           \
+#define CURRENT_STORAGE_FIELDS_HELPERS(name)                                                                   \
+  template <typename T>                                                                                        \
+  struct CURRENT_STORAGE_FIELDS_HELPER;                                                                        \
+  template <>                                                                                                  \
+  struct CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>> {     \
+    constexpr static size_t CURRENT_STORAGE_FIELD_INDEX_BASE = __COUNTER__;                                    \
+    typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
+  }
+
+#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                  \
+  template <typename INSTANTIATION_TYPE>                                                                      \
+  struct CURRENT_STORAGE_FIELDS_##name;                                                                       \
+  template <template <typename...> class PERSISTER, typename FIELDS>                                          \
+  struct CURRENT_STORAGE_IMPL_##name : FIELDS {                                                               \
+   private:                                                                                                   \
+    constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                   \
+    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                      \
+    using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                     \
+    PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                 \
+                                                                                                              \
+   public:                                                                                                    \
+    using T_FIELDS = FIELDS&;                                                                                 \
+    template <typename... ARGS>                                                                               \
+    CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                               \
+        : persister_(std::forward<ARGS>(args)...) {                                                           \
+      persister_.Replay([this](T_FIELDS_VARIANT && entry) { entry.Call(*this); });                            \
+    }                                                                                                         \
+    template <typename F>                                                                                     \
+    void Transaction(F&& f) {                                                                                 \
+      try {                                                                                                   \
+        f(static_cast<FIELDS&>(*this));                                                                       \
+        persister_.PersistJournal(FIELDS::current_storage_mutation_journal_);                                 \
+      } catch (std::exception&) {                                                                             \
+        FIELDS::current_storage_mutation_journal_.Rollback();                                                 \
+      }                                                                                                       \
+    }                                                                                                         \
+    size_t FieldsCount() const { return fields_count; }                                                       \
+  };                                                                                                          \
+  template <template <typename...> class PERSISTER>                                                           \
+  using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                         \
+                                           CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>; \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
 
 #ifndef _MSC_VER
 
-#define CURRENT_STORAGE(name)                             \
-  CURRENT_STORAGE_IMPLEMENTATION(name);                   \
-  template <typename INSTANTIATION_TYPE, typename POLICY> \
-  struct CURRENT_STORAGE_FIELDS_##name                    \
-      : ::current::storage::FieldsBase<POLICY>,           \
-        CURRENT_STORAGE_FIELDS_HELPER<                    \
-            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields, POLICY>>
+#define CURRENT_STORAGE(name)            \
+  CURRENT_STORAGE_IMPLEMENTATION(name);  \
+  template <typename INSTANTIATION_TYPE> \
+  struct CURRENT_STORAGE_FIELDS_##name   \
+      : ::current::storage::FieldsBase,  \
+        CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>
 
-#define CURRENT_STORAGE_FIELD(field_name, field_type, item_type, item_adder_type, item_deleter_type) \
-  ::current::storage::FieldInfo<item_adder_type, item_deleter_type> operator()(                      \
-      ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__)>) const {                          \
-    return ::current::storage::FieldInfo<item_adder_type, item_deleter_type>();                      \
-  }                                                                                                  \
-  ::current::storage::Field<INSTANTIATION_TYPE, field_type<item_type, POLICY>> field_name {          \
-    #field_name, ::current::storage::FieldsBase < POLICY > ::policy_instance                         \
-  }
+#define CURRENT_STORAGE_FIELD(field_name, field_type, item_alias)                                             \
+  ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER> operator()(                       \
+      ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE - 1>)    \
+      const {                                                                                                 \
+    return ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER>();                       \
+  }                                                                                                           \
+  using T_FIELD_TYPE_##field_name =                                                                           \
+      ::current::storage::Field<INSTANTIATION_TYPE,                                                           \
+                                field_type<item_alias::T_ENTRY, item_alias::T_ADDER, item_alias::T_DELETER>>; \
+  T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);        \
+  void operator()(const item_alias::T_ADDER& adder) { field_name(adder); }                                    \
+  void operator()(const item_alias::T_DELETER& deleter) { field_name(deleter); }
 
 #else   // _MSC_VER
 #endif  // _MSC_VER
@@ -126,6 +157,7 @@ namespace storage {
 template <typename STORAGE>
 using Fields = typename STORAGE::T_FIELDS;
 
+#if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
 
@@ -755,13 +787,14 @@ class LightweightMatrix final
       : LightweightMatrixAPI<T, typename POLICY::template LightweightMatrixPersister<T>>(this),
         POLICY::template LightweightMatrixPersister<T>(name, instance, *this) {}
 };
-
+#endif
 }  // namespace current::storage
 
 }  // namespace current
 
 using current::storage::Fields;
 
+#if 0
 using current::storage::Vector;
 using current::storage::OrderedDictionary;
 using current::storage::LightweightMatrix;
@@ -778,5 +811,6 @@ using current::storage::ReplayFromAndAppendToFileUsingCereal;  // TODO(dkorolev)
 
 using current::storage::CannotPopBackFromEmptyVector;
 using current::storage::CannotPopBackFromEmptyVectorException;
+#endif
 
 #endif  // CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H

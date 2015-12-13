@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TRANSACTIONAL_STORAGE_BASE_H
 #define CURRENT_TRANSACTIONAL_STORAGE_BASE_H
 
+#include "../TypeSystem/struct.h"
+
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/template/variadic_indexes.h"
 
@@ -47,30 +49,6 @@ struct CountFieldsImplementationType {
 template <int N>
 struct Index {};
 
-template <typename INSTANTIATION_TYPE, typename T>
-struct BaseTypeHelperImpl {
-  struct type {};
-};
-
-template <typename T>
-struct BaseTypeHelperImpl<DeclareFields, T> {
-  typedef T type;
-};
-
-// Storage implementations need to extract `CURRENT_STRAGE_FIELD_INDEX_BASE`, and
-// its scope resolution for derived structs differs between Visual C++ and g++/clang++.
-// Confusing but works. -- D.K.
-#ifndef _MSC_VER
-template <typename INSTANTIATION_TYPE, typename T>
-using BaseTypeHelper = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
-#else
-template <typename STORAGE_HELPER, typename INSTANTIATION_TYPE, typename T>
-struct BaseTypeHelper : STORAGE_HELPER, BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type {
-  using STORAGE_HELPER::CURRENT_STORAGE_FIELD_INDEX_BASE;
-  using STORAGE_HELPER::CURRENT_STORAGE_FIELD_COUNT_STRUCT;
-};
-#endif
-
 // Fields declaration and counting.
 template <typename INSTANTIATION_TYPE, typename T>
 struct FieldImpl;
@@ -82,17 +60,11 @@ struct FieldImpl<DeclareFields, T> {
 
 template <typename T>
 struct FieldImpl<CountFields, T> {
-  // TODO: Read on padding.
   typedef CountFieldsImplementationType type;
 };
 
 template <typename INSTANTIATION_TYPE, typename T>
 using Field = typename FieldImpl<INSTANTIATION_TYPE, T>::type;
-
-template <typename POLICY>
-struct FieldsBase {
-  typename POLICY::Instance policy_instance;
-};
 
 template <typename T>
 struct FieldCounter {
@@ -101,14 +73,8 @@ struct FieldCounter {
     value = (sizeof(typename T::template CURRENT_STORAGE_FIELDS_HELPER<T>::CURRENT_STORAGE_FIELD_COUNT_STRUCT) /
              sizeof(CountFieldsImplementationType))
 #else
-    value = (sizeof(typename T::CURRENT_STORAGE_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
 #endif  // _MSC_VER
   };
-};
-
-template <typename FIELDS>
-constexpr size_t FieldIndex(size_t index) {
-  return FIELDS::template CURRENT_STORAGE_FIELDS_HELPER<FIELDS>::CURRENT_STORAGE_FIELD_INDEX_BASE + index + 1;
 };
 
 template <typename ADDER, typename DELETER>
@@ -122,13 +88,37 @@ struct TypeListMapperImpl;
 
 template <typename FIELDS, int... NS>
 struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
-  using result = TypeList<typename std::result_of<FIELDS(Index<FieldIndex<FIELDS>(NS)>)>::type::T_ADDER...,
-                          typename std::result_of<FIELDS(Index<FieldIndex<FIELDS>(NS)>)>::type::T_DELETER...>;
+  using result = TypeList<typename std::result_of<FIELDS(Index<NS>)>::type::T_ADDER...,
+                          typename std::result_of<FIELDS(Index<NS>)>::type::T_DELETER...>;
 };
 
 template <typename FIELDS, int COUNT>
 using FieldsTypeList =
     typename TypeListMapperImpl<FIELDS, current::variadic_indexes::generate_indexes<COUNT>>::result;
+
+struct MutationJournal {
+  std::vector<std::unique_ptr<current::CurrentSuper>> commit_log;
+  std::vector<std::function<void()>> rollback_log;
+
+  template <typename T>
+  void LogMutation(T&& entry, std::function<void()> rollback) {
+    commit_log.push_back(make_unique<T>(std::move(entry)));
+    rollback_log.push_back(rollback);
+  }
+
+  void Rollback() {
+    for (auto rit = rollback_log.rbegin(); rit != rollback_log.rend(); ++rit) {
+      (*rit)();
+    }
+    commit_log.clear();
+    rollback_log.clear();
+  }
+};
+
+struct FieldsBase {
+ protected:
+  MutationJournal current_storage_mutation_journal_;
+};
 
 }  // namespace storage
 }  // namespace current
