@@ -71,20 +71,25 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
-#define CURRENT_STORAGE_STRUCT_ALIAS(s, alias)                                          \
-  CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, s){                                     \
-    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias){} CURRENT_CONSTRUCTOR(   \
-        CURRENT_STORAGE_ADDER_##alias)(const s& value) : s(value){}                     \
-  };                                                                                    \
-  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias, s){                                   \
-    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias){} CURRENT_CONSTRUCTOR( \
-        CURRENT_STORAGE_DELETER_##alias)(const s& value) : s(value){}                   \
-  };                                                                                    \
-  struct alias {                                                                        \
-    using T_ENTRY = s;                                                                  \
-    using T_ADDER = CURRENT_STORAGE_ADDER_##alias;                                      \
-    using T_DELETER = CURRENT_STORAGE_DELETER_##alias;                                  \
+// `CURRENT_STORAGE_STRUCT_ALIAS`:
+// 1) Creates a dedicated C++ type to allow compile-time disambiguation of storages of same underlying types.
+// 2) Splits the type into `T_ADDER` and `T_DELETER`, to support seamless persistence of deletions.
+// clang-format off
+#define CURRENT_STORAGE_STRUCT_ALIAS(base, alias)                                            \
+  CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                      \
+    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                            \
+    CURRENT_CONSTRUCTOR( CURRENT_STORAGE_ADDER_##alias)(const base& value) : base(value) {}  \
+  };                                                                                         \
+  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias, base) {                                    \
+    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias) {}                          \
+    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value) : base(value) {} \
+  };                                                                                         \
+  struct alias {                                                                             \
+    using T_ENTRY = base;                                                                    \
+    using T_ADDER = CURRENT_STORAGE_ADDER_##alias;                                           \
+    using T_DELETER = CURRENT_STORAGE_DELETER_##alias;                                       \
   }
+// clang-format on
 
 #define CURRENT_STORAGE_FIELDS_HELPERS(name)                                                                   \
   template <typename T>                                                                                        \
@@ -95,6 +100,7 @@ namespace storage {
     typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
   }
 
+// clang-format off
 #define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                  \
   template <typename INSTANTIATION_TYPE>                                                                      \
   struct CURRENT_STORAGE_FIELDS_##name;                                                                       \
@@ -107,14 +113,16 @@ namespace storage {
     PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                 \
                                                                                                               \
    public:                                                                                                    \
-    using T_FIELDS = FIELDS&;                                                                                 \
+    using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                    \
+    CURRENT_STORAGE_IMPL_##name() = delete;                                                                   \
+    CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                      \
     template <typename... ARGS>                                                                               \
-    CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                               \
-        : persister_(std::forward<ARGS>(args)...) {                                                           \
+    CURRENT_STORAGE_IMPL_##name(ARGS&&... args) : persister_(std::forward<ARGS>(args)...) {                   \
       persister_.Replay([this](T_FIELDS_VARIANT && entry) { entry.Call(*this); });                            \
     }                                                                                                         \
     template <typename F>                                                                                     \
     void Transaction(F&& f) {                                                                                 \
+      FIELDS::current_storage_mutation_journal_.AssertEmpty();                                                \
       try {                                                                                                   \
         f(static_cast<FIELDS&>(*this));                                                                       \
         persister_.PersistJournal(FIELDS::current_storage_mutation_journal_);                                 \
@@ -128,6 +136,7 @@ namespace storage {
   using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                         \
                                            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>; \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
+// clang-format on
 
 #ifndef _MSC_VER
 
@@ -151,11 +160,12 @@ namespace storage {
   void operator()(const item_alias::T_ADDER& adder) { field_name(adder); }                                    \
   void operator()(const item_alias::T_DELETER& deleter) { field_name(deleter); }
 
-#else   // _MSC_VER
+#else  // _MSC_VER
+
 #endif  // _MSC_VER
 
 template <typename STORAGE>
-using Fields = typename STORAGE::T_FIELDS;
+using FieldsByReference = typename STORAGE::T_FIELDS_BY_REFERENCE;
 
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
@@ -792,25 +802,6 @@ class LightweightMatrix final
 
 }  // namespace current
 
-using current::storage::Fields;
-
-#if 0
-using current::storage::Vector;
-using current::storage::OrderedDictionary;
-using current::storage::LightweightMatrix;
-
-template <typename T, typename P>
-using OneToOne = current::storage::OrderedDictionary<T, P>;
-
-template <typename T, typename P>
-using ManyToMany = current::storage::LightweightMatrix<T, P>;
-
-using current::storage::InMemory;
-using current::storage::ReplayFromAndAppendToFile;
-using current::storage::ReplayFromAndAppendToFileUsingCereal;  // TODO(dkorolev): Deprecate.
-
-using current::storage::CannotPopBackFromEmptyVector;
-using current::storage::CannotPopBackFromEmptyVectorException;
-#endif
+using current::storage::FieldsByReference;
 
 #endif  // CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H

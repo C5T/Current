@@ -107,7 +107,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
   {
     NewStorage storage(persistence_file_name);
     EXPECT_EQ(2u, storage.FieldsCount());
-    storage.Transaction([](Fields<NewStorage> fields) {
+    storage.Transaction([](FieldsByReference<NewStorage> fields) {
       EXPECT_TRUE(fields.v1.Empty());
       EXPECT_TRUE(fields.v2.Empty());
       fields.v1.PushBack(Element(0));
@@ -119,7 +119,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(42, Value(fields.v1[0]).x);
       EXPECT_EQ(100, Value(fields.v2[0]).x);
     });
-    storage.Transaction([](Fields<NewStorage> fields) {
+    storage.Transaction([](FieldsByReference<NewStorage> fields) {
       fields.v1.PushBack(Element(1));
       fields.v2.PushBack(Element(2));
       throw std::logic_error("rollback, please");
@@ -128,7 +128,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
 
   {
     NewStorage replayed(persistence_file_name);
-    replayed.Transaction([](Fields<NewStorage> fields) {
+    replayed.Transaction([](FieldsByReference<NewStorage> fields) {
       EXPECT_EQ(1u, fields.v1.Size());
       EXPECT_EQ(1u, fields.v2.Size());
       EXPECT_EQ(42, Value(fields.v1[0]).x);

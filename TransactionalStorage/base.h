@@ -26,6 +26,10 @@ SOFTWARE.
 #ifndef CURRENT_TRANSACTIONAL_STORAGE_BASE_H
 #define CURRENT_TRANSACTIONAL_STORAGE_BASE_H
 
+#include "../port.h"
+
+#include <cassert>
+
 #include "../TypeSystem/struct.h"
 
 #include "../Bricks/template/typelist.h"
@@ -112,6 +116,11 @@ struct MutationJournal {
     }
     commit_log.clear();
     rollback_log.clear();
+  }
+
+  void AssertEmpty() const {
+    assert(commit_log.empty());
+    assert(rollback_log.empty());
   }
 };
 
