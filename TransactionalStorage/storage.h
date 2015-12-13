@@ -46,10 +46,13 @@ SOFTWARE.
 #ifndef CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
 #define CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
 
+#include "../port.h"
+
 #include <fstream>
-#include <vector>
 #include <map>
+#include <mutex>
 #include <utility>
+#include <vector>
 
 #include "base.h"
 #include "sfinae.h"
@@ -111,6 +114,7 @@ namespace storage {
     using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                      \
     using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                     \
     PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                 \
+    std::mutex mutex_;                                                                                        \
                                                                                                               \
    public:                                                                                                    \
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                    \
@@ -122,6 +126,7 @@ namespace storage {
     }                                                                                                         \
     template <typename F>                                                                                     \
     void Transaction(F&& f) {                                                                                 \
+      std::lock_guard<std::mutex> lock(mutex_);                                                               \
       FIELDS::current_storage_mutation_journal_.AssertEmpty();                                                \
       try {                                                                                                   \
         f(static_cast<FIELDS&>(*this));                                                                       \
