@@ -28,13 +28,15 @@ SOFTWARE.
 #include "../Bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_string(transactional_storage_test_tmpdir,
 #ifndef _MSC_VER
+DEFINE_string(transactional_storage_test_tmpdir,
               ".current",
-#else
-              "Debug",
-#endif
               "Local path for the test to create temporary files in.");
+#else
+DEFINE_string(transactional_storage_test_tmpdir,
+              "Debug",
+              "Local path for the test to create temporary files in.");
+#endif
 
 #define USE_KEY_METHODS
 
