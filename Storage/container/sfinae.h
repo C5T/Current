@@ -22,16 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_SFINAE_H
-#define CURRENT_STORAGE_SFINAE_H
+#ifndef CURRENT_STORAGE_CONTAINER_SFINAE_H
+#define CURRENT_STORAGE_CONTAINER_SFINAE_H
 
 #include <utility>
 
-#include "../Bricks/template/metaprogramming.h"
+#include "../../Bricks/template/metaprogramming.h"
 
 namespace current {
-
-#if 0
+namespace storage {
 namespace sfinae {
 
 template <typename T>
@@ -176,8 +175,7 @@ void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {
 }
 
 }  // namespace sfinae
-#endif
-
+}  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_STORAGE_SFINAE_H
+#endif  // CURRENT_STORAGE_CONTAINER_SFINAE_H

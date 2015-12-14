@@ -92,12 +92,15 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
-CURRENT_STORAGE_STRUCT_ALIAS(Element, Element1);
-CURRENT_STORAGE_STRUCT_ALIAS(Element, Element2);
+CURRENT_STORAGE_STRUCT_ALIAS(Element, ElementVector1);
+CURRENT_STORAGE_STRUCT_ALIAS(Element, ElementVector2);
+CURRENT_STORAGE_STRUCT_ALIAS(Record, RecordDictionary);
 
+using current::storage::container::Ordered;
 CURRENT_STORAGE(NewStorageDefinition) {
-  CURRENT_STORAGE_FIELD(v1, Vector, Element1);
-  CURRENT_STORAGE_FIELD(v2, Vector, Element2);
+  CURRENT_STORAGE_FIELD(v1, Vector, ElementVector1);
+  CURRENT_STORAGE_FIELD(v2, Vector, ElementVector2);
+  CURRENT_STORAGE_FIELD(d, Dictionary, RecordDictionary, Ordered);
 };
 
 }  // namespace transactional_storage_test
@@ -112,7 +115,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
 
   {
     NewStorage storage(persistence_file_name);
-    EXPECT_EQ(2u, storage.FieldsCount());
+    EXPECT_EQ(3u, storage.FieldsCount());
     storage.Transaction([](FieldsByReference<NewStorage> fields) {
       EXPECT_TRUE(fields.v1.Empty());
       EXPECT_TRUE(fields.v2.Empty());
@@ -125,9 +128,41 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(42, Value(fields.v1[0]).x);
       EXPECT_EQ(100, Value(fields.v2[0]).x);
     });
+
+    storage.Transaction([](FieldsByReference<NewStorage> fields) {
+      fields.d.Insert(Record{"one", 1});
+
+      {
+        size_t count = 0u;
+        int32_t value = 0;
+        for (const auto& e : fields.d) {
+          ++count;
+          value += e.rhs;
+        }
+        EXPECT_EQ(1u, count);
+        EXPECT_EQ(1, value);
+      }
+
+      EXPECT_FALSE(fields.d.Empty());
+      EXPECT_EQ(1u, fields.d.Size());
+      EXPECT_TRUE(Exists(fields.d["one"]));
+      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+
+      fields.d.Insert(Record{"two", 2});
+
+      EXPECT_FALSE(fields.d.Empty());
+      EXPECT_EQ(2u, fields.d.Size());
+      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+
+      fields.d.Insert(Record{"three", 3});
+      fields.d.Erase("three");
+    });
+
     storage.Transaction([](FieldsByReference<NewStorage> fields) {
       fields.v1.PushBack(Element(1));
       fields.v2.PushBack(Element(2));
+      fields.d.Insert(Record{"three", 3});
       throw std::logic_error("rollback, please");
     });
   }
@@ -139,6 +174,11 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(1u, fields.v2.Size());
       EXPECT_EQ(42, Value(fields.v1[0]).x);
       EXPECT_EQ(100, Value(fields.v2[0]).x);
+
+      EXPECT_FALSE(fields.d.Empty());
+      EXPECT_EQ(2u, fields.d.Size());
+      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
     });
   }
 }
