@@ -29,7 +29,11 @@ SOFTWARE.
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_string(transactional_storage_test_tmpdir,
+#ifndef _MSC_VER
               ".current",
+#else
+              "Debug",
+#endif
               "Local path for the test to create temporary files in.");
 
 #define USE_KEY_METHODS

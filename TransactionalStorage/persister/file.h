@@ -29,6 +29,7 @@ SOFTWARE.
 #include <fstream>
 
 #include "../base.h"
+#include "../exceptions.h"
 #include "../../TypeSystem/Serialization/json.h"
 
 namespace current {
@@ -45,6 +46,9 @@ struct JSONFilePersister<TypeList<TS...>> {
 
   void PersistJournal(MutationJournal& journal) {
     std::ofstream os(filename_, std::fstream::app);
+    if (!os.good()) {
+      throw StorageCannotAppendToFileException(filename_);
+    }
     for (auto&& entry : journal.commit_log) {
       os << JSON(T_VARIANT(std::move(entry))) << '\n';
     }
@@ -55,8 +59,10 @@ struct JSONFilePersister<TypeList<TS...>> {
   template <typename F>
   void Replay(F&& f) {
     std::ifstream is(filename_);
-    for (std::string line; std::getline(is, line);) {
-      f(std::move(ParseJSON<T_VARIANT>(line)));
+    if (is.good()) {
+      for (std::string line; std::getline(is, line);) {
+        f(std::move(ParseJSON<T_VARIANT>(line)));
+      }
     }
   }
 
