@@ -43,8 +43,8 @@ SOFTWARE.
 //
 // Only allow default constructors for containers.
 
-#ifndef CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
-#define CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
+#ifndef CURRENT_STORAGE_STORAGE_H
+#define CURRENT_STORAGE_STORAGE_H
 
 #include "../port.h"
 
@@ -827,4 +827,4 @@ class LightweightMatrix final
 
 using current::storage::FieldsByReference;
 
-#endif  // CURRENT_TRANSACTIONAL_STORAGE_STORAGE_H
+#endif  // CURRENT_STORAGE_STORAGE_H

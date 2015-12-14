@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_UTIL_HTTP_SCOPED_REGISTERER_H
-#define BRICKS_UTIL_HTTP_SCOPED_REGISTERER_H
+#ifndef BRICKS_UTIL_ACCUMULATIVE_SCOPED_DELETER_H
+#define BRICKS_UTIL_ACCUMULATIVE_SCOPED_DELETER_H
 
 #include "../../port.h"
 
@@ -95,4 +95,4 @@ class AccumulativeScopedDeleter {
 
 }  // namespace current
 
-#endif  // BRICKS_UTIL_HTTP_SCOPED_REGISTERER_H
+#endif  // BRICKS_UTIL_ACCUMULATIVE_SCOPED_DELETER_H

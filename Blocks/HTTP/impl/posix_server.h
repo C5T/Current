@@ -44,7 +44,7 @@ SOFTWARE.
 #include "../../../Bricks/net/http/http.h"
 #include "../../../Bricks/time/chrono.h"
 #include "../../../Bricks/strings/printf.h"
-#include "../../../Bricks/util/scoped_registerer.h"
+#include "../../../Bricks/util/accumulative_scoped_deleter.h"
 
 namespace blocks {
 

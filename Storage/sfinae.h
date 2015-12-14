@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TRANSACTIONAL_STORAGE_SFINAE_H
-#define CURRENT_TRANSACTIONAL_STORAGE_SFINAE_H
+#ifndef CURRENT_STORAGE_SFINAE_H
+#define CURRENT_STORAGE_SFINAE_H
 
 #include <utility>
 
@@ -180,4 +180,4 @@ void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {
 
 }  // namespace current
 
-#endif  // CURRENT_TRANSACTIONAL_STORAGE_SFINAE_H
+#endif  // CURRENT_STORAGE_SFINAE_H

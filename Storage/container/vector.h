@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TRANSACTIONAL_STORAGE_CONTAINER_VECTOR_H
-#define CURRENT_TRANSACTIONAL_STORAGE_CONTAINER_VECTOR_H
+#ifndef CURRENT_STORAGE_CONTAINER_VECTOR_H
+#define CURRENT_STORAGE_CONTAINER_VECTOR_H
 
 #include "../base.h"
 
@@ -83,4 +83,4 @@ class Vector {
 
 using current::storage::container::Vector;
 
-#endif  // CURRENT_TRANSACTIONAL_STORAGE_CONTAINER_VECTOR_H
+#endif  // CURRENT_STORAGE_CONTAINER_VECTOR_H

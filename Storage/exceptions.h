@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TRANSACTIONAL_STORAGE_EXCEPTIONS_H
-#define CURRENT_TRANSACTIONAL_STORAGE_EXCEPTIONS_H
+#ifndef CURRENT_STORAGE_EXCEPTIONS_H
+#define CURRENT_STORAGE_EXCEPTIONS_H
 
 #include "../Bricks/exception.h"
 
@@ -45,4 +45,4 @@ struct StorageCannotAppendToFileException : StorageException {
 
 using StorageCannotAppendToFile = const current::storage::StorageCannotAppendToFileException&;
 
-#endif  // CURRENT_TRANSACTIONAL_STORAGE_EXCEPTIONS_H
+#endif  // CURRENT_STORAGE_EXCEPTIONS_H

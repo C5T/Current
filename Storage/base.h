@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TRANSACTIONAL_STORAGE_BASE_H
-#define CURRENT_TRANSACTIONAL_STORAGE_BASE_H
+#ifndef CURRENT_STORAGE_BASE_H
+#define CURRENT_STORAGE_BASE_H
 
 #include "../port.h"
 
@@ -129,4 +129,4 @@ struct FieldsBase : BASE {
 }  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_TRANSACTIONAL_STORAGE_BASE_H
+#endif  // CURRENT_STORAGE_BASE_H
