@@ -25,6 +25,9 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_CONTAINER_COMMON_H
 #define CURRENT_STORAGE_CONTAINER_COMMON_H
 
+#include <map>
+#include <unordered_map>
+
 namespace current {
 namespace storage {
 namespace container {
