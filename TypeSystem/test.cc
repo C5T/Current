@@ -64,7 +64,17 @@ CURRENT_STRUCT(Baz) {
   CURRENT_FIELD(v5, t_map_foo_int);
 #endif
 };
-CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(baz, Baz); };
+
+CURRENT_STRUCT(DerivedFromFoo, Foo) {
+#ifndef _MSC_VER
+  CURRENT_DEFAULT_CONSTRUCTOR(DerivedFromFoo) : Foo(100u) {}
+  CURRENT_CONSTRUCTOR(DerivedFromFoo)(size_t x) : Foo(x * 1001u) {}
+#else
+  CURRENT_DEFAULT_CONSTRUCTOR(DerivedFromFoo) : SUPER(100u) {}
+  CURRENT_CONSTRUCTOR(DerivedFromFoo)(size_t x) : SUPER(x * 1001u) {}
+#endif
+  CURRENT_FIELD(baz, Baz);
+};
 
 CURRENT_STRUCT(WithVector) {
   CURRENT_FIELD(v, std::vector<std::string>);
@@ -188,6 +198,14 @@ TEST(TypeSystemTest, CopyDoesItsJob) {
   EXPECT_EQ(5u, a.i);
   EXPECT_EQ(3u, c.i);
 }
+
+TEST(TypeSystemTest, DerivedConstructorIsCalled) {
+  using namespace struct_definition_test;
+  DerivedFromFoo one;
+  EXPECT_EQ(100u, one.i);
+  DerivedFromFoo two(123u);
+  EXPECT_EQ(123123u, two.i);
+};
 
 TEST(TypeSystemTest, ImmutableOptional) {
   {

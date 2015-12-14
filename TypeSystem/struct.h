@@ -45,12 +45,12 @@ namespace current {
 namespace reflection {
 
 template <typename INSTANTIATION_TYPE, typename T>
-struct BaseTypeHelperImpl {
+struct SUPER_SELECTOR {
   struct type {};
 };
 
 template <typename T>
-struct BaseTypeHelperImpl<DeclareFields, T> {
+struct SUPER_SELECTOR<DeclareFields, T> {
   typedef T type;
 };
 
@@ -59,11 +59,13 @@ struct BaseTypeHelperImpl<DeclareFields, T> {
 // Confusing but works. -- D.K.
 #ifndef _MSC_VER
 template <typename INSTANTIATION_TYPE, typename T>
-using BaseTypeHelper = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
+using SUPER = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
 #else
 template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T>
-struct BaseTypeHelper : REFLECTION_HELPER, BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type {
-  using SUPER = typename BaseTypeHelperImpl<INSTANTIATION_TYPE, T>::type;
+struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
+  template<typename... ARGS>
+  SUPER(ARGS&&... args) : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type(std::forward<ARGS>(args)...) {}
+  using T_SUPER = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
   using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
   using REFLECTION_HELPER::CURRENT_FIELD_INDEX_BASE;
   using REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
@@ -143,7 +145,7 @@ struct WithoutParentheses<int(T)> {
   struct CURRENT_REFLECTION_HELPER;                                                                 \
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
-    using SUPER = super;                                                                            \
+    using T_SUPER = super;                                                                          \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
@@ -154,35 +156,34 @@ struct WithoutParentheses<int(T)> {
 
 #ifndef _MSC_VER
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                  \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct); \
-  template <typename INSTANTIATION_TYPE>               \
-  struct CURRENT_STRUCT_IMPL_##s                       \
-      : CURRENT_REFLECTION_HELPER<s>,                  \
-        ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, ::current::CurrentStruct>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                            \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);           \
+  template <typename INSTANTIATION_TYPE>                         \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>, \
+                                   ::current::reflection::SUPER<INSTANTIATION_TYPE, ::current::CurrentStruct>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                   \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
   CURRENT_STRUCT_HELPERS(s, base);                                                        \
   template <typename INSTANTIATION_TYPE>                                                  \
   struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                          \
-                                   ::current::reflection::BaseTypeHelper<INSTANTIATION_TYPE, base>
+                                   ::current::reflection::SUPER<INSTANTIATION_TYPE, base>
 
 #else  // _MSC_VER
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                                                                  \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                                 \
-  template <typename INSTANTIATION_TYPE>                                                               \
-  struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, \
-                                                                         INSTANTIATION_TYPE,           \
-                                                                         ::current::CurrentStruct>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                        \
+  template <typename INSTANTIATION_TYPE>                                                      \
+  struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, \
+                                                                INSTANTIATION_TYPE,           \
+                                                                ::current::CurrentStruct>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                   \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
   CURRENT_STRUCT_HELPERS(s, base);                                                        \
   template <typename INSTANTIATION_TYPE>                                                  \
   struct CURRENT_STRUCT_IMPL_##s                                                          \
-      : ::current::reflection::BaseTypeHelper<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
+      : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
 
 #endif  // _MSC_VER
 
@@ -264,9 +265,9 @@ struct SuperTypeImpl {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
 #ifndef _MSC_VER
-  typedef typename T::template CURRENT_REFLECTION_HELPER<T>::SUPER type;
+  typedef typename T::template CURRENT_REFLECTION_HELPER<T>::T_SUPER type;
 #else
-  typedef typename T::SUPER type;
+  typedef typename T::T_SUPER type;
 #endif
 };
 

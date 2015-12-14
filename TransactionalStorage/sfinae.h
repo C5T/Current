@@ -31,6 +31,7 @@ SOFTWARE.
 
 namespace current {
 
+#if 0
 namespace sfinae {
 
 template <typename T>
@@ -175,6 +176,7 @@ void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {
 }
 
 }  // namespace sfinae
+#endif
 
 }  // namespace current
 

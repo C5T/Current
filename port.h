@@ -34,6 +34,7 @@ SOFTWARE.
 
 #ifdef _MSC_VER
 #pragma warning (disable:4503)  // "decorated name length exceeded ...", duh.
+#define _CRT_SECURE_NO_WARNINGS
 #endif
 
 // TODO(dkorolev): @deathbaba mentioned this `#define` helps with some issues on Mac,

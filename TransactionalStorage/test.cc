@@ -28,9 +28,15 @@ SOFTWARE.
 #include "../Bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
+#ifndef _MSC_VER
 DEFINE_string(transactional_storage_test_tmpdir,
               ".current",
               "Local path for the test to create temporary files in.");
+#else
+DEFINE_string(transactional_storage_test_tmpdir,
+              "Debug",
+              "Local path for the test to create temporary files in.");
+#endif
 
 #define USE_KEY_METHODS
 
@@ -86,18 +92,58 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
+CURRENT_STORAGE_STRUCT_ALIAS(Element, Element1);
+CURRENT_STORAGE_STRUCT_ALIAS(Element, Element2);
+
+CURRENT_STORAGE(NewStorageDefinition) {
+  CURRENT_STORAGE_FIELD(v1, Vector, Element1);
+  CURRENT_STORAGE_FIELD(v2, Vector, Element2);
+};
+
 }  // namespace transactional_storage_test
 
-// TODO(dkorolev): Make the following work.
-//
-//   DATABASE(UnitTestStorage) {
-//     TABLE(v ,Vector<transactional_storage_test::Element>);
-//     TABLE(d, OrderedDictionary<transactional_storage_test::Record>);
-//     TABLE(m, LightweightMatrix<transactional_storage_test::Cell>);
-//   };
-//   // F*ck yeah!
-//
-// That simple.
+TEST(TransactionalStorage, NewStorageDefinition) {
+  using namespace transactional_storage_test;
+  using NewStorage = NewStorageDefinition<JSONFilePersister>;
+
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  {
+    NewStorage storage(persistence_file_name);
+    EXPECT_EQ(2u, storage.FieldsCount());
+    storage.Transaction([](FieldsByReference<NewStorage> fields) {
+      EXPECT_TRUE(fields.v1.Empty());
+      EXPECT_TRUE(fields.v2.Empty());
+      fields.v1.PushBack(Element(0));
+      fields.v1.PopBack();
+      fields.v1.PushBack(Element(42));
+      fields.v2.PushBack(Element(100));
+      EXPECT_EQ(1u, fields.v1.Size());
+      EXPECT_EQ(1u, fields.v2.Size());
+      EXPECT_EQ(42, Value(fields.v1[0]).x);
+      EXPECT_EQ(100, Value(fields.v2[0]).x);
+    });
+    storage.Transaction([](FieldsByReference<NewStorage> fields) {
+      fields.v1.PushBack(Element(1));
+      fields.v2.PushBack(Element(2));
+      throw std::logic_error("rollback, please");
+    });
+  }
+
+  {
+    NewStorage replayed(persistence_file_name);
+    replayed.Transaction([](FieldsByReference<NewStorage> fields) {
+      EXPECT_EQ(1u, fields.v1.Size());
+      EXPECT_EQ(1u, fields.v2.Size());
+      EXPECT_EQ(42, Value(fields.v1[0]).x);
+      EXPECT_EQ(100, Value(fields.v2[0]).x);
+    });
+  }
+}
+
+#if 0
 
 template <typename POLICY>
 struct UnitTestStorage final {
@@ -351,3 +397,5 @@ TEST(TransactionalStorage, OnDisk) {
     EXPECT_EQ(1001, Value(resumed.m.Get(101, "one-oh-one")).phew);
   }
 }
+
+#endif
