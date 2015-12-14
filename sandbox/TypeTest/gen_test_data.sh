@@ -156,4 +156,31 @@ for i in `seq 1 $STRUCT_COUNT`; do
 	echo "v$i.Call(call_struct);" >> $VARIANT_TEST
 done
 
+# 'storage.cc' test.
+STORAGE_HEADER="$INCLUDE_DIR/storage.h"
+STORAGE_TEST="$INCLUDE_DIR/storage.cc"
+
+echo "storage.Transaction([](FieldsByReference<TestStorage> fields) {" >> $STORAGE_TEST
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "CURRENT_STRUCT(Struct$i) {" >> $STORAGE_HEADER
+	echo "  CURRENT_FIELD(x$i, uint32_t);" >> $STORAGE_HEADER
+	echo "  CURRENT_CONSTRUCTOR(Struct$i)(uint32_t i = 0u) : x$i(i) {}" >> $STORAGE_HEADER
+	echo "};" >> $STORAGE_HEADER
+	echo "CURRENT_STORAGE_STRUCT_ALIAS(Struct$i, StorageStruct$i);" >> $STORAGE_HEADER
+
+	echo "  fields.v$i.PushBack(Struct$i(${i}u));" >> $STORAGE_TEST
+done
+echo "});" >> $STORAGE_TEST
+
+echo "storage.Transaction([](FieldsByReference<TestStorage> fields) {" >> $STORAGE_TEST
+echo "CURRENT_STORAGE(Storage) {" >> $STORAGE_HEADER
+for i in `seq 1 $STRUCT_COUNT`; do
+	echo "  CURRENT_STORAGE_FIELD(v$i, Vector, StorageStruct$i);" >> $STORAGE_HEADER
+
+	echo "  EXPECT_EQ(${i}u, Value(fields.v$i[0]).x$i);" >> $STORAGE_TEST
+done
+echo "};" >> $STORAGE_HEADER
+echo "});" >> $STORAGE_TEST
+
+
 touch dummy.h
