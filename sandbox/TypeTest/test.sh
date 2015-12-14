@@ -8,6 +8,7 @@ TEST_LIST=(
     '.current/typelist_dynamic'
     '.current/rtti_dynamic_call'
     '.current/variant'
+    '.current/storage'
 )
 
 for c in ${COUNT_LIST[@]}; do
