@@ -68,7 +68,7 @@ class Vector {
     }
   }
 
-  void operator()(const ADDER& value) { vector_.push_back(value); }
+  void operator()(const ADDER& object) { vector_.push_back(object); }
 
   void operator()(const DELETER&) { vector_.pop_back(); }
 

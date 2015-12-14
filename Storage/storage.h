@@ -55,8 +55,8 @@ SOFTWARE.
 #include <vector>
 
 #include "base.h"
-#include "sfinae.h"
 
+#include "container/dictionary.h"
 #include "container/vector.h"
 
 #include "persister/file.h"
@@ -174,21 +174,21 @@ namespace storage {
       : ::current::storage::FieldsBase<  \
             CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>>
 
-#define CURRENT_STORAGE_FIELD(field_name, field_type, item_alias)                                             \
-  ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER> operator()(                       \
-      ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE - 1>)    \
-      const {                                                                                                 \
-    return ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER>();                       \
-  }                                                                                                           \
-  using T_FIELD_TYPE_##field_name =                                                                           \
-      ::current::storage::Field<INSTANTIATION_TYPE,                                                           \
-                                field_type<item_alias::T_ENTRY, item_alias::T_ADDER, item_alias::T_DELETER>>; \
-  T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);        \
-  void operator()(const item_alias::T_ADDER& adder) { field_name(adder); }                                    \
+#define CURRENT_STORAGE_FIELD(field_name, field_type, item_alias, ...)                                     \
+  ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER> operator()(                    \
+      ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE - 1>) \
+      const {                                                                                              \
+    return ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER>();                    \
+  }                                                                                                        \
+  using T_FIELD_TYPE_##field_name = ::current::storage::Field<                                             \
+      INSTANTIATION_TYPE,                                                                                  \
+      field_type<item_alias::T_ENTRY, item_alias::T_ADDER, item_alias::T_DELETER, ##__VA_ARGS__>>;         \
+  T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);     \
+  void operator()(const item_alias::T_ADDER& adder) { field_name(adder); }                                 \
   void operator()(const item_alias::T_DELETER& deleter) { field_name(deleter); }
 
 template <typename STORAGE>
-using FieldsByReference = typename STORAGE::T_FIELDS_BY_REFERENCE;
+using CurrentStorage = typename STORAGE::T_FIELDS_BY_REFERENCE;
 
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
@@ -825,6 +825,6 @@ class LightweightMatrix final
 
 }  // namespace current
 
-using current::storage::FieldsByReference;
+using current::storage::CurrentStorage;
 
 #endif  // CURRENT_STORAGE_STORAGE_H
