@@ -116,7 +116,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
   {
     NewStorage storage(persistence_file_name);
     EXPECT_EQ(3u, storage.FieldsCount());
-    storage.Transaction([](FieldsByReference<NewStorage> fields) {
+    storage.Transaction([](CurrentStorage<NewStorage> fields) {
       EXPECT_TRUE(fields.v1.Empty());
       EXPECT_TRUE(fields.v2.Empty());
       fields.v1.PushBack(Element(0));
@@ -129,8 +129,8 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(100, Value(fields.v2[0]).x);
     });
 
-    storage.Transaction([](FieldsByReference<NewStorage> fields) {
-      fields.d.Insert(Record{"one", 1});
+    storage.Transaction([](CurrentStorage<NewStorage> fields) {
+      fields.d.Add(Record{"one", 1});
 
       {
         size_t count = 0u;
@@ -148,28 +148,28 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_TRUE(Exists(fields.d["one"]));
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
 
-      fields.d.Insert(Record{"two", 2});
+      fields.d.Add(Record{"two", 2});
 
       EXPECT_FALSE(fields.d.Empty());
       EXPECT_EQ(2u, fields.d.Size());
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
 
-      fields.d.Insert(Record{"three", 3});
+      fields.d.Add(Record{"three", 3});
       fields.d.Erase("three");
     });
 
-    storage.Transaction([](FieldsByReference<NewStorage> fields) {
+    storage.Transaction([](CurrentStorage<NewStorage> fields) {
       fields.v1.PushBack(Element(1));
       fields.v2.PushBack(Element(2));
-      fields.d.Insert(Record{"three", 3});
+      fields.d.Add(Record{"three", 3});
       throw std::logic_error("rollback, please");
     });
   }
 
   {
     NewStorage replayed(persistence_file_name);
-    replayed.Transaction([](FieldsByReference<NewStorage> fields) {
+    replayed.Transaction([](CurrentStorage<NewStorage> fields) {
       EXPECT_EQ(1u, fields.v1.Size());
       EXPECT_EQ(1u, fields.v2.Size());
       EXPECT_EQ(42, Value(fields.v1[0]).x);
@@ -179,6 +179,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(2u, fields.d.Size());
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+      EXPECT_FALSE(Exists(fields.d["three"]));
     });
   }
 }

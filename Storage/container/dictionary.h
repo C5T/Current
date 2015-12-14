@@ -57,7 +57,7 @@ class Dictionary {
     }
   }
 
-  void Insert(const T& object) {
+  void Add(const T& object) {
     const auto key = sfinae::GetKey(object);
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {

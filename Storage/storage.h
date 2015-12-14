@@ -188,7 +188,7 @@ namespace storage {
   void operator()(const item_alias::T_DELETER& deleter) { field_name(deleter); }
 
 template <typename STORAGE>
-using FieldsByReference = typename STORAGE::T_FIELDS_BY_REFERENCE;
+using CurrentStorage = typename STORAGE::T_FIELDS_BY_REFERENCE;
 
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
@@ -825,6 +825,6 @@ class LightweightMatrix final
 
 }  // namespace current
 
-using current::storage::FieldsByReference;
+using current::storage::CurrentStorage;
 
 #endif  // CURRENT_STORAGE_STORAGE_H
