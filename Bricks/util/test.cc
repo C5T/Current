@@ -24,16 +24,16 @@ SOFTWARE.
 
 #define BRICKS_RANDOM_FIX_SEED
 
+#include "accumulative_scoped_deleter.h"
 #include "clone.h"
 #include "crc32.h"
-#include "rol.h"
 #include "lazy_instantiation.h"
 #include "make_scope_guard.h"
 #include "random.h"
+#include "rol.h"
 #include "sha256.h"
 #include "singleton.h"
 #include "waitable_terminate_signal.h"
-#include "scoped_registerer.h"
 
 #include "../exception.h"
 #include "../strings/printf.h"
