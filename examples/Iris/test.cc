@@ -57,7 +57,7 @@ size_t number_of_flowers;
 std::map<size_t, std::string> dimension_names;
 
 TEST(Iris, Demo) {
-  typedef MemoryOnlyAPI<Dictionary<LabeledFlower>> TestAPI;
+  typedef MemoryOnlyAPI<yoda::Dictionary<LabeledFlower>> TestAPI;
   TestAPI api("labeled_flowers");
 
   // Allow running the test under `--gtest_repeat`.
@@ -88,7 +88,7 @@ TEST(Iris, Demo) {
                       }
                       first_line = false;
                       // Parse flower data and add it.
-                      auto adder = Dictionary<LabeledFlower>::Mutator(data);
+                      auto adder = yoda::Dictionary<LabeledFlower>::Mutator(data);
                       adder.Add(LabeledFlower(++number_of_flowers,
                                               FromString<double>(flower_definition_fields[0]),
                                               FromString<double>(flower_definition_fields[1]),
@@ -140,7 +140,7 @@ TEST(Iris, Demo) {
                   [&api](Request request) {
                     const auto id = FromString<size_t>(request.url.query["id"]);
                     api.Transaction([id](TestAPI::T_DATA data) {
-                      return Dictionary<LabeledFlower>::Accessor(data)[id];
+                      return yoda::Dictionary<LabeledFlower>::Accessor(data)[id];
                     }, std::move(request));
                   });
 
@@ -157,7 +157,7 @@ TEST(Iris, Demo) {
                     if (!label.empty()) {
                       const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
                       api.Transaction([flower](TestAPI::T_DATA data) {
-                        Dictionary<LabeledFlower>::Mutator(data).Add(flower);
+                        yoda::Dictionary<LabeledFlower>::Mutator(data).Add(flower);
                         return "OK\n";
                       }, std::move(request));
                     } else {
@@ -204,7 +204,7 @@ TEST(Iris, Demo) {
                     api.Transaction([x_dim, y_dim](TestAPI::T_DATA data) {
                       PlotIrises::Info info;
                       for (size_t i = 1; i <= number_of_flowers; ++i) {
-                        const LabeledFlower& flower = Dictionary<LabeledFlower>::Accessor(data)[i];
+                        const LabeledFlower& flower = yoda::Dictionary<LabeledFlower>::Accessor(data)[i];
                         info.labeled_flowers[flower.label].emplace_back(flower.x[x_dim], flower.x[y_dim]);
                       }
                       info.x_label = dimension_names[x_dim];

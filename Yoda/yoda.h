@@ -75,6 +75,8 @@ SOFTWARE.
 #ifndef SHERLOCK_YODA_YODA_H
 #define SHERLOCK_YODA_YODA_H
 
+#include "../port.h"
+
 #include <atomic>
 #include <future>
 #include <mutex>

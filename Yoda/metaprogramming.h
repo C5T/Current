@@ -31,7 +31,6 @@ SOFTWARE.
 #define SHERLOCK_YODA_METAPROGRAMMING_H
 
 #include <functional>
-#include <future>
 #include <utility>
 
 #include "types.h"
@@ -44,6 +43,8 @@ SOFTWARE.
 #include "../Bricks/template/metaprogramming.h"
 #include "../Bricks/template/decay.h"
 #include "../Bricks/template/weed.h"
+
+#include "../Bricks/util/future.h"
 
 namespace yoda {
 
@@ -298,10 +299,11 @@ struct APICalls {
   };
 
   template <typename TYPED_USER_FUNCTION>
-  Future<current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>> Transaction(TYPED_USER_FUNCTION&& function) {
+  current::Future<current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>> Transaction(
+      TYPED_USER_FUNCTION&& function) {
     using INTERMEDIATE_TYPE = current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<INTERMEDIATE_TYPE> pr;
-    Future<INTERMEDIATE_TYPE> future = pr.get_future();
+    current::Future<INTERMEDIATE_TYPE> future = pr.get_future();
     mq_.Emplace(
         new MQMessageFunction<INTERMEDIATE_TYPE>(std::forward<TYPED_USER_FUNCTION>(function), std::move(pr)));
     return future;
@@ -309,10 +311,10 @@ struct APICalls {
 
   // TODO(dkorolev): Maybe return the value of the `next` function as a `Future`? :-)
   template <typename TYPED_USER_FUNCTION, typename NEXT_USER_FUNCTION>
-  Future<void> Transaction(TYPED_USER_FUNCTION&& function, NEXT_USER_FUNCTION&& next) {
+  current::Future<void> Transaction(TYPED_USER_FUNCTION&& function, NEXT_USER_FUNCTION&& next) {
     using INTERMEDIATE_TYPE = current::decay<CWT<TYPED_USER_FUNCTION, T_DATA>>;
     std::promise<void> pr;
-    Future<void> future = pr.get_future();
+    current::Future<void> future = pr.get_future();
     mq_.Emplace(new MQMessageFunctionWithNext<INTERMEDIATE_TYPE, NEXT_USER_FUNCTION>(
         std::forward<TYPED_USER_FUNCTION>(function), std::forward<NEXT_USER_FUNCTION>(next), std::move(pr)));
     return future;

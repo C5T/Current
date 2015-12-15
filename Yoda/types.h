@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../Bricks/exception.h"
 #include "../Bricks/cerealize/cerealize.h"
 #include "../Bricks/time/chrono.h"
+#include "../Bricks/util/future.h"
 
 namespace yoda {
 
@@ -116,31 +117,6 @@ struct EntryWrapper {
  private:
   bool exists = false;
   const ENTRY* entry = nullptr;
-};
-
-// Wrapper to expose user-friendly semantics.
-template <typename T>
-struct Future {
-  Future() = delete;
-  Future(std::future<T>&& f) : f_(std::move(f)) {}
-
-  T Go() { return std::forward<T>(f_.get()); }
-  void Wait() { f_.wait(); }
-
- private:
-  std::future<T> f_;
-};
-
-template <>
-struct Future<void> {
-  Future() = delete;
-  Future(std::future<void>&& f) : f_(std::move(f)) {}
-
-  void Go() { f_.get(); }
-  void Wait() { f_.wait(); }
-
- private:
-  std::future<void> f_;
 };
 
 #if 0
