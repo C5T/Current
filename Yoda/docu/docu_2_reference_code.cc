@@ -39,8 +39,7 @@ DEFINE_int32(yoda_docu_test_port, 8999, "");
 
 using yoda::Padawan;
 using yoda::MemoryOnlyAPI;
-using yoda::Future;
-using yoda::Dictionary;
+// using yoda::Dictionary;  // <-- conflicts with `Storage/storage.h`, removing the `using`.
 using yoda::Matrix;
 using yoda::EntryWrapper;
 using yoda::NonexistentEntryAccessed;
@@ -49,6 +48,8 @@ using yoda::KeyAlreadyExistsException;
 using yoda::CellNotFoundException;
 using yoda::CellAlreadyExistsException;
 using yoda::SubscriptException;
+
+using current::Future;
 
 using current::strings::Join;
 using current::strings::Printf;
@@ -168,14 +169,14 @@ current::time::SetNow(std::chrono::microseconds(42));
 HTTP(port).ResetAllHandlers();
 
   // Define the `api` object.
-  typedef MemoryOnlyAPI<Dictionary<StringIntTuple>,
-                        Dictionary<Prime>,
+  typedef MemoryOnlyAPI<yoda::Dictionary<StringIntTuple>,
+                        yoda::Dictionary<Prime>,
                         Matrix<PrimeCell>> PrimesAPI;
   PrimesAPI api("YodaExampleUsage");
   
   // Simple dictionary usecase, and a unit test for type system implementation.
   api.Transaction([](PrimesAPI::T_DATA data) {
-    auto adder = Dictionary<StringIntTuple>::Mutator(data);
+    auto adder = yoda::Dictionary<StringIntTuple>::Mutator(data);
     adder.Add(StringIntTuple("two", 2));
     adder.Add(static_cast<const StringIntTuple&>(StringIntTuple("three", 3)));
     adder.Add(StringIntTuple("five", 5));
@@ -187,14 +188,14 @@ HTTP(port).ResetAllHandlers();
       adder.Get(static_cast<const std::string&>(std::string("five")))).value);
   });
   api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto getter = Dictionary<StringIntTuple>::Accessor(data);
+    const auto getter = yoda::Dictionary<StringIntTuple>::Accessor(data);
     EXPECT_EQ(2, static_cast<StringIntTuple>(
       getter.Get(std::string("two"))).value);
     EXPECT_EQ(7, static_cast<StringIntTuple>(
       getter.Get(static_cast<const std::string&>(std::string("seven")))).value);
   }).Wait();
   api.Transaction([](PrimesAPI::T_DATA data) {
-    auto adder = Dictionary<Prime>::Mutator(data);
+    auto adder = yoda::Dictionary<Prime>::Mutator(data);
     // `2` is the first prime.
     // `.Go()` (or `.Wait()`) makes `Add()` a blocking call.
     adder.Add(Prime(2, 1));
@@ -209,7 +210,7 @@ HTTP(port).ResetAllHandlers();
     ASSERT_TRUE(adder.Has(std::make_tuple(static_cast<PRIME>(3))));
     ASSERT_FALSE(adder.Has(static_cast<PRIME>(4)));
 
-    const auto getter = Dictionary<Prime>::Accessor(data);
+    const auto getter = yoda::Dictionary<Prime>::Accessor(data);
     // `getter.Get()` has multiple signatures, one or more per supported data type.
     // It never throws, and returns a wrapper that can be cast to both `bool`
     // and the underlying type.
@@ -225,23 +226,23 @@ HTTP(port).ResetAllHandlers();
   // Expanded syntax for `Add()`.
 {
   api.Transaction([](PrimesAPI::T_DATA data) {
-    Dictionary<Prime>::Mutator(data).Add(Prime(5, 3));
+    yoda::Dictionary<Prime>::Mutator(data).Add(Prime(5, 3));
   }).Wait();
   
   api.Transaction([](PrimesAPI::T_DATA data) {
-    Dictionary<Prime>::Mutator(data).Add(Prime(7, 100));
+    yoda::Dictionary<Prime>::Mutator(data).Add(Prime(7, 100));
   }).Wait();
   
   // `Add()`: Overwrite is OK.
   api.Transaction([](PrimesAPI::T_DATA data) {
-    Dictionary<Prime>::Mutator(data).Add(Prime(7, 4));
+    yoda::Dictionary<Prime>::Mutator(data).Add(Prime(7, 4));
   }).Wait();
 }
     
   // Expanded syntax for `Get()`.
 {
   Future<EntryWrapper<Prime>> future2 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
+    return yoda::Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(2));
   });
   EntryWrapper<Prime> entry2 = future2.Go();
   
@@ -252,7 +253,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(1, p2.index);
   
   Future<EntryWrapper<Prime>> future5 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
+    return yoda::Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(5));
   });
   EntryWrapper<Prime> entry5 = future5.Go();
   
@@ -263,7 +264,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(3, p5.index);
   
   Future<EntryWrapper<Prime>> future7 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
+    return yoda::Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(7));
   });
   EntryWrapper<Prime> entry7 = future7.Go();
   
@@ -274,7 +275,7 @@ HTTP(port).ResetAllHandlers();
   EXPECT_EQ(4, p7.index);
   
   Future<EntryWrapper<Prime>> future8 = api.Transaction([](PrimesAPI::T_DATA data) {
-    return Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
+    return yoda::Dictionary<Prime>::Accessor(data).Get(static_cast<PRIME>(8));
   });
   EntryWrapper<Prime> entry8 = future8.Go();
   
@@ -285,8 +286,8 @@ HTTP(port).ResetAllHandlers();
   // Accessing the memory view of `data`.
 {
   api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto getter = Dictionary<Prime>::Accessor(data);
-    auto adder = Dictionary<Prime>::Mutator(data);
+    const auto getter = yoda::Dictionary<Prime>::Accessor(data);
+    auto adder = yoda::Dictionary<Prime>::Mutator(data);
   
     // `adder.Add()` in a non-throwing call.
     adder.Add(Prime(11, 5));
@@ -446,7 +447,7 @@ HTTP(port).ResetAllHandlers();
   // (Or `.Wait()` to just wait for the passed in function to complete.)
 {
   Future<std::string> future = api.Transaction([](PrimesAPI::T_DATA data) {
-    const auto getter = Dictionary<Prime>::Accessor(data);
+    const auto getter = yoda::Dictionary<Prime>::Accessor(data);
     return Printf("[2]=%d,[3]=%d,[5]*[7]=%d",
                   getter[static_cast<PRIME>(2)].index, 
                   getter[static_cast<PRIME>(3)].index,
@@ -616,7 +617,7 @@ HTTP(port).ResetAllHandlers();
     api.Transaction(
       [key](PrimesAPI::T_DATA data) {
         // Return an `EntryWrapper`, which wraps nicely into an HTTP response.
-        return Dictionary<Prime>::Accessor(data).Get(key);
+        return yoda::Dictionary<Prime>::Accessor(data).Get(key);
       },
       std::move(request));
   });

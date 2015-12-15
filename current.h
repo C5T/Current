@@ -36,6 +36,8 @@ SOFTWARE.
 #include "Sherlock/sherlock.h"
 
 #include "TypeSystem/struct.h"
-// #include "TypeSystem/Schema/schema.h"  --  removed for v1. -- D.K.
+#include "TypeSystem/Schema/schema.h"
+
+#include "Storage/storage.h"
 
 #endif  // CURRENT_H

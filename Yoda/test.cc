@@ -56,11 +56,11 @@ TEST(Yoda, WritesToFile) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
+  typedef yoda::SingleFileAPI<yoda::Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("WritingToFileAPI", persistence_file_name);
 
   api.Transaction([](PersistingAPI::T_DATA data) {
-    auto adder = Dictionary<YodaEntryToPersist>::Mutator(data);
+    auto adder = yoda::Dictionary<YodaEntryToPersist>::Mutator(data);
     adder.Add(YodaEntryToPersist("one", 1));
     adder.Add(YodaEntryToPersist("two", 2));
   }).Wait();
@@ -71,7 +71,7 @@ TEST(Yoda, WritesToFile) {
   EXPECT_EQ(yoda_golden_data, current::FileSystem::ReadFileAsString(persistence_file_name));
 
   api.Transaction([](PersistingAPI::T_DATA data) {
-    Dictionary<YodaEntryToPersist>::Mutator(data).Delete("one");
+    yoda::Dictionary<YodaEntryToPersist>::Mutator(data).Delete("one");
   }).Wait();
   while (current::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data_after_delete.size()) {
     ;  // Spin lock.
@@ -84,11 +84,11 @@ TEST(Yoda, ReadsFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(yoda_golden_data, persistence_file_name.c_str());
 
-  typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
+  typedef yoda::SingleFileAPI<yoda::Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
 
   api.Transaction([](PersistingAPI::T_DATA data) {
-    const auto getter = Dictionary<YodaEntryToPersist>::Accessor(data);
+    const auto getter = yoda::Dictionary<YodaEntryToPersist>::Accessor(data);
     EXPECT_TRUE(getter.Has(std::string("one")));
     EXPECT_TRUE(getter.Has(std::string("two")));
     EXPECT_EQ(1, static_cast<YodaEntryToPersist>(getter.Get(std::string("one"))).number);
@@ -101,10 +101,10 @@ TEST(Yoda, ReadsDeletionFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(yoda_golden_data_after_delete, persistence_file_name.c_str());
 
-  typedef yoda::SingleFileAPI<Dictionary<YodaEntryToPersist>> PersistingAPI;
+  typedef yoda::SingleFileAPI<yoda::Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api("ReadingFromFileAPI", persistence_file_name);
   api.Transaction([](PersistingAPI::T_DATA data) {
-    const auto getter = Dictionary<YodaEntryToPersist>::Accessor(data);
+    const auto getter = yoda::Dictionary<YodaEntryToPersist>::Accessor(data);
     EXPECT_FALSE(getter.Has(std::string("one")));
     EXPECT_TRUE(getter.Has(std::string("two")));
   }).Wait();
