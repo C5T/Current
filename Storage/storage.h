@@ -152,11 +152,15 @@ namespace storage {
     void Transaction(F&& f) {                                                                                 \
       std::lock_guard<std::mutex> lock(mutex_);                                                               \
       FIELDS::current_storage_mutation_journal_.AssertEmpty();                                                \
+      bool successful = false;                                                                                \
       try {                                                                                                   \
         f(static_cast<FIELDS&>(*this));                                                                       \
-        persister_.PersistJournal(FIELDS::current_storage_mutation_journal_);                                 \
+        successful = true;                                                                                    \
       } catch (std::exception&) {                                                                             \
         FIELDS::current_storage_mutation_journal_.Rollback();                                                 \
+      }                                                                                                       \
+      if (successful) {                                                                                       \
+        persister_.PersistJournal(FIELDS::current_storage_mutation_journal_);                                 \
       }                                                                                                       \
     }                                                                                                         \
     size_t FieldsCount() const { return fields_count; }                                                       \
