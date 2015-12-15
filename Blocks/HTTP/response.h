@@ -40,6 +40,48 @@ SOFTWARE.
 
 namespace blocks {
 
+template <bool IS_STRING, bool IS_CURRENT_STRUCT>
+struct StringBodyGenerator;
+
+template <>
+struct StringBodyGenerator<true, false> {
+  template <typename T>
+  static std::string AsString(T&& object) {
+    return object;
+  }
+  static std::string DefaultContentType() { return current::net::HTTPServerConnection::DefaultContentType(); }
+};
+
+template <>
+struct StringBodyGenerator<false, true> {
+  template <typename T>
+  static std::string AsString(T&& object) {
+    return current::serialization::JSON(std::forward<T>(object)) + '\n';
+  }
+  template <typename T>
+  static std::string AsString(T&& object, const std::string& object_name) {
+    return "{\"" + object_name + "\":" + current::serialization::JSON(std::forward<T>(object)) + "}\n";
+  }
+  static std::string DefaultContentType() {
+    return current::net::HTTPServerConnection::DefaultJSONContentType();
+  }
+};
+
+template <>
+struct StringBodyGenerator<false, false> {
+  template <typename T>
+  static std::string AsString(T&& object) {
+    return CerealizeJSON(std::forward<T>(object)) + '\n';
+  }
+  template <typename T>
+  static std::string AsString(T&& object, const std::string& object_name) {
+    return CerealizeJSON(std::forward<T>(object), object_name) + '\n';
+  }
+  static std::string DefaultContentType() {
+    return current::net::HTTPServerConnection::DefaultJSONContentType();
+  }
+};
+
 struct Response {
   bool initialized = false;
 
@@ -89,63 +131,68 @@ struct Response {
   }
 
   template <typename T>
-  typename std::enable_if<!std::is_same<current::decay<T>, Response>::value &&
-                          current::strings::is_string_type<T>::value>::type
-  Construct(T&& body,
-            current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-            const std::string& content_type = current::net::HTTPServerConnection::DefaultContentType(),
-            const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    this->body = std::forward<T>(body);
+  void Construct(T&& object, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    this->body = G::AsString(std::forward<T>(object));
+    this->code = code;
+    this->content_type = G::DefaultContentType();
+  }
+
+  template <typename T>
+  void Construct(T&& object,
+                 const std::string& object_name,
+                 current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    this->body = G::AsString(std::forward<T>(object), object_name);
+    this->code = code;
+    this->content_type = G::DefaultContentType();
+  }
+
+  template <typename T>
+  void Construct(T&& object,
+                 current::net::HTTPResponseCodeValue code,
+                 const current::net::HTTPHeadersType& extra_headers) {
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    this->body = G::AsString(std::forward<T>(object));
+    this->code = code;
+    this->content_type = G::DefaultContentType();
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  void Construct(T&& object,
+                 const std::string& object_name,
+                 current::net::HTTPResponseCodeValue code,
+                 const current::net::HTTPHeadersType& extra_headers) {
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    this->body = G::AsString(std::forward<T>(object), object_name);
+    this->code = code;
+    this->content_type = G::DefaultContentType();
+    this->extra_headers = extra_headers;
+  }
+
+  template <typename T>
+  void Construct(T&& object,
+                 current::net::HTTPResponseCodeValue code,
+                 const std::string& content_type,
+                 const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = content_type;
     this->extra_headers = extra_headers;
   }
 
   template <typename T>
-  typename std::enable_if<!std::is_same<current::decay<T>, Response>::value &&
-                          !(current::strings::is_string_type<T>::value) && !IS_CURRENT_STRUCT(T)>::type
-  Construct(T&& object,
-            current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-            const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    this->body = CerealizeJSON(std::forward<T>(object)) + '\n';
+  void Construct(T&& object,
+                 const std::string& object_name,
+                 current::net::HTTPResponseCodeValue code,
+                 const std::string& content_type,
+                 const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
-    this->content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
-    this->extra_headers = extra_headers;
-  }
-
-  template <typename T>
-  typename std::enable_if<!std::is_same<current::decay<T>, Response>::value &&
-                          !(current::strings::is_string_type<T>::value) && !IS_CURRENT_STRUCT(T)>::type
-  Construct(T&& object,
-            const std::string& object_name,
-            current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-            const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    this->body = CerealizeJSON(std::forward<T>(object), object_name) + '\n';
-    this->code = code;
-    this->content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
-    this->extra_headers = extra_headers;
-  }
-
-  template <typename T>
-  typename std::enable_if<IS_CURRENT_STRUCT(T)>::type Construct(
-      T&& object,
-      current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    this->body = current::serialization::JSON(std::forward<T>(object)) + '\n';
-    this->code = code;
-    this->content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
-    this->extra_headers = extra_headers;
-  }
-
-  template <typename T>
-  typename std::enable_if<IS_CURRENT_STRUCT(T)>::type Construct(
-      T&& object,
-      const std::string& object_name,
-      current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    this->body = "{\"" + object_name + "\":" + current::serialization::JSON(std::forward<T>(object)) + "}\n";
-    this->code = code;
-    this->content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
+    this->content_type = content_type;
     this->extra_headers = extra_headers;
   }
 

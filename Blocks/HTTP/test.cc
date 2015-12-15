@@ -793,4 +793,12 @@ TEST(HTTPAPI, ResponseSmokeTest) {
   const auto response9 = HTTP(GET(Printf("http://localhost:%d/response9", FLAGS_net_api_test_port)));
   EXPECT_EQ(500, static_cast<int>(response9.code));
   EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", response9.body);
+
+  {
+    Response response;
+    response = "foo";
+    response = SerializableObject();
+    response = NamedSerializableObject();
+    static_cast<void>(response);
+  }
 }
