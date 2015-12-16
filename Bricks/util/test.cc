@@ -337,7 +337,7 @@ struct ClonableViaCerealizeJSON {
     text = "deserialized from " + text;
   }
   // Cereal needs this signature to exist to support serializing `ClonableViaCerealizeJSON`.
-  ClonableViaCerealizeJSON(ClonableViaCerealizeJSON&&);
+  ClonableViaCerealizeJSON(ClonableViaCerealizeJSON&&) = default;
 };
 
 }  // namespace cloning_unit_test

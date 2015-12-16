@@ -1,112 +1,17 @@
-
-                                                Labeled Points
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                              P2
-
-
-
-
-
-                                                                            P1
-
-
-
-
-
-
-
-
-
-
-
-
-                      P3
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                                                         P0
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                      P4
-
-
-
-
-
-
-
-
-
-
-
-
-                                                                            P6
-
-
-
-
-
-                                              P5
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+set term gnuplot size 112,112
+unset border
+set grid back
+unset key
+unset tics
+set title "Labeled Points"
+set xrange [-1.500000:+1.500000]
+set yrange [-1.500000:+1.500000]
+plot '-' with labels
+1 0 P0
+0.62349 0.781831 P1
+-0.222521 0.974928 P2
+-0.900969 0.433884 P3
+-0.900969 -0.433884 P4
+-0.222521 -0.974928 P5
+0.62349 -0.781831 P6
+end

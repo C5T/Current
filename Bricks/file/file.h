@@ -325,13 +325,15 @@ struct FileSystem {
         ScanDir(directory,
                 [&directory, parameters](const std::string& name) {
                   const std::string full_name = JoinPath(directory, name);
-                  if (IsDir(full_name)) {
-                    RmDir(full_name, parameters, RmDirRecursive::Yes);
-                  } else {
-                    RmFile(full_name,
-                           (parameters == RmDirParameters::ThrowExceptionOnError)
-                               ? RmFileParameters::ThrowExceptionOnError
-                               : RmFileParameters::Silent);
+                  if (name != "." && name != "..") {
+                    if (IsDir(full_name)) {
+                      RmDir(full_name, parameters, RmDirRecursive::Yes);
+                    } else {
+                      RmFile(full_name,
+                             (parameters == RmDirParameters::ThrowExceptionOnError)
+                                 ? RmFileParameters::ThrowExceptionOnError
+                                 : RmFileParameters::Silent);
+                    }
                   }
                 },
                 ScanDirParameters::ListFilesAndDirs);
