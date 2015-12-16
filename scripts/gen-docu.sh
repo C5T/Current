@@ -10,7 +10,7 @@
 #    not so happen accidentally that some of the docu-mented code does not compile and/or pass tests.
 #
 # 2) Use header guards in those `docu_*_test.cc` files and `#include` them from the actual `test.cc`
-#    for that Bricks module.
+#    for that Current module.
 #    That would ensure that those `docu_*_test.cc` tests are run both by `make` from within that directory,
 #    and by the top-level `make` that runs all tests at once and generates the coverage report.
 #

@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "../../../port.h"
 
-#if defined(BRICKS_APPLE)
+#if defined(CURRENT_APPLE)
 
 #if ! __has_feature(objc_arc)
 #error "This file must be compiled with ARC. Either turn on ARC for the project or use -fobjc-arc flag."
@@ -136,4 +136,4 @@ bool blocks::HTTPClientApple::Go() {
   } // @autoreleasepool
 }
 
-#endif  // defined(BRICKS_APPLE)
+#endif  // defined(CURRENT_APPLE)

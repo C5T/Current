@@ -167,7 +167,7 @@ class TemplatedHTTPRequestData : public HELPER {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
         // and StackOverflow is that a return value of zero from read() from a socket indicates
         // that the socket has been closed by the peer.
-        BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
+        CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
       }
       buffer_[offset] = '\0';
       char* next_crlf_ptr;
@@ -217,7 +217,7 @@ class TemplatedHTTPRequestData : public HELPER {
                 }
                 if (bytes_to_read !=
                     c.BlockingRead(&buffer_[offset], bytes_to_read, Connection::FillFullBuffer)) {
-                  BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
+                  CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
                 }
                 offset = next_offset;
               }
@@ -397,7 +397,7 @@ class HTTPServerConnection final {
                                    const std::string& content_type,
                                    const HTTPHeadersType& extra_headers) {
     if (responded_) {
-      BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
+      CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
@@ -589,7 +589,7 @@ class HTTPServerConnection final {
       const std::string& content_type = DefaultJSONContentType(),
       const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
     if (responded_) {
-      BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
+      CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
@@ -604,7 +604,7 @@ class HTTPServerConnection final {
   // that a response, that does not have to be sent, was really not sent.
   inline void DoNotSendAnyResponse() {
     if (responded_) {
-      BRICKS_THROW(AttemptedToSendHTTPResponseMoreThanOnce());  // LCOV_EXCL_LINE
+      CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());  // LCOV_EXCL_LINE
     }
     responded_ = true;
   }

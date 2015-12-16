@@ -136,7 +136,7 @@ class HTTPServerPOSIX final {
         handlers_[path] = handler;
         return HTTPRoutesScopeEntry();
       } else {
-        BRICKS_THROW(HandlerAlreadyExistsException(path));
+        CURRENT_THROW(HandlerAlreadyExistsException(path));
       }
     }
     handlers_[path] = handler;
@@ -151,7 +151,7 @@ class HTTPServerPOSIX final {
         handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
         return HTTPRoutesScopeEntry();
       } else {
-        BRICKS_THROW(HandlerAlreadyExistsException(path));
+        CURRENT_THROW(HandlerAlreadyExistsException(path));
       }
     }
     handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
@@ -162,7 +162,7 @@ class HTTPServerPOSIX final {
     // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
     if (handlers_.find(path) == handlers_.end()) {
-      BRICKS_THROW(HandlerDoesNotExistException(path));
+      CURRENT_THROW(HandlerDoesNotExistException(path));
     }
     handlers_.erase(path);
   }
@@ -181,7 +181,7 @@ class HTTPServerPOSIX final {
                          current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)),
                          content_type));
           } else {
-            BRICKS_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
+            CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
           }
         });
   }

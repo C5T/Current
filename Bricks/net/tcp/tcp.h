@@ -27,9 +27,9 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
+#if defined(CURRENT_POSIX) || defined(CURRENT_APPLE) || defined(CURRENT_JAVA) || defined(CURRENT_WINDOWS)
 #include "impl/posix.h"
-#elif defined(BRICKS_ANDROID)
+#elif defined(CURRENT_ANDROID)
 #error "tcp.h should not be included in ANDROID builds."
 #else
 #error "No implementation for `net/tcp.h` is available for your system."

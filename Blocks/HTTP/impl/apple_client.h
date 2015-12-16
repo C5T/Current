@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "../../../Bricks/waitable_atomic/waitable_atomic.h"
 
-#if defined(BRICKS_APPLE)
+#if defined(CURRENT_APPLE)
 
 #include "../types.h"
 
@@ -140,6 +140,6 @@ struct ImplWrapper<HTTPClientApple> {
 
 #include "apple_client.mm"
 
-#endif  // defined(BRICKS_APPLE)
+#endif  // defined(CURRENT_APPLE)
 
 #endif  // BLOCKS_HTTP_IMPL_APPLE_CLIENT_H

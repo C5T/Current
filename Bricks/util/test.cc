@@ -44,7 +44,7 @@ SOFTWARE.
 
 TEST(Util, BasicException) {
   try {
-    BRICKS_THROW(current::Exception("Foo"));
+    CURRENT_THROW(current::Exception("Foo"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
@@ -61,7 +61,7 @@ struct TestException : current::Exception {
 
 TEST(Util, CustomException) {
   try {
-    BRICKS_THROW(TestException("Bar", "Baz"));
+    CURRENT_THROW(TestException("Bar", "Baz"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.

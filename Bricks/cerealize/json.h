@@ -143,7 +143,7 @@ struct ParseJSONErrorHandler {};
 template <typename T>
 struct ParseJSONErrorHandler<T, false> {
   static void HandleError(const std::string& input_json, T&) {
-    BRICKS_THROW(current::ParseJSONException(input_json));
+    CURRENT_THROW(current::ParseJSONException(input_json));
   }
 };
 

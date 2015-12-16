@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
 
 #include "../regenerate_flag.cc"
 
@@ -42,7 +42,7 @@ SOFTWARE.
 TEST(Graph, GNUPlotLabels) {
   // Show labels on the plane.
   using namespace current::gnuplot;
-#ifndef BRICKS_APPLE
+#ifndef CURRENT_APPLE
 const char* const formats[2] = { "dumb", "pngcairo" };
 #else
 const char* const formats[2] = { "dumb", "png" };
@@ -75,11 +75,11 @@ const size_t image_dim = e ? 800 : 112;
 #else
     .OutputFormat("svg");  // Although the one below is actually a "png".
 #endif
-if (FLAGS_regenerate_golden_graphs) current::FileSystem::WriteStringToFile(result, ("golden/labels-" + BRICKS_ARCH_UNAME + '.' + extensions[e]).c_str());
-if (!e) ASSERT_EQ(result, current::FileSystem::ReadFileAsString("golden/labels-" + BRICKS_ARCH_UNAME + '.' + extensions[e]));
+if (FLAGS_regenerate_golden_graphs) current::FileSystem::WriteStringToFile(result, ("golden/labels-" + CURRENT_ARCH_UNAME + '.' + extensions[e]).c_str());
+if (!e) ASSERT_EQ(result, current::FileSystem::ReadFileAsString("golden/labels-" + CURRENT_ARCH_UNAME + '.' + extensions[e]));
 }
 }
 
-#endif  // BRICKS_WINDOWS
+#endif  // CURRENT_WINDOWS
 
 #endif  // BRICKS_GRAPH_DOCU_05

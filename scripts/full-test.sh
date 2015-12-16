@@ -8,7 +8,7 @@
 
 set -u -e
 
-CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DBRICKS_COVERAGE_REPORT_MODE"
+CPPFLAGS="-std=c++11 -g -Wall -W -fprofile-arcs -ftest-coverage -DCURRENT_COVERAGE_REPORT_MODE"
 LDFLAGS="-pthread -ldl"
 if [ $(uname) = "Darwin" ] ; then
   CPPFLAGS+=" -stdlib=libc++ -x objective-c++ -fobjc-arc"
@@ -42,7 +42,7 @@ echo
 echo '#include "../Bricks/dflags/dflags.h"'
 echo '#include "../3rdparty/gtest/gtest-main-with-dflags.h"'
 echo
-echo '#define BRICKS_MOCK_TIME'  # Assume and require none of the tests require wall time.
+echo '#define CURRENT_MOCK_TIME'  # Assume and require none of the tests require wall time.
 echo
 ) > "$FULL_TEST_DIR_NAME/$ALL_TESTS_TOGETHER.cc"
 

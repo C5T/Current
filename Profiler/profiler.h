@@ -38,8 +38,8 @@ SOFTWARE.
 
 #else
 
-#ifdef BRICKS_COVERAGE_REPORT_MODE
-#error "No `CURRENT_PROFILER` in `BRICKS_COVERAGE_REPORT_MODE` please."
+#ifdef CURRENT_COVERAGE_REPORT_MODE
+#error "No `CURRENT_PROFILER` in `CURRENT_COVERAGE_REPORT_MODE` please."
 #endif
 
 #include <thread>
@@ -49,8 +49,8 @@ SOFTWARE.
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/singleton.h"
 
-#ifdef BRICKS_MOCK_TIME
-#error "No `CURRENT_PROFILER` in `BRICKS_MOCK_TIME` please."
+#ifdef CURRENT_MOCK_TIME
+#error "No `CURRENT_PROFILER` in `CURRENT_MOCK_TIME` please."
 #endif
 
 struct Profiler {
