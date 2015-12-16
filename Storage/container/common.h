@@ -43,4 +43,3 @@ using Ordered = std::map<KEY, VALUE>;
 }  // namespace current
 
 #endif  // CURRENT_STORAGE_CONTAINER_COMMON_H
-
