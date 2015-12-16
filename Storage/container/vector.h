@@ -64,7 +64,7 @@ class Vector {
       journal_.LogMutation(DELETER(back_object), [this, back_object]() { vector_.push_back(back_object); });
       vector_.pop_back();
     } else {
-      throw CannotPopBackFromEmptyVectorException();
+      CURRENT_THROW(CannotPopBackFromEmptyVectorException());
     }
   }
 

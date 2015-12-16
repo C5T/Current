@@ -84,7 +84,7 @@ struct SpecificUncastableTypeException : UncastableTypeException {
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase {
   virtual void Handle(BASE&&, F&&, ARGS&&...) const {
-    throw SpecificUnhandledTypeException<BASE>();  // LCOV_EXCL_LINE
+    CURRENT_THROW(SpecificUnhandledTypeException<BASE>());  // LCOV_EXCL_LINE
   }
 };
 
@@ -96,7 +96,7 @@ struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {
     if (derived) {
       f(*derived, std::forward<ARGS>(args)...);
     } else {
-      throw SpecificUncastableTypeException<BASE, DERIVED>();  // LCOV_EXCL_LINE
+      CURRENT_THROW((SpecificUncastableTypeException<BASE, DERIVED>()));  // LCOV_EXCL_LINE
     }
   }
 };
@@ -154,7 +154,7 @@ const RTTIDispatcherBase<BASE, F, ARGS...>* RTTIFindHandler(const std::type_info
   if (handler != map.end()) {
     return handler->second.get();
   } else {
-    throw SpecificUnlistedTypeException<BASE>();  // LCOV_EXCL_LINE
+    CURRENT_THROW(SpecificUnlistedTypeException<BASE>());  // LCOV_EXCL_LINE
   }
 }
 
