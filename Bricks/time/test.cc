@@ -48,6 +48,8 @@ TEST(Time, SmokeTest) {
 
 #else
 
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 // Emit a warning that the test is disabled.
 // Sadly, `#warning` is non-standard.
 
@@ -61,10 +63,15 @@ TEST(Time, SmokeTest) {
 
 #else
 
+// Microsoft style.
 #pragma message("===================================================================")
 #pragma message("Ignore this warning if a full batch test is being run!")
 #pragma message("A flaky test comparing against wall time is disabled for batch run.")
 #pragma message("===================================================================")
 
 #endif  // _MSC_VER
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE
+
+
 #endif  // CURRENT_MOCK_TIME
