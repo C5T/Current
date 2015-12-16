@@ -45,7 +45,8 @@ SOFTWARE.
 
 using namespace current::strings;
 using namespace current::gnuplot;
-using namespace yoda;
+
+// `using namespace yoda`, as well as `using yoda::Dictionary` conflicts with Storage. -- D.K.
 
 DEFINE_int32(iris_port, 5000, "");
 
@@ -57,7 +58,7 @@ size_t number_of_flowers;
 std::map<size_t, std::string> dimension_names;
 
 TEST(Iris, Demo) {
-  typedef MemoryOnlyAPI<yoda::Dictionary<LabeledFlower>> TestAPI;
+  typedef yoda::MemoryOnlyAPI<yoda::Dictionary<LabeledFlower>> TestAPI;
   TestAPI api("labeled_flowers");
 
   // Allow running the test under `--gtest_repeat`.

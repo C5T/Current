@@ -44,12 +44,12 @@ struct CurrentSuper {
 // The superclass for all Current structures.
 struct CurrentStruct : CurrentSuper {};
 
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, T>::value)
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, ::current::decay<T>>::value)
 
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
-#define IS_VARIANT(T) (std::is_base_of<::current::CurrentVariant, T>::value)
+#define IS_VARIANT(T) (std::is_base_of<::current::CurrentVariant, ::current::decay<T>>::value)
 
 namespace sfinae {
 
