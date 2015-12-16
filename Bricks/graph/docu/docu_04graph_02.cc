@@ -40,9 +40,9 @@ TEST(Graph, Love) {
   // Where visualization meets love.
   using namespace current::gnuplot;
 #ifndef CURRENT_APPLE
-const char* const formats[2] = { "dumb", "pngcairo" };
+const char* const formats[2] = { "gnuplot", "pngcairo" };
 #else
-const char* const formats[2] = { "dumb", "png" };
+const char* const formats[2] = { "gnuplot", "png" };
 #endif
 const char* const extensions[2] = { "txt", "png" };
 for (size_t e = 0; e < 2; ++e) {

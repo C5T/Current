@@ -230,9 +230,14 @@ struct GNUPlot {
         f << "end" << std::endl;
       }
     }
-    assert(!::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str())
-                         .c_str()));
-    return current::FileSystem::ReadFileAsString(output_file_name.c_str());
+    if (output_format_ != "gnuplot") {
+      assert(!::system(strings::Printf("gnuplot <%s >%s\n", input_file_name.c_str(), output_file_name.c_str())
+                           .c_str()));
+      return current::FileSystem::ReadFileAsString(output_file_name.c_str());
+    } else {
+      // For unit tests, just compare the inputs.
+      return current::FileSystem::ReadFileAsString(input_file_name.c_str());
+    }
   }
 };
 
