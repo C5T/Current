@@ -116,55 +116,64 @@ TEST(TransactionalStorage, NewStorageDefinition) {
   {
     NewStorage storage(persistence_file_name);
     EXPECT_EQ(3u, storage.FieldsCount());
-    storage.Transaction([](CurrentStorage<NewStorage> fields) {
-      EXPECT_TRUE(fields.v1.Empty());
-      EXPECT_TRUE(fields.v2.Empty());
-      fields.v1.PushBack(Element(0));
-      fields.v1.PopBack();
-      fields.v1.PushBack(Element(42));
-      fields.v2.PushBack(Element(100));
-      EXPECT_EQ(1u, fields.v1.Size());
-      EXPECT_EQ(1u, fields.v2.Size());
-      EXPECT_EQ(42, Value(fields.v1[0]).x);
-      EXPECT_EQ(100, Value(fields.v2[0]).x);
-    });
+    {
+      const auto result = storage.Transaction([](CurrentStorage<NewStorage> fields) {
+        EXPECT_TRUE(fields.v1.Empty());
+        EXPECT_TRUE(fields.v2.Empty());
+        fields.v1.PushBack(Element(0));
+        fields.v1.PopBack();
+        fields.v1.PushBack(Element(42));
+        fields.v2.PushBack(Element(100));
+        EXPECT_EQ(1u, fields.v1.Size());
+        EXPECT_EQ(1u, fields.v2.Size());
+        EXPECT_EQ(42, Value(fields.v1[0]).x);
+        EXPECT_EQ(100, Value(fields.v2[0]).x);
+      });
+      EXPECT_TRUE(Successful(result));
+    }
 
-    storage.Transaction([](CurrentStorage<NewStorage> fields) {
-      fields.d.Add(Record{"one", 1});
+    {
+      const auto result = storage.Transaction([](CurrentStorage<NewStorage> fields) {
+        fields.d.Add(Record{"one", 1});
 
-      {
-        size_t count = 0u;
-        int32_t value = 0;
-        for (const auto& e : fields.d) {
-          ++count;
-          value += e.rhs;
+        {
+          size_t count = 0u;
+          int32_t value = 0;
+          for (const auto& e : fields.d) {
+            ++count;
+            value += e.rhs;
+          }
+          EXPECT_EQ(1u, count);
+          EXPECT_EQ(1, value);
         }
-        EXPECT_EQ(1u, count);
-        EXPECT_EQ(1, value);
-      }
 
-      EXPECT_FALSE(fields.d.Empty());
-      EXPECT_EQ(1u, fields.d.Size());
-      EXPECT_TRUE(Exists(fields.d["one"]));
-      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+        EXPECT_FALSE(fields.d.Empty());
+        EXPECT_EQ(1u, fields.d.Size());
+        EXPECT_TRUE(Exists(fields.d["one"]));
+        EXPECT_EQ(1, Value(fields.d["one"]).rhs);
 
-      fields.d.Add(Record{"two", 2});
+        fields.d.Add(Record{"two", 2});
 
-      EXPECT_FALSE(fields.d.Empty());
-      EXPECT_EQ(2u, fields.d.Size());
-      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
-      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+        EXPECT_FALSE(fields.d.Empty());
+        EXPECT_EQ(2u, fields.d.Size());
+        EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+        EXPECT_EQ(2, Value(fields.d["two"]).rhs);
 
-      fields.d.Add(Record{"three", 3});
-      fields.d.Erase("three");
-    });
+        fields.d.Add(Record{"three", 3});
+        fields.d.Erase("three");
+      });
+      EXPECT_TRUE(Successful(result));
+    }
 
-    storage.Transaction([](CurrentStorage<NewStorage> fields) {
-      fields.v1.PushBack(Element(1));
-      fields.v2.PushBack(Element(2));
-      fields.d.Add(Record{"three", 3});
-      throw std::logic_error("rollback, please");
-    });
+    {
+      const auto result = storage.Transaction([](CurrentStorage<NewStorage> fields) {
+        fields.v1.PushBack(Element(1));
+        fields.v2.PushBack(Element(2));
+        fields.d.Add(Record{"three", 3});
+        throw std::logic_error("rollback, please");
+      });
+      EXPECT_FALSE(Successful(result));
+    }
   }
 
   {

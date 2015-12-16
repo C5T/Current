@@ -123,6 +123,21 @@ auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
 
 // MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
 template <typename T>
+struct SuccessfulImplCaller {
+  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasSuccessfulImplMethod<TT>(0)>>
+  static bool CallSuccessfulImpl(TT&&) { return true; }
+
+  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasSuccessfulImplMethod<TT>(0)>>
+  static ENABLE_IF<current::sfinae::HasSuccessfulImplMethod<TT>(0), bool> CallSuccessfulImpl(TT&& x) { return x.SuccessfulImpl(); }
+};
+
+template <typename T>
+bool Successful(T&& x) {
+  return SuccessfulImplCaller<T>::CallSuccessfulImpl(std::forward<T>(x));
+}
+
+// MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.
+template <typename T>
 struct CheckIntegrityImplCaller {
   template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasCheckIntegrityImplMethod<TT>(0)>>
   static void CallCheckIntegrityImpl(TT&&) {}
@@ -148,6 +163,7 @@ T& Clone(T& x) {
 
 using current::Exists;
 using current::Value;
+using current::Successful;
 using current::CheckIntegrity;
 using current::Clone;
 

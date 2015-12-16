@@ -75,6 +75,17 @@ constexpr auto HasValueImplMethod(int) -> decltype(std::declval<const ENTRY>().V
   return true;
 }
 
+// Whether a `SuccessfulImpl()` method is defined for a type.
+template <typename ENTRY>
+constexpr bool HasSuccessfulImplMethod(char) {
+  return false;
+}
+
+template <typename ENTRY>
+constexpr auto HasSuccessfulImplMethod(int) -> decltype(std::declval<const ENTRY>().SuccessfulImpl(), bool()) {
+  return true;
+}
+
 // Whether an `CheckIntegrityImpl()` method is defined for a type.
 template <typename ENTRY>
 constexpr bool HasCheckIntegrityImplMethod(char) {
