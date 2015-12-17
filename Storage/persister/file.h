@@ -37,7 +37,7 @@ namespace storage {
 namespace persister {
 
 template <typename... TS>
-struct JSONFilePersister;
+class JSONFilePersister;
 
 template <typename... TS>
 class JSONFilePersister<TypeList<TS...>> {

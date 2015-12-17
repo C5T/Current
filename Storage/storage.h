@@ -50,7 +50,6 @@ SOFTWARE.
 
 #include "base.h"
 #include "transaction_policy.h"
-#include "transaction_result.h"
 
 #include "container/dictionary.h"
 #include "container/vector.h"
@@ -151,14 +150,13 @@ namespace storage {
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
     ::current::storage::TransactionResult<T_F_RESULT<F>> Transaction(F&& f) {                                \
-      FIELDS& fields = *this; \
-      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); });           \
+      FIELDS& fields = *this;                                                                                \
+      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); });                         \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     void Transaction(F1&& f1, F2&& f2) {                                                                     \
-      FIELDS& fields = *this; \
-      transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); },                  \
-                                      std::forward<F2>(f2));                                                 \
+      FIELDS& fields = *this;                                                                                \
+      transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2));        \
     }                                                                                                        \
     size_t FieldsCount() const { return fields_count; }                                                      \
   };                                                                                                         \

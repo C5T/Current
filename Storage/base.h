@@ -31,6 +31,7 @@ SOFTWARE.
 #include <cassert>
 
 #include "../TypeSystem/struct.h"
+#include "../TypeSystem/optional_result.h"
 
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/template/variadic_indexes.h"
@@ -77,12 +78,14 @@ struct FieldCounter {
   };
 };
 
+// Helper class to get the corresponding persisted types for each of the storage fields.
 template <typename ADDER, typename DELETER>
 struct FieldInfo {
   using T_ADDER = ADDER;
   using T_DELETER = DELETER;
 };
 
+// Persisted types list generator.
 template <typename FIELDS, typename INDEXES>
 struct TypeListMapperImpl;
 
@@ -96,6 +99,7 @@ template <typename FIELDS, int COUNT>
 using FieldsTypeList =
     typename TypeListMapperImpl<FIELDS, current::variadic_indexes::generate_indexes<COUNT>>::result;
 
+// `MutationJournal` keeps all the changes made during one transaction, as well as the way to rollback them.
 struct MutationJournal {
   std::vector<std::unique_ptr<current::CurrentSuper>> commit_log;
   std::vector<std::function<void()>> rollback_log;
@@ -125,6 +129,12 @@ struct FieldsBase : BASE {
  protected:
   MutationJournal current_storage_mutation_journal_;
 };
+
+// `TransactionResult` is a return type for `Transaction` methods.
+struct TransactionResultHelperType {};
+
+template <typename T>
+using TransactionResult = current::OptionalResult<TransactionResultHelperType, T>;
 
 }  // namespace storage
 }  // namespace current

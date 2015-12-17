@@ -22,36 +22,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_TRANSACTION_RESULT_H
-#define CURRENT_STORAGE_TRANSACTION_RESULT_H
+#ifndef CURRENT_TYPE_SYSTEM_OPTIONAL_RESULT_H
+#define CURRENT_TYPE_SYSTEM_OPTIONAL_RESULT_H
 
-#include "../TypeSystem/exceptions.h"
+#include "exceptions.h"
 
 namespace current {
-namespace storage {
 
-template <typename T>
-struct TransactionResult {
-  TransactionResult() : successful_(false) {}
+struct OptionalResultSuccessful {};
+struct OptionalResultFailed {};
 
-  TransactionResult(TransactionResult&& rhs) : value_(std::move(rhs.value_)), successful_(rhs.successful_) {}
+template <typename HELPER_TYPE, typename T>
+class OptionalResult {
+ public: 
+  OptionalResult(const OptionalResultFailed&) : successful_(false) {}
 
-  TransactionResult<T>& operator=(TransactionResult&& rhs) {
+  OptionalResult(OptionalResult&& rhs) : value_(std::move(rhs.value_)), successful_(rhs.successful_) {}
+
+  OptionalResult<HELPER_TYPE, T>& operator=(OptionalResult&& rhs) {
     value_ = std::move(rhs.value_);
     successful_ = rhs.successful_;
     return *this;
   }
 
-  TransactionResult(T&& result) : value_(std::move(result)), successful_(true) {}
+  OptionalResult(T&& result) : value_(std::move(result)), successful_(true) {}
 
-  TransactionResult<T>& operator=(T&& result) {
+  OptionalResult<HELPER_TYPE, T>& operator=(T&& result) {
     value_ = std::move(result);
     successful_ = true;
     return *this;
   }
 
-  TransactionResult(const TransactionResult&) = delete;
-  TransactionResult<T>& operator=(const TransactionResult&) = delete;
+  OptionalResult() = delete;
+  OptionalResult(const OptionalResult&) = delete;
+  OptionalResult<HELPER_TYPE, T>& operator=(const OptionalResult&) = delete;
 
   bool SuccessfulImpl() const { return successful_; }
 
@@ -72,23 +76,26 @@ struct TransactionResult {
   }
 
  private:
-  bool successful_;
   T value_;
+  bool successful_;
 };
 
-template <>
-struct TransactionResult<void> {
-  explicit TransactionResult(bool successful) : successful_(successful) {}
+template <typename HELPER_TYPE>
+class OptionalResult<HELPER_TYPE, void> {
+ public:
+  explicit OptionalResult(bool successful) : successful_(successful) {}
+  explicit OptionalResult(const OptionalResultSuccessful&) : successful_(true) {}
+  explicit OptionalResult(const OptionalResultFailed&) : successful_(false) {}
 
-  TransactionResult(TransactionResult&& rhs) : successful_(rhs.successful_) {}
+  OptionalResult(OptionalResult&& rhs) : successful_(rhs.successful_) {}
 
-  TransactionResult<void>& operator=(TransactionResult&& rhs) {
+  OptionalResult<HELPER_TYPE, void>& operator=(OptionalResult&& rhs) {
     successful_ = rhs.successful_;
     return *this;
   }
 
-  TransactionResult(const TransactionResult&) = delete;
-  TransactionResult<void>& operator=(const TransactionResult&) = delete;
+  OptionalResult(const OptionalResult&) = delete;
+  OptionalResult<HELPER_TYPE, void>& operator=(const OptionalResult&) = delete;
 
   bool SuccessfulImpl() const { return successful_; }
 
@@ -96,7 +103,6 @@ struct TransactionResult<void> {
   bool successful_;
 };
 
-}  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_STORAGE_TRANSACTION_RESULT_H
+#endif  // CURRENT_TYPE_SYSTEM_OPTIONAL_RESULT_H

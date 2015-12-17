@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <mutex>
 
-#include "transaction_result.h"
+#include "base.h"
 
 namespace current {
 namespace storage {
@@ -57,9 +57,9 @@ struct Synchronous final {
     }
     if (successful) {
       persister_.PersistJournal(journal_);
-      return result;
+      return TransactionResult<T_F_RESULT<F>>(std::move(result));
     } else {
-      return TransactionResult<T_F_RESULT<F>>();
+      return TransactionResult<T_F_RESULT<F>>(current::OptionalResultFailed());
     }
   }
 
