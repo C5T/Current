@@ -29,12 +29,11 @@ SOFTWARE.
 
 #include "base.h"
 
+#include "../Bricks/util/future.h"
+
 namespace current {
 namespace storage {
 namespace transaction_policy {
-
-using current::storage::TransactionResult;
-using current::storage::MutationJournal;
 
 template <class PERSISTER>
 struct Synchronous final {
@@ -44,29 +43,35 @@ struct Synchronous final {
   using T_F_RESULT = typename std::result_of<F()>::type;
 
   template <typename F, class = ENABLE_IF<!std::is_void<T_F_RESULT<F>>::value>>
-  TransactionResult<T_F_RESULT<F>> Transaction(F&& f) {
+  Future<TransactionResult<T_F_RESULT<F>>, StrictFuture::Strict> Transaction(F&& f) {
+    using T_RESULT = T_F_RESULT<F>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
+    std::promise<TransactionResult<T_RESULT>> promise;
+    Future<TransactionResult<T_RESULT>, StrictFuture::Strict> future = promise.get_future();
     bool successful = false;
-    T_F_RESULT<F> result;
+    T_RESULT f_result;
     try {
-      result = f();
+      f_result = f();
       successful = true;
     } catch (std::exception&) {
       journal_.Rollback();
     }
     if (successful) {
       persister_.PersistJournal(journal_);
-      return TransactionResult<T_F_RESULT<F>>(std::move(result));
+      promise.set_value(TransactionResult<T_RESULT>(std::move(f_result)));
     } else {
-      return TransactionResult<T_F_RESULT<F>>(current::OptionalResultFailed());
+      promise.set_value(TransactionResult<T_RESULT>(OptionalResultFailed()));
     }
+    return future;
   }
 
   template <typename F, class = ENABLE_IF<std::is_void<T_F_RESULT<F>>::value>>
-  TransactionResult<void> Transaction(F&& f) {
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) {
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
+    std::promise<TransactionResult<void>> promise;
+    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     bool successful = false;
     try {
       f();
@@ -77,14 +82,17 @@ struct Synchronous final {
     if (successful) {
       persister_.PersistJournal(journal_);
     }
-    return TransactionResult<void>(successful);
+    promise.set_value(TransactionResult<void>(successful));
+    return future;
   }
 
   // TODO(mz+dk): implement proper logic here (consider rollbacks).
   template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<T_F_RESULT<F1>>::value>>
-  void Transaction(F1&& f1, F2&& f2) {
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
+    std::promise<TransactionResult<void>> promise;
+    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     bool successful = false;
     try {
       f2(f1());
@@ -95,6 +103,8 @@ struct Synchronous final {
     if (successful) {
       persister_.PersistJournal(journal_);
     }
+    promise.set_value(TransactionResult<void>(successful));
+    return future;
   }
 
  private:

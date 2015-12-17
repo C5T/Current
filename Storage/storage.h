@@ -61,8 +61,8 @@ SOFTWARE.
 #include "../TypeSystem/optional.h"
 
 #include "../Bricks/exception.h"
-#include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
+#include "../Bricks/time/chrono.h"
 
 #include "../Bricks/cerealize/cerealize.h"  // TODO(dkorolev): Deprecate.
 
@@ -149,14 +149,16 @@ namespace storage {
     template <typename F>                                                                                    \
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
-    ::current::storage::TransactionResult<T_F_RESULT<F>> Transaction(F&& f) {                                \
+    ::current::Future<::current::storage::TransactionResult<T_F_RESULT<F>>, ::current::StrictFuture::Strict> \
+    Transaction(F&& f) {                                                                                     \
       FIELDS& fields = *this;                                                                                \
       return transaction_policy_.Transaction([&f, &fields]() { return f(fields); });                         \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
-    void Transaction(F1&& f1, F2&& f2) {                                                                     \
+    ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
+    Transaction(F1&& f1, F2&& f2) {                                                                          \
       FIELDS& fields = *this;                                                                                \
-      transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2));        \
+      return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
     }                                                                                                        \
     size_t FieldsCount() const { return fields_count; }                                                      \
   };                                                                                                         \

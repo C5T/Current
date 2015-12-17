@@ -105,7 +105,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
       bob.key = static_cast<UserID>(102);
       data.users.Add(alice);
       data.users.Add(bob);
-    });
+    }).Wait();
 
     // Delete one, but rollback the transaction.
     storage.Transaction([](CurrentStorage<ExampleStorage> data) {
@@ -115,7 +115,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
       EXPECT_EQ(1u, data.users.Size());
       // TODO(dkorolev) + TODO(mzhurovich): Clean syntax for it. How about `throw CURRENT_ROLLBACK();` ?
       throw std::logic_error("Rollback.");
-    });
+    }).Wait();
 
     // Confirm the previous transaction was reverted, and delete the privileged user for real now.
     storage.Transaction([](CurrentStorage<ExampleStorage> data) {
@@ -123,7 +123,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
       EXPECT_EQ(2u, data.users.Size());
       data.users.Erase(static_cast<UserID>(102));
       EXPECT_EQ(1u, data.users.Size());
-    });
+    }).Wait();
 
     // Confirm the non-reverted deleted user was indeed deleted.
     storage.Transaction([](CurrentStorage<ExampleStorage> data) {
@@ -135,7 +135,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
       EXPECT_FALSE(Value(data.users[static_cast<UserID>(101)]).male);
 
       EXPECT_FALSE(Exists(data.users[static_cast<UserID>(102)]));
-    });
+    }).Wait();
   }
 }
 
@@ -165,7 +165,7 @@ TEST(StorageDocumentation, BasicUsage) {
       data.users.Add(test1);
       data.users.Add(test2);
       current::time::SetNow(std::chrono::microseconds(1002ull));  // <-- This timestamp will be used.
-    });
+    }).Wait();
 
     current::time::SetNow(std::chrono::microseconds(1003ull));
     storage.Transaction([](CurrentStorage<ExampleStorage> data) {
@@ -174,13 +174,13 @@ TEST(StorageDocumentation, BasicUsage) {
       test3.name = "to be deleted";
       data.users.Add(test3);
       current::time::SetNow(std::chrono::microseconds(1004ull));
-    });
+    }).Wait();
 
     current::time::SetNow(std::chrono::microseconds(1005ull));
     storage.Transaction([](CurrentStorage<ExampleStorage> data) {
       data.users.Erase(static_cast<UserID>(3));
       current::time::SetNow(std::chrono::microseconds(1006ull));
-    });
+    }).Wait();
   }
 
   const std::vector<std::string> persisted_transactions =

@@ -131,7 +131,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
         EXPECT_EQ(1u, fields.v2.Size());
         EXPECT_EQ(42, Value(fields.v1[0]).x);
         EXPECT_EQ(100, Value(fields.v2[0]).x);
-      });
+      }).Go();
       EXPECT_TRUE(Successful(result));
     }
 
@@ -164,7 +164,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
 
         fields.d.Add(Record{"three", 3});
         fields.d.Erase("three");
-      });
+      }).Go();
       EXPECT_TRUE(Successful(result));
     }
 
@@ -174,7 +174,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
         fields.v2.PushBack(Element(2));
         fields.d.Add(Record{"three", 3});
         throw std::logic_error("rollback, please");
-      });
+      }).Go();
       EXPECT_FALSE(Successful(result));
     }
   }
@@ -192,7 +192,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
       EXPECT_FALSE(Exists(fields.d["three"]));
-    });
+    }).Wait();
   }
 }
 
