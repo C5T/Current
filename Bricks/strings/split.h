@@ -158,11 +158,11 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
             if (key_and_value.size() == 2) {
               result.emplace_back(key_and_value[0], key_and_value[1]);
             } else if (throw_mode == KeyValueParsing::Throw) {
-              BRICKS_THROW(KeyValueMultipleValuesException());
+              CURRENT_THROW(KeyValueMultipleValuesException());
             }
           } else {
             if (throw_mode == KeyValueParsing::Throw) {
-              BRICKS_THROW(KeyValueNoValueException());
+              CURRENT_THROW(KeyValueNoValueException());
             }
           }
         });

@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include <errno.h>
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
 #include <dirent.h>
 #include <unistd.h>
 #else
@@ -54,7 +54,7 @@ namespace current {
 
 // Platform-indepenent, injection-friendly filesystem wrapper.
 struct FileSystem {
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   static constexpr char PathSeparatingSlash = '/';
 #else
   static constexpr char PathSeparatingSlash = '\\';
@@ -80,10 +80,10 @@ struct FileSystem {
       if (fi.read(&buffer[0], size).good()) {
         return buffer;
       } else {
-        BRICKS_THROW(FileException());  // LCOV_EXCL_LINE: This line not unit tested.
+        CURRENT_THROW(FileException());  // LCOV_EXCL_LINE: This line not unit tested.
       }
     } catch (const std::ifstream::failure&) {
-      BRICKS_THROW(CannotReadFileException(file_name));
+      CURRENT_THROW(CannotReadFileException(file_name));
     }
   }
 
@@ -99,15 +99,15 @@ struct FileSystem {
       fo.open(file_name, (append ? std::ofstream::app : std::ofstream::trunc) | std::ofstream::binary);
       fo << contents;
     } catch (const std::ofstream::failure&) {
-      BRICKS_THROW(FileException());
+      CURRENT_THROW(FileException());
     }
   }
 
   static inline std::string GenTmpFileName() {
     char buffer[L_tmpnam];
-#if defined(BRICKS_WINDOWS)
+#if defined(CURRENT_WINDOWS)
     assert(!(::tmpnam_s(buffer)));
-#elif defined(BRICKS_APPLE)
+#elif defined(CURRENT_APPLE)
     // TODO(dkorolev): Fix temporary file names generation.
     return strings::Printf("/tmp/.current-tmp-%08x", rand());
 #else
@@ -124,7 +124,7 @@ struct FileSystem {
 
   static inline std::string JoinPath(const std::string& path_name, const std::string& base_name) {
     if (base_name.empty()) {
-      BRICKS_THROW(FileException());
+      CURRENT_THROW(FileException());
     } else if (path_name.empty() || base_name.front() == PathSeparatingSlash) {
       return base_name;
     } else if (path_name.back() == PathSeparatingSlash) {
@@ -137,9 +137,9 @@ struct FileSystem {
   static inline bool IsDir(const std::string& file_or_directory_name) {
     struct stat info;
     if (::stat(file_or_directory_name.c_str(), &info)) {
-      BRICKS_THROW(FileException());
+      CURRENT_THROW(FileException());
     } else {
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
       return !!(S_ISDIR(info.st_mode));
 #else
       return !!(info.st_mode & _S_IFDIR);
@@ -150,18 +150,18 @@ struct FileSystem {
   static inline uint64_t GetFileSize(const std::string& file_name) {
     struct stat info;
     if (::stat(file_name.c_str(), &info)) {
-      BRICKS_THROW(FileException());
+      CURRENT_THROW(FileException());
     } else {
       if (
 // clang-format off
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
           S_ISDIR(info.st_mode)
 #else
           info.st_mode & _S_IFDIR
 #endif
     ) {
         // clang-format on
-        BRICKS_THROW(FileException());
+        CURRENT_THROW(FileException());
       } else {
         return static_cast<uint64_t>(info.st_size);
       }
@@ -176,7 +176,7 @@ struct FileSystem {
     // Hard-code default permissions to avoid cross-platform compatibility issues.
     if (
 // clang-format off
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
         ::mkdir(directory.c_str(), 0755)
 #else
         ::_mkdir(directory.c_str())
@@ -185,7 +185,7 @@ struct FileSystem {
       // clang-format on
       if (parameters == MkDirParameters::ThrowExceptionOnError) {
         // TODO(dkorolev): Analyze errno.
-        BRICKS_THROW(FileException());
+        CURRENT_THROW(FileException());
       }
     }
   }
@@ -193,7 +193,7 @@ struct FileSystem {
   static inline void RenameFile(const std::string& old_name, const std::string& new_name) {
     if (::rename(old_name.c_str(), new_name.c_str())) {
       // TODO(dkorolev): Analyze errno.
-      BRICKS_THROW(FileException());
+      CURRENT_THROW(FileException());
     }
   }
 
@@ -205,11 +205,11 @@ struct FileSystem {
   static inline void ScanDirUntil(const std::string& directory,
                                   F&& f,
                                   ScanDirParameters parameters = ScanDirParameters::ListFilesOnly) {
-#ifdef BRICKS_WINDOWS
+#ifdef CURRENT_WINDOWS
     WIN32_FIND_DATAA find_data;
     HANDLE handle = ::FindFirstFileA((directory + "\\*.*").c_str(), &find_data);
     if (handle == INVALID_HANDLE_VALUE) {
-      BRICKS_THROW(DirDoesNotExistException());
+      CURRENT_THROW(DirDoesNotExistException());
     } else {
       struct ScopedCloseFindFileHandle {
         HANDLE handle_;
@@ -249,11 +249,11 @@ struct FileSystem {
       }
     } else {
       if (errno == ENOENT) {
-        BRICKS_THROW(DirDoesNotExistException());
+        CURRENT_THROW(DirDoesNotExistException());
       } else if (errno == ENOTDIR) {
-        BRICKS_THROW(PathIsNotADirectoryException());
+        CURRENT_THROW(PathIsNotADirectoryException());
       } else {
-        BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
+        CURRENT_THROW(FileException());  // LCOV_EXCL_LINE
       }
     }
 #endif
@@ -276,7 +276,7 @@ struct FileSystem {
                             RmFileParameters parameters = RmFileParameters::ThrowExceptionOnError) {
     if (::remove(file_name.c_str())) {
       if (parameters == RmFileParameters::ThrowExceptionOnError) {
-        BRICKS_THROW(FileException());
+        CURRENT_THROW(FileException());
       }
     }
   }
@@ -303,7 +303,7 @@ struct FileSystem {
     if (recursive == RmDirRecursive::No) {
       if (
 // clang-format off
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
           ::rmdir(directory.c_str())
 #else
           ::_rmdir(directory.c_str())
@@ -312,11 +312,11 @@ struct FileSystem {
         // clang-format on
         if (parameters == RmDirParameters::ThrowExceptionOnError) {
           if (errno == ENOENT) {
-            BRICKS_THROW(DirDoesNotExistException());
+            CURRENT_THROW(DirDoesNotExistException());
           } else if (errno == ENOTEMPTY) {
-            BRICKS_THROW(DirIsNotEmptyException());
+            CURRENT_THROW(DirIsNotEmptyException());
           } else {
-            BRICKS_THROW(FileException());  // LCOV_EXCL_LINE
+            CURRENT_THROW(FileException());  // LCOV_EXCL_LINE
           }
         }
       }
@@ -325,13 +325,15 @@ struct FileSystem {
         ScanDir(directory,
                 [&directory, parameters](const std::string& name) {
                   const std::string full_name = JoinPath(directory, name);
-                  if (IsDir(full_name)) {
-                    RmDir(full_name, parameters, RmDirRecursive::Yes);
-                  } else {
-                    RmFile(full_name,
-                           (parameters == RmDirParameters::ThrowExceptionOnError)
-                               ? RmFileParameters::ThrowExceptionOnError
-                               : RmFileParameters::Silent);
+                  if (name != "." && name != "..") {
+                    if (IsDir(full_name)) {
+                      RmDir(full_name, parameters, RmDirRecursive::Yes);
+                    } else {
+                      RmFile(full_name,
+                             (parameters == RmDirParameters::ThrowExceptionOnError)
+                                 ? RmFileParameters::ThrowExceptionOnError
+                                 : RmFileParameters::Silent);
+                    }
                   }
                 },
                 ScanDirParameters::ListFilesAndDirs);

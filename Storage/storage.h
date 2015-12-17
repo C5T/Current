@@ -229,7 +229,7 @@ class VectorAPI : protected VectorStorage<T> {
       persister_.PersistPopBack(VectorStorage<T>::vector_.size());
       VectorStorage<T>::vector_.pop_back();
     } else {
-      throw CannotPopBackFromEmptyVectorException();
+      CURRENT_THROW(CannotPopBackFromEmptyVectorException());
     }
   }
 

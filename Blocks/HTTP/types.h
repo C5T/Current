@@ -221,7 +221,7 @@ struct HTTPImpl {
     IMPL_HELPER::PrepareInput(response_params, impl);
     if (!impl.Go()) {
 #ifndef ANDROID
-      BRICKS_THROW(current::net::HTTPException());  // LCOV_EXCL_LINE
+      CURRENT_THROW(current::net::HTTPException());  // LCOV_EXCL_LINE
 #else
       // TODO(dkorolev): Chat with Alex. We can overcome the exception here, but should we?
       return typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE();

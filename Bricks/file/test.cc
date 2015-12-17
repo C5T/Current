@@ -40,7 +40,7 @@ using current::DirIsNotEmptyException;
 DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 TEST(File, JoinPath) {
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   EXPECT_EQ("foo/bar", FileSystem::JoinPath("foo", "bar"));
   EXPECT_EQ("foo/bar", FileSystem::JoinPath("foo/", "bar"));
   EXPECT_EQ("/foo/bar", FileSystem::JoinPath("/foo", "bar"));
@@ -66,7 +66,7 @@ TEST(File, JoinPath) {
 }
 
 TEST(File, GetFileExtension) {
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   EXPECT_EQ("", FileSystem::GetFileExtension(""));
   EXPECT_EQ("", FileSystem::GetFileExtension("a"));
   EXPECT_EQ("b", FileSystem::GetFileExtension("a.b"));
@@ -240,7 +240,7 @@ TEST(File, ScanDir) {
   ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), DirDoesNotExistException);
   ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), DirDoesNotExistException);
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   {
     // TODO(dkorolev): Perhaps support this exception type on Windows as well.
     const auto file_remover = FileSystem::ScopedRmFile(dir);

@@ -65,7 +65,7 @@ class HTTPClientPOSIX final {
       redirected = false;
       const std::string composed_url = parsed_url.ComposeURL();
       if (all_urls.count(composed_url)) {
-        BRICKS_THROW(current::net::HTTPRedirectLoopException());
+        CURRENT_THROW(current::net::HTTPRedirectLoopException());
       }
       all_urls.insert(composed_url);
       current::net::Connection connection(
@@ -188,7 +188,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
     if (!request_params.allow_redirects && request_params.url != response.response_url_after_redirects_) {
-      BRICKS_THROW(current::net::HTTPRedirectNotAllowedException());
+      CURRENT_THROW(current::net::HTTPRedirectNotAllowedException());
     }
     output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;

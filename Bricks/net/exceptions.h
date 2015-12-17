@@ -40,7 +40,7 @@ struct NetworkException : Exception {
 // TCP-level exceptions are derived from SocketException.
 struct SocketException : NetworkException {};
 
-#ifdef BRICKS_WINDOWS
+#ifdef CURRENT_WINDOWS
 struct SocketWSAStartupException : SocketException {};
 #endif
 

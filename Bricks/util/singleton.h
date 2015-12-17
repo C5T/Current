@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "../port.h"
 
-#ifndef BRICKS_HAS_THREAD_LOCAL
+#ifndef CURRENT_HAS_THREAD_LOCAL
 #include <cstdlib>
 #include <iostream>
 #include <pthread.h>  // To emulate `thread_local` via `pthread_*`.
@@ -42,7 +42,7 @@ inline T& Singleton() {
   return instance;
 }
 
-#ifdef BRICKS_HAS_THREAD_LOCAL
+#ifdef CURRENT_HAS_THREAD_LOCAL
 template <typename T>
 inline T& ThreadLocalSingleton() {
   thread_local static T instance;

@@ -85,9 +85,9 @@ CURRENT_STRUCT(HTTPAPITestObject) {
   CURRENT_DEFAULT_CONSTRUCTOR(HTTPAPITestObject) : number(42), text("text"), array({1, 2, 3}) {}
 };
 
-#if !defined(BRICKS_COVERAGE_REPORT_MODE) && !defined(BRICKS_WINDOWS)
-TEST(ArchitectureTest, BRICKS_ARCH_UNAME_AS_IDENTIFIER) {
-  ASSERT_EQ(BRICKS_ARCH_UNAME, FLAGS_current_runtime_arch);
+#if !defined(CURRENT_COVERAGE_REPORT_MODE) && !defined(CURRENT_WINDOWS)
+TEST(ArchitectureTest, CURRENT_ARCH_UNAME_AS_IDENTIFIER) {
+  ASSERT_EQ(CURRENT_ARCH_UNAME, FLAGS_current_runtime_arch);
 }
 #endif
 
@@ -219,7 +219,7 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
 }
 
-#ifndef BRICKS_APPLE
+#ifndef CURRENT_APPLE
 // Disabled redirect tests for Apple due to implementation specifics -- M.Z.
 TEST(HTTPAPI, Redirect) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
@@ -532,7 +532,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
       HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "fffuuuuu", "text/plain")).body);
 }
 
-#ifndef BRICKS_APPLE
+#ifndef CURRENT_APPLE
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, PostFromInvalidFile) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
@@ -651,7 +651,7 @@ struct OnlyCheckForInvalidURLOnceSingleton {
   bool done = false;
 };
 
-#ifndef BRICKS_APPLE
+#ifndef CURRENT_APPLE
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, InvalidUrl) {
   bool& done = Singleton<OnlyCheckForInvalidURLOnceSingleton>().done;

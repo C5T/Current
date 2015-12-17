@@ -40,7 +40,8 @@ template <typename... TS>
 struct JSONFilePersister;
 
 template <typename... TS>
-struct JSONFilePersister<TypeList<TS...>> {
+class JSONFilePersister<TypeList<TS...>> {
+ public:
   using T_VARIANT = Variant<TS...>;
   explicit JSONFilePersister(const std::string& filename) : filename_(filename) {}
 

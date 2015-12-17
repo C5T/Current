@@ -113,7 +113,7 @@ class CerealFileAppenderBase {
     if (p >= 0) {
       return static_cast<size_t>(p);
     } else {
-      BRICKS_THROW(current::CerealizeFileStreamErrorException());  // LCOV_EXCL_LINE
+      CURRENT_THROW(current::CerealizeFileStreamErrorException());  // LCOV_EXCL_LINE
     }
   }
 
@@ -347,7 +347,7 @@ class CerealJSONFileParser {
       si_(entry);
       return entry;
     } else {
-      BRICKS_THROW(CerealizeFileStreamErrorException());
+      CURRENT_THROW(CerealizeFileStreamErrorException());
     }
   }
 

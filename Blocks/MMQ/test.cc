@@ -153,7 +153,7 @@ TEST(InMemoryMQ, WaitOnOverflowTest) {
   std::vector<std::thread> producers;
 
   for (size_t i = 0; i < 10; ++i) {
-    producers.emplace_back(producer, 'a' + i, 10);
+    producers.emplace_back(producer, static_cast<char>('a' + i), 10u);
   }
 
   for (auto& p : producers) {

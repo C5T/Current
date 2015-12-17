@@ -31,7 +31,7 @@ SOFTWARE.
 #include "mime_type.h"
 #include "default_messages.h"
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_APPLE) || defined(BRICKS_JAVA) || defined(BRICKS_WINDOWS)
+#if defined(CURRENT_POSIX) || defined(CURRENT_APPLE) || defined(CURRENT_JAVA) || defined(CURRENT_WINDOWS)
 #include "impl/server.h"
 #else
 #error "No implementation for `net/http.h` is available for your system."

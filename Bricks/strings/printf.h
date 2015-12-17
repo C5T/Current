@@ -37,7 +37,7 @@ inline std::string Printf(const char *fmt, ...) {
   // `Printf()` crops the output to five KiB.
   const int max_formatted_output_length = 5 * 1024;
 
-#ifdef BRICKS_HAS_THREAD_LOCAL
+#ifdef CURRENT_HAS_THREAD_LOCAL
   thread_local static char buf[max_formatted_output_length + 1];
 #else
   // Slow but safe.
@@ -46,7 +46,7 @@ inline std::string Printf(const char *fmt, ...) {
 
   va_list ap;
   va_start(ap, fmt);
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   vsnprintf(buf, max_formatted_output_length + 1, fmt, ap);
 #else
   _vsnprintf_s(buf, max_formatted_output_length + 1, _TRUNCATE, fmt, ap);

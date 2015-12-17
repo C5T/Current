@@ -9,7 +9,7 @@
 #include "../Bricks/dflags/dflags.h"
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-#define BRICKS_MOCK_TIME
+#define CURRENT_MOCK_TIME
 
 #include "./cerealize/docu/docu_01cerealize_01_test.cc"
 #include "./cerealize/docu/docu_01cerealize_02_test.cc"
