@@ -151,11 +151,13 @@ namespace storage {
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
     ::current::storage::TransactionResult<T_F_RESULT<F>> Transaction(F&& f) {                                \
-      return transaction_policy_.Transaction(std::bind(f, std::ref(static_cast<FIELDS&>(*this))));           \
+      FIELDS& fields = *this; \
+      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); });           \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     void Transaction(F1&& f1, F2&& f2) {                                                                     \
-      transaction_policy_.Transaction(std::bind(f1, std::ref(static_cast<FIELDS&>(*this))),                  \
+      FIELDS& fields = *this; \
+      transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); },                  \
                                       std::forward<F2>(f2));                                                 \
     }                                                                                                        \
     size_t FieldsCount() const { return fields_count; }                                                      \
