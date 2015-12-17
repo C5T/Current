@@ -23,12 +23,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_JAVA_WRAPPER_H
-#define BRICKS_JAVA_WRAPPER_H
+#ifndef CURRENT_JAVA_WRAPPER_H
+#define CURRENT_JAVA_WRAPPER_H
 
 #include "../port.h"
 
-#if defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#if defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 
 #include <jni.h>
 #include <string>
@@ -89,11 +89,11 @@ inline std::string ToStdString(JNIEnv* env, jstring str) {
 #include "java_wrapper.cc"
 #endif  // LINK_JAVA_ON_LOAD_INTO_SOURCE
 
-#else  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#else  // defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 #ifndef CURRENT_TEST_COMPILATION
 #error "`java_wrapper.h` should only be compiled on Java and Android."
 #endif  // CURRENT_TEST_COMPILATION
 
-#endif  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#endif  // defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 
-#endif  // BRICKS_JAVA_WRAPPER_H
+#endif  // CURRENT_JAVA_WRAPPER_H

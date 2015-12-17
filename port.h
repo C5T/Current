@@ -24,11 +24,11 @@ SOFTWARE.
 
 // Cross-platform portability header.
 //
-// Ensures that one and only one of BRICKS_{POSIX,APPLE,ANDROID} is defined.
+// Ensures that one and only one of CURRENT_{POSIX,APPLE,ANDROID} is defined.
 // Keeps the one provided externally. Defaults to environmental setting if none has been defined.
 
-#ifndef BRICKS_PORT_H
-#define BRICKS_PORT_H
+#ifndef CURRENT_PORT_H
+#define CURRENT_PORT_H
 
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 
@@ -45,63 +45,63 @@ SOFTWARE.
 #include <string>  // For architecture names.
 #include <memory>  // For `std::unique_ptr` and the mimic of `make_unique`.
 
-#ifdef BRICKS_PORT_COUNT
-#error "`BRICKS_PORT_COUNT` should not be defined for port.h"
+#ifdef CURRENT_PORT_COUNT
+#error "`CURRENT_PORT_COUNT` should not be defined for port.h"
 #endif
 
-#define BRICKS_PORT_COUNT \
-  (defined(BRICKS_POSIX) + defined(BRICKS_APPLE) + defined(BRICKS_JAVA) + defined(BRICKS_WINDOWS))
+#define CURRENT_PORT_COUNT \
+  (defined(CURRENT_POSIX) + defined(CURRENT_APPLE) + defined(CURRENT_JAVA) + defined(CURRENT_WINDOWS))
 
 #if defined(ANDROID)
 
-#if BRICKS_PORT_COUNT != 0
-#error "Should not define any `BRICKS_*` macros when buliding for Android."
+#if CURRENT_PORT_COUNT != 0
+#error "Should not define any `CURRENT_*` macros when buliding for Android."
 #else
-#define BRICKS_ANDROID
+#define CURRENT_ANDROID
 #endif
 
 #else  // !defined(ANDROID)
 
-#if BRICKS_PORT_COUNT > 1
-#error "More than one `BRICKS_*` architectures have been defined."
-#elif BRICKS_PORT_COUNT == 0
+#if CURRENT_PORT_COUNT > 1
+#error "More than one `CURRENT_*` architectures have been defined."
+#elif CURRENT_PORT_COUNT == 0
 
 #if defined(__linux)
-#define BRICKS_POSIX
+#define CURRENT_POSIX
 #elif defined(__APPLE__)
-#define BRICKS_APPLE
+#define CURRENT_APPLE
 #elif defined(_WIN32)
-#define BRICKS_WINDOWS
+#define CURRENT_WINDOWS
 #else
-#error "Could not detect architecture. Please define one of the `BRICKS_*` macros explicitly."
+#error "Could not detect architecture. Please define one of the `CURRENT_*` macros explicitly."
 #endif
 
-#endif  // `BRICKS_PORT_COUNT == 0`
+#endif  // `CURRENT_PORT_COUNT == 0`
 
 #endif  // #elif of `defined(ANDROID)`
 
-#undef BRICKS_PORT_COUNT
+#undef CURRENT_PORT_COUNT
 
-#if defined(BRICKS_POSIX)
-#define BRICKS_ARCH_UNAME std::string("Linux")
-#define BRICKS_ARCH_UNAME_AS_IDENTIFIER Linux
-#elif defined(BRICKS_APPLE)
-#define BRICKS_ARCH_UNAME std::string("Darwin")
-#define BRICKS_ARCH_UNAME_AS_IDENTIFIER Darwin
-#elif defined(BRICKS_JAVA)
-#define BRICKS_ARCH_UNAME std::string("Java")
-#define BRICKS_ARCH_UNAME_AS_IDENTIFIER Java
-#elif defined(BRICKS_ANDROID)
-#define BRICKS_ARCH_UNAME std::string("Android")
-#define BRICKS_ARCH_UNAME_AS_IDENTIFIER Android
-#elif defined(BRICKS_WINDOWS)
-#define BRICKS_ARCH_UNAME std::string("Windows")
-#define BRICKS_ARCH_UNAME_AS_IDENTIFIER Windows
+#if defined(CURRENT_POSIX)
+#define CURRENT_ARCH_UNAME std::string("Linux")
+#define CURRENT_ARCH_UNAME_AS_IDENTIFIER Linux
+#elif defined(CURRENT_APPLE)
+#define CURRENT_ARCH_UNAME std::string("Darwin")
+#define CURRENT_ARCH_UNAME_AS_IDENTIFIER Darwin
+#elif defined(CURRENT_JAVA)
+#define CURRENT_ARCH_UNAME std::string("Java")
+#define CURRENT_ARCH_UNAME_AS_IDENTIFIER Java
+#elif defined(CURRENT_ANDROID)
+#define CURRENT_ARCH_UNAME std::string("Android")
+#define CURRENT_ARCH_UNAME_AS_IDENTIFIER Android
+#elif defined(CURRENT_WINDOWS)
+#define CURRENT_ARCH_UNAME std::string("Windows")
+#define CURRENT_ARCH_UNAME_AS_IDENTIFIER Windows
 #else
 #error "Unknown architecture."
 #endif
 
-#ifdef BRICKS_WINDOWS
+#ifdef CURRENT_WINDOWS
 
 // #include <windows.h>  -- `#include <windows.h>` does not play well with WSA -- D.K.
 
@@ -121,10 +121,10 @@ SOFTWARE.
 // Check for 'thread_local' specifier support.
 #ifdef __clang__
 #if __has_feature(cxx_thread_local)
-#define BRICKS_HAS_THREAD_LOCAL
+#define CURRENT_HAS_THREAD_LOCAL
 #endif
-#elif !defined(BRICKS_ANDROID)
-#define BRICKS_HAS_THREAD_LOCAL
+#elif !defined(CURRENT_ANDROID)
+#define CURRENT_HAS_THREAD_LOCAL
 #endif
 
 // Current internals rely heavily on specific implementations of certain data types.
@@ -141,7 +141,7 @@ static_assert(std::numeric_limits<double>::is_iec559, "`double` type is not IEC-
 static_assert(sizeof(float) == 4u, "Only 32-bit `float` is supported.");
 static_assert(sizeof(double) == 8u, "Only 64-bit `double` is supported.");
 
-// `std::make_unique` exists in C++14, but for Bricks we'd like to see it "supported" in C++11. -- D.K.
+// `std::make_unique` exists in C++14, but for Current we'd like to see it "supported" in C++11. -- D.K.
 namespace make_unique_for_poor_cpp11_users_impl {
 template <typename T, typename... PARAMS>
 std::unique_ptr<T> make_unique(PARAMS&&... params) {
@@ -152,7 +152,6 @@ using namespace make_unique_for_poor_cpp11_users_impl;
 
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");
-// TODO(dkorolev): Chat with Max, remove or move it into Bricks.
 template <typename T1, typename T2>
 struct is_same_or_compile_error {
   enum { value = std::is_same<T1, T2>::value };

@@ -27,7 +27,7 @@ SOFTWARE.
 #include <sstream>
 #include <thread>
 
-#define BRICKS_MOCK_TIME  // `SetNow()`.
+#define CURRENT_MOCK_TIME  // `SetNow()`.
 
 #include "event_collector.h"
 

@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-#ifndef BRICKS_MOCK_TIME
+#ifndef CURRENT_MOCK_TIME
 
 // This smoke test is flaky, but it does the job of comparing current::time::Now() to wall time.
 TEST(Time, SmokeTest) {
@@ -37,7 +37,7 @@ TEST(Time, SmokeTest) {
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   const std::chrono::microseconds b = current::time::Now();
   const int64_t dt = static_cast<int64_t>(b - a);
-#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
+#if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
   const int64_t allowed_skew = 3000;
 #else
   const int64_t allowed_skew = 25000;  // Some systems are slower in regard to this test.
@@ -47,6 +47,8 @@ TEST(Time, SmokeTest) {
 }
 
 #else
+
+#ifndef CURRENT_COVERAGE_REPORT_MODE
 
 // Emit a warning that the test is disabled.
 // Sadly, `#warning` is non-standard.
@@ -61,10 +63,15 @@ TEST(Time, SmokeTest) {
 
 #else
 
+// Microsoft style.
 #pragma message("===================================================================")
 #pragma message("Ignore this warning if a full batch test is being run!")
 #pragma message("A flaky test comparing against wall time is disabled for batch run.")
 #pragma message("===================================================================")
 
 #endif  // _MSC_VER
-#endif  // BRICKS_MOCK_TIME
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE
+
+
+#endif  // CURRENT_MOCK_TIME

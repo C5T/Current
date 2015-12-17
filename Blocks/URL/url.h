@@ -73,7 +73,7 @@ struct URLWithoutParametersParser {
                              const std::string& previous_host = "",
                              const int previous_port = 0) {
     if (url.empty()) {
-      BRICKS_THROW(EmptyURLException());
+      CURRENT_THROW(EmptyURLException());
     }
     scheme = "";
     size_t offset_past_scheme = 0;

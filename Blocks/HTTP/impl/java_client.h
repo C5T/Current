@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../../../port.h"
 
-#if defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#if defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 
 #include "../../../java_wrapper/java_wrapper.h"
 #include "../../../util/make_scope_guard.h"
@@ -291,6 +291,6 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
 
 }  // namespace blocks
 
-#endif  // defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#endif  // defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 
 #endif  // BLOCKS_HTTP_IMPL_JAVA_CLIENT_H

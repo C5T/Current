@@ -357,8 +357,8 @@ class SharedCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>>
   }
 
   // User-facing `RipCurrent()` method.
-  template <InputPolicy IN = INPUT, size_t OUT_N = sizeof...(OUTPUT_TYPES)>
-  typename std::enable_if<IN == InputPolicy::DoesNotAccept && OUT_N == 0, RipCurrentRunContext>::type
+  template <InputPolicy T_IN = INPUT, size_t OUT_N = sizeof...(OUTPUT_TYPES)>
+  typename std::enable_if<T_IN == InputPolicy::DoesNotAccept && OUT_N == 0, RipCurrentRunContext>::type
   RipCurrent() {
     SpawnAndRun(std::make_shared<DummyNoEntryTypeAcceptor>());
 

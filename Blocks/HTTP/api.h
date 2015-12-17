@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Bricks HTTP API provides a generic interface for basic HTTP operations,
+// Current HTTP API provides a generic interface for basic HTTP operations,
 // along with their cross-platform implementations.
 //
 // HTTP server has a TODO(dkorolev) implementation.
@@ -57,15 +57,15 @@ SOFTWARE.
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/template/weed.h"
 
-#if defined(BRICKS_POSIX) || defined(BRICKS_WINDOWS)
+#if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS)
 #include "impl/posix_client.h"
 #include "impl/posix_server.h"
 typedef blocks::HTTPClientPOSIX HTTP_CLIENT;
-#elif defined(BRICKS_APPLE)
+#elif defined(CURRENT_APPLE)
 #include "impl/apple_client.h"
 #include "impl/posix_server.h"
 typedef blocks::HTTPClientApple HTTP_CLIENT;
-#elif defined(BRICKS_JAVA) || defined(BRICKS_ANDROID)
+#elif defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 #include "impl/java_client.h"
 #include "impl/posix_server.h"
 typedef blocks::aloha::HTTPClientPlatformWrapper HTTP_CLIENT;

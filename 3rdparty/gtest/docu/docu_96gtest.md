@@ -2,7 +2,7 @@
 
 ## Unit Testing: `gtest`
 
-Bricks contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
+Current contains a header-only port of Google's [`GoogleTest`](http://code.google.com/p/googletest/): a great C++ unit testing library open-sourced by [**Google**](https://www.google.com/finance?q=GOOG).
 
 Check out [`Bricks/file/test.cc`](https://github.com/C5T/Current/blob/master/Bricks/file/test.cc), or most of other `test.cc` files in `Bricks` for example usage.
 
@@ -59,4 +59,4 @@ A three-minute intro:
 
 For more details please refer to the original [`GoogleTest` documentation](http://code.google.com/p/googletest/wiki/Documentation).
 
-The code in Bricks is a header-only port of the code originally released by Google. It requires no linker dependencies.
+The code in Current is a header-only port of the code originally released by Google. It requires no linker dependencies.

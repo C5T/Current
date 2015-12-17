@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#define BRICKS_MOCK_TIME
+#define CURRENT_MOCK_TIME
 
 #include "../yoda.h"
 

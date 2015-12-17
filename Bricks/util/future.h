@@ -38,7 +38,7 @@ namespace current {
 // The default, `Forgiving`, mode does not have this requirement.
 enum class StrictFuture : bool { Forgiving = false, Strict = true };
 
-template <typename T, StrictFuture STRICT = StrictFuture::Forgiving>
+template <typename T, StrictFuture T_STRICT = StrictFuture::Forgiving>
 struct FutureImpl {
   FutureImpl() = delete;
   FutureImpl(std::future<T>&& rhs) : f_(std::move(rhs)), used_(false) {}
@@ -47,7 +47,7 @@ struct FutureImpl {
     rhs.used_ = true;
   }
   ~FutureImpl() {
-    if (STRICT == StrictFuture::Strict && !used_) {
+    if (T_STRICT == StrictFuture::Strict && !used_) {
       std::cerr << "Strict future has been left hanging, while `.Go()` or `.Wait()` must have been called."
                 << std::endl;
       std::exit(-1);
@@ -68,8 +68,8 @@ struct FutureImpl {
   bool used_ = false;
 };
 
-template <StrictFuture STRICT>
-struct FutureImpl<void, STRICT> {
+template <StrictFuture T_STRICT>
+struct FutureImpl<void, T_STRICT> {
   FutureImpl() = delete;
   FutureImpl(std::future<void>&& rhs) : f_(std::move(rhs)), used_(false) {}
   FutureImpl(FutureImpl<void, StrictFuture::Forgiving>&& rhs) : f_(std::move(rhs.f_)), used_(false) {}
@@ -92,8 +92,8 @@ struct FutureImpl<void, STRICT> {
 };
 
 // To fight "error: default template arguments may not be used in partial specializations" for `void`.
-template <typename T, StrictFuture STRICT = StrictFuture::Forgiving>
-using Future = FutureImpl<T, STRICT>;
+template <typename T, StrictFuture T_STRICT = StrictFuture::Forgiving>
+using Future = FutureImpl<T, T_STRICT>;
 
 }  // namespace current
 

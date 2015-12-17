@@ -55,7 +55,7 @@ class Exception : public std::exception {
 };
 
 // Extra parenthesis around `e((E))` are essential to not make it a function declaration.
-#define BRICKS_THROW(E)              \
+#define CURRENT_THROW(E)             \
   {                                  \
     auto e((E));                     \
     e.SetCaller(#E);                 \

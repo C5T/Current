@@ -232,7 +232,7 @@ TEST(TCPTest, ResolveAddressException) {
   }
 }
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
 // Apparently, Windows has no problems opening two sockets on the same port -- D.K.
 // Tested on Visual Studio 2015 Preview.
 TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
@@ -242,7 +242,7 @@ TEST(TCPTest, CanNotBindTwoSocketsToTheSamePortSimultaneously) {
 }
 #endif
 
-#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
+#if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
 // Apparently, Windows has no problems sending a 10MiB message -- D.K.
 // Tested on Visual Studio 2015 Preview.
 // Temporary disabled for Apple -- M.Z.

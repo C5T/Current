@@ -39,7 +39,7 @@ SOFTWARE.
 namespace current {
 namespace time {
 
-#ifdef BRICKS_MOCK_TIME
+#ifdef CURRENT_MOCK_TIME
 
 struct MockNowImpl {
   std::chrono::microseconds mock_now_value;
@@ -85,7 +85,7 @@ inline void SleepUntil(T moment) {
   }
 }
 
-#endif  // BRICKS_MOCK_TIME
+#endif  // CURRENT_MOCK_TIME
 
 }  // namespace current::time
 

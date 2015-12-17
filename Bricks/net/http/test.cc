@@ -332,7 +332,7 @@ TEST(PosixHTTPServerTest, ChunkedBodyLargeFirstChunk) {
   t.join();
 }
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
 struct HTTPClientImplCURL {
   static string Syscall(const string& cmdline) {
     FILE* pipe = ::popen(cmdline.c_str(), "r");
@@ -405,7 +405,7 @@ class HTTPClientImplPOSIX {
 template <typename T>
 class HTTPTest : public ::testing::Test {};
 
-#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
+#if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
 // Temporary disabled CURL tests for Apple - M.Z.
 typedef ::testing::Types<HTTPClientImplPOSIX, HTTPClientImplCURL> HTTPClientImplsTypeList;
 #else

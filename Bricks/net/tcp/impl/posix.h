@@ -40,7 +40,7 @@ SOFTWARE.
 #include <utility>
 #include <vector>
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
 
 #include <errno.h>
 #include <arpa/inet.h>
@@ -69,13 +69,13 @@ const size_t kMaxServerQueuedConnections = 1024;
 const bool kDisableNagleAlgorithmByDefault = false;
 
 struct SocketSystemInitializer {
-#ifdef BRICKS_WINDOWS
+#ifdef CURRENT_WINDOWS
   struct OneTimeInitializer {
     OneTimeInitializer() {
       BRICKS_NET_LOG("WSAStartup() ...\n");
       WSADATA wsaData;
       if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
-        BRICKS_THROW(SocketWSAStartupException());
+        CURRENT_THROW(SocketWSAStartupException());
       }
       BRICKS_NET_LOG("WSAStartup() : OK\n");
     }
@@ -95,14 +95,14 @@ class SocketHandle : private SocketSystemInitializer {
 
   inline SocketHandle(NewHandle) : socket_(::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) {
     if (socket_ < 0) {
-      BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
+      CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
     BRICKS_NET_LOG("S%05d socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);\n", socket_);
   }
 
   inline SocketHandle(FromHandle from) : socket_(from.handle) {
     if (socket_ < 0) {
-      BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
+      CURRENT_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
     }
     BRICKS_NET_LOG("S%05d == initialized externally.\n", socket_);
   }
@@ -110,7 +110,7 @@ class SocketHandle : private SocketSystemInitializer {
   inline ~SocketHandle() {
     if (socket_ != -1) {
       BRICKS_NET_LOG("S%05d close() ...\n", socket_);
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
       ::close(socket_);
 #else
       ::closesocket(socket_);
@@ -124,7 +124,7 @@ class SocketHandle : private SocketSystemInitializer {
   // SocketHandle does not expose copy constructor and assignment operator. It should only be moved.
 
  private:
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   SOCKET socket_;
 #else
   mutable SOCKET socket_;  // Need to support taking the handle away from a non-move constructor.
@@ -139,10 +139,10 @@ class SocketHandle : private SocketSystemInitializer {
     explicit ReadOnlyValidSocketAccessor(const SOCKET& ref) : ref_(ref) {}
     inline operator SOCKET() {
       if (!ref_) {
-        BRICKS_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
+        CURRENT_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
       }
       if (ref_ == -1) {
-        BRICKS_THROW(AttemptedToUseMovedAwayConnection());
+        CURRENT_THROW(AttemptedToUseMovedAwayConnection());
       }
       return ref_;
     }
@@ -158,7 +158,7 @@ class SocketHandle : private SocketSystemInitializer {
   void operator=(const SocketHandle&) = delete;
   void operator=(SocketHandle&&) = delete;
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
   SocketHandle(const SocketHandle&) = delete;
 #else
  public:
@@ -193,7 +193,7 @@ class Connection : public SocketHandle {
       const uint8_t* end = (buffer + max_length);
       const int flags = ((policy == BlockingReadPolicy::ReturnASAP) ? 0 : MSG_WAITALL);
 
-#ifdef BRICKS_WINDOWS
+#ifdef CURRENT_WINDOWS
       int wsa_last_error;
 #endif
 
@@ -203,7 +203,7 @@ class Connection : public SocketHandle {
         BRICKS_NET_LOG("S%05d BlockingRead() ... attempting to read %d bytes.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(remaining_bytes_to_read));
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
         const ssize_t retval = ::recv(socket, ptr, remaining_bytes_to_read, flags);
 #else
         const int retval =
@@ -222,11 +222,11 @@ class Connection : public SocketHandle {
           }
         }
 
-#ifdef BRICKS_WINDOWS
+#ifdef CURRENT_WINDOWS
         wsa_last_error = ::WSAGetLastError();
 #endif
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
         if (errno == EAGAIN) {  // LCOV_EXCL_LINE
           continue;             // LCOV_EXCL_LINE
         }
@@ -244,18 +244,18 @@ class Connection : public SocketHandle {
         //    (Really, just a safety check).
       } while (false);
 
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
       if (errno == ECONNRESET) {  // LCOV_EXCL_LINE
         BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer));
-        BRICKS_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
+        CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
       } else {
         BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",  // LCOV_EXCL_LINE
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer),
                        errno);
-        BRICKS_THROW(SocketReadException());  // LCOV_EXCL_LINE
+        CURRENT_THROW(SocketReadException());  // LCOV_EXCL_LINE
       }
 #else
       if (wsa_last_error == WSAECONNRESET) {
@@ -263,26 +263,26 @@ class Connection : public SocketHandle {
         BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer));
-        BRICKS_THROW(ConnectionResetByPeer());
+        CURRENT_THROW(ConnectionResetByPeer());
       } else {
         BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
                        static_cast<SOCKET>(socket),
                        static_cast<int>(ptr - buffer),
                        errno);
-        BRICKS_THROW(SocketReadException());
+        CURRENT_THROW(SocketReadException());
       }
 #endif
     }
   }
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
-#ifdef BRICKS_APPLE
+#ifdef CURRENT_APPLE
     static_cast<void>(more);  // Supress the 'unused parameter' warning on Apple.
 #endif
     assert(buffer);
     BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) ...\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
-#if !defined(BRICKS_WINDOWS) && !defined(BRICKS_APPLE)
+#if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
     const int result =
         static_cast<int>(::send(socket, buffer, write_length, MSG_NOSIGNAL | (more ? MSG_MORE : 0)));
 #else
@@ -292,9 +292,9 @@ class Connection : public SocketHandle {
         static_cast<int>(::send(socket, static_cast<const char*>(buffer), static_cast<int>(write_length), 0));
 #endif
     if (result < 0) {
-      BRICKS_THROW(SocketWriteException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      CURRENT_THROW(SocketWriteException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     } else if (static_cast<size_t>(result) != write_length) {
-      BRICKS_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
+      CURRENT_THROW(SocketCouldNotWriteEverythingException());  // This one is tested though.
     }
     BRICKS_NET_LOG(
         "S%05d BlockingWrite(%d bytes) : OK\n", static_cast<SOCKET>(socket), static_cast<int>(write_length));
@@ -335,7 +335,7 @@ class Socket final : public SocketHandle {
                          const int max_connections = kMaxServerQueuedConnections,
                          const bool disable_nagle_algorithm = kDisableNagleAlgorithmByDefault)
       : SocketHandle(SocketHandle::NewHandle()) {
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
     int just_one = 1;
 #else
     u_long just_one = 1;
@@ -343,33 +343,33 @@ class Socket final : public SocketHandle {
 
     // LCOV_EXCL_START
     if (disable_nagle_algorithm) {
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
       if (::setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &just_one, sizeof(just_one)))
 #else
       if (::setsockopt(
               socket, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<const char*>(&just_one), sizeof(just_one)))
 #endif
       {
-        BRICKS_THROW(SocketCreateException());
+        CURRENT_THROW(SocketCreateException());
       }
     }
     // LCOV_EXCL_STOP
     if (::setsockopt(socket,
                      SOL_SOCKET,
                      SO_REUSEADDR,
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
                      &just_one,
 #else
                      reinterpret_cast<const char*>(&just_one),
 #endif
                      sizeof(just_one))) {
-      BRICKS_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      CURRENT_THROW(SocketCreateException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
-#ifdef BRICKS_APPLE
+#ifdef CURRENT_APPLE
     // Emulate MSG_NOSIGNAL behavior.
     if (::setsockopt(socket, SOL_SOCKET, SO_NOSIGPIPE, static_cast<void*>(&just_one), sizeof(just_one))) {
-      BRICKS_THROW(SocketCreateException());
+      CURRENT_THROW(SocketCreateException());
     }
 #endif
 
@@ -382,13 +382,13 @@ class Socket final : public SocketHandle {
     BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
 
     if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == -1) {
-      BRICKS_THROW(SocketBindException());
+      CURRENT_THROW(SocketBindException());
     }
 
     BRICKS_NET_LOG("S%05d bind()+listen() : bind() OK\n", static_cast<SOCKET>(socket));
 
     if (::listen(socket, max_connections)) {
-      BRICKS_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      CURRENT_THROW(SocketListenException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 
     BRICKS_NET_LOG("S%05d bind() and listen() : listen() OK\n", static_cast<SOCKET>(socket));
@@ -402,19 +402,19 @@ class Socket final : public SocketHandle {
     memset(&addr_client, 0, sizeof(addr_client));
     // TODO(dkorolev): Type socklen_t ?
     auto addr_client_length = sizeof(sockaddr_in);
-#ifndef BRICKS_WINDOWS
+#ifndef CURRENT_WINDOWS
     const SOCKET handle = ::accept(socket,
                                    reinterpret_cast<struct sockaddr*>(&addr_client),
                                    reinterpret_cast<socklen_t*>(&addr_client_length));
     if (handle == -1) {
       BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
-      BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #else
     const SOCKET handle = ::accept(
         socket, reinterpret_cast<struct sockaddr*>(&addr_client), reinterpret_cast<int*>(&addr_client_length));
     if (handle == INVALID_SOCKET) {
-      BRICKS_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+      CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #endif
     BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
@@ -454,7 +454,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
           // TODO(dkorolev): LOG(somewhere, strings::Printf("Error in getaddrinfo: %s\n",
           // gai_strerror(retval)));
         }
-        BRICKS_THROW(SocketResolveAddressException());
+        CURRENT_THROW(SocketResolveAddressException());
       }
       struct sockaddr* p_addr = servinfo->ai_addr;
       // TODO(dkorolev): Use a random address, not the first one. Ref. iteration:
@@ -464,7 +464,7 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
       const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval2) {
-        BRICKS_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
+        CURRENT_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
       // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
       ::freeaddrinfo(servinfo);
