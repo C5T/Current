@@ -95,9 +95,9 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
-CURRENT_STORAGE_STRUCT_ALIAS(Element, ElementVector1);
-CURRENT_STORAGE_STRUCT_ALIAS(Element, ElementVector2);
-CURRENT_STORAGE_STRUCT_ALIAS(Record, RecordDictionary);
+CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector1);
+CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector2);
+CURRENT_STORAGE_STRUCT_TAG(Record, RecordDictionary);
 
 using current::storage::container::Ordered;
 CURRENT_STORAGE(NewStorageDefinition) {
@@ -108,7 +108,7 @@ CURRENT_STORAGE(NewStorageDefinition) {
 
 }  // namespace transactional_storage_test
 
-TEST(TransactionalStorage, NewStorageDefinition) {
+TEST(TransactionalStorage, SmokeTest) {
   using namespace transactional_storage_test;
   using NewStorage = NewStorageDefinition<JSONFilePersister>;
 
@@ -132,7 +132,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
         EXPECT_EQ(42, Value(fields.v1[0]).x);
         EXPECT_EQ(100, Value(fields.v2[0]).x);
       }).Go();
-      EXPECT_TRUE(Successful(result));
+      EXPECT_TRUE(WasCommited(result));
     }
 
     {
@@ -165,7 +165,7 @@ TEST(TransactionalStorage, NewStorageDefinition) {
         fields.d.Add(Record{"three", 3});
         fields.d.Erase("three");
       }).Go();
-      EXPECT_TRUE(Successful(result));
+      EXPECT_TRUE(WasCommited(result));
     }
 
     {
@@ -173,9 +173,17 @@ TEST(TransactionalStorage, NewStorageDefinition) {
         fields.v1.PushBack(Element(1));
         fields.v2.PushBack(Element(2));
         fields.d.Add(Record{"three", 3});
-        throw std::logic_error("rollback, please");
+        CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
-      EXPECT_FALSE(Successful(result));
+      EXPECT_FALSE(WasCommited(result));
+    }
+    {
+      auto f = [](CurrentStorage<NewStorage>) { return 42; };
+
+      const auto result = storage.Transaction(f).Go();
+      EXPECT_TRUE(WasCommited(result));
+      EXPECT_TRUE(Exists(result));
+      EXPECT_EQ(42, Value(result));
     }
   }
 
@@ -193,6 +201,117 @@ TEST(TransactionalStorage, NewStorageDefinition) {
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
       EXPECT_FALSE(Exists(fields.d["three"]));
     }).Wait();
+  }
+}
+
+TEST(TransactionalStorage, Exceptions) {
+  using namespace transactional_storage_test;
+  using NewStorage = NewStorageDefinition<SherlockInMemoryStreamPersister>;
+
+  NewStorage storage("exceptions_test");
+
+  bool should_throw;
+  auto f_void = [&should_throw](CurrentStorage<NewStorage>) {
+    if (should_throw) {
+      CURRENT_STORAGE_THROW_ROLLBACK();
+    }
+  };
+
+  auto f_void_custom_exception = [&should_throw](CurrentStorage<NewStorage>) {
+    if (should_throw) {
+      throw std::logic_error("wtf");
+    }
+  };
+
+  bool throw_with_value;
+  auto f_int = [&should_throw, &throw_with_value](CurrentStorage<NewStorage>) {
+    if (should_throw) {
+      if (throw_with_value) {
+        CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, -1);
+      } else {
+        CURRENT_STORAGE_THROW_ROLLBACK();
+      }
+    } else {
+      return 42;
+    }
+  };
+
+  auto f_int_custom_exception = [&should_throw](CurrentStorage<NewStorage>) {
+    if (should_throw) {
+      throw 100500;
+    } else {
+      return 42;
+    }
+  };
+
+  // `void` lambda successfully returned.
+  {
+    should_throw = false;
+    const auto result = storage.Transaction(f_void).Go();
+    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(Exists(result));
+  }
+
+  // `void` lambda with rollback requested by user.
+  {
+    should_throw = true;
+    const auto result = storage.Transaction(f_void).Go();
+    EXPECT_FALSE(WasCommited(result));
+    EXPECT_TRUE(Exists(result));
+  }
+
+  // `void` lambda with exception.
+  {
+    should_throw = true;
+    auto result = storage.Transaction(f_void_custom_exception);
+    result.Wait();
+    // We can ignore exception until we try to get the result.
+    EXPECT_THROW(result.Go(), std::logic_error);
+  }
+
+  // `int` lambda successfully returned.
+  {
+    should_throw = false;
+    const auto result = storage.Transaction(f_int).Go();
+    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(Exists(result));
+    EXPECT_EQ(42, Value(result));
+  }
+
+  // `int` lambda with rollback not returning value requested by user.
+  {
+    should_throw = true;
+    throw_with_value = false;
+    const auto result = storage.Transaction(f_int).Go();
+    EXPECT_FALSE(WasCommited(result));
+    EXPECT_FALSE(Exists(result));
+  }
+
+  // `int` lambda with rollback returning value requested by user.
+  {
+    should_throw = true;
+    throw_with_value = true;
+    const auto result = storage.Transaction(f_int).Go();
+    EXPECT_FALSE(WasCommited(result));
+    EXPECT_TRUE(Exists(result));
+    EXPECT_EQ(-1, Value(result));
+  }
+
+  // `int` lambda with exception.
+  {
+    should_throw = true;
+    bool was_thrown = false;
+    try {
+      storage.Transaction(f_int_custom_exception).Go();
+    } catch (int e) {
+      was_thrown = true;
+      EXPECT_EQ(100500, e);
+    } catch (...) {
+      ASSERT_TRUE(false) << "`f_int_custom_exception` threw wrong exception type.";
+    }
+    if (!was_thrown) {
+      ASSERT_TRUE(false) << "`f_int_custom_exception` threw no exception.";
+    }
   }
 }
 

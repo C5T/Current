@@ -28,6 +28,8 @@ SOFTWARE.
 #include <mutex>
 
 #include "base.h"
+#include "exceptions.h"
+#include "transaction_result.h"
 
 #include "../Bricks/util/future.h"
 
@@ -54,14 +56,24 @@ struct Synchronous final {
     try {
       f_result = f();
       successful = true;
-    } catch (std::exception&) {
+    } catch (StorageRollbackExceptionWithValue<T_RESULT> e) {
       journal_.Rollback();
+      promise.set_value(TransactionResult<T_RESULT>::Rollbacked(std::move(e.value)));
+    } catch (StorageRollbackExceptionWithNoValue) {
+      journal_.Rollback();
+      promise.set_value(TransactionResult<T_RESULT>::Rollbacked(OptionalResultMissing()));
+    } catch (...) {
+      journal_.Rollback();
+      try {
+        promise.set_exception(std::current_exception());
+      } catch (const std::exception& e) {
+        std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
+        std::exit(-1);
+      }
     }
     if (successful) {
       persister_.PersistJournal(journal_);
-      promise.set_value(TransactionResult<T_RESULT>(std::move(f_result)));
-    } else {
-      promise.set_value(TransactionResult<T_RESULT>(OptionalResultFailed()));
+      promise.set_value(TransactionResult<T_RESULT>::Commited(std::move(f_result)));
     }
     return future;
   }
@@ -76,17 +88,26 @@ struct Synchronous final {
     try {
       f();
       successful = true;
-    } catch (std::exception&) {
+    } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
+      promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultExists()));
+    } catch (...) {
+      journal_.Rollback();
+      try {
+        promise.set_exception(std::current_exception());
+      } catch (const std::exception& e) {
+        std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
+        std::exit(-1);
+      }
     }
     if (successful) {
       persister_.PersistJournal(journal_);
+      promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
     }
-    promise.set_value(TransactionResult<void>(successful));
     return future;
   }
 
-  // TODO(mz+dk): implement proper logic here (consider rollbacks).
+  // TODO(mz+dk): implement proper logic here (consider rollbacks & exceptions).
   template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<T_F_RESULT<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -102,8 +123,10 @@ struct Synchronous final {
     }
     if (successful) {
       persister_.PersistJournal(journal_);
+      promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
+    } else {
+      promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultMissing()));
     }
-    promise.set_value(TransactionResult<void>(successful));
     return future;
   }
 

@@ -74,9 +74,7 @@ CURRENT_STRUCT(User) {
   CURRENT_CONSTRUCTOR(User)(UserID key = UserID::INVALID) : key(key) {}
 };
 
-// TODO(dkorolev) + TODO(mzhurovich): Perhaps some `PERSISTED` is a better name than `ALIAS`?
-
-CURRENT_STORAGE_STRUCT_ALIAS(User, PersistedUser);
+CURRENT_STORAGE_STRUCT_TAG(User, PersistedUser);
 
 CURRENT_STORAGE(ExampleStorageDefinition) {
   CURRENT_STORAGE_FIELD(users, Dictionary, PersistedUser);
@@ -113,8 +111,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
       EXPECT_EQ(2u, data.users.Size());
       data.users.Erase(static_cast<UserID>(101));
       EXPECT_EQ(1u, data.users.Size());
-      // TODO(dkorolev) + TODO(mzhurovich): Clean syntax for it. How about `throw CURRENT_ROLLBACK();` ?
-      throw std::logic_error("Rollback.");
+      CURRENT_STORAGE_THROW_ROLLBACK();
     }).Wait();
 
     // Confirm the previous transaction was reverted, and delete the privileged user for real now.

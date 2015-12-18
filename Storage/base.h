@@ -31,7 +31,6 @@ SOFTWARE.
 #include <cassert>
 
 #include "../TypeSystem/struct.h"
-#include "../TypeSystem/optional_result.h"
 
 #include "../Bricks/template/typelist.h"
 #include "../Bricks/template/variadic_indexes.h"
@@ -129,12 +128,6 @@ struct FieldsBase : BASE {
  protected:
   MutationJournal current_storage_mutation_journal_;
 };
-
-// `TransactionResult` is a return type for `Transaction` methods.
-struct TransactionResultHelperType {};
-
-template <typename T>
-using TransactionResult = current::OptionalResult<TransactionResultHelperType, T>;
 
 }  // namespace storage
 }  // namespace current

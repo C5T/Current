@@ -31,8 +31,7 @@ namespace current {
 namespace storage {
 
 struct StorageException : Exception {
-  StorageException() : Exception() {}
-  explicit StorageException(const std::string& s) : Exception(s) {}
+  using Exception::Exception;
 };
 
 struct StorageCannotAppendToFileException : StorageException {
@@ -40,9 +39,28 @@ struct StorageCannotAppendToFileException : StorageException {
       : StorageException("Cannot append to: `" + filename + "`.") {}
 };
 
+struct StorageRollbackExceptionWithNoValue : StorageException {
+  using StorageException::StorageException;
+};
+
+template <typename T>
+struct StorageRollbackExceptionWithValue : StorageException {
+  StorageRollbackExceptionWithValue(T&& value, const std::string& what = std::string())
+      : StorageException(what), value(std::move(value)) {}
+  T value;
+};
+
 }  // namespace current::storage
 }  // namespace current
 
+#define CURRENT_STORAGE_THROW_ROLLBACK() throw ::current::storage::StorageRollbackExceptionWithNoValue()
+
+#define CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(type, value) \
+  throw ::current::storage::StorageRollbackExceptionWithValue<type>(value)
+
 using StorageCannotAppendToFile = const current::storage::StorageCannotAppendToFileException&;
+using StorageRollbackExceptionWithNoValue = const current::storage::StorageRollbackExceptionWithNoValue&;
+template <typename T>
+using StorageRollbackExceptionWithValue = current::storage::StorageRollbackExceptionWithValue<T>&;
 
 #endif  // CURRENT_STORAGE_EXCEPTIONS_H

@@ -29,38 +29,38 @@ SOFTWARE.
 
 namespace current {
 
-struct OptionalResultSuccessful {};
-struct OptionalResultFailed {};
+struct OptionalResultExists {};
+struct OptionalResultMissing {};
 
-template <typename HELPER_TYPE, typename T>
+template <typename T>
 class OptionalResult {
  public: 
-  OptionalResult(const OptionalResultFailed&) : successful_(false) {}
+  OptionalResult(const OptionalResultMissing&) : exists_(false) {}
 
-  OptionalResult(OptionalResult&& rhs) : value_(std::move(rhs.value_)), successful_(rhs.successful_) {}
+  OptionalResult(OptionalResult&& rhs) : value_(std::move(rhs.value_)), exists_(rhs.exists_) {}
 
-  OptionalResult<HELPER_TYPE, T>& operator=(OptionalResult&& rhs) {
+  OptionalResult<T>& operator=(OptionalResult&& rhs) {
     value_ = std::move(rhs.value_);
-    successful_ = rhs.successful_;
+    exists_ = rhs.exists_;
     return *this;
   }
 
-  OptionalResult(T&& result) : value_(std::move(result)), successful_(true) {}
+  OptionalResult(T&& result) : value_(std::move(result)), exists_(true) {}
 
-  OptionalResult<HELPER_TYPE, T>& operator=(T&& result) {
+  OptionalResult<T>& operator=(T&& result) {
     value_ = std::move(result);
-    successful_ = true;
+    exists_ = true;
     return *this;
   }
 
   OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
-  OptionalResult<HELPER_TYPE, T>& operator=(const OptionalResult&) = delete;
+  OptionalResult<T>& operator=(const OptionalResult&) = delete;
 
-  bool SuccessfulImpl() const { return successful_; }
+  bool ExistsImpl() const { return exists_; }
 
   T&& ValueImpl() {
-    if (successful_) {
+    if (exists_) {
       return std::move(value_);
     } else {
       throw NoValueOfTypeException<T>();
@@ -68,7 +68,7 @@ class OptionalResult {
   }
 
   const T& ValueImpl() const {
-    if (successful_) {
+    if (exists_) {
       return value_;
     } else {
       throw NoValueOfTypeException<T>();
@@ -77,30 +77,30 @@ class OptionalResult {
 
  private:
   T value_;
-  bool successful_;
+  bool exists_;
 };
 
-template <typename HELPER_TYPE>
-class OptionalResult<HELPER_TYPE, void> {
+template <>
+class OptionalResult<void> {
  public:
-  explicit OptionalResult(bool successful) : successful_(successful) {}
-  explicit OptionalResult(const OptionalResultSuccessful&) : successful_(true) {}
-  explicit OptionalResult(const OptionalResultFailed&) : successful_(false) {}
+  explicit OptionalResult(const OptionalResultExists&) : exists_(true) {}
+  explicit OptionalResult(const OptionalResultMissing&) : exists_(false) {}
 
-  OptionalResult(OptionalResult&& rhs) : successful_(rhs.successful_) {}
+  OptionalResult(OptionalResult&& rhs) : exists_(rhs.exists_) {}
 
-  OptionalResult<HELPER_TYPE, void>& operator=(OptionalResult&& rhs) {
-    successful_ = rhs.successful_;
+  OptionalResult<void>& operator=(OptionalResult&& rhs) {
+    exists_ = rhs.exists_;
     return *this;
   }
 
+  OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
-  OptionalResult<HELPER_TYPE, void>& operator=(const OptionalResult&) = delete;
+  OptionalResult<void>& operator=(const OptionalResult&) = delete;
 
-  bool SuccessfulImpl() const { return successful_; }
+  bool ExistsImpl() const { return exists_; }
 
  private:
-  bool successful_;
+  bool exists_;
 };
 
 }  // namespace current
