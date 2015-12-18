@@ -22,23 +22,51 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_CONTAINER_COMMON_H
-#define CURRENT_STORAGE_CONTAINER_COMMON_H
+#ifndef BRICKS_UTIL_COMPARATOR_H
+#define BRICKS_UTIL_COMPARATOR_H
 
-#include "../../Bricks/util/comparators.h"
+#include <map>
+#include <unordered_map>
 
 namespace current {
-namespace storage {
-namespace container {
 
-template <typename KEY, typename VALUE>
-using Unordered = std::unordered_map<KEY, VALUE, CurrentHashFunction<KEY>>;
+namespace custom_comparator_and_hash_function {
 
-template <typename KEY, typename VALUE>
-using Ordered = std::map<KEY, VALUE, CurrentComparator<KEY>>;
+template <typename T, bool IS_ENUM>
+struct CurrentHashFunctionImpl;
 
-}  // namespace container
-}  // namespace storage
+template <typename T>
+struct CurrentHashFunctionImpl<T, false> : std::hash<T> {};
+
+template <typename T>
+struct CurrentHashFunctionImpl<T, true> {
+  std::size_t operator()(T x) const { return static_cast<size_t>(x); }
+};
+
+template <typename T, bool IS_ENUM>
+struct CurrentComparatorImpl;
+
+template <typename T>
+struct CurrentComparatorImpl<T, false> : std::less<T> {};
+
+template <typename T>
+struct CurrentComparatorImpl<T, true> {
+  bool operator()(T lhs, T rhs) const {
+    using U = typename std::underlying_type<T>::type;
+    return static_cast<U>(lhs) < static_cast<U>(rhs);
+  }
+};
+
+}  // namespace custom_comparator_and_hash_function
+
+template <typename KEY>
+using CurrentHashFunction =
+    custom_comparator_and_hash_function::CurrentHashFunctionImpl<KEY, std::is_enum<KEY>::value>;
+
+template <typename KEY>
+using CurrentComparator =
+    custom_comparator_and_hash_function::CurrentComparatorImpl<KEY, std::is_enum<KEY>::value>;
+
 }  // namespace current
 
-#endif  // CURRENT_STORAGE_CONTAINER_COMMON_H
+#endif  // BRICKS_UTIL_COMPARATOR_H

@@ -34,7 +34,7 @@ struct OptionalResultMissing {};
 
 template <typename T>
 class OptionalResult {
- public: 
+ public:
   OptionalResult(const OptionalResultMissing&) : exists_(false) {}
 
   OptionalResult(OptionalResult&& rhs) : value_(std::move(rhs.value_)), exists_(rhs.exists_) {}
