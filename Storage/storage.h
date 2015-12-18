@@ -139,6 +139,7 @@ namespace storage {
                                                                                                              \
    public:                                                                                                   \
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
+    using T_FIELDS_BY_CONST_REFERENCE = const FIELDS&;                                                       \
     CURRENT_STORAGE_IMPL_##name() = delete;                                                                  \
     CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
     template <typename... ARGS>                                                                              \
@@ -193,6 +194,9 @@ namespace storage {
 
 template <typename STORAGE>
 using CurrentStorage = typename STORAGE::T_FIELDS_BY_REFERENCE;
+
+template <typename STORAGE>
+using ImmutableCurrentStorage = typename STORAGE::T_FIELDS_BY_CONST_REFERENCE;
 
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
@@ -830,5 +834,6 @@ class LightweightMatrix final
 }  // namespace current
 
 using current::storage::CurrentStorage;
+using current::storage::ImmutableCurrentStorage;
 
 #endif  // CURRENT_STORAGE_STORAGE_H

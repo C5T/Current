@@ -39,7 +39,7 @@ class OptionalResult {
 
   OptionalResult(OptionalResult&& rhs) : value_(std::move(rhs.value_)), exists_(rhs.exists_) {}
 
-  OptionalResult<T>& operator=(OptionalResult&& rhs) {
+  OptionalResult& operator=(OptionalResult&& rhs) {
     value_ = std::move(rhs.value_);
     exists_ = rhs.exists_;
     return *this;
@@ -47,7 +47,7 @@ class OptionalResult {
 
   OptionalResult(T&& result) : value_(std::move(result)), exists_(true) {}
 
-  OptionalResult<T>& operator=(T&& result) {
+  OptionalResult& operator=(T&& result) {
     value_ = std::move(result);
     exists_ = true;
     return *this;
@@ -55,7 +55,7 @@ class OptionalResult {
 
   OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
-  OptionalResult<T>& operator=(const OptionalResult&) = delete;
+  OptionalResult& operator=(const OptionalResult&) = delete;
 
   bool ExistsImpl() const { return exists_; }
 
@@ -88,14 +88,14 @@ class OptionalResult<void> {
 
   OptionalResult(OptionalResult&& rhs) : exists_(rhs.exists_) {}
 
-  OptionalResult<void>& operator=(OptionalResult&& rhs) {
+  OptionalResult& operator=(OptionalResult&& rhs) {
     exists_ = rhs.exists_;
     return *this;
   }
 
   OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
-  OptionalResult<void>& operator=(const OptionalResult&) = delete;
+  OptionalResult& operator=(const OptionalResult&) = delete;
 
   bool ExistsImpl() const { return exists_; }
 

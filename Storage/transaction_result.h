@@ -35,10 +35,10 @@ class TransactionResult : public OptionalResult<T> {
  public:
   TransactionResult() = delete;
   TransactionResult(const TransactionResult&) = delete;
-  TransactionResult<T>& operator=(const TransactionResult&) = delete;
+  TransactionResult& operator=(const TransactionResult&) = delete;
 
   TransactionResult(TransactionResult&& rhs) : OptionalResult<T>(std::move(rhs)), commited_(rhs.commited_) {}
-  TransactionResult<T>& operator=(TransactionResult&& rhs) {
+  TransactionResult& operator=(TransactionResult&& rhs) {
     OptionalResult<T>::operator=(std::move(rhs));
     commited_ = rhs.commited_;
     return *this;
@@ -74,7 +74,7 @@ class TransactionResult<void> : public OptionalResult<void> {
   TransactionResult<void>& operator=(const TransactionResult&) = delete;
 
   TransactionResult(TransactionResult&& rhs) : OptionalResult<void>(std::move(rhs)), commited_(rhs.commited_) {}
-  TransactionResult<void>& operator=(TransactionResult&& rhs) {
+  TransactionResult& operator=(TransactionResult&& rhs) {
     OptionalResult<void>::operator=(std::move(rhs));
     commited_ = rhs.commited_;
     return *this;

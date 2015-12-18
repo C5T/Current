@@ -62,7 +62,7 @@ struct Synchronous final {
     } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
       promise.set_value(TransactionResult<T_RESULT>::Rollbacked(OptionalResultMissing()));
-    } catch (...) {
+    } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
       try {
         promise.set_exception(std::current_exception());
@@ -91,7 +91,7 @@ struct Synchronous final {
     } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
       promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultExists()));
-    } catch (...) {
+    } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
       try {
         promise.set_exception(std::current_exception());

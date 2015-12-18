@@ -100,7 +100,7 @@ CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector2);
 CURRENT_STORAGE_STRUCT_TAG(Record, RecordDictionary);
 
 using current::storage::container::Ordered;
-CURRENT_STORAGE(NewStorageDefinition) {
+CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(v1, Vector, ElementVector1);
   CURRENT_STORAGE_FIELD(v2, Vector, ElementVector2);
   CURRENT_STORAGE_FIELD(d, Dictionary, RecordDictionary, Ordered);
@@ -110,17 +110,17 @@ CURRENT_STORAGE(NewStorageDefinition) {
 
 TEST(TransactionalStorage, SmokeTest) {
   using namespace transactional_storage_test;
-  using NewStorage = NewStorageDefinition<JSONFilePersister>;
+  using Storage = TestStorage<JSONFilePersister>;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    NewStorage storage(persistence_file_name);
+    Storage storage(persistence_file_name);
     EXPECT_EQ(3u, storage.FieldsCount());
     {
-      const auto result = storage.Transaction([](CurrentStorage<NewStorage> fields) {
+      const auto result = storage.Transaction([](CurrentStorage<Storage> fields) {
         EXPECT_TRUE(fields.v1.Empty());
         EXPECT_TRUE(fields.v2.Empty());
         fields.v1.PushBack(Element(0));
@@ -136,7 +136,7 @@ TEST(TransactionalStorage, SmokeTest) {
     }
 
     {
-      const auto result = storage.Transaction([](CurrentStorage<NewStorage> fields) {
+      const auto result = storage.Transaction([](CurrentStorage<Storage> fields) {
         fields.d.Add(Record{"one", 1});
 
         {
@@ -169,7 +169,7 @@ TEST(TransactionalStorage, SmokeTest) {
     }
 
     {
-      const auto result = storage.Transaction([](CurrentStorage<NewStorage> fields) {
+      const auto result = storage.Transaction([](CurrentStorage<Storage> fields) {
         fields.v1.PushBack(Element(1));
         fields.v2.PushBack(Element(2));
         fields.d.Add(Record{"three", 3});
@@ -178,7 +178,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(WasCommited(result));
     }
     {
-      auto f = [](CurrentStorage<NewStorage>) { return 42; };
+      const auto f = [](ImmutableCurrentStorage<Storage>) { return 42; };
 
       const auto result = storage.Transaction(f).Go();
       EXPECT_TRUE(WasCommited(result));
@@ -188,8 +188,8 @@ TEST(TransactionalStorage, SmokeTest) {
   }
 
   {
-    NewStorage replayed(persistence_file_name);
-    replayed.Transaction([](CurrentStorage<NewStorage> fields) {
+    Storage replayed(persistence_file_name);
+    replayed.Transaction([](ImmutableCurrentStorage<Storage> fields) {
       EXPECT_EQ(1u, fields.v1.Size());
       EXPECT_EQ(1u, fields.v2.Size());
       EXPECT_EQ(42, Value(fields.v1[0]).x);
@@ -206,25 +206,25 @@ TEST(TransactionalStorage, SmokeTest) {
 
 TEST(TransactionalStorage, Exceptions) {
   using namespace transactional_storage_test;
-  using NewStorage = NewStorageDefinition<SherlockInMemoryStreamPersister>;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  NewStorage storage("exceptions_test");
+  Storage storage("exceptions_test");
 
   bool should_throw;
-  auto f_void = [&should_throw](CurrentStorage<NewStorage>) {
+  const auto f_void = [&should_throw](ImmutableCurrentStorage<Storage>) {
     if (should_throw) {
       CURRENT_STORAGE_THROW_ROLLBACK();
     }
   };
 
-  auto f_void_custom_exception = [&should_throw](CurrentStorage<NewStorage>) {
+  const auto f_void_custom_exception = [&should_throw](ImmutableCurrentStorage<Storage>) {
     if (should_throw) {
       throw std::logic_error("wtf");
     }
   };
 
   bool throw_with_value;
-  auto f_int = [&should_throw, &throw_with_value](CurrentStorage<NewStorage>) {
+  const auto f_int = [&should_throw, &throw_with_value](ImmutableCurrentStorage<Storage>) {
     if (should_throw) {
       if (throw_with_value) {
         CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, -1);
@@ -236,7 +236,7 @@ TEST(TransactionalStorage, Exceptions) {
     }
   };
 
-  auto f_int_custom_exception = [&should_throw](CurrentStorage<NewStorage>) {
+  const auto f_int_custom_exception = [&should_throw](ImmutableCurrentStorage<Storage>) {
     if (should_throw) {
       throw 100500;
     } else {
@@ -265,7 +265,7 @@ TEST(TransactionalStorage, Exceptions) {
     should_throw = true;
     auto result = storage.Transaction(f_void_custom_exception);
     result.Wait();
-    // We can ignore exception until we try to get the result.
+    // We can ignore the exception until we try to get the result.
     EXPECT_THROW(result.Go(), std::logic_error);
   }
 
@@ -278,7 +278,7 @@ TEST(TransactionalStorage, Exceptions) {
     EXPECT_EQ(42, Value(result));
   }
 
-  // `int` lambda with rollback not returning value requested by user.
+  // `int` lambda with rollback not returning the value requested by user.
   {
     should_throw = true;
     throw_with_value = false;
@@ -287,7 +287,7 @@ TEST(TransactionalStorage, Exceptions) {
     EXPECT_FALSE(Exists(result));
   }
 
-  // `int` lambda with rollback returning value requested by user.
+  // `int` lambda with rollback returning the value requested by user.
   {
     should_throw = true;
     throw_with_value = true;
@@ -306,8 +306,6 @@ TEST(TransactionalStorage, Exceptions) {
     } catch (int e) {
       was_thrown = true;
       EXPECT_EQ(100500, e);
-    } catch (...) {
-      ASSERT_TRUE(false) << "`f_int_custom_exception` threw wrong exception type.";
     }
     if (!was_thrown) {
       ASSERT_TRUE(false) << "`f_int_custom_exception` threw no exception.";

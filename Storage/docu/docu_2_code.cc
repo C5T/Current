@@ -123,7 +123,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     }).Wait();
 
     // Confirm the non-reverted deleted user was indeed deleted.
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](ImmutableCurrentStorage<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(1u, data.users.Size());
 
