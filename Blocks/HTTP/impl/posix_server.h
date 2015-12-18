@@ -249,6 +249,8 @@ class HTTPServerPOSIX final {
           connection->SendHTTPResponse(
               current::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
         }
+      } catch (const current::net::EmptySocketException&) {
+        // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.
         std::cerr << "HTTP route failed: " << e.what() << "\n";  // LCOV_EXCL_LINE

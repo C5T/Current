@@ -64,6 +64,16 @@ struct SocketReadException : SocketException {};  // LCOV_EXCL_LINE -- TODO(dkor
 struct SocketWriteException : SocketException {};
 struct SocketCouldNotWriteEverythingException : SocketWriteException {};
 
+// We noticed some browsers, Firefox and Chrome included, may pre-open a TCP connection for performance reasons,
+// but never send any data. While it is a legitimate case, it results in an annoying warning dumped by Current.
+// We surpass those "HTTP route failed" warning if no data at all was sent in through the socket.
+
+// LCOV_EXCL_START
+struct EmptySocketException : SocketException {};
+struct EmptyConnectionResetByPeer : EmptySocketException {};
+struct EmptySocketReadException : EmptySocketException {};
+// LCOV_EXCL_STOP
+
 // HTTP-level exceptions are derived from HTTPException.
 struct HTTPException : NetworkException {
   HTTPException() {}

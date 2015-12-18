@@ -245,31 +245,47 @@ class Connection : public SocketHandle {
       } while (false);
 
 #ifndef CURRENT_WINDOWS
-      if (errno == ECONNRESET) {  // LCOV_EXCL_LINE
-        BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
-                       static_cast<SOCKET>(socket),
-                       static_cast<int>(ptr - buffer));
-        CURRENT_THROW(ConnectionResetByPeer());  // LCOV_EXCL_LINE
+      if (errno == ECONNRESET) {
+        if (ptr != buffer) {
+          BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                         static_cast<SOCKET>(socket),
+                         static_cast<int>(ptr - buffer));
+          CURRENT_THROW(ConnectionResetByPeer());
+        } else {
+          CURRENT_THROW(EmptyConnectionResetByPeer());
+        }
       } else {
-        BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",  // LCOV_EXCL_LINE
-                       static_cast<SOCKET>(socket),
-                       static_cast<int>(ptr - buffer),
-                       errno);
-        CURRENT_THROW(SocketReadException());  // LCOV_EXCL_LINE
+        if (ptr != buffer) {
+          BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                         static_cast<SOCKET>(socket),
+                         static_cast<int>(ptr - buffer),
+                         errno);
+          CURRENT_THROW(SocketReadException());
+        } else {
+          CURRENT_THROW(EmptySocketReadException());
+        }
       }
 #else
       if (wsa_last_error == WSAECONNRESET) {
         // Effectively, `errno == ECONNRESET`.
-        BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
-                       static_cast<SOCKET>(socket),
-                       static_cast<int>(ptr - buffer));
-        CURRENT_THROW(ConnectionResetByPeer());
+        if (ptr != buffer) {
+          BRICKS_NET_LOG("S%05d BlockingRead() : Connection reset by peer after reading %d bytes.\n",
+                         static_cast<SOCKET>(socket),
+                         static_cast<int>(ptr - buffer));
+          CURRENT_THROW(ConnectionResetByPeer());
+        } else {
+          CURRENT_THROW(EmptyConnectionResetByPeer());
+        }
       } else {
-        BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
-                       static_cast<SOCKET>(socket),
-                       static_cast<int>(ptr - buffer),
-                       errno);
-        CURRENT_THROW(SocketReadException());
+        if (ptr != buffer) {
+          BRICKS_NET_LOG("S%05d BlockingRead() : Error after reading %d bytes, errno %d.\n",
+                         static_cast<SOCKET>(socket),
+                         static_cast<int>(ptr - buffer),
+                         errno);
+          CURRENT_THROW(SocketReadException());
+        } else {
+          CURRENT_THROW(EmptySocketReadException());
+        }
       }
 #endif
     }
