@@ -93,9 +93,15 @@ class OptionalResult<void> {
     return *this;
   }
 
+#ifndef _MSC_VER
   OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
   OptionalResult& operator=(const OptionalResult&) = delete;
+#else
+  OptionalResult() = default;
+  OptionalResult(const OptionalResult&) = default;
+  OptionalResult& operator=(const OptionalResult&) = default;
+#endif
 
   bool ExistsImpl() const { return exists_; }
 
