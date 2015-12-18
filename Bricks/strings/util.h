@@ -38,15 +38,22 @@ SOFTWARE.
 namespace current {
 namespace strings {
 
-template <typename DECAYED_T>
+template <typename DECAYED_T, bool IS_ENUM>
 struct ToStringImpl {
   static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> ToString(DECAYED_T value) {
     return std::to_string(value);
   }
 };
 
+template <typename DECAYED_T>
+struct ToStringImpl<DECAYED_T, true> {
+  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> ToString(DECAYED_T value) {
+    return std::to_string(static_cast<typename std::underlying_type<DECAYED_T>::type>(value));
+  }
+};
+
 template <>
-struct ToStringImpl<std::string> {
+struct ToStringImpl<std::string, false> {
   template <typename T>
   static std::string ToString(T&& string) {
     return string;
@@ -54,31 +61,32 @@ struct ToStringImpl<std::string> {
 };
 
 template <>
-struct ToStringImpl<char*> {  // Decayed type in template parameters list.
+struct ToStringImpl<char*, false> {  // Decayed type in template parameters list.
   static std::string ToString(const char* string) { return string; }
 };
 
 template <int N>
-struct ToStringImpl<char[N]> {  // Decayed type in template parameters list.
+struct ToStringImpl<char[N], false> {  // Decayed type in template parameters list.
   static std::string ToString(const char string[N]) {
     return std::string(string, string + N - 1);  // Do not include the '\0' character.
   }
 };
 
 template <>
-struct ToStringImpl<char> {
+struct ToStringImpl<char, false> {
   static std::string ToString(char c) { return std::string(1u, c); }
 };
 
 template <>
-struct ToStringImpl<bool> {
+struct ToStringImpl<bool, false> {
   static std::string ToString(bool b) { return b ? "true" : "false"; }
 };
 
 // Keep the lowercase name to possibly act as a replacement for `std::to_string`.
 template <typename T>
 inline std::string to_string(T&& something) {
-  return ToStringImpl<current::decay<T>>::ToString(something);
+  using DECAYED_T = current::decay<T>;
+  return ToStringImpl<DECAYED_T, std::is_enum<DECAYED_T>::value>::ToString(something);
 }
 
 // Use camel-case `ToString()` within Bricks.
@@ -87,14 +95,42 @@ inline std::string ToString(T&& something) {
   return current::strings::to_string(something);
 }
 
+template <typename T_INPUT, typename T_OUTPUT, bool IS_ENUM>
+struct FromStringEnumImpl;
+
+template <typename T_INPUT, typename T_OUTPUT>
+struct FromStringEnumImpl<T_INPUT, T_OUTPUT, false> {
+  template <typename T>
+  static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
+    std::istringstream is(input);
+    if (!(is >> output)) {
+      // Default initializer, zero for primitive types.
+      output = T_OUTPUT();
+    }
+    return output;
+  }
+};
+
+template <typename T_INPUT, typename T_OUTPUT>
+struct FromStringEnumImpl<T_INPUT, T_OUTPUT, true> {
+  template <typename T>
+  static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
+    std::istringstream is(input);
+    using T_UNDERLYING_OUTPUT = typename std::underlying_type<T_OUTPUT>::type;
+    T_UNDERLYING_OUTPUT underlying_output;
+    if (!(is >> underlying_output)) {
+      // Default initializer, zero for primitive types.
+      underlying_output = T_UNDERLYING_OUTPUT();
+    }
+    output = static_cast<T_OUTPUT>(underlying_output);
+    return output;
+  }
+};
+
 template <typename T_OUTPUT, typename T_INPUT = std::string>
 inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
-  std::istringstream is(input);
-  if (!(is >> output)) {
-    // Default initializer, zero for primitive types.
-    output = T_OUTPUT();
-  }
-  return output;
+  return FromStringEnumImpl<T_INPUT, T_OUTPUT, std::is_enum<T_OUTPUT>::value>::Go(std::forward<T_INPUT>(input),
+                                                                                  output);
 }
 
 template <typename T_INPUT>
