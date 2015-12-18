@@ -48,7 +48,7 @@ struct FutureImpl {
   }
   ~FutureImpl() {
     if (T_STRICT == StrictFuture::Strict && !used_) {
-      std::cerr << "Strict future has been left hanging, while `.Go()` or `.Wait()` must have been called."
+      std::cerr << "Strict future has been left hanging, while Go(), Wait(), or Detach() must have been called."
                 << std::endl;
       std::exit(-1);
     }
@@ -62,6 +62,7 @@ struct FutureImpl {
     used_ = true;
     f_.wait();
   }
+  void Detach() { used_ = true; }
 
  private:
   std::future<T> f_;
@@ -85,6 +86,7 @@ struct FutureImpl<void, T_STRICT> {
     used_ = true;
     f_.wait();
   }
+  void Detach() { used_ = true; }
 
  private:
   std::future<void> f_;
