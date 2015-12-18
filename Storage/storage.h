@@ -48,13 +48,9 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include <fstream>
-#include <map>
-#include <mutex>
-#include <utility>
-#include <vector>
-
 #include "base.h"
+#include "transaction_policy.h"
+#include "transaction_result.h"
 
 #include "container/dictionary.h"
 #include "container/vector.h"
@@ -66,22 +62,22 @@ SOFTWARE.
 #include "../TypeSystem/optional.h"
 
 #include "../Bricks/exception.h"
-#include "../Bricks/time/chrono.h"
 #include "../Bricks/strings/strings.h"
+#include "../Bricks/time/chrono.h"
 
 #include "../Bricks/cerealize/cerealize.h"  // TODO(dkorolev): Deprecate.
 
 namespace current {
 namespace storage {
 
-// `CURRENT_STORAGE_STRUCT_ALIAS`:
+// `CURRENT_STORAGE_STRUCT_TAG`:
 // 1) Creates a dedicated C++ type to allow compile-time disambiguation of storages of same underlying types.
 // 2) Splits the type into `T_ADDER` and `T_DELETER`, to support seamless persistence of deletions.
 // clang-format off
 
 #ifndef _MSC_VER
 
-#define CURRENT_STORAGE_STRUCT_ALIAS(base, alias)                                            \
+#define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                              \
   CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                      \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                            \
     CURRENT_CONSTRUCTOR( CURRENT_STORAGE_ADDER_##alias)(const base& value) : base(value) {}  \
@@ -99,7 +95,7 @@ namespace storage {
 #else  // _MSC_VER
 
 // The MSVS version uses `SUPER` instead of `base` in the initializer list.
-#define CURRENT_STORAGE_STRUCT_ALIAS(base, alias)                                             \
+#define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                               \
   CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                       \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                             \
     CURRENT_CONSTRUCTOR( CURRENT_STORAGE_ADDER_##alias)(const base& value) : SUPER(value) {}  \
@@ -127,64 +123,54 @@ namespace storage {
     typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
   }
 
-// clang-format off
-#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                  \
-  template <typename INSTANTIATION_TYPE>                                                                      \
-  struct CURRENT_STORAGE_FIELDS_##name;                                                                       \
-  template <template <typename...> class PERSISTER, typename FIELDS>                                          \
-  struct CURRENT_STORAGE_IMPL_##name : FIELDS {                                                               \
-   private:                                                                                                   \
-    constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                   \
-    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                      \
-    using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                     \
-    PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                 \
-    std::mutex mutex_;                                                                                        \
-                                                                                                              \
-   public:                                                                                                    \
-    using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                    \
-    CURRENT_STORAGE_IMPL_##name() = delete;                                                                   \
-    CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                      \
-    template <typename... ARGS>                                                                               \
-    CURRENT_STORAGE_IMPL_##name(ARGS&&... args) : persister_(std::forward<ARGS>(args)...) {                   \
-      persister_.Replay([this](T_FIELDS_VARIANT && entry) { entry.Call(*this); });                            \
-    }                                                                                                         \
-    template <typename F>                                                                                     \
-    void Transaction(F&& f) {                                                                                 \
-      std::lock_guard<std::mutex> lock(mutex_);                                                               \
-      FIELDS::current_storage_mutation_journal_.AssertEmpty();                                                \
-      bool successful = false;                                                                                \
-      try {                                                                                                   \
-        f(static_cast<FIELDS&>(*this));                                                                       \
-        successful = true;                                                                                    \
-      } catch (std::exception&) {                                                                             \
-        FIELDS::current_storage_mutation_journal_.Rollback();                                                 \
-      }                                                                                                       \
-      if (successful) {                                                                                       \
-        persister_.PersistJournal(FIELDS::current_storage_mutation_journal_);                                 \
-      }                                                                                                       \
-    }                                                                                                         \
-    template <typename F1, typename F2>                                                                       \
-    void Transaction(F1&& f1, F2&& f2) {                                                                      \
-      std::lock_guard<std::mutex> lock(mutex_);                                                               \
-      FIELDS::current_storage_mutation_journal_.AssertEmpty();                                                \
-      bool successful = false;                                                                                \
-      try {                                                                                                   \
-        f2(f1(static_cast<FIELDS&>(*this)));                                                                  \
-        successful = true;                                                                                    \
-      } catch (std::exception&) {                                                                             \
-        FIELDS::current_storage_mutation_journal_.Rollback();                                                 \
-      }                                                                                                       \
-      if (successful) {                                                                                       \
-        persister_.PersistJournal(FIELDS::current_storage_mutation_journal_);                                 \
-      }                                                                                                       \
-    }                                                                                                         \
-    size_t FieldsCount() const { return fields_count; }                                                       \
-  };                                                                                                          \
-  template <template <typename...> class PERSISTER>                                                           \
-  using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                         \
-                                           CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>; \
+#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
+  template <typename INSTANTIATION_TYPE>                                                                     \
+  struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
+  template <template <typename...> class PERSISTER,                                                          \
+            typename FIELDS,                                                                                 \
+            template <typename> class TRANSACTION_POLICY>                                                    \
+  struct CURRENT_STORAGE_IMPL_##name : FIELDS {                                                              \
+   private:                                                                                                  \
+    constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                  \
+    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                     \
+    using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
+    PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                \
+    TRANSACTION_POLICY<PERSISTER<T_FIELDS_TYPE_LIST>> transaction_policy_;                                   \
+                                                                                                             \
+   public:                                                                                                   \
+    using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
+    using T_FIELDS_BY_CONST_REFERENCE = const FIELDS&;                                                       \
+    CURRENT_STORAGE_IMPL_##name() = delete;                                                                  \
+    CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
+    template <typename... ARGS>                                                                              \
+    CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
+        : persister_(std::forward<ARGS>(args)...),                                                           \
+          transaction_policy_(persister_, FIELDS::current_storage_mutation_journal_) {                       \
+      persister_.Replay([this](T_FIELDS_VARIANT && entry) { entry.Call(*this); });                           \
+    }                                                                                                        \
+    template <typename F>                                                                                    \
+    using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
+    template <typename F>                                                                                    \
+    ::current::Future<::current::storage::TransactionResult<T_F_RESULT<F>>, ::current::StrictFuture::Strict> \
+    Transaction(F&& f) {                                                                                     \
+      FIELDS& fields = *this;                                                                                \
+      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); });                         \
+    }                                                                                                        \
+    template <typename F1, typename F2>                                                                      \
+    ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
+    Transaction(F1&& f1, F2&& f2) {                                                                          \
+      FIELDS& fields = *this;                                                                                \
+      return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
+    }                                                                                                        \
+    size_t FieldsCount() const { return fields_count; }                                                      \
+  };                                                                                                         \
+  template <template <typename...> class PERSISTER,                                                          \
+            template <typename> class TRANSACTION_POLICY =                                                   \
+                ::current::storage::transaction_policy::Synchronous>                                         \
+  using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                        \
+                                           CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
+                                           TRANSACTION_POLICY>;                                              \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
-// clang-format on
 
 #define CURRENT_STORAGE(name)            \
   CURRENT_STORAGE_IMPLEMENTATION(name);  \
@@ -208,6 +194,9 @@ namespace storage {
 
 template <typename STORAGE>
 using CurrentStorage = typename STORAGE::T_FIELDS_BY_REFERENCE;
+
+template <typename STORAGE>
+using ImmutableCurrentStorage = typename STORAGE::T_FIELDS_BY_CONST_REFERENCE;
 
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
@@ -845,5 +834,6 @@ class LightweightMatrix final
 }  // namespace current
 
 using current::storage::CurrentStorage;
+using current::storage::ImmutableCurrentStorage;
 
 #endif  // CURRENT_STORAGE_STORAGE_H
