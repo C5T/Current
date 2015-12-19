@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "accumulative_scoped_deleter.h"
 #include "clone.h"
+#include "comparators.h"
 #include "crc32.h"
 #include "lazy_instantiation.h"
 #include "make_scope_guard.h"
@@ -49,7 +50,7 @@ TEST(Util, BasicException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:47\tcurrent::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:48\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -66,7 +67,7 @@ TEST(Util, CustomException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:64\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:65\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }

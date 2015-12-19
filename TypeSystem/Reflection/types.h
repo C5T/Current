@@ -236,11 +236,4 @@ TypeID CalculateTypeID(const T* ptr) {
 }  // namespace reflection
 }  // namespace current
 
-namespace std {
-template <>
-struct hash<::current::reflection::TypeID> {
-  size_t operator()(::current::reflection::TypeID type_id) const { return static_cast<size_t>(type_id); }
-};
-}  // namespace std
-
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TYPES_H

@@ -528,7 +528,9 @@ struct LoadFromJSONImpl {
       };
 
       using T_DESERIALIZERS_MAP =
-          std::unordered_map<::current::reflection::TypeID, std::unique_ptr<GenericDeserializer>>;
+          std::unordered_map<::current::reflection::TypeID,
+                             std::unique_ptr<GenericDeserializer>,
+                             ::current::CurrentHashFunction<::current::reflection::TypeID>>;
       T_DESERIALIZERS_MAP deserializers_;
 
       template <typename X>

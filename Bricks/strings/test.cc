@@ -128,6 +128,8 @@ TEST(Util, Trim) {
   EXPECT_EQ("", Trim(std::string(" \t\r\n\t ")));
 }
 
+enum class StringConversionTestEnum : int { TheAnswer = 42 };
+
 TEST(Util, FromString) {
   EXPECT_EQ(1, FromString<int>("1"));
 
@@ -153,6 +155,8 @@ TEST(Util, FromString) {
   EXPECT_TRUE(FromString<bool>("1"));
   EXPECT_FALSE(FromString<bool>("false"));
   EXPECT_FALSE(FromString<bool>("0"));
+
+  EXPECT_TRUE(StringConversionTestEnum::TheAnswer == FromString<StringConversionTestEnum>("42"));
 }
 
 TEST(ToString, SmokeTest) {
@@ -165,6 +169,7 @@ TEST(ToString, SmokeTest) {
   EXPECT_EQ("c", ToString('c'));
   EXPECT_EQ("true", ToString(true));
   EXPECT_EQ("false", ToString(false));
+  EXPECT_EQ("42", ToString(StringConversionTestEnum::TheAnswer));
 }
 
 TEST(Util, ToUpperAndToLower) {

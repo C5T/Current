@@ -73,5 +73,4 @@ TEST(Time, SmokeTest) {
 
 #endif  // CURRENT_COVERAGE_REPORT_MODE
 
-
 #endif  // CURRENT_MOCK_TIME

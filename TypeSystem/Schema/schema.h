@@ -34,19 +34,6 @@ SOFTWARE.
 #include "../../Bricks/util/singleton.h"
 
 namespace current {
-namespace strings {
-
-template <>
-struct ToStringImpl<::current::reflection::TypeID> {
-  static std::string ToString(::current::reflection::TypeID type_id) {
-    return ToStringImpl<uint64_t>::ToString(static_cast<uint64_t>(type_id));
-  }
-};
-
-}  // namespace strings
-}  // namespace current
-
-namespace current {
 namespace reflection {
 
 // TODO(dkorolev): Refactor `PrimitiveTypesList` to avoid copy-pasting of `operator()(const *_Primitive& p)`.

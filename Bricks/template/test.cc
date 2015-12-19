@@ -144,7 +144,7 @@ TEST(TemplateMetaprogrammingInternalTest, VariadicIndexes) {
 
 TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
   using current::metaprogramming::EvensOnly;
-  struct A { };
+  struct A {};
   struct B {};
   struct C {};
   struct D {};

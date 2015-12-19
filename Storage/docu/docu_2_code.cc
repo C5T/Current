@@ -49,17 +49,6 @@ CURRENT_ENUM(UserID, uint64_t) { INVALID = 0ull };
 
 }  // namespace storage_docu
 
-// TODO(dkorolev): This should not be necessary. SFINAE ftw.
-namespace std {
-template<> struct hash<storage_docu::UserID> {
-  typedef storage_docu::UserID argument_type;
-  typedef size_t result_type;
-  result_type operator()(storage_docu::UserID value) const {
-    return static_cast<size_t>(value);
-  }
-};
-}  // namespace std
-
 namespace storage_docu {
 
 CURRENT_STRUCT(User) {

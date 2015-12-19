@@ -37,6 +37,7 @@ SOFTWARE.
 #include "../struct.h"
 #include "../timestamp.h"
 
+#include "../../Bricks/util/comparators.h"
 #include "../../Bricks/util/singleton.h"
 
 namespace current {
@@ -203,7 +204,8 @@ struct ReflectorImpl {
 
  private:
   std::unordered_map<std::type_index, ReflectedType> reflected_cpp_types_;
-  std::unordered_map<TypeID, std::reference_wrapper<ReflectedType>> reflected_type_by_type_id_;
+  std::unordered_map<TypeID, std::reference_wrapper<ReflectedType>, CurrentHashFunction<TypeID>>
+      reflected_type_by_type_id_;
   TypeReflector type_reflector_;
 
   void FixIncompleteTypeIDs(const TypeID incomplete_id, const TypeID real_id) {

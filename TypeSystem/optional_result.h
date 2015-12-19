@@ -34,7 +34,7 @@ struct OptionalResultMissing {};
 
 template <typename T>
 class OptionalResult {
- public: 
+ public:
   OptionalResult(const OptionalResultMissing&) : exists_(false) {}
 
   OptionalResult(OptionalResult&& rhs) : value_(std::move(rhs.value_)), exists_(rhs.exists_) {}
@@ -93,9 +93,15 @@ class OptionalResult<void> {
     return *this;
   }
 
+#ifndef _MSC_VER
   OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
   OptionalResult& operator=(const OptionalResult&) = delete;
+#else
+  OptionalResult() = default;
+  OptionalResult(const OptionalResult&) = default;
+  OptionalResult& operator=(const OptionalResult&) = default;
+#endif
 
   bool ExistsImpl() const { return exists_; }
 

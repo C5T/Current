@@ -25,18 +25,17 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_CONTAINER_COMMON_H
 #define CURRENT_STORAGE_CONTAINER_COMMON_H
 
-#include <map>
-#include <unordered_map>
+#include "../../Bricks/util/comparators.h"
 
 namespace current {
 namespace storage {
 namespace container {
 
 template <typename KEY, typename VALUE>
-using Unordered = std::unordered_map<KEY, VALUE>;
+using Unordered = std::unordered_map<KEY, VALUE, CurrentHashFunction<KEY>>;
 
 template <typename KEY, typename VALUE>
-using Ordered = std::map<KEY, VALUE>;
+using Ordered = std::map<KEY, VALUE, CurrentComparator<KEY>>;
 
 }  // namespace container
 }  // namespace storage
