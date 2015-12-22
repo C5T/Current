@@ -40,7 +40,7 @@ SOFTWARE.
 #import <Foundation/NSStream.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
-#import <Foundation/NSURLConnection.h>
+#import <Foundation/NSURLSession.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSURLError.h>
@@ -95,8 +95,9 @@ bool blocks::HTTPClientApple::Go() {
     }
 
     *async_request_completed.MutableScopedAccessor() = false;
-    [NSURLConnection sendAsynchronousRequest:request queue:[[NSOperationQueue alloc] init]
-        completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
+    NSURLSession *session = [NSURLSession sharedSession];
+    [[session dataTaskWithRequest:request
+        completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
           // Workaround to handle HTTP 401 response without errors.
           if (error.code == NSURLErrorUserCancelledAuthentication) {
             http_response_code = 401;
@@ -127,7 +128,7 @@ bool blocks::HTTPClientApple::Go() {
             }
           }
           *async_request_completed.MutableScopedAccessor() = true;
-    }];
+    }] resume];
 
     async_request_completed.Wait([](bool done) { return done; });
 
