@@ -55,7 +55,13 @@
 #endif  // (TARGET_OS_IPHONE > 0)
 
 namespace midichlorians {
-     
+
+    // Conversion from [possible nullptr] `const char*` to `std::string`.
+    static std::string UnsafeToStdString(const char* s) {
+        return s ? s : "";
+    }
+
+#if (TARGET_OS_IPHONE > 0)
     // Conversion from [possible nil] `NSString` to `std::string`.
     static std::string UnsafeToStdString(NSString *nsString) {
         if (nsString) {
@@ -64,6 +70,14 @@ namespace midichlorians {
             return std::string();
         }
     }
+    
+    static std::string RectToString(CGRect const &rect) {
+        return std::to_string(static_cast<int>(rect.origin.x)) + " " +
+        std::to_string(static_cast<int>(rect.origin.y)) + " " +
+        std::to_string(static_cast<int>(rect.size.width)) + " " +
+        std::to_string(static_cast<int>(rect.size.height));
+    }
+#endif  // (TARGET_OS_IPHONE > 0)
     
     // Returns the timestamp of a file or directory.
     static uint64_t PathTimestampMillis(NSString *path) {
@@ -94,19 +108,12 @@ namespace midichlorians {
         return std::make_pair([installationId UTF8String], firstLaunch);
     }
     
-    static std::string RectToString(CGRect const &rect) {
-        return std::to_string(static_cast<int>(rect.origin.x)) + " " +
-        std::to_string(static_cast<int>(rect.origin.y)) + " " +
-        std::to_string(static_cast<int>(rect.size.width)) + " " +
-        std::to_string(static_cast<int>(rect.size.height));
-    }
-    
     namespace consumer {
         namespace thread_unsafe {
             
             class NSLog {
             public:
-                void OnMessage(const std::string &message) { ::NSLog(@"LogEvent: %s", message.c_str()); }
+                void OnMessage(const std::string &message) { CURRENT_NSLOG(@"LogEvent: %s", message.c_str()); }
             };
             
             class POSTviaHTTP {
@@ -115,14 +122,14 @@ namespace midichlorians {
                 
                 void SetDeviceId(const std::string &device_id) { device_id_ = device_id; }
                 const std::string &GetDeviceId() const { return device_id_; }
-
+                
                 void SetClientId(const std::string &client_id) { client_id_ = client_id; }
                 const std::string &GetClientId() const { return client_id_; }
                 
                 void OnMessage(const std::string &message) {
                     @autoreleasepool {
                         if (!server_url_.empty()) {
-                            ::NSLog(@"LogEvent HTTP: `%s`", message.c_str());
+                            CURRENT_NSLOG(@"LogEvent HTTP: `%s`", message.c_str());
                             
                             NSMutableURLRequest *req = [NSMutableURLRequest
                                                         requestWithURL:[NSURL URLWithString:[NSString stringWithUTF8String:server_url_.c_str()]]];
@@ -135,17 +142,18 @@ namespace midichlorians {
                             NSHTTPURLResponse *res = nil;
                             NSError *err = nil;
                             NSData *url_data = [NSURLConnection sendSynchronousRequest:req returningResponse:&res error:&err];
+                            // TODO(mzhurovich): Switch to `NSURLSession`.
                             
                             // TODO(dkorolev): A bit more detailed error handling.
                             // TODO(dkorolev): If the message queue is persistent, consider keeping unsent entries within it.
                             static_cast<void>(url_data);
                             if (!res) {
-                                ::NSLog(@"LogEvent HTTP: Fail.");
+                                CURRENT_NSLOG(@"LogEvent HTTP: Fail.");
                             } else {
-                                ::NSLog(@"LogEvent HTTP: OK.");
+                                CURRENT_NSLOG(@"LogEvent HTTP: OK.");
                             }
                         } else {
-                            ::NSLog(@"LogEvent HTTP: No `server_url_` set.");
+                            CURRENT_NSLOG(@"LogEvent HTTP: No `server_url_` set.");
                         }
                     }  // @autoreleasepool
                 }
@@ -215,6 +223,7 @@ namespace midichlorians {
         template <typename T>
         using ThreadSafeWrapper = SimplestThreadSafeWrapper<T>;
         
+        // TODO(mz+dk): Remove `NSLog`? Looks like it is not used.
         using NSLog = ThreadSafeWrapper<thread_unsafe::NSLog>;
         using POSTviaHTTP = ThreadSafeWrapper<thread_unsafe::POSTviaHTTP>;
         
@@ -229,7 +238,7 @@ namespace midichlorians {
     };
     
     using Stats = consumer::POSTviaHTTP;
-
+    
 }  // namespace midichlorians
 
 @implementation MidichloriansImpl
@@ -253,7 +262,7 @@ using namespace midichlorians;
     
     [MidichloriansImpl
      emit:iOSAppLaunchEvent(
-                            [[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"] UTF8String],
+                            UnsafeToStdString([[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"] UTF8String]),
                             PathTimestampMillis([NSSearchPathForDirectoriesInDomains(
                                                                                      NSDocumentDirectory, NSUserDomainMask, YES) firstObject]),
                             PathTimestampMillis([[NSBundle mainBundle] executablePath]))];
@@ -269,7 +278,7 @@ using namespace midichlorians;
     for (NSString *loc in [[NSBundle mainBundle] preferredLocalizations]) {
         preferredLocalizations += [loc UTF8String] + std::string(" ");
     }
-
+    
     NSLocale *locale = [NSLocale currentLocale];
     std::string userInterfaceIdiom = "phone";
     if (device.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
@@ -277,7 +286,7 @@ using namespace midichlorians;
     } else if (device.userInterfaceIdiom == UIUserInterfaceIdiomUnspecified) {
         userInterfaceIdiom = "unspecified";
     }
-
+    
     std::map<std::string, std::string> info = {
         {"deviceName", UnsafeToStdString(device.name)},
         {"deviceSystemName", UnsafeToStdString(device.systemName)},
@@ -319,6 +328,8 @@ using namespace midichlorians;
     if (!info.empty()) {
         [MidichloriansImpl emit:iOSDeviceInfo(info)];
     }
+#else
+    static_cast<void>(options);
 #endif  // (TARGET_OS_IPHONE > 0)
 }
 
@@ -330,7 +341,7 @@ using namespace midichlorians;
 // Identifies the user.
 + (void)identify:(NSString *)identifier {
     Stats &instance = Singleton<Stats>::Instance();
-    instance.SetClientId([identifier UTF8String]);
+    instance.SetClientId(UnsafeToStdString([identifier UTF8String]));
 }
 
 @end

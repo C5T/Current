@@ -77,7 +77,7 @@ struct MidichloriansEvent {
     virtual std::string EventAsString(const std::string& did, const std::string& cid) const override { \
       SetDeviceId(did);                                                                                \
       SetClientId(cid);                                                                                \
-      return CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));                                            \
+      return CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));                                   \
     }                                                                                                  \
     template <class A>                                                                                 \
     void serialize(A& ar) {                                                                            \
@@ -150,6 +150,8 @@ CURRENT_EVENT(iOSFirstLaunchEvent, iOSBaseEvent) {
   iOSFirstLaunchEvent() = default;
 };
 
+// TODO(dk+mz): `source` argument goes to `description` for `iOSFocusEvent`,
+// while for `iOSGenericEvent` there's dedicated member `source`. Fix?
 CURRENT_EVENT(iOSFocusEvent, iOSBaseEvent) {
   bool gained_focus;
   template <typename A>

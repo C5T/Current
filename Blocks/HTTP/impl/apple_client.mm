@@ -40,7 +40,7 @@ SOFTWARE.
 #import <Foundation/NSStream.h>
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
-#import <Foundation/NSURLConnection.h>
+#import <Foundation/NSURLSession.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSURLError.h>
@@ -72,7 +72,7 @@ bool blocks::HTTPClientApple::Go() {
       request.HTTPMethod = [NSString stringWithUTF8String:method.c_str()];
     } else {
       http_response_code = -1;
-      NSLog(@"HTTP method is empty.");
+      CURRENT_NSLOG(@"HTTP method is empty.");
       return false;
     }
 
@@ -84,7 +84,7 @@ bool blocks::HTTPClientApple::Go() {
           [[NSFileManager defaultManager] attributesOfItemAtPath:path error:&err].fileSize;
         if (err) {
           http_response_code = -1;
-          NSLog(@"Error %d %@", static_cast<int>(err.code), err.localizedDescription);
+          CURRENT_NSLOG(@"Error %d %@", static_cast<int>(err.code), err.localizedDescription);
           return false;
         }
         request.HTTPBodyStream = [NSInputStream inputStreamWithFileAtPath:path];
@@ -95,8 +95,9 @@ bool blocks::HTTPClientApple::Go() {
     }
 
     *async_request_completed.MutableScopedAccessor() = false;
-    [NSURLConnection sendAsynchronousRequest:request queue:[[NSOperationQueue alloc] init]
-        completionHandler:^(NSURLResponse *response, NSData *data, NSError *error) {
+    NSURLSession *session = [NSURLSession sharedSession];
+    [[session dataTaskWithRequest:request
+        completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
           // Workaround to handle HTTP 401 response without errors.
           if (error.code == NSURLErrorUserCancelledAuthentication) {
             http_response_code = 401;
@@ -109,7 +110,7 @@ bool blocks::HTTPClientApple::Go() {
               request_succeeded = true;
             } else {
               http_response_code = -1;
-              NSLog(@"ERROR while connecting to %s: %@", url_requested.c_str(), error.localizedDescription);
+              CURRENT_NSLOG(@"ERROR while connecting to %s: %@", url_requested.c_str(), error.localizedDescription);
               request_succeeded = false;
             }
           }
@@ -127,7 +128,7 @@ bool blocks::HTTPClientApple::Go() {
             }
           }
           *async_request_completed.MutableScopedAccessor() = true;
-    }];
+    }] resume];
 
     async_request_completed.Wait([](bool done) { return done; });
 

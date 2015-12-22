@@ -116,7 +116,15 @@ SOFTWARE.
 #define M_PI 3.14159265359
 #endif
 
+#endif  // CURRENT_WINDOWS
+
+#ifdef CURRENT_APPLE
+#ifdef CURRENT_APPLE_ENABLE_NSLOG
+#define CURRENT_NSLOG(...) ::NSLog(__VA_ARGS__)
+#else
+inline void CURRENT_NSLOG(...) {}
 #endif
+#endif  // CURRENT_APPLE
 
 // Check for 'thread_local' specifier support.
 #ifdef __clang__
