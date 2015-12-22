@@ -58,7 +58,7 @@ namespace midichlorians {
 
     // Conversion from [possible nullptr] `const char*` to `std::string`.
     static std::string UnsafeToStdString(const char* s) {
-    return s == nullptr ? std::string() : s;
+        return s ? s : "";
     }
 
 #if (TARGET_OS_IPHONE > 0)

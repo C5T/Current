@@ -50,20 +50,18 @@ struct Server {
   using T_EVENTS = TypeList<iOSAppLaunchEvent, iOSIdentifyEvent, iOSFocusEvent, iOSGenericEvent>;
 
   Server(int http_port, const std::string& http_route)
-      : messages_processed(0u), http_port(http_port), http_route(http_route) {
-    HTTP(http_port).Register(http_route,
-                             [this](Request r) {
-                               std::unique_ptr<MidichloriansEvent> event;
-                               try {
-                                 CerealizeParseJSON(r.body, event);
-                                 current::metaprogramming::RTTIDynamicCall<T_EVENTS>(event, *this);
-                                 ++messages_processed;
-                               } catch (const current::Exception&) {
-                               }
-                             });
-  }
-
-  ~Server() { HTTP(http_port).UnRegister(http_route); }
+      : messages_processed(0u),
+        endpoints(HTTP(http_port).Register(http_route,
+                                           [this](Request r) {
+                                             std::unique_ptr<MidichloriansEvent> event;
+                                             try {
+                                               CerealizeParseJSON(r.body, event);
+                                               current::metaprogramming::RTTIDynamicCall<T_EVENTS>(event,
+                                                                                                   *this);
+                                               ++messages_processed;
+                                             } catch (const current::Exception&) {
+                                             }
+                                           })) {}
 
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());
@@ -101,8 +99,7 @@ struct Server {
   std::atomic_size_t messages_processed;
 
  private:
-  const int http_port;
-  const std::string http_route;
+  HTTPRoutesScope endpoints;
 };
 
 TEST(Midichlorians, SmokeTest) {
@@ -117,7 +114,7 @@ TEST(Midichlorians, SmokeTest) {
 
   [Midichlorians identify:@"unit_test"];
 
-  NSDictionary* eventParams = @{ @"s" : @"str", @"x" : @1 };
+  NSDictionary* eventParams = @{ @"s" : @"str", @"b" : @true, @"x" : @1 };
   [Midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
 
   [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
@@ -128,7 +125,7 @@ TEST(Midichlorians, SmokeTest) {
 
   EXPECT_EQ(
       "Launch,GainedFocus[applicationDidBecomeActive],Identify[unit_test],CustomEvent1[source=SmokeTest,s=str,"
-      "x=1],LostFocus[applicationDidEnterBackground]",
+      "b=1,x=1],LostFocus[applicationDidEnterBackground]",
       current::strings::Join(server.messages, ','));
 }
 

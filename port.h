@@ -122,7 +122,7 @@ SOFTWARE.
 #ifdef CURRENT_APPLE_ENABLE_NSLOG
 #define CURRENT_NSLOG(...) ::NSLog(__VA_ARGS__)
 #else
-void CURRENT_NSLOG(...) {}
+inline void CURRENT_NSLOG(...) {}
 #endif
 #endif  // CURRENT_APPLE
 
