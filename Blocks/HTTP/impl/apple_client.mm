@@ -72,7 +72,7 @@ bool blocks::HTTPClientApple::Go() {
       request.HTTPMethod = [NSString stringWithUTF8String:method.c_str()];
     } else {
       http_response_code = -1;
-      NSLog(@"HTTP method is empty.");
+      CURRENT_NSLOG(@"HTTP method is empty.");
       return false;
     }
 
@@ -84,7 +84,7 @@ bool blocks::HTTPClientApple::Go() {
           [[NSFileManager defaultManager] attributesOfItemAtPath:path error:&err].fileSize;
         if (err) {
           http_response_code = -1;
-          NSLog(@"Error %d %@", static_cast<int>(err.code), err.localizedDescription);
+          CURRENT_NSLOG(@"Error %d %@", static_cast<int>(err.code), err.localizedDescription);
           return false;
         }
         request.HTTPBodyStream = [NSInputStream inputStreamWithFileAtPath:path];
@@ -110,7 +110,7 @@ bool blocks::HTTPClientApple::Go() {
               request_succeeded = true;
             } else {
               http_response_code = -1;
-              NSLog(@"ERROR while connecting to %s: %@", url_requested.c_str(), error.localizedDescription);
+              CURRENT_NSLOG(@"ERROR while connecting to %s: %@", url_requested.c_str(), error.localizedDescription);
               request_succeeded = false;
             }
           }
