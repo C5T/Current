@@ -839,6 +839,15 @@ struct LoadFromJSONImpl<Optional<T>, J> {
 };
 
 template <JSONFormat J>
+struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
+  static void Load(rapidjson::Value* source, std::chrono::milliseconds& destination, const std::string& path) {
+    uint64_t value_as_uint64;
+    LoadFromJSONImpl<uint64_t, J>::Load(source, value_as_uint64, path);
+    destination = std::chrono::milliseconds(value_as_uint64);
+  }
+};
+
+template <JSONFormat J>
 struct LoadFromJSONImpl<std::chrono::microseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
     uint64_t value_as_uint64;
