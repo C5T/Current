@@ -57,20 +57,16 @@ namespace current {
 namespace midichlorians {
 
     // Conversion from [possible nullptr] `const char*` to `std::string`.
-    static std::string UnsafeToStdString(const char* s) {
+    static std::string ToStdString(const char* s) {
         return s ? s : "";
     }
 
 #if (TARGET_OS_IPHONE > 0)
     // Conversion from [possible nil] `NSString` to `std::string`.
-    static std::string UnsafeToStdString(NSString *nsString) {
-        if (nsString) {
-            return std::string([nsString UTF8String]);
-        } else {
-            return std::string();
-        }
+    static std::string ToStdString(NSString *nsString) {
+        return nsString ? std::string([nsString UTF8String]) : "";
     }
-    
+
     static std::string RectToString(CGRect const &rect) {
         return std::to_string(static_cast<int>(rect.origin.x)) + " " +
         std::to_string(static_cast<int>(rect.origin.y)) + " " +
@@ -234,12 +230,10 @@ namespace midichlorians {
 
     struct EventsVariantDispatchedAssigner {
         explicit EventsVariantDispatchedAssigner(Variant<T_IOS_EVENTS>& variant) : variant_(variant) {}
-        void operator()(const iOSFirstLaunchEvent& event) { variant_ = event; }
-        void operator()(const iOSAppLaunchEvent& event) { variant_ = event; }
-        void operator()(const iOSDeviceInfo& event) { variant_ = event; }
-        void operator()(const iOSIdentifyEvent& event) { variant_ = event; }
-        void operator()(const iOSFocusEvent& event) { variant_ = event; }
-        void operator()(const iOSGenericEvent& event) { variant_ = event; }
+
+        template <typename T>
+        void operator()(const T& event) { variant_ = event; }
+
         Variant<T_IOS_EVENTS>& variant_;
     };
 }  // namespace midichlorians
@@ -266,7 +260,7 @@ using namespace current::midichlorians;
     
     [MidichloriansImpl
      emit:iOSAppLaunchEvent(
-                            UnsafeToStdString([[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"] UTF8String]),
+                            ToStdString([[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"] UTF8String]),
                             PathTimestampMillis([NSSearchPathForDirectoriesInDomains(
                                                                                      NSDocumentDirectory, NSUserDomainMask, YES) firstObject]),
                             PathTimestampMillis([[NSBundle mainBundle] executablePath]))];
@@ -292,20 +286,20 @@ using namespace current::midichlorians;
     }
     
     std::map<std::string, std::string> info = {
-        {"deviceName", UnsafeToStdString(device.name)},
-        {"deviceSystemName", UnsafeToStdString(device.systemName)},
-        {"deviceSystemVersion", UnsafeToStdString(device.systemVersion)},
-        {"deviceModel", UnsafeToStdString(device.model)},
+        {"deviceName", ToStdString(device.name)},
+        {"deviceSystemName", ToStdString(device.systemName)},
+        {"deviceSystemVersion", ToStdString(device.systemVersion)},
+        {"deviceModel", ToStdString(device.model)},
         {"deviceUserInterfaceIdiom", userInterfaceIdiom},
         {"screens", std::to_string([UIScreen screens].count)},
         {"screenBounds", RectToString(screen.bounds)},
         {"screenScale", std::to_string(screen.scale)},
         {"preferredLanguages", preferredLanguages},
         {"preferredLocalizations", preferredLocalizations},
-        {"localeIdentifier", UnsafeToStdString([locale objectForKey:NSLocaleIdentifier])},
-        {"calendarIdentifier", UnsafeToStdString([[locale objectForKey:NSLocaleCalendar] calendarIdentifier])},
-        {"localeMeasurementSystem", UnsafeToStdString([locale objectForKey:NSLocaleMeasurementSystem])},
-        {"localeDecimalSeparator", UnsafeToStdString([locale objectForKey:NSLocaleDecimalSeparator])},
+        {"localeIdentifier", ToStdString([locale objectForKey:NSLocaleIdentifier])},
+        {"calendarIdentifier", ToStdString([[locale objectForKey:NSLocaleCalendar] calendarIdentifier])},
+        {"localeMeasurementSystem", ToStdString([locale objectForKey:NSLocaleMeasurementSystem])},
+        {"localeDecimalSeparator", ToStdString([locale objectForKey:NSLocaleDecimalSeparator])},
     };
     if (device.systemVersion.floatValue >= 8.0) {
         info.emplace("screenNativeBounds", RectToString(screen.nativeBounds));
@@ -316,17 +310,17 @@ using namespace current::midichlorians;
         ASIdentifierManager *manager = [ASIdentifierManager sharedManager];
         info.emplace("isAdvertisingTrackingEnabled", manager.isAdvertisingTrackingEnabled ? "YES" : "NO");
         if (manager.advertisingIdentifier) {
-            info.emplace("advertisingIdentifier", UnsafeToStdString(manager.advertisingIdentifier.UUIDString));
+            info.emplace("advertisingIdentifier", ToStdString(manager.advertisingIdentifier.UUIDString));
         }
     }
     
     NSURL *url = [options objectForKey:UIApplicationLaunchOptionsURLKey];
     if (url) {
-        info.emplace("UIApplicationLaunchOptionsURLKey", UnsafeToStdString([url absoluteString]));
+        info.emplace("UIApplicationLaunchOptionsURLKey", ToStdString([url absoluteString]));
     }
     NSString *source = [options objectForKey:UIApplicationLaunchOptionsSourceApplicationKey];
     if (source) {
-        info.emplace("UIApplicationLaunchOptionsSourceApplicationKey", UnsafeToStdString(source));
+        info.emplace("UIApplicationLaunchOptionsSourceApplicationKey", ToStdString(source));
     }
     
     if (!info.empty()) {
@@ -351,7 +345,7 @@ using namespace current::midichlorians;
 // Identifies the user.
 + (void)identify:(NSString *)identifier {
     Stats &instance = Singleton<Stats>::Instance();
-    instance.SetClientId(UnsafeToStdString([identifier UTF8String]));
+    instance.SetClientId(ToStdString([identifier UTF8String]));
 }
 
 @end

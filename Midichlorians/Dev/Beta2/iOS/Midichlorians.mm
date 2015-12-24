@@ -36,10 +36,26 @@ using namespace current::midichlorians;
 }
 
 + (void)focusEvent:(BOOL)hasFocus source:(NSString *)source {
-    [MidichloriansImpl emit:iOSFocusEvent(static_cast<bool>(hasFocus), [source UTF8String])];
+    if (!source) {
+          CURRENT_NSLOG("Malformed `trackEvent` call with empty `event` argument.");
+    } else {
+          [MidichloriansImpl emit:iOSFocusEvent(static_cast<bool>(hasFocus), [source UTF8String])];
+    }
 }
 
 + (void)trackEvent:(NSString *)event source:(NSString *)eventSource properties:(NSDictionary *)eventProperties {
+    if (!event) {
+        CURRENT_NSLOG("Malformed `trackEvent` call with empty `event` argument.");
+        return;
+    }
+    if (!eventSource) {
+        CURRENT_NSLOG("Malformed `trackEvent` call with empty `source` argument.");
+        return;
+    }
+    if (!eventProperties) {
+        CURRENT_NSLOG("Malformed `trackEvent` call with empty `properties` argument.");
+        return;
+    }
     [MidichloriansImpl emit:iOSGenericEvent(event, eventSource, eventProperties)];
 }
 

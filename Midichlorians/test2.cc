@@ -71,7 +71,6 @@ struct Server {
     EXPECT_FALSE(event.binary_version.empty());
     EXPECT_GT(event.app_install_time, 1420000000000u);
     EXPECT_GT(event.app_update_time, 1420000000000u);
-    EXPECT_EQ("*FinishLaunchingWithOptions", event.description);
     messages.push_back(ToString(event.user_ms.count()) + ":Launch");
   }
 
@@ -90,10 +89,6 @@ struct Server {
   void operator()(const iOSGenericEvent& event) {
     std::string params = "source=" + event.source;
     for (const auto& f : event.fields) {
-      params += ',';
-      params += f.first + '=' + f.second;
-    }
-    for (const auto& f : event.complex_fields) {
       params += ',';
       params += f.first + '=' + f.second;
     }
@@ -137,8 +132,7 @@ TEST(Midichlorians, SmokeTest) {
 
   EXPECT_EQ(
       "0:Launch,1:GainedFocus[applicationDidBecomeActive],2:Identify[unit_test],5:CustomEvent1[source="
-      "SmokeTest,s=str,"
-      "b=1,x=1],15:LostFocus[applicationDidEnterBackground]",
+      "SmokeTest,b=1,s=str,x=1],15:LostFocus[applicationDidEnterBackground]",
       current::strings::Join(server.messages, ','));
 }
 

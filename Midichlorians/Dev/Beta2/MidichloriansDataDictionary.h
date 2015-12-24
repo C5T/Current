@@ -26,7 +26,7 @@ SOFTWARE.
 #ifndef __cplusplus
 // If you get this error building an Objective-C project, #include neither this file nor "MidichloriansImpl.h".
 // Use "Midichlorians.h" instead.
-// It wraps the inner, platform-independent, event tracking code, and allows client code to stay `.m`.
+// It wraps the inner, platform-independent, event tracking code, and allows the client code to stay `.m`.
 #error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
 
@@ -51,10 +51,7 @@ CURRENT_STRUCT(MidichloriansBaseEvent) {
 };
 
 // iOS-specific base event.
-CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent) {
-  // TODO: do we need this field?
-  CURRENT_FIELD(description, std::string);
-};
+CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent){};
 
 // iOS event denoting the very first application launch.
 // Emitted once during Midichlorians initialization.
@@ -65,17 +62,15 @@ CURRENT_STRUCT(iOSFirstLaunchEvent, iOSBaseEvent){};
 CURRENT_STRUCT(iOSAppLaunchEvent, iOSBaseEvent) {
   CURRENT_FIELD(binary_version, std::string);
   CURRENT_FIELD(cf_version, std::string);
-  CURRENT_FIELD(app_install_time, uint64_t);
-  CURRENT_FIELD(app_update_time, uint64_t);
+  CURRENT_FIELD(app_install_time, uint64_t, 0ull);
+  CURRENT_FIELD(app_update_time, uint64_t, 0ull);
   CURRENT_DEFAULT_CONSTRUCTOR(iOSAppLaunchEvent) {}
   CURRENT_CONSTRUCTOR(iOSAppLaunchEvent)(
       const std::string& cf_version, uint64_t app_install_time, uint64_t app_update_time)
       : binary_version(__DATE__ " " __TIME__),
         cf_version(cf_version),
         app_install_time(app_install_time),
-        app_update_time(app_update_time) {
-    iOSBaseEvent::description = "*FinishLaunchingWithOptions";
-  }
+        app_update_time(app_update_time) {}
 };
 
 // iOS event with the detailed device information.
@@ -97,19 +92,18 @@ CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
   CURRENT_FIELD(event, std::string);
   CURRENT_FIELD(source, std::string);
   CURRENT_FIELD(fields, (std::map<std::string, std::string>));
-  // TODO: do we need this separation to `fields` + `complex_fields`?
-  CURRENT_FIELD(complex_fields, (std::map<std::string, std::string>));
   CURRENT_FIELD(unparsable_fields, std::vector<std::string>);
   CURRENT_DEFAULT_CONSTRUCTOR(iOSGenericEvent) {}
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
-  CURRENT_CONSTRUCTOR(iOSGenericEvent)(NSString * input_event, NSString * input_source, NSDictionary * input) {
+  CURRENT_CONSTRUCTOR(iOSGenericEvent)(
+      NSString * event_name, NSString * event_source, NSDictionary * properties) {
     // A somewhat strict yet safe way to parse dictionaries. Imperfect but works. -- D. K.
-    event = [input_event UTF8String];
-    source = [input_source UTF8String];
-    for (NSString* k in input) {
+    event = [event_name UTF8String];
+    source = [event_source UTF8String];
+    for (NSString* k in properties) {
       const char* key = (k && [k isKindOfClass:[NSString class]]) ? [k UTF8String] : nullptr;
       if (key) {
-        NSObject* o = [input objectForKey:k];
+        NSObject* o = [properties objectForKey:k];
         NSString* v = (NSString*)o;
         const char* value = (v && [v isKindOfClass:[NSString class]]) ? [v UTF8String] : nullptr;
         if (value) {
@@ -118,7 +112,7 @@ CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
           NSString* d = [o description];
           const char* value = (d && [d isKindOfClass:[NSString class]]) ? [d UTF8String] : nullptr;
           if (value) {
-            complex_fields[key] = value;
+            fields[key] = value;
           } else {
             unparsable_fields.push_back(key);
           }
