@@ -28,7 +28,7 @@
 #ifndef __cplusplus
 // If you get this error building an Objective-C project, #include neither this file nor "MidichloriansImpl.h".
 // Use "Midichlorians.h" instead.
-// It wraps the inner, platform-independent, event tracking code, and allows client code to stay `.m`.
+// It wraps the inner, platform-independent, event tracking code, and allows the client code to stay `.m`.
 #error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
 
