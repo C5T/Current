@@ -138,14 +138,6 @@ std::chrono::microseconds MicroTimestampOf(E&& entry) {
       std::forward<E>(entry));
 }
 
-template <typename E>
-static std::chrono::microseconds DoIt(E&& e) {
-  std::chrono::microseconds result;
-  ExtractTimestampFunctor impl(result);
-  e.ReportTimestamp(impl);
-  return result;
-}
-
 // TODO(dkorolev): Test this function too, not just use it from `examples/EmbeddedDB`.
 template <typename E>
 void SetMicroTimestamp(E& entry, std::chrono::microseconds timestamp) {
