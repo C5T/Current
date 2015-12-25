@@ -33,6 +33,10 @@ SOFTWARE.
 #ifndef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #define CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 
+#include "../../../port.h"
+
+#include <chrono>
+
 #include "../../../TypeSystem/struct.h"
 
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
