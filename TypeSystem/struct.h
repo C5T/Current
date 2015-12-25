@@ -108,14 +108,6 @@ struct CurrentStructFieldsConsistency<T, -1> {
   constexpr static bool Check() { return true; }
 };
 
-template <typename T>
-struct WithoutParentheses;
-
-template <typename T>
-struct WithoutParentheses<int(T)> {
-  typedef T result;
-};
-
 }  // namespace reflection
 }  // namespace current
 
@@ -188,6 +180,14 @@ struct WithoutParentheses<int(T)> {
 
 #endif  // _MSC_VER
 
+// Macro to equally treat bare and parenthesized type arguments:
+// CF_TYPE((int)) = CF_TYPE(int) = int
+#define EMPTY_CF_TYPE_EXTRACT
+#define CF_TYPE_PASTE(x, ...) x##__VA_ARGS__
+#define CF_TYPE_PASTE2(x, ...) CF_TYPE_PASTE(x, __VA_ARGS__)
+#define CF_TYPE_EXTRACT(...) CF_TYPE_EXTRACT __VA_ARGS__
+#define CF_TYPE(x) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT x)
+
 #define CF_IMPL2(a, b) CURRENT_FIELD_WITH_NO_VALUE(a, b)
 #define CF_IMPL3(a, b, c) CURRENT_FIELD_WITH_VALUE(a, b, c)
 
@@ -203,15 +203,12 @@ struct WithoutParentheses<int(T)> {
 #define CF_SWITCH(x, y) x y
 #define CURRENT_FIELD(...) CF_SWITCH(CF_CHOOSERX(CF_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                                                             \
-  ::current::reflection::Field<INSTANTIATION_TYPE,                                                          \
-                               typename ::current::reflection::WithoutParentheses<int(type)>::result> name; \
+#define CURRENT_FIELD_WITH_NO_VALUE(name, type)                         \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                                         \
-  ::current::reflection::Field<INSTANTIATION_TYPE,                                                          \
-                               typename ::current::reflection::WithoutParentheses<int(type)>::result> name{ \
-      value};                                                                                               \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                            \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{value}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
 #define CURRENT_TIMESTAMP(field)      \
@@ -228,9 +225,7 @@ struct WithoutParentheses<int(T)> {
   template <class F>                                                                                           \
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                           \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
-    CURRENT_CALL_F(::current::reflection::TypeSelector<                                                        \
-                       typename ::current::reflection::WithoutParentheses<int(type)>::result>(),               \
-                   #name);                                                                                     \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(), #name);                               \
   }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
