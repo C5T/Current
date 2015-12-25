@@ -40,7 +40,7 @@ NoValue           // == const current::NoValueException&
 NoValueOfType<T>  // == const current::NoValueOfTypeException<T>&
 
 Request, Response
-GET, POST (probably other methods too)
+GET, POST, PUT, DELETE
 URL
 current::HTTPHeaders
 current::HTTPRoutesScope
