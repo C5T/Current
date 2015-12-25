@@ -15,7 +15,7 @@ CURRENT_THROW                                  // Throws and logs line number.
 
 CURRENT_STORAGE, CURRENT_STORAGE_FIELD         // Transactional storage.
 CURRENT_STORAGE_STRUCT_TAG                     // To tag `CURRENT_STRUCT`-s as different types.
-CURRENT_STORAGE_THROW_ROLLBACK                 // To indidate the transaction should be rolled back.
+CURRENT_STORAGE_THROW_ROLLBACK                 // To indicate the transaction should be rolled back.
 
 CURRENT_{LHS,VIA,RHS}, REGISTER_{LHS,VIA,RHS}  // RipCurrent types.
 CURRENT_USER_TYPE                              // RipCurrent underlying user type extractor.
