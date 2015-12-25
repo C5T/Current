@@ -1,6 +1,6 @@
 # Current Symbols
 
-Symbol listed without the namespace are exposed globally.
+Symbols listed without the namespace are exposed globally.
 
 `TODO(dkorolev) + TODO(mzhurorich): Perhaps move them into `namespace current::global` and add `using namespace current::global` to the top-level `current.h`, guarded by an `#ifndef NO_CURRENT_GLOBAL` ?
 
