@@ -35,12 +35,14 @@ CURRENT_STRUCT(AddResult) {
 class BenchmarkTestServer {
  public:
   BenchmarkTestServer(int port, const std::string& route)
-  :port_(port), scope_(HTTP(port).Register(route, [](Request r) {
-    r(AddResult(FromString<int64_t>(r.url.query["a"]) + FromString<int64_t>(r.url.query["b"]))); })) { }
+      : port_(port),
+        scope_(HTTP(port).Register(
+            route,
+            [](Request r) {
+              r(AddResult(FromString<int64_t>(r.url.query["a"]) + FromString<int64_t>(r.url.query["b"])));
+            })) {}
 
-  void Join() {
-    HTTP(port_).Join();
-  }
+  void Join() { HTTP(port_).Join(); }
 
  private:
   const int port_;

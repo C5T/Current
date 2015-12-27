@@ -33,7 +33,12 @@ DEFINE_string(url,
               "http://localhost:%d/add",
               "The URL for the load test, default to `http://localhost:${FLAGS_port}`.");
 DEFINE_int32(port, 8999, "The port to use, if `--url` includes it.");
-DEFINE_int32(threads, 100, "The number of threads to run requests from.");
+
+DEFINE_int32(threads,
+             100,
+             "The number of threads to run requests from. NOTE: As requests are sent synchronously, the "
+             "measurement will be imprecise if (ping) / (time to service the request) is greater than "
+             "FLAGS_threads. Thus, this benchmarking tool is not useful when profiling remote servers.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
@@ -47,13 +52,12 @@ int main(int argc, char** argv) {
    private:
     static double NowInSeconds() { return 1e-6 * static_cast<double>(time::Now().count()); }
     void Thread() {
-      const double timestamp_begin = NowInSeconds();
-      const double timestamp_end = timestamp_begin + seconds_;
-      double timestamp_now;
-      while ((timestamp_now = NowInSeconds()) < timestamp_end) {
+      const double timestamp_end = NowInSeconds() + seconds_;
+      while (NowInSeconds() < timestamp_end) {
         const int a = current::random::RandomIntegral(-1000000, +1000000);
         const int b = current::random::RandomIntegral(-1000000, +1000000);
-        const auto r = HTTP(GET(strings::Printf(FLAGS_url.c_str(), FLAGS_port) + strings::Printf("?a=%d&b=%d", a, b)));
+        const auto r =
+            HTTP(GET(strings::Printf(FLAGS_url.c_str(), FLAGS_port) + strings::Printf("?a=%d&b=%d", a, b)));
         assert(r.code == HTTPResponseCode.OK);
         assert(ParseJSON<AddResult>(r.body).sum == a + b);
         ++queries_;
