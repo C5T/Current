@@ -56,25 +56,13 @@ CURRENT_STRUCT(Baz) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
-#ifndef _MSC_VER
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
   CURRENT_FIELD(v5, (std::map<Foo, int>));
-#else
-  typedef std::map<std::string, std::string> t_map_string_string;
-  CURRENT_FIELD(v4, t_map_string_string);
-  typedef std::map<Foo, int> t_map_foo_int;
-  CURRENT_FIELD(v5, t_map_foo_int);
-#endif
 };
 
 CURRENT_STRUCT(DerivedFromFoo, Foo) {
-#ifndef _MSC_VER
-  CURRENT_DEFAULT_CONSTRUCTOR(DerivedFromFoo) : Foo(100u) {}
-  CURRENT_CONSTRUCTOR(DerivedFromFoo)(size_t x) : Foo(x * 1001u) {}
-#else
   CURRENT_DEFAULT_CONSTRUCTOR(DerivedFromFoo) : SUPER(100u) {}
   CURRENT_CONSTRUCTOR(DerivedFromFoo)(size_t x) : SUPER(x * 1001u) {}
-#endif
   CURRENT_FIELD(baz, Baz);
 };
 
@@ -589,12 +577,7 @@ TEST(TypeSystemTest, TimestampSimple) {
 
 namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampVariant) {
-#ifndef _MSC_VER
   CURRENT_FIELD(magic, (Variant<WithTimestampUS, WithTimestampUInt64>));
-#else
-  typedef Variant<WithTimestampUS, WithTimestampUInt64> t_magic;
-  CURRENT_FIELD(magic, t_magic);
-#endif
   CURRENT_CONSTRUCTOR(WithTimestampVariant)(const WithTimestampUS& magic) : magic(magic) {}
   CURRENT_CONSTRUCTOR(WithTimestampVariant)(const WithTimestampUInt64& magic) : magic(magic) {}
   CURRENT_TIMESTAMP(magic);
@@ -638,12 +621,7 @@ TEST(TypeSystemTest, ConstructorsAndMemberFunctions) {
 namespace struct_definition_test {
 
 CURRENT_STRUCT(WithVariant) {
-#ifndef _MSC_VER
   CURRENT_FIELD(p, (Variant<Foo, Bar>));
-#else
-  typedef Variant<Foo, Bar> t_p;
-  CURRENT_FIELD(p, t_p);
-#endif
   CURRENT_CONSTRUCTOR(WithVariant)(Foo foo) : p(foo) {}
 };
 

@@ -60,7 +60,7 @@
 + (void)setup:(NSString*)serverUrl withLaunchOptions:(NSDictionary*)options;
 
 // Emits the event.
-+ (void)emit:(const current::midichlorians::iOSBaseEvent&)event;
++ (void)emit:(const current::midichlorians::ios::iOSBaseEvent&)event;
 
 // Identifies the user.
 + (void)identify:(NSString*)identifier;

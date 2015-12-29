@@ -48,7 +48,7 @@ SOFTWARE.
 DEFINE_int32(http_port, 8383, "Port to spawn server on.");
 DEFINE_string(http_route, "/log", "HTTP route of the server.");
 
-using namespace current::midichlorians;
+using namespace current::midichlorians::ios;
 
 struct Server {
   using T_EVENT_VARIANT = Variant<T_IOS_EVENTS>;

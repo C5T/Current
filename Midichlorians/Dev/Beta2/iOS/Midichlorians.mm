@@ -24,7 +24,7 @@
 
 @implementation Midichlorians
 
-using namespace current::midichlorians;
+using namespace current::midichlorians::ios;
 
 + (void)setup:(NSString*)serverUrl withLaunchOptions:(NSDictionary*)options {
     [MidichloriansImpl setup:serverUrl withLaunchOptions:options];

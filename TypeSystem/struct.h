@@ -57,10 +57,6 @@ struct SUPER_SELECTOR<DeclareFields, T> {
 // `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`, and
 // its scope resolution for derived structs differs between Visual C++ and g++/clang++.
 // Confusing but works. -- D.K.
-#ifndef _MSC_VER
-template <typename INSTANTIATION_TYPE, typename T>
-using SUPER = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
-#else
 template <typename REFLECTION_HELPER, typename INSTANTIATION_TYPE, typename T>
 struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   template <typename... ARGS>
@@ -68,10 +64,11 @@ struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
       : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type(std::forward<ARGS>(args)...) {}
   using T_SUPER = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
   using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
+  using typename REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
+#ifdef _MSC_VER
   using REFLECTION_HELPER::CURRENT_FIELD_INDEX_BASE;
-  using REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
-};
 #endif
+};
 
 // Fields declaration and counting.
 template <typename INSTANTIATION_TYPE, typename T>
@@ -130,6 +127,8 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CS_SWITCH(x, y) x y
 #define CURRENT_STRUCT(...) CS_SWITCH(CS_CHOOSERX(CS_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
+#ifndef _MSC_VER
+
 #define CURRENT_STRUCT_HELPERS(s, super)                                                            \
   template <typename INSTANTIATION_TYPE>                                                            \
   struct CURRENT_STRUCT_IMPL_##s;                                                                   \
@@ -138,29 +137,52 @@ struct CurrentStructFieldsConsistency<T, -1> {
   struct CURRENT_REFLECTION_HELPER;                                                                 \
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
-    using T_SUPER = super;                                                                          \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
+    typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
+  };                                                                                                \
+  struct CURRENT_STRUCT_SUPER_HELPER_##s {                                                          \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
+    using SUPER = ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>,                        \
+                                               ::current::reflection::DeclareFields,                \
+                                               super>;                                              \
+  }
+
+#else  // _MSC_VER
+
+#define CURRENT_STRUCT_HELPERS(s, super)                                                            \
+  template <typename INSTANTIATION_TYPE>                                                            \
+  struct CURRENT_STRUCT_IMPL_##s;                                                                   \
+  using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>;                          \
+  template <typename T>                                                                             \
+  struct CURRENT_REFLECTION_HELPER;                                                                 \
+  template <>                                                                                       \
+  struct CURRENT_REFLECTION_HELPER<s> {                                                             \
+    constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
+
+#endif  // _MSC_VER
 
 // `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`,
 // and its scope resolution for derives structs differs between Visual C++ and g++/clang++. -- D.K.
 
 #ifndef _MSC_VER
 
-#define CURRENT_STRUCT_NOT_DERIVED(s)                            \
-  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);           \
-  template <typename INSTANTIATION_TYPE>                         \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>, \
-                                   ::current::reflection::SUPER<INSTANTIATION_TYPE, ::current::CurrentStruct>
+#define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
+  CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                        \
+  template <typename INSTANTIATION_TYPE>                                                      \
+  struct CURRENT_STRUCT_IMPL_##s : CURRENT_STRUCT_SUPER_HELPER_##s,                           \
+                                   ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, \
+                                                                INSTANTIATION_TYPE,           \
+                                                                ::current::CurrentStruct>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                   \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
   CURRENT_STRUCT_HELPERS(s, base);                                                        \
   template <typename INSTANTIATION_TYPE>                                                  \
-  struct CURRENT_STRUCT_IMPL_##s : CURRENT_REFLECTION_HELPER<s>,                          \
-                                   ::current::reflection::SUPER<INSTANTIATION_TYPE, base>
+  struct CURRENT_STRUCT_IMPL_##s                                                          \
+      : CURRENT_STRUCT_SUPER_HELPER_##s,                                                  \
+        ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
 
 #else  // _MSC_VER
 
@@ -260,11 +282,7 @@ template <typename T>
 struct SuperTypeImpl {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
-#ifndef _MSC_VER
-  typedef typename T::template CURRENT_REFLECTION_HELPER<T>::T_SUPER type;
-#else
   typedef typename T::T_SUPER type;
-#endif
 };
 
 template <typename T>
@@ -274,14 +292,7 @@ template <typename T>
 struct FieldCounter {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  enum {
-#ifndef _MSC_VER
-    value = (sizeof(typename T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_FIELD_COUNT_STRUCT) /
-             sizeof(CountFieldsImplementationType))
-#else
-    value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
-#endif  // _MSC_VER
-  };
+  enum { value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) };
 };
 
 template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT>
@@ -289,13 +300,7 @@ struct CurrentTypeNameImpl;
 
 template <typename T>
 struct CurrentTypeNameImpl<T, true, false> {
-  static const char* GetCurrentTypeName() {
-#ifndef _MSC_VER
-    return T::template CURRENT_REFLECTION_HELPER<T>::CURRENT_STRUCT_NAME();
-#else
-    return T::CURRENT_STRUCT_NAME();
-#endif
-  }
+  static const char* GetCurrentTypeName() { return T::CURRENT_STRUCT_NAME(); }
 };
 
 // UNcommented out the **really confusing** part for now to make test work. -- M.Z.
