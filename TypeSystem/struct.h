@@ -158,6 +158,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
   template <>                                                                                       \
   struct CURRENT_REFLECTION_HELPER<s> {                                                             \
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
+    constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
