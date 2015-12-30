@@ -47,15 +47,24 @@ SOFTWARE.
 namespace current {
 namespace midichlorians {
 
-// Base event.
+// `MidichloriansBaseEvent` is the universal base class for all analytics events, mobile and web.
+// `customer_id` is used to separate events from different customers, when they are collected by a single
+// server, and could be ignored in case of single-customer environment.
+// TODO(dk+mz): make `customer_id` a mandatory parameter in initialization?
+// `user_ms` is the event timestamp on user device, measured in milliseconds since epoch.
+// `client_id` is the unique identifier of the user. It could be set by corresponding `identify` methods or
+// generated automatically.
 CURRENT_STRUCT(MidichloriansBaseEvent) {
+  CURRENT_FIELD(customer_id, std::string);
   CURRENT_FIELD(user_ms, std::chrono::milliseconds);
-  CURRENT_FIELD(device_id, std::string);
   CURRENT_FIELD(client_id, std::string);
 };
 
-// iOS-specific base event.
-CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent){};
+namespace ios {
+
+CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent) {
+  CURRENT_FIELD(device_id, std::string);
+};
 
 // iOS event denoting the very first application launch.
 // Emitted once during Midichlorians initialization.
@@ -133,6 +142,13 @@ using T_IOS_EVENTS = TypeList<iOSFirstLaunchEvent,
                               iOSIdentifyEvent,
                               iOSFocusEvent,
                               iOSGenericEvent>;
+
+}  // namespace ios
+
+namespace web {
+
+}  // namespace web
+
 
 }  // namespace midichlorians
 }  // namespace current
