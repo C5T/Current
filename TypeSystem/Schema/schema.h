@@ -54,7 +54,12 @@ inline const PrimitiveTypesListImpl& PrimitiveTypesList() {
 }
 
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
-enum class Language { CPP, FSharp, JSON };
+enum class Language {
+  Current,  // C++, `CURRENT_STRUCT`-s.
+  CPP,      // C++, native `struct`-s.
+  FSharp,   // F#.
+  JSON,     // Schema as JSON, which can be parsed back.
+};
 
 template <Language>
 struct LanguageSyntaxImpl;
@@ -83,8 +88,52 @@ struct LanguageSyntax {
   }
 };
 
+enum class CPPLanguageSelector { CurrentStructs, NativeStructs };
+
+template <CPPLanguageSelector>
+struct CurrentStructPrinter;
+
 template <>
-struct LanguageSyntaxImpl<Language::CPP> {
+struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
+  static void PrintCurrentStruct(std::ostream& os,
+                                 const ReflectedType_Struct& s,
+                                 std::function<std::string(TypeID)> type_name) {
+    os << "CURRENT_STRUCT(" << s.name;
+    if (s.super_id != TypeID::CurrentStruct) {
+      os << ", " << type_name(s.super_id);
+    }
+    os << ") {\n";
+    for (const auto& f : s.fields) {
+      // Type name should be put into parentheses if it contains commas. Putting all type names
+      // into parentheses won't hurt, I've added the condition purely for aesthetic purposes. -- D.K.
+      const std::string raw_type_name = type_name(f.first);
+      const std::string type_name =
+          raw_type_name.find(',') == std::string::npos ? raw_type_name : '(' + raw_type_name + ')';
+      os << "  CURRENT_FIELD(" << f.second << ", " << type_name << ");\n";
+    }
+    os << "};\n";
+  }
+};
+
+template <>
+struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
+  static void PrintCurrentStruct(std::ostream& os,
+                                 const ReflectedType_Struct& s,
+                                 std::function<std::string(TypeID)> type_name) {
+    os << "struct " << s.name;
+    if (s.super_id != TypeID::CurrentStruct) {
+      os << " : " << type_name(s.super_id);
+    }
+    os << " {\n";
+    for (const auto& f : s.fields) {
+      os << "  " << type_name(f.first) << " " << f.second << ";\n";
+    }
+    os << "};\n";
+  }
+};
+
+template <CPPLanguageSelector CPP_LANGUAGE_SELECTOR>
+struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
   static std::string Header() {
     return "// g++ -c -std=c++11 current.cc\n"
            "\n"
@@ -108,11 +157,12 @@ struct LanguageSyntaxImpl<Language::CPP> {
       if (cit == types_.end()) {
         return "UNKNOWN_TYPE_" + current::strings::ToString(type_id);
       } else {
-        struct CPPTypeNamePrinter {
+        struct CurrentTypeNamePrinter {
           const FullSchemaPrinter& self_;
           std::ostringstream& oss_;
 
-          CPPTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss) : self_(self), oss_(oss) {}
+          CurrentTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss)
+              : self_(self), oss_(oss) {}
 
           // `operator()`-s of this block print C++ type name only, without the expansion.
           // They assume the declaration order is respected, and any dependencies have already been listed.
@@ -151,7 +201,7 @@ struct LanguageSyntaxImpl<Language::CPP> {
         };
 
         std::ostringstream oss;
-        cit->second.Call(CPPTypeNamePrinter(*this, oss));
+        cit->second.Call(CurrentTypeNamePrinter(*this, oss));
         return oss.str();
       }
     }
@@ -169,18 +219,17 @@ struct LanguageSyntaxImpl<Language::CPP> {
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant&) const {}
     void operator()(const ReflectedType_Struct& s) const {
-      os_ << "struct " << s.name;
-      if (s.super_id != TypeID::CurrentStruct) {
-        os_ << " : " << TypeName(s.super_id);
-      }
-      os_ << " {\n";
-      for (const auto& f : s.fields) {
-        os_ << "  " << TypeName(f.first) << " " << f.second << ";\n";
-      }
-      os_ << "};\n";
+      CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::PrintCurrentStruct(
+          os_, s, [this](TypeID id) -> std::string { return TypeName(id); });
     }
-  };  // struct LanguageSyntax<Language::CPP>::FullSchemaPrinter
+  };  // struct LanguageSyntaxCPP::FullSchemaPrinter
 };
+
+template <>
+struct LanguageSyntaxImpl<Language::Current> : LanguageSyntaxCPP<CPPLanguageSelector::CurrentStructs> {};
+
+template <>
+struct LanguageSyntaxImpl<Language::CPP> : LanguageSyntaxCPP<CPPLanguageSelector::NativeStructs> {};
 
 template <>
 struct LanguageSyntaxImpl<Language::FSharp> {
