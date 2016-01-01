@@ -330,10 +330,25 @@ struct VisitAllFields {
   }
 
   // Visit all fields with an object, const or mutable. Used for serialization.
-  template <typename TT, typename F>
-  static void WithObject(TT&& t, F&& f) {
+  // Make sure `VisitAllFields<Base, ...>(derived)` treats the passed object as `Base`.
+  // Using xvalue reference `TT&&` does not do it, as instead of type `T` passed in 
+  // as a template parameter to `VisitAllFields<>`, the passed in `t` would be reflected
+  // as an object of type `TT`.
+  // So, I copy-pasted three implementations for now. -- D.K.
+  template <typename F>
+  static void WithObject(T& t, F&& f) {
     static NUM_INDEXES all_indexes;
-    WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), all_indexes);
+    WithObjectImpl(t, std::forward<F>(f), all_indexes);
+  }
+  template <typename F>
+  static void WithObject(const T& t, F&& f) {
+    static NUM_INDEXES all_indexes;
+    WithObjectImpl(t, std::forward<F>(f), all_indexes);
+  }
+  template <typename F>
+  static void WithObject(T&& t, F&& f) {
+    static NUM_INDEXES all_indexes;
+    WithObjectImpl(t, std::forward<F>(f), all_indexes);
   }
 
  private:
@@ -351,6 +366,8 @@ struct VisitAllFields {
   static void WithObjectImpl(TT&& t, F&& f, current::variadic_indexes::indexes<N, NS...>) {
     static current::variadic_indexes::indexes<NS...> remaining_indexes;
     t.CURRENT_REFLECTION(std::forward<F>(f), Index<VISITOR_TYPE, N>());
+    // `WithObjectImpl()` is called only from `WithObject()`, and by this point `TT` is `T`.
+    static_assert(std::is_same<current::decay<TT>, T>::value, "");  // To be on the safe side.
     WithObjectImpl(std::forward<TT>(t), std::forward<F>(f), remaining_indexes);
   }
 
