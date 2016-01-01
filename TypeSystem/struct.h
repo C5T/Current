@@ -165,7 +165,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #endif  // _MSC_VER
 
 // `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`,
-// and its scope resolution for derives structs differs between Visual C++ and g++/clang++. -- D.K.
+// and its scope resolution for derived structs differs between Visual C++ and g++/clang++. -- D.K.
 
 #ifndef _MSC_VER
 
