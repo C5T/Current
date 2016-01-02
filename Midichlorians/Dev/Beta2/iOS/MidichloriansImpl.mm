@@ -219,14 +219,6 @@ namespace ios {
         
     }  // namespace consumer
     
-    template <typename T>
-    struct Singleton {
-        static T &Instance() {
-            static T instance;
-            return instance;
-        }
-    };
-    
     using Stats = consumer::POSTviaHTTP;
 
     struct EventsVariantDispatchedAssigner {
@@ -249,7 +241,7 @@ using namespace current::midichlorians::ios;
 + (void)setup:(NSString *)serverUrl withLaunchOptions:(NSDictionary *)options {
     const auto installationId = InstallationId();
     
-    Stats &instance = Singleton<Stats>::Instance();
+    Stats &instance = current::Singleton<Stats>();
     
     instance.SetServerUrl([serverUrl UTF8String]);
     instance.SetDeviceId(installationId.first);
@@ -335,7 +327,7 @@ using namespace current::midichlorians::ios;
 }
 
 + (void)emit:(const iOSBaseEvent &)event {
-    Stats &instance = Singleton<Stats>::Instance();
+    Stats &instance = current::Singleton<Stats>();
     Variant<T_IOS_EVENTS> v;
     EventsVariantDispatchedAssigner assigner(v);
     current::metaprogramming::RTTIDynamicCall<T_IOS_EVENTS>(event, assigner);
@@ -347,7 +339,7 @@ using namespace current::midichlorians::ios;
 
 // Identifies the user.
 + (void)identify:(NSString *)identifier {
-    Stats &instance = Singleton<Stats>::Instance();
+    Stats &instance = current::Singleton<Stats>();
     instance.SetClientId(ToStdString([identifier UTF8String]));
 }
 

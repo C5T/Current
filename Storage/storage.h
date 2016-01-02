@@ -75,26 +75,6 @@ namespace storage {
 // 2) Splits the type into `T_ADDER` and `T_DELETER`, to support seamless persistence of deletions.
 // clang-format off
 
-#ifndef _MSC_VER
-
-#define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                              \
-  CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                      \
-    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                            \
-    CURRENT_CONSTRUCTOR( CURRENT_STORAGE_ADDER_##alias)(const base& value) : base(value) {}  \
-  };                                                                                         \
-  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias, base) {                                    \
-    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias) {}                          \
-    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value) : base(value) {} \
-  };                                                                                         \
-  struct alias {                                                                             \
-    using T_ENTRY = base;                                                                    \
-    using T_ADDER = CURRENT_STORAGE_ADDER_##alias;                                           \
-    using T_DELETER = CURRENT_STORAGE_DELETER_##alias;                                       \
-  }
-
-#else  // _MSC_VER
-
-// The MSVS version uses `SUPER` instead of `base` in the initializer list.
 #define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                               \
   CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                       \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                             \
@@ -109,9 +89,6 @@ namespace storage {
     using T_ADDER = CURRENT_STORAGE_ADDER_##alias;                                            \
     using T_DELETER = CURRENT_STORAGE_DELETER_##alias;                                        \
   }
-
-#endif  // _MSC_VER
-
 // clang-format on
 
 #define CURRENT_STORAGE_FIELDS_HELPERS(name)                                                                   \
