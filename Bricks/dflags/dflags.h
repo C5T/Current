@@ -269,7 +269,7 @@ class FlagRegisterer : public FlagRegistererBase {
     }
   }
 
-  virtual bool IsBooleanFlag() const { return std::is_same<FLAG_TYPE, bool>::value; }
+  bool IsBooleanFlag() const override { return std::is_same<FLAG_TYPE, bool>::value; }
 
   std::string TypeAsString() const override { return type_; }
 
