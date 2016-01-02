@@ -50,6 +50,7 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v4, t_map_string_string);
 #endif
 };
+CURRENT_STRUCT(SimpleDerivedFromFoo, Foo) { CURRENT_FIELD(s, std::string); };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
 CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>); };
@@ -265,6 +266,41 @@ TEST(Reflection, VisitAllFields) {
       "[key1:value1,key2:value2],"
       "128,null",
       current::strings::Join(result, ','));
+}
+
+TEST(Reflection, VisitAllFieldsForBaseType) {
+  using namespace reflection_test;
+  using namespace current::reflection;  // `current::reflection::{VisitAllFields,FieldNameAndImmutableValue}`.
+
+  SimpleDerivedFromFoo derived;
+  derived.i = 2016u; // `SimpleDerivedFromFoo::Foo::i`.
+  derived.s = "s";   // `SimpleDerivedFromFoo::s`.
+
+  const Foo& base = derived;
+
+  {
+    // Visiting derived as derived returns `s`.
+    std::vector<std::string> result;
+    CollectFieldValues values{result};
+    VisitAllFields<SimpleDerivedFromFoo, FieldNameAndImmutableValue>::WithObject(derived, values);
+    EXPECT_EQ("s", current::strings::Join(result, ','));
+  }
+
+  {
+    // Visiting derived as base returns `i`.
+    std::vector<std::string> result;
+    CollectFieldValues values{result};
+    VisitAllFields<Foo, FieldNameAndImmutableValue>::WithObject(derived, values);
+    EXPECT_EQ("2016", current::strings::Join(result, ','));
+  }
+
+  {
+    // Visiting base as base returns `i`.
+    std::vector<std::string> result;
+    CollectFieldValues values{result};
+    VisitAllFields<Foo, FieldNameAndImmutableValue>::WithObject(base, values);
+    EXPECT_EQ("2016", current::strings::Join(result, ','));
+  }
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_REFLECTION_TEST_CC

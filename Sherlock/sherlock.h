@@ -75,7 +75,7 @@ SOFTWARE.
 //
 //   NOTE: It is the caller's full responsibility to ensure that:
 //   1) Publishing is done from one thread only (since Sherlock offers no locking), and
-//   2) The published entries come in non-decreasing order of their timestamps. TODO(dkorolev): Assert this.
+//   2) The published entries come in strictly increasing order of their timestamps. TODO(dkorolev): Assert this.
 //
 // Subscription is done by via `my_stream.Subscribe(my_listener);`,
 // where `my_listener` is an instance of the class doing the listening.

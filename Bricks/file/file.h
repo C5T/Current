@@ -251,7 +251,7 @@ struct FileSystem {
       if (errno == ENOENT) {
         CURRENT_THROW(DirDoesNotExistException());
       } else if (errno == ENOTDIR) {
-        CURRENT_THROW(PathIsNotADirectoryException());
+        CURRENT_THROW(PathNotDirException());
       } else {
         CURRENT_THROW(FileException());  // LCOV_EXCL_LINE
       }
@@ -314,7 +314,7 @@ struct FileSystem {
           if (errno == ENOENT) {
             CURRENT_THROW(DirDoesNotExistException());
           } else if (errno == ENOTEMPTY) {
-            CURRENT_THROW(DirIsNotEmptyException());
+            CURRENT_THROW(DirNotEmptyException());
           } else {
             CURRENT_THROW(FileException());  // LCOV_EXCL_LINE
           }
