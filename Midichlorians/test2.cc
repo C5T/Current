@@ -29,9 +29,6 @@ SOFTWARE.
 
 #ifdef CURRENT_APPLE
 
-// The following line is needed to avoid OS X headers conflicts with C++.
-#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
-
 #define CURRENT_MOCK_TIME  // `SetNow()`.
 
 #include "Dev/Beta2/iOS/Midichlorians.mm"

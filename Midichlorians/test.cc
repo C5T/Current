@@ -29,9 +29,6 @@ SOFTWARE.
 
 #ifdef CURRENT_APPLE
 
-// The following line is needed to avoid OS X headers conflicts with C++.
-#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
-
 #include "Dev/Beta/iOS/Midichlorians.mm"
 #include "Dev/Beta/iOS/MidichloriansImpl.mm"
 
