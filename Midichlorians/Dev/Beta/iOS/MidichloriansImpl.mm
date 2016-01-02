@@ -229,14 +229,6 @@ namespace midichlorians {
         
     }  // namespace consumer
     
-    template <typename T>
-    struct Singleton {
-        static T &Instance() {
-            static T instance;
-            return instance;
-        }
-    };
-    
     using Stats = consumer::POSTviaHTTP;
     
 }  // namespace midichlorians
@@ -248,7 +240,7 @@ using namespace midichlorians;
 + (void)setup:(NSString *)serverUrl withLaunchOptions:(NSDictionary *)options {
     const auto installationId = InstallationId();
     
-    Stats &instance = Singleton<Stats>::Instance();
+    Stats &instance = current::Singleton<Stats>();
     
     instance.SetServerUrl([serverUrl UTF8String]);
     instance.SetDeviceId(installationId.first);
@@ -334,13 +326,13 @@ using namespace midichlorians;
 }
 
 + (void)emit:(const MidichloriansEvent &)event {
-    Stats &instance = Singleton<Stats>::Instance();
+    Stats &instance = current::Singleton<Stats>();
     instance.OnMessage(event.EventAsString(instance.GetDeviceId(), instance.GetClientId()));
 }
 
 // Identifies the user.
 + (void)identify:(NSString *)identifier {
-    Stats &instance = Singleton<Stats>::Instance();
+    Stats &instance = current::Singleton<Stats>();
     instance.SetClientId(UnsafeToStdString([identifier UTF8String]));
 }
 

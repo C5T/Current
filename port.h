@@ -119,11 +119,16 @@ SOFTWARE.
 #endif  // CURRENT_WINDOWS
 
 #ifdef CURRENT_APPLE
+
+// The following line is needed to avoid OS X headers conflicts with C++.
+#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
+
 #ifdef CURRENT_APPLE_ENABLE_NSLOG
 #define CURRENT_NSLOG(...) ::NSLog(__VA_ARGS__)
 #else
 inline void CURRENT_NSLOG(...) {}
 #endif
+
 #endif  // CURRENT_APPLE
 
 // Check for 'thread_local' specifier support.
