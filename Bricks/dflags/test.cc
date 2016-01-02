@@ -203,6 +203,58 @@ TEST(DFlags, ParsesEmptyStringUsingEquals) {
   EXPECT_EQ("", FLAGS_empty_string);
 }
 
+TEST(DFlags, NoValueAllowedForBooleanFlag) {
+  ::dflags::FlagsManager::DefaultRegisterer local_registerer;
+  auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
+  DEFINE_bool(random_bool, false, "");
+  int argc = 2;
+  char p1[] = "./NoValueDeathTest";
+  char p2[] = "--random_bool";
+  char* pp[] = {p1, p2};
+  char** argv = pp;
+  EXPECT_FALSE(FLAGS_random_bool);
+  ParseDFlags(&argc, &argv);
+  EXPECT_TRUE(FLAGS_random_bool);
+}
+
+TEST(DFlags, ParsingContinuesAfterNoValueForBooleanFlag) {
+  ::dflags::FlagsManager::DefaultRegisterer local_registerer;
+  auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
+  DEFINE_bool(another_random_bool, false, "");
+  DEFINE_string(foo, "", "");
+  int argc = 4;
+  char p1[] = "./NoValueDeathTest";
+  char p2[] = "--another_random_bool";
+  char p3[] = "--foo";
+  char p4[] = "bar";
+  char* pp[] = {p1, p2, p3, p4};
+  char** argv = pp;
+  ParseDFlags(&argc, &argv);
+  EXPECT_TRUE(FLAGS_another_random_bool);
+  EXPECT_EQ("bar", FLAGS_foo);
+  EXPECT_EQ(1, argc);  // Double-check all the arguments have been parsed.
+}
+
+TEST(DFlags, BooleanFlagCanHaveAValueToo) {
+  ::dflags::FlagsManager::DefaultRegisterer local_registerer;
+  auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
+  DEFINE_bool(one_more_random_bool, true, "");
+  DEFINE_string(bar, "", "");
+  int argc = 5;
+  char p1[] = "./NoValueDeathTest";
+  char p2[] = "--one_more_random_bool";
+  char p3[] = "false";
+  char p4[] = "--bar";
+  char p5[] = "baz";
+  char* pp[] = {p1, p2, p3, p4, p5};
+  char** argv = pp;
+  EXPECT_TRUE(FLAGS_one_more_random_bool);
+  ParseDFlags(&argc, &argv);
+  EXPECT_FALSE(FLAGS_one_more_random_bool);
+  EXPECT_EQ("baz", FLAGS_bar);
+  EXPECT_EQ(1, argc);  // Double-check the `false` from `p3` has been parsed.
+}
+
 TEST(DFlags, PrintsHelpDeathTest) {
   struct MockCerrHelpPrinter : ::dflags::FlagsManager::DefaultRegisterer {
     virtual std::ostream& HelpPrinterOStream() const override { return std::cerr; }
@@ -267,12 +319,13 @@ TEST(DFlags, TooManyDashesDeathTest) {
 TEST(DFlags, NoValueDeathTest) {
   ::dflags::FlagsManager::DefaultRegisterer local_registerer;
   auto local_registerer_scope = ::dflags::FlagsManager::ScopedSingletonInjector(local_registerer);
+  DEFINE_string(random_string, "", "");
   int argc = 2;
   char p1[] = "./NoValueDeathTest";
-  char p2[] = "--whatever";
+  char p2[] = "--random_string";
   char* pp[] = {p1, p2};
   char** argv = pp;
-  EXPECT_DEATH(ParseDFlags(&argc, &argv), "Flag: 'whatever' is not provided with the value\\.");
+  EXPECT_DEATH(ParseDFlags(&argc, &argv), "Flag: 'random_string' is not provided with the value\\.");
 }
 
 TEST(DFlags, UnparsableValueDeathTest) {

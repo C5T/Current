@@ -73,8 +73,8 @@ namespace storage {
 // `CURRENT_STORAGE_STRUCT_TAG`:
 // 1) Creates a dedicated C++ type to allow compile-time disambiguation of storages of same underlying types.
 // 2) Splits the type into `T_ADDER` and `T_DELETER`, to support seamless persistence of deletions.
-// clang-format off
 
+// clang-format off
 #define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                               \
   CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                       \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                             \

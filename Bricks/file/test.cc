@@ -34,8 +34,8 @@ SOFTWARE.
 using current::FileSystem;
 using current::FileException;
 using current::DirDoesNotExistException;
-using current::PathIsNotADirectoryException;
-using current::DirIsNotEmptyException;
+using current::PathNotDirException;
+using current::DirNotEmptyException;
 
 DEFINE_string(file_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
@@ -186,7 +186,7 @@ TEST(File, DirOperations) {
 
   ASSERT_THROW(FileSystem::GetFileSize(dir), FileException);
 
-  ASSERT_THROW(FileSystem::RmDir(dir), DirIsNotEmptyException);
+  ASSERT_THROW(FileSystem::RmDir(dir), DirNotEmptyException);
   FileSystem::RmFile(fn);
   FileSystem::RmDir(dir);
 
@@ -245,8 +245,8 @@ TEST(File, ScanDir) {
     // TODO(dkorolev): Perhaps support this exception type on Windows as well.
     const auto file_remover = FileSystem::ScopedRmFile(dir);
     FileSystem::WriteStringToFile("This is a file, not a directory!", dir.c_str());
-    ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), PathIsNotADirectoryException);
-    ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), PathIsNotADirectoryException);
+    ASSERT_THROW(FileSystem::ScanDir(dir, scanner_before), PathNotDirException);
+    ASSERT_THROW(FileSystem::ScanDirUntil(dir, scanner_before), PathNotDirException);
   }
 #endif
 

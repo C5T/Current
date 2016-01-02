@@ -43,12 +43,12 @@ struct DirDoesNotExistException : FileException {
   DirDoesNotExistException() : FileException() {}
 };
 
-struct PathIsNotADirectoryException : FileException {
-  PathIsNotADirectoryException() : FileException() {}
+struct PathNotDirException : FileException {
+  PathNotDirException() : FileException() {}
 };
 
-struct DirIsNotEmptyException : FileException {
-  DirIsNotEmptyException() : FileException() {}
+struct DirNotEmptyException : FileException {
+  DirNotEmptyException() : FileException() {}
 };
 
 }  // namespace current
