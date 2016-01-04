@@ -355,18 +355,31 @@ struct SchemaToCurrentStructDumper {
   void operator()(const Null& x) { os << path << " : Null, " << x.occurrences << " occurrences." << std::endl; }
 
   void operator()(const String& x) {
-    os << path << " : String, " << x.instances << " instances, " << x.values.size() << " distinct values, "
-       << x.nulls << " nulls." << std::endl;
+    os << path << "\tString\t" << x.instances << '\t' << x.nulls << '\t' << x.values.size()
+       << " distinct values";
+    if (x.values.size() <= 8) {
+      std::vector<std::pair<int, std::string>> sorted;
+      for (const auto& s : x.values) {
+        sorted.emplace_back(-static_cast<int>(s.second), s.first);
+      }
+      std::sort(sorted.rbegin(), sorted.rend());
+      std::vector<std::string> sorted_as_strings;
+      for (const auto& e : sorted) {
+        sorted_as_strings.push_back(e.second + ':' + ToString(-e.first));
+      }
+      os << '\t' << current::strings::Join(sorted_as_strings, ", ");
+    }
+    os << std::endl;
   }
 
   void operator()(const Bool& x) {
-    os << path << " : Bool, " << x.values_false << " false, " << x.values_true << " true, " << x.nulls
-       << " nulls." << std::endl;
+    os << path << "\tBool\t" << (x.values_false + x.values_true) << '\t' << x.nulls << '\t' << x.values_false
+       << " false, " << x.values_true << " true" << std::endl;
   }
 
   void operator()(const ObjectOrArray& x) {
     if (x.IsObject()) {
-      os << path << " : Object, " << x.instances << " instances, " << x.nulls << " nulls." << std::endl;
+      os << path << "\tObject\t" << x.instances << '\t' << x.nulls << std::endl;
       const auto save = path;
       for (const auto& f : x.fields) {
         path = save + '.' + f.first;
@@ -374,7 +387,7 @@ struct SchemaToCurrentStructDumper {
       }
       path = save;
     } else {
-      os << path << " : Array, " << x.instances << " instances, " << x.nulls << " nulls." << std::endl;
+      os << path << "\tArray\t" << x.instances << '\t' << x.nulls << std::endl;
       const auto save = path;
       path += "[]";
       x.fields.at("").Call(*this);
