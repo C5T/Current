@@ -65,8 +65,6 @@ SOFTWARE.
 #include "../Bricks/strings/strings.h"
 #include "../Bricks/time/chrono.h"
 
-#include "../Bricks/cerealize/cerealize.h"  // TODO(dkorolev): Deprecate.
-
 namespace current {
 namespace storage {
 
@@ -78,11 +76,14 @@ namespace storage {
 #define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                               \
   CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                       \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                             \
-    CURRENT_CONSTRUCTOR( CURRENT_STORAGE_ADDER_##alias)(const base& value) : SUPER(value) {}  \
+    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias)(const base& value) : SUPER(value) {}   \
   };                                                                                          \
-  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias, base) {                                     \
+  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias) {                                           \
+    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<base>); \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias) {}                           \
-    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value) : SUPER(value) {} \
+    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value) { \
+      key = ::current::storage::sfinae::GetKey(value); \
+    } \
   };                                                                                          \
   struct alias {                                                                              \
     using T_ENTRY = base;                                                                     \
@@ -156,18 +157,18 @@ namespace storage {
       : ::current::storage::FieldsBase<  \
             CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>>
 
-#define CURRENT_STORAGE_FIELD(field_name, field_type, item_alias, ...)                                     \
-  ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER> operator()(                    \
+#define CURRENT_STORAGE_FIELD(field_name, field_type, entry_tag, ...)                                      \
+  ::current::storage::FieldInfo<entry_tag::T_ADDER, entry_tag::T_DELETER> operator()(                      \
       ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE - 1>) \
       const {                                                                                              \
-    return ::current::storage::FieldInfo<item_alias::T_ADDER, item_alias::T_DELETER>();                    \
+    return ::current::storage::FieldInfo<entry_tag::T_ADDER, entry_tag::T_DELETER>();                      \
   }                                                                                                        \
   using T_FIELD_TYPE_##field_name = ::current::storage::Field<                                             \
       INSTANTIATION_TYPE,                                                                                  \
-      field_type<item_alias::T_ENTRY, item_alias::T_ADDER, item_alias::T_DELETER, ##__VA_ARGS__>>;         \
+      field_type<entry_tag::T_ENTRY, entry_tag::T_ADDER, entry_tag::T_DELETER, ##__VA_ARGS__>>;            \
   T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);     \
-  void operator()(const item_alias::T_ADDER& adder) { field_name(adder); }                                 \
-  void operator()(const item_alias::T_DELETER& deleter) { field_name(deleter); }
+  void operator()(const entry_tag::T_ADDER& adder) { field_name(adder); }                                  \
+  void operator()(const entry_tag::T_DELETER& deleter) { field_name(deleter); }
 
 template <typename STORAGE>
 using CurrentStorage = typename STORAGE::T_FIELDS_BY_REFERENCE;
