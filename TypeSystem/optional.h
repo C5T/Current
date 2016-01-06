@@ -102,7 +102,7 @@ class Optional final {
 
   Optional(const Optional<T>& rhs) {
     if (rhs.ExistsImpl()) {
-      owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+      owned_optional_object_ = std::make_unique<T>(rhs.ValueImpl());
     } else {
       owned_optional_object_ = nullptr;
     }
@@ -127,7 +127,7 @@ class Optional final {
 
   Optional<T>& operator=(const Optional<T>& rhs) {
     if (rhs.ExistsImpl()) {
-      owned_optional_object_ = make_unique<T>(rhs.ValueImpl());
+      owned_optional_object_ = std::make_unique<T>(rhs.ValueImpl());
     } else {
       owned_optional_object_ = nullptr;
     }
@@ -137,7 +137,7 @@ class Optional final {
 
   // TODO(dkorolev): Discuss this semantics with Max.
   Optional<T>& operator=(const T& data) {
-    owned_optional_object_ = std::move(make_unique<T>(data));
+    owned_optional_object_ = std::move(std::make_unique<T>(data));
     optional_object_ = owned_optional_object_.get();
     return *this;
   }

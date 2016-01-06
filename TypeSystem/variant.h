@@ -102,7 +102,7 @@ struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
                     const X& source,
                     std::unique_ptr<CurrentSuper>& destination) {
       if (!destination || !dynamic_cast<X*>(destination.get())) {
-        destination = make_unique<X>();
+        destination = std::make_unique<X>();
       }
       // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
       dynamic_cast<X&>(*destination.get()) = source;
@@ -110,7 +110,7 @@ struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
     // Move `X`.
     void operator()(DerivedTypesDifferentiator<X>, X&& source, std::unique_ptr<CurrentSuper>& destination) {
       if (!destination || !dynamic_cast<X*>(destination.get())) {
-        destination = make_unique<X>();
+        destination = std::make_unique<X>();
       }
       // Note: `destination.get() = source` is a mistake, and we made sure it doesn't compile. -- D.K.
       dynamic_cast<X&>(*destination.get()) = std::move(source);

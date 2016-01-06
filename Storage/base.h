@@ -105,7 +105,7 @@ struct MutationJournal {
 
   template <typename T>
   void LogMutation(T&& entry, std::function<void()> rollback) {
-    commit_log.push_back(make_unique<T>(std::move(entry)));
+    commit_log.push_back(std::make_unique<T>(std::move(entry)));
     rollback_log.push_back(rollback);
   }
 

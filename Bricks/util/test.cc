@@ -375,7 +375,7 @@ TEST(Util, Clone) {
   EXPECT_EQ("deserialized from original", clone_via_json(ClonableViaCerealizeJSON()).text);
 
   EXPECT_EQ("deserialized from deserialized from original",
-            ObsoleteClone(ObsoleteClone(make_unique<ClonableViaCerealizeJSON>()))->text);
+            ObsoleteClone(ObsoleteClone(std::make_unique<ClonableViaCerealizeJSON>()))->text);
 
   EXPECT_EQ("cloned by ref", DefaultCloner::Clone(ClonableByRef()).text);
   EXPECT_EQ("cloned by ptr", DefaultCloner::Clone(ClonableByPtr()).text);

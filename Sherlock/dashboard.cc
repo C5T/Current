@@ -239,13 +239,13 @@ int main() {
 
   HTTP(port).Register("/layout/plot_data",
                       [&time_series](Request r) {
-                        time_series.AsyncSubscribe(make_unique<ServeJSONOverHTTP<DoublePoint> >(std::move(r)))
+                        time_series.AsyncSubscribe(std::make_unique<ServeJSONOverHTTP<DoublePoint> >(std::move(r)))
                             .Detach();
                       });
 
   HTTP(port).Register("/layout/pic_data",
                       [&pic_series](Request r) {
-                        pic_series.AsyncSubscribe(make_unique<ServeJSONOverHTTP<StringPoint> >(std::move(r)))
+                        pic_series.AsyncSubscribe(std::make_unique<ServeJSONOverHTTP<StringPoint> >(std::move(r)))
                             .Detach();
                       });
 

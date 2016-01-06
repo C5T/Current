@@ -289,7 +289,7 @@ class LightweightMatrixStorage {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     auto& placeholder = map_[std::make_pair(row, col)];
-    placeholder = make_unique<T>(object);
+    placeholder = std::make_unique<T>(object);
     forward_[row][col] = placeholder.get();
     transposed_[col][row] = placeholder.get();
   }
