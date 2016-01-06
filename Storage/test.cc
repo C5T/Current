@@ -48,6 +48,8 @@ namespace transactional_storage_test {
 CURRENT_STRUCT(Element) {
   CURRENT_FIELD(x, int32_t);
   CURRENT_CONSTRUCTOR(Element)(int32_t x = 0) : x(x) {}
+  // Dummy key function to support key-only deleter.
+  int32_t key() const { return x; }
 };
 
 CURRENT_STRUCT(Record) {
