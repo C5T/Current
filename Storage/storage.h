@@ -81,9 +81,8 @@ namespace storage {
   CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias) {                                           \
     CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<base>); \
     CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias) {}                           \
-    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value) { \
-      key = ::current::storage::sfinae::GetKey(value); \
-    } \
+    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value)                   \
+        : key(::current::storage::sfinae::GetKey(value)) {}                                   \
   };                                                                                          \
   struct alias {                                                                              \
     using T_ENTRY = base;                                                                     \
