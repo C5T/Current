@@ -52,10 +52,10 @@ static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& 
 
 TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
   const std::string golden_dir = "golden";
-  const std::vector<std::string> cases = ListGoldenFilesWithExtension(golden_dir, "json");
+  const std::vector<std::string> cases = ListGoldenFilesWithExtension(golden_dir, "json_data");
   for (const auto& test : cases) {
     const std::string filename_prefix = current::FileSystem::JoinPath("golden", test);
-    const std::string json = current::FileSystem::ReadFileAsString(filename_prefix + ".json");
+    const std::string json = current::FileSystem::ReadFileAsString(filename_prefix + ".json_data");
     if (!FLAGS_regenerate_golden_inferred_schemas) {
       EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".raw"),
                 JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)))
