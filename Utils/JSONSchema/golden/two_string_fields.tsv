@@ -1,0 +1,4 @@
+Field	Type	Set	Unset/Null	Values	Details
+Schema	Object	1	0	2 fields	a, c
+Schema.a	String	1	0	1 distinct value	b : 1
+Schema.c	String	1	0	1 distinct value	d : 1

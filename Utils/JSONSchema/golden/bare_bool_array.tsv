@@ -1,0 +1,3 @@
+Field	Type	Set	Unset/Null	Values	Details
+Schema	Array	1	0
+Schema[]	Bool	3	0	1 false, 2 true

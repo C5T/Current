@@ -64,12 +64,11 @@ struct InferSchemaIncompatibleTypesBase : InferSchemaInputException {
   explicit InferSchemaIncompatibleTypesBase(const std::string& message) : InferSchemaInputException(message) {}
 };
 
-// TODO(dkorolev): Text.
 template <typename T_LHS, typename T_RHS>
 struct InferSchemaIncompatibleTypes : InferSchemaIncompatibleTypesBase {
   InferSchemaIncompatibleTypes(const T_LHS& lhs, const T_RHS& rhs)
-      : InferSchemaIncompatibleTypesBase("Incompatible types: '" + lhs.Type() + "' and '" + rhs.Type() + "'.") {
-  }
+      : InferSchemaIncompatibleTypesBase("Incompatible types: '" + lhs.HumanReadableType() + "' and '" +
+                                         rhs.HumanReadableType() + "'.") {}
 };
 
 struct InferSchemaArrayAndObjectAreIncompatible : InferSchemaIncompatibleTypesBase {};
@@ -78,6 +77,10 @@ namespace impl {
 
 inline bool IsValidCPPIdentifier(const std::string& s) {
   if (s.empty()) {
+    return false;
+  }
+  if (s == "NULL" || s == "null" || s == "true" || s == "false") {
+    // TODO(dkorolev): Test for other reserved words, such as "case" or "int".
     return false;
   }
   if (!(s[0] == '_' || std::isalpha(s[0]))) {
@@ -91,8 +94,8 @@ inline bool IsValidCPPIdentifier(const std::string& s) {
   return true;
 }
 
-inline std::string MaybeOptionalType(bool has_nulls, const std::string& type) {
-  return has_nulls ? "Optional<" + type + ">" : type;
+inline std::string MaybeOptionalHumanReadableType(bool has_nulls, const std::string& type) {
+  return (has_nulls ? "optional " : "") + type;
 }
 
 // Inferred JSON types for fields.
@@ -105,7 +108,7 @@ CURRENT_STRUCT(String) {
   CURRENT_DEFAULT_CONSTRUCTOR(String) {}
   CURRENT_CONSTRUCTOR(String)(const std::string& string) { values[string] = 1; }
 
-  std::string Type() const { return MaybeOptionalType(nulls, "std::string"); }
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "std::string"); }
 };
 
 CURRENT_STRUCT(Bool) {
@@ -113,7 +116,7 @@ CURRENT_STRUCT(Bool) {
   CURRENT_FIELD(values_true, size_t, 0);
   CURRENT_FIELD(nulls, size_t, 0);
 
-  std::string Type() const { return MaybeOptionalType(nulls, "bool"); }
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "bool"); }
 };
 
 // Note: The `Null` type is largely ephemeral. Top-level "null" is still not allowed in input JSONs.
@@ -127,13 +130,16 @@ CURRENT_STRUCT(ObjectOrArray) {
 
   // An array is represented as a `ObjectOrArray` with one and only key in `fields` -- the empty string.
   bool IsObject() const { return !fields.count(""); }
-  std::string Type() const { return MaybeOptionalType(nulls, IsObject() ? "object" : "array"); }
+
+  std::string HumanReadableType() const {
+    return MaybeOptionalHumanReadableType(nulls, IsObject() ? "object" : "array");
+  }
 };
 
 using SchemaMap = decltype(std::declval<ObjectOrArray>().fields);
 using Schema = typename SchemaMap::mapped_type;
 
-// `Reduce` and `CallReduce` implements the logic of building the schema for a superset of schemas.
+// `Reduce` and `CallReduce` implement the logic of building the schema for a superset of schemas.
 //
 // 1) `static Schema Reduce<LHS, RHS>::DoIt(lhs, rhs)` returns the schema containing both `lhs` and `rhs`.
 //    Superset construction logic is implemented as template specializations of `Reduce<LHS, RHS>`,
@@ -279,7 +285,7 @@ struct Reduce<ObjectOrArray, ObjectOrArray> {
 inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
   // Note: Empty arrays are silently ignored. Their schema can not be inferred.
   //       If the only value for certain field is an empty array, this field will not be output.
-  //       If certain field has possible values other than an empty array, they will be used.
+  //       If certain field has possible values other than empty array, they will be used, as `Optional<>`.
   if (value.IsObject()) {
     ObjectOrArray object;
     for (auto cit = value.MemberBegin(); cit != value.MemberEnd(); ++cit) {
@@ -338,61 +344,162 @@ inline impl::Schema SchemaFromJSON(const rapidjson::Document& document) {
   return impl::RecursivelyInferSchema(document);
 }
 
-// TODO(dkorolev): This is work in progress.
-struct SchemaToCurrentStructDumper {
-  const Schema& schema;
-  std::ostringstream& os;
-  std::string path;
-
-  SchemaToCurrentStructDumper(const Schema& schema,
-                              std::ostringstream& os,
-                              const std::string& top_level_struct_name)
-      : schema(schema), os(os) {
-    path = top_level_struct_name;
+class SchemaToTSVPrinter {
+ public:
+  SchemaToTSVPrinter(const Schema& schema, std::ostringstream& os, size_t number_of_example_values)
+      : os_(os), path_("Schema"), number_of_example_values_(number_of_example_values) {
+    os_ << "Field\tType\tSet\tUnset/Null\tValues\tDetails\n";
     schema.Call(*this);
   }
 
-  void operator()(const Null& x) { os << path << " : Null, " << x.occurrences << " occurrences." << std::endl; }
+  void operator()(const Null& x) { os_ << path_ << "\tNull\t" << x.occurrences << '\n'; }
 
   void operator()(const String& x) {
-    os << path << "\tString\t" << x.instances << '\t' << x.nulls << '\t' << x.values.size()
-       << " distinct values";
-    if (x.values.size() <= 8) {
+    os_ << path_ << "\tString\t" << x.instances << '\t' << x.nulls << '\t';
+    if (x.values.empty()) {
+      os_ << "no values";
+    } else if (x.values.size() == 1) {
+      os_ << "1 distinct value";
+    } else {
+      os_ << x.values.size() << " distinct values";
+    }
+    if (x.values.size() <= number_of_example_values_) {
+      // Output most common values of this [string] field, if there aren't too many of them.
       std::vector<std::pair<int, std::string>> sorted;
       for (const auto& s : x.values) {
         sorted.emplace_back(-static_cast<int>(s.second), s.first);
       }
-      std::sort(sorted.rbegin(), sorted.rend());
+      std::sort(sorted.begin(), sorted.end());
       std::vector<std::string> sorted_as_strings;
       for (const auto& e : sorted) {
-        sorted_as_strings.push_back(e.second + ':' + ToString(-e.first));
+        sorted_as_strings.push_back(e.second + " : " + ToString(-e.first));
       }
-      os << '\t' << current::strings::Join(sorted_as_strings, ", ");
+      os_ << '\t' << current::strings::Join(sorted_as_strings, ", ");
     }
-    os << std::endl;
+    os_ << '\n';
   }
 
   void operator()(const Bool& x) {
-    os << path << "\tBool\t" << (x.values_false + x.values_true) << '\t' << x.nulls << '\t' << x.values_false
-       << " false, " << x.values_true << " true" << std::endl;
+    os_ << path_ << "\tBool\t" << (x.values_false + x.values_true) << '\t' << x.nulls << '\t' << x.values_false
+        << " false, " << x.values_true << " true" << '\n';
   }
 
   void operator()(const ObjectOrArray& x) {
+    const auto save_path = path_;
+
     if (x.IsObject()) {
-      os << path << "\tObject\t" << x.instances << '\t' << x.nulls << std::endl;
-      const auto save = path;
+      std::vector<std::string> fields;
       for (const auto& f : x.fields) {
-        path = save + '.' + f.first;
+        fields.push_back(f.first);
+      }
+
+      os_ << path_ << "\tObject\t" << x.instances << '\t' << x.nulls << '\t';
+      if (x.fields.empty()) {
+        os_ << "empty object";
+      } else if (x.fields.size() == 1) {
+        os_ << "1 field";
+      } else {
+        os_ << x.fields.size() << " fields";
+      }
+      os_ << '\t' << current::strings::Join(fields, ", ") << '\n';
+
+      for (const auto& f : x.fields) {
+        path_ = save_path.empty() ? f.first : (save_path + '.' + f.first);
         f.second.Call(*this);
       }
-      path = save;
     } else {
-      os << path << "\tArray\t" << x.instances << '\t' << x.nulls << std::endl;
-      const auto save = path;
-      path += "[]";
+      os_ << path_ << "\tArray\t" << x.instances << '\t' << x.nulls << '\n';
+      path_ += "[]";
       x.fields.at("").Call(*this);
-      path = save;
     }
+    path_ = save_path;
+  }
+
+ private:
+  std::ostringstream& os_;
+  std::string path_;  // Path of the current node, changes throughout the recursive traversal.
+  const size_t number_of_example_values_;
+};
+
+class SchemaToCurrentStructPrinter {
+ public:
+  struct Printer {
+    std::ostream& os;
+    const std::string prefix;
+    std::string& output_type;
+    std::string& output_comment;
+
+    Printer(std::ostream& os, const std::string& prefix, std::string& output_type, std::string& output_comment)
+        : os(os), prefix(prefix), output_type(output_type), output_comment(output_comment) {}
+
+    void operator()(const Null&) {
+      output_type = "";
+      output_comment = "`null`-s and/or empty arrays, ignored in the schema.";
+    }
+
+    void operator()(const String& x) { output_type = x.nulls ? "Optional<std::string>" : "std::string"; }
+
+    void operator()(const Bool& x) { output_type = x.nulls ? "Optional<bool>" : "bool"; }
+
+    void operator()(const ObjectOrArray& x) {
+      if (x.IsObject()) {
+        output_type = prefix + "_Object";
+        std::string type;
+        std::string comment;
+        // [ { name, { type, comment } ].
+        std::vector<std::pair<std::string, std::pair<std::string, std::string>>> output_fields;
+        output_fields.reserve(x.fields.size());
+        for (const auto& input_field : x.fields) {
+          output_fields.resize(output_fields.size() + 1);
+          auto& output_field = output_fields.back();
+          std::string& field_name = output_field.first;
+          std::string& type = output_field.second.first;
+          std::string& comment = output_field.second.second;
+          field_name = input_field.first;
+          input_field.second.Call(Printer(os, prefix + '_' + field_name, type, comment));
+        }
+        os << '\n';
+        os << "CURRENT_STRUCT(" << output_type << ") {\n";
+        for (const auto& f : output_fields) {
+          if (!f.second.first.empty()) {
+            os << "  CURRENT_FIELD(" << f.first << ", " << f.second.first << ");";
+            if (!f.second.second.empty()) {
+              os << "  // " << f.second.second;
+            }
+            os << '\n';
+          } else {
+            // No type, just a comment.
+            os << "  // `" << f.first << "` : " << f.second.second << '\n';
+          }
+        }
+        os << "};\n";
+      } else {
+        x.fields.at("").Call(Printer(os, prefix + "_Element", output_type, output_comment));
+        output_type = "std::vector<" + output_type + ">";
+      }
+      // For both arrays and objects.
+      if (x.nulls) {
+        output_type = "Optional<" + output_type + ">";
+      }
+    }
+  };
+
+  SchemaToCurrentStructPrinter(const Schema& schema,
+                               std::ostringstream& os,
+                               const std::string& top_level_struct_name) {
+    os << "// Autogenerated schema inferred from input JSON data.\n";
+
+    std::string type;
+    std::string comment;
+    schema.Call(Printer(os, top_level_struct_name, type, comment));
+
+    os << '\n';
+    if (!comment.empty()) {
+      os << "// " << comment << '\n';
+    }
+
+    // This top-level `using` allows inferring schema for primitive types, such as bare strings or bare arrays.
+    os << "using " << top_level_struct_name << " = " << type << ";\n";
   }
 };
 
@@ -406,15 +513,26 @@ inline impl::Schema InferRawSchemaFromJSON(const std::string& json) {
   return impl::SchemaFromJSON(document);
 }
 
-inline std::string InferSchemaFromJSON(const std::string& json,
-                                       const std::string& top_level_struct_name = "Schema") {
+inline std::string JSONSchemaAsTSV(const std::string& json, const size_t number_of_example_values = 20u) {
   rapidjson::Document document;
   if (document.Parse<0>(json.c_str()).HasParseError()) {
     CURRENT_THROW(InferSchemaParseJSONException());
   }
   const impl::Schema schema = impl::SchemaFromJSON(document);
   std::ostringstream result;
-  impl::SchemaToCurrentStructDumper dumper(schema, result, top_level_struct_name);
+  impl::SchemaToTSVPrinter printer(schema, result, number_of_example_values);
+  return result.str();
+}
+
+inline std::string JSONSchemaAsCurrentStructs(const std::string& json,
+                                              const std::string& top_level_struct_name = "Schema") {
+  rapidjson::Document document;
+  if (document.Parse<0>(json.c_str()).HasParseError()) {
+    CURRENT_THROW(InferSchemaParseJSONException());
+  }
+  const impl::Schema schema = impl::SchemaFromJSON(document);
+  std::ostringstream result;
+  impl::SchemaToCurrentStructPrinter printer(schema, result, top_level_struct_name);
   return result.str();
 }
 

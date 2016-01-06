@@ -22,107 +22,60 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Human-readable messages in exceptions.
-// TODO(dkorolev): Death tests.
+// TODO(dkorolev): Death tests, as well as human-readable error messages phrasing.
 
 #include "infer.h"
 
 #include "../../Bricks/file/file.h"
-#include "../../3rdparty/gtest/gtest-main.h"
+#include "../../Bricks/dflags/dflags.h"
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-// Smoke test cases.
-TEST(InferJSONSchema, Empty) {
-  EXPECT_EQ("{\"ObjectOrArray\":{\"fields\":{},\"nulls\":0}}",
-            JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("{}")));
+DEFINE_bool(regenerate_golden_inferred_schemas,
+            false,
+            "Set to 'true' to re-generate golden inferred schema files.");
+
+static std::vector<std::string> ListGoldenFilesWithExtension(const std::string& dir, const std::string& ext) {
+  std::vector<std::string> names;
+  const std::string suffix = '.' + ext;
+  current::FileSystem::ScanDir(dir,
+                               [&](const std::string& filename) {
+                                 if (filename.length() >= suffix.length()) {
+                                   const std::string prefix =
+                                       filename.substr(0, filename.length() - suffix.length());
+                                   if (prefix + suffix == filename) {
+                                     names.push_back(prefix);
+                                   }
+                                 }
+                               });
+  return names;
 }
 
-TEST(InferJSONSchema, OneStringField) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"a\":{\"String\":{\"values\":{\"b\":1},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("{\"a\":\"b\"}")));
-}
-
-TEST(InferJSONSchema, TwoStringFields) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"a\":{\"String\":{\"values\":{\"b\":1},\"nulls\":0}},\"c\":{\"String\":"
-      "{\"values\":{\"d\":1},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("{\"a\":\"b\",\"c\":\"d\"}")));
-}
-
-TEST(InferJSONSchema, NestedObject) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"a\":{\"ObjectOrArray\":{\"fields\":{\"b\":{\"String\":{\"values\":{"
-      "\"c\":1},\"nulls\":0}}},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("{\"a\":{\"b\":\"c\"}}")));
-}
-
-TEST(InferJSONSchema, ArrayOfOneString) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"String\":{\"values\":{\"a\":1},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("[\"a\"]")));
-}
-TEST(InferJSONSchema, ArrayOfOneEmptyObject) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"ObjectOrArray\":{\"fields\":{},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("[{}]")));
-}
-
-TEST(InferJSONSchema, ArrayOfThreeStrings) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"String\":{\"values\":{\"a\":2,\"b\":1},\"nulls\":0}}},\"nulls\":"
-      "0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("[\"a\",\"b\",\"a\"]")));
-}
-
-TEST(InferJSONSchema, ArrayOfThreeComparableObjects) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"ObjectOrArray\":{\"fields\":{\"x\":{\"String\":{\"values\":{"
-      "\"a\":2,\"b\":1},\"nulls\":0}}},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(
-          current::utils::InferRawSchemaFromJSON("[{\"x\":\"a\"},{\"x\":\"b\"},{\"x\":\"a\"}]")));
-}
-
-TEST(InferJSONSchema, ArrayOfIncomparableObjects) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"ObjectOrArray\":{\"fields\":{\"x\":{\"String\":{\"values\":{"
-      "\"a\":1},\"nulls\":1}},\"y\":{\"String\":{\"values\":{\"b\":1},\"nulls\":1}}},\"nulls\":0}}},\"nulls\":"
-      "0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("[{\"x\":\"a\"},{\"y\":\"b\"}]")));
-}
-
-TEST(InferJSONSchema, ArrayWithEmptyObjects) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"ObjectOrArray\":{\"fields\":{\"p\":{\"String\":{\"values\":{"
-      "\"q\":1},\"nulls\":3}}},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("[{\"p\":\"q\"},{},{},{}]")));
-}
-
-TEST(InferJSONSchema, SingleExplicitNull) {
-  EXPECT_EQ("{\"ObjectOrArray\":{\"fields\":{\"a\":{\"Null\":{\"occurrences\":1}}},\"nulls\":0}}",
-            JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON("{\"a\":null}")));
-}
-
-TEST(InferJSONSchema, SeveralExplicitNulls) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"ObjectOrArray\":{\"fields\":{\"a\":{\"Null\":{\"occurrences\":4}"
-      "},\"b\":{\"Null\":{\"occurrences\":4}}},\"nulls\":0}}},\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(
-          current::utils::InferRawSchemaFromJSON("[{\"a\":null,\"b\":null},{\"a\":null},{\"b\":null},{}]")));
-}
-
-TEST(InferJSONSchema, MissingObject) {
-  EXPECT_EQ(
-      "{\"ObjectOrArray\":{\"fields\":{\"\":{\"ObjectOrArray\":{\"fields\":{\"x\":{\"ObjectOrArray\":{"
-      "\"fields\":{\"a\":{\"String\":{\"values\":{\"b\":1},\"nulls\":0}}},\"nulls\":1}}},\"nulls\":0}}},"
-      "\"nulls\":0}}",
-      JSON<JSONFormat::Minimalistic>(
-          current::utils::InferRawSchemaFromJSON("[{\"x\":{\"a\":\"b\"}},{\"x\":null}]")));
-}
-
-// Real `CURRENT_STRUCT` tests.
-TEST(InferJSONSchema, Blah) {
-  //  EXPECT_EQ("blah",
-  //        current::utils::InferSchemaFromJSON("[{\"x\":\"a\",\"z\":\"\"},{\"y\":\"b\",\"z\":\"\"}]"));
+TEST(InferJSONSchema, MatchAgainstGoldenFiles) {
+  const std::string golden_dir = "golden";
+  const std::vector<std::string> cases = ListGoldenFilesWithExtension(golden_dir, "json");
+  for (const auto& test : cases) {
+    const std::string filename_prefix = current::FileSystem::JoinPath("golden", test);
+    const std::string json = current::FileSystem::ReadFileAsString(filename_prefix + ".json");
+    if (!FLAGS_regenerate_golden_inferred_schemas) {
+      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".raw"),
+                JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)))
+          << "While running test case `" << test << "`.";
+      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".tsv"),
+                current::utils::JSONSchemaAsTSV(json))
+          << "While running test case `" << test << "`.";
+      EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".schema"),
+                current::utils::JSONSchemaAsCurrentStructs(json))
+          << "While running test case `" << test << "`.";
+    } else {
+      current::FileSystem::WriteStringToFile(
+          JSON<JSONFormat::Minimalistic>(current::utils::InferRawSchemaFromJSON(json)),
+          (filename_prefix + ".raw").c_str());
+      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsTSV(json),
+                                             (filename_prefix + ".tsv").c_str());
+      current::FileSystem::WriteStringToFile(current::utils::JSONSchemaAsCurrentStructs(json),
+                                             (filename_prefix + ".schema").c_str());
+    }
+  }
 }
 
 // RapidJSON usage snippets framed as unit tests. Let's keep them in this `test.cc`. -- D.K.
