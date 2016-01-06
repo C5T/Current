@@ -38,8 +38,7 @@ namespace current {
 namespace utils {
 
 struct InferSchemaException : Exception {
-  InferSchemaException() : Exception() {}
-  explicit InferSchemaException(const std::string& message) : Exception(message) {}
+  using Exception::Exception;
 };
 
 // The input string is not a valid JSON.
@@ -47,8 +46,7 @@ struct InferSchemaParseJSONException : InferSchemaException {};
 
 // The input JSON can not be a `CURRENT_STRUCT`.
 struct InferSchemaInputException : InferSchemaException {
-  InferSchemaInputException() : InferSchemaException() {}
-  explicit InferSchemaInputException(const std::string& message) : InferSchemaException(message) {}
+  using InferSchemaException::InferSchemaException;
 };
 
 struct InferSchemaTopLevelEmptyArrayIsNotAllowed : InferSchemaInputException {};
@@ -99,11 +97,11 @@ inline std::string MaybeOptionalHumanReadableType(bool has_nulls, const std::str
 }
 
 // Inferred JSON types for fields.
-// Internally, the type is maintained along with the hitsogram of its values seen.
+// Internally, the type is maintained along with the histogram of its values seen.
 CURRENT_STRUCT(String) {
-  CURRENT_FIELD(values, (std::map<std::string, size_t>));
-  CURRENT_FIELD(instances, size_t, 1);
-  CURRENT_FIELD(nulls, size_t, 0);
+  CURRENT_FIELD(values, (std::map<std::string, uint32_t>));
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
 
   CURRENT_DEFAULT_CONSTRUCTOR(String) {}
   CURRENT_CONSTRUCTOR(String)(const std::string& string) { values[string] = 1; }
@@ -112,21 +110,21 @@ CURRENT_STRUCT(String) {
 };
 
 CURRENT_STRUCT(Bool) {
-  CURRENT_FIELD(values_false, size_t, 0);
-  CURRENT_FIELD(values_true, size_t, 0);
-  CURRENT_FIELD(nulls, size_t, 0);
+  CURRENT_FIELD(values_false, uint32_t, 0);
+  CURRENT_FIELD(values_true, uint32_t, 0);
+  CURRENT_FIELD(nulls, uint32_t, 0);
 
   std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "bool"); }
 };
 
 // Note: The `Null` type is largely ephemeral. Top-level "null" is still not allowed in input JSONs.
-CURRENT_STRUCT(Null) { CURRENT_FIELD(occurrences, size_t, 1); };
+CURRENT_STRUCT(Null) { CURRENT_FIELD(occurrences, uint32_t, 1); };
 
 // A trick to work around the lack of forward declarations of `CURRENT_STRUCT`-s, and to stay DRY.
 CURRENT_STRUCT(ObjectOrArray) {
   CURRENT_FIELD(fields, (std::map<std::string, Variant<String, Bool, Null, ObjectOrArray>>));
-  CURRENT_FIELD(instances, size_t, 1);
-  CURRENT_FIELD(nulls, size_t, 0);
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
 
   // An array is represented as a `ObjectOrArray` with one and only key in `fields` -- the empty string.
   bool IsObject() const { return !fields.count(""); }
@@ -444,8 +442,6 @@ class SchemaToCurrentStructPrinter {
     void operator()(const ObjectOrArray& x) {
       if (x.IsObject()) {
         output_type = prefix + "_Object";
-        std::string type;
-        std::string comment;
         // [ { name, { type, comment } ].
         std::vector<std::pair<std::string, std::pair<std::string, std::string>>> output_fields;
         output_fields.reserve(x.fields.size());
