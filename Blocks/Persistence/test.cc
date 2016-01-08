@@ -227,8 +227,8 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   };
   blocks::persistence::MemoryOnly<std::unique_ptr<BASE>, CustomCloner> test_clone;
 
-  test_clone.Publish(make_unique<A>());
-  test_clone.Publish(make_unique<B>());
+  test_clone.Publish(std::make_unique<A>());
+  test_clone.Publish(std::make_unique<B>());
 
   std::vector<std::string> results;
   size_t counter = 0u;

@@ -43,7 +43,7 @@ SOFTWARE.
 
 #include <limits>  // For data type implementation details.
 #include <string>  // For architecture names.
-#include <memory>  // For `std::unique_ptr` and the mimic of `make_unique`.
+#include <memory>  // For `std::unique_ptr`.
 
 #ifdef CURRENT_PORT_COUNT
 #error "`CURRENT_PORT_COUNT` should not be defined for port.h"
@@ -161,7 +161,10 @@ std::unique_ptr<T> make_unique(PARAMS&&... params) {
   return std::unique_ptr<T>(new T(std::forward<PARAMS>(params)...));
 }
 }  // namespace make_unique_for_poor_cpp11_users_impl
+
+namespace std {
 using namespace make_unique_for_poor_cpp11_users_impl;
+}  // namespace std
 
 // The best way I found to have clang++ dump the actual type in error message. -- D.K.
 // Usage: static_assert(sizeof(is_same_or_compile_error<A, B>), "");

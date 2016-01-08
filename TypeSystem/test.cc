@@ -199,7 +199,7 @@ TEST(TypeSystemTest, DerivedConstructorIsCalled) {
 
 TEST(TypeSystemTest, ImmutableOptional) {
   {
-    ImmutableOptional<int> foo(make_unique<int>(100));
+    ImmutableOptional<int> foo(std::make_unique<int>(100));
     ASSERT_TRUE(Exists(foo));
     EXPECT_EQ(100, foo.ValueImpl());
     EXPECT_EQ(100, static_cast<int>(Value(foo)));
@@ -248,7 +248,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
   }
   {
     const auto lambda =
-        [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(make_unique<int>(x)); };
+        [](int x) -> ImmutableOptional<int> { return ImmutableOptional<int>(std::make_unique<int>(x)); };
     ASSERT_TRUE(Exists(lambda(101)));
     EXPECT_EQ(102, lambda(102).ValueImpl());
     EXPECT_EQ(102, Value(lambda(102)));
@@ -256,7 +256,7 @@ TEST(TypeSystemTest, ImmutableOptional) {
 }
 
 TEST(TypeSystemTest, Optional) {
-  Optional<int> foo(make_unique<int>(200));
+  Optional<int> foo(std::make_unique<int>(200));
   ASSERT_TRUE(Exists(foo));
   EXPECT_EQ(200, foo.ValueImpl());
   EXPECT_EQ(200, Value(foo));
@@ -362,7 +362,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
   using namespace struct_definition_test;
 
   {
-    Variant<Foo> p(make_unique<Foo>());
+    Variant<Foo> p(std::make_unique<Foo>());
     const Variant<Foo>& cp(p);
 
     {
@@ -403,7 +403,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
     EXPECT_EQ(102u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(102u, cp.VariantValueImpl<Foo>().i);
 
-    p = make_unique<Foo>(103u);
+    p = std::make_unique<Foo>(103u);
     EXPECT_EQ(103u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(103u, cp.VariantValueImpl<Foo>().i);
   }
@@ -507,7 +507,7 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
     } catch (NoValueOfType<Bar>) {
     }
 
-    p = make_unique<DerivedFromFoo>();
+    p = std::make_unique<DerivedFromFoo>();
     p.Call(v);
     EXPECT_EQ("DerivedFromFoo [0]", v.s);
     cp.Call(v);

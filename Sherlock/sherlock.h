@@ -261,7 +261,7 @@ class StreamInstanceImpl {
   class AsyncListenerScope {
    public:
     AsyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-        : impl_(make_unique<ListenerThread<F>>(storage, std::forward<F>(listener))) {}
+        : impl_(std::make_unique<ListenerThread<F>>(storage, std::forward<F>(listener))) {}
 
     AsyncListenerScope(AsyncListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
@@ -290,7 +290,7 @@ class StreamInstanceImpl {
   class SyncListenerScope {
    public:
     SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-        : joined_(false), impl_(make_unique<ListenerThread<F>>(storage, std::move(listener))) {}
+        : joined_(false), impl_(std::make_unique<ListenerThread<F>>(storage, std::move(listener))) {}
 
     SyncListenerScope(SyncListenerScope&& rhs) : joined_(false), impl_(std::move(rhs.impl_)) {
       // TODO(dkorolev): Constructor is not destructor -- we can make these exceptions and test them.
@@ -343,7 +343,7 @@ class StreamInstanceImpl {
 
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
-    AsyncSubscribeImpl(make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+    AsyncSubscribeImpl(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
   }
 
  private:

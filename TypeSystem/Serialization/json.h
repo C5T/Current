@@ -514,7 +514,7 @@ struct LoadFromJSONImpl {
                          VariantImpl<TypeListImpl<TS...>>& destination,
                          const std::string& path) override {
           if (source->HasMember(key_name_)) {
-            destination = make_unique<X>();
+            destination = std::make_unique<X>();
             LoadFromJSONImpl<X, J>::Load(
                 &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
           } else {
@@ -539,7 +539,7 @@ struct LoadFromJSONImpl {
           using namespace ::current::reflection;
           // Silently discard duplicate types in the input type list. They would be deserialized correctly.
           deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
-              make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
+              std::make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
         }
       };
     };
@@ -610,7 +610,7 @@ struct LoadFromJSONImpl {
         void Deserialize(rapidjson::Value* source,
                          VariantImpl<TypeListImpl<TS...>>& destination,
                          const std::string& path) override {
-          destination = make_unique<X>();
+          destination = std::make_unique<X>();
           LoadFromJSONImpl<X, J>::Load(source, Value<X>(destination), path);
         }
       };
@@ -625,7 +625,7 @@ struct LoadFromJSONImpl {
           using namespace ::current::reflection;
           // Silently discard duplicate types in the input type list.
           // TODO(dkorolev): This is oh so wrong here.
-          deserializers[CurrentTypeName<X>()] = make_unique<TypedDeserializerMinimalistic<X>>();
+          deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X>>();
         }
       };
     };
@@ -681,7 +681,7 @@ struct LoadFromJSONImpl {
           if (source->HasMember("Fields")) {
             rapidjson::Value* fields = &(*source)["Fields"];
             if (fields && fields->IsArray() && fields->Size() == 1u) {
-              destination = make_unique<X>();
+              destination = std::make_unique<X>();
               LoadFromJSONImpl<X, J>::Load(&(*fields)[static_cast<rapidjson::SizeType>(0)],
                                            Value<X>(destination),
                                            path + ".[\"Fields\"]");
@@ -705,7 +705,7 @@ struct LoadFromJSONImpl {
           using namespace ::current::reflection;
           // Silently discard duplicate types in the input type list.
           // TODO(dkorolev): This is oh so wrong here.
-          deserializers[CurrentTypeName<X>()] = make_unique<TypedDeserializerFSharp<X>>();
+          deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X>>();
         }
       };
     };

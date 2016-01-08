@@ -73,7 +73,7 @@ class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, T_EXTRA_PARAM
   template <int... XS>
   std::unique_ptr<T> DoInstantiateUnique(const T_EXTRA_PARAMETER& parameter,
                                          current::variadic_indexes::indexes<XS...>) const {
-    return make_unique<T>(parameter, std::get<XS>(constructor_parameters_)...);
+    return std::make_unique<T>(parameter, std::get<XS>(constructor_parameters_)...);
   }
 
   std::tuple<ARGS...> constructor_parameters_;
@@ -102,7 +102,7 @@ class LazyInstantiatorPerType<T, void, ARGS...> : public LazyInstantiatorAbstrac
 
   template <int... XS>
   std::unique_ptr<T> DoInstantiateUnique(current::variadic_indexes::indexes<XS...>) const {
-    return make_unique<T>(std::get<XS>(constructor_parameters_)...);
+    return std::make_unique<T>(std::get<XS>(constructor_parameters_)...);
   }
 
   std::tuple<ARGS...> constructor_parameters_;
@@ -156,13 +156,13 @@ class LazilyInstantiated {
 template <typename T, typename... ARGS>
 LazilyInstantiated<T, void> DelayedInstantiate(ARGS... args) {
   return LazilyInstantiated<T, void>(
-      std::move(make_unique<LazyInstantiatorPerType<T, void, ARGS...>>(std::forward_as_tuple(args...))));
+      std::move(std::make_unique<LazyInstantiatorPerType<T, void, ARGS...>>(std::forward_as_tuple(args...))));
 }
 
 template <typename T, typename EXTRA_PARAMETER, typename... ARGS>
 LazilyInstantiated<T, EXTRA_PARAMETER> DelayedInstantiateWithExtraParameter(ARGS... args) {
   return LazilyInstantiated<T, EXTRA_PARAMETER>(std::move(
-      make_unique<LazyInstantiatorPerType<T, EXTRA_PARAMETER, ARGS...>>(std::forward_as_tuple(args...))));
+      std::make_unique<LazyInstantiatorPerType<T, EXTRA_PARAMETER, ARGS...>>(std::forward_as_tuple(args...))));
 }
 
 // Construction from future constructor parameters passed in as a tuple.
@@ -171,14 +171,14 @@ LazilyInstantiated<T, EXTRA_PARAMETER> DelayedInstantiateWithExtraParameter(ARGS
 // get out of scope before the instantiation takes place.
 template <typename T, typename... ARGS>
 LazilyInstantiated<T, void> DelayedInstantiateFromTuple(std::tuple<ARGS...>&& args_as_tuple) {
-  return LazilyInstantiated<T, void>(std::move(make_unique<LazyInstantiatorPerType<T, void, ARGS...>>(
+  return LazilyInstantiated<T, void>(std::move(std::make_unique<LazyInstantiatorPerType<T, void, ARGS...>>(
       std::forward<std::tuple<ARGS...>>(args_as_tuple))));
 }
 template <typename T, typename EXTRA_PARAMETER, typename... ARGS>
 LazilyInstantiated<T, EXTRA_PARAMETER> DelayedInstantiateWithExtraParameterFromTuple(
     std::tuple<ARGS...>&& args_as_tuple) {
   return LazilyInstantiated<T, EXTRA_PARAMETER>(
-      std::move(make_unique<LazyInstantiatorPerType<T, EXTRA_PARAMETER, ARGS...>>(
+      std::move(std::make_unique<LazyInstantiatorPerType<T, EXTRA_PARAMETER, ARGS...>>(
           std::forward<std::tuple<ARGS...>>(args_as_tuple))));
 }
 

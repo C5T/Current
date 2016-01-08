@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
 
   std::vector<std::unique_ptr<Worker>> threads(FLAGS_threads);
   for (auto& t : threads) {
-    t = make_unique<Worker>(url, FLAGS_seconds);
+    t = std::make_unique<Worker>(url, FLAGS_seconds);
   }
 
   for (auto& t : threads) {

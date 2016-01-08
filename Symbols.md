@@ -84,8 +84,6 @@ current::Now()
 
 current::Stream<T>(...)  // Returns current::StreamImpl<T>.
 
-make_unique<T>(...)  // Until c++14 is mainstream, we need our own.
-
 current::CRC32(x)
 current::SHA256(x)
 current::ROL64(x, n)
@@ -103,6 +101,8 @@ current::Singleton, current::ThreadLocalSingleton
 
 current::DelayedInstantiateFromTuple
 current::DelayedInstantiateWithExtraParameterFromTuple
+
+std::make_unique<T>(...)  // Until c++14 is mainstream, we injected our own.
 ```
 
 ### Enum classes

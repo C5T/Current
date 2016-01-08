@@ -667,21 +667,21 @@ TEST(Serialization, VariantAsJSON) {
     }
   }
   {
-    const VariantType object(make_unique<Empty>());
+    const VariantType object(std::make_unique<Empty>());
     const std::string json = "{\"Empty\":{},\"\":\"T9200000002835747520\"}";
     EXPECT_EQ(json, JSON(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON(ParseJSON<VariantType>(json)));
   }
   {
-    const VariantType object(make_unique<Empty>());
+    const VariantType object(std::make_unique<Empty>());
     const std::string json = "{\"Empty\":{}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(ParseJSON<VariantType, JSONFormat::Minimalistic>(json)));
   }
   {
-    const VariantType object(make_unique<Empty>());
+    const VariantType object(std::make_unique<Empty>());
     const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
@@ -689,7 +689,7 @@ TEST(Serialization, VariantAsJSON) {
               JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
-    const VariantType object(make_unique<Serializable>(42));
+    const VariantType object(std::make_unique<Serializable>(42));
     const std::string json =
         "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0},\"\":\"T9201007113239016790\"}";
     EXPECT_EQ(json, JSON(object));
@@ -697,7 +697,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_EQ(json, JSON(ParseJSON<VariantType>(json)));
   }
   {
-    const VariantType object(make_unique<Serializable>(42));
+    const VariantType object(std::make_unique<Serializable>(42));
     const std::string json = "{\"Serializable\":{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}}";
     EXPECT_EQ(json, JSON<JSONFormat::Minimalistic>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
@@ -711,7 +711,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_EQ(JSON(object), JSON(ParseJSON<VariantType, JSONFormat::Minimalistic>(ok3)));
   }
   {
-    const VariantType object(make_unique<Serializable>(42));
+    const VariantType object(std::make_unique<Serializable>(42));
     const std::string json =
         "{\"Case\":\"Serializable\",\"Fields\":[{\"i\":42,\"s\":\"\",\"b\":false,\"e\":0}]}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));

@@ -306,7 +306,7 @@ struct Container<YT, Matrix<ENTRY>> {
       const size_t index = stream_.Publish(entry);
       std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder =
           mutable_.map_[ROW_COL(GetRow(entry), GetCol(entry))];
-      placeholder = make_unique<EntryWithIndex<ENTRY>>(index, entry);
+      placeholder = std::make_unique<EntryWithIndex<ENTRY>>(index, entry);
       mutable_.forward_[GetRow(entry)][GetCol(entry)] = &placeholder->entry;
       mutable_.transposed_[GetCol(entry)][GetRow(entry)] = &placeholder->entry;
     }

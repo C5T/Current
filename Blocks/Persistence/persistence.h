@@ -228,7 +228,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
     // if `ENTRY` is the base class for `DERIVED_ENTRY`.
     // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
-    std::unique_ptr<DERIVED_ENTRY> copy(make_unique<DERIVED_ENTRY>());
+    std::unique_ptr<DERIVED_ENTRY> copy(std::make_unique<DERIVED_ENTRY>());
     *copy = current::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
     const size_t result = list_size_;
     ListPushBackImpl(std::move(copy));
@@ -239,7 +239,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
     // the copy constructor. Instead, we go with Current-friendly clone implementation above.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
-    // COMMENTED OUT: list_.push_back(std::move(make_unique<DERIVED_ENTRY>(entry)));
+    // COMMENTED OUT: list_.push_back(std::move(std::make_unique<DERIVED_ENTRY>(entry)));
 
     // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
     // COMMENTED OUT: persistence_layer_.Publish(entry);
@@ -333,7 +333,7 @@ struct CerealAppendToFilePublisherImpl {
     while (parser.Next(push)) {
       ++count_;
     }
-    appender_ = make_unique<current::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
+    appender_ = std::make_unique<current::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
     assert(appender_);
   }
 
@@ -378,9 +378,9 @@ struct NewAppendToFilePublisherImpl {
         push(std::move(ParseJSON<ENTRY>(line)));
         ++count_;
       }
-      appender_ = make_unique<std::ofstream>(filename_, std::ofstream::app);
+      appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::app);
     } else {
-      appender_ = make_unique<std::ofstream>(filename_, std::ofstream::trunc);
+      appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::trunc);
     }
     assert(appender_);
     assert(appender_->good());
