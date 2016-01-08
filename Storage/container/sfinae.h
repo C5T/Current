@@ -66,8 +66,19 @@ struct KEY_ACCESSOR_IMPL<ENTRY, true> {
   static void SetKey(ENTRY& entry, CF<T_KEY> key) { entry.set_key(key); }
 };
 
+#ifndef _MSC_VER
 template <typename ENTRY>
 using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<ENTRY, HasKeyMethod<ENTRY>(0)>;
+#else
+// Visual C++ [Enterprise 2015, 00322-8000-00000-AA343] is not friendly with a `constexpr` "call" from "using".
+// Work around it by introducing another `struct`. -- D.K.
+template <typename ENTRY>
+struct KEY_ACCESSOR_FOR_HANDICAPPED {
+  typedef KEY_ACCESSOR_IMPL<ENTRY, HasKeyMethod<ENTRY>(0)> type;
+};
+template <typename ENTRY>
+using KEY_ACCESSOR = typename KEY_ACCESSOR_FOR_HANDICAPPED<ENTRY>::type;
+#endif  // _MSC_VER
 
 template <typename ENTRY>
 typename KEY_ACCESSOR<ENTRY>::T_KEY GetKey(const ENTRY& entry) {
