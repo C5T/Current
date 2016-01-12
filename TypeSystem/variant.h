@@ -164,7 +164,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
     object_ = std::move(rhs.object_);
     return *this;
   }
-  
+
   template <typename X,
             bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
