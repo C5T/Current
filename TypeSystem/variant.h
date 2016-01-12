@@ -164,12 +164,18 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
     object_ = std::move(rhs.object_);
     return *this;
   }
-
+  
   template <typename X,
             bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
     VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+  }
+
+  template <typename... TS>
+  void operator=(VariantImpl<TS...>&& rhs) {
+    TypeAwareMove mover(*this);
+    rhs.Call(mover);
   }
 
   template <typename X,
@@ -178,6 +184,12 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
   VariantImpl(X&& input) {
     VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
     CheckIntegrityImpl();
+  }
+
+  template <typename... TS>
+  VariantImpl(VariantImpl<TS...>&& rhs) {
+    TypeAwareMove mover(*this);
+    rhs.Call(mover);
   }
 
   void operator=(std::nullptr_t) { object_ = nullptr; }
@@ -241,6 +253,16 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
     template <typename TT>
     void operator()(const TT& instance) {
       result = instance;
+    }
+  };
+
+  struct TypeAwareMove {
+    VariantImpl<TypeListImpl<TYPES...>>& result;
+    TypeAwareMove(VariantImpl<TypeListImpl<TYPES...>>& result) : result(result) {}
+
+    template <typename TT>
+    void operator()(TT&& instance) {
+      result = std::move(instance);
     }
   };
 

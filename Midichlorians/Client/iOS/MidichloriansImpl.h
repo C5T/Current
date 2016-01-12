@@ -1,10 +1,9 @@
 /*******************************************************************************
  The MIT License (MIT)
 
- Copyright (c) 2015:
-
- * Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
- * Alexander Zolotarev <me@alex.bio> from Minsk, Belarus
+ Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+           (c) 2015 Alexander Zolotarev <me@alex.bio> from Minsk, Belarus
+           (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -32,14 +31,14 @@
 #error "This C++ header should be `#include`-d or `#import`-ed from an `.mm`, not an `.m` source file."
 #endif
 
-#ifndef CURRENT_MIDICHLORIANS_IMPL_H
-#define CURRENT_MIDICHLORIANS_IMPL_H
+#ifndef CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H
+#define CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H
 
 #include <string>
 
-#include "../../../../port.h"
-#include "../../../../Bricks/util/singleton.h"
-#include "../../../../TypeSystem/Serialization/json.h"
+#include "../../../port.h"
+#include "../../../Bricks/util/singleton.h"
+#include "../../../TypeSystem/Serialization/json.h"
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."
@@ -48,7 +47,7 @@
 #ifndef CURRENT_TEST_COMPILATION
 
 #define COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
-#include "../MidichloriansDataDictionary.h"
+#include "../../MidichloriansDataDictionary.h"
 
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
@@ -71,8 +70,8 @@
 #else
 
 // In `CURRENT_TEST_COMPILATION` mode, still compile the data dictionary header.
-#include "../MidichloriansDataDictionary.h"
+#include "../../MidichloriansDataDictionary.h"
 
 #endif  // CURRENT_TEST_COMPILATION
 
-#endif  // CURRENT_MIDICHLORIANS_IMPL_H
+#endif  // CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H

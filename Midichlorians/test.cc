@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,108 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// Use the define below to enable debug output via `NSLog`.
-// #define CURRENT_APPLE_ENABLE_NSLOG
-
 #include "../port.h"
 
-#ifdef CURRENT_APPLE
-
-#include "Dev/Beta/iOS/Midichlorians.mm"
-#include "Dev/Beta/iOS/MidichloriansImpl.mm"
-
-#include "../Blocks/HTTP/api.h"
-
-#include "../Bricks/strings/join.h"
-#include "../Bricks/template/rtti_dynamic_call.h"
-
-#include "../Bricks/dflags/dflags.h"
-#include "../3rdparty/gtest/gtest-main-with-dflags.h"
-
-DEFINE_int32(http_port, 8383, "Port to spawn server on.");
-DEFINE_string(http_route, "/log", "HTTP route of the server.");
-
-struct Server {
-  using T_EVENTS = TypeList<iOSAppLaunchEvent, iOSIdentifyEvent, iOSFocusEvent, iOSGenericEvent>;
-
-  Server(int http_port, const std::string& http_route)
-      : messages_processed(0u),
-        endpoints(HTTP(http_port).Register(http_route,
-                                           [this](Request r) {
-                                             std::unique_ptr<MidichloriansEvent> event;
-                                             try {
-                                               CerealizeParseJSON(r.body, event);
-                                               current::metaprogramming::RTTIDynamicCall<T_EVENTS>(event,
-                                                                                                   *this);
-                                               ++messages_processed;
-                                             } catch (const current::Exception&) {
-                                             }
-                                           })) {}
-
-  void operator()(const iOSAppLaunchEvent& event) {
-    EXPECT_FALSE(event.device_id.empty());
-    EXPECT_FALSE(event.binary_version.empty());
-    EXPECT_GT(event.app_install_time, 1420000000000u);
-    EXPECT_GT(event.app_update_time, 1420000000000u);
-    EXPECT_EQ("*FinishLaunchingWithOptions", event.description);
-    messages.push_back("Launch");
-  }
-
-  void operator()(const iOSIdentifyEvent& event) { messages.push_back("Identify[" + event.client_id + ']'); }
-
-  void operator()(const iOSFocusEvent& event) {
-    if (event.gained_focus) {
-      messages.push_back("GainedFocus[" + event.description + ']');
-    } else {
-      messages.push_back("LostFocus[" + event.description + ']');
-    }
-  }
-
-  void operator()(const iOSGenericEvent& event) {
-    std::string params = "source=" + event.source;
-    for (const auto& f : event.fields) {
-      params += ',';
-      params += f.first + '=' + f.second;
-    }
-    for (const auto& f : event.complex_fields) {
-      params += ',';
-      params += f.first + '=' + f.second;
-    }
-    messages.push_back(event.event + '[' + params + ']');
-  }
-
-  std::vector<std::string> messages;
-  std::atomic_size_t messages_processed;
-
- private:
-  HTTPRoutesScope endpoints;
-};
-
-TEST(Midichlorians, SmokeTest) {
-  Server server(FLAGS_http_port, FLAGS_http_route);
-
-  NSDictionary* launchOptions = [NSDictionary new];
-  [Midichlorians setup:[NSString
-                           stringWithFormat:@"http://localhost:%d%s", FLAGS_http_port, FLAGS_http_route.c_str()]
-      withLaunchOptions:launchOptions];
-
-  [Midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
-
-  [Midichlorians identify:@"unit_test"];
-
-  NSDictionary* eventParams = @{ @"s" : @"str", @"b" : @true, @"x" : @1 };
-  [Midichlorians trackEvent:@"CustomEvent1" source:@"SmokeTest" properties:eventParams];
-
-  [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
-
-  while (server.messages_processed < 5u) {
-    ;  // spin lock.
-  }
-
-  EXPECT_EQ(
-      "Launch,GainedFocus[applicationDidBecomeActive],Identify[unit_test],CustomEvent1[source=SmokeTest,s=str,"
-      "b=1,x=1],LostFocus[applicationDidEnterBackground]",
-      current::strings::Join(server.messages, ','));
-}
-
-#endif  // CURRENT_APPLE
+#include "Client/test.cc"
+#include "Server/test.cc"
