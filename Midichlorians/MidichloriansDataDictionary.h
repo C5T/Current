@@ -145,13 +145,13 @@ using T_IOS_EVENTS = TypeList<iOSFirstLaunchEvent,
 
 namespace web {
 
-// Server collecting web events is supposed to be run behind nginx or other proxy.
-// Thus, basic web event properties are extracted from the corresponding HTTP headers:
-//   `ip` from `X-Forwarded-For`
-//   `user_agent` from `User-Agent`
-//   `referer_*` from `Referer`
+//  Event collection server expects the following HTTP headers to be set:
+//   `X-Forwarded-For` for `ip`,
+//   `User-Agent` for `user_agent`,
+//   `Referer` for `referer_*` members.
 //
 // TODO(mzhirovich): sync up with @sompylasar on the proper structure of web events.
+// TODO(dkorolev): add sample nginx config + link to it in the comments.
 
 CURRENT_STRUCT(WebBaseEvent, MidichloriansBaseEvent) {
   CURRENT_FIELD(ip, std::string);
@@ -173,7 +173,8 @@ CURRENT_STRUCT(WebGenericEvent, WebBaseEvent) {
   CURRENT_FIELD(event_category, std::string);
   CURRENT_FIELD(event_action, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(WebGenericEvent) {}
-  CURRENT_CONSTRUCTOR(WebGenericEvent)(const std::string& category, const std::string& action) : event_category(category), event_action(action) {}
+  CURRENT_CONSTRUCTOR(WebGenericEvent)(const std::string& category, const std::string& action)
+      : event_category(category), event_action(action) {}
 };
 
 using T_WEB_EVENTS =

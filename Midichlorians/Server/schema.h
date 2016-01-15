@@ -54,6 +54,7 @@ using T_IOS_VARIANT = Variant<T_IOS_EVENTS>;
 using T_WEB_VARIANT = Variant<T_WEB_EVENTS>;
 using T_EVENT_VARIANT = Variant<TypeListCat<T_IOS_EVENTS, T_WEB_EVENTS>>;
 
+// clang-format off
 CURRENT_STRUCT(LogEntryBase) {
   CURRENT_FIELD(server_us, std::chrono::microseconds, 0);
   CURRENT_DEFAULT_CONSTRUCTOR(LogEntryBase) {}
@@ -61,29 +62,30 @@ CURRENT_STRUCT(LogEntryBase) {
 };
 
 CURRENT_STRUCT(TickLogEntry, LogEntryBase){
-  CURRENT_DEFAULT_CONSTRUCTOR(TickLogEntry){} CURRENT_CONSTRUCTOR(TickLogEntry)(std::chrono::microseconds us) :
-      SUPER(us){}
+  CURRENT_DEFAULT_CONSTRUCTOR(TickLogEntry) {}
+  CURRENT_CONSTRUCTOR(TickLogEntry)(std::chrono::microseconds us) : SUPER(us) {}
 };
 
 CURRENT_STRUCT(EventLogEntry, LogEntryBase) {
   CURRENT_FIELD(event, T_EVENT_VARIANT);
   CURRENT_DEFAULT_CONSTRUCTOR(EventLogEntry) {}
-  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, T_WEB_VARIANT && event)
+  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, T_WEB_VARIANT&& event)
       : SUPER(us), event(std::move(event)) {}
-  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, T_IOS_VARIANT && event)
+  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, T_IOS_VARIANT&& event)
       : SUPER(us), event(std::move(event)) {}
 };
 
-CURRENT_STRUCT(InvalidLogEntry, LogEntryBase) {
+CURRENT_STRUCT(UnparsableLogEntry, LogEntryBase) {
   CURRENT_FIELD(method, std::string);
   CURRENT_FIELD(headers, (std::map<std::string, std::string>));
   CURRENT_FIELD(body, std::string);
-  CURRENT_DEFAULT_CONSTRUCTOR(InvalidLogEntry) {}
-  CURRENT_CONSTRUCTOR(InvalidLogEntry)(std::chrono::microseconds us, const blocks::Request& r)
+  CURRENT_DEFAULT_CONSTRUCTOR(UnparsableLogEntry) {}
+  CURRENT_CONSTRUCTOR(UnparsableLogEntry)(std::chrono::microseconds us, const blocks::Request& r)
       : SUPER(us), method(r.method), headers(r.headers), body(r.body) {}
 };
+// clang-format on
 
-using T_LOG_ENTRY_VARIANT = Variant<TickLogEntry, EventLogEntry, InvalidLogEntry>;
+using T_LOG_ENTRY_VARIANT = Variant<TickLogEntry, EventLogEntry, UnparsableLogEntry>;
 
 }  // namespace server
 }  // namespace midichlorians

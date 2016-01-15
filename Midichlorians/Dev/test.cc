@@ -40,25 +40,25 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(http_port, 8383, "Port to spawn server on.");
-DEFINE_string(http_route, "/log", "HTTP route of the server.");
+DEFINE_int32(midichlorians_dev_test_http_port, 8383, "Port to spawn server on.");
+DEFINE_string(midichlorians_dev_test_http_route, "/log", "HTTP route of the server.");
 
-struct Server {
+class Server {
+ public:
   using T_EVENTS = TypeList<iOSAppLaunchEvent, iOSIdentifyEvent, iOSFocusEvent, iOSGenericEvent>;
 
   Server(int http_port, const std::string& http_route)
-      : messages_processed(0u),
-        endpoints(HTTP(http_port).Register(http_route,
-                                           [this](Request r) {
-                                             std::unique_ptr<MidichloriansEvent> event;
-                                             try {
-                                               CerealizeParseJSON(r.body, event);
-                                               current::metaprogramming::RTTIDynamicCall<T_EVENTS>(event,
-                                                                                                   *this);
-                                               ++messages_processed;
-                                             } catch (const current::Exception&) {
-                                             }
-                                           })) {}
+      : messages_processed_(0u),
+        routes_(HTTP(http_port).Register(http_route,
+                                         [this](Request r) {
+                                           std::unique_ptr<MidichloriansEvent> event;
+                                           try {
+                                             CerealizeParseJSON(r.body, event);
+                                             current::metaprogramming::RTTIDynamicCall<T_EVENTS>(event, *this);
+                                             ++messages_processed_;
+                                           } catch (const current::Exception&) {
+                                           }
+                                         })) {}
 
   void operator()(const iOSAppLaunchEvent& event) {
     EXPECT_FALSE(event.device_id.empty());
@@ -66,16 +66,16 @@ struct Server {
     EXPECT_GT(event.app_install_time, 1420000000000u);
     EXPECT_GT(event.app_update_time, 1420000000000u);
     EXPECT_EQ("*FinishLaunchingWithOptions", event.description);
-    messages.push_back("Launch");
+    messages_.push_back("Launch");
   }
 
-  void operator()(const iOSIdentifyEvent& event) { messages.push_back("Identify[" + event.client_id + ']'); }
+  void operator()(const iOSIdentifyEvent& event) { messages_.push_back("Identify[" + event.client_id + ']'); }
 
   void operator()(const iOSFocusEvent& event) {
     if (event.gained_focus) {
-      messages.push_back("GainedFocus[" + event.description + ']');
+      messages_.push_back("GainedFocus[" + event.description + ']');
     } else {
-      messages.push_back("LostFocus[" + event.description + ']');
+      messages_.push_back("LostFocus[" + event.description + ']');
     }
   }
 
@@ -89,22 +89,26 @@ struct Server {
       params += ',';
       params += f.first + '=' + f.second;
     }
-    messages.push_back(event.event + '[' + params + ']');
+    messages_.push_back(event.event + '[' + params + ']');
   }
 
-  std::vector<std::string> messages;
-  std::atomic_size_t messages_processed;
+  size_t MessagesProcessed() const { return messages_processed_; }
+
+  const std::vector<std::string>& Messages() const { return messages_; }
 
  private:
-  HTTPRoutesScope endpoints;
+  std::vector<std::string> messages_;
+  std::atomic_size_t messages_processed_;
+  HTTPRoutesScope routes_;
 };
 
 TEST(Midichlorians, SmokeTest) {
-  Server server(FLAGS_http_port, FLAGS_http_route);
+  Server server(FLAGS_midichlorians_dev_test_http_port, FLAGS_midichlorians_dev_test_http_route);
 
   NSDictionary* launchOptions = [NSDictionary new];
-  [Midichlorians setup:[NSString
-                           stringWithFormat:@"http://localhost:%d%s", FLAGS_http_port, FLAGS_http_route.c_str()]
+  [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d%s",
+                                                  FLAGS_midichlorians_dev_test_http_port,
+                                                  FLAGS_midichlorians_dev_test_http_route.c_str()]
       withLaunchOptions:launchOptions];
 
   [Midichlorians focusEvent:YES source:@"applicationDidBecomeActive"];
@@ -116,14 +120,17 @@ TEST(Midichlorians, SmokeTest) {
 
   [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
-  while (server.messages_processed < 5u) {
+  while (server.MessagesProcessed() < 5u) {
     ;  // spin lock.
   }
 
   EXPECT_EQ(
-      "Launch,GainedFocus[applicationDidBecomeActive],Identify[unit_test],CustomEvent1[source=SmokeTest,s=str,"
-      "b=1,x=1],LostFocus[applicationDidEnterBackground]",
-      current::strings::Join(server.messages, ','));
+      "Launch,"
+      "GainedFocus[applicationDidBecomeActive],"
+      "Identify[unit_test],"
+      "CustomEvent1[source=SmokeTest,s=str,b=1,x=1],"
+      "LostFocus[applicationDidEnterBackground]",
+      current::strings::Join(server.Messages(), ','));
 }
 
 #endif  // CURRENT_APPLE

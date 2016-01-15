@@ -75,25 +75,26 @@ class MidichloriansHTTPServer {
         std::istringstream iss(r.body);
         std::string line;
         while (std::getline(iss, line)) {
-          if (!BodyLineAsiOSEvent(line)) {
-            if (!RequestAsWebEvent(r)) {
-              LogInvalidRequest(r);
+          if (!ParseBodyLineAsiOSEvent(line)) {
+            if (!ParseRequestAsWebEvent(r)) {
+              LogUnparsableRequest(r);
             }
           }
         }
       } else if (r.method == "GET" || r.method == "HEAD") {
         // GET and HEAD requests could be only web events.
-        if (!RequestAsWebEvent(r)) {
-          LogInvalidRequest(r);
+        if (!ParseRequestAsWebEvent(r)) {
+          LogUnparsableRequest(r);
         }
       } else {
-        LogInvalidRequest(r);
+        // Wrong HTTP method or empty body in POST request.
+        LogUnparsableRequest(r);
       }
     }
     r(response_text_);
   }
 
-  bool BodyLineAsiOSEvent(const std::string& line) {
+  bool ParseBodyLineAsiOSEvent(const std::string& line) {
     using namespace current::midichlorians::ios;
 
     Variant<T_IOS_EVENTS> ios_event;
@@ -107,37 +108,43 @@ class MidichloriansHTTPServer {
     return true;
   }
 
-  bool RequestAsWebEvent(const Request& r) {
+  bool ParseRequestAsWebEvent(const Request& r) {
     using namespace current::midichlorians::web;
 
-    std::map<std::string, std::string> post_q;  // Query parameters extracted from POST body.
-    const std::map<std::string, std::string>* q;
-    const std::map<std::string, std::string>* h = &r.headers;
+    std::map<std::string, std::string> extracted_q;  // Manually extracted query parameters.
+    const std::map<std::string, std::string>& h = r.headers;
 
-    if (r.method == "GET" || r.method == "HEAD") {
-      q = &r.url.AllQueryParameters();
-    } else if (r.method == "POST") {
-      post_q = blocks::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
-      for (const auto& cit : r.url.AllQueryParameters()) {
-        post_q.insert(cit);
+    bool is_allowed_method = false;
+    const std::map<std::string, std::string>& q = [&r, &extracted_q, &is_allowed_method]() {
+      if (r.method == "GET" || r.method == "HEAD") {
+        is_allowed_method = true;
+        return r.url.AllQueryParameters();
+      } else if (r.method == "POST") {
+        is_allowed_method = true;
+        extracted_q = blocks::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
+        for (const auto& cit : r.url.AllQueryParameters()) {
+          extracted_q.insert(cit);
+        }
       }
-      q = &post_q;
-    } else {
+      return extracted_q;
+    }();
+
+    if (!is_allowed_method) {
       return false;
     }
 
     Variant<T_WEB_EVENTS> web_event;
     try {
-      if (q->at("ea") == "En") {
+      if (q.at("ea") == "En") {
         web_event = WebEnterEvent();
-      } else if (q->at("ea") == "Ex") {
+      } else if (q.at("ea") == "Ex") {
         web_event = WebExitEvent();
-      } else if (q->at("ea") == "Fg") {
+      } else if (q.at("ea") == "Fg") {
         web_event = WebForegroundEvent();
-      } else if (q->at("ea") == "Bg") {
+      } else if (q.at("ea") == "Bg") {
         web_event = WebBackgroundEvent();
       } else {
-        web_event = WebGenericEvent(q->at("ec"), q->at("ea"));
+        web_event = WebGenericEvent(q.at("ec"), q.at("ea"));
       }
     } catch (const std::out_of_range&) {
       return false;
@@ -151,6 +158,31 @@ class MidichloriansHTTPServer {
     return true;
   }
 
+  bool ExtractWebBaseEventFields(const std::map<std::string, std::string>& q,
+                                 const std::map<std::string, std::string>& h,
+                                 Variant<T_WEB_EVENTS>& web_event) {
+    using namespace current::midichlorians::web;
+
+    WebBaseEvent& dest_event = Value<WebBaseEvent>(web_event);
+    try {
+      dest_event.user_ms = std::chrono::milliseconds(strings::FromString<uint64_t>(q.at("_t")));
+      dest_event.customer_id = q.at("CUSTOMER_ACCOUNT");
+      dest_event.client_id = q.at("cid");
+      dest_event.ip = h.at("X-Forwarded-For");
+      dest_event.user_agent = h.at("User-Agent");
+      const auto url = blocks::URL(h.at("Referer"));
+      dest_event.referer_host = url.host;
+      dest_event.referer_path = url.path;
+      dest_event.referer_querystring = url.query.AsImmutableMap();
+    } catch (const std::out_of_range&) {
+      // TODO(mz+dk): discuss the validity of partially filled event fields.
+      return false;
+    } catch (const blocks::EmptyURLException&) {
+      return false;
+    }
+    return true;
+  }
+
   template <typename T_LOG_ENTRY>
   void PassLogEntryToConsumer(T_LOG_ENTRY&& entry, bool is_valid_entry = true) {
     T_LOG_ENTRY_VARIANT entry_variant(std::move(entry));
@@ -161,38 +193,12 @@ class MidichloriansHTTPServer {
     }
   }
 
-  bool ExtractWebBaseEventFields(const std::map<std::string, std::string>* q,
-                                 const std::map<std::string, std::string>* h,
-                                 Variant<T_WEB_EVENTS>& web_event) {
-    using namespace current::midichlorians::web;
-
-    assert(q);
-    assert(h);
-
-    WebBaseEvent& dest_event = Value<WebBaseEvent>(web_event);
-    try {
-      dest_event.user_ms = std::chrono::milliseconds(strings::FromString<uint64_t>(q->at("_t")));
-      dest_event.customer_id = q->at("CUSTOMER_ACCOUNT");
-      dest_event.client_id = q->at("cid");
-      dest_event.ip = h->at("X-Forwarded-For");
-      dest_event.user_agent = h->at("User-Agent");
-      blocks::URL url = blocks::URL(h->at("Referer"));
-      dest_event.referer_host = url.host;
-      dest_event.referer_path = url.path;
-      dest_event.referer_querystring = url.query.AsImmutableMap();
-    } catch (const std::out_of_range&) {
-      return false;
-    } catch (const blocks::EmptyURLException&) {
-      return false;
-    }
-    return true;
-  }
-
-  void LogInvalidRequest(const Request& r) {
-    PassLogEntryToConsumer(InvalidLogEntry(current::time::Now(), r), false);
+  void LogUnparsableRequest(const Request& r) {
+    PassLogEntryToConsumer(UnparsableLogEntry(current::time::Now(), r), false);
   }
 
   void TimerThreadFunction() {
+    // TODO(dkorolev): Use "cron" here.
     while (send_ticks_) {
       std::unique_lock<std::mutex> lock(mutex_);
       const std::chrono::microseconds now = current::time::Now();

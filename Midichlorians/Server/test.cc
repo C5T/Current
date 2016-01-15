@@ -33,7 +33,7 @@ SOFTWARE.
 #if defined(CURRENT_APPLE) && !defined(CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H)
 #include "../Client/iOS/Midichlorians.mm"
 #include "../Client/iOS/MidichloriansImpl.mm"
-#endif  // defined(CURRENT_APPLE) && !defined(CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H)
+#endif
 
 #include "server.h"
 
@@ -42,7 +42,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(server_test_port, 8089, "Local port to run the test.");
+DEFINE_int32(midichlorians_server_test_port, 8089, "Local port to run the test.");
 
 using current::strings::Join;
 using current::strings::Printf;
@@ -58,7 +58,7 @@ struct GenericConsumer {
     ++total_count;
   }
 
-  void operator()(const InvalidLogEntry& e) {
+  void operator()(const UnparsableLogEntry& e) {
     errors.push_back(Printf("[%lld][Error]", e.server_us.count()));
     ++total_count;
   }
@@ -99,7 +99,7 @@ struct GenericConsumer {
   void operator()(const iOSBaseEvent&) {}
 
   // Web events.
-  std::string ExtractWebBaseEventParams(const WebBaseEvent& e) {
+  static std::string ExtractWebBaseEventParams(const WebBaseEvent& e) {
     std::string result;
     result += "customer_id=" + e.customer_id + ' ';
     result += "user_ms=" + ToString(e.user_ms.count()) + ' ';
@@ -150,15 +150,17 @@ struct GenericConsumer {
   std::vector<std::string> errors;
 };
 
-TEST(MidichloriansServer, iOSEventsFromCPP) {
+// TODO(mzhurovich): add separate event tests after Midichlorians clients refactoring.
+
+TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
   using namespace current::midichlorians::server;
   using namespace current::midichlorians::ios;
 
   current::time::SetNow(std::chrono::microseconds(0));
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
-      FLAGS_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
-  const std::string server_url = Printf("http://localhost:%d/log", FLAGS_server_test_port);
+      FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
+  const std::string server_url = Printf("http://localhost:%d/log", FLAGS_midichlorians_server_test_port);
 
   current::time::SetNow(std::chrono::microseconds(12000));
   iOSAppLaunchEvent launch_event;
@@ -169,9 +171,12 @@ TEST(MidichloriansServer, iOSEventsFromCPP) {
   EXPECT_EQ("OK\n", response1.body);
 
   current::time::SetNow(std::chrono::microseconds(112000));
+  // Waiting for 3 entries: 1 valid, 1 unparsable and 1 tick.
   while (consumer.total_count < 3u) {
     ;  // Spin lock.
   }
+  EXPECT_EQ(2u, consumer.events.size());
+  EXPECT_EQ(1u, consumer.errors.size());
 
   current::time::SetNow(std::chrono::microseconds(203000));
   iOSIdentifyEvent identify_event;
@@ -187,6 +192,7 @@ TEST(MidichloriansServer, iOSEventsFromCPP) {
   EXPECT_EQ("OK\n", response2.body);
 
   current::time::SetNow(std::chrono::microseconds(450000));
+  // Waiting for 4 more entries: 2 valid, 1 unparsable and 1 tick.
   while (consumer.total_count < 7u) {
     ;  // Spin lock.
   }
@@ -194,23 +200,27 @@ TEST(MidichloriansServer, iOSEventsFromCPP) {
   EXPECT_EQ(5u, consumer.events.size());
   EXPECT_EQ(2u, consumer.errors.size());
   EXPECT_EQ(
-      "[12000][iOSAppLaunchEvent user_ms=1],[112000][Tick],[203000][iOSIdentifyEvent user_ms=42 "
-      "client_id=unit_test],[203000][iOSFocusEvent user_ms=50 gained_focus=true],[450000][Tick]",
+      "[12000][iOSAppLaunchEvent user_ms=1],"
+      "[112000][Tick],"
+      "[203000][iOSIdentifyEvent user_ms=42 client_id=unit_test],"
+      "[203000][iOSFocusEvent user_ms=50 gained_focus=true],"
+      "[450000][Tick]",
       Join(consumer.events, ','));
   EXPECT_EQ("[12000][Error],[203000][Error]", Join(consumer.errors, ','));
 }
 
 #ifdef CURRENT_APPLE
-TEST(MidichloriansServer, iOSEventsFromNativeClient) {
+TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
   using namespace current::midichlorians::server;
 
   current::time::SetNow(std::chrono::microseconds(0));
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
-      FLAGS_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
+      FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
 
   NSDictionary* launchOptions = [NSDictionary new];
-  [Midichlorians setup:[NSString stringWithFormat:@"http://localhost:%d/log", FLAGS_server_test_port]
+  [Midichlorians setup:[NSString
+                           stringWithFormat:@"http://localhost:%d/log", FLAGS_midichlorians_server_test_port]
       withLaunchOptions:launchOptions];
 
   current::time::SetNow(std::chrono::microseconds(1000));
@@ -227,14 +237,15 @@ TEST(MidichloriansServer, iOSEventsFromNativeClient) {
   [Midichlorians focusEvent:NO source:@"applicationDidEnterBackground"];
 
   while (consumer.total_count < 5u) {
-    ;  // spin lock.
+    ;  // Spin lock.
   }
 
   EXPECT_EQ(
-      "[15000][iOSAppLaunchEvent user_ms=0],[15000][iOSFocusEvent user_ms=1 "
-      "gained_focus=true],[15000][iOSIdentifyEvent user_ms=2 client_id=unit_test],[15000][iOSGenericEvent "
-      "user_ms=5 source=SmokeTest event=CustomEvent1 b=1 s=str x=1],[15000][iOSFocusEvent user_ms=15 "
-      "gained_focus=false]",
+      "[15000][iOSAppLaunchEvent user_ms=0],"
+      "[15000][iOSFocusEvent user_ms=1 gained_focus=true],"
+      "[15000][iOSIdentifyEvent user_ms=2 client_id=unit_test],"
+      "[15000][iOSGenericEvent user_ms=5 source=SmokeTest event=CustomEvent1 b=1 s=str x=1],"
+      "[15000][iOSFocusEvent user_ms=15 gained_focus=false]",
       Join(consumer.events, ','));
 }
 #endif  // CURRENT_APPLE
@@ -271,15 +282,15 @@ POST MockPOSTRequest(const std::string& base_url,
   return r;
 }
 
-TEST(MidichloriansServer, WebEventsFromCPP) {
+TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
   using namespace current::midichlorians::server;
   using namespace current::midichlorians::web;
 
   current::time::SetNow(std::chrono::microseconds(0));
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
-      FLAGS_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
-  const std::string server_url = Printf("http://localhost:%d/log", FLAGS_server_test_port);
+      FLAGS_midichlorians_server_test_port, consumer, std::chrono::milliseconds(100), "/log", "OK\n");
+  const std::string server_url = Printf("http://localhost:%d/log", FLAGS_midichlorians_server_test_port);
 
   current::time::SetNow(std::chrono::microseconds(1000));
   const auto response1 = HTTP(MockGETRequest(server_url, 1, "Fg"));
@@ -296,17 +307,20 @@ TEST(MidichloriansServer, WebEventsFromCPP) {
   HTTP(MockGETRequest(server_url, 10, "action", "category"));
 
   while (consumer.total_count < 5u) {
-    ;  // spin lock.
+    ;  // Spin lock.
   }
 
   EXPECT_EQ(
       "[1000][WebForegroundEvent customer_id=test_customer user_ms=1 client_id=unit_test referer_host=myurl "
-      "referer_path=/page1 x=8],[2000][WebBackgroundEvent customer_id=test_customer user_ms=2 "
-      "client_id=unit_test referer_host=myurl referer_path=/page1 x=8],[3000][WebEnterEvent "
-      "customer_id=test_customer user_ms=3 client_id=unit_test referer_host=myurl referer_path=/page1 "
-      "x=8],[4000][WebExitEvent customer_id=test_customer user_ms=4 client_id=unit_test referer_host=myurl "
-      "referer_path=/page1 x=8],[10000][WebGenericEvent action:category customer_id=test_customer user_ms=10 "
-      "client_id=unit_test referer_host=myurl referer_path=/page1 x=8]",
+      "referer_path=/page1 x=8],"
+      "[2000][WebBackgroundEvent customer_id=test_customer user_ms=2 client_id=unit_test referer_host=myurl "
+      "referer_path=/page1 x=8],"
+      "[3000][WebEnterEvent customer_id=test_customer user_ms=3 client_id=unit_test referer_host=myurl "
+      "referer_path=/page1 x=8],"
+      "[4000][WebExitEvent customer_id=test_customer user_ms=4 client_id=unit_test referer_host=myurl "
+      "referer_path=/page1 x=8],"
+      "[10000][WebGenericEvent action:category customer_id=test_customer user_ms=10 client_id=unit_test "
+      "referer_host=myurl referer_path=/page1 x=8]",
       Join(consumer.events, ','));
 }
 
