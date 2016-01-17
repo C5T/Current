@@ -358,7 +358,7 @@ class HTTPServerPOSIX final {
               CURRENT_THROW(HandlerDoesNotExistException(path));
             }
           } else {
-            // Handler already exists. Throw is not in "Update" mode.
+            // Handler already exists. Throw if not in "Update" mode.
             if (policy != ReRegisterRoute::SilentlyUpdate) {
               CURRENT_THROW(HandlerAlreadyExistsException(path));
             }
