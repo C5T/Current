@@ -47,6 +47,10 @@ struct CountFieldsImplementationType {
 
 // Helper structs for reflection.
 class FieldTypeAndName {};
+
+template <typename SELF>
+class FieldNameAndPtr {};
+
 class FieldNameAndImmutableValue {};
 class FieldNameAndMutableValue {};
 

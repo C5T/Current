@@ -250,6 +250,11 @@ struct CurrentStructFieldsConsistency<T, -1> {
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
     CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(), #name);                               \
   }                                                                                                            \
+  template <class F, class SELF>                                                                               \
+  static void CURRENT_REFLECTION(                                                                              \
+      F&& CURRENT_CALL_F, ::current::reflection::Index<::current::reflection::FieldNameAndPtr<SELF>, idx>) {   \
+    CURRENT_CALL_F(#name, &SELF::name);                                                                        \
+  }                                                                                                            \
   template <class F>                                                                                           \
   void CURRENT_REFLECTION(                                                                                     \
       F&& CURRENT_CALL_F,                                                                                      \
