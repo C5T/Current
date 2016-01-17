@@ -124,9 +124,8 @@ struct Request final {
         headers(http_data.headers()),
         body(http_data.Body()),
         timestamp(current::time::Now()) {
-    if (!url_path_args.empty()) {
-      url.path.resize(url_path_args.base_path.length());
-    }
+    // Remove trailing slashes from the URL path.
+    url.path.resize(url_path_args.base_path.length());
   }
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.

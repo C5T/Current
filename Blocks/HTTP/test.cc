@@ -137,6 +137,9 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
   EXPECT_EQ("/ (user)", run("/user"));
   EXPECT_EQ("/ (user)", run("/user/"));
 
+  EXPECT_EQ("/ ()", run("//"));
+  EXPECT_EQ("/ ()", run("///"));
+
   EXPECT_EQ("/user (a)", run("/user/a"));
   EXPECT_EQ("/user (a)", run("/user/a/"));
   EXPECT_EQ("/user (a)", run("/user///a"));
@@ -151,9 +154,7 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
   EXPECT_EQ("/user/a (0)", run("/user/a/0/"));
 
   EXPECT_EQ("/user/a/1 ()", run("/user/a/1"));
-  // <WTF>
-  EXPECT_EQ("/user/a/1/ ()", run("/user/a/1/"));
-  // </WTF>
+  EXPECT_EQ("/user/a/1 ()", run("/user/a/1/"));
 
   EXPECT_EQ("/user/a (2)", run("/user/a/2"));
   EXPECT_EQ("/user/a (2)", run("/user/a/2/"));
