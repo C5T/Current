@@ -48,6 +48,7 @@ constexpr static auto HasRespondViaHTTP(int)
 struct URLPathArgs {
  public:
   using CountMaskUnderlyingType = uint16_t;
+  enum { MaxArgsCount = 15 };
   enum class CountMask : CountMaskUnderlyingType {
     None = (1 << 0),
     One = (1 << 1),

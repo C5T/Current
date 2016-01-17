@@ -148,29 +148,29 @@ class HTTPServerPOSIX final {
   HTTPRoutesScopeEntry Register(
       const std::string& path,
       std::function<void(Request)> handler,
-      const URLPathArgs::CountMask path_param_count_mask = URLPathArgs::CountMask::None) {
+      const URLPathArgs::CountMask path_args_count_mask = URLPathArgs::CountMask::None) {
     std::lock_guard<std::mutex> lock(mutex_);
-    return DoRegisterHandler(path, handler, path_param_count_mask, POLICY);
+    return DoRegisterHandler(path, handler, path_args_count_mask, POLICY);
   }
 
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
   HTTPRoutesScopeEntry Register(
       const std::string& path,
       F* ptr_to_handler,
-      const URLPathArgs::CountMask path_param_count_mask = URLPathArgs::CountMask::None) {
+      const URLPathArgs::CountMask path_args_count_mask = URLPathArgs::CountMask::None) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(path,
                              [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
-                             path_param_count_mask,
+                             path_args_count_mask,
                              POLICY);
   }
 
   void UnRegister(const std::string& path,
-                  const URLPathArgs::CountMask path_param_count_mask = URLPathArgs::CountMask::None) {
+                  const URLPathArgs::CountMask path_args_count_mask = URLPathArgs::CountMask::None) {
     std::lock_guard<std::mutex> lock(mutex_);
-    URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
-    for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask <<= 1) {
-      if ((path_param_count_mask & mask) == mask) {
+    URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;  // `None` == 1 == (1 << 0).
+    for (size_t i = 0; i <= URLPathArgs::MaxArgsCount; ++i, mask <<= 1) {
+      if ((path_args_count_mask & mask) == mask) {
         auto it1 = handlers_.find(path);
         if (it1 == handlers_.end()) {
           CURRENT_THROW(HandlerDoesNotExistException(path));
@@ -221,10 +221,6 @@ class HTTPServerPOSIX final {
   }
 
  private:
-  static size_t MaximumUrlPathParams() {
-    return 15;  // As the mask is `uint16_t` base type.
-  }
-
   void FindHandler(const std::string& path,
                    std::function<void(Request)>& output_handler,
                    URLPathArgs& output_url_args) {
@@ -330,12 +326,12 @@ class HTTPServerPOSIX final {
 
   HTTPRoutesScopeEntry DoRegisterHandler(const std::string& path,
                                          std::function<void(Request)> handler,
-                                         const URLPathArgs::CountMask path_param_count_mask,
+                                         const URLPathArgs::CountMask path_args_count_mask,
                                          const ReRegisterRoute policy) {
     assert(handler);
 
     // TODO(dkorolev): Type.
-    if (static_cast<uint16_t>(path_param_count_mask) == 0) {
+    if (static_cast<uint16_t>(path_args_count_mask) == 0) {
       return HTTPRoutesScopeEntry();
     }
 
@@ -352,9 +348,9 @@ class HTTPServerPOSIX final {
     {
       // Step 1: Confirm the request is valid.
       const auto handlers_per_path_iterator = handlers_.find(path);
-      URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
-      for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask = mask << 1) {
-        if ((path_param_count_mask & mask) == mask) {
+      URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;  // `None` == 1 == (1 << 0).
+      for (size_t i = 0; i <= URLPathArgs::MaxArgsCount; ++i, mask = mask << 1) {
+        if ((path_args_count_mask & mask) == mask) {
           if (handlers_per_path_iterator == handlers_.end() ||
               handlers_per_path_iterator->second.find(i) == handlers_per_path_iterator->second.end()) {
             // No such handler. Throw if trying to "Update" it.
@@ -374,9 +370,9 @@ class HTTPServerPOSIX final {
     {
       // Step 2: Update.
       auto& handlers_per_path = handlers_[path];
-      URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
-      for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask = mask << 1) {
-        if ((path_param_count_mask & mask) == mask) {
+      URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;  // `None` == 1 == (1 << 0).
+      for (size_t i = 0; i <= URLPathArgs::MaxArgsCount; ++i, mask = mask << 1) {
+        if ((path_args_count_mask & mask) == mask) {
           handlers_per_path[i] = handler;
         }
       }
@@ -386,7 +382,7 @@ class HTTPServerPOSIX final {
       return HTTPRoutesScopeEntry();
     } else {
       return HTTPRoutesScopeEntry(
-          [this, path, path_param_count_mask]() { UnRegister(path, path_param_count_mask); });
+          [this, path, path_args_count_mask]() { UnRegister(path, path_args_count_mask); });
     }
   }
 

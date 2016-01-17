@@ -252,14 +252,11 @@ TEST(Reflection, VisitAllFieldsWithoutObject) {
   using namespace reflection_test;
 
   struct Collector {
-    std::vector<std::string> names;
     std::vector<std::string> names_and_types;
     void operator()(current::reflection::TypeSelector<std::string>, const std::string& name) {
-      names.push_back(name);
       names_and_types.push_back("std::string " + name);
     }
     void operator()(current::reflection::TypeSelector<bool>, const std::string& name) {
-      names.push_back(name);
       names_and_types.push_back("bool " + name);
     }
   };
@@ -267,7 +264,6 @@ TEST(Reflection, VisitAllFieldsWithoutObject) {
   Collector collector;
   current::reflection::VisitAllFields<Baz, current::reflection::FieldTypeAndName>::WithoutObject(collector);
 
-  EXPECT_EQ("one,two,three,blah", current::strings::Join(collector.names, ','));
   EXPECT_EQ("std::string one,std::string two,std::string three,bool blah",
             current::strings::Join(collector.names_and_types, ','));
 }
