@@ -50,6 +50,14 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v4, t_map_string_string);
 #endif
 };
+
+CURRENT_STRUCT(Baz) {
+  CURRENT_FIELD(one, std::string);
+  CURRENT_FIELD(two, std::string);
+  CURRENT_FIELD(three, std::string);
+  CURRENT_FIELD(blah, bool);
+};
+
 CURRENT_STRUCT(SimpleDerivedFromFoo, Foo) { CURRENT_FIELD(s, std::string); };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -240,7 +248,31 @@ struct CollectFieldValues {
 
 }  // namespace reflection_test
 
-TEST(Reflection, VisitAllFields) {
+TEST(Reflection, VisitAllFieldsWithoutObject) {
+  using namespace reflection_test;
+
+  struct Collector {
+    std::vector<std::string> names;
+    std::vector<std::string> names_and_types;
+    void operator()(current::reflection::TypeSelector<std::string>, const std::string& name) {
+      names.push_back(name);
+      names_and_types.push_back("std::string " + name);
+    }
+    void operator()(current::reflection::TypeSelector<bool>, const std::string& name) {
+      names.push_back(name);
+      names_and_types.push_back("bool " + name);
+    }
+  };
+
+  Collector collector;
+  current::reflection::VisitAllFields<Baz, current::reflection::FieldTypeAndName>::WithoutObject(collector);
+
+  EXPECT_EQ("one,two,three,blah", current::strings::Join(collector.names, ','));
+  EXPECT_EQ("std::string one,std::string two,std::string three,bool blah",
+            current::strings::Join(collector.names_and_types, ','));
+}
+
+TEST(Reflection, VisitAllFieldsWithObject) {
   using namespace reflection_test;
 
   StructWithAllSupportedTypes all;
