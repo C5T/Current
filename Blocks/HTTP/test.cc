@@ -176,7 +176,7 @@ TEST(HTTPAPI, UnRegisterAndReRegister) {
   EXPECT_EQ("bar", HTTP(GET(url)).body);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 
-  HTTP(FLAGS_net_api_test_port).Register<ReRegisterRoute::SilentlyUpdate>("/foo", tmp_handler);
+  HTTP(FLAGS_net_api_test_port).Register<ReRegisterRoute::SilentlyUpdateExisting>("/foo", tmp_handler);
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
   EXPECT_EQ("baz", HTTP(GET(url)).body);
 

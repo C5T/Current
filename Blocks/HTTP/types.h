@@ -43,7 +43,7 @@ namespace blocks {
 
 // The policy for registering HTTP endpoints.
 // TODO(dkorolev): Add another option, to throw if the handler does not exist, while it's expected to?
-enum class ReRegisterRoute { ThrowOnAttempt, SilentlyUpdate };
+enum class ReRegisterRoute { ThrowOnAttempt, SilentlyUpdateExisting };
 
 // Structures to define HTTP requests.
 // Support GET and POST.

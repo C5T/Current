@@ -354,12 +354,12 @@ class HTTPServerPOSIX final {
           if (handlers_per_path_iterator == handlers_.end() ||
               handlers_per_path_iterator->second.find(i) == handlers_per_path_iterator->second.end()) {
             // No such handler. Throw if trying to "Update" it.
-            if (policy == ReRegisterRoute::SilentlyUpdate) {
+            if (policy == ReRegisterRoute::SilentlyUpdateExisting) {
               CURRENT_THROW(HandlerDoesNotExistException(path));
             }
           } else {
             // Handler already exists. Throw if not in "Update" mode.
-            if (policy != ReRegisterRoute::SilentlyUpdate) {
+            if (policy != ReRegisterRoute::SilentlyUpdateExisting) {
               CURRENT_THROW(HandlerAlreadyExistsException(path));
             }
           }
@@ -378,7 +378,7 @@ class HTTPServerPOSIX final {
       }
     }
 
-    if (policy == ReRegisterRoute::SilentlyUpdate) {
+    if (policy == ReRegisterRoute::SilentlyUpdateExisting) {
       return HTTPRoutesScopeEntry();
     } else {
       return HTTPRoutesScopeEntry(
