@@ -48,12 +48,16 @@ SOFTWARE.
 
 namespace blocks {
 
+struct InvalidHandlerPathException : current::net::HTTPException {
+  using current::net::HTTPException::HTTPException;
+};
+
 struct HandlerAlreadyExistsException : current::net::HTTPException {
-  explicit HandlerAlreadyExistsException(const std::string& what) { SetWhat(what); }
+  using current::net::HTTPException::HTTPException;
 };
 
 struct HandlerDoesNotExistException : current::net::HTTPException {
-  explicit HandlerDoesNotExistException(const std::string& what) { SetWhat(what); }
+  using current::net::HTTPException::HTTPException;
 };
 
 // Helper to serve a static file.
@@ -120,6 +124,14 @@ class HTTPServerPOSIX final {
   using HTTPRoutesScope = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator>;
   using HTTPRoutesScopeEntry = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator, false>;
 
+  struct HandlerWithParams {
+    std::function<void(Request)> handler;
+    URLPathParams::Count param_count;
+    HandlerWithParams() = default;
+    explicit HandlerWithParams(std::function<void(Request)> handler,
+                               URLPathParams::Count param_count = URLPathParams::Count::None)
+        : handler(handler), param_count(param_count) {}
+  };
   // The philosophy of Register(path, handler):
   // * Pass `handler` by value to make its copy.
   //   This is done for lambdas and std::function<>-s.
@@ -129,33 +141,23 @@ class HTTPServerPOSIX final {
   //   The lifetime of the object is then up to the user.
   // Justification: `Register("/foo", FooInstance())` has no way of knowing how long should `FooInstance` live.
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
-  HTTPRoutesScopeEntry Register(const std::string& path, std::function<void(Request)> handler) {
+  HTTPRoutesScopeEntry Register(const std::string& path,
+                                std::function<void(Request)> handler,
+                                const URLPathParams::Count path_param_count = URLPathParams::Count::None) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (handlers_.find(path) != handlers_.end()) {
-      if (POLICY == ReRegisterRoute::SilentlyUpdate) {
-        handlers_[path] = handler;
-        return HTTPRoutesScopeEntry();
-      } else {
-        CURRENT_THROW(HandlerAlreadyExistsException(path));
-      }
-    }
-    handlers_[path] = handler;
-    return HTTPRoutesScopeEntry([this, path]() { UnRegister(path); });
+    return DoRegisterHandler(path, handler, path_param_count, POLICY);
   }
+
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
-  HTTPRoutesScopeEntry Register(const std::string& path, F* ptr_to_handler) {
+  HTTPRoutesScopeEntry Register(const std::string& path,
+                                F* ptr_to_handler,
+                                const URLPathParams::Count path_param_count = URLPathParams::Count::None) {
     // TODO(dkorolev): Add a scoped version of registerers.
     std::lock_guard<std::mutex> lock(mutex_);
-    if (handlers_.find(path) != handlers_.end()) {
-      if (POLICY == ReRegisterRoute::SilentlyUpdate) {
-        handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
-        return HTTPRoutesScopeEntry();
-      } else {
-        CURRENT_THROW(HandlerAlreadyExistsException(path));
-      }
-    }
-    handlers_[path] = [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); };
-    return HTTPRoutesScopeEntry([this, path]() { UnRegister(path); });
+    return DoRegisterHandler(path,
+                             [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
+                             path_param_count,
+                             POLICY);
   }
 
   void UnRegister(const std::string& path) {
@@ -197,6 +199,51 @@ class HTTPServerPOSIX final {
   }
 
  private:
+  void FindHandler(const std::string& path,
+                   std::function<void(Request)>& dest_handler,
+                   URLPathParams& dest_path_params) {
+    assert(!path.empty());
+    assert(path[0] == '/');
+    std::string& remaining_path = dest_path_params.base_path;
+    remaining_path = path;
+
+    auto MatchPathParamCounts =
+        [](const URLPathParams::Count handler_param_count, const size_t path_param_count) {
+          if (path_param_count == 0) {
+            return (handler_param_count == URLPathParams::Count::None ||
+                    handler_param_count == URLPathParams::Count::Any);
+          } else {
+            return static_cast<bool>(
+                handler_param_count &
+                static_cast<URLPathParams::Count>(path_param_count ? (1 << (path_param_count - 1)) : 0));
+          }
+        };
+
+    while (true) {
+      const auto cit = handlers_.find(remaining_path);
+      if (cit != handlers_.end() && MatchPathParamCounts(cit->second.param_count, dest_path_params.size())) {
+        dest_handler = cit->second.handler;
+        return;
+      } else {
+        if (remaining_path == "/") {
+          return;
+        }
+        const size_t rlen = remaining_path.length();
+        assert(rlen > 1);
+        const size_t last_slash_pos = remaining_path.rfind('/');
+        if (last_slash_pos > 0) {
+          if (last_slash_pos != rlen - 1) {
+            dest_path_params.add(remaining_path.substr(last_slash_pos + 1));
+          }
+          remaining_path.resize(last_slash_pos);
+        } else {
+          dest_path_params.add(remaining_path.substr(1));
+          remaining_path.resize(1);
+        }
+      }
+    }
+  }
+
   void Thread(current::net::Socket socket) {
     // TODO(dkorolev): Benchmark QPS.
     while (!terminating_) {
@@ -210,13 +257,11 @@ class HTTPServerPOSIX final {
           break;
         }
         std::function<void(Request)> handler;
+        URLPathParams url_path_params;
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
-          const auto cit = handlers_.find(connection->HTTPRequest().URL().path);
-          if (cit != handlers_.end()) {
-            handler = cit->second;
-          }
+          FindHandler(connection->HTTPRequest().URL().path, handler, url_path_params);
         }
         if (handler) {
           // OK, here's the tricky part with error handling and exceptions in this multithreaded world.
@@ -238,7 +283,7 @@ class HTTPServerPOSIX final {
           // It is the job of the user of this library to ensure no exceptions leave their code.
           // In practice, a top-level try-catch for `const current::Exception& e` is good enough.
           try {
-            handler(Request(std::move(connection)));
+            handler(Request(std::move(connection), url_path_params));
           } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
             // WARNING: This `catch` is really not sufficient, it just logs a message
             // if a user exception occurred in the same thread that ran the handler.
@@ -258,6 +303,29 @@ class HTTPServerPOSIX final {
     }
   }
 
+  HTTPRoutesScopeEntry DoRegisterHandler(const std::string& path,
+                                         std::function<void(Request)> handler,
+                                         const URLPathParams::Count path_param_count,
+                                         const ReRegisterRoute policy) {
+    if (path.empty() || path[0] != '/' || (path.length() > 1 && path[path.length() - 1] == '/') ||
+        !URL::IsValidPath(path)) {
+      CURRENT_THROW(InvalidHandlerPathException("Invalid handler path '" + path + "'"));
+    }
+
+    // Check if handler with exactly the same path exists and overwrite it if policy allows.
+    if (handlers_.find(path) != handlers_.end()) {
+      if (policy == ReRegisterRoute::SilentlyUpdate) {
+        handlers_[path] = HandlerWithParams(handler, path_param_count);
+        return HTTPRoutesScopeEntry();
+      } else {
+        CURRENT_THROW(HandlerAlreadyExistsException(path));
+      }
+    }
+
+    handlers_[path] = HandlerWithParams(handler, path_param_count);
+    return HTTPRoutesScopeEntry([this, path]() { UnRegister(path); });
+  }
+
   HTTPServerPOSIX() = delete;
 
   std::atomic_bool terminating_;
@@ -267,7 +335,7 @@ class HTTPServerPOSIX final {
   // TODO(dkorolev): Look into read-write mutexes here.
   mutable std::mutex mutex_;
 
-  std::map<std::string, std::function<void(Request)>> handlers_;
+  std::map<std::string, HandlerWithParams> handlers_;
 };
 
 }  // namespace blocks

@@ -73,7 +73,7 @@ struct OptionallyReserveOutputBufferImpl<true> {
   template <typename T_CONTAINER, typename T_SEPARATOR>
   static void Impl(std::string& output, const T_CONTAINER& components, T_SEPARATOR&& separator) {
     size_t length = 0;
-    for (const auto cit : components) {
+    for (const auto& cit : components) {
       length += cit.length();
     }
     length += impl::StringLengthOrOneForChar(separator) * (components.size() - 1);
@@ -126,7 +126,7 @@ std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
     std::string result;
     OptionallyReserveOutputBuffer(result, components, separator);
     bool first = true;
-    for (const auto cit : components) {
+    for (const auto& cit : components) {
       if (first) {
         first = false;
       } else {

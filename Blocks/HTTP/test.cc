@@ -42,6 +42,7 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 
 #include "../../Bricks/dflags/dflags.h"
+#include "../../Bricks/strings/join.h"
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/file/file.h"
@@ -104,6 +105,74 @@ TEST(HTTPAPI, Register) {
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+}
+
+TEST(HTTPAPI, RegisterWithURLPathParams) {
+  using current::strings::Join;
+
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  auto handler = [](Request r) { r(r.url.path + ':' + Join(r.url_path_params, ',')); };
+  HTTP(FLAGS_net_api_test_port).Register("/", handler, URLPathParams::Count::Any);
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/user", handler, URLPathParams::Count::One | URLPathParams::Count::Two);
+  HTTP(FLAGS_net_api_test_port).Register("/user/a", handler, URLPathParams::Count::One);
+  HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler, URLPathParams::Count::None);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler), HandlerAlreadyExistsException);
+
+  const string base_url = Printf("http://localhost:%d", FLAGS_net_api_test_port);
+  {
+    const auto response = HTTP(GET(base_url + "/"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/:", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/foo"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/:foo", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/foo/bar"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/:foo,bar", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/:user", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user/123"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/user:123", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user///x//y//"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/user:x,y", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user/a"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/user:a", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user/b"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/user:b", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user/a/1"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/user/a/1:", response.body);
+  }
+  {
+    const auto response = HTTP(GET(base_url + "/user/a/2"));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("/user/a:2", response.body);
+  }
 }
 
 TEST(HTTPAPI, UnRegisterAndReRegister) {
@@ -523,7 +592,7 @@ TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
                   ASSERT_FALSE(r.body.empty());
                   try {
                     r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
-                  } catch (const Exception&) {
+                  } catch (const current::Exception&) {
                     // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
                   }
                 });
