@@ -272,6 +272,25 @@ TEST(Reflection, VisitAllFieldsWithoutObject) {
             current::strings::Join(collector.names_and_types, ','));
 }
 
+TEST(Reflection, VisitAllFieldsWithoutObjectAndGrabMemberPointers) {
+  using namespace reflection_test;
+
+  struct Pointers {
+    std::map<std::string, std::string Baz::*> fields;
+    void operator()(const std::string& name, std::string Baz::*ptr) { fields[name] = ptr; }
+    void operator()(const std::string&, bool Baz::*) {}
+  };
+
+  Pointers ptrs;
+  current::reflection::VisitAllFields<Baz, current::reflection::FieldNameAndPtr<Baz>>::WithoutObject(ptrs);
+
+  Baz baz;
+  EXPECT_EQ("", baz.one);
+  baz.one = "FAIL";
+  baz.*ptrs.fields["one"] = "PASS";
+  EXPECT_EQ("PASS", baz.one);
+}
+
 TEST(Reflection, VisitAllFieldsWithObject) {
   using namespace reflection_test;
 
