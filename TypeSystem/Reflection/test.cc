@@ -273,8 +273,8 @@ TEST(Reflection, VisitAllFieldsForBaseType) {
   using namespace current::reflection;  // `current::reflection::{VisitAllFields,FieldNameAndImmutableValue}`.
 
   SimpleDerivedFromFoo derived;
-  derived.i = 2016u; // `SimpleDerivedFromFoo::Foo::i`.
-  derived.s = "s";   // `SimpleDerivedFromFoo::s`.
+  derived.i = 2016u;  // `SimpleDerivedFromFoo::Foo::i`.
+  derived.s = "s";    // `SimpleDerivedFromFoo::s`.
 
   const Foo& base = derived;
 

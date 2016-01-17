@@ -331,7 +331,7 @@ struct VisitAllFields {
 
   // Visit all fields with an object, const or mutable. Used for serialization.
   // Make sure `VisitAllFields<Base, ...>(derived)` treats the passed object as `Base`.
-  // Using xvalue reference `TT&&` does not do it, as instead of type `T` passed in 
+  // Using xvalue reference `TT&&` does not do it, as instead of type `T` passed in
   // as a template parameter to `VisitAllFields<>`, the passed in `t` would be reflected
   // as an object of type `TT`.
   // So, I copy-pasted three implementations for now. -- D.K.

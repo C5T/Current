@@ -44,6 +44,47 @@ constexpr static auto HasRespondViaHTTP(int)
   return true;
 }
 
+struct URLPathParams {
+ public:
+  enum class Count : uint16_t { None = 0u, One = 1u, Two = 2u, Any = 0xFFFF };
+
+  const std::string& operator[](size_t index) const { return params_accessor_.at(index); }
+
+  using T_ITERATOR = std::vector<std::reference_wrapper<std::string>>::const_reverse_iterator;
+  T_ITERATOR begin() const { return params_accessor_.crbegin(); }
+  T_ITERATOR end() const { return params_accessor_.crend(); }
+
+  bool empty() const { return params_accessor_.empty(); }
+  bool size() const { return params_accessor_.size(); }
+
+  void add(const std::string& value) {
+    param_values_.push(value);
+    params_accessor_.emplace_back(param_values_.top());
+  }
+
+  std::string base_path;
+
+ private:
+  std::stack<std::string> param_values_;
+  std::vector<std::reference_wrapper<std::string>> params_accessor_;
+};
+
+inline URLPathParams::Count operator&(const URLPathParams::Count lhs, const URLPathParams::Count rhs) {
+  return static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+}
+
+inline URLPathParams::Count operator|(const URLPathParams::Count lhs, const URLPathParams::Count rhs) {
+  return static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+}
+
+inline URLPathParams::Count& operator|=(URLPathParams::Count& lhs, const URLPathParams::Count rhs) {
+  return lhs = static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+}
+
+inline URLPathParams::Count operator<<(const URLPathParams::Count lhs, const size_t count) {
+  return static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) << count);
+}
+
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
   std::unique_ptr<current::net::HTTPServerConnection> unique_connection;
@@ -51,28 +92,36 @@ struct Request final {
   current::net::HTTPServerConnection& connection;
   const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
-  const URL& url;
+  const URL url;
+  const URLPathParams url_path_params;
   const std::string method;
   const current::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const std::chrono::microseconds timestamp;
 
-  explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection)
+  explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection,
+                   URLPathParams url_path_params = URLPathParams())
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
+        url_path_params(url_path_params),
         method(http_data.Method()),
         headers(http_data.headers()),
         body(http_data.Body()),
-        timestamp(current::time::Now()) {}
+        timestamp(current::time::Now()) {
+    if (!url_path_params.empty()) {
+      url.path.resize(url_path_params.base_path.length());
+    }
+  }
 
   // It is essential to move `unique_connection` so that the socket outlives the destruction of `rhs`.
   Request(Request&& rhs)
       : unique_connection(std::move(rhs.unique_connection)),
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
-        url(http_data.URL()),
+        url(rhs.url),
+        url_path_params(rhs.url_path_params),
         method(http_data.Method()),
         headers(http_data.headers()),
         body(http_data.Body()),

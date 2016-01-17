@@ -89,10 +89,15 @@ inline std::string to_string(T&& something) {
   return ToStringImpl<DECAYED_T, std::is_enum<DECAYED_T>::value>::ToString(something);
 }
 
+template <typename T>
+inline std::string to_string(std::reference_wrapper<T> something) {
+  return ToStringImpl<T, std::is_enum<T>::value>::ToString(something.get());
+}
+
 // Use camel-case `ToString()` within Bricks.
 template <typename T>
 inline std::string ToString(T&& something) {
-  return current::strings::to_string(something);
+  return current::strings::to_string(std::forward<T>(something));
 }
 
 template <typename T_INPUT, typename T_OUTPUT, bool IS_ENUM>

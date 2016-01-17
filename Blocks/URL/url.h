@@ -61,7 +61,7 @@ const char* const kDefaultScheme = "http";
 
 struct URLWithoutParametersParser {
   std::string host = "";
-  std::string path = "/";
+  mutable std::string path = "/";
   std::string scheme = kDefaultScheme;
   int port = 0;
 
@@ -277,6 +277,17 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
 
   std::string ComposeURL() const {
     return URLWithoutParametersParser::ComposeURL() + URLParametersExtractor::ComposeParameters();
+  }
+
+  // Pretty simple, though not fully RFC-compliant way to check if URL path is valid.
+  static bool IsValidPath(const std::string& path) {
+    const std::set<char> valid_nonalnum_chars{
+        '/', '-', '.', '_', '~', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@'};
+    return find_if(path.begin(),
+                   path.end(),
+                   [&valid_nonalnum_chars](char c) {
+                     return !(isalnum(c) || valid_nonalnum_chars.count(c));
+                   }) == path.end();
   }
 };
 

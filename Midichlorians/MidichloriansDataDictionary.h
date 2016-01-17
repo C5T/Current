@@ -33,11 +33,11 @@ SOFTWARE.
 #ifndef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #define CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 
-#include "../../../port.h"
+#include "../port.h"
 
 #include <chrono>
 
-#include "../../../TypeSystem/struct.h"
+#include "../TypeSystem/struct.h"
 
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 #import <Foundation/Foundation.h>
@@ -62,9 +62,7 @@ CURRENT_STRUCT(MidichloriansBaseEvent) {
 
 namespace ios {
 
-CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent) {
-  CURRENT_FIELD(device_id, std::string);
-};
+CURRENT_STRUCT(iOSBaseEvent, MidichloriansBaseEvent) { CURRENT_FIELD(device_id, std::string); };
 
 // iOS event denoting the very first application launch.
 // Emitted once during Midichlorians initialization.
@@ -147,8 +145,42 @@ using T_IOS_EVENTS = TypeList<iOSFirstLaunchEvent,
 
 namespace web {
 
-}  // namespace web
+//  Event collection server expects the following HTTP headers to be set:
+//   `X-Forwarded-For` for `ip`,
+//   `User-Agent` for `user_agent`,
+//   `Referer` for `referer_*` members.
+//
+// TODO(mzhirovich): sync up with @sompylasar on the proper structure of web events.
+// TODO(dkorolev): add sample nginx config + link to it in the comments.
 
+CURRENT_STRUCT(WebBaseEvent, MidichloriansBaseEvent) {
+  CURRENT_FIELD(ip, std::string);
+  CURRENT_FIELD(user_agent, std::string);
+  CURRENT_FIELD(referer_host, std::string);
+  CURRENT_FIELD(referer_path, std::string);
+  CURRENT_FIELD(referer_querystring, (std::map<std::string, std::string>));
+};
+
+CURRENT_STRUCT(WebEnterEvent, WebBaseEvent){};
+
+CURRENT_STRUCT(WebExitEvent, WebBaseEvent){};
+
+CURRENT_STRUCT(WebForegroundEvent, WebBaseEvent){};
+
+CURRENT_STRUCT(WebBackgroundEvent, WebBaseEvent){};
+
+CURRENT_STRUCT(WebGenericEvent, WebBaseEvent) {
+  CURRENT_FIELD(event_category, std::string);
+  CURRENT_FIELD(event_action, std::string);
+  CURRENT_DEFAULT_CONSTRUCTOR(WebGenericEvent) {}
+  CURRENT_CONSTRUCTOR(WebGenericEvent)(const std::string& category, const std::string& action)
+      : event_category(category), event_action(action) {}
+};
+
+using T_WEB_EVENTS =
+    TypeList<WebEnterEvent, WebExitEvent, WebForegroundEvent, WebBackgroundEvent, WebGenericEvent>;
+
+}  // namespace web
 
 }  // namespace midichlorians
 }  // namespace current
