@@ -31,6 +31,7 @@ SOFTWARE.
 #include <cctype>
 #include <cstring>
 #include <map>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -280,7 +281,7 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
   }
 
   // Pretty simple, though not fully RFC-compliant way to check if URL path is valid.
-  static bool IsValidPath(const std::string& path) {
+  static bool IsPathValidToRegister(const std::string& path) {
     const std::set<char> valid_nonalnum_chars{
         '/', '-', '.', '_', '~', '!', '$', '&', '\'', '(', ')', '*', '+', ',', ';', '=', ':', '@'};
     return find_if(path.begin(),
