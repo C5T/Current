@@ -124,7 +124,10 @@ struct Request final {
         headers(http_data.headers()),
         body(http_data.Body()),
         timestamp(current::time::Now()) {
-    // Remove trailing slashes from the URL path.
+    // Adjust the URL path to match the path of the handler:
+    // * Remove URL argument.
+    //   (when calling a { "/foo" with one URL arg } handler, url.path will be "/foo" for a "/foo/x" request).
+    // * Remove trailing slashes, if any.
     url.path.resize(url_path_args.base_path.length());
   }
 
