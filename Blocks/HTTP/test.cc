@@ -104,75 +104,62 @@ TEST(HTTPAPI, Register) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
-  using current::strings::Join;
+  const auto handler =
+      [](Request r) { r(r.url.path + " (" + current::strings::Join(r.url_path_params, ", ") + ')'); };
 
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  auto handler = [](Request r) { r(r.url.path + ':' + Join(r.url_path_params, ',')); };
-  HTTP(FLAGS_net_api_test_port).Register("/", handler, URLPathParams::Count::Any);
+  HTTP(FLAGS_net_api_test_port).Register("/", handler, URLPathArgs::CountMask::Any);
   HTTP(FLAGS_net_api_test_port)
-      .Register("/user", handler, URLPathParams::Count::One | URLPathParams::Count::Two);
-  HTTP(FLAGS_net_api_test_port).Register("/user/a", handler, URLPathParams::Count::One);
-  HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler, URLPathParams::Count::None);
+      .Register("/user", handler, URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two);
+  HTTP(FLAGS_net_api_test_port).Register("/user/a", handler, URLPathArgs::CountMask::One);
+  HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler, URLPathArgs::CountMask::None);
+
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/", handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user", handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a", handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user", handler, URLPathArgs::CountMask::Two),
+               HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a", handler, URLPathArgs::CountMask::One),
+               HandlerAlreadyExistsException);
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler), HandlerAlreadyExistsException);
 
-  const string base_url = Printf("http://localhost:%d", FLAGS_net_api_test_port);
-  {
-    const auto response = HTTP(GET(base_url + "/"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/:", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/foo"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/:foo", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/foo/bar"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/:foo,bar", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/:user", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user/123"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/user:123", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user///x//y//"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/user:x,y", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user/a"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/user:a", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user/b"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/user:b", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user/a/1"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/user/a/1:", response.body);
-  }
-  {
-    const auto response = HTTP(GET(base_url + "/user/a/2"));
-    EXPECT_EQ(200, static_cast<int>(response.code));
-    EXPECT_EQ("/user/a:2", response.body);
-  }
+  const auto run = [](const std::string& path) -> std::string {
+    return HTTP(GET(Printf("http://localhost:%d", FLAGS_net_api_test_port) + path)).body;
+  };
+
+  EXPECT_EQ("/ ()", run("/"));
+  EXPECT_EQ("/ (foo)", run("/foo"));
+  EXPECT_EQ("/ (foo)", run("/foo/"));
+  EXPECT_EQ("/ (foo, bar)", run("/foo/bar"));
+  EXPECT_EQ("/ (foo, bar)", run("/foo/bar/"));
+  EXPECT_EQ("/ (user)", run("/user"));
+  EXPECT_EQ("/ (user)", run("/user/"));
+
+  EXPECT_EQ("/user (a)", run("/user/a"));
+  EXPECT_EQ("/user (a)", run("/user/a/"));
+  EXPECT_EQ("/user (a)", run("/user///a"));
+  EXPECT_EQ("/user (a)", run("/user///a///"));
+
+  EXPECT_EQ("/user (x, y)", run("/user/x/y"));
+  EXPECT_EQ("/user (x, y)", run("/user/x/y/"));
+  EXPECT_EQ("/user (x, y)", run("/user///x//y//"));
+  EXPECT_EQ("/user (x, y)", run("/user///x//y//"));
+
+  EXPECT_EQ("/user/a (0)", run("/user/a/0"));
+  EXPECT_EQ("/user/a (0)", run("/user/a/0/"));
+
+  EXPECT_EQ("/user/a/1 ()", run("/user/a/1"));
+  // <WTF>
+  EXPECT_EQ("/user/a/1/ ()", run("/user/a/1/"));
+  // </WTF>
+
+  EXPECT_EQ("/user/a (2)", run("/user/a/2"));
+  EXPECT_EQ("/user/a (2)", run("/user/a/2/"));
+
+  EXPECT_EQ("/ (user, a, 1, blah)", run("/user/a/1/blah"));
+  EXPECT_EQ("/ (user, a, 1, blah)", run("/user/a/1/blah/"));
 }
 
 TEST(HTTPAPI, UnRegisterAndReRegister) {
@@ -187,7 +174,7 @@ TEST(HTTPAPI, UnRegisterAndReRegister) {
 
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
   EXPECT_EQ("bar", HTTP(GET(url)).body);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 
   HTTP(FLAGS_net_api_test_port).Register<ReRegisterRoute::SilentlyUpdate>("/foo", tmp_handler);
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
@@ -195,7 +182,7 @@ TEST(HTTPAPI, UnRegisterAndReRegister) {
 
   HTTP(FLAGS_net_api_test_port).UnRegister("/foo");
   EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
-  EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+  EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).UnRegister("/foo"), HandlerDoesNotExistException);
 }
 
@@ -204,26 +191,26 @@ TEST(HTTPAPI, ScopedUnRegister) {
   const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
 
   {
-    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
     HTTPRoutesScope registerer = HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("bar"); });
-    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
     EXPECT_EQ("bar", HTTP(GET(url)).body);
   }
 
   {
-    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
     HTTPRoutesScope registerer;
     registerer += HTTP(FLAGS_net_api_test_port).Register("/foo", [](Request r) { r("baz"); });
-    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
     EXPECT_EQ("baz", HTTP(GET(url)).body);
   }
 
   {
-    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+    EXPECT_EQ(0u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));
   }
 }
@@ -249,7 +236,7 @@ TEST(HTTPAPI, RespondsWithString) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("test_string", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
 TEST(HTTPAPI, RespondsWithObject) {
@@ -268,7 +255,7 @@ TEST(HTTPAPI, RespondsWithObject) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("{\"test_object\":{\"number\":42,\"text\":\"text\",\"array\":[1,2,3]}}\n", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
 struct GoodStuff {
@@ -285,7 +272,7 @@ TEST(HTTPAPI, RespondsWithCustomObject) {
   EXPECT_EQ(762, static_cast<int>(response.code));
   EXPECT_EQ("Good stuff.", response.body);
   EXPECT_EQ(url, response.url);
-  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).HandlersCount());
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
 #ifndef CURRENT_APPLE

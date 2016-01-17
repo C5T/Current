@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef BLOCKS_HTTP_REQUEST_H
 #define BLOCKS_HTTP_REQUEST_H
 
+#include <vector>
 #include <string>
 
 #include "../../Bricks/net/http/http.h"
@@ -44,45 +45,59 @@ constexpr static auto HasRespondViaHTTP(int)
   return true;
 }
 
-struct URLPathParams {
+struct URLPathArgs {
  public:
-  enum class Count : uint16_t { None = 0u, One = 1u, Two = 2u, Any = 0xFFFF };
+  using CountMaskUnderlyingType = uint16_t;
+  enum class CountMask : CountMaskUnderlyingType {
+    None = (1 << 0),
+    One = (1 << 1),
+    Two = (1 << 2),
+    Three = (1 << 3),
+    Any = static_cast<CountMaskUnderlyingType>(~0)
+  };
 
-  const std::string& operator[](size_t index) const { return params_accessor_.at(index); }
+  const std::string& operator[](size_t index) const { return args_.at(args_.size() - 1 - index); }
 
-  using T_ITERATOR = std::vector<std::reference_wrapper<std::string>>::const_reverse_iterator;
-  T_ITERATOR begin() const { return params_accessor_.crbegin(); }
-  T_ITERATOR end() const { return params_accessor_.crend(); }
+  using T_ITERATOR = std::vector<std::string>::const_reverse_iterator;
+  T_ITERATOR begin() const { return args_.crbegin(); }
+  T_ITERATOR end() const { return args_.crend(); }
 
-  bool empty() const { return params_accessor_.empty(); }
-  bool size() const { return params_accessor_.size(); }
+  bool empty() const { return args_.empty(); }
+  bool size() const { return args_.size(); }
 
-  void add(const std::string& value) {
-    param_values_.push(value);
-    params_accessor_.emplace_back(param_values_.top());
-  }
+  void add(const std::string& arg) { args_.push_back(arg); }
 
   std::string base_path;
 
- private:
-  std::stack<std::string> param_values_;
-  std::vector<std::reference_wrapper<std::string>> params_accessor_;
+// WTF! WTF!! WTF!!!!!!!1111
+// URLPathArgs.size() and URLPathArgs.args_.size() give different results when running the test.
+// private:
+  std::vector<std::string> args_;
 };
 
-inline URLPathParams::Count operator&(const URLPathParams::Count lhs, const URLPathParams::Count rhs) {
-  return static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+inline URLPathArgs::CountMask operator&(const URLPathArgs::CountMask lhs, const URLPathArgs::CountMask rhs) {
+  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) &
+                                             static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
 }
 
-inline URLPathParams::Count operator|(const URLPathParams::Count lhs, const URLPathParams::Count rhs) {
-  return static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+inline URLPathArgs::CountMask operator|(const URLPathArgs::CountMask lhs, const URLPathArgs::CountMask rhs) {
+  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) |
+                                             static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
 }
 
-inline URLPathParams::Count& operator|=(URLPathParams::Count& lhs, const URLPathParams::Count rhs) {
-  return lhs = static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+inline URLPathArgs::CountMask& operator|=(URLPathArgs::CountMask& lhs, const URLPathArgs::CountMask rhs) {
+  lhs = static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) |
+                                            static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
+  return lhs;
 }
 
-inline URLPathParams::Count operator<<(const URLPathParams::Count lhs, const size_t count) {
-  return static_cast<URLPathParams::Count>(static_cast<uint8_t>(lhs) << count);
+inline URLPathArgs::CountMask operator<<(const URLPathArgs::CountMask lhs, const size_t count) {
+  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) << count);
+}
+
+inline URLPathArgs::CountMask& operator<<=(URLPathArgs::CountMask& lhs, const size_t count) {
+  lhs = (lhs << count);
+  return lhs;
 }
 
 // The only parameter to be passed to HTTP handlers.
@@ -93,14 +108,14 @@ struct Request final {
   const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const URL url;
-  const URLPathParams url_path_params;
+  const URLPathArgs url_path_params;
   const std::string method;
   const current::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const std::chrono::microseconds timestamp;
 
   explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection,
-                   URLPathParams url_path_params = URLPathParams())
+                   URLPathArgs url_path_params = URLPathArgs())
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),

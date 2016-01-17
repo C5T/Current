@@ -52,6 +52,18 @@ struct InvalidHandlerPathException : current::net::HTTPException {
   using current::net::HTTPException::HTTPException;
 };
 
+struct PathDoesNotStartWithSlash : InvalidHandlerPathException {
+  using InvalidHandlerPathException::InvalidHandlerPathException;
+};
+
+struct PathEndsWithSlash : InvalidHandlerPathException {
+  using InvalidHandlerPathException::InvalidHandlerPathException;
+};
+
+struct PathContainsInvalidCharacters : InvalidHandlerPathException {
+  using InvalidHandlerPathException::InvalidHandlerPathException;
+};
+
 struct HandlerAlreadyExistsException : current::net::HTTPException {
   using current::net::HTTPException::HTTPException;
 };
@@ -124,14 +136,6 @@ class HTTPServerPOSIX final {
   using HTTPRoutesScope = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator>;
   using HTTPRoutesScopeEntry = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator, false>;
 
-  struct HandlerWithParams {
-    std::function<void(Request)> handler;
-    URLPathParams::Count param_count;
-    HandlerWithParams() = default;
-    explicit HandlerWithParams(std::function<void(Request)> handler,
-                               URLPathParams::Count param_count = URLPathParams::Count::None)
-        : handler(handler), param_count(param_count) {}
-  };
   // The philosophy of Register(path, handler):
   // * Pass `handler` by value to make its copy.
   //   This is done for lambdas and std::function<>-s.
@@ -141,32 +145,48 @@ class HTTPServerPOSIX final {
   //   The lifetime of the object is then up to the user.
   // Justification: `Register("/foo", FooInstance())` has no way of knowing how long should `FooInstance` live.
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
-  HTTPRoutesScopeEntry Register(const std::string& path,
-                                std::function<void(Request)> handler,
-                                const URLPathParams::Count path_param_count = URLPathParams::Count::None) {
+  HTTPRoutesScopeEntry Register(
+      const std::string& path,
+      std::function<void(Request)> handler,
+      const URLPathArgs::CountMask path_param_count_mask = URLPathArgs::CountMask::None) {
     std::lock_guard<std::mutex> lock(mutex_);
-    return DoRegisterHandler(path, handler, path_param_count, POLICY);
+    return DoRegisterHandler(path, handler, path_param_count_mask, POLICY);
   }
 
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
-  HTTPRoutesScopeEntry Register(const std::string& path,
-                                F* ptr_to_handler,
-                                const URLPathParams::Count path_param_count = URLPathParams::Count::None) {
-    // TODO(dkorolev): Add a scoped version of registerers.
+  HTTPRoutesScopeEntry Register(
+      const std::string& path,
+      F* ptr_to_handler,
+      const URLPathArgs::CountMask path_param_count_mask = URLPathArgs::CountMask::None) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(path,
                              [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
-                             path_param_count,
+                             path_param_count_mask,
                              POLICY);
   }
 
-  void UnRegister(const std::string& path) {
-    // TODO(dkorolev): Add a scoped version of registerers.
+  void UnRegister(const std::string& path,
+                  const URLPathArgs::CountMask path_param_count_mask = URLPathArgs::CountMask::None) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (handlers_.find(path) == handlers_.end()) {
-      CURRENT_THROW(HandlerDoesNotExistException(path));
+    URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
+    for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask <<= 1) {
+      if ((path_param_count_mask & mask) == mask) {
+        auto it1 = handlers_.find(path);
+        if (it1 == handlers_.end()) {
+          CURRENT_THROW(HandlerDoesNotExistException(path));
+        }
+        auto& map = it1->second;
+        auto it2 = map.find(i);
+        if (it2 == map.end()) {
+          CURRENT_THROW(HandlerDoesNotExistException(path));
+        }
+        map.erase(it2);
+        if (map.empty()) {
+          // Maintain the value of `PathHandlersCount()` invariant.
+          handlers_.erase(it1);
+        }
+      }
     }
-    handlers_.erase(path);
   }
 
   void ServeStaticFilesFrom(const std::string& dir, const std::string& route_prefix = "/") {
@@ -193,54 +213,98 @@ class HTTPServerPOSIX final {
     handlers_.clear();
   }
 
-  size_t HandlersCount() const {
+  size_t PathHandlersCount() const {
+    // NOTE: The total number of handlers is no longer an interesting measure.
+    //       Just return the number of distinct paths, which may be path prefixes.
     std::lock_guard<std::mutex> lock(mutex_);
     return handlers_.size();
   }
 
  private:
+  static size_t MaximumUrlPathParams() {
+    return 15;  // As the mask is `uint16_t` base type.
+  }
+
   void FindHandler(const std::string& path,
-                   std::function<void(Request)>& dest_handler,
-                   URLPathParams& dest_path_params) {
-    assert(!path.empty());
-    assert(path[0] == '/');
-    std::string& remaining_path = dest_path_params.base_path;
+                   std::function<void(Request)>& output_handler,
+                   URLPathArgs& output_url_args) {
+    // Just `return` is safe. Uninitialized `output_handler` would be interpreted as "no handler found".
+    if (path.empty()) {
+      std::cerr << "HTTP: path is empty.\n";
+      return;
+    }
+    if (path[0] != '/') {
+      std::cerr << "HTTP: path does not start with a slash.\n";
+      return;
+    }
+
+    // Work with the path by trying to match the full one, then the one with the last component removed,
+    // then the one with two last components removed, etc.
+    // As a component is removed, it's removed from `base_path` and is added to `url_args`.
+    std::string& remaining_path = output_url_args.base_path;
     remaining_path = path;
 
-    auto MatchPathParamCounts =
-        [](const URLPathParams::Count handler_param_count, const size_t path_param_count) {
-          if (path_param_count == 0) {
-            return (handler_param_count == URLPathParams::Count::None ||
-                    handler_param_count == URLPathParams::Count::Any);
-          } else {
-            return static_cast<bool>(
-                handler_param_count &
-                static_cast<URLPathParams::Count>(path_param_count ? (1 << (path_param_count - 1)) : 0));
-          }
-        };
-
+    // Friendly reminder: `remaining_path[0]` is guaranteed to be '/'.
+    std::cerr << "Resolving " << remaining_path << '\n';
     while (true) {
+      while (remaining_path.length() > 1 && remaining_path.back() == '/') {
+        remaining_path.resize(remaining_path.length() - 1);
+      }
+
+      // std::cerr << "Looking for " << remaining_path << ", " << output_url_args.size() << " ... ";
+
       const auto cit = handlers_.find(remaining_path);
-      if (cit != handlers_.end() && MatchPathParamCounts(cit->second.param_count, dest_path_params.size())) {
-        dest_handler = cit->second.handler;
-        return;
-      } else {
-        if (remaining_path == "/") {
+      if (cit != handlers_.end()) {
+        // <WTF>
+        const auto cit2 = cit->second.find(/*output_url_args.size()*/ output_url_args.args_.size());
+        // </WTF>
+        if (cit2 != cit->second.end()) {
+          output_handler = cit2->second;
+          // std::cerr << "Yes.\n";
           return;
         }
-        const size_t rlen = remaining_path.length();
-        assert(rlen > 1);
-        const size_t last_slash_pos = remaining_path.rfind('/');
-        if (last_slash_pos > 0) {
-          if (last_slash_pos != rlen - 1) {
-            dest_path_params.add(remaining_path.substr(last_slash_pos + 1));
-          }
-          remaining_path.resize(last_slash_pos);
-        } else {
-          dest_path_params.add(remaining_path.substr(1));
-          remaining_path.resize(1);
-        }
       }
+
+      // std::cerr << "No.\n";
+
+      if (remaining_path == "/") {
+        break;
+      }
+
+      const size_t arg_begin_index = remaining_path.rfind('/') + 1;
+
+      /*
+      std::cerr << "Adding `" << remaining_path.substr(arg_begin_index) << "`\n";
+      std::cerr << "Size was: " << output_url_args.size() << '\n';
+      std::cerr << "Size WAS: " << output_url_args.args_.size() << '\n';
+      for (size_t i = 0; i < output_url_args.size(); ++i) {
+        std::cerr << '[' << i << "] = `" << output_url_args[i] << "`.\n";
+      }
+      for (size_t i = 0; i < output_url_args.args_.size(); ++i) {
+        std::cerr << '{' << i << "} = `" << output_url_args.args_[i] << "`.\n";
+      }
+      */
+
+      // WTF!
+      // output_url_args.add(remaining_path.substr(arg_begin_index));
+      output_url_args.args_.push_back(remaining_path.substr(arg_begin_index));
+
+      // WTF: THESE TWO DIFFER!
+      // In:  ./.current/test --gtest_filter=*RegisterWithURLPathParams*
+      // std::cerr << "Size now: " << output_url_args.size() << '\n';
+      // std::cerr << "Size NOW: " << output_url_args.args_.size() << '\n';
+
+      /*
+      for (size_t i = 0; i < output_url_args.size(); ++i) {
+        std::cerr << '[' << i << "] = `" << output_url_args[i] << "`.\n";
+      }
+
+      for (size_t i = 0; i < output_url_args.args_.size(); ++i) {
+        std::cerr << '{' << i << "} = `" << output_url_args.args_[i] << "`.\n";
+      }
+      */
+
+      remaining_path.resize(arg_begin_index);
     }
   }
 
@@ -257,7 +321,7 @@ class HTTPServerPOSIX final {
           break;
         }
         std::function<void(Request)> handler;
-        URLPathParams url_path_params;
+        URLPathArgs url_path_params;
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
@@ -288,7 +352,7 @@ class HTTPServerPOSIX final {
             // WARNING: This `catch` is really not sufficient, it just logs a message
             // if a user exception occurred in the same thread that ran the handler.
             // DO NOT COUNT ON IT.
-            std::cerr << "HTTP route failed in user code: " << e.what() << "\n";  // LCOV_EXCL_LINE
+            std::cerr << "HTTP route failed in user code: " << e.what() << '\n';  // LCOV_EXCL_LINE
           }
         } else {
           connection->SendHTTPResponse(
@@ -298,32 +362,49 @@ class HTTPServerPOSIX final {
         // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.
-        std::cerr << "HTTP route failed: " << e.what() << "\n";  // LCOV_EXCL_LINE
+        std::cerr << "HTTP route failed: " << e.what() << '\n';  // LCOV_EXCL_LINE
       }
     }
   }
 
   HTTPRoutesScopeEntry DoRegisterHandler(const std::string& path,
                                          std::function<void(Request)> handler,
-                                         const URLPathParams::Count path_param_count,
+                                         const URLPathArgs::CountMask path_param_count_mask,
                                          const ReRegisterRoute policy) {
-    if (path.empty() || path[0] != '/' || (path.length() > 1 && path[path.length() - 1] == '/') ||
-        !URL::IsValidPath(path)) {
-      CURRENT_THROW(InvalidHandlerPathException("Invalid handler path '" + path + "'"));
+    assert(handler);
+
+    if (path.empty() || path[0] != '/') {
+      CURRENT_THROW(PathDoesNotStartWithSlash("HTTP path does not start with a slash: `" + path + "`."));
+    }
+    if (path.length() > 1 && path[path.length() - 1] == '/') {
+      CURRENT_THROW(PathEndsWithSlash("HTTP path ends with slash: `" + path + "`."));
+    }
+    if (!URL::IsPathValidToRegister(path)) {
+      CURRENT_THROW(PathContainsInvalidCharacters("HTTP path contains invalid characters: `" + path + "`."));
     }
 
-    // Check if handler with exactly the same path exists and overwrite it if policy allows.
-    if (handlers_.find(path) != handlers_.end()) {
-      if (policy == ReRegisterRoute::SilentlyUpdate) {
-        handlers_[path] = HandlerWithParams(handler, path_param_count);
-        return HTTPRoutesScopeEntry();
-      } else {
-        CURRENT_THROW(HandlerAlreadyExistsException(path));
+    auto& handlers_per_path = handlers_[path];
+    URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
+    for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask = mask << 1) {
+      if ((path_param_count_mask & mask) == mask) {
+        // Check if handler with exactly the same path exists and overwrite it if policy allows.
+        auto& placeholder = handlers_per_path[i];
+        if (placeholder) {
+          if (policy == ReRegisterRoute::SilentlyUpdate) {
+            placeholder = handler;
+            return HTTPRoutesScopeEntry();
+          } else {
+            CURRENT_THROW(HandlerAlreadyExistsException(path));
+          }
+        }
+
+        std::cerr << path << ' ' << i << " registered.\n";
+        placeholder = handler;
       }
     }
 
-    handlers_[path] = HandlerWithParams(handler, path_param_count);
-    return HTTPRoutesScopeEntry([this, path]() { UnRegister(path); });
+    return HTTPRoutesScopeEntry(
+        [this, path, path_param_count_mask]() { UnRegister(path, path_param_count_mask); });
   }
 
   HTTPServerPOSIX() = delete;
@@ -335,7 +416,7 @@ class HTTPServerPOSIX final {
   // TODO(dkorolev): Look into read-write mutexes here.
   mutable std::mutex mutex_;
 
-  std::map<std::string, HandlerWithParams> handlers_;
+  std::map<std::string, std::map<size_t, std::function<void(Request)>>> handlers_;
 };
 
 }  // namespace blocks
