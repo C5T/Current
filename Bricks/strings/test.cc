@@ -303,6 +303,51 @@ TEST(JoinAndSplit, SplitIntoKeyValuePairsExceptions) {
                KeyValueMultipleValuesException);
 }
 
+TEST(JoinAndSplit, EfficientlySplitsMutableStringIntoTemporaryChunks) {
+  const std::string original_input = "foo bar baz";
+
+  struct Processor {
+    std::vector<std::string> results;
+    void operator()(const std::string& string) { results.push_back("String(" + string + ')'); }
+    void operator()(Chunk chunk) { results.push_back("Chunk(" + static_cast<std::string>(chunk) + ')'); }
+  };
+
+  const std::string immutable_input = original_input;
+  std::string mutable_input = original_input;
+
+  std::vector<char> mutable_vector_char(original_input.begin(), original_input.end());
+  mutable_vector_char.push_back('\0');
+
+  const Chunk chunk(immutable_input);
+
+  {
+    Processor p;
+    Split<ByWhitespace>(immutable_input, p);
+    EXPECT_EQ("String(foo),String(bar),String(baz)", Join(p.results, ','));
+  }
+
+  {
+    Processor p;
+    Split<ByWhitespace>(mutable_input, p);
+    EXPECT_EQ("Chunk(foo),Chunk(bar),Chunk(baz)", Join(p.results, ','));
+    EXPECT_EQ(original_input, mutable_input);
+  }
+
+  {
+    Processor p;
+    Split<ByWhitespace>(&mutable_vector_char[0], p);
+    EXPECT_EQ("Chunk(foo),Chunk(bar),Chunk(baz)", Join(p.results, ','));
+  }
+
+  {
+    Processor p;
+    Split<ByWhitespace>(chunk, p);
+    EXPECT_EQ("Chunk(foo),Chunk(bar),Chunk(baz)", Join(p.results, ','));
+  }
+
+  EXPECT_EQ(original_input, mutable_input);
+}
+
 TEST(EditDistance, SmokeTest) {
   EXPECT_EQ(0u, SlowEditDistance("foo", "foo"));
   EXPECT_EQ(3u, SlowEditDistance("foo", ""));
