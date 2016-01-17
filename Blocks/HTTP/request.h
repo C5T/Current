@@ -63,15 +63,13 @@ struct URLPathArgs {
   T_ITERATOR end() const { return args_.crend(); }
 
   bool empty() const { return args_.empty(); }
-  bool size() const { return args_.size(); }
+  size_t size() const { return args_.size(); }
 
   void add(const std::string& arg) { args_.push_back(arg); }
 
   std::string base_path;
 
-// WTF! WTF!! WTF!!!!!!!1111
-// URLPathArgs.size() and URLPathArgs.args_.size() give different results when running the test.
-// private:
+ private:
   std::vector<std::string> args_;
 };
 
@@ -108,25 +106,25 @@ struct Request final {
   const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
   const URL url;
-  const URLPathArgs url_path_params;
+  const URLPathArgs url_path_args;
   const std::string method;
   const current::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const std::chrono::microseconds timestamp;
 
   explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection,
-                   URLPathArgs url_path_params = URLPathArgs())
+                   URLPathArgs url_path_args = URLPathArgs())
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
         url(http_data.URL()),
-        url_path_params(url_path_params),
+        url_path_args(url_path_args),
         method(http_data.Method()),
         headers(http_data.headers()),
         body(http_data.Body()),
         timestamp(current::time::Now()) {
-    if (!url_path_params.empty()) {
-      url.path.resize(url_path_params.base_path.length());
+    if (!url_path_args.empty()) {
+      url.path.resize(url_path_args.base_path.length());
     }
   }
 
@@ -136,7 +134,7 @@ struct Request final {
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
         url(rhs.url),
-        url_path_params(rhs.url_path_params),
+        url_path_args(rhs.url_path_args),
         method(http_data.Method()),
         headers(http_data.headers()),
         body(http_data.Body()),

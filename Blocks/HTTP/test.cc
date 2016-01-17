@@ -109,7 +109,7 @@ TEST(HTTPAPI, Register) {
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
   const auto handler =
-      [](Request r) { r(r.url.path + " (" + current::strings::Join(r.url_path_params, ", ") + ')'); };
+      [](Request r) { r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ')'); };
 
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/", handler, URLPathArgs::CountMask::Any);

@@ -245,65 +245,26 @@ class HTTPServerPOSIX final {
     remaining_path = path;
 
     // Friendly reminder: `remaining_path[0]` is guaranteed to be '/'.
-    std::cerr << "Resolving " << remaining_path << '\n';
     while (true) {
       while (remaining_path.length() > 1 && remaining_path.back() == '/') {
         remaining_path.resize(remaining_path.length() - 1);
       }
 
-      // std::cerr << "Looking for " << remaining_path << ", " << output_url_args.size() << " ... ";
-
       const auto cit = handlers_.find(remaining_path);
       if (cit != handlers_.end()) {
-        // <WTF>
-        const auto cit2 = cit->second.find(/*output_url_args.size()*/ output_url_args.args_.size());
-        // </WTF>
+        const auto cit2 = cit->second.find(output_url_args.size());
         if (cit2 != cit->second.end()) {
           output_handler = cit2->second;
-          // std::cerr << "Yes.\n";
           return;
         }
       }
-
-      // std::cerr << "No.\n";
 
       if (remaining_path == "/") {
         break;
       }
 
       const size_t arg_begin_index = remaining_path.rfind('/') + 1;
-
-      /*
-      std::cerr << "Adding `" << remaining_path.substr(arg_begin_index) << "`\n";
-      std::cerr << "Size was: " << output_url_args.size() << '\n';
-      std::cerr << "Size WAS: " << output_url_args.args_.size() << '\n';
-      for (size_t i = 0; i < output_url_args.size(); ++i) {
-        std::cerr << '[' << i << "] = `" << output_url_args[i] << "`.\n";
-      }
-      for (size_t i = 0; i < output_url_args.args_.size(); ++i) {
-        std::cerr << '{' << i << "} = `" << output_url_args.args_[i] << "`.\n";
-      }
-      */
-
-      // WTF!
-      // output_url_args.add(remaining_path.substr(arg_begin_index));
-      output_url_args.args_.push_back(remaining_path.substr(arg_begin_index));
-
-      // WTF: THESE TWO DIFFER!
-      // In:  ./.current/test --gtest_filter=*RegisterWithURLPathParams*
-      // std::cerr << "Size now: " << output_url_args.size() << '\n';
-      // std::cerr << "Size NOW: " << output_url_args.args_.size() << '\n';
-
-      /*
-      for (size_t i = 0; i < output_url_args.size(); ++i) {
-        std::cerr << '[' << i << "] = `" << output_url_args[i] << "`.\n";
-      }
-
-      for (size_t i = 0; i < output_url_args.args_.size(); ++i) {
-        std::cerr << '{' << i << "} = `" << output_url_args.args_[i] << "`.\n";
-      }
-      */
-
+      output_url_args.add(remaining_path.substr(arg_begin_index));
       remaining_path.resize(arg_begin_index);
     }
   }
@@ -321,11 +282,11 @@ class HTTPServerPOSIX final {
           break;
         }
         std::function<void(Request)> handler;
-        URLPathArgs url_path_params;
+        URLPathArgs url_path_args;
         {
           // TODO(dkorolev): Read-write lock for performance?
           std::lock_guard<std::mutex> lock(mutex_);
-          FindHandler(connection->HTTPRequest().URL().path, handler, url_path_params);
+          FindHandler(connection->HTTPRequest().URL().path, handler, url_path_args);
         }
         if (handler) {
           // OK, here's the tricky part with error handling and exceptions in this multithreaded world.
@@ -347,7 +308,7 @@ class HTTPServerPOSIX final {
           // It is the job of the user of this library to ensure no exceptions leave their code.
           // In practice, a top-level try-catch for `const current::Exception& e` is good enough.
           try {
-            handler(Request(std::move(connection), url_path_params));
+            handler(Request(std::move(connection), url_path_args));
           } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
             // WARNING: This `catch` is really not sufficient, it just logs a message
             // if a user exception occurred in the same thread that ran the handler.
@@ -373,6 +334,11 @@ class HTTPServerPOSIX final {
                                          const ReRegisterRoute policy) {
     assert(handler);
 
+    // TODO(dkorolev): Type.
+    if (static_cast<uint16_t>(path_param_count_mask) == 0) {
+      return HTTPRoutesScopeEntry();
+    }
+
     if (path.empty() || path[0] != '/') {
       CURRENT_THROW(PathDoesNotStartWithSlash("HTTP path does not start with a slash: `" + path + "`."));
     }
@@ -383,28 +349,45 @@ class HTTPServerPOSIX final {
       CURRENT_THROW(PathContainsInvalidCharacters("HTTP path contains invalid characters: `" + path + "`."));
     }
 
-    auto& handlers_per_path = handlers_[path];
-    URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
-    for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask = mask << 1) {
-      if ((path_param_count_mask & mask) == mask) {
-        // Check if handler with exactly the same path exists and overwrite it if policy allows.
-        auto& placeholder = handlers_per_path[i];
-        if (placeholder) {
-          if (policy == ReRegisterRoute::SilentlyUpdate) {
-            placeholder = handler;
-            return HTTPRoutesScopeEntry();
+    {
+      // Step 1: Confirm the request is valid.
+      const auto handlers_per_path_iterator = handlers_.find(path);
+      URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
+      for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask = mask << 1) {
+        if ((path_param_count_mask & mask) == mask) {
+          if (handlers_per_path_iterator == handlers_.end() ||
+              handlers_per_path_iterator->second.find(i) == handlers_per_path_iterator->second.end()) {
+            // No such handler. Throw if trying to "Update" it.
+            if (policy == ReRegisterRoute::SilentlyUpdate) {
+              CURRENT_THROW(HandlerDoesNotExistException(path));
+            }
           } else {
-            CURRENT_THROW(HandlerAlreadyExistsException(path));
+            // Handler already exists. Throw is not in "Update" mode.
+            if (policy != ReRegisterRoute::SilentlyUpdate) {
+              CURRENT_THROW(HandlerAlreadyExistsException(path));
+            }
           }
         }
-
-        std::cerr << path << ' ' << i << " registered.\n";
-        placeholder = handler;
       }
     }
 
-    return HTTPRoutesScopeEntry(
-        [this, path, path_param_count_mask]() { UnRegister(path, path_param_count_mask); });
+    {
+      // Step 2: Update.
+      auto& handlers_per_path = handlers_[path];
+      URLPathArgs::CountMask mask = URLPathArgs::CountMask::None;
+      for (size_t i = 0; i <= MaximumUrlPathParams(); ++i, mask = mask << 1) {
+        if ((path_param_count_mask & mask) == mask) {
+          handlers_per_path[i] = handler;
+        }
+      }
+    }
+
+    if (policy == ReRegisterRoute::SilentlyUpdate) {
+      return HTTPRoutesScopeEntry();
+    } else {
+      return HTTPRoutesScopeEntry(
+          [this, path, path_param_count_mask]() { UnRegister(path, path_param_count_mask); });
+    }
   }
 
   HTTPServerPOSIX() = delete;
