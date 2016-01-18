@@ -112,16 +112,16 @@ TEST(HTTPAPI, RegisterWithURLPathParams) {
       [](Request r) { r(r.url.path + " (" + current::strings::Join(r.url_path_args, ", ") + ')'); };
 
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port).Register("/", handler, URLPathArgs::CountMask::Any);
+  HTTP(FLAGS_net_api_test_port).Register("/", URLPathArgs::CountMask::Any, handler);
   HTTP(FLAGS_net_api_test_port)
-      .Register("/user", handler, URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two);
-  HTTP(FLAGS_net_api_test_port).Register("/user/a", handler, URLPathArgs::CountMask::One);
-  HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler, URLPathArgs::CountMask::None);
+      .Register("/user", URLPathArgs::CountMask::One | URLPathArgs::CountMask::Two, handler);
+  HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler);
+  HTTP(FLAGS_net_api_test_port).Register("/user/a/1", URLPathArgs::CountMask::None, handler);
 
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/", handler), HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user", handler, URLPathArgs::CountMask::Two),
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user", URLPathArgs::CountMask::Two, handler),
                HandlerAlreadyExistsException);
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a", handler, URLPathArgs::CountMask::One),
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a", URLPathArgs::CountMask::One, handler),
                HandlerAlreadyExistsException);
   ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/user/a/1", handler), HandlerAlreadyExistsException);
 
