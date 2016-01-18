@@ -145,23 +145,38 @@ class HTTPServerPOSIX final {
   //   The lifetime of the object is then up to the user.
   // Justification: `Register("/foo", FooInstance())` has no way of knowing how long should `FooInstance` live.
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
-  HTTPRoutesScopeEntry Register(
-      const std::string& path,
-      std::function<void(Request)> handler,
-      const URLPathArgs::CountMask path_args_count_mask = URLPathArgs::CountMask::None) {
+  HTTPRoutesScopeEntry Register(const std::string& path,
+                                const URLPathArgs::CountMask path_args_count_mask,
+                                std::function<void(Request)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(path, handler, path_args_count_mask, POLICY);
   }
 
+  // Two argument version registers handler with no URL path arguments.
+  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
+  HTTPRoutesScopeEntry Register(const std::string& path, std::function<void(Request)> handler) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return DoRegisterHandler(path, handler, URLPathArgs::CountMask::None, POLICY);
+  }
+
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
-  HTTPRoutesScopeEntry Register(
-      const std::string& path,
-      F* ptr_to_handler,
-      const URLPathArgs::CountMask path_args_count_mask = URLPathArgs::CountMask::None) {
+  HTTPRoutesScopeEntry Register(const std::string& path,
+                                const URLPathArgs::CountMask path_args_count_mask,
+                                F* ptr_to_handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(path,
                              [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
                              path_args_count_mask,
+                             POLICY);
+  }
+
+  // Two argument version registers handler with no URL path arguments.
+  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
+  HTTPRoutesScopeEntry Register(const std::string& path, F* ptr_to_handler) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return DoRegisterHandler(path,
+                             [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
+                             URLPathArgs::CountMask::None,
                              POLICY);
   }
 
