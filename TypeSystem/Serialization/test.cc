@@ -73,6 +73,10 @@ CURRENT_STRUCT(ComplexSerializable) {
   }
 };
 
+using VariantType = Variant<Empty, Serializable, ComplexSerializable>;
+
+CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, VariantType); };
+
 CURRENT_STRUCT(DerivedSerializable, Serializable) { CURRENT_FIELD(d, double); };
 
 #ifndef _MSC_VER
@@ -658,7 +662,6 @@ TEST(Serialization, OptionalAsJSON) {
 
 TEST(Serialization, VariantAsJSON) {
   using namespace serialization_test;
-  using VariantType = Variant<Empty, Serializable, ComplexSerializable>;
   {
     try {
       ParseJSON<VariantType>("null");
@@ -737,6 +740,33 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_EQ(42, Value(inner_parsed_object.i));
     EXPECT_FALSE(Exists(inner_parsed_object.b));
   }
+}
+
+TEST(Serialization, OptionalNullOmittedInMinimalisticFormat) {
+  using namespace serialization_test;
+
+  WithOptional object;
+  EXPECT_EQ("{}", JSON<JSONFormat::Minimalistic>(object));
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{}").i));
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{}").b));
+
+  object.i = 42;
+  EXPECT_EQ("{\"i\":42}", JSON<JSONFormat::Minimalistic>(object));
+  EXPECT_TRUE(Exists(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{\"i\":42}").i));
+  EXPECT_EQ(42, Value(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{\"i\":42}").i));
+  EXPECT_FALSE(Exists(ParseJSON<WithOptional, JSONFormat::Minimalistic>("{}").b));
+}
+
+TEST(Serialization, VariantNullOmittedInMinimalisticFormat) {
+  using namespace serialization_test;
+
+  EXPECT_EQ("{}", JSON<JSONFormat::Minimalistic>(ContainsVariant()));
+  ParseJSON<ContainsVariant, JSONFormat::Minimalistic>("{}");
+  EXPECT_FALSE(Exists(ParseJSON<ContainsVariant, JSONFormat::Minimalistic>("{}").variant));
+  EXPECT_EQ("{\"variant\":null}", JSON(ContainsVariant()));
+
+  EXPECT_EQ("null", JSON<JSONFormat::Minimalistic>(Variant<Empty>()));
+  EXPECT_EQ("null", JSON(Variant<Empty>()));
 }
 
 TEST(Serialization, TimeAsJSON) {
