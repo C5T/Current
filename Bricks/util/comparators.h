@@ -33,15 +33,20 @@ namespace current {
 
 namespace custom_comparator_and_hash_function {
 
-template <typename T, bool IS_ENUM>
+template <typename T, bool HAS_MEMBER_HASH_FUNCTION, bool IS_ENUM>
 struct CurrentHashFunctionImpl;
 
 template <typename T>
-struct CurrentHashFunctionImpl<T, false> : std::hash<T> {};
+struct CurrentHashFunctionImpl<T, false, false> : std::hash<T> {};
 
 template <typename T>
-struct CurrentHashFunctionImpl<T, true> {
+struct CurrentHashFunctionImpl<T, false, true> {
   std::size_t operator()(T x) const { return static_cast<size_t>(x); }
+};
+
+template <typename T>
+struct CurrentHashFunctionImpl<T, true, false> {
+  std::size_t operator()(const T& x) const { return x.Hash(); }
 };
 
 template <typename T, bool IS_ENUM>
@@ -58,15 +63,29 @@ struct CurrentComparatorImpl<T, true> {
   }
 };
 
+template <typename T>
+constexpr bool HasHashMethod(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasHashMethod(int) -> decltype(std::declval<const T>().Hash(), bool()) {
+  return true;
+}
+
+template <typename T>
+struct CurrentHashFunctionSelector {
+  typedef custom_comparator_and_hash_function::CurrentHashFunctionImpl<T,
+                                                                       HasHashMethod<T>(0),
+                                                                       std::is_enum<T>::value> type;
+};
 }  // namespace custom_comparator_and_hash_function
 
-template <typename KEY>
-using CurrentHashFunction =
-    custom_comparator_and_hash_function::CurrentHashFunctionImpl<KEY, std::is_enum<KEY>::value>;
+template <typename T>
+using CurrentHashFunction = typename custom_comparator_and_hash_function::CurrentHashFunctionSelector<T>::type;
 
-template <typename KEY>
-using CurrentComparator =
-    custom_comparator_and_hash_function::CurrentComparatorImpl<KEY, std::is_enum<KEY>::value>;
+template <typename T>
+using CurrentComparator = custom_comparator_and_hash_function::CurrentComparatorImpl<T, std::is_enum<T>::value>;
 
 }  // namespace current
 

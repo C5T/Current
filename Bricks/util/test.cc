@@ -691,3 +691,30 @@ TEST(AccumulativeScopedDeleter, DoesNotDeleteWhatShouldStay) {
     }
   }
 }
+
+struct WithoutHashFunctionTestStruct {};
+
+struct WithHashFunctionTestStruct {
+  size_t Hash() const { return 2; }
+};
+
+namespace std {
+template <>
+struct hash<WithoutHashFunctionTestStruct> {
+  std::size_t operator()(const WithoutHashFunctionTestStruct&) const { return 1; }
+};
+template <>
+struct hash<WithHashFunctionTestStruct> {
+  std::size_t operator()(const WithHashFunctionTestStruct&) const { return 1; }
+};
+}  // namespace std
+
+TEST(CustomHashFunction, Smoke) {
+  using current::CurrentHashFunction;
+
+  EXPECT_EQ(1u, std::hash<WithoutHashFunctionTestStruct>()(WithoutHashFunctionTestStruct()));
+  EXPECT_EQ(1u, std::hash<WithHashFunctionTestStruct>()(WithHashFunctionTestStruct()));
+
+  EXPECT_EQ(1u, CurrentHashFunction<WithoutHashFunctionTestStruct>()(WithoutHashFunctionTestStruct()));
+  EXPECT_EQ(2u, CurrentHashFunction<WithHashFunctionTestStruct>()(WithHashFunctionTestStruct()));
+}
