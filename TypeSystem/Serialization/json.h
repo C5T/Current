@@ -109,10 +109,11 @@ struct SaveIntoJSONImpl;
 #define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, unused_current_type, unused_fsharp_type) \
   template <JSONFormat J>                                                                                      \
   struct SaveIntoJSONImpl<cpp_type, J> {                                                                       \
-    static void Save(rapidjson::Value& destination,                                                            \
+    static bool Save(rapidjson::Value& destination,                                                            \
                      rapidjson::Document::AllocatorType&,                                                      \
                      const cpp_type& value) {                                                                  \
       AssignToRapidJSONValue(destination, value);                                                              \
+      return true;                                                                                             \
     }                                                                                                          \
   };
 #include "../primitive_types.dsl.h"
@@ -120,16 +121,17 @@ struct SaveIntoJSONImpl;
 
 template <JSONFormat J>
 struct SaveIntoJSONImpl<reflection::TypeID, J> {
-  static void Save(rapidjson::Value& destination,
+  static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    reflection::TypeID value) {
     destination.SetString("T" + strings::ToString(static_cast<uint64_t>(value)), allocator);
+    return true;
   }
 };
 
 template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<std::vector<T>, J> {
-  static void Save(rapidjson::Value& destination,
+  static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const std::vector<T>& value) {
     destination.SetArray();
@@ -138,12 +140,13 @@ struct SaveIntoJSONImpl<std::vector<T>, J> {
       SaveIntoJSONImpl<T, J>::Save(element_to_push, allocator, element);
       destination.PushBack(element_to_push, allocator);
     }
+    return true;
   }
 };
 
 template <typename TF, typename TS, JSONFormat J>
 struct SaveIntoJSONImpl<std::pair<TF, TS>, J> {
-  static void Save(rapidjson::Value& destination,
+  static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const std::pair<TF, TS>& value) {
     destination.SetArray();
@@ -153,26 +156,30 @@ struct SaveIntoJSONImpl<std::pair<TF, TS>, J> {
     SaveIntoJSONImpl<TS, J>::Save(second_value, allocator, value.second);
     destination.PushBack(first_value, allocator);
     destination.PushBack(second_value, allocator);
+    return true;
   }
 };
 
 template <typename TK, typename TV, JSONFormat J, typename CMP>
 struct SaveIntoJSONImpl<std::map<TK, TV, CMP>, J> {
   template <typename K = TK>
-  static ENABLE_IF<std::is_same<K, std::string>::value> Save(rapidjson::Value& destination,
-                                                             rapidjson::Document::AllocatorType& allocator,
-                                                             const std::map<TK, TV, CMP>& value) {
+  static ENABLE_IF<std::is_same<K, std::string>::value, bool> Save(
+      rapidjson::Value& destination,
+      rapidjson::Document::AllocatorType& allocator,
+      const std::map<TK, TV, CMP>& value) {
     destination.SetObject();
     for (const auto& element : value) {
       rapidjson::Value populated_value;
       SaveIntoJSONImpl<TV, J>::Save(populated_value, allocator, element.second);
       destination.AddMember(rapidjson::StringRef(element.first), populated_value, allocator);
     }
+    return true;
   }
   template <typename K = TK>
-  static ENABLE_IF<!std::is_same<K, std::string>::value> Save(rapidjson::Value& destination,
-                                                              rapidjson::Document::AllocatorType& allocator,
-                                                              const std::map<TK, TV, CMP>& value) {
+  static ENABLE_IF<!std::is_same<K, std::string>::value, bool> Save(
+      rapidjson::Value& destination,
+      rapidjson::Document::AllocatorType& allocator,
+      const std::map<TK, TV, CMP>& value) {
     destination.SetArray();
     for (const auto& element : value) {
       rapidjson::Value key_value_as_array;
@@ -185,20 +192,37 @@ struct SaveIntoJSONImpl<std::map<TK, TV, CMP>, J> {
       key_value_as_array.PushBack(populated_value, allocator);
       destination.PushBack(key_value_as_array, allocator);
     }
+    return true;
   }
 };
 
 template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<Optional<T>, J> {
-  static void Save(rapidjson::Value& destination,
+  static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const Optional<T>& value) {
     if (Exists(value)) {
       SaveIntoJSONImpl<T, J>::Save(destination, allocator, Value(value));
+      return true;
     } else {
       // Current's default JSON parser would accept a missing field as well for no value,
       // but output it as `null` nonetheless, for clarity.
       destination.SetNull();
+      return true;
+    }
+  }
+};
+
+template <typename T>
+struct SaveIntoJSONImpl<Optional<T>, JSONFormat::Minimalistic> {
+  static bool Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const Optional<T>& value) {
+    if (Exists(value)) {
+      SaveIntoJSONImpl<T, JSONFormat::Minimalistic>::Save(destination, allocator, Value(value));
+      return true;
+    } else {
+      return false;
     }
   }
 };
@@ -218,20 +242,24 @@ struct SaveIntoJSONImpl {
     template <typename U>
     void operator()(const char* name, const U& source) const {
       rapidjson::Value placeholder;
-      SaveIntoJSONImpl<U, J>::Save(placeholder, allocator_, source);
-      destination_.AddMember(rapidjson::StringRef(name), placeholder, allocator_);
+      if (SaveIntoJSONImpl<U, J>::Save(placeholder, allocator_, source)) {
+        destination_.AddMember(rapidjson::StringRef(name), placeholder, allocator_);
+      }
     }
   };
 
   // No-op function for `CurrentStruct`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentStruct>::value> Save(rapidjson::Value&,
-                                                                rapidjson::Document::AllocatorType&,
-                                                                const TT&,
-                                                                bool) {}
+  static ENABLE_IF<std::is_same<TT, CurrentStruct>::value, bool> Save(rapidjson::Value&,
+                                                                      rapidjson::Document::AllocatorType&,
+                                                                      const TT&,
+                                                                      bool) {
+    return false;
+  }
+
   // `CURRENT_STRUCT`.
   template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStruct>::value> Save(
+  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStruct>::value, bool> Save(
       rapidjson::Value& destination,
       rapidjson::Document::AllocatorType& allocator,
       const TT& source,
@@ -247,14 +275,17 @@ struct SaveIntoJSONImpl {
     SaveFieldVisitor visitor(destination, allocator);
     current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(
         source, visitor);
+
+    return true;
   }
 
   // `enum` and `enum class`.
   template <typename TT = T>
-  static ENABLE_IF<std::is_enum<TT>::value> Save(rapidjson::Value& destination,
-                                                 rapidjson::Document::AllocatorType&,
-                                                 const TT& value) {
+  static ENABLE_IF<std::is_enum<TT>::value, bool> Save(rapidjson::Value& destination,
+                                                       rapidjson::Document::AllocatorType&,
+                                                       const TT& value) {
     AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<TT>::type>(value));
+    return true;
   }
 
   // JSON format for `Variant` objects:
@@ -323,7 +354,7 @@ struct SaveIntoJSONImpl {
     rapidjson::Document::AllocatorType& allocator_;
   };
   template <typename... TS>
-  static void Save(rapidjson::Value& destination,
+  static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    const VariantImpl<TypeListImpl<TS...>>& value) {
     // TODO(dkorolev): This call might be worth splitting into two, with and without REQUIRED. Later.
@@ -335,8 +366,14 @@ struct SaveIntoJSONImpl {
                                                           SaveVariantFSharp>::type>::type impl(destination,
                                                                                                allocator);
       value.Call(impl);
+      return true;
     } else {
-      destination.SetNull();
+      if (J != JSONFormat::Minimalistic) {
+        destination.SetNull();
+        return true;
+      } else {
+        return false;
+      }
     }
   }
 };
@@ -724,7 +761,9 @@ struct LoadFromJSONImpl {
   template <typename... TS>
   static void Load(rapidjson::Value* source, VariantImpl<TypeListImpl<TS...>>& value, const std::string& path) {
     if (!source || source->IsNull()) {
-      throw JSONUninitializedVariantObjectException();
+      if (J != JSONFormat::Minimalistic) {
+        throw JSONUninitializedVariantObjectException();
+      }
     } else {
       using LOADER = LoadVariantPicker<TS...>;
       LOADER::Instance().DoLoadVariant(source, value, path);
