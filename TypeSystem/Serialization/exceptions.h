@@ -37,6 +37,8 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 
+namespace json {
+
 struct TypeSystemParseJSONException : Exception {
   using Exception::Exception;
 };
@@ -85,6 +87,8 @@ struct InvalidJSONException : TypeSystemParseJSONException {
 
 struct JSONUninitializedVariantObjectException : TypeSystemParseJSONException {};
 
+}  // namepsace json
+
 struct BinarySerializationException : Exception {
   using Exception::Exception;
 };
@@ -107,8 +111,8 @@ struct BinaryLoadFromStreamException : BinarySerializationException {
 }  // namespace serialization
 }  // namespace current
 
-using current::serialization::InvalidJSONException;
-using current::serialization::TypeSystemParseJSONException;
-using current::serialization::JSONUninitializedVariantObjectException;
+using current::serialization::json::InvalidJSONException;
+using current::serialization::json::TypeSystemParseJSONException;
+using current::serialization::json::JSONUninitializedVariantObjectException;
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H
