@@ -7,7 +7,7 @@ This document describes the RESTful API with CRUD functionality for Current Stor
 
 ### Response schema
 
-The response body is always either a valid JSON or empty.
+The response body is always either a valid JSON or empty with `204 (No content)` error code.
 
 The generic format of a successful JSON response is:
 
@@ -124,7 +124,7 @@ Current Storage API interprets HTTP verbs in the following way:
 
   `TODO: Location header https://tools.ietf.org/html/rfc7231#section-4.3.3`
 
-* **POST**: Create a new record and assign it to some recourse.
+* **POST**: Create a new record and assign it to some resourse.
 
   `POST` will create a new resource. The URL for POST must not contain the key(s) for the record being posted, and the payload body should not contain the key(s) either.
 
@@ -151,7 +151,7 @@ The entry point (usually, `"/"`) URL will contain the list of inner `"url_*"`-s 
 
 The entry point URL may also contain the URLs by which the user can access the respective schema files. This is applicable to F# and C++.
 
-[ TO DISCUSS ] The payload when `GET`-ting the resource corresponding to an individual record (ex. `/user/123`) will contain the `{...,"url_collection":".../users"}` reference to the URL to browse the whole collection, the record from which is being requested.
+[ TO DISCUSS ] The payload when `GET`-ting the resource corresponding to an individual record (ex. `/user/123`) will contain the `{...,"url_collection":".../users"}` reference to the URL to browse the whole collection, the record from which is being requested. Each resource can belong to one and only one collection.
 
 As a record is successfully created or modified, the response payload will contain its URL as the top-level `"url"` field.
 
@@ -160,6 +160,8 @@ When a resource can not be found, the error payload will contain the URL to brow
 When the operation fails due to a conflict, the top-level `"url"` field will be set as well.
 
 ### Pagination
+
+`TODO: Revisit this section - discuss stateful/stateless approaches.`
 
 When retrieving the collection of records, they are returned in pages. If there are more records to browse, the top-level response object will contain the `"url_next_page"` field, as well as the `"url_previous_page"` one for the pages past the first one.
 
