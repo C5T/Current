@@ -28,14 +28,17 @@ SOFTWARE.
 
 #include <type_traits>
 
-#include "../json.h"
+#include "primitive.h"
 
+// TODO: `#include "../../optional.h"` results in `make check` fail, since both
+// "optional.h" and "../../optional.h" exist. The latter is not considered
+// during the search process for `""` includes, which starts searching from the
+// directory of the file with the `#include` line.
 #include "../../optional.h"
 
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
 template <typename T, JSONFormat J>
@@ -86,11 +89,43 @@ struct LoadFromJSONImpl<Optional<T>, J> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <typename T>
+struct SaveIntoBinaryImpl<Optional<T>> {
+  static void Save(std::ostream& ostream, const Optional<T>& value) {
+    const bool exists = Exists(value);
+    SaveIntoBinaryImpl<bool>::Save(ostream, exists);
+    if (exists) {
+      SaveIntoBinaryImpl<T>::Save(ostream, Value(value));
+    }
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <typename T>
+struct LoadFromBinaryImpl<Optional<T>> {
+  static void Load(std::istream& istream, Optional<T>& destination) {
+    bool exists;
+    LoadFromBinaryImpl<bool>::Load(istream, exists);
+    if (exists) {
+      destination = T();
+      LoadFromBinaryImpl<T>::Load(istream, Value(destination));
+    } else {
+      destination = nullptr;
+    }
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_OPTIONAL_H
-
-

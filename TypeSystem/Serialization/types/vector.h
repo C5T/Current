@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include <vector>
 
-#include "../json.h"
+#include "../base.h"
 
 namespace current {
 namespace serialization {
@@ -55,14 +55,14 @@ struct SaveIntoJSONImpl<std::vector<TT, TA>, J> {
 
 namespace load {
 
-template <typename T, typename A, JSONFormat J>
-struct LoadFromJSONImpl<std::vector<T, A>, J> {
-  static void Load(rapidjson::Value* source, std::vector<T, A>& destination, const std::string& path) {
+template <typename TT, typename TA, JSONFormat J>
+struct LoadFromJSONImpl<std::vector<TT, TA>, J> {
+  static void Load(rapidjson::Value* source, std::vector<TT, TA>& destination, const std::string& path) {
     if (source && source->IsArray()) {
       const size_t size = source->Size();
       destination.resize(size);
       for (rapidjson::SizeType i = 0; i < static_cast<rapidjson::SizeType>(size); ++i) {
-        LoadFromJSONImpl<T, J>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
+        LoadFromJSONImpl<TT, J>::Load(&((*source)[i]), destination[i], path + '[' + std::to_string(i) + ']');
       }
     } else {
       throw JSONSchemaException("array", source, path);  // LCOV_EXCL_LINE
@@ -71,11 +71,39 @@ struct LoadFromJSONImpl<std::vector<T, A>, J> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <typename TT, typename TA>
+struct SaveIntoBinaryImpl<std::vector<TT, TA>> {
+  static void Save(std::ostream& ostream, const std::vector<TT, TA>& value) {
+    SaveSizeIntoBinary(ostream, value.size());
+    for (const auto& element : value) {
+      SaveIntoBinaryImpl<TT>::Save(ostream, element);
+    }
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <typename TT, typename TA>
+struct LoadFromBinaryImpl<std::vector<TT, TA>> {
+  static void Load(std::istream& istream, std::vector<TT, TA>& destination) {
+    BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
+    destination.resize(static_cast<size_t>(size));
+    for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
+      LoadFromBinaryImpl<TT>::Load(istream, destination[i]);
+    }
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VECTOR_H
-
-

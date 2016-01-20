@@ -26,16 +26,10 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H
 
+#include <chrono>  // For the future use of "primitive_types.dsl.h".
+
+#include "base.h"
 #include "exceptions.h"
-
-#define RAPIDJSON_HAS_STDSTRING 1
-#include "../../3rdparty/rapidjson/document.h"
-#include "../../3rdparty/rapidjson/prettywriter.h"
-#include "../../3rdparty/rapidjson/streamwrapper.h"
-
-namespace current {
-namespace serialization {
-namespace json {
 
 // Current: as human- and JavaScript-readable as possible, with strong struct signature checking.
 // Used internally, and is the default for exposed API endpoints.
@@ -54,42 +48,11 @@ namespace json {
 // * Variant types are stored as `{"Case":"A", "Fields":[ { <fields of A> } ]}`.
 // * TODO(dkorolev): Confirm `map<K, V>` does what it should. Untested as of now; `vector<T>` works fine.
 
-enum class JSONFormat : int { Current, Minimalistic, NewtonsoftFSharp };
-
-template <typename T>
-struct AssignToRapidJSONValueImpl {
-  static void WithDedicatedTreatment(rapidjson::Value& destination, const T& value) { destination = value; }
-};
-
-template <typename T>
-void AssignToRapidJSONValue(rapidjson::Value& destination, const T& value) {
-  AssignToRapidJSONValueImpl<T>::WithDedicatedTreatment(destination, value);
-}
-
-namespace save {
-
-template <typename, JSONFormat, typename Enable = void>
-struct SaveIntoJSONImpl;
-
-}  // namespace save
-
-namespace load {
-
-template <typename T, JSONFormat J, class Enable = void>
-struct LoadFromJSONImpl;
-
-}  // namespace load
-
-}  // namespace json
-}  // namespace serialization
-}  // namespace current
-
 // Basic types.
 #include "types/primitive.h"
-#include "types/chrono.h"
 #include "types/enum.h"
 
-//STL containers.
+// STL containers.
 #include "types/vector.h"
 #include "types/pair.h"
 #include "types/map.h"
@@ -165,7 +128,6 @@ inline T ParseJSON(const std::string& source) {
 }  // namespace json
 }  // namespace serialization
 }  // namespace current
-
 
 // Inject into global namespace.
 using current::serialization::json::JSON;

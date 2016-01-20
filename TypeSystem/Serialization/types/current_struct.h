@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include <type_traits>
 
-#include "../json.h"
+#include "../base.h"
 
 #include "../../struct.h"
 #include "../../types.h"
@@ -38,11 +38,17 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
+template <JSONFormat J>
+struct SaveIntoJSONImpl<CurrentStruct, J> {
+  static bool Save(rapidjson::Value&, rapidjson::Document::AllocatorType&, const CurrentStruct&, bool) {
+    return false;
+  }
+};
+
 template <typename T, JSONFormat J>
-struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T)>> {
+struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
   struct SaveFieldVisitor {
     rapidjson::Value& destination_;
     rapidjson::Document::AllocatorType& allocator_;
@@ -61,23 +67,11 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T)>> {
     }
   };
 
-  // No-op function for `CurrentStruct`.
-  template <typename TT = T>
-  static ENABLE_IF<std::is_same<TT, CurrentStruct>::value, bool> Save(rapidjson::Value&,
-                                                                      rapidjson::Document::AllocatorType&,
-                                                                      const TT&,
-                                                                      bool) {
-    return false;
-  }
-
-  // `CURRENT_STRUCT`.
-  template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStruct>::value, bool> Save(
-      rapidjson::Value& destination,
-      rapidjson::Document::AllocatorType& allocator,
-      const TT& source,
-      bool set_object_already_called = false) {
-    using DECAYED_T = current::decay<TT>;
+  static bool Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const T& source,
+                   bool set_object_already_called = false) {
+    using DECAYED_T = current::decay<T>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
     if (!set_object_already_called) {
@@ -97,8 +91,13 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T)>> {
 
 namespace load {
 
+template <JSONFormat J>
+struct LoadFromJSONImpl<CurrentStruct, J> {
+  static void Load(rapidjson::Value*, CurrentStruct&, const std::string&) {}
+};
+
 template <typename T, JSONFormat J>
-struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T)>> {
+struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
   struct LoadFieldVisitor {
     rapidjson::Value& source_;
     const std::string& path_;
@@ -118,14 +117,8 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T)>> {
     }
   };
 
-  // No-op function required for compilation.
-  static void Load(rapidjson::Value*, CurrentStruct&, const std::string&) {}
-
-  // `CURRENT_STRUCT`.
-  template <typename TT = T>
-  static ENABLE_IF<IS_CURRENT_STRUCT(TT) && !std::is_same<TT, CurrentStruct>::value> Load(
-      rapidjson::Value* source, T& destination, const std::string& path) {
-    using DECAYED_T = current::decay<TT>;
+  static void Load(rapidjson::Value* source, T& destination, const std::string& path) {
+    using DECAYED_T = current::decay<T>;
     using SUPER = current::reflection::SuperType<DECAYED_T>;
 
     if (source && source->IsObject()) {
@@ -142,11 +135,81 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_CURRENT_STRUCT(T)>> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <>
+struct SaveIntoBinaryImpl<CurrentStruct> {
+  static void Save(std::ostream&, const CurrentStruct&) {}
+};
+
+template <typename T>
+struct SaveIntoBinaryImpl<T, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
+  struct SaveFieldVisitor {
+    std::ostream& ostream_;
+
+    explicit SaveFieldVisitor(std::ostream& ostream) : ostream_(ostream) {}
+
+    template <typename U>
+    void operator()(const char*, const U& source) const {
+      SaveIntoBinaryImpl<U>::Save(ostream_, source);
+    }
+  };
+
+  static void Save(std::ostream& ostream, const T& source) {
+    using DECAYED_T = current::decay<T>;
+    using SUPER = current::reflection::SuperType<DECAYED_T>;
+
+    SaveIntoBinaryImpl<SUPER>::Save(ostream, source);
+
+    SaveFieldVisitor visitor(ostream);
+    current::reflection::VisitAllFields<DECAYED_T, current::reflection::FieldNameAndImmutableValue>::WithObject(
+        source, visitor);
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <>
+struct LoadFromBinaryImpl<CurrentStruct> {
+  static void Load(std::istream&, CurrentStruct&) {}
+};
+
+template <typename T>
+struct LoadFromBinaryImpl<T, ENABLE_IF<IS_CURRENT_STRUCT(T) && !std::is_same<T, CurrentStruct>::value>> {
+  struct LoadFieldVisitor {
+    std::istream& istream_;
+
+    explicit LoadFieldVisitor(std::istream& istream) : istream_(istream) {}
+
+    template <typename U>
+    void operator()(const char*, U& value) const {
+      LoadFromBinaryImpl<U>::Load(istream_, value);
+    }
+  };
+
+  static void Load(std::istream& istream, T& destination) {
+    using DECAYED_T = current::decay<T>;
+    using SUPER = current::reflection::SuperType<DECAYED_T>;
+
+    if (!std::is_same<SUPER, CurrentStruct>::value) {
+      LoadFromBinaryImpl<SUPER>::Load(istream, destination);
+    }
+
+    LoadFieldVisitor visitor(istream);
+    current::reflection::VisitAllFields<current::decay<T>,
+                                        current::reflection::FieldNameAndMutableValue>::WithObject(destination,
+                                                                                                   visitor);
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_STRUCT_H
-
-

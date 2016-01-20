@@ -89,6 +89,8 @@ struct JSONUninitializedVariantObjectException : TypeSystemParseJSONException {}
 
 }  // namepsace json
 
+namespace binary {
+
 struct BinarySerializationException : Exception {
   using Exception::Exception;
 };
@@ -108,11 +110,15 @@ struct BinaryLoadFromStreamException : BinarySerializationException {
                                      " bytes, read only " + current::strings::ToString(actually_read) + '.') {}
 };
 
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 using current::serialization::json::InvalidJSONException;
 using current::serialization::json::TypeSystemParseJSONException;
 using current::serialization::json::JSONUninitializedVariantObjectException;
+
+using current::serialization::binary::BinarySaveToStreamException;
+using current::serialization::binary::BinaryLoadFromStreamException;
 
 #endif  // TYPE_SYSTEM_SERIALIZATION_EXCEPTIONS_H

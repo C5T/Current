@@ -28,21 +28,18 @@ SOFTWARE.
 
 #include <type_traits>
 
-#include "../json.h"
+#include "primitive.h"
 
 #include "../../../Bricks/template/enable_if.h"
 
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
 template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
-  static bool Save(rapidjson::Value& destination,
-                                                       rapidjson::Document::AllocatorType&,
-                                                       const T& value) {
+  static bool Save(rapidjson::Value& destination, rapidjson::Document::AllocatorType&, const T& value) {
     AssignToRapidJSONValue(destination, static_cast<typename std::underlying_type<T>::type>(value));
     return true;
   }
@@ -68,11 +65,37 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<std::is_enum<T>::value>> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <typename T>
+struct SaveIntoBinaryImpl<T, ENABLE_IF<std::is_enum<T>::value>> {
+  static void Save(std::ostream& ostream, const T& value) {
+    SavePrimitiveTypeIntoBinary::Save(ostream, static_cast<typename std::underlying_type<T>::type>(value));
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <typename T>
+struct LoadFromBinaryImpl<T, ENABLE_IF<std::is_enum<T>::value>> {
+  static void Load(std::istream& istream, T& destination) {
+    using T_UNDERLYING = typename std::underlying_type<T>::type;
+    const size_t bytes_read =
+        istream.rdbuf()->sgetn(reinterpret_cast<char*>(std::addressof(destination)), sizeof(T_UNDERLYING));
+    if (bytes_read != sizeof(T_UNDERLYING)) {
+      throw BinaryLoadFromStreamException(sizeof(T_UNDERLYING), bytes_read);  // LCOV_EXCL_LINE
+    }
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_ENUM_H
-
-

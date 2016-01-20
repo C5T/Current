@@ -26,14 +26,15 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
 
-#include "../json.h"
+#include "../base.h"
 
 #include "../../Reflection/types.h"
+
+#include "../../../Bricks/strings/util.h"
 
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
 template <JSONFormat J>
@@ -62,11 +63,8 @@ struct LoadFromJSONImpl<reflection::TypeID, J> {
 };
 
 }  // namespace load
-
 }  // namespace json
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
-
-

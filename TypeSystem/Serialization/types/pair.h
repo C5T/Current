@@ -28,12 +28,11 @@ SOFTWARE.
 
 #include <utility>
 
-#include "../json.h"
+#include "../base.h"
 
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
 template <typename TF, typename TS, JSONFormat J>
@@ -70,11 +69,34 @@ struct LoadFromJSONImpl<std::pair<TF, TS>, J> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <typename TF, typename TS>
+struct SaveIntoBinaryImpl<std::pair<TF, TS>> {
+  static void Save(std::ostream& ostream, const std::pair<TF, TS>& value) {
+    SaveIntoBinaryImpl<TF>::Save(ostream, value.first);
+    SaveIntoBinaryImpl<TS>::Save(ostream, value.second);
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <typename TF, typename TS>
+struct LoadFromBinaryImpl<std::pair<TF, TS>> {
+  static void Load(std::istream& istream, std::pair<TF, TS>& destination) {
+    LoadFromBinaryImpl<TF>::Load(istream, destination.first);
+    LoadFromBinaryImpl<TS>::Load(istream, destination.second);
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PAIR_H
-
-

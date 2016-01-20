@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include <type_traits>
 
-#include "../json.h"
+#include "primitive.h"
 
 #include "../../variant.h"
 #include "../../Reflection/reflection.h"
@@ -47,7 +47,6 @@ SOFTWARE.
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
 using current::ThreadLocalSingleton;
@@ -56,7 +55,8 @@ template <typename T, JSONFormat J>
 struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
   class SaveVariantCurrentOrMinimalistic {
    public:
-    SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination, rapidjson::Document::AllocatorType& allocator)
+    SaveVariantCurrentOrMinimalistic(rapidjson::Value& destination,
+                                     rapidjson::Document::AllocatorType& allocator)
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
@@ -137,252 +137,237 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
 
 namespace load {
 
-  template <typename T_VARIANT>
-  struct LoadVariantCurrent {
-    class Impl {
-     public:
-      Impl() {
-        current::metaprogramming::combine<current::metaprogramming::map<Registerer, typename T_VARIANT::T_TYPELIST>>
-            bulk_deserializers_registerer;
-        bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
-      }
+template <typename T_VARIANT>
+struct LoadVariantCurrent {
+  class Impl {
+   public:
+    Impl() {
+      current::metaprogramming::combine<
+          current::metaprogramming::map<Registerer, typename T_VARIANT::T_TYPELIST>>
+          bulk_deserializers_registerer;
+      bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+    }
 
-      void DoLoadVariant(rapidjson::Value* source,
-                         T_VARIANT& destination,
-                         const std::string& path) const {
-        using namespace ::current::reflection;
-        if (source && source->IsObject()) {
-          TypeID type_id;
-          if (source->HasMember("")) {
-            rapidjson::Value* member = &(*source)[""];
-            LoadFromJSONImpl<TypeID, JSONFormat::Current>::Load(member, type_id, path + "[\"\"]");
-            const auto cit = deserializers_.find(type_id);
-            if (cit != deserializers_.end()) {
-              cit->second->Deserialize(source, destination, path);
-            } else {
-              throw JSONSchemaException("a type id listed in the type list", member, path);  // LCOV_EXCL_LINE
-            }
+    void DoLoadVariant(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) const {
+      using namespace ::current::reflection;
+      if (source && source->IsObject()) {
+        TypeID type_id;
+        if (source->HasMember("")) {
+          rapidjson::Value* member = &(*source)[""];
+          LoadFromJSONImpl<TypeID, JSONFormat::Current>::Load(member, type_id, path + "[\"\"]");
+          const auto cit = deserializers_.find(type_id);
+          if (cit != deserializers_.end()) {
+            cit->second->Deserialize(source, destination, path);
           } else {
-            throw JSONSchemaException("type id as value for an empty string", source, path);  // LCOV_EXCL_LINE
+            throw JSONSchemaException("a type id listed in the type list", member, path);  // LCOV_EXCL_LINE
           }
         } else {
-          throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
+          throw JSONSchemaException("type id as value for an empty string", source, path);  // LCOV_EXCL_LINE
         }
-      };
-
-     private:
-      struct GenericDeserializer {
-        virtual void Deserialize(rapidjson::Value* source,
-                                 T_VARIANT& destination,
-                                 const std::string& path) = 0;
-      };
-
-      template <typename X>
-      struct TypedDeserializer : GenericDeserializer {
-        explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
-
-        void Deserialize(rapidjson::Value* source,
-                         T_VARIANT& destination,
-                         const std::string& path) override {
-          if (source->HasMember(key_name_)) {
-            destination = std::make_unique<X>();
-            LoadFromJSONImpl<X, JSONFormat::Current>::Load(
-                &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
-          } else {
-            // LCOV_EXCL_START
-            throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
-            // LCOV_EXCL_STOP
-          }
-        }
-
-        const std::string key_name_;
-      };
-
-      using T_DESERIALIZERS_MAP =
-          std::unordered_map<::current::reflection::TypeID,
-                             std::unique_ptr<GenericDeserializer>,
-                             ::current::CurrentHashFunction<::current::reflection::TypeID>>;
-      T_DESERIALIZERS_MAP deserializers_;
-
-      template <typename X>
-      struct Registerer {
-        void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
-          using namespace ::current::reflection;
-          // Silently discard duplicate types in the input type list. They would be deserialized correctly.
-          deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
-              std::make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
-        }
-      };
+      } else {
+        throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
+      }
     };
 
-    static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
-  };
+   private:
+    struct GenericDeserializer {
+      virtual void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) = 0;
+    };
 
-  template <typename T_VARIANT>
-  struct LoadVariantMinimalistic {
-    class ImplMinimalistic {
-     public:
-      ImplMinimalistic() {
-        current::metaprogramming::combine<current::metaprogramming::map<RegistererByName, typename T_VARIANT::T_TYPELIST>>
-            bulk_deserializers_registerer;
-        bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
-      }
+    template <typename X>
+    struct TypedDeserializer : GenericDeserializer {
+      explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
-      void DoLoadVariant(rapidjson::Value* source,
-                         T_VARIANT& destination,
-                         const std::string& path) const {
-        using namespace ::current::reflection;
-        if (source && source->IsObject()) {
-          std::string case_name = "";
-          rapidjson::Value* value = nullptr;
-          for (auto cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
-            if (!cit->name.IsString()) {
-              // Should never happen, just a sanity check. -- D.K.
-              throw JSONSchemaException("key name as string", source, path);
-            }
-            const std::string key = cit->name.GetString();
-            // Skip empty key for "backwards" compatibility with the "Current" format.
-            if (!key.empty()) {
-              if (!value) {
-                case_name = key;
-                value = &cit->value;
-              } else {
-                // LCOV_EXCL_START
-                throw JSONSchemaException(
-                    std::string("no other key after `") + case_name + "`, seeing `" + key + "`", source, path);
-                // LCOV_EXCL_STOP
-              }
-            }
-          }
-          if (!value) {
-            throw JSONSchemaException("a key-value entry with a variant type", source, path);
-          } else {
-            const auto cit = deserializers_.find(case_name);
-            if (cit != deserializers_.end()) {
-              cit->second->Deserialize(value, destination, path);
-            } else {
-              throw JSONSchemaException("the value for the variant type", value, path);  // LCOV_EXCL_LINE
-            }
-          }
-        } else {
-          throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
-        }
-      };
-
-     private:
-      struct GenericDeserializerMinimalistic {
-        virtual void Deserialize(rapidjson::Value* source,
-                                 T_VARIANT& destination,
-                                 const std::string& path) = 0;
-      };
-
-      template <typename X>
-      struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
-        void Deserialize(rapidjson::Value* source,
-                         T_VARIANT& destination,
-                         const std::string& path) override {
+      void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) override {
+        if (source->HasMember(key_name_)) {
           destination = std::make_unique<X>();
-          LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, Value<X>(destination), path);
+          LoadFromJSONImpl<X, JSONFormat::Current>::Load(
+              &(*source)[key_name_], Value<X>(destination), path + "[\"" + key_name_ + "\"]");
+        } else {
+          // LCOV_EXCL_START
+          throw JSONSchemaException("variant value", source, path + "[\"" + key_name_ + "\"]");
+          // LCOV_EXCL_STOP
         }
-      };
-
-      using T_DESERIALIZERS_MAP =
-          std::unordered_map<std::string, std::unique_ptr<GenericDeserializerMinimalistic>>;
-      T_DESERIALIZERS_MAP deserializers_;
-
-      template <typename X>
-      struct RegistererByName {
-        void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
-          using namespace ::current::reflection;
-          // Silently discard duplicate types in the input type list.
-          // TODO(dkorolev): This is oh so wrong here.
-          deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X>>();
-        }
-      };
-    };
-
-    static const ImplMinimalistic& Instance() { return ThreadLocalSingleton<ImplMinimalistic>(); }
-  };
-
-  template <typename T_VARIANT>
-  struct LoadVariantFSharp {
-    class ImplFSharp {
-     public:
-      ImplFSharp() {
-        current::metaprogramming::combine<current::metaprogramming::map<RegistererByName, typename T_VARIANT::T_TYPELIST>>
-            bulk_deserializers_registerer;
-        bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
       }
 
-      void DoLoadVariant(rapidjson::Value* source,
-                         T_VARIANT& destination,
-                         const std::string& path) const {
-        using namespace ::current::reflection;
-        if (source && source->IsObject()) {
-          if (source->HasMember("Case")) {
-            rapidjson::Value* member = &(*source)["Case"];
-            std::string case_name;
-            LoadFromJSONImpl<std::string, JSONFormat::NewtonsoftFSharp>::Load(member, case_name, path + ".[\"Case\"]");
-            const auto cit = deserializers_.find(case_name);
-            if (cit != deserializers_.end()) {
-              cit->second->Deserialize(source, destination, path);
-            } else {
-              throw JSONSchemaException("one of requested values of \"Case\"", member, path);  // LCOV_EXCL_LINE
-            }
-          } else {
-            throw JSONSchemaException("a type name in \"Case\"", source, path);  // LCOV_EXCL_LINE
-          }
-        } else {
-          throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
-        }
-      };
-
-     private:
-      struct GenericDeserializerFSharp {
-        virtual void Deserialize(rapidjson::Value* source,
-                                 T_VARIANT& destination,
-                                 const std::string& path) = 0;
-      };
-
-      template <typename X>
-      struct TypedDeserializerFSharp : GenericDeserializerFSharp {
-        void Deserialize(rapidjson::Value* source,
-                         T_VARIANT& destination,
-                         const std::string& path) override {
-          if (source->HasMember("Fields")) {
-            rapidjson::Value* fields = &(*source)["Fields"];
-            if (fields && fields->IsArray() && fields->Size() == 1u) {
-              destination = std::make_unique<X>();
-              LoadFromJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Load(&(*fields)[static_cast<rapidjson::SizeType>(0)],
-                                           Value<X>(destination),
-                                           path + ".[\"Fields\"]");
-            } else {
-              throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
-            }
-          } else {
-            // LCOV_EXCL_START
-            throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
-            // LCOV_EXCL_STOP
-          }
-        }
-      };
-
-      using T_DESERIALIZERS_MAP = std::unordered_map<std::string, std::unique_ptr<GenericDeserializerFSharp>>;
-      T_DESERIALIZERS_MAP deserializers_;
-
-      template <typename X>
-      struct RegistererByName {
-        void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
-          using namespace ::current::reflection;
-          // Silently discard duplicate types in the input type list.
-          // TODO(dkorolev): This is oh so wrong here.
-          deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X>>();
-        }
-      };
+      const std::string key_name_;
     };
 
-    static const ImplFSharp& Instance() { return ThreadLocalSingleton<ImplFSharp>(); }
+    using T_DESERIALIZERS_MAP =
+        std::unordered_map<::current::reflection::TypeID,
+                           std::unique_ptr<GenericDeserializer>,
+                           ::current::CurrentHashFunction<::current::reflection::TypeID>>;
+    T_DESERIALIZERS_MAP deserializers_;
+
+    template <typename X>
+    struct Registerer {
+      void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+        using namespace ::current::reflection;
+        // Silently discard duplicate types in the input type list. They would be deserialized correctly.
+        deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
+            std::make_unique<TypedDeserializer<X>>(CurrentTypeName<X>());
+      }
+    };
   };
+
+  static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
+};
+
+template <typename T_VARIANT>
+struct LoadVariantMinimalistic {
+  class ImplMinimalistic {
+   public:
+    ImplMinimalistic() {
+      current::metaprogramming::combine<
+          current::metaprogramming::map<RegistererByName, typename T_VARIANT::T_TYPELIST>>
+          bulk_deserializers_registerer;
+      bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+    }
+
+    void DoLoadVariant(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) const {
+      using namespace ::current::reflection;
+      if (source && source->IsObject()) {
+        std::string case_name = "";
+        rapidjson::Value* value = nullptr;
+        for (auto cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
+          if (!cit->name.IsString()) {
+            // Should never happen, just a sanity check. -- D.K.
+            throw JSONSchemaException("key name as string", source, path);
+          }
+          const std::string key = cit->name.GetString();
+          // Skip empty key for "backwards" compatibility with the "Current" format.
+          if (!key.empty()) {
+            if (!value) {
+              case_name = key;
+              value = &cit->value;
+            } else {
+              // LCOV_EXCL_START
+              throw JSONSchemaException(
+                  std::string("no other key after `") + case_name + "`, seeing `" + key + "`", source, path);
+              // LCOV_EXCL_STOP
+            }
+          }
+        }
+        if (!value) {
+          throw JSONSchemaException("a key-value entry with a variant type", source, path);
+        } else {
+          const auto cit = deserializers_.find(case_name);
+          if (cit != deserializers_.end()) {
+            cit->second->Deserialize(value, destination, path);
+          } else {
+            throw JSONSchemaException("the value for the variant type", value, path);  // LCOV_EXCL_LINE
+          }
+        }
+      } else {
+        throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
+      }
+    };
+
+   private:
+    struct GenericDeserializerMinimalistic {
+      virtual void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) = 0;
+    };
+
+    template <typename X>
+    struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
+      void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) override {
+        destination = std::make_unique<X>();
+        LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, Value<X>(destination), path);
+      }
+    };
+
+    using T_DESERIALIZERS_MAP =
+        std::unordered_map<std::string, std::unique_ptr<GenericDeserializerMinimalistic>>;
+    T_DESERIALIZERS_MAP deserializers_;
+
+    template <typename X>
+    struct RegistererByName {
+      void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+        using namespace ::current::reflection;
+        // Silently discard duplicate types in the input type list.
+        // TODO(dkorolev): This is oh so wrong here.
+        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerMinimalistic<X>>();
+      }
+    };
+  };
+
+  static const ImplMinimalistic& Instance() { return ThreadLocalSingleton<ImplMinimalistic>(); }
+};
+
+template <typename T_VARIANT>
+struct LoadVariantFSharp {
+  class ImplFSharp {
+   public:
+    ImplFSharp() {
+      current::metaprogramming::combine<
+          current::metaprogramming::map<RegistererByName, typename T_VARIANT::T_TYPELIST>>
+          bulk_deserializers_registerer;
+      bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
+    }
+
+    void DoLoadVariant(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) const {
+      using namespace ::current::reflection;
+      if (source && source->IsObject()) {
+        if (source->HasMember("Case")) {
+          rapidjson::Value* member = &(*source)["Case"];
+          std::string case_name;
+          LoadFromJSONImpl<std::string, JSONFormat::NewtonsoftFSharp>::Load(
+              member, case_name, path + ".[\"Case\"]");
+          const auto cit = deserializers_.find(case_name);
+          if (cit != deserializers_.end()) {
+            cit->second->Deserialize(source, destination, path);
+          } else {
+            throw JSONSchemaException("one of requested values of \"Case\"", member, path);  // LCOV_EXCL_LINE
+          }
+        } else {
+          throw JSONSchemaException("a type name in \"Case\"", source, path);  // LCOV_EXCL_LINE
+        }
+      } else {
+        throw JSONSchemaException("variant type as object", source, path);  // LCOV_EXCL_LINE
+      }
+    };
+
+   private:
+    struct GenericDeserializerFSharp {
+      virtual void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) = 0;
+    };
+
+    template <typename X>
+    struct TypedDeserializerFSharp : GenericDeserializerFSharp {
+      void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) override {
+        if (source->HasMember("Fields")) {
+          rapidjson::Value* fields = &(*source)["Fields"];
+          if (fields && fields->IsArray() && fields->Size() == 1u) {
+            destination = std::make_unique<X>();
+            LoadFromJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Load(
+                &(*fields)[static_cast<rapidjson::SizeType>(0)], Value<X>(destination), path + ".[\"Fields\"]");
+          } else {
+            throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
+          }
+        } else {
+          // LCOV_EXCL_START
+          throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
+          // LCOV_EXCL_STOP
+        }
+      }
+    };
+
+    using T_DESERIALIZERS_MAP = std::unordered_map<std::string, std::unique_ptr<GenericDeserializerFSharp>>;
+    T_DESERIALIZERS_MAP deserializers_;
+
+    template <typename X>
+    struct RegistererByName {
+      void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+        using namespace ::current::reflection;
+        // Silently discard duplicate types in the input type list.
+        // TODO(dkorolev): This is oh so wrong here.
+        deserializers[CurrentTypeName<X>()] = std::make_unique<TypedDeserializerFSharp<X>>();
+      }
+    };
+  };
+
+  static const ImplFSharp& Instance() { return ThreadLocalSingleton<ImplFSharp>(); }
+};
 
 template <JSONFormat J, typename T>
 using LoadVariantPicker =
@@ -407,11 +392,14 @@ struct LoadFromJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+
+// TODO(mzhurovich): Implement it.
+
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_VARIANT_H
-
-

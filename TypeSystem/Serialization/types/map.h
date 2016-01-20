@@ -29,22 +29,20 @@ SOFTWARE.
 #include <type_traits>
 #include <map>
 
-#include "../json.h"
+#include "../base.h"
 
 #include "../../../Bricks/template/enable_if.h"
 
 namespace current {
 namespace serialization {
 namespace json {
-
 namespace save {
 
 template <typename TK, typename TV, typename TC, typename TA, JSONFormat J>
 struct SaveIntoJSONImpl<std::map<TK, TV, TC, TA>, J> {
-  static bool Save(
-      rapidjson::Value& destination,
-      rapidjson::Document::AllocatorType& allocator,
-      const std::map<TK, TV, TC, TA>& value) {
+  static bool Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const std::map<TK, TV, TC, TA>& value) {
     destination.SetArray();
     for (const auto& element : value) {
       rapidjson::Value key_value_as_array;
@@ -63,10 +61,9 @@ struct SaveIntoJSONImpl<std::map<TK, TV, TC, TA>, J> {
 
 template <typename TV, typename TC, typename TA, JSONFormat J>
 struct SaveIntoJSONImpl<std::map<std::string, TV, TC, TA>, J> {
-  static bool Save(
-      rapidjson::Value& destination,
-      rapidjson::Document::AllocatorType& allocator,
-      const std::map<std::string, TV, TC, TA>& value) {
+  static bool Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const std::map<std::string, TV, TC, TA>& value) {
     destination.SetObject();
     for (const auto& element : value) {
       rapidjson::Value populated_value;
@@ -127,11 +124,43 @@ struct LoadFromJSONImpl<std::map<TK, TV, TC, TA>, J> {
 };
 
 }  // namespace load
-
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <typename TK, typename TV, typename TC, typename TA>
+struct SaveIntoBinaryImpl<std::map<TK, TV, TC, TA>> {
+  static void Save(std::ostream& ostream, const std::map<TK, TV, TC, TA>& value) {
+    SaveSizeIntoBinary(ostream, value.size());
+    for (const auto& element : value) {
+      SaveIntoBinaryImpl<std::pair<TK, TV>>::Save(ostream, element);
+    }
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <typename TK, typename TV, typename TC, typename TA>
+struct LoadFromBinaryImpl<std::map<TK, TV, TC, TA>> {
+  static void Load(std::istream& istream, std::map<TK, TV, TC, TA>& destination) {
+    destination.clear();
+    BINARY_FORMAT_SIZE_TYPE size = LoadSizeFromBinary(istream);
+    TK k;
+    TV v;
+    for (size_t i = 0; i < static_cast<size_t>(size); ++i) {
+      LoadFromBinaryImpl<TK>::Load(istream, k);
+      LoadFromBinaryImpl<TV>::Load(istream, v);
+      destination.emplace(k, v);
+    }
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_MAP_H
-
-
