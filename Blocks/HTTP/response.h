@@ -56,11 +56,11 @@ template <>
 struct StringBodyGenerator<false, true> {
   template <typename T>
   static std::string AsString(T&& object) {
-    return current::serialization::JSON(std::forward<T>(object)) + '\n';
+    return current::JSON(std::forward<T>(object)) + '\n';
   }
   template <typename T>
   static std::string AsString(T&& object, const std::string& object_name) {
-    return "{\"" + object_name + "\":" + current::serialization::JSON(std::forward<T>(object)) + "}\n";
+    return "{\"" + object_name + "\":" + current::JSON(std::forward<T>(object)) + "}\n";
   }
   static std::string DefaultContentType() {
     return current::net::HTTPServerConnection::DefaultJSONContentType();
@@ -220,7 +220,7 @@ struct Response {
 
   template <typename T>
   Response& JSON(const T& object) {
-    body = current::serialization::JSON(object) + '\n';
+    body = current::JSON(object) + '\n';
     content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
     initialized = true;
     return *this;
@@ -228,7 +228,7 @@ struct Response {
 
   template <typename T>
   Response& JSON(const T& object, const std::string& object_name) {
-    body = "{\"" + object_name + "\":" + current::serialization::JSON(object) + "}\n";
+    body = "{\"" + object_name + "\":" + current::JSON(object) + "}\n";
     content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
     initialized = true;
     return *this;
