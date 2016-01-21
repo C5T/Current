@@ -2,6 +2,8 @@
 #ifndef RAPIDJSON_STREAMWRAPPER_H_
 #define RAPIDJSON_STREAMWRAPPER_H_
 
+#include <iostream>
+
 #include "rapidjson.h"
 
 namespace rapidjson {
