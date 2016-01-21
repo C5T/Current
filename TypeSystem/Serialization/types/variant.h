@@ -30,9 +30,7 @@ SOFTWARE.
 
 #include "primitive.h"
 
-// To fix `error: incomplete type ‘current::serialization::json::load::LoadFromJSONImpl<>`.
-#include "../json.h"
-#include "../binary.h"
+#include "current_typeid.h"
 
 #include "../../variant.h"
 #include "../../Reflection/reflection.h"
