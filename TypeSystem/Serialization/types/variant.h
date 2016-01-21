@@ -236,7 +236,7 @@ struct LoadVariantMinimalistic {
         for (auto cit = source->MemberBegin(); cit != source->MemberEnd(); ++cit) {
           if (!cit->name.IsString()) {
             // Should never happen, just a sanity check. -- D.K.
-            throw JSONSchemaException("key name as string", source, path);
+            throw JSONSchemaException("key name as string", source, path);  // LCOV_EXCL_LINE
           }
           const std::string key = cit->name.GetString();
           // Skip empty key for "backwards" compatibility with the "Current" format.
@@ -253,7 +253,7 @@ struct LoadVariantMinimalistic {
           }
         }
         if (!value) {
-          throw JSONSchemaException("a key-value entry with a variant type", source, path);
+          throw JSONSchemaException("a key-value entry with a variant type", source, path);  // LCOV_EXCL_LINE
         } else {
           const auto cit = deserializers_.find(case_name);
           if (cit != deserializers_.end()) {
@@ -346,7 +346,9 @@ struct LoadVariantFSharp {
             LoadFromJSONImpl<X, JSONFormat::NewtonsoftFSharp>::Load(
                 &(*fields)[static_cast<rapidjson::SizeType>(0)], Value<X>(destination), path + ".[\"Fields\"]");
           } else {
+            // LCOV_EXCL_START
             throw JSONSchemaException("array of one element in \"Fields\"", source, path + ".[\"Fields\"]");
+            // LCOV_EXCL_STOP
           }
         } else {
           // LCOV_EXCL_START

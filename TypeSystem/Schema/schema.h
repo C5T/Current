@@ -270,7 +270,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
             if (globals.fsharp_name.count(p.type_id) != 0u) {
               oss_ << globals.fsharp_name.at(p.type_id);
             } else {
-              oss_ << "UNKNOWN_BASIC_TYPE_" + current::strings::ToString(p.type_id);
+              oss_ << "UNKNOWN_BASIC_TYPE_" + current::strings::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
           void operator()(const ReflectedType_Enum& e) const { oss_ << e.name; }

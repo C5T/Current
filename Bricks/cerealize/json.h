@@ -140,12 +140,14 @@ constexpr auto HasFromInvalidJSON(int)
 template <typename T, bool B>
 struct ParseJSONErrorHandler {};
 
+// LCOV_EXCL_START
 template <typename T>
 struct ParseJSONErrorHandler<T, false> {
   static void HandleError(const std::string& input_json, T&) {
     CURRENT_THROW(current::ParseJSONException(input_json));
   }
 };
+// LCOV_EXCL_STOP
 
 template <typename T>
 struct ParseJSONErrorHandler<T, true> {

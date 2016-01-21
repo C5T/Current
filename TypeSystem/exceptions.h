@@ -44,9 +44,9 @@ struct NoValueOfTypeExceptionWrapper {
 template <typename T>
 using NoValueOfType = typename NoValueOfTypeExceptionWrapper<T>::const_reference_type;
 
-struct UninitializedVariantException : Exception {};
+struct UninitializedVariantException : Exception {};  // LCOV_EXCL_LINE
 template <typename... TS>
-struct UninitializedVariantOfTypeException : UninitializedVariantException {};
+struct UninitializedVariantOfTypeException : UninitializedVariantException {};  // LCOV_EXCL_LINE
 
 typedef const UninitializedVariantException& UninitializedVariant;
 

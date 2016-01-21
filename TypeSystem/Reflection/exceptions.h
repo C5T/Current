@@ -30,7 +30,7 @@ SOFTWARE.
 namespace current {
 namespace reflection {
 
-struct UnknownTypeIDException : Exception {};
+struct UnknownTypeIDException : Exception {};  // LCOV_EXCL_LINE
 
 }  // namespace reflection
 }  // namespace current

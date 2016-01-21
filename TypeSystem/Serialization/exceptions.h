@@ -95,6 +95,7 @@ struct BinarySerializationException : Exception {
   using Exception::Exception;
 };
 
+// LCOV_EXCL_START
 struct BinarySaveToStreamException : BinarySerializationException {
   using BinarySerializationException::BinarySerializationException;
   BinarySaveToStreamException(const size_t bytes_to_write, const size_t actually_wrote)
@@ -102,6 +103,7 @@ struct BinarySaveToStreamException : BinarySerializationException {
                                      " bytes, wrote only " + current::strings::ToString(actually_wrote) + '.') {
   }
 };
+// LCOV_EXCL_STOP
 
 struct BinaryLoadFromStreamException : BinarySerializationException {
   using BinarySerializationException::BinarySerializationException;
