@@ -26,9 +26,13 @@ SOFTWARE.
 #include "docu/docu_2_code.cc"
 
 #include "storage.h"
+#include "rest.h"
+
+#include "../Blocks/HTTP/api.h"
 
 #include "../Bricks/file/file.h"
 #include "../Bricks/dflags/dflags.h"
+
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #ifndef _MSC_VER
@@ -41,6 +45,8 @@ DEFINE_string(transactional_storage_test_tmpdir,
               "Local path for the test to create temporary files in.");
 #endif
 
+DEFINE_int32(transactional_storage_test_port, 9876, "Local port to run [REST] API tests against.");
+
 #define USE_KEY_METHODS
 
 namespace transactional_storage_test {
@@ -48,7 +54,7 @@ namespace transactional_storage_test {
 CURRENT_STRUCT(Element) {
   CURRENT_FIELD(x, int32_t);
   CURRENT_CONSTRUCTOR(Element)(int32_t x = 0) : x(x) {}
-  // Dummy key function to support key-only deleter.
+  // To use `Element` in storage, it should either define a `.key` field, or `.key()` method.
   int32_t key() const { return x; }
 };
 
@@ -121,8 +127,9 @@ TEST(TransactionalStorage, SmokeTest) {
   {
     Storage storage(persistence_file_name);
     EXPECT_EQ(3u, storage.FieldsCount());
+
     {
-      const auto result = storage.Transaction([](CurrentStorage<Storage> fields) {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.v1.Empty());
         EXPECT_TRUE(fields.v2.Empty());
         fields.v1.PushBack(Element(0));
@@ -138,7 +145,7 @@ TEST(TransactionalStorage, SmokeTest) {
     }
 
     {
-      const auto result = storage.Transaction([](CurrentStorage<Storage> fields) {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         fields.d.Add(Record{"one", 1});
 
         {
@@ -171,7 +178,7 @@ TEST(TransactionalStorage, SmokeTest) {
     }
 
     {
-      const auto result = storage.Transaction([](CurrentStorage<Storage> fields) {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         fields.v1.PushBack(Element(1));
         fields.v2.PushBack(Element(2));
         fields.d.Add(Record{"three", 3});
@@ -180,7 +187,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(WasCommited(result));
     }
     {
-      const auto f = [](ImmutableCurrentStorage<Storage>) { return 42; };
+      const auto f = [](ImmutableFields<Storage>) { return 42; };
 
       const auto result = storage.Transaction(f).Go();
       EXPECT_TRUE(WasCommited(result));
@@ -191,7 +198,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
   {
     Storage replayed(persistence_file_name);
-    replayed.Transaction([](ImmutableCurrentStorage<Storage> fields) {
+    replayed.Transaction([](ImmutableFields<Storage> fields) {
       EXPECT_EQ(1u, fields.v1.Size());
       EXPECT_EQ(1u, fields.v2.Size());
       EXPECT_EQ(42, Value(fields.v1[0]).x);
@@ -206,6 +213,43 @@ TEST(TransactionalStorage, SmokeTest) {
   }
 }
 
+struct CurrentStorageTestMagicTypesExtractor {
+  std::string& s;
+  CurrentStorageTestMagicTypesExtractor(std::string& s) : s(s) {}
+  template <typename FIELD_TYPE, typename ENTRY_TYPE>
+  int operator()(const char* name, FIELD_TYPE, ENTRY_TYPE) {
+    s = std::string(name) + ", " + FIELD_TYPE::HumanReadableName() + ", " +
+        current::reflection::CurrentTypeName<typename ENTRY_TYPE::type>();
+    return 42;  // Checked against via `::current::storage::FieldNameAndTypeByIndexAndReturn`.
+  }
+};
+
+TEST(TransactionalStorage, FieldAccessors) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage("fields_accessors_test");
+  EXPECT_EQ(3u, storage.FieldsCount());
+
+  EXPECT_EQ("v1", storage(::current::storage::FieldNameByIndex<0>()));
+  EXPECT_EQ("v2", storage(::current::storage::FieldNameByIndex<1>()));
+  EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<2>()));
+
+  {
+    std::string s;
+    storage(::current::storage::FieldNameAndTypeByIndex<0>(), CurrentStorageTestMagicTypesExtractor(s));
+    EXPECT_EQ("v1, Vector, Element", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("v2, Vector, Element", s);
+  }
+}
+
 TEST(TransactionalStorage, Exceptions) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
@@ -213,20 +257,20 @@ TEST(TransactionalStorage, Exceptions) {
   Storage storage("exceptions_test");
 
   bool should_throw;
-  const auto f_void = [&should_throw](ImmutableCurrentStorage<Storage>) {
+  const auto f_void = [&should_throw](ImmutableFields<Storage>) {
     if (should_throw) {
       CURRENT_STORAGE_THROW_ROLLBACK();
     }
   };
 
-  const auto f_void_custom_exception = [&should_throw](ImmutableCurrentStorage<Storage>) {
+  const auto f_void_custom_exception = [&should_throw](ImmutableFields<Storage>) {
     if (should_throw) {
       throw std::logic_error("wtf");
     }
   };
 
   bool throw_with_value;
-  const auto f_int = [&should_throw, &throw_with_value](ImmutableCurrentStorage<Storage>) {
+  const auto f_int = [&should_throw, &throw_with_value](ImmutableFields<Storage>) {
     if (should_throw) {
       if (throw_with_value) {
         CURRENT_STORAGE_THROW_ROLLBACK_WITH_VALUE(int, -1);
@@ -238,7 +282,7 @@ TEST(TransactionalStorage, Exceptions) {
     }
   };
 
-  const auto f_int_custom_exception = [&should_throw](ImmutableCurrentStorage<Storage>) {
+  const auto f_int_custom_exception = [&should_throw](ImmutableFields<Storage>) {
     if (should_throw) {
       throw 100500;
     } else {
@@ -569,5 +613,147 @@ TEST(TransactionalStorage, OnDisk) {
     EXPECT_EQ(1001, Value(resumed.m.Get(101, "one-oh-one")).phew);
   }
 }
-
 #endif
+
+namespace transactional_storage_test {
+
+CURRENT_STRUCT(SimpleUser) {
+  CURRENT_FIELD(key, std::string);
+  CURRENT_FIELD(name, std::string);
+  CURRENT_CONSTRUCTOR(SimpleUser)(const std::string& key = "", const std::string& name = "")
+      : key(key), name(name) {}
+};
+
+CURRENT_STRUCT(SimplePost) {
+  CURRENT_FIELD(key, std::string);
+  CURRENT_FIELD(text, std::string);
+  CURRENT_CONSTRUCTOR(SimplePost)(const std::string& key = "", const std::string& text = "")
+      : key(key), text(text) {}
+};
+
+CURRENT_STORAGE_STRUCT_TAG(SimpleUser, SimpleUserPersisted);
+CURRENT_STORAGE_STRUCT_TAG(SimplePost, SimplePostPersisted);
+
+CURRENT_STORAGE(SimpleStorage) {
+  CURRENT_STORAGE_FIELD(user, Dictionary, SimpleUserPersisted);
+  CURRENT_STORAGE_FIELD(post, Dictionary, SimplePostPersisted);
+};
+
+}  // namespace transactional_storage_test
+
+// A simple copy-pasted poor man's "REST API", effectively a "golden test" for the real API test below.
+TEST(TransactionalStorage, FakeAPITest) {
+  using namespace transactional_storage_test;
+  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage("simple_api_storage_fake_api");
+  EXPECT_EQ(2u, storage.FieldsCount());
+
+  auto& http_server = HTTP(FLAGS_transactional_storage_test_port);
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
+  for (size_t i = 0; i < 2; ++i) {
+    // This is a boilerplate for the code that should be "autogenerated" from within a template.
+    // TODO: Interestingly, just `const auto scope = http_server.Register(...)` doesn't do it.
+    HTTPRoutesScope scope;
+    scope += http_server.Register(
+        "/user",
+        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+        [&storage](Request r) {
+          if (r.method == "GET") {
+            if (r.url_path_args.size() != 1) {
+              r("TBD ERROR", HTTPResponseCode.BadRequest);
+            } else {
+              const auto& key = r.url_path_args[0];
+              storage.Transaction([key](ImmutableFields<Storage> data) -> Response {
+                const auto result = data.user[key];
+                if (Exists(result)) {
+                  return Value(result);
+                } else {
+                  return Response("nope", HTTPResponseCode.NotFound);
+                }
+              }, std::move(r)).Wait();
+            }
+          } else if (r.method == "POST") {
+            if (!r.url_path_args.empty()) {
+              r("TBD ERROR", HTTPResponseCode.BadRequest);
+            } else {
+              try {
+                const auto body = ParseJSON<SimpleUser>(r.body);
+                storage.Transaction([body](MutableFields<Storage> data) { data.user.Add(body); }).Wait();
+                r("", HTTPResponseCode.NoContent);
+              } catch (const TypeSystemParseJSONException&) {
+                r("TBD ERROR", HTTPResponseCode.BadRequest);
+              }
+            }
+          } else if (r.method == "DELETE") {
+            if (r.url_path_args.size() != 1) {
+              r("TBD ERROR", HTTPResponseCode.BadRequest);
+            } else {
+              const auto& key = r.url_path_args[0];
+              storage.Transaction([key](MutableFields<Storage> data) { data.user.Erase(key); }).Wait();
+              r("", HTTPResponseCode.NoContent);
+            }
+          } else {
+            r("", HTTPResponseCode.MethodNotAllowed);
+          }
+        });
+
+    // And this is (somewhat) how a test for "template-auto-generated" API looks like.
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/user/max")).code));
+
+    EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/user", SimpleUser("max", "MZ"))).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/user/max")).code));
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/user/max")).body).name);
+
+    EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/user/max")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/user/max")).code));
+  }
+}
+
+// TODO: `::current::storage::FieldNameAndTypeByIndex<0>()` can extract storage entry type ("Dictionary").
+
+// A "complete" "REST API" test.
+TEST(TransactionalStorage, RealAPITest) {
+  using namespace transactional_storage_test;
+  using Storage = SimpleStorage<JSONFilePersister>;
+
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  Storage storage(persistence_file_name);
+  EXPECT_EQ(2u, storage.FieldsCount());
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
+  for (size_t i = 0; i < 2; ++i) {
+    // Registed RESTful HTTP endpoints, in a scoped way.
+    const auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+
+    EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ"))).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/max")).body).name);
+
+    EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/user/max")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+
+    EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/post", SimplePost("test", "blah"))).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+    EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api/post/test")).body).text);
+
+    EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+  }
+
+  const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
+      current::FileSystem::ReadFileAsString(persistence_file_name));
+
+  EXPECT_EQ(8u, persisted_transactions.size());
+}

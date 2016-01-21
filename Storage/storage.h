@@ -70,24 +70,24 @@ namespace storage {
 
 // `CURRENT_STORAGE_STRUCT_TAG`:
 // 1) Creates a dedicated C++ type to allow compile-time disambiguation of storages of same underlying types.
-// 2) Splits the type into `T_ADDER` and `T_DELETER`, to support seamless persistence of deletions.
+// 2) Splits the type into `T_UPDATE_EVENT` and `T_DELETE_EVENT` to enable persisting deletions too.
 
 // clang-format off
-#define CURRENT_STORAGE_STRUCT_TAG(base, alias)                                               \
-  CURRENT_STRUCT(CURRENT_STORAGE_ADDER_##alias, base) {                                       \
-    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias) {}                             \
-    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_ADDER_##alias)(const base& value) : SUPER(value) {}   \
-  };                                                                                          \
-  CURRENT_STRUCT(CURRENT_STORAGE_DELETER_##alias) {                                           \
-    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<base>); \
-    CURRENT_DEFAULT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias) {}                           \
-    CURRENT_CONSTRUCTOR(CURRENT_STORAGE_DELETER_##alias)(const base& value)                   \
-        : key(::current::storage::sfinae::GetKey(value)) {}                                   \
-  };                                                                                          \
-  struct alias {                                                                              \
-    using T_ENTRY = base;                                                                     \
-    using T_ADDER = CURRENT_STORAGE_ADDER_##alias;                                            \
-    using T_DELETER = CURRENT_STORAGE_DELETER_##alias;                                        \
+#define CURRENT_STORAGE_STRUCT_TAG(base, alias)                              \
+  CURRENT_STRUCT(alias##Updated, base) {                                     \
+    CURRENT_DEFAULT_CONSTRUCTOR(alias##Updated) {}                           \
+    CURRENT_CONSTRUCTOR(alias##Updated)(const base& value) : SUPER(value) {} \
+  };                                                                         \
+  CURRENT_STRUCT(alias##Deleted) {                                           \
+    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<base>);    \
+    CURRENT_DEFAULT_CONSTRUCTOR(alias##Deleted) {}                           \
+    CURRENT_CONSTRUCTOR(alias##Deleted)(const base& value)                   \
+        : key(::current::storage::sfinae::GetKey(value)) {}                  \
+  };                                                                         \
+  struct alias {                                                             \
+    using T_ENTRY = base;                                                    \
+    using T_UPDATE_EVENT = alias##Updated;                                   \
+    using T_DELETE_EVENT = alias##Deleted;                                   \
   }
 // clang-format on
 
@@ -96,10 +96,11 @@ namespace storage {
   struct CURRENT_STORAGE_FIELDS_HELPER;                                                                        \
   template <>                                                                                                  \
   struct CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>> {     \
-    constexpr static size_t CURRENT_STORAGE_FIELD_INDEX_BASE = __COUNTER__;                                    \
+    constexpr static size_t CURRENT_STORAGE_FIELD_INDEX_BASE = __COUNTER__ + 1;                                \
     typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
   }
 
+// clang-format off
 #define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
   template <typename INSTANTIATION_TYPE>                                                                     \
   struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
@@ -123,7 +124,7 @@ namespace storage {
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
         : persister_(std::forward<ARGS>(args)...),                                                           \
           transaction_policy_(persister_, FIELDS::current_storage_mutation_journal_) {                       \
-      persister_.Replay([this](T_FIELDS_VARIANT && entry) { entry.Call(*this); });                           \
+      persister_.Replay([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); });                            \
     }                                                                                                        \
     template <typename F>                                                                                    \
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
@@ -139,7 +140,7 @@ namespace storage {
       FIELDS& fields = *this;                                                                                \
       return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
     }                                                                                                        \
-    size_t FieldsCount() const { return fields_count; }                                                      \
+    constexpr static size_t FieldsCount() { return fields_count; }                                           \
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \
@@ -148,6 +149,7 @@ namespace storage {
                                            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
                                            TRANSACTION_POLICY>;                                              \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
+// clang-format on
 
 #define CURRENT_STORAGE(name)            \
   CURRENT_STORAGE_IMPLEMENTATION(name);  \
@@ -156,24 +158,50 @@ namespace storage {
       : ::current::storage::FieldsBase<  \
             CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>>
 
-#define CURRENT_STORAGE_FIELD(field_name, field_type, entry_tag, ...)                                      \
-  ::current::storage::FieldInfo<entry_tag::T_ADDER, entry_tag::T_DELETER> operator()(                      \
-      ::current::storage::Index<CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE - 1>) \
-      const {                                                                                              \
-    return ::current::storage::FieldInfo<entry_tag::T_ADDER, entry_tag::T_DELETER>();                      \
-  }                                                                                                        \
-  using T_FIELD_TYPE_##field_name = ::current::storage::Field<                                             \
-      INSTANTIATION_TYPE,                                                                                  \
-      field_type<entry_tag::T_ENTRY, entry_tag::T_ADDER, entry_tag::T_DELETER, ##__VA_ARGS__>>;            \
-  T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);     \
-  void operator()(const entry_tag::T_ADDER& adder) { field_name(adder); }                                  \
-  void operator()(const entry_tag::T_DELETER& deleter) { field_name(deleter); }
+// clang-format off
+#define CURRENT_STORAGE_FIELD(field_name, field_type, entry_tag, ...)                                       \
+  enum { FIELD_INDEX_##field_name = CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE }; \
+  ::current::storage::FieldInfo<entry_tag::T_UPDATE_EVENT, entry_tag::T_DELETE_EVENT> operator()(           \
+      ::current::storage::FieldInfoByIndex<FIELD_INDEX_##field_name>) const {                               \
+    return ::current::storage::FieldInfo<entry_tag::T_UPDATE_EVENT, entry_tag::T_DELETE_EVENT>();           \
+  }                                                                                                         \
+  std::string operator()(::current::storage::FieldNameByIndex<FIELD_INDEX_##field_name>) const {            \
+    return #field_name;                                                                                     \
+  }                                                                                                         \
+  template <typename F>                                                                                     \
+  void operator()(::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) const {       \
+    f(field_name);                                                                                          \
+  }                                                                                                         \
+  template <typename F>                                                                                     \
+  void operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) {               \
+    f(field_name);                                                                                          \
+  }                                                                                                         \
+  template <typename F>                                                                                     \
+  void operator()(::current::storage::FieldNameAndTypeByIndex<FIELD_INDEX_##field_name>, F&& f) const {     \
+    f(#field_name,                                                                                          \
+      ::current::storage::StorageFieldTypeSelector::field_type(),                                           \
+      ::current::storage::FieldUnderlyingTypeWrapper<entry_tag::T_ENTRY>());                                \
+  }                                                                                                         \
+  template <typename F, typename RETVAL>                                                                    \
+  RETVAL operator()(::current::storage::FieldNameAndTypeByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>, \
+                    F&& f) const {                                                                          \
+    return f(#field_name,                                                                                   \
+             ::current::storage::StorageFieldTypeSelector::field_type(),                                    \
+             ::current::storage::FieldUnderlyingTypeWrapper<entry_tag::T_ENTRY>());                         \
+  }                                                                                                         \
+  using T_FIELD_TYPE_##field_name = ::current::storage::Field<                                              \
+      INSTANTIATION_TYPE,                                                                                   \
+      field_type<entry_tag::T_ENTRY, entry_tag::T_UPDATE_EVENT, entry_tag::T_DELETE_EVENT, ##__VA_ARGS__>>; \
+  T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);      \
+  void operator()(const entry_tag::T_UPDATE_EVENT& update_event) { field_name(update_event); }              \
+  void operator()(const entry_tag::T_DELETE_EVENT& delete_event) { field_name(delete_event); }
+// clang-format on
 
 template <typename STORAGE>
-using CurrentStorage = typename STORAGE::T_FIELDS_BY_REFERENCE;
+using MutableFields = typename STORAGE::T_FIELDS_BY_REFERENCE;
 
 template <typename STORAGE>
-using ImmutableCurrentStorage = typename STORAGE::T_FIELDS_BY_CONST_REFERENCE;
+using ImmutableFields = typename STORAGE::T_FIELDS_BY_CONST_REFERENCE;
 
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
@@ -810,7 +838,7 @@ class LightweightMatrix final
 
 }  // namespace current
 
-using current::storage::CurrentStorage;
-using current::storage::ImmutableCurrentStorage;
+using current::storage::MutableFields;
+using current::storage::ImmutableFields;
 
 #endif  // CURRENT_STORAGE_STORAGE_H
