@@ -1,6 +1,9 @@
 .noshit
 .current
 
+.current_*
+.current_*.*
+
 core
 *.h.gch
 .exrc
