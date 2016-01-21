@@ -71,7 +71,7 @@ class OptionalResult {
     if (exists_) {
       return value_;
     } else {
-      throw NoValueOfTypeException<T>();
+      throw NoValueOfTypeException<T>();  // LCOV_EXCL_LINE
     }
   }
 

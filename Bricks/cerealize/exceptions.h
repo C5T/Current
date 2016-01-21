@@ -29,9 +29,11 @@ SOFTWARE.
 
 namespace current {
 
+// LCOV_EXCL_START
 struct ParseJSONException : Exception {
   explicit ParseJSONException(const std::string& input) : Exception("Invalid JSON:\n" + input) {}
 };
+// LCOV_EXCL_STOP
 
 // File stream during serialization got somehow corrupted.
 struct CerealizeFileStreamErrorException : Exception {};  // LCOV_EXCL_LINE

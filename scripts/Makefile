@@ -50,6 +50,8 @@ all: ${BIN}
 
 clean:
 	find . -type d -name .current | xargs rm -rf
+	find . -type l -name '.current_*' | xargs rm -f
+	find . -type l -name '.current_*.*' | xargs rm -f
 	find . -name core | xargs rm -f
 
 .current/%: %.cc *.h

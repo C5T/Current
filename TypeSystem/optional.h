@@ -148,7 +148,7 @@ class Optional final {
     if (optional_object_ != nullptr) {
       return *optional_object_;
     } else {
-      throw NoValueOfTypeException<T>();
+      throw NoValueOfTypeException<T>();  // LCOV_EXCL_LINE
     }
   }
 

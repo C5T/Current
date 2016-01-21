@@ -17,39 +17,37 @@ fi
 
 # NOTE: TMP_DIR must be resolved from the current working directory.
 
-TMP_DIR_NAME=".current"
-TMP_STDOUT="$TMP_DIR_NAME/stdout.log"
-TMP_STDERR="$TMP_DIR_NAME/stderr.log"
+SOURCE_FILE="$PWD/.current_check_headers"
+TMP_STDOUT="$PWD/.current_stdout.txt"
+TMP_STDERR="$PWD/.current_stderr.txt"
 
-rm -rf "$TMP_DIR_NAME/headers"
-mkdir -p "$TMP_DIR_NAME/headers"
+rm -f $PWD/.current_*.cc $PWD/.current_*.o $PWD/.current_.txt $SOURCE_FILE
 
 echo -e -n "\033[1mCompiling\033[0m: "
 for i in $(ls *.h | grep -v ".cc.h$") ; do
   echo -e -n "\033[36m"
   echo -n "$i "
   echo -e -n "\033[31m"
-  ln -sf "$PWD/$i" "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc"
-  ln -sf "$PWD/$i" "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc"
-  g++ -I . $CPPFLAGS \
-    -c "$PWD/$TMP_DIR_NAME/headers/$i.g++.cc" \
-    -o "$PWD/$TMP_DIR_NAME/headers/$i.g++.o" $LDFLAGS \
+  HEADER_GCC="$PWD/.current_$i.g++.cc"
+  HEADER_CLANG="$PWD/.current_$i.clang++.cc"
+  ln -sf "$PWD/$i" $HEADER_GCC
+  ln -sf "$PWD/$i" $HEADER_CLANG
+  g++ $CPPFLAGS -c $HEADER_GCC -o $HEADER_GCC.o.o $LDFLAGS \
     >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-  clang++ -I . $CPPFLAGS \
-    -c "$PWD/$TMP_DIR_NAME/headers/$i.clang++.cc" \
-    -o "$PWD/$TMP_DIR_NAME/headers/$i.clang++.o" $LDFLAGS \
+  clang++ $CPPFLAGS -c $HEADER_CLANG -o $HEADER_CLANG.o $LDFLAGS \
     >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
 done
 echo
 
 echo -e -n "\033[0m\033[1mLinking\033[0m:\033[0m\033[31m "
-echo -e '#include <cstdio>\nint main() { printf("OK\\n"); }\n' >"$TMP_DIR_NAME/headers/main.cc"
-g++ -c $CPPFLAGS \
-  -o "$TMP_DIR_NAME/headers/main.o" "$TMP_DIR_NAME/headers/main.cc" $LDFLAGS \
+echo -e '#include <cstdio>\nint main() { printf("OK\\n"); }\n' >$SOURCE_FILE.cc
+g++ -c $CPPFLAGS -o $SOURCE_FILE.o $SOURCE_FILE.cc $LDFLAGS \
   >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-g++ -o "$TMP_DIR_NAME/headers/main" $TMP_DIR_NAME/headers/*.o $LDFLAGS \
+g++ -o $SOURCE_FILE $PWD/.current_*.o $LDFLAGS \
   >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
 echo -e -n "\033[1m\033[32m"
-"$TMP_DIR_NAME/headers/main"
+
+$SOURCE_FILE
+rm -f $PWD/.current_*.cc $PWD/.current_*.o $PWD/.current_.txt $SOURCE_FILE
 
 echo -e -n "\033[0m"

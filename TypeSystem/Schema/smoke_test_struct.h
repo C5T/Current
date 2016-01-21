@@ -38,7 +38,7 @@ CURRENT_STRUCT(C) {
   typedef Variant<X, Y> t_c;
   CURRENT_FIELD(c, t_c);
 #endif
-  CURRENT_DEFAULT_CONSTRUCTOR(C) {}
+  CURRENT_DEFAULT_CONSTRUCTOR(C) {}  // LCOV_EXCL_LINE
   CURRENT_CONSTRUCTOR(C)(Variant<X, Y> && c) : c(std::move(c)) {}
 };
 

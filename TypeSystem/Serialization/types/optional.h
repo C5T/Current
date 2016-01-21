@@ -30,10 +30,6 @@ SOFTWARE.
 
 #include "primitive.h"
 
-// TODO: `#include "../../optional.h"` results in `make check` fail, since both
-// "optional.h" and "../../optional.h" exist. The latter is not considered
-// during the search process for `""` includes, which starts searching from the
-// directory of the file with the `#include` line.
 #include "../../optional.h"
 
 namespace current {

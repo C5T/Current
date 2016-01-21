@@ -27,6 +27,7 @@ SOFTWARE.
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_PRIMITIVE_H
 
 #include <string>
+#include <chrono>
 
 #include "../base.h"
 

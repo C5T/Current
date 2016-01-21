@@ -127,18 +127,24 @@ inline T ParseJSON(const std::string& source) {
 
 }  // namespace json
 }  // namespace serialization
+
+// Keep top-level symbols both in `current::` and in global namespace.
+using serialization::json::JSON;
+using serialization::json::ParseJSON;
+using serialization::json::JSONFormat;
+using serialization::json::TypeSystemParseJSONException;
+using serialization::json::JSONSchemaException;
+using serialization::json::InvalidJSONException;
+using serialization::json::JSONUninitializedVariantObjectException;
+
 }  // namespace current
 
-// Inject into global namespace.
-using current::serialization::json::JSON;
-using current::serialization::json::ParseJSON;
-
-using current::serialization::json::JSONFormat;
-
-using current::serialization::json::TypeSystemParseJSONException;
-
-using current::serialization::json::JSONSchemaException;
-using current::serialization::json::InvalidJSONException;
-using current::serialization::json::JSONUninitializedVariantObjectException;
+using current::JSON;
+using current::ParseJSON;
+using current::JSONFormat;
+using current::TypeSystemParseJSONException;
+using current::JSONSchemaException;
+using current::InvalidJSONException;
+using current::JSONUninitializedVariantObjectException;
 
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_JSON_H

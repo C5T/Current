@@ -120,7 +120,7 @@ struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
                     std::unique_ptr<X>&& source,
                     std::unique_ptr<CurrentSuper>& destination) {
       if (!source) {
-        throw NoValueOfTypeException<X>();
+        throw NoValueOfTypeException<X>();  // LCOV_EXCL_LINE
       }
       destination = std::move(source);
     }
@@ -241,7 +241,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
 
   void CheckIntegrityImpl() const {
     if (!object_) {
-      throw UninitializedVariantOfTypeException<TYPES...>();
+      throw UninitializedVariantOfTypeException<TYPES...>();  // LCOV_EXCL_LINE
     }
   }
 
