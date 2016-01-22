@@ -49,9 +49,39 @@ struct CountFieldsImplementationType {
   long long x[100];  // TODO(dkorolev): Fix JSON parse/serialize on Windows. Gotta go deeper. -- D.K.
 };
 
-// Storage field indexes.
+// Field by-index accessors, helper types to enable storage fields "reflection" .
 template <int N>
-struct Index {};
+struct FieldInfoByIndex {};
+
+template <int N>
+struct FieldNameByIndex {};
+
+template <int N>
+struct ImmutableFieldByIndex {};
+
+template <int N>
+struct MutableFieldByIndex {};
+
+template <int N>
+struct FieldNameAndTypeByIndex {};
+
+template <int N, typename T_RETVAL>
+struct FieldNameAndTypeByIndexAndReturn {};
+
+// Helpers for `FieldNameAndTypeByIndex`.
+struct StorageFieldTypeSelector {
+  struct Vector {
+    static const char* HumanReadableName() { return "Vector"; }
+  };
+  struct Dictionary {
+    static const char* HumanReadableName() { return "Dictionary"; }
+  };
+};
+
+template <typename T>
+struct FieldUnderlyingTypeWrapper {
+  using type = T;
+};
 
 // Fields declaration and counting.
 template <typename INSTANTIATION_TYPE, typename T>
@@ -78,10 +108,10 @@ struct FieldCounter {
 };
 
 // Helper class to get the corresponding persisted types for each of the storage fields.
-template <typename ADDER, typename DELETER>
+template <typename UPDATE_EVENT, typename DELETE_EVENT>
 struct FieldInfo {
-  using T_ADDER = ADDER;
-  using T_DELETER = DELETER;
+  using T_UPDATE_EVENT = UPDATE_EVENT;
+  using T_DELETE_EVENT = DELETE_EVENT;
 };
 
 // Persisted types list generator.
@@ -90,8 +120,8 @@ struct TypeListMapperImpl;
 
 template <typename FIELDS, int... NS>
 struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
-  using result = TypeList<typename std::result_of<FIELDS(Index<NS>)>::type::T_ADDER...,
-                          typename std::result_of<FIELDS(Index<NS>)>::type::T_DELETER...>;
+  using result = TypeList<typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::T_UPDATE_EVENT...,
+                          typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::T_DELETE_EVENT...>;
 };
 
 template <typename FIELDS, int COUNT>

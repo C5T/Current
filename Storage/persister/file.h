@@ -36,7 +36,7 @@ namespace current {
 namespace storage {
 namespace persister {
 
-template <typename... TS>
+template <typename>
 class JSONFilePersister;
 
 template <typename... TS>

@@ -26,7 +26,7 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
 #define CURRENT_TYPE_SYSTEM_SERIALIZATION_TYPES_CURRENT_TYPEID_H
 
-#include "../base.h"
+#include "primitive.h"
 
 #include "../../Reflection/types.h"
 
@@ -64,6 +64,32 @@ struct LoadFromJSONImpl<reflection::TypeID, J> {
 
 }  // namespace load
 }  // namespace json
+
+namespace binary {
+namespace save {
+
+template <>
+struct SaveIntoBinaryImpl<reflection::TypeID> {
+  static void Save(std::ostream& ostream, reflection::TypeID value) {
+    SaveIntoBinaryImpl<uint64_t>::Save(ostream, static_cast<uint64_t>(value));
+  }
+};
+
+}  // namespace save
+
+namespace load {
+
+template <>
+struct LoadFromBinaryImpl<reflection::TypeID> {
+  static void Load(std::istream& istream, reflection::TypeID& destination) {
+    uint64_t value;
+    LoadFromBinaryImpl<uint64_t>::Load(istream, value);
+    destination = static_cast<reflection::TypeID>(value);
+  }
+};
+
+}  // namespace load
+}  // namespace binary
 }  // namespace serialization
 }  // namespace current
 

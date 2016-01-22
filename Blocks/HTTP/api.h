@@ -90,5 +90,6 @@ using blocks::Response;
 using blocks::ReRegisterRoute;
 using blocks::URLPathArgs;
 using HTTPRoutesScope = typename HTTP_IMPL::T_SERVER_IMPL::HTTPRoutesScope;
+using HTTPRoutesScopeEntry = blocks::HTTPServerPOSIX::HTTPRoutesScopeEntry;
 
 #endif  // BLOCKS_HTTP_API_H

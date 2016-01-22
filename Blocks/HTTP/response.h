@@ -96,6 +96,9 @@ struct Response {
         content_type(current::net::HTTPServerConnection::DefaultContentType()),
         extra_headers(current::net::HTTPHeadersType()) {}
 
+  Response(const Response&) = default;
+  Response(Response&&) = default;
+
   Response& operator=(const Response&) = default;
   Response& operator=(Response&&) = default;
 

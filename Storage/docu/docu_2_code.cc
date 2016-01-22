@@ -81,7 +81,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
     // Add two users.
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](MutableFields<ExampleStorage> data) {
       EXPECT_TRUE(data.users.Empty());
       User alice;
       alice.name = "Alice";
@@ -95,7 +95,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     }).Wait();
 
     // Delete one, but rollback the transaction.
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
       data.users.Erase(static_cast<UserID>(101));
@@ -104,7 +104,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     }).Wait();
 
     // Confirm the previous transaction was reverted, and delete the privileged user for real now.
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
       data.users.Erase(static_cast<UserID>(102));
@@ -112,7 +112,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     }).Wait();
 
     // Confirm the non-reverted deleted user was indeed deleted.
-    storage.Transaction([](ImmutableCurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(1u, data.users.Size());
 
@@ -140,7 +140,7 @@ TEST(StorageDocumentation, BasicUsage) {
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](MutableFields<ExampleStorage> data) {
       User test1;
       User test2;
       test1.key = static_cast<UserID>(1);
@@ -154,7 +154,7 @@ TEST(StorageDocumentation, BasicUsage) {
     }).Wait();
 
     current::time::SetNow(std::chrono::microseconds(1003ull));
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](MutableFields<ExampleStorage> data) {
       User test3;
       test3.key = static_cast<UserID>(3);
       test3.name = "to be deleted";
@@ -163,7 +163,7 @@ TEST(StorageDocumentation, BasicUsage) {
     }).Wait();
 
     current::time::SetNow(std::chrono::microseconds(1005ull));
-    storage.Transaction([](CurrentStorage<ExampleStorage> data) {
+    storage.Transaction([](MutableFields<ExampleStorage> data) {
       data.users.Erase(static_cast<UserID>(3));
       current::time::SetNow(std::chrono::microseconds(1006ull));
     }).Wait();
@@ -173,23 +173,20 @@ TEST(StorageDocumentation, BasicUsage) {
     current::strings::Split<current::strings::ByLines>(
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  using T_RECORD = std::pair<std::vector<
-    Variant<CURRENT_STORAGE_ADDER_PersistedUser,
-            CURRENT_STORAGE_DELETER_PersistedUser>>,
-    std::chrono::microseconds>;
+  using T_RECORD = std::pair<std::vector<Variant<PersistedUserUpdated, PersistedUserDeleted>>, std::chrono::microseconds>;
   ASSERT_EQ(3u, persisted_transactions.size());
 
   {
     const auto t = ParseJSON<T_RECORD>(persisted_transactions[0]);
     ASSERT_EQ(2u, t.first.size());
 
-    ASSERT_TRUE(Exists<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[0]));
-    EXPECT_EQ("test1", Value<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[0]).name);
-    EXPECT_TRUE(Value<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[0]).straight);
+    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
+    EXPECT_EQ("test1", Value<PersistedUserUpdated>(t.first[0]).name);
+    EXPECT_TRUE(Value<PersistedUserUpdated>(t.first[0]).straight);
 
-    ASSERT_TRUE(Exists<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[1]));
-    EXPECT_EQ("test2", Value<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[1]).name);
-    EXPECT_FALSE(Value<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[1]).straight);
+    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[1]));
+    EXPECT_EQ("test2", Value<PersistedUserUpdated>(t.first[1]).name);
+    EXPECT_FALSE(Value<PersistedUserUpdated>(t.first[1]).straight);
 
     EXPECT_EQ(1002, static_cast<int>(t.second.count()));
   }
@@ -198,8 +195,8 @@ TEST(StorageDocumentation, BasicUsage) {
     const auto t = ParseJSON<T_RECORD>(persisted_transactions[1]);
     ASSERT_EQ(1u, t.first.size());
 
-    ASSERT_TRUE(Exists<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[0]));
-    EXPECT_EQ("to be deleted", Value<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[0]).name);
+    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
+    EXPECT_EQ("to be deleted", Value<PersistedUserUpdated>(t.first[0]).name);
 
     EXPECT_EQ(1004, static_cast<int>(t.second.count()));
   }
@@ -208,9 +205,9 @@ TEST(StorageDocumentation, BasicUsage) {
     const auto t = ParseJSON<T_RECORD>(persisted_transactions[2]);
     ASSERT_EQ(1u, t.first.size());
 
-    ASSERT_FALSE(Exists<CURRENT_STORAGE_ADDER_PersistedUser>(t.first[0]));
-    ASSERT_TRUE(Exists<CURRENT_STORAGE_DELETER_PersistedUser>(t.first[0]));
-    EXPECT_EQ(3, static_cast<int>(Value<CURRENT_STORAGE_DELETER_PersistedUser>(t.first[0]).key));
+    ASSERT_FALSE(Exists<PersistedUserUpdated>(t.first[0]));
+    ASSERT_TRUE(Exists<PersistedUserDeleted>(t.first[0]));
+    EXPECT_EQ(3, static_cast<int>(Value<PersistedUserDeleted>(t.first[0]).key));
 
     EXPECT_EQ(1006, static_cast<int>(t.second.count()));
   }

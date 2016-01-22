@@ -37,7 +37,10 @@ namespace current {
 namespace storage {
 namespace container {
 
-template <typename T, typename ADDER, typename DELETER, template <typename...> class MAP = Unordered>
+template <typename T,
+          typename T_UPDATE_EVENT,
+          typename T_DELETE_EVENT,
+          template <typename...> class MAP = Unordered>
 class Dictionary {
  public:
   using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
@@ -62,9 +65,10 @@ class Dictionary {
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {
       const T previous_object = iterator->second;
-      journal_.LogMutation(ADDER(object), [this, key, previous_object]() { map_[key] = previous_object; });
+      journal_.LogMutation(T_UPDATE_EVENT(object),
+                           [this, key, previous_object]() { map_[key] = previous_object; });
     } else {
-      journal_.LogMutation(ADDER(object), [this, key]() { map_.erase(key); });
+      journal_.LogMutation(T_UPDATE_EVENT(object), [this, key]() { map_.erase(key); });
     }
     map_[key] = object;
   }
@@ -73,15 +77,14 @@ class Dictionary {
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {
       const T previous_object = iterator->second;
-      journal_.LogMutation(DELETER(previous_object),
+      journal_.LogMutation(T_DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { map_[key] = previous_object; });
       map_.erase(key);
     }
   }
 
-  void operator()(const ADDER& object) { map_[sfinae::GetKey(object)] = object; }
-
-  void operator()(const DELETER& object) { map_.erase(sfinae::GetKey(object)); }
+  void operator()(const T_UPDATE_EVENT& object) { map_[sfinae::GetKey(object)] = object; }
+  void operator()(const T_DELETE_EVENT& object) { map_.erase(sfinae::GetKey(object)); }
 
   struct Iterator final {
     using T_ITERATOR = typename T_MAP::const_iterator;

@@ -37,7 +37,7 @@ namespace container {
 struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
 
-template <typename T, typename ADDER, typename DELETER>
+template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
 class Vector {
  public:
   explicit Vector(MutationJournal& journal) : journal_(journal) {}
@@ -54,23 +54,23 @@ class Vector {
   }
 
   void PushBack(const T& object) {
-    journal_.LogMutation(ADDER(object), [this]() { vector_.pop_back(); });
+    journal_.LogMutation(T_UPDATE_EVENT(object), [this]() { vector_.pop_back(); });
     vector_.push_back(object);
   }
 
   void PopBack() {
     if (!vector_.empty()) {
       auto back_object = vector_.back();
-      journal_.LogMutation(DELETER(back_object), [this, back_object]() { vector_.push_back(back_object); });
+      journal_.LogMutation(T_DELETE_EVENT(back_object),
+                           [this, back_object]() { vector_.push_back(back_object); });
       vector_.pop_back();
     } else {
       CURRENT_THROW(CannotPopBackFromEmptyVectorException());
     }
   }
 
-  void operator()(const ADDER& object) { vector_.push_back(object); }
-
-  void operator()(const DELETER&) { vector_.pop_back(); }
+  void operator()(const T_UPDATE_EVENT& object) { vector_.push_back(object); }
+  void operator()(const T_DELETE_EVENT&) { vector_.pop_back(); }
 
  private:
   std::vector<T> vector_;
