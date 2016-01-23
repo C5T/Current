@@ -32,7 +32,7 @@ DEFINE_string(db_dir, ".current", "Local path to the data storage location.");
 DEFINE_string(db_filename, "data.json", "File name for the persisted data.");
 DEFINE_string(db_stream_name, "usernicknames", "The name of the stream to use as the persistence layer.");
 
-DEFINE_int32(db_demo_port, 8889, "Local port to spawn the server on.");
+DEFINE_int32(db_demo_port, PickPortForUnitTest(), "Local port to spawn the server on.");
 
 DEFINE_bool(legend, true, "Print example usage patterns.");
 

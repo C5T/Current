@@ -47,7 +47,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(midichlorians_client_test_http_port, 8383, "Port to spawn server on.");
+DEFINE_int32(midichlorians_client_test_http_port, PickPortForUnitTest(), "Port to spawn server on.");
 DEFINE_string(midichlorians_client_test_http_route, "/log", "HTTP route of the server.");
 
 using namespace current::midichlorians::ios;

@@ -48,7 +48,7 @@ using namespace current::gnuplot;
 
 // `using namespace yoda`, as well as `using yoda::Dictionary` conflicts with Storage. -- D.K.
 
-DEFINE_int32(iris_port, 5000, "");
+DEFINE_int32(iris_port, PickPortForUnitTest(), "");
 
 DEFINE_bool(run, false, "Set to true to run indefinitely.");
 

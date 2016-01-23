@@ -73,7 +73,7 @@ using current::net::CannotServeStaticFilesOfUnknownMIMEType;
 using namespace blocks;
 
 DEFINE_int32(net_api_test_port,
-             8082,
+             PickPortForUnitTest(),
              "Local port to use for the test API-based HTTP server. NOTE: This port should be different from "
              "ports in other network-based tests, since API-driven HTTP server will hold it open for the whole "
              "lifetime of the binary.");

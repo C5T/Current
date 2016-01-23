@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../../../../Bricks/dflags/dflags.h"
 #include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(docu_net_server_port_03, 8082, "Okay to keep the same as in net/api/test.cc");
+DEFINE_int32(docu_net_server_port_03, PickPortForUnitTest(), "");
 
 using current::strings::Printf;
 

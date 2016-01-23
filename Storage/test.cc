@@ -45,7 +45,9 @@ DEFINE_string(transactional_storage_test_tmpdir,
               "Local path for the test to create temporary files in.");
 #endif
 
-DEFINE_int32(transactional_storage_test_port, 9876, "Local port to run [REST] API tests against.");
+DEFINE_int32(transactional_storage_test_port,
+             PickPortForUnitTest(),
+             "Local port to run [REST] API tests against.");
 
 #define USE_KEY_METHODS
 

@@ -35,7 +35,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(yoda_docu_test_port, 8999, "");
+DEFINE_int32(yoda_docu_test_port, PickPortForUnitTest(), "");
 
 using yoda::Padawan;
 using yoda::MemoryOnlyAPI;
