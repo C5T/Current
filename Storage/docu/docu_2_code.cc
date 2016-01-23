@@ -63,10 +63,10 @@ CURRENT_STRUCT(User) {
   CURRENT_CONSTRUCTOR(User)(UserID key = UserID::INVALID) : key(key) {}
 };
 
-CURRENT_STRUCT_TAG(Dictionary, User, PersistedUser);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, User, PersistedUser);
 
 CURRENT_STORAGE(ExampleStorageDefinition) {
-  CURRENT_STORAGE_FIELD(users, Dictionary, PersistedUser);
+  CURRENT_STORAGE_FIELD(users, PersistedUser);
 };
 
 }  // namespace storage_docu

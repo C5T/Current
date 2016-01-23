@@ -61,15 +61,14 @@ class Vector {
   void PopBack() {
     if (!vector_.empty()) {
       const auto back_object = vector_.back();
-      journal_.LogMutation(T_POPPED_BACK_EVENT(),
-                           [this, back_object]() { vector_.push_back(back_object); });
+      journal_.LogMutation(T_POPPED_BACK_EVENT(), [this, back_object]() { vector_.push_back(back_object); });
       vector_.pop_back();
     } else {
       CURRENT_THROW(CannotPopBackFromEmptyVectorException());
     }
   }
 
-  void operator()(const T_PUSHED_BACK_EVENT& object) { vector_.push_back(object.data); }
+  void operator()(const T_PUSHED_BACK_EVENT& e) { vector_.push_back(e.data); }
   void operator()(const T_POPPED_BACK_EVENT&) { vector_.pop_back(); }
 
  private:
@@ -78,6 +77,12 @@ class Vector {
 };
 
 }  // namespace container
+
+template <typename T, typename E1, typename E2>  // Entry, `push_back` event, `pop_back` event.
+struct StorageFieldTypeSelector<container::Vector<T, E1, E2>> {
+  static const char* HumanReadableName() { return "Vector"; }
+};
+
 }  // namespace storage
 }  // namespace current
 

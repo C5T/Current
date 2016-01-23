@@ -68,15 +68,8 @@ struct FieldNameAndTypeByIndex {};
 template <int N, typename T_RETVAL>
 struct FieldNameAndTypeByIndexAndReturn {};
 
-// Helpers for `FieldNameAndTypeByIndex`.
-struct StorageFieldTypeSelector {
-  struct Vector {
-    static const char* HumanReadableName() { return "Vector"; }
-  };
-  struct Dictionary {
-    static const char* HumanReadableName() { return "Dictionary"; }
-  };
-};
+template <typename T>
+struct StorageFieldTypeSelector;
 
 template <typename T>
 struct FieldUnderlyingTypeWrapper {
