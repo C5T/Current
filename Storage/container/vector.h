@@ -37,7 +37,7 @@ namespace container {
 struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
+template <typename T, typename T_PUSHED_BACK_EVENT, typename T_POPPED_BACK_EVENT>
 class Vector {
  public:
   explicit Vector(MutationJournal& journal) : journal_(journal) {}
@@ -54,23 +54,22 @@ class Vector {
   }
 
   void PushBack(const T& object) {
-    journal_.LogMutation(T_UPDATE_EVENT(object), [this]() { vector_.pop_back(); });
+    journal_.LogMutation(T_PUSHED_BACK_EVENT(object), [this]() { vector_.pop_back(); });
     vector_.push_back(object);
   }
 
   void PopBack() {
     if (!vector_.empty()) {
-      auto back_object = vector_.back();
-      journal_.LogMutation(T_DELETE_EVENT(back_object),
-                           [this, back_object]() { vector_.push_back(back_object); });
+      const auto back_object = vector_.back();
+      journal_.LogMutation(T_POPPED_BACK_EVENT(), [this, back_object]() { vector_.push_back(back_object); });
       vector_.pop_back();
     } else {
       CURRENT_THROW(CannotPopBackFromEmptyVectorException());
     }
   }
 
-  void operator()(const T_UPDATE_EVENT& object) { vector_.push_back(object); }
-  void operator()(const T_DELETE_EVENT&) { vector_.pop_back(); }
+  void operator()(const T_PUSHED_BACK_EVENT& e) { vector_.push_back(e.data); }
+  void operator()(const T_POPPED_BACK_EVENT&) { vector_.pop_back(); }
 
  private:
   std::vector<T> vector_;
@@ -78,6 +77,12 @@ class Vector {
 };
 
 }  // namespace container
+
+template <typename T, typename E1, typename E2>  // Entry, `push_back` event, `pop_back` event.
+struct StorageFieldTypeSelector<container::Vector<T, E1, E2>> {
+  static const char* HumanReadableName() { return "Vector"; }
+};
+
 }  // namespace storage
 }  // namespace current
 

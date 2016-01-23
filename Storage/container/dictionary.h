@@ -40,13 +40,13 @@ namespace container {
 template <typename T,
           typename T_UPDATE_EVENT,
           typename T_DELETE_EVENT,
-          template <typename...> class MAP = Unordered>
-class Dictionary {
+          template <typename...> class MAP>
+class GenericDictionary {
  public:
   using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
   using T_MAP = MAP<T_KEY, T>;
 
-  explicit Dictionary(MutationJournal& journal) : journal_(journal) {}
+  explicit GenericDictionary(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -83,8 +83,8 @@ class Dictionary {
     }
   }
 
-  void operator()(const T_UPDATE_EVENT& object) { map_[sfinae::GetKey(object)] = object; }
-  void operator()(const T_DELETE_EVENT& object) { map_.erase(sfinae::GetKey(object)); }
+  void operator()(const T_UPDATE_EVENT& e) { map_[sfinae::GetKey(e.data)] = e.data; }
+  void operator()(const T_DELETE_EVENT& e) { map_.erase(e.key); }
 
   struct Iterator final {
     using T_ITERATOR = typename T_MAP::const_iterator;
@@ -106,10 +106,28 @@ class Dictionary {
   MutationJournal& journal_;
 };
 
+template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
+using UnorderedDictionary = GenericDictionary<T, T_UPDATE_EVENT, T_DELETE_EVENT, Unordered>;
+
+template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
+using OrderedDictionary = GenericDictionary<T, T_UPDATE_EVENT, T_DELETE_EVENT, Ordered>;
+
 }  // namespace container
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedDictionary<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedDictionary"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedDictionary<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedDictionary"; }
+};
+
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::Dictionary;
+using current::storage::container::UnorderedDictionary;
+using current::storage::container::OrderedDictionary;
 
 #endif  // CURRENT_STORAGE_CONTAINER_DICTIONARY_H

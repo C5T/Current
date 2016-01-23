@@ -54,8 +54,6 @@ namespace transactional_storage_test {
 CURRENT_STRUCT(Element) {
   CURRENT_FIELD(x, int32_t);
   CURRENT_CONSTRUCTOR(Element)(int32_t x = 0) : x(x) {}
-  // To use `Element` in storage, it should either define a `.key` field, or `.key()` method.
-  int32_t key() const { return x; }
 };
 
 CURRENT_STRUCT(Record) {
@@ -103,15 +101,18 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
-CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector1);
-CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector2);
-CURRENT_STORAGE_STRUCT_TAG(Record, RecordDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector1);
+CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector2);
+
+// TODO(dkorolev) + TODO(mzhurovich): Test both.
+// CURRENT_STORAGE_FIELD_ENTRY(Dictionary, Record, RecordDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
 
 using current::storage::container::Ordered;
 CURRENT_STORAGE(TestStorage) {
-  CURRENT_STORAGE_FIELD(v1, Vector, ElementVector1);
-  CURRENT_STORAGE_FIELD(v2, Vector, ElementVector2);
-  CURRENT_STORAGE_FIELD(d, Dictionary, RecordDictionary, Ordered);
+  CURRENT_STORAGE_FIELD(v1, ElementVector1);
+  CURRENT_STORAGE_FIELD(v2, ElementVector2);
+  CURRENT_STORAGE_FIELD(d, RecordDictionary);
 };
 
 }  // namespace transactional_storage_test
@@ -631,12 +632,12 @@ CURRENT_STRUCT(SimplePost) {
       : key(key), text(text) {}
 };
 
-CURRENT_STORAGE_STRUCT_TAG(SimpleUser, SimpleUserPersisted);
-CURRENT_STORAGE_STRUCT_TAG(SimplePost, SimplePostPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimpleUser, SimpleUserPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
-  CURRENT_STORAGE_FIELD(user, Dictionary, SimpleUserPersisted);
-  CURRENT_STORAGE_FIELD(post, Dictionary, SimplePostPersisted);
+  CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
+  CURRENT_STORAGE_FIELD(post, SimplePostPersisted);
 };
 
 }  // namespace transactional_storage_test

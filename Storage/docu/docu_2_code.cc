@@ -63,10 +63,10 @@ CURRENT_STRUCT(User) {
   CURRENT_CONSTRUCTOR(User)(UserID key = UserID::INVALID) : key(key) {}
 };
 
-CURRENT_STORAGE_STRUCT_TAG(User, PersistedUser);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, User, PersistedUser);
 
 CURRENT_STORAGE(ExampleStorageDefinition) {
-  CURRENT_STORAGE_FIELD(users, Dictionary, PersistedUser);
+  CURRENT_STORAGE_FIELD(users, PersistedUser);
 };
 
 }  // namespace storage_docu
@@ -181,12 +181,12 @@ TEST(StorageDocumentation, BasicUsage) {
     ASSERT_EQ(2u, t.first.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
-    EXPECT_EQ("test1", Value<PersistedUserUpdated>(t.first[0]).name);
-    EXPECT_TRUE(Value<PersistedUserUpdated>(t.first[0]).straight);
+    EXPECT_EQ("test1", Value<PersistedUserUpdated>(t.first[0]).data.name);
+    EXPECT_TRUE(Value<PersistedUserUpdated>(t.first[0]).data.straight);
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[1]));
-    EXPECT_EQ("test2", Value<PersistedUserUpdated>(t.first[1]).name);
-    EXPECT_FALSE(Value<PersistedUserUpdated>(t.first[1]).straight);
+    EXPECT_EQ("test2", Value<PersistedUserUpdated>(t.first[1]).data.name);
+    EXPECT_FALSE(Value<PersistedUserUpdated>(t.first[1]).data.straight);
 
     EXPECT_EQ(1002, static_cast<int>(t.second.count()));
   }
@@ -196,7 +196,7 @@ TEST(StorageDocumentation, BasicUsage) {
     ASSERT_EQ(1u, t.first.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
-    EXPECT_EQ("to be deleted", Value<PersistedUserUpdated>(t.first[0]).name);
+    EXPECT_EQ("to be deleted", Value<PersistedUserUpdated>(t.first[0]).data.name);
 
     EXPECT_EQ(1004, static_cast<int>(t.second.count()));
   }
