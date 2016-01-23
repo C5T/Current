@@ -35,7 +35,7 @@ SOFTWARE.
 #include "../../strings/printf.h"
 #include "../../cerealize/cerealize.h"
 
-DEFINE_int32(net_http_test_port, 8080, "Local port to use for the test HTTP server.");
+DEFINE_int32(net_http_test_port, PickPortForUnitTest(), "Local port to use for the test HTTP server.");
 
 using std::string;
 using std::thread;

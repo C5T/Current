@@ -36,7 +36,7 @@ SOFTWARE.
 
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(net_tcp_test_port, 8081, "Port to use for the test.");
+DEFINE_int32(net_tcp_test_port, PickPortForUnitTest(), "Port to use for the test.");
 
 using std::function;
 using std::string;

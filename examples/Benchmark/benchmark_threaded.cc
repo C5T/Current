@@ -32,7 +32,7 @@ DEFINE_double(seconds, 2.5, "Run the load test for this many seconds.");
 DEFINE_string(url,
               "http://localhost:%d/add",
               "The URL for the load test, default to `http://localhost:${FLAGS_port}`.");
-DEFINE_int32(port, 8999, "The port to use, if `--url` includes it.");
+DEFINE_int32(port, PickPortForUnitTest(), "The port to use, if `--url` includes it.");
 
 DEFINE_int32(threads,
              100,

@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include "../../Current/port.h"
+
 #include <string>
 #include <sstream>
 #include <thread>
@@ -36,7 +38,7 @@ SOFTWARE.
 #include "../../Current/Bricks/dflags/dflags.h"
 #include "../../Current/3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_int32(event_collector_test_port, 8089, "Local port to run the test.");
+DEFINE_int32(event_collector_test_port, PickPortForUnitTest(), "Local port to run the test.");
 
 using current::strings::Printf;
 

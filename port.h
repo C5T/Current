@@ -174,4 +174,10 @@ struct is_same_or_compile_error {
   char is_same_static_assert_failed[value ? 1 : -1];
 };
 
+// Unit test ports begin with 19999 by default and go down from there.
+static int PickPortForUnitTest() {
+  static int port = 20000;
+  return --port;
+}
+
 #endif

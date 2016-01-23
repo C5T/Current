@@ -30,7 +30,7 @@ SOFTWARE.
 using namespace current;
 
 DEFINE_string(benchmark_local_route, "/add", "The route spawn the server on.");
-DEFINE_int32(benchmark_local_port, 8999, "The local port to spawn the server on.");
+DEFINE_int32(benchmark_local_port, PickPortForUnitTest(), "The local port to spawn the server on.");
 
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
