@@ -37,10 +37,7 @@ namespace current {
 namespace storage {
 namespace container {
 
-template <typename T,
-          typename T_UPDATE_EVENT,
-          typename T_DELETE_EVENT,
-          template <typename...> class MAP>
+template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT, template <typename...> class MAP>
 class GenericDictionary {
  public:
   using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
