@@ -83,7 +83,7 @@ class Dictionary {
     }
   }
 
-  void operator()(const T_UPDATE_EVENT& object) { map_[sfinae::GetKey(object)] = object; }
+  void operator()(const T_UPDATE_EVENT& object) { map_[sfinae::GetKey(object)] = object.data; }
   void operator()(const T_DELETE_EVENT& object) { map_.erase(sfinae::GetKey(object)); }
 
   struct Iterator final {

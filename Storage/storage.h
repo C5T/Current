@@ -73,22 +73,47 @@ namespace storage {
 // 2) Splits the type into `T_UPDATE_EVENT` and `T_DELETE_EVENT` to enable persisting deletions too.
 
 // clang-format off
-#define CURRENT_STORAGE_STRUCT_TAG(base, alias)                              \
-  CURRENT_STRUCT(alias##Updated, base) {                                     \
-    CURRENT_DEFAULT_CONSTRUCTOR(alias##Updated) {}                           \
-    CURRENT_CONSTRUCTOR(alias##Updated)(const base& value) : SUPER(value) {} \
-  };                                                                         \
-  CURRENT_STRUCT(alias##Deleted) {                                           \
-    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<base>);    \
-    CURRENT_DEFAULT_CONSTRUCTOR(alias##Deleted) {}                           \
-    CURRENT_CONSTRUCTOR(alias##Deleted)(const base& value)                   \
-        : key(::current::storage::sfinae::GetKey(value)) {}                  \
-  };                                                                         \
-  struct alias {                                                             \
-    using T_ENTRY = base;                                                    \
-    using T_UPDATE_EVENT = alias##Updated;                                   \
-    using T_DELETE_EVENT = alias##Deleted;                                   \
+#define CURRENT_STRUCT_TAG_Dictionary(base, alias)                                                    \
+  CURRENT_STRUCT(alias##Updated) {                                                                    \
+    CURRENT_FIELD(data, base);                                                                        \
+    CURRENT_DEFAULT_CONSTRUCTOR(alias##Updated) {}                                                    \
+    CURRENT_CONSTRUCTOR(alias##Updated)(const base& value) : data(value) {}                           \
+    using T_KEY = current::decay<decltype(::current::storage::sfinae::GetKey(std::declval<base>()))>; \
+    T_KEY key() const { return ::current::storage::sfinae::GetKey(data); }                            \
+    void set_key(const T_KEY& key) { ::current::storage::sfinae::SetKey(data, key); }                 \
+  };                                                                                                  \
+  CURRENT_STRUCT(alias##Deleted) {                                                                    \
+    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<base>);                             \
+    CURRENT_DEFAULT_CONSTRUCTOR(alias##Deleted) {}                                                    \
+    CURRENT_CONSTRUCTOR(alias##Deleted)(const base& value)                                            \
+        : key(::current::storage::sfinae::GetKey(value)) {}                                           \
+  };                                                                                                  \
+  struct alias {                                                                                      \
+    using T_ENTRY = base;                                                                             \
+    using T_UPDATE_EVENT = alias##Updated;                                                            \
+    using T_DELETE_EVENT = alias##Deleted;                                                            \
+    using T_PERSISTED_EVENT_1 = alias##Updated;                                                       \
+    using T_PERSISTED_EVENT_2 = alias##Deleted;                                                       \
   }
+
+#define CURRENT_STRUCT_TAG_Vector(base, alias)                                    \
+  CURRENT_STRUCT(alias##PushedElement) {                                          \
+    CURRENT_FIELD(data, base);                                                    \
+    CURRENT_DEFAULT_CONSTRUCTOR(alias##PushedElement) {}                          \
+    CURRENT_CONSTRUCTOR(alias##PushedElement)(const base& value) : data(value) {} \
+  };                                                                              \
+  CURRENT_STRUCT(alias##PoppedElement) {};                                        \
+  struct alias {                                                                  \
+    using T_ENTRY = base;                                                         \
+    using T_PUSHED_BACK_EVENT = alias##PushedElement;                             \
+    using T_POPPED_BACK_EVENT = alias##PoppedElement;                             \
+    using T_PERSISTED_EVENT_1 = alias##PushedElement;                             \
+    using T_PERSISTED_EVENT_2 = alias##PoppedElement;                             \
+  }
+
+// TODO(dkorolev) || TODO(mzhurovich): Move to `TypeSystem/` and test.
+#define CURRENT_STRUCT_TAG(tag, base, alias) CURRENT_STRUCT_TAG_##tag(base, alias)
+
 // clang-format on
 
 #define CURRENT_STORAGE_FIELDS_HELPERS(name)                                                                   \
@@ -161,9 +186,9 @@ namespace storage {
 // clang-format off
 #define CURRENT_STORAGE_FIELD(field_name, field_type, entry_tag, ...)                                       \
   enum { FIELD_INDEX_##field_name = CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE }; \
-  ::current::storage::FieldInfo<entry_tag::T_UPDATE_EVENT, entry_tag::T_DELETE_EVENT> operator()(           \
+  ::current::storage::FieldInfo<entry_tag::T_PERSISTED_EVENT_1, entry_tag::T_PERSISTED_EVENT_2> operator()(           \
       ::current::storage::FieldInfoByIndex<FIELD_INDEX_##field_name>) const {                               \
-    return ::current::storage::FieldInfo<entry_tag::T_UPDATE_EVENT, entry_tag::T_DELETE_EVENT>();           \
+    return ::current::storage::FieldInfo<entry_tag::T_PERSISTED_EVENT_1, entry_tag::T_PERSISTED_EVENT_2>();           \
   }                                                                                                         \
   std::string operator()(::current::storage::FieldNameByIndex<FIELD_INDEX_##field_name>) const {            \
     return #field_name;                                                                                     \
@@ -191,10 +216,10 @@ namespace storage {
   }                                                                                                         \
   using T_FIELD_TYPE_##field_name = ::current::storage::Field<                                              \
       INSTANTIATION_TYPE,                                                                                   \
-      field_type<entry_tag::T_ENTRY, entry_tag::T_UPDATE_EVENT, entry_tag::T_DELETE_EVENT, ##__VA_ARGS__>>; \
+      field_type<entry_tag::T_ENTRY, entry_tag::T_PERSISTED_EVENT_1, entry_tag::T_PERSISTED_EVENT_2, ##__VA_ARGS__>>; \
   T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);      \
-  void operator()(const entry_tag::T_UPDATE_EVENT& update_event) { field_name(update_event); }              \
-  void operator()(const entry_tag::T_DELETE_EVENT& delete_event) { field_name(delete_event); }
+  void operator()(const entry_tag::T_PERSISTED_EVENT_1& e) { field_name(e); }                               \
+  void operator()(const entry_tag::T_PERSISTED_EVENT_2& e) { field_name(e); }
 // clang-format on
 
 template <typename STORAGE>

@@ -54,8 +54,6 @@ namespace transactional_storage_test {
 CURRENT_STRUCT(Element) {
   CURRENT_FIELD(x, int32_t);
   CURRENT_CONSTRUCTOR(Element)(int32_t x = 0) : x(x) {}
-  // To use `Element` in storage, it should either define a `.key` field, or `.key()` method.
-  int32_t key() const { return x; }
 };
 
 CURRENT_STRUCT(Record) {
@@ -103,9 +101,9 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
-CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector1);
-CURRENT_STORAGE_STRUCT_TAG(Element, ElementVector2);
-CURRENT_STORAGE_STRUCT_TAG(Record, RecordDictionary);
+CURRENT_STRUCT_TAG(Vector, Element, ElementVector1);
+CURRENT_STRUCT_TAG(Vector, Element, ElementVector2);
+CURRENT_STRUCT_TAG(Dictionary, Record, RecordDictionary);
 
 using current::storage::container::Ordered;
 CURRENT_STORAGE(TestStorage) {
@@ -631,8 +629,8 @@ CURRENT_STRUCT(SimplePost) {
       : key(key), text(text) {}
 };
 
-CURRENT_STORAGE_STRUCT_TAG(SimpleUser, SimpleUserPersisted);
-CURRENT_STORAGE_STRUCT_TAG(SimplePost, SimplePostPersisted);
+CURRENT_STRUCT_TAG(Dictionary, SimpleUser, SimpleUserPersisted);
+CURRENT_STRUCT_TAG(Dictionary, SimplePost, SimplePostPersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, Dictionary, SimpleUserPersisted);
