@@ -105,67 +105,68 @@ struct BasicREST {
       storage(::current::storage::MutableFieldByIndex<INDEX>(), Impl<KEY>(key));
     }
   };
+};
 
-  template <int INDEX, typename SERVER, typename STORAGE>
-  struct RESTfulStorageEndpointRegisterer {
-    SERVER& server;
-    STORAGE& storage;
-    RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage) : server(server), storage(storage) {}
-    // TODO: The code below assumes FIELD_TYPE is `Dictionary` for now, which is not true in general.
-    template <typename FIELD_TYPE, typename ENTRY_TYPE>
-    HTTPRoutesScopeEntry operator()(const char* name, FIELD_TYPE, ENTRY_TYPE) {
-      static_cast<void>(name);
-      auto& storage = this->storage;  // For lambdas.
-      return server.Register(
-          "/api/" + storage(::current::storage::FieldNameByIndex<INDEX>()),
-          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-          [&storage](Request r) {
-            if (r.method == "GET") {
-              if (r.url_path_args.size() != 1) {
-                r("TBD ERROR", HTTPResponseCode.BadRequest);
-              } else {
-                const auto& key = r.url_path_args[0];
-                storage.Transaction([key, &storage](ImmutableFields<STORAGE>) -> Response {
-                  return RESTfulWrapper<GET, INDEX, typename ENTRY_TYPE::type>::Run(storage, key);
-                }, std::move(r)).Wait();
-              }
-            } else if (r.method == "POST") {
-              if (!r.url_path_args.empty()) {
-                r("TBD ERROR", HTTPResponseCode.BadRequest);
-              } else {
-                try {
-                  const auto body = ParseJSON<typename ENTRY_TYPE::type>(r.body);
-                  storage.Transaction([body, &storage](MutableFields<STORAGE>) {
-                    RESTfulWrapper<POST, INDEX, typename ENTRY_TYPE::type>::Run(storage, body);
-                  }).Wait();
-                  r("", HTTPResponseCode.NoContent);
-                } catch (const TypeSystemParseJSONException&) {
-                  r("TBD ERROR", HTTPResponseCode.BadRequest);
-                }
-              }
-            } else if (r.method == "DELETE") {
-              if (r.url_path_args.size() != 1) {
-                r("TBD ERROR", HTTPResponseCode.BadRequest);
-              } else {
-                const auto& key = r.url_path_args[0];
-                storage.Transaction([key, &storage](MutableFields<STORAGE>) {
-                  RESTfulWrapper<DELETE, INDEX, typename ENTRY_TYPE::type>::Run(storage, key);
-                }).Wait();
-                r("", HTTPResponseCode.NoContent);
-              }
-            } else {
-              r("", HTTPResponseCode.MethodNotAllowed);
-            }
-          });
-    }
-  };
+template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
+struct RESTfulStorageEndpointRegisterer {
+  template <class VERB, int I, typename T>
+  using UserCode = typename REST_IMPL::template RESTfulWrapper<VERB, I, T>;
+
+  SERVER& server;
+  STORAGE& storage;
+  RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage) : server(server), storage(storage) {}
+
+  // TODO: The code below assumes FIELD_TYPE is `Dictionary` for now, which is not true in general.
+  template <typename FIELD_TYPE, typename ENTRY_TYPE>
+  HTTPRoutesScopeEntry operator()(const char*, FIELD_TYPE, ENTRY_TYPE) {
+    auto& storage = this->storage;  // For lambdas.
+    return server.Register("/api/" + storage(::current::storage::FieldNameByIndex<INDEX>()),
+                           URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                           [&storage](Request r) {
+                             if (r.method == "GET") {
+                               if (r.url_path_args.size() != 1) {
+                                 r("TBD ERROR", HTTPResponseCode.BadRequest);
+                               } else {
+                                 const auto& key = r.url_path_args[0];
+                                 storage.Transaction([key, &storage](ImmutableFields<STORAGE>) -> Response {
+                                   return UserCode<GET, INDEX, typename ENTRY_TYPE::type>::Run(storage, key);
+                                 }, std::move(r)).Wait();
+                               }
+                             } else if (r.method == "POST") {
+                               if (!r.url_path_args.empty()) {
+                                 r("TBD ERROR", HTTPResponseCode.BadRequest);
+                               } else {
+                                 try {
+                                   const auto body = ParseJSON<typename ENTRY_TYPE::type>(r.body);
+                                   storage.Transaction([body, &storage](MutableFields<STORAGE>) {
+                                     UserCode<POST, INDEX, typename ENTRY_TYPE::type>::Run(storage, body);
+                                   }).Wait();
+                                   r("", HTTPResponseCode.NoContent);
+                                 } catch (const TypeSystemParseJSONException&) {
+                                   r("TBD ERROR", HTTPResponseCode.BadRequest);
+                                 }
+                               }
+                             } else if (r.method == "DELETE") {
+                               if (r.url_path_args.size() != 1) {
+                                 r("TBD ERROR", HTTPResponseCode.BadRequest);
+                               } else {
+                                 const auto& key = r.url_path_args[0];
+                                 storage.Transaction([key, &storage](MutableFields<STORAGE>) {
+                                   UserCode<DELETE, INDEX, typename ENTRY_TYPE::type>::Run(storage, key);
+                                 }).Wait();
+                                 r("", HTTPResponseCode.NoContent);
+                               }
+                             } else {
+                               r("", HTTPResponseCode.MethodNotAllowed);
+                             }
+                           });
+  }
 };
 
 template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
 HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server, STORAGE& storage) {
-  return storage(
-      ::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, HTTPRoutesScopeEntry>(),
-      typename REST_IMPL::template RESTfulStorageEndpointRegisterer<INDEX, SERVER, STORAGE>(server, storage));
+  return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, HTTPRoutesScopeEntry>(),
+                 RESTfulStorageEndpointRegisterer<REST_IMPL, INDEX, SERVER, STORAGE>(server, storage));
 }
 
 template <class, typename>
