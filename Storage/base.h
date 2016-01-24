@@ -59,8 +59,14 @@ struct FieldNameByIndex {};
 template <int N>
 struct ImmutableFieldByIndex {};
 
+template <int N, typename T_RETVAL>
+struct ImmutableFieldByIndexAndReturn {};
+
 template <int N>
 struct MutableFieldByIndex {};
+
+template <int N, typename T_RETVAL>
+struct MutableFieldByIndexAndReturn {};
 
 template <int N>
 struct FieldNameAndTypeByIndex {};
@@ -71,9 +77,23 @@ struct FieldNameAndTypeByIndexAndReturn {};
 template <typename T>
 struct StorageFieldTypeSelector;
 
+template <int N>
+struct FieldTypeExtractor {};
+
 template <typename T>
-struct FieldUnderlyingTypeWrapper {
-  using type = T;
+struct StorageExtractedFieldType {
+  using T_PARTICULAR_FIELD = T;
+};
+
+template <typename T>
+struct FieldUnderlyingTypesWrapper {
+  // The entry type itself.
+  // For template-specialize user-defined API code with the specific entry underlying type.
+  using T_ENTRY = typename T::T_ENTRY;
+
+  // For the RESTful API to understand URLs.
+  // Map key type for dictionaries, `size_t` for vectors, etc.
+  using T_KEY = typename T::T_KEY;
 };
 
 // Fields declaration and counting.
