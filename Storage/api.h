@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
+          (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,77 +28,15 @@ SOFTWARE.
 
 #include "storage.h"
 
+#include "rest/basic.h"
+
 #include "../Blocks/HTTP/api.h"
 
 namespace current {
 namespace storage {
 namespace rest {
+
 namespace impl {
-
-struct BasicREST {
-  template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful;
-
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
-    template <typename F>
-    void Enter(Request request, F&& next) {
-      if (request.url_path_args.size() != 1) {
-        request("Need resource key in the URL.", HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
-    }
-    template <class INPUT>
-    Response Run(const INPUT& input) const {
-      const ImmutableOptional<ENTRY> result = input.field[input.key];
-      if (Exists(result)) {
-        return Value(result);
-      } else {
-        return Response("Nope.\n", HTTPResponseCode.NotFound);
-      }
-    }
-  };
-
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<POST, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
-    template <typename F>
-    void Enter(Request request, F&& next) {
-      if (!request.url_path_args.empty()) {
-        request("Should not have resource key in the URL", HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
-    }
-    template <class INPUT>
-    Response Run(const INPUT& input) const {
-      input.field.Add(input.entry);
-      return Response("Added.\n", HTTPResponseCode.NoContent);
-    }
-    static Response ErrorBadJSON() { return Response("Bad JSON.", HTTPResponseCode.BadRequest); }
-  };
-
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
-    template <typename F>
-    void Enter(Request request, F&& next) {
-      if (request.url_path_args.size() != 1) {
-        request("Need resource key in the URL.", HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
-    }
-    template <class INPUT>
-    Response Run(const INPUT& input) const {
-      input.field.Erase(input.key);
-      return Response("Deleted.\n", HTTPResponseCode.NoContent);
-    }
-  };
-
-  static Response ErrorMethodNotAllowed() {
-    return Response("Method not allowed.", HTTPResponseCode.MethodNotAllowed);
-  }
-};
 
 template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
 struct RESTfulStorageEndpointRegisterer {
@@ -208,7 +147,7 @@ HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server, STORAGE& sto
 
 }  // namespace impl
 
-template <class T_STORAGE_IMPL, class T_REST_IMPL = impl::BasicREST>
+template <class T_STORAGE_IMPL, class T_REST_IMPL = BasicREST>
 class RESTfulStorage {
  public:
   RESTfulStorage(T_STORAGE_IMPL& storage, int port) {
@@ -240,7 +179,5 @@ class RESTfulStorage {
 }  // namespace current
 
 using current::storage::rest::RESTfulStorage;
-
-using current::storage::rest::impl::BasicREST;
 
 #endif  // CURRENT_STORAGE_REST_H

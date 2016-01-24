@@ -26,7 +26,7 @@ SOFTWARE.
 #include "docu/docu_2_code.cc"
 
 #include "storage.h"
-#include "rest.h"
+#include "api.h"
 
 #include "../Blocks/HTTP/api.h"
 
