@@ -36,10 +36,14 @@ namespace impl {
 
 struct BasicREST {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulWrapper;
+  struct RESTful;
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulWrapper<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+    template <typename F>
+    void Enter(const Request&, F&& next) {
+      next();
+    }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       const ImmutableOptional<ENTRY> result = input.field[input.key];
@@ -52,7 +56,11 @@ struct BasicREST {
   };
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulWrapper<POST, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTful<POST, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+    template <typename F>
+    void Enter(const Request&, F&& next) {
+      next();
+    }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.field.Add(input.entry);
@@ -61,7 +69,11 @@ struct BasicREST {
   };
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTfulWrapper<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+    template <typename F>
+    void Enter(const Request&, F&& next) {
+      next();
+    }
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.field.Erase(input.key);
@@ -82,7 +94,7 @@ struct RESTfulStorageEndpointRegisterer {
       std::declval<STORAGE>()(::current::storage::FieldTypeExtractor<INDEX>()))::T_PARTICULAR_FIELD;
 
   template <class VERB, typename T1, typename T2, typename T3, typename T4>
-  using CustomHandler = typename REST_IMPL::template RESTfulWrapper<VERB, T1, T2, T3, T4>;
+  using CustomHandler = typename REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
 
   SERVER& server;
   STORAGE& storage;
@@ -101,69 +113,85 @@ struct RESTfulStorageEndpointRegisterer {
                           T_SPECIFIC_FIELD,
                           typename ENTRY_TYPE_WRAPPER::T_ENTRY,
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
-            if (request.url_path_args.size() != 1) {
-              request("Need resource key in the URL.", HTTPResponseCode.BadRequest);
-            } else {
-              const auto& key_as_string = request.url_path_args[0];
-              const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
-              const T_SPECIFIC_FIELD& field = storage(::current::storage::ImmutableFieldByIndex<INDEX>());
-              storage.Transaction([handler, key, &storage, &field](T_IMMUTABLE_FIELDS fields) -> Response {
-                const struct {
-                  T_STORAGE& storage;
-                  T_IMMUTABLE_FIELDS fields;
-                  const T_SPECIFIC_FIELD& field;
-                  const typename ENTRY_TYPE_WRAPPER::T_KEY& key;
-                } args{storage, fields, field, key};
-                return handler.Run(args);
-              }, std::move(request)).Detach();
-            }
+            handler.Enter(
+                request,
+                [&request, &handler, &storage]() {
+                  if (request.url_path_args.size() != 1) {
+                    request("Need resource key in the URL.", HTTPResponseCode.BadRequest);
+                  } else {
+                    const auto& key_as_string = request.url_path_args[0];
+                    const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
+                    const T_SPECIFIC_FIELD& field = storage(::current::storage::ImmutableFieldByIndex<INDEX>());
+                    storage.Transaction(
+                                [handler, key, &storage, &field](T_IMMUTABLE_FIELDS fields) -> Response {
+                                  const struct {
+                                    T_STORAGE& storage;
+                                    T_IMMUTABLE_FIELDS fields;
+                                    const T_SPECIFIC_FIELD& field;
+                                    const typename ENTRY_TYPE_WRAPPER::T_KEY& key;
+                                  } args{storage, fields, field, key};
+                                  return handler.Run(args);
+                                },
+                                std::move(request)).Detach();
+                  }
+                });
           } else if (request.method == "POST") {
             CustomHandler<POST,
                           T_IMMUTABLE_FIELDS,
                           T_SPECIFIC_FIELD,
                           typename ENTRY_TYPE_WRAPPER::T_ENTRY,
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
-            if (!request.url_path_args.empty()) {
-              request("Should not have resource key in the URL", HTTPResponseCode.BadRequest);
-            } else {
-              try {
-                const auto body = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
-                T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-                storage.Transaction([handler, &storage, &field, body](T_MUTABLE_FIELDS fields) -> Response {
-                  const struct {
-                    T_STORAGE& storage;
-                    T_MUTABLE_FIELDS fields;
-                    T_SPECIFIC_FIELD& field;
-                    const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
-                  } args{storage, fields, field, body};
-                  return handler.Run(args);
-                }, std::move(request)).Detach();
-              } catch (const TypeSystemParseJSONException&) {
-                request("Bad JSON.", HTTPResponseCode.BadRequest);
-              }
-            }
+            handler.Enter(
+                request,
+                [&request, &handler, &storage]() {
+                  if (!request.url_path_args.empty()) {
+                    request("Should not have resource key in the URL", HTTPResponseCode.BadRequest);
+                  } else {
+                    try {
+                      const auto body = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
+                      T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
+                      storage.Transaction(
+                                  [handler, &storage, &field, body](T_MUTABLE_FIELDS fields) -> Response {
+                                    const struct {
+                                      T_STORAGE& storage;
+                                      T_MUTABLE_FIELDS fields;
+                                      T_SPECIFIC_FIELD& field;
+                                      const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
+                                    } args{storage, fields, field, body};
+                                    return handler.Run(args);
+                                  },
+                                  std::move(request)).Detach();
+                    } catch (const TypeSystemParseJSONException&) {
+                      request("Bad JSON.", HTTPResponseCode.BadRequest);
+                    }
+                  }
+                });
           } else if (request.method == "DELETE") {
             CustomHandler<DELETE,
                           T_IMMUTABLE_FIELDS,
                           T_SPECIFIC_FIELD,
                           typename ENTRY_TYPE_WRAPPER::T_ENTRY,
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
-            if (request.url_path_args.size() != 1) {
-              request("Need resource key in the URL.", HTTPResponseCode.BadRequest);
-            } else {
-              const auto& key_as_string = request.url_path_args[0];
-              const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
-              T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-              storage.Transaction([handler, &storage, &field, key](T_MUTABLE_FIELDS fields) -> Response {
-                const struct {
-                  T_STORAGE& storage;
-                  T_MUTABLE_FIELDS fields;
-                  T_SPECIFIC_FIELD& field;
-                  const typename ENTRY_TYPE_WRAPPER::T_KEY& key;
-                } args{storage, fields, field, key};
-                return handler.Run(args);
-              }, std::move(request)).Detach();
-            }
+            handler.Enter(
+                request,
+                [&request, &handler, &storage]() {
+                  if (request.url_path_args.size() != 1) {
+                    request("Need resource key in the URL.", HTTPResponseCode.BadRequest);
+                  } else {
+                    const auto& key_as_string = request.url_path_args[0];
+                    const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
+                    T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
+                    storage.Transaction([handler, &storage, &field, key](T_MUTABLE_FIELDS fields) -> Response {
+                      const struct {
+                        T_STORAGE& storage;
+                        T_MUTABLE_FIELDS fields;
+                        T_SPECIFIC_FIELD& field;
+                        const typename ENTRY_TYPE_WRAPPER::T_KEY& key;
+                      } args{storage, fields, field, key};
+                      return handler.Run(args);
+                    }, std::move(request)).Detach();
+                  }
+                });
           } else {
             request("", HTTPResponseCode.MethodNotAllowed);
           }
