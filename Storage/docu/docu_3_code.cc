@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include "../storage.h"
 #include "../api.h"
+#include "../rest/hypermedia.h"
 #include "../persister/sherlock.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -69,7 +70,89 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   TestStorage storage("storage_of_clients_dummy_stream_name");
 
-  // const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
   const auto rest1 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api1/");
-  const auto rest2 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api2/");
+  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+      storage,
+      FLAGS_client_storage_test_port,
+      "/api2/");
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
+
+  // GET a non-existing resource.
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client/42"));
+    EXPECT_EQ(404, static_cast<int>(result.code));
+    EXPECT_EQ("Nope.\n", result.body);
+  }
+
+  {
+    const auto result = HTTP(GET(base_url + "/api2/client/42"));
+    EXPECT_EQ(404, static_cast<int>(result.code));
+    EXPECT_EQ("{\"error\":\"Resource not found.\"}\n", result.body);
+  }
+
+  // POST to a full resource-specifying URL, not allowed.
+  {
+    const auto result = HTTP(POST(base_url + "/api1/client/42", "blah"));
+    EXPECT_EQ(400, static_cast<int>(result.code));
+    EXPECT_EQ("Should not have resource key in the URL.\n", result.body);
+  }
+
+  {
+    const auto result = HTTP(POST(base_url + "/api2/client/42", "blah"));
+    EXPECT_EQ(400, static_cast<int>(result.code));
+    EXPECT_EQ("{\"error\":\"Should not have resource key in the URL.\"}\n", result.body);
+  }
+
+  // POST a JSON not following the schema, not allowed.
+  {
+    const auto result = HTTP(POST(base_url + "/api1/client", "{\"trash\":true}"));
+    EXPECT_EQ(400, static_cast<int>(result.code));
+    EXPECT_EQ("Bad JSON.\n", result.body);
+  }
+
+  {
+    const auto result = HTTP(POST(base_url + "/api2/client", "{\"trash\":true}"));
+    EXPECT_EQ(400, static_cast<int>(result.code));
+    EXPECT_EQ(
+      "{"
+      "\"error\":\"Invalid JSON in request body.\","
+      "\"json_details\":\"Expected number for `key`, got: missing field.\""
+      "}\n",
+      result.body);
+  }
+
+  // POST another JSON not following the schema, still not allowed.
+  {
+    const auto result = HTTP(POST(base_url + "/api1/client", "{\"key\":[]}"));
+    EXPECT_EQ(400, static_cast<int>(result.code));
+    EXPECT_EQ("Bad JSON.\n", result.body);
+  }
+
+  {
+    const auto result = HTTP(POST(base_url + "/api2/client", "{\"key\":[]}"));
+    EXPECT_EQ(400, static_cast<int>(result.code));
+    EXPECT_EQ(
+      "{"
+      "\"error\":\"Invalid JSON in request body.\","
+      "\"json_details\":\"Expected number for `key`, got: []\""
+      "}\n",
+      result.body);
+  }
+
+  // POST a real piece.
+  EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(42)))).code));
+
+  // Now GET it via both APIs.
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client/42"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"key\":42,\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+  }
+
+  {
+    const auto result = HTTP(GET(base_url + "/api2/client/42"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"key\":42,\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+  }
 }

@@ -23,21 +23,30 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// `Basic` is a boilerplate example of how to customize RESTful access to Current Storage.
-// This basic implementation supports GET, POST, and DELETE, with rudimentary text-only messages on errors.
-
-#ifndef CURRENT_STORAGE_REST_BASIC_H
-#define CURRENT_STORAGE_REST_BASIC_H
+#ifndef CURRENT_STORAGE_REST_HYPERMEDIA_H
+#define CURRENT_STORAGE_REST_HYPERMEDIA_H
 
 #include "../storage.h"
 
+#include "../../TypeSystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
+
+CURRENT_STRUCT(HypermediaRESTError) {
+  CURRENT_FIELD(error, std::string);
+  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& error) : error(error) {}
+};
+
+CURRENT_STRUCT(HypermediaRESTParseJSONError, HypermediaRESTError) {
+  CURRENT_FIELD(json_details, std::string);
+  CURRENT_CONSTRUCTOR(HypermediaRESTParseJSONError)(const std::string& error, const std::string& json_details)
+      : SUPER(error), json_details(json_details) {}
+};
 
 namespace current {
 namespace storage {
 namespace rest {
 
-struct Basic {
+struct Hypermedia {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
@@ -46,7 +55,7 @@ struct Basic {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (request.url_path_args.size() != 1) {
-        request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
+        request(HypermediaRESTError("Need resource key in the URL."), HTTPResponseCode.BadRequest);
       } else {
         next(std::move(request));
       }
@@ -57,7 +66,7 @@ struct Basic {
       if (Exists(result)) {
         return Value(result);
       } else {
-        return Response("Nope.\n", HTTPResponseCode.NotFound);
+        return Response(HypermediaRESTError("Resource not found."), HTTPResponseCode.NotFound);
       }
     }
   };
@@ -67,7 +76,7 @@ struct Basic {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
-        request("Should not have resource key in the URL.\n", HTTPResponseCode.BadRequest);
+        request(HypermediaRESTError("Should not have resource key in the URL."), HTTPResponseCode.BadRequest);
       } else {
         next(std::move(request));
       }
@@ -75,10 +84,12 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.field.Add(input.entry);
+      // TODO(dkorolev): Return a JSON with a resource here.
       return Response("Added.\n", HTTPResponseCode.NoContent);
     }
-    static Response ErrorBadJSON(const std::string&) {
-      return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
+    static Response ErrorBadJSON(const std::string& error_message) {
+      return Response(HypermediaRESTParseJSONError("Invalid JSON in request body.", error_message),
+                      HTTPResponseCode.BadRequest);
     }
   };
 
@@ -87,7 +98,7 @@ struct Basic {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (request.url_path_args.size() != 1) {
-        request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
+        request(HypermediaRESTError("Need resource key in the URL."), HTTPResponseCode.BadRequest);
       } else {
         next(std::move(request));
       }
@@ -95,12 +106,13 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.field.Erase(input.key);
+      // TODO(dkorolev): Return a JSON with something more useful here.
       return Response("Deleted.\n", HTTPResponseCode.NoContent);
     }
   };
 
   static Response ErrorMethodNotAllowed() {
-    return Response("Method not allowed.\n", HTTPResponseCode.MethodNotAllowed);
+    return Response(HypermediaRESTError("Method not allowed."), HTTPResponseCode.MethodNotAllowed);
   }
 };
 
@@ -108,4 +120,4 @@ struct Basic {
 }  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_STORAGE_REST_BASIC_H
+#endif  // CURRENT_STORAGE_REST_HYPERMEDIA_H

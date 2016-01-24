@@ -56,7 +56,8 @@ struct RESTfulStorageEndpointRegisterer {
   STORAGE& storage;
   const std::string path_prefix;
 
-  RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage, const std::string& path_prefix) : server(server), storage(storage), path_prefix(path_prefix) {}
+  RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage, const std::string& path_prefix)
+      : server(server), storage(storage), path_prefix(path_prefix) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
   HTTPRoutesScopeEntry operator()(const char*, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
@@ -108,8 +109,8 @@ struct RESTfulStorageEndpointRegisterer {
                       } args{storage, fields, field, body};
                       return handler.Run(args);
                     }, std::move(request)).Detach();
-                  } catch (const TypeSystemParseJSONException&) {
-                    request(handler.ErrorBadJSON());
+                  } catch (const TypeSystemParseJSONException& e) {
+                    request(handler.ErrorBadJSON(e.What()));
                   }
                 });
           } else if (request.method == "DELETE") {
@@ -142,14 +143,17 @@ struct RESTfulStorageEndpointRegisterer {
 };
 
 template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
-HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server, STORAGE& storage, const std::string& path_prefix) {
-  return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, HTTPRoutesScopeEntry>(),
-                 RESTfulStorageEndpointRegisterer<REST_IMPL, INDEX, SERVER, STORAGE>(server, storage, path_prefix));
+HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server,
+                                                    STORAGE& storage,
+                                                    const std::string& path_prefix) {
+  return storage(
+      ::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, HTTPRoutesScopeEntry>(),
+      RESTfulStorageEndpointRegisterer<REST_IMPL, INDEX, SERVER, STORAGE>(server, storage, path_prefix));
 }
 
 }  // namespace impl
 
-template <class T_STORAGE_IMPL, class T_REST_IMPL = BasicREST>
+template <class T_STORAGE_IMPL, class T_REST_IMPL = Basic>
 class RESTfulStorage {
  public:
   RESTfulStorage(T_STORAGE_IMPL& storage, int port, const std::string& path_prefix = "/api/") {
@@ -163,7 +167,10 @@ class RESTfulStorage {
   template <class REST_IMPL, int I>
   struct ForEachFieldByIndex {
     template <typename T_SERVER, typename T_STORAGE>
-    static void RegisterIt(HTTPRoutesScope& scope, T_SERVER& http_server, T_STORAGE& storage, const std::string& path_prefix) {
+    static void RegisterIt(HTTPRoutesScope& scope,
+                           T_SERVER& http_server,
+                           T_STORAGE& storage,
+                           const std::string& path_prefix) {
       ForEachFieldByIndex<REST_IMPL, I - 1>::RegisterIt(scope, http_server, storage, path_prefix);
       scope += impl::RegisterRESTfulStorageEndpoint<REST_IMPL, I - 1>(http_server, storage, path_prefix);
     }
