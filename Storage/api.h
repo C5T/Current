@@ -54,13 +54,15 @@ struct RESTfulStorageEndpointRegisterer {
 
   SERVER& server;
   STORAGE& storage;
-  RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage) : server(server), storage(storage) {}
+  const std::string path_prefix;
+
+  RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage, const std::string& path_prefix) : server(server), storage(storage), path_prefix(path_prefix) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
   HTTPRoutesScopeEntry operator()(const char*, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
     return server.Register(
-        "/api/" + storage(::current::storage::FieldNameByIndex<INDEX>()),
+        path_prefix + storage(::current::storage::FieldNameByIndex<INDEX>()),
         URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
         [&storage](Request request) {
           if (request.method == "GET") {
@@ -140,9 +142,9 @@ struct RESTfulStorageEndpointRegisterer {
 };
 
 template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
-HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server, STORAGE& storage) {
+HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server, STORAGE& storage, const std::string& path_prefix) {
   return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, HTTPRoutesScopeEntry>(),
-                 RESTfulStorageEndpointRegisterer<REST_IMPL, INDEX, SERVER, STORAGE>(server, storage));
+                 RESTfulStorageEndpointRegisterer<REST_IMPL, INDEX, SERVER, STORAGE>(server, storage, path_prefix));
 }
 
 }  // namespace impl
@@ -150,9 +152,9 @@ HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server, STORAGE& sto
 template <class T_STORAGE_IMPL, class T_REST_IMPL = BasicREST>
 class RESTfulStorage {
  public:
-  RESTfulStorage(T_STORAGE_IMPL& storage, int port) {
+  RESTfulStorage(T_STORAGE_IMPL& storage, int port, const std::string& path_prefix = "/api/") {
     ForEachFieldByIndex<T_REST_IMPL, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(
-        handlers_scope, HTTP(port), storage);
+        handlers_scope, HTTP(port), storage, path_prefix);
   }
 
  private:
@@ -161,16 +163,16 @@ class RESTfulStorage {
   template <class REST_IMPL, int I>
   struct ForEachFieldByIndex {
     template <typename T_SERVER, typename T_STORAGE>
-    static void RegisterIt(HTTPRoutesScope& scope, T_SERVER& http_server, T_STORAGE& storage) {
-      ForEachFieldByIndex<REST_IMPL, I - 1>::RegisterIt(scope, http_server, storage);
-      scope += impl::RegisterRESTfulStorageEndpoint<REST_IMPL, I - 1>(http_server, storage);
+    static void RegisterIt(HTTPRoutesScope& scope, T_SERVER& http_server, T_STORAGE& storage, const std::string& path_prefix) {
+      ForEachFieldByIndex<REST_IMPL, I - 1>::RegisterIt(scope, http_server, storage, path_prefix);
+      scope += impl::RegisterRESTfulStorageEndpoint<REST_IMPL, I - 1>(http_server, storage, path_prefix);
     }
   };
 
   template <class REST_IMPL>
   struct ForEachFieldByIndex<REST_IMPL, 0> {
     template <typename T_SERVER, typename T_STORAGE>
-    static void RegisterIt(HTTPRoutesScope&, T_SERVER&, T_STORAGE&) {}
+    static void RegisterIt(HTTPRoutesScope&, T_SERVER&, T_STORAGE&, const std::string&) {}
   };
 };
 

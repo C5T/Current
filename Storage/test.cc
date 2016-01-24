@@ -24,6 +24,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "docu/docu_2_code.cc"
+#include "docu/docu_3_code.cc"
 
 #include "storage.h"
 #include "api.h"
