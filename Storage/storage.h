@@ -89,6 +89,7 @@ namespace storage {
     template <typename T, typename E1, typename E2>                                                         \
     using T_FIELD_TYPE = dictionary_type<T, E1, E2>;                                                        \
     using T_ENTRY = entry_type;                                                                             \
+    using T_KEY = ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>;                                   \
     using T_UPDATE_EVENT = entry_name##Updated;                                                             \
     using T_DELETE_EVENT = entry_name##Deleted;                                                             \
     using T_PERSISTED_EVENT_1 = entry_name##Updated;                                                        \
@@ -107,11 +108,12 @@ namespace storage {
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##PushedElement) {}                                \
     CURRENT_CONSTRUCTOR(entry_name##PushedElement)(const entry_type& value) : data(value) {} \
   };                                                                                         \
-  CURRENT_STRUCT(entry_name##PoppedElement){};                                               \
+  CURRENT_STRUCT(entry_name##PoppedElement) {};                                              \
   struct entry_name {                                                                        \
     template <typename... TS>                                                                \
     using T_FIELD_TYPE = Vector<TS...>;                                                      \
     using T_ENTRY = entry_type;                                                              \
+    using T_KEY = size_t;                                                                    \
     using T_PUSHED_BACK_EVENT = entry_name##PushedElement;                                   \
     using T_POPPED_BACK_EVENT = entry_name##PoppedElement;                                   \
     using T_PERSISTED_EVENT_1 = entry_name##PushedElement;                                   \
@@ -205,26 +207,47 @@ namespace storage {
   std::string operator()(::current::storage::FieldNameByIndex<FIELD_INDEX_##field_name>) const {              \
     return #field_name;                                                                                       \
   }                                                                                                           \
+  const T_FIELD_TYPE_##field_name& operator()(                                                                \
+      ::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>) const {                            \
+    return field_name;                                                                                        \
+  }                                                                                                           \
   template <typename F>                                                                                       \
   void operator()(::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) const {         \
     f(field_name);                                                                                            \
+  }                                                                                                           \
+  template <typename F, typename RETVAL>                                                                      \
+  RETVAL operator()(::current::storage::ImmutableFieldByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,     \
+                    F&& f) const {                                                                            \
+    return f(field_name);                                                                                     \
   }                                                                                                           \
   template <typename F>                                                                                       \
   void operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) {                 \
     f(field_name);                                                                                            \
   }                                                                                                           \
+  T_FIELD_TYPE_##field_name& operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>) {  \
+    return field_name;                                                                                        \
+  }                                                                                                           \
+  template <typename F, typename RETVAL>                                                                      \
+  RETVAL operator()(::current::storage::MutableFieldByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,       \
+                    F&& f) {                                                                                  \
+    return f(field_name);                                                                                     \
+  }                                                                                                           \
   template <typename F>                                                                                       \
   void operator()(::current::storage::FieldNameAndTypeByIndex<FIELD_INDEX_##field_name>, F&& f) const {       \
     f(#field_name,                                                                                            \
       ::current::storage::StorageFieldTypeSelector<T_FIELD_CONTAINER_TYPE_##field_name>(),                    \
-      ::current::storage::FieldUnderlyingTypeWrapper<entry_name::T_ENTRY>());                                 \
+      ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                         \
+  }                                                                                                           \
+  ::current::storage::StorageExtractedFieldType<T_FIELD_CONTAINER_TYPE_##field_name> operator()(              \
+      ::current::storage::FieldTypeExtractor<FIELD_INDEX_##field_name>) const {                               \
+    return ::current::storage::StorageExtractedFieldType<T_FIELD_CONTAINER_TYPE_##field_name>();              \
   }                                                                                                           \
   template <typename F, typename RETVAL>                                                                      \
   RETVAL operator()(::current::storage::FieldNameAndTypeByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,   \
                     F&& f) const {                                                                            \
     return f(#field_name,                                                                                     \
              ::current::storage::StorageFieldTypeSelector<T_FIELD_CONTAINER_TYPE_##field_name>(),             \
-             ::current::storage::FieldUnderlyingTypeWrapper<entry_name::T_ENTRY>());                          \
+             ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                  \
   }                                                                                                           \
   T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);        \
   void operator()(const entry_name::T_PERSISTED_EVENT_1& e) { field_name(e); }                                \

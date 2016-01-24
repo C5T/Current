@@ -24,9 +24,10 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "docu/docu_2_code.cc"
+#include "docu/docu_3_code.cc"
 
 #include "storage.h"
-#include "rest.h"
+#include "api.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -219,10 +220,10 @@ TEST(TransactionalStorage, SmokeTest) {
 struct CurrentStorageTestMagicTypesExtractor {
   std::string& s;
   CurrentStorageTestMagicTypesExtractor(std::string& s) : s(s) {}
-  template <typename FIELD_TYPE, typename ENTRY_TYPE>
-  int operator()(const char* name, FIELD_TYPE, ENTRY_TYPE) {
-    s = std::string(name) + ", " + FIELD_TYPE::HumanReadableName() + ", " +
-        current::reflection::CurrentTypeName<typename ENTRY_TYPE::type>();
+  template <typename CONTAINER_TYPE_WRAPPER, typename ENTRY_TYPE_WRAPPER>
+  int operator()(const char* name, CONTAINER_TYPE_WRAPPER, ENTRY_TYPE_WRAPPER) {
+    s = std::string(name) + ", " + CONTAINER_TYPE_WRAPPER::HumanReadableName() + ", " +
+        current::reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::T_ENTRY>();
     return 42;  // Checked against via `::current::storage::FieldNameAndTypeByIndexAndReturn`.
   }
 };
