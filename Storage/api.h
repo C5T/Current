@@ -156,7 +156,8 @@ STORAGE_HANDLERS_MAP_ENTRY GenerateRESTfulHandler(STORAGE& storage) {
 template <class T_STORAGE_IMPL, class T_REST_IMPL = Basic>
 class RESTfulStorage {
  public:
-  RESTfulStorage(T_STORAGE_IMPL& storage, int port, const std::string& path_prefix = "/api/") {
+  RESTfulStorage(T_STORAGE_IMPL& storage, int port, const std::string& path_prefix = "/api/")
+      : port_(port), path_prefix_(path_prefix) {
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(storage, handlers_);
     // Register handlers on a specific port under a specific path prefix.
@@ -167,7 +168,19 @@ class RESTfulStorage {
     }
   }
 
+  // To enable exposing fields under different names / URLs.
+  void RegisterAlias(const std::string& target, const std::string& alias_name) {
+    const auto cit = handlers_.find(target);
+    if (cit == handlers_.end()) {
+      CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
+    }
+    handlers_scope_ += HTTP(port_).Register(
+        path_prefix_ + alias_name, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, cit->second);
+  }
+
  private:
+  const int port_;
+  const std::string path_prefix_;
   impl::STORAGE_HANDLERS_MAP handlers_;
   HTTPRoutesScope handlers_scope_;
 
