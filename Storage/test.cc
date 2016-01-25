@@ -734,7 +734,7 @@ TEST(TransactionalStorage, RealAPITest) {
 
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
-    // Registed RESTful HTTP endpoints, in a scoped way.
+    // Register RESTful HTTP endpoints, in a scoped way.
     auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
     rest.RegisterAlias("user", "user_alias");
 

@@ -31,6 +31,32 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
 
+CURRENT_STRUCT(HypermediaRESTTopLevel) {
+  CURRENT_FIELD(url_healthz, std::string);
+  CURRENT_FIELD(api, (std::map<std::string, std::string>));
+  CURRENT_FIELD(build, std::string, __DATE__ " " __TIME__);
+};
+
+static const std::chrono::microseconds startup_time_us = current::time::Now();
+
+CURRENT_STRUCT(HypermediaRESTHealthz) {
+  CURRENT_FIELD(url, std::string);
+  CURRENT_FIELD(up, bool, true);
+  CURRENT_FIELD(server_time_current, std::string);
+  CURRENT_FIELD(server_time_spawned, std::string);
+  CURRENT_FIELD(uptime_us, std::chrono::microseconds);
+  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTHealthz) {
+    const std::chrono::microseconds now_us = current::time::Now();
+    std::time_t t;
+    using TP = std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds>;
+    t = std::chrono::system_clock::to_time_t(TP(now_us));
+    server_time_current = std::ctime(&t);
+    t = std::chrono::system_clock::to_time_t(TP(startup_time_us));
+    server_time_spawned = std::ctime(&t);
+    uptime_us = now_us - startup_time_us;
+  }
+};
+
 CURRENT_STRUCT(HypermediaRESTError) {
   CURRENT_FIELD(error, std::string);
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& error) : error(error) {}
@@ -49,6 +75,28 @@ namespace rest {
 struct Hypermedia {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
+
+  static void RegisterTopLevel(HTTPRoutesScope& scope,
+                               const std::vector<std::string>& fields,
+                               int port,
+                               const std::string& path_prefix,
+                               const std::string& restful_url_prefix) {
+    scope += HTTP(port).Register(path_prefix,
+                                 [fields, restful_url_prefix](Request request) {
+                                   HypermediaRESTTopLevel response;
+                                   response.url_healthz = restful_url_prefix + "/healthz";
+                                   for (const auto& f : fields) {
+                                     response.api[f] = restful_url_prefix + '/' + f;
+                                   }
+                                   request(response);
+                                 });
+    scope += HTTP(port).Register(path_prefix == "/" ? "/healthz" : path_prefix + "/healthz",
+                                 [restful_url_prefix](Request request) {
+                                   HypermediaRESTHealthz response;
+                                   response.url = restful_url_prefix + "/healthz";
+                                   request(response);
+                                 });
+  }
 
   template <typename F>
   static void ExtractKeyFromURLAndNext(Request request, F&& next) {

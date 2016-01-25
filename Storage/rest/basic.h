@@ -41,6 +41,18 @@ struct Basic {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
+  static void RegisterTopLevel(HTTPRoutesScope& scope,
+                               const std::vector<std::string>& fields,
+                               int port,
+                               const std::string& path_prefix,
+                               const std::string& restful_url_prefix) {
+    static_cast<void>(scope);
+    static_cast<void>(fields);
+    static_cast<void>(port);
+    static_cast<void>(path_prefix);
+    static_cast<void>(restful_url_prefix);
+  }
+
   template <typename F>
   static void ExtractKeyFromURLAndNext(Request request, F&& next) {
     if (request.url.query.has("key")) {

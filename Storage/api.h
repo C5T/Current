@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <vector>
 #include <map>
 
 #include "storage.h"
@@ -153,16 +154,32 @@ STORAGE_HANDLERS_MAP_ENTRY GenerateRESTfulHandler(STORAGE& storage) {
 template <class T_STORAGE_IMPL, class T_REST_IMPL = Basic>
 class RESTfulStorage {
  public:
-  RESTfulStorage(T_STORAGE_IMPL& storage, int port, const std::string& path_prefix = "/api/")
+  RESTfulStorage(T_STORAGE_IMPL& storage,
+                 int port,
+                 const std::string& path_prefix = "/api",
+                 const std::string& restful_url_prefix_input = "")
       : port_(port), path_prefix_(path_prefix) {
+    const std::string restful_url_prefix =
+        restful_url_prefix_input.empty() ? "http://localhost:" + ToString(port) : restful_url_prefix_input;
+
+    if (!path_prefix.empty() && path_prefix.back() == '/') {
+      CURRENT_THROW(current::Exception("`path_prefix` should not end with a slash."));
+    }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(storage, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& handler : handlers_) {
-      handlers_scope_ += HTTP(port).Register(path_prefix + handler.first,
+      handlers_scope_ += HTTP(port).Register(path_prefix + '/' + handler.first,
                                              URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
                                              handler.second);
     }
+
+    std::vector<std::string> fields;
+    for (const auto& handler : handlers_) {
+      fields.push_back(handler.first);
+    }
+    T_REST_IMPL::RegisterTopLevel(
+        handlers_scope_, fields, port, path_prefix.empty() ? "/" : path_prefix, restful_url_prefix);
   }
 
   // To enable exposing fields under different names / URLs.
@@ -171,8 +188,9 @@ class RESTfulStorage {
     if (cit == handlers_.end()) {
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
     }
-    handlers_scope_ += HTTP(port_).Register(
-        path_prefix_ + alias_name, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, cit->second);
+    handlers_scope_ += HTTP(port_).Register(path_prefix_ + '/' + alias_name,
+                                            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                            cit->second);
   }
 
  private:
