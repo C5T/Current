@@ -65,7 +65,6 @@ struct RESTfulHandlerGenerator {
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
   STORAGE_HANDLERS_MAP_ENTRY operator()(const char* field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
-    //    const std::string& field_name = ::current::storage::FieldNameByIndex<INDEX>();
     return STORAGE_HANDLERS_MAP_ENTRY(
         field_name,
         [&storage](Request request) {
