@@ -747,6 +747,9 @@ TEST(TransactionalStorage, RealAPITest) {
     // Test the alias too.
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user_alias/max")).body).name);
 
+    // Test other key format too.
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=max")).body).name);
+
     EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/user/max")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
 

@@ -77,8 +77,7 @@ struct RESTfulHandlerGenerator {
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage](Request request) {
-                  const auto& key_as_string = request.url_path_args[0];
+                [&handler, &storage](Request request, const std::string& key_as_string) {
                   const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                   const T_SPECIFIC_FIELD& field = storage(::current::storage::ImmutableFieldByIndex<INDEX>());
                   storage.Transaction([handler, key, &storage, &field](T_IMMUTABLE_FIELDS fields) -> Response {
@@ -124,8 +123,7 @@ struct RESTfulHandlerGenerator {
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage](Request request) {
-                  const auto& key_as_string = request.url_path_args[0];
+                [&handler, &storage](Request request, const std::string& key_as_string) {
                   const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                   T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
                   storage.Transaction([handler, &storage, &field, key](T_MUTABLE_FIELDS fields) -> Response {

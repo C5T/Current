@@ -50,15 +50,26 @@ struct Hypermedia {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
+  template <typename F>
+  static void ExtractKeyFromURLAndNext(Request request, F&& next) {
+    std::string key;
+    if (request.url.query.has("key")) {
+      key = request.url.query["key"];
+    } else if (!request.url_path_args.empty()) {
+      key = request.url_path_args[0];
+    }
+    if (key.empty()) {
+      request(HypermediaRESTError("Need resource key in the URL."), HTTPResponseCode.BadRequest);
+    } else {
+      next(std::move(request), key);
+    }
+  }
+
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      if (request.url_path_args.size() != 1) {
-        request(HypermediaRESTError("Need resource key in the URL."), HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
+      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
@@ -97,11 +108,7 @@ struct Hypermedia {
   struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      if (request.url_path_args.size() != 1) {
-        request(HypermediaRESTError("Need resource key in the URL."), HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
+      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {

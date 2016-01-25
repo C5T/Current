@@ -41,15 +41,21 @@ struct Basic {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
+  template <typename F>
+  static void ExtractKeyFromURLAndNext(Request request, F&& next) {
+    if (request.url.query.has("key")) {
+      next(std::move(request), request.url.query["key"]);
+    } else if (!request.url_path_args.empty()) {
+      next(std::move(request), request.url_path_args[0]);
+    } else {
+      request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
+    }
+  }
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      if (request.url_path_args.size() != 1) {
-        request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
+      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
@@ -86,11 +92,7 @@ struct Basic {
   struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      if (request.url_path_args.size() != 1) {
-        request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
-      } else {
-        next(std::move(request));
-      }
+      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
