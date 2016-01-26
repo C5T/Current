@@ -175,4 +175,22 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("{\"key\":42,\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
   }
+
+  // PUT an entry with the key different from URL is not allowed.
+  EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api1/client/42", Client(ClientID(64)))).code));
+  EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", Client(ClientID(64)))).code));
+
+  // PUT a modified entry via both APIs.
+  Client updated_client_42(ClientID(42));
+  updated_client_42.name = "Jane Doe";
+  EXPECT_EQ(204, static_cast<int>(HTTP(PUT(base_url + "/api1/client/42", updated_client_42)).code));
+  updated_client_42.male = false;
+  EXPECT_EQ(204, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", updated_client_42)).code));
+
+  // Check if both updates took place.
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client/42"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"key\":42,\"name\":\"Jane Doe\",\"white\":true,\"straight\":true,\"male\":false}\n", result.body);
+  }
 }

@@ -153,6 +153,27 @@ struct Hypermedia {
   };
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<PUT, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
+    }
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      if (input.entry_key == input.url_key) {
+        input.field.Add(input.entry);
+        // TODO(dkorolev): Return a JSON with a resource here.
+        return Response("Added.\n", HTTPResponseCode.NoContent);
+      } else {
+        return Response(HypermediaRESTError("Object key doesn't match URL key."), HTTPResponseCode.BadRequest);
+      }
+    }
+    static Response ErrorBadJSON(const std::string& error_message) {
+      return Response(HypermediaRESTParseJSONError("Invalid JSON in request body.", error_message),
+                      HTTPResponseCode.BadRequest);
+    }
+  };
+  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {

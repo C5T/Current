@@ -100,17 +100,51 @@ struct RESTfulHandlerGenerator {
                 std::move(request),
                 [&handler, &storage](Request request) {
                   try {
-                    const auto body = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
+                    const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-                    storage.Transaction([handler, &storage, &field, body](T_MUTABLE_FIELDS fields) -> Response {
-                      const struct {
-                        T_STORAGE& storage;
-                        T_MUTABLE_FIELDS fields;
-                        T_SPECIFIC_FIELD& field;
-                        const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
-                      } args{storage, fields, field, body};
-                      return handler.Run(args);
-                    }, std::move(request)).Detach();
+                    storage.Transaction(
+                                [handler, &storage, &field, entry](T_MUTABLE_FIELDS fields) -> Response {
+                                  const struct {
+                                    T_STORAGE& storage;
+                                    T_MUTABLE_FIELDS fields;
+                                    T_SPECIFIC_FIELD& field;
+                                    const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
+                                  } args{storage, fields, field, entry};
+                                  return handler.Run(args);
+                                },
+                                std::move(request)).Detach();
+                  } catch (const TypeSystemParseJSONException& e) {
+                    request(handler.ErrorBadJSON(e.What()));
+                  }
+                });
+          } else if (request.method == "PUT") {
+            CustomHandler<PUT,
+                          T_IMMUTABLE_FIELDS,
+                          T_SPECIFIC_FIELD,
+                          typename ENTRY_TYPE_WRAPPER::T_ENTRY,
+                          typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
+            handler.Enter(
+                std::move(request),
+                [&handler, &storage](Request request, const std::string& key_as_string) {
+                  try {
+                    const auto url_key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
+                    const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
+                    const auto entry_key = sfinae::GetKey(entry);
+                    T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
+                    storage.Transaction(
+                                [handler, &storage, &field, url_key, entry, entry_key](T_MUTABLE_FIELDS fields)
+                                    -> Response {
+                                      const struct {
+                                        T_STORAGE& storage;
+                                        T_MUTABLE_FIELDS fields;
+                                        T_SPECIFIC_FIELD& field;
+                                        const typename ENTRY_TYPE_WRAPPER::T_KEY& url_key;
+                                        const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
+                                        const typename ENTRY_TYPE_WRAPPER::T_KEY& entry_key;
+                                      } args{storage, fields, field, url_key, entry, entry_key};
+                                      return handler.Run(args);
+                                    },
+                                std::move(request)).Detach();
                   } catch (const TypeSystemParseJSONException& e) {
                     request(handler.ErrorBadJSON(e.What()));
                   }

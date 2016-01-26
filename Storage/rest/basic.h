@@ -63,6 +63,7 @@ struct Basic {
       request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
     }
   }
+
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
@@ -94,6 +95,26 @@ struct Basic {
     Response Run(const INPUT& input) const {
       input.field.Add(input.entry);
       return Response("Added.\n", HTTPResponseCode.NoContent);
+    }
+    static Response ErrorBadJSON(const std::string&) {
+      return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
+    }
+  };
+
+  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<PUT, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+    template <typename F>
+    void Enter(Request request, F&& next) {
+      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
+    }
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      if (input.entry_key == input.url_key) {
+        input.field.Add(input.entry);
+        return Response("Added.\n", HTTPResponseCode.NoContent);
+      } else {
+        return Response("Object key doesn't match URL key.\n", HTTPResponseCode.BadRequest);
+      }
     }
     static Response ErrorBadJSON(const std::string&) {
       return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
