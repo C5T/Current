@@ -142,9 +142,15 @@ struct Hypermedia {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      input.field.Add(input.entry);
-      // TODO(dkorolev): Return a JSON with a resource here.
-      return Response("Created.\n", HTTPResponseCode.Created);
+      input.entry.InitializeOwnKey();
+      if (!Exists(input.field[input.entry.key])) {
+        input.field.Add(input.entry);
+        // TODO(dkorolev): Return a JSON with a resource here.
+        return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+      } else {
+        return Response(HypermediaRESTError("The key generated for entry already exists"),
+                        HTTPResponseCode.Conflict);
+      }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
       return Response(HypermediaRESTParseJSONError("Invalid JSON in request body.", error_message),

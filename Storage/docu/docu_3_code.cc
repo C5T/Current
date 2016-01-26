@@ -54,6 +54,10 @@ CURRENT_STRUCT(Client) {
   CURRENT_FIELD(male, bool, true);
 
   CURRENT_CONSTRUCTOR(Client)(ClientID key = ClientID::INVALID) : key(key) {}
+
+  void InitializeOwnKey() {
+    key = static_cast<ClientID>(std::hash<std::string>()(name));
+  }
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, Client, PersistedClient);
@@ -161,19 +165,22 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // POST a real piece.
-  EXPECT_EQ(201, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(42)))).code));
+  const auto post_response = HTTP(POST(base_url + "/api1/client", Client(ClientID(42))));
+  const std::string client_key_str = post_response.body;
+  const ClientID client_key = static_cast<ClientID>(FromString<uint64_t>(client_key_str));
+  EXPECT_EQ(201, static_cast<int>(post_response.code));
 
   // Now GET it via both APIs.
   {
-    const auto result = HTTP(GET(base_url + "/api1/client/42"));
+    const auto result = HTTP(GET(base_url + "/api1/client/" + client_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":42,\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+    EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
   }
 
   {
-    const auto result = HTTP(GET(base_url + "/api2/client/42"));
+    const auto result = HTTP(GET(base_url + "/api2/client/" + client_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":42,\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+    EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
   }
 
   // PUT an entry with the key different from URL is not allowed.
@@ -181,16 +188,16 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", Client(ClientID(64)))).code));
 
   // PUT a modified entry via both APIs.
-  Client updated_client_42(ClientID(42));
-  updated_client_42.name = "Jane Doe";
-  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/client/42", updated_client_42)).code));
-  updated_client_42.male = false;
-  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", updated_client_42)).code));
+  Client updated_client((ClientID(client_key)));
+  updated_client.name = "Jane Doe";
+  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/client/" + client_key_str, updated_client)).code));
+  updated_client.male = false;
+  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/client/" + client_key_str, updated_client)).code));
 
   // Check if both updates took place.
   {
-    const auto result = HTTP(GET(base_url + "/api1/client/42"));
+    const auto result = HTTP(GET(base_url + "/api1/client/" + client_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":42,\"name\":\"Jane Doe\",\"white\":true,\"straight\":true,\"male\":false}\n", result.body);
+    EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"Jane Doe\",\"white\":true,\"straight\":true,\"male\":false}\n", result.body);
   }
 }

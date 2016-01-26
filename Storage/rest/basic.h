@@ -93,8 +93,13 @@ struct Basic {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      input.field.Add(input.entry);
-      return Response("Created.\n", HTTPResponseCode.Created);
+      input.entry.InitializeOwnKey();
+      if (!Exists(input.field[input.entry.key])) {
+        input.field.Add(input.entry);
+        return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+      } else {
+        return Response("Already exists.\n", HTTPResponseCode.Conflict);
+      }
     }
     static Response ErrorBadJSON(const std::string&) {
       return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);

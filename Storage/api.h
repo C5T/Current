@@ -96,27 +96,29 @@ struct RESTfulHandlerGenerator {
                           T_SPECIFIC_FIELD,
                           typename ENTRY_TYPE_WRAPPER::T_ENTRY,
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
-            handler.Enter(
-                std::move(request),
-                [&handler, &storage](Request request) {
-                  try {
-                    const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
-                    T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-                    storage.Transaction(
-                                [handler, &storage, &field, entry](T_MUTABLE_FIELDS fields) -> Response {
-                                  const struct {
-                                    T_STORAGE& storage;
-                                    T_MUTABLE_FIELDS fields;
-                                    T_SPECIFIC_FIELD& field;
-                                    const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
-                                  } args{storage, fields, field, entry};
-                                  return handler.Run(args);
-                                },
-                                std::move(request)).Detach();
-                  } catch (const TypeSystemParseJSONException& e) {
-                    request(handler.ErrorBadJSON(e.What()));
-                  }
-                });
+            handler.Enter(std::move(request),
+                          [&handler, &storage](Request request) {
+                            try {
+                              // `entry` is not `const` to allow modifying a copy of it inside lambda.
+                              auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
+                              T_SPECIFIC_FIELD& field =
+                                  storage(::current::storage::MutableFieldByIndex<INDEX>());
+                              storage.Transaction(
+                                          [handler, &storage, &field, entry](T_MUTABLE_FIELDS fields) mutable
+                                          -> Response {
+                                            const struct {
+                                              T_STORAGE& storage;
+                                              T_MUTABLE_FIELDS fields;
+                                              T_SPECIFIC_FIELD& field;
+                                              typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
+                                            } args{storage, fields, field, entry};
+                                            return handler.Run(args);
+                                          },
+                                          std::move(request)).Detach();
+                            } catch (const TypeSystemParseJSONException& e) {
+                              request(handler.ErrorBadJSON(e.What()));
+                            }
+                          });
           } else if (request.method == "PUT") {
             CustomHandler<PUT,
                           T_IMMUTABLE_FIELDS,
