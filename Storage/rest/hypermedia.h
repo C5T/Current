@@ -167,7 +167,7 @@ struct Hypermedia {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      if (!Exists(input.field[input.entry.key])) {
+      if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
         // TODO(dkorolev): Return a JSON with a resource here.
         return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);

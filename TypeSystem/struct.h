@@ -234,6 +234,12 @@ struct CurrentStructFieldsConsistency<T, -1> {
   ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{value}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
+#define CURRENT_USE_FIELD_AS_KEY(field)                                                   \
+  using T_COPY_FREE_KEY_TYPE = current::copy_free<decltype(field)>;                       \
+  const T_COPY_FREE_KEY_TYPE key() const { return field; }                                \
+  void set_key(const T_COPY_FREE_KEY_TYPE new_key_value) const { field = new_key_value; } \
+  using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
+
 #define CURRENT_TIMESTAMP(field)      \
   template <typename F>               \
   void ReportTimestamp(F&& f) const { \

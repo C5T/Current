@@ -117,7 +117,7 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      if (!Exists(input.field[input.entry.key])) {
+      if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
         return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
       } else {
