@@ -30,6 +30,7 @@ SOFTWARE.
 #include "../storage.h"
 #include "../api.h"
 #include "../rest/hypermedia.h"
+#include "../rest/advanced_hypermedia.h"
 #include "../persister/sherlock.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -44,20 +45,24 @@ namespace storage_docu {
 
 CURRENT_ENUM(ClientID, uint64_t) { INVALID = 0ull };
 
-CURRENT_STRUCT(Client) {
+CURRENT_STRUCT(BriefClient) {
   CURRENT_FIELD(key, ClientID);
-
   CURRENT_FIELD(name, std::string, "John Doe");
-  
-  CURRENT_FIELD(white, bool, true);
-  CURRENT_FIELD(straight, bool, true);
-  CURRENT_FIELD(male, bool, true);
-
-  CURRENT_CONSTRUCTOR(Client)(ClientID key = ClientID::INVALID) : key(key) {}
+  CURRENT_CONSTRUCTOR(BriefClient)(ClientID key = ClientID::INVALID) : key(key) {}
 
   void InitializeOwnKey() {
     key = static_cast<ClientID>(std::hash<std::string>()(name));
   }
+};
+
+CURRENT_STRUCT(Client, BriefClient) {
+  CURRENT_FIELD(white, bool, true);
+  CURRENT_FIELD(straight, bool, true);
+  CURRENT_FIELD(male, bool, true);
+
+  CURRENT_CONSTRUCTOR(Client)(ClientID key = ClientID::INVALID) : SUPER(key) {}
+
+  using T_BRIEF = BriefClient;
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Client, PersistedClient);
@@ -79,6 +84,10 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
       storage,
       FLAGS_client_storage_test_port,
       "/api2");
+  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia>(
+      storage,
+      FLAGS_client_storage_test_port,
+      "/api3");
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
 
@@ -239,6 +248,13 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         base_url + "/client/102\",\"" +
         base_url + "/client/" + client1_key_str + "\"" +
         "]}\n",
+        result.body);
+  }
+  {
+    const auto result = HTTP(GET(base_url + "/api3/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    // Shamelessly copy-pasted from the output. -- D.K.
+    EXPECT_EQ("{\"url\":\"" + base_url + "/client?i=0&n=10\",\"url_directory\":\"" + base_url + "/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"url\":\"" + base_url + "/client/101\",\"url_full\":\"" + base_url + "/client/101\",\"url_brief\":\"" + base_url + "/client/101?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/client/102\",\"url_full\":\"" + base_url + "/client/102\",\"url_brief\":\"" + base_url + "/client/102?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/client/14429384856179124916\",\"url_full\":\"" + base_url + "/client/14429384856179124916\",\"url_brief\":\"" + base_url + "/client/14429384856179124916?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":14429384856179124916,\"name\":\"Jane Doe\"}}]}",
         result.body);
   }
 
