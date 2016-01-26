@@ -60,7 +60,7 @@ CURRENT_STRUCT(Client) {
   }
 };
 
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, Client, PersistedClient);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Client, PersistedClient);
 
 CURRENT_STORAGE(StorageOfClients) {
   CURRENT_STORAGE_FIELD(client, PersistedClient);
@@ -100,6 +100,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
       EXPECT_EQ(200, static_cast<int>(result.code));
       EXPECT_TRUE(ParseJSON<HypermediaRESTHealthz>(result.body).up);
     }
+  }
+
+  // GET an empty collection.
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("", result.body);
+  }
+  {
+    const auto result = HTTP(GET(base_url + "/api2/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"url\":\"http://localhost:19999/client\",\"data\":[]}\n", result.body);
   }
 
   // GET a non-existing resource.
@@ -199,5 +211,42 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(GET(base_url + "/api1/client/" + client_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"Jane Doe\",\"white\":true,\"straight\":true,\"male\":false}\n", result.body);
+  }
+
+  // GET the whole collection.
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("42\n", result.body);
+  }
+
+  // POST two more records and GET the collection again.
+  EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(101)))).code));
+  EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(102)))).code));
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("42\n101\n102\n", result.body);
+  }
+  {
+    const auto result = HTTP(GET(base_url + "/api2/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ(
+        "{"
+        "\"url\":\"" + base_url + "/client\","
+        "\"data\":[\"" +
+        base_url + "/client/42\",\"" +
+        base_url + "/client/101\",\"" +
+        base_url + "/client/102\""
+        "]}\n",
+        result.body);
+  }
+
+  // DELETE one record and GET the collection again.
+  EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api1/client/42")).code));
+  {
+    const auto result = HTTP(GET(base_url + "/api1/client"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("101\n102\n", result.body);
   }
 }

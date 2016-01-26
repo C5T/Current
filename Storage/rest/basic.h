@@ -53,30 +53,53 @@ struct Basic {
     static_cast<void>(restful_url_prefix);
   }
 
-  template <typename F>
-  static void ExtractKeyFromURLAndNext(Request request, F&& next) {
+  template <typename F_WITH, typename F_WITHOUT>
+  static void WithOrWithoutKeyFromURL(Request request, F_WITH&& with, F_WITHOUT&& without) {
     if (request.url.query.has("key")) {
-      next(std::move(request), request.url.query["key"]);
+      with(std::move(request), request.url.query["key"]);
     } else if (!request.url_path_args.empty()) {
-      next(std::move(request), request.url_path_args[0]);
+      with(std::move(request), request.url_path_args[0]);
     } else {
-      request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest);
+      without(std::move(request));
     }
+  }
+
+  template <typename F>
+  static void WithKeyFromURL(Request request, F&& next_with_key) {
+    WithOrWithoutKeyFromURL(
+        std::move(request),
+        next_with_key,
+        [](Request request) { request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest); });
+  }
+
+  template <typename F>
+  static void WithOptionalKeyFromURL(Request request, F&& next) {
+    WithOrWithoutKeyFromURL(
+        std::move(request), next, [&next](Request request) { next(std::move(request), ""); });
   }
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
+      WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      const ImmutableOptional<ENTRY> result = input.field[input.key];
-      if (Exists(result)) {
-        return Value(result);
+      if (!input.url_key.empty()) {
+        const auto key = FromString<KEY>(input.url_key);
+        const ImmutableOptional<ENTRY> result = input.field[key];
+        if (Exists(result)) {
+          return Value(result);
+        } else {
+          return Response("Nope.\n", HTTPResponseCode.NotFound);
+        }
       } else {
-        return Response("Nope.\n", HTTPResponseCode.NotFound);
+        std::ostringstream result;
+        for (const auto& element : input.field) {
+          result << ToString(sfinae::GetKey(element)) << '\n';
+        }
+        return result.str();
       }
     }
   };
@@ -110,7 +133,7 @@ struct Basic {
   struct RESTful<PUT, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
+      WithKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
@@ -135,7 +158,7 @@ struct Basic {
   struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
-      ExtractKeyFromURLAndNext(std::move(request), std::forward<F>(next));
+      WithKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {

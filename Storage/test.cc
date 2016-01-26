@@ -637,7 +637,7 @@ CURRENT_STRUCT(SimplePost) {
   void InitializeOwnKey() { key = ToString(std::hash<std::string>()(text)); }
 };
 
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimpleUser, SimpleUserPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
@@ -667,23 +667,39 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
     rest.RegisterAlias("user", "user_alias");
 
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+    // Confirm an empty collection is returned.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ("", HTTP(GET(base_url + "/api/user")).body);
 
-    const auto new_user_response = HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ")));
-    EXPECT_EQ(201, static_cast<int>(new_user_response.code));
-    const auto new_user_key = new_user_response.body;
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/" + new_user_key)).code));
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/" + new_user_key)).body).name);
+    const auto post_user1_response = HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ")));
+    EXPECT_EQ(201, static_cast<int>(post_user1_response.code));
+    const auto user1_key = post_user1_response.body;
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/" + user1_key)).code));
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/" + user1_key)).body).name);
 
     // Test the alias too.
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user_alias/" + new_user_key)).body).name);
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user_alias/" + user1_key)).body).name);
 
     // Test other key format too.
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=" + new_user_key)).body).name);
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=" + user1_key)).body).name);
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/" + new_user_key)).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/" + new_user_key)).code));
+    // Confirm a collection of one element is returned.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ(user1_key + '\n', HTTP(GET(base_url + "/api/user")).body);
 
+    // Test collection retrieval.
+    const auto post_user2_response = HTTP(POST(base_url + "/api/user", SimpleUser("dima", "DK")));
+    EXPECT_EQ(201, static_cast<int>(post_user2_response.code));
+    const auto user2_key = post_user2_response.body;
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ(user1_key +'\n' + user2_key + '\n', HTTP(GET(base_url + "/api/user")).body);
+
+    // Delete the users.
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/" + user1_key)).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/" + user2_key)).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+
+    // Run the subset of the above test for posts, not just for users.
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
 
     EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", SimplePost("test", "blah"))).code));
@@ -697,5 +713,5 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  EXPECT_EQ(8u, persisted_transactions.size());
+  EXPECT_EQ(12u, persisted_transactions.size());
 }
