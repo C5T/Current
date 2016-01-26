@@ -161,7 +161,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // POST a real piece.
-  EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(42)))).code));
+  EXPECT_EQ(201, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(42)))).code));
 
   // Now GET it via both APIs.
   {
@@ -183,9 +183,9 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   // PUT a modified entry via both APIs.
   Client updated_client_42(ClientID(42));
   updated_client_42.name = "Jane Doe";
-  EXPECT_EQ(204, static_cast<int>(HTTP(PUT(base_url + "/api1/client/42", updated_client_42)).code));
+  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/client/42", updated_client_42)).code));
   updated_client_42.male = false;
-  EXPECT_EQ(204, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", updated_client_42)).code));
+  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", updated_client_42)).code));
 
   // Check if both updates took place.
   {

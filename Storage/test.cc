@@ -740,7 +740,7 @@ TEST(TransactionalStorage, RealAPITest) {
 
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
 
-    EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ"))).code));
+    EXPECT_EQ(201, static_cast<int>(HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ"))).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/max")).body).name);
 
@@ -750,16 +750,16 @@ TEST(TransactionalStorage, RealAPITest) {
     // Test other key format too.
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=max")).body).name);
 
-    EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/user/max")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/max")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
 
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
 
-    EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/post", SimplePost("test", "blah"))).code));
+    EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", SimplePost("test", "blah"))).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
     EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api/post/test")).body).text);
 
-    EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
   }
 
