@@ -175,9 +175,12 @@ struct is_same_or_compile_error {
 };
 
 // Unit test ports begin with 19999 by default and go down from there.
-static int PickPortForUnitTest() {
-  static int port = 20000;
-  return --port;
-}
+#define PickPortForUnitTest() PortForUnitTestPicker::PickOne()
+struct PortForUnitTestPicker {
+  static int PickOne() {
+    static int port = 20000;
+    return --port;
+  }
+};
 
 #endif

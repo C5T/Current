@@ -26,6 +26,11 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_H
 #define CURRENT_STORAGE_REST_H
 
+#include "../port.h"
+
+#include <vector>
+#include <map>
+
 #include "storage.h"
 
 #include "rest/basic.h"
@@ -38,8 +43,11 @@ namespace rest {
 
 namespace impl {
 
-template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
-struct RESTfulStorageEndpointRegisterer {
+using STORAGE_HANDLERS_MAP = std::map<std::string, std::function<void(Request)>>;
+using STORAGE_HANDLERS_MAP_ENTRY = std::pair<std::string, std::function<void(Request)>>;
+
+template <class T_REST_IMPL, int INDEX, typename STORAGE>
+struct RESTfulHandlerGenerator {
   using T_STORAGE = STORAGE;
   using T_IMMUTABLE_FIELDS = ImmutableFields<STORAGE>;
   using T_MUTABLE_FIELDS = MutableFields<STORAGE>;
@@ -50,21 +58,16 @@ struct RESTfulStorageEndpointRegisterer {
       std::declval<STORAGE>()(::current::storage::FieldTypeExtractor<INDEX>()))::T_PARTICULAR_FIELD;
 
   template <class VERB, typename T1, typename T2, typename T3, typename T4>
-  using CustomHandler = typename REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
+  using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
 
-  SERVER& server;
   STORAGE& storage;
-  const std::string path_prefix;
-
-  RESTfulStorageEndpointRegisterer(SERVER& server, STORAGE& storage, const std::string& path_prefix)
-      : server(server), storage(storage), path_prefix(path_prefix) {}
+  RESTfulHandlerGenerator(STORAGE& storage) : storage(storage) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
-  HTTPRoutesScopeEntry operator()(const char*, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
+  STORAGE_HANDLERS_MAP_ENTRY operator()(const char* field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
-    return server.Register(
-        path_prefix + storage(::current::storage::FieldNameByIndex<INDEX>()),
-        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+    return STORAGE_HANDLERS_MAP_ENTRY(
+        field_name,
         [&storage](Request request) {
           if (request.method == "GET") {
             CustomHandler<GET,
@@ -74,8 +77,7 @@ struct RESTfulStorageEndpointRegisterer {
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage](Request request) {
-                  const auto& key_as_string = request.url_path_args[0];
+                [&handler, &storage](Request request, const std::string& key_as_string) {
                   const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                   const T_SPECIFIC_FIELD& field = storage(::current::storage::ImmutableFieldByIndex<INDEX>());
                   storage.Transaction([handler, key, &storage, &field](T_IMMUTABLE_FIELDS fields) -> Response {
@@ -121,8 +123,7 @@ struct RESTfulStorageEndpointRegisterer {
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage](Request request) {
-                  const auto& key_as_string = request.url_path_args[0];
+                [&handler, &storage](Request request, const std::string& key_as_string) {
                   const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                   T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
                   storage.Transaction([handler, &storage, &field, key](T_MUTABLE_FIELDS fields) -> Response {
@@ -136,19 +137,16 @@ struct RESTfulStorageEndpointRegisterer {
                   }, std::move(request)).Detach();
                 });
           } else {
-            request(REST_IMPL::ErrorMethodNotAllowed());
+            request(T_REST_IMPL::ErrorMethodNotAllowed());
           }
         });
   }
 };
 
-template <class REST_IMPL, int INDEX, typename SERVER, typename STORAGE>
-HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server,
-                                                    STORAGE& storage,
-                                                    const std::string& path_prefix) {
-  return storage(
-      ::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, HTTPRoutesScopeEntry>(),
-      RESTfulStorageEndpointRegisterer<REST_IMPL, INDEX, SERVER, STORAGE>(server, storage, path_prefix));
+template <class REST_IMPL, int INDEX, typename STORAGE>
+STORAGE_HANDLERS_MAP_ENTRY GenerateRESTfulHandler(STORAGE& storage) {
+  return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, STORAGE_HANDLERS_MAP_ENTRY>(),
+                 RESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(storage));
 }
 
 }  // namespace impl
@@ -156,30 +154,63 @@ HTTPRoutesScopeEntry RegisterRESTfulStorageEndpoint(SERVER& server,
 template <class T_STORAGE_IMPL, class T_REST_IMPL = Basic>
 class RESTfulStorage {
  public:
-  RESTfulStorage(T_STORAGE_IMPL& storage, int port, const std::string& path_prefix = "/api/") {
-    ForEachFieldByIndex<T_REST_IMPL, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(
-        handlers_scope, HTTP(port), storage, path_prefix);
+  RESTfulStorage(T_STORAGE_IMPL& storage,
+                 int port,
+                 const std::string& path_prefix = "/api",
+                 const std::string& restful_url_prefix_input = "")
+      : port_(port), path_prefix_(path_prefix) {
+    const std::string restful_url_prefix =
+        restful_url_prefix_input.empty() ? "http://localhost:" + ToString(port) : restful_url_prefix_input;
+
+    if (!path_prefix.empty() && path_prefix.back() == '/') {
+      CURRENT_THROW(current::Exception("`path_prefix` should not end with a slash."));
+    }
+    // Fill in the map of `Storage field name` -> `HTTP handler`.
+    ForEachFieldByIndex<void, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(storage, handlers_);
+    // Register handlers on a specific port under a specific path prefix.
+    for (const auto& handler : handlers_) {
+      handlers_scope_ += HTTP(port).Register(path_prefix + '/' + handler.first,
+                                             URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                             handler.second);
+    }
+
+    std::vector<std::string> fields;
+    for (const auto& handler : handlers_) {
+      fields.push_back(handler.first);
+    }
+    T_REST_IMPL::RegisterTopLevel(
+        handlers_scope_, fields, port, path_prefix.empty() ? "/" : path_prefix, restful_url_prefix);
+  }
+
+  // To enable exposing fields under different names / URLs.
+  void RegisterAlias(const std::string& target, const std::string& alias_name) {
+    const auto cit = handlers_.find(target);
+    if (cit == handlers_.end()) {
+      CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
+    }
+    handlers_scope_ += HTTP(port_).Register(path_prefix_ + '/' + alias_name,
+                                            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                            cit->second);
   }
 
  private:
-  HTTPRoutesScope handlers_scope;
+  const int port_;
+  const std::string path_prefix_;
+  impl::STORAGE_HANDLERS_MAP handlers_;
+  HTTPRoutesScope handlers_scope_;
 
-  template <class REST_IMPL, int I>
+  // The `BLAH` template parameter is required to fight the "explicit specialization in class scope" error.
+  template <typename BLAH, int I>
   struct ForEachFieldByIndex {
-    template <typename T_SERVER, typename T_STORAGE>
-    static void RegisterIt(HTTPRoutesScope& scope,
-                           T_SERVER& http_server,
-                           T_STORAGE& storage,
-                           const std::string& path_prefix) {
-      ForEachFieldByIndex<REST_IMPL, I - 1>::RegisterIt(scope, http_server, storage, path_prefix);
-      scope += impl::RegisterRESTfulStorageEndpoint<REST_IMPL, I - 1>(http_server, storage, path_prefix);
+    static void RegisterIt(T_STORAGE_IMPL& storage, impl::STORAGE_HANDLERS_MAP& handlers) {
+      ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, handlers);
+      handlers.insert(impl::GenerateRESTfulHandler<T_REST_IMPL, I - 1, T_STORAGE_IMPL>(storage));
     }
   };
 
-  template <class REST_IMPL>
-  struct ForEachFieldByIndex<REST_IMPL, 0> {
-    template <typename T_SERVER, typename T_STORAGE>
-    static void RegisterIt(HTTPRoutesScope&, T_SERVER&, T_STORAGE&, const std::string&) {}
+  template <typename BLAH>
+  struct ForEachFieldByIndex<BLAH, 0> {
+    static void RegisterIt(T_STORAGE_IMPL&, impl::STORAGE_HANDLERS_MAP&) {}
   };
 };
 

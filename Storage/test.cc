@@ -734,14 +734,21 @@ TEST(TransactionalStorage, RealAPITest) {
 
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
-    // Registed RESTful HTTP endpoints, in a scoped way.
-    const auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
+    // Register RESTful HTTP endpoints, in a scoped way.
+    auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
+    rest.RegisterAlias("user", "user_alias");
 
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
 
     EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ"))).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/max")).body).name);
+
+    // Test the alias too.
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user_alias/max")).body).name);
+
+    // Test other key format too.
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=max")).body).name);
 
     EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/user/max")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
