@@ -66,7 +66,7 @@ struct MapsYouEventBase {
   CEREAL_REGISTER_TYPE_WITH_NAME(M_EVENT_CLASS_NAME, M_SHORT_NAME);                  \
   struct M_EVENT_CLASS_NAME##Helper : MapsYouEventBase {                             \
     typedef MapsYouEventBase CEREAL_BASE_TYPE;                                       \
-    typedef M_IMMEDIATE_BASE_CLASS_NAME SUPER;                                       \
+    typedef M_IMMEDIATE_BASE_CLASS_NAME EVENT_SUPER;                                 \
     virtual std::string Type() const override { return #M_EVENT_CLASS_NAME; }        \
     virtual std::string ShortType() const override { return M_SHORT_NAME; }          \
   };                                                                                 \
