@@ -551,11 +551,11 @@ TEST(TypeSystemTest, NestedVariants) {
 namespace struct_definition_test {
 CURRENT_STRUCT(WithTimestampUS) {
   CURRENT_FIELD(t, std::chrono::microseconds);
-  CURRENT_TIMESTAMP(t);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(t);
 };
 CURRENT_STRUCT(WithTimestampUInt64) {
   CURRENT_FIELD(another_t, int64_t);
-  CURRENT_TIMESTAMP(another_t);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(another_t);
 };
 }  // namespace struct_definition_test
 
@@ -580,7 +580,7 @@ CURRENT_STRUCT(WithTimestampVariant) {
   CURRENT_FIELD(magic, (Variant<WithTimestampUS, WithTimestampUInt64>));
   CURRENT_CONSTRUCTOR(WithTimestampVariant)(const WithTimestampUS& magic) : magic(magic) {}
   CURRENT_CONSTRUCTOR(WithTimestampVariant)(const WithTimestampUInt64& magic) : magic(magic) {}
-  CURRENT_TIMESTAMP(magic);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(magic);
 };
 }  // namespace struct_definition_test
 

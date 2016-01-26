@@ -33,7 +33,7 @@ using namespace current;
 
 CURRENT_STRUCT(BaseEvent) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds);
-  CURRENT_TIMESTAMP(timestamp);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(timestamp);
 };
 
 CURRENT_STRUCT(UserAdded, BaseEvent) {
@@ -57,7 +57,7 @@ CURRENT_STRUCT(UserLike, BaseEvent) {
 CURRENT_STRUCT(Event) {
   CURRENT_FIELD(event, (Variant<UserAdded, PostAdded, UserLike>));
 
-  CURRENT_TIMESTAMP(event);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(event);
 
   CURRENT_DEFAULT_CONSTRUCTOR(Event) {}
   CURRENT_CONSTRUCTOR(Event)(Variant<UserAdded, PostAdded, UserLike> && event) : event(std::move(event)) {}

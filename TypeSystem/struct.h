@@ -240,14 +240,14 @@ struct CurrentStructFieldsConsistency<T, -1> {
   void set_key(const T_COPY_FREE_KEY_TYPE new_key_value) const { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
-#define CURRENT_TIMESTAMP(field)      \
-  template <typename F>               \
-  void ReportTimestamp(F&& f) const { \
-    f(field);                         \
-  }                                   \
-  template <typename F>               \
-  void ReportTimestamp(F&& f) {       \
-    f(field);                         \
+#define CURRENT_USE_FIELD_AS_TIMESTAMP(field)      \
+  template <typename F>                            \
+  void ReportTimestamp(F&& f) const {              \
+    f(field);                                      \
+  }                                                \
+  template <typename F>                            \
+  void ReportTimestamp(F&& f) {                    \
+    f(field);                                      \
   }
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \

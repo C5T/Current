@@ -76,7 +76,7 @@ CURRENT_STRUCT(RecordWithTimestamp) {
   CURRENT_CONSTRUCTOR(RecordWithTimestamp)(std::string s = "",
                                            std::chrono::microseconds t = std::chrono::microseconds(0ull))
       : s(s), t(t) {}
-  CURRENT_TIMESTAMP(t);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(t);
 };
 
 }  // namespace sherlock_unittest
