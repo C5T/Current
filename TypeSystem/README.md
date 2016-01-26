@@ -80,11 +80,11 @@ CURRENT_STRUCT(Foo) {
 ```
 
 ### Using structures in event log
-If the structure is supposed to be stored in the event log, it should contain a dedicated field for microsecond timestamp and notify Current via a `CURRENT_TIMESTAMP` macro:
+If the structure is supposed to be stored in the event log, it should contain a dedicated field for microsecond timestamp and notify Current via a `CURRENT_USE_FIELD_AS_TIMESTAMP` macro:
 ```cpp
 CURRENT_STRUCT(TimestampedEvent) {
   CURRENT_FIELD(EpochMicroseconds, std::chrono::microseconds);
-  CURRENT_TIMESTAMP(EpochMicroseconds);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(EpochMicroseconds);
 };
 ```
 

@@ -22,7 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// `MicroTimestampOf(x)` returns the timestamp of `x`. It supports `CURRENT_STRUCT`-s with `CURRENT_TIMESTAMP()`
+// `MicroTimestampOf(x)` returns the timestamp of `x`.
+// It supports `CURRENT_STRUCT`-s with `CURRENT_USE_FIELD_AS_TIMESTAMP()`
+//
 // `Variant<...>` objects (recursively), raw `Epoch{Micro/Milli}seconds, and custom implementations
 // of the `template<typename F> ReportTimestamp(F&& f) { f(timestamp); }` method.
 //
