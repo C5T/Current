@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// Exclude the whole Midichlorians Beta branch when running the top-level `make test`.
+#ifndef CURRENT_COVERAGE_REPORT_MODE
+
 // Use the define below to enable debug output via `NSLog`.
 // #define CURRENT_APPLE_ENABLE_NSLOG
 
@@ -134,3 +137,5 @@ TEST(Midichlorians, SmokeTest) {
 }
 
 #endif  // CURRENT_APPLE
+
+#endif  // CURRENT_COVERAGE_REPORT_MODE
