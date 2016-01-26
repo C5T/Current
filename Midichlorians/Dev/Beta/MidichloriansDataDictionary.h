@@ -73,7 +73,7 @@ struct MidichloriansEvent {
   CEREAL_REGISTER_TYPE(M_EVENT_CLASS_NAME);                                                            \
   struct M_EVENT_CLASS_NAME##Helper : M_IMMEDIATE_BASE {                                               \
     typedef MidichloriansEvent CEREAL_BASE_TYPE;                                                       \
-    typedef M_IMMEDIATE_BASE SUPER;                                                                    \
+    typedef M_IMMEDIATE_BASE EVENT_SUPER;                                                              \
     virtual std::string EventAsString(const std::string& did, const std::string& cid) const override { \
       SetDeviceId(did);                                                                                \
       SetClientId(cid);                                                                                \
@@ -81,7 +81,7 @@ struct MidichloriansEvent {
     }                                                                                                  \
     template <class A>                                                                                 \
     void serialize(A& ar) {                                                                            \
-      SUPER::serialize(ar);                                                                            \
+      EVENT_SUPER::serialize(ar);                                                                      \
     }                                                                                                  \
   };                                                                                                   \
   struct M_EVENT_CLASS_NAME : M_EVENT_CLASS_NAME##Helper
@@ -92,7 +92,7 @@ CURRENT_EVENT(iOSBaseEvent, MidichloriansEvent) {
   std::string description;
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
     ar(CEREAL_NVP(description));
   }
   iOSBaseEvent() = default;
@@ -103,7 +103,7 @@ CURRENT_EVENT(iOSIdentifyEvent, iOSBaseEvent) {
   // An empty event, to catch the timestamp of the `identify()` call.
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
   }
   iOSIdentifyEvent() = default;
 };
@@ -112,7 +112,7 @@ CURRENT_EVENT(iOSDeviceInfo, iOSBaseEvent) {
   std::map<std::string, std::string> info;
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
     ar(CEREAL_NVP(info));
   }
   iOSDeviceInfo() = default;
@@ -126,7 +126,7 @@ CURRENT_EVENT(iOSAppLaunchEvent, iOSBaseEvent) {
   uint64_t app_update_time;
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
     ar(CEREAL_NVP(binary_version),
        CEREAL_NVP(cf_version),
        CEREAL_NVP(app_install_time),
@@ -145,7 +145,7 @@ CURRENT_EVENT(iOSAppLaunchEvent, iOSBaseEvent) {
 CURRENT_EVENT(iOSFirstLaunchEvent, iOSBaseEvent) {
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
   }
   iOSFirstLaunchEvent() = default;
 };
@@ -156,7 +156,7 @@ CURRENT_EVENT(iOSFocusEvent, iOSBaseEvent) {
   bool gained_focus;
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
     ar(CEREAL_NVP(gained_focus));
   }
   iOSFocusEvent() = default;
@@ -174,7 +174,7 @@ CURRENT_EVENT(iOSGenericEvent, iOSBaseEvent) {
   std::set<std::string> unparsable_fields;
   template <typename A>
   void serialize(A & ar) {
-    SUPER::serialize(ar);
+    EVENT_SUPER::serialize(ar);
     ar(CEREAL_NVP(event),
        CEREAL_NVP(source),
        CEREAL_NVP(fields),
