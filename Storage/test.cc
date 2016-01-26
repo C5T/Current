@@ -635,7 +635,7 @@ CURRENT_STRUCT(SimplePost) {
       : key(key), text(text) {}
 };
 
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimpleUser, SimpleUserPersisted);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
@@ -738,8 +738,12 @@ TEST(TransactionalStorage, RealAPITest) {
     auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
     rest.RegisterAlias("user", "user_alias");
 
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+    // Confirm an empty collection is returned.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ("", HTTP(GET(base_url + "/api/user")).body);
 
+    // Add a user.
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
     EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ"))).code));
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/max")).body).name);
@@ -750,9 +754,22 @@ TEST(TransactionalStorage, RealAPITest) {
     // Test other key format too.
     EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=max")).body).name);
 
+    // Confirm a collection of one element is returned.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ("max\n", HTTP(GET(base_url + "/api/user")).body);
+
+    // Test collection retrieval.
+    EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/user", SimpleUser("dima", "DK"))).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
+    EXPECT_EQ("dima\nmax\n", HTTP(GET(base_url + "/api/user")).body);
+    EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/user/dima")).code));
+
+    // Delete the user.
     EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api/user/max")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
 
+    // Run the subset of the above test for posts, not just for users.
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
 
     EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api/post", SimplePost("test", "blah"))).code));
@@ -766,5 +783,5 @@ TEST(TransactionalStorage, RealAPITest) {
   const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  EXPECT_EQ(8u, persisted_transactions.size());
+  EXPECT_EQ(12u, persisted_transactions.size());
 }
