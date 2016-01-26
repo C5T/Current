@@ -175,7 +175,6 @@ struct is_same_or_compile_error {
 };
 
 // Unit test ports begin with 19999 by default and go down from there.
-// TODO(dkorolev) || TODO(mzhurovich): Make sure it doesn't emit the "unused function" warning.
 #define PickPortForUnitTest() PortForUnitTestPicker::PickOne()
 struct PortForUnitTestPicker {
   static int PickOne() {
