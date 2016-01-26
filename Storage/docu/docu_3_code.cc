@@ -178,21 +178,21 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   // POST a real piece.
   const auto post_response = HTTP(POST(base_url + "/api1/client", Client(ClientID(42))));
-  const std::string client_key_str = post_response.body;
-  const ClientID client_key = static_cast<ClientID>(FromString<uint64_t>(client_key_str));
+  const std::string client1_key_str = post_response.body;
+  const ClientID client1_key = static_cast<ClientID>(FromString<uint64_t>(client1_key_str));
   EXPECT_EQ(201, static_cast<int>(post_response.code));
 
   // Now GET it via both APIs.
   {
-    const auto result = HTTP(GET(base_url + "/api1/client/" + client_key_str));
+    const auto result = HTTP(GET(base_url + "/api1/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+    EXPECT_EQ("{\"key\":" + client1_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
   }
 
   {
-    const auto result = HTTP(GET(base_url + "/api2/client/" + client_key_str));
+    const auto result = HTTP(GET(base_url + "/api2/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+    EXPECT_EQ("{\"key\":" + client1_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
   }
 
   // PUT an entry with the key different from URL is not allowed.
@@ -200,33 +200,33 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api2/client/42", Client(ClientID(64)))).code));
 
   // PUT a modified entry via both APIs.
-  Client updated_client((ClientID(client_key)));
-  updated_client.name = "Jane Doe";
-  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/client/" + client_key_str, updated_client)).code));
-  updated_client.male = false;
-  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/client/" + client_key_str, updated_client)).code));
+  Client updated_client1((ClientID(client1_key)));
+  updated_client1.name = "Jane Doe";
+  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/client/" + client1_key_str, updated_client1)).code));
+  updated_client1.male = false;
+  EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/client/" + client1_key_str, updated_client1)).code));
 
   // Check if both updates took place.
   {
-    const auto result = HTTP(GET(base_url + "/api1/client/" + client_key_str));
+    const auto result = HTTP(GET(base_url + "/api1/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":" + client_key_str + ",\"name\":\"Jane Doe\",\"white\":true,\"straight\":true,\"male\":false}\n", result.body);
+    EXPECT_EQ("{\"key\":" + client1_key_str + ",\"name\":\"Jane Doe\",\"white\":true,\"straight\":true,\"male\":false}\n", result.body);
   }
 
   // GET the whole collection.
   {
     const auto result = HTTP(GET(base_url + "/api1/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("42\n", result.body);
+    EXPECT_EQ(client1_key_str + '\n', result.body);
   }
 
-  // POST two more records and GET the collection again.
-  EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(101)))).code));
-  EXPECT_EQ(204, static_cast<int>(HTTP(POST(base_url + "/api1/client", Client(ClientID(102)))).code));
+  // PUT two more records and GET the collection again.
+  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/client/101", Client(ClientID(101)))).code));
+  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/client/102", Client(ClientID(102)))).code));
   {
     const auto result = HTTP(GET(base_url + "/api1/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("42\n101\n102\n", result.body);
+    EXPECT_EQ("101\n102\n" + client1_key_str + '\n', result.body);
   }
   {
     const auto result = HTTP(GET(base_url + "/api2/client"));
@@ -235,15 +235,15 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"url\":\"" + base_url + "/client\","
         "\"data\":[\"" +
-        base_url + "/client/42\",\"" +
         base_url + "/client/101\",\"" +
-        base_url + "/client/102\""
+        base_url + "/client/102\",\"" +
+        base_url + "/client/" + client1_key_str + "\"" +
         "]}\n",
         result.body);
   }
 
   // DELETE one record and GET the collection again.
-  EXPECT_EQ(204, static_cast<int>(HTTP(DELETE(base_url + "/api1/client/42")).code));
+  EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api1/client/" + client1_key_str)).code));
   {
     const auto result = HTTP(GET(base_url + "/api1/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));

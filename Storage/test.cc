@@ -692,7 +692,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(201, static_cast<int>(post_user2_response.code));
     const auto user2_key = post_user2_response.body;
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
-    EXPECT_EQ(user1_key +'\n' + user2_key + '\n', HTTP(GET(base_url + "/api/user")).body);
+    EXPECT_EQ(user1_key + '\n' + user2_key + '\n', HTTP(GET(base_url + "/api/user")).body);
 
     // Delete the users.
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/" + user1_key)).code));
