@@ -110,19 +110,19 @@ struct RESTfulHandlerGenerator {
                 std::move(request),
                 [&handler, &storage, &restful_url_prefix, field_name](Request request) {
                   try {
-                    const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
+                    auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
                     storage.Transaction(
-                                [handler, &storage, &field, entry, &restful_url_prefix, field_name](
-                                    T_MUTABLE_FIELDS fields) -> Response {
+                                [handler, &storage, &field, mutable_entry, &restful_url_prefix, field_name](
+                                    T_MUTABLE_FIELDS fields) mutable -> Response {
                                   const struct {
                                     T_STORAGE& storage;
                                     T_MUTABLE_FIELDS fields;
                                     T_SPECIFIC_FIELD& field;
-                                    const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
+                                    typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
                                     const std::string& restful_url_prefix;
                                     const std::string& field_name;
-                                  } args{storage, fields, field, entry, restful_url_prefix, field_name};
+                                  } args{storage, fields, field, mutable_entry, restful_url_prefix, field_name};
                                   return handler.Run(args);
                                 },
                                 std::move(request)).Detach();

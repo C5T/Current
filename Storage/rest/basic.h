@@ -116,8 +116,13 @@ struct Basic {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      input.field.Add(input.entry);
-      return Response("Added.\n", HTTPResponseCode.NoContent);
+      input.entry.InitializeOwnKey();
+      if (!Exists(input.field[input.entry.key])) {
+        input.field.Add(input.entry);
+        return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+      } else {
+        return Response("Already exists.\n", HTTPResponseCode.Conflict);
+      }
     }
     static Response ErrorBadJSON(const std::string&) {
       return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
@@ -133,8 +138,13 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (input.entry_key == input.url_key) {
+        const bool exists = Exists(input.field[input.entry_key]);
         input.field.Add(input.entry);
-        return Response("Added.\n", HTTPResponseCode.NoContent);
+        if (exists) {
+          return Response("Updated.\n", HTTPResponseCode.OK);
+        } else {
+          return Response("Created.\n", HTTPResponseCode.Created);
+        }
       } else {
         return Response("Object key doesn't match URL key.\n", HTTPResponseCode.BadRequest);
       }
@@ -153,7 +163,7 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.field.Erase(input.key);
-      return Response("Deleted.\n", HTTPResponseCode.NoContent);
+      return Response("Deleted.\n", HTTPResponseCode.OK);
     }
   };
 

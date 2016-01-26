@@ -166,9 +166,15 @@ struct Hypermedia {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
-      input.field.Add(input.entry);
-      // TODO(dkorolev): Return a JSON with a resource here.
-      return Response("Added.\n", HTTPResponseCode.NoContent);
+      input.entry.InitializeOwnKey();
+      if (!Exists(input.field[input.entry.key])) {
+        input.field.Add(input.entry);
+        // TODO(dkorolev): Return a JSON with a resource here.
+        return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+      } else {
+        return Response(HypermediaRESTError("The key generated for entry already exists"),
+                        HTTPResponseCode.Conflict);
+      }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
       return Response(HypermediaRESTParseJSONError("Invalid JSON in request body.", error_message),
@@ -185,9 +191,14 @@ struct Hypermedia {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (input.entry_key == input.url_key) {
+        const bool exists = Exists(input.field[input.entry_key]);
         input.field.Add(input.entry);
         // TODO(dkorolev): Return a JSON with a resource here.
-        return Response("Added.\n", HTTPResponseCode.NoContent);
+        if (exists) {
+          return Response("Updated.\n", HTTPResponseCode.OK);
+        } else {
+          return Response("Created.\n", HTTPResponseCode.Created);
+        }
       } else {
         return Response(HypermediaRESTError("Object key doesn't match URL key."), HTTPResponseCode.BadRequest);
       }
@@ -207,7 +218,7 @@ struct Hypermedia {
     Response Run(const INPUT& input) const {
       input.field.Erase(input.key);
       // TODO(dkorolev): Return a JSON with something more useful here.
-      return Response("Deleted.\n", HTTPResponseCode.NoContent);
+      return Response("Deleted.\n", HTTPResponseCode.OK);
     }
   };
 
