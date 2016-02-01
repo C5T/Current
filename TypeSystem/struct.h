@@ -127,6 +127,13 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CS_SWITCH(x, y) x y
 #define CURRENT_STRUCT(...) CS_SWITCH(CS_CHOOSERX(CS_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
+// Current structure forward declaration.
+#define CURRENT_FORWARD_DECLARE_STRUCT(s) \
+  template <typename T>                   \
+  struct CURRENT_STRUCT_IMPL_##s;         \
+  using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>
+
+// Current structure implementation.
 #ifndef _MSC_VER
 
 #define CURRENT_STRUCT_HELPERS(s, super)                                                            \
@@ -211,6 +218,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CF_TYPE_EXTRACT(...) CF_TYPE_EXTRACT __VA_ARGS__
 #define CF_TYPE(x) CF_TYPE_PASTE2(EMPTY_, CF_TYPE_EXTRACT x)
 
+// `CURRENT_FIELD` related macros and implementation.
 #define CF_IMPL2(a, b) CURRENT_FIELD_WITH_NO_VALUE(a, b)
 #define CF_IMPL3(a, b, c) CURRENT_FIELD_WITH_VALUE(a, b, c)
 
@@ -240,14 +248,14 @@ struct CurrentStructFieldsConsistency<T, -1> {
   void set_key(const T_COPY_FREE_KEY_TYPE new_key_value) const { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_TIMESTAMP(field)      \
-  template <typename F>                            \
-  void ReportTimestamp(F&& f) const {              \
-    f(field);                                      \
-  }                                                \
-  template <typename F>                            \
-  void ReportTimestamp(F&& f) {                    \
-    f(field);                                      \
+#define CURRENT_USE_FIELD_AS_TIMESTAMP(field) \
+  template <typename F>                       \
+  void ReportTimestamp(F&& f) const {         \
+    f(field);                                 \
+  }                                           \
+  template <typename F>                       \
+  void ReportTimestamp(F&& f) {               \
+    f(field);                                 \
   }
 
 #define CURRENT_FIELD_REFLECTION(idx, type, name)                                                              \

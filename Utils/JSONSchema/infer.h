@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -120,22 +121,26 @@ CURRENT_STRUCT(Bool) {
 // Note: The `Null` type is largely ephemeral. Top-level "null" is still not allowed in input JSONs.
 CURRENT_STRUCT(Null) { CURRENT_FIELD(occurrences, uint32_t, 1); };
 
-// A trick to work around the lack of forward declarations of `CURRENT_STRUCT`-s, and to stay DRY.
-CURRENT_STRUCT(ObjectOrArray) {
-  CURRENT_FIELD(fields, (std::map<std::string, Variant<String, Bool, Null, ObjectOrArray>>));
+CURRENT_FORWARD_DECLARE_STRUCT(Array);
+CURRENT_FORWARD_DECLARE_STRUCT(Object);
+
+using Schema = Variant<String, Bool, Null, Array, Object>;
+
+CURRENT_STRUCT(Array) {
+  CURRENT_FIELD(element, Schema);
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
-  // An array is represented as a `ObjectOrArray` with one and only key in `fields` -- the empty string.
-  bool IsObject() const { return !fields.count(""); }
-
-  std::string HumanReadableType() const {
-    return MaybeOptionalHumanReadableType(nulls, IsObject() ? "object" : "array");
-  }
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "array"); }
 };
 
-using SchemaMap = decltype(std::declval<ObjectOrArray>().fields);
-using Schema = typename SchemaMap::mapped_type;
+CURRENT_STRUCT(Object) {
+  CURRENT_FIELD(fields, (std::map<std::string, Schema>));
+  CURRENT_FIELD(instances, uint32_t, 1);
+  CURRENT_FIELD(nulls, uint32_t, 0);
+
+  std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "object"); }
+};
 
 // `Reduce` and `CallReduce` implement the logic of building the schema for a superset of schemas.
 //
@@ -234,49 +239,49 @@ struct Reduce<Bool, Bool> {
 };
 
 template <>
-struct Reduce<ObjectOrArray, ObjectOrArray> {
-  static Schema DoIt(const ObjectOrArray& lhs, const ObjectOrArray& rhs) {
-    if (lhs.IsObject() != rhs.IsObject()) {
-      CURRENT_THROW(InferSchemaArrayAndObjectAreIncompatible());
+struct Reduce<Object, Object> {
+  static Schema DoIt(const Object& lhs, const Object& rhs) {
+    std::vector<std::string> lhs_fields;
+    std::vector<std::string> rhs_fields;
+    for (const auto& cit : lhs.fields) {
+      lhs_fields.push_back(cit.first);
     }
-    if (lhs.IsObject()) {
-      std::vector<std::string> lhs_fields;
-      std::vector<std::string> rhs_fields;
-      for (const auto& cit : lhs.fields) {
-        lhs_fields.push_back(cit.first);
-      }
-      for (const auto& cit : rhs.fields) {
-        rhs_fields.push_back(cit.first);
-      }
-      std::vector<std::string> union_fields;
-      std::set_union(lhs_fields.begin(),
-                     lhs_fields.end(),
-                     rhs_fields.begin(),
-                     rhs_fields.end(),
-                     std::back_inserter(union_fields));
-      ObjectOrArray object;
-      for (const auto& f : union_fields) {
-        auto& intermediate = object.fields[f];
-        const auto& lhs_cit = lhs.fields.find(f);
-        const auto& rhs_cit = rhs.fields.find(f);
-        if (lhs_cit == lhs.fields.end()) {
-          CallReduce(rhs_cit->second, Null(), intermediate);
-        } else if (rhs_cit == rhs.fields.end()) {
-          CallReduce(lhs_cit->second, Null(), intermediate);
-        } else {
-          CallReduce(lhs_cit->second, rhs_cit->second, intermediate);
-        }
-      }
-      object.instances = lhs.instances + rhs.instances;
-      object.nulls = lhs.nulls + rhs.nulls;
-      return object;
-    } else {
-      ObjectOrArray array(lhs);
-      CallReduce(lhs.fields.at(""), rhs.fields.at(""), array.fields[""]);
-      array.instances = lhs.instances + rhs.instances;
-      array.nulls = lhs.nulls + rhs.nulls;
-      return array;
+    for (const auto& cit : rhs.fields) {
+      rhs_fields.push_back(cit.first);
     }
+    std::vector<std::string> union_fields;
+    std::set_union(lhs_fields.begin(),
+                   lhs_fields.end(),
+                   rhs_fields.begin(),
+                   rhs_fields.end(),
+                   std::back_inserter(union_fields));
+    Object object;
+    for (const auto& f : union_fields) {
+      auto& intermediate = object.fields[f];
+      const auto& lhs_cit = lhs.fields.find(f);
+      const auto& rhs_cit = rhs.fields.find(f);
+      if (lhs_cit == lhs.fields.end()) {
+        CallReduce(rhs_cit->second, Null(), intermediate);
+      } else if (rhs_cit == rhs.fields.end()) {
+        CallReduce(lhs_cit->second, Null(), intermediate);
+      } else {
+        CallReduce(lhs_cit->second, rhs_cit->second, intermediate);
+      }
+    }
+    object.instances = lhs.instances + rhs.instances;
+    object.nulls = lhs.nulls + rhs.nulls;
+    return object;
+  }
+};
+
+template <>
+struct Reduce<Array, Array> {
+  static Schema DoIt(const Array& lhs, const Array& rhs) {
+    Array array(lhs);
+    CallReduce(lhs.element, rhs.element, array.element);
+    array.instances = lhs.instances + rhs.instances;
+    array.nulls = lhs.nulls + rhs.nulls;
+    return array;
   }
 };
 
@@ -285,7 +290,7 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
   //       If the only value for certain field is an empty array, this field will not be output.
   //       If certain field has possible values other than empty array, they will be used, as `Optional<>`.
   if (value.IsObject()) {
-    ObjectOrArray object;
+    Object object;
     for (auto cit = value.MemberBegin(); cit != value.MemberEnd(); ++cit) {
       const auto& inner = cit->value;
       if (!(inner.IsArray() && inner.Empty())) {
@@ -301,13 +306,13 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
     if (value.Empty()) {
       CURRENT_THROW(InferSchemaTopLevelEmptyArrayIsNotAllowed());
     } else {
-      ObjectOrArray object;
+      Array array;
       bool first = true;
       for (auto cit = value.Begin(); cit != value.End(); ++cit) {
         const auto& inner = *cit;
         if (!(inner.IsArray() && inner.Empty())) {
           const auto element = RecursivelyInferSchema(inner);
-          Schema& destination = object.fields[""];
+          Schema& destination = array.element;
           if (first) {
             first = false;
             destination = element;
@@ -319,7 +324,7 @@ inline Schema RecursivelyInferSchema(const rapidjson::Value& value) {
       if (first) {
         CURRENT_THROW(InferSchemaArrayOfNullsOrEmptyArraysIsNotAllowed());
       }
-      return object;
+      return array;
     }
   } else if (value.IsString()) {
     return String(std::string(value.GetString(), value.GetStringLength()));
@@ -382,34 +387,37 @@ class SchemaToTSVPrinter {
         << " false, " << x.values_true << " true" << '\n';
   }
 
-  void operator()(const ObjectOrArray& x) {
+  void operator()(const Array& x) {
+    const auto save_path = path_;
+    os_ << path_ << "\tArray\t" << x.instances << '\t' << x.nulls << '\n';
+    path_ += "[]";
+    x.element.Call(*this);
+    path_ = save_path;
+  }
+
+  void operator()(const Object& x) {
     const auto save_path = path_;
 
-    if (x.IsObject()) {
-      std::vector<std::string> fields;
-      for (const auto& f : x.fields) {
-        fields.push_back(f.first);
-      }
-
-      os_ << path_ << "\tObject\t" << x.instances << '\t' << x.nulls << '\t';
-      if (x.fields.empty()) {
-        os_ << "empty object";
-      } else if (x.fields.size() == 1) {
-        os_ << "1 field";
-      } else {
-        os_ << x.fields.size() << " fields";
-      }
-      os_ << '\t' << current::strings::Join(fields, ", ") << '\n';
-
-      for (const auto& f : x.fields) {
-        path_ = save_path.empty() ? f.first : (save_path + '.' + f.first);
-        f.second.Call(*this);
-      }
-    } else {
-      os_ << path_ << "\tArray\t" << x.instances << '\t' << x.nulls << '\n';
-      path_ += "[]";
-      x.fields.at("").Call(*this);
+    std::vector<std::string> fields;
+    for (const auto& f : x.fields) {
+      fields.push_back(f.first);
     }
+
+    os_ << path_ << "\tObject\t" << x.instances << '\t' << x.nulls << '\t';
+    if (x.fields.empty()) {
+      os_ << "empty object";
+    } else if (x.fields.size() == 1) {
+      os_ << "1 field";
+    } else {
+      os_ << x.fields.size() << " fields";
+    }
+    os_ << '\t' << current::strings::Join(fields, ", ") << '\n';
+
+    for (const auto& f : x.fields) {
+      path_ = save_path.empty() ? f.first : (save_path + '.' + f.first);
+      f.second.Call(*this);
+    }
+
     path_ = save_path;
   }
 
@@ -439,40 +447,46 @@ class SchemaToCurrentStructPrinter {
 
     void operator()(const Bool& x) { output_type = x.nulls ? "Optional<bool>" : "bool"; }
 
-    void operator()(const ObjectOrArray& x) {
-      if (x.IsObject()) {
-        output_type = prefix + "_Object";
-        // [ { name, { type, comment } ].
-        std::vector<std::pair<std::string, std::pair<std::string, std::string>>> output_fields;
-        output_fields.reserve(x.fields.size());
-        for (const auto& input_field : x.fields) {
-          output_fields.resize(output_fields.size() + 1);
-          auto& output_field = output_fields.back();
-          std::string& field_name = output_field.first;
-          std::string& type = output_field.second.first;
-          std::string& comment = output_field.second.second;
-          field_name = input_field.first;
-          input_field.second.Call(Printer(os, prefix + '_' + field_name, type, comment));
-        }
-        os << '\n';
-        os << "CURRENT_STRUCT(" << output_type << ") {\n";
-        for (const auto& f : output_fields) {
-          if (!f.second.first.empty()) {
-            os << "  CURRENT_FIELD(" << f.first << ", " << f.second.first << ");";
-            if (!f.second.second.empty()) {
-              os << "  // " << f.second.second;
-            }
-            os << '\n';
-          } else {
-            // No type, just a comment.
-            os << "  // `" << f.first << "` : " << f.second.second << '\n';
-          }
-        }
-        os << "};\n";
-      } else {
-        x.fields.at("").Call(Printer(os, prefix + "_Element", output_type, output_comment));
-        output_type = "std::vector<" + output_type + ">";
+    void operator()(const Array& x) {
+      x.element.Call(Printer(os, prefix + "_Element", output_type, output_comment));
+      output_type = "std::vector<" + output_type + ">";
+
+      // For both arrays and objects.
+      if (x.nulls) {
+        output_type = "Optional<" + output_type + ">";
       }
+    }
+
+    void operator()(const Object& x) {
+      output_type = prefix + "_Object";
+      // [ { name, { type, comment } ].
+      std::vector<std::pair<std::string, std::pair<std::string, std::string>>> output_fields;
+      output_fields.reserve(x.fields.size());
+      for (const auto& input_field : x.fields) {
+        output_fields.resize(output_fields.size() + 1);
+        auto& output_field = output_fields.back();
+        std::string& field_name = output_field.first;
+        std::string& type = output_field.second.first;
+        std::string& comment = output_field.second.second;
+        field_name = input_field.first;
+        input_field.second.Call(Printer(os, prefix + '_' + field_name, type, comment));
+      }
+      os << '\n';
+      os << "CURRENT_STRUCT(" << output_type << ") {\n";
+      for (const auto& f : output_fields) {
+        if (!f.second.first.empty()) {
+          os << "  CURRENT_FIELD(" << f.first << ", " << f.second.first << ");";
+          if (!f.second.second.empty()) {
+            os << "  // " << f.second.second;
+          }
+          os << '\n';
+        } else {
+          // No type, just a comment.
+          os << "  // `" << f.first << "` : " << f.second.second << '\n';
+        }
+      }
+      os << "};\n";
+
       // For both arrays and objects.
       if (x.nulls) {
         output_type = "Optional<" + output_type + ">";
