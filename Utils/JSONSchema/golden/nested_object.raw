@@ -1,1 +1,1 @@
-{"ObjectOrArray":{"fields":{"a":{"ObjectOrArray":{"fields":{"b":{"String":{"values":{"c":1},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}
+{"Object":{"fields":{"a":{"Object":{"fields":{"b":{"String":{"values":{"c":1},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}},"instances":1,"nulls":0}}

@@ -1,1 +1,1 @@
-{"ObjectOrArray":{"fields":{"":{"Bool":{"values_false":1,"values_true":2,"nulls":0}}},"instances":1,"nulls":0}}
+{"Array":{"element":{"Bool":{"values_false":1,"values_true":2,"nulls":0}},"instances":1,"nulls":0}}
