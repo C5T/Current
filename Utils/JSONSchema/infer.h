@@ -70,8 +70,6 @@ struct InferSchemaIncompatibleTypes : InferSchemaIncompatibleTypesBase {
                                          rhs.HumanReadableType() + "'.") {}
 };
 
-struct InferSchemaArrayAndObjectAreIncompatible : InferSchemaIncompatibleTypesBase {};
-
 namespace impl {
 
 inline bool IsValidCPPIdentifier(const std::string& s) {
