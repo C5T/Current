@@ -44,6 +44,8 @@ SOFTWARE.
 
 DEFINE_int32(midichlorians_server_test_port, PickPortForUnitTest(), "Local port to run the test.");
 
+namespace midichlorians_server_test {
+
 using current::strings::Join;
 using current::strings::Printf;
 using namespace current::midichlorians::ios;
@@ -150,9 +152,13 @@ struct GenericConsumer {
   std::vector<std::string> errors;
 };
 
+}  // namespace midichlorians_server_test
+
 // TODO(mzhurovich): add separate event tests after Midichlorians clients refactoring.
 
 TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
+  using namespace midichlorians_server_test;
+
   using namespace current::midichlorians::server;
   using namespace current::midichlorians::ios;
 
@@ -211,6 +217,7 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
 
 #ifdef CURRENT_APPLE
 TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
+  using namespace midichlorians_server_test;
   using namespace current::midichlorians::server;
 
   current::time::SetNow(std::chrono::microseconds(0));
@@ -283,6 +290,8 @@ POST MockPOSTRequest(const std::string& base_url,
 }
 
 TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
+  using namespace midichlorians_server_test;
+
   using namespace current::midichlorians::server;
   using namespace current::midichlorians::web;
 
