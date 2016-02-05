@@ -23,6 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC
+#define CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC
+
 #define CURRENT_MOCK_TIME
 
 #include "../../port.h"
@@ -254,7 +257,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(GET(base_url + "/api3/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     // Shamelessly copy-pasted from the output. -- D.K.
-    EXPECT_EQ("{\"url\":\"" + base_url + "/client?i=0&n=10\",\"url_directory\":\"" + base_url + "/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"url\":\"" + base_url + "/client/101\",\"url_full\":\"" + base_url + "/client/101\",\"url_brief\":\"" + base_url + "/client/101?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/client/102\",\"url_full\":\"" + base_url + "/client/102\",\"url_brief\":\"" + base_url + "/client/102?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/client/14429384856179124916\",\"url_full\":\"" + base_url + "/client/14429384856179124916\",\"url_brief\":\"" + base_url + "/client/14429384856179124916?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":14429384856179124916,\"name\":\"Jane Doe\"}}]}",
+    EXPECT_EQ("{\"url\":\"" + base_url + "/client?i=0&n=10\",\"url_directory\":\"" + base_url + "/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"url\":\"" + base_url + "/client/101\",\"url_full\":\"" + base_url + "/client/101\",\"url_brief\":\"" + base_url + "/client/101?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/client/102\",\"url_full\":\"" + base_url + "/client/102\",\"url_brief\":\"" + base_url + "/client/102?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/client/" + client1_key_str + "\",\"url_full\":\"" + base_url + "/client/" + client1_key_str + "\",\"url_brief\":\"" + base_url + "/client/" + client1_key_str + "?fields=brief\",\"url_directory\":\"" + base_url + "/client\",\"data\":{\"key\":" + client1_key_str + ",\"name\":\"Jane Doe\"}}]}",
         result.body);
   }
 
@@ -266,3 +269,5 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ("101\n102\n", result.body);
   }
 }
+
+#endif  // CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC

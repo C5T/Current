@@ -23,6 +23,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#ifndef CURRENT_STORAGE_DOCU_DOCU_2_CODE_CC
+#define CURRENT_STORAGE_DOCU_DOCU_2_CODE_CC
+
 #define CURRENT_MOCK_TIME
 
 #include "../../port.h"
@@ -215,3 +218,4 @@ TEST(StorageDocumentation, BasicUsage) {
   // TODO(dkorolev) + TODO(mzhurovich): Add the `Replay` logic and a test for it.
 }
 
+#endif  // CURRENT_STORAGE_DOCU_DOCU_2_CODE_CC
