@@ -123,7 +123,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"url\":\"http://localhost:19999/client\",\"data\":[]}\n", result.body);
+    EXPECT_EQ("{\"url\":\"" + base_url + "/client\",\"data\":[]}\n", result.body);
   }
 
   // GET a non-existing resource.
