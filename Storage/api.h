@@ -54,8 +54,9 @@ struct RESTfulHandlerGenerator {
 
   // Field accessor type for this `INDEX`.
   // The type of `data.x` from within a `Transaction()`, where `x` is the field corresponding to index `INDEX`.
-  using T_SPECIFIC_FIELD = typename decltype(
-      std::declval<STORAGE>()(::current::storage::FieldTypeExtractor<INDEX>()))::T_PARTICULAR_FIELD;
+  using T_SPECIFIC_FIELD_EXTRACTOR =
+      decltype(std::declval<STORAGE>()(::current::storage::FieldTypeExtractor<INDEX>()));
+  using T_SPECIFIC_FIELD = typename T_SPECIFIC_FIELD_EXTRACTOR::T_PARTICULAR_FIELD;
 
   template <class VERB, typename T1, typename T2, typename T3, typename T4>
   using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
@@ -268,9 +269,7 @@ class RESTfulStorage {
   void SwitchHTTPEndpointsTo503s() {
     for (auto& route : handler_routes_) {
       HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(
-          route,
-          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-          Serve503);
+          route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, Serve503);
     }
   }
 
