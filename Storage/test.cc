@@ -708,6 +708,18 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+
+    rest.SwitchHTTPEndpointsTo503s();
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
+
+    rest.SwitchHTTPEndpointsTo503s();
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
   }
 
   const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(

@@ -238,9 +238,10 @@ class RESTfulStorage {
         storage, restful_url_prefix, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& handler : handlers_) {
-      handlers_scope_ += HTTP(port).Register(path_prefix + '/' + handler.first,
-                                             URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                             handler.second);
+      const std::string route = path_prefix + '/' + handler.first;
+      handler_routes_.push_back(route);
+      handlers_scope_ += HTTP(port).Register(
+          route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, handler.second);
     }
 
     std::vector<std::string> fields;
@@ -257,14 +258,26 @@ class RESTfulStorage {
     if (cit == handlers_.end()) {
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
     }
-    handlers_scope_ += HTTP(port_).Register(path_prefix_ + '/' + alias_name,
-                                            URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                            cit->second);
+    const std::string route = path_prefix_ + '/' + alias_name;
+    handler_routes_.push_back(route);
+    handlers_scope_ +=
+        HTTP(port_).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, cit->second);
+  }
+
+  // Support for graceful shutdown. Alpha.
+  void SwitchHTTPEndpointsTo503s() {
+    for (auto& route : handler_routes_) {
+      HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(
+          route,
+          URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+          Serve503);
+    }
   }
 
  private:
   const int port_;
   const std::string path_prefix_;
+  std::vector<std::string> handler_routes_;
   impl::STORAGE_HANDLERS_MAP handlers_;
   HTTPRoutesScope handlers_scope_;
 
@@ -284,6 +297,10 @@ class RESTfulStorage {
   struct ForEachFieldByIndex<BLAH, 0> {
     static void RegisterIt(T_STORAGE_IMPL&, const std::string&, impl::STORAGE_HANDLERS_MAP&) {}
   };
+
+  static void Serve503(Request r) {
+    r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
+  }
 };
 
 }  // namespace rest

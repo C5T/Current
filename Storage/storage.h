@@ -199,7 +199,8 @@ namespace storage {
                                                                        entry_name::T_PERSISTED_EVENT_2>;      \
   using T_FIELD_TYPE_##field_name =                                                                           \
       ::current::storage::Field<INSTANTIATION_TYPE, T_FIELD_CONTAINER_TYPE_##field_name>;                     \
-  enum { FIELD_INDEX_##field_name = CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE };   \
+  constexpr static size_t FIELD_INDEX_##field_name =                                                          \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_STORAGE_FIELD_INDEX_BASE;                                   \
   ::current::storage::FieldInfo<entry_name::T_PERSISTED_EVENT_1, entry_name::T_PERSISTED_EVENT_2> operator()( \
       ::current::storage::FieldInfoByIndex<FIELD_INDEX_##field_name>) const {                                 \
     return ::current::storage::FieldInfo<entry_name::T_PERSISTED_EVENT_1, entry_name::T_PERSISTED_EVENT_2>(); \
