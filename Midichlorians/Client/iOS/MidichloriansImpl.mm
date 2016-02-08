@@ -56,6 +56,7 @@
 namespace current {
 namespace midichlorians {
 namespace ios {
+namespace impl {
 
     // Conversion from [possible nullptr] `const char*` to `std::string`.
     static std::string ToStdString(const char* s) {
@@ -230,13 +231,14 @@ namespace ios {
         Variant<T_IOS_EVENTS>& variant_;
     };
 
+}  // namespace impl
 }  // namespace ios
 }  // namespace midichlorians
 }  // namespace current
 
 @implementation MidichloriansImpl
 
-using namespace current::midichlorians::ios;
+using namespace current::midichlorians::ios::impl;
 
 + (void)setup:(NSString *)serverUrl withLaunchOptions:(NSDictionary *)options {
     const auto installationId = InstallationId();
