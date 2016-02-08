@@ -159,9 +159,6 @@ struct GenericConsumer {
 TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
   using namespace midichlorians_server_test;
 
-  using namespace current::midichlorians::server;
-  using namespace current::midichlorians::ios;
-
   current::time::SetNow(std::chrono::microseconds(0));
   GenericConsumer consumer;
   MidichloriansHTTPServer<GenericConsumer> server(
