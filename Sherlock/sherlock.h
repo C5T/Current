@@ -125,6 +125,8 @@ namespace sherlock {
 
 template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
 class StreamInstanceImpl {
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
+
  public:
   typedef ENTRY T_ENTRY;
   typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
@@ -135,28 +137,28 @@ class StreamInstanceImpl {
   StreamInstanceImpl(EXTRA_PARAMS&&... extra_params)
       : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)) {}
 
-  // `Publish()` and `Emplace()` return the index of the added entry.
+  // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const ENTRY& entry) { return storage_->Publish(entry); }
-  size_t Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
+  IDX_TS Publish(const ENTRY& entry) { return storage_->Publish(entry); }
+  IDX_TS Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
   // When `ENTRY` is an `std::unique_ptr<>`, support two more `Publish()` syntaxes for entries of derived types.
   // 1) `Publish(const DERIVED_ENTRY&)`, and
   // 2) `Publish(conststd::unique_ptr<DERIVED_ENTRY>&)`.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const DERIVED_ENTRY& e) {
     return storage_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return storage_->Publish(e);
   }
 
   template <typename... ARGS>
-  size_t Emplace(ARGS&&... entry_params) {
+  IDX_TS Emplace(ARGS&&... entry_params) {
     return storage_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 
@@ -351,32 +353,33 @@ class StreamInstanceImpl {
 
 template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
 struct StreamInstance {
-  typedef ENTRY T_ENTRY;
-  typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
+  using T_ENTRY = ENTRY;
+  using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY, CLONER>;
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
 
   StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl_;
 
   explicit StreamInstance(StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const ENTRY& entry) { return impl_->Publish(entry); }
-  size_t Publish(ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
+  IDX_TS Publish(const ENTRY& entry) { return impl_->Publish(entry); }
+  IDX_TS Publish(ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
 
   // Support two syntaxes of `Publish` as well.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const DERIVED_ENTRY& e) {
     return impl_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return impl_->Publish(e);
   }
 
   template <typename... ARGS>
-  size_t Emplace(ARGS&&... entry_params) {
+  IDX_TS Emplace(ARGS&&... entry_params) {
     return impl_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 

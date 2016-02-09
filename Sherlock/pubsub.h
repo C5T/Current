@@ -39,6 +39,8 @@ namespace sherlock {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
 class PubSubHTTPEndpoint final {
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
+
  public:
   explicit PubSubHTTPEndpoint(Request r)
       : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
@@ -68,26 +70,26 @@ class PubSubHTTPEndpoint final {
   }
 
   // The implementation of the listener in `PubSubHTTPEndpoint` is an example of using:
-  // * `index` as the second parameter,
-  // * `total` as the third parameter, and
+  // * `curent` as the second parameter,
+  // * `last` as the third parameter, and
   // * `bool` as the return value.
   // It does so to respect the URL parameters of the range of entries to listen to.
-  bool operator()(const E& entry, size_t index, size_t total) {
+  bool operator()(const E& entry, IDX_TS current, IDX_TS last) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
-        const std::chrono::microseconds timestamp = current::MicroTimestampOf(entry);
         // Respect `n`.
-        if (total - index <= n_) {
+        if (last.index - current.index < n_) {
           serving_ = true;
         }
         // Respect `recent`.
-        if (from_timestamp_.count() && timestamp >= from_timestamp_) {
+        if (from_timestamp_.count() && current.us >= from_timestamp_) {
           serving_ = true;
         }
       }
       if (serving_) {
-        http_response_(JSON<J>(entry) + '\n');  // TODO(dkorolev): "\r\n" ?
+        http_response_(ToString(current.index) + '\t' + ToString(current.us.count()) + '\t' + JSON<J>(entry) +
+                       '\n');  // TODO(dkorolev): "\r\n" ?
         if (cap_) {
           --cap_;
           if (!cap_) {

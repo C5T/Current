@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +34,13 @@ SOFTWARE.
 namespace blocks {
 namespace ss {
 
+struct IndexAndTimestamp {
+  uint64_t index;
+  std::chrono::microseconds us;
+  IndexAndTimestamp() : index(0u), us(0) {}
+  IndexAndTimestamp(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
+};
+
 // TODO(dkorolev): Enables three abstractions for message passing:
 //
 // 1) A generic call to `operator()`.
@@ -53,21 +61,21 @@ namespace ss {
 //
 // A: Number of parameters.
 // A.1: `void/bool operator()(entry)`, one-parameter signature.
-// A.2: `void/bool operator()(entry, index)`, two-parameters signature.
-// A.3: `void/bool operator()(entry, index, total)`, three-parameters signature.
+// A.2: `void/bool operator()(entry, current_idx_ts)`, two-parameters signature.
+// A.3: `void/bool operator()(entry, current_idx_ts, last_idx_ts)`, three-parameters signature.
 // By omitting the last parameters, the user declares they do not need the values of them.
 //
 // B: Return type.
-// B.1: `void operator()(entry [, index [, total]])`.
-// B.2: `bool operator()(entry [, index [, total]])`.
+// B.1: `void operator()(entry [, current_idx_ts [, last_idx_ts]])`.
+// B.2: `bool operator()(entry [, current_idx_ts [, last_idx_ts]])`.
 // The signature that returns `bool` may indicate that it is done processing entries,
 // and that the framework should stop feeding it with the new ones.
 // The signature returning `void` defines a listener that will never itself make a decision to stop
 // accepting entries. It can be stopped externally (via listener scope), or detached to run forever.
 //
 // C: Accept a const reference to an entry, or require a copy of which the listener will gain ownership.
-// C.1: `void/bool operator()(const ENTRY& entry [, index [, total]])`.
-// C.2: `void/bool operator()(ENTRY&& [, index [, total]])`.
+// C.1: `void/bool operator()(const ENTRY& entry [, current_idx_ts [, last_idx_ts]])`.
+// C.2: `void/bool operator()(ENTRY&& [, current_idx_ts [, last_idx_ts]])`.
 // One listener's usecase is to `std::move()` the received entry into a different message queue.
 // If the entry is passed in via a const reference, its ownership can not be transferred to the listener.
 // A clone of the entry is made in this case, for the listener to own. At the same time framworks
@@ -90,29 +98,31 @@ using CW = current::weed::call_with<T, TS...>;
 template <typename T, typename... TS>
 using CWT = current::weed::call_with_type<T, TS...>;
 
+using IDX_TS = IndexAndTimestamp;
+
 template <int N>
 struct CallWithNParameters;
 
 template <>
 struct CallWithNParameters<3> {
   template <typename E, class F>
-  static CWT<F, E, size_t, size_t> CallIt(F&& f, E&& e, size_t index, size_t total) {
-    return f(std::forward<E>(e), index, total);
+  static CWT<F, E, IDX_TS, IDX_TS> CallIt(F&& f, E&& e, IDX_TS current, IDX_TS last) {
+    return f(std::forward<E>(e), current, last);
   }
 };
 
 template <>
 struct CallWithNParameters<2> {
   template <typename E, class F>
-  static CWT<F, E, size_t> CallIt(F&& f, E&& e, size_t index, size_t) {
-    return f(std::forward<E>(e), index);
+  static CWT<F, E, IDX_TS> CallIt(F&& f, E&& e, IDX_TS current, IDX_TS) {
+    return f(std::forward<E>(e), current);
   }
 };
 
 template <>
 struct CallWithNParameters<1> {
   template <typename E, class F>
-  static CWT<F, E> CallIt(F&& f, E&& e, size_t, size_t) {
+  static CWT<F, E> CallIt(F&& f, E&& e, IDX_TS, IDX_TS) {
     return f(std::forward<E>(e));
   }
 };
@@ -135,8 +145,8 @@ struct FindMatchingSignature<false, false, true> : CallWithNParameters<3> {
 
 template <typename E, class F>
 using CallMatchingSignature = FindMatchingSignature<CW<F, E>::implemented,
-                                                    CW<F, E, size_t>::implemented,
-                                                    CW<F, E, size_t, size_t>::implemented>;
+                                                    CW<F, E, IDX_TS>::implemented,
+                                                    CW<F, E, IDX_TS, IDX_TS>::implemented>;
 
 template <typename ORIGINAL_RETURN_TYPE>
 struct BoolOrTrueImpl;
@@ -144,51 +154,51 @@ struct BoolOrTrueImpl;
 template <>
 struct BoolOrTrueImpl<bool> {
   template <typename E, class F>
-  static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
+  static bool MakeItBool(F&& f, E&& e, IDX_TS current, IDX_TS last) {
     static_assert(CallMatchingSignature<E, F>::valid,
                   "The listener should expose only one signature of `operator()`.");
-    return CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
+    return CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), current, last);
   };
 };
 
 template <>
 struct BoolOrTrueImpl<void> {
   template <typename E, class F>
-  static bool MakeItBool(F&& f, E&& e, size_t index, size_t total) {
-    CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), index, total);
+  static bool MakeItBool(F&& f, E&& e, IDX_TS current, IDX_TS last) {
+    CallMatchingSignature<E, F>::CallIt(std::forward<F>(f), std::forward<E>(e), current, last);
     return true;
   };
 };
 
 struct BoolOrTrue {
   template <typename E, class F>
-  static bool DoIt(F&& f, E&& e, size_t index, size_t total) {
+  static bool DoIt(F&& f, E&& e, IDX_TS current, IDX_TS last) {
     return BoolOrTrueImpl<decltype(CallMatchingSignature<E, F>::CallIt(
-        std::declval<F>(), std::declval<E>(), 0, 0))>::MakeItBool(std::forward<F>(f),
-                                                                  std::forward<E>(e),
-                                                                  index,
-                                                                  total);
+        std::declval<F>(), std::declval<E>(), IDX_TS(), IDX_TS()))>::MakeItBool(std::forward<F>(f),
+                                                                                std::forward<E>(e),
+                                                                                current,
+                                                                                last);
   }
 };
 
 template <typename E, class F>
-inline bool DispatchEntryToTheRightSignature(F&& f, E&& e, size_t index, size_t total) {
-  return BoolOrTrue::DoIt(std::forward<F>(f), std::forward<E>(e), index, total);
+inline bool DispatchEntryToTheRightSignature(F&& f, E&& e, IDX_TS current, IDX_TS last) {
+  return BoolOrTrue::DoIt(std::forward<F>(f), std::forward<E>(e), current, last);
 }
 
 template <typename E, class F>
-inline bool DispatchActualEntry(F&& f, E&& e, size_t index, size_t total) {
-  return DispatchEntryToTheRightSignature(std::forward<F>(f), std::forward<E>(e), index, total);
+inline bool DispatchActualEntry(F&& f, E&& e, IDX_TS current, IDX_TS last) {
+  return DispatchEntryToTheRightSignature(std::forward<F>(f), std::forward<E>(e), current, last);
 }
 
 template <typename E, class F>
-inline bool DispatchEntryWithoutMakingACopy(F&& f, E&& e, size_t index, size_t total) {
-  return DispatchActualEntry(std::forward<F>(f), std::forward<E>(e), index, total);
+inline bool DispatchEntryWithoutMakingACopy(F&& f, E&& e, IDX_TS current, IDX_TS last) {
+  return DispatchActualEntry(std::forward<F>(f), std::forward<E>(e), current, last);
 }
 
 template <class CLONER, typename E, class F>
-inline bool DispatchEntryWithMakingACopy(F&& f, const E& e, size_t index, size_t total) {
-  return DispatchActualEntry(std::forward<F>(f), std::move(CLONER::Clone(e)), index, total);
+inline bool DispatchEntryWithMakingACopy(F&& f, const E& e, IDX_TS current, IDX_TS last) {
+  return DispatchActualEntry(std::forward<F>(f), std::move(CLONER::Clone(e)), current, last);
 }
 
 template <typename E, class F>
@@ -208,13 +218,13 @@ constexpr static bool RequiresCopyOfEntry1(char) {
 
 template <typename E, class F>
 constexpr static auto RequiresCopyOfEntry3(int)
-    -> decltype(std::declval<F>()(std::declval<const E&>(), 0u, 0u), bool()) {
+    -> decltype(std::declval<F>()(std::declval<const E&>(), IDX_TS(), IDX_TS()), bool()) {
   return false;
 }
 
 template <typename E, class F>
 constexpr static auto RequiresCopyOfEntry2(int)
-    -> decltype(std::declval<F>()(std::declval<const E&>(), 0u), bool()) {
+    -> decltype(std::declval<F>()(std::declval<const E&>(), IDX_TS()), bool()) {
   return false;
 }
 
@@ -235,18 +245,18 @@ struct DispatchEntryMakingACopyIfNecessary;
 template <class CLONER>
 struct DispatchEntryMakingACopyIfNecessary<true, CLONER> {
   template <typename E, class F>
-  static bool DoIt(F&& f, const E& e, size_t index, size_t total) {
-    return DispatchEntryWithMakingACopy<CLONER>(std::forward<F>(f), e, index, total);
+  static bool DoIt(F&& f, const E& e, IDX_TS current, IDX_TS last) {
+    return DispatchEntryWithMakingACopy<CLONER>(std::forward<F>(f), e, current, last);
   }
 };
 
 template <class CLONER>
 struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
   template <typename E, class F>
-  static bool DoIt(F&& f, const E& e, size_t index, size_t total) {
+  static bool DoIt(F&& f, const E& e, IDX_TS current, IDX_TS last) {
     // IMPORTANT: Do not explicitly specify `E` as the template parameter, as it interferes
     // with extended reference resolution rules, creating an unnecessary copy. -- D.K.
-    return DispatchEntryWithoutMakingACopy(std::forward<F>(f), e, index, total);
+    return DispatchEntryWithoutMakingACopy(std::forward<F>(f), e, current, last);
   }
 };
 
@@ -258,18 +268,21 @@ struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
 // be cloned if the listener requires an rvalue reference, and custom cloner implementation can be provided.
 // Template parameter order is tweaked for more often specified to less often specified parameters.
 template <class CLONER = current::DefaultCloner, typename E, typename F>
-inline bool DispatchEntryByConstReference(F&& f, const E& e, size_t index, size_t total) {
+inline bool DispatchEntryByConstReference(F&& f,
+                                          const E& e,
+                                          IndexAndTimestamp current,
+                                          IndexAndTimestamp last) {
   // IMPORTANT: Do not explicitly specify template parameters to `DoIt`, as they interfere
   // with extended reference resolution rules, resulting in an unnecessary copy. -- D.K.
   return impl::DispatchEntryMakingACopyIfNecessary<impl::RequiresCopyOfEntry<E, F>(0), CLONER>::DoIt(
-      std::forward<F>(f), e, index, total);
+      std::forward<F>(f), e, current, last);
 }
 
 // Generic rvalue reference usecase, which dispatches the entry that does not need to be reused later.
 // Template parameter order is tweaked to { E, F }, since `E` has to be specified more often than `F`.
 template <typename E, typename F>
-inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
-  return impl::DispatchEntryWithoutMakingACopy(std::forward<F>(f), std::forward<E>(e), index, total);
+inline bool DispatchEntryByRValue(F&& f, E&& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+  return impl::DispatchEntryWithoutMakingACopy(std::forward<F>(f), std::forward<E>(e), current, last);
 }
 
 // === `Publisher<IMPL, ENTRY>` ===
@@ -281,8 +294,9 @@ inline bool DispatchEntryByRValue(F&& f, E&& e, size_t index, size_t total) {
 //    (The default clone method will be used.)
 // 2) To enable `EmplaceEntry()` for streams that only expose publish methods taking the entry itself.
 //    (The entry will be constructed by the wrapper and `std::move()`-d away into the stream.)
-// The convention is to return the 1-base index of the entry in the stream as `size_t`,
-// or zero if the entry can not be published (for example, if it has been discarded from an MMQ -- D.K.).
+// The convention is to return the 1-base index of the entry in the stream and its timestamp as
+// `IndexAndTimestamp`, or zeros if the entry can not be published (for example, if it has been
+// discarded from an MMQ -- D.K.).
 
 struct GenericPublisher {};
 template <typename ENTRY>
@@ -296,11 +310,11 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
       : IMPL(std::forward<EXTRA_PARAMS>(extra_params)...) {}
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  inline size_t Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
-  inline size_t Publish(ENTRY&& e) { return IMPL::DoPublish(std::move(e)); }
+  inline IndexAndTimestamp Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
+  inline IndexAndTimestamp Publish(ENTRY&& e) { return IMPL::DoPublish(std::move(e)); }
 
   template <typename... ARGS>
-  inline size_t Emplace(ARGS&&... args) {
+  inline IndexAndTimestamp Emplace(ARGS&&... args) {
     // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
@@ -308,13 +322,15 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   // Special case of publishing `const DERIVED_ENTRY&` or `const std::unique_ptr<DERIVED_ENTRY>&` into a stream
   // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED_ENTRY`.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value,
+                          IndexAndTimestamp>::type
   Publish(const DERIVED_ENTRY& e) {
     return IMPL::DoPublishDerived(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value,
+                          IndexAndTimestamp>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     assert(e);
     return IMPL::DoPublishDerived(*e.get());

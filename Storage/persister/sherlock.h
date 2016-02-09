@@ -62,10 +62,34 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
   void Replay(F&& f) {
     // TODO(dkorolev) + TODO(mzhurovich): Perhaps `Replay()` should happen automatically,
     // during construction, in a blocking way?
-    static_cast<void>(f);
+    SherlockProcessor processor(std::forward<F>(f));
+    stream_.SyncSubscribe(processor).Join();
   }
 
  private:
+  class SherlockProcessor {
+   public:
+    using IDX_TS = blocks::ss::IndexAndTimestamp;
+    template <typename F>
+    SherlockProcessor(F&& f)
+        : f_(std::forward<F>(f)) {}
+
+    bool operator()(T_RECORD&& transaction, IDX_TS current, IDX_TS last) {
+      for (auto&& mutation : transaction.first) {
+        f_(std::forward<T_VARIANT>(mutation));
+      }
+      return current.index != last.index;
+    }
+
+    void ReplayDone() { allow_terminate_ = true; }
+
+    bool Terminate() { return allow_terminate_; }
+
+   private:
+    std::function<void(T_VARIANT&&)> f_;
+    bool allow_terminate_ = false;
+  };
+
   sherlock::StreamInstance<T_RECORD, PERSISTER, CLONER> stream_;
 };
 

@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -48,6 +49,8 @@ namespace persistence {
 
 namespace impl {
 
+using IDX_TS = blocks::ss::IndexAndTimestamp;
+
 class ThreeStageMutex final {
  public:
   struct ContainerScopedLock final {
@@ -90,18 +93,20 @@ class ThreeStageMutex final {
   };
 
  private:
-  std::mutex stage1_;  // Update internal container.
-  std::mutex stage2_;  // Publish the newly saved entry to the persistence layer.
+  std::mutex stage1_;  // Publish the newly saved entry to the persistence layer, get `IndexAndTimestamp`.
+  std::mutex stage2_;  // Update internal container, keeping corresponding `IndexAndTimestamp`.
   std::mutex stage3_;  // Notify the listeners that a new entry is ready.
 };
 
 template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
 class Logic : current::WaitableTerminateSignalBulkNotifier {
+  using T_INTERNAL_CONTAINER = std::forward_list<std::pair<IDX_TS, ENTRY>>;
+
  public:
   template <typename... EXTRA_PARAMS>
   explicit Logic(EXTRA_PARAMS&&... extra_params)
       : persistence_layer_(std::forward<EXTRA_PARAMS>(extra_params)...) {
-    persistence_layer_.Replay([this](ENTRY&& e) { ListPushBackImpl(std::move(e)); });
+    persistence_layer_.Replay([this](IDX_TS idx_ts, ENTRY&& e) { ListPushBackImpl(idx_ts, std::move(e)); });
   }
 
   Logic(const Logic&) = delete;
@@ -110,23 +115,20 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
   void SyncScanAllEntries(current::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
     struct Cursor {
       bool at_end = true;
-      size_t index = 0u;
-      size_t total = 0u;
-      typename std::forward_list<ENTRY>::const_iterator iterator;
+      IDX_TS last_idx_ts;
+      typename T_INTERNAL_CONTAINER::const_iterator iterator;
       static Cursor Next(const Cursor& current,
-                         const std::forward_list<ENTRY>& exclusively_accessed_list,
-                         const size_t& exclusively_accessed_list_size) {
+                         const T_INTERNAL_CONTAINER& exclusively_accessed_list,
+                         const IDX_TS last_entry_idx_ts) {
         Cursor next;
         if (current.at_end) {
           next.iterator = exclusively_accessed_list.begin();
-          next.index = 0u;
         } else {
           assert(current.iterator != exclusively_accessed_list.end());
           next.iterator = current.iterator;
           ++next.iterator;
-          next.index = current.index + 1u;
         }
-        next.total = exclusively_accessed_list_size;
+        next.last_idx_ts = last_entry_idx_ts;
         next.at_end = (next.iterator == exclusively_accessed_list.end());
         return next;
       }
@@ -156,10 +158,10 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
       if (!current.at_end) {
         // Only specify the `CLONER` template parameter, the rest are best to be inferred.
         if (!blocks::ss::DispatchEntryByConstReference<CLONER>(
-                std::forward<F>(f), *current.iterator, current.index, current.total)) {
+                std::forward<F>(f), current.iterator->second, current.iterator->first, current.last_idx_ts)) {
           break;
         }
-        if (!replay_done && current.index + 1u >= size_at_start) {
+        if (!replay_done && current.iterator->first.index >= size_at_start) {
           blocks::ss::CallReplayDone(f);
           replay_done = true;
         }
@@ -175,7 +177,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
         next = [&current, this]() {
           // LOCKED: Move the cursor forward.
           ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
-          return Cursor::Next(current, list_, std::ref(list_size_));
+          return Cursor::Next(current, list_, GetLastIndexAndTimestamp());
         }();
         if (next.at_end) {
           // Wait until one of two events take place:
@@ -186,8 +188,8 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
             // LOCKED: Wait for either new data to become available or for an external termination request.
             ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
             current::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
-            waitable_terminate_signal.WaitUntil(unique_lock.GetUniqueLock(),
-                                                [this, &next]() { return list_size_ > next.total; });
+            waitable_terminate_signal.WaitUntil(
+                unique_lock.GetUniqueLock(), [this, &next]() { return list_size_ + 1u > next.last_idx_ts.index; });
           }();
         }
       } while (next.at_end);
@@ -197,30 +199,28 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 
  protected:
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t DoPublish(const ENTRY& entry) {
+  IDX_TS DoPublish(const ENTRY& entry) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    const size_t result = list_size_;
-    ListPushBackImpl(entry);
+    const auto idx_ts = persistence_layer_.Publish(entry);
     lock.AdvanceToStageTwo();
-    persistence_layer_.Publish(entry);
+    ListPushBackImpl(idx_ts, entry);
     lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return result;
+    return idx_ts;
   }
-  size_t DoPublish(ENTRY&& entry) {
+  IDX_TS DoPublish(ENTRY&& entry) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    const size_t result = list_size_;
-    ListPushBackImpl(std::move(entry));
-    const ENTRY& pushed_entry = *list_back_;
+    const ENTRY& entry_cref = entry;
+    const auto idx_ts = persistence_layer_.Publish(entry_cref);
     lock.AdvanceToStageTwo();
-    persistence_layer_.Publish(pushed_entry);
+    ListPushBackImpl(idx_ts, std::move(entry));
     lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return result;
+    return idx_ts;
   }
 
   template <typename DERIVED_ENTRY>
-  size_t DoPublishDerived(const DERIVED_ENTRY& entry) {
+  IDX_TS DoPublishDerived(const DERIVED_ENTRY& entry) {
     static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
 
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
@@ -230,11 +230,9 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
     std::unique_ptr<DERIVED_ENTRY> copy(std::make_unique<DERIVED_ENTRY>());
     *copy = current::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
-    const size_t result = list_size_;
-    ListPushBackImpl(std::move(copy));
-    const ENTRY& pushed_entry = *list_back_;
+    const auto idx_ts = persistence_layer_.Publish(*copy);
     lock.AdvanceToStageTwo();
-    persistence_layer_.Publish(pushed_entry);
+    ListPushBackImpl(idx_ts, std::move(copy));
 
     // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
     // the copy constructor. Instead, we go with Current-friendly clone implementation above.
@@ -247,45 +245,42 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     // ENTRY::element_type>(entry))));
     lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return result;
+    return idx_ts;
   }
 
   template <typename... ARGS>
-  size_t DoEmplace(ARGS&&... args) {
+  IDX_TS DoEmplace(ARGS&&... args) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    const size_t result = list_size_;
-    ListEmplaceBackImpl(std::forward<ARGS>(args)...);
-    const ENTRY& pushed_entry = *list_back_;
+    ENTRY entry = ENTRY(std::forward<ARGS>(args)...);
+    const ENTRY& entry_cref = entry;
+    const auto idx_ts = persistence_layer_.Publish(entry_cref);
     lock.AdvanceToStageTwo();
-    persistence_layer_.Publish(pushed_entry);
+    ListPushBackImpl(idx_ts, std::move(entry));
     lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return result;
+    return idx_ts;
   }
 
  private:
   // `std::forward_list<>` and its size + iterator management.
   template <typename E>
-  void ListPushBackImpl(E&& e) {
+  void ListPushBackImpl(IDX_TS idx_ts, E&& e) {
     if (list_size_) {
-      list_.insert_after(list_back_, std::forward<E>(e));
+      list_.insert_after(list_back_, std::make_pair(idx_ts, std::forward<E>(e)));
       ++list_back_;
     } else {
-      list_.push_front(std::forward<E>(e));
+      list_.push_front(std::make_pair(idx_ts, std::forward<E>(e)));
       list_back_ = list_.begin();
     }
     ++list_size_;
   }
-  template <typename... ARGS>
-  void ListEmplaceBackImpl(ARGS&&... args) {
+
+  IDX_TS GetLastIndexAndTimestamp() const {
     if (list_size_) {
-      list_.emplace_after(list_back_, std::forward<ARGS>(args)...);
-      ++list_back_;
+      return list_back_->first;
     } else {
-      list_.emplace_front(std::forward<ARGS>(args)...);
-      list_back_ = list_.begin();
+      return IDX_TS();
     }
-    ++list_size_;
   }
 
  private:
@@ -294,9 +289,9 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 
   // `std::forward_list<>` does not invalidate iterators as new elements are added.
   // Explicitly refrain from using an `std::list<>` due to its `.size()` complexity troubles on gcc/Linux.
-  std::forward_list<ENTRY> list_;
+  T_INTERNAL_CONTAINER list_;
   size_t list_size_ = 0;
-  typename std::forward_list<ENTRY>::const_iterator list_back_;  // Only valid iff `list_size_` > 0.
+  typename T_INTERNAL_CONTAINER::const_iterator list_back_;  // Only valid iff `list_size_` > 0.
 
   // To release the locks for the `std::forward_list<>` and the persistence layer ASAP.
   ThreeStageMutex three_stage_mutex_;
@@ -305,14 +300,14 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 // The implementation of a "publisher into nowhere".
 template <typename ENTRY, class CLONER>
 struct DevNullPublisherImpl {
-  void Replay(std::function<void(ENTRY&&)>) {}
+  void Replay(std::function<void(IDX_TS, ENTRY&&)>) {}
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t DoPublish(const ENTRY&) { return ++count_; }
-  size_t DoPublish(ENTRY&&) { return ++count_; }
+  IDX_TS DoPublish(const ENTRY&) { return IDX_TS(++count_, current::time::Now()); }
+  IDX_TS DoPublish(ENTRY&&) { return IDX_TS(++count_, current::time::Now()); }
   template <typename DERIVED_ENTRY>
-  size_t DoPublishDerived(const DERIVED_ENTRY&) {
+  IDX_TS DoPublishDerived(const DERIVED_ENTRY&) {
     static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
-    return ++count_;
+    return IDX_TS(++count_, current::time::Now());
   }
   size_t count_ = 0u;
 };
@@ -326,37 +321,54 @@ struct CerealAppendToFilePublisherImpl {
   CerealAppendToFilePublisherImpl(const CerealAppendToFilePublisherImpl&) = delete;
   explicit CerealAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
-  void Replay(std::function<void(ENTRY&&)> push) {
-    // TODO(dkorolev): Try/catch here?
+  void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
     assert(!appender_);
-    current::cerealize::CerealJSONFileParser<ENTRY> parser(filename_);
-    while (parser.Next(push)) {
-      ++count_;
+    std::ifstream fi(filename_);
+    if (fi.good()) {
+      IDX_TS idx_ts;
+      while (fi >> idx_ts.index) {
+        int64_t timestamp;
+        fi >> timestamp;
+        idx_ts.us = std::chrono::microseconds(timestamp);
+        std::string json;
+        std::getline(fi, json);
+        push(idx_ts, std::move(CerealizeParseJSON<ENTRY>(json)));
+        ++count_;
+      }
+      appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::app);
+    } else {
+      appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::trunc);
     }
-    appender_ = std::make_unique<current::cerealize::CerealJSONFileAppender<ENTRY, CLONER>>(filename_);
     assert(appender_);
+    assert(appender_->good());
   }
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t DoPublish(const ENTRY& entry) {
-    (*appender_) << entry;
-    return ++count_;
+  IDX_TS DoPublish(const ENTRY& entry) {
+    const auto timestamp = current::time::Now();
+    ++count_;
+    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
+    return IDX_TS(count_, timestamp);
   }
-  size_t DoPublish(ENTRY&& entry) {
-    (*appender_) << entry;
-    return ++count_;
+  IDX_TS DoPublish(ENTRY&& entry) {
+    const auto timestamp = current::time::Now();
+    ++count_;
+    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
+    return IDX_TS(count_, timestamp);
   }
 
   template <typename DERIVED_ENTRY>
-  size_t DoPublishDerived(const DERIVED_ENTRY& e) {
+  IDX_TS DoPublishDerived(const DERIVED_ENTRY& e) {
     static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
-    (*appender_) << WithBaseType<ENTRY>(e);
-    return ++count_;
+    const auto timestamp = current::time::Now();
+    ++count_;
+    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << WithBaseType<ENTRY>(e) << std::endl;
+    return IDX_TS(count_, timestamp);
   }
 
  private:
   const std::string filename_;
-  std::unique_ptr<current::cerealize::CerealJSONFileAppender<ENTRY, CLONER>> appender_;
+  std::unique_ptr<std::ofstream> appender_;
   size_t count_ = 0u;
 };
 
@@ -369,13 +381,18 @@ struct NewAppendToFilePublisherImpl {
   NewAppendToFilePublisherImpl(const NewAppendToFilePublisherImpl&) = delete;
   explicit NewAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
-  void Replay(std::function<void(ENTRY&&)> push) {
+  void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
     assert(!appender_);
     std::ifstream fi(filename_);
     if (fi.good()) {
-      std::string line;
-      while (std::getline(fi, line)) {
-        push(std::move(ParseJSON<ENTRY>(line)));
+      IDX_TS idx_ts;
+      while (fi >> idx_ts.index) {
+        int64_t timestamp;
+        fi >> timestamp;
+        idx_ts.us = std::chrono::microseconds(timestamp);
+        std::string json;
+        std::getline(fi, json);
+        push(idx_ts, std::move(ParseJSON<ENTRY>(json)));
         ++count_;
       }
       appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::app);
@@ -387,13 +404,17 @@ struct NewAppendToFilePublisherImpl {
   }
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t DoPublish(const ENTRY& entry) {
-    (*appender_) << JSON(entry) << std::endl;
-    return ++count_;
+  IDX_TS DoPublish(const ENTRY& entry) {
+    const auto timestamp = current::time::Now();
+    ++count_;
+    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
+    return IDX_TS(count_, timestamp);
   }
-  size_t DoPublish(ENTRY&& entry) {
-    (*appender_) << JSON(entry) << std::endl;
-    return ++count_;
+  IDX_TS DoPublish(ENTRY&& entry) {
+    const auto timestamp = current::time::Now();
+    ++count_;
+    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
+    return IDX_TS(count_, timestamp);
   }
 
  private:

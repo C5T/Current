@@ -266,13 +266,18 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   using namespace sherlock_unittest;
 
   // Publish four records.
-  // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 seconds ago respectively.
+  // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 milliseconds ago respectively.
   auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>();
-  const std::chrono::microseconds now = current::time::Now();
+  const std::chrono::microseconds now = std::chrono::microseconds(100000u);
+  current::time::SetNow(now - std::chrono::microseconds(40000));
   exposed_stream.Emplace("s[0]", now - std::chrono::microseconds(40000));
+  current::time::SetNow(now - std::chrono::microseconds(30000));
   exposed_stream.Emplace("s[1]", now - std::chrono::microseconds(30000));
+  current::time::SetNow(now - std::chrono::microseconds(20000));
   exposed_stream.Emplace("s[2]", now - std::chrono::microseconds(20000));
+  current::time::SetNow(now - std::chrono::microseconds(10000));
   exposed_stream.Emplace("s[3]", now - std::chrono::microseconds(10000));
+  current::time::SetNow(now);
 
   // Collect them and store as strings.
   // Required since we don't mock time for this test, and therefore can't do exact match.
@@ -283,10 +288,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     RecordsCollector() = delete;
     explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
 
-    inline bool operator()(const RecordWithTimestamp& entry, size_t index, size_t total) {
-      static_cast<void>(index);
-      static_cast<void>(total);
-      data_.push_back(JSON(entry) + '\n');
+    inline bool operator()(const RecordWithTimestamp& entry,
+                           blocks::ss::IndexAndTimestamp current,
+                           blocks::ss::IndexAndTimestamp) {
+      data_.push_back(ToString(current.index) + '\t' + ToString(current.us.count()) + '\t' + JSON(entry) +
+                      '\n');
       ++count_;
       return true;
     }
@@ -360,7 +366,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
-const std::string sherlock_golden_data = "{\"x\":1}\n{\"x\":2}\n{\"x\":3}\n";
+const std::string sherlock_golden_data = "1\t100\t{\"x\":1}\n2\t200\t{\"x\":2}\n3\t300\t{\"x\":3}\n";
 
 TEST(Sherlock, PersistsToFile) {
   using namespace sherlock_unittest;
@@ -371,8 +377,11 @@ TEST(Sherlock, PersistsToFile) {
   auto persisted =
       current::sherlock::Stream<Record, blocks::persistence::NewAppendToFile>(persistence_file_name);
 
+  current::time::SetNow(std::chrono::microseconds(100u));
   persisted.Publish(1);
+  current::time::SetNow(std::chrono::microseconds(200u));
   persisted.Publish(2);
+  current::time::SetNow(std::chrono::microseconds(300u));
   persisted.Publish(3);
 
   while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {

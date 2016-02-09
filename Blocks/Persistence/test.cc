@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +27,8 @@ SOFTWARE.
 
 #include <atomic>
 #include <string>
+
+#define CURRENT_MOCK_TIME  // `SetNow()`.
 
 #include "persistence.h"
 
@@ -142,8 +145,9 @@ TEST(PersistenceLayer, AppendToFile) {
 
   {
     IMPL impl(persistence_file_name);
-
+    current::time::SetNow(std::chrono::microseconds(100));
     impl.Publish(StorableString("foo"));
+    current::time::SetNow(std::chrono::microseconds(200));
     impl.Publish(std::move(StorableString("bar")));
 
     current::WaitableTerminateSignal stop;
@@ -154,6 +158,7 @@ TEST(PersistenceLayer, AppendToFile) {
       ;  // Spin lock.
     }
 
+    current::time::SetNow(std::chrono::microseconds(500));
     impl.Publish(StorableString("meh"));
 
     while (test_listener.seen < 3u) {
@@ -168,9 +173,9 @@ TEST(PersistenceLayer, AppendToFile) {
   }
 
   EXPECT_EQ(
-      "{\"s\":\"foo\"}\n"
-      "{\"s\":\"bar\"}\n"
-      "{\"s\":\"meh\"}\n",
+      "1\t100\t{\"s\":\"foo\"}\n"
+      "2\t200\t{\"s\":\"bar\"}\n"
+      "3\t500\t{\"s\":\"meh\"}\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
