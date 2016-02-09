@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_H
-#define SHERLOCK_H
+#ifndef CURRENT_SHERLOCK_SHERLOCK_H
+#define CURRENT_SHERLOCK_SHERLOCK_H
 
 #include "../port.h"
 
@@ -61,10 +61,6 @@ SOFTWARE.
 //
 // 3) Optional type signature, to prevent data corruption when trying to serialize data using the wrong type.
 //
-// New streams are registred as `auto my_stream = sherlock::Stream<MyType>("my_stream");`.
-//
-// Sherlock runs as a singleton. The stream of a specific name can only be added once.
-// TODO(dkorolev): Implement it this way. :-)
 // A user of C++ Sherlock interface should keep the return value of `sherlock::Stream<ENTRY>`,
 // as it is later used as the proxy to publish and subscribe to the data from this stream.
 //
@@ -124,6 +120,7 @@ SOFTWARE.
 // TODO(dkorolev): Add timestamps support and tests.
 // TODO(dkorolev): Ensure the timestamps always come in a non-decreasing order.
 
+namespace current {
 namespace sherlock {
 
 template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
@@ -132,15 +129,11 @@ class StreamInstanceImpl {
   typedef ENTRY T_ENTRY;
   typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
 
-  // TODO(dkorolev): In constuctor: Register the stream under its name in a singleton.
-  // TODO(dkorolev): In constuctor: Ensure the stream lives forever.
+  StreamInstanceImpl() : storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
 
-  StreamInstanceImpl(const std::string& name)
-      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
-
-  template <typename EXTRA_PARAM>
-  StreamInstanceImpl(const std::string& name, EXTRA_PARAM&& extra_param)
-      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAM>(extra_param))) {}
+  template <typename... EXTRA_PARAMS>
+  StreamInstanceImpl(EXTRA_PARAMS&&... extra_params)
+      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)) {}
 
   // `Publish()` and `Emplace()` return the index of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
@@ -348,10 +341,8 @@ class StreamInstanceImpl {
   }
 
  private:
-  const std::string name_;
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
 
-  StreamInstanceImpl() = delete;
   StreamInstanceImpl(const StreamInstanceImpl&) = delete;
   void operator=(const StreamInstanceImpl&) = delete;
   StreamInstanceImpl(StreamInstanceImpl&&) = delete;
@@ -431,22 +422,21 @@ template <typename ENTRY, class CLONER = current::DefaultCloner>
 using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
 
 template <typename ENTRY, class CLONER = current::DefaultCloner>
-StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream(const std::string& name) {
+StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream() {
   return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(
-      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(name));
+      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>());
 }
 
 template <typename ENTRY,
           template <typename, typename> class PERSISTENCE_LAYER,
           class CLONER = current::DefaultCloner,
           typename... EXTRA_PARAMS>
-StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(const std::string& name,
-                                                        EXTRA_PARAMS&&... extra_params) {
+StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(EXTRA_PARAMS&&... extra_params) {
   return StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER>(
-      new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>(name,
-                                                               std::forward<EXTRA_PARAMS>(extra_params)...));
+      new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>(std::forward<EXTRA_PARAMS>(extra_params)...));
 }
 
 }  // namespace sherlock
+}  // namespace current
 
-#endif  // SHERLOCK_H
+#endif  // CURRENT_SHERLOCK_SHERLOCK_H

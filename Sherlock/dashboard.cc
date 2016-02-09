@@ -204,8 +204,9 @@ struct Layout {
 using layout::Layout;
 
 int main() {
-  auto time_series = sherlock::Stream<DoublePoint>("time_series");
-  auto pic_series = sherlock::Stream<StringPoint>("pic_series");
+  using current::sherlock::Stream;
+  auto time_series = Stream<DoublePoint>();
+  auto pic_series = Stream<StringPoint>();
 
   std::thread points_populator([&time_series, &pic_series]() {
     while (true) {
@@ -237,17 +238,17 @@ int main() {
                           HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
                       });
 
-  HTTP(port).Register("/layout/plot_data",
-                      [&time_series](Request r) {
-                        time_series.AsyncSubscribe(std::make_unique<ServeJSONOverHTTP<DoublePoint> >(std::move(r)))
-                            .Detach();
-                      });
+  HTTP(port).Register(
+      "/layout/plot_data",
+      [&time_series](Request r) {
+        time_series.AsyncSubscribe(std::make_unique<ServeJSONOverHTTP<DoublePoint> >(std::move(r))).Detach();
+      });
 
-  HTTP(port).Register("/layout/pic_data",
-                      [&pic_series](Request r) {
-                        pic_series.AsyncSubscribe(std::make_unique<ServeJSONOverHTTP<StringPoint> >(std::move(r)))
-                            .Detach();
-                      });
+  HTTP(port).Register(
+      "/layout/pic_data",
+      [&pic_series](Request r) {
+        pic_series.AsyncSubscribe(std::make_unique<ServeJSONOverHTTP<StringPoint> >(std::move(r))).Detach();
+      });
 
   HTTP(port).Register("/layout/plot_meta",
                       [](Request r) {

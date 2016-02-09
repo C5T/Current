@@ -101,13 +101,12 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
   typedef YodaTypes<PERSISTENCE, CLONER, ENTRIES_TYPELIST> YT;
 
  public:
-  APIWrapper() = delete;
   // TODO(dk+mz): `mq_` ownership/initialization order is wrong here, should move it up or retire smth.
   template <typename... ARGS>
-  APIWrapper(const std::string& stream_name, ARGS&&... args)
+  APIWrapper(ARGS&&... args)
       : APICalls<PERSISTENCE, CLONER, YT>(mq_),
-        stream_(sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(stream_name,
-                                                                                std::forward<ARGS>(args)...)),
+        stream_(current::sherlock::Stream<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>(
+            std::forward<ARGS>(args)...)),
         container_data_(container_, stream_),
         mq_listener_(container_, container_data_, stream_),
         mq_(mq_listener_),

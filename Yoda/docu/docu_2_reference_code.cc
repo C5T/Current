@@ -172,7 +172,7 @@ HTTP(port).ResetAllHandlers();
   typedef MemoryOnlyAPI<yoda::Dictionary<StringIntTuple>,
                         yoda::Dictionary<Prime>,
                         Matrix<PrimeCell>> PrimesAPI;
-  PrimesAPI api("YodaExampleUsage");
+  PrimesAPI api;
   
   // Simple dictionary usecase, and a unit test for type system implementation.
   api.Transaction([](PrimesAPI::T_DATA data) {

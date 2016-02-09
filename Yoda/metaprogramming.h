@@ -91,7 +91,7 @@ struct YodaTypes : YodaTypesBase {
   using T_MQ_MESSAGE_INTERNAL_TYPEDEF = MQMessage<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
   using T_MQ = blocks::MMQ<std::unique_ptr<T_MQ_MESSAGE_INTERNAL_TYPEDEF>, T_MQ_LISTENER>;
 
-  using T_STREAM_TYPE = sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>;
+  using T_STREAM_TYPE = current::sherlock::StreamInstance<std::unique_ptr<Padawan>, PERSISTENCE, CLONER>;
 
   using T_SHERLOCK_LISTENER = StreamListener<PERSISTENCE, CLONER, T_SUPPORTED_TYPES_LIST>;
   using T_SHERLOCK_LISTENER_SCOPE_TYPE =

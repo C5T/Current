@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_PUBSUB_H
-#define SHERLOCK_PUBSUB_H
+#ifndef CURRENT_SHERLOCK_PUBSUB_H
+#define CURRENT_SHERLOCK_PUBSUB_H
 
 #include "../port.h"
 
@@ -34,6 +34,7 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/time/chrono.h"
 
+namespace current {
 namespace sherlock {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
@@ -129,5 +130,6 @@ class PubSubHTTPEndpoint final {
 };
 
 }  // namespace sherlock
+}  // namespace current
 
-#endif  // SHERLOCK_PUBSUB_H
+#endif  // CURRENT_SHERLOCK_PUBSUB_H

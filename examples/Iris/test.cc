@@ -59,7 +59,7 @@ std::map<size_t, std::string> dimension_names;
 
 TEST(Iris, Demo) {
   typedef yoda::MemoryOnlyAPI<yoda::Dictionary<LabeledFlower>> TestAPI;
-  TestAPI api("labeled_flowers");
+  TestAPI api;
 
   // Allow running the test under `--gtest_repeat`.
   // HTTP endpoints can be un-registered, but Sherlock streams are designed to live forever,

@@ -44,8 +44,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
   using T_RECORD = std::pair<std::vector<T_VARIANT>, std::chrono::microseconds>;
 
   template <typename... ARGS>
-  explicit SherlockStreamPersisterImpl(const std::string& stream_name, ARGS&&... args)
-      : stream_(sherlock::Stream<T_RECORD, PERSISTER, CLONER>(stream_name, std::forward<ARGS>(args)...)) {}
+  explicit SherlockStreamPersisterImpl(ARGS&&... args)
+      : stream_(sherlock::Stream<T_RECORD, PERSISTER, CLONER>(std::forward<ARGS>(args)...)) {}
 
   void PersistJournal(MutationJournal& journal) {
     T_RECORD record;
