@@ -54,6 +54,7 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
+#include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/clone.h"
 
 namespace blocks {
@@ -66,11 +67,12 @@ template <typename MESSAGE,
 class MMQImpl {
  public:
   // Type of messages to store and dispatch.
-  typedef MESSAGE T_MESSAGE;
+  using T_MESSAGE = MESSAGE;
 
   // This method will be called from one thread, which is spawned and owned by an instance of MMQImpl.
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
-  typedef CONSUMER T_CONSUMER;
+  using T_CONSUMER = CONSUMER;
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
 
   MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
@@ -92,42 +94,39 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  size_t DoPublish(const T_MESSAGE& message) {
-    const std::pair<size_t, size_t> index = CircularBufferAllocate();
-    if (index.second) {
-      circular_buffer_[index.first].absolute_index = index.second - 1u;
-      circular_buffer_[index.first].message_body = std::move(CLONER::Clone(message));
-      CircularBufferCommit(index.first);
-      return index.second;
+  IDX_TS DoPublish(const T_MESSAGE& message) {
+    const std::pair<bool, size_t> index = CircularBufferAllocate();
+    if (index.first) {
+      circular_buffer_[index.second].message_body = std::move(CLONER::Clone(message));
+      CircularBufferCommit(index.second);
+      return circular_buffer_[index.second].index_timestamp;
     } else {
-      return 0u;
+      return IDX_TS();
     }
   }
 
-  size_t DoPublish(T_MESSAGE&& message) {
-    const std::pair<size_t, size_t> index = CircularBufferAllocate();
-    if (index.second) {
-      circular_buffer_[index.first].absolute_index = index.second - 1u;
-      circular_buffer_[index.first].message_body = std::move(message);
-      CircularBufferCommit(index.first);
-      return index.second;
+  IDX_TS DoPublish(T_MESSAGE&& message) {
+    const std::pair<bool, size_t> index = CircularBufferAllocate();
+    if (index.first) {
+      circular_buffer_[index.second].message_body = std::move(message);
+      CircularBufferCommit(index.second);
+      return circular_buffer_[index.second].index_timestamp;
     } else {
-      return 0u;
+      return IDX_TS();
     }
   }
 
   template <typename... ARGS>
-  size_t DoEmplace(ARGS&&... args) {
-    const std::pair<size_t, size_t> index = CircularBufferAllocate();
-    if (index.second) {
-      circular_buffer_[index.first].absolute_index = index.second - 1u;
-      circular_buffer_[index.first].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
-      CircularBufferCommit(index.first);
-      return index.second;
+  IDX_TS DoEmplace(ARGS&&... args) {
+    const std::pair<bool, size_t> index = CircularBufferAllocate();
+    if (index.first) {
+      circular_buffer_[index.second].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
+      CircularBufferCommit(index.second);
+      return circular_buffer_[index.second].index_timestamp;
     } else {
-      return 0u;
+      return IDX_TS();
     }
-  }
+ }
 
  private:
   MMQImpl(const MMQImpl&) = delete;
@@ -143,7 +142,7 @@ class MMQImpl {
   void ConsumerThread() {
     // The `tail` pointer is local to the procesing thread.
     size_t tail = 0u;
-    size_t save_total_messages;
+    IDX_TS save_last_idx_ts;
 
     while (true) {
       {
@@ -161,7 +160,7 @@ class MMQImpl {
           return;  // LCOV_EXCL_LINE
         }
         circular_buffer_[tail].status = Entry::BEING_EXPORTED;
-        save_total_messages = total_messages_;
+        save_last_idx_ts = last_idx_ts_;
       }
 
       {
@@ -169,8 +168,8 @@ class MMQImpl {
         // NO MUTEX REQUIRED.
         blocks::ss::DispatchEntryByRValue(consumer_,
                                           std::move(circular_buffer_[tail].message_body),
-                                          circular_buffer_[tail].absolute_index,
-                                          save_total_messages);
+                                          circular_buffer_[tail].index_timestamp,
+                                          save_last_idx_ts);
       }
 
       {
@@ -189,48 +188,52 @@ class MMQImpl {
     }
   }
 
-  // Returns { circular buffer index, absolute 1-based message index, or zero if the message is dropped }.
+  // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<DROP, std::pair<size_t, size_t>>::type CircularBufferAllocate() {
+  typename std::enable_if<DROP, std::pair<bool, size_t>>::type CircularBufferAllocate() {
     // Implementation that discards the message if the queue is full.
     // MUTEX-LOCKED.
     std::lock_guard<std::mutex> lock(mutex_);
     if (circular_buffer_[head_].status == Entry::FREE) {
       // Regular case.
-      ++total_messages_;
       const size_t index = head_;
+      ++last_idx_ts_.index;
+      last_idx_ts_.us = current::time::Now();
       Increment(head_);
       circular_buffer_[index].status = Entry::BEING_IMPORTED;
-      return std::make_pair(index, total_messages_);
+      circular_buffer_[index].index_timestamp = last_idx_ts_;
+      return std::make_pair(true, index);
     } else {
-      // Overflow. Discarding the message. The second `0u` indicates the message should be dropped.
-      return std::make_pair(0u, 0u);
+      // Overflow. Discarding the message.
+      return std::make_pair(false, 0u);
     }
   }
 
-  // Returns { circular buffer index, absolute message index }.
+  // Returns { successful allocation flag, circular buffer index }.
   template <bool DROP = DROP_ON_OVERFLOW>
-  typename std::enable_if<!DROP, std::pair<size_t, size_t>>::type CircularBufferAllocate() {
+  typename std::enable_if<!DROP, std::pair<bool, size_t>>::type CircularBufferAllocate() {
     // Implementation that waits for an empty space if the queue is full and blocks the calling thread
     // (potentially indefinitely, depends on the behavior of the consumer).
     // MUTEX-LOCKED.
     std::unique_lock<std::mutex> lock(mutex_);
     if (destructing_) {
-      return std::make_pair(0u, 0u);  // LCOV_EXCL_LINE
+      return std::make_pair(false, 0u);  // LCOV_EXCL_LINE
     }
     while (circular_buffer_[head_].status != Entry::FREE) {
       // Waiting for the next empty slot in the buffer.
       condition_variable_.wait(
           lock, [this] { return (circular_buffer_[head_].status == Entry::FREE) || destructing_; });
       if (destructing_) {
-        return std::make_pair(0u, 0u);  // LCOV_EXCL_LINE
+        return std::make_pair(false, 0u);  // LCOV_EXCL_LINE
       }
     }
     const size_t index = head_;
-    ++total_messages_;
+    ++last_idx_ts_.index;
+    last_idx_ts_.us = current::time::Now();
     Increment(head_);
     circular_buffer_[index].status = Entry::BEING_IMPORTED;
-    return std::make_pair(index, total_messages_);
+    circular_buffer_[index].index_timestamp = last_idx_ts_;
+    return std::make_pair(true, index);
   }
 
   void CircularBufferCommit(const size_t index) {
@@ -250,7 +253,7 @@ class MMQImpl {
 
   // The `Entry` struct keeps the entries along with their completion status.
   struct Entry {
-    size_t absolute_index;
+    IDX_TS index_timestamp;
     T_MESSAGE message_body;
     enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
   };
@@ -262,7 +265,7 @@ class MMQImpl {
   size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
-  size_t total_messages_ = 0u;
+  IDX_TS last_idx_ts_;
 
   // For safe thread destruction.
   bool destructing_ = false;
