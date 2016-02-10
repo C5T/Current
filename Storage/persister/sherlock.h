@@ -74,7 +74,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     SherlockProcessor(F&& f)
         : f_(std::forward<F>(f)) {}
 
-    bool operator()(T_RECORD&& transaction, IDX_TS current, IDX_TS last) {
+    bool operator()(T_RECORD&& transaction, IDX_TS current, IDX_TS last) const {
       for (auto&& mutation : transaction.first) {
         f_(std::forward<T_VARIANT>(mutation));
       }
@@ -86,7 +86,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     bool Terminate() { return allow_terminate_; }
 
    private:
-    std::function<void(T_VARIANT&&)> f_;
+    const std::function<void(T_VARIANT&&)> f_;
     bool allow_terminate_ = false;
   };
 

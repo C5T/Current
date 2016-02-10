@@ -178,7 +178,7 @@ TEST(StorageDocumentation, BasicUsage) {
 
   using T_RECORD = std::pair<std::vector<Variant<PersistedUserUpdated, PersistedUserDeleted>>, std::chrono::microseconds>;
   ASSERT_EQ(3u, persisted_transactions.size());
-  const auto check_and_parse_persisted_entry = [](const std::string& line, uint64_t index, uint64_t timestamp) {
+  const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, uint64_t timestamp) {
     std::istringstream iss(line);
     uint64_t persisted_index;
     uint64_t persisted_timestamp;
@@ -192,7 +192,7 @@ TEST(StorageDocumentation, BasicUsage) {
   };
 
   {
-    const auto t = check_and_parse_persisted_entry(persisted_transactions[0], 1u, 1002u);
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 1u, 1002u);
     ASSERT_EQ(2u, t.first.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
@@ -207,7 +207,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = check_and_parse_persisted_entry(persisted_transactions[1], 2u, 1004u);
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 2u, 1004u);
     ASSERT_EQ(1u, t.first.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
@@ -217,7 +217,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = check_and_parse_persisted_entry(persisted_transactions[2], 3u, 1006u);
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 3u, 1006u);
     ASSERT_EQ(1u, t.first.size());
 
     ASSERT_FALSE(Exists<PersistedUserUpdated>(t.first[0]));

@@ -346,14 +346,14 @@ struct CerealAppendToFilePublisherImpl {
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   IDX_TS DoPublish(const ENTRY& entry) {
     const auto timestamp = current::time::Now();
+    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
     ++count_;
-    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
     return IDX_TS(count_, timestamp);
   }
   IDX_TS DoPublish(ENTRY&& entry) {
     const auto timestamp = current::time::Now();
+    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
     ++count_;
-    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
     return IDX_TS(count_, timestamp);
   }
 
@@ -361,8 +361,8 @@ struct CerealAppendToFilePublisherImpl {
   IDX_TS DoPublishDerived(const DERIVED_ENTRY& e) {
     static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     const auto timestamp = current::time::Now();
+    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << WithBaseType<ENTRY>(e) << std::endl;
     ++count_;
-    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << WithBaseType<ENTRY>(e) << std::endl;
     return IDX_TS(count_, timestamp);
   }
 
@@ -406,14 +406,14 @@ struct NewAppendToFilePublisherImpl {
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   IDX_TS DoPublish(const ENTRY& entry) {
     const auto timestamp = current::time::Now();
+    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
     ++count_;
-    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
     return IDX_TS(count_, timestamp);
   }
   IDX_TS DoPublish(ENTRY&& entry) {
     const auto timestamp = current::time::Now();
+    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
     ++count_;
-    (*appender_) << count_ << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
     return IDX_TS(count_, timestamp);
   }
 

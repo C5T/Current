@@ -34,6 +34,10 @@ SOFTWARE.
 namespace blocks {
 namespace ss {
 
+// `IndexAndTimestamp` structure holds the index of the entry and its timestamp in the stream.
+// * `index` is 1-based.
+// * Default zero values of `index` and `us` correspond to an invalid state. For example,
+//   if `Publish()` method fails for some reason it could `return IndexAndTimestamp()`.
 struct IndexAndTimestamp {
   uint64_t index;
   std::chrono::microseconds us;
