@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME  // `SetNow()`.
+
 // Smoke test and example reference usage code.
 #include "docu/docu_2_reference_code.cc"
 
@@ -42,15 +44,15 @@ CEREAL_REGISTER_TYPE(YodaEntryToPersist::DeleterPersister);
 DEFINE_string(yoda_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
 const std::string yoda_golden_data =
-    "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+    "1\t0\t{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
     "\"valid\":1,\"data\":{\"key\":\"one\",\"number\":1}}}}\n"
-    "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
+    "2\t0\t{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist\",\"ptr_wrapper\":{"
     "\"valid\":1,\"data\":{\"key\":\"two\",\"number\":2}}}}\n";
 
 const std::string yoda_golden_data_after_delete =
     yoda_golden_data +
-    "{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist::DeleterPersister\",\"ptr_"
-    "wrapper\":{\"valid\":1,\"data\":{\"key_to_erase\":\"one\"}}}}\n";
+    "3\t0\t{\"e\":{\"polymorphic_id\":2147483649,\"polymorphic_name\":\"YodaEntryToPersist::DeleterPersister\","
+    "\"ptr_wrapper\":{\"valid\":1,\"data\":{\"key_to_erase\":\"one\"}}}}\n";
 
 TEST(Yoda, WritesToFile) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_yoda_test_tmpdir, "data");
@@ -59,12 +61,12 @@ TEST(Yoda, WritesToFile) {
   typedef yoda::SingleFileAPI<yoda::Dictionary<YodaEntryToPersist>> PersistingAPI;
   PersistingAPI api(persistence_file_name);
 
+  current::time::SetNow(std::chrono::microseconds(0u));
   api.Transaction([](PersistingAPI::T_DATA data) {
     auto adder = yoda::Dictionary<YodaEntryToPersist>::Mutator(data);
     adder.Add(YodaEntryToPersist("one", 1));
     adder.Add(YodaEntryToPersist("two", 2));
   }).Wait();
-  ;
   while (current::FileSystem::GetFileSize(persistence_file_name) != yoda_golden_data.size()) {
     ;  // Spin lock.
   }

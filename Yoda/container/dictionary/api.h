@@ -158,7 +158,7 @@ struct Container<YT, Dictionary<ENTRY>> {
 
     // Non-throwing adder. Silently overwrites if already exists.
     void Add(const ENTRY& entry) {
-      const size_t index = stream_.Publish(entry);
+      const size_t index = stream_.Publish(entry).index;
       mutable_.map_[GetKey(entry)].Update(index, entry);
     }
     void Add(const std::tuple<ENTRY>& entry) { Add(std::get<0>(entry)); }

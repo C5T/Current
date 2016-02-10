@@ -189,7 +189,8 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
             ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
             current::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
             waitable_terminate_signal.WaitUntil(
-                unique_lock.GetUniqueLock(), [this, &next]() { return list_size_ + 1u > next.last_idx_ts.index; });
+                unique_lock.GetUniqueLock(),
+                [this, &next]() { return list_size_ + 1u > next.last_idx_ts.index; });
           }();
         }
       } while (next.at_end);
@@ -230,7 +231,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
     std::unique_ptr<DERIVED_ENTRY> copy(std::make_unique<DERIVED_ENTRY>());
     *copy = current::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
-    const auto idx_ts = persistence_layer_.Publish(*copy);
+    const auto idx_ts = persistence_layer_.Publish(entry);
     lock.AdvanceToStageTwo();
     ListPushBackImpl(idx_ts, std::move(copy));
 
@@ -361,7 +362,8 @@ struct CerealAppendToFilePublisherImpl {
   IDX_TS DoPublishDerived(const DERIVED_ENTRY& e) {
     static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     const auto timestamp = current::time::Now();
-    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << WithBaseType<ENTRY>(e) << std::endl;
+    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t'
+                 << CerealizeJSON(WithBaseType<typename ENTRY::element_type>(e), "e") << std::endl;
     ++count_;
     return IDX_TS(count_, timestamp);
   }

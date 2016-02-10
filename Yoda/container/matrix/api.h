@@ -303,7 +303,7 @@ struct Container<YT, Matrix<ENTRY>> {
 
     // Non-throwing method. If entry with the same key already exists, performs silent overwrite.
     void Add(const ENTRY& entry) {
-      const size_t index = stream_.Publish(entry);
+      const size_t index = stream_.Publish(entry).index;
       std::unique_ptr<EntryWithIndex<ENTRY>>& placeholder =
           mutable_.map_[ROW_COL(GetRow(entry), GetCol(entry))];
       placeholder = std::make_unique<EntryWithIndex<ENTRY>>(index, entry);

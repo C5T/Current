@@ -183,8 +183,8 @@ struct StreamListener {
   };
 
   // Sherlock stream listener call.
-  void operator()(std::unique_ptr<Padawan>&& entry, size_t index) {
-    mq_.Emplace(new MQMessageEntry(std::move(entry), index));
+  void operator()(std::unique_ptr<Padawan>&& entry, blocks::ss::IndexAndTimestamp current) {
+    mq_.Emplace(new MQMessageEntry(std::move(entry), current.index));
 
     // Eventually, the logic of this API implementation is:
     // * Defer all API requests until the persistent part of the stream is fully replayed,
