@@ -174,6 +174,7 @@ namespace storage {
       return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
     }                                                                                                        \
     constexpr static size_t FieldsCount() { return fields_count; }                                           \
+    void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }                                      \
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \

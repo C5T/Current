@@ -50,6 +50,10 @@ struct StorageRollbackExceptionWithValue : StorageException {
   T value;
 };
 
+struct StorageIsDestructingException : StorageException {
+  using StorageException::StorageException;
+};
+
 }  // namespace current::storage
 }  // namespace current
 

@@ -363,6 +363,16 @@ TEST(TransactionalStorage, Exceptions) {
   }
 }
 
+TEST(TransactionalStorage, GracefulShutdown) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  storage.GracefulShutdown();
+  auto result = storage.Transaction([](ImmutableFields<Storage>) {});
+  ASSERT_THROW(result.Go(), current::storage::StorageIsDestructingException);
+};
+
 #if 0
 
 template <typename POLICY>
