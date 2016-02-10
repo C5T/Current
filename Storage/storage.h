@@ -73,6 +73,14 @@ namespace storage {
 // 2) Splits the type into `T_PERSISTED_EVENT_1` and `T_PERSISTED_EVENT_2` to enable persisting deletions too.
 
 // clang-format off
+#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_PERSISTENCE(entry_name)                                          \
+  template<> struct current::storage::ExcludeTypeFromPersistence<entry_name::T_FIELD_TYPE<                  \
+                                                                 entry_name::T_ENTRY,                       \
+                                                                 entry_name::T_PERSISTED_EVENT_1,           \
+                                                                 entry_name::T_PERSISTED_EVENT_2 >> {       \
+    static constexpr bool excluded = true;                                                                  \
+  }
+
 #define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)                \
   CURRENT_STRUCT(entry_name##Updated) {                                                                     \
     CURRENT_FIELD(data, entry_type);                                                                        \

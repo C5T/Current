@@ -1,0 +1,372 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{785219A9-0D38-4CA6-91E9-B06DAB25A91F}</ProjectGuid>
+    <RootNamespace>Current</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="current.h" />
+    <ClInclude Include="port.h" />
+    <ClInclude Include="3rdparty\cereal\include\access.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\cereal.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\macros.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\archives\adapters.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\archives\binary.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\archives\json.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\archives\portable_binary.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\archives\xml.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\details\helpers.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\details\polymorphic_impl.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\details\static_object.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\details\traits.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\details\util.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\external\base64.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\document.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\filestream.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\genericstream.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\prettywriter.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\rapidjson.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\reader.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\stringbuffer.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\writer.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\pow10.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\stack.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\strfunc.h" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml_iterators.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml_print.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml_utils.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\array.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\base_class.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\bitset.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\boost_variant.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\chrono.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\common.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\complex.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\deque.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\forward_list.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\list.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\map.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\memory.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\polymorphic.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\queue.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\set.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\stack.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\string.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\tuple.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\unordered_map.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\unordered_set.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\utility.hpp" />
+    <ClInclude Include="3rdparty\cereal\include\types\vector.hpp" />
+    <ClInclude Include="3rdparty\gtest\gtest-main-with-dflags.h" />
+    <ClInclude Include="3rdparty\gtest\gtest-main.h" />
+    <ClInclude Include="3rdparty\gtest\gtest.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-death-test.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-message.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-param-test.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-printers.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-spi.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-test-part.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-typed-test.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest_pred_impl.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest_prod.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-death-test-internal.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-filepath.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-internal.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-linked_ptr.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-param-util-generated.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-param-util.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-port.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-string.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-tuple.h" />
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-type-util.h" />
+    <ClInclude Include="3rdparty\gtest\src\gtest-internal-inl.h" />
+    <ClInclude Include="3rdparty\rapidjson\allocators.h" />
+    <ClInclude Include="3rdparty\rapidjson\document.h" />
+    <ClInclude Include="3rdparty\rapidjson\encodedstream.h" />
+    <ClInclude Include="3rdparty\rapidjson\encodings.h" />
+    <ClInclude Include="3rdparty\rapidjson\filereadstream.h" />
+    <ClInclude Include="3rdparty\rapidjson\filewritestream.h" />
+    <ClInclude Include="3rdparty\rapidjson\genericstream.h" />
+    <ClInclude Include="3rdparty\rapidjson\memorybuffer.h" />
+    <ClInclude Include="3rdparty\rapidjson\memorystream.h" />
+    <ClInclude Include="3rdparty\rapidjson\pointer.h" />
+    <ClInclude Include="3rdparty\rapidjson\prettywriter.h" />
+    <ClInclude Include="3rdparty\rapidjson\rapidjson.h" />
+    <ClInclude Include="3rdparty\rapidjson\reader.h" />
+    <ClInclude Include="3rdparty\rapidjson\streamwrapper.h" />
+    <ClInclude Include="3rdparty\rapidjson\stringbuffer.h" />
+    <ClInclude Include="3rdparty\rapidjson\writer.h" />
+    <ClInclude Include="3rdparty\rapidjson\error\en.h" />
+    <ClInclude Include="3rdparty\rapidjson\error\error.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\biginteger.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\diyfp.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\dtoa.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\ieee754.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\itoa.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\meta.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\pow10.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\stack.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\strfunc.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\strtod.h" />
+    <ClInclude Include="3rdparty\rapidjson\internal\swap.h" />
+    <ClInclude Include="3rdparty\rapidjson\msinttypes\inttypes.h" />
+    <ClInclude Include="3rdparty\rapidjson\msinttypes\stdint.h" />
+    <ClInclude Include="3rdparty\stephan-brumme\sha256.h" />
+    <ClInclude Include="Blocks\port.h" />
+    <ClInclude Include="Blocks\HTTP\api.h" />
+    <ClInclude Include="Blocks\HTTP\request.h" />
+    <ClInclude Include="Blocks\HTTP\response.h" />
+    <ClInclude Include="Blocks\HTTP\types.h" />
+    <ClInclude Include="Blocks\HTTP\impl\apple_client.h" />
+    <ClInclude Include="Blocks\HTTP\impl\java_client.h" />
+    <ClInclude Include="Blocks\HTTP\impl\posix_client.h" />
+    <ClInclude Include="Blocks\HTTP\impl\posix_server.h" />
+    <ClInclude Include="Blocks\MMQ\mmq.h" />
+    <ClInclude Include="Blocks\Persistence\persistence.h" />
+    <ClInclude Include="Blocks\SS\ss.h" />
+    <ClInclude Include="Blocks\URL\url.h" />
+    <ClInclude Include="Bricks\exception.h" />
+    <ClInclude Include="Bricks\port.h" />
+    <ClInclude Include="Bricks\cerealize\cerealize.h" />
+    <ClInclude Include="Bricks\cerealize\constants.h" />
+    <ClInclude Include="Bricks\cerealize\exceptions.h" />
+    <ClInclude Include="Bricks\cerealize\json.h" />
+    <ClInclude Include="Bricks\cerealize\test\test_event_base.h" />
+    <ClInclude Include="Bricks\cerealize\test\test_event_derived.cc.h" />
+    <ClInclude Include="Bricks\dflags\dflags.h" />
+    <ClInclude Include="Bricks\file\exceptions.h" />
+    <ClInclude Include="Bricks\file\file.h" />
+    <ClInclude Include="Bricks\graph\gnuplot.h" />
+    <ClInclude Include="Bricks\graph\plotutils.h" />
+    <ClInclude Include="Bricks\java_wrapper\java_wrapper.h" />
+    <ClInclude Include="Bricks\net\debug_log.h" />
+    <ClInclude Include="Bricks\net\exceptions.h" />
+    <ClInclude Include="Bricks\net\http\codes.h" />
+    <ClInclude Include="Bricks\net\http\default_messages.h" />
+    <ClInclude Include="Bricks\net\http\http.h" />
+    <ClInclude Include="Bricks\net\http\mime_type.h" />
+    <ClInclude Include="Bricks\net\http\impl\server.h" />
+    <ClInclude Include="Bricks\net\tcp\tcp.h" />
+    <ClInclude Include="Bricks\net\tcp\impl\posix.h" />
+    <ClInclude Include="Bricks\rtti\dispatcher.h" />
+    <ClInclude Include="Bricks\rtti\exceptions.h" />
+    <ClInclude Include="Bricks\strings\chunk.h" />
+    <ClInclude Include="Bricks\strings\distance.h" />
+    <ClInclude Include="Bricks\strings\fixed_size_serializer.h" />
+    <ClInclude Include="Bricks\strings\is_string_type.h" />
+    <ClInclude Include="Bricks\strings\join.h" />
+    <ClInclude Include="Bricks\strings\printf.h" />
+    <ClInclude Include="Bricks\strings\rounding.h" />
+    <ClInclude Include="Bricks\strings\split.h" />
+    <ClInclude Include="Bricks\strings\strings.h" />
+    <ClInclude Include="Bricks\strings\util.h" />
+    <ClInclude Include="Bricks\template\combine.h" />
+    <ClInclude Include="Bricks\template\decay.h" />
+    <ClInclude Include="Bricks\template\enable_if.h" />
+    <ClInclude Include="Bricks\template\is_tuple.h" />
+    <ClInclude Include="Bricks\template\is_unique_ptr.h" />
+    <ClInclude Include="Bricks\template\mapreduce.h" />
+    <ClInclude Include="Bricks\template\metaprogramming.h" />
+    <ClInclude Include="Bricks\template\pod.h" />
+    <ClInclude Include="Bricks\template\rtti_dynamic_call.h" />
+    <ClInclude Include="Bricks\template\typelist.h" />
+    <ClInclude Include="Bricks\template\variadic_indexes.h" />
+    <ClInclude Include="Bricks\template\visitor.h" />
+    <ClInclude Include="Bricks\template\weed.h" />
+    <ClInclude Include="Bricks\time\chrono.h" />
+    <ClInclude Include="Bricks\util\accumulative_scoped_deleter.h" />
+    <ClInclude Include="Bricks\util\clone.h" />
+    <ClInclude Include="Bricks\util\comparators.h" />
+    <ClInclude Include="Bricks\util\crc32.h" />
+    <ClInclude Include="Bricks\util\future.h" />
+    <ClInclude Include="Bricks\util\lazy_instantiation.h" />
+    <ClInclude Include="Bricks\util\make_scope_guard.h" />
+    <ClInclude Include="Bricks\util\null_deleter.h" />
+    <ClInclude Include="Bricks\util\random.h" />
+    <ClInclude Include="Bricks\util\rol.h" />
+    <ClInclude Include="Bricks\util\sha256.h" />
+    <ClInclude Include="Bricks\util\singleton.h" />
+    <ClInclude Include="Bricks\util\waitable_terminate_signal.h" />
+    <ClInclude Include="Bricks\waitable_atomic\waitable_atomic.h" />
+    <ClInclude Include="CompactTSV\compacttsv.h" />
+    <ClInclude Include="CompactTSV\gen.h" />
+    <ClInclude Include="CompactTSV\port.h" />
+    <ClInclude Include="EventCollector\event_collector.h" />
+    <ClInclude Include="EventCollector\port.h" />
+    <ClInclude Include="examples\EmbeddedDB\schema.h" />
+    <ClInclude Include="examples\Iris\iris.h" />
+    <ClInclude Include="FnCAS\port.h" />
+    <ClInclude Include="FnCAS\test.h" />
+    <ClInclude Include="FnCAS\deprecated_test\function.h" />
+    <ClInclude Include="FnCAS\deprecated_test\f\arithmetics.h" />
+    <ClInclude Include="FnCAS\deprecated_test\f\big_arithmetics.h" />
+    <ClInclude Include="FnCAS\deprecated_test\f\big_math.h" />
+    <ClInclude Include="FnCAS\deprecated_test\f\math.h" />
+    <ClInclude Include="FnCAS\deprecated_test\f\sum.h" />
+    <ClInclude Include="FnCAS\fncas\base.h" />
+    <ClInclude Include="FnCAS\fncas\differentiate.h" />
+    <ClInclude Include="FnCAS\fncas\fncas.h" />
+    <ClInclude Include="FnCAS\fncas\jit.h" />
+    <ClInclude Include="FnCAS\fncas\mathutil.h" />
+    <ClInclude Include="FnCAS\fncas\node.h" />
+    <ClInclude Include="FnCAS\fncas\optimize.h" />
+    <ClInclude Include="Midichlorians\Dev\Beta\MidichloriansDataDictionary.h" />
+    <ClInclude Include="Midichlorians\Dev\Beta\iOS\Midichlorians.h" />
+    <ClInclude Include="Midichlorians\Dev\Beta\iOS\MidichloriansImpl.h" />
+    <ClInclude Include="Profiler\profiler.h" />
+    <ClInclude Include="RipCurrent\ripcurrent.h" />
+    <ClInclude Include="Sherlock\port.h" />
+    <ClInclude Include="Sherlock\pubsub.h" />
+    <ClInclude Include="Sherlock\sherlock.h" />
+    <ClInclude Include="Storage\base.h" />
+    <ClInclude Include="Storage\exceptions.h" />
+    <ClInclude Include="Storage\storage.h" />
+    <ClInclude Include="Storage\transaction_policy.h" />
+    <ClInclude Include="Storage\transaction_result.h" />
+    <ClInclude Include="Storage\container\common.h" />
+    <ClInclude Include="Storage\container\dictionary.h" />
+    <ClInclude Include="Storage\container\sfinae.h" />
+    <ClInclude Include="Storage\container\vector.h" />
+    <ClInclude Include="Storage\persister\file.h" />
+    <ClInclude Include="Storage\persister\sherlock.h" />
+    <ClInclude Include="TypeSystem\base.h" />
+    <ClInclude Include="TypeSystem\enum.h" />
+    <ClInclude Include="TypeSystem\exceptions.h" />
+    <ClInclude Include="TypeSystem\helpers.h" />
+    <ClInclude Include="TypeSystem\optional.h" />
+    <ClInclude Include="TypeSystem\optional_result.h" />
+    <ClInclude Include="TypeSystem\primitive_types.dsl.h" />
+    <ClInclude Include="TypeSystem\struct.h" />
+    <ClInclude Include="TypeSystem\timestamp.h" />
+    <ClInclude Include="TypeSystem\types.h" />
+    <ClInclude Include="TypeSystem\variant.h" />
+    <ClInclude Include="TypeSystem\Reflection\exceptions.h" />
+    <ClInclude Include="TypeSystem\Reflection\reflection.h" />
+    <ClInclude Include="TypeSystem\Reflection\types.h" />
+    <ClInclude Include="TypeSystem\Schema\schema.h" />
+    <ClInclude Include="TypeSystem\Schema\smoke_test_struct.h" />
+    <ClInclude Include="TypeSystem\Serialization\binary.h" />
+    <ClInclude Include="TypeSystem\Serialization\exceptions.h" />
+    <ClInclude Include="TypeSystem\Serialization\json.h" />
+    <ClInclude Include="Yoda\metaprogramming.h" />
+    <ClInclude Include="Yoda\sfinae.h" />
+    <ClInclude Include="Yoda\types.h" />
+    <ClInclude Include="Yoda\yoda.h" />
+    <ClInclude Include="Yoda\container\dictionary\api.h" />
+    <ClInclude Include="Yoda\container\dictionary\exceptions.h" />
+    <ClInclude Include="Yoda\container\dictionary\metaprogramming.h" />
+    <ClInclude Include="Yoda\container\matrix\api.h" />
+    <ClInclude Include="Yoda\container\matrix\exceptions.h" />
+    <ClInclude Include="Yoda\container\matrix\metaprogramming.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -219,6 +219,13 @@ STORAGE_HANDLERS_MAP_ENTRY GenerateRESTfulHandler(STORAGE& storage, const std::s
 }
 
 }  // namespace impl
+template <bool CALL>
+struct ConditionalOn {
+  template <typename Fn> static void Call(Fn&& f) { f(); }
+};
+template <> struct ConditionalOn<true> {
+  template <typename Fn> static void Call(Fn&&) {}
+};
 
 template <class T_STORAGE_IMPL, class T_REST_IMPL = Basic>
 class RESTfulStorage {
@@ -287,8 +294,11 @@ class RESTfulStorage {
                            const std::string& restful_url_prefix,
                            impl::STORAGE_HANDLERS_MAP& handlers) {
       ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, handlers);
-      handlers.insert(
+      using T_SPECIFIC_FIELD = impl::RESTfulHandlerGenerator<T_REST_IMPL, I - 1, T_STORAGE_IMPL>::T_SPECIFIC_FIELD;
+      ConditionalOn<ExcludeTypeFromPersistence<T_SPECIFIC_FIELD>::excluded>::Call([&] {
+        handlers.insert(
           impl::GenerateRESTfulHandler<T_REST_IMPL, I - 1, T_STORAGE_IMPL>(storage, restful_url_prefix));
+      });
     }
   };
 
@@ -301,7 +311,6 @@ class RESTfulStorage {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
   }
 };
-
 }  // namespace rest
 }  // namespace storage
 }  // namespace current

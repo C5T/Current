@@ -85,6 +85,11 @@ struct StorageExtractedFieldType {
   using T_PARTICULAR_FIELD = T;
 };
 
+template<typename TYPE>
+struct ExcludeTypeFromPersistence {
+  static constexpr bool excluded = false;
+};
+
 template <typename T>
 struct FieldUnderlyingTypesWrapper {
   // The entry type itself.
