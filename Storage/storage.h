@@ -146,7 +146,6 @@ namespace storage {
     constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                  \
     using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                     \
     using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
-    const std::string name_;                                                                                 \
     PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                \
     TRANSACTION_POLICY<PERSISTER<T_FIELDS_TYPE_LIST>> transaction_policy_;                                   \
                                                                                                              \
@@ -155,9 +154,8 @@ namespace storage {
     using T_FIELDS_BY_CONST_REFERENCE = const FIELDS&;                                                       \
     CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
     template <typename... ARGS>                                                                              \
-    CURRENT_STORAGE_IMPL_##name(const std::string& name, ARGS&&... args)                                     \
-        : name_(name),                                                                                       \
-          persister_(std::forward<ARGS>(args)...),                                                           \
+    CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
+        : persister_(std::forward<ARGS>(args)...),                                                           \
           transaction_policy_(persister_, FIELDS::current_storage_mutation_journal_) {                       \
       persister_.Replay([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); });                            \
     }                                                                                                        \
@@ -176,7 +174,6 @@ namespace storage {
       return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
     }                                                                                                        \
     constexpr static size_t FieldsCount() { return fields_count; }                                           \
-    const std::string& Name() const { return name_; }                                                        \
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \

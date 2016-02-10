@@ -129,9 +129,7 @@ TEST(TransactionalStorage, SmokeTest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    const std::string storage_name = "smoke_test_storage";
-    Storage storage(storage_name, persistence_file_name);
-    EXPECT_EQ(storage_name, storage.Name());
+    Storage storage(persistence_file_name);
     EXPECT_EQ(3u, storage.FieldsCount());
 
     {
@@ -203,7 +201,7 @@ TEST(TransactionalStorage, SmokeTest) {
   }
 
   {
-    Storage replayed("replayed_storage", persistence_file_name);
+    Storage replayed(persistence_file_name);
     replayed.Transaction([](ImmutableFields<Storage> fields) {
       EXPECT_EQ(1u, fields.v1.Size());
       EXPECT_EQ(1u, fields.v2.Size());
@@ -234,7 +232,7 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage("fields_accessors_test");
+  Storage storage;
   EXPECT_EQ(3u, storage.FieldsCount());
 
   EXPECT_EQ("v1", storage(::current::storage::FieldNameByIndex<0>()));
@@ -260,7 +258,7 @@ TEST(TransactionalStorage, Exceptions) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage("exceptions_test");
+  Storage storage;
 
   bool should_throw;
   const auto f_void = [&should_throw](ImmutableFields<Storage>) {
@@ -658,7 +656,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  Storage storage("restful_api_storage", persistence_file_name);
+  Storage storage(persistence_file_name);
   EXPECT_EQ(2u, storage.FieldsCount());
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);

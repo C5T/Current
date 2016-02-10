@@ -79,7 +79,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
   using ExampleStorage = ExampleStorageDefinition<SherlockInMemoryStreamPersister>;
 
   {
-    ExampleStorage storage("test_storage_name");
+    ExampleStorage storage;
     EXPECT_EQ(1u, storage.FieldsCount());
 
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
@@ -138,7 +138,7 @@ TEST(StorageDocumentation, BasicUsage) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    ExampleStorage storage("test_storage_name", persistence_file_name);
+    ExampleStorage storage(persistence_file_name);
     EXPECT_EQ(1u, storage.FieldsCount());
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
@@ -228,8 +228,8 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    ExampleStorage storage("replayed_storage", persistence_file_name);
-    storage.Transaction([](ImmutableFields<ExampleStorage> data) {
+    ExampleStorage replayed(persistence_file_name);
+    replayed.Transaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_EQ(2u, data.users.Size());
       EXPECT_TRUE(Exists(data.users[static_cast<UserID>(1)]));
       EXPECT_EQ("test1", Value(data.users[static_cast<UserID>(101)]).name);
