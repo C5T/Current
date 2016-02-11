@@ -110,6 +110,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Bricks\template\call_if.h" />
     <ClInclude Include="current.h" />
     <ClInclude Include="port.h" />
     <ClInclude Include="3rdparty\cereal\include\access.hpp" />

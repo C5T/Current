@@ -1,299 +1,295 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include ="Third Party">
+    <Filter Include="Third Party">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFF}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal">
+    <Filter Include="Third Party\cereal">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFE}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\gtest\include">
+    <Filter Include="Third Party\gtest\include">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFD}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\examples">
+    <Filter Include="Header Files\examples">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFC}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Midichlorians">
+    <Filter Include="Header Files\Midichlorians">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>	
-    <Filter Include ="Header Files\Midichlorians\Dev">
+    </Filter>
+    <Filter Include="Header Files\Midichlorians\Dev">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFA}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Yoda\container">
+    <Filter Include="Header Files\Yoda\container">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBF9}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-	<Filter Include ="Third Party\cereal\include">
+    <Filter Include="Third Party\cereal\include">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB00}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\archives">
+    <Filter Include="Third Party\cereal\include\archives">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB01}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\details">
+    <Filter Include="Third Party\cereal\include\details">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB02}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\external">
+    <Filter Include="Third Party\cereal\include\external">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB03}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\external\rapidjson">
+    <Filter Include="Third Party\cereal\include\external\rapidjson">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB04}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\external\rapidjson\internal">
+    <Filter Include="Third Party\cereal\include\external\rapidjson\internal">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB05}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\external\rapidxml">
+    <Filter Include="Third Party\cereal\include\external\rapidxml">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB06}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\cereal\include\types">
+    <Filter Include="Third Party\cereal\include\types">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB07}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\gtest">
+    <Filter Include="Third Party\gtest">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB08}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\gtest\include\gtest">
+    <Filter Include="Third Party\gtest\include\gtest">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB09}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\gtest\include\gtest\internal">
+    <Filter Include="Third Party\gtest\include\gtest\internal">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0A}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\gtest\src">
+    <Filter Include="Third Party\gtest\src">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0B}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\rapidjson">
+    <Filter Include="Third Party\rapidjson">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0C}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\rapidjson\error">
+    <Filter Include="Third Party\rapidjson\error">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0D}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\rapidjson\internal">
+    <Filter Include="Third Party\rapidjson\internal">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0E}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\rapidjson\msinttypes">
+    <Filter Include="Third Party\rapidjson\msinttypes">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0F}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Third Party\stephan-brumme">
+    <Filter Include="Third Party\stephan-brumme">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB10}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files">
+    <Filter Include="Header Files">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB11}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks">
+    <Filter Include="Header Files\Blocks">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB12}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks\HTTP">
+    <Filter Include="Header Files\Blocks\HTTP">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB13}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks\HTTP\impl">
+    <Filter Include="Header Files\Blocks\HTTP\impl">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB14}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks\MMQ">
+    <Filter Include="Header Files\Blocks\MMQ">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB15}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks\Persistence">
+    <Filter Include="Header Files\Blocks\Persistence">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB16}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks\SS">
+    <Filter Include="Header Files\Blocks\SS">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB17}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Blocks\URL">
+    <Filter Include="Header Files\Blocks\URL">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB18}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks">
+    <Filter Include="Header Files\Bricks">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB19}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\cerealize">
+    <Filter Include="Header Files\Bricks\cerealize">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1A}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\cerealize\test">
+    <Filter Include="Header Files\Bricks\cerealize\test">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1B}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\dflags">
+    <Filter Include="Header Files\Bricks\dflags">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1C}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\file">
+    <Filter Include="Header Files\Bricks\file">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1D}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\graph">
+    <Filter Include="Header Files\Bricks\graph">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1E}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\java_wrapper">
+    <Filter Include="Header Files\Bricks\java_wrapper">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1F}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\net">
+    <Filter Include="Header Files\Bricks\net">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB20}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\net\http">
+    <Filter Include="Header Files\Bricks\net\http">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB21}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\net\http\impl">
+    <Filter Include="Header Files\Bricks\net\http\impl">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB22}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\net\tcp">
+    <Filter Include="Header Files\Bricks\net\tcp">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB23}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\net\tcp\impl">
+    <Filter Include="Header Files\Bricks\net\tcp\impl">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB24}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\rtti">
+    <Filter Include="Header Files\Bricks\rtti">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB25}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\strings">
+    <Filter Include="Header Files\Bricks\strings">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB26}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\template">
+    <Filter Include="Header Files\Bricks\template">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB27}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\time">
+    <Filter Include="Header Files\Bricks\time">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB28}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\util">
+    <Filter Include="Header Files\Bricks\util">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB29}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Bricks\waitable_atomic">
+    <Filter Include="Header Files\Bricks\waitable_atomic">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2A}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\CompactTSV">
+    <Filter Include="Header Files\CompactTSV">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2B}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\EventCollector">
+    <Filter Include="Header Files\EventCollector">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2C}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\examples\EmbeddedDB">
+    <Filter Include="Header Files\examples\EmbeddedDB">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2D}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\examples\Iris">
+    <Filter Include="Header Files\examples\Iris">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2E}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\FnCAS">
+    <Filter Include="Header Files\FnCAS">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2F}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\FnCAS\deprecated_test">
+    <Filter Include="Header Files\FnCAS\deprecated_test">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB30}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\FnCAS\deprecated_test\f">
+    <Filter Include="Header Files\FnCAS\deprecated_test\f">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB31}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\FnCAS\fncas">
+    <Filter Include="Header Files\FnCAS\fncas">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB32}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Midichlorians\Dev\Beta">
+    <Filter Include="Header Files\Midichlorians\Dev\Beta">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB33}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Midichlorians\Dev\Beta\iOS">
+    <Filter Include="Header Files\Midichlorians\Dev\Beta\iOS">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB34}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Profiler">
+    <Filter Include="Header Files\Profiler">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB35}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\RipCurrent">
+    <Filter Include="Header Files\RipCurrent">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB36}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Sherlock">
+    <Filter Include="Header Files\Sherlock">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB37}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Storage">
+    <Filter Include="Header Files\Storage">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB38}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Storage\container">
+    <Filter Include="Header Files\Storage\container">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB39}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Storage\persister">
+    <Filter Include="Header Files\Storage\persister">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3A}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\TypeSystem">
+    <Filter Include="Header Files\TypeSystem">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3B}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\TypeSystem\Reflection">
+    <Filter Include="Header Files\TypeSystem\Reflection">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3C}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\TypeSystem\Schema">
+    <Filter Include="Header Files\TypeSystem\Schema">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3D}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\TypeSystem\Serialization">
+    <Filter Include="Header Files\TypeSystem\Serialization">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3E}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Yoda">
+    <Filter Include="Header Files\Yoda">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3F}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Yoda\container\dictionary">
+    <Filter Include="Header Files\Yoda\container\dictionary">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB40}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include ="Header Files\Yoda\container\matrix">
+    <Filter Include="Header Files\Yoda\container\matrix">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB41}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
@@ -350,12 +346,6 @@
     <ClInclude Include="3rdparty\cereal\include\external\rapidjson\genericstream.h">
       <Filter>Third Party\cereal\include\external\rapidjson</Filter>
     </ClInclude>
-    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal">
-      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
-    </ClInclude>
-    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\license.txt">
-      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
-    </ClInclude>
     <ClInclude Include="3rdparty\cereal\include\external\rapidjson\prettywriter.h">
       <Filter>Third Party\cereal\include\external\rapidjson</Filter>
     </ClInclude>
@@ -379,12 +369,6 @@
     </ClInclude>
     <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\strfunc.h">
       <Filter>Third Party\cereal\include\external\rapidjson\internal</Filter>
-    </ClInclude>
-    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\license.txt">
-      <Filter>Third Party\cereal\include\external\rapidxml</Filter>
-    </ClInclude>
-    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\manual.html">
-      <Filter>Third Party\cereal\include\external\rapidxml</Filter>
     </ClInclude>
     <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml.hpp">
       <Filter>Third Party\cereal\include\external\rapidxml</Filter>
@@ -1075,6 +1059,9 @@
     </ClInclude>
     <ClInclude Include="Yoda\container\matrix\metaprogramming.h">
       <Filter>Header Files\Yoda\container\matrix</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\call_if.h">
+      <Filter>Header Files\Bricks\template</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

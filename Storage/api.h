@@ -36,6 +36,7 @@ SOFTWARE.
 #include "rest/basic.h"
 
 #include "../Blocks/HTTP/api.h"
+#include "../Bricks/template/call_if.h"
 
 namespace current {
 namespace storage {
@@ -219,13 +220,6 @@ STORAGE_HANDLERS_MAP_ENTRY GenerateRESTfulHandler(STORAGE& storage, const std::s
 }
 
 }  // namespace impl
-template <bool CALL>
-struct ConditionalOn {
-  template <typename Fn> static void Call(Fn&& f) { f(); }
-};
-template <> struct ConditionalOn<true> {
-  template <typename Fn> static void Call(Fn&&) {}
-};
 
 template <class T_STORAGE_IMPL, class T_REST_IMPL = Basic>
 class RESTfulStorage {
@@ -295,7 +289,7 @@ class RESTfulStorage {
                            impl::STORAGE_HANDLERS_MAP& handlers) {
       ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, handlers);
       using T_SPECIFIC_FIELD = impl::RESTfulHandlerGenerator<T_REST_IMPL, I - 1, T_STORAGE_IMPL>::T_SPECIFIC_FIELD;
-      ConditionalOn<ExcludeTypeFromPersistence<T_SPECIFIC_FIELD>::excluded>::Call([&] {
+      CallIf<FieldParticipatesInRESTFulAPI<T_SPECIFIC_FIELD>::participates>::With([&] {
         handlers.insert(
           impl::GenerateRESTfulHandler<T_REST_IMPL, I - 1, T_STORAGE_IMPL>(storage, restful_url_prefix));
       });
