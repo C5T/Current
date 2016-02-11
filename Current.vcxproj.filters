@@ -1,0 +1,1067 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Third Party">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFF}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFE}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\gtest\include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFD}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\examples">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFC}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Midichlorians">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Midichlorians\Dev">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFA}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Yoda\container">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBF9}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB00}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\archives">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB01}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\details">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB02}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\external">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB03}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\external\rapidjson">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB04}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\external\rapidjson\internal">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB05}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\external\rapidxml">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB06}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\cereal\include\types">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB07}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\gtest">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB08}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\gtest\include\gtest">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB09}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\gtest\include\gtest\internal">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0A}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\gtest\src">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0B}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\rapidjson">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0C}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\rapidjson\error">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0D}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\rapidjson\internal">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0E}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\rapidjson\msinttypes">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB0F}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Third Party\stephan-brumme">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB10}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB11}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB12}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks\HTTP">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB13}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks\HTTP\impl">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB14}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks\MMQ">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB15}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks\Persistence">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB16}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks\SS">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB17}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Blocks\URL">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB18}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB19}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\cerealize">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1A}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\cerealize\test">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1B}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\dflags">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1C}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\file">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1D}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\graph">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1E}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\java_wrapper">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1F}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\net">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB20}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\net\http">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB21}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\net\http\impl">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB22}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\net\tcp">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB23}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\net\tcp\impl">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB24}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\rtti">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB25}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\strings">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB26}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\template">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB27}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\time">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB28}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\util">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB29}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Bricks\waitable_atomic">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2A}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\CompactTSV">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2B}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\EventCollector">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2C}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\examples\EmbeddedDB">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2D}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\examples\Iris">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2E}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\FnCAS">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB2F}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\FnCAS\deprecated_test">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB30}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\FnCAS\deprecated_test\f">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB31}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\FnCAS\fncas">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB32}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Midichlorians\Dev\Beta">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB33}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Midichlorians\Dev\Beta\iOS">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB34}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Profiler">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB35}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\RipCurrent">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB36}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Sherlock">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB37}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Storage">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB38}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Storage\container">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB39}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Storage\persister">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3A}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\TypeSystem">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3B}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\TypeSystem\Reflection">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3C}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\TypeSystem\Schema">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3D}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\TypeSystem\Serialization">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3E}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Yoda">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3F}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Yoda\container\dictionary">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB40}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Yoda\container\matrix">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB41}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="3rdparty\cereal\include\access.hpp">
+      <Filter>Third Party\cereal\include</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\cereal.hpp">
+      <Filter>Third Party\cereal\include</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\macros.hpp">
+      <Filter>Third Party\cereal\include</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\archives\adapters.hpp">
+      <Filter>Third Party\cereal\include\archives</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\archives\binary.hpp">
+      <Filter>Third Party\cereal\include\archives</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\archives\json.hpp">
+      <Filter>Third Party\cereal\include\archives</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\archives\portable_binary.hpp">
+      <Filter>Third Party\cereal\include\archives</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\archives\xml.hpp">
+      <Filter>Third Party\cereal\include\archives</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\details\helpers.hpp">
+      <Filter>Third Party\cereal\include\details</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\details\polymorphic_impl.hpp">
+      <Filter>Third Party\cereal\include\details</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\details\static_object.hpp">
+      <Filter>Third Party\cereal\include\details</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\details\traits.hpp">
+      <Filter>Third Party\cereal\include\details</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\details\util.hpp">
+      <Filter>Third Party\cereal\include\details</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\base64.hpp">
+      <Filter>Third Party\cereal\include\external</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\document.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\filestream.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\genericstream.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\prettywriter.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\rapidjson.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\reader.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\stringbuffer.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\writer.h">
+      <Filter>Third Party\cereal\include\external\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\pow10.h">
+      <Filter>Third Party\cereal\include\external\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\stack.h">
+      <Filter>Third Party\cereal\include\external\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidjson\internal\strfunc.h">
+      <Filter>Third Party\cereal\include\external\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml.hpp">
+      <Filter>Third Party\cereal\include\external\rapidxml</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml_iterators.hpp">
+      <Filter>Third Party\cereal\include\external\rapidxml</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml_print.hpp">
+      <Filter>Third Party\cereal\include\external\rapidxml</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\external\rapidxml\rapidxml_utils.hpp">
+      <Filter>Third Party\cereal\include\external\rapidxml</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\array.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\base_class.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\bitset.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\boost_variant.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\chrono.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\common.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\complex.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\deque.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\forward_list.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\list.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\map.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\memory.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\polymorphic.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\queue.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\set.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\stack.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\string.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\tuple.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\unordered_map.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\unordered_set.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\utility.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\cereal\include\types\vector.hpp">
+      <Filter>Third Party\cereal\include\types</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\gtest-main-with-dflags.h">
+      <Filter>Third Party\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\gtest-main.h">
+      <Filter>Third Party\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\gtest.h">
+      <Filter>Third Party\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-death-test.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-message.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-param-test.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-printers.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-spi.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-test-part.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest-typed-test.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest_pred_impl.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\gtest_prod.h">
+      <Filter>Third Party\gtest\include\gtest</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-death-test-internal.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-filepath.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-internal.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-linked_ptr.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-param-util-generated.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-param-util.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-port.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-string.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-tuple.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\include\gtest\internal\gtest-type-util.h">
+      <Filter>Third Party\gtest\include\gtest\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\gtest\src\gtest-internal-inl.h">
+      <Filter>Third Party\gtest\src</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\allocators.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\document.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\encodedstream.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\encodings.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\filereadstream.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\filewritestream.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\genericstream.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\memorybuffer.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\memorystream.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\pointer.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\prettywriter.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\rapidjson.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\reader.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\streamwrapper.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\stringbuffer.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\writer.h">
+      <Filter>Third Party\rapidjson</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\error\en.h">
+      <Filter>Third Party\rapidjson\error</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\error\error.h">
+      <Filter>Third Party\rapidjson\error</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\biginteger.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\diyfp.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\dtoa.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\ieee754.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\itoa.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\meta.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\pow10.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\stack.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\strfunc.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\strtod.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\internal\swap.h">
+      <Filter>Third Party\rapidjson\internal</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\msinttypes\inttypes.h">
+      <Filter>Third Party\rapidjson\msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\rapidjson\msinttypes\stdint.h">
+      <Filter>Third Party\rapidjson\msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="3rdparty\stephan-brumme\sha256.h">
+      <Filter>Third Party\stephan-brumme</Filter>
+    </ClInclude>
+    <ClInclude Include="current.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="port.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\port.h">
+      <Filter>Header Files\Blocks</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\api.h">
+      <Filter>Header Files\Blocks\HTTP</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\request.h">
+      <Filter>Header Files\Blocks\HTTP</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\response.h">
+      <Filter>Header Files\Blocks\HTTP</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\types.h">
+      <Filter>Header Files\Blocks\HTTP</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\impl\apple_client.h">
+      <Filter>Header Files\Blocks\HTTP\impl</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\impl\java_client.h">
+      <Filter>Header Files\Blocks\HTTP\impl</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\impl\posix_client.h">
+      <Filter>Header Files\Blocks\HTTP\impl</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\impl\posix_server.h">
+      <Filter>Header Files\Blocks\HTTP\impl</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\MMQ\mmq.h">
+      <Filter>Header Files\Blocks\MMQ</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\Persistence\persistence.h">
+      <Filter>Header Files\Blocks\Persistence</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\SS\ss.h">
+      <Filter>Header Files\Blocks\SS</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\URL\url.h">
+      <Filter>Header Files\Blocks\URL</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\exception.h">
+      <Filter>Header Files\Bricks</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\port.h">
+      <Filter>Header Files\Bricks</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\cerealize\cerealize.h">
+      <Filter>Header Files\Bricks\cerealize</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\cerealize\constants.h">
+      <Filter>Header Files\Bricks\cerealize</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\cerealize\exceptions.h">
+      <Filter>Header Files\Bricks\cerealize</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\cerealize\json.h">
+      <Filter>Header Files\Bricks\cerealize</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\cerealize\test\test_event_base.h">
+      <Filter>Header Files\Bricks\cerealize\test</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\cerealize\test\test_event_derived.cc.h">
+      <Filter>Header Files\Bricks\cerealize\test</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\dflags\dflags.h">
+      <Filter>Header Files\Bricks\dflags</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\file\exceptions.h">
+      <Filter>Header Files\Bricks\file</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\file\file.h">
+      <Filter>Header Files\Bricks\file</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\graph\gnuplot.h">
+      <Filter>Header Files\Bricks\graph</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\graph\plotutils.h">
+      <Filter>Header Files\Bricks\graph</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\java_wrapper\java_wrapper.h">
+      <Filter>Header Files\Bricks\java_wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\debug_log.h">
+      <Filter>Header Files\Bricks\net</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\exceptions.h">
+      <Filter>Header Files\Bricks\net</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\http\codes.h">
+      <Filter>Header Files\Bricks\net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\http\default_messages.h">
+      <Filter>Header Files\Bricks\net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\http\http.h">
+      <Filter>Header Files\Bricks\net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\http\mime_type.h">
+      <Filter>Header Files\Bricks\net\http</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\http\impl\server.h">
+      <Filter>Header Files\Bricks\net\http\impl</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\tcp\tcp.h">
+      <Filter>Header Files\Bricks\net\tcp</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\tcp\impl\posix.h">
+      <Filter>Header Files\Bricks\net\tcp\impl</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\rtti\dispatcher.h">
+      <Filter>Header Files\Bricks\rtti</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\rtti\exceptions.h">
+      <Filter>Header Files\Bricks\rtti</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\chunk.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\distance.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\fixed_size_serializer.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\is_string_type.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\join.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\printf.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\rounding.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\split.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\strings.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\strings\util.h">
+      <Filter>Header Files\Bricks\strings</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\combine.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\decay.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\enable_if.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\is_tuple.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\is_unique_ptr.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\mapreduce.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\metaprogramming.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\pod.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\rtti_dynamic_call.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\typelist.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\variadic_indexes.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\visitor.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\weed.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\time\chrono.h">
+      <Filter>Header Files\Bricks\time</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\accumulative_scoped_deleter.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\clone.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\comparators.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\crc32.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\future.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\lazy_instantiation.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\make_scope_guard.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\null_deleter.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\random.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\rol.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\sha256.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\singleton.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\waitable_terminate_signal.h">
+      <Filter>Header Files\Bricks\util</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\waitable_atomic\waitable_atomic.h">
+      <Filter>Header Files\Bricks\waitable_atomic</Filter>
+    </ClInclude>
+    <ClInclude Include="CompactTSV\compacttsv.h">
+      <Filter>Header Files\CompactTSV</Filter>
+    </ClInclude>
+    <ClInclude Include="CompactTSV\gen.h">
+      <Filter>Header Files\CompactTSV</Filter>
+    </ClInclude>
+    <ClInclude Include="CompactTSV\port.h">
+      <Filter>Header Files\CompactTSV</Filter>
+    </ClInclude>
+    <ClInclude Include="EventCollector\event_collector.h">
+      <Filter>Header Files\EventCollector</Filter>
+    </ClInclude>
+    <ClInclude Include="EventCollector\port.h">
+      <Filter>Header Files\EventCollector</Filter>
+    </ClInclude>
+    <ClInclude Include="examples\EmbeddedDB\schema.h">
+      <Filter>Header Files\examples\EmbeddedDB</Filter>
+    </ClInclude>
+    <ClInclude Include="examples\Iris\iris.h">
+      <Filter>Header Files\examples\Iris</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\port.h">
+      <Filter>Header Files\FnCAS</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\test.h">
+      <Filter>Header Files\FnCAS</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\deprecated_test\function.h">
+      <Filter>Header Files\FnCAS\deprecated_test</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\deprecated_test\f\arithmetics.h">
+      <Filter>Header Files\FnCAS\deprecated_test\f</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\deprecated_test\f\big_arithmetics.h">
+      <Filter>Header Files\FnCAS\deprecated_test\f</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\deprecated_test\f\big_math.h">
+      <Filter>Header Files\FnCAS\deprecated_test\f</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\deprecated_test\f\math.h">
+      <Filter>Header Files\FnCAS\deprecated_test\f</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\deprecated_test\f\sum.h">
+      <Filter>Header Files\FnCAS\deprecated_test\f</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\base.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\differentiate.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\fncas.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\jit.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\mathutil.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\node.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="FnCAS\fncas\optimize.h">
+      <Filter>Header Files\FnCAS\fncas</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Dev\Beta\MidichloriansDataDictionary.h">
+      <Filter>Header Files\Midichlorians\Dev\Beta</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Dev\Beta\iOS\Midichlorians.h">
+      <Filter>Header Files\Midichlorians\Dev\Beta\iOS</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Dev\Beta\iOS\MidichloriansImpl.h">
+      <Filter>Header Files\Midichlorians\Dev\Beta\iOS</Filter>
+    </ClInclude>
+    <ClInclude Include="Profiler\profiler.h">
+      <Filter>Header Files\Profiler</Filter>
+    </ClInclude>
+    <ClInclude Include="RipCurrent\ripcurrent.h">
+      <Filter>Header Files\RipCurrent</Filter>
+    </ClInclude>
+    <ClInclude Include="Sherlock\port.h">
+      <Filter>Header Files\Sherlock</Filter>
+    </ClInclude>
+    <ClInclude Include="Sherlock\pubsub.h">
+      <Filter>Header Files\Sherlock</Filter>
+    </ClInclude>
+    <ClInclude Include="Sherlock\sherlock.h">
+      <Filter>Header Files\Sherlock</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\base.h">
+      <Filter>Header Files\Storage</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\exceptions.h">
+      <Filter>Header Files\Storage</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\storage.h">
+      <Filter>Header Files\Storage</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\transaction_policy.h">
+      <Filter>Header Files\Storage</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\transaction_result.h">
+      <Filter>Header Files\Storage</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\common.h">
+      <Filter>Header Files\Storage\container</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\dictionary.h">
+      <Filter>Header Files\Storage\container</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\sfinae.h">
+      <Filter>Header Files\Storage\container</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\vector.h">
+      <Filter>Header Files\Storage\container</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\persister\file.h">
+      <Filter>Header Files\Storage\persister</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\persister\sherlock.h">
+      <Filter>Header Files\Storage\persister</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\base.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\enum.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\exceptions.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\helpers.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\optional.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\optional_result.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\primitive_types.dsl.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\struct.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\timestamp.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\types.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\variant.h">
+      <Filter>Header Files\TypeSystem</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Reflection\exceptions.h">
+      <Filter>Header Files\TypeSystem\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Reflection\reflection.h">
+      <Filter>Header Files\TypeSystem\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Reflection\types.h">
+      <Filter>Header Files\TypeSystem\Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Schema\schema.h">
+      <Filter>Header Files\TypeSystem\Schema</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Schema\smoke_test_struct.h">
+      <Filter>Header Files\TypeSystem\Schema</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\binary.h">
+      <Filter>Header Files\TypeSystem\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\exceptions.h">
+      <Filter>Header Files\TypeSystem\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\json.h">
+      <Filter>Header Files\TypeSystem\Serialization</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\metaprogramming.h">
+      <Filter>Header Files\Yoda</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\sfinae.h">
+      <Filter>Header Files\Yoda</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\types.h">
+      <Filter>Header Files\Yoda</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\yoda.h">
+      <Filter>Header Files\Yoda</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\container\dictionary\api.h">
+      <Filter>Header Files\Yoda\container\dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\container\dictionary\exceptions.h">
+      <Filter>Header Files\Yoda\container\dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\container\dictionary\metaprogramming.h">
+      <Filter>Header Files\Yoda\container\dictionary</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\container\matrix\api.h">
+      <Filter>Header Files\Yoda\container\matrix</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\container\matrix\exceptions.h">
+      <Filter>Header Files\Yoda\container\matrix</Filter>
+    </ClInclude>
+    <ClInclude Include="Yoda\container\matrix\metaprogramming.h">
+      <Filter>Header Files\Yoda\container\matrix</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\template\call_if.h">
+      <Filter>Header Files\Bricks\template</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -73,6 +73,26 @@ namespace storage {
 // 2) Splits the type into `T_PERSISTED_EVENT_1` and `T_PERSISTED_EVENT_2` to enable persisting deletions too.
 
 // clang-format off
+#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM(feature, entry_name)                                           \
+  template<> struct current::storage::FieldParticipatesIn##feature<entry_name::T_FIELD_TYPE<              \
+                                                                   entry_name::T_ENTRY,                   \
+                                                                   entry_name::T_PERSISTED_EVENT_1,       \
+                                                                   entry_name::T_PERSISTED_EVENT_2 >> {   \
+    static constexpr bool participates = false;                                                           \
+  }
+
+#define CURRENT_STORAGE_DEFINE_FEATURE(feature) \
+  template <typename T>                         \
+  struct FieldParticipatesIn##feature {         \
+    static constexpr bool participates = true;  \
+  }
+
+// defined here because Storage/api.h doesn't need to be included at the point where the EXCLUDE_FROM is used
+CURRENT_STORAGE_DEFINE_FEATURE(RESTfulAPI);
+
+#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_RESTFUL_API(entry_name)   \
+			CURRENT_STORAGE_FIELD_EXCLUDE_FROM(RESTfulAPI, entry_name)
+
 #define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)                \
   CURRENT_STRUCT(entry_name##Updated) {                                                                     \
     CURRENT_FIELD(data, entry_type);                                                                        \

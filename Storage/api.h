@@ -36,6 +36,7 @@ SOFTWARE.
 #include "rest/basic.h"
 
 #include "../Blocks/HTTP/api.h"
+#include "../Bricks/template/call_if.h"
 
 namespace current {
 namespace storage {
@@ -287,8 +288,11 @@ class RESTfulStorage {
                            const std::string& restful_url_prefix,
                            impl::STORAGE_HANDLERS_MAP& handlers) {
       ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, handlers);
-      handlers.insert(
+      using T_SPECIFIC_FIELD = impl::RESTfulHandlerGenerator<T_REST_IMPL, I - 1, T_STORAGE_IMPL>::T_SPECIFIC_FIELD;
+      CallIf<FieldParticipatesInRESTFulAPI<T_SPECIFIC_FIELD>::participates>::With([&] {
+        handlers.insert(
           impl::GenerateRESTfulHandler<T_REST_IMPL, I - 1, T_STORAGE_IMPL>(storage, restful_url_prefix));
+      });
     }
   };
 
@@ -301,7 +305,6 @@ class RESTfulStorage {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
   }
 };
-
 }  // namespace rest
 }  // namespace storage
 }  // namespace current
