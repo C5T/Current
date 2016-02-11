@@ -814,4 +814,80 @@ TEST(Serialization, TimeAsBinary) {
   }
 }
 
+namespace serialization_test {
+
+CURRENT_STRUCT_T(TemplatedValue) {
+  CURRENT_FIELD(value, T);
+  CURRENT_DEFAULT_CONSTRUCTOR_T(TemplatedValue) : value() {}
+  CURRENT_CONSTRUCTOR_T(TemplatedValue)(const T& value) : value(value) {}
+};
+
+CURRENT_STRUCT(SimpleTemplatedUsage) {
+  CURRENT_FIELD(i, uint64_t);
+  CURRENT_FIELD(t, TemplatedValue<std::string>);
+};
+
+CURRENT_STRUCT_T(ComplexTemplatedUsage) {
+  CURRENT_FIELD(a, T);
+  CURRENT_FIELD(b, TemplatedValue<T>);
+};
+
+}  // namespace serialization_test
+
+TEST(Serialization, TemplatedValue) {
+  using namespace serialization_test;
+
+  EXPECT_EQ("{\"value\":1}", JSON(TemplatedValue<uint64_t>(1)));
+  EXPECT_EQ("{\"value\":true}", JSON(TemplatedValue<bool>(true)));
+  EXPECT_EQ("{\"value\":\"foo\"}", JSON(TemplatedValue<std::string>("foo")));
+  EXPECT_EQ("{\"value\":{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0}}",
+            JSON(TemplatedValue<Serializable>(Serializable(1, "one", false, Enum::DEFAULT))));
+
+  EXPECT_EQ(42ull, ParseJSON<TemplatedValue<uint64_t>>("{\"value\":42}").value);
+  EXPECT_TRUE(ParseJSON<TemplatedValue<bool>>("{\"value\":true}").value);
+  EXPECT_EQ("ok", ParseJSON<TemplatedValue<std::string>>("{\"value\":\"ok\"}").value);
+  EXPECT_EQ(100ull,
+            ParseJSON<TemplatedValue<Serializable>>("{\"value\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}")
+                .value.i);
+}
+
+TEST(Serialization, SimpleTemplatedUsage) {
+  using namespace serialization_test;
+
+  SimpleTemplatedUsage object;
+  object.i = 42;
+  object.t.value = "test";
+  EXPECT_EQ("{\"i\":42,\"t\":{\"value\":\"test\"}}", JSON(object));
+
+  const auto result = ParseJSON<SimpleTemplatedUsage>("{\"i\":100,\"t\":{\"value\":\"passed\"}}");
+  EXPECT_EQ(100ull, result.i);
+  EXPECT_EQ("passed", result.t.value);
+}
+
+TEST(Serialization, ComplexTemplatedUsage) {
+  using namespace serialization_test;
+
+  {
+    ComplexTemplatedUsage<int32_t> object;
+    object.a = 1;
+    object.b.value = 2;
+    EXPECT_EQ("{\"a\":1,\"b\":{\"value\":2}}", JSON(object));
+
+    const auto result = ParseJSON<ComplexTemplatedUsage<int32_t>>("{\"a\":3,\"b\":{\"value\":4}}");
+    EXPECT_EQ(3, result.a);
+    EXPECT_EQ(4, result.b.value);
+  }
+
+  {
+    ComplexTemplatedUsage<std::string> object;
+    object.a = "x";
+    object.b.value = "y";
+    EXPECT_EQ("{\"a\":\"x\",\"b\":{\"value\":\"y\"}}", JSON(object));
+
+    const auto result = ParseJSON<ComplexTemplatedUsage<std::string>>("{\"a\":\"z\",\"b\":{\"value\":\"t\"}}");
+    EXPECT_EQ("z", result.a);
+    EXPECT_EQ("t", result.b.value);
+  }
+}
+
 #endif  // CURRENT_TYPE_SYSTEM_SERIALIZATION_TEST_CC
