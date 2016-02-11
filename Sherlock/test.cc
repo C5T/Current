@@ -262,12 +262,57 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   EXPECT_EQ("10,11,12,TERMINATE", d.results_);
 }
 
+namespace sherlock_unittest {
+
+// Collector class for `SubscribeToStreamViaHTTP` test.
+struct RecordsCollector final {
+  atomic_size_t count_;
+  std::vector<std::string>& data_;
+
+  RecordsCollector() = delete;
+  explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
+
+  inline bool operator()(const RecordWithTimestamp& entry,
+                         blocks::ss::IndexAndTimestamp current,
+                         blocks::ss::IndexAndTimestamp) {
+    data_.push_back(ToString(current.index) + '\t' + ToString(current.us.count()) + '\t' + JSON(entry) + '\n');
+    ++count_;
+    return true;
+  }
+};
+
+}  // namespace sherlock_unittest
+
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
   using namespace sherlock_unittest;
 
+  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>();
+  // Expose stream via HTTP.
+  HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
+  HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
+
+  {
+    // Test that verbs other than "GET" result in '405 Method not allowed' error.
+    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "?n=1", "")).code));
+    EXPECT_EQ(405, static_cast<int>(HTTP(PUT(base_url + "?n=1", "")).code));
+    EXPECT_EQ(405, static_cast<int>(HTTP(DELETE(base_url + "?n=1")).code));
+  }
+  {
+    // Request with `?nowait` works even if stream is empty.
+    const auto result = HTTP(GET(base_url + "?nowait"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("", result.body);
+  }
+  {
+    // `?sizeonly` returns "0" since the stream is empty.
+    const auto result = HTTP(GET(base_url + "?sizeonly"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("0", result.body);
+  }
+
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 milliseconds ago respectively.
-  auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>();
   const std::chrono::microseconds now = std::chrono::microseconds(100000u);
   current::time::SetNow(now - std::chrono::microseconds(40000));
   exposed_stream.Emplace("s[0]", now - std::chrono::microseconds(40000));
@@ -278,25 +323,6 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   current::time::SetNow(now - std::chrono::microseconds(10000));
   exposed_stream.Emplace("s[3]", now - std::chrono::microseconds(10000));
   current::time::SetNow(now);
-
-  // Collect them and store as strings.
-  // Required since we don't mock time for this test, and therefore can't do exact match.
-  struct RecordsCollector {
-    atomic_size_t count_;
-    std::vector<std::string>& data_;
-
-    RecordsCollector() = delete;
-    explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
-
-    inline bool operator()(const RecordWithTimestamp& entry,
-                           blocks::ss::IndexAndTimestamp current,
-                           blocks::ss::IndexAndTimestamp) {
-      data_.push_back(ToString(current.index) + '\t' + ToString(current.us.count()) + '\t' + JSON(entry) +
-                      '\n');
-      ++count_;
-      return true;
-    }
-  };
 
   std::vector<std::string> s;
   RecordsCollector collector(s);
@@ -309,57 +335,38 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   }
   EXPECT_EQ(4u, s.size());
 
-  HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
-  HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+  {
+    const auto result = HTTP(GET(base_url + "?sizeonly"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("4", result.body);
+  }
 
   // Test `?n=...`.
-  EXPECT_EQ(s[3], HTTP(GET(Printf("http://localhost:%d/exposed?n=1", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?n=1")).body);
 
-  EXPECT_EQ(s[2] + s[3],
-            HTTP(GET(Printf("http://localhost:%d/exposed?n=2", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(s[1] + s[2] + s[3],
-            HTTP(GET(Printf("http://localhost:%d/exposed?n=3", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
-            HTTP(GET(Printf("http://localhost:%d/exposed?n=4", FLAGS_sherlock_http_test_port))).body);
-  // `?n={>4}` will block forever.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?n=2")).body);
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=3")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4")).body);
+  // `?n={>4}` without `nowait` parameter will block forever.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=1000&nowait")).body);
 
   // Test `?cap=...`.
-  EXPECT_EQ(s[0] + s[1] + s[2] + s[3],
-            HTTP(GET(Printf("http://localhost:%d/exposed?cap=4", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(s[0] + s[1],
-            HTTP(GET(Printf("http://localhost:%d/exposed?cap=2", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(s[0], HTTP(GET(Printf("http://localhost:%d/exposed?cap=1", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?cap=4")).body);
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap=2")).body);
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap=1")).body);
 
   // Test `?recent=...`, have to use `?cap=...`.
-  EXPECT_EQ(
-      s[3],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=15000", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(
-      s[2],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=25000", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(
-      s[1],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=35000", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(
-      s[0],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=1&recent=45000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?cap=1&recent=15000")).body);
+  EXPECT_EQ(s[2], HTTP(GET(base_url + "?cap=1&recent=25000")).body);
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?cap=1&recent=35000")).body);
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap=1&recent=45000")).body);
 
-  EXPECT_EQ(
-      s[2] + s[3],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=2&recent=25000", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(
-      s[1] + s[2],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=2&recent=35000", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(
-      s[0] + s[1],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=2&recent=45000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?cap=2&recent=25000")).body);
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?cap=2&recent=35000")).body);
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap=2&recent=45000")).body);
 
-  EXPECT_EQ(
-      s[1] + s[2] + s[3],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=3&recent=35000", FLAGS_sherlock_http_test_port))).body);
-  EXPECT_EQ(
-      s[0] + s[1] + s[2],
-      HTTP(GET(Printf("http://localhost:%d/exposed?cap=3&recent=45000", FLAGS_sherlock_http_test_port))).body);
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?cap=3&recent=35000")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?cap=3&recent=45000")).body);
 
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...

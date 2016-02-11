@@ -111,6 +111,11 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 
   Logic(const Logic&) = delete;
 
+  size_t Size() {
+    ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
+    return list_size_;
+  }
+
   template <typename F>
   void SyncScanAllEntries(current::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
     struct Cursor {

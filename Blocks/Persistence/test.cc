@@ -83,6 +83,7 @@ TEST(PersistenceLayer, MemoryOnly) {
 
     impl.Publish("foo");
     impl.Publish("bar");
+    EXPECT_EQ(2u, impl.Size());
 
     current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
@@ -93,6 +94,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     }
 
     impl.Publish("meh");
+    EXPECT_EQ(3u, impl.Size());
 
     while (test_listener.seen < 3u) {
       ;  // Spin lock.
@@ -149,6 +151,7 @@ TEST(PersistenceLayer, AppendToFile) {
     impl.Publish(StorableString("foo"));
     current::time::SetNow(std::chrono::microseconds(200));
     impl.Publish(std::move(StorableString("bar")));
+    EXPECT_EQ(2u, impl.Size());
 
     current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
@@ -160,6 +163,7 @@ TEST(PersistenceLayer, AppendToFile) {
 
     current::time::SetNow(std::chrono::microseconds(500));
     impl.Publish(StorableString("meh"));
+    EXPECT_EQ(3u, impl.Size());
 
     while (test_listener.seen < 3u) {
       ;  // Spin lock.
