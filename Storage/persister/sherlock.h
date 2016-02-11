@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "../base.h"
 #include "../exceptions.h"
+#include "../transaction.h"
 #include "../../Sherlock/sherlock.h"
 
 namespace current {
@@ -41,19 +42,20 @@ template <template <typename, typename> class PERSISTER, typename CLONER, typena
 class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
  public:
   using T_VARIANT = Variant<TS...>;
-  using T_RECORD = std::pair<std::vector<T_VARIANT>, std::chrono::microseconds>;
+  using T_TRANSACTION = Transaction<T_VARIANT>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(ARGS&&... args)
-      : stream_(sherlock::Stream<T_RECORD, PERSISTER, CLONER>(std::forward<ARGS>(args)...)) {}
+      : stream_(sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER>(std::forward<ARGS>(args)...)) {}
 
   void PersistJournal(MutationJournal& journal) {
-    T_RECORD record;
+    T_TRANSACTION transaction;
     for (auto&& entry : journal.commit_log) {
-      record.first.emplace_back(std::move(entry));
+      transaction.mutations.emplace_back(std::move(entry));
     }
-    record.second = current::time::Now();
-    stream_.Publish(std::move(record));
+    transaction.meta.timestamp = current::time::Now();
+    transaction.meta.fields = std::move(journal.meta_fields);
+    stream_.Publish(std::move(transaction));
     journal.commit_log.clear();
     journal.rollback_log.clear();
   }
@@ -66,6 +68,14 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     stream_.SyncSubscribe(processor).Join();
   }
 
+  bool ReplayTransaction(T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
+    return stream_.PublishReplayed(transaction, idx_ts);
+  }
+
+  void ExposeRawLogViaHTTP(int port, const std::string& route) {
+    handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_);
+  }
+
  private:
   class SherlockProcessor {
    public:
@@ -74,8 +84,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     SherlockProcessor(F&& f)
         : f_(std::forward<F>(f)) {}
 
-    bool operator()(T_RECORD&& transaction, IDX_TS current, IDX_TS last) const {
-      for (auto&& mutation : transaction.first) {
+    bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {
+      for (auto&& mutation : transaction.mutations) {
         f_(std::forward<T_VARIANT>(mutation));
       }
       return current.index != last.index;
@@ -90,7 +100,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     bool allow_terminate_ = false;
   };
 
-  sherlock::StreamInstance<T_RECORD, PERSISTER, CLONER> stream_;
+  sherlock::StreamInstance<T_TRANSACTION, PERSISTER, CLONER> stream_;
+  HTTPRoutesScope handlers_scope_;
 };
 
 template <typename TYPELIST>

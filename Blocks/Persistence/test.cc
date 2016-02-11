@@ -177,9 +177,9 @@ TEST(PersistenceLayer, AppendToFile) {
   }
 
   EXPECT_EQ(
-      "1\t100\t{\"s\":\"foo\"}\n"
-      "2\t200\t{\"s\":\"bar\"}\n"
-      "3\t500\t{\"s\":\"meh\"}\n",
+      "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+      "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "{\"index\":3,\"us\":500}\t{\"s\":\"meh\"}\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -252,3 +252,6 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   EXPECT_EQ(2u, counter);
   EXPECT_EQ("A0,B0", Join(results, ","));
 }
+
+// TODO: Test `DoPublishReplayed()`.
+// TODO: Test exceptions.

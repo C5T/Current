@@ -275,7 +275,7 @@ struct RecordsCollector final {
   inline bool operator()(const RecordWithTimestamp& entry,
                          blocks::ss::IndexAndTimestamp current,
                          blocks::ss::IndexAndTimestamp) {
-    data_.push_back(ToString(current.index) + '\t' + ToString(current.us.count()) + '\t' + JSON(entry) + '\n');
+    data_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
     ++count_;
     return true;
   }
@@ -373,7 +373,10 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
-const std::string sherlock_golden_data = "1\t100\t{\"x\":1}\n2\t200\t{\"x\":2}\n3\t300\t{\"x\":3}\n";
+const std::string sherlock_golden_data =
+    "{\"index\":1,\"us\":100}\t{\"x\":1}\n"
+    "{\"index\":2,\"us\":200}\t{\"x\":2}\n"
+    "{\"index\":3,\"us\":300}\t{\"x\":3}\n";
 
 TEST(Sherlock, PersistsToFile) {
   using namespace sherlock_unittest;

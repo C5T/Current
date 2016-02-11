@@ -49,6 +49,7 @@ SOFTWARE.
 #include "../port.h"
 
 #include "base.h"
+#include "transaction.h"
 #include "transaction_policy.h"
 #include "transaction_result.h"
 
@@ -152,6 +153,7 @@ namespace storage {
    public:                                                                                                   \
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
     using T_FIELDS_BY_CONST_REFERENCE = const FIELDS&;                                                       \
+    using T_TRANSACTION = ::current::storage::Transaction<T_FIELDS_VARIANT>;                                 \
     CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
     template <typename... ARGS>                                                                              \
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
@@ -163,17 +165,31 @@ namespace storage {
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
     ::current::Future<::current::storage::TransactionResult<T_F_RESULT<F>>, ::current::StrictFuture::Strict> \
-    Transaction(F&& f) {                                                                                     \
+    Transaction(F&& f, ::current::storage::TransactionMetaFields meta_fields =                               \
+                    ::current::storage::TransactionMetaFields()) {                                           \
       FIELDS& fields = *this;                                                                                \
-      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); });                         \
+      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); }, meta_fields);            \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
-    Transaction(F1&& f1, F2&& f2) {                                                                          \
+    Transaction(F1&& f1,                                                                                     \
+                F2&& f2,                                                                                     \
+                ::current::storage::TransactionMetaFields meta_fields =                                      \
+                    ::current::storage::TransactionMetaFields()) {                                           \
       FIELDS& fields = *this;                                                                                \
-      return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
+      return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); },                        \
+                                             std::forward<F2>(f2),                                           \
+                                             meta_fields);                                                   \
+    }                                                                                                        \
+    bool ReplayTransaction(T_TRANSACTION&& transaction, ::blocks::ss::IndexAndTimestamp idx_ts) {            \
+      return transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); },  \
+                                                   std::forward<T_TRANSACTION>(transaction),                 \
+                                                   idx_ts);                                                  \
     }                                                                                                        \
     constexpr static size_t FieldsCount() { return fields_count; }                                           \
+    void ExposeRawLogViaHTTP(int port, const std::string& route) {                                           \
+      persister_.ExposeRawLogViaHTTP(port, route);                                                           \
+    }                                                                                                        \
     void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }                                      \
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \

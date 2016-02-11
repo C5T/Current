@@ -162,6 +162,12 @@ class StreamInstanceImpl {
     return storage_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 
+  // `PublishReplayed()` is used for replication.
+  bool PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { return storage_->PublishReplayed(entry, idx_ts); }
+  bool PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+    return storage_->PublishReplayed(std::move(entry), idx_ts);
+  }
+
   // `ListenerThread` spawns the thread and runs stream listener within it.
   //
   // Listener thread can always be `std::thread::join()`-ed. When this happens, the listener itself is notified
@@ -404,6 +410,11 @@ struct StreamInstance {
   template <typename... ARGS>
   IDX_TS Emplace(ARGS&&... entry_params) {
     return impl_->Emplace(std::forward<ARGS>(entry_params)...);
+  }
+
+  bool PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { return impl_->PublishReplayed(entry, idx_ts); }
+  bool PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+    return impl_->PublishReplayed(std::move(entry), idx_ts);
   }
 
   template <typename F>
