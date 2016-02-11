@@ -57,7 +57,7 @@ struct Synchronous final {
     std::promise<TransactionResult<T_RESULT>> promise;
     Future<TransactionResult<T_RESULT>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
-      promise.set_exception(std::make_exception_ptr(StorageIsDestructingException()));
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
       return future;
     }
     bool successful = false;
@@ -94,7 +94,7 @@ struct Synchronous final {
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
-      promise.set_exception(std::make_exception_ptr(StorageIsDestructingException()));
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
       return future;
     }
     bool successful = false;
@@ -128,7 +128,7 @@ struct Synchronous final {
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
-      promise.set_exception(std::make_exception_ptr(StorageIsDestructingException()));
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
       return future;
     }
     bool successful = false;

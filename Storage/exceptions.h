@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_EXCEPTIONS_H
 #define CURRENT_STORAGE_EXCEPTIONS_H
 
-#include "../Bricks/exception.h"
+#include "../Blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
 namespace storage {
@@ -50,8 +50,9 @@ struct StorageRollbackExceptionWithValue : StorageException {
   T value;
 };
 
-struct StorageIsDestructingException : StorageException {
-  using StorageException::StorageException;
+
+struct StorageInGracefulShutdownException : InGracefulShutdownException {
+  using InGracefulShutdownException::InGracefulShutdownException;
 };
 
 }  // namespace current::storage

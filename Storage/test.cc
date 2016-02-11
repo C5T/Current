@@ -370,7 +370,7 @@ TEST(TransactionalStorage, GracefulShutdown) {
   Storage storage;
   storage.GracefulShutdown();
   auto result = storage.Transaction([](ImmutableFields<Storage>) {});
-  ASSERT_THROW(result.Go(), current::storage::StorageIsDestructingException);
+  ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
 };
 
 #if 0

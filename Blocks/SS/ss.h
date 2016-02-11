@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef BLOCKS_SS_SS_H
 #define BLOCKS_SS_SS_H
 
+#include <chrono>
 #include <utility>
 
 #include "../../Bricks/util/clone.h"
