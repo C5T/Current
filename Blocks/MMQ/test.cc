@@ -34,21 +34,22 @@ SOFTWARE.
 #include "../../3rdparty/gtest/gtest-main.h"
 
 using blocks::MMQ;
+using IDX_TS = blocks::ss::IndexAndTimestamp;
 
 TEST(InMemoryMQ, SmokeTest) {
   struct Consumer {
     std::string messages_;
-    size_t expected_next_message_index_ = 0u;
+    size_t expected_next_message_index_ = 1u;
     size_t dropped_messages_ = 0u;
     std::atomic_size_t processed_messages_;
     Consumer() : processed_messages_(0u) {}
-    void operator()(const std::string& s, size_t index) {
-      assert(index >= expected_next_message_index_);
-      dropped_messages_ += (index - expected_next_message_index_);
-      expected_next_message_index_ = (index + 1);
+    void operator()(const std::string& s, IDX_TS current) {
+      assert(current.index >= expected_next_message_index_);
+      dropped_messages_ += (current.index - expected_next_message_index_);
+      expected_next_message_index_ = (current.index + 1);
       messages_ += s + '\n';
       ++processed_messages_;
-      assert(expected_next_message_index_ - processed_messages_ == dropped_messages_);
+      assert(expected_next_message_index_ - processed_messages_ - 1 == dropped_messages_);
     }
   };
 
@@ -67,20 +68,20 @@ TEST(InMemoryMQ, SmokeTest) {
 struct SuspendableConsumer {
   std::vector<std::string> messages_;
   std::atomic_size_t processed_messages_;
-  size_t expected_next_message_index_ = 0u;
+  size_t expected_next_message_index_ = 1u;
   size_t total_messages_accepted_by_the_queue_ = 0u;
   std::atomic_bool suspend_processing_;
   size_t processing_delay_ms_ = 0u;
   SuspendableConsumer() : processed_messages_(0u), suspend_processing_(false) {}
-  void operator()(const std::string& s, size_t index, size_t total) {
-    EXPECT_EQ(index, expected_next_message_index_);
+  void operator()(const std::string& s, IDX_TS current, IDX_TS last) {
+    EXPECT_EQ(current.index, expected_next_message_index_);
     ++expected_next_message_index_;
     while (suspend_processing_) {
       ;  // Spin lock.
     }
     messages_.push_back(s);
-    assert(total >= total_messages_accepted_by_the_queue_);
-    total_messages_accepted_by_the_queue_ = total;
+    assert(last.index >= total_messages_accepted_by_the_queue_);
+    total_messages_accepted_by_the_queue_ = last.index;
     if (processing_delay_ms_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(processing_delay_ms_));
     }
@@ -102,7 +103,7 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   size_t messages_accepted = 0u;
   size_t messages_dropped = 0u;
   for (size_t i = 0; i < 25; ++i) {
-    if (mmq.Publish(current::strings::Printf("M%02d", static_cast<int>(i)))) {
+    if (mmq.Publish(current::strings::Printf("M%02d", static_cast<int>(i))).index) {
       ++messages_accepted;
     } else {
       ++messages_dropped;
@@ -129,7 +130,7 @@ TEST(InMemoryMQ, DropOnOverflowTest) {
   // Eleven messages total: ten accepted originally, plus one more published later.
   EXPECT_EQ(c.messages_.size(), 11u);
   EXPECT_EQ(c.total_messages_accepted_by_the_queue_, 11u);
-  EXPECT_EQ(c.expected_next_message_index_, 11u);
+  EXPECT_EQ(c.expected_next_message_index_, 12u);
 
   // Confirm that 11 messages have reached the consumer: first 10/25 and one more later.
   // Also confirm they are all unique.

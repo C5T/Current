@@ -30,7 +30,6 @@ using namespace current;
 
 DEFINE_string(db_dir, ".current", "Local path to the data storage location.");
 DEFINE_string(db_filename, "data.json", "File name for the persisted data.");
-DEFINE_string(db_stream_name, "usernicknames", "The name of the stream to use as the persistence layer.");
 
 DEFINE_int32(db_demo_port, PickPortForUnitTest(), "Local port to spawn the server on.");
 
@@ -108,8 +107,8 @@ struct UserNicknamesReadModel {
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  auto stream = sherlock::Stream<Event, blocks::persistence::NewAppendToFile>(
-      FLAGS_db_stream_name, FileSystem::JoinPath(FLAGS_db_dir, FLAGS_db_filename));
+  auto stream = current::sherlock::Stream<Event, blocks::persistence::NewAppendToFile>(
+      FileSystem::JoinPath(FLAGS_db_dir, FLAGS_db_filename));
 
   // Example command lines to get started.
   if (FLAGS_legend) {

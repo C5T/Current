@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SHERLOCK_H
-#define SHERLOCK_H
+#ifndef CURRENT_SHERLOCK_SHERLOCK_H
+#define CURRENT_SHERLOCK_SHERLOCK_H
 
 #include "../port.h"
 
@@ -61,10 +61,6 @@ SOFTWARE.
 //
 // 3) Optional type signature, to prevent data corruption when trying to serialize data using the wrong type.
 //
-// New streams are registred as `auto my_stream = sherlock::Stream<MyType>("my_stream");`.
-//
-// Sherlock runs as a singleton. The stream of a specific name can only be added once.
-// TODO(dkorolev): Implement it this way. :-)
 // A user of C++ Sherlock interface should keep the return value of `sherlock::Stream<ENTRY>`,
 // as it is later used as the proxy to publish and subscribe to the data from this stream.
 //
@@ -124,46 +120,45 @@ SOFTWARE.
 // TODO(dkorolev): Add timestamps support and tests.
 // TODO(dkorolev): Ensure the timestamps always come in a non-decreasing order.
 
+namespace current {
 namespace sherlock {
 
 template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
 class StreamInstanceImpl {
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
+
  public:
   typedef ENTRY T_ENTRY;
   typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
 
-  // TODO(dkorolev): In constuctor: Register the stream under its name in a singleton.
-  // TODO(dkorolev): In constuctor: Ensure the stream lives forever.
+  StreamInstanceImpl() : storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
 
-  StreamInstanceImpl(const std::string& name)
-      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
+  template <typename... EXTRA_PARAMS>
+  StreamInstanceImpl(EXTRA_PARAMS&&... extra_params)
+      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)) {}
 
-  template <typename EXTRA_PARAM>
-  StreamInstanceImpl(const std::string& name, EXTRA_PARAM&& extra_param)
-      : name_(name), storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAM>(extra_param))) {}
-
-  // `Publish()` and `Emplace()` return the index of the added entry.
+  // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const ENTRY& entry) { return storage_->Publish(entry); }
-  size_t Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
+  IDX_TS Publish(const ENTRY& entry) { return storage_->Publish(entry); }
+  IDX_TS Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
 
   // When `ENTRY` is an `std::unique_ptr<>`, support two more `Publish()` syntaxes for entries of derived types.
   // 1) `Publish(const DERIVED_ENTRY&)`, and
   // 2) `Publish(conststd::unique_ptr<DERIVED_ENTRY>&)`.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const DERIVED_ENTRY& e) {
     return storage_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return storage_->Publish(e);
   }
 
   template <typename... ARGS>
-  size_t Emplace(ARGS&&... entry_params) {
+  IDX_TS Emplace(ARGS&&... entry_params) {
     return storage_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 
@@ -348,10 +343,8 @@ class StreamInstanceImpl {
   }
 
  private:
-  const std::string name_;
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
 
-  StreamInstanceImpl() = delete;
   StreamInstanceImpl(const StreamInstanceImpl&) = delete;
   void operator=(const StreamInstanceImpl&) = delete;
   StreamInstanceImpl(StreamInstanceImpl&&) = delete;
@@ -360,32 +353,33 @@ class StreamInstanceImpl {
 
 template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
 struct StreamInstance {
-  typedef ENTRY T_ENTRY;
-  typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
+  using T_ENTRY = ENTRY;
+  using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY, CLONER>;
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
 
   StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl_;
 
   explicit StreamInstance(StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  size_t Publish(const ENTRY& entry) { return impl_->Publish(entry); }
-  size_t Publish(ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
+  IDX_TS Publish(const ENTRY& entry) { return impl_->Publish(entry); }
+  IDX_TS Publish(ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
 
   // Support two syntaxes of `Publish` as well.
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const DERIVED_ENTRY& e) {
     return impl_->Publish(e);
   }
 
   template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, size_t>::type
+  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
   Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
     return impl_->Publish(e);
   }
 
   template <typename... ARGS>
-  size_t Emplace(ARGS&&... entry_params) {
+  IDX_TS Emplace(ARGS&&... entry_params) {
     return impl_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 
@@ -431,22 +425,21 @@ template <typename ENTRY, class CLONER = current::DefaultCloner>
 using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
 
 template <typename ENTRY, class CLONER = current::DefaultCloner>
-StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream(const std::string& name) {
+StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream() {
   return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(
-      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(name));
+      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>());
 }
 
 template <typename ENTRY,
           template <typename, typename> class PERSISTENCE_LAYER,
           class CLONER = current::DefaultCloner,
           typename... EXTRA_PARAMS>
-StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(const std::string& name,
-                                                        EXTRA_PARAMS&&... extra_params) {
+StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(EXTRA_PARAMS&&... extra_params) {
   return StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER>(
-      new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>(name,
-                                                               std::forward<EXTRA_PARAMS>(extra_params)...));
+      new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>(std::forward<EXTRA_PARAMS>(extra_params)...));
 }
 
 }  // namespace sherlock
+}  // namespace current
 
-#endif  // SHERLOCK_H
+#endif  // CURRENT_SHERLOCK_SHERLOCK_H

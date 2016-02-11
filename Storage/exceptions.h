@@ -25,7 +25,7 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_EXCEPTIONS_H
 #define CURRENT_STORAGE_EXCEPTIONS_H
 
-#include "../Bricks/exception.h"
+#include "../Blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
 namespace storage {
@@ -48,6 +48,11 @@ struct StorageRollbackExceptionWithValue : StorageException {
   StorageRollbackExceptionWithValue(T&& value, const std::string& what = std::string())
       : StorageException(what), value(std::move(value)) {}
   T value;
+};
+
+
+struct StorageInGracefulShutdownException : InGracefulShutdownException {
+  using InGracefulShutdownException::InGracefulShutdownException;
 };
 
 }  // namespace current::storage

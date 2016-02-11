@@ -152,7 +152,6 @@ namespace storage {
    public:                                                                                                   \
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
     using T_FIELDS_BY_CONST_REFERENCE = const FIELDS&;                                                       \
-    CURRENT_STORAGE_IMPL_##name() = delete;                                                                  \
     CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
     template <typename... ARGS>                                                                              \
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
@@ -175,6 +174,7 @@ namespace storage {
       return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); }, std::forward<F2>(f2)); \
     }                                                                                                        \
     constexpr static size_t FieldsCount() { return fields_count; }                                           \
+    void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }                                      \
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \

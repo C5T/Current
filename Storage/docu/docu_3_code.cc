@@ -80,7 +80,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   using namespace storage_docu;
   using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
 
-  TestStorage storage("storage_of_clients_dummy_stream_name");
+  TestStorage storage;
 
   const auto rest1 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api1");
   const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(

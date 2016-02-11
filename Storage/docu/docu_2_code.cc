@@ -79,7 +79,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
   using ExampleStorage = ExampleStorageDefinition<SherlockInMemoryStreamPersister>;
 
   {
-    ExampleStorage storage("test_stream_name");
+    ExampleStorage storage;
     EXPECT_EQ(1u, storage.FieldsCount());
 
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
@@ -138,7 +138,7 @@ TEST(StorageDocumentation, BasicUsage) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    ExampleStorage storage("test_stream_name", persistence_file_name);
+    ExampleStorage storage(persistence_file_name);
     EXPECT_EQ(1u, storage.FieldsCount());
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
@@ -178,9 +178,21 @@ TEST(StorageDocumentation, BasicUsage) {
 
   using T_RECORD = std::pair<std::vector<Variant<PersistedUserUpdated, PersistedUserDeleted>>, std::chrono::microseconds>;
   ASSERT_EQ(3u, persisted_transactions.size());
+  const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, uint64_t timestamp) {
+    std::istringstream iss(line);
+    uint64_t persisted_index;
+    uint64_t persisted_timestamp;
+    iss >> persisted_index;
+    iss >> persisted_timestamp;
+    EXPECT_EQ(index, persisted_index);
+    EXPECT_EQ(timestamp, persisted_timestamp);
+    std::string json;
+    std::getline(iss, json);
+    return ParseJSON<T_RECORD>(json);
+  };
 
   {
-    const auto t = ParseJSON<T_RECORD>(persisted_transactions[0]);
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 1u, 1002u);
     ASSERT_EQ(2u, t.first.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
@@ -195,7 +207,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseJSON<T_RECORD>(persisted_transactions[1]);
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 2u, 1004u);
     ASSERT_EQ(1u, t.first.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
@@ -205,7 +217,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseJSON<T_RECORD>(persisted_transactions[2]);
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 3u, 1006u);
     ASSERT_EQ(1u, t.first.size());
 
     ASSERT_FALSE(Exists<PersistedUserUpdated>(t.first[0]));
@@ -215,7 +227,16 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_EQ(1006, static_cast<int>(t.second.count()));
   }
 
-  // TODO(dkorolev) + TODO(mzhurovich): Add the `Replay` logic and a test for it.
+  {
+    ExampleStorage replayed(persistence_file_name);
+    replayed.Transaction([](ImmutableFields<ExampleStorage> data) {
+      EXPECT_EQ(2u, data.users.Size());
+      EXPECT_TRUE(Exists(data.users[static_cast<UserID>(1)]));
+      EXPECT_EQ("test1", Value(data.users[static_cast<UserID>(101)]).name);
+      EXPECT_TRUE(Exists(data.users[static_cast<UserID>(2)]));
+      EXPECT_EQ("test2", Value(data.users[static_cast<UserID>(101)]).name);
+    }).Wait();
+  }
 }
 
 #endif  // CURRENT_STORAGE_DOCU_DOCU_2_CODE_CC

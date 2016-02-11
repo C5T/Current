@@ -232,7 +232,7 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage("fields_accessors_test");
+  Storage storage;
   EXPECT_EQ(3u, storage.FieldsCount());
 
   EXPECT_EQ("v1", storage(::current::storage::FieldNameByIndex<0>()));
@@ -258,7 +258,7 @@ TEST(TransactionalStorage, Exceptions) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  Storage storage("exceptions_test");
+  Storage storage;
 
   bool should_throw;
   const auto f_void = [&should_throw](ImmutableFields<Storage>) {
@@ -362,6 +362,16 @@ TEST(TransactionalStorage, Exceptions) {
     }
   }
 }
+
+TEST(TransactionalStorage, GracefulShutdown) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  storage.GracefulShutdown();
+  auto result = storage.Transaction([](ImmutableFields<Storage>) {});
+  ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
+};
 
 #if 0
 

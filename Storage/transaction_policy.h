@@ -41,6 +41,11 @@ template <class PERSISTER>
 struct Synchronous final {
   Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
 
+  ~Synchronous() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    destructing_ = true;
+  }
+
   template <typename F>
   using T_F_RESULT = typename std::result_of<F()>::type;
 
@@ -51,6 +56,10 @@ struct Synchronous final {
     journal_.AssertEmpty();
     std::promise<TransactionResult<T_RESULT>> promise;
     Future<TransactionResult<T_RESULT>, StrictFuture::Strict> future = promise.get_future();
+    if (destructing_) {
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
+      return future;
+    }
     bool successful = false;
     T_RESULT f_result;
     try {
@@ -84,6 +93,10 @@ struct Synchronous final {
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
+    if (destructing_) {
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
+      return future;
+    }
     bool successful = false;
     try {
       f();
@@ -114,6 +127,10 @@ struct Synchronous final {
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
+    if (destructing_) {
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
+      return future;
+    }
     bool successful = false;
     try {
       f2(f1());
@@ -130,10 +147,16 @@ struct Synchronous final {
     return future;
   }
 
+  void GracefulShutdown() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    destructing_ = true;
+  }
+
  private:
   PERSISTER& persister_;
   MutationJournal& journal_;
   std::mutex mutex_;
+  bool destructing_ = false;
 };
 
 }  // namespace transaction_policy
