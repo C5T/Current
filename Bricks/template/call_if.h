@@ -25,10 +25,16 @@ SOFTWARE.
 #ifndef CURRENT_BRICKS_TEMPLATE_CALL_IF_H
 #define CURRENT_BRICKS_TEMPLATE_CALL_IF_H
 
+namespace current {
+namespace metaprogramming {
+
 template <bool B>
 struct CallIf {
 	template <typename F> static void With(F&&f) { f(); }
 };
 template <> struct CallIf<false> { template <typename F> static void With(F&&) {} };
+
+}  // namespace metaprogramming
+}  // namespace current
 
 #endif CURRENT_BRICKS_TEMPLATE_CALL_IF_H

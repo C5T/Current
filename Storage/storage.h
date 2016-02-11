@@ -88,10 +88,10 @@ namespace storage {
   }
 
 // defined here because Storage/api.h doesn't need to be included at the point where the EXCLUDE_FROM is used
-CURRENT_STORAGE_DEFINE_FEATURE(RESTFulAPI);
+CURRENT_STORAGE_DEFINE_FEATURE(RESTfulAPI);
 
 #define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_RESTFUL_API(entry_name)   \
-			CURRENT_STORAGE_FIELD_EXCLUDE_FROM(RESTFulAPI, entry_name)
+			CURRENT_STORAGE_FIELD_EXCLUDE_FROM(RESTfulAPI, entry_name)
 
 #define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)                \
   CURRENT_STRUCT(entry_name##Updated) {                                                                     \
