@@ -253,5 +253,57 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   EXPECT_EQ("A0,B0", Join(results, ","));
 }
 
-// TODO: Test `DoPublishReplayed()`.
-// TODO: Test exceptions.
+TEST(PersistenceLayer, Exceptions) {
+  using IMPL = blocks::persistence::NewAppendToFile<StorableString>;
+  using blocks::ss::IndexAndTimestamp;
+  using blocks::persistence::MalformedEntryDuringReplayException;
+  using blocks::persistence::InconsistentIndexException;
+  using blocks::persistence::InconsistentTimestampException;
+
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+
+  // Malformed entry during replay.
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile("Malformed entry", persistence_file_name.c_str());
+    EXPECT_THROW(IMPL impl(persistence_file_name), MalformedEntryDuringReplayException);
+  }
+  // Inconsistent index during replay.
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile(
+        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n",
+        persistence_file_name.c_str());
+    EXPECT_THROW(IMPL impl(persistence_file_name), InconsistentIndexException);
+  }
+  // Inconsistent timestamp during replay.
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile(
+        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":2,\"us\":50}\t{\"s\":\"bar\"}\n",
+        persistence_file_name.c_str());
+    EXPECT_THROW(IMPL impl(persistence_file_name), InconsistentTimestampException);
+  }
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile("{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n",
+                                           persistence_file_name.c_str());
+    IMPL impl(persistence_file_name);
+    StorableString entry("bar");
+    // `PublishReplayed()` with consistent timestamp, but inconsistent index.
+    EXPECT_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(3u, std::chrono::microseconds(200))),
+                 InconsistentIndexException);
+    // `PublishReplayed()` with consistent index, but inconsistent timestamp.
+    EXPECT_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(2u, std::chrono::microseconds(100))),
+                 InconsistentTimestampException);
+    // `PublishReplayed()` with absolutely consistent `IndexAndTimestamp`.
+    EXPECT_NO_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(2u, std::chrono::microseconds(200))));
+    EXPECT_EQ(
+        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n",
+        current::FileSystem::ReadFileAsString(persistence_file_name));
+  }
+}

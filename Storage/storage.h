@@ -168,7 +168,7 @@ namespace storage {
     Transaction(F&& f, ::current::storage::TransactionMetaFields meta_fields =                               \
                     ::current::storage::TransactionMetaFields()) {                                           \
       FIELDS& fields = *this;                                                                                \
-      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); }, meta_fields);            \
+      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); }, std::move(meta_fields)); \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
@@ -179,12 +179,12 @@ namespace storage {
       FIELDS& fields = *this;                                                                                \
       return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); },                        \
                                              std::forward<F2>(f2),                                           \
-                                             meta_fields);                                                   \
+                                             std::move(meta_fields));                                        \
     }                                                                                                        \
-    bool ReplayTransaction(T_TRANSACTION&& transaction, ::blocks::ss::IndexAndTimestamp idx_ts) {            \
-      return transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); },  \
-                                                   std::forward<T_TRANSACTION>(transaction),                 \
-                                                   idx_ts);                                                  \
+    void ReplayTransaction(T_TRANSACTION&& transaction, ::blocks::ss::IndexAndTimestamp idx_ts) {            \
+      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); },         \
+                                            std::forward<T_TRANSACTION>(transaction),                        \
+                                            idx_ts);                                                         \
     }                                                                                                        \
     constexpr static size_t FieldsCount() { return fields_count; }                                           \
     void ExposeRawLogViaHTTP(int port, const std::string& route) {                                           \

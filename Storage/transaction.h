@@ -35,11 +35,13 @@ using TransactionMetaFields = std::map<std::string, std::string>;
 CURRENT_STRUCT(TransactionMeta) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds);
   CURRENT_FIELD(fields, TransactionMetaFields);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(timestamp);
 };
 
 CURRENT_STRUCT_T(Transaction) {
   CURRENT_FIELD(meta, TransactionMeta);
   CURRENT_FIELD(mutations, std::vector<T>);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(meta.timestamp);
 };
 
 }  // namespace storage

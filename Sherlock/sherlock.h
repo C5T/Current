@@ -163,10 +163,8 @@ class StreamInstanceImpl {
   }
 
   // `PublishReplayed()` is used for replication.
-  bool PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { return storage_->PublishReplayed(entry, idx_ts); }
-  bool PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
-    return storage_->PublishReplayed(std::move(entry), idx_ts);
-  }
+  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { storage_->PublishReplayed(entry, idx_ts); }
+  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) { storage_->PublishReplayed(std::move(entry), idx_ts); }
 
   // `ListenerThread` spawns the thread and runs stream listener within it.
   //
@@ -344,7 +342,7 @@ class StreamInstanceImpl {
   }
 
   // Sherlock handler for serving stream data via HTTP.
-  // Expects "GET" query with the following possible parameters:
+  // Expects "GET" request with the following possible parameters:
   // * `recent={us}` to get entries within `us` microseconds from now;
   // * `since={us_timestamp}` to get entries since the specified timestamp;
   // * `n={x}` to get last `x` entries;
@@ -412,10 +410,8 @@ struct StreamInstance {
     return impl_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 
-  bool PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { return impl_->PublishReplayed(entry, idx_ts); }
-  bool PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
-    return impl_->PublishReplayed(std::move(entry), idx_ts);
-  }
+  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { impl_->PublishReplayed(entry, idx_ts); }
+  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) { impl_->PublishReplayed(std::move(entry), idx_ts); }
 
   template <typename F>
   using SyncListenerScope =

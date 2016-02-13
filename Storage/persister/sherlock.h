@@ -68,8 +68,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     stream_.SyncSubscribe(processor).Join();
   }
 
-  bool ReplayTransaction(T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
-    return stream_.PublishReplayed(transaction, idx_ts);
+  void ReplayTransaction(T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
+    stream_.PublishReplayed(transaction, idx_ts);
   }
 
   void ExposeRawLogViaHTTP(int port, const std::string& route) {

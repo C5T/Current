@@ -25,7 +25,10 @@ SOFTWARE.
 #ifndef BLOCKS_PERSISTENCE_EXCEPTIONS_H
 #define BLOCKS_PERSISTENCE_EXCEPTIONS_H
 
+#include <chrono>
+
 #include "../../Bricks/exception.h"
+#include "../../Bricks/strings/printf.h"
 
 namespace blocks {
 namespace persistence {
@@ -38,12 +41,24 @@ struct MalformedEntryDuringReplayException : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
-struct InconsistentIndexDuringReplayException : PersistenceException {
+struct InconsistentIndexOrTimestampException : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
-struct InconsistentTimestampDuringReplayException : PersistenceException {
-  using PersistenceException::PersistenceException;
+struct InconsistentIndexException : InconsistentIndexOrTimestampException {
+  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
+  InconsistentIndexException(uint64_t expected, uint64_t found) {
+    using current::strings::Printf;
+    SetWhat(Printf("Expected '%llu', found '%llu'.", expected, found));
+  }
+};
+
+struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
+  using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
+  InconsistentTimestampException(std::chrono::microseconds last, std::chrono::microseconds found) {
+    using current::strings::Printf;
+    SetWhat(Printf("Last known timestamp '%llu', found '%llu'.", last.count(), found.count()));
+  }
 };
 
 }  // namespace peristence

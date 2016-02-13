@@ -44,6 +44,7 @@ namespace ss {
 CURRENT_STRUCT(IndexAndTimestamp) {
   CURRENT_FIELD(index, uint64_t);
   CURRENT_FIELD(us, std::chrono::microseconds);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(us);
   CURRENT_DEFAULT_CONSTRUCTOR(IndexAndTimestamp) : index(0u), us(0) {}
   CURRENT_CONSTRUCTOR(IndexAndTimestamp)(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
 };
@@ -346,11 +347,11 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   // Special type of publishing required for replication.
   // Functions below return `false` if the `IndexAndTimestamp` argument provided is inconsistent with the
   // current state of the stream. No publish is performed in this case.
-  inline bool PublishReplayed(const ENTRY& e, IndexAndTimestamp idx_ts) {
-    return IMPL::DoPublishReplayed(e, idx_ts);
+  inline void PublishReplayed(const ENTRY& e, IndexAndTimestamp idx_ts) {
+    IMPL::DoPublishReplayed(e, idx_ts);
   }
-  inline bool PublishReplayed(ENTRY&& e, IndexAndTimestamp idx_ts) {
-    return IMPL::DoPublishReplayed(std::move(e), idx_ts);
+  inline void PublishReplayed(ENTRY&& e, IndexAndTimestamp idx_ts) {
+    IMPL::DoPublishReplayed(std::move(e), idx_ts);
   }
 };
 

@@ -91,7 +91,7 @@ class PubSubHTTPEndpoint final {
         }
       }
       if (serving_) {
-        http_response_(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');  // TODO(dkorolev): "\r\n" ?
+        http_response_(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
         if (cap_) {
           --cap_;
           if (!cap_) {

@@ -43,7 +43,6 @@ SOFTWARE.
 #include "../../Bricks/cerealize/json.h"
 #include "../../Bricks/cerealize/cerealize.h"
 
-#include "../../Bricks/strings/printf.h"
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
@@ -269,30 +268,22 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     return idx_ts;
   }
 
-  bool DoPublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
+  void DoPublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-    const bool result = persistence_layer_.PublishReplayed(entry, idx_ts);
-    if (!result) {
-      return false;
-    }
+    persistence_layer_.PublishReplayed(entry, idx_ts);
     lock.AdvanceToStageTwo();
     ListPushBackImpl(idx_ts, entry);
     lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return true;
   }
-  bool DoPublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+  void DoPublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
     const ENTRY& entry_cref = entry;
-    const bool result = persistence_layer_.PublishReplayed(entry_cref, idx_ts);
-    if (!result) {
-      return false;
-    }
+    persistence_layer_.PublishReplayed(entry_cref, idx_ts);
     lock.AdvanceToStageTwo();
     ListPushBackImpl(idx_ts, std::move(entry));
     lock.AdvanceToStageThree();
     NotifyAllOfExternalWaitableEvent();
-    return true;
   }
 
  private:
@@ -345,20 +336,12 @@ struct DevNullPublisherImpl {
     return IDX_TS(++count_, current::time::Now());
   }
 
-  bool DoPublishReplayed(const ENTRY&, IDX_TS idx_ts) {
+  template <typename E>
+  void DoPublishReplayed(E&&, IDX_TS idx_ts) {
     if (idx_ts.index == count_ + 1) {
       ++count_;
-      return true;
     } else {
-      return false;
-    }
-  }
-  bool DoPublishReplyed(ENTRY&&, IDX_TS idx_ts) {
-    if (idx_ts.index == count_ + 1) {
-      ++count_;
-      return true;
-    } else {
-      return false;
+      CURRENT_THROW(InconsistentIndexException(count_ + 1, idx_ts.index));
     }
   }
 
@@ -375,7 +358,6 @@ struct CerealAppendToFilePublisherImpl {
   explicit CerealAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
-    using current::strings::Printf;
     assert(!appender_);
     std::ifstream fi(filename_);
     IDX_TS last_idx_ts;
@@ -383,15 +365,13 @@ struct CerealAppendToFilePublisherImpl {
       IDX_TS idx_ts;
       while (fi >> idx_ts.index) {
         if (idx_ts.index != last_idx_ts.index + 1) {
-          CURRENT_THROW(InconsistentIndexDuringReplayException(
-              Printf("Expected '%llu', found '%llu'.", last_idx_ts.index + 1, idx_ts.index)));
+          CURRENT_THROW(InconsistentIndexException(last_idx_ts.index + 1, idx_ts.index));
         }
         int64_t timestamp;
         fi >> timestamp;
         idx_ts.us = std::chrono::microseconds(timestamp);
         if (idx_ts.us <= last_idx_ts.us) {
-          CURRENT_THROW(InconsistentTimestampDuringReplayException(
-              Printf("Last known timestamp '%llu`, found '%llu'.", last_idx_ts.us.count(), timestamp)));
+          CURRENT_THROW(InconsistentTimestampException(last_idx_ts.us, std::chrono::microseconds(timestamp)));
         }
         std::string json;
         std::getline(fi, json);
@@ -458,13 +438,11 @@ struct NewAppendToFilePublisherImpl {
         IDX_TS idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
         // Indexes must be strictly continuous.
         if (idx_ts.index != last_idx_ts_.index + 1) {
-          CURRENT_THROW(InconsistentIndexDuringReplayException(
-              Printf("Expected '%llu', found '%llu'.", last_idx_ts_.index + 1, idx_ts.index)));
+          CURRENT_THROW(InconsistentIndexException(last_idx_ts_.index + 1, idx_ts.index));
         }
         // Timestamps must monotonically increase.
         if (idx_ts.us <= last_idx_ts_.us) {
-          CURRENT_THROW(InconsistentTimestampDuringReplayException(Printf(
-              "Last known timestamp '%llu`, found '%llu'.", last_idx_ts_.us.count(), idx_ts.us.count())));
+          CURRENT_THROW(InconsistentTimestampException(last_idx_ts_.us, idx_ts.us));
         }
         push(idx_ts, std::move(ParseJSON<ENTRY>(line.substr(tab_pos + 1))));
         last_idx_ts_ = idx_ts;
@@ -479,33 +457,37 @@ struct NewAppendToFilePublisherImpl {
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   IDX_TS DoPublish(const ENTRY& entry) {
-    IDX_TS new_idx_ts(last_idx_ts_.index + 1u, current::time::Now());
+    const IDX_TS new_idx_ts(last_idx_ts_.index + 1u, current::time::Now());
     (*appender_) << JSON(new_idx_ts) << '\t' << JSON(entry) << std::endl;
     last_idx_ts_ = new_idx_ts;
     return new_idx_ts;
   }
   IDX_TS DoPublish(ENTRY&& entry) {
-    IDX_TS new_idx_ts(last_idx_ts_.index + 1u, current::time::Now());
+    const IDX_TS new_idx_ts(last_idx_ts_.index + 1u, current::time::Now());
     (*appender_) << JSON(new_idx_ts) << '\t' << JSON(entry) << std::endl;
     last_idx_ts_ = new_idx_ts;
     return new_idx_ts;
   }
 
-  bool DoPublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
-    if (idx_ts.index != last_idx_ts_.index + 1u || idx_ts.us <= last_idx_ts_.us) {
-      return false;
+  void DoPublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
+    if (idx_ts.index != last_idx_ts_.index + 1u) {
+      CURRENT_THROW(InconsistentIndexException(last_idx_ts_.index + 1u, idx_ts.index));
+    }
+    if (idx_ts.us <= last_idx_ts_.us) {
+      CURRENT_THROW(InconsistentTimestampException(last_idx_ts_.us, idx_ts.us));
     }
     (*appender_) << JSON(idx_ts) << '\t' << JSON(entry) << std::endl;
     last_idx_ts_ = idx_ts;
-    return true;
   }
-  bool DoPublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
-    if (idx_ts.index != last_idx_ts_.index + 1u || idx_ts.us <= last_idx_ts_.us) {
-      return false;
+  void DoPublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+    if (idx_ts.index != last_idx_ts_.index + 1u) {
+      CURRENT_THROW(InconsistentIndexException(last_idx_ts_.index + 1u, idx_ts.index));
+    }
+    if (idx_ts.us <= last_idx_ts_.us) {
+      CURRENT_THROW(InconsistentTimestampException(last_idx_ts_.us, idx_ts.us));
     }
     (*appender_) << JSON(idx_ts) << '\t' << JSON(entry) << std::endl;
     last_idx_ts_ = idx_ts;
-    return true;
   }
 
  private:

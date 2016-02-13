@@ -365,6 +365,7 @@ TEST(TransactionalStorage, Exceptions) {
 
 TEST(TransactionalStorage, ReplicationViaHTTP) {
   using namespace transactional_storage_test;
+  using current::storage::TransactionMetaFields;
   using Storage = TestStorage<SherlockStreamPersister>;
   using IDX_TS = blocks::ss::IndexAndTimestamp;
 
@@ -378,10 +379,11 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   // Perform a couple of transactions.
   {
     current::time::SetNow(std::chrono::microseconds(100));
+    const TransactionMetaFields meta_fields{{"user", "dima"}};
     const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
       fields.d.Add(Record{"two", 2});
-    }).Go();
+    }, meta_fields).Go();
     EXPECT_TRUE(WasCommited(result));
   }
   {
@@ -412,8 +414,8 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     ASSERT_FALSE(tab_pos == std::string::npos);
     const IDX_TS idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
     EXPECT_EQ(expected_index, idx_ts.index);
-    Storage::T_TRANSACTION transaction = ParseJSON<Storage::T_TRANSACTION>(line.substr(tab_pos + 1));
-    ASSERT_TRUE(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
+    auto transaction = ParseJSON<Storage::T_TRANSACTION>(line.substr(tab_pos + 1));
+    ASSERT_NO_THROW(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
   }
 
   // Check that persisted files are the same.

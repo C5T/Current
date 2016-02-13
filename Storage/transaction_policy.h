@@ -55,7 +55,7 @@ struct Synchronous final {
 
   template <typename F, class = ENABLE_IF<!std::is_void<T_F_RESULT<F>>::value>>
   Future<TransactionResult<T_F_RESULT<F>>, StrictFuture::Strict> Transaction(
-      F&& f, TransactionMetaFields meta_fields) {
+      F&& f, TransactionMetaFields&& meta_fields) {
     using T_RESULT = T_F_RESULT<F>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
@@ -86,7 +86,7 @@ struct Synchronous final {
       }
     }
     if (successful) {
-      journal_.meta_fields = meta_fields;
+      journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
       promise.set_value(TransactionResult<T_RESULT>::Commited(std::move(f_result)));
     }
@@ -94,7 +94,8 @@ struct Synchronous final {
   }
 
   template <typename F, class = ENABLE_IF<std::is_void<T_F_RESULT<F>>::value>>
-  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f, TransactionMetaFields meta_fields) {
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f,
+                                                                    TransactionMetaFields&& meta_fields) {
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
@@ -120,7 +121,7 @@ struct Synchronous final {
       }
     }
     if (successful) {
-      journal_.meta_fields = meta_fields;
+      journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
       promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
     }
@@ -131,7 +132,7 @@ struct Synchronous final {
   template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<T_F_RESULT<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1,
                                                                     F2&& f2,
-                                                                    TransactionMetaFields meta_fields) {
+                                                                    TransactionMetaFields&& meta_fields) {
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
@@ -148,7 +149,7 @@ struct Synchronous final {
       journal_.Rollback();
     }
     if (successful) {
-      journal_.meta_fields = meta_fields;
+      journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
       promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
     } else {
@@ -158,16 +159,12 @@ struct Synchronous final {
   }
 
   template <typename F>
-  bool ReplayTransaction(F&& f, T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
+  void ReplayTransaction(F&& f, T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
     std::lock_guard<std::mutex> lock(mutex_);
-    const bool result = persister_.ReplayTransaction(std::forward<T_TRANSACTION>(transaction), idx_ts);
-    if (!result) {
-      return false;
-    }
+    persister_.ReplayTransaction(std::forward<T_TRANSACTION>(transaction), idx_ts);
     for (auto&& mutation : transaction.mutations) {
       f(std::move(mutation));
     }
-    return true;
   }
 
   void GracefulShutdown() {
