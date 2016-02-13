@@ -83,6 +83,7 @@ TEST(PersistenceLayer, MemoryOnly) {
 
     impl.Publish("foo");
     impl.Publish("bar");
+    EXPECT_EQ(2u, impl.Size());
 
     current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
@@ -93,6 +94,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     }
 
     impl.Publish("meh");
+    EXPECT_EQ(3u, impl.Size());
 
     while (test_listener.seen < 3u) {
       ;  // Spin lock.
@@ -149,6 +151,7 @@ TEST(PersistenceLayer, AppendToFile) {
     impl.Publish(StorableString("foo"));
     current::time::SetNow(std::chrono::microseconds(200));
     impl.Publish(std::move(StorableString("bar")));
+    EXPECT_EQ(2u, impl.Size());
 
     current::WaitableTerminateSignal stop;
     PersistenceTestListener test_listener;
@@ -160,6 +163,7 @@ TEST(PersistenceLayer, AppendToFile) {
 
     current::time::SetNow(std::chrono::microseconds(500));
     impl.Publish(StorableString("meh"));
+    EXPECT_EQ(3u, impl.Size());
 
     while (test_listener.seen < 3u) {
       ;  // Spin lock.
@@ -173,9 +177,9 @@ TEST(PersistenceLayer, AppendToFile) {
   }
 
   EXPECT_EQ(
-      "1\t100\t{\"s\":\"foo\"}\n"
-      "2\t200\t{\"s\":\"bar\"}\n"
-      "3\t500\t{\"s\":\"meh\"}\n",
+      "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+      "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "{\"index\":3,\"us\":500}\t{\"s\":\"meh\"}\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -247,4 +251,59 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
 
   EXPECT_EQ(2u, counter);
   EXPECT_EQ("A0,B0", Join(results, ","));
+}
+
+TEST(PersistenceLayer, Exceptions) {
+  using IMPL = blocks::persistence::NewAppendToFile<StorableString>;
+  using blocks::ss::IndexAndTimestamp;
+  using blocks::persistence::MalformedEntryDuringReplayException;
+  using blocks::persistence::InconsistentIndexException;
+  using blocks::persistence::InconsistentTimestampException;
+
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+
+  // Malformed entry during replay.
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile("Malformed entry", persistence_file_name.c_str());
+    EXPECT_THROW(IMPL impl(persistence_file_name), MalformedEntryDuringReplayException);
+  }
+  // Inconsistent index during replay.
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile(
+        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n",
+        persistence_file_name.c_str());
+    EXPECT_THROW(IMPL impl(persistence_file_name), InconsistentIndexException);
+  }
+  // Inconsistent timestamp during replay.
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile(
+        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":2,\"us\":50}\t{\"s\":\"bar\"}\n",
+        persistence_file_name.c_str());
+    EXPECT_THROW(IMPL impl(persistence_file_name), InconsistentTimestampException);
+  }
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    current::FileSystem::WriteStringToFile("{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n",
+                                           persistence_file_name.c_str());
+    IMPL impl(persistence_file_name);
+    StorableString entry("bar");
+    // `PublishReplayed()` with consistent timestamp, but inconsistent index.
+    EXPECT_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(3u, std::chrono::microseconds(200))),
+                 InconsistentIndexException);
+    // `PublishReplayed()` with consistent index, but inconsistent timestamp.
+    EXPECT_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(2u, std::chrono::microseconds(100))),
+                 InconsistentTimestampException);
+    // `PublishReplayed()` with absolutely consistent `IndexAndTimestamp`.
+    EXPECT_NO_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(2u, std::chrono::microseconds(200))));
+    EXPECT_EQ(
+        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n",
+        current::FileSystem::ReadFileAsString(persistence_file_name));
+  }
 }

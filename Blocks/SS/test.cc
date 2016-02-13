@@ -51,7 +51,7 @@ struct DispatchDemoEntry {
   DispatchDemoEntry& operator=(DispatchDemoEntry&&) = delete;
 };
 
-TEST(MQInterface, TestHelperClassSmokeTest) {
+TEST(StreamSystem, TestHelperClassSmokeTest) {
   using DDE = DispatchDemoEntry;
 
   DDE e1;
@@ -77,7 +77,7 @@ TEST(MQInterface, TestHelperClassSmokeTest) {
 // This test also confirms the dispatcher supports lambdas.
 // The rest of the functionality -- treating `void` as `bool` and enabling omitting extra parameters --
 // is tested in a giant write-only test below.
-TEST(MQInterface, SmokeTest) {
+TEST(StreamSystem, SmokeTest) {
   using DDE = DispatchDemoEntry;
   using IDX_TS = blocks::ss::IndexAndTimestamp;
   using us = std::chrono::microseconds;
@@ -140,7 +140,7 @@ TEST(MQInterface, SmokeTest) {
 // 1) Return type: `bool` -> `void`.
 // 2) Number of arguments: 3 -> 2 -> 1.
 // You've been warned. Thanks!
-TEST(MQInterface, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
+TEST(StreamSystem, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
   using DDE = DispatchDemoEntry;
   using IDX_TS = blocks::ss::IndexAndTimestamp;
   using us = std::chrono::microseconds;

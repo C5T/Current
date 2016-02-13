@@ -30,6 +30,8 @@ SOFTWARE.
 
 #include <cassert>
 
+#include "transaction.h"
+
 #include "../TypeSystem/struct.h"
 
 #include "../Bricks/template/typelist.h"
@@ -148,6 +150,7 @@ using FieldsTypeList =
 
 // `MutationJournal` keeps all the changes made during one transaction, as well as the way to rollback them.
 struct MutationJournal {
+  TransactionMetaFields meta_fields;
   std::vector<std::unique_ptr<current::CurrentSuper>> commit_log;
   std::vector<std::function<void()>> rollback_log;
 

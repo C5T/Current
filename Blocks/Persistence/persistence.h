@@ -34,6 +34,8 @@ SOFTWARE.
 #include <mutex>
 #include <thread>
 
+#include "exceptions.h"
+
 #include "../../TypeSystem/Serialization/json.h"
 
 #include "../SS/ss.h"
@@ -48,7 +50,6 @@ namespace blocks {
 namespace persistence {
 
 namespace impl {
-
 using IDX_TS = blocks::ss::IndexAndTimestamp;
 
 class ThreeStageMutex final {
@@ -110,6 +111,11 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
   }
 
   Logic(const Logic&) = delete;
+
+  size_t Size() {
+    ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
+    return list_size_;
+  }
 
   template <typename F>
   void SyncScanAllEntries(current::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
@@ -262,6 +268,24 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     return idx_ts;
   }
 
+  void DoPublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
+    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
+    persistence_layer_.PublishReplayed(entry, idx_ts);
+    lock.AdvanceToStageTwo();
+    ListPushBackImpl(idx_ts, entry);
+    lock.AdvanceToStageThree();
+    NotifyAllOfExternalWaitableEvent();
+  }
+  void DoPublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
+    const ENTRY& entry_cref = entry;
+    persistence_layer_.PublishReplayed(entry_cref, idx_ts);
+    lock.AdvanceToStageTwo();
+    ListPushBackImpl(idx_ts, std::move(entry));
+    lock.AdvanceToStageThree();
+    NotifyAllOfExternalWaitableEvent();
+  }
+
  private:
   // `std::forward_list<>` and its size + iterator management.
   template <typename E>
@@ -305,11 +329,22 @@ struct DevNullPublisherImpl {
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   IDX_TS DoPublish(const ENTRY&) { return IDX_TS(++count_, current::time::Now()); }
   IDX_TS DoPublish(ENTRY&&) { return IDX_TS(++count_, current::time::Now()); }
+
   template <typename DERIVED_ENTRY>
   IDX_TS DoPublishDerived(const DERIVED_ENTRY&) {
     static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
     return IDX_TS(++count_, current::time::Now());
   }
+
+  template <typename E>
+  void DoPublishReplayed(E&&, IDX_TS idx_ts) {
+    if (idx_ts.index == count_ + 1) {
+      ++count_;
+    } else {
+      CURRENT_THROW(InconsistentIndexException(count_ + 1, idx_ts.index));
+    }
+  }
+
   size_t count_ = 0u;
 };
 
@@ -325,12 +360,19 @@ struct CerealAppendToFilePublisherImpl {
   void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
     assert(!appender_);
     std::ifstream fi(filename_);
+    IDX_TS last_idx_ts;
     if (fi.good()) {
       IDX_TS idx_ts;
       while (fi >> idx_ts.index) {
+        if (idx_ts.index != last_idx_ts.index + 1) {
+          CURRENT_THROW(InconsistentIndexException(last_idx_ts.index + 1, idx_ts.index));
+        }
         int64_t timestamp;
         fi >> timestamp;
         idx_ts.us = std::chrono::microseconds(timestamp);
+        if (idx_ts.us <= last_idx_ts.us) {
+          CURRENT_THROW(InconsistentTimestampException(last_idx_ts.us, std::chrono::microseconds(timestamp)));
+        }
         std::string json;
         std::getline(fi, json);
         push(idx_ts, std::move(CerealizeParseJSON<ENTRY>(json)));
@@ -387,15 +429,23 @@ struct NewAppendToFilePublisherImpl {
     assert(!appender_);
     std::ifstream fi(filename_);
     if (fi.good()) {
-      IDX_TS idx_ts;
-      while (fi >> idx_ts.index) {
-        int64_t timestamp;
-        fi >> timestamp;
-        idx_ts.us = std::chrono::microseconds(timestamp);
-        std::string json;
-        std::getline(fi, json);
-        push(idx_ts, std::move(ParseJSON<ENTRY>(json)));
-        ++count_;
+      std::string line;
+      while (std::getline(fi, line)) {
+        const size_t tab_pos = line.find('\t');
+        if (tab_pos == std::string::npos) {
+          CURRENT_THROW(MalformedEntryDuringReplayException(line));
+        }
+        IDX_TS idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
+        // Indexes must be strictly continuous.
+        if (idx_ts.index != last_idx_ts_.index + 1) {
+          CURRENT_THROW(InconsistentIndexException(last_idx_ts_.index + 1, idx_ts.index));
+        }
+        // Timestamps must monotonically increase.
+        if (idx_ts.us <= last_idx_ts_.us) {
+          CURRENT_THROW(InconsistentTimestampException(last_idx_ts_.us, idx_ts.us));
+        }
+        push(idx_ts, std::move(ParseJSON<ENTRY>(line.substr(tab_pos + 1))));
+        last_idx_ts_ = idx_ts;
       }
       appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::app);
     } else {
@@ -407,22 +457,43 @@ struct NewAppendToFilePublisherImpl {
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   IDX_TS DoPublish(const ENTRY& entry) {
-    const auto timestamp = current::time::Now();
-    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
-    ++count_;
-    return IDX_TS(count_, timestamp);
+    const IDX_TS new_idx_ts(last_idx_ts_.index + 1u, current::time::Now());
+    (*appender_) << JSON(new_idx_ts) << '\t' << JSON(entry) << std::endl;
+    last_idx_ts_ = new_idx_ts;
+    return new_idx_ts;
   }
   IDX_TS DoPublish(ENTRY&& entry) {
-    const auto timestamp = current::time::Now();
-    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << JSON(entry) << std::endl;
-    ++count_;
-    return IDX_TS(count_, timestamp);
+    const IDX_TS new_idx_ts(last_idx_ts_.index + 1u, current::time::Now());
+    (*appender_) << JSON(new_idx_ts) << '\t' << JSON(entry) << std::endl;
+    last_idx_ts_ = new_idx_ts;
+    return new_idx_ts;
+  }
+
+  void DoPublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
+    if (idx_ts.index != last_idx_ts_.index + 1u) {
+      CURRENT_THROW(InconsistentIndexException(last_idx_ts_.index + 1u, idx_ts.index));
+    }
+    if (idx_ts.us <= last_idx_ts_.us) {
+      CURRENT_THROW(InconsistentTimestampException(last_idx_ts_.us, idx_ts.us));
+    }
+    (*appender_) << JSON(idx_ts) << '\t' << JSON(entry) << std::endl;
+    last_idx_ts_ = idx_ts;
+  }
+  void DoPublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+    if (idx_ts.index != last_idx_ts_.index + 1u) {
+      CURRENT_THROW(InconsistentIndexException(last_idx_ts_.index + 1u, idx_ts.index));
+    }
+    if (idx_ts.us <= last_idx_ts_.us) {
+      CURRENT_THROW(InconsistentTimestampException(last_idx_ts_.us, idx_ts.us));
+    }
+    (*appender_) << JSON(idx_ts) << '\t' << JSON(entry) << std::endl;
+    last_idx_ts_ = idx_ts;
   }
 
  private:
   const std::string filename_;
   std::unique_ptr<std::ofstream> appender_;
-  size_t count_ = 0u;
+  IDX_TS last_idx_ts_;
 };
 
 template <typename ENTRY, class CLONER>

@@ -50,7 +50,6 @@ struct StorageRollbackExceptionWithValue : StorageException {
   T value;
 };
 
-
 struct StorageInGracefulShutdownException : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };

@@ -363,6 +363,74 @@ TEST(TransactionalStorage, Exceptions) {
   }
 }
 
+TEST(TransactionalStorage, ReplicationViaHTTP) {
+  using namespace transactional_storage_test;
+  using current::storage::TransactionMetaFields;
+  using Storage = TestStorage<SherlockStreamPersister>;
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
+
+  // Create master storage.
+  const std::string master_storage_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data1");
+  const auto master_storage_file_remover = current::FileSystem::ScopedRmFile(master_storage_file_name);
+  Storage master_storage(master_storage_file_name);
+  master_storage.ExposeRawLogViaHTTP(FLAGS_transactional_storage_test_port, "/raw_log");
+
+  // Perform a couple of transactions.
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const TransactionMetaFields meta_fields{{"user", "dima"}};
+    const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"one", 1});
+      fields.d.Add(Record{"two", 2});
+    }, meta_fields).Go();
+    EXPECT_TRUE(WasCommited(result));
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(200));
+    const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"three", 3});
+      fields.d.Erase("two");
+    }).Go();
+    EXPECT_TRUE(WasCommited(result));
+  }
+
+  // Create storage for replication.
+  const std::string replicated_storage_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data2");
+  const auto replicated_storage_file_remover = current::FileSystem::ScopedRmFile(replicated_storage_file_name);
+  Storage replicated_storage(replicated_storage_file_name);
+
+  // Replicate data via subscription to master storage raw log.
+  const auto response =
+      HTTP(GET(Printf("http://localhost:%d/raw_log?cap=1000&nowait", FLAGS_transactional_storage_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  std::istringstream body(response.body);
+  std::string line;
+  uint64_t expected_index = 0u;
+  while (std::getline(body, line)) {
+    ++expected_index;
+    const size_t tab_pos = line.find('\t');
+    ASSERT_FALSE(tab_pos == std::string::npos);
+    const IDX_TS idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
+    EXPECT_EQ(expected_index, idx_ts.index);
+    auto transaction = ParseJSON<Storage::T_TRANSACTION>(line.substr(tab_pos + 1));
+    ASSERT_NO_THROW(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
+  }
+
+  // Check that persisted files are the same.
+  EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
+            current::FileSystem::ReadFileAsString(replicated_storage_file_name));
+
+  // Test data consistency performing a transaction in the replicated storage.
+  replicated_storage.Transaction([](ImmutableFields<Storage> fields) {
+    EXPECT_EQ(2u, fields.d.Size());
+    EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+    EXPECT_EQ(3, Value(fields.d["three"]).rhs);
+    EXPECT_FALSE(Exists(fields.d["two"]));
+  }).Wait();
+}
+
 TEST(TransactionalStorage, GracefulShutdown) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;

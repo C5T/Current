@@ -43,6 +43,8 @@ template <typename... TS>
 class JSONFilePersister<TypeList<TS...>> {
  public:
   using T_VARIANT = Variant<TS...>;
+  using T_TRANSACTION = std::vector<T_VARIANT>;  // Mock to make it compile.
+
   explicit JSONFilePersister(const std::string& filename) : filename_(filename) {}
 
   void PersistJournal(MutationJournal& journal) {

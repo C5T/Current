@@ -130,6 +130,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
 TEST(StorageDocumentation, BasicUsage) {
   using namespace storage_docu;
+  using current::storage::TransactionMetaFields;
   using ExampleStorage = ExampleStorageDefinition<SherlockStreamPersister>;
 
   const std::string persistence_file_name =
@@ -142,6 +143,7 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_EQ(1u, storage.FieldsCount());
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
+    const TransactionMetaFields meta_fields {{"user", "max"}};
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
     storage.Transaction([](MutableFields<ExampleStorage> data) {
       User test1;
@@ -154,7 +156,7 @@ TEST(StorageDocumentation, BasicUsage) {
       data.users.Add(test1);
       data.users.Add(test2);
       current::time::SetNow(std::chrono::microseconds(1002ull));  // <-- This timestamp will be used.
-    }).Wait();
+    }, meta_fields).Wait();
 
     current::time::SetNow(std::chrono::microseconds(1003ull));
     storage.Transaction([](MutableFields<ExampleStorage> data) {
@@ -176,55 +178,52 @@ TEST(StorageDocumentation, BasicUsage) {
     current::strings::Split<current::strings::ByLines>(
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  using T_RECORD = std::pair<std::vector<Variant<PersistedUserUpdated, PersistedUserDeleted>>, std::chrono::microseconds>;
   ASSERT_EQ(3u, persisted_transactions.size());
-  const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, uint64_t timestamp) {
+  const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, std::chrono::microseconds timestamp) {
+    using IDX_TS = blocks::ss::IndexAndTimestamp;
     std::istringstream iss(line);
-    uint64_t persisted_index;
-    uint64_t persisted_timestamp;
-    iss >> persisted_index;
-    iss >> persisted_timestamp;
-    EXPECT_EQ(index, persisted_index);
-    EXPECT_EQ(timestamp, persisted_timestamp);
-    std::string json;
-    std::getline(iss, json);
-    return ParseJSON<T_RECORD>(json);
+    const size_t tab_pos = line.find('\t');
+    const IDX_TS persisted_idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
+    EXPECT_EQ(index, persisted_idx_ts.index);
+    EXPECT_EQ(timestamp, persisted_idx_ts.us);
+    return ParseJSON<ExampleStorage::T_TRANSACTION>(line.substr(tab_pos + 1));
   };
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[0], 1u, 1002u);
-    ASSERT_EQ(2u, t.first.size());
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 1u, std::chrono::microseconds(1002));
+    ASSERT_EQ(2u, t.mutations.size());
 
-    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
-    EXPECT_EQ("test1", Value<PersistedUserUpdated>(t.first[0]).data.name);
-    EXPECT_TRUE(Value<PersistedUserUpdated>(t.first[0]).data.straight);
+    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
+    EXPECT_EQ("test1", Value<PersistedUserUpdated>(t.mutations[0]).data.name);
+    EXPECT_TRUE(Value<PersistedUserUpdated>(t.mutations[0]).data.straight);
 
-    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[1]));
-    EXPECT_EQ("test2", Value<PersistedUserUpdated>(t.first[1]).data.name);
-    EXPECT_FALSE(Value<PersistedUserUpdated>(t.first[1]).data.straight);
+    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[1]));
+    EXPECT_EQ("test2", Value<PersistedUserUpdated>(t.mutations[1]).data.name);
+    EXPECT_FALSE(Value<PersistedUserUpdated>(t.mutations[1]).data.straight);
 
-    EXPECT_EQ(1002, static_cast<int>(t.second.count()));
+    EXPECT_EQ(1002, static_cast<int>(t.meta.timestamp.count()));
+    EXPECT_EQ("max", t.meta.fields.at("user"));
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[1], 2u, 1004u);
-    ASSERT_EQ(1u, t.first.size());
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 2u, std::chrono::microseconds(1004));
+    ASSERT_EQ(1u, t.mutations.size());
 
-    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.first[0]));
-    EXPECT_EQ("to be deleted", Value<PersistedUserUpdated>(t.first[0]).data.name);
+    ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
+    EXPECT_EQ("to be deleted", Value<PersistedUserUpdated>(t.mutations[0]).data.name);
 
-    EXPECT_EQ(1004, static_cast<int>(t.second.count()));
+    EXPECT_EQ(1004, static_cast<int>(t.meta.timestamp.count()));
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[2], 3u, 1006u);
-    ASSERT_EQ(1u, t.first.size());
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 3u, std::chrono::microseconds(1006));
+    ASSERT_EQ(1u, t.mutations.size());
 
-    ASSERT_FALSE(Exists<PersistedUserUpdated>(t.first[0]));
-    ASSERT_TRUE(Exists<PersistedUserDeleted>(t.first[0]));
-    EXPECT_EQ(3, static_cast<int>(Value<PersistedUserDeleted>(t.first[0]).key));
+    ASSERT_FALSE(Exists<PersistedUserUpdated>(t.mutations[0]));
+    ASSERT_TRUE(Exists<PersistedUserDeleted>(t.mutations[0]));
+    EXPECT_EQ(3, static_cast<int>(Value<PersistedUserDeleted>(t.mutations[0]).key));
 
-    EXPECT_EQ(1006, static_cast<int>(t.second.count()));
+    EXPECT_EQ(1006, static_cast<int>(t.meta.timestamp.count()));
   }
 
   {

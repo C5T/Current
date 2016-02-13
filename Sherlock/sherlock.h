@@ -162,6 +162,10 @@ class StreamInstanceImpl {
     return storage_->Emplace(std::forward<ARGS>(entry_params)...);
   }
 
+  // `PublishReplayed()` is used for replication.
+  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { storage_->PublishReplayed(entry, idx_ts); }
+  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) { storage_->PublishReplayed(std::move(entry), idx_ts); }
+
   // `ListenerThread` spawns the thread and runs stream listener within it.
   //
   // Listener thread can always be `std::thread::join()`-ed. When this happens, the listener itself is notified
@@ -337,9 +341,32 @@ class StreamInstanceImpl {
         storage_, std::unique_ptr<F, current::NullDeleter>(&listener));
   }
 
+  // Sherlock handler for serving stream data via HTTP.
+  // Expects "GET" request with the following possible parameters:
+  // * `recent={us}` to get entries within `us` microseconds from now;
+  // * `since={us_timestamp}` to get entries since the specified timestamp;
+  // * `n={x}` to get last `x` entries;
+  // * `n_min={min}` to get at least `min` entries;
+  // * `cap={max}` to get at most `max` entries;
+  // * `nowait` to stop serving when the last entry in the stream reached;
+  // * `sizeonly` to get the current number of entries in the stream instead of its content.
+  // See `pubsub.h` for details.
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
-    AsyncSubscribeImpl(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+    if (r.method == "GET") {  // The only valid method is "GET".
+      const size_t count = storage_->Size();
+      if (r.url.query.has("sizeonly")) {
+        // Return the number of entries in the stream.
+        r(ToString(count), HTTPResponseCode.OK);
+      } else if (count == 0u && r.url.query.has("nowait")) {
+        // Return "200 OK" if stream is empty and we asked not to wait for new entries.
+        r("", HTTPResponseCode.OK);
+      } else {
+        AsyncSubscribeImpl(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+      }
+    } else {
+      r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
+    }
   }
 
  private:
@@ -382,6 +409,9 @@ struct StreamInstance {
   IDX_TS Emplace(ARGS&&... entry_params) {
     return impl_->Emplace(std::forward<ARGS>(entry_params)...);
   }
+
+  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { impl_->PublishReplayed(entry, idx_ts); }
+  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) { impl_->PublishReplayed(std::move(entry), idx_ts); }
 
   template <typename F>
   using SyncListenerScope =

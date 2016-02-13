@@ -67,6 +67,9 @@ class PubSubHTTPEndpoint final {
     if (http_request_.url.query.has("cap")) {
       current::strings::FromString(http_request_.url.query["cap"], cap_);
     }
+    if (http_request_.url.query.has("nowait")) {
+      no_wait_ = true;
+    }
   }
 
   // The implementation of the listener in `PubSubHTTPEndpoint` is an example of using:
@@ -88,13 +91,15 @@ class PubSubHTTPEndpoint final {
         }
       }
       if (serving_) {
-        http_response_(ToString(current.index) + '\t' + ToString(current.us.count()) + '\t' + JSON<J>(entry) +
-                       '\n');  // TODO(dkorolev): "\r\n" ?
+        http_response_(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
         if (cap_) {
           --cap_;
           if (!cap_) {
             return false;
           }
+        }
+        if (current.index == last.index && no_wait_) {
+          return false;
         }
       }
       return true;
@@ -123,6 +128,8 @@ class PubSubHTTPEndpoint final {
   size_t cap_ = 0;
   // If set, the timestamp from which the output should start.
   std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);
+  // If set, stop serving when current entry is the last entry.
+  bool no_wait_ = false;
 
   PubSubHTTPEndpoint() = delete;
   PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
