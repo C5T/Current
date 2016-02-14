@@ -283,10 +283,9 @@ int main() {
   HTTP(port).ServeStaticFilesFrom(dir, "/static/");
 
   // Need a dedicated handler for '/'.
-  HTTP(port).Register("/",
-                      new blocks::StaticFileServer(current::FileSystem::ReadFileAsString(
-                                                       current::FileSystem::JoinPath(dir, "index.html")),
-                                                   "text/html"));
+  auto dir_server = blocks::StaticFileServer(
+      current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, "index.html")), "text/html");
+  HTTP(port).Register("/", dir_server);
 
   HTTP(port).Join();
 }

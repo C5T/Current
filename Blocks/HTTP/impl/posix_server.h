@@ -137,13 +137,23 @@ class HTTPServerPOSIX final {
   using HTTPRoutesScopeEntry = current::AccumulativeScopedDeleter<ScopedRegistererDifferentiator, false>;
 
   // The philosophy of Register(path, handler):
-  // * Pass `handler` by value to make its copy.
-  //   This is done for lambdas and std::function<>-s.
-  //   The lifetime of a copy is thus governed by the API.
-  // * Pass `handler` by pointer to use the handler via pointer.
-  //   This allows using passed in objects without making a copy of them.
-  //   The lifetime of the object is then up to the user.
-  // Justification: `Register("/foo", FooInstance())` has no way of knowing how long should `FooInstance` live.
+  //
+  // 1) Always accept `handler` by reference. Require the reference to be non-const.
+  //    (To avoid accidentally passing in a temporary, etc. Register("/foo", Foo())`.
+  // 2) Unless the passed in handler can be cast to an `std::function<void(Request)>`,
+  //    in which case it is copied. (To make sure passing in lambdas just works).
+  //
+  // NOTE: The implementation of the above logic requires two separate signatures.
+  //       An xvalue reference won't do it. Trust me, I've tried, and it results in horrible bugs. -- D.K.
+  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
+  HTTPRoutesScopeEntry Register(const std::string& path,
+                                const URLPathArgs::CountMask path_args_count_mask,
+                                F& handler) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return DoRegisterHandler(
+        path, [&handler](Request r) { handler(std::move(r)); }, path_args_count_mask, POLICY);
+  }
+
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
   HTTPRoutesScopeEntry Register(const std::string& path,
                                 const URLPathArgs::CountMask path_args_count_mask,
@@ -153,31 +163,16 @@ class HTTPServerPOSIX final {
   }
 
   // Two argument version registers handler with no URL path arguments.
+  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
+  HTTPRoutesScopeEntry Register(const std::string& path, F& handler) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return DoRegisterHandler(
+        path, [&handler](Request r) { handler(std::move(r)); }, URLPathArgs::CountMask::None, POLICY);
+  }
   template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt>
   HTTPRoutesScopeEntry Register(const std::string& path, std::function<void(Request)> handler) {
     std::lock_guard<std::mutex> lock(mutex_);
     return DoRegisterHandler(path, handler, URLPathArgs::CountMask::None, POLICY);
-  }
-
-  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
-  HTTPRoutesScopeEntry Register(const std::string& path,
-                                const URLPathArgs::CountMask path_args_count_mask,
-                                F* ptr_to_handler) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return DoRegisterHandler(path,
-                             [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
-                             path_args_count_mask,
-                             POLICY);
-  }
-
-  // Two argument version registers handler with no URL path arguments.
-  template <ReRegisterRoute POLICY = ReRegisterRoute::ThrowOnAttempt, typename F>
-  HTTPRoutesScopeEntry Register(const std::string& path, F* ptr_to_handler) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return DoRegisterHandler(path,
-                             [ptr_to_handler](Request request) { (*ptr_to_handler)(std::move(request)); },
-                             URLPathArgs::CountMask::None,
-                             POLICY);
   }
 
   void UnRegister(const std::string& path,
@@ -213,10 +208,10 @@ class HTTPServerPOSIX final {
           if (!content_type.empty()) {
             // TODO(dkorolev): Wrap keeping file contents into a singleton
             // that keeps a map from a (SHA256) hash to the contents.
-            Register(route_prefix + file,
-                     new StaticFileServer(
-                         current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)),
-                         content_type));
+            auto static_file_server = std::make_unique<StaticFileServer>(
+                current::FileSystem::ReadFileAsString(current::FileSystem::JoinPath(dir, file)), content_type);
+            Register(route_prefix + file, *static_file_server);
+            static_file_servers_.push_back(std::move(static_file_server));
           } else {
             CURRENT_THROW(current::net::CannotServeStaticFilesOfUnknownMIMEType(file));
           }
@@ -343,8 +338,6 @@ class HTTPServerPOSIX final {
                                          std::function<void(Request)> handler,
                                          const URLPathArgs::CountMask path_args_count_mask,
                                          const ReRegisterRoute policy) {
-    assert(handler);
-
     // TODO(dkorolev): Type.
     if (static_cast<uint16_t>(path_args_count_mask) == 0) {
       return HTTPRoutesScopeEntry();
@@ -411,6 +404,7 @@ class HTTPServerPOSIX final {
   mutable std::mutex mutex_;
 
   std::map<std::string, std::map<size_t, std::function<void(Request)>>> handlers_;
+  std::vector<std::unique_ptr<StaticFileServer>> static_file_servers_;
 };
 
 }  // namespace blocks
