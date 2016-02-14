@@ -113,7 +113,7 @@ struct APIWrapper : APICalls<PERSISTENCE, CLONER, YodaTypes<PERSISTENCE, CLONER,
         replay_done_(false),
         replay_done_unique_lock_(replay_done_mutex_),
         stream_listener_(mq_, &replay_done_, &replay_done_cv_),
-        sherlock_listener_scope_(stream_.SyncSubscribe(stream_listener_)) {
+        sherlock_listener_scope_(std::move(stream_.SyncSubscribe(stream_listener_))) {
     // Wait in the constructor of Yoda until all the past entries have been replayed.
     // TODO(dkorolev): Sync up with Max on whether this wait is best to put into pushing
     // user-initiated transactions instead?
