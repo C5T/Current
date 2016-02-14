@@ -31,6 +31,7 @@ SOFTWARE.
 
 #include "../TypeSystem/timestamp.h"
 
+#include "../Blocks/SS/ss.h"
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/time/chrono.h"
 

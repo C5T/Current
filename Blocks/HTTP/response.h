@@ -36,15 +36,14 @@ SOFTWARE.
 #include "../../Bricks/net/exceptions.h"
 #include "../../Bricks/net/http/http.h"
 #include "../../Bricks/strings/is_string_type.h"
-#include "../../Bricks/cerealize/cerealize.h"
 
 namespace blocks {
 
-template <bool IS_STRING, bool IS_CURRENT_STRUCT>
+template <bool IS_STRING>
 struct StringBodyGenerator;
 
 template <>
-struct StringBodyGenerator<true, false> {
+struct StringBodyGenerator<true> {
   template <typename T>
   static std::string AsString(T&& object) {
     return object;
@@ -53,7 +52,7 @@ struct StringBodyGenerator<true, false> {
 };
 
 template <>
-struct StringBodyGenerator<false, true> {
+struct StringBodyGenerator<false> {
   template <typename T>
   static std::string AsString(T&& object) {
     return current::JSON(std::forward<T>(object)) + '\n';
@@ -61,21 +60,6 @@ struct StringBodyGenerator<false, true> {
   template <typename T>
   static std::string AsString(T&& object, const std::string& object_name) {
     return "{\"" + object_name + "\":" + current::JSON(std::forward<T>(object)) + "}\n";
-  }
-  static std::string DefaultContentType() {
-    return current::net::HTTPServerConnection::DefaultJSONContentType();
-  }
-};
-
-template <>
-struct StringBodyGenerator<false, false> {
-  template <typename T>
-  static std::string AsString(T&& object) {
-    return CerealizeJSON(std::forward<T>(object)) + '\n';
-  }
-  template <typename T>
-  static std::string AsString(T&& object, const std::string& object_name) {
-    return CerealizeJSON(std::forward<T>(object), object_name) + '\n';
   }
   static std::string DefaultContentType() {
     return current::net::HTTPServerConnection::DefaultJSONContentType();
@@ -135,7 +119,7 @@ struct Response {
 
   template <typename T>
   void Construct(T&& object, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -145,7 +129,7 @@ struct Response {
   void Construct(T&& object,
                  const std::string& object_name,
                  current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -155,7 +139,7 @@ struct Response {
   void Construct(T&& object,
                  current::net::HTTPResponseCodeValue code,
                  const current::net::HTTPHeadersType& extra_headers) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -167,7 +151,7 @@ struct Response {
                  const std::string& object_name,
                  current::net::HTTPResponseCodeValue code,
                  const current::net::HTTPHeadersType& extra_headers) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -179,7 +163,7 @@ struct Response {
                  current::net::HTTPResponseCodeValue code,
                  const std::string& content_type,
                  const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = content_type;
@@ -192,7 +176,7 @@ struct Response {
                  current::net::HTTPResponseCodeValue code,
                  const std::string& content_type,
                  const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value, IS_CURRENT_STRUCT(T)>;
+    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = content_type;
@@ -201,22 +185,6 @@ struct Response {
 
   Response& Body(const std::string& s) {
     body = s;
-    initialized = true;
-    return *this;
-  }
-
-  template <typename T>
-  Response& CerealizableJSON(const T& object) {
-    body = CerealizeJSON(object) + '\n';
-    content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
-    initialized = true;
-    return *this;
-  }
-
-  template <typename T>
-  Response& CerealizableJSON(const T& object, const std::string& object_name) {
-    body = CerealizeJSON(object, object_name) + '\n';
-    content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
     initialized = true;
     return *this;
   }

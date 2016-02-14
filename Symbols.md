@@ -74,8 +74,6 @@ MicroTimestampOf(x), SetMicroTimestamp(x, ts)
 
 JSON(x), ParseJSON<T>(s)
 
-CerealizeJSON(x), CerealizeParseJSON<T>(s)  // To be deprecated.
-
 HTTP(...)
 
 RTTIDynamicCall(...)

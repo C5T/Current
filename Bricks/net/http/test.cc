@@ -33,7 +33,6 @@ SOFTWARE.
 #include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 #include "../../strings/printf.h"
-#include "../../cerealize/cerealize.h"
 
 DEFINE_int32(net_http_test_port, PickPortForUnitTest(), "Local port to use for the test HTTP server.");
 

@@ -38,10 +38,6 @@ SOFTWARE.
 
 #include "../Bricks/strings/strings.h"
 
-#if 0
-#include "../Bricks/cerealize/cerealize.h"
-#endif
-
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/dflags/dflags.h"
 

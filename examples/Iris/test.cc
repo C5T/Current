@@ -107,9 +107,8 @@ TEST(Iris, Demo) {
   HTTP(FLAGS_iris_port).Register("/stream", db);
 
   // The very first flower.
-  const auto result1 = CerealizeParseJSON<std::unique_ptr<Padawan>>(
+  const auto flower1 = ParseJSON<LabeledFlower>(
       HTTP(GET(Printf("http://localhost:%d/stream?cap=1", FLAGS_iris_port))).body);
-  const LabeledFlower& flower1 = *static_cast<const LabeledFlower*>(result1.get());
   EXPECT_DOUBLE_EQ(5.1, flower1.SL);
   EXPECT_DOUBLE_EQ(3.5, flower1.SW);
   EXPECT_DOUBLE_EQ(1.4, flower1.PL);
@@ -117,9 +116,8 @@ TEST(Iris, Demo) {
   EXPECT_EQ("setosa", flower1.label);
 
   // The very last flower.
-  const auto result2 = CerealizeParseJSON<std::unique_ptr<Padawan>>(
+  const auto flower2 = ParseJSON<LabeledFlower>(
       HTTP(GET(Printf("http://localhost:%d/stream?n=1", FLAGS_iris_port))).body);
-  const LabeledFlower& flower2 = *static_cast<const LabeledFlower*>(result2.get());
   EXPECT_DOUBLE_EQ(5.9, flower2.SL);
   EXPECT_DOUBLE_EQ(3.0, flower2.SW);
   EXPECT_DOUBLE_EQ(5.1, flower2.PL);

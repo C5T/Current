@@ -102,35 +102,27 @@ y:0.183947}
 #include "api.h"
 
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Bricks/cerealize/cerealize.h"
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/time/chrono.h"
 
 using namespace blocks;
-using namespace current::cerealize;
 using current::time::Now;
 using current::strings::Printf;
 using current::net::HTTPHeaders;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
-struct LayoutCell {
-  std::string meta_url = "/meta";
-
-  // Define only output serialization (`JSON.stringify()`), forbid input serialization (`JSON.parse()`).
-  template <typename A>
-  void save(A& ar) const {
-    ar(CEREAL_NVP(meta_url));
-  }
+CURRENT_STRUCT(LayoutCell) {
+  CURRENT_FIELD(meta_url, std::string, "/meta");
 };
-static_assert(is_write_cerealizable<LayoutCell>::value, "");
-static_assert(!is_read_cerealizable<LayoutCell>::value, "");
 
-struct LayoutItem {
-  std::vector<LayoutItem> row;
-  std::vector<LayoutItem> col;
-  LayoutCell cell;
+CURRENT_STRUCT(LayoutItem) {
+  // TODO(dkorolev): Revisit this. Need a `Variant<>`.
+  CURRENT_FIELD(row, std::vector<LayoutItem>);
+  CURRENT_FIELD(col, std::vector<LayoutItem>);
+  CURRENT_FIELD(cell, LayoutCell);
 
+#if 0
   // Define only output serialization (`JSON.stringify()`), forbid input serialization (`JSON.parse()`).
   template <typename A>
   void save(A& ar) const {
@@ -142,34 +134,21 @@ struct LayoutItem {
       ar(CEREAL_NVP(cell));
     }
   }
+#endif
 };
 
-static_assert(is_write_cerealizable<LayoutItem>::value, "");
-static_assert(!is_read_cerealizable<LayoutItem>::value, "");
+CURRENT_STRUCT(ExampleMetaOptions) {
+  CURRENT_FIELD(header_text, std::string, "Header Text");
+  CURRENT_FIELD(color, std::string, "blue");
+  CURRENT_FIELD(min, double, 0.0);
+  CURRENT_FIELD(max, double, 1.0);
+  CURRENT_FIELD(time_interval, double, 10000);
+};
 
-struct ExampleMeta {
-  struct Options {
-    std::string header_text = "Header Text";
-    std::string color = "blue";
-    double min = 0;
-    double max = 1;
-    double time_interval = 10000;
-    template <typename A>
-    void serialize(A& ar) {
-      ar(CEREAL_NVP(header_text),
-         CEREAL_NVP(color),
-         CEREAL_NVP(min),
-         CEREAL_NVP(max),
-         CEREAL_NVP(time_interval));
-    }
-  };
-  std::string data_url = "/data";
-  std::string visualizer_name = "plot-visualizer";
-  Options visualizer_options;
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(data_url), CEREAL_NVP(visualizer_name), CEREAL_NVP(visualizer_options));
-  }
+CURRENT_STRUCT(ExampleMeta) {
+  CURRENT_FIELD(data_url, std::string, "/data");
+  CURRENT_FIELD(visualizer_name, std::string, "plot-visualizer");
+  CURRENT_FIELD(visualizer_options, ExampleMetaOptions);
 };
 
 // TODO(dkorolev): Finish multithreading. Need to notify active connections and wait for them to finish.

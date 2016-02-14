@@ -82,7 +82,7 @@ HTTP(port).ResetAllHandlers();
       } else {
         r(PennyOutput{"Unknown operation: " + input.op, 0});
       }
-    } catch (const Exception& e) {
+    } catch (const current::Exception& e) {
       // TODO(dkorolev): Catch the right exception type.
       r(PennyOutput{e.what(), 0});
     }

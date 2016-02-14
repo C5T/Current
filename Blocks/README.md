@@ -14,6 +14,7 @@ EXPECT_EQ("OK", response.body);
 EXPECT_TRUE(response.code == HTTPResponseCode.OK);
 ```
 ```cpp
+CURRENT_FIELD(s, std::string);
 // POST is supported as well.
 EXPECT_EQ("OK", HTTP(POST("http://test.tailproduce.org/ok"), "BODY", "text/plain").body);
 
@@ -88,7 +89,7 @@ HTTP(port).Register("/penny", [](Request r) {
     } else {
       r(PennyOutput{"Unknown operation: " + input.op, 0});
     }
-  } catch (const Exception& e) {
+  } catch (const current::Exception& e) {
     // TODO(dkorolev): Catch the right exception type.
     r(PennyOutput{e.what(), 0});
   }

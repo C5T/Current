@@ -327,23 +327,6 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
 
-  // Special case of publishing `const DERIVED_ENTRY&` or `const std::unique_ptr<DERIVED_ENTRY>&` into a stream
-  // of `std::unique_ptr<ENTRY>`, where `ENTRY` is the base class for `DERIVED_ENTRY`.
-  template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value,
-                          IndexAndTimestamp>::type
-  Publish(const DERIVED_ENTRY& e) {
-    return IMPL::DoPublishDerived(e);
-  }
-
-  template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value,
-                          IndexAndTimestamp>::type
-  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
-    assert(e);
-    return IMPL::DoPublishDerived(*e.get());
-  }
-
   // Special type of publishing required for replication.
   // Functions below return `false` if the `IndexAndTimestamp` argument provided is inconsistent with the
   // current state of the stream. No publish is performed in this case.

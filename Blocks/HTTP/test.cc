@@ -46,7 +46,6 @@ SOFTWARE.
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/file/file.h"
-#include "../../Bricks/cerealize/json.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -512,61 +511,6 @@ CURRENT_STRUCT(SerializableObject) {
   std::string AsString() const { return Printf("%d:%s", x, s.c_str()); }
 };
 
-struct NamedSerializableObject {
-  int y = 100;
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(y));
-  }
-  static const char* JSONEntryName() { return "custom_name"; }
-};
-
-TEST(HTTPAPI, PostCerealizableObject) {
-  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port)
-      .Register("/post",
-                [](Request r) {
-                  ASSERT_FALSE(r.body.empty());
-                  r("Data: " + r.body);
-                });
-  EXPECT_EQ("Data: {\"x\":42,\"s\":\"foo\"}",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
-
-  EXPECT_EQ(
-      "Data: {\"custom_name\":{\"y\":100}}",
-      HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), NamedSerializableObject())).body);
-}
-
-TEST(HTTPAPI, PostCerealizableObjectAndParseJSON) {
-  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port)
-      .Register("/post",
-                [](Request r) {
-                  ASSERT_FALSE(r.body.empty());
-                  r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
-                });
-  EXPECT_EQ("Data: 42:foo",
-            HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), SerializableObject())).body);
-}
-
-TEST(HTTPAPI, PostCerealizableObjectAndFailToParseJSON) {
-  EXPECT_EQ("<h1>INTERNAL SERVER ERROR</h1>\n", DefaultInternalServerErrorMessage());
-  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port)
-      .Register("/post",
-                [](Request r) {
-                  ASSERT_FALSE(r.body.empty());
-                  try {
-                    r("Data: " + ParseJSON<SerializableObject>(r.body).AsString());
-                  } catch (const current::Exception&) {
-                    // Do nothing. "INTERNAL SERVER ERROR" should get returned by the framework.
-                  }
-                });
-  EXPECT_EQ(
-      DefaultInternalServerErrorMessage(),
-      HTTP(POST(Printf("http://localhost:%d/post", FLAGS_net_api_test_port), "fffuuuuu", "text/plain")).body);
-}
-
 #ifndef CURRENT_APPLE
 // Disabled for Apple - native code doesn't throw exceptions -- M.Z.
 TEST(HTTPAPI, PostFromInvalidFile) {
@@ -638,21 +582,6 @@ TEST(HTTPAPI, PostFromFileToFile) {
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("Phew: Aloha, this text should pass from one file to another. Mahalo!",
             FileSystem::ReadFileAsString(response.body_file_name));
-}
-
-TEST(HTTPAPI, PutCerealizableObject) {
-  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
-  HTTP(FLAGS_net_api_test_port)
-      .Register("/put",
-                [](Request r) {
-                  EXPECT_EQ("PUT", r.method);
-                  ASSERT_FALSE(r.body.empty());
-                  r(r.body, HTTPResponseCode.Created);
-                });
-  const auto response =
-      HTTP(PUT(Printf("http://localhost:%d/put", FLAGS_net_api_test_port), SerializableObject()));
-  EXPECT_EQ("{\"x\":42,\"s\":\"foo\"}", response.body);
-  EXPECT_EQ(201, static_cast<int>(response.code));
 }
 
 TEST(HTTPAPI, DeleteObject) {
@@ -833,7 +762,6 @@ TEST(HTTPAPI, ResponseSmokeTest) {
     Response response;
     response = "foo";
     response = SerializableObject();
-    response = NamedSerializableObject();
     static_cast<void>(response);
   }
 }

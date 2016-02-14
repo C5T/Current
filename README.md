@@ -8,9 +8,6 @@ The language to define continuous data pipelines.
 #### [Sherlock](https://github.com/C5T/Current/blob/master/Sherlock/README.md)
 Structured, append-only, immutable data persistence layer with publish-subscribe.
 
-#### [Yoda](https://github.com/C5T/Current/blob/master/Yoda/README.md)
-Storage layer with super easy to use in-memory data views and Sherlock-based persistence.
-
 #### [FnCAS](https://github.com/C5T/Current/blob/master/FnCAS/README.md)
 An efficient convex optimization engine.
 
@@ -26,4 +23,5 @@ HTTP server and client, efficient in-memory message queue, persistence layer, st
 #### [Bricks](https://github.com/C5T/Current/blob/master/Bricks/README.md)
 JSON and binary serialization, string manipulation library, command line flags library, and other core pieces.
 
-
+#### Storage
+Storage layer with super easy to use in-memory data views and Sherlock-based persistence.

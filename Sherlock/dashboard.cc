@@ -27,7 +27,6 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/cerealize/cerealize.h"
 #include "../Bricks/dflags/dflags.h"
 
 DEFINE_int32(port, 8191, "Local port to use.");

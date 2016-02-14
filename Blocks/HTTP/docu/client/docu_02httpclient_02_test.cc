@@ -25,8 +25,6 @@ SOFTWARE.
 #ifndef BLOCKS_HTTP_DOCU_CLIENT_02_TEST_CC
 #define BLOCKS_HTTP_DOCU_CLIENT_02_TEST_CC
 
-#include "../../../../Bricks/cerealize/docu/docu_01cerealize_01_test.cc"  // SimpleType.
-
 #include "../../api.h"
 #include "../../../../Bricks/strings/printf.h"
 #include "../../../../Bricks/dflags/dflags.h"
@@ -36,7 +34,9 @@ DEFINE_int32(docu_net_client_port_02, PickPortForUnitTest(), "");
 
 using current::strings::Printf;
 
-using docu::SimpleType;
+CURRENT_STRUCT(SimpleType) {
+  CURRENT_FIELD(s, std::string);
+};
 
 TEST(Docu, HTTPClient02) {
 HTTP(FLAGS_docu_net_client_port_02).ResetAllHandlers();

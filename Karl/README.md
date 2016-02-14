@@ -72,13 +72,8 @@ Complex structures should be made serializable, and wrapped into `WaitableAtomic
 
 ```cpp
 // Expose a user-defined structure to monitor.
-struct ComplexStats {
-  std::string foo;
-  // ... more fields ...
-  template <typename A>
-  void save(A& ar) const {
-    ar(CEREAL_NVP(foo) /* ... more fields */ );
-  }
+CURRENT_STRUCT(ComplexStats) {
+  CURRENT_FIELD(foo, std::string);
 };
 
 WaitableAtomic<ComplexStats> complex_stats;
@@ -256,7 +251,7 @@ Alerts are defined and configured in a C++ file. No bare strings are used; each 
 
 A running Karl exposes a dashboard. Karl is also Claire: it is safe to run under `cron`, and it is friendly with continuous integration.
 
-Everything is stored in Yoda, with a REST-ful browsing API for viewing current configuration, scrapes, their results, alerts, pages, and mutes. Mutes can be set, prolonged/shrinked, and unset via this API.
+Everything is stored in Current Storage, with a REST-ful browsing API for viewing current configuration, scrapes, their results, alerts, pages, and mutes. Mutes can be set, prolonged/shrinked, and unset via this API.
 
 `TODO(dkorolev): Discuss aggregation master-plan with Max.`
 
