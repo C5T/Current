@@ -340,14 +340,14 @@ class StreamImpl {
 
   // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
 
-  // Asynchonous subscription: `listener` is a heap-allocated object, the ownership of which
+  // Asynchronous subscription: `listener` is a heap-allocated object, the ownership of which
   // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
   template <typename F>
   AsyncListenerScope<F> AsyncSubscribe(F&& listener) {
     return std::move(AsyncListenerScope<F>(storage_, std::forward<F>(listener)));
   }
 
-  // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
+  // Synchronous subscription: `listener` is a stack-allocated object, and thus the listening thread
   // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
   // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
