@@ -417,7 +417,7 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
   WaitableTerminateSignal signal;
   size_t counter = 0u;
   std::mutex mutex;
-  bool result;
+  bool result = false;
   std::thread thread([&signal, &counter, &mutex, &result]() {
     std::unique_lock<std::mutex> lock(mutex);
     result = signal.WaitUntil(lock,
