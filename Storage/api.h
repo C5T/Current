@@ -42,6 +42,24 @@ namespace current {
 namespace storage {
 namespace rest {
 
+// The means to exclude certain fields from being exposed via REST.
+template <typename STORAGE_IMPL, typename PARTICULAR_FIELD>
+struct FieldExposedViaREST {
+  constexpr static bool exposed = true;
+};
+
+#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(storage_impl, field) \
+  namespace current {                                                \
+  namespace storage {                                                \
+  namespace rest {                                                   \
+  template <>                                                        \
+  struct FieldExposedViaREST<storage_impl, field> {                  \
+    constexpr static bool exposed = false;                           \
+  };                                                                 \
+  }                                                                  \
+  }                                                                  \
+  }
+
 namespace impl {
 
 using STORAGE_HANDLERS_MAP = std::map<std::string, std::function<void(Request)>>;
@@ -58,6 +76,10 @@ struct RESTfulHandlerGenerator {
   using T_SPECIFIC_FIELD_EXTRACTOR =
       decltype(std::declval<STORAGE>()(::current::storage::FieldTypeExtractor<INDEX>()));
   using T_SPECIFIC_FIELD = typename T_SPECIFIC_FIELD_EXTRACTOR::T_PARTICULAR_FIELD;
+
+  using T_SPECIFIC_ENTRY_TYPE_EXTRACTOR =
+      decltype(std::declval<STORAGE>()(::current::storage::FieldEntryTypeExtractor<INDEX>()));
+  using T_SPECIFIC_ENTRY_TYPE = typename T_SPECIFIC_ENTRY_TYPE_EXTRACTOR::T_PARTICULAR_FIELD;
 
   template <class VERB, typename T1, typename T2, typename T3, typename T4>
   using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
@@ -288,10 +310,12 @@ class RESTfulStorage {
                            const std::string& restful_url_prefix,
                            impl::STORAGE_HANDLERS_MAP& handlers) {
       ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, handlers);
-      using T_SPECIFIC_FIELD = impl::RESTfulHandlerGenerator<T_REST_IMPL, I - 1, T_STORAGE_IMPL>::T_SPECIFIC_FIELD;
-      CallIf<FieldParticipatesInRESTFulAPI<T_SPECIFIC_FIELD>::participates>::With([&] {
+      using T_SPECIFIC_ENTRY_TYPE =
+          typename impl::RESTfulHandlerGenerator<T_REST_IMPL, I - 1, T_STORAGE_IMPL>::T_SPECIFIC_ENTRY_TYPE;
+      current::metaprogramming::CallIf<
+          FieldExposedViaREST<T_STORAGE_IMPL, T_SPECIFIC_ENTRY_TYPE>::exposed>::With([&] {
         handlers.insert(
-          impl::GenerateRESTfulHandler<T_REST_IMPL, I - 1, T_STORAGE_IMPL>(storage, restful_url_prefix));
+            impl::GenerateRESTfulHandler<T_REST_IMPL, I - 1, T_STORAGE_IMPL>(storage, restful_url_prefix));
       });
     }
   };
@@ -305,6 +329,7 @@ class RESTfulStorage {
     r("{\"error\":\"In graceful shutdown mode. Come back soon.\"}\n", HTTPResponseCode.ServiceUnavailable);
   }
 };
+
 }  // namespace rest
 }  // namespace storage
 }  // namespace current

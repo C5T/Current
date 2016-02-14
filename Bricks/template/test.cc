@@ -23,6 +23,7 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "variadic_indexes.h"
+#include "call_if.h"
 
 // The internal test uses `std::tuple<>`, and not a single `TypeList`.
 // The one that goes into the documentation uses `TypeList<>`, and not a single `std::tuple<>`.
@@ -156,3 +157,19 @@ TEST(TemplateMetaprogrammingInternalTest, OddIndexes) {
   static_assert(std::is_same<TypeList<A, C>, EvensOnly<TypeList<A, B, C, D>>>::value, "");
   static_assert(std::is_same<TypeList<A, C, E>, EvensOnly<TypeList<A, B, C, D, E>>>::value, "");
 };
+
+TEST(TemplateMetaprogrammingInternalTest, CallIf) {
+  using current::metaprogramming::CallIf;
+
+  int i = 0;
+  const auto lambda = [&i]() { ++i; };
+
+  CallIf<false>::With(lambda);
+  EXPECT_EQ(0, i);
+  CallIf<true>::With(lambda);
+  EXPECT_EQ(1, i);
+  CallIf<false>::With(lambda);
+  EXPECT_EQ(1, i);
+  CallIf<true>::With(lambda);
+  EXPECT_EQ(2, i);
+}

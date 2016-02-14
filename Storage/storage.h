@@ -69,52 +69,27 @@ SOFTWARE.
 namespace current {
 namespace storage {
 
-// `CURRENT_STORAGE_FIELD_ENTRY`:
-// 1) Creates a dedicated C++ type to allow compile-time disambiguation of storages of same underlying types.
-// 2) Splits the type into `T_PERSISTED_EVENT_1` and `T_PERSISTED_EVENT_2` to enable persisting deletions too.
-
-// clang-format off
-#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM(feature, entry_name)                                           \
-  template<> struct current::storage::FieldParticipatesIn##feature<entry_name::T_FIELD_TYPE<              \
-                                                                   entry_name::T_ENTRY,                   \
-                                                                   entry_name::T_PERSISTED_EVENT_1,       \
-                                                                   entry_name::T_PERSISTED_EVENT_2 >> {   \
-    static constexpr bool participates = false;                                                           \
-  }
-
-#define CURRENT_STORAGE_DEFINE_FEATURE(feature) \
-  template <typename T>                         \
-  struct FieldParticipatesIn##feature {         \
-    static constexpr bool participates = true;  \
-  }
-
-// defined here because Storage/api.h doesn't need to be included at the point where the EXCLUDE_FROM is used
-CURRENT_STORAGE_DEFINE_FEATURE(RESTfulAPI);
-
-#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_RESTFUL_API(entry_name)   \
-			CURRENT_STORAGE_FIELD_EXCLUDE_FROM(RESTfulAPI, entry_name)
-
-#define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name)                \
-  CURRENT_STRUCT(entry_name##Updated) {                                                                     \
-    CURRENT_FIELD(data, entry_type);                                                                        \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                                     \
-    CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {}                      \
-  };                                                                                                        \
-  CURRENT_STRUCT(entry_name##Deleted) {                                                                     \
-    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>);                             \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                                     \
-    CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                                       \
-        : key(::current::storage::sfinae::GetKey(value)) {}                                                 \
-  };                                                                                                        \
-  struct entry_name {                                                                                       \
-    template <typename T, typename E1, typename E2>                                                         \
-    using T_FIELD_TYPE = dictionary_type<T, E1, E2>;                                                        \
-    using T_ENTRY = entry_type;                                                                             \
-    using T_KEY = ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>;                                   \
-    using T_UPDATE_EVENT = entry_name##Updated;                                                             \
-    using T_DELETE_EVENT = entry_name##Deleted;                                                             \
-    using T_PERSISTED_EVENT_1 = entry_name##Updated;                                                        \
-    using T_PERSISTED_EVENT_2 = entry_name##Deleted;                                                        \
+#define CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(dictionary_type, entry_type, entry_name) \
+  CURRENT_STRUCT(entry_name##Updated) {                                                      \
+    CURRENT_FIELD(data, entry_type);                                                         \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                      \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {}       \
+  };                                                                                         \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                      \
+    CURRENT_FIELD(key, ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>);              \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                      \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                        \
+        : key(::current::storage::sfinae::GetKey(value)) {}                                  \
+  };                                                                                         \
+  struct entry_name {                                                                        \
+    template <typename T, typename E1, typename E2>                                          \
+    using T_FIELD_TYPE = dictionary_type<T, E1, E2>;                                         \
+    using T_ENTRY = entry_type;                                                              \
+    using T_KEY = ::current::storage::sfinae::ENTRY_KEY_TYPE<entry_type>;                    \
+    using T_UPDATE_EVENT = entry_name##Updated;                                              \
+    using T_DELETE_EVENT = entry_name##Deleted;                                              \
+    using T_PERSISTED_EVENT_1 = entry_name##Updated;                                         \
+    using T_PERSISTED_EVENT_2 = entry_name##Deleted;                                         \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedDictionary(entry_type, entry_name) \
@@ -129,7 +104,7 @@ CURRENT_STORAGE_DEFINE_FEATURE(RESTfulAPI);
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##PushedElement) {}                                \
     CURRENT_CONSTRUCTOR(entry_name##PushedElement)(const entry_type& value) : data(value) {} \
   };                                                                                         \
-  CURRENT_STRUCT(entry_name##PoppedElement) {};                                              \
+  CURRENT_STRUCT(entry_name##PoppedElement){};                                               \
   struct entry_name {                                                                        \
     template <typename... TS>                                                                \
     using T_FIELD_TYPE = Vector<TS...>;                                                      \
@@ -233,6 +208,7 @@ CURRENT_STORAGE_DEFINE_FEATURE(RESTfulAPI);
   using T_FIELD_CONTAINER_TYPE_##field_name = entry_name::T_FIELD_TYPE<entry_name::T_ENTRY,                   \
                                                                        entry_name::T_PERSISTED_EVENT_1,       \
                                                                        entry_name::T_PERSISTED_EVENT_2>;      \
+  using T_ENTRY_TYPE_##field_name = entry_name;                                                               \
   using T_FIELD_TYPE_##field_name =                                                                           \
       ::current::storage::Field<INSTANTIATION_TYPE, T_FIELD_CONTAINER_TYPE_##field_name>;                     \
   constexpr static size_t FIELD_INDEX_##field_name =                                                          \
@@ -278,6 +254,10 @@ CURRENT_STORAGE_DEFINE_FEATURE(RESTfulAPI);
   ::current::storage::StorageExtractedFieldType<T_FIELD_CONTAINER_TYPE_##field_name> operator()(              \
       ::current::storage::FieldTypeExtractor<FIELD_INDEX_##field_name>) const {                               \
     return ::current::storage::StorageExtractedFieldType<T_FIELD_CONTAINER_TYPE_##field_name>();              \
+  }                                                                                                           \
+  ::current::storage::StorageExtractedFieldType<T_ENTRY_TYPE_##field_name> operator()(                        \
+      ::current::storage::FieldEntryTypeExtractor<FIELD_INDEX_##field_name>) const {                          \
+    return ::current::storage::StorageExtractedFieldType<T_ENTRY_TYPE_##field_name>();                        \
   }                                                                                                           \
   template <typename F, typename RETVAL>                                                                      \
   RETVAL operator()(::current::storage::FieldNameAndTypeByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,   \

@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
+
 #ifndef CURRENT_BRICKS_TEMPLATE_CALL_IF_H
 #define CURRENT_BRICKS_TEMPLATE_CALL_IF_H
 
@@ -37,4 +38,4 @@ template <> struct CallIf<false> { template <typename F> static void With(F&&) {
 }  // namespace metaprogramming
 }  // namespace current
 
-#endif CURRENT_BRICKS_TEMPLATE_CALL_IF_H
+#endif  // CURRENT_BRICKS_TEMPLATE_CALL_IF_H

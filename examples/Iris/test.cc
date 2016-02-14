@@ -30,7 +30,9 @@ SOFTWARE.
 // * http://support.sas.com/documentation/cdl/en/graphref/65389/HTML/default/images/gtdshapa.png
 // * http://www.math.uah.edu/stat/data/Fisher.html
 
-#include "../../Yoda/yoda.h"
+#include "../../TypeSystem/struct.h"
+#include "../../Storage/storage.h"
+#include "../../Storage/persister/sherlock.h"
 
 #include "../../Blocks/HTTP/api.h"
 
@@ -53,27 +55,19 @@ DEFINE_int32(iris_port, PickPortForUnitTest(), "");
 DEFINE_bool(run, false, "Set to true to run indefinitely.");
 
 // Flower ID, global and auto-increasing, for test purposes.
-int run_index = 0u;
-size_t number_of_flowers;
-std::map<size_t, std::string> dimension_names;
-
 TEST(Iris, Demo) {
-  typedef yoda::MemoryOnlyAPI<yoda::Dictionary<LabeledFlower>> TestAPI;
-  TestAPI api;
+  using TestDB = LabeledFlowersDB<SherlockInMemoryStreamPersister>;
+  TestDB db;
 
-  // Allow running the test under `--gtest_repeat`.
-  // HTTP endpoints can be un-registered, but Sherlock streams are designed to live forever,
-  // and thus do not expose the way to release their HTTP subscription endpoint.
-  ++run_index;
-  number_of_flowers = 0;
-  dimension_names.clear();
+  size_t number_of_flowers = 0u;
+  std::map<size_t, std::string> dimension_names;
 
-  HTTP(FLAGS_iris_port)
-      .Register(Printf("/import%d", run_index),
-                [&api](Request request) {
+  auto http_scope = HTTP(FLAGS_iris_port)
+      .Register("/import",
+                [&db, &number_of_flowers, &dimension_names](Request request) {
                   EXPECT_EQ("POST", request.method);
                   const std::string body = request.body;
-                  api.Transaction([body](TestAPI::T_DATA data) {
+                  db.Transaction([body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
                     // Skip the first line with labels.
                     bool first_line = true;
                     for (auto flower_definition_line : Split<ByLines>(body)) {
@@ -88,9 +82,7 @@ TEST(Iris, Demo) {
                         continue;
                       }
                       first_line = false;
-                      // Parse flower data and add it.
-                      auto adder = yoda::Dictionary<LabeledFlower>::Mutator(data);
-                      adder.Add(LabeledFlower(++number_of_flowers,
+                      fields.flowers.Add(LabeledFlower(++number_of_flowers,
                                               FromString<double>(flower_definition_fields[0]),
                                               FromString<double>(flower_definition_fields[1]),
                                               FromString<double>(flower_definition_fields[2]),
@@ -98,24 +90,25 @@ TEST(Iris, Demo) {
                                               flower_definition_fields[4]));
                     }
                     return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
-                  }, std::move(request));
+                  }, std::move(request)).Wait();
                 });
 
   // The input file is in the `golden` directory for it to be successfully picked up by
   // `scripts/full-test.sh`.
   EXPECT_EQ("Successfully imported 150 flowers.\n",
-            HTTP(POSTFromFile(Printf("http://localhost:%d/import%d", FLAGS_iris_port, run_index),
+            HTTP(POSTFromFile(Printf("http://localhost:%d/import", FLAGS_iris_port),
                               current::FileSystem::JoinPath("golden", "dataset.tsv"),
                               "text/tsv")).body);
 
 #if 0
-  // TODO(dkorolev): Retire Cereal from here.
+  // TODO(dkorolev): Re-enable soon.
+
   // Ref.: http://localhost:3000/stream
-  api.ExposeViaHTTP(FLAGS_iris_port, Printf("/stream%d", run_index));
+  HTTP(FLAGS_iris_port).Register("/stream", db);
 
   // The very first flower.
   const auto result1 = CerealizeParseJSON<std::unique_ptr<Padawan>>(
-      HTTP(GET(Printf("http://localhost:%d/stream%d?cap=1", FLAGS_iris_port, run_index))).body);
+      HTTP(GET(Printf("http://localhost:%d/stream?cap=1", FLAGS_iris_port))).body);
   const LabeledFlower& flower1 = *static_cast<const LabeledFlower*>(result1.get());
   EXPECT_DOUBLE_EQ(5.1, flower1.SL);
   EXPECT_DOUBLE_EQ(3.5, flower1.SW);
@@ -125,7 +118,7 @@ TEST(Iris, Demo) {
 
   // The very last flower.
   const auto result2 = CerealizeParseJSON<std::unique_ptr<Padawan>>(
-      HTTP(GET(Printf("http://localhost:%d/stream%d?n=1", FLAGS_iris_port, run_index))).body);
+      HTTP(GET(Printf("http://localhost:%d/stream?n=1", FLAGS_iris_port))).body);
   const LabeledFlower& flower2 = *static_cast<const LabeledFlower*>(result2.get());
   EXPECT_DOUBLE_EQ(5.9, flower2.SL);
   EXPECT_DOUBLE_EQ(3.0, flower2.SW);
@@ -140,7 +133,7 @@ TEST(Iris, Demo) {
         .Register("/get",
                   [&api](Request request) {
                     const auto id = FromString<size_t>(request.url.query["id"]);
-                    api.Transaction([id](TestAPI::T_DATA data) {
+                    api.Transaction([id](TestDB::T_DATA data) {
                       return yoda::Dictionary<LabeledFlower>::Accessor(data)[id];
                     }, std::move(request));
                   });
@@ -157,7 +150,7 @@ TEST(Iris, Demo) {
                     // In real life this should be a POST.
                     if (!label.empty()) {
                       const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
-                      api.Transaction([flower](TestAPI::T_DATA data) {
+                      api.Transaction([flower](TestDB::T_DATA data) {
                         yoda::Dictionary<LabeledFlower>::Mutator(data).Add(flower);
                         return "OK\n";
                       }, std::move(request));
@@ -202,7 +195,7 @@ TEST(Iris, Demo) {
                         request(graph);
                       }
                     };
-                    api.Transaction([x_dim, y_dim](TestAPI::T_DATA data) {
+                    api.Transaction([x_dim, y_dim](TestDB::T_DATA data) {
                       PlotIrises::Info info;
                       for (size_t i = 1; i <= number_of_flowers; ++i) {
                         const LabeledFlower& flower = yoda::Dictionary<LabeledFlower>::Accessor(data)[i];

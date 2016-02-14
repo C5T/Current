@@ -32,43 +32,33 @@ SOFTWARE.
 #include <thread>
 
 #include "../Blocks/HTTP/api.h"
-
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/cerealize/cerealize.h"
+
+#include "../TypeSystem/struct.h"
+#include "../TypeSystem/Serialization/json.h"
 
 // Initial version of `LogEntry` structure.
-struct LogEntry {
-  uint64_t t;                            // Unix epoch time in microseconds.
-  std::string m;                         // HTTP method.
-  std::string u;                         // URL without fragments and query parameters.
-  std::map<std::string, std::string> q;  // URL query parameters.
-  std::string b;                         // HTTP body.
-  std::string f;                         // URL fragment.
-
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(b), CEREAL_NVP(f));
-  }
+CURRENT_STRUCT(LogEntry) {
+  CURRENT_FIELD(t, uint64_t);                              // Unix epoch time in microseconds.
+  CURRENT_FIELD(m, std::string);                           // HTTP method.
+  CURRENT_FIELD(u, std::string);                           // URL without fragments and query parameters.
+  CURRENT_FIELD(q, (std::map<std::string, std::string>));  // URL query parameters.
+  CURRENT_FIELD(b, std::string);                           // HTTP body.
+  CURRENT_FIELD(f, std::string);                           // URL fragment.
 };
 
 // Improved version with HTTP headers.
-struct LogEntryWithHeaders {
-  uint64_t t;                            // Unix epoch time in microseconds.
-  std::string m;                         // HTTP method.
-  std::string u;                         // URL without fragments and query parameters.
-  std::map<std::string, std::string> q;  // URL query parameters.
-  std::map<std::string, std::string> h;  // HTTP headers.
-  std::string b;                         // HTTP body.
-  std::string f;                         // URL fragment.
-
+CURRENT_STRUCT(LogEntryWithHeaders) {
+  CURRENT_FIELD(t, uint64_t);                              // Unix epoch time in microseconds.
+  CURRENT_FIELD(m, std::string);                           // HTTP method.
+  CURRENT_FIELD(u, std::string);                           // URL without fragments and query parameters.
+  CURRENT_FIELD(q, (std::map<std::string, std::string>));  // URL query parameters.
+  CURRENT_FIELD(h, (std::map<std::string, std::string>));  // HTTP headers.
+  CURRENT_FIELD(b, std::string);                           // HTTP body.
+  CURRENT_FIELD(f, std::string);                           // URL fragment.
   // TODO(dkorolev): Inbound IP address.
   // TODO(dkorolev): Everything else we can/should think of.
   // TODO(dkorolev): Resolve geolocation from IP?
-
-  template <typename A>
-  void serialize(A& ar) {
-    ar(CEREAL_NVP(t), CEREAL_NVP(m), CEREAL_NVP(u), CEREAL_NVP(q), CEREAL_NVP(h), CEREAL_NVP(b), CEREAL_NVP(f));
-  }
 };
 
 class EventCollectorHTTPServer {
@@ -103,7 +93,7 @@ class EventCollectorHTTPServer {
                       entry.h = r.headers;
                       entry.b = r.body;
                       entry.f = r.url.fragment;
-                      ostream_ << CerealizeJSON(entry, "log_entry") << std::endl;
+                      ostream_ << JSON(entry) << std::endl;
                       ++events_pushed_;
                       last_event_t_ = now;
                       if (callback_) {
@@ -114,32 +104,47 @@ class EventCollectorHTTPServer {
                   });
   }
 
+  EventCollectorHTTPServer(const EventCollectorHTTPServer&) = delete;
+  EventCollectorHTTPServer(EventCollectorHTTPServer&&) = delete;
+  void operator=(const EventCollectorHTTPServer&) = delete;
+  void operator=(EventCollectorHTTPServer&&) = delete;
+
   ~EventCollectorHTTPServer() {
     HTTP(http_port_).UnRegister(route_);
     send_ticks_ = false;
     timer_thread_.join();
   }
 
-  void Join() { HTTP(http_port_).Join(); }
+  void Join() {
+    HTTP(http_port_).Join();
+  }
 
   void TimerThreadFunction() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+    }
     while (send_ticks_) {
-      std::unique_lock<std::mutex> lock(mutex_);
-      const std::chrono::microseconds now = current::time::Now();
-      const std::chrono::microseconds dt = now - last_event_t_;
-      if (dt >= tick_interval_us_) {
-        LogEntryWithHeaders entry;
-        entry.t = now.count();
-        entry.m = "TICK";
-        ostream_ << CerealizeJSON(entry, "log_entry") << std::endl;
-        ++events_pushed_;
-        last_event_t_ = now;
-        if (callback_) {
-          callback_(entry);
+      const std::chrono::microseconds sleep_us = [&]() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const std::chrono::microseconds now = current::time::Now();
+        const std::chrono::microseconds dt = now - last_event_t_;
+        if (dt >= tick_interval_us_) {
+          LogEntryWithHeaders entry;
+          entry.t = now.count();
+          entry.m = "TICK";
+          ostream_ << JSON(entry) << std::endl;
+          ++events_pushed_;
+          last_event_t_ = now;
+          if (callback_) {
+            callback_(entry);
+          }
+          return std::chrono::microseconds(0);
+        } else {
+          return tick_interval_us_ - dt + std::chrono::microseconds(1);
         }
-      } else {
-        lock.unlock();
-        std::this_thread::sleep_for(tick_interval_us_ - dt + std::chrono::microseconds(1));
+      }();
+      if (sleep_us.count()) {
+        std::this_thread::sleep_for(sleep_us);
       }
     }
   }
