@@ -377,6 +377,7 @@ struct CerealAppendToFilePublisherImpl {
         std::getline(fi, json);
         push(idx_ts, std::move(CerealizeParseJSON<ENTRY>(json)));
         ++count_;
+        last_idx_ts = idx_ts;
       }
       appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::app);
     } else {
