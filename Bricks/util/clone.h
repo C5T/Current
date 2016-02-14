@@ -27,8 +27,6 @@ SOFTWARE.
 
 #include <functional>
 
-#include "../cerealize/json.h"
-
 namespace current {
 namespace impl {
 
@@ -53,13 +51,6 @@ template <typename T>
 struct DefaultCloneImpl<T, false, false, true> {
   static std::function<T(const T&)> CloneImpl() {
     return [](const T& t) { return t; };
-  }
-};
-
-template <typename T>
-struct DefaultCloneImpl<T, false, false, false> {
-  static std::function<T(const T&)> CloneImpl() {
-    return [](const T& t) { return CerealizeParseJSON<T>(CerealizeJSON(t)); };
   }
 };
 

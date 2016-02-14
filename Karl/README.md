@@ -256,7 +256,7 @@ Alerts are defined and configured in a C++ file. No bare strings are used; each 
 
 A running Karl exposes a dashboard. Karl is also Claire: it is safe to run under `cron`, and it is friendly with continuous integration.
 
-Everything is stored in Yoda, with a REST-ful browsing API for viewing current configuration, scrapes, their results, alerts, pages, and mutes. Mutes can be set, prolonged/shrinked, and unset via this API.
+Everything is stored in Current Storage, with a REST-ful browsing API for viewing current configuration, scrapes, their results, alerts, pages, and mutes. Mutes can be set, prolonged/shrinked, and unset via this API.
 
 `TODO(dkorolev): Discuss aggregation master-plan with Max.`
 

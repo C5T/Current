@@ -40,9 +40,6 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
-#include "../../Bricks/cerealize/json.h"
-#include "../../Bricks/cerealize/cerealize.h"
-
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
@@ -226,35 +223,6 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     return idx_ts;
   }
 
-  template <typename DERIVED_ENTRY>
-  IDX_TS DoPublishDerived(const DERIVED_ENTRY& entry) {
-    static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
-
-    ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
-
-    // `std::unique_ptr<DERIVED_ENTRY>` can be implicitly converted into `std::unique_ptr<ENTRY>`,
-    // if `ENTRY` is the base class for `DERIVED_ENTRY`.
-    // This requires the destructor of `BASE` to be virtual, which is the case for Current and Yoda.
-    std::unique_ptr<DERIVED_ENTRY> copy(std::make_unique<DERIVED_ENTRY>());
-    *copy = current::DefaultCloneFunction<DERIVED_ENTRY>()(entry);
-    const auto idx_ts = persistence_layer_.Publish(entry);
-    lock.AdvanceToStageTwo();
-    ListPushBackImpl(idx_ts, std::move(copy));
-
-    // A simple construction, commented out below, would require `DERIVED_ENTRY` to define
-    // the copy constructor. Instead, we go with Current-friendly clone implementation above.
-    // COMMENTED OUT: persistence_layer_.Publish(entry);
-    // COMMENTED OUT: list_.push_back(std::move(std::make_unique<DERIVED_ENTRY>(entry)));
-
-    // Another, semantically correct yet inefficient way, is to use JavaScript-style cloning.
-    // COMMENTED OUT: persistence_layer_.Publish(entry);
-    // COMMENTED OUT: list_.push_back(ParseJSON<ENTRY>(JSON(WithBaseType<typename
-    // ENTRY::element_type>(entry))));
-    lock.AdvanceToStageThree();
-    NotifyAllOfExternalWaitableEvent();
-    return idx_ts;
-  }
-
   template <typename... ARGS>
   IDX_TS DoEmplace(ARGS&&... args) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
@@ -330,12 +298,6 @@ struct DevNullPublisherImpl {
   IDX_TS DoPublish(const ENTRY&) { return IDX_TS(++count_, current::time::Now()); }
   IDX_TS DoPublish(ENTRY&&) { return IDX_TS(++count_, current::time::Now()); }
 
-  template <typename DERIVED_ENTRY>
-  IDX_TS DoPublishDerived(const DERIVED_ENTRY&) {
-    static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
-    return IDX_TS(++count_, current::time::Now());
-  }
-
   template <typename E>
   void DoPublishReplayed(E&&, IDX_TS idx_ts) {
     if (idx_ts.index == count_ + 1) {
@@ -350,75 +312,6 @@ struct DevNullPublisherImpl {
 
 template <typename ENTRY, class CLONER>
 using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY, CLONER>, ENTRY>;
-
-template <typename ENTRY, class CLONER>
-struct CerealAppendToFilePublisherImpl {
-  CerealAppendToFilePublisherImpl() = delete;
-  CerealAppendToFilePublisherImpl(const CerealAppendToFilePublisherImpl&) = delete;
-  explicit CerealAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
-
-  void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
-    assert(!appender_);
-    std::ifstream fi(filename_);
-    IDX_TS last_idx_ts;
-    if (fi.good()) {
-      IDX_TS idx_ts;
-      while (fi >> idx_ts.index) {
-        if (idx_ts.index != last_idx_ts.index + 1) {
-          CURRENT_THROW(InconsistentIndexException(last_idx_ts.index + 1, idx_ts.index));
-        }
-        int64_t timestamp;
-        fi >> timestamp;
-        idx_ts.us = std::chrono::microseconds(timestamp);
-        if (idx_ts.us <= last_idx_ts.us) {
-          CURRENT_THROW(InconsistentTimestampException(last_idx_ts.us, std::chrono::microseconds(timestamp)));
-        }
-        std::string json;
-        std::getline(fi, json);
-        push(idx_ts, std::move(CerealizeParseJSON<ENTRY>(json)));
-        ++count_;
-        last_idx_ts = idx_ts;
-      }
-      appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::app);
-    } else {
-      appender_ = std::make_unique<std::ofstream>(filename_, std::ofstream::trunc);
-    }
-    assert(appender_);
-    assert(appender_->good());
-  }
-
-  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  IDX_TS DoPublish(const ENTRY& entry) {
-    const auto timestamp = current::time::Now();
-    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
-    ++count_;
-    return IDX_TS(count_, timestamp);
-  }
-  IDX_TS DoPublish(ENTRY&& entry) {
-    const auto timestamp = current::time::Now();
-    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t' << CerealizeJSON(entry) << std::endl;
-    ++count_;
-    return IDX_TS(count_, timestamp);
-  }
-
-  template <typename DERIVED_ENTRY>
-  IDX_TS DoPublishDerived(const DERIVED_ENTRY& e) {
-    static_assert(current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, "");
-    const auto timestamp = current::time::Now();
-    (*appender_) << (count_ + 1u) << '\t' << timestamp.count() << '\t'
-                 << CerealizeJSON(WithBaseType<typename ENTRY::element_type>(e), "e") << std::endl;
-    ++count_;
-    return IDX_TS(count_, timestamp);
-  }
-
- private:
-  const std::string filename_;
-  std::unique_ptr<std::ofstream> appender_;
-  size_t count_ = 0u;
-};
-
-template <typename ENTRY, class CLONER>
-using CerealAppendToFilePublisher = ss::Publisher<impl::CerealAppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
 
 template <typename ENTRY, class CLONER>
 struct NewAppendToFilePublisherImpl {
@@ -504,10 +397,6 @@ using NewAppendToFilePublisher = ss::Publisher<impl::NewAppendToFilePublisherImp
 
 template <typename ENTRY, class CLONER = current::DefaultCloner>
 using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
-
-template <typename ENTRY, class CLONER = current::DefaultCloner>
-using CerealAppendToFile =
-    ss::Publisher<impl::Logic<impl::CerealAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
 template <typename ENTRY, class CLONER = current::DefaultCloner>
 using NewAppendToFile =

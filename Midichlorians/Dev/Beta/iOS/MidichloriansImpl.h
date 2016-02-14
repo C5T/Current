@@ -39,7 +39,6 @@
 
 #include "../../../../port.h"
 #include "../../../../Bricks/util/singleton.h"
-#include "../../../../Bricks/cerealize/cerealize.h"
 
 #ifdef CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 #error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."

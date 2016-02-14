@@ -45,7 +45,6 @@ SOFTWARE.
 #include "../../../../TypeSystem/Serialization/json.h"
 
 #include "../../../strings/util.h"
-#include "../../../cerealize/cerealize.h"
 
 #include "../../../../Blocks/URL/url.h"
 
@@ -435,32 +434,6 @@ class HTTPServerConnection final {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
 
-  // Support objects that can be serialized as JSON-s via Cereal.
-  template <class T>
-  inline ENABLE_IF<cerealize::is_write_cerealizable<T>::value> SendHTTPResponse(
-      T&& object,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultJSONContentType(),
-      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
-    // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = CerealizeJSON(std::forward<T>(object)) + '\n';
-    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
-  }
-
-  // Microsoft Visual Studio compiler is strict with overloads,
-  // explicitly forbid std::string and std::vector<char> from this one.
-  template <class T, typename S>
-  inline ENABLE_IF<cerealize::is_write_cerealizable<T>::value> SendHTTPResponse(
-      T&& object,
-      S&& name,
-      HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultJSONContentType(),
-      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
-    // TODO(dkorolev): We should probably make this not only correct but also efficient.
-    const std::string s = CerealizeJSON(object, name) + '\n';
-    SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
-  }
-
   // Support `CURRENT_STRUCT`-s.
   template <class T>
   inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
@@ -525,16 +498,6 @@ class HTTPServerConnection final {
 
       // Special case to handle std::string.
       inline void Send(const std::string& data) { SendImpl(data); }
-
-      // Support objects that can be serialized as JSON-s via Cereal.
-      template <class T>
-      inline ENABLE_IF<cerealize::is_cerealizable<T>::value> Send(T&& object) {
-        SendImpl(CerealizeJSON(std::forward<T>(object)) + '\n');
-      }
-      template <class T, typename S>
-      inline ENABLE_IF<cerealize::is_cerealizable<T>::value> Send(T&& object, S&& name) {
-        SendImpl(CerealizeJSON(std::forward<T>(object), name) + '\n');
-      }
 
       // Support `CURRENT_STRUCT`-s.
       template <class T>

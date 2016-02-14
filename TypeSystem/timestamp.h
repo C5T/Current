@@ -108,12 +108,7 @@ struct TimestampAccessorImpl<int64_t> {
   }
 };
 
-// TODO(dkorolev): The `IS_UNIQUE_PTR` helper is going away as we move off Cereal to our Variant<>.
-template <bool IS_UNIQUE_PTR>
-struct ExtractTimestampFromUniquePtrAsWell {};
-
-template <>
-struct ExtractTimestampFromUniquePtrAsWell<false> {
+struct ExtractTimestampImpl {
   template <typename E>
   static std::chrono::microseconds DoIt(E&& e) {
     std::chrono::microseconds result;
@@ -123,21 +118,9 @@ struct ExtractTimestampFromUniquePtrAsWell<false> {
   }
 };
 
-template <>
-struct ExtractTimestampFromUniquePtrAsWell<true> {
-  template <typename E>
-  static std::chrono::microseconds DoIt(E&& e) {
-    std::chrono::microseconds result;
-    ExtractTimestampFunctor impl(result);
-    e->ReportTimestamp(impl);
-    return result;
-  }
-};
-
 template <typename E>
 std::chrono::microseconds MicroTimestampOf(E&& entry) {
-  return ExtractTimestampFromUniquePtrAsWell<current::is_unique_ptr<E>::value>::template DoIt<E>(
-      std::forward<E>(entry));
+  return ExtractTimestampImpl::template DoIt<E>(std::forward<E>(entry));
 }
 
 // TODO(dkorolev): Test this function too, not just use it from `examples/EmbeddedDB`.

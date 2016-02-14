@@ -37,8 +37,6 @@
 
 #include <string>
 
-#include "../../../Bricks/cerealize/cerealize.h"
-
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 #import <Foundation/Foundation.h>
 #import <CoreLocation/CoreLocation.h>
@@ -58,7 +56,7 @@ struct MidichloriansEvent {
   virtual std::string EventAsString(const std::string& device_id, const std::string& client_id) const {
     SetDeviceId(device_id);
     SetClientId(client_id);
-    return CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));
+    return "blah";  // CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));
   }
 };
 
@@ -77,7 +75,7 @@ struct MidichloriansEvent {
     virtual std::string EventAsString(const std::string& did, const std::string& cid) const override { \
       SetDeviceId(did);                                                                                \
       SetClientId(cid);                                                                                \
-      return CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));                                   \
+      return "CerealizeJSON(WithBaseType<MidichloriansEvent>(*this));"                                 \
     }                                                                                                  \
     template <class A>                                                                                 \
     void serialize(A& ar) {                                                                            \

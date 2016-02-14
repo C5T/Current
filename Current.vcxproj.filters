@@ -25,10 +25,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFA}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Header Files\Yoda\container">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBF9}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Third Party\cereal\include">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB00}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
@@ -131,14 +127,6 @@
     </Filter>
     <Filter Include="Header Files\Bricks">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB19}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Header Files\Bricks\cerealize">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1A}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Header Files\Bricks\cerealize\test">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB1B}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
     <Filter Include="Header Files\Bricks\dflags">
@@ -279,18 +267,6 @@
     </Filter>
     <Filter Include="Header Files\TypeSystem\Serialization">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3E}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Header Files\Yoda">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB3F}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Header Files\Yoda\container\dictionary">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB40}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Header Files\Yoda\container\matrix">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EB41}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
   </ItemGroup>
@@ -667,24 +643,6 @@
     <ClInclude Include="Bricks\port.h">
       <Filter>Header Files\Bricks</Filter>
     </ClInclude>
-    <ClInclude Include="Bricks\cerealize\cerealize.h">
-      <Filter>Header Files\Bricks\cerealize</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\cerealize\constants.h">
-      <Filter>Header Files\Bricks\cerealize</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\cerealize\exceptions.h">
-      <Filter>Header Files\Bricks\cerealize</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\cerealize\json.h">
-      <Filter>Header Files\Bricks\cerealize</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\cerealize\test\test_event_base.h">
-      <Filter>Header Files\Bricks\cerealize\test</Filter>
-    </ClInclude>
-    <ClInclude Include="Bricks\cerealize\test\test_event_derived.cc.h">
-      <Filter>Header Files\Bricks\cerealize\test</Filter>
-    </ClInclude>
     <ClInclude Include="Bricks\dflags\dflags.h">
       <Filter>Header Files\Bricks\dflags</Filter>
     </ClInclude>
@@ -1029,36 +987,6 @@
     </ClInclude>
     <ClInclude Include="TypeSystem\Serialization\json.h">
       <Filter>Header Files\TypeSystem\Serialization</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\metaprogramming.h">
-      <Filter>Header Files\Yoda</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\sfinae.h">
-      <Filter>Header Files\Yoda</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\types.h">
-      <Filter>Header Files\Yoda</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\yoda.h">
-      <Filter>Header Files\Yoda</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\container\dictionary\api.h">
-      <Filter>Header Files\Yoda\container\dictionary</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\container\dictionary\exceptions.h">
-      <Filter>Header Files\Yoda\container\dictionary</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\container\dictionary\metaprogramming.h">
-      <Filter>Header Files\Yoda\container\dictionary</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\container\matrix\api.h">
-      <Filter>Header Files\Yoda\container\matrix</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\container\matrix\exceptions.h">
-      <Filter>Header Files\Yoda\container\matrix</Filter>
-    </ClInclude>
-    <ClInclude Include="Yoda\container\matrix\metaprogramming.h">
-      <Filter>Header Files\Yoda\container\matrix</Filter>
     </ClInclude>
     <ClInclude Include="Bricks\template\call_if.h">
       <Filter>Header Files\Bricks\template</Filter>

@@ -235,12 +235,6 @@
     <ClInclude Include="Blocks\URL\url.h" />
     <ClInclude Include="Bricks\exception.h" />
     <ClInclude Include="Bricks\port.h" />
-    <ClInclude Include="Bricks\cerealize\cerealize.h" />
-    <ClInclude Include="Bricks\cerealize\constants.h" />
-    <ClInclude Include="Bricks\cerealize\exceptions.h" />
-    <ClInclude Include="Bricks\cerealize\json.h" />
-    <ClInclude Include="Bricks\cerealize\test\test_event_base.h" />
-    <ClInclude Include="Bricks\cerealize\test\test_event_derived.cc.h" />
     <ClInclude Include="Bricks\dflags\dflags.h" />
     <ClInclude Include="Bricks\file\exceptions.h" />
     <ClInclude Include="Bricks\file\file.h" />
@@ -356,16 +350,6 @@
     <ClInclude Include="TypeSystem\Serialization\binary.h" />
     <ClInclude Include="TypeSystem\Serialization\exceptions.h" />
     <ClInclude Include="TypeSystem\Serialization\json.h" />
-    <ClInclude Include="Yoda\metaprogramming.h" />
-    <ClInclude Include="Yoda\sfinae.h" />
-    <ClInclude Include="Yoda\types.h" />
-    <ClInclude Include="Yoda\yoda.h" />
-    <ClInclude Include="Yoda\container\dictionary\api.h" />
-    <ClInclude Include="Yoda\container\dictionary\exceptions.h" />
-    <ClInclude Include="Yoda\container\dictionary\metaprogramming.h" />
-    <ClInclude Include="Yoda\container\matrix\api.h" />
-    <ClInclude Include="Yoda\container\matrix\exceptions.h" />
-    <ClInclude Include="Yoda\container\matrix\metaprogramming.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

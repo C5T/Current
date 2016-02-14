@@ -56,7 +56,8 @@ class Server {
                                          [this](Request r) {
                                            std::unique_ptr<MidichloriansEvent> event;
                                            try {
-                                             CerealizeParseJSON(r.body, event);
+                                             // TODO(dkorolev) + TODO(mzhurovich): Deprecate.
+                                             // CerealizeParseJSON(r.body, event);
                                              current::metaprogramming::RTTIDynamicCall<T_EVENTS>(event, *this);
                                              ++messages_processed_;
                                            } catch (const current::Exception&) {

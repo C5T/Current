@@ -15,144 +15,18 @@ HTTP server and client, JSON and binary serialization, visualization and other c
   [tar.gz](https://github.com/C5T/Current/archive/v1.0.tar.gz),
   [zip](https://github.com/C5T/Current/archive/v1.0.zip).
 
-  HTTP server and client API-s, [Cereal](http://uscilab.github.io/cereal/) for binary and JSON serialization, [gnuplot](http://www.gnuplot.info/) and [plotutils](http://www.gnu.org/software/plotutils/) ports, file system and string manipulation methods, a command line flags parsing tool and a header-only port of [GoogleTest](http://code.google.com/p/googletest/).
+  HTTP server and client API-s, RapidJSON for JSON serialization, [gnuplot](http://www.gnuplot.info/) and [plotutils](http://www.gnu.org/software/plotutils/) ports, file system and string manipulation methods, a command line flags parsing tool and a header-only port of [GoogleTest](http://code.google.com/p/googletest/).
 
   Cross-platform, tested on Linux, Mac and Windows. 100% unit tested.
 
   Header-only C++11 with no external library dependencies.
 
 # Documentation
-## Cerealize
 
-Bricks uses [**Cereal**](http://uscilab.github.io/cereal/) for JSON and Binary serialization of C++ objects:
+## RapidJSON
 
-* [Cereal Website](http://uscilab.github.io/cereal/): Cereal is a header-only C++11 serialization library.
-* [Cereal GitHub](https://github.com/USCiLab/cereal): A C++11 library for serialization.
+TBD
 
-<sub>Personal thanks for a well-designed C++11 serialization library! — @dkorolev</sub>
-
-The [`#include "Bricks/cerealize/cerealize.h"`](https://github.com/C5T/Current/blob/master/Bricks/cerealize/cerealize.h) header makes the below code snippets complete.
-```cpp
-// Add a `serialize()` method to make a C++ structure "cerealizable".
-struct SimpleType {
-  int number;
-  std::string string;
-  std::vector<int> vector_int;
-  std::map<int, std::string> map_int_string;
-  template <typename A> void serialize(A& ar) {
-    // Use `CEREAL_NVP(member)` to keep member names when using JSON.
-    ar(CEREAL_NVP(number),
-       CEREAL_NVP(string),
-       CEREAL_NVP(vector_int),
-       CEREAL_NVP(map_int_string));
-  }
-};
-```
-```cpp
-// Use `CerealizeJSON()` and `CerealizeParseJSON()` to create and parse JSON-s.
-SimpleType x;
-x.number = 42;
-x.string = "test passed";
-x.vector_int.push_back(1);
-x.vector_int.push_back(2);
-x.vector_int.push_back(3);
-x.map_int_string[1] = "one";
-x.map_int_string[42] = "the question";
-
-// `CerealizeJSON(object)` converts a cerealize-able object into a JSON string.
-const std::string json = CerealizeJSON(x);
-
-// `CerealizeParseJSON<T>(json)` creates an instance of T from a JSON.
-const SimpleType y = CerealizeParseJSON<SimpleType>(json);
-
-// `CerealizeParseJSON(json, T& out)` allows omitting the type.
-SimpleType z;
-CerealizeParseJSON(json, z);
-```
-```cpp
-// Use `load()/save()` instead of `serialize()` to customize serialization.
-struct LoadSaveType {
-  int a;
-  int b;
-  int sum;
-
-  template <typename A> void save(A& ar) const {
-    ar(CEREAL_NVP(a), CEREAL_NVP(b));
-  }
-
-  template <typename A> void load(A& ar) {
-    ar(CEREAL_NVP(a), CEREAL_NVP(b));
-    sum = a + b;
-  }
-};
-
-LoadSaveType x;
-x.a = 2;
-x.b = 3;
-EXPECT_EQ(5, CerealizeParseJSON<LoadSaveType>(CerealizeJSON(x)).sum);
-```
-```cpp
-// The example below uses `Printf()`, include it.
-#include "strings/printf.h"
-using current::strings::Printf;
- 
-// Polymorphic types are supported with some caution.
-struct ExamplePolymorphicType {
-  std::string base;
-  explicit ExamplePolymorphicType(const std::string& base = "") : base(base) {}
-
-  virtual std::string AsString() const = 0;
-  template <typename A> void serialize(A& ar) {
-    ar(CEREAL_NVP(base));
-  }
-};
-
-struct ExamplePolymorphicInt : ExamplePolymorphicType {
-  int i;
-  explicit ExamplePolymorphicInt(int i = 0)
-      : ExamplePolymorphicType("int"), i(i) {}
-
-  virtual std::string AsString() const override {
-    return Printf("%s, %d", base.c_str(), i);
-  }
-
-  template <typename A> void serialize(A& ar) {
-    ExamplePolymorphicType::serialize(ar);
-    ar(CEREAL_NVP(i));
-  }
-};
-// Need to register the derived type.
-CEREAL_REGISTER_TYPE(ExamplePolymorphicInt);
-
-struct ExamplePolymorphicDouble : ExamplePolymorphicType {
-  double d;
-  explicit ExamplePolymorphicDouble(double d = 0)
-      : ExamplePolymorphicType("double"), d(d) {}
-
-  virtual std::string AsString() const override {
-    return Printf("%s, %lf", base.c_str(), d);
-  }
-
-  template <typename A> void serialize(A& ar) {
-    ExamplePolymorphicType::serialize(ar);
-    ar(CEREAL_NVP(d));
-  }
-};
-// Need to register the derived type.
-CEREAL_REGISTER_TYPE(ExamplePolymorphicDouble);
-
-const std::string json_int =
-  CerealizeJSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicInt(42)));
-
-const std::string json_double =
-  CerealizeJSON(WithBaseType<ExamplePolymorphicType>(ExamplePolymorphicDouble(M_PI)));
-
-EXPECT_EQ("int, 42",
-          CerealizeParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_int)->AsString());
-
-EXPECT_EQ("double, 3.141593",
-          CerealizeParseJSON<std::unique_ptr<ExamplePolymorphicType>>(json_double)->AsString());
-```
 ## Visualization Library
 
 Bricks has C++ bindings for [`gnuplot`](http://www.gnuplot.info/), [`#include "Bricks/graph/gnuplot.h"`](https://github.com/Current/C5T/blob/master/Bricks/graph/gnuplot.h) to use it.

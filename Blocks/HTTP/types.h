@@ -36,7 +36,6 @@ SOFTWARE.
 #include "../../Bricks/net/exceptions.h"
 #include "../../Bricks/net/http/http.h"
 #include "../../Bricks/strings/is_string_type.h"
-#include "../../Bricks/cerealize/cerealize.h"
 #include "../../Bricks/template/decay.h"
 
 namespace blocks {
@@ -96,12 +95,6 @@ struct FillBody<REQUEST, true> {
 // Body as JSON, default the type to "application/json", when `is_string_type<T>::value == false`.
 template <typename REQUEST>
 struct FillBody<REQUEST, false> {
-  template <typename T>
-  static typename std::enable_if<current::cerealize::is_write_cerealizable<T>::value>::type Fill(
-      REQUEST& request, T&& object, const std::string& content_type) {
-    request.body = CerealizeJSON(std::forward<T>(object));
-    request.content_type = !content_type.empty() ? content_type : "application/json";
-  }
   template <typename T>
   static typename std::enable_if<IS_CURRENT_STRUCT(current::decay<T>)>::type Fill(
       REQUEST& request, T&& object, const std::string& content_type) {
