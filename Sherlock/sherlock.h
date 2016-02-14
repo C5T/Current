@@ -123,19 +123,28 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
-template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
-class StreamInstanceImpl {
+template <typename ENTRY, class CLONER = current::DefaultCloner>
+using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
+
+template <typename ENTRY,
+          template <typename, typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER,
+          class CLONER = current::DefaultCloner>
+class StreamImpl {
   using IDX_TS = blocks::ss::IndexAndTimestamp;
 
  public:
   typedef ENTRY T_ENTRY;
   typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
 
-  StreamInstanceImpl() : storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
+  StreamImpl() : storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
 
   template <typename... EXTRA_PARAMS>
-  StreamInstanceImpl(EXTRA_PARAMS&&... extra_params)
+  StreamImpl(EXTRA_PARAMS&&... extra_params)
       : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)) {}
+
+  StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)) {}
+
+  void operator=(StreamImpl&& rhs) { storage_ = std::move(rhs.storage_); }
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
@@ -289,8 +298,10 @@ class StreamInstanceImpl {
   template <typename F>
   class SyncListenerScope {
    public:
-    SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-        : joined_(false), impl_(std::make_unique<ListenerThread<F>>(storage, std::move(listener))) {}
+    SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F& listener)
+        : joined_(false),
+          impl_(std::make_unique<ListenerThread<std::unique_ptr<F, current::NullDeleter>>>(
+              storage, std::unique_ptr<F, current::NullDeleter>(&listener))) {}
 
     SyncListenerScope(SyncListenerScope&& rhs) : joined_(false), impl_(std::move(rhs.impl_)) {
       // TODO(dkorolev): Constructor is not destructor -- we can make these exceptions and test them.
@@ -319,7 +330,7 @@ class StreamInstanceImpl {
 
    private:
     bool joined_;
-    std::unique_ptr<ListenerThread<F>> impl_;
+    std::unique_ptr<ListenerThread<std::unique_ptr<F, current::NullDeleter>>> impl_;
 
     SyncListenerScope() = delete;
     SyncListenerScope(const SyncListenerScope&) = delete;
@@ -328,17 +339,21 @@ class StreamInstanceImpl {
   };
 
   // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
+
+  // Asynchonous subscription: `listener` is a heap-allocated object, the ownership of which
+  // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
   template <typename F>
-  AsyncListenerScope<F> AsyncSubscribeImpl(F&& listener) {
-    // No `std::move()` needed: RAAI.
-    return AsyncListenerScope<F>(storage_, std::forward<F>(listener));
+  AsyncListenerScope<F> AsyncSubscribe(F&& listener) {
+    return std::move(AsyncListenerScope<F>(storage_, std::forward<F>(listener)));
   }
 
+  // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
+  // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
+  // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
+  // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
   template <typename F>
-  SyncListenerScope<std::unique_ptr<F, current::NullDeleter>> SyncSubscribeImpl(F& listener) {
-    // RAAI, no `std::move()` needed.
-    return SyncListenerScope<std::unique_ptr<F, current::NullDeleter>>(
-        storage_, std::unique_ptr<F, current::NullDeleter>(&listener));
+  SyncListenerScope<F> SyncSubscribe(F& listener) {
+    return std::move(SyncListenerScope<F>(storage_, listener));
   }
 
   // Sherlock handler for serving stream data via HTTP.
@@ -362,112 +377,27 @@ class StreamInstanceImpl {
         // Return "200 OK" if stream is empty and we asked not to wait for new entries.
         r("", HTTPResponseCode.OK);
       } else {
-        AsyncSubscribeImpl(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+        AsyncSubscribe(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
       }
     } else {
       r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
     }
   }
 
+  // TODO(dkorolev): Have this co-own the Stream.
+  void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
+
  private:
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
 
-  StreamInstanceImpl(const StreamInstanceImpl&) = delete;
-  void operator=(const StreamInstanceImpl&) = delete;
-  StreamInstanceImpl(StreamInstanceImpl&&) = delete;
-  void operator=(StreamInstanceImpl&&) = delete;
+  StreamImpl(const StreamImpl&) = delete;
+  void operator=(const StreamImpl&) = delete;
 };
-
-template <typename ENTRY, template <typename, typename> class PERSISTENCE_LAYER, class CLONER>
-struct StreamInstance {
-  using T_ENTRY = ENTRY;
-  using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY, CLONER>;
-  using IDX_TS = blocks::ss::IndexAndTimestamp;
-
-  StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl_;
-
-  explicit StreamInstance(StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>* impl) : impl_(impl) {}
-
-  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  IDX_TS Publish(const ENTRY& entry) { return impl_->Publish(entry); }
-  IDX_TS Publish(ENTRY&& entry) { return impl_->Publish(std::move(entry)); }
-
-  // Support two syntaxes of `Publish` as well.
-  template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
-  Publish(const DERIVED_ENTRY& e) {
-    return impl_->Publish(e);
-  }
-
-  template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
-  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
-    return impl_->Publish(e);
-  }
-
-  template <typename... ARGS>
-  IDX_TS Emplace(ARGS&&... entry_params) {
-    return impl_->Emplace(std::forward<ARGS>(entry_params)...);
-  }
-
-  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { impl_->PublishReplayed(entry, idx_ts); }
-  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) { impl_->PublishReplayed(std::move(entry), idx_ts); }
-
-  template <typename F>
-  using SyncListenerScope =
-      typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>::template SyncListenerScope<
-          std::unique_ptr<F, current::NullDeleter>>;
-  template <typename F>
-  using AsyncListenerScope =
-      typename StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>::template AsyncListenerScope<F>;
-
-  // Synchonous subscription: `listener` is a stack-allocated object, and thus the listening thread
-  // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
-  // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
-  // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
-  template <typename F>
-  SyncListenerScope<current::decay<F>> SyncSubscribe(F& listener) {
-    // No `std::move()` needed: RAAI.
-    return impl_->SyncSubscribeImpl(listener);
-  }
-
-  // Aynchonous subscription: `listener` is a heap-allocated object, the ownership of which
-  // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
-  template <typename F>
-  AsyncListenerScope<current::decay<F>> AsyncSubscribe(F&& listener) {
-    // No `std::move()` needed: RAAI.
-    return impl_->AsyncSubscribeImpl(std::forward<F>(listener));
-  }
-
-  template <JSONFormat J = JSONFormat::Current>
-  void ServeDataViaHTTP(Request r) {
-    impl_->template ServeDataViaHTTP<J>(std::move(r));
-  }
-
-  void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
-};
-
-// TODO(dkorolev): Validate stream name, add exceptions and tests for it.
-// TODO(dkorolev): Chat with the team if stream names should be case-sensitive, allowed symbols, etc.
-// TODO(dkorolev): Ensure no streams with the same name are being added. Add an exception for it.
-
-template <typename ENTRY, class CLONER = current::DefaultCloner>
-using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
-
-template <typename ENTRY, class CLONER = current::DefaultCloner>
-StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER> Stream() {
-  return StreamInstance<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>(
-      new StreamInstanceImpl<ENTRY, DEFAULT_PERSISTENCE_LAYER, CLONER>());
-}
 
 template <typename ENTRY,
-          template <typename, typename> class PERSISTENCE_LAYER,
-          class CLONER = current::DefaultCloner,
-          typename... EXTRA_PARAMS>
-StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER> Stream(EXTRA_PARAMS&&... extra_params) {
-  return StreamInstance<ENTRY, PERSISTENCE_LAYER, CLONER>(
-      new StreamInstanceImpl<ENTRY, PERSISTENCE_LAYER, CLONER>(std::forward<EXTRA_PARAMS>(extra_params)...));
-}
+          template <typename, typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER,
+          class CLONER = current::DefaultCloner>
+using Stream = StreamImpl<ENTRY, PERSISTENCE_LAYER, CLONER>;
 
 }  // namespace sherlock
 }  // namespace current

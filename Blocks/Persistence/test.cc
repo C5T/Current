@@ -134,6 +134,69 @@ TEST(PersistenceLayer, MemoryOnly) {
   }
 }
 
+// NOTE: This test is obsolete. -- D.K.
+TEST(PersistenceLayer, JustAppendToFile) {
+  typedef blocks::persistence::NewAppendToFile<StorableString> IMPL;
+  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
+  static_assert(blocks::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
+  static_assert(!blocks::ss::IsPublisher<int>::value, "");
+  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
+
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  IMPL impl(persistence_file_name);
+  current::time::SetNow(std::chrono::microseconds(100));
+  impl.Publish(StorableString("foo"));
+  current::time::SetNow(std::chrono::microseconds(200));
+  impl.Publish(std::move(StorableString("bar")));
+  EXPECT_EQ(2u, impl.Size());
+
+  current::time::SetNow(std::chrono::microseconds(500));
+  impl.Publish(StorableString("meh"));
+  EXPECT_EQ(3u, impl.Size());
+
+  EXPECT_EQ(
+      "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+      "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "{\"index\":3,\"us\":500}\t{\"s\":\"meh\"}\n",
+      current::FileSystem::ReadFileAsString(persistence_file_name));
+}
+
+// NOTE: This test is obsolete. -- D.K.
+TEST(PersistenceLayer, NotQuiteSherlock) {
+  struct PseudoSherlock {
+    typedef blocks::persistence::NewAppendToFile<StorableString> IMPL;
+
+    const std::string fn_;
+    const current::FileSystem::ScopedRmFile rm_;
+    std::shared_ptr<IMPL> impl_;
+
+    PseudoSherlock() : fn_(current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data")),
+                       rm_(fn_),
+                       impl_(std::make_shared<IMPL>(fn_)) {}
+  };
+
+  PseudoSherlock pseudo_sherlock;
+
+  current::time::SetNow(std::chrono::microseconds(100));
+  pseudo_sherlock.impl_->Publish(StorableString("foo"));
+  current::time::SetNow(std::chrono::microseconds(200));
+  pseudo_sherlock.impl_->Publish(std::move(StorableString("bar")));
+  EXPECT_EQ(2u, pseudo_sherlock.impl_->Size());
+
+  current::time::SetNow(std::chrono::microseconds(500));
+  pseudo_sherlock.impl_->Publish(StorableString("meh"));
+  EXPECT_EQ(3u, pseudo_sherlock.impl_->Size());
+
+  EXPECT_EQ(
+      "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
+      "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "{\"index\":3,\"us\":500}\t{\"s\":\"meh\"}\n",
+      current::FileSystem::ReadFileAsString(pseudo_sherlock.fn_));
+}
+
 TEST(PersistenceLayer, AppendToFile) {
   typedef blocks::persistence::NewAppendToFile<StorableString> IMPL;
   static_assert(blocks::ss::IsPublisher<IMPL>::value, "");

@@ -100,7 +100,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     bool allow_terminate_ = false;
   };
 
-  sherlock::StreamInstance<T_TRANSACTION, PERSISTER, CLONER> stream_;
+  sherlock::StreamImpl<T_TRANSACTION, PERSISTER, CLONER> stream_;
   HTTPRoutesScope handlers_scope_;
 };
 
