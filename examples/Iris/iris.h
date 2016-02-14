@@ -25,35 +25,26 @@ SOFTWARE.
 #ifndef IRIS_H
 #define IRIS_H
 
-#include "../../Yoda/yoda.h"
+#include "../../TypeSystem/struct.h"
+#include "../../Storage/storage.h"
 
-struct LabeledFlower : yoda::Padawan {
-  size_t key;
-  union {
-    struct {
-      double SL;
-      double SW;
-      double PL;
-      double PW;
-    };
-    double x[4];
-  };
-  std::string label;
+CURRENT_STRUCT(LabeledFlower) {
+  CURRENT_FIELD(key, uint64_t);
 
-  LabeledFlower() = default;
-  LabeledFlower(const LabeledFlower&) = default;
-  LabeledFlower(size_t key, double sl, double sw, double pl, double pw, const std::string& label)
+  CURRENT_FIELD(SL, double);
+  CURRENT_FIELD(SW, double);
+  CURRENT_FIELD(PL, double);
+  CURRENT_FIELD(PW, double);
+  CURRENT_FIELD(label, std::string);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(LabeledFlower) {}
+  CURRENT_CONSTRUCTOR(LabeledFlower)(size_t key, double sl, double sw, double pl, double pw, const std::string& label)
       : key(key), SL(sl), SW(sw), PL(pl), PW(pw), label(label) {}
-
-  template <typename A>
-  void serialize(A& ar) {
-    Padawan::serialize(ar);
-    ar(CEREAL_NVP(key), CEREAL_NVP(SL), CEREAL_NVP(SW), CEREAL_NVP(PL), CEREAL_NVP(PW), CEREAL_NVP(label));
-  }
-
-  using DeleterPersister = yoda::DictionaryGlobalDeleterPersister<size_t, __COUNTER__>;
 };
-CEREAL_REGISTER_TYPE(LabeledFlower);
-CEREAL_REGISTER_TYPE(LabeledFlower::DeleterPersister);
+
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, LabeledFlower, LabeledFlowersDictionary);
+CURRENT_STORAGE(LabeledFlowersDB) {
+  CURRENT_STORAGE_FIELD(flowers, LabeledFlowersDictionary);
+};
 
 #endif  // IRIS_H
