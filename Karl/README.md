@@ -72,13 +72,8 @@ Complex structures should be made serializable, and wrapped into `WaitableAtomic
 
 ```cpp
 // Expose a user-defined structure to monitor.
-struct ComplexStats {
-  std::string foo;
-  // ... more fields ...
-  template <typename A>
-  void save(A& ar) const {
-    ar(CEREAL_NVP(foo) /* ... more fields */ );
-  }
+CURRENT_STRUCT(ComplexStats) {
+  CURRENT_FIELD(foo, std::string);
 };
 
 WaitableAtomic<ComplexStats> complex_stats;
