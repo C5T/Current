@@ -29,6 +29,8 @@ SOFTWARE.
 #include "storage.h"
 #include "api.h"
 
+#include "rest/hypermedia.h"
+
 #include "../Blocks/HTTP/api.h"
 
 #include "../Bricks/file/file.h"
@@ -111,7 +113,6 @@ CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector2);
 // CURRENT_STORAGE_FIELD_ENTRY(Dictionary, Record, RecordDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
 
-using current::storage::container::Ordered;
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(v1, ElementVector1);
   CURRENT_STORAGE_FIELD(v2, ElementVector2);
@@ -804,4 +805,56 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   EXPECT_EQ(12u, persisted_transactions.size());
+}
+
+// Test the `DO_NOT_EXPOSE_STORAGE_FIELD_VIA_REST(storage, field)` macro.
+namespace transactional_storage_test {
+CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersistedExposed);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersistedNotExposed);
+CURRENT_STORAGE(PartiallyExposedStorage) {
+  CURRENT_STORAGE_FIELD(user, SimpleUserPersistedExposed);
+  CURRENT_STORAGE_FIELD(post, SimplePostPersistedNotExposed);
+};
+}  // namespace transactional_storage_test
+
+CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(
+    transactional_storage_test::PartiallyExposedStorage<SherlockInMemoryStreamPersister>,
+    transactional_storage_test::SimplePostPersistedNotExposed);
+
+TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
+  using namespace transactional_storage_test;
+
+  using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
+  using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
+
+  Storage1 storage1;
+  Storage2 storage2;
+
+  EXPECT_EQ(2u, storage1.FieldsCount());
+  EXPECT_EQ(2u, storage2.FieldsCount());
+
+  static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimpleUserPersisted>::exposed, "");
+  static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimplePostPersisted>::exposed, "");
+
+  static_assert(current::storage::rest::FieldExposedViaREST<Storage2, SimpleUserPersistedExposed>::exposed, "");
+  static_assert(!current::storage::rest::FieldExposedViaREST<Storage2, SimplePostPersistedNotExposed>::exposed,
+                "");
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  auto rest1 = RESTfulStorage<Storage1, current::storage::rest::Hypermedia>(
+      storage1, FLAGS_transactional_storage_test_port, "/api1");
+  auto rest2 = RESTfulStorage<Storage2, current::storage::rest::Hypermedia>(
+      storage2, FLAGS_transactional_storage_test_port, "/api2");
+
+  const auto fields1 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api1")).body);
+  const auto fields2 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api2")).body);
+
+  EXPECT_TRUE(fields1.api.count("user") == 1);
+  EXPECT_TRUE(fields1.api.count("post") == 1);
+  EXPECT_EQ(2u, fields1.api.size());
+
+  EXPECT_TRUE(fields2.api.count("user") == 1);
+  EXPECT_TRUE(fields2.api.count("post") == 0);
+  EXPECT_EQ(1u, fields2.api.size());
 }

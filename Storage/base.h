@@ -82,12 +82,15 @@ struct StorageFieldTypeSelector;
 template <int N>
 struct FieldTypeExtractor {};
 
+template <int N>
+struct FieldEntryTypeExtractor {};
+
 template <typename T>
 struct StorageExtractedFieldType {
   using T_PARTICULAR_FIELD = T;
 };
 
-template<typename TYPE>
+template <typename TYPE>
 struct ExcludeTypeFromPersistence {
   static constexpr bool excluded = false;
 };
