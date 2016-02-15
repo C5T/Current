@@ -68,8 +68,8 @@ class PubSubHTTPEndpoint final {
     if (http_request_.url.query.has("cap")) {
       current::strings::FromString(http_request_.url.query["cap"], cap_);
     }
-    if (http_request_.url.query.has("cap_bytes")) {
-      current::strings::FromString(http_request_.url.query["cap_bytes"], cap_bytes_);
+    if (http_request_.url.query.has("stop_after_bytes")) {
+      current::strings::FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
     }
     if (http_request_.url.query.has("nowait")) {
       no_wait_ = true;
@@ -98,8 +98,8 @@ class PubSubHTTPEndpoint final {
         const std::string entry_json(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
         current_response_size_ += entry_json.length();
         http_response_(std::move(entry_json));
-        // Respect `cap_bytes`.
-        if (cap_bytes_ && current_response_size_ >= cap_bytes_) {
+        // Respect `stop_after_bytes`.
+        if (stop_after_bytes_ && current_response_size_ >= stop_after_bytes_) {
           return false;
         }
         // Respect `cap`.
@@ -140,7 +140,7 @@ class PubSubHTTPEndpoint final {
   // If set, the hard limit on the maximum number of entries to output.
   size_t cap_ = 0;
   // If set, stop serving after the response size reached/exceeded the value.
-  size_t cap_bytes_ = 0;
+  size_t stop_after_bytes_ = 0;
   // If set, the timestamp from which the output should start.
   std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);
   // If set, stop serving when current entry is the last entry.
