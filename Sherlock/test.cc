@@ -297,7 +297,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     // `?sizeonly` returns "0" since the stream is empty.
     const auto result = HTTP(GET(base_url + "?sizeonly"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("0", result.body);
+    EXPECT_EQ("0\n", result.body);
   }
 
   // Publish four records.
@@ -330,7 +330,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     const auto result = HTTP(GET(base_url + "?sizeonly"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("4", result.body);
+    EXPECT_EQ("4\n", result.body);
   }
 
   // Test `?n=...`.
