@@ -30,12 +30,14 @@ for i in $(ls *.h | grep -v ".cc.h$") ; do
   echo -e -n "\033[31m"
   HEADER_GCC="$PWD/.current_$i.g++.cc"
   HEADER_CLANG="$PWD/.current_$i.clang++.cc"
+  COMBINED_OBJECT="$PWD/.current_${i}_combined"
   ln -sf "$PWD/$i" $HEADER_GCC
   ln -sf "$PWD/$i" $HEADER_CLANG
-  g++ $CPPFLAGS -c $HEADER_GCC -o $HEADER_GCC.o.o $LDFLAGS \
+  g++ $CPPFLAGS -c $HEADER_GCC -o ${HEADER_GCC}.o $LDFLAGS \
     >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
-  clang++ $CPPFLAGS -c $HEADER_CLANG -o $HEADER_CLANG.o $LDFLAGS \
+  clang++ $CPPFLAGS -c $HEADER_CLANG -o ${HEADER_CLANG}.o $LDFLAGS \
     >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
+  ld -r ${HEADER_GCC}.o ${HEADER_CLANG}.o -o ${COMBINED_OBJECT}.o
 done
 echo
 
