@@ -90,7 +90,7 @@ struct StorageExtractedFieldType {
   using T_PARTICULAR_FIELD = T;
 };
 
-template <typename TYPE>
+template <typename T>
 struct ExcludeTypeFromPersistence {
   static constexpr bool excluded = false;
 };

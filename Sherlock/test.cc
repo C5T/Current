@@ -272,7 +272,6 @@ struct RecordsCollector final {
 
 }  // namespace sherlock_unittest
 
-/*
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
   using namespace sherlock_unittest;
 
@@ -365,7 +364,6 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
-*/
 
 const std::string sherlock_golden_data =
     "{\"index\":1,\"us\":100}\t{\"x\":1}\n"
@@ -388,7 +386,7 @@ TEST(Sherlock, PersistsToFile) {
   current::time::SetNow(std::chrono::microseconds(300u));
   persisted.Publish(3);
 
-  // This spin lock is unnecessary as publishing are synchronous as of now. -- D.K.
+  // This spin lock is unnecessary as publishing is synchronous as of now. -- D.K.
   while (current::FileSystem::GetFileSize(persistence_file_name) != sherlock_golden_data.size()) {
     ;  // Spin lock.
   }
