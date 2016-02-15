@@ -97,11 +97,11 @@ class PubSubHTTPEndpoint final {
       if (serving_) {
         const std::string entry_json(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
         current_response_size_ += entry_json.length();
+        http_response_(std::move(entry_json));
         // Respect `cap_bytes`.
-        if (cap_bytes_ && current_response_size_ > cap_bytes_) {
+        if (cap_bytes_ && current_response_size_ >= cap_bytes_) {
           return false;
         }
-        http_response_(std::move(entry_json));
         // Respect `cap`.
         if (cap_) {
           --cap_;
@@ -133,14 +133,13 @@ class PubSubHTTPEndpoint final {
   // Current response size in bytes.
   size_t current_response_size_ = 0u;
 
-
   // Conditions on which parts of the stream to serve.
   bool serving_ = true;
   // If set, the number of "last" entries to output.
   size_t n_ = 0;
   // If set, the hard limit on the maximum number of entries to output.
   size_t cap_ = 0;
-  // If set, the hard limit on the maximum response size in bytes.
+  // If set, stop serving after the response size reached/exceeded the value.
   size_t cap_bytes_ = 0;
   // If set, the timestamp from which the output should start.
   std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);

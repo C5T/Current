@@ -348,10 +348,14 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap=1")).body);
 
   // Test `?cap_bytes=...`'
+  // Request exactly the size of the first entry.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap_bytes=46")).body);
   // Request slightly more max bytes than the size of the first entry.
-  EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap_bytes=50")).body);
-  // Request exactly the size of the forst two entries.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap_bytes=50")).body);
+  // Request exactly the size of the first two entries.
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap_bytes=92")).body);
+  // Request with the capacity large enough to hold all the entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?cap_bytes=100000&nowait")).body);
 
   // Test `?recent=...`, have to use `?cap=...`.
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?cap=1&recent=15000")).body);
