@@ -76,6 +76,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_);
   }
 
+  sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER>& InternalExposeStream() { return stream_; }
+
  private:
   class SherlockProcessor {
    public:
@@ -100,7 +102,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     bool allow_terminate_ = false;
   };
 
-  sherlock::StreamImpl<T_TRANSACTION, PERSISTER, CLONER> stream_;
+  sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER> stream_;
   HTTPRoutesScope handlers_scope_;
 };
 

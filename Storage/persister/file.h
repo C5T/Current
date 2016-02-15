@@ -69,6 +69,8 @@ class JSONFilePersister<TypeList<TS...>> {
     }
   }
 
+  void InternalExposeStream() {}  // No-op to make it compile.
+
  private:
   std::string filename_;
 };

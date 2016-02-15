@@ -68,6 +68,9 @@ class PubSubHTTPEndpoint final {
     if (http_request_.url.query.has("cap")) {
       current::strings::FromString(http_request_.url.query["cap"], cap_);
     }
+    if (http_request_.url.query.has("cap_bytes")) {
+      current::strings::FromString(http_request_.url.query["cap_bytes"], cap_bytes_);
+    }
     if (http_request_.url.query.has("nowait")) {
       no_wait_ = true;
     }
@@ -92,13 +95,21 @@ class PubSubHTTPEndpoint final {
         }
       }
       if (serving_) {
-        http_response_(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
+        const std::string entry_json(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
+        current_response_size_ += entry_json.length();
+        // Respect `cap_bytes`.
+        if (cap_bytes_ && current_response_size_ > cap_bytes_) {
+          return false;
+        }
+        http_response_(std::move(entry_json));
+        // Respect `cap`.
         if (cap_) {
           --cap_;
           if (!cap_) {
             return false;
           }
         }
+        // Respect `no_wait`.
         if (current.index == last.index && no_wait_) {
           return false;
         }
@@ -117,9 +128,11 @@ class PubSubHTTPEndpoint final {
  private:
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
   Request http_request_;
-
   // `http_response_`: the instance of the chunked response object to use.
   current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
+  // Current response size in bytes.
+  size_t current_response_size_ = 0u;
+
 
   // Conditions on which parts of the stream to serve.
   bool serving_ = true;
@@ -127,6 +140,8 @@ class PubSubHTTPEndpoint final {
   size_t n_ = 0;
   // If set, the hard limit on the maximum number of entries to output.
   size_t cap_ = 0;
+  // If set, the hard limit on the maximum response size in bytes.
+  size_t cap_bytes_ = 0;
   // If set, the timestamp from which the output should start.
   std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);
   // If set, stop serving when current entry is the last entry.
