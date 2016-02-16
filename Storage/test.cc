@@ -445,6 +445,57 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   }).Wait();
 }
 
+template <typename T_TRANSACTION>
+class SherlockTestProcessor {
+ public:
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  SherlockTestProcessor(std::string& output) : output_(output) {}
+
+  bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {
+    output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
+    return current.index != last.index;
+  }
+
+  void ReplayDone() { allow_terminate_ = true; }
+
+  bool Terminate() { return allow_terminate_; }
+
+ private:
+  bool allow_terminate_ = false;
+  std::string& output_;
+};
+
+TEST(TransactionalStorage, InternalExposeStream) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"one", 1});
+    }).Go();
+    EXPECT_TRUE(WasCommited(result));
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(200));
+    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"two", 2});
+    }).Go();
+    EXPECT_TRUE(WasCommited(result));
+  }
+
+  std::string collected;
+  SherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  storage.InternalExposeStream().SyncSubscribe(processor).Join();
+  EXPECT_EQ(
+      "{\"index\":1,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"
+      "{\"index\":2,\"us\":200}\t{\"meta\":{\"timestamp\":200,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}]}\n",
+      collected);
+}
+
 TEST(TransactionalStorage, GracefulShutdown) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;

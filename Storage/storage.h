@@ -142,7 +142,8 @@ namespace storage {
     constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                  \
     using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                     \
     using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
-    PERSISTER<T_FIELDS_TYPE_LIST> persister_;                                                                \
+    using T_PERSISTER = PERSISTER<T_FIELDS_TYPE_LIST>;                                                       \
+    T_PERSISTER persister_;                                                                                  \
     TRANSACTION_POLICY<PERSISTER<T_FIELDS_TYPE_LIST>> transaction_policy_;                                   \
                                                                                                              \
    public:                                                                                                   \
@@ -184,6 +185,10 @@ namespace storage {
     constexpr static size_t FieldsCount() { return fields_count; }                                           \
     void ExposeRawLogViaHTTP(int port, const std::string& route) {                                           \
       persister_.ExposeRawLogViaHTTP(port, route);                                                           \
+    }                                                                                                        \
+    typename std::result_of<decltype(&T_PERSISTER::InternalExposeStream)(T_PERSISTER)>::type                 \
+    InternalExposeStream() {                                                                                 \
+      return persister_.InternalExposeStream();                                                              \
     }                                                                                                        \
     void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }                                      \
   };                                                                                                         \
