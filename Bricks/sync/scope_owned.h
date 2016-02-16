@@ -36,7 +36,7 @@ SOFTWARE.
 //
 // * ScopeOwnedBySomeoneElse<T> follower(master, [&signal]() { signal.SignalTermination(); });
 //   Initializes `follower`, likely `std::move()` it into a different thread.
-//   The scope of the `follower` object will be strictly inside the scope of `master`.
+//   The lifetime of the `follower` object will be strictly inside the lifetime of `master`.
 //   The destructor of `master` will wait until all the `follower`-s have terminated.
 //   The callbacks, corresponding to active `follower`-s, will be called as `master` will be destructing.
 
@@ -175,13 +175,12 @@ template <typename T>
 class ScopeOwned {
  private:
   using T_INSTANCE = impl::ActualInstance<T>;
+
+ protected:
   // `ScopeOwned<T>` is meant to be initialized by `ScopeOwnedByMe<T>` or `ScopeOwnedBySomeoneElse<T>` only.
-  // Its constructors are private to prevent accidental construction.
-  friend class ScopeOwnedByMe<T>;
   ScopeOwned(impl::ConstructScopeOwnedByMe, T_INSTANCE& actual_instance)
       : p_actual_instance_(&actual_instance), key_(0u) {}
 
-  friend class ScopeOwnedBySomeoneElse<T>;
   ScopeOwned(impl::ConstructScopeOwnedBySomeoneElse,
              const ScopeOwned& rhs,
              std::function<void()> destruction_callback) {
@@ -218,8 +217,8 @@ class ScopeOwned {
 
   // Whether the object is destructing.
   // THREAD-SAFE. NEVER THROW.
-  bool IsDestructing() const { return p_actual_instance_->destructing_; }
-  operator bool() const { return IsDestructing(); }
+  bool IsDestructing() const noexcept { return p_actual_instance_->destructing_; }
+  operator bool() const noexcept { return IsDestructing(); }
 
   // Smart-pointer-style accessors.
   // NOT THREAD-SAFE. CAN THROW IF ALREADY DESTRUCTING.
@@ -263,21 +262,21 @@ class ScopeOwned {
 
   // Exclusive accessors ignoring the `destructing_` flag.
   // NOT THREAD-SAFE. NEVER THROW.
-  void ExclusiveUseDespitePossiblyDestructing(std::function<void(T&)> f) {
+  void ExclusiveUseDespitePossiblyDestructing(std::function<void(T&)> f) noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     f(p_actual_instance_->instance_);
   }
-  void ExclusiveUseDespitePossiblyDestructing(std::function<void(const T&)> f) const {
+  void ExclusiveUseDespitePossiblyDestructing(std::function<void(const T&)> f) const noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     f(p_actual_instance_->instance_);
   }
   template <typename V>
-  V ExclusiveUseDespitePossiblyDestructing(std::function<V(T&)> f) {
+  V ExclusiveUseDespitePossiblyDestructing(std::function<V(T&)> f) noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     return f(p_actual_instance_->instance_);
   }
   template <typename V>
-  V ExclusiveUseDespitePossiblyDestructing(std::function<V(const T&)> f) const {
+  V ExclusiveUseDespitePossiblyDestructing(std::function<V(const T&)> f) const noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     return f(p_actual_instance_->instance_);
   }
@@ -285,7 +284,7 @@ class ScopeOwned {
   // Return the number of registered follower users besides the master one.
   // For unit-testing purposes mostly, but may end up useful. -- D.K.
   // THREAD-SAFE. NEVER THROWS.
-  size_t NumberOfActiveFollowers() const {
+  size_t NumberOfActiveFollowers() const noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     return p_actual_instance_->followers_.size();
   }
@@ -293,7 +292,7 @@ class ScopeOwned {
   // Return the total number of registered follower users registered, with some possibly already out of scope.
   // For unit-testing purposes mostly, but may end up useful. -- D.K.
   // THREAD-SAFE. NEVER THROWS.
-  size_t TotalFollowersSpawnedThroughoutLifetime() const {
+  size_t TotalFollowersSpawnedThroughoutLifetime() const noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     return p_actual_instance_->total_followers_spawned_throughout_lifetime_;
   }
