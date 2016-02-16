@@ -156,10 +156,10 @@ class TemplatedHTTPRequestData : public HELPER {
       size_t chunk;
       size_t read_count;
       // Use `- offset - 1` instead of just `- offset` to leave room for the '\0'.
-      while (chunk = buffer_.size() - offset - 1,
-             read_count = c.BlockingRead(&buffer_[offset], chunk),
-             offset += read_count,
-             read_count == chunk && offset < length_cap) {
+      if (chunk = buffer_.size() - offset - 1,
+          read_count = c.BlockingRead(&buffer_[offset], chunk),
+          offset += read_count,
+          read_count == chunk && offset < length_cap) {
         buffer_.resize(static_cast<size_t>(buffer_.size() * buffer_growth_k));
       }
       if (!read_count) {
