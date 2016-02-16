@@ -61,8 +61,6 @@ current::ImmutableOptional
 current::Future
 
 current::WaitableAtomic
-
-ScopeOwned<T>, ScopeOwnedByMe<T>, ScopeOwnedBySomeoneElse<T>
 ```
 
 ## Functions.
