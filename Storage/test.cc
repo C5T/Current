@@ -446,10 +446,10 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 }
 
 template <typename T_TRANSACTION>
-class SherlockTestProcessor {
+class StorageSherlockTestProcessor {
  public:
   using IDX_TS = blocks::ss::IndexAndTimestamp;
-  SherlockTestProcessor(std::string& output) : output_(output) {}
+  StorageSherlockTestProcessor(std::string& output) : output_(output) {}
 
   bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
@@ -486,7 +486,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
   }
 
   std::string collected;
-  SherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
   storage.InternalExposeStream().SyncSubscribe(processor).Join();
   EXPECT_EQ(
       "{\"index\":1,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
