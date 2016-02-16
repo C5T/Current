@@ -1,0 +1,2 @@
+{"index":1,"us":100}	{"meta":{"timestamp":100,"fields":{"user":"dima"}},"mutations":[{"RecordDictionaryUpdated":{"data":{"lhs":"one","rhs":1}},"":"T9205381019427680739"},{"RecordDictionaryUpdated":{"data":{"lhs":"two","rhs":2}},"":"T9205381019427680739"}]}
+{"index":2,"us":200}	{"meta":{"timestamp":200,"fields":{}},"mutations":[{"RecordDictionaryUpdated":{"data":{"lhs":"three","rhs":3}},"":"T9205381019427680739"},{"RecordDictionaryDeleted":{"key":"two"},"":"T9202204057466171294"}]}

@@ -297,7 +297,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     // `?sizeonly` returns "0" since the stream is empty.
     const auto result = HTTP(GET(base_url + "?sizeonly"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("0", result.body);
+    EXPECT_EQ("0\n", result.body);
   }
 
   // Publish four records.
@@ -330,7 +330,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     const auto result = HTTP(GET(base_url + "?sizeonly"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("4", result.body);
+    EXPECT_EQ("4\n", result.body);
   }
 
   // Test `?n=...`.
@@ -346,6 +346,16 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?cap=4")).body);
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap=2")).body);
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap=1")).body);
+
+  // Test `?stop_after_bytes=...`'
+  // Request exactly the size of the first entry.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=46")).body);
+  // Request slightly more max bytes than the size of the first entry.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=50")).body);
+  // Request exactly the size of the first two entries.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=92")).body);
+  // Request with the capacity large enough to hold all the entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait")).body);
 
   // Test `?recent=...`, have to use `?cap=...`.
   EXPECT_EQ(s[3], HTTP(GET(base_url + "?cap=1&recent=15000")).body);

@@ -49,15 +49,17 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
       : stream_(sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER>(std::forward<ARGS>(args)...)) {}
 
   void PersistJournal(MutationJournal& journal) {
-    T_TRANSACTION transaction;
-    for (auto&& entry : journal.commit_log) {
-      transaction.mutations.emplace_back(std::move(entry));
+    if (!journal.commit_log.empty()) {
+      T_TRANSACTION transaction;
+      for (auto&& entry : journal.commit_log) {
+        transaction.mutations.emplace_back(std::move(entry));
+      }
+      transaction.meta.timestamp = current::time::Now();
+      transaction.meta.fields = std::move(journal.meta_fields);
+      stream_.Publish(std::move(transaction));
+      journal.commit_log.clear();
+      journal.rollback_log.clear();
     }
-    transaction.meta.timestamp = current::time::Now();
-    transaction.meta.fields = std::move(journal.meta_fields);
-    stream_.Publish(std::move(transaction));
-    journal.commit_log.clear();
-    journal.rollback_log.clear();
   }
 
   template <typename F>
@@ -75,6 +77,8 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
   void ExposeRawLogViaHTTP(int port, const std::string& route) {
     handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_);
   }
+
+  sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER>& InternalExposeStream() { return stream_; }
 
  private:
   class SherlockProcessor {
@@ -100,7 +104,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     bool allow_terminate_ = false;
   };
 
-  sherlock::StreamImpl<T_TRANSACTION, PERSISTER, CLONER> stream_;
+  sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER> stream_;
   HTTPRoutesScope handlers_scope_;
 };
 

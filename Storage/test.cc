@@ -368,6 +368,8 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   using IDX_TS = blocks::ss::IndexAndTimestamp;
 
   // Create master storage.
+  const std::string golden_storage_file_name =
+      current::FileSystem::JoinPath("golden", "transactions_to_replicate.json");
   const std::string master_storage_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data1");
   const auto master_storage_file_remover = current::FileSystem::ScopedRmFile(master_storage_file_name);
@@ -392,6 +394,20 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     }).Go();
     EXPECT_TRUE(WasCommited(result));
   }
+
+  // Confirm empty transactions are not persisted.
+  {
+    current::time::SetNow(std::chrono::microseconds(301));
+    master_storage.Transaction([](ImmutableFields<Storage>) {}).Wait();
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(302));
+    master_storage.Transaction([](MutableFields<Storage>) {}).Wait();
+  }
+
+  // Confirm the non-empty transactions have been persisted, while the empty ones have been skipped.
+  EXPECT_EQ(current::FileSystem::ReadFileAsString(golden_storage_file_name),
+            current::FileSystem::ReadFileAsString(master_storage_file_name));
 
   // Create storage for replication.
   const std::string replicated_storage_file_name =
@@ -427,6 +443,57 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     EXPECT_EQ(3, Value(fields.d["three"]).rhs);
     EXPECT_FALSE(Exists(fields.d["two"]));
   }).Wait();
+}
+
+template <typename T_TRANSACTION>
+class StorageSherlockTestProcessor {
+ public:
+  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  StorageSherlockTestProcessor(std::string& output) : output_(output) {}
+
+  bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {
+    output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
+    return current.index != last.index;
+  }
+
+  void ReplayDone() { allow_terminate_ = true; }
+
+  bool Terminate() { return allow_terminate_; }
+
+ private:
+  bool allow_terminate_ = false;
+  std::string& output_;
+};
+
+TEST(TransactionalStorage, InternalExposeStream) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"one", 1});
+    }).Go();
+    EXPECT_TRUE(WasCommited(result));
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(200));
+    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"two", 2});
+    }).Go();
+    EXPECT_TRUE(WasCommited(result));
+  }
+
+  std::string collected;
+  StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  storage.InternalExposeStream().SyncSubscribe(processor).Join();
+  EXPECT_EQ(
+      "{\"index\":1,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"
+      "{\"index\":2,\"us\":200}\t{\"meta\":{\"timestamp\":200,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}]}\n",
+      collected);
 }
 
 TEST(TransactionalStorage, GracefulShutdown) {

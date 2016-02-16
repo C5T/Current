@@ -372,7 +372,7 @@ class StreamImpl {
       const size_t count = storage_->Size();
       if (r.url.query.has("sizeonly")) {
         // Return the number of entries in the stream.
-        r(ToString(count), HTTPResponseCode.OK);
+        r(ToString(count) + '\n', HTTPResponseCode.OK);
       } else if (count == 0u && r.url.query.has("nowait")) {
         // Return "200 OK" if stream is empty and we asked not to wait for new entries.
         r("", HTTPResponseCode.OK);
