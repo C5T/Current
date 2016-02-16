@@ -368,6 +368,8 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   using IDX_TS = blocks::ss::IndexAndTimestamp;
 
   // Create master storage.
+  const std::string golden_storage_file_name =
+      current::FileSystem::JoinPath("golden", "transactions_to_replicate.json");
   const std::string master_storage_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data1");
   const auto master_storage_file_remover = current::FileSystem::ScopedRmFile(master_storage_file_name);
@@ -392,6 +394,20 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     }).Go();
     EXPECT_TRUE(WasCommited(result));
   }
+
+  // Confirm empty transactions are not persisted.
+  {
+    current::time::SetNow(std::chrono::microseconds(301));
+    master_storage.Transaction([](ImmutableFields<Storage>) {}).Wait();
+  }
+  {
+    current::time::SetNow(std::chrono::microseconds(302));
+    master_storage.Transaction([](MutableFields<Storage>) {}).Wait();
+  }
+
+  // Confirm the non-empty transactions have been persisted, while the empty ones have been skipped.
+  EXPECT_EQ(current::FileSystem::ReadFileAsString(golden_storage_file_name),
+            current::FileSystem::ReadFileAsString(master_storage_file_name));
 
   // Create storage for replication.
   const std::string replicated_storage_file_name =
