@@ -82,12 +82,12 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   TestStorage storage;
 
-  const auto rest1 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api1");
-  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+  const RESTfulStorage<TestStorage> rest1(storage, FLAGS_client_storage_test_port, "/api1");
+  const RESTfulStorage<TestStorage, current::storage::rest::Hypermedia> rest2(
       storage,
       FLAGS_client_storage_test_port,
       "/api2");
-  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia>(
+  const RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia> rest3(
       storage,
       FLAGS_client_storage_test_port,
       "/api3");

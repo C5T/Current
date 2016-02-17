@@ -34,32 +34,19 @@ SOFTWARE.
 CURRENT_STRUCT(HypermediaRESTTopLevel) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_status, std::string);
+  CURRENT_FIELD(up, bool);
   CURRENT_FIELD(api, (std::map<std::string, std::string>));
   CURRENT_FIELD(build, std::string, __DATE__ " " __TIME__);
-  CURRENT_CONSTRUCTOR(HypermediaRESTTopLevel)(const std::string& url_prefix = "")
-      : url(url_prefix), url_status(url_prefix + "/status") {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTTopLevel)(const std::string& url_prefix = "", bool up = false)
+      : url(url_prefix), url_status(url_prefix + "/status"), up(up) {}
 };
-
-static const std::chrono::microseconds startup_time_us = current::time::Now();
 
 CURRENT_STRUCT(HypermediaRESTStatus) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_api, std::string);
-  CURRENT_FIELD(up, bool, true);
-  CURRENT_FIELD(server_time_current, std::string);
-  CURRENT_FIELD(server_time_spawned, std::string);
-  CURRENT_FIELD(uptime_us, std::chrono::microseconds);
-  CURRENT_CONSTRUCTOR(HypermediaRESTStatus)(const std::string& url_prefix = "")
-      : url(url_prefix + "/status"), url_api(url_prefix) {
-    const std::chrono::microseconds now_us = current::time::Now();
-    std::time_t t;
-    using TP = std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds>;
-    t = std::chrono::system_clock::to_time_t(TP(now_us));
-    server_time_current = std::ctime(&t);
-    t = std::chrono::system_clock::to_time_t(TP(startup_time_us));
-    server_time_spawned = std::ctime(&t);
-    uptime_us = now_us - startup_time_us;
-  }
+  CURRENT_FIELD(up, bool);
+  CURRENT_CONSTRUCTOR(HypermediaRESTStatus)(const std::string& url_prefix = "", bool up = false)
+      : url(url_prefix + "/status"), url_api(url_prefix), up(up) {}
 };
 
 CURRENT_STRUCT(HypermediaRESTContainerResponse) {
@@ -90,18 +77,20 @@ struct Hypermedia {
                                const std::vector<std::string>& fields,
                                int port,
                                const std::string& path_prefix,
-                               const std::string& restful_url_prefix) {
+                               const std::string& restful_url_prefix,
+                               std::atomic_bool& up_status) {
     scope += HTTP(port).Register(path_prefix,
-                                 [fields, restful_url_prefix](Request request) {
-                                   HypermediaRESTTopLevel response(restful_url_prefix);
+                                 [fields, restful_url_prefix, &up_status](Request request) {
+                                   HypermediaRESTTopLevel response(restful_url_prefix, up_status);
                                    for (const auto& f : fields) {
                                      response.api[f] = restful_url_prefix + '/' + f;
                                    }
                                    request(response);
                                  });
-    scope += HTTP(port).Register(
-        path_prefix == "/" ? "/status" : path_prefix + "/status",
-        [restful_url_prefix](Request request) { request(HypermediaRESTStatus(restful_url_prefix)); });
+    scope += HTTP(port).Register(path_prefix == "/" ? "/status" : path_prefix + "/status",
+                                 [restful_url_prefix, &up_status](Request request) {
+                                   request(HypermediaRESTStatus(restful_url_prefix, up_status));
+                                 });
   }
 
   template <typename F_WITH, typename F_WITHOUT>
