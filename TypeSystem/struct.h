@@ -193,7 +193,8 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CURRENT_STRUCT_T_HELPERS(s, super)                                                                 \
   template <typename T, typename INSTANTIATION_TYPE>                                                       \
   struct CURRENT_STRUCT_T_IMPL_##s;                                                                        \
-  using s = CURRENT_STRUCT_T_IMPL_##s<::current::reflection::DeclareFields>;                               \
+  template <typename T>                                                                                    \
+  using s = CURRENT_STRUCT_T_IMPL_##s<T, ::current::reflection::DeclareFields>;                            \
   template <template <typename> class S>                                                                   \
   struct CURRENT_REFLECTION_T_HELPER;                                                                      \
   template <>                                                                                              \
@@ -243,12 +244,12 @@ struct CurrentStructFieldsConsistency<T, -1> {
                                                                 INSTANTIATION_TYPE,           \
                                                                 ::current::CurrentStruct>
 
-#define CURRENT_STRUCT_T_NOT_DERIVED(s)                                                         \
-  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                        \
-  template <typename T, typename INSTANTIATION_TYPE>                                            \
-  struct CURRENT_STRUCT_IMPL_##s : ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, \
-                                                                INSTANTIATION_TYPE,             \
-                                                                ::current::CurrentStruct>
+#define CURRENT_STRUCT_T_NOT_DERIVED(s)                                                           \
+  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                          \
+  template <typename T, typename INSTANTIATION_TYPE>                                              \
+  struct CURRENT_STRUCT_T_IMPL_##s : ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, \
+                                                                  INSTANTIATION_TYPE,             \
+                                                                  ::current::CurrentStruct>
 
 #define CURRENT_STRUCT_DERIVED(s, base)                                                   \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
