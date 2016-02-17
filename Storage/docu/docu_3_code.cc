@@ -82,12 +82,12 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   TestStorage storage;
 
-  const auto rest1 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api1");
-  const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
+  const RESTfulStorage<TestStorage> rest1(storage, FLAGS_client_storage_test_port, "/api1");
+  const RESTfulStorage<TestStorage, current::storage::rest::Hypermedia> rest2(
       storage,
       FLAGS_client_storage_test_port,
       "/api2");
-  const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia>(
+  const RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia> rest3(
       storage,
       FLAGS_client_storage_test_port,
       "/api3");
@@ -105,12 +105,12 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     {
       const auto result = HTTP(GET(base_url + "/api2"));
       EXPECT_EQ(200, static_cast<int>(result.code));
-      EXPECT_EQ(base_url + "/healthz", ParseJSON<HypermediaRESTTopLevel>(result.body).url_healthz);
+      EXPECT_EQ(base_url + "/status", ParseJSON<HypermediaRESTTopLevel>(result.body).url_status);
     }
     {
-      const auto result = HTTP(GET(base_url + "/api2/healthz"));
+      const auto result = HTTP(GET(base_url + "/api2/status"));
       EXPECT_EQ(200, static_cast<int>(result.code));
-      EXPECT_TRUE(ParseJSON<HypermediaRESTHealthz>(result.body).up);
+      EXPECT_TRUE(ParseJSON<HypermediaRESTStatus>(result.body).up);
     }
   }
 

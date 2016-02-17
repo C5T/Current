@@ -250,7 +250,7 @@ class RESTfulStorage {
                  int port,
                  const std::string& path_prefix = "/api",
                  const std::string& restful_url_prefix_input = "")
-      : port_(port), path_prefix_(path_prefix) {
+      : port_(port), up_status_(true), path_prefix_(path_prefix) {
     const std::string restful_url_prefix =
         restful_url_prefix_input.empty() ? "http://localhost:" + ToString(port) : restful_url_prefix_input;
 
@@ -273,8 +273,14 @@ class RESTfulStorage {
       fields.push_back(handler.first);
     }
     T_REST_IMPL::RegisterTopLevel(
-        handlers_scope_, fields, port, path_prefix.empty() ? "/" : path_prefix, restful_url_prefix);
+        handlers_scope_, fields, port, path_prefix.empty() ? "/" : path_prefix, restful_url_prefix, up_status_);
   }
+
+  RESTfulStorage() = delete;
+  RESTfulStorage(const RESTfulStorage&) = delete;
+  RESTfulStorage(RESTfulStorage&&) = delete;
+  RESTfulStorage& operator=(const RESTfulStorage&) = delete;
+  RESTfulStorage& operator=(RESTfulStorage&&) = delete;
 
   // To enable exposing fields under different names / URLs.
   void RegisterAlias(const std::string& target, const std::string& alias_name) {
@@ -290,6 +296,7 @@ class RESTfulStorage {
 
   // Support for graceful shutdown. Alpha.
   void SwitchHTTPEndpointsTo503s() {
+    up_status_ = false;
     for (auto& route : handler_routes_) {
       HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(
           route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, Serve503);
@@ -298,6 +305,7 @@ class RESTfulStorage {
 
  private:
   const int port_;
+  std::atomic_bool up_status_;
   const std::string path_prefix_;
   std::vector<std::string> handler_routes_;
   impl::STORAGE_HANDLERS_MAP handlers_;

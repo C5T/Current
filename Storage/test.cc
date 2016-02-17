@@ -807,7 +807,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
-    auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
+    RESTfulStorage<Storage> rest(storage, FLAGS_transactional_storage_test_port);
     rest.RegisterAlias("user", "user_alias");
 
     // Confirm an empty collection is returned.
@@ -906,9 +906,9 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
-  auto rest1 = RESTfulStorage<Storage1, current::storage::rest::Hypermedia>(
+  RESTfulStorage<Storage1, current::storage::rest::Hypermedia> rest1(
       storage1, FLAGS_transactional_storage_test_port, "/api1");
-  auto rest2 = RESTfulStorage<Storage2, current::storage::rest::Hypermedia>(
+  RESTfulStorage<Storage2, current::storage::rest::Hypermedia> rest2(
       storage2, FLAGS_transactional_storage_test_port, "/api2");
 
   const auto fields1 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api1")).body);
@@ -921,4 +921,23 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   EXPECT_TRUE(fields2.api.count("user") == 1);
   EXPECT_TRUE(fields2.api.count("post") == 0);
   EXPECT_EQ(1u, fields2.api.size());
+}
+
+TEST(TransactionalStorage, ShuttingDownAPIRepotsUpAsFalse) {
+  using namespace transactional_storage_test;
+  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  RESTfulStorage<Storage, current::storage::rest::Hypermedia> rest(storage,
+                                                                   FLAGS_transactional_storage_test_port);
+
+  EXPECT_TRUE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
+  EXPECT_TRUE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
+
+  rest.SwitchHTTPEndpointsTo503s();
+
+  EXPECT_FALSE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
+  EXPECT_FALSE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
 }
