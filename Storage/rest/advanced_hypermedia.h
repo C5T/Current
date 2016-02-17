@@ -62,7 +62,7 @@ template <typename T, typename INPUT, typename TT>
 std::string FormatAsAdvancedHypermediaRecord(TT& record, const INPUT& input) {
   AdvancedHypermediaRESTRecordResponse response_builder;
   const std::string key_as_string = ToString(sfinae::GetKey(record));
-  response_builder.url_directory = input.restful_url_prefix + '/' + input.field_name;
+  response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
   response_builder.url = response_builder.url_directory + '/' + key_as_string;
   response_builder.url_full = response_builder.url;
   response_builder.url_brief = response_builder.url + "?fields=brief";
@@ -103,8 +103,8 @@ struct AdvancedHypermedia : Hypermedia {
         const ImmutableOptional<ENTRY> result = input.field[FromString<KEY>(input.url_key)];
         if (Exists(result)) {
           const auto& value = Value(result);
-          return Response((brief ? FormatAsAdvancedHypermediaRecord<ENTRY>(value, input)
-                                 : FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(value, input)),
+          return Response((brief ? FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(value, input)
+                                 : FormatAsAdvancedHypermediaRecord<ENTRY>(value, input)),
                           HTTPResponseCode.OK,
                           json_content_type);
         } else {
@@ -113,9 +113,10 @@ struct AdvancedHypermedia : Hypermedia {
       } else {
         // Collection view.
         AdvancedHypermediaRESTContainerResponse response_builder;
-        response_builder.url_directory = input.restful_url_prefix + '/' + input.field_name;
+        response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
         const auto GenPageURL = [&](uint64_t i, uint64_t n) {
-          return input.restful_url_prefix + '/' + input.field_name + "?i=" + ToString(i) + "&n=" + ToString(n);
+          return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + ToString(i) + "&n=" +
+                 ToString(n);
         };
         bool first = true;
         std::ostringstream os;

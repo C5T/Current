@@ -45,12 +45,14 @@ struct Basic {
                                const std::vector<std::string>& fields,
                                int port,
                                const std::string& path_prefix,
-                               const std::string& restful_url_prefix) {
+                               const std::string& restful_url_prefix,
+                               std::atomic_bool& up_status) {
     static_cast<void>(scope);
     static_cast<void>(fields);
     static_cast<void>(port);
     static_cast<void>(path_prefix);
     static_cast<void>(restful_url_prefix);
+    static_cast<void>(up_status);
   }
 
   template <typename F_WITH, typename F_WITHOUT>

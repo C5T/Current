@@ -32,29 +32,17 @@ SOFTWARE.
 #include "../../Blocks/HTTP/api.h"
 
 CURRENT_STRUCT(HypermediaRESTTopLevel) {
-  CURRENT_FIELD(url_healthz, std::string);
-  CURRENT_FIELD(api, (std::map<std::string, std::string>));
-  CURRENT_FIELD(build, std::string, __DATE__ " " __TIME__);
+  CURRENT_FIELD(url, std::string);
+  CURRENT_FIELD(url_status, std::string);
+  CURRENT_FIELD(url_data, (std::map<std::string, std::string>));
+  CURRENT_FIELD(up, bool);
+  CURRENT_CONSTRUCTOR(HypermediaRESTTopLevel)(const std::string& url_prefix = "", bool up = false)
+      : url(url_prefix), url_status(url_prefix + "/status"), up(up) {}
 };
 
-static const std::chrono::microseconds startup_time_us = current::time::Now();
-
-CURRENT_STRUCT(HypermediaRESTHealthz) {
-  CURRENT_FIELD(url, std::string);
-  CURRENT_FIELD(up, bool, true);
-  CURRENT_FIELD(server_time_current, std::string);
-  CURRENT_FIELD(server_time_spawned, std::string);
-  CURRENT_FIELD(uptime_us, std::chrono::microseconds);
-  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTHealthz) {
-    const std::chrono::microseconds now_us = current::time::Now();
-    std::time_t t;
-    using TP = std::chrono::time_point<std::chrono::system_clock, std::chrono::microseconds>;
-    t = std::chrono::system_clock::to_time_t(TP(now_us));
-    server_time_current = std::ctime(&t);
-    t = std::chrono::system_clock::to_time_t(TP(startup_time_us));
-    server_time_spawned = std::ctime(&t);
-    uptime_us = now_us - startup_time_us;
-  }
+CURRENT_STRUCT(HypermediaRESTStatus) {
+  CURRENT_FIELD(up, bool);
+  CURRENT_CONSTRUCTOR(HypermediaRESTStatus)(bool up = false) : up(up) {}
 };
 
 CURRENT_STRUCT(HypermediaRESTContainerResponse) {
@@ -85,21 +73,23 @@ struct Hypermedia {
                                const std::vector<std::string>& fields,
                                int port,
                                const std::string& path_prefix,
-                               const std::string& restful_url_prefix) {
-    scope += HTTP(port).Register(path_prefix,
-                                 [fields, restful_url_prefix](Request request) {
-                                   HypermediaRESTTopLevel response;
-                                   response.url_healthz = restful_url_prefix + "/healthz";
-                                   for (const auto& f : fields) {
-                                     response.api[f] = restful_url_prefix + '/' + f;
-                                   }
-                                   request(response);
-                                 });
-    scope += HTTP(port).Register(path_prefix == "/" ? "/healthz" : path_prefix + "/healthz",
-                                 [restful_url_prefix](Request request) {
-                                   HypermediaRESTHealthz response;
-                                   response.url = restful_url_prefix + "/healthz";
-                                   request(response);
+                               const std::string& restful_url_prefix,
+                               std::atomic_bool& up_status) {
+    scope +=
+        HTTP(port).Register(path_prefix,
+                            [fields, restful_url_prefix, &up_status](Request request) {
+                              const bool up = up_status;
+                              HypermediaRESTTopLevel response(restful_url_prefix, up);
+                              for (const auto& f : fields) {
+                                response.url_data[f] = restful_url_prefix + "/data/" + f;
+                              }
+                              request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
+                            });
+    scope += HTTP(port).Register(path_prefix == "/" ? "/status" : path_prefix + "/status",
+                                 [restful_url_prefix, &up_status](Request request) {
+                                   const bool up = up_status;
+                                   request(HypermediaRESTStatus(up),
+                                           up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                                  });
   }
 
