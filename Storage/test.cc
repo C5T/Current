@@ -811,58 +811,59 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     rest.RegisterAlias("user", "user_alias");
 
     // Confirm an empty collection is returned.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
-    EXPECT_EQ("", HTTP(GET(base_url + "/api/user")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
+    EXPECT_EQ("", HTTP(GET(base_url + "/api/data/user")).body);
 
-    const auto post_user1_response = HTTP(POST(base_url + "/api/user", SimpleUser("max", "MZ")));
+    const auto post_user1_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
     EXPECT_EQ(201, static_cast<int>(post_user1_response.code));
     const auto user1_key = post_user1_response.body;
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user/" + user1_key)).code));
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user/" + user1_key)).body).name);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).code));
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user/" + user1_key)).body).name);
 
     // Test the alias too.
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user_alias/" + user1_key)).body).name);
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user_alias/" + user1_key)).body).name);
 
     // Test other key format too.
-    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/user?key=" + user1_key)).body).name);
+    EXPECT_EQ("MZ", ParseJSON<SimpleUser>(HTTP(GET(base_url + "/api/data/user?key=" + user1_key)).body).name);
 
     // Confirm a collection of one element is returned.
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
-    EXPECT_EQ(user1_key + '\n', HTTP(GET(base_url + "/api/user")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
+    EXPECT_EQ(user1_key + '\n', HTTP(GET(base_url + "/api/data/user")).body);
 
     // Test collection retrieval.
-    const auto post_user2_response = HTTP(POST(base_url + "/api/user", SimpleUser("dima", "DK")));
+    const auto post_user2_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("dima", "DK")));
     EXPECT_EQ(201, static_cast<int>(post_user2_response.code));
     const auto user2_key = post_user2_response.body;
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/user")).code));
-    EXPECT_EQ(user1_key + '\n' + user2_key + '\n', HTTP(GET(base_url + "/api/user")).body);
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
+    EXPECT_EQ(user1_key + '\n' + user2_key + '\n', HTTP(GET(base_url + "/api/data/user")).body);
 
     // Delete the users.
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/" + user1_key)).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/user/" + user2_key)).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/user/max")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user1_key)).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/user/" + user2_key)).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/user/max")).code));
 
     // Run the subset of the above test for posts, not just for users.
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
 
-    EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", SimplePost("test", "blah"))).code));
-    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
-    EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api/post/test")).body).text);
+    EXPECT_EQ(201,
+              static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", SimplePost("test", "blah"))).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ("blah", ParseJSON<SimplePost>(HTTP(GET(base_url + "/api/data/post/test")).body).text);
 
-    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
-    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
-
-    rest.SwitchHTTPEndpointsTo503s();
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/post", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
 
     rest.SwitchHTTPEndpointsTo503s();
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/post", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/post/test", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
+
+    rest.SwitchHTTPEndpointsTo503s();
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
   }
 
   const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
@@ -914,11 +915,33 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   const auto fields1 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api1")).body);
   const auto fields2 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api2")).body);
 
-  EXPECT_TRUE(fields1.api.count("user") == 1);
-  EXPECT_TRUE(fields1.api.count("post") == 1);
-  EXPECT_EQ(2u, fields1.api.size());
+  EXPECT_TRUE(fields1.url_data.count("user") == 1);
+  EXPECT_TRUE(fields1.url_data.count("post") == 1);
+  EXPECT_EQ(2u, fields1.url_data.size());
 
-  EXPECT_TRUE(fields2.api.count("user") == 1);
-  EXPECT_TRUE(fields2.api.count("post") == 0);
-  EXPECT_EQ(1u, fields2.api.size());
+  EXPECT_TRUE(fields2.url_data.count("user") == 1);
+  EXPECT_TRUE(fields2.url_data.count("post") == 0);
+  EXPECT_EQ(1u, fields2.url_data.size());
+}
+
+TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
+  using namespace transactional_storage_test;
+  using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
+
+  Storage storage;
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+
+  auto rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
+      storage, FLAGS_transactional_storage_test_port);
+
+  EXPECT_TRUE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
+  EXPECT_TRUE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
+  EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/foo")).code));
+
+  rest.SwitchHTTPEndpointsTo503s();
+
+  EXPECT_FALSE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
+  EXPECT_FALSE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
+  EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/foo")).code));
 }

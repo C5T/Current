@@ -248,21 +248,25 @@ class RESTfulStorage {
  public:
   RESTfulStorage(T_STORAGE_IMPL& storage,
                  int port,
-                 const std::string& path_prefix = "/api",
-                 const std::string& restful_url_prefix_input = "")
-      : port_(port), path_prefix_(path_prefix) {
+                 const std::string& route_prefix = "/api",
+                 const std::string& restful_url_prefix_input = "",
+                 const std::string& data_url_component = "data")
+      : port_(port),
+        up_status_(std::make_unique<std::atomic_bool>(true)),
+        route_prefix_(route_prefix),
+        data_url_component_(data_url_component) {
     const std::string restful_url_prefix =
         restful_url_prefix_input.empty() ? "http://localhost:" + ToString(port) : restful_url_prefix_input;
 
-    if (!path_prefix.empty() && path_prefix.back() == '/') {
-      CURRENT_THROW(current::Exception("`path_prefix` should not end with a slash."));
+    if (!route_prefix.empty() && route_prefix.back() == '/') {
+      CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(
         storage, restful_url_prefix, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& handler : handlers_) {
-      const std::string route = path_prefix + '/' + handler.first;
+      const std::string route = route_prefix + '/' + data_url_component_ + '/' + handler.first;
       handler_routes_.push_back(route);
       handlers_scope_ += HTTP(port).Register(
           route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, handler.second);
@@ -272,8 +276,13 @@ class RESTfulStorage {
     for (const auto& handler : handlers_) {
       fields.push_back(handler.first);
     }
-    T_REST_IMPL::RegisterTopLevel(
-        handlers_scope_, fields, port, path_prefix.empty() ? "/" : path_prefix, restful_url_prefix);
+    T_REST_IMPL::RegisterTopLevel(handlers_scope_,
+                                  fields,
+                                  port,
+                                  route_prefix.empty() ? "/" : route_prefix,
+                                  restful_url_prefix,
+                                  data_url_component_,
+                                  *up_status_);
   }
 
   // To enable exposing fields under different names / URLs.
@@ -282,7 +291,7 @@ class RESTfulStorage {
     if (cit == handlers_.end()) {
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
     }
-    const std::string route = path_prefix_ + '/' + alias_name;
+    const std::string route = route_prefix_ + '/' + data_url_component_ + '/' + alias_name;
     handler_routes_.push_back(route);
     handlers_scope_ +=
         HTTP(port_).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, cit->second);
@@ -290,6 +299,7 @@ class RESTfulStorage {
 
   // Support for graceful shutdown. Alpha.
   void SwitchHTTPEndpointsTo503s() {
+    *up_status_ = false;
     for (auto& route : handler_routes_) {
       HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(
           route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, Serve503);
@@ -298,7 +308,10 @@ class RESTfulStorage {
 
  private:
   const int port_;
-  const std::string path_prefix_;
+  // Need an `std::unique_ptr<>` for the whole REST to stay `std::move()`-able.
+  std::unique_ptr<std::atomic_bool> up_status_;
+  const std::string route_prefix_;
+  const std::string data_url_component_;
   std::vector<std::string> handler_routes_;
   impl::STORAGE_HANDLERS_MAP handlers_;
   HTTPRoutesScope handlers_scope_;
