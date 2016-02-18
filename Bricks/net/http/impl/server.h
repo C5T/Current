@@ -156,11 +156,17 @@ class TemplatedHTTPRequestData : public HELPER {
       size_t chunk;
       size_t read_count;
       // Use `- offset - 1` instead of just `- offset` to leave room for the '\0'.
+      assert(buffer_.size() > offset + 1);
+      // NOTE: This `if` should not be made a `while`, as it may so happen that the boundary between two
+      // consecutively received packets lays right on the final size, but instead of parsing the received body,
+      // the server would wait forever for more data to arrive from the client.
       if (chunk = buffer_.size() - offset - 1,
           read_count = c.BlockingRead(&buffer_[offset], chunk),
           offset += read_count,
           read_count == chunk && offset < length_cap) {
-        buffer_.resize(static_cast<size_t>(buffer_.size() * buffer_growth_k));
+        // The `std::max()` condition is kept just in case we compile Current for a device
+        // that is extremely short on memory, for which `buffer_growth_k` could be some 1.0001. -- D.K.
+        buffer_.resize(std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), offset + 2));
       }
       if (!read_count) {
         // This is worth re-checking, but as for 2014/12/06 the concensus of reading through man
@@ -206,12 +212,22 @@ class TemplatedHTTPRequestData : public HELPER {
               const size_t next_offset = chunk_offset + chunk_length;
               if (offset < next_offset) {
                 const size_t bytes_to_read = next_offset - offset;
-                // The `+1` is required for the '\0'.
-                if (buffer_.size() < next_offset + 1) {
+                // The very minimum for this condition is `buffer_.size() < next_offset + 2`:
+                // a) plus one is required for the padding `\0`, and
+                // b) another plus one is required to have room to read at least one more byte
+                //    during the next iteration of the outer loop.
+                // The original version of this code was only adding one to `next_offset`.
+                // This had a bug, which got revealed as the `while` loop above has been corrected into `if`.
+                // Upon changing the `while` to an `if`, the `assert (buffer_.size() > offset + 1);` check above
+                // would fail on a chunked HTTP body of several large chunks. Thus, `next_offset + 2` is it.
+                // Note that the actual `resize()` would always allocate more room than the extra two bytes.
+                // The `std::max()` condition is kept just in case we compile Current for a device
+                // that is extremely short on memory, for which `buffer_growth_k` could be some 1.0001. -- D.K.
+                if (buffer_.size() < next_offset + 2) {
                   // LCOV_EXCL_START
                   // TODO(dkorolev): See if this can be tested better; now the test for these lines is flaky.
                   buffer_.resize(
-                      std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 1));
+                      std::max(static_cast<size_t>(buffer_.size() * buffer_growth_k), next_offset + 2));
                   // LCOV_EXCL_STOP
                 }
                 if (bytes_to_read !=
