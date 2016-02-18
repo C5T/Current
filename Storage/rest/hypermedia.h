@@ -72,20 +72,21 @@ struct Hypermedia {
   static void RegisterTopLevel(HTTPRoutesScope& scope,
                                const std::vector<std::string>& fields,
                                int port,
-                               const std::string& path_prefix,
+                               const std::string& route_prefix,
                                const std::string& restful_url_prefix,
+                               const std::string& data_url_component,
                                std::atomic_bool& up_status) {
     scope +=
-        HTTP(port).Register(path_prefix,
-                            [fields, restful_url_prefix, &up_status](Request request) {
+        HTTP(port).Register(route_prefix,
+                            [fields, restful_url_prefix, data_url_component, &up_status](Request request) {
                               const bool up = up_status;
                               HypermediaRESTTopLevel response(restful_url_prefix, up);
                               for (const auto& f : fields) {
-                                response.url_data[f] = restful_url_prefix + "/data/" + f;
+                                response.url_data[f] = restful_url_prefix + '/' + data_url_component + '/' + f;
                               }
                               request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                             });
-    scope += HTTP(port).Register(path_prefix == "/" ? "/status" : path_prefix + "/status",
+    scope += HTTP(port).Register(route_prefix == "/" ? "/status" : route_prefix + "/status",
                                  [restful_url_prefix, &up_status](Request request) {
                                    const bool up = up_status;
                                    request(HypermediaRESTStatus(up),

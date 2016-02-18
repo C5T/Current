@@ -924,7 +924,7 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   EXPECT_EQ(1u, fields2.url_data.size());
 }
 
-TEST(TransactionalStorage, ShuttingDownAPIRepotsUpAsFalse) {
+TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   using namespace transactional_storage_test;
   using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
 
