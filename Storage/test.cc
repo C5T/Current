@@ -872,7 +872,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   EXPECT_EQ(12u, persisted_transactions.size());
 }
 
-// Test the `CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(storage, field)` macro.
+// Test the `CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(field)` macro.
 namespace transactional_storage_test {
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersistedExposed);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersistedNotExposed);
@@ -882,9 +882,7 @@ CURRENT_STORAGE(PartiallyExposedStorage) {
 };
 }  // namespace transactional_storage_test
 
-CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(
-    transactional_storage_test::PartiallyExposedStorage<SherlockInMemoryStreamPersister>,
-    transactional_storage_test::SimplePostPersistedNotExposed);
+CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(transactional_storage_test::SimplePostPersistedNotExposed);
 
 TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using namespace transactional_storage_test;

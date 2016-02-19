@@ -48,12 +48,12 @@ struct FieldExposedViaREST {
   constexpr static bool exposed = true;
 };
 
-#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(storage_impl, field) \
+#define CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(field)               \
   namespace current {                                                \
   namespace storage {                                                \
   namespace rest {                                                   \
-  template <>                                                        \
-  struct FieldExposedViaREST<storage_impl, field> {                  \
+  template <typename T_STORAGE>                                      \
+  struct FieldExposedViaREST<T_STORAGE, field> {                     \
     constexpr static bool exposed = false;                           \
   };                                                                 \
   }                                                                  \
