@@ -193,7 +193,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
             current::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
             waitable_terminate_signal.WaitUntil(
                 unique_lock.GetUniqueLock(),
-                [this, &next]() { return list_size_ + 1u > next.last_idx_ts.index; });
+                [this, &next]() { return list_size_ > next.last_idx_ts.index; });
           }();
         }
       } while (next.at_end);
