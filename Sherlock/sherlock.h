@@ -123,18 +123,16 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
-template <typename ENTRY, class CLONER = current::DefaultCloner>
-using DEFAULT_PERSISTENCE_LAYER = current::persistence::MemoryOnly<ENTRY, CLONER>;
+template <typename ENTRY>
+using DEFAULT_PERSISTENCE_LAYER = current::persistence::MemoryOnly<ENTRY>;
 
-template <typename ENTRY,
-          template <typename, typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER,
-          class CLONER = current::DefaultCloner>
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {
   using IDX_TS = current::ss::IndexAndTimestamp;
 
  public:
-  typedef ENTRY T_ENTRY;
-  typedef PERSISTENCE_LAYER<ENTRY, CLONER> T_PERSISTENCE_LAYER;
+  using T_ENTRY = ENTRY;
+  using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
 
   StreamImpl() : storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
 
@@ -394,10 +392,8 @@ class StreamImpl {
   void operator=(const StreamImpl&) = delete;
 };
 
-template <typename ENTRY,
-          template <typename, typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER,
-          class CLONER = current::DefaultCloner>
-using Stream = StreamImpl<ENTRY, PERSISTENCE_LAYER, CLONER>;
+template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
+using Stream = StreamImpl<ENTRY, PERSISTENCE_LAYER>;
 
 }  // namespace sherlock
 }  // namespace current

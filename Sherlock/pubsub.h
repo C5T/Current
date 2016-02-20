@@ -39,11 +39,13 @@ namespace current {
 namespace sherlock {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
-class PubSubHTTPEndpoint final {
+class PubSubHTTPEndpointImpl {
   using IDX_TS = current::ss::IndexAndTimestamp;
+  using EntryResponse = current::ss::EntryResponse;
+  using TerminationResponse = current::ss::TerminationResponse;
 
  public:
-  explicit PubSubHTTPEndpoint(Request r)
+  explicit PubSubHTTPEndpointImpl(Request r)
       : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
@@ -76,12 +78,12 @@ class PubSubHTTPEndpoint final {
     }
   }
 
-  // The implementation of the listener in `PubSubHTTPEndpoint` is an example of using:
+  // The implementation of the listener in `PubSubHTTPEndpointImpl` is an example of using:
   // * `curent` as the second parameter,
   // * `last` as the third parameter, and
   // * `bool` as the return value.
   // It does so to respect the URL parameters of the range of entries to listen to.
-  bool operator()(const E& entry, IDX_TS current, IDX_TS last) {
+  EntryResponse operator()(const E& entry, IDX_TS current, IDX_TS last) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
@@ -100,29 +102,29 @@ class PubSubHTTPEndpoint final {
         http_response_(std::move(entry_json));
         // Respect `stop_after_bytes`.
         if (stop_after_bytes_ && current_response_size_ >= stop_after_bytes_) {
-          return false;
+          return EntryResponse::Done;
         }
         // Respect `cap`.
         if (cap_) {
           --cap_;
           if (!cap_) {
-            return false;
+            return EntryResponse::Done;
           }
         }
         // Respect `no_wait`.
         if (current.index == last.index && no_wait_) {
-          return false;
+          return EntryResponse::Done;
         }
       }
-      return true;
+      return EntryResponse::More;
     } catch (const current::net::NetworkException&) {
-      return false;
+      return EntryResponse::Done;
     }
   }
 
-  bool Terminate() {
+  TerminationResponse Terminate() {
     http_response_("{\"error\":\"The subscriber has terminated.\"}\n");
-    return true;  // Confirm termination.
+    return TerminationResponse::Terminate;  // Confirm termination.
   }
 
  private:
@@ -146,13 +148,15 @@ class PubSubHTTPEndpoint final {
   // If set, stop serving when current entry is the last entry.
   bool no_wait_ = false;
 
-  PubSubHTTPEndpoint() = delete;
-  PubSubHTTPEndpoint(const PubSubHTTPEndpoint&) = delete;
-  void operator=(const PubSubHTTPEndpoint&) = delete;
-  PubSubHTTPEndpoint(PubSubHTTPEndpoint&&) = delete;
-  void operator=(PubSubHTTPEndpoint&&) = delete;
+  PubSubHTTPEndpointImpl() = delete;
+  PubSubHTTPEndpointImpl(const PubSubHTTPEndpointImpl&) = delete;
+  void operator=(const PubSubHTTPEndpointImpl&) = delete;
+  PubSubHTTPEndpointImpl(PubSubHTTPEndpointImpl&&) = delete;
+  void operator=(PubSubHTTPEndpointImpl&&) = delete;
 };
 
+template <typename E, JSONFormat J = JSONFormat::Current>
+using PubSubHTTPEndpoint = current::ss::StreamSubscriber<PubSubHTTPEndpointImpl<E, J>, E>;
 }  // namespace sherlock
 }  // namespace current
 

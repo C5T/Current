@@ -476,7 +476,6 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
   EntrySubscriber(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntrySubscriber() {}
 
-  template <typename CLONER = current::DefaultCloner>
   EntryResponse operator()(const ENTRY& e, IndexAndTimestamp current, IndexAndTimestamp last) {
     return IMPL::operator()(e, current, last);
   }

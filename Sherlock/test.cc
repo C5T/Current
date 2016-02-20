@@ -51,6 +51,9 @@ namespace sherlock_unittest {
 using current::strings::Join;
 using current::strings::Printf;
 using current::strings::ToString;
+using IDX_TS = current::ss::IndexAndTimestamp;
+using current::ss::EntryResponse;
+using current::ss::TerminationResponse;
 
 // The records we work with.
 CURRENT_STRUCT(Record) {
@@ -67,8 +70,6 @@ CURRENT_STRUCT(RecordWithTimestamp) {
   CURRENT_USE_FIELD_AS_TIMESTAMP(t);
 };
 
-}  // namespace sherlock_unittest
-
 // Struct `Data` should be outside struct `SherlockTestProcessor`,
 // since the latter is `std::move`-d away in some tests.
 struct Data final {
@@ -79,46 +80,56 @@ struct Data final {
 };
 
 // Struct `SherlockTestProcessor` handles the entries that tests subscribe to.
-struct SherlockTestProcessor final {
+struct SherlockTestProcessorImpl {
   Data& data_;                  // Initialized in constructor.
   const bool allow_terminate_;  // Initialized in constructor.
   size_t max_to_process_ = static_cast<size_t>(-1);
 
-  SherlockTestProcessor() = delete;
+  SherlockTestProcessorImpl() = delete;
 
-  explicit SherlockTestProcessor(Data& data, bool allow_terminate)
+  explicit SherlockTestProcessorImpl(Data& data, bool allow_terminate)
       : data_(data), allow_terminate_(allow_terminate) {
     assert(!data_.listener_alive_);
     data_.listener_alive_ = true;
   }
 
-  ~SherlockTestProcessor() {
+  ~SherlockTestProcessorImpl() {
     assert(data_.listener_alive_);
     data_.listener_alive_ = false;
   }
 
-  SherlockTestProcessor& SetMax(size_t cap) {
-    max_to_process_ = cap;
-    return *this;
-  }
+  void SetMax(size_t cap) { max_to_process_ = cap; }
 
-  inline bool operator()(sherlock_unittest::Record&& entry) {
+  // NOTE: `SyncScanAllEntries` uses `const Record`, so we get it by const reference.
+  EntryResponse operator()(const Record& entry, IDX_TS, IDX_TS) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
     data_.results_ += ToString(entry.x);
     ++data_.seen_;
-    return data_.seen_ < max_to_process_;
+    if (data_.seen_ < max_to_process_) {
+      return EntryResponse::More;
+    } else {
+      return EntryResponse::Done;
+    }
   }
 
-  inline bool Terminate() {
+  TerminationResponse Terminate() {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
     data_.results_ += "TERMINATE";
-    return allow_terminate_;
+    if (allow_terminate_) {
+      return TerminationResponse::Terminate;
+    } else {
+      return TerminationResponse::Wait;
+    }
   }
 };
+
+using SherlockTestProcessor =
+    current::ss::StreamSubscriber<SherlockTestProcessorImpl, sherlock_unittest::Record>;
+}  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   using namespace sherlock_unittest;
@@ -132,7 +143,8 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
     ASSERT_FALSE(d.listener_alive_);
     SherlockTestProcessor p(d, false);
     ASSERT_TRUE(d.listener_alive_);
-    foo_stream.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
+    p.SetMax(3u);
+    foo_stream.SyncSubscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.listener_alive_);
   }
@@ -254,22 +266,23 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
 namespace sherlock_unittest {
 
 // Collector class for `SubscribeToStreamViaHTTP` test.
-struct RecordsCollector final {
+struct RecordsCollectorImpl {
   std::atomic_size_t count_;
   std::vector<std::string>& data_;
 
-  RecordsCollector() = delete;
-  explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
+  RecordsCollectorImpl() = delete;
+  explicit RecordsCollectorImpl(std::vector<std::string>& data) : count_(0u), data_(data) {}
 
-  inline bool operator()(const RecordWithTimestamp& entry,
-                         current::ss::IndexAndTimestamp current,
-                         current::ss::IndexAndTimestamp) {
+  EntryResponse operator()(const RecordWithTimestamp& entry, IDX_TS current, IDX_TS) {
     data_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
     ++count_;
-    return true;
+    return EntryResponse::More;
   }
+
+  TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
 
+using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl, RecordWithTimestamp>;
 }  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
@@ -418,7 +431,8 @@ TEST(Sherlock, ParsesFromFile) {
     ASSERT_FALSE(d.listener_alive_);
     SherlockTestProcessor p(d, false);
     ASSERT_TRUE(d.listener_alive_);
-    parsed.SyncSubscribe(p.SetMax(3u)).Join();  // `.Join()` blocks this thread waiting for three entries.
+    p.SetMax(3u);
+    parsed.SyncSubscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.listener_alive_);
   }
