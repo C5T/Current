@@ -311,11 +311,10 @@ template <typename ENTRY>
 struct GenericEntryPublisher : GenericPublisher {};
 
 template <typename IMPL, typename ENTRY>
-class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
+class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
-  template <typename... EXTRA_PARAMS>
-  explicit Publisher(EXTRA_PARAMS&&... extra_params)
-      : IMPL(std::forward<EXTRA_PARAMS>(extra_params)...) {}
+  template <typename... ARGS>
+  explicit EntryPublisher(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   inline IndexAndTimestamp Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
@@ -326,7 +325,14 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
+};
 
+template <typename ENTRY>
+struct GenericStreamPublisher {};
+template <typename IMPL, typename ENTRY>
+class StreamPublisher : public GenericStreamPublisher<ENTRY>, public EntryPublisher<IMPL, ENTRY> {
+ public:
+  using EntryPublisher<IMPL, ENTRY>::EntryPublisher;
   // Special type of publishing required for replication.
   // Functions below return `false` if the `IndexAndTimestamp` argument provided is inconsistent with the
   // current state of the stream. No publish is performed in this case.
@@ -338,6 +344,10 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
   }
 };
 
+// Temp mapping for tests.
+template <typename IMPL, typename ENTRY>
+using Publisher = StreamPublisher<IMPL, ENTRY>;
+
 // For `static_assert`-s.
 template <typename T>
 struct IsPublisher {
@@ -347,6 +357,11 @@ struct IsPublisher {
 template <typename T, typename E>
 struct IsEntryPublisher {
   static constexpr bool value = std::is_base_of<GenericEntryPublisher<E>, T>::value;
+};
+
+template <typename T, typename E>
+struct IsStreamPublisher {
+  static constexpr bool value = std::is_base_of<GenericStreamPublisher<E>, T>::value;
 };
 
 // === `Terminate()` ===
@@ -436,6 +451,48 @@ template <typename T>
 void CallReplayDone(T&& ref) {
   impl::CallReplayDoneImpl<T, impl::HasReplayDoneMethod<T>(0)>::DoIt(std::forward<T>(ref));
 }
+
+struct GenericSubscriber {};
+
+template <typename ENTRY>
+struct GenericEntrySubscriber : GenericSubscriber {};
+
+template <typename IMPL, typename ENTRY>
+class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
+ public:
+  template <typename... ARGS>
+  EntrySubscriber(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
+
+  template <typename CLONER = current::DefaultCloner>
+  bool operator()(const ENTRY& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+    return impl::DispatchEntryMakingACopyIfNecessary<impl::RequiresCopyOfEntry<ENTRY, IMPL>(0), CLONER>::DoIt(
+        static_cast<IMPL&>(*this), e, current, last);
+  }
+  bool operator()(ENTRY&& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+    return impl::DispatchEntryWithoutMakingACopy(static_cast<IMPL&>(*this), std::forward<ENTRY>(e), current, last);
+  }
+
+  bool Terminate() {
+    return impl::CallTerminateAndReturnBoolImpl<
+        IMPL,
+        std::is_same<void,
+                     decltype(impl::CallTerminateImpl<IMPL, impl::HasTerminateMethod<IMPL>(0)>::DoIt(
+                     std::declval<IMPL>()))>::value>::DoIt(static_cast<IMPL&>(*this));
+  }
+
+  void ReplayDone() {
+    impl::CallReplayDoneImpl<IMPL, impl::HasReplayDoneMethod<IMPL>(0)>::DoIt(static_cast<IMPL&>(*this));
+  }
+};
+
+template <typename ENTRY>
+struct GenericStreamSubscriber;
+
+template <typename IMPL, typename ENTRY>
+class StreamSubscriber : public GenericStreamSubscriber<ENTRY>, public EntrySubscriber<IMPL, ENTRY> {
+ public: 
+  using EntrySubscriber<IMPL, ENTRY>::EntrySubscriber;
+};
 
 }  // namespace blocks::ss
 }  // namespace blocks
