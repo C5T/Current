@@ -215,6 +215,8 @@ TEST(TransactionalStorage, SmokeTest) {
   }
 }
 
+namespace transactional_storage_test {
+
 struct CurrentStorageTestMagicTypesExtractor {
   std::string& s;
   CurrentStorageTestMagicTypesExtractor(std::string& s) : s(s) {}
@@ -225,6 +227,8 @@ struct CurrentStorageTestMagicTypesExtractor {
     return 42;  // Checked against via `::current::storage::FieldNameAndTypeByIndexAndReturn`.
   }
 };
+
+}  // namespace transactional_storage_test
 
 TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
@@ -445,25 +449,44 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   }).Wait();
 }
 
-template <typename T_TRANSACTION>
-class StorageSherlockTestProcessor {
- public:
-  using IDX_TS = current::ss::IndexAndTimestamp;
-  StorageSherlockTestProcessor(std::string& output) : output_(output) {}
+namespace transactional_storage_test {
 
-  bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {
+template <typename T_TRANSACTION>
+class StorageSherlockTestProcessorImpl {
+  using EntryResponse = current::ss::EntryResponse;
+  using TerminationResponse = current::ss::TerminationResponse;
+  using IDX_TS = current::ss::IndexAndTimestamp;
+
+ public:
+  StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
+
+  EntryResponse operator()(const T_TRANSACTION& transaction, IDX_TS current, IDX_TS last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
-    return current.index != last.index;
+    if (current.index != last.index) {
+      return EntryResponse::More;
+    } else {
+      allow_terminate_ = true;
+      return EntryResponse::Done;
+    }
   }
 
-  void ReplayDone() { allow_terminate_ = true; }
-
-  bool Terminate() { return allow_terminate_; }
+  TerminationResponse Terminate() {
+    if (allow_terminate_) {
+      return TerminationResponse::Terminate;
+    } else {
+      return TerminationResponse::Wait;
+    }
+  }
 
  private:
-  bool allow_terminate_ = false;
+  mutable bool allow_terminate_ = false;
   std::string& output_;
 };
+
+template <typename E>
+using StorageSherlockTestProcessor = current::ss::StreamSubscriber<StorageSherlockTestProcessorImpl<E>, E>;
+
+}  // namespace transactional_storage_test
 
 TEST(TransactionalStorage, InternalExposeStream) {
   using namespace transactional_storage_test;
