@@ -124,13 +124,13 @@ namespace current {
 namespace sherlock {
 
 template <typename ENTRY, class CLONER = current::DefaultCloner>
-using DEFAULT_PERSISTENCE_LAYER = blocks::persistence::MemoryOnly<ENTRY, CLONER>;
+using DEFAULT_PERSISTENCE_LAYER = current::persistence::MemoryOnly<ENTRY, CLONER>;
 
 template <typename ENTRY,
           template <typename, typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER,
           class CLONER = current::DefaultCloner>
 class StreamImpl {
-  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  using IDX_TS = current::ss::IndexAndTimestamp;
 
  public:
   typedef ENTRY T_ENTRY;

@@ -43,11 +43,11 @@ SOFTWARE.
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
-namespace blocks {
+namespace current {
 namespace persistence {
 
 namespace impl {
-using IDX_TS = blocks::ss::IndexAndTimestamp;
+using IDX_TS = current::ss::IndexAndTimestamp;
 
 class ThreeStageMutex final {
  public:
@@ -146,7 +146,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     bool replay_done = false;
 
     if (!size_at_start) {
-      blocks::ss::CallReplayDone(f);
+      current::ss::CallReplayDone(f);
       replay_done = true;
     }
 
@@ -154,18 +154,18 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     while (true) {
       if (waitable_terminate_signal && !notified_about_termination) {
         notified_about_termination = true;
-        if (blocks::ss::CallTerminate(f)) {
+        if (current::ss::CallTerminate(f)) {
           return;
         }
       }
       if (!current.at_end) {
         // Only specify the `CLONER` template parameter, the rest are best to be inferred.
-        if (!blocks::ss::DispatchEntryByConstReference<CLONER>(
+        if (!current::ss::DispatchEntryByConstReference<CLONER>(
                 std::forward<F>(f), current.iterator->second, current.iterator->first, current.last_idx_ts)) {
           break;
         }
         if (!replay_done && current.iterator->first.index >= size_at_start) {
-          blocks::ss::CallReplayDone(f);
+          current::ss::CallReplayDone(f);
           replay_done = true;
         }
       }
@@ -173,7 +173,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
       do {
         if (waitable_terminate_signal && !notified_about_termination) {
           notified_about_termination = true;
-          if (blocks::ss::CallTerminate(f)) {
+          if (current::ss::CallTerminate(f)) {
             return;
           }
         }
@@ -393,7 +393,7 @@ struct NewAppendToFilePublisherImpl {
 template <typename ENTRY, class CLONER>
 using NewAppendToFilePublisher = ss::Publisher<impl::NewAppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
 
-}  // namespace blocks::persistence::impl
+}  // namespace current::persistence::impl
 
 template <typename ENTRY, class CLONER = current::DefaultCloner>
 using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
@@ -402,7 +402,7 @@ template <typename ENTRY, class CLONER = current::DefaultCloner>
 using NewAppendToFile =
     ss::Publisher<impl::Logic<impl::NewAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
 
-}  // namespace blocks::persistence
-}  // namespace blocks
+}  // namespace current::persistence
+}  // namespace current
 
 #endif  // BLOCKS_PERSISTENCE_PERSISTENCE_H

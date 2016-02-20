@@ -121,7 +121,7 @@ class MidichloriansHTTPServer {
         return r.url.AllQueryParameters();
       } else if (r.method == "POST") {
         is_allowed_method = true;
-        extracted_q = blocks::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
+        extracted_q = current::url::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
         for (const auto& cit : r.url.AllQueryParameters()) {
           extracted_q.insert(cit);
         }
@@ -170,14 +170,14 @@ class MidichloriansHTTPServer {
       dest_event.client_id = q.at("cid");
       dest_event.ip = h.at("X-Forwarded-For");
       dest_event.user_agent = h.at("User-Agent");
-      const auto url = blocks::URL(h.at("Referer"));
+      const auto url = URL(h.at("Referer"));
       dest_event.referer_host = url.host;
       dest_event.referer_path = url.path;
       dest_event.referer_querystring = url.query.AsImmutableMap();
     } catch (const std::out_of_range&) {
       // TODO(mz+dk): discuss the validity of partially filled event fields.
       return false;
-    } catch (const blocks::EmptyURLException&) {
+    } catch (const url::EmptyURLException&) {
       return false;
     }
     return true;

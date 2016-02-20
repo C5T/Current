@@ -177,7 +177,7 @@ namespace storage {
                                              std::forward<F2>(f2),                                           \
                                              std::move(meta_fields));                                        \
     }                                                                                                        \
-    void ReplayTransaction(T_TRANSACTION&& transaction, ::blocks::ss::IndexAndTimestamp idx_ts) {            \
+    void ReplayTransaction(T_TRANSACTION&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {           \
       transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); },         \
                                             std::forward<T_TRANSACTION>(transaction),                        \
                                             idx_ts);                                                         \

@@ -70,7 +70,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     stream_.SyncSubscribe(processor).Join();
   }
 
-  void ReplayTransaction(T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
+  void ReplayTransaction(T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
     stream_.PublishReplayed(transaction, idx_ts);
   }
 
@@ -83,7 +83,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
  private:
   class SherlockProcessor {
    public:
-    using IDX_TS = blocks::ss::IndexAndTimestamp;
+    using IDX_TS = current::ss::IndexAndTimestamp;
     template <typename F>
     SherlockProcessor(F&& f)
         : f_(std::forward<F>(f)) {}
@@ -110,11 +110,11 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
 
 template <typename TYPELIST>
 using SherlockInMemoryStreamPersister =
-    SherlockStreamPersisterImpl<TYPELIST, blocks::persistence::MemoryOnly, current::DefaultCloner>;
+    SherlockStreamPersisterImpl<TYPELIST, current::persistence::MemoryOnly, current::DefaultCloner>;
 
 template <typename TYPELIST>
 using SherlockStreamPersister =
-    SherlockStreamPersisterImpl<TYPELIST, blocks::persistence::NewAppendToFile, current::DefaultCloner>;
+    SherlockStreamPersisterImpl<TYPELIST, current::persistence::NewAppendToFile, current::DefaultCloner>;
 
 }  // namespace persister
 }  // namespace storage

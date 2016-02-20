@@ -40,7 +40,7 @@ namespace sherlock {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
 class PubSubHTTPEndpoint final {
-  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  using IDX_TS = current::ss::IndexAndTimestamp;
 
  public:
   explicit PubSubHTTPEndpoint(Request r)

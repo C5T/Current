@@ -38,7 +38,8 @@ SOFTWARE.
 #include "../../Bricks/strings/is_string_type.h"
 #include "../../Bricks/template/decay.h"
 
-namespace blocks {
+namespace current {
+namespace http {
 
 // The policy for registering HTTP endpoints.
 // TODO(dkorolev): Add another option, to throw if the handler does not exist, while it's expected to?
@@ -226,12 +227,13 @@ struct HTTPImpl {
   }
 };
 
-}  // namespace blocks
+}  // namespace http
+}  // namespace current
 
-using blocks::GET;
-using blocks::POST;
-using blocks::POSTFromFile;
-using blocks::PUT;
-using blocks::DELETE;
+using current::http::GET;
+using current::http::POST;
+using current::http::POSTFromFile;
+using current::http::PUT;
+using current::http::DELETE;
 
 #endif  // BLOCKS_HTTP_TYPES_H

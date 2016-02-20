@@ -180,7 +180,7 @@ TEST(StorageDocumentation, BasicUsage) {
 
   ASSERT_EQ(3u, persisted_transactions.size());
   const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, std::chrono::microseconds timestamp) {
-    using IDX_TS = blocks::ss::IndexAndTimestamp;
+    using IDX_TS = current::ss::IndexAndTimestamp;
     std::istringstream iss(line);
     const size_t tab_pos = line.find('\t');
     const IDX_TS persisted_idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));

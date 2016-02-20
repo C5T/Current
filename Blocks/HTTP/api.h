@@ -60,36 +60,37 @@ SOFTWARE.
 #if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS)
 #include "impl/posix_client.h"
 #include "impl/posix_server.h"
-typedef blocks::HTTPClientPOSIX HTTP_CLIENT;
+using HTTP_CLIENT = current::http::HTTPClientPOSIX;
 #elif defined(CURRENT_APPLE)
 #include "impl/apple_client.h"
 #include "impl/posix_server.h"
-typedef blocks::HTTPClientApple HTTP_CLIENT;
+using HTTP_CLIENT = current::http::HTTPClientApple;
 #elif defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 #include "impl/java_client.h"
 #include "impl/posix_server.h"
-typedef blocks::aloha::HTTPClientPlatformWrapper HTTP_CLIENT;
+using HTTP_CLIENT = aloha::HTTPClientPlatformWrapper;
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
 
-typedef blocks::HTTPImpl<HTTP_CLIENT, blocks::HTTPServerPOSIX> HTTP_IMPL;
+using HTTP_IMPL = current::http::HTTPImpl<HTTP_CLIENT, current::http::HTTPServerPOSIX>;
 
-namespace blocks {
+namespace current {
+namespace http {
 
 template <typename... TS>
 inline typename current::weed::call_with_type<HTTP_IMPL, TS...> HTTP(TS&&... params) {
   return current::Singleton<HTTP_IMPL>()(std::forward<TS>(params)...);
 }
 
-}  // namespace blocks
+}  // namespace http
+}  // namespace current
 
-using blocks::HTTP;
-using blocks::Request;
-using blocks::Response;
-using blocks::ReRegisterRoute;
-using blocks::URLPathArgs;
+using current::http::HTTP;
+using current::http::Request;
+using current::http::Response;
+using current::http::ReRegisterRoute;
 using HTTPRoutesScope = typename HTTP_IMPL::T_SERVER_IMPL::HTTPRoutesScope;
-using HTTPRoutesScopeEntry = blocks::HTTPServerPOSIX::HTTPRoutesScopeEntry;
+using HTTPRoutesScopeEntry = current::http::HTTPServerPOSIX::HTTPRoutesScopeEntry;
 
 #endif  // BLOCKS_HTTP_API_H

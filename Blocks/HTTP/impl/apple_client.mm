@@ -48,7 +48,7 @@ SOFTWARE.
 
 #define TIMEOUT_IN_SECONDS 30.0
 
-bool blocks::HTTPClientApple::Go() {
+bool current::http::HTTPClientApple::Go() {
   @autoreleasepool {
 
     NSMutableURLRequest * request = [NSMutableURLRequest requestWithURL:

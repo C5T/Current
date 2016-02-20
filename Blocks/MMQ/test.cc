@@ -33,8 +33,8 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using blocks::MMQ;
-using IDX_TS = blocks::ss::IndexAndTimestamp;
+using current::mmq::MMQ;
+using IDX_TS = current::ss::IndexAndTimestamp;
 
 TEST(InMemoryMQ, SmokeTest) {
   struct Consumer {

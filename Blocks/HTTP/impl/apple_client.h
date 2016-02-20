@@ -37,7 +37,8 @@ SOFTWARE.
 
 #include "../types.h"
 
-namespace blocks {
+namespace current {
+namespace http {
 
 struct HTTPClientApple {
   std::string url_requested = "";
@@ -136,7 +137,8 @@ struct ImplWrapper<HTTPClientApple> {
   }
 };
 
-}  // namespace blocks
+}  // namespace http
+}  // namespace current
 
 #include "apple_client.mm"
 

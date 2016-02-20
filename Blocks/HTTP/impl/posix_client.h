@@ -39,7 +39,8 @@ SOFTWARE.
 #include "../../../Bricks/net/http/http.h"
 #include "../../../Bricks/file/file.h"
 
-namespace blocks {
+namespace current {
+namespace http {
 
 class HTTPClientPOSIX final {
  private:
@@ -217,6 +218,7 @@ struct ImplWrapper<HTTPClientPOSIX> {
   }
 };
 
-}  // namespace blocks
+}  // namespace http
+}  // namespace current
 
 #endif  // BLOCKS_HTTP_IMPL_POSIX_CLIENT_H

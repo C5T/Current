@@ -365,7 +365,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   using namespace transactional_storage_test;
   using current::storage::TransactionMetaFields;
   using Storage = TestStorage<SherlockStreamPersister>;
-  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  using IDX_TS = current::ss::IndexAndTimestamp;
 
   // Create master storage.
   const std::string golden_storage_file_name =
@@ -448,7 +448,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 template <typename T_TRANSACTION>
 class StorageSherlockTestProcessor {
  public:
-  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  using IDX_TS = current::ss::IndexAndTimestamp;
   StorageSherlockTestProcessor(std::string& output) : output_(output) {}
 
   bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {

@@ -113,7 +113,7 @@ class HTTPDefaultHelper {
 // Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
-// * blocks::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
+// * current::url::URL URL() (to access `.host`, `.path`, `.scheme` and `.port`).
 // * std::string RawPath() (the URL before parsing).
 // * std::string Method().
 // * std::string Body(), size_t BodyLength(), const char* Body{Begin,End}().
@@ -192,7 +192,7 @@ class TemplatedHTTPRequestData : public HELPER {
             }
             if (pieces.size() >= 2) {
               raw_path_ = pieces[1];
-              url_ = blocks::URL(raw_path_);
+              url_ = current::url::URL(raw_path_);
             }
             first_line_parsed = true;
           }
@@ -295,7 +295,7 @@ class TemplatedHTTPRequestData : public HELPER {
   }
 
   inline const std::string& Method() const { return method_; }
-  inline const blocks::URL& URL() const { return url_; }
+  inline const current::url::URL& URL() const { return url_; }
   inline const std::string& RawPath() const { return raw_path_; }
 
   // Note that `Body*()` methods assume that the body was fully read into memory.
@@ -329,7 +329,7 @@ class TemplatedHTTPRequestData : public HELPER {
  private:
   // Fields available to the user via getters.
   std::string method_;
-  blocks::URL url_;
+  current::url::URL url_;
   std::string raw_path_;
 
   // HTTP parsing fields that have to be caried out of the parsing routine.

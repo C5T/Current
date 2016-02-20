@@ -34,7 +34,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 
-namespace blocks {
+namespace current {
 namespace ss {
 
 // `IndexAndTimestamp` structure holds the index of the entry and its timestamp in the stream.
@@ -268,7 +268,7 @@ struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
   }
 };
 
-}  // namespace blocks::ss::impl
+}  // namespace current::ss::impl
 
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
@@ -409,7 +409,7 @@ struct CallTerminateAndReturnBoolImpl<T, true> {
   }
 };
 
-}  // namespace blocks::ss::impl
+}  // namespace current::ss::impl
 
 template <typename T>
 bool CallTerminate(T&& ref) {
@@ -445,7 +445,7 @@ struct CallReplayDoneImpl<T, true> {
   static decltype(std::declval<T>().ReplayDone()) DoIt(T&& ref) { ref.ReplayDone(); }
 };
 
-}  // namespace blocks::ss::impl
+}  // namespace current::ss::impl
 
 template <typename T>
 void CallReplayDone(T&& ref) {
@@ -494,7 +494,7 @@ class StreamSubscriber : public GenericStreamSubscriber<ENTRY>, public EntrySubs
   using EntrySubscriber<IMPL, ENTRY>::EntrySubscriber;
 };
 
-}  // namespace blocks::ss
-}  // namespace blocks
+}  // namespace current::ss
+}  // namespace current
 
 #endif  // BLOCKS_SS_SS_H

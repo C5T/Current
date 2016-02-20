@@ -40,7 +40,8 @@ SOFTWARE.
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/strings/split.h"
 
-namespace blocks {
+namespace current {
+namespace url {
 
 struct EmptyURLException : current::Exception {};
 // struct EmptyURLHostException : Exception {};
@@ -294,8 +295,72 @@ struct URL : URLParametersExtractor, URLWithoutParametersParser {
 
 }  // namespace impl
 
-typedef impl::URL URL;
+using URL = impl::URL;
 
-}  // namespace blocks
+// `URLPathArgs` is used to register a HTTP handler that accepts a number of parameters defined by `CountMask`.
+// Examples:
+//  {"/foo", CountMask::None} serves only requests to "/foo",
+//  {"/foo", CountMask::One} serves only requests to "/foo/{arg}",
+//  {"/foo", CountMask::None | CountMask::One} serves requests to "/foo" and "/foo/{arg}",
+//  {"/foo", CountMask::Any} serves requests to "/foo", "/foo/{arg1}", "/foo/{arg1}/{arg2}...".
+struct URLPathArgs {
+ public:
+  using CountMaskUnderlyingType = uint16_t;
+  enum { MaxArgsCount = 15 };
+  enum class CountMask : CountMaskUnderlyingType {
+    None = (1 << 0),
+    One = (1 << 1),
+    Two = (1 << 2),
+    Three = (1 << 3),
+    Any = static_cast<CountMaskUnderlyingType>(~0)
+  };
+
+  const std::string& operator[](size_t index) const { return args_.at(args_.size() - 1 - index); }
+
+  using T_ITERATOR = std::vector<std::string>::const_reverse_iterator;
+  T_ITERATOR begin() const { return args_.crbegin(); }
+  T_ITERATOR end() const { return args_.crend(); }
+
+  bool empty() const { return args_.empty(); }
+  size_t size() const { return args_.size(); }
+
+  void add(const std::string& arg) { args_.push_back(arg); }
+
+  std::string base_path;
+
+ private:
+  std::vector<std::string> args_;
+};
+
+inline URLPathArgs::CountMask operator&(const URLPathArgs::CountMask lhs, const URLPathArgs::CountMask rhs) {
+  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) &
+                                             static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
+}
+
+inline URLPathArgs::CountMask operator|(const URLPathArgs::CountMask lhs, const URLPathArgs::CountMask rhs) {
+  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) |
+                                             static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
+}
+
+inline URLPathArgs::CountMask& operator|=(URLPathArgs::CountMask& lhs, const URLPathArgs::CountMask rhs) {
+  lhs = static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) |
+                                            static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
+  return lhs;
+}
+
+inline URLPathArgs::CountMask operator<<(const URLPathArgs::CountMask lhs, const size_t count) {
+  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) << count);
+}
+
+inline URLPathArgs::CountMask& operator<<=(URLPathArgs::CountMask& lhs, const size_t count) {
+  lhs = (lhs << count);
+  return lhs;
+}
+
+}  // namespace url
+}  // namespace current
+
+using current::url::URL;
+using current::url::URLPathArgs;
 
 #endif  // BLOCKS_URL_URL_H

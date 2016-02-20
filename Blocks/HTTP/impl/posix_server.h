@@ -46,7 +46,8 @@ SOFTWARE.
 #include "../../../Bricks/strings/printf.h"
 #include "../../../Bricks/util/accumulative_scoped_deleter.h"
 
-namespace blocks {
+namespace current {
+namespace http {
 
 struct InvalidHandlerPathException : current::net::HTTPException {
   using current::net::HTTPException::HTTPException;
@@ -407,8 +408,7 @@ class HTTPServerPOSIX final {
   std::vector<std::unique_ptr<StaticFileServer>> static_file_servers_;
 };
 
-}  // namespace blocks
-
-using blocks::Request;
+}  // namespace http
+}  // namespace current
 
 #endif  // BLOCKS_HTTP_IMPL_POSIX_SERVER_H

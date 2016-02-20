@@ -262,8 +262,8 @@ struct RecordsCollector final {
   explicit RecordsCollector(std::vector<std::string>& data) : count_(0u), data_(data) {}
 
   inline bool operator()(const RecordWithTimestamp& entry,
-                         blocks::ss::IndexAndTimestamp current,
-                         blocks::ss::IndexAndTimestamp) {
+                         current::ss::IndexAndTimestamp current,
+                         current::ss::IndexAndTimestamp) {
     data_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
     ++count_;
     return true;
@@ -387,7 +387,7 @@ TEST(Sherlock, PersistsToFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   auto persisted =
-      current::sherlock::Stream<Record, blocks::persistence::NewAppendToFile>(persistence_file_name);
+      current::sherlock::Stream<Record, current::persistence::NewAppendToFile>(persistence_file_name);
 
   current::time::SetNow(std::chrono::microseconds(100u));
   persisted.Publish(1);
@@ -411,7 +411,7 @@ TEST(Sherlock, ParsesFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
-  auto parsed = current::sherlock::Stream<Record, blocks::persistence::NewAppendToFile>(persistence_file_name);
+  auto parsed = current::sherlock::Stream<Record, current::persistence::NewAppendToFile>(persistence_file_name);
 
   Data d;
   {

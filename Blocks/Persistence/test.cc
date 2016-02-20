@@ -72,11 +72,11 @@ struct PersistenceTestListener {
 };
 
 TEST(PersistenceLayer, MemoryOnly) {
-  typedef blocks::persistence::MemoryOnly<std::string> IMPL;
-  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-  static_assert(blocks::ss::IsEntryPublisher<IMPL, std::string>::value, "");
-  static_assert(!blocks::ss::IsPublisher<int>::value, "");
-  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
+  typedef current::persistence::MemoryOnly<std::string> IMPL;
+  static_assert(current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+  static_assert(!current::ss::IsPublisher<int>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   {
     IMPL impl;
@@ -135,11 +135,11 @@ TEST(PersistenceLayer, MemoryOnly) {
 }
 
 TEST(PersistenceLayer, AppendToFile) {
-  typedef blocks::persistence::NewAppendToFile<StorableString> IMPL;
-  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-  static_assert(blocks::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
-  static_assert(!blocks::ss::IsPublisher<int>::value, "");
-  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
+  typedef current::persistence::NewAppendToFile<StorableString> IMPL;
+  static_assert(current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
+  static_assert(!current::ss::IsPublisher<int>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
@@ -234,7 +234,7 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
   struct CustomCloner {
     static std::unique_ptr<BASE> Clone(const std::unique_ptr<BASE>& input) { return input->DoClone(); }
   };
-  blocks::persistence::MemoryOnly<std::unique_ptr<BASE>, CustomCloner> test_clone;
+  current::persistence::MemoryOnly<std::unique_ptr<BASE>, CustomCloner> test_clone;
 
   test_clone.Publish(std::make_unique<A>());
   test_clone.Publish(std::make_unique<B>());
@@ -254,11 +254,11 @@ TEST(PersistenceLayer, RespectsCustomCloneFunction) {
 }
 
 TEST(PersistenceLayer, Exceptions) {
-  using IMPL = blocks::persistence::NewAppendToFile<StorableString>;
-  using blocks::ss::IndexAndTimestamp;
-  using blocks::persistence::MalformedEntryDuringReplayException;
-  using blocks::persistence::InconsistentIndexException;
-  using blocks::persistence::InconsistentTimestampException;
+  using IMPL = current::persistence::NewAppendToFile<StorableString>;
+  using current::ss::IndexAndTimestamp;
+  using current::persistence::MalformedEntryDuringReplayException;
+  using current::persistence::InconsistentIndexException;
+  using current::persistence::InconsistentTimestampException;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
