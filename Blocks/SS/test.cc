@@ -73,6 +73,7 @@ TEST(StreamSystem, TestHelperClassSmokeTest) {
   EXPECT_EQ("Entry(clone of {Entry()})", e5.text);
 }
 
+#if 0
 // Demonstrates that the entry is only copied/cloned if the dispatcher needs a copy.
 // This test also confirms the dispatcher supports lambdas.
 // The rest of the functionality -- treating `void` as `bool` and enabling omitting extra parameters --
@@ -501,3 +502,4 @@ TEST(StreamSystem, WriteOnlyTestTheRemainingCasesOutOfThoseTwelve) {
     EXPECT_EQ("invalidated <Entry()>", e.text) << "The original `DDE()` should be invalidated.";
   }
 }
+#endif

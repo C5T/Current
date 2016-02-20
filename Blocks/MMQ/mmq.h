@@ -66,6 +66,8 @@ template <typename MESSAGE,
           bool DROP_ON_OVERFLOW = false,
           class CLONER = current::DefaultCloner>
 class MMQImpl {
+  static_assert(current::ss::IsEntrySubscriber<CONSUMER, MESSAGE>::value, "");
+
  public:
   // Type of messages to store and dispatch.
   using T_MESSAGE = MESSAGE;
@@ -127,7 +129,7 @@ class MMQImpl {
     } else {
       return IDX_TS();
     }
- }
+  }
 
  private:
   MMQImpl(const MMQImpl&) = delete;
@@ -167,10 +169,9 @@ class MMQImpl {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        current::ss::DispatchEntryByRValue(consumer_,
-                                          std::move(circular_buffer_[tail].message_body),
-                                          circular_buffer_[tail].index_timestamp,
-                                          save_last_idx_ts);
+        consumer_(std::move(circular_buffer_[tail].message_body),
+                  circular_buffer_[tail].index_timestamp,
+                  save_last_idx_ts);
       }
 
       {
@@ -276,7 +277,7 @@ class MMQImpl {
 };
 
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
-using MMQ = ss::Publisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
+using MMQ = ss::EntryPublisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
 
 }  // namespace mmq
 }  // namespace current
