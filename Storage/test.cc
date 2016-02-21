@@ -510,7 +510,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
 
   std::string collected;
   StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
-  storage.InternalExposeStream().SyncSubscribe(processor).Join();
+  storage.InternalExposeStream().Subscribe(processor).Join();
   EXPECT_EQ(
       "{\"index\":1,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"

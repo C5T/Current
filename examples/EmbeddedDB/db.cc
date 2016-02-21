@@ -195,7 +195,7 @@ int main(int argc, char** argv) {
                 });
 
   // Read model.
-  stream.AsyncSubscribe(std::make_unique<UserNicknamesReadModel>(FLAGS_db_demo_port)).Detach();
+  stream.Subscribe(std::make_unique<UserNicknamesReadModel>(FLAGS_db_demo_port)).Detach();
 
   // Run forever.
   HTTP(FLAGS_db_demo_port).Join();

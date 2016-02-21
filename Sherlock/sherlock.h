@@ -45,69 +45,56 @@ SOFTWARE.
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
-// Sherlock is the overlord of data storage and processing in Current.
-// Its primary entity is the stream of data.
-// Sherlock's streams are persistent, immutable, append-only typed sequences of records.
+// Sherlock is the overlord of streamed data storage and processing in Current.
+// Sherlock's streams are persistent, immutable, append-only typed sequences of records ("entries").
+// Each record is annotated with its the 1-based index and its epoch microsecond timestamp.
+// Within the stream, timestamps are strictly increasing.
 //
-// The stream is defined by:
-//
-// 1) Type, which may be:
-//    a) Single type for simple streams (ex. `UserRecord'),
-//    b) Base class type for polymorphic streams (ex. `UserActionBase`), or
-//    c) Base class plus a type list for real-time dispatching (ex. `LogEntry, tuple<Impression, Click>`).
-//    TODO(dkorolev): The type should also present an unambiguous way to extract a timestamp of it.
-//
-// 2) Name, which is used for local storage and external access, most notably replication and subscriptions.
-//
-// 3) Optional type signature, to prevent data corruption when trying to serialize data using the wrong type.
-//
-// A user of C++ Sherlock interface should keep the return value of `sherlock::Stream<ENTRY>`,
-// as it is later used as the proxy to publish and subscribe to the data from this stream.
+// A stream can be constucted as `auto my_stream = sherlock::Stream<ENTRY>()`. This creates an in-memory stream.
+
+// To create a persisted one, pass in the type of persister and its construction parameters, such as:
+// `auto my_stream = sherlock::Stream<ENTRY, current::persistence::AppendToFile>("data.json");`.
 //
 // Sherlock streams can be published into and subscribed to.
-// At any given point of time a stream can have zero or one publisher and any number of listeners.
 //
-// The publishing is done via `my_stream.Publish(MyType{...});`.
+// Publishing is done via `my_stream.Publish(ENTRY{...});`. It is the caller's responsibility to ensure that:
+// 1) Publishing is done from one thread only (Sherlock itself offers no locking), and
+// 2) Published entries come in strictly increasing order of their timestamps.
 //
-//   NOTE: It is the caller's full responsibility to ensure that:
-//   1) Publishing is done from one thread only (since Sherlock offers no locking), and
-//   2) The published entries come in strictly increasing order of their timestamps.
-//      TODO(dkorolev): Assert this.
+// Subscription is done by via `my_stream.Subscribe(my_listener);`, where `my_listener` is an instance
+// of the class doing the listening. Sherlock runs each listener in a dedicated thread.
 //
-// Subscription is done by via `my_stream.Subscribe(my_listener);`,
-// where `my_listener` is an instance of the class doing the listening.
+// The parameter to `Subscribe()` can be an `std::unique_ptr<F>`, or a reference to a stack-allocated object.
+// In the first case, subscriber thread takes ownership of the listener, and returns an `AsyncListenerScope`.
+// In the second case, stack ownership is respected, and `SyncListenerScope` is returned.
+// Both scopes can be `.Join()`-ed, which would be a blocking call waiting until the listener is done.
+// Asynchronous scope can also be `.Detach()`-ed, internally calling `std::thread::detach()`.
+// A detached listener will live until it decides to terminate. In case the stream itself would be destructing,
+// each listener, detached listeners included, will be notified of stream termination, and the destructor
+// of the stream objectwill wait for all listeners, detached included, to terminate themselves.
 //
-//   NOTE: that Sherlock runs each listener in a dedicated thread.
+// The `my_listener` object should expose the following member functions:
 //
-//   The `my_listener` object should expose the following member functions:
+// 1) `bool operator()({const ENTRY& / ENTRY&&} entry, IndexAndTimestamp current, IndexAndTimestamp last))`:
 //
-//   1) `{void/bool} operator()({const ENTRY& / ENTRY&&} entry [, size_t index [, size_t total]]):
+//    The `ENTRY` type is RTTI-dispatched against the supplied type list.
+//    As long as `my_listener` returns `true`, it will keep receiving new entries,
+//    which may end up blocking the thread until new, yet unseen, entries have been published.
 //
-//      The `ENTRY` type is RTTI-dispatched against the supplied type list.
-//      As long as `my_listener` returns `true`, it will keep receiving new entries,
-//      which may end up blocking the thread until new, yet unseen, entries have been published.
+//    If `operator()` is defined as `bool`, returning `false` will tell Sherlock that no more entries
+//    should be passed to this listener, and the thread serving this listener should be terminated.
 //
-//      If `operator()` is defined as `bool`, returning `false` will tell Sherlock that no more entries
-//      should be passed to this listener, and the thread serving this listener should be terminated.
+//    More details on the calling convention: "Bricks/mq/interface/interface.h"
 //
-//      More details on the calling convention: "Bricks/mq/interface/interface.h"
+// 2) `bool Terminate()`:
 //
-//   2) `void CaughtUp()`:
+//    This member function will be called if the listener has to be terminated externally,
+//    which happens when the handler returned by `Subscribe()` goes out of scope.
+//    If the signature is `bool Terminate()`, returning `false` will prevent the termination from happening,
+//    allowing the user code to process more entries. Note that this can yield to the calling thread
+//    waiting indefinitely.
 //
-//      TODO(dkorolev): Implement it.
-//      This method will be called as soon as the "historical data replay" phase is completed,
-//      and the listener has entered the mode of serving the new entires coming in the real time.
-//      This method is designed to flip some external variable or endpoint to the "healthy" state,
-//      when the listener is considered eligible to serve incoming data requests.
-//      TODO(dkorolev): Discuss the case if the listener falls behind again.
-//
-//   3) `void Terminate` or `bool Terminate()`:
-//
-//      This member function will be called if the listener has to be terminated externally,
-//      which happens when the handler returned by `Subscribe()` goes out of scope.
-//      If the signature is `bool Terminate()`, returning `false` will prevent the termination from happening,
-//      allowing the user code to process more entries. Note that this can yield to the calling thread
-//      waiting indefinitely.
+// 3) `HeadUpdated()`: TBD.
 //
 // The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
 // an instance of a handle, the scope of which will define the lifetime of the listener.
@@ -209,7 +196,7 @@ class StreamImpl {
   template <typename F>
   class ListenerThread {
    private:
-    // This guy is a `shared_ptr<>` itself later on, to ensure its lifetime.
+    // Listener thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
     struct ListenerThreadSharedState {
       F listener;  // The ownership of the listener is transferred to instance of this class.
       std::shared_ptr<T_PERSISTENCE_LAYER> persister;
@@ -305,9 +292,8 @@ class StreamImpl {
     void operator=(ListenerThread&&) = delete;
   };
 
-
   // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
-  template<class F, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
+  template <class F, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
   class GenericListenerScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
@@ -315,8 +301,8 @@ class StreamImpl {
 
    public:
     GenericListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                       std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
-                       UNIQUE_PTR_WITH_CORRECT_DELETER&& listener)
+                         std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
+                         UNIQUE_PTR_WITH_CORRECT_DELETER&& listener)
         : impl_(std::make_unique<LISTENER_THREAD>(persister, last_idx_ts, std::move(listener))) {}
 
     GenericListenerScope(GenericListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
@@ -329,7 +315,7 @@ class StreamImpl {
       impl_->SafeJoinThread();
     }
 
-    template<bool B = CAN_DETACH>
+    template <bool B = CAN_DETACH>
     ENABLE_IF<B> Detach() {
       assert(impl_);
       impl_->PotentiallyUnsafeDetachThread();
@@ -346,11 +332,11 @@ class StreamImpl {
 
   // Asynchronous subscription: `listener` is a heap-allocated object, the ownership of which
   // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
-  template<typename F>
+  template <typename F>
   using AsyncListenerScope = GenericListenerScope<F, std::unique_ptr<F>, true>;
 
   template <typename F>
-  AsyncListenerScope<F> AsyncSubscribe(std::unique_ptr<F>&& listener) {
+  AsyncListenerScope<F> Subscribe(std::unique_ptr<F>&& listener) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
     return std::move(AsyncListenerScope<F>(storage_, last_idx_ts_, std::move(listener)));
   }
@@ -359,13 +345,14 @@ class StreamImpl {
   // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
   // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
-  template<typename F>
+  template <typename F>
   using SyncListenerScope = GenericListenerScope<F, std::unique_ptr<F, current::NullDeleter>, false>;
 
   template <typename F>
-  SyncListenerScope<F> SyncSubscribe(F& listener) {
+  SyncListenerScope<F> Subscribe(F& listener) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    return std::move(SyncListenerScope<F>(storage_, last_idx_ts_, std::unique_ptr<F, current::NullDeleter>(&listener)));
+    return std::move(
+        SyncListenerScope<F>(storage_, last_idx_ts_, std::unique_ptr<F, current::NullDeleter>(&listener)));
   }
 
   // Sherlock handler for serving stream data via HTTP.
@@ -386,10 +373,10 @@ class StreamImpl {
         // Return the number of entries in the stream.
         r(ToString(count) + '\n', HTTPResponseCode.OK);
       } else if (count == 0u && r.url.query.has("nowait")) {
-        // Return "200 OK" if stream is empty and we asked not to wait for new entries.
+        // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
         r("", HTTPResponseCode.OK);
       } else {
-        AsyncSubscribe(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+        Subscribe(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
       }
     } else {
       r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
