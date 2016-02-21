@@ -55,16 +55,11 @@ SOFTWARE.
 #include "../SS/ss.h"
 
 #include "../../Bricks/time/chrono.h"
-#include "../../Bricks/util/clone.h"
 
 namespace current {
 namespace mmq {
 
-template <typename MESSAGE,
-          typename CONSUMER,
-          size_t DEFAULT_BUFFER_SIZE = 1024,
-          bool DROP_ON_OVERFLOW = false,
-          class CLONER = current::DefaultCloner>
+template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
 class MMQImpl {
   static_assert(current::ss::IsEntrySubscriber<CONSUMER, MESSAGE>::value, "");
 
@@ -100,7 +95,7 @@ class MMQImpl {
   IDX_TS DoPublish(const T_MESSAGE& message) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
-      circular_buffer_[index.second].message_body = std::move(CLONER::Clone(message));
+      circular_buffer_[index.second].message_body = message;
       CircularBufferCommit(index.second);
       return circular_buffer_[index.second].index_timestamp;
     } else {

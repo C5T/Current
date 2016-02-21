@@ -40,6 +40,7 @@ namespace sherlock {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
 class PubSubHTTPEndpointImpl {
+ private:
   using IDX_TS = current::ss::IndexAndTimestamp;
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
@@ -157,6 +158,7 @@ class PubSubHTTPEndpointImpl {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
 using PubSubHTTPEndpoint = current::ss::StreamSubscriber<PubSubHTTPEndpointImpl<E, J>, E>;
+
 }  // namespace sherlock
 }  // namespace current
 

@@ -51,7 +51,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
       T_TRANSACTION transaction;
-      for (auto&& entry : journal.commit_log) {
+      for (auto& entry : journal.commit_log) {
         transaction.mutations.emplace_back(std::move(entry));
       }
       transaction.meta.timestamp = current::time::Now();
@@ -66,8 +66,11 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
   void Replay(F&& f) {
     // TODO(dkorolev) + TODO(mzhurovich): Perhaps `Replay()` should happen automatically,
     // during construction, in a blocking way?
-    SherlockProcessor processor(std::forward<F>(f));
-    stream_.SyncSubscribe(processor).Join();
+    for (const auto& transaction : stream_.InternalExposePersister().Iterate()) {
+      for (const auto& mutation : transaction.entry.mutations) {
+        f(mutation);
+      }
+    }
   }
 
   void ReplayTransaction(T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
@@ -80,43 +83,6 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
 
   sherlock::Stream<T_TRANSACTION, PERSISTER>& InternalExposeStream() { return stream_; }
 
- private:
-  class SherlockProcessorImpl {
-    using EntryResponse = current::ss::EntryResponse;
-    using TerminationResponse = current::ss::TerminationResponse;
-
-   public:
-    using IDX_TS = current::ss::IndexAndTimestamp;
-    template <typename F>
-    SherlockProcessorImpl(F&& f)
-        : f_(std::forward<F>(f)) {}
-
-    EntryResponse operator()(const T_TRANSACTION& transaction, IDX_TS current, IDX_TS last) const {
-      for (auto& mutation : transaction.mutations) {
-        f_(mutation);
-      }
-      if (current.index != last.index) {
-        return EntryResponse::More;
-      } else {
-        replay_done_ = true;
-        return EntryResponse::Done;
-      }
-    }
-
-    TerminationResponse Terminate() {
-      if (replay_done_) {
-        return TerminationResponse::Terminate;
-      } else {
-        return TerminationResponse::Wait;
-      }
-    }
-
-   private:
-    const std::function<void(const T_VARIANT&)> f_;
-    mutable bool replay_done_ = false;
-  };
-
-  using SherlockProcessor = current::ss::StreamSubscriber<SherlockProcessorImpl, T_TRANSACTION>;
   sherlock::Stream<T_TRANSACTION, PERSISTER> stream_;
   HTTPRoutesScope handlers_scope_;
 };
@@ -125,7 +91,7 @@ template <typename TYPELIST>
 using SherlockInMemoryStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::MemoryOnly>;
 
 template <typename TYPELIST>
-using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::NewAppendToFile>;
+using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::AppendToFile>;
 
 }  // namespace persister
 }  // namespace storage

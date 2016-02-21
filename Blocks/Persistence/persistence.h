@@ -40,7 +40,6 @@ SOFTWARE.
 
 #include "../SS/ss.h"
 
-#include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
 namespace current {
@@ -109,84 +108,79 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 
   Logic(const Logic&) = delete;
 
-  size_t Size() {
+  size_t Size() const {
     ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
     return list_size_;
   }
 
-  template <typename F>
-  void SyncScanAllEntries(current::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
-    static_assert(current::ss::IsStreamSubscriber<current::decay<F>, ENTRY>::value, "");
-    using current::ss::EntryResponse;
-    using current::ss::TerminationResponse;
-    struct Cursor {
-      bool at_end = true;
-      IDX_TS last_idx_ts;
-      typename T_INTERNAL_CONTAINER::const_iterator iterator;
-      static Cursor Next(const Cursor& current,
-                         const T_INTERNAL_CONTAINER& exclusively_accessed_list,
-                         const IDX_TS last_entry_idx_ts) {
-        Cursor next;
-        if (current.at_end) {
-          next.iterator = exclusively_accessed_list.begin();
-        } else {
-          assert(current.iterator != exclusively_accessed_list.end());
-          next.iterator = current.iterator;
-          ++next.iterator;
-        }
-        next.last_idx_ts = last_entry_idx_ts;
-        next.at_end = (next.iterator == exclusively_accessed_list.end());
-        return next;
-      }
-    };
-    Cursor current;
+  // TODO(dkorolev): Enable gracefully shutting down the iterable range by having iterators throw.
+  class IterableRange {
+   public:
+    struct Entry {
+      const IDX_TS idx_ts;
+      const ENTRY& entry;
 
-    bool notified_about_termination = false;
-    while (true) {
-      if (waitable_terminate_signal && !notified_about_termination) {
-        notified_about_termination = true;
-        if (f.Terminate() == TerminationResponse::Terminate) {
-          return;
-        }
+      Entry() = delete;
+      explicit Entry(const std::pair<IDX_TS, ENTRY>& input) : idx_ts(input.first), entry(input.second) {}
+    };
+
+    class Iterator {
+     public:
+      explicit Iterator(const typename T_INTERNAL_CONTAINER::const_iterator cit) : cit_(cit) {}
+      Entry operator*() const { return Entry(*cit_); }
+      void operator++() { ++cit_; }
+      bool operator==(const Iterator& rhs) const { return cit_ == rhs.cit_; }
+      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+
+     private:
+      typename T_INTERNAL_CONTAINER::const_iterator cit_;
+    };
+
+    IterableRange(const T_INTERNAL_CONTAINER& container, size_t begin_index, size_t end_index) {
+      typename T_INTERNAL_CONTAINER::const_iterator cit = container.begin();
+      size_t i = 0u;
+      while (i < begin_index) {
+        ++cit;
+        ++i;
       }
-      if (!current.at_end) {
-        if (f(current.iterator->second, current.iterator->first, current.last_idx_ts) == EntryResponse::Done) {
-          break;
-        }
+      begin_ = cit;
+      while (i < end_index) {
+        ++cit;
+        ++i;
       }
-      Cursor next;
-      do {
-        if (waitable_terminate_signal && !notified_about_termination) {
-          notified_about_termination = true;
-          if (f.Terminate() == TerminationResponse::Terminate) {
-            return;
-          }
-        }
-        next = [&current, this]() {
-          // LOCKED: Move the cursor forward.
-          ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
-          return Cursor::Next(current, list_, GetLastIndexAndTimestamp());
-        }();
-        if (next.at_end) {
-          // Wait until one of two events take place:
-          // 1) The number of messages in the `list_` exceeds `next.total`.
-          //    Note that this might happen between `next.total` was captured and now.
-          // 2) The listener thread has been externally requested to terminate.
-          [this, &next, &waitable_terminate_signal]() {
-            // LOCKED: Wait for either new data to become available or for an external termination request.
-            ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
-            current::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
-            waitable_terminate_signal.WaitUntil(
-                unique_lock.GetUniqueLock(), [this, &next]() { return list_size_ > next.last_idx_ts.index; });
-          }();
-        }
-      } while (next.at_end);
-      current = next;
+      end_ = cit;
     }
+
+    Iterator begin() const { return Iterator(begin_); }
+    Iterator end() const { return Iterator(end_); }
+
+   private:
+    typename T_INTERNAL_CONTAINER::const_iterator begin_;
+    typename T_INTERNAL_CONTAINER::const_iterator end_;
+  };
+
+  IterableRange Iterate(size_t begin_index = 0u, size_t end_index = static_cast<size_t>(-1)) const {
+    ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
+    const size_t size = list_size_;
+    if (end_index == static_cast<size_t>(-1)) {
+      end_index = size;
+    }
+    if (end_index > size) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    if (begin_index == end_index) {
+      return IterableRange(list_, 0, 0);
+    }
+    if (begin_index >= size) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    if (end_index < begin_index) {
+      CURRENT_THROW(InvalidIterableRangeException());
+    }
+    return IterableRange(list_, begin_index, end_index);
   }
 
  protected:
-  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   IDX_TS DoPublish(const ENTRY& entry) {
     ThreeStageMutex::ThreeStagesScopedLock lock(three_stage_mutex_);
     const auto idx_ts = persistence_layer_.Publish(entry);
@@ -271,7 +265,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
   typename T_INTERNAL_CONTAINER::const_iterator list_back_;  // Only valid iff `list_size_` > 0.
 
   // To release the locks for the `std::forward_list<>` and the persistence layer ASAP.
-  ThreeStageMutex three_stage_mutex_;
+  mutable ThreeStageMutex three_stage_mutex_;
 };
 
 // The implementation of a "publisher into nowhere".
@@ -298,10 +292,10 @@ template <typename ENTRY>
 using DevNullPublisher = ss::StreamPublisher<DevNullPublisherImpl<ENTRY>, ENTRY>;
 
 template <typename ENTRY>
-struct NewAppendToFilePublisherImpl {
-  NewAppendToFilePublisherImpl() = delete;
-  NewAppendToFilePublisherImpl(const NewAppendToFilePublisherImpl&) = delete;
-  explicit NewAppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+struct AppendToFilePublisherImpl {
+  AppendToFilePublisherImpl() = delete;
+  AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
+  explicit AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
     assert(!appender_);
@@ -375,7 +369,7 @@ struct NewAppendToFilePublisherImpl {
 };
 
 template <typename ENTRY>
-using NewAppendToFilePublisher = ss::StreamPublisher<impl::NewAppendToFilePublisherImpl<ENTRY>, ENTRY>;
+using AppendToFilePublisher = ss::StreamPublisher<impl::AppendToFilePublisherImpl<ENTRY>, ENTRY>;
 
 }  // namespace current::persistence::impl
 
@@ -383,7 +377,7 @@ template <typename ENTRY>
 using MemoryOnly = ss::StreamPublisher<impl::Logic<impl::DevNullPublisher<ENTRY>, ENTRY>, ENTRY>;
 
 template <typename ENTRY>
-using NewAppendToFile = ss::StreamPublisher<impl::Logic<impl::NewAppendToFilePublisher<ENTRY>, ENTRY>, ENTRY>;
+using AppendToFile = ss::StreamPublisher<impl::Logic<impl::AppendToFilePublisher<ENTRY>, ENTRY>, ENTRY>;
 
 }  // namespace current::persistence
 }  // namespace current

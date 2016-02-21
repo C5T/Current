@@ -100,7 +100,6 @@ struct SherlockTestProcessorImpl {
 
   void SetMax(size_t cap) { max_to_process_ = cap; }
 
-  // NOTE: `SyncScanAllEntries` uses `const Record`, so we get it by const reference.
   EntryResponse operator()(const Record& entry, IDX_TS, IDX_TS) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
@@ -129,6 +128,9 @@ struct SherlockTestProcessorImpl {
 
 using SherlockTestProcessor =
     current::ss::StreamSubscriber<SherlockTestProcessorImpl, sherlock_unittest::Record>;
+
+static_assert(current::ss::IsStreamSubscriber<SherlockTestProcessor, sherlock_unittest::Record>::value, "");
+
 }  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeAndProcessThreeEntries) {
@@ -399,8 +401,7 @@ TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  auto persisted =
-      current::sherlock::Stream<Record, current::persistence::NewAppendToFile>(persistence_file_name);
+  auto persisted = current::sherlock::Stream<Record, current::persistence::AppendToFile>(persistence_file_name);
 
   current::time::SetNow(std::chrono::microseconds(100u));
   persisted.Publish(1);
@@ -424,7 +425,7 @@ TEST(Sherlock, ParsesFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
-  auto parsed = current::sherlock::Stream<Record, current::persistence::NewAppendToFile>(persistence_file_name);
+  auto parsed = current::sherlock::Stream<Record, current::persistence::AppendToFile>(persistence_file_name);
 
   Data d;
   {

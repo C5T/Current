@@ -102,11 +102,11 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
   thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/aloha", c.HTTPRequest().RawPath());
-    c.SendHTTPResponse(std::vector<char>({'A', 'l', 'o', 'h', 'a'}));
+    EXPECT_EQ("/vector_char", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse(std::vector<char>({'S', 't', 'r', 'i', 'n', 'g'}));
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /aloha HTTP/1.1\r\n", true);
+  connection.BlockingWrite("GET /vector_char HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite("\r\n", false);
@@ -114,9 +114,9 @@ TEST(PosixHTTPServerTest, SmokeWithArray) {
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/plain\r\n"
       "Connection: close\r\n"
-      "Content-Length: 5\r\n"
+      "Content-Length: 6\r\n"
       "\r\n"
-      "Aloha",
+      "String",
       connection);
   t.join();
 }
@@ -125,11 +125,11 @@ TEST(PosixHTTPServerTest, SmokeWithObject) {
   thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/mahalo", c.HTTPRequest().RawPath());
+    EXPECT_EQ("/test_object", c.HTTPRequest().RawPath());
     c.SendHTTPResponse(HTTPTestObject());
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n", true);
+  connection.BlockingWrite("GET /test_object HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("\r\n", true);
   connection.BlockingWrite("\r\n", false);
@@ -149,11 +149,11 @@ TEST(PosixHTTPServerTest, SmokeWithNamedObject) {
   thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());
     EXPECT_EQ("GET", c.HTTPRequest().Method());
-    EXPECT_EQ("/mahalo", c.HTTPRequest().RawPath());
+    EXPECT_EQ("/test_named_object", c.HTTPRequest().RawPath());
     c.SendHTTPResponse(HTTPTestObject(), "epic_object");
   }, Socket(FLAGS_net_http_test_port));
   Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
-  connection.BlockingWrite("GET /mahalo HTTP/1.1\r\n", true);
+  connection.BlockingWrite("GET /test_named_object HTTP/1.1\r\n", true);
   connection.BlockingWrite("Host: localhost\r\n", true);
   connection.BlockingWrite("\r\n", false);
   ExpectToReceive(

@@ -41,8 +41,8 @@ SOFTWARE.
 
 #include "../Bricks/template/decay.h"
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/util/clone.h"
 #include "../Bricks/util/null_deleter.h"
+#include "../Bricks/waitable_atomic/waitable_atomic.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
 // Sherlock is the overlord of data storage and processing in Current.
@@ -134,44 +134,51 @@ class StreamImpl {
   using T_ENTRY = ENTRY;
   using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
 
-  StreamImpl() : storage_(std::make_shared<T_PERSISTENCE_LAYER>()) {}
+  StreamImpl()
+      : storage_(std::make_shared<T_PERSISTENCE_LAYER>()),
+        last_idx_ts_(std::make_shared<current::WaitableAtomic<IDX_TS>>()) {}
 
   template <typename... EXTRA_PARAMS>
   StreamImpl(EXTRA_PARAMS&&... extra_params)
-      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)) {}
+      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)),
+        last_idx_ts_(std::make_shared<current::WaitableAtomic<IDX_TS>>()) {}
 
-  StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)) {}
+  StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)), last_idx_ts_(std::move(rhs.last_idx_ts_)) {}
 
-  void operator=(StreamImpl&& rhs) { storage_ = std::move(rhs.storage_); }
+  void operator=(StreamImpl&& rhs) {
+    storage_ = std::move(rhs.storage_);
+    last_idx_ts_(std::move(rhs.last_idx_ts_));
+  }
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  IDX_TS Publish(const ENTRY& entry) { return storage_->Publish(entry); }
-  IDX_TS Publish(ENTRY&& entry) { return storage_->Publish(std::move(entry)); }
-
-  // When `ENTRY` is an `std::unique_ptr<>`, support two more `Publish()` syntaxes for entries of derived types.
-  // 1) `Publish(const DERIVED_ENTRY&)`, and
-  // 2) `Publish(conststd::unique_ptr<DERIVED_ENTRY>&)`.
-  template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
-  Publish(const DERIVED_ENTRY& e) {
-    return storage_->Publish(e);
+  IDX_TS Publish(const ENTRY& entry) {
+    const IDX_TS result = storage_->Publish(entry);
+    last_idx_ts_->SetValue(result);
+    return result;
   }
-
-  template <typename DERIVED_ENTRY>
-  typename std::enable_if<current::can_be_stored_in_unique_ptr<ENTRY, DERIVED_ENTRY>::value, IDX_TS>::type
-  Publish(const std::unique_ptr<DERIVED_ENTRY>& e) {
-    return storage_->Publish(e);
+  IDX_TS Publish(ENTRY&& entry) {
+    const IDX_TS result = storage_->Publish(std::move(entry));
+    last_idx_ts_->SetValue(result);
+    return result;
   }
 
   template <typename... ARGS>
   IDX_TS Emplace(ARGS&&... entry_params) {
-    return storage_->Emplace(std::forward<ARGS>(entry_params)...);
+    const IDX_TS result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
+    last_idx_ts_->SetValue(result);
+    return result;
   }
 
   // `PublishReplayed()` is used for replication.
-  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) { storage_->PublishReplayed(entry, idx_ts); }
-  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) { storage_->PublishReplayed(std::move(entry), idx_ts); }
+  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
+    storage_->PublishReplayed(entry, idx_ts);
+    last_idx_ts_->SetValue(idx_ts);
+  }
+  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
+    storage_->PublishReplayed(std::move(entry), idx_ts);
+    last_idx_ts_->SetValue(idx_ts);
+  }
 
   // `ListenerThread` spawns the thread and runs stream listener within it.
   //
@@ -202,15 +209,20 @@ class StreamImpl {
   template <typename F>
   class ListenerThread {
    private:
+    // static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
+
     // This guy is a `shared_ptr<>` itself later on, to ensure its lifetime.
     struct ListenerThreadSharedState {
       F listener;  // The ownership of the listener is transferred to instance of this class.
-      std::shared_ptr<T_PERSISTENCE_LAYER> storage;
+      std::shared_ptr<T_PERSISTENCE_LAYER> persister;
+      std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts;
 
       current::WaitableTerminateSignal terminate_signal;
 
-      ListenerThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-          : listener(std::move(listener)), storage(storage) {}
+      ListenerThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                                std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
+                                F&& listener)
+          : listener(std::move(listener)), persister(persister), last_idx_ts(last_idx_ts) {}
 
       ListenerThreadSharedState() = delete;
       ListenerThreadSharedState(const ListenerThreadSharedState&) = delete;
@@ -220,8 +232,11 @@ class StreamImpl {
     };
 
    public:
-    ListenerThread(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-        : state_(std::make_shared<ListenerThreadSharedState>(storage, std::forward<F>(listener))),
+    ListenerThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                   std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
+                   F&& listener)
+        : state_(
+              std::make_shared<ListenerThreadSharedState>(persister, last_idx_ts, std::forward<F>(listener))),
           thread_(&ListenerThread::StaticListenerThread, state_) {}
 
     ~ListenerThread() {
@@ -250,7 +265,35 @@ class StreamImpl {
     }
 
     static void StaticListenerThread(std::shared_ptr<ListenerThreadSharedState> state) {
-      state->storage->SyncScanAllEntries(state->terminate_signal, *state->listener);
+      size_t index = 0;
+      size_t size = 0;
+      bool terminate_sent = false;
+      while (true) {
+        if (!terminate_sent && state->terminate_signal) {
+          terminate_sent = true;
+          if ((*state->listener).Terminate() != ss::TerminationResponse::Wait) {
+            return;
+          }
+        }
+        size = state->persister->Size();
+        if (size > index) {
+          for (const auto& e : state->persister->Iterate(index, size)) {
+            if (!terminate_sent && state->terminate_signal) {
+              terminate_sent = true;
+              if ((*state->listener).Terminate() != ss::TerminationResponse::Wait) {
+                return;
+              }
+            }
+            if ((*state->listener)(e.entry, e.idx_ts, state->last_idx_ts->GetValue()) ==
+                ss::EntryResponse::Done) {
+              return;
+            }
+            index = size;
+          }
+        } else {
+          ;  // Spin lock, to be replaced by the proper waiting logic. -- D.K.
+        }
+      }
     }
 
     std::shared_ptr<ListenerThreadSharedState> state_;
@@ -267,8 +310,10 @@ class StreamImpl {
   template <typename F>
   class AsyncListenerScope {
    public:
-    AsyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F&& listener)
-        : impl_(std::make_unique<ListenerThread<F>>(storage, std::forward<F>(listener))) {}
+    AsyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                       std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
+                       F&& listener)
+        : impl_(std::make_unique<ListenerThread<F>>(persister, last_idx_ts, std::forward<F>(listener))) {}
 
     AsyncListenerScope(AsyncListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
@@ -296,10 +341,12 @@ class StreamImpl {
   template <typename F>
   class SyncListenerScope {
    public:
-    SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> storage, F& listener)
+    SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                      std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
+                      F& listener)
         : joined_(false),
           impl_(std::make_unique<ListenerThread<std::unique_ptr<F, current::NullDeleter>>>(
-              storage, std::unique_ptr<F, current::NullDeleter>(&listener))) {}
+              persister, last_idx_ts, std::unique_ptr<F, current::NullDeleter>(&listener))) {}
 
     SyncListenerScope(SyncListenerScope&& rhs) : joined_(false), impl_(std::move(rhs.impl_)) {
       // TODO(dkorolev): Constructor is not destructor -- we can make these exceptions and test them.
@@ -342,7 +389,7 @@ class StreamImpl {
   // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
   template <typename F>
   AsyncListenerScope<F> AsyncSubscribe(F&& listener) {
-    return std::move(AsyncListenerScope<F>(storage_, std::forward<F>(listener)));
+    return std::move(AsyncListenerScope<F>(storage_, last_idx_ts_, std::forward<F>(listener)));
   }
 
   // Synchronous subscription: `listener` is a stack-allocated object, and thus the listening thread
@@ -351,7 +398,7 @@ class StreamImpl {
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
   template <typename F>
   SyncListenerScope<F> SyncSubscribe(F& listener) {
-    return std::move(SyncListenerScope<F>(storage_, listener));
+    return std::move(SyncListenerScope<F>(storage_, last_idx_ts_, listener));
   }
 
   // Sherlock handler for serving stream data via HTTP.
@@ -385,8 +432,11 @@ class StreamImpl {
   // TODO(dkorolev): Have this co-own the Stream.
   void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
 
+  T_PERSISTENCE_LAYER& InternalExposePersister() { return *storage_; }
+
  private:
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
+  std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;

@@ -31,9 +31,16 @@ namespace metaprogramming {
 
 template <bool B>
 struct CallIf {
-	template <typename F> static void With(F&&f) { f(); }
+  template <typename F>
+  static void With(F&& f) {
+    f();
+  }
 };
-template <> struct CallIf<false> { template <typename F> static void With(F&&) {} };
+template <>
+struct CallIf<false> {
+  template <typename F>
+  static void With(F&&) {}
+};
 
 }  // namespace metaprogramming
 }  // namespace current
