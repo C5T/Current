@@ -292,10 +292,10 @@ template <typename ENTRY>
 using DevNullPublisher = ss::StreamPublisher<DevNullPublisherImpl<ENTRY>, ENTRY>;
 
 template <typename ENTRY>
-struct AppendToFilePublisherImpl {
-  AppendToFilePublisherImpl() = delete;
-  AppendToFilePublisherImpl(const AppendToFilePublisherImpl&) = delete;
-  explicit AppendToFilePublisherImpl(const std::string& filename) : filename_(filename) {}
+struct FilePersisterImpl {
+  FilePersisterImpl() = delete;
+  FilePersisterImpl(const FilePersisterImpl&) = delete;
+  explicit FilePersisterImpl(const std::string& filename) : filename_(filename) {}
 
   void Replay(std::function<void(IDX_TS, ENTRY&&)> push) {
     assert(!appender_);
@@ -369,15 +369,21 @@ struct AppendToFilePublisherImpl {
 };
 
 template <typename ENTRY>
-using AppendToFilePublisher = ss::StreamPublisher<impl::AppendToFilePublisherImpl<ENTRY>, ENTRY>;
+using FilePersister = ss::StreamPublisher<impl::FilePersisterImpl<ENTRY>, ENTRY>;
 
 }  // namespace current::persistence::impl
 
 template <typename ENTRY>
-using MemoryOnly = ss::StreamPublisher<impl::Logic<impl::DevNullPublisher<ENTRY>, ENTRY>, ENTRY>;
+using Memory = ss::StreamPublisher<impl::Logic<impl::DevNullPublisher<ENTRY>, ENTRY>, ENTRY>;
 
 template <typename ENTRY>
-using AppendToFile = ss::StreamPublisher<impl::Logic<impl::AppendToFilePublisher<ENTRY>, ENTRY>, ENTRY>;
+using File = ss::StreamPublisher<impl::Logic<impl::FilePersister<ENTRY>, ENTRY>, ENTRY>;
+
+// Enable legacy names for now. Confirmed Current compiles with the next four lines commented out. -- D.K.
+template <typename ENTRY>
+using MemoryOnly = Memory<ENTRY>;
+template <typename ENTRY>
+using AppendToFile = File<ENTRY>;
 
 }  // namespace current::persistence
 }  // namespace current

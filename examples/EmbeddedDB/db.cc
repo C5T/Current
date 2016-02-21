@@ -109,7 +109,7 @@ struct UserNicknamesReadModel {
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  auto stream = current::sherlock::Stream<Event, current::persistence::AppendToFile>(
+  auto stream = current::sherlock::Stream<Event, current::persistence::File>(
       FileSystem::JoinPath(FLAGS_db_dir, FLAGS_db_filename));
 
   // Example command lines to get started.

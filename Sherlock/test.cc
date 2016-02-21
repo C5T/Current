@@ -401,7 +401,7 @@ TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  auto persisted = current::sherlock::Stream<Record, current::persistence::AppendToFile>(persistence_file_name);
+  auto persisted = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
   current::time::SetNow(std::chrono::microseconds(100u));
   persisted.Publish(1);
@@ -425,7 +425,7 @@ TEST(Sherlock, ParsesFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
-  auto parsed = current::sherlock::Stream<Record, current::persistence::AppendToFile>(persistence_file_name);
+  auto parsed = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
   Data d;
   {

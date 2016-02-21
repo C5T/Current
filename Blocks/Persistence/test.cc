@@ -53,9 +53,9 @@ CURRENT_STRUCT(StorableString) {
 }  // namespace persistence_test
 
 // TODO(dkorolev) + TODO(mzhurovich): Test IDX_TS-es of the persisted data too.
-TEST(PersistenceLayer, MemoryOnly) {
+TEST(PersistenceLayer, Memory) {
   using namespace persistence_test;
-  using IMPL = current::persistence::MemoryOnly<std::string>;
+  using IMPL = current::persistence::Memory<std::string>;
   static_assert(current::ss::IsPublisher<IMPL>::value, "");
   static_assert(current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
   static_assert(current::ss::IsStreamPublisher<IMPL, std::string>::value, "");
@@ -100,16 +100,16 @@ TEST(PersistenceLayer, MemoryOnly) {
   }
 
   {
-    // Obviously, no state is shared for `MemoryOnly` implementation.
+    // Obviously, no state is shared for `Memory` implementation.
     // The data starts from ground zero.
     IMPL impl;
     EXPECT_EQ(0u, impl.Size());
   }
 }
 
-TEST(PersistenceLayer, AppendToFile) {
+TEST(PersistenceLayer, File) {
   using namespace persistence_test;
-  using IMPL = current::persistence::AppendToFile<StorableString>;
+  using IMPL = current::persistence::File<StorableString>;
   static_assert(current::ss::IsPublisher<IMPL>::value, "");
   static_assert(current::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
   static_assert(!current::ss::IsPublisher<int>::value, "");
@@ -183,7 +183,7 @@ TEST(PersistenceLayer, AppendToFile) {
 
 TEST(PersistenceLayer, Exceptions) {
   using namespace persistence_test;
-  using IMPL = current::persistence::AppendToFile<StorableString>;
+  using IMPL = current::persistence::File<StorableString>;
   using current::ss::IndexAndTimestamp;
   using current::persistence::MalformedEntryDuringReplayException;
   using current::persistence::InconsistentIndexException;

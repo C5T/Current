@@ -53,7 +53,7 @@ SOFTWARE.
 // A stream can be constucted as `auto my_stream = sherlock::Stream<ENTRY>()`. This creates an in-memory stream.
 
 // To create a persisted one, pass in the type of persister and its construction parameters, such as:
-// `auto my_stream = sherlock::Stream<ENTRY, current::persistence::AppendToFile>("data.json");`.
+// `auto my_stream = sherlock::Stream<ENTRY, current::persistence::File>("data.json");`.
 //
 // Sherlock streams can be published into and subscribed to.
 //
@@ -111,7 +111,7 @@ namespace current {
 namespace sherlock {
 
 template <typename ENTRY>
-using DEFAULT_PERSISTENCE_LAYER = current::persistence::MemoryOnly<ENTRY>;
+using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {

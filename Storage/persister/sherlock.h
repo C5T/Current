@@ -88,10 +88,10 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
 };
 
 template <typename TYPELIST>
-using SherlockInMemoryStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::MemoryOnly>;
+using SherlockInMemoryStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory>;
 
 template <typename TYPELIST>
-using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::AppendToFile>;
+using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::File>;
 
 }  // namespace persister
 }  // namespace storage
