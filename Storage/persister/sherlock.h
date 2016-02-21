@@ -51,7 +51,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
       T_TRANSACTION transaction;
-      for (auto& entry : journal.commit_log) {
+      for (auto&& entry : journal.commit_log) {
         transaction.mutations.emplace_back(std::move(entry));
       }
       transaction.meta.timestamp = current::time::Now();

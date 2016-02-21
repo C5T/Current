@@ -209,8 +209,6 @@ class StreamImpl {
   template <typename F>
   class ListenerThread {
    private:
-    // static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-
     // This guy is a `shared_ptr<>` itself later on, to ensure its lifetime.
     struct ListenerThreadSharedState {
       F listener;  // The ownership of the listener is transferred to instance of this class.
@@ -307,15 +305,21 @@ class StreamImpl {
     void operator=(ListenerThread&&) = delete;
   };
 
-  template <typename F>
-  class AsyncListenerScope {
-   public:
-    AsyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                       std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
-                       F&& listener)
-        : impl_(std::make_unique<ListenerThread<F>>(persister, last_idx_ts, std::forward<F>(listener))) {}
 
-    AsyncListenerScope(AsyncListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
+  // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
+  template<class F, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
+  class GenericListenerScope {
+   private:
+    static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
+    using LISTENER_THREAD = ListenerThread<UNIQUE_PTR_WITH_CORRECT_DELETER>;
+
+   public:
+    GenericListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                       std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
+                       UNIQUE_PTR_WITH_CORRECT_DELETER&& listener)
+        : impl_(std::make_unique<LISTENER_THREAD>(persister, last_idx_ts, std::move(listener))) {}
+
+    GenericListenerScope(GenericListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
       assert(!rhs.impl_);
     }
@@ -324,81 +328,44 @@ class StreamImpl {
       assert(impl_);
       impl_->SafeJoinThread();
     }
-    void Detach() {
+
+    template<bool B = CAN_DETACH>
+    ENABLE_IF<B> Detach() {
       assert(impl_);
       impl_->PotentiallyUnsafeDetachThread();
     }
 
    private:
-    std::unique_ptr<ListenerThread<F>> impl_;
+    std::unique_ptr<LISTENER_THREAD> impl_;
 
-    AsyncListenerScope() = delete;
-    AsyncListenerScope(const AsyncListenerScope&) = delete;
-    void operator=(const AsyncListenerScope&) = delete;
-    void operator=(AsyncListenerScope&&) = delete;
+    GenericListenerScope() = delete;
+    GenericListenerScope(const GenericListenerScope&) = delete;
+    void operator=(const GenericListenerScope&) = delete;
+    void operator=(GenericListenerScope&&) = delete;
   };
-
-  template <typename F>
-  class SyncListenerScope {
-   public:
-    SyncListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                      std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
-                      F& listener)
-        : joined_(false),
-          impl_(std::make_unique<ListenerThread<std::unique_ptr<F, current::NullDeleter>>>(
-              persister, last_idx_ts, std::unique_ptr<F, current::NullDeleter>(&listener))) {}
-
-    SyncListenerScope(SyncListenerScope&& rhs) : joined_(false), impl_(std::move(rhs.impl_)) {
-      // TODO(dkorolev): Constructor is not destructor -- we can make these exceptions and test them.
-      assert(impl_);
-      assert(!rhs.impl_);
-      assert(!rhs.joined_);
-      rhs.joined_ = true;  // Make sure no two joins are possible.
-    }
-
-    ~SyncListenerScope() {
-      if (!joined_) {
-        // LCOV_EXCL_START
-        std::cerr << "Unrecoverable error in destructor: Join() was not called on for SyncListener.\n";
-        std::exit(-1);
-        // LCOV_EXCL_STOP
-      }
-    }
-
-    void Join() {
-      // TODO(dkorolev): Make these exceptions and test them.
-      assert(!joined_);
-      assert(impl_);
-      impl_->SafeJoinThread();
-      joined_ = true;
-    }
-
-   private:
-    bool joined_;
-    std::unique_ptr<ListenerThread<std::unique_ptr<F, current::NullDeleter>>> impl_;
-
-    SyncListenerScope() = delete;
-    SyncListenerScope(const SyncListenerScope&) = delete;
-    void operator=(const SyncListenerScope&) = delete;
-    void operator=(SyncListenerScope&&) = delete;
-  };
-
-  // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
 
   // Asynchronous subscription: `listener` is a heap-allocated object, the ownership of which
   // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
+  template<typename F>
+  using AsyncListenerScope = GenericListenerScope<F, std::unique_ptr<F>, true>;
+
   template <typename F>
-  AsyncListenerScope<F> AsyncSubscribe(F&& listener) {
-    return std::move(AsyncListenerScope<F>(storage_, last_idx_ts_, std::forward<F>(listener)));
+  AsyncListenerScope<F> AsyncSubscribe(std::unique_ptr<F>&& listener) {
+    static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
+    return std::move(AsyncListenerScope<F>(storage_, last_idx_ts_, std::move(listener)));
   }
 
   // Synchronous subscription: `listener` is a stack-allocated object, and thus the listening thread
   // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
   // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
+  template<typename F>
+  using SyncListenerScope = GenericListenerScope<F, std::unique_ptr<F, current::NullDeleter>, false>;
+
   template <typename F>
   SyncListenerScope<F> SyncSubscribe(F& listener) {
-    return std::move(SyncListenerScope<F>(storage_, last_idx_ts_, listener));
+    static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
+    return std::move(SyncListenerScope<F>(storage_, last_idx_ts_, std::unique_ptr<F, current::NullDeleter>(&listener)));
   }
 
   // Sherlock handler for serving stream data via HTTP.
