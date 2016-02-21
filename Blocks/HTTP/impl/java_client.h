@@ -39,7 +39,7 @@ SOFTWARE.
 
 // Wrapper over native Android/Java code for HTTP GET/POST.
 
-namespace apple_wrapper {
+namespace java_wrapper {
 
 class HTTPClientPlatformWrapper {
  public:
@@ -221,22 +221,22 @@ class HTTPClientPlatformWrapper {
 
 };  // class HTTPClientPlatformWrapper
 
-}  // namespace apple_wrapper
+}  // namespace java_wrapper
 
 // Wrapper to allow using the above code via HTTP(GET(url)) et. al.
 
 namespace blocks {
 
 template <>
-struct ImplWrapper<apple_wrapper::HTTPClientPlatformWrapper> {
-  // Populating the fields of apple_wrapper::HTTPClientPlatformWrapper given request parameters.
-  inline static void PrepareInput(const GET& request, apple_wrapper::HTTPClientPlatformWrapper& client) {
+struct ImplWrapper<java_wrapper::HTTPClientPlatformWrapper> {
+  // Populating the fields of java_wrapper::HTTPClientPlatformWrapper given request parameters.
+  inline static void PrepareInput(const GET& request, java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
     }
   }
-  inline static void PrepareInput(const POST& request, apple_wrapper::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const POST& request, java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
@@ -245,7 +245,7 @@ struct ImplWrapper<apple_wrapper::HTTPClientPlatformWrapper> {
     client.content_type_ = request.content_type;
   }
   inline static void PrepareInput(const POSTFromFile& request,
-                                  apple_wrapper::HTTPClientPlatformWrapper& client) {
+                                  java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
@@ -254,18 +254,18 @@ struct ImplWrapper<apple_wrapper::HTTPClientPlatformWrapper> {
     client.content_type_ = request.content_type;
   }
 
-  // Populating the fields of apple_wrapper::HTTPClientPlatformWrapper given response configuration parameters.
-  inline static void PrepareInput(const KeepResponseInMemory&, apple_wrapper::HTTPClientPlatformWrapper&) {}
+  // Populating the fields of java_wrapper::HTTPClientPlatformWrapper given response configuration parameters.
+  inline static void PrepareInput(const KeepResponseInMemory&, java_wrapper::HTTPClientPlatformWrapper&) {}
   inline static void PrepareInput(const SaveResponseToFile& save_to_file_request,
-                                  apple_wrapper::HTTPClientPlatformWrapper& client) {
+                                  java_wrapper::HTTPClientPlatformWrapper& client) {
     client.received_file_ = save_to_file_request.file_name;
   }
 
-  // Parsing the response from within apple_wrapper::HTTPClientPlatformWrapper.
+  // Parsing the response from within java_wrapper::HTTPClientPlatformWrapper.
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS&,
                                  const T_RESPONSE_PARAMS&,
-                                 const apple_wrapper::HTTPClientPlatformWrapper& response,
+                                 const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponse& output) {
     output.url = response.url_requested_;
     output.code = response.error_code_;
@@ -275,7 +275,7 @@ struct ImplWrapper<apple_wrapper::HTTPClientPlatformWrapper> {
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
                                  const T_RESPONSE_PARAMS& response_params,
-                                 const apple_wrapper::HTTPClientPlatformWrapper& response,
+                                 const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     output.body = response.server_response_;
@@ -283,7 +283,7 @@ struct ImplWrapper<apple_wrapper::HTTPClientPlatformWrapper> {
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
                                  const T_RESPONSE_PARAMS& response_params,
-                                 const apple_wrapper::HTTPClientPlatformWrapper& response,
+                                 const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     output.body_file_name = response_params.file_name;

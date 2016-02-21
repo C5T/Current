@@ -53,7 +53,7 @@ using HTTP_CLIENT = current::http::HTTPClientApple;
 #elif defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 #include "impl/java_client.h"
 #include "impl/posix_server.h"
-using HTTP_CLIENT = apple_wrapper::HTTPClientPlatformWrapper;
+using HTTP_CLIENT = java_wrapper::HTTPClientPlatformWrapper;
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
