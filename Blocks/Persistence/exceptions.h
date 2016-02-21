@@ -30,7 +30,7 @@ SOFTWARE.
 #include "../../Bricks/exception.h"
 #include "../../Bricks/strings/printf.h"
 
-namespace blocks {
+namespace current {
 namespace persistence {
 
 struct PersistenceException : current::Exception {
@@ -62,6 +62,6 @@ struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
 };
 
 }  // namespace peristence
-}  // namespace blocks
+}  // namespace current
 
 #endif  // BLOCKS_PERSISTENCE_EXCEPTIONS_H

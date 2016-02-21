@@ -105,7 +105,6 @@ y:0.183947}
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/time/chrono.h"
 
-using namespace blocks;
 using current::time::Now;
 using current::strings::Printf;
 using current::net::HTTPHeaders;

@@ -35,18 +35,18 @@ namespace current {
 namespace storage {
 namespace persister {
 
-template <typename TYPELIST, template <typename, typename> class PERSISTER, typename CLONER>
+template <typename TYPELIST, template <typename> class PERSISTER>
 class SherlockStreamPersisterImpl;
 
-template <template <typename, typename> class PERSISTER, typename CLONER, typename... TS>
-class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
+template <template <typename> class PERSISTER, typename... TS>
+class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
  public:
   using T_VARIANT = Variant<TS...>;
   using T_TRANSACTION = Transaction<T_VARIANT>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(ARGS&&... args)
-      : stream_(sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER>(std::forward<ARGS>(args)...)) {}
+      : stream_(sherlock::Stream<T_TRANSACTION, PERSISTER>(std::forward<ARGS>(args)...)) {}
 
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
@@ -70,7 +70,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     stream_.SyncSubscribe(processor).Join();
   }
 
-  void ReplayTransaction(T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
+  void ReplayTransaction(T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
     stream_.PublishReplayed(transaction, idx_ts);
   }
 
@@ -78,43 +78,54 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, CLONER> {
     handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_);
   }
 
-  sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER>& InternalExposeStream() { return stream_; }
+  sherlock::Stream<T_TRANSACTION, PERSISTER>& InternalExposeStream() { return stream_; }
 
  private:
-  class SherlockProcessor {
+  class SherlockProcessorImpl {
+    using EntryResponse = current::ss::EntryResponse;
+    using TerminationResponse = current::ss::TerminationResponse;
+
    public:
-    using IDX_TS = blocks::ss::IndexAndTimestamp;
+    using IDX_TS = current::ss::IndexAndTimestamp;
     template <typename F>
-    SherlockProcessor(F&& f)
+    SherlockProcessorImpl(F&& f)
         : f_(std::forward<F>(f)) {}
 
-    bool operator()(T_TRANSACTION&& transaction, IDX_TS current, IDX_TS last) const {
-      for (auto&& mutation : transaction.mutations) {
-        f_(std::forward<T_VARIANT>(mutation));
+    EntryResponse operator()(const T_TRANSACTION& transaction, IDX_TS current, IDX_TS last) const {
+      for (auto& mutation : transaction.mutations) {
+        f_(mutation);
       }
-      return current.index != last.index;
+      if (current.index != last.index) {
+        return EntryResponse::More;
+      } else {
+        replay_done_ = true;
+        return EntryResponse::Done;
+      }
     }
 
-    void ReplayDone() { allow_terminate_ = true; }
-
-    bool Terminate() { return allow_terminate_; }
+    TerminationResponse Terminate() {
+      if (replay_done_) {
+        return TerminationResponse::Terminate;
+      } else {
+        return TerminationResponse::Wait;
+      }
+    }
 
    private:
-    const std::function<void(T_VARIANT&&)> f_;
-    bool allow_terminate_ = false;
+    const std::function<void(const T_VARIANT&)> f_;
+    mutable bool replay_done_ = false;
   };
 
-  sherlock::Stream<T_TRANSACTION, PERSISTER, CLONER> stream_;
+  using SherlockProcessor = current::ss::StreamSubscriber<SherlockProcessorImpl, T_TRANSACTION>;
+  sherlock::Stream<T_TRANSACTION, PERSISTER> stream_;
   HTTPRoutesScope handlers_scope_;
 };
 
 template <typename TYPELIST>
-using SherlockInMemoryStreamPersister =
-    SherlockStreamPersisterImpl<TYPELIST, blocks::persistence::MemoryOnly, current::DefaultCloner>;
+using SherlockInMemoryStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::MemoryOnly>;
 
 template <typename TYPELIST>
-using SherlockStreamPersister =
-    SherlockStreamPersisterImpl<TYPELIST, blocks::persistence::NewAppendToFile, current::DefaultCloner>;
+using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::NewAppendToFile>;
 
 }  // namespace persister
 }  // namespace storage

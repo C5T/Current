@@ -57,7 +57,8 @@ SOFTWARE.
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/util/clone.h"
 
-namespace blocks {
+namespace current {
+namespace mmq {
 
 template <typename MESSAGE,
           typename CONSUMER,
@@ -65,6 +66,8 @@ template <typename MESSAGE,
           bool DROP_ON_OVERFLOW = false,
           class CLONER = current::DefaultCloner>
 class MMQImpl {
+  static_assert(current::ss::IsEntrySubscriber<CONSUMER, MESSAGE>::value, "");
+
  public:
   // Type of messages to store and dispatch.
   using T_MESSAGE = MESSAGE;
@@ -72,7 +75,7 @@ class MMQImpl {
   // This method will be called from one thread, which is spawned and owned by an instance of MMQImpl.
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   using T_CONSUMER = CONSUMER;
-  using IDX_TS = blocks::ss::IndexAndTimestamp;
+  using IDX_TS = current::ss::IndexAndTimestamp;
 
   MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
@@ -126,7 +129,7 @@ class MMQImpl {
     } else {
       return IDX_TS();
     }
- }
+  }
 
  private:
   MMQImpl(const MMQImpl&) = delete;
@@ -166,10 +169,9 @@ class MMQImpl {
       {
         // Then, export the message.
         // NO MUTEX REQUIRED.
-        blocks::ss::DispatchEntryByRValue(consumer_,
-                                          std::move(circular_buffer_[tail].message_body),
-                                          circular_buffer_[tail].index_timestamp,
-                                          save_last_idx_ts);
+        consumer_(std::move(circular_buffer_[tail].message_body),
+                  circular_buffer_[tail].index_timestamp,
+                  save_last_idx_ts);
       }
 
       {
@@ -275,8 +277,9 @@ class MMQImpl {
 };
 
 template <typename MESSAGE, typename CONSUMER, size_t DEFAULT_BUFFER_SIZE = 1024, bool DROP_ON_OVERFLOW = false>
-using MMQ = ss::Publisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
+using MMQ = ss::EntryPublisher<MMQImpl<MESSAGE, CONSUMER, DEFAULT_BUFFER_SIZE, DROP_ON_OVERFLOW>, MESSAGE>;
 
-}  // namespace blocks
+}  // namespace mmq
+}  // namespace current
 
 #endif  // BLOCKS_MMQ_MMQ_H

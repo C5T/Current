@@ -42,6 +42,7 @@ SOFTWARE.
 
 DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 
+namespace persistence_test {
 using current::strings::Join;
 
 CURRENT_STRUCT(StorableString) {
@@ -50,33 +51,52 @@ CURRENT_STRUCT(StorableString) {
   CURRENT_CONSTRUCTOR(StorableString)(const std::string& s) : s(s) {}
 };
 
-struct PersistenceTestListener {
+using IDX_TS = current::ss::IndexAndTimestamp;
+using current::ss::EntryResponse;
+using current::ss::TerminationResponse;
+
+struct PersistenceTestListenerImpl {
   std::atomic_size_t seen;
-  std::atomic_bool replay_done;
+  std::atomic_bool end_reached;
 
   std::vector<std::string> messages;
 
-  PersistenceTestListener() : seen(0u), replay_done(false) {}
+  PersistenceTestListenerImpl() : seen(0u), end_reached(false) {}
 
-  void operator()(const std::string& message) {
+  EntryResponse operator()(const std::string& message, IDX_TS current, IDX_TS last) {
     messages.push_back(message);
     ++seen;
+    if (current.index == last.index) {
+      messages.push_back("MARKER");
+      end_reached = true;
+    }
+    return EntryResponse::More;
   }
 
-  void operator()(const StorableString& message) { operator()(message.s); }
-
-  void ReplayDone() {
-    messages.push_back("MARKER");
-    replay_done = true;
+  EntryResponse operator()(const StorableString& message, IDX_TS current, IDX_TS last) {
+    return operator()(message.s, current, last);
   }
+
+  TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
+}  // namespace persistence_test
 
 TEST(PersistenceLayer, MemoryOnly) {
-  typedef blocks::persistence::MemoryOnly<std::string> IMPL;
-  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-  static_assert(blocks::ss::IsEntryPublisher<IMPL, std::string>::value, "");
-  static_assert(!blocks::ss::IsPublisher<int>::value, "");
-  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
+  using namespace persistence_test;
+  using IMPL = current::persistence::MemoryOnly<std::string>;
+  static_assert(current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+  static_assert(current::ss::IsStreamPublisher<IMPL, std::string>::value, "");
+  static_assert(!current::ss::IsPublisher<int>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
+  static_assert(!current::ss::IsStreamPublisher<IMPL, int>::value, "");
+  using PersistenceTestListener = current::ss::StreamSubscriber<PersistenceTestListenerImpl, std::string>;
+  static_assert(current::ss::IsSubscriber<PersistenceTestListener>::value, "");
+  static_assert(current::ss::IsEntrySubscriber<PersistenceTestListener, std::string>::value, "");
+  static_assert(current::ss::IsStreamSubscriber<PersistenceTestListener, std::string>::value, "");
+  static_assert(!current::ss::IsSubscriber<int>::value, "");
+  static_assert(!current::ss::IsEntrySubscriber<PersistenceTestListener, int>::value, "");
+  static_assert(!current::ss::IsStreamSubscriber<PersistenceTestListener, int>::value, "");
 
   {
     IMPL impl;
@@ -89,7 +109,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
-    while (!test_listener.replay_done) {
+    while (!test_listener.end_reached) {
       ;  // Spin lock.
     }
 
@@ -104,7 +124,7 @@ TEST(PersistenceLayer, MemoryOnly) {
     t.join();
 
     EXPECT_EQ(3u, test_listener.seen);
-    EXPECT_EQ("foo,bar,MARKER,meh", Join(test_listener.messages, ","));
+    EXPECT_EQ("foo,bar,MARKER,meh,MARKER", Join(test_listener.messages, ","));
   }
 
   {
@@ -116,10 +136,6 @@ TEST(PersistenceLayer, MemoryOnly) {
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
-    while (!test_listener.replay_done) {
-      ;  // Spin lock.
-    }
-
     impl.Publish("blah");
 
     while (test_listener.seen < 1u) {
@@ -130,16 +146,24 @@ TEST(PersistenceLayer, MemoryOnly) {
     t.join();
 
     EXPECT_EQ(1u, test_listener.seen);
-    EXPECT_EQ("MARKER,blah", Join(test_listener.messages, ","));
+    EXPECT_EQ("blah,MARKER", Join(test_listener.messages, ","));
   }
 }
 
 TEST(PersistenceLayer, AppendToFile) {
-  typedef blocks::persistence::NewAppendToFile<StorableString> IMPL;
-  static_assert(blocks::ss::IsPublisher<IMPL>::value, "");
-  static_assert(blocks::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
-  static_assert(!blocks::ss::IsPublisher<int>::value, "");
-  static_assert(!blocks::ss::IsEntryPublisher<IMPL, int>::value, "");
+  using namespace persistence_test;
+  using IMPL = current::persistence::NewAppendToFile<StorableString>;
+  static_assert(current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
+  static_assert(!current::ss::IsPublisher<int>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
+  using PersistenceTestListener = current::ss::StreamSubscriber<PersistenceTestListenerImpl, StorableString>;
+  static_assert(current::ss::IsSubscriber<PersistenceTestListener>::value, "");
+  static_assert(current::ss::IsEntrySubscriber<PersistenceTestListener, StorableString>::value, "");
+  static_assert(current::ss::IsStreamSubscriber<PersistenceTestListener, StorableString>::value, "");
+  static_assert(!current::ss::IsSubscriber<int>::value, "");
+  static_assert(!current::ss::IsEntrySubscriber<PersistenceTestListener, int>::value, "");
+  static_assert(!current::ss::IsStreamSubscriber<PersistenceTestListener, int>::value, "");
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
@@ -157,7 +181,7 @@ TEST(PersistenceLayer, AppendToFile) {
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
-    while (!test_listener.replay_done) {
+    while (!test_listener.end_reached) {
       ;  // Spin lock.
     }
 
@@ -173,7 +197,7 @@ TEST(PersistenceLayer, AppendToFile) {
     t.join();
 
     EXPECT_EQ(3u, test_listener.seen);
-    EXPECT_EQ("foo,bar,MARKER,meh", Join(test_listener.messages, ","));
+    EXPECT_EQ("foo,bar,MARKER,meh,MARKER", Join(test_listener.messages, ","));
   }
 
   EXPECT_EQ(
@@ -190,7 +214,7 @@ TEST(PersistenceLayer, AppendToFile) {
     PersistenceTestListener test_listener;
     std::thread t([&impl, &stop, &test_listener]() { impl.SyncScanAllEntries(stop, test_listener); });
 
-    while (!test_listener.replay_done) {
+    while (!test_listener.end_reached) {
       ;  // Spin lock.
     }
 
@@ -206,59 +230,17 @@ TEST(PersistenceLayer, AppendToFile) {
     t.join();
 
     EXPECT_EQ(4u, test_listener.seen);
-    EXPECT_EQ("foo,bar,meh,MARKER,blah", Join(test_listener.messages, ","));
+    EXPECT_EQ("foo,bar,meh,MARKER,blah,MARKER", Join(test_listener.messages, ","));
   }
 }
 
-TEST(PersistenceLayer, RespectsCustomCloneFunction) {
-  struct BASE {
-    virtual std::string AsString() = 0;
-    virtual std::unique_ptr<BASE> DoClone() = 0;
-  };
-  struct A0 : BASE {
-    std::string AsString() override { return "A0"; }
-    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new A0()); }
-  };
-  struct B0 : BASE {
-    std::string AsString() override { return "B0"; }
-    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new B0()); }
-  };
-  struct A : BASE {
-    std::string AsString() override { return "A"; }
-    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new A0()); }
-  };
-  struct B : BASE {
-    std::string AsString() override { return "B"; }
-    std::unique_ptr<BASE> DoClone() override { return std::unique_ptr<BASE>(new B0()); }
-  };
-  struct CustomCloner {
-    static std::unique_ptr<BASE> Clone(const std::unique_ptr<BASE>& input) { return input->DoClone(); }
-  };
-  blocks::persistence::MemoryOnly<std::unique_ptr<BASE>, CustomCloner> test_clone;
-
-  test_clone.Publish(std::make_unique<A>());
-  test_clone.Publish(std::make_unique<B>());
-
-  std::vector<std::string> results;
-  size_t counter = 0u;
-  current::WaitableTerminateSignal stop;
-  test_clone.SyncScanAllEntries(stop,
-                                [&results, &counter](std::unique_ptr<BASE>&& e) {
-                                  results.push_back(e->AsString());
-                                  ++counter;
-                                  return counter < 2u;
-                                });
-
-  EXPECT_EQ(2u, counter);
-  EXPECT_EQ("A0,B0", Join(results, ","));
-}
-
 TEST(PersistenceLayer, Exceptions) {
-  using IMPL = blocks::persistence::NewAppendToFile<StorableString>;
-  using blocks::ss::IndexAndTimestamp;
-  using blocks::persistence::MalformedEntryDuringReplayException;
-  using blocks::persistence::InconsistentIndexException;
-  using blocks::persistence::InconsistentTimestampException;
+  using namespace persistence_test;
+  using IMPL = current::persistence::NewAppendToFile<StorableString>;
+  using current::ss::IndexAndTimestamp;
+  using current::persistence::MalformedEntryDuringReplayException;
+  using current::persistence::InconsistentIndexException;
+  using current::persistence::InconsistentTimestampException;
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");

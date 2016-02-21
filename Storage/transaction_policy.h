@@ -159,7 +159,7 @@ struct Synchronous final {
   }
 
   template <typename F>
-  void ReplayTransaction(F&& f, T_TRANSACTION&& transaction, blocks::ss::IndexAndTimestamp idx_ts) {
+  void ReplayTransaction(F&& f, T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
     std::lock_guard<std::mutex> lock(mutex_);
     persister_.ReplayTransaction(std::forward<T_TRANSACTION>(transaction), idx_ts);
     for (auto&& mutation : transaction.mutations) {

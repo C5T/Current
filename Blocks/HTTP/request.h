@@ -28,11 +28,14 @@ SOFTWARE.
 #include <vector>
 #include <string>
 
+#include "../URL/url.h"
+
 #include "../../Bricks/net/http/http.h"
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/template/decay.h"
 
-namespace blocks {
+namespace current {
+namespace http {
 
 template <typename T>
 constexpr static bool HasRespondViaHTTP(char) {
@@ -45,60 +48,6 @@ constexpr static auto HasRespondViaHTTP(int)
   return true;
 }
 
-struct URLPathArgs {
- public:
-  using CountMaskUnderlyingType = uint16_t;
-  enum { MaxArgsCount = 15 };
-  enum class CountMask : CountMaskUnderlyingType {
-    None = (1 << 0),
-    One = (1 << 1),
-    Two = (1 << 2),
-    Three = (1 << 3),
-    Any = static_cast<CountMaskUnderlyingType>(~0)
-  };
-
-  const std::string& operator[](size_t index) const { return args_.at(args_.size() - 1 - index); }
-
-  using T_ITERATOR = std::vector<std::string>::const_reverse_iterator;
-  T_ITERATOR begin() const { return args_.crbegin(); }
-  T_ITERATOR end() const { return args_.crend(); }
-
-  bool empty() const { return args_.empty(); }
-  size_t size() const { return args_.size(); }
-
-  void add(const std::string& arg) { args_.push_back(arg); }
-
-  std::string base_path;
-
- private:
-  std::vector<std::string> args_;
-};
-
-inline URLPathArgs::CountMask operator&(const URLPathArgs::CountMask lhs, const URLPathArgs::CountMask rhs) {
-  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) &
-                                             static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
-}
-
-inline URLPathArgs::CountMask operator|(const URLPathArgs::CountMask lhs, const URLPathArgs::CountMask rhs) {
-  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) |
-                                             static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
-}
-
-inline URLPathArgs::CountMask& operator|=(URLPathArgs::CountMask& lhs, const URLPathArgs::CountMask rhs) {
-  lhs = static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) |
-                                            static_cast<URLPathArgs::CountMaskUnderlyingType>(rhs));
-  return lhs;
-}
-
-inline URLPathArgs::CountMask operator<<(const URLPathArgs::CountMask lhs, const size_t count) {
-  return static_cast<URLPathArgs::CountMask>(static_cast<URLPathArgs::CountMaskUnderlyingType>(lhs) << count);
-}
-
-inline URLPathArgs::CountMask& operator<<=(URLPathArgs::CountMask& lhs, const size_t count) {
-  lhs = (lhs << count);
-  return lhs;
-}
-
 // The only parameter to be passed to HTTP handlers.
 struct Request final {
   std::unique_ptr<current::net::HTTPServerConnection> unique_connection;
@@ -106,15 +55,15 @@ struct Request final {
   current::net::HTTPServerConnection& connection;
   const current::net::HTTPRequestData&
       http_data;  // Accessor to use `r.http_data` instead of `r.connection->HTTPRequest()`.
-  const URL url;
-  const URLPathArgs url_path_args;
+  const current::url::URL url;
+  const current::url::URLPathArgs url_path_args;
   const std::string method;
   const current::net::HTTPRequestData::HeadersType& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const std::chrono::microseconds timestamp;
 
   explicit Request(std::unique_ptr<current::net::HTTPServerConnection>&& connection,
-                   URLPathArgs url_path_args = URLPathArgs())
+                   current::url::URLPathArgs url_path_args = current::url::URLPathArgs())
       : unique_connection(std::move(connection)),
         connection(*unique_connection.get()),
         http_data(unique_connection->HTTPRequest()),
@@ -165,6 +114,7 @@ struct Request final {
   void operator=(Request&&) = delete;
 };
 
-}  // namespace blocks
+}  // namespace http
+}  // namespace current
 
 #endif  // BLOCKS_HTTP_REQUEST_H

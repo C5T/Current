@@ -37,8 +37,10 @@ SOFTWARE.
 #include "../../Bricks/net/http/http.h"
 #include "../../Bricks/strings/is_string_type.h"
 
-namespace blocks {
+namespace current {
+namespace http {
 
+namespace impl {
 template <bool IS_STRING>
 struct StringBodyGenerator;
 
@@ -65,6 +67,7 @@ struct StringBodyGenerator<false> {
     return current::net::HTTPServerConnection::DefaultJSONContentType();
   }
 };
+}  // namespace impl
 
 struct Response {
   bool initialized = false;
@@ -119,7 +122,7 @@ struct Response {
 
   template <typename T>
   void Construct(T&& object, current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
+    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -129,7 +132,7 @@ struct Response {
   void Construct(T&& object,
                  const std::string& object_name,
                  current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
+    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -139,7 +142,7 @@ struct Response {
   void Construct(T&& object,
                  current::net::HTTPResponseCodeValue code,
                  const current::net::HTTPHeadersType& extra_headers) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
+    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -151,7 +154,7 @@ struct Response {
                  const std::string& object_name,
                  current::net::HTTPResponseCodeValue code,
                  const current::net::HTTPHeadersType& extra_headers) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
+    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
@@ -163,7 +166,7 @@ struct Response {
                  current::net::HTTPResponseCodeValue code,
                  const std::string& content_type,
                  const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
+    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = content_type;
@@ -176,7 +179,7 @@ struct Response {
                  current::net::HTTPResponseCodeValue code,
                  const std::string& content_type,
                  const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
-    using G = StringBodyGenerator<current::strings::is_string_type<T>::value>;
+    using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = content_type;
@@ -234,6 +237,7 @@ struct Response {
 
 static_assert(HasRespondViaHTTP<Response>(0), "");
 
-}  // namespace blocks
+}  // namespace http
+}  // namespace current
 
 #endif  // BLOCKS_HTTP_RESPONSE_H

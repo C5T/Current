@@ -34,7 +34,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/struct.h"
 
-namespace blocks {
+namespace current {
 namespace ss {
 
 // `IndexAndTimestamp` structure holds the index of the entry and its timestamp in the stream.
@@ -98,6 +98,7 @@ CURRENT_STRUCT(IndexAndTimestamp) {
 
 // === `operator()` and message processing. ===
 // Various signatures according to which the user may choose to receive the messages to process.
+#if 0
 namespace impl {
 
 template <typename T, typename... TS>
@@ -268,7 +269,7 @@ struct DispatchEntryMakingACopyIfNecessary<false, CLONER> {
   }
 };
 
-}  // namespace blocks::ss::impl
+}  // namespace current::ss::impl
 
 // The interface exposed for the frameworks to pass entries to process down to listeners.
 
@@ -292,6 +293,7 @@ template <typename E, typename F>
 inline bool DispatchEntryByRValue(F&& f, E&& e, IndexAndTimestamp current, IndexAndTimestamp last) {
   return impl::DispatchEntryWithoutMakingACopy(std::forward<F>(f), std::forward<E>(e), current, last);
 }
+#endif
 
 // === `Publisher<IMPL, ENTRY>` ===
 // The generic interface to publish an entry to a stream of any kind.
@@ -307,15 +309,16 @@ inline bool DispatchEntryByRValue(F&& f, E&& e, IndexAndTimestamp current, Index
 // discarded from an MMQ -- D.K.).
 
 struct GenericPublisher {};
+
 template <typename ENTRY>
 struct GenericEntryPublisher : GenericPublisher {};
 
 template <typename IMPL, typename ENTRY>
-class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
+class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
  public:
-  template <typename... EXTRA_PARAMS>
-  explicit Publisher(EXTRA_PARAMS&&... extra_params)
-      : IMPL(std::forward<EXTRA_PARAMS>(extra_params)...) {}
+  template <typename... ARGS>
+  explicit EntryPublisher(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
+  virtual ~EntryPublisher() {}
 
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   inline IndexAndTimestamp Publish(const ENTRY& e) { return IMPL::DoPublish(e); }
@@ -326,7 +329,15 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     // TODO(dkorolev): SFINAE to support the case when `IMPL::DoPublishByConstReference()` should be used.
     return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   }
+};
 
+template <typename ENTRY>
+struct GenericStreamPublisher {};
+
+template <typename IMPL, typename ENTRY>
+class StreamPublisher : public GenericStreamPublisher<ENTRY>, public EntryPublisher<IMPL, ENTRY> {
+ public:
+  using EntryPublisher<IMPL, ENTRY>::EntryPublisher;
   // Special type of publishing required for replication.
   // Functions below return `false` if the `IndexAndTimestamp` argument provided is inconsistent with the
   // current state of the stream. No publish is performed in this case.
@@ -337,6 +348,12 @@ class Publisher : public GenericEntryPublisher<ENTRY>, public IMPL {
     IMPL::DoPublishReplayed(std::move(e), idx_ts);
   }
 };
+
+#if 0
+// Temp mapping for tests.
+template <typename IMPL, typename ENTRY>
+using Publisher = StreamPublisher<IMPL, ENTRY>;
+#endif
 
 // For `static_assert`-s.
 template <typename T>
@@ -349,6 +366,12 @@ struct IsEntryPublisher {
   static constexpr bool value = std::is_base_of<GenericEntryPublisher<E>, T>::value;
 };
 
+template <typename T, typename E>
+struct IsStreamPublisher {
+  static constexpr bool value = std::is_base_of<GenericStreamPublisher<E>, T>::value;
+};
+
+#if 0
 // === `Terminate()` ===
 // If the listener implements `Terminate()` it is invoked as the listening is about to end.
 // The implementation of `Terminate()` in the listener can return `void` or `bool`.
@@ -394,7 +417,7 @@ struct CallTerminateAndReturnBoolImpl<T, true> {
   }
 };
 
-}  // namespace blocks::ss::impl
+}  // namespace current::ss::impl
 
 template <typename T>
 bool CallTerminate(T&& ref) {
@@ -430,14 +453,66 @@ struct CallReplayDoneImpl<T, true> {
   static decltype(std::declval<T>().ReplayDone()) DoIt(T&& ref) { ref.ReplayDone(); }
 };
 
-}  // namespace blocks::ss::impl
+}  // namespace current::ss::impl
 
 template <typename T>
 void CallReplayDone(T&& ref) {
   impl::CallReplayDoneImpl<T, impl::HasReplayDoneMethod<T>(0)>::DoIt(std::forward<T>(ref));
 }
+#endif
 
-}  // namespace blocks::ss
-}  // namespace blocks
+enum class EntryResponse { Done = 0, More = 1 };
+enum class TerminationResponse { Wait = 0, Terminate = 1 };
+
+struct GenericSubscriber {};
+
+template <typename ENTRY>
+struct GenericEntrySubscriber : GenericSubscriber {};
+
+template <typename IMPL, typename ENTRY>
+class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
+ public:
+  template <typename... ARGS>
+  EntrySubscriber(ARGS&&... args) : IMPL(std::forward<ARGS>(args)...) {}
+  virtual ~EntrySubscriber() {}
+
+  EntryResponse operator()(const ENTRY& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+    return IMPL::operator()(e, current, last);
+  }
+  EntryResponse operator()(ENTRY&& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+    return IMPL::operator()(std::move(e), current, last);
+  }
+
+  TerminationResponse Terminate() {
+    return IMPL::Terminate();
+  }
+};
+
+template <typename ENTRY>
+struct GenericStreamSubscriber {};
+
+template <typename IMPL, typename ENTRY>
+class StreamSubscriber : public GenericStreamSubscriber<ENTRY>, public EntrySubscriber<IMPL, ENTRY> {
+ public: 
+  using EntrySubscriber<IMPL, ENTRY>::EntrySubscriber;
+};
+
+template <typename T>
+struct IsSubscriber {
+  static constexpr bool value = std::is_base_of<GenericSubscriber, T>::value;
+};
+
+template <typename T, typename E>
+struct IsEntrySubscriber {
+  static constexpr bool value = std::is_base_of<GenericEntrySubscriber<E>, T>::value;
+};
+
+template <typename T, typename E>
+struct IsStreamSubscriber {
+  static constexpr bool value = std::is_base_of<GenericStreamSubscriber<E>, T>::value;
+};
+
+}  // namespace current::ss
+}  // namespace current
 
 #endif  // BLOCKS_SS_SS_H

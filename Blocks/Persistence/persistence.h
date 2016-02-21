@@ -43,11 +43,11 @@ SOFTWARE.
 #include "../../Bricks/util/clone.h"
 #include "../../Bricks/util/waitable_terminate_signal.h"
 
-namespace blocks {
+namespace current {
 namespace persistence {
 
 namespace impl {
-using IDX_TS = blocks::ss::IndexAndTimestamp;
+using IDX_TS = current::ss::IndexAndTimestamp;
 
 class ThreeStageMutex final {
  public:
@@ -96,7 +96,7 @@ class ThreeStageMutex final {
   std::mutex stage3_;  // Notify the listeners that a new entry is ready.
 };
 
-template <class PERSISTENCE_LAYER, typename ENTRY, class CLONER>
+template <class PERSISTENCE_LAYER, typename ENTRY>
 class Logic : current::WaitableTerminateSignalBulkNotifier {
   using T_INTERNAL_CONTAINER = std::forward_list<std::pair<IDX_TS, ENTRY>>;
 
@@ -116,6 +116,9 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 
   template <typename F>
   void SyncScanAllEntries(current::WaitableTerminateSignal& waitable_terminate_signal, F&& f) {
+    static_assert(current::ss::IsStreamSubscriber<current::decay<F>, ENTRY>::value, "");
+    using current::ss::EntryResponse;
+    using current::ss::TerminationResponse;
     struct Cursor {
       bool at_end = true;
       IDX_TS last_idx_ts;
@@ -138,42 +141,24 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
     };
     Cursor current;
 
-    const size_t size_at_start = [this]() {
-      // LOCKED: Get the number of entries before sending them to the listener.
-      ThreeStageMutex::ContainerScopedLock lock(three_stage_mutex_);
-      return list_size_;
-    }();
-    bool replay_done = false;
-
-    if (!size_at_start) {
-      blocks::ss::CallReplayDone(f);
-      replay_done = true;
-    }
-
     bool notified_about_termination = false;
     while (true) {
       if (waitable_terminate_signal && !notified_about_termination) {
         notified_about_termination = true;
-        if (blocks::ss::CallTerminate(f)) {
+        if (f.Terminate() == TerminationResponse::Terminate) {
           return;
         }
       }
       if (!current.at_end) {
-        // Only specify the `CLONER` template parameter, the rest are best to be inferred.
-        if (!blocks::ss::DispatchEntryByConstReference<CLONER>(
-                std::forward<F>(f), current.iterator->second, current.iterator->first, current.last_idx_ts)) {
+        if (f(current.iterator->second, current.iterator->first, current.last_idx_ts) == EntryResponse::Done) {
           break;
-        }
-        if (!replay_done && current.iterator->first.index >= size_at_start) {
-          blocks::ss::CallReplayDone(f);
-          replay_done = true;
         }
       }
       Cursor next;
       do {
         if (waitable_terminate_signal && !notified_about_termination) {
           notified_about_termination = true;
-          if (blocks::ss::CallTerminate(f)) {
+          if (f.Terminate() == TerminationResponse::Terminate) {
             return;
           }
         }
@@ -192,8 +177,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
             ThreeStageMutex::NotifiersScopedUniqueLock unique_lock(three_stage_mutex_);
             current::WaitableTerminateSignalBulkNotifier::Scope scope(this, waitable_terminate_signal);
             waitable_terminate_signal.WaitUntil(
-                unique_lock.GetUniqueLock(),
-                [this, &next]() { return list_size_ > next.last_idx_ts.index; });
+                unique_lock.GetUniqueLock(), [this, &next]() { return list_size_ > next.last_idx_ts.index; });
           }();
         }
       } while (next.at_end);
@@ -277,7 +261,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
   }
 
  private:
-  static_assert(ss::IsEntryPublisher<PERSISTENCE_LAYER, ENTRY>::value, "");
+  static_assert(ss::IsStreamPublisher<PERSISTENCE_LAYER, ENTRY>::value, "");
   PERSISTENCE_LAYER persistence_layer_;
 
   // `std::forward_list<>` does not invalidate iterators as new elements are added.
@@ -291,7 +275,7 @@ class Logic : current::WaitableTerminateSignalBulkNotifier {
 };
 
 // The implementation of a "publisher into nowhere".
-template <typename ENTRY, class CLONER>
+template <typename ENTRY>
 struct DevNullPublisherImpl {
   void Replay(std::function<void(IDX_TS, ENTRY&&)>) {}
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
@@ -310,10 +294,10 @@ struct DevNullPublisherImpl {
   size_t count_ = 0u;
 };
 
-template <typename ENTRY, class CLONER>
-using DevNullPublisher = ss::Publisher<DevNullPublisherImpl<ENTRY, CLONER>, ENTRY>;
+template <typename ENTRY>
+using DevNullPublisher = ss::StreamPublisher<DevNullPublisherImpl<ENTRY>, ENTRY>;
 
-template <typename ENTRY, class CLONER>
+template <typename ENTRY>
 struct NewAppendToFilePublisherImpl {
   NewAppendToFilePublisherImpl() = delete;
   NewAppendToFilePublisherImpl(const NewAppendToFilePublisherImpl&) = delete;
@@ -390,19 +374,18 @@ struct NewAppendToFilePublisherImpl {
   IDX_TS last_idx_ts_;
 };
 
-template <typename ENTRY, class CLONER>
-using NewAppendToFilePublisher = ss::Publisher<impl::NewAppendToFilePublisherImpl<ENTRY, CLONER>, ENTRY>;
+template <typename ENTRY>
+using NewAppendToFilePublisher = ss::StreamPublisher<impl::NewAppendToFilePublisherImpl<ENTRY>, ENTRY>;
 
-}  // namespace blocks::persistence::impl
+}  // namespace current::persistence::impl
 
-template <typename ENTRY, class CLONER = current::DefaultCloner>
-using MemoryOnly = ss::Publisher<impl::Logic<impl::DevNullPublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
+template <typename ENTRY>
+using MemoryOnly = ss::StreamPublisher<impl::Logic<impl::DevNullPublisher<ENTRY>, ENTRY>, ENTRY>;
 
-template <typename ENTRY, class CLONER = current::DefaultCloner>
-using NewAppendToFile =
-    ss::Publisher<impl::Logic<impl::NewAppendToFilePublisher<ENTRY, CLONER>, ENTRY, CLONER>, ENTRY>;
+template <typename ENTRY>
+using NewAppendToFile = ss::StreamPublisher<impl::Logic<impl::NewAppendToFilePublisher<ENTRY>, ENTRY>, ENTRY>;
 
-}  // namespace blocks::persistence
-}  // namespace blocks
+}  // namespace current::persistence
+}  // namespace current
 
 #endif  // BLOCKS_PERSISTENCE_PERSISTENCE_H

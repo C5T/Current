@@ -27,7 +27,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-using namespace blocks;
+using namespace current::url;
 
 TEST(URLTest, SmokeTest) {
   URL u;

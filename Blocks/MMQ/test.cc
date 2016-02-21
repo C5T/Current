@@ -33,26 +33,29 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using blocks::MMQ;
-using IDX_TS = blocks::ss::IndexAndTimestamp;
+using current::mmq::MMQ;
+using current::ss::EntryResponse;
+using IDX_TS = current::ss::IndexAndTimestamp;
 
 TEST(InMemoryMQ, SmokeTest) {
-  struct Consumer {
+  struct ConsumerImpl {
     std::string messages_;
     size_t expected_next_message_index_ = 1u;
     size_t dropped_messages_ = 0u;
     std::atomic_size_t processed_messages_;
-    Consumer() : processed_messages_(0u) {}
-    void operator()(const std::string& s, IDX_TS current) {
+    ConsumerImpl() : processed_messages_(0u) {}
+    EntryResponse operator()(const std::string& s, IDX_TS current, IDX_TS) {
       assert(current.index >= expected_next_message_index_);
       dropped_messages_ += (current.index - expected_next_message_index_);
       expected_next_message_index_ = (current.index + 1);
       messages_ += s + '\n';
       ++processed_messages_;
       assert(expected_next_message_index_ - processed_messages_ - 1 == dropped_messages_);
+      return EntryResponse::More;
     }
   };
 
+  using Consumer = current::ss::EntrySubscriber<ConsumerImpl, std::string>;
   Consumer c;
   MMQ<std::string, Consumer> mmq(c);
   mmq.Publish("one");
@@ -65,15 +68,15 @@ TEST(InMemoryMQ, SmokeTest) {
   EXPECT_EQ(0u, c.dropped_messages_);
 }
 
-struct SuspendableConsumer {
+struct SuspendableConsumerImpl {
   std::vector<std::string> messages_;
   std::atomic_size_t processed_messages_;
   size_t expected_next_message_index_ = 1u;
   size_t total_messages_accepted_by_the_queue_ = 0u;
   std::atomic_bool suspend_processing_;
   size_t processing_delay_ms_ = 0u;
-  SuspendableConsumer() : processed_messages_(0u), suspend_processing_(false) {}
-  void operator()(const std::string& s, IDX_TS current, IDX_TS last) {
+  SuspendableConsumerImpl() : processed_messages_(0u), suspend_processing_(false) {}
+  EntryResponse operator()(const std::string& s, IDX_TS current, IDX_TS last) {
     EXPECT_EQ(current.index, expected_next_message_index_);
     ++expected_next_message_index_;
     while (suspend_processing_) {
@@ -86,9 +89,12 @@ struct SuspendableConsumer {
       std::this_thread::sleep_for(std::chrono::milliseconds(processing_delay_ms_));
     }
     ++processed_messages_;
+    return EntryResponse::More;
   }
   void SetProcessingDelayMillis(uint64_t delay_ms) { processing_delay_ms_ = delay_ms; }
 };
+
+using SuspendableConsumer = current::ss::EntrySubscriber<SuspendableConsumerImpl, std::string>;
 
 TEST(InMemoryMQ, DropOnOverflowTest) {
   SuspendableConsumer c;

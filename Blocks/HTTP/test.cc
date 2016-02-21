@@ -69,7 +69,7 @@ using current::net::HTTPRedirectLoopException;
 using current::net::SocketResolveAddressException;
 using current::net::CannotServeStaticFilesOfUnknownMIMEType;
 
-using namespace blocks;
+using namespace current::http;
 
 DEFINE_int32(net_api_test_port,
              PickPortForUnitTest(),

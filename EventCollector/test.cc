@@ -90,19 +90,16 @@ TEST(EventCollector, Smoke) {
   // Using dumb way since regex-es are broken in GCC 4.8.
   std::string log = os.str();
   size_t first = 0u;
-  while ((first = log.find("\"h\":[")) != std::string::npos) {
-    size_t last = log.find("],", first);
+  while ((first = log.find("\"h\":{")) != std::string::npos) {
+    size_t last = log.find("},", first);
     log.replace(first, last - first + 2u, "");
   }
 
   EXPECT_EQ(
-      "{\"t\":12000,\"m\":\"GET\",\"u\":\"/log\",\"q\":{},\"h\":{\"Host\":\"localhost\"},"
-      "\"b\":\"\",\"f\":\"\"}\n"
-      "{\"t\":112000,\"m\":\"TICK\",\"u\":\"\",\"q\":{},\"h\":{},\"b\":\"\",\"f\":\"\"}\n"
-      "{\"t\":178000,\"m\":\"POST\",\"u\":\"/log\",\"q\":{},\"h\":"
-      "{\"Content-Length\":\"3\",\"Content-Type\":\"text/plain\",\"Host\":\"localhost\"},"
-      "\"b\":\"meh\",\"f\":\"\"}\n"
-      "{\"t\":278000,\"m\":\"TICK\",\"u\":\"\",\"q\":{},\"h\":{},\"b\":\"\",\"f\":\"\"}\n",
+      "{\"t\":12000,\"m\":\"GET\",\"u\":\"/log\",\"q\":{},\"b\":\"\",\"f\":\"\"}\n"
+      "{\"t\":112000,\"m\":\"TICK\",\"u\":\"\",\"q\":{},\"b\":\"\",\"f\":\"\"}\n"
+      "{\"t\":178000,\"m\":\"POST\",\"u\":\"/log\",\"q\":{},\"b\":\"meh\",\"f\":\"\"}\n"
+      "{\"t\":278000,\"m\":\"TICK\",\"u\":\"\",\"q\":{},\"b\":\"\",\"f\":\"\"}\n",
       log);
   EXPECT_EQ(4u, er.count);
   EXPECT_EQ(278000u, er.last_t);
