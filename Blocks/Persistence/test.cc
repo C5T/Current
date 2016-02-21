@@ -35,6 +35,7 @@ SOFTWARE.
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/file/file.h"
 #include "../../Bricks/strings/join.h"
+#include "../../Bricks/strings/printf.h"
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -43,6 +44,7 @@ DEFINE_string(persistence_test_tmpdir, ".current", "Local path for the test to c
 namespace persistence_test {
 
 using current::strings::Join;
+using current::strings::Printf;
 
 CURRENT_STRUCT(StorableString) {
   CURRENT_FIELD(s, std::string, "");
@@ -52,9 +54,9 @@ CURRENT_STRUCT(StorableString) {
 
 }  // namespace persistence_test
 
-// TODO(dkorolev) + TODO(mzhurovich): Test IDX_TS-es of the persisted data too.
 TEST(PersistenceLayer, Memory) {
   using namespace persistence_test;
+
   using IMPL = current::persistence::Memory<std::string>;
   static_assert(current::ss::IsPublisher<IMPL>::value, "");
   static_assert(current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
@@ -67,16 +69,22 @@ TEST(PersistenceLayer, Memory) {
     IMPL impl;
     EXPECT_EQ(0u, impl.Size());
 
+    current::time::SetNow(std::chrono::microseconds(100));
     impl.Publish("foo");
+    current::time::SetNow(std::chrono::microseconds(200));
     impl.Publish("bar");
+    current::time::SetNow(std::chrono::microseconds(300));
     EXPECT_EQ(2u, impl.Size());
 
     {
       std::vector<std::string> first_two;
       for (const auto& e : impl.Iterate()) {
-        first_two.push_back(e.entry);
+        first_two.push_back(Printf("%s %d %d",
+                                   e.entry.c_str(),
+                                   static_cast<int>(e.idx_ts.index),
+                                   static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo,bar", Join(first_two, ","));
+      EXPECT_EQ("foo 1 100,bar 2 200", Join(first_two, ","));
     }
 
     impl.Publish("meh");
@@ -85,9 +93,12 @@ TEST(PersistenceLayer, Memory) {
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(e.entry);
+        all_three.push_back(Printf("%s %d %d",
+                                   e.entry.c_str(),
+                                   static_cast<int>(e.idx_ts.index),
+                                   static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo,bar,meh", Join(all_three, ","));
+      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 300", Join(all_three, ","));
     }
 
     {
@@ -131,9 +142,12 @@ TEST(PersistenceLayer, File) {
     {
       std::vector<std::string> first_two;
       for (const auto& e : impl.Iterate()) {
-        first_two.push_back(e.entry.s);
+        first_two.push_back(Printf("%s %d %d",
+                                   e.entry.s.c_str(),
+                                   static_cast<int>(e.idx_ts.index),
+                                   static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo,bar", Join(first_two, ","));
+      EXPECT_EQ("foo 1 100,bar 2 200", Join(first_two, ","));
     }
 
     current::time::SetNow(std::chrono::microseconds(500));
@@ -143,9 +157,12 @@ TEST(PersistenceLayer, File) {
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(e.entry.s);
+        all_three.push_back(Printf("%s %d %d",
+                                   e.entry.s.c_str(),
+                                   static_cast<int>(e.idx_ts.index),
+                                   static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo,bar,meh", Join(all_three, ","));
+      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500", Join(all_three, ","));
     }
   }
 
@@ -156,28 +173,50 @@ TEST(PersistenceLayer, File) {
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
-    // Confirm that the data has been saved and can be replayed.
+    // Confirm the data has been saved and can be replayed.
     IMPL impl(persistence_file_name);
     EXPECT_EQ(3u, impl.Size());
 
     {
       std::vector<std::string> all_three;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(e.entry.s);
+        all_three.push_back(Printf("%s %d %d",
+                                   e.entry.s.c_str(),
+                                   static_cast<int>(e.idx_ts.index),
+                                   static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo,bar,meh", Join(all_three, ","));
+      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500", Join(all_three, ","));
     }
 
+    current::time::SetNow(std::chrono::microseconds(999));
     impl.Publish(StorableString("blah"));
     EXPECT_EQ(4u, impl.Size());
 
     {
-      std::vector<std::string> all_three;
+      std::vector<std::string> all_four;
       for (const auto& e : impl.Iterate()) {
-        all_three.push_back(e.entry.s);
+        all_four.push_back(Printf("%s %d %d",
+                                  e.entry.s.c_str(),
+                                  static_cast<int>(e.idx_ts.index),
+                                  static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo,bar,meh,blah", Join(all_three, ","));
+      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500,blah 4 999", Join(all_four, ","));
     }
+  }
+
+  {
+    // Confirm the added, fourth, entry, has been appended properly with respect to replaying the file.
+    IMPL impl(persistence_file_name);
+    EXPECT_EQ(4u, impl.Size());
+
+    std::vector<std::string> all_four;
+    for (const auto& e : impl.Iterate()) {
+      all_four.push_back(Printf("%s %d %d",
+                                e.entry.s.c_str(),
+                                static_cast<int>(e.idx_ts.index),
+                                static_cast<int>(e.idx_ts.us.count())));
+    }
+    EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500,blah 4 999", Join(all_four, ","));
   }
 }
 
