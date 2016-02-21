@@ -183,4 +183,8 @@ struct PortForUnitTestPicker {
   }
 };
 
+#ifdef CURRENT_JAVA
+#error "Current has not been tested with Java for a while, and would likely require a bit of TLC. Thank you."
+#endif
+
 #endif
