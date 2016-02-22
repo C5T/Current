@@ -50,18 +50,17 @@ SOFTWARE.
 // Each record is annotated with its the 1-based index and its epoch microsecond timestamp.
 // Within the stream, timestamps are strictly increasing.
 //
-// A stream can be constucted as `auto my_stream = sherlock::Stream<ENTRY>()`. This creates an in-memory stream.
+// A stream is constructed as `auto my_stream = sherlock::Stream<ENTRY>()`. This creates an in-memory stream.
 
 // To create a persisted one, pass in the type of persister and its construction parameters, such as:
 // `auto my_stream = sherlock::Stream<ENTRY, current::persistence::File>("data.json");`.
 //
 // Sherlock streams can be published into and subscribed to.
 //
-// Publishing is done via `my_stream.Publish(ENTRY{...});`. It is the caller's responsibility to ensure that:
-// 1) Publishing is done from one thread only (Sherlock itself offers no locking), and
-// 2) Published entries come in strictly increasing order of their timestamps.
+// Publishing is done via `my_stream.Publish(ENTRY{...});`. It is the caller's responsibility
+// to ensure publishing is done from one thread only (Sherlock itself offers no locking).
 //
-// Subscription is done by via `my_stream.Subscribe(my_listener);`, where `my_listener` is an instance
+// Subscription is done via `my_stream.Subscribe(my_listener);`, where `my_listener` is an instance
 // of the class doing the listening. Sherlock runs each listener in a dedicated thread.
 //
 // The parameter to `Subscribe()` can be an `std::unique_ptr<F>`, or a reference to a stack-allocated object.
@@ -71,9 +70,10 @@ SOFTWARE.
 // Asynchronous scope can also be `.Detach()`-ed, internally calling `std::thread::detach()`.
 // A detached listener will live until it decides to terminate. In case the stream itself would be destructing,
 // each listener, detached listeners included, will be notified of stream termination, and the destructor
-// of the stream objectwill wait for all listeners, detached included, to terminate themselves.
+// of the stream object will wait for all listeners, detached included, to terminate themselves.
 //
-// The `my_listener` object should expose the following member functions:
+// The `my_listener` object should be an instance of `StreamSubscriber<IMPL, ENTRY>`,
+// and `IMPL should implement the following methods with respective return values.
 //
 // 1) `bool operator()({const ENTRY& / ENTRY&&} entry, IndexAndTimestamp current, IndexAndTimestamp last))`:
 //
