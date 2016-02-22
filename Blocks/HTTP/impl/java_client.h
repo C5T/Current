@@ -39,7 +39,7 @@ SOFTWARE.
 
 // Wrapper over native Android/Java code for HTTP GET/POST.
 
-namespace aloha {
+namespace java_wrapper {
 
 class HTTPClientPlatformWrapper {
  public:
@@ -221,22 +221,22 @@ class HTTPClientPlatformWrapper {
 
 };  // class HTTPClientPlatformWrapper
 
-}  // namespace aloha
+}  // namespace java_wrapper
 
 // Wrapper to allow using the above code via HTTP(GET(url)) et. al.
 
 namespace blocks {
 
 template <>
-struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
-  // Populating the fields of aloha::HTTPClientPlatformWrapper given request parameters.
-  inline static void PrepareInput(const GET& request, aloha::HTTPClientPlatformWrapper& client) {
+struct ImplWrapper<java_wrapper::HTTPClientPlatformWrapper> {
+  // Populating the fields of java_wrapper::HTTPClientPlatformWrapper given request parameters.
+  inline static void PrepareInput(const GET& request, java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
     }
   }
-  inline static void PrepareInput(const POST& request, aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const POST& request, java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
@@ -244,7 +244,8 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
     client.post_body_ = request.body;
     client.content_type_ = request.content_type;
   }
-  inline static void PrepareInput(const POSTFromFile& request, aloha::HTTPClientPlatformWrapper& client) {
+  inline static void PrepareInput(const POSTFromFile& request,
+                                  java_wrapper::HTTPClientPlatformWrapper& client) {
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;
@@ -253,18 +254,18 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
     client.content_type_ = request.content_type;
   }
 
-  // Populating the fields of aloha::HTTPClientPlatformWrapper given response configuration parameters.
-  inline static void PrepareInput(const KeepResponseInMemory&, aloha::HTTPClientPlatformWrapper&) {}
+  // Populating the fields of java_wrapper::HTTPClientPlatformWrapper given response configuration parameters.
+  inline static void PrepareInput(const KeepResponseInMemory&, java_wrapper::HTTPClientPlatformWrapper&) {}
   inline static void PrepareInput(const SaveResponseToFile& save_to_file_request,
-                                  aloha::HTTPClientPlatformWrapper& client) {
+                                  java_wrapper::HTTPClientPlatformWrapper& client) {
     client.received_file_ = save_to_file_request.file_name;
   }
 
-  // Parsing the response from within aloha::HTTPClientPlatformWrapper.
+  // Parsing the response from within java_wrapper::HTTPClientPlatformWrapper.
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS&,
                                  const T_RESPONSE_PARAMS&,
-                                 const aloha::HTTPClientPlatformWrapper& response,
+                                 const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponse& output) {
     output.url = response.url_requested_;
     output.code = response.error_code_;
@@ -274,7 +275,7 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
                                  const T_RESPONSE_PARAMS& response_params,
-                                 const aloha::HTTPClientPlatformWrapper& response,
+                                 const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     output.body = response.server_response_;
@@ -282,7 +283,7 @@ struct ImplWrapper<aloha::HTTPClientPlatformWrapper> {
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
                                  const T_RESPONSE_PARAMS& response_params,
-                                 const aloha::HTTPClientPlatformWrapper& response,
+                                 const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     output.body_file_name = response_params.file_name;

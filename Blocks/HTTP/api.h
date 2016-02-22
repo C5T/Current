@@ -25,25 +25,10 @@ SOFTWARE.
 // Current HTTP API provides a generic interface for basic HTTP operations,
 // along with their cross-platform implementations.
 //
-// HTTP server has a TODO(dkorolev) implementation.
-// HTTP client has POSIX, MacOS/iOS and Android/Java implementations.
+// HTTP server has a POSIX implementation.
+// HTTP client has POSIX, MacOS/iOS and Android/Java implementations (the Java one is untested for a while).
 //
 // The user does not have to select the implementation, a suitable one will be selected at compile time.
-//
-// TODO(dkorolev): Either port the Java test here from AlohaStatsClient and make it pass, or get rid of it.
-//
-// Synopsis:
-//
-// # CLIENT: Returns template-specialized type depending on its parameters. Best to save into `const auto`.
-//
-// ## const std::string& s = HTTP(GET(url)).body;
-// ## const auto r = HTTP(GET(url)); DoWork(r.code, r.body);
-// ## const auto r = HTTP(GET(url), SaveResponseToFile(file_name)); DoWork(r.code, r.body_file_name);
-// ## const auto r = HTTP(POST(url, "data", "text/plain")); DoWork(r.code);
-// ## const auto r = HTTP(POSTFromFile(url, file_name, "text/plain")); DoWork(r.code);
-//                   TODO(dkorolev): Hey Alex, do we support returned body from POST requests? :-)
-//
-// # SERVER: TODO(dkorolev).
 
 #ifndef BLOCKS_HTTP_API_H
 #define BLOCKS_HTTP_API_H
@@ -68,7 +53,7 @@ using HTTP_CLIENT = current::http::HTTPClientApple;
 #elif defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 #include "impl/java_client.h"
 #include "impl/posix_server.h"
-using HTTP_CLIENT = aloha::HTTPClientPlatformWrapper;
+using HTTP_CLIENT = java_wrapper::HTTPClientPlatformWrapper;
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif

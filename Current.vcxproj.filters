@@ -769,9 +769,6 @@
     <ClInclude Include="Bricks\util\accumulative_scoped_deleter.h">
       <Filter>Header Files\Bricks\util</Filter>
     </ClInclude>
-    <ClInclude Include="Bricks\util\clone.h">
-      <Filter>Header Files\Bricks\util</Filter>
-    </ClInclude>
     <ClInclude Include="Bricks\util\comparators.h">
       <Filter>Header Files\Bricks\util</Filter>
     </ClInclude>

@@ -277,7 +277,6 @@
     <ClInclude Include="Bricks\template\weed.h" />
     <ClInclude Include="Bricks\time\chrono.h" />
     <ClInclude Include="Bricks\util\accumulative_scoped_deleter.h" />
-    <ClInclude Include="Bricks\util\clone.h" />
     <ClInclude Include="Bricks\util\comparators.h" />
     <ClInclude Include="Bricks\util\crc32.h" />
     <ClInclude Include="Bricks\util\future.h" />

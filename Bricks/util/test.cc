@@ -25,7 +25,6 @@ SOFTWARE.
 #define BRICKS_RANDOM_FIX_SEED
 
 #include "accumulative_scoped_deleter.h"
-#include "clone.h"
 #include "comparators.h"
 #include "crc32.h"
 #include "lazy_instantiation.h"
@@ -50,7 +49,7 @@ TEST(Util, BasicException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:48\tcurrent::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:47\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -67,7 +66,7 @@ TEST(Util, CustomException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:65\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:64\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -275,84 +274,6 @@ TEST(Util, RandomWithFixedSeed) {
   EXPECT_DOUBLE_EQ(-605.7885522709737, current::random::RandomDouble(-1024.5, 2048.1));
 }
 #endif
-
-namespace cloning_unit_test {
-
-// First preference: `.Clone()`.
-struct ClonableByRef {
-  const std::string text;
-  ClonableByRef(const std::string& text = "original") : text(text) {}
-
-  ClonableByRef Clone() const { return ClonableByRef("cloned by ref"); }
-
-  struct Cloner {
-    ClonableByRef Clone() { return ClonableByRef("cloned by ptr"); }
-  };
-  Cloner operator->() const { return Cloner(); }
-
-  ClonableByRef(const ClonableByRef& rhs) : text("copy-constructed from " + rhs.text) {}
-};
-
-// Second preference: `->Clone()`.
-struct ClonableByPtr {
-  const std::string text;
-  ClonableByPtr(const std::string& text = "original") : text(text) {}
-
-  struct Cloner {
-    Cloner() {}
-    ClonableByPtr Clone() const { return ClonableByPtr("cloned by ptr"); }
-  };
-  const Cloner cloner;
-  const Cloner* operator->() const { return &cloner; }
-
-  ClonableByPtr(const ClonableByPtr& rhs) : text("copy-constructed from " + rhs.text) {}
-};
-
-// Third preference: copy constructor.
-struct ClonableByCtor {
-  const std::string text;
-  ClonableByCtor(const std::string& text = "original") : text(text) {}
-  ClonableByCtor(const ClonableByCtor& rhs) : text("copy-constructed from " + rhs.text) {}
-};
-
-// Fourth preference: clone `CURRENT_STRUCT` using its native means.
-// TODO(dkorolev): Talk to Max re.:
-// 0) Do we need `Clone()` in this format?
-// 1) Automated CURRENT_STRUCT cloning.
-// 2) Automated CURRENT_STRUCT `operator==()` and `opeator<()`.
-// 3) Automated CURRENT_STRUCT `Hash()`.
-
-}  // namespace cloning_unit_test
-
-TEST(Util, Clone) {
-  using namespace cloning_unit_test;
-  using current::ObsoleteClone;
-  using current::DefaultCloneFunction;
-  using current::DefaultCloner;
-
-  EXPECT_EQ("original", ClonableByRef().text);
-  EXPECT_EQ("original", ClonableByPtr().text);
-  EXPECT_EQ("original", ClonableByCtor().text);
-
-  EXPECT_EQ("cloned by ref", ObsoleteClone(ClonableByRef()).text);
-  EXPECT_EQ("cloned by ptr", ObsoleteClone(ClonableByPtr()).text);
-  EXPECT_EQ("copy-constructed from original", ObsoleteClone(ClonableByCtor()).text);
-
-  EXPECT_EQ("cloned by ref", DefaultCloneFunction<ClonableByRef>()(ClonableByRef()).text);
-  EXPECT_EQ("cloned by ptr", DefaultCloneFunction<ClonableByPtr>()(ClonableByPtr()).text);
-  EXPECT_EQ("copy-constructed from original", DefaultCloneFunction<ClonableByCtor>()(ClonableByCtor()).text);
-
-  const auto clone_by_ref = DefaultCloneFunction<ClonableByRef>();
-  const auto clone_by_ptr = DefaultCloneFunction<ClonableByPtr>();
-  const auto clone_by_ctor = DefaultCloneFunction<ClonableByCtor>();
-  EXPECT_EQ("cloned by ref", clone_by_ref(ClonableByRef()).text);
-  EXPECT_EQ("cloned by ptr", clone_by_ptr(ClonableByPtr()).text);
-  EXPECT_EQ("copy-constructed from original", clone_by_ctor(ClonableByCtor()).text);
-
-  EXPECT_EQ("cloned by ref", DefaultCloner::Clone(ClonableByRef()).text);
-  EXPECT_EQ("cloned by ptr", DefaultCloner::Clone(ClonableByPtr()).text);
-  EXPECT_EQ("copy-constructed from original", DefaultCloner::Clone(ClonableByCtor()).text);
-}
 
 TEST(Util, WaitableTerminateSignalGotWaitedForEvent) {
   using current::WaitableTerminateSignal;

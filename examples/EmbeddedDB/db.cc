@@ -1,3 +1,5 @@
+// TODO(dkorolev): Revisit this example as we no longer have `ReplayDone()`.
+
 /*******************************************************************************
 The MIT License (MIT)
 
@@ -107,7 +109,7 @@ struct UserNicknamesReadModel {
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
-  auto stream = current::sherlock::Stream<Event, current::persistence::NewAppendToFile>(
+  auto stream = current::sherlock::Stream<Event, current::persistence::File>(
       FileSystem::JoinPath(FLAGS_db_dir, FLAGS_db_filename));
 
   // Example command lines to get started.
@@ -193,7 +195,7 @@ int main(int argc, char** argv) {
                 });
 
   // Read model.
-  stream.AsyncSubscribe(std::make_unique<UserNicknamesReadModel>(FLAGS_db_demo_port)).Detach();
+  stream.Subscribe(std::make_unique<UserNicknamesReadModel>(FLAGS_db_demo_port)).Detach();
 
   // Run forever.
   HTTP(FLAGS_db_demo_port).Join();

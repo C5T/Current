@@ -111,9 +111,7 @@ using current::net::HTTPHeaders;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
-CURRENT_STRUCT(LayoutCell) {
-  CURRENT_FIELD(meta_url, std::string, "/meta");
-};
+CURRENT_STRUCT(LayoutCell) { CURRENT_FIELD(meta_url, std::string, "/meta"); };
 
 CURRENT_STRUCT(LayoutItem) {
   // TODO(dkorolev): Revisit this. Need a `Variant<>`.

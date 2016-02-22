@@ -100,7 +100,6 @@ struct SherlockTestProcessorImpl {
 
   void SetMax(size_t cap) { max_to_process_ = cap; }
 
-  // NOTE: `SyncScanAllEntries` uses `const Record`, so we get it by const reference.
   EntryResponse operator()(const Record& entry, IDX_TS, IDX_TS) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
@@ -129,6 +128,9 @@ struct SherlockTestProcessorImpl {
 
 using SherlockTestProcessor =
     current::ss::StreamSubscriber<SherlockTestProcessorImpl, sherlock_unittest::Record>;
+
+static_assert(current::ss::IsStreamSubscriber<SherlockTestProcessor, sherlock_unittest::Record>::value, "");
+
 }  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeAndProcessThreeEntries) {
@@ -144,7 +146,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
     SherlockTestProcessor p(d, false);
     ASSERT_TRUE(d.listener_alive_);
     p.SetMax(3u);
-    foo_stream.SyncSubscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
+    foo_stream.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.listener_alive_);
   }
@@ -156,7 +158,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
       << d.results_;
 }
 
-TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
+TEST(Sherlock, SubscribeSynchronously) {
   using namespace sherlock_unittest;
 
   auto bar_stream = current::sherlock::Stream<Record>();
@@ -168,7 +170,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
   std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
   ASSERT_TRUE(d.listener_alive_);
   p->SetMax(3u);
-  bar_stream.AsyncSubscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
+  bar_stream.Subscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
   EXPECT_EQ(3u, d.seen_);
   while (d.listener_alive_) {
     ;  // Spin lock.
@@ -180,7 +182,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntriesByUniquePtr) {
       << d.results_;
 }
 
-TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
+TEST(Sherlock, SubscribeAsynchronously) {
   using namespace sherlock_unittest;
 
   auto bar_stream = current::sherlock::Stream<Record>();
@@ -190,7 +192,7 @@ TEST(Sherlock, AsyncSubscribeAndProcessThreeEntriesByUniquePtr) {
   Data d;
   std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
   p->SetMax(4u);
-  bar_stream.AsyncSubscribe(std::move(p)).Detach();  // `.Detach()` results in the listener running on its own.
+  bar_stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the listener running on its own.
   while (d.seen_ < 3u) {
     ;  // Spin lock.
   }
@@ -219,15 +221,15 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   {
     Data d;
     SherlockTestProcessor p(d, true);
-    // NOTE: plain `baz_stream.SyncSubscribe(p);` will fail with exception
+    // NOTE: plain `baz_stream.Subscribe(p);` will fail with exception
     // in the destructor of `SyncListenerScope`.
-    baz_stream.SyncSubscribe(p).Join();
+    baz_stream.Subscribe(p).Join();
     EXPECT_EQ(0u, d.seen_);
   }
   {
     Data d;
     SherlockTestProcessor p(d, true);
-    auto scope = baz_stream.SyncSubscribe(p);
+    auto scope = baz_stream.Subscribe(p);
     scope.Join();
     EXPECT_EQ(0u, d.seen_);
   }
@@ -245,7 +247,7 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   Data d;
   SherlockTestProcessor p(d, true);
   {
-    auto scope = meh_stream.SyncSubscribe(p);
+    auto scope = meh_stream.Subscribe(p);
     {
       auto scope2 = std::move(scope);
       {
@@ -332,7 +334,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
     current::sherlock::StreamImpl<RecordWithTimestamp>::SyncListenerScope<RecordsCollector> scope(
-        std::move(exposed_stream.SyncSubscribe(collector)));
+        std::move(exposed_stream.Subscribe(collector)));
     while (collector.count_ < 4u) {
       ;  // Spin lock.
     }
@@ -399,8 +401,7 @@ TEST(Sherlock, PersistsToFile) {
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  auto persisted =
-      current::sherlock::Stream<Record, current::persistence::NewAppendToFile>(persistence_file_name);
+  auto persisted = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
   current::time::SetNow(std::chrono::microseconds(100u));
   persisted.Publish(1);
@@ -424,7 +425,7 @@ TEST(Sherlock, ParsesFromFile) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
   current::FileSystem::WriteStringToFile(sherlock_golden_data, persistence_file_name.c_str());
 
-  auto parsed = current::sherlock::Stream<Record, current::persistence::NewAppendToFile>(persistence_file_name);
+  auto parsed = current::sherlock::Stream<Record, current::persistence::File>(persistence_file_name);
 
   Data d;
   {
@@ -432,7 +433,7 @@ TEST(Sherlock, ParsesFromFile) {
     SherlockTestProcessor p(d, false);
     ASSERT_TRUE(d.listener_alive_);
     p.SetMax(3u);
-    parsed.SyncSubscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
+    parsed.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.listener_alive_);
   }

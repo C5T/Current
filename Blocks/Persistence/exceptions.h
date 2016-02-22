@@ -61,6 +61,10 @@ struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
   }
 };
 
+struct InvalidIterableRangeException : PersistenceException {
+  using PersistenceException::PersistenceException;
+};
+
 }  // namespace peristence
 }  // namespace current
 

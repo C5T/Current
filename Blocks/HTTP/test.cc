@@ -575,12 +575,12 @@ TEST(HTTPAPI, PostFromFileToFile) {
   const auto input_file_scope = FileSystem::ScopedRmFile(request_file_name);
   const auto output_file_scope = FileSystem::ScopedRmFile(response_file_name);
   const string url = Printf("http://localhost:%d/post", FLAGS_net_api_test_port);
-  const string post_body = "Aloha, this text should pass from one file to another. Mahalo!";
+  const string post_body = "Hi, this text should pass from one file to another. Mahalo!";
   FileSystem::WriteStringToFile(post_body, request_file_name.c_str());
   const auto response =
       HTTP(POSTFromFile(url, request_file_name, "text/plain"), SaveResponseToFile(response_file_name));
   EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("Phew: Aloha, this text should pass from one file to another. Mahalo!",
+  EXPECT_EQ("Phew: Hi, this text should pass from one file to another. Mahalo!",
             FileSystem::ReadFileAsString(response.body_file_name));
 }
 
@@ -604,7 +604,7 @@ TEST(HTTPAPI, UserAgent) {
   HTTP(FLAGS_net_api_test_port)
       .Register("/ua", [](Request r) { r("TODO(dkorolev): Actually get passed in user agent."); });
   const string url = Printf("http://localhost:%d/ua", FLAGS_net_api_test_port);
-  const auto response = HTTP(GET(url).UserAgent("Aloha"));
+  const auto response = HTTP(GET(url).UserAgent("Blah"));
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("TODO(dkorolev): Actually get passed in user agent.", response.body);
