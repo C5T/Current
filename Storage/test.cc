@@ -512,9 +512,9 @@ TEST(TransactionalStorage, InternalExposeStream) {
   StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
   storage.InternalExposeStream().Subscribe(processor).Join();
   EXPECT_EQ(
-      "{\"index\":1,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
+      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"
-      "{\"index\":2,\"us\":200}\t{\"meta\":{\"timestamp\":200,\"fields\":{}},\"mutations\":[{"
+      "{\"index\":1,\"us\":200}\t{\"meta\":{\"timestamp\":200,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}]}\n",
       collected);
 }

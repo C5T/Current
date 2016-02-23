@@ -46,6 +46,7 @@ SOFTWARE.
 //      thread, MMQ DOES GUARANTEE that the order of messages published from this thread will be respected.
 //  Default behavior of MMQ is non-dropping and can be controlled via the `DROP_ON_OVERFLOW` template argument.
 
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <string>
@@ -92,7 +93,7 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  IDX_TS DoPublish(const T_MESSAGE& message) {
+  IDX_TS DoPublish(const T_MESSAGE& message, std::chrono::microseconds) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
       circular_buffer_[index.second].message_body = message;
@@ -103,7 +104,7 @@ class MMQImpl {
     }
   }
 
-  IDX_TS DoPublish(T_MESSAGE&& message) {
+  IDX_TS DoPublish(T_MESSAGE&& message, std::chrono::microseconds) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
       circular_buffer_[index.second].message_body = std::move(message);
@@ -114,17 +115,17 @@ class MMQImpl {
     }
   }
 
-  template <typename... ARGS>
-  IDX_TS DoEmplace(ARGS&&... args) {
-    const std::pair<bool, size_t> index = CircularBufferAllocate();
-    if (index.first) {
-      circular_buffer_[index.second].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
-      CircularBufferCommit(index.second);
-      return circular_buffer_[index.second].index_timestamp;
-    } else {
-      return IDX_TS();
-    }
-  }
+  // template <typename... ARGS>
+  // IDX_TS DoEmplace(ARGS&&... args) {
+  //   const std::pair<bool, size_t> index = CircularBufferAllocate();
+  //   if (index.first) {
+  //     circular_buffer_[index.second].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
+  //     CircularBufferCommit(index.second);
+  //     return circular_buffer_[index.second].index_timestamp;
+  //   } else {
+  //     return IDX_TS();
+  //   }
+  // }
 
  private:
   MMQImpl(const MMQImpl&) = delete;

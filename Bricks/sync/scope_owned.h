@@ -86,6 +86,10 @@ struct ConstructActualContainerViaMoveConstructor {};
 template <typename T>
 struct ActualInstance final {
   // Constructor: Construct an instance of the object.
+  ActualInstance()
+      : instance_(),
+        destructing_(false),
+        total_followers_spawned_throughout_lifetime_(0u) {}
   template <typename... ARGS>
   ActualInstance(ARGS&&... args)
       : instance_(std::forward<ARGS>(args)...),
@@ -143,7 +147,6 @@ struct ActualInstance final {
     }
   }
 
-  ActualInstance() = delete;
   ActualInstance(const ActualInstance&) = delete;
   ActualInstance(ActualInstance&&) = delete;
   ActualInstance& operator=(const ActualInstance&) = delete;
@@ -320,11 +323,13 @@ struct ActualInstanceContainer {
   ActualInstanceContainer(ConstructActualContainerViaMoveConstructor, ActualInstanceContainer&& rhs)
       : movable_instance_(std::move(rhs.movable_instance_)) {}
 
+  ActualInstanceContainer()
+      : movable_instance_(std::make_unique<ActualInstance<T>>()) {}
+
   template <typename... ARGS>
   ActualInstanceContainer(ARGS&&... args)
       : movable_instance_(std::make_unique<ActualInstance<T>>(std::forward<ARGS>(args)...)) {}
 
-  ActualInstanceContainer() = delete;
   ActualInstanceContainer(const ActualInstanceContainer&) = delete;
   ActualInstanceContainer(ActualInstanceContainer&&) = delete;
   ActualInstanceContainer& operator=(const ActualInstanceContainer&) = delete;
@@ -341,6 +346,8 @@ class ScopeOwnedByMe final : private impl::ActualInstanceContainer<T>, public Sc
   using T_BASE = ScopeOwned<T>;
 
  public:
+  ScopeOwnedByMe() : T_IMPL(), T_BASE(impl::ConstructScopeOwnedByMe(), *T_IMPL::movable_instance_) {}
+
   template <typename... ARGS>
   ScopeOwnedByMe(ARGS&&... args)
       : T_IMPL(std::forward<ARGS>(args)...),
@@ -350,7 +357,6 @@ class ScopeOwnedByMe final : private impl::ActualInstanceContainer<T>, public Sc
       : T_IMPL(impl::ConstructActualContainerViaMoveConstructor(), std::move(static_cast<T_IMPL&&>(rhs))),
         T_BASE(impl::ConstructScopeOwnedByMe(), *T_IMPL::movable_instance_) {}
 
-  ScopeOwnedByMe() = delete;
   ScopeOwnedByMe(const ScopeOwnedByMe&) = delete;
   ScopeOwnedByMe& operator=(const ScopeOwnedByMe&) = delete;
   ScopeOwnedByMe& operator=(ScopeOwnedByMe&&) = delete;

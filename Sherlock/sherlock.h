@@ -139,33 +139,24 @@ class StreamImpl {
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  IDX_TS Publish(const ENTRY& entry) {
-    const IDX_TS result = storage_->Publish(entry);
+  // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
+  IDX_TS Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
+    const IDX_TS result = storage_->Publish(entry, us);
     last_idx_ts_->SetValue(result);
     return result;
   }
-  IDX_TS Publish(ENTRY&& entry) {
-    const IDX_TS result = storage_->Publish(std::move(entry));
-    last_idx_ts_->SetValue(result);
-    return result;
-  }
-
-  template <typename... ARGS>
-  IDX_TS Emplace(ARGS&&... entry_params) {
-    const IDX_TS result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
+  IDX_TS Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
+    const IDX_TS result = storage_->Publish(std::move(entry), us);
     last_idx_ts_->SetValue(result);
     return result;
   }
 
-  // `PublishReplayed()` is used for replication.
-  void PublishReplayed(const ENTRY& entry, IDX_TS idx_ts) {
-    storage_->PublishReplayed(entry, idx_ts);
-    last_idx_ts_->SetValue(idx_ts);
-  }
-  void PublishReplayed(ENTRY&& entry, IDX_TS idx_ts) {
-    storage_->PublishReplayed(std::move(entry), idx_ts);
-    last_idx_ts_->SetValue(idx_ts);
-  }
+  // template <typename... ARGS>
+  // IDX_TS DoEmplace(ARGS&&... entry_params) {
+  //   const IDX_TS result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
+  //   last_idx_ts_->SetValue(result);
+  //   return result;
+  // }
 
   // `ListenerThread` spawns the thread and runs stream listener within it.
   //
@@ -398,6 +389,9 @@ class StreamImpl {
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 using Stream = StreamImpl<ENTRY, PERSISTENCE_LAYER>;
+
+// TODO(dkorolev) + TODO(mzhurovich): Shouldn't this be:
+// using Stream = ss::StreamPublisher<StreamImpl<ENTRY, PERSISTENCE_LAYER>, ENTRY>;
 
 }  // namespace sherlock
 }  // namespace current
