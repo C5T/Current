@@ -23,23 +23,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BLOCKS_PERSISTENCE_PERSISTENCE_H
-#define BLOCKS_PERSISTENCE_PERSISTENCE_H
+#ifndef BLOCKS_SS_IDX_TS_H
+#define BLOCKS_SS_IDX_TS_H
 
-#include "memory.h"
-#include "file.h"
+#include <chrono>
 
-// Enable legacy names for now. Confirmed Current compiles with the next four lines commented out. -- D.K.
+#include "../../TypeSystem/struct.h"
 
 namespace current {
-namespace persistence {
+namespace ss {
 
-template <typename ENTRY>
-using MemoryOnly = Memory<ENTRY>;
-template <typename ENTRY>
-using AppendToFile = File<ENTRY>;
+// The `IndexAndTimestamp` binds record index and timestamp together.
+// * `index` is 0-based.
+// * `us` is an epoch microsecond timestamp.
+CURRENT_STRUCT(IndexAndTimestamp) {
+  CURRENT_FIELD(index, uint64_t);
+  CURRENT_FIELD(us, std::chrono::microseconds);
+  CURRENT_USE_FIELD_AS_TIMESTAMP(us);
+  CURRENT_DEFAULT_CONSTRUCTOR(IndexAndTimestamp) : index(0u), us(0) {}
+  CURRENT_CONSTRUCTOR(IndexAndTimestamp)(uint64_t index, std::chrono::microseconds us) : index(index), us(us) {}
+};
 
-}  // namespace current::persistence
+}  // namespace current::ss
 }  // namespace current
 
-#endif  // BLOCKS_PERSISTENCE_PERSISTENCE_H
+#endif  // BLOCKS_SS_IDX_TS_H

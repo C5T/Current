@@ -319,13 +319,13 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 milliseconds ago respectively.
   const std::chrono::microseconds now = std::chrono::microseconds(100000u);
   current::time::SetNow(now - std::chrono::microseconds(40000));
-  exposed_stream.Emplace("s[0]", now - std::chrono::microseconds(40000));
+  exposed_stream.Publish(RecordWithTimestamp("s[0]", now - std::chrono::microseconds(40000)));  // Emplace().
   current::time::SetNow(now - std::chrono::microseconds(30000));
-  exposed_stream.Emplace("s[1]", now - std::chrono::microseconds(30000));
+  exposed_stream.Publish(RecordWithTimestamp("s[1]", now - std::chrono::microseconds(30000)));  // Emplace().
   current::time::SetNow(now - std::chrono::microseconds(20000));
-  exposed_stream.Emplace("s[2]", now - std::chrono::microseconds(20000));
+  exposed_stream.Publish(RecordWithTimestamp("s[2]", now - std::chrono::microseconds(20000)));  // Emplace().
   current::time::SetNow(now - std::chrono::microseconds(10000));
-  exposed_stream.Emplace("s[3]", now - std::chrono::microseconds(10000));
+  exposed_stream.Publish(RecordWithTimestamp("s[3]", now - std::chrono::microseconds(10000)));  // Emplace().
   current::time::SetNow(now);
 
   std::vector<std::string> s;
@@ -391,9 +391,9 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 }
 
 const std::string sherlock_golden_data =
-    "{\"index\":1,\"us\":100}\t{\"x\":1}\n"
-    "{\"index\":2,\"us\":200}\t{\"x\":2}\n"
-    "{\"index\":3,\"us\":300}\t{\"x\":3}\n";
+    "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
+    "{\"index\":1,\"us\":200}\t{\"x\":2}\n"
+    "{\"index\":2,\"us\":300}\t{\"x\":3}\n";
 
 TEST(Sherlock, PersistsToFile) {
   using namespace sherlock_unittest;

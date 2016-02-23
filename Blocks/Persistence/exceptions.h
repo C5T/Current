@@ -49,15 +49,15 @@ struct InconsistentIndexException : InconsistentIndexOrTimestampException {
   using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
   InconsistentIndexException(uint64_t expected, uint64_t found) {
     using current::strings::Printf;
-    SetWhat(Printf("Expected '%llu', found '%llu'.", expected, found));
+    SetWhat(Printf("Expecting index %llu, seeing %llu.", expected, found));
   }
 };
 
 struct InconsistentTimestampException : InconsistentIndexOrTimestampException {
   using InconsistentIndexOrTimestampException::InconsistentIndexOrTimestampException;
-  InconsistentTimestampException(std::chrono::microseconds last, std::chrono::microseconds found) {
+  InconsistentTimestampException(std::chrono::microseconds expected, std::chrono::microseconds found) {
     using current::strings::Printf;
-    SetWhat(Printf("Last known timestamp '%llu', found '%llu'.", last.count(), found.count()));
+    SetWhat(Printf("Expecting timestamp >= %llu, seeing %llu.", expected.count(), found.count()));
   }
 };
 

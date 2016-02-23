@@ -74,7 +74,9 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
   }
 
   void ReplayTransaction(T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
-    stream_.PublishReplayed(transaction, idx_ts);
+    if (stream_.Publish(transaction, idx_ts.us).index != idx_ts.index) {
+      CURRENT_THROW(current::Exception());  // TODO(dkorolev): Proper exception text.
+    }
   }
 
   void ExposeRawLogViaHTTP(int port, const std::string& route) {

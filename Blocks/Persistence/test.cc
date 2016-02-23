@@ -32,6 +32,8 @@ SOFTWARE.
 
 #include "persistence.h"
 
+#include "../SS/ss.h"
+
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Bricks/file/file.h"
 #include "../../Bricks/strings/join.h"
@@ -58,12 +60,20 @@ TEST(PersistenceLayer, Memory) {
   using namespace persistence_test;
 
   using IMPL = current::persistence::Memory<std::string>;
-  static_assert(current::ss::IsPublisher<IMPL>::value, "");
-  static_assert(current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
-  static_assert(current::ss::IsStreamPublisher<IMPL, std::string>::value, "");
+
+  static_assert(current::ss::IsPersister<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPersister<IMPL, std::string>::value, "");
+
+  static_assert(!current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+  static_assert(!current::ss::IsStreamPublisher<IMPL, std::string>::value, "");
+
   static_assert(!current::ss::IsPublisher<int>::value, "");
   static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
   static_assert(!current::ss::IsStreamPublisher<IMPL, int>::value, "");
+
+  static_assert(!current::ss::IsPersister<int>::value, "");
+  static_assert(!current::ss::IsEntryPersister<IMPL, int>::value, "");
 
   {
     IMPL impl;
@@ -84,7 +94,7 @@ TEST(PersistenceLayer, Memory) {
                                    static_cast<int>(e.idx_ts.index),
                                    static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo 1 100,bar 2 200", Join(first_two, ","));
+      EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
     }
 
     impl.Publish("meh");
@@ -98,7 +108,7 @@ TEST(PersistenceLayer, Memory) {
                                    static_cast<int>(e.idx_ts.index),
                                    static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 300", Join(all_three, ","));
+      EXPECT_EQ("foo 0 100,bar 1 200,meh 2 300", Join(all_three, ","));
     }
 
     {
@@ -120,9 +130,15 @@ TEST(PersistenceLayer, Memory) {
 
 TEST(PersistenceLayer, File) {
   using namespace persistence_test;
+
   using IMPL = current::persistence::File<StorableString>;
-  static_assert(current::ss::IsPublisher<IMPL>::value, "");
-  static_assert(current::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
+
+  static_assert(current::ss::IsPersister<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPersister<IMPL, StorableString>::value, "");
+
+  static_assert(!current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
+
   static_assert(!current::ss::IsPublisher<int>::value, "");
   static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
@@ -147,7 +163,7 @@ TEST(PersistenceLayer, File) {
                                    static_cast<int>(e.idx_ts.index),
                                    static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo 1 100,bar 2 200", Join(first_two, ","));
+      EXPECT_EQ("foo 0 100,bar 1 200", Join(first_two, ","));
     }
 
     current::time::SetNow(std::chrono::microseconds(500));
@@ -162,14 +178,14 @@ TEST(PersistenceLayer, File) {
                                    static_cast<int>(e.idx_ts.index),
                                    static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500", Join(all_three, ","));
+      EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
     }
   }
 
   EXPECT_EQ(
-      "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
-      "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n"
-      "{\"index\":3,\"us\":500}\t{\"s\":\"meh\"}\n",
+      "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+      "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n"
+      "{\"index\":2,\"us\":500}\t{\"s\":\"meh\"}\n",
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
   {
@@ -185,7 +201,7 @@ TEST(PersistenceLayer, File) {
                                    static_cast<int>(e.idx_ts.index),
                                    static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500", Join(all_three, ","));
+      EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500", Join(all_three, ","));
     }
 
     current::time::SetNow(std::chrono::microseconds(999));
@@ -200,7 +216,7 @@ TEST(PersistenceLayer, File) {
                                   static_cast<int>(e.idx_ts.index),
                                   static_cast<int>(e.idx_ts.us.count())));
       }
-      EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500,blah 4 999", Join(all_four, ","));
+      EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
     }
   }
 
@@ -216,7 +232,7 @@ TEST(PersistenceLayer, File) {
                                 static_cast<int>(e.idx_ts.index),
                                 static_cast<int>(e.idx_ts.us.count())));
     }
-    EXPECT_EQ("foo 1 100,bar 2 200,meh 3 500,blah 4 999", Join(all_four, ","));
+    EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
   }
 }
 
@@ -241,8 +257,8 @@ TEST(PersistenceLayer, Exceptions) {
   {
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     current::FileSystem::WriteStringToFile(
-        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
-        "{\"index\":1,\"us\":200}\t{\"s\":\"bar\"}\n",
+        "{\"index\":0,\"us\":100}\t{\"s\":\"foo\"}\n"
+        "{\"index\":0,\"us\":200}\t{\"s\":\"bar\"}\n",
         persistence_file_name.c_str());
     EXPECT_THROW(IMPL impl(persistence_file_name), InconsistentIndexException);
   }
@@ -250,28 +266,9 @@ TEST(PersistenceLayer, Exceptions) {
   {
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     current::FileSystem::WriteStringToFile(
-        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
-        "{\"index\":2,\"us\":50}\t{\"s\":\"bar\"}\n",
+        "{\"index\":0,\"us\":150}\t{\"s\":\"foo\"}\n"
+        "{\"index\":1,\"us\":150}\t{\"s\":\"bar\"}\n",
         persistence_file_name.c_str());
     EXPECT_THROW(IMPL impl(persistence_file_name), InconsistentTimestampException);
-  }
-  {
-    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
-    current::FileSystem::WriteStringToFile("{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n",
-                                           persistence_file_name.c_str());
-    IMPL impl(persistence_file_name);
-    StorableString entry("bar");
-    // `PublishReplayed()` with consistent timestamp, but inconsistent index.
-    EXPECT_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(3u, std::chrono::microseconds(200))),
-                 InconsistentIndexException);
-    // `PublishReplayed()` with consistent index, but inconsistent timestamp.
-    EXPECT_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(2u, std::chrono::microseconds(100))),
-                 InconsistentTimestampException);
-    // `PublishReplayed()` with absolutely consistent `IndexAndTimestamp`.
-    EXPECT_NO_THROW(impl.PublishReplayed(entry, IndexAndTimestamp(2u, std::chrono::microseconds(200))));
-    EXPECT_EQ(
-        "{\"index\":1,\"us\":100}\t{\"s\":\"foo\"}\n"
-        "{\"index\":2,\"us\":200}\t{\"s\":\"bar\"}\n",
-        current::FileSystem::ReadFileAsString(persistence_file_name));
   }
 }
