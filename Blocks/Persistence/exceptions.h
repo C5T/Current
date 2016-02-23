@@ -37,7 +37,7 @@ struct PersistenceException : current::Exception {
   using current::Exception::Exception;
 };
 
-struct MalformedEntryDuringReplayException : PersistenceException {
+struct MalformedEntryException : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 

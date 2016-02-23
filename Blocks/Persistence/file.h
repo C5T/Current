@@ -61,7 +61,7 @@ class IteratorOverFileOfPersistedEntries {
     if (std::getline(fi_, line_)) {
       const size_t tab_pos = line_.find('\t');
       if (tab_pos == std::string::npos) {
-        CURRENT_THROW(MalformedEntryDuringReplayException(line_));
+        CURRENT_THROW(MalformedEntryException(line_));
       }
       const auto current = ParseJSON<IDX_TS>(line_.substr(0, tab_pos));
       if (current.index != next_.index) {
