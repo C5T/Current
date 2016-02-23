@@ -25,14 +25,18 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#define CURRENT_MOCK_TIME  // `SetNow()`.
+
 #include "ss.h"
 
+#include <deque>
 #include <string>
 
-#include "../../Bricks/strings/printf.h"
+#include "../../Bricks/time/chrono.h"
+#include "../../Bricks/strings/join.h"
 #include "../../3rdparty/gtest/gtest-main.h"
 
-using current::strings::Printf;
+namespace stream_system_test {
 
 // A copy-able and move-able entry.
 struct DispatchDemoEntry {
@@ -48,8 +52,10 @@ struct DispatchDemoEntry {
   DispatchDemoEntry& operator=(DispatchDemoEntry&&) = delete;
 };
 
+}  // namespace stream_system_test
+
 TEST(StreamSystem, TestHelperClassSmokeTest) {
-  using DDE = DispatchDemoEntry;
+  using DDE = stream_system_test::DispatchDemoEntry;
 
   DDE e1;
   EXPECT_EQ("Entry()", e1.text);
@@ -64,4 +70,75 @@ TEST(StreamSystem, TestHelperClassSmokeTest) {
   DDE e4(std::move(e2));
   EXPECT_EQ("Entry(move of {Entry('E2')})", e4.text);
   EXPECT_EQ("moved away {Entry('E2')}", e2.text);
+}
+
+namespace stream_system_test {
+
+struct DemoEntryPublisherImpl {
+  using IDX_TS = current::ss::IndexAndTimestamp;
+  size_t index = 0u;
+  std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
+
+  IDX_TS DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
+    ++index;
+    values.emplace_back(e);
+    return IDX_TS(index, current::time::Now());
+  }
+
+  IDX_TS DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
+    ++index;
+    values.emplace_back(std::move(e));
+    return IDX_TS(index, current::time::Now());
+  }
+
+  // TODO: Decide on `Emplace`.
+  //  IDX_TS DoEmplace(const std::string& text) {
+  //    ++index;
+  //    values.emplace_back(text);
+  //    return IDX_TS(index, current::time::Now());
+  //  }
+};
+
+}  // namespace stream_system_test
+
+TEST(StreamSystem, EntryPublisher) {
+  using namespace stream_system_test;
+  using DDE = DispatchDemoEntry;
+  using EntryPublisher = current::ss::EntryPublisher<DemoEntryPublisherImpl, DDE>;
+
+  EntryPublisher publisher;
+  {
+    DDE e1("E1");
+    const DDE& e1_cref = e1;
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = publisher.Publish(e1_cref);
+    EXPECT_EQ(1u, result.index);
+    EXPECT_EQ(100, result.us.count());
+  }
+  {
+    DDE e2("E2");
+    current::time::SetNow(std::chrono::microseconds(200));
+    const auto result = publisher.Publish(std::move(e2));
+    EXPECT_EQ(2u, result.index);
+    EXPECT_EQ(200, result.us.count());
+  }
+  // TODO: Decide on `Emplace`.
+  //  {
+  //    current::time::SetNow(std::chrono::microseconds(300));
+  //    const auto result = publisher.Emplace("E3");
+  //    EXPECT_EQ(3u, result.index);
+  //    EXPECT_EQ(300, result.us.count());
+  //  }
+
+  std::string all_values;
+  bool first = true;
+  for (const auto& e : publisher.values) {
+    if (first) {
+      first = false;
+    } else {
+      all_values += ',';
+    }
+    all_values += e.text;
+  }
+  EXPECT_EQ("Entry(copy of {Entry('E1')}),Entry(move of {Entry('E2')})", all_values);
 }
