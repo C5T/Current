@@ -80,20 +80,20 @@ struct DemoEntryPublisherImpl {
 
   idxts_t DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
     ++index;
-    values.emplace_back(e);
+    values.push_back(e);
     return idxts_t(index, current::time::Now());
   }
 
   idxts_t DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
     ++index;
-    values.emplace_back(std::move(e));
+    values.push_back(std::move(e));
     return idxts_t(index, current::time::Now());
   }
 
   // TODO: Decide on `Emplace`.
   //  idxts_t DoEmplace(const std::string& text) {
   //    ++index;
-  //    values.emplace_back(text);
+  //    values.push_back(text);
   //    return idxts_t(index, current::time::Now());
   //  }
 };

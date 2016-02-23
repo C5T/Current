@@ -104,7 +104,7 @@ SOFTWARE.
 //
 // If the subscribing thread would like the subscriber to run forever, it can use `.Join()` or `.Detach()`
 // on the handle. `Join()` will block the calling thread unconditionally, until the subscriber itself
-// decides to stop accepting new entries. `Detach()` will ensure that the ownership of the subscriber object
+// decides to stop functioning. `Detach()` will ensure that the ownership of the subscriber object
 // has been transferred to the thread running the subscriber, and detach this thread to run in the background.
 //
 // TODO(dkorolev): Add timestamps support and tests.
