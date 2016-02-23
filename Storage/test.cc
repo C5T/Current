@@ -369,7 +369,6 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   using namespace transactional_storage_test;
   using current::storage::TransactionMetaFields;
   using Storage = TestStorage<SherlockStreamPersister>;
-  using IDX_TS = current::ss::IndexAndTimestamp;
 
   // Create master storage.
   const std::string golden_storage_file_name =
@@ -427,13 +426,13 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   std::string line;
   uint64_t expected_index = 0u;
   while (std::getline(body, line)) {
-    ++expected_index;
     const size_t tab_pos = line.find('\t');
     ASSERT_FALSE(tab_pos == std::string::npos);
-    const IDX_TS idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
+    const auto idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
     EXPECT_EQ(expected_index, idx_ts.index);
     auto transaction = ParseJSON<Storage::T_TRANSACTION>(line.substr(tab_pos + 1));
     ASSERT_NO_THROW(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
+    ++expected_index;
   }
 
   // Check that persisted files are the same.
@@ -455,12 +454,11 @@ template <typename T_TRANSACTION>
 class StorageSherlockTestProcessorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
-  using IDX_TS = current::ss::IndexAndTimestamp;
 
  public:
   StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
 
-  EntryResponse operator()(const T_TRANSACTION& transaction, IDX_TS current, IDX_TS last) const {
+  EntryResponse operator()(const T_TRANSACTION& transaction, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
     if (current.index != last.index) {
       return EntryResponse::More;

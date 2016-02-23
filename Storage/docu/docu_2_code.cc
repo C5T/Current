@@ -180,17 +180,16 @@ TEST(StorageDocumentation, BasicUsage) {
 
   ASSERT_EQ(3u, persisted_transactions.size());
   const auto ParseAndValidateRow = [](const std::string& line, uint64_t index, std::chrono::microseconds timestamp) {
-    using IDX_TS = current::ss::IndexAndTimestamp;
     std::istringstream iss(line);
     const size_t tab_pos = line.find('\t');
-    const IDX_TS persisted_idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
+    const auto persisted_idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
     EXPECT_EQ(index, persisted_idx_ts.index);
     EXPECT_EQ(timestamp, persisted_idx_ts.us);
     return ParseJSON<ExampleStorage::T_TRANSACTION>(line.substr(tab_pos + 1));
   };
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[0], 1u, std::chrono::microseconds(1002));
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 0u, std::chrono::microseconds(1002));
     ASSERT_EQ(2u, t.mutations.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
@@ -206,7 +205,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[1], 2u, std::chrono::microseconds(1004));
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 1u, std::chrono::microseconds(1004));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
@@ -216,7 +215,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[2], 3u, std::chrono::microseconds(1006));
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 2u, std::chrono::microseconds(1006));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_FALSE(Exists<PersistedUserUpdated>(t.mutations[0]));

@@ -240,7 +240,7 @@ TEST(PersistenceLayer, Exceptions) {
   using namespace persistence_test;
   using IMPL = current::persistence::File<StorableString>;
   using current::ss::IndexAndTimestamp;
-  using current::persistence::MalformedEntryDuringReplayException;
+  using current::persistence::MalformedEntryException;
   using current::persistence::InconsistentIndexException;
   using current::persistence::InconsistentTimestampException;
 
@@ -251,7 +251,7 @@ TEST(PersistenceLayer, Exceptions) {
   {
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     current::FileSystem::WriteStringToFile("Malformed entry", persistence_file_name.c_str());
-    EXPECT_THROW(IMPL impl(persistence_file_name), MalformedEntryDuringReplayException);
+    EXPECT_THROW(IMPL impl(persistence_file_name), MalformedEntryException);
   }
   // Inconsistent index during replay.
   {

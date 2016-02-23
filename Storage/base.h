@@ -179,7 +179,6 @@ struct MutationJournal {
 
 template <typename BASE>
 struct FieldsBase : BASE {
- protected:
   MutationJournal current_storage_mutation_journal_;
 };
 

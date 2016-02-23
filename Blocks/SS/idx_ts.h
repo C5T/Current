@@ -47,4 +47,6 @@ CURRENT_STRUCT(IndexAndTimestamp) {
 }  // namespace current::ss
 }  // namespace current
 
+using idxts_t = current::ss::IndexAndTimestamp;
+
 #endif  // BLOCKS_SS_IDX_TS_H
