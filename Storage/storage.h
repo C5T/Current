@@ -137,8 +137,9 @@ namespace storage {
   template <template <typename...> class PERSISTER,                                                          \
             typename FIELDS,                                                                                 \
             template <typename> class TRANSACTION_POLICY>                                                    \
-  struct CURRENT_STORAGE_IMPL_##name : FIELDS {                                                              \
+  struct CURRENT_STORAGE_IMPL_##name {                                                                       \
    private:                                                                                                  \
+    FIELDS fields_;                                                                                          \
     constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                  \
     using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                     \
     using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
@@ -154,17 +155,21 @@ namespace storage {
     template <typename... ARGS>                                                                              \
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
         : persister_(std::forward<ARGS>(args)...),                                                           \
-          transaction_policy_(persister_, FIELDS::current_storage_mutation_journal_) {                       \
-      persister_.Replay([this](const T_FIELDS_VARIANT& entry) { entry.Call(*this); });                       \
+          transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {                       \
+      persister_.Replay([this](const T_FIELDS_VARIANT& entry) { entry.Call(fields_); });                     \
     }                                                                                                        \
+    template <typename... ARGS>                                                                              \
+    typename std::result_of<FIELDS(ARGS...)>::type                                                           \
+    operator()(ARGS&&... args) { return fields_(std::forward<ARGS>(args)...); }                              \
+                                                                                                             \
+   public:                                                                                                   \
     template <typename F>                                                                                    \
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
     ::current::Future<::current::storage::TransactionResult<T_F_RESULT<F>>, ::current::StrictFuture::Strict> \
     Transaction(F&& f, ::current::storage::TransactionMetaFields meta_fields =                               \
                     ::current::storage::TransactionMetaFields()) {                                           \
-      FIELDS& fields = *this;                                                                                \
-      return transaction_policy_.Transaction([&f, &fields]() { return f(fields); }, std::move(meta_fields)); \
+      return transaction_policy_.Transaction([&f, this]() { return f(fields_); }, std::move(meta_fields));   \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
@@ -172,13 +177,12 @@ namespace storage {
                 F2&& f2,                                                                                     \
                 ::current::storage::TransactionMetaFields meta_fields =                                      \
                     ::current::storage::TransactionMetaFields()) {                                           \
-      FIELDS& fields = *this;                                                                                \
-      return transaction_policy_.Transaction([&f1, &fields]() { return f1(fields); },                        \
+      return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); },                          \
                                              std::forward<F2>(f2),                                           \
                                              std::move(meta_fields));                                        \
     }                                                                                                        \
     void ReplayTransaction(T_TRANSACTION&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {           \
-      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(*this); },         \
+      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(fields_); },       \
                                             std::forward<T_TRANSACTION>(transaction),                        \
                                             idx_ts);                                                         \
     }                                                                                                        \
