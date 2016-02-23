@@ -41,7 +41,6 @@ namespace sherlock {
 template <typename E, JSONFormat J = JSONFormat::Current>
 class PubSubHTTPEndpointImpl {
  private:
-  using IDX_TS = current::ss::IndexAndTimestamp;
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
 
@@ -79,12 +78,12 @@ class PubSubHTTPEndpointImpl {
     }
   }
 
-  // The implementation of the listener in `PubSubHTTPEndpointImpl` is an example of using:
+  // The implementation of the subscriber in `PubSubHTTPEndpointImpl` is an example of using:
   // * `curent` as the second parameter,
   // * `last` as the third parameter, and
-  // * `bool` as the return value.
-  // It does so to respect the URL parameters of the range of entries to listen to.
-  EntryResponse operator()(const E& entry, IDX_TS current, IDX_TS last) {
+  // * `EntryResponse` as the return value.
+  // It does so to respect the URL parameters of the range of entries to subscribe to.
+  EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {

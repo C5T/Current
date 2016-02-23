@@ -75,27 +75,26 @@ TEST(StreamSystem, TestHelperClassSmokeTest) {
 namespace stream_system_test {
 
 struct DemoEntryPublisherImpl {
-  using IDX_TS = current::ss::IndexAndTimestamp;
   size_t index = 0u;
   std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
 
-  IDX_TS DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
+  idxts_t DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
     ++index;
     values.emplace_back(e);
-    return IDX_TS(index, current::time::Now());
+    return idxts_t(index, current::time::Now());
   }
 
-  IDX_TS DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
+  idxts_t DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
     ++index;
     values.emplace_back(std::move(e));
-    return IDX_TS(index, current::time::Now());
+    return idxts_t(index, current::time::Now());
   }
 
   // TODO: Decide on `Emplace`.
-  //  IDX_TS DoEmplace(const std::string& text) {
+  //  idxts_t DoEmplace(const std::string& text) {
   //    ++index;
   //    values.emplace_back(text);
-  //    return IDX_TS(index, current::time::Now());
+  //    return idxts_t(index, current::time::Now());
   //  }
 };
 

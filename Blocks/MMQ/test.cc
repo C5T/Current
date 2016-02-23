@@ -35,7 +35,6 @@ SOFTWARE.
 
 using current::mmq::MMQ;
 using current::ss::EntryResponse;
-using IDX_TS = current::ss::IndexAndTimestamp;
 
 TEST(InMemoryMQ, SmokeTest) {
   struct ConsumerImpl {
@@ -44,7 +43,7 @@ TEST(InMemoryMQ, SmokeTest) {
     size_t dropped_messages_ = 0u;
     std::atomic_size_t processed_messages_;
     ConsumerImpl() : processed_messages_(0u) {}
-    EntryResponse operator()(const std::string& s, IDX_TS current, IDX_TS) {
+    EntryResponse operator()(const std::string& s, idxts_t current, idxts_t) {
       assert(current.index >= expected_next_message_index_);
       dropped_messages_ += (current.index - expected_next_message_index_);
       expected_next_message_index_ = (current.index + 1);
@@ -76,7 +75,7 @@ struct SuspendableConsumerImpl {
   std::atomic_bool suspend_processing_;
   size_t processing_delay_ms_ = 0u;
   SuspendableConsumerImpl() : processed_messages_(0u), suspend_processing_(false) {}
-  EntryResponse operator()(const std::string& s, IDX_TS current, IDX_TS last) {
+  EntryResponse operator()(const std::string& s, idxts_t current, idxts_t last) {
     EXPECT_EQ(current.index, expected_next_message_index_);
     ++expected_next_message_index_;
     while (suspend_processing_) {

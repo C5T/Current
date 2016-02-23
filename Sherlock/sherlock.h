@@ -45,6 +45,7 @@ SOFTWARE.
 #include "../Bricks/waitable_atomic/waitable_atomic.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
+// TODO(dk+mz): Revisit all the comments here.
 // Sherlock is the overlord of streamed data storage and processing in Current.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records ("entries").
 // Each record is annotated with its the 1-based index and its epoch microsecond timestamp.
@@ -60,35 +61,37 @@ SOFTWARE.
 // Publishing is done via `my_stream.Publish(ENTRY{...});`. It is the caller's responsibility
 // to ensure publishing is done from one thread only (Sherlock itself offers no locking).
 //
-// Subscription is done via `my_stream.Subscribe(my_listener);`, where `my_listener` is an instance
-// of the class doing the listening. Sherlock runs each listener in a dedicated thread.
+// Subscription is done via `my_stream.Subscribe(my_subscriber);`, where `my_subscriber` is an instance
+// of the class doing the subscription. Sherlock runs each subscriber in a dedicated thread.
 //
 // The parameter to `Subscribe()` can be an `std::unique_ptr<F>`, or a reference to a stack-allocated object.
-// In the first case, subscriber thread takes ownership of the listener, and returns an `AsyncListenerScope`.
-// In the second case, stack ownership is respected, and `SyncListenerScope` is returned.
-// Both scopes can be `.Join()`-ed, which would be a blocking call waiting until the listener is done.
+// In the first case, subscriber thread takes ownership of the subscriber, and returns an
+// `AsyncSubscriberScope`.
+// In the second case, stack ownership is respected, and `SyncSubscriberScope` is returned.
+// Both scopes can be `.Join()`-ed, which would be a blocking call waiting until the subscriber is done.
 // Asynchronous scope can also be `.Detach()`-ed, internally calling `std::thread::detach()`.
-// A detached listener will live until it decides to terminate. In case the stream itself would be destructing,
-// each listener, detached listeners included, will be notified of stream termination, and the destructor
-// of the stream object will wait for all listeners, detached included, to terminate themselves.
+// A detached subscriber will live until it decides to terminate. In case the stream itself would be
+// destructing, each subscriber, detached subscribers included, will be notified of stream termination, 
+// and the destructor of the stream object will wait for all subscribers, detached included, to terminate 
+// themselves.
 //
-// The `my_listener` object should be an instance of `StreamSubscriber<IMPL, ENTRY>`,
+// The `my_subscriber` object should be an instance of `StreamSubscriber<IMPL, ENTRY>`,
 // and `IMPL should implement the following methods with respective return values.
 //
 // 1) `bool operator()({const ENTRY& / ENTRY&&} entry, IndexAndTimestamp current, IndexAndTimestamp last))`:
 //
 //    The `ENTRY` type is RTTI-dispatched against the supplied type list.
-//    As long as `my_listener` returns `true`, it will keep receiving new entries,
+//    As long as `my_subscriber` returns `true`, it will keep receiving new entries,
 //    which may end up blocking the thread until new, yet unseen, entries have been published.
 //
 //    If `operator()` is defined as `bool`, returning `false` will tell Sherlock that no more entries
-//    should be passed to this listener, and the thread serving this listener should be terminated.
+//    should be passed to this subscriber, and the thread serving this subscriber should be terminated.
 //
 //    More details on the calling convention: "Bricks/mq/interface/interface.h"
 //
 // 2) `bool Terminate()`:
 //
-//    This member function will be called if the listener has to be terminated externally,
+//    This member function will be called if the subscriber has to be terminated externally,
 //    which happens when the handler returned by `Subscribe()` goes out of scope.
 //    If the signature is `bool Terminate()`, returning `false` will prevent the termination from happening,
 //    allowing the user code to process more entries. Note that this can yield to the calling thread
@@ -96,13 +99,13 @@ SOFTWARE.
 //
 // 3) `HeadUpdated()`: TBD.
 //
-// The call to `my_stream.Subscribe(my_listener);` launches the listener and returns
-// an instance of a handle, the scope of which will define the lifetime of the listener.
+// The call to `my_stream.Subscribe(my_subscriber);` launches the subscriber and returns
+// an instance of a handle, the scope of which will define the lifetime of the subscriber.
 //
-// If the subscribing thread would like the listener to run forever, it can use `.Join()` or `.Detach()`
-// on the handle. `Join()` will block the calling thread unconditionally, until the listener itself
-// decides to stop listening. `Detach()` will ensure that the ownership of the listener object
-// has been transferred to the thread running the listener, and detach this thread to run in the background.
+// If the subscribing thread would like the subscriber to run forever, it can use `.Join()` or `.Detach()`
+// on the handle. `Join()` will block the calling thread unconditionally, until the subscriber itself
+// decides to stop accepting new entries. `Detach()` will ensure that the ownership of the subscriber object
+// has been transferred to the thread running the subscriber, and detach this thread to run in the background.
 //
 // TODO(dkorolev): Add timestamps support and tests.
 // TODO(dkorolev): Ensure the timestamps always come in a non-decreasing order.
@@ -115,20 +118,18 @@ using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {
-  using IDX_TS = current::ss::IndexAndTimestamp;
-
  public:
   using T_ENTRY = ENTRY;
   using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
 
   StreamImpl()
       : storage_(std::make_shared<T_PERSISTENCE_LAYER>()),
-        last_idx_ts_(std::make_shared<current::WaitableAtomic<IDX_TS>>()) {}
+        last_idx_ts_(std::make_shared<current::WaitableAtomic<idxts_t>>()) {}
 
   template <typename... EXTRA_PARAMS>
   StreamImpl(EXTRA_PARAMS&&... extra_params)
       : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)),
-        last_idx_ts_(std::make_shared<current::WaitableAtomic<IDX_TS>>()) {}
+        last_idx_ts_(std::make_shared<current::WaitableAtomic<idxts_t>>()) {}
 
   StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)), last_idx_ts_(std::move(rhs.last_idx_ts_)) {}
 
@@ -140,86 +141,88 @@ class StreamImpl {
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
-  IDX_TS Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-    const IDX_TS result = storage_->Publish(entry, us);
+  idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
+    const idxts_t result = storage_->Publish(entry, us);
     last_idx_ts_->SetValue(result);
     return result;
   }
-  IDX_TS Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    const IDX_TS result = storage_->Publish(std::move(entry), us);
+  idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
+    const idxts_t result = storage_->Publish(std::move(entry), us);
     last_idx_ts_->SetValue(result);
     return result;
   }
 
   // template <typename... ARGS>
-  // IDX_TS DoEmplace(ARGS&&... entry_params) {
-  //   const IDX_TS result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
+  // idxts_t DoEmplace(ARGS&&... entry_params) {
+  //   const idxts_t result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
   //   last_idx_ts_->SetValue(result);
   //   return result;
   // }
 
-  // `ListenerThread` spawns the thread and runs stream listener within it.
+  // `SubscriberThread` spawns the thread and runs stream subscriber within it.
   //
-  // Listener thread can always be `std::thread::join()`-ed. When this happens, the listener itself is notified
-  // that the user has requested to join the listening thread, and then the thread is joined.
-  // The listener code itself may choose to stop immediately, later, or never; in the latter cases `join()`-ing
+  // Subscriber thread can always be `std::thread::join()`-ed. When this happens, the subscriber itself is
+  // notified
+  // that the user has requested to join the subscriber thread, and then the thread is joined.
+  // The subscriber code itself may choose to stop immediately, later, or never; in the latter cases
+  // `join()`-ing
   // the thread will run for a long time or forever.
-  // Most commonly though, `join()` on a listener thread will result it in completing processing the entry
+  // Most commonly though, `join()` on a subscriber thread will result it in completing processing the entry
   // that it is currently processing, and then shutting down gracefully.
   // This makes working with C++ Sherlock almost as cozy as it could have been in node.js or Python.
   //
   // With respect to `std::thread::detach()`, we have two very different usecases:
   //
-  // 1) If `ListenerThread` has been provided with a fair `unique_ptr<>` (which obviously is immediately
+  // 1) If `SubscriberThread` has been provided with a fair `unique_ptr<>` (which obviously is immediately
   //    `std::move()`-d into the thread, thus enabling `thread::detach()`), then `thread::detach()`
-  //    is a legal operation, and it is the way to detach the listener from the caller thread,
-  //    enabling to run the listener indefinitely, or until it itself decides to stop.
-  //    The most notable example here would be spawning a listener to serve an HTTP request.
+  //    is a legal operation, and it is the way to detach the subscriber from the caller thread,
+  //    enabling to run the subscriber indefinitely, or until it itself decides to stop.
+  //    The most notable example here would be spawning a subscriber to serve an HTTP request.
   //    (NOTE: This logic requires `Stream` objects to live forever. TODO(dk+mz): Make sure it is the case.)
   //
-  // 2) The alternate usecase is when a stack-allocated object should acts as a listener.
+  // 2) The alternate usecase is when a stack-allocated object should acts as a subscriber.
   //    Implementation-wise, it is handled by wrapping the stack-allocated object into a `unique_ptr<>`
   //    with null deleter. Obviously, `thread::detach()` is then unsafe and thus impossible.
   //
-  // The `ListenerScope` class handles the above two usecases, depending on whether a stack- or heap-allocated
-  // instance of a listener has been passed into.
+  // The `SubscriberScope` class handles the above two usecases, depending on whether a stack- or heap-allocated
+  // instance of a subscriber has been passed into.
 
   template <typename F>
-  class ListenerThread {
+  class SubscriberThread {
    private:
-    // Listener thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
-    struct ListenerThreadSharedState {
-      F listener;  // The ownership of the listener is transferred to instance of this class.
+    // Subscriber thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
+    struct SubscriberThreadSharedState {
+      F subscriber;  // The ownership of the subscriber is transferred to instance of this class.
       std::shared_ptr<T_PERSISTENCE_LAYER> persister;
-      std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts;
+      std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts;
 
       current::WaitableTerminateSignal terminate_signal;
 
-      ListenerThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                                std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
-                                F&& listener)
-          : listener(std::move(listener)), persister(persister), last_idx_ts(last_idx_ts) {}
+      SubscriberThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                                  std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts,
+                                  F&& subscriber)
+          : subscriber(std::move(subscriber)), persister(persister), last_idx_ts(last_idx_ts) {}
 
-      ListenerThreadSharedState() = delete;
-      ListenerThreadSharedState(const ListenerThreadSharedState&) = delete;
-      ListenerThreadSharedState(ListenerThreadSharedState&&) = delete;
-      void operator=(const ListenerThreadSharedState&) = delete;
-      void operator=(ListenerThreadSharedState&&) = delete;
+      SubscriberThreadSharedState() = delete;
+      SubscriberThreadSharedState(const SubscriberThreadSharedState&) = delete;
+      SubscriberThreadSharedState(SubscriberThreadSharedState&&) = delete;
+      void operator=(const SubscriberThreadSharedState&) = delete;
+      void operator=(SubscriberThreadSharedState&&) = delete;
     };
 
    public:
-    ListenerThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                   std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
-                   F&& listener)
-        : state_(
-              std::make_shared<ListenerThreadSharedState>(persister, last_idx_ts, std::forward<F>(listener))),
-          thread_(&ListenerThread::StaticListenerThread, state_) {}
+    SubscriberThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                     std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts,
+                     F&& subscriber)
+        : state_(std::make_shared<SubscriberThreadSharedState>(
+              persister, last_idx_ts, std::forward<F>(subscriber))),
+          thread_(&SubscriberThread::StaticSubscriberThread, state_) {}
 
-    ~ListenerThread() {
+    ~SubscriberThread() {
       if (thread_.joinable()) {
         // TODO(dkorolev): Phrase the error message better.
         // LCOV_EXCL_START
-        std::cerr << "Unrecoverable error in destructor: ListenerThread was not joined/detached.\n";
+        std::cerr << "Unrecoverable error in destructor: SubscriberThread was not joined/detached.\n";
         std::exit(-1);
         // LCOV_EXCL_STOP
       }
@@ -240,14 +243,14 @@ class StreamImpl {
       thread_.detach();
     }
 
-    static void StaticListenerThread(std::shared_ptr<ListenerThreadSharedState> state) {
+    static void StaticSubscriberThread(std::shared_ptr<SubscriberThreadSharedState> state) {
       size_t index = 0;
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
         if (!terminate_sent && state->terminate_signal) {
           terminate_sent = true;
-          if ((*state->listener).Terminate() != ss::TerminationResponse::Wait) {
+          if ((*state->subscriber).Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
         }
@@ -256,11 +259,11 @@ class StreamImpl {
           for (const auto& e : state->persister->Iterate(index, size)) {
             if (!terminate_sent && state->terminate_signal) {
               terminate_sent = true;
-              if ((*state->listener).Terminate() != ss::TerminationResponse::Wait) {
+              if ((*state->subscriber).Terminate() != ss::TerminationResponse::Wait) {
                 return;
               }
             }
-            if ((*state->listener)(e.entry, e.idx_ts, state->last_idx_ts->GetValue()) ==
+            if ((*state->subscriber)(e.entry, e.idx_ts, state->last_idx_ts->GetValue()) ==
                 ss::EntryResponse::Done) {
               return;
             }
@@ -272,31 +275,31 @@ class StreamImpl {
       }
     }
 
-    std::shared_ptr<ListenerThreadSharedState> state_;
+    std::shared_ptr<SubscriberThreadSharedState> state_;
     std::thread thread_;
 
-    ListenerThread(ListenerThread&&) = delete;  // Yep -- no move constructor.
+    SubscriberThread(SubscriberThread&&) = delete;  // Yep -- no move constructor.
 
-    ListenerThread() = delete;
-    ListenerThread(const ListenerThread&) = delete;
-    void operator=(const ListenerThread&) = delete;
-    void operator=(ListenerThread&&) = delete;
+    SubscriberThread() = delete;
+    SubscriberThread(const SubscriberThread&) = delete;
+    void operator=(const SubscriberThread&) = delete;
+    void operator=(SubscriberThread&&) = delete;
   };
 
-  // Expose the means to create both a sync ("scoped") and async ("detachable") listeners.
+  // Expose the means to create both a sync ("scoped") and async ("detachable") subscribers.
   template <class F, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
-  class GenericListenerScope {
+  class GenericSubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    using LISTENER_THREAD = ListenerThread<UNIQUE_PTR_WITH_CORRECT_DELETER>;
+    using LISTENER_THREAD = SubscriberThread<UNIQUE_PTR_WITH_CORRECT_DELETER>;
 
    public:
-    GenericListenerScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                         std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts,
-                         UNIQUE_PTR_WITH_CORRECT_DELETER&& listener)
-        : impl_(std::make_unique<LISTENER_THREAD>(persister, last_idx_ts, std::move(listener))) {}
+    GenericSubscriberScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+                           std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts,
+                           UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
+        : impl_(std::make_unique<LISTENER_THREAD>(persister, last_idx_ts, std::move(subscriber))) {}
 
-    GenericListenerScope(GenericListenerScope&& rhs) : impl_(std::move(rhs.impl_)) {
+    GenericSubscriberScope(GenericSubscriberScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
       assert(!rhs.impl_);
     }
@@ -315,35 +318,35 @@ class StreamImpl {
    private:
     std::unique_ptr<LISTENER_THREAD> impl_;
 
-    GenericListenerScope() = delete;
-    GenericListenerScope(const GenericListenerScope&) = delete;
-    void operator=(const GenericListenerScope&) = delete;
-    void operator=(GenericListenerScope&&) = delete;
+    GenericSubscriberScope() = delete;
+    GenericSubscriberScope(const GenericSubscriberScope&) = delete;
+    void operator=(const GenericSubscriberScope&) = delete;
+    void operator=(GenericSubscriberScope&&) = delete;
   };
 
-  // Asynchronous subscription: `listener` is a heap-allocated object, the ownership of which
-  // can be `std::move()`-d into the listening thread. It can be `Join()`-ed or `Detach()`-ed.
+  // Asynchronous subscription: `subscriber` is a heap-allocated object, the ownership of which
+  // can be `std::move()`-d into the subscriber thread. It can be `Join()`-ed or `Detach()`-ed.
   template <typename F>
-  using AsyncListenerScope = GenericListenerScope<F, std::unique_ptr<F>, true>;
+  using AsyncSubscriberScope = GenericSubscriberScope<F, std::unique_ptr<F>, true>;
 
   template <typename F>
-  AsyncListenerScope<F> Subscribe(std::unique_ptr<F>&& listener) {
+  AsyncSubscriberScope<F> Subscribe(std::unique_ptr<F>&& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    return std::move(AsyncListenerScope<F>(storage_, last_idx_ts_, std::move(listener)));
+    return std::move(AsyncSubscriberScope<F>(storage_, last_idx_ts_, std::move(subscriber)));
   }
 
-  // Synchronous subscription: `listener` is a stack-allocated object, and thus the listening thread
-  // should ensure to terminate itself, when initiated from within the destructor of `SyncListenerScope`.
-  // Note that the destructor of `SyncListenerScope` will wait until the listener terminates, thus,
+  // Synchronous subscription: `subscriber` is a stack-allocated object, and thus the subscriber thread
+  // should ensure to terminate itself, when initiated from within the destructor of `SyncSubscriberScope`.
+  // Note that the destructor of `SyncSubscriberScope` will wait until the subscriber terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
   template <typename F>
-  using SyncListenerScope = GenericListenerScope<F, std::unique_ptr<F, current::NullDeleter>, false>;
+  using SyncSubscriberScope = GenericSubscriberScope<F, std::unique_ptr<F, current::NullDeleter>, false>;
 
   template <typename F>
-  SyncListenerScope<F> Subscribe(F& listener) {
+  SyncSubscriberScope<F> Subscribe(F& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
     return std::move(
-        SyncListenerScope<F>(storage_, last_idx_ts_, std::unique_ptr<F, current::NullDeleter>(&listener)));
+        SyncSubscriberScope<F>(storage_, last_idx_ts_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
   }
 
   // Sherlock handler for serving stream data via HTTP.
@@ -381,7 +384,7 @@ class StreamImpl {
 
  private:
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
-  std::shared_ptr<current::WaitableAtomic<IDX_TS>> last_idx_ts_;
+  std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;

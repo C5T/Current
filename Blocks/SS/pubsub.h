@@ -46,15 +46,15 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPublisher() {}
 
-  IndexAndTimestamp Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
+  idxts_t Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
     return IMPL::DoPublish(e, us);
   }
-  IndexAndTimestamp Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
+  idxts_t Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
     return IMPL::DoPublish(std::move(e), us);
   }
 
   // template <typename... ARGS>
-  // IndexAndTimestamp Emplace(ARGS&&... args) {
+  // idxts_t Emplace(ARGS&&... args) {
   //   return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   // }
 };
@@ -102,10 +102,10 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntrySubscriber() {}
 
-  EntryResponse operator()(const ENTRY& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+  EntryResponse operator()(const ENTRY& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(e, current, last);
   }
-  EntryResponse operator()(ENTRY&& e, IndexAndTimestamp current, IndexAndTimestamp last) {
+  EntryResponse operator()(ENTRY&& e, idxts_t current, idxts_t last) {
     return IMPL::operator()(std::move(e), current, last);
   }
 

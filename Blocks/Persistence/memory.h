@@ -45,7 +45,6 @@ namespace current {
 namespace persistence {
 
 namespace impl {
-using IDX_TS = current::ss::IndexAndTimestamp;
 
 template <typename ENTRY>
 class MemoryPersister {
@@ -64,7 +63,7 @@ class MemoryPersister {
         : container_(container, [this]() {}), begin_(begin), end_(end) {}
 
     struct Entry {
-      const IDX_TS idx_ts;
+      const idxts_t idx_ts;
       const ENTRY& entry;
 
       Entry() = delete;
@@ -99,11 +98,11 @@ class MemoryPersister {
   };
 
   template <typename E>
-  IDX_TS DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+  idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     std::lock_guard<std::mutex> lock(container_->mutex);
     const auto index = static_cast<uint64_t>(container_->entries.size());
     container_->entries.emplace_back(timestamp, std::forward<E>(entry));
-    return IDX_TS(index, timestamp);
+    return idxts_t(index, timestamp);
   }
 
   uint64_t Size() const noexcept {

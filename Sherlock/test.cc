@@ -51,7 +51,6 @@ namespace sherlock_unittest {
 using current::strings::Join;
 using current::strings::Printf;
 using current::strings::ToString;
-using IDX_TS = current::ss::IndexAndTimestamp;
 using current::ss::EntryResponse;
 using current::ss::TerminationResponse;
 
@@ -73,10 +72,10 @@ CURRENT_STRUCT(RecordWithTimestamp) {
 // Struct `Data` should be outside struct `SherlockTestProcessor`,
 // since the latter is `std::move`-d away in some tests.
 struct Data final {
-  std::atomic_bool listener_alive_;
+  std::atomic_bool subscriber_alive_;
   std::atomic_size_t seen_;
   std::string results_;
-  Data() : listener_alive_(false), seen_(0u) {}
+  Data() : subscriber_alive_(false), seen_(0u) {}
 };
 
 // Struct `SherlockTestProcessor` handles the entries that tests subscribe to.
@@ -89,18 +88,18 @@ struct SherlockTestProcessorImpl {
 
   explicit SherlockTestProcessorImpl(Data& data, bool allow_terminate)
       : data_(data), allow_terminate_(allow_terminate) {
-    assert(!data_.listener_alive_);
-    data_.listener_alive_ = true;
+    assert(!data_.subscriber_alive_);
+    data_.subscriber_alive_ = true;
   }
 
   ~SherlockTestProcessorImpl() {
-    assert(data_.listener_alive_);
-    data_.listener_alive_ = false;
+    assert(data_.subscriber_alive_);
+    data_.subscriber_alive_ = false;
   }
 
   void SetMax(size_t cap) { max_to_process_ = cap; }
 
-  EntryResponse operator()(const Record& entry, IDX_TS, IDX_TS) {
+  EntryResponse operator()(const Record& entry, idxts_t, idxts_t) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
@@ -142,17 +141,17 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   foo_stream.Publish(3);
   Data d;
   {
-    ASSERT_FALSE(d.listener_alive_);
+    ASSERT_FALSE(d.subscriber_alive_);
     SherlockTestProcessor p(d, false);
-    ASSERT_TRUE(d.listener_alive_);
+    ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
     foo_stream.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
-    ASSERT_TRUE(d.listener_alive_);
+    ASSERT_TRUE(d.subscriber_alive_);
   }
-  ASSERT_FALSE(d.listener_alive_);
+  ASSERT_FALSE(d.subscriber_alive_);
 
-  // A careful condition, since the listener may process some or all entries before going out of scope.
+  // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
               (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
       << d.results_;
@@ -166,17 +165,17 @@ TEST(Sherlock, SubscribeSynchronously) {
   bar_stream.Publish(5);
   bar_stream.Publish(6);
   Data d;
-  ASSERT_FALSE(d.listener_alive_);
+  ASSERT_FALSE(d.subscriber_alive_);
   std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
-  ASSERT_TRUE(d.listener_alive_);
+  ASSERT_TRUE(d.subscriber_alive_);
   p->SetMax(3u);
   bar_stream.Subscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
   EXPECT_EQ(3u, d.seen_);
-  while (d.listener_alive_) {
+  while (d.subscriber_alive_) {
     ;  // Spin lock.
   }
 
-  // A careful condition, since the listener may process some or all entries before going out of scope.
+  // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE((d.results_ == "TERMINATE,4,5,6") || (d.results_ == "4,TERMINATE,5,6") ||
               (d.results_ == "4,5,TERMINATE,6") || (d.results_ == "4,5,6,TERMINATE") || (d.results_ == "4,5,6"))
       << d.results_;
@@ -192,15 +191,15 @@ TEST(Sherlock, SubscribeAsynchronously) {
   Data d;
   std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
   p->SetMax(4u);
-  bar_stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the listener running on its own.
+  bar_stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the subscriber running on its own.
   while (d.seen_ < 3u) {
     ;  // Spin lock.
   }
   EXPECT_EQ(3u, d.seen_);
-  EXPECT_EQ("4,5,6", d.results_);  // No `TERMINATE` for an asyncronous listener.
-  EXPECT_TRUE(d.listener_alive_);
-  bar_stream.Publish(42);  // Need the 4th entry for the async listener to terminate.
-  while (d.listener_alive_) {
+  EXPECT_EQ("4,5,6", d.results_);  // No `TERMINATE` for an asyncronous subscriber.
+  EXPECT_TRUE(d.subscriber_alive_);
+  bar_stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
+  while (d.subscriber_alive_) {
     ;  // Spin lock.
   }
 }
@@ -222,7 +221,7 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     Data d;
     SherlockTestProcessor p(d, true);
     // NOTE: plain `baz_stream.Subscribe(p);` will fail with exception
-    // in the destructor of `SyncListenerScope`.
+    // in the destructor of `SyncSubscriberScope`.
     baz_stream.Subscribe(p).Join();
     EXPECT_EQ(0u, d.seen_);
   }
@@ -256,7 +255,7 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
           ;  // Spin lock.
         }
         // If the next line is commented out, an unrecoverable exception
-        // will be thrown in the destructor of `SyncListenerScope`.
+        // will be thrown in the destructor of `SyncSubscriberScope`.
         scope3.Join();
       }
     }
@@ -275,7 +274,7 @@ struct RecordsCollectorImpl {
   RecordsCollectorImpl() = delete;
   explicit RecordsCollectorImpl(std::vector<std::string>& data) : count_(0u), data_(data) {}
 
-  EntryResponse operator()(const RecordWithTimestamp& entry, IDX_TS current, IDX_TS) {
+  EntryResponse operator()(const RecordWithTimestamp& entry, idxts_t current, idxts_t) {
     data_.push_back(JSON(current) + '\t' + JSON(entry) + '\n');
     ++count_;
     return EntryResponse::More;
@@ -333,7 +332,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
-    current::sherlock::StreamImpl<RecordWithTimestamp>::SyncListenerScope<RecordsCollector> scope(
+    current::sherlock::StreamImpl<RecordWithTimestamp>::SyncSubscriberScope<RecordsCollector> scope(
         std::move(exposed_stream.Subscribe(collector)));
     while (collector.count_ < 4u) {
       ;  // Spin lock.
@@ -429,17 +428,17 @@ TEST(Sherlock, ParsesFromFile) {
 
   Data d;
   {
-    ASSERT_FALSE(d.listener_alive_);
+    ASSERT_FALSE(d.subscriber_alive_);
     SherlockTestProcessor p(d, false);
-    ASSERT_TRUE(d.listener_alive_);
+    ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
     parsed.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
     EXPECT_EQ(3u, d.seen_);
-    ASSERT_TRUE(d.listener_alive_);
+    ASSERT_TRUE(d.subscriber_alive_);
   }
-  ASSERT_FALSE(d.listener_alive_);
+  ASSERT_FALSE(d.subscriber_alive_);
 
-  // A careful condition, since the listener may process some or all entries before going out of scope.
+  // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
               (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
       << d.results_;

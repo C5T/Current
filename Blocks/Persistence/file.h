@@ -47,9 +47,7 @@ namespace current {
 namespace persistence {
 
 namespace impl {
-using IDX_TS = current::ss::IndexAndTimestamp;
-
-// An iterator to read a file line by line, extracting tab-separated `IDX_TS index` and `const char* data`.
+// An iterator to read a file line by line, extracting tab-separated `idxts_t index` and `const char* data`.
 // Validates the entries come in the right order of 0-based indexes, and with strictly increasing timestamps.
 template <typename ENTRY>
 class IteratorOverFileOfPersistedEntries {
@@ -63,7 +61,7 @@ class IteratorOverFileOfPersistedEntries {
       if (tab_pos == std::string::npos) {
         CURRENT_THROW(MalformedEntryException(line_));
       }
-      const auto current = ParseJSON<IDX_TS>(line_.substr(0, tab_pos));
+      const auto current = ParseJSON<idxts_t>(line_.substr(0, tab_pos));
       if (current.index != next_.index) {
         // Indexes must be strictly continuous.
         CURRENT_THROW(InconsistentIndexException(next_.index, current.index));
@@ -83,12 +81,12 @@ class IteratorOverFileOfPersistedEntries {
   }
 
   // Return the absolute lowest possible next entry to scan or publish.
-  const IDX_TS& Next() const { return next_; }
+  const idxts_t& Next() const { return next_; }
 
  private:
   std::istream& fi_;
   std::string line_;
-  IDX_TS next_;
+  idxts_t next_;
 };
 
 // The implementation of a persister based exclusively on appending to and reading one text flie.
@@ -97,7 +95,7 @@ class FilePersister {
  private:
   struct Impl {
     const std::string& filename;
-    IDX_TS next_initializer;
+    idxts_t next_initializer;
     std::atomic<uint64_t> next_index;
     std::atomic<std::chrono::microseconds> next_timestamp;
     std::ofstream appender;
@@ -113,16 +111,16 @@ class FilePersister {
     }
 
     // Replay the file but ignore its contents. Used to initialize `next_{index,timestamp}` at startup.
-    static IDX_TS ValidateFileAndInitializeNext(const std::string& filename) {
+    static idxts_t ValidateFileAndInitializeNext(const std::string& filename) {
       std::ifstream fi(filename);
       if (fi.good()) {
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi);
-        while (cit.ProcessNextEntry([](const IDX_TS&, const char*) {})) {
+        while (cit.ProcessNextEntry([](const idxts_t&, const char*) {})) {
           ;  // Read through all the lines, let `IteratorOverFileOfPersistedEntries` maintain `next`.
         }
         return cit.Next();
       } else {
-        return IDX_TS();
+        return idxts_t();
       }
     }
   };
@@ -136,7 +134,7 @@ class FilePersister {
         : impl_(impl, [this]() {}), begin_(begin), end_(end) {}
 
     struct Entry {
-      IDX_TS idx_ts;
+      idxts_t idx_ts;
       ENTRY entry;
     };
 
@@ -154,7 +152,7 @@ class FilePersister {
         Entry result;
         bool found = false;
         while (!found) {
-          if (!(cit_->ProcessNextEntry([this, &found, &result](const IDX_TS& cursor, const char* json) {
+          if (!(cit_->ProcessNextEntry([this, &found, &result](const idxts_t& cursor, const char* json) {
                 if (cursor.index == i_) {
                   found = true;
                   result.idx_ts = cursor;
@@ -201,8 +199,8 @@ class FilePersister {
   };
 
   template <typename E>
-  IDX_TS DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    const IDX_TS current(impl_->next_index, timestamp);
+  idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
+    const idxts_t current(impl_->next_index, timestamp);
     if (current.us < impl_->next_timestamp.load()) {
       CURRENT_THROW(InconsistentTimestampException(impl_->next_timestamp, current.us));
     }

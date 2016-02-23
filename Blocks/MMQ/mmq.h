@@ -71,7 +71,6 @@ class MMQImpl {
   // This method will be called from one thread, which is spawned and owned by an instance of MMQImpl.
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
   using T_CONSUMER = CONSUMER;
-  using IDX_TS = current::ss::IndexAndTimestamp;
 
   MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
@@ -93,37 +92,37 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  IDX_TS DoPublish(const T_MESSAGE& message, std::chrono::microseconds) {
+  idxts_t DoPublish(const T_MESSAGE& message, std::chrono::microseconds) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
       circular_buffer_[index.second].message_body = message;
       CircularBufferCommit(index.second);
       return circular_buffer_[index.second].index_timestamp;
     } else {
-      return IDX_TS();
+      return idxts_t();
     }
   }
 
-  IDX_TS DoPublish(T_MESSAGE&& message, std::chrono::microseconds) {
+  idxts_t DoPublish(T_MESSAGE&& message, std::chrono::microseconds) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
       circular_buffer_[index.second].message_body = std::move(message);
       CircularBufferCommit(index.second);
       return circular_buffer_[index.second].index_timestamp;
     } else {
-      return IDX_TS();
+      return idxts_t();
     }
   }
 
   // template <typename... ARGS>
-  // IDX_TS DoEmplace(ARGS&&... args) {
+  // idxts_t DoEmplace(ARGS&&... args) {
   //   const std::pair<bool, size_t> index = CircularBufferAllocate();
   //   if (index.first) {
   //     circular_buffer_[index.second].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
   //     CircularBufferCommit(index.second);
   //     return circular_buffer_[index.second].index_timestamp;
   //   } else {
-  //     return IDX_TS();
+  //     return idxts_t();
   //   }
   // }
 
@@ -141,7 +140,7 @@ class MMQImpl {
   void ConsumerThread() {
     // The `tail` pointer is local to the procesing thread.
     size_t tail = 0u;
-    IDX_TS save_last_idx_ts;
+    idxts_t save_last_idx_ts;
 
     while (true) {
       {
@@ -251,7 +250,7 @@ class MMQImpl {
 
   // The `Entry` struct keeps the entries along with their completion status.
   struct Entry {
-    IDX_TS index_timestamp;
+    idxts_t index_timestamp;
     T_MESSAGE message_body;
     enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
   };
@@ -263,7 +262,7 @@ class MMQImpl {
   size_t head_ = 0u;
   std::mutex mutex_;
   std::condition_variable condition_variable_;
-  IDX_TS last_idx_ts_;
+  idxts_t last_idx_ts_;
 
   // For safe thread destruction.
   bool destructing_ = false;
