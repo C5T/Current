@@ -190,7 +190,7 @@ TEST(StorageDocumentation, BasicUsage) {
   };
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[0], 1u, std::chrono::microseconds(1002));
+    const auto t = ParseAndValidateRow(persisted_transactions[0], 0u, std::chrono::microseconds(1002));
     ASSERT_EQ(2u, t.mutations.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
@@ -206,7 +206,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[1], 2u, std::chrono::microseconds(1004));
+    const auto t = ParseAndValidateRow(persisted_transactions[1], 1u, std::chrono::microseconds(1004));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_TRUE(Exists<PersistedUserUpdated>(t.mutations[0]));
@@ -216,7 +216,7 @@ TEST(StorageDocumentation, BasicUsage) {
   }
 
   {
-    const auto t = ParseAndValidateRow(persisted_transactions[2], 3u, std::chrono::microseconds(1006));
+    const auto t = ParseAndValidateRow(persisted_transactions[2], 2u, std::chrono::microseconds(1006));
     ASSERT_EQ(1u, t.mutations.size());
 
     ASSERT_FALSE(Exists<PersistedUserUpdated>(t.mutations[0]));

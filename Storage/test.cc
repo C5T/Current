@@ -427,13 +427,13 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   std::string line;
   uint64_t expected_index = 0u;
   while (std::getline(body, line)) {
-    ++expected_index;
     const size_t tab_pos = line.find('\t');
     ASSERT_FALSE(tab_pos == std::string::npos);
     const IDX_TS idx_ts = ParseJSON<IDX_TS>(line.substr(0, tab_pos));
     EXPECT_EQ(expected_index, idx_ts.index);
     auto transaction = ParseJSON<Storage::T_TRANSACTION>(line.substr(tab_pos + 1));
     ASSERT_NO_THROW(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
+    ++expected_index;
   }
 
   // Check that persisted files are the same.
