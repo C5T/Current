@@ -110,7 +110,7 @@ class MemoryPersister {
     return static_cast<uint64_t>(container_->entries.size());
   }
 
-  IterableRange Iterate(uint64_t begin, uint64_t end) const noexcept {
+  IterableRange Iterate(uint64_t begin, uint64_t end) const {
     const uint64_t size = [this]() {
       std::lock_guard<std::mutex> lock(container_->mutex);
       return static_cast<uint64_t>(container_->entries.size());
