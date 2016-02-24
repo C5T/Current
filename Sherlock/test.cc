@@ -181,7 +181,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   }
   ASSERT_FALSE(d.subscriber_alive_);
 
-  std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
+  const std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
@@ -209,7 +209,7 @@ TEST(Sherlock, SubscribeSynchronously) {
     ;  // Spin lock.
   }
 
-  std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
+  const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
@@ -234,7 +234,7 @@ TEST(Sherlock, SubscribeAsynchronously) {
     ;  // Spin lock.
   }
   EXPECT_EQ(3u, d.seen_);
-  std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
+  const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   EXPECT_EQ(Join(expected_values, ','), d.results_);  // No `TERMINATE` for an asyncronous subscriber.
   EXPECT_TRUE(d.subscriber_alive_);
   bar_stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
@@ -477,7 +477,7 @@ TEST(Sherlock, ParsesFromFile) {
   }
   ASSERT_FALSE(d.subscriber_alive_);
 
-  std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
+  const std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
