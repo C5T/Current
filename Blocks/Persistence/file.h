@@ -212,7 +212,7 @@ class FilePersister {
 
   uint64_t Size() const noexcept { return impl_->next_index; }
 
-  IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const noexcept {
+  IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
     if (end_index == static_cast<uint64_t>(-1)) {
       end_index = impl_->next_index;
     }
