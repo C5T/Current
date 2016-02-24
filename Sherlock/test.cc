@@ -82,12 +82,14 @@ struct Data final {
 struct SherlockTestProcessorImpl {
   Data& data_;                  // Initialized in constructor.
   const bool allow_terminate_;  // Initialized in constructor.
+  const bool with_idx_ts_;      // Initialized in constructor.
+  static std::string kTerminateStr;
   size_t max_to_process_ = static_cast<size_t>(-1);
 
   SherlockTestProcessorImpl() = delete;
 
-  explicit SherlockTestProcessorImpl(Data& data, bool allow_terminate)
-      : data_(data), allow_terminate_(allow_terminate) {
+  explicit SherlockTestProcessorImpl(Data& data, bool allow_terminate, bool with_idx_ts = false)
+      : data_(data), allow_terminate_(allow_terminate), with_idx_ts_(with_idx_ts) {
     assert(!data_.subscriber_alive_);
     data_.subscriber_alive_ = true;
   }
@@ -99,11 +101,16 @@ struct SherlockTestProcessorImpl {
 
   void SetMax(size_t cap) { max_to_process_ = cap; }
 
-  EntryResponse operator()(const Record& entry, idxts_t, idxts_t) {
+  EntryResponse operator()(const Record& entry, idxts_t current, idxts_t last) {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
-    data_.results_ += ToString(entry.x);
+    if (with_idx_ts_) {
+      data_.results_ += Printf(
+          "[%llu:%llu,%llu:%llu] %i", current.index, current.us.count(), last.index, last.us.count(), entry.x);
+    } else {
+      data_.results_ += ToString(entry.x);
+    }
     ++data_.seen_;
     if (data_.seen_ < max_to_process_) {
       return EntryResponse::More;
@@ -116,7 +123,7 @@ struct SherlockTestProcessorImpl {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
     }
-    data_.results_ += "TERMINATE";
+    data_.results_ += kTerminateStr;
     if (allow_terminate_) {
       return TerminationResponse::Terminate;
     } else {
@@ -125,10 +132,30 @@ struct SherlockTestProcessorImpl {
   }
 };
 
+std::string SherlockTestProcessorImpl::kTerminateStr = "TERMINATE";
+
 using SherlockTestProcessor =
     current::ss::StreamSubscriber<SherlockTestProcessorImpl, sherlock_unittest::Record>;
 
 static_assert(current::ss::IsStreamSubscriber<SherlockTestProcessor, sherlock_unittest::Record>::value, "");
+
+inline bool CompareValuesMixedWithTerminate(const std::string& lhs,
+                                            std::vector<std::string> values,
+                                            const std::string& terminate_str) {
+  if (values.empty()) {
+    return lhs.empty();
+  }
+  auto it = values.begin();
+  for (size_t i = 0; i <= values.size(); ++i) {
+    it = values.insert(it, terminate_str);
+    if (lhs == Join(values, ',')) {
+      return true;
+    }
+    it = values.erase(it);
+    ++it;
+  }
+  return (lhs == Join(values, ','));
+}
 
 }  // namespace sherlock_unittest
 
@@ -136,13 +163,16 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   using namespace sherlock_unittest;
 
   auto foo_stream = current::sherlock::Stream<Record>();
+  current::time::SetNow(std::chrono::microseconds(10));
   foo_stream.Publish(1);
+  current::time::SetNow(std::chrono::microseconds(20));
   foo_stream.Publish(2);
+  current::time::SetNow(std::chrono::microseconds(30));
   foo_stream.Publish(3);
   Data d;
   {
     ASSERT_FALSE(d.subscriber_alive_);
-    SherlockTestProcessor p(d, false);
+    SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
     foo_stream.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
@@ -151,9 +181,10 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   }
   ASSERT_FALSE(d.subscriber_alive_);
 
+  std::vector<std::string> expected_values{"[0:10,2:30] 1", "[1:20,2:30] 2", "[2:30,2:30] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
-  EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
-              (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
 }
 
@@ -161,12 +192,15 @@ TEST(Sherlock, SubscribeSynchronously) {
   using namespace sherlock_unittest;
 
   auto bar_stream = current::sherlock::Stream<Record>();
+  current::time::SetNow(std::chrono::microseconds(40));
   bar_stream.Publish(4);
+  current::time::SetNow(std::chrono::microseconds(50));
   bar_stream.Publish(5);
+  current::time::SetNow(std::chrono::microseconds(60));
   bar_stream.Publish(6);
   Data d;
   ASSERT_FALSE(d.subscriber_alive_);
-  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
+  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false, true));
   ASSERT_TRUE(d.subscriber_alive_);
   p->SetMax(3u);
   bar_stream.Subscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
@@ -175,9 +209,10 @@ TEST(Sherlock, SubscribeSynchronously) {
     ;  // Spin lock.
   }
 
+  std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
-  EXPECT_TRUE((d.results_ == "TERMINATE,4,5,6") || (d.results_ == "4,TERMINATE,5,6") ||
-              (d.results_ == "4,5,TERMINATE,6") || (d.results_ == "4,5,6,TERMINATE") || (d.results_ == "4,5,6"))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
 }
 
@@ -185,18 +220,22 @@ TEST(Sherlock, SubscribeAsynchronously) {
   using namespace sherlock_unittest;
 
   auto bar_stream = current::sherlock::Stream<Record>();
+  current::time::SetNow(std::chrono::microseconds(40));
   bar_stream.Publish(4);
+  current::time::SetNow(std::chrono::microseconds(50));
   bar_stream.Publish(5);
+  current::time::SetNow(std::chrono::microseconds(60));
   bar_stream.Publish(6);
   Data d;
-  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
+  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false, true));
   p->SetMax(4u);
   bar_stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the subscriber running on its own.
   while (d.seen_ < 3u) {
     ;  // Spin lock.
   }
   EXPECT_EQ(3u, d.seen_);
-  EXPECT_EQ("4,5,6", d.results_);  // No `TERMINATE` for an asyncronous subscriber.
+  std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
+  EXPECT_EQ(Join(expected_values, ','), d.results_);  // No `TERMINATE` for an asyncronous subscriber.
   EXPECT_TRUE(d.subscriber_alive_);
   bar_stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
   while (d.subscriber_alive_) {
@@ -261,7 +300,7 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
     }
   }
   EXPECT_EQ(3u, d.seen_);
-  EXPECT_EQ("10,11,12,TERMINATE", d.results_);
+  EXPECT_EQ("10,11,12," + SherlockTestProcessor::kTerminateStr, d.results_);
 }
 
 namespace sherlock_unittest {
@@ -429,7 +468,7 @@ TEST(Sherlock, ParsesFromFile) {
   Data d;
   {
     ASSERT_FALSE(d.subscriber_alive_);
-    SherlockTestProcessor p(d, false);
+    SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
     parsed.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
@@ -438,8 +477,9 @@ TEST(Sherlock, ParsesFromFile) {
   }
   ASSERT_FALSE(d.subscriber_alive_);
 
+  std::vector<std::string> expected_values{"[0:100,2:300] 1", "[1:200,2:300] 2", "[2:300,2:300] 3"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
-  EXPECT_TRUE((d.results_ == "TERMINATE,1,2,3") || (d.results_ == "1,TERMINATE,2,3") ||
-              (d.results_ == "1,2,TERMINATE,3") || (d.results_ == "1,2,3,TERMINATE") || (d.results_ == "1,2,3"))
+  EXPECT_TRUE(
+      CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
 }

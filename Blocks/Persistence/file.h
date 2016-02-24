@@ -94,7 +94,7 @@ template <typename ENTRY>
 class FilePersister {
  private:
   struct Impl {
-    const std::string& filename;
+    const std::string filename;
     idxts_t next_initializer;
     std::atomic<uint64_t> next_index;
     std::atomic<std::chrono::microseconds> next_timestamp;
@@ -211,6 +211,14 @@ class FilePersister {
   }
 
   uint64_t Size() const noexcept { return impl_->next_index; }
+
+  idxts_t LastIndexAndTimestamp() const noexcept {
+    if (impl_->next_index) {
+      return idxts_t(impl_->next_index - 1, impl_->next_timestamp.load() - std::chrono::microseconds(1));
+    } else {
+      return idxts_t();
+    }
+  }
 
   IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
     if (end_index == static_cast<uint64_t>(-1)) {
