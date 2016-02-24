@@ -40,10 +40,6 @@ namespace sherlock {
 
 template <typename E, JSONFormat J = JSONFormat::Current>
 class PubSubHTTPEndpointImpl {
- private:
-  using EntryResponse = current::ss::EntryResponse;
-  using TerminationResponse = current::ss::TerminationResponse;
-
  public:
   explicit PubSubHTTPEndpointImpl(Request r)
       : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
@@ -83,7 +79,7 @@ class PubSubHTTPEndpointImpl {
   // * `last` as the third parameter, and
   // * `EntryResponse` as the return value.
   // It does so to respect the URL parameters of the range of entries to subscribe to.
-  EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
+  ss::EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     try {
       if (!serving_) {
@@ -102,29 +98,29 @@ class PubSubHTTPEndpointImpl {
         http_response_(std::move(entry_json));
         // Respect `stop_after_bytes`.
         if (stop_after_bytes_ && current_response_size_ >= stop_after_bytes_) {
-          return EntryResponse::Done;
+          return ss::EntryResponse::Done;
         }
         // Respect `cap`.
         if (cap_) {
           --cap_;
           if (!cap_) {
-            return EntryResponse::Done;
+            return ss::EntryResponse::Done;
           }
         }
         // Respect `no_wait`.
         if (current.index == last.index && no_wait_) {
-          return EntryResponse::Done;
+          return ss::EntryResponse::Done;
         }
       }
-      return EntryResponse::More;
+      return ss::EntryResponse::More;
     } catch (const current::net::NetworkException&) {
-      return EntryResponse::Done;
+      return ss::EntryResponse::Done;
     }
   }
 
-  TerminationResponse Terminate() {
+  ss::TerminationResponse Terminate() {
     http_response_("{\"error\":\"The subscriber has terminated.\"}\n");
-    return TerminationResponse::Terminate;  // Confirm termination.
+    return ss::TerminationResponse::Terminate;  // Confirm termination.
   }
 
  private:
