@@ -71,8 +71,8 @@ SOFTWARE.
 // Both scopes can be `.Join()`-ed, which would be a blocking call waiting until the subscriber is done.
 // Asynchronous scope can also be `.Detach()`-ed, internally calling `std::thread::detach()`.
 // A detached subscriber will live until it decides to terminate. In case the stream itself would be
-// destructing, each subscriber, detached subscribers included, will be notified of stream termination, 
-// and the destructor of the stream object will wait for all subscribers, detached included, to terminate 
+// destructing, each subscriber, detached subscribers included, will be notified of stream termination,
+// and the destructor of the stream object will wait for all subscribers, detached included, to terminate
 // themselves.
 //
 // The `my_subscriber` object should be an instance of `StreamSubscriber<IMPL, ENTRY>`,
@@ -122,14 +122,10 @@ class StreamImpl {
   using T_ENTRY = ENTRY;
   using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
 
-  StreamImpl()
-      : storage_(std::make_shared<T_PERSISTENCE_LAYER>()),
-        last_idx_ts_(std::make_shared<current::WaitableAtomic<idxts_t>>()) {}
-
-  template <typename... EXTRA_PARAMS>
-  StreamImpl(EXTRA_PARAMS&&... extra_params)
-      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<EXTRA_PARAMS>(extra_params)...)),
-        last_idx_ts_(std::make_shared<current::WaitableAtomic<idxts_t>>()) {}
+  template <typename... ARGS>
+  StreamImpl(ARGS&&... args)
+      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<ARGS>(args)...)),
+        last_idx_ts_(std::make_shared<current::WaitableAtomic<idxts_t>>(storage_->LastIndexAndTimestamp())) {}
 
   StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)), last_idx_ts_(std::move(rhs.last_idx_ts_)) {}
 
