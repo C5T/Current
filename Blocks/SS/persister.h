@@ -58,6 +58,7 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   //   return IMPL::DoEmplace(std::forward<ARGS>(args)...);
   // }
 
+  bool Empty() const noexcept { return IMPL::Empty(); }
   uint64_t Size() const noexcept { return IMPL::Size(); }
 
   using IterableRange = typename IMPL::IterableRange;

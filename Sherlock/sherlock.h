@@ -125,7 +125,11 @@ class StreamImpl {
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
       : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<ARGS>(args)...)),
-        last_idx_ts_(std::make_shared<current::WaitableAtomic<idxts_t>>(storage_->LastIndexAndTimestamp())) {}
+        last_idx_ts_(std::make_shared<current::WaitableAtomic<std::pair<bool, idxts_t>>>()) {
+    if (!storage_->Empty()) {
+      last_idx_ts_->SetValue(std::make_pair(true, storage_->LastPublishedIndexAndTimestamp()));
+    }
+  }
 
   StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)), last_idx_ts_(std::move(rhs.last_idx_ts_)) {}
 
@@ -139,19 +143,19 @@ class StreamImpl {
   // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
   idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
     const idxts_t result = storage_->Publish(entry, us);
-    last_idx_ts_->SetValue(result);
+    last_idx_ts_->SetValue(std::make_pair(true, result));
     return result;
   }
   idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
     const idxts_t result = storage_->Publish(std::move(entry), us);
-    last_idx_ts_->SetValue(result);
+    last_idx_ts_->SetValue(std::make_pair(true, result));
     return result;
   }
 
   // template <typename... ARGS>
   // idxts_t DoEmplace(ARGS&&... entry_params) {
   //   const idxts_t result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
-  //   last_idx_ts_->SetValue(result);
+  //   last_idx_ts_->SetValue(std::make_pair(true,result));
   //   return result;
   // }
 
@@ -190,13 +194,14 @@ class StreamImpl {
     struct SubscriberThreadSharedState {
       F subscriber;  // The ownership of the subscriber is transferred to instance of this class.
       std::shared_ptr<T_PERSISTENCE_LAYER> persister;
-      std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts;
+      std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts;
 
       current::WaitableTerminateSignal terminate_signal;
 
-      SubscriberThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                                  std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts,
-                                  F&& subscriber)
+      SubscriberThreadSharedState(
+          std::shared_ptr<T_PERSISTENCE_LAYER> persister,
+          std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts,
+          F&& subscriber)
           : subscriber(std::move(subscriber)), persister(persister), last_idx_ts(last_idx_ts) {}
 
       SubscriberThreadSharedState() = delete;
@@ -208,7 +213,7 @@ class StreamImpl {
 
    public:
     SubscriberThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                     std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts,
+                     std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts,
                      F&& subscriber)
         : state_(std::make_shared<SubscriberThreadSharedState>(
               persister, last_idx_ts, std::forward<F>(subscriber))),
@@ -259,7 +264,7 @@ class StreamImpl {
                 return;
               }
             }
-            if ((*state->subscriber)(e.entry, e.idx_ts, state->last_idx_ts->GetValue()) ==
+            if ((*state->subscriber)(e.entry, e.idx_ts, state->last_idx_ts->GetValue().second) ==
                 ss::EntryResponse::Done) {
               return;
             }
@@ -291,7 +296,7 @@ class StreamImpl {
 
    public:
     GenericSubscriberScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                           std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts,
+                           std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts,
                            UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
         : impl_(std::make_unique<LISTENER_THREAD>(persister, last_idx_ts, std::move(subscriber))) {}
 
@@ -380,7 +385,8 @@ class StreamImpl {
 
  private:
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
-  std::shared_ptr<current::WaitableAtomic<idxts_t>> last_idx_ts_;
+  // { bool was_there_anything_published, idxts_t last_published_index_if_valid }.
+  std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;

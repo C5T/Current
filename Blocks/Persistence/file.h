@@ -43,6 +43,8 @@ SOFTWARE.
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
 
+#include "../../Bricks/util/atomic_that_works.h"  // TODO(dkorolev): Remove once GCC 5 is mainstream.
+
 namespace current {
 namespace persistence {
 
@@ -81,7 +83,7 @@ class IteratorOverFileOfPersistedEntries {
   }
 
   // Return the absolute lowest possible next entry to scan or publish.
-  const idxts_t& Next() const { return next_; }
+  idxts_t Next() const { return next_; }
 
  private:
   std::istream& fi_;
@@ -94,34 +96,43 @@ template <typename ENTRY>
 class FilePersister {
  private:
   struct Impl {
+    using NEXT_IDX_TS = std::pair<uint64_t, std::chrono::microseconds>;  // To [later] use in `std::atomic<>`.
+    using LAST_PUBLISHED_AND_END = std::pair<NEXT_IDX_TS, NEXT_IDX_TS>;  // To [later] use in `std::atomic<>`.
+
     const std::string filename;
-    idxts_t next_initializer;
-    std::atomic<uint64_t> next_index;
-    std::atomic<std::chrono::microseconds> next_timestamp;
+
+    // Invariant: `.first` is valid iff `.second.first != 0`.
+    current::atomic_that_works<LAST_PUBLISHED_AND_END> last_published_and_end;
+
     std::ofstream appender;
 
     Impl() = delete;
     explicit Impl(const std::string& filename)
         : filename(filename),
-          next_initializer(ValidateFileAndInitializeNext(filename)),
+          last_published_and_end(ValidateFileAndInitializeNext(filename)),
           appender(filename, std::ofstream::app) {
-      next_index = next_initializer.index;
-      next_timestamp = next_initializer.us;
       assert(appender.good());
     }
 
-    // Replay the file but ignore its contents. Used to initialize `next_{index,timestamp}` at startup.
-    static idxts_t ValidateFileAndInitializeNext(const std::string& filename) {
+    // Replay the file but ignore its contents. Used to initialize `last_published_and_end` at startup.
+    static LAST_PUBLISHED_AND_END ValidateFileAndInitializeNext(const std::string& filename) {
       std::ifstream fi(filename);
       if (fi.good()) {
         IteratorOverFileOfPersistedEntries<ENTRY> cit(fi);
         while (cit.ProcessNextEntry([](const idxts_t&, const char*) {})) {
-          ;  // Read through all the lines, let `IteratorOverFileOfPersistedEntries` maintain `next`.
+          // Read through all the lines.
+          // Let `IteratorOverFileOfPersistedEntries` maintain `last_published_and_end`.
+          ;
         }
-        return cit.Next();
-      } else {
-        return idxts_t();
+        const auto& end = cit.Next();
+        if (end.index) {
+          // There has been at least one entry published.
+          const NEXT_IDX_TS next(end.index, end.us);
+          return LAST_PUBLISHED_AND_END(NEXT_IDX_TS(next.first - 1, next.second - std::chrono::microseconds(1)),
+                                        NEXT_IDX_TS(next.first, next.second));
+        }
       }
+      return LAST_PUBLISHED_AND_END(NEXT_IDX_TS(), NEXT_IDX_TS());
     }
   };
 
@@ -200,44 +211,47 @@ class FilePersister {
 
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    const idxts_t current(impl_->next_index, timestamp);
-    if (current.us < impl_->next_timestamp.load()) {
-      CURRENT_THROW(InconsistentTimestampException(impl_->next_timestamp, current.us));
+    auto last_published_and_end = impl_->last_published_and_end.load();
+    if (timestamp < last_published_and_end.second.second) {
+      CURRENT_THROW(InconsistentTimestampException(last_published_and_end.second.second, timestamp));
     }
+    last_published_and_end.second.second = timestamp;
+    const auto current = idxts_t(last_published_and_end.second.first, timestamp);
     impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
-    ++impl_->next_index;
-    impl_->next_timestamp = current.us + std::chrono::microseconds(1);
+    last_published_and_end.first = last_published_and_end.second;
+    ++last_published_and_end.second.first;
+    last_published_and_end.second.second += std::chrono::microseconds(1);
+    impl_->last_published_and_end.store(last_published_and_end);
     return current;
   }
 
-  uint64_t Size() const noexcept { return impl_->next_index; }
+  bool Empty() const noexcept { return !impl_->last_published_and_end.load().second.first; }
+  uint64_t Size() const noexcept { return impl_->last_published_and_end.load().second.first; }
 
-  idxts_t LastIndexAndTimestamp() const noexcept {
-    if (impl_->next_index) {
-      return idxts_t(impl_->next_index - 1, impl_->next_timestamp.load() - std::chrono::microseconds(1));
+  idxts_t LastPublishedIndexAndTimestamp() const {
+    const auto data = impl_->last_published_and_end.load();
+    if (data.second.first) {
+      return idxts_t(data.first.first, data.first.second);
     } else {
-      return idxts_t();
+      throw current::Exception("`LastPublishedIndexAndTimestamp()` called with no entries published.");
     }
   }
 
   IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
+    const auto end = impl_->last_published_and_end.load().second;
+    const uint64_t size = end.first;
     if (end_index == static_cast<uint64_t>(-1)) {
-      end_index = impl_->next_index;
+      end_index = size;
     }
-
-    if (end_index > impl_->next_index) {
+    if (end_index > size) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin_index == end_index) {
       return IterableRange(impl_, 0, 0);
     }
-    if (begin_index >= impl_->next_index) {
-      CURRENT_THROW(InvalidIterableRangeException());
-    }
     if (end_index < begin_index) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-
     return IterableRange(impl_, begin_index, end_index);
   }
 

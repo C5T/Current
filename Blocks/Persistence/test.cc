@@ -25,7 +25,6 @@ SOFTWARE.
 
 #include "../../port.h"
 
-#include <atomic>
 #include <string>
 
 #define CURRENT_MOCK_TIME  // `SetNow()`.
