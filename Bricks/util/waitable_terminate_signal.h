@@ -40,13 +40,13 @@ namespace current {
 // new entries should not be a simple wait on a conditional variable. `WaitableTerminateSignal` enables this.
 class WaitableTerminateSignal {
  public:
-  explicit WaitableTerminateSignal() : stop_signal_(false) {}
+  explicit WaitableTerminateSignal() noexcept : stop_signal_(false) {}
 
   // Can always check whether it is time to terminate. Thread-safe.
-  operator bool() const { return stop_signal_; }
+  operator bool() const noexcept { return stop_signal_; }
 
   // Sends the termination signal. Thread-safe.
-  void SignalExternalTermination() {
+  void SignalExternalTermination() noexcept {
     std::lock_guard<std::mutex> guard(mutex_);
     stop_signal_ = true;
     condition_variable_.notify_all();
@@ -54,11 +54,11 @@ class WaitableTerminateSignal {
 
   // To be called by external users that the thread using this `WaitableTerminateSignal` could wait upon.
   // Thread-safe.
-  void NotifyOfExternalWaitableEvent() { condition_variable_.notify_all(); }
+  void NotifyOfExternalWaitableEvent() noexcept { condition_variable_.notify_all(); }
 
   // Waits until the provided method returns `true`, or until `SignalExternalTermination()` has been called.
   template <typename F>
-  bool WaitUntil(std::unique_lock<std::mutex>& lock, F&& external_condition) {
+  bool WaitUntil(std::unique_lock<std::mutex>& lock, F&& external_condition) noexcept {
     bool wait_done;
     const auto stop_condition = [this, &external_condition, &wait_done]() {
       wait_done = stop_signal_ || external_condition();
@@ -89,11 +89,11 @@ class WaitableTerminateSignalBulkNotifier {
   // NOT THREAD SAFE.
   class Scope {
    public:
-    Scope(WaitableTerminateSignalBulkNotifier& bulk, WaitableTerminateSignal& signal)
+    Scope(WaitableTerminateSignalBulkNotifier& bulk, WaitableTerminateSignal& signal) noexcept
         : bulk_(bulk), notifier_(signal) {
       bulk_.RegisterPendingNotifier(notifier_);
     }
-    Scope(WaitableTerminateSignalBulkNotifier* bulk, WaitableTerminateSignal& signal)
+    Scope(WaitableTerminateSignalBulkNotifier* bulk, WaitableTerminateSignal& signal) noexcept
         : bulk_(*bulk), notifier_(signal) {
       bulk_.RegisterPendingNotifier(notifier_);
     }
