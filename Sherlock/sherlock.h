@@ -134,8 +134,6 @@ class StreamImpl {
         : persistence(std::forward<ARGS>(args)...) {}
   };
 
-  StreamImpl() : data_(std::make_shared<StreamData>()) {}
-
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
       : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)) {}
@@ -274,8 +272,8 @@ class StreamImpl {
           }
         } else {
           std::unique_lock<std::mutex> lock(state->data->mutex);
-          current::WaitableTerminateSignalBulkNotifier::Scope scope1(state->data->notifier,
-                                                                     state->terminate_signal);
+          current::WaitableTerminateSignalBulkNotifier::Scope scope(state->data->notifier,
+                                                                    state->terminate_signal);
           state->terminate_signal.WaitUntil(lock,
                                             [&state, &index]() {
                                               return state->terminate_signal ||
