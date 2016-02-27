@@ -42,7 +42,6 @@ SOFTWARE.
 #include "../Bricks/template/decay.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/null_deleter.h"
-#include "../Bricks/waitable_atomic/waitable_atomic.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
 // TODO(dk+mz): Revisit all the comments here.
@@ -122,27 +121,51 @@ class StreamImpl {
   using T_ENTRY = ENTRY;
   using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
 
+  // The inner structure containing all the data required for the stream to function.
+  // TODO(dkorolev): Make it a `ScopeOwnedByMe` type of thing.
+  struct StreamData {
+    T_PERSISTENCE_LAYER persistence;
+
+    current::WaitableTerminateSignalBulkNotifier notifier;
+    std::mutex mutex;
+
+    template <typename... ARGS>
+    StreamData(ARGS&&... args)
+        : persistence(std::forward<ARGS>(args)...) {}
+  };
+
+  StreamImpl() : data_(std::make_shared<StreamData>()) {}
+
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
-      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<ARGS>(args)...)) {}
+      : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)) {}
 
-  StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)) {}
+  StreamImpl(StreamImpl&& rhs) : data_(std::move(rhs.data_)) {}
 
-  void operator=(StreamImpl&& rhs) { storage_ = std::move(rhs.storage_); }
+  void operator=(StreamImpl&& rhs) { data_ = std::move(rhs.data_); }
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
   idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-    return storage_->Publish(entry, us);
+    std::lock_guard<std::mutex> lock(data_->mutex);
+    const auto result = data_->persistence.Publish(entry, us);
+    data_->notifier.NotifyAllOfExternalWaitableEvent();
+    return result;
   }
   idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    return storage_->Publish(std::move(entry), us);
+    std::lock_guard<std::mutex> lock(data_->mutex);
+    const auto result = data_->persistence.Publish(std::move(entry), us);
+    data_->notifier.NotifyAllOfExternalWaitableEvent();
+    return result;
   }
 
   // template <typename... ARGS>
   // idxts_t DoEmplace(ARGS&&... entry_params) {
-  //   return storage_->Emplace(std::forward<ARGS>(entry_params)...);
+  //   std::lock_guard<std::mutex> lock(data_->mutex);
+  //   const auto result = data_->persistence.Emplace(std::forward<ARGS>(entry_params)...);
+  //   data_->notifier.NotifyAllOfExternalWaitableEvent();
+  //   return result;
   // }
 
   // `SubscriberThread` spawns the thread and runs stream subscriber within it.
@@ -179,12 +202,11 @@ class StreamImpl {
     // Subscriber thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
     struct SubscriberThreadSharedState {
       F subscriber;  // The ownership of the subscriber is transferred to instance of this class.
-      std::shared_ptr<T_PERSISTENCE_LAYER> persister;
-
+      std::shared_ptr<StreamData> data;
       current::WaitableTerminateSignal terminate_signal;
 
-      SubscriberThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> persister, F&& subscriber)
-          : subscriber(std::move(subscriber)), persister(persister) {}
+      SubscriberThreadSharedState(std::shared_ptr<StreamData> data, F&& subscriber)
+          : subscriber(std::move(subscriber)), data(data) {}
 
       SubscriberThreadSharedState() = delete;
       SubscriberThreadSharedState(const SubscriberThreadSharedState&) = delete;
@@ -194,8 +216,8 @@ class StreamImpl {
     };
 
    public:
-    SubscriberThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister, F&& subscriber)
-        : state_(std::make_shared<SubscriberThreadSharedState>(persister, std::forward<F>(subscriber))),
+    SubscriberThread(std::shared_ptr<StreamData> data, F&& subscriber)
+        : state_(std::make_shared<SubscriberThreadSharedState>(data, std::forward<F>(subscriber))),
           thread_(&SubscriberThread::StaticSubscriberThread, state_) {}
 
     ~SubscriberThread() {
@@ -235,23 +257,30 @@ class StreamImpl {
             return;
           }
         }
-        size = state->persister->Size();
+        size = state->data->persistence.Size();
         if (size > index) {
-          for (const auto& e : state->persister->Iterate(index, size)) {
+          for (const auto& e : state->data->persistence.Iterate(index, size)) {
             if (!terminate_sent && state->terminate_signal) {
               terminate_sent = true;
               if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
                 return;
               }
             }
-            if (subscriber(e.entry, e.idx_ts, state->persister->LastPublishedIndexAndTimestamp()) ==
+            if (subscriber(e.entry, e.idx_ts, state->data->persistence.LastPublishedIndexAndTimestamp()) ==
                 ss::EntryResponse::Done) {
               return;
             }
             index = size;
           }
         } else {
-          ;  // Spin lock, to be replaced by the proper waiting logic. -- D.K.
+          std::unique_lock<std::mutex> lock(state->data->mutex);
+          current::WaitableTerminateSignalBulkNotifier::Scope scope1(state->data->notifier,
+                                                                     state->terminate_signal);
+          state->terminate_signal.WaitUntil(lock,
+                                            [&state, &index]() {
+                                              return state->terminate_signal ||
+                                                     state->data->persistence.Size() > index;
+                                            });
         }
       }
     }
@@ -275,9 +304,8 @@ class StreamImpl {
     using LISTENER_THREAD = SubscriberThread<UNIQUE_PTR_WITH_CORRECT_DELETER>;
 
    public:
-    GenericSubscriberScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                           UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
-        : impl_(std::make_unique<LISTENER_THREAD>(persister, std::move(subscriber))) {}
+    GenericSubscriberScope(std::shared_ptr<StreamData> data, UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
+        : impl_(std::make_unique<LISTENER_THREAD>(data, std::move(subscriber))) {}
 
     GenericSubscriberScope(GenericSubscriberScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
@@ -312,7 +340,7 @@ class StreamImpl {
   template <typename F>
   AsyncSubscriberScope<F> Subscribe(std::unique_ptr<F>&& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    return std::move(AsyncSubscriberScope<F>(storage_, std::move(subscriber)));
+    return std::move(AsyncSubscriberScope<F>(data_, std::move(subscriber)));
   }
 
   // Synchronous subscription: `subscriber` is a stack-allocated object, and thus the subscriber thread
@@ -325,7 +353,7 @@ class StreamImpl {
   template <typename F>
   SyncSubscriberScope<F> Subscribe(F& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    return std::move(SyncSubscriberScope<F>(storage_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
+    return std::move(SyncSubscriberScope<F>(data_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
   }
 
   // Sherlock handler for serving stream data via HTTP.
@@ -341,7 +369,7 @@ class StreamImpl {
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
     if (r.method == "GET") {  // The only valid method is "GET".
-      const size_t count = storage_->Size();
+      const size_t count = data_->persistence.Size();
       if (r.url.query.has("sizeonly")) {
         // Return the number of entries in the stream.
         r(ToString(count) + '\n', HTTPResponseCode.OK);
@@ -359,10 +387,10 @@ class StreamImpl {
   // TODO(dkorolev): Have this co-own the Stream.
   void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
 
-  T_PERSISTENCE_LAYER& InternalExposePersister() { return *storage_; }
+  T_PERSISTENCE_LAYER& InternalExposePersister() { return data_->persistence; }
 
  private:
-  std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
+  std::shared_ptr<StreamData> data_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;
