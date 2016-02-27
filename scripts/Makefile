@@ -14,14 +14,14 @@ CURRENT_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink "$
 CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/fullpath.sh" "$(CURRENT_SCRIPTS_DIR)" )
 
 CPLUSPLUS?=g++
-CPPFLAGS=-std=c++11 -Wall -W -latomic
+CPPFLAGS=-std=c++11 -Wall -W
 ifeq ($(NDEBUG),1)
 CPPFLAGS+= -O3
 else
 # Commented out by @dkorolev -- this flag makes compilation slower for no good reason.
 # CPPFLAGS+= -g
 endif
-LDFLAGS=-pthread
+LDFLAGS=-pthread  # Also `-latomic`, but due to discrepancies between g++ and clang++, not now. -- D.K.
 
 PWD=$(shell pwd)
 SRC=$(wildcard *.cc)

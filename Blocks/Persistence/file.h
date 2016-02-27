@@ -43,6 +43,7 @@ SOFTWARE.
 
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/sync/scope_owned.h"
+#include "../../Bricks/util/atomic_that_works.h"
 
 namespace current {
 namespace persistence {
@@ -99,11 +100,14 @@ class FilePersister {
     uint64_t index;
     std::chrono::microseconds us;
   };
+  static_assert(sizeof(std::chrono::microseconds) == 8, "");
+  static_assert(sizeof(end_t) == 16, "");
 
  private:
   struct Impl {
     const std::string filename;
-    std::atomic<end_t> end;
+    // std::atomic<end_t> end;
+    current::atomic_that_works<end_t> end;
     std::ofstream appender;
 
     Impl() = delete;
