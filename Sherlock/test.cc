@@ -185,7 +185,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
-      << d.results_;
+      << Join(expected_values, ',') << " != " << d.results_;
 }
 
 TEST(Sherlock, SubscribeSynchronously) {
@@ -213,7 +213,7 @@ TEST(Sherlock, SubscribeSynchronously) {
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
-      << d.results_;
+      << Join(expected_values, ',') << " != " << d.results_;
 }
 
 TEST(Sherlock, SubscribeAsynchronously) {

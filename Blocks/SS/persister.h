@@ -61,6 +61,8 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
   bool Empty() const noexcept { return IMPL::Empty(); }
   uint64_t Size() const noexcept { return IMPL::Size(); }
 
+  idxts_t LastPublishedIndexAndTimestamp() const { return IMPL::LastPublishedIndexAndTimestamp(); }
+
   using IterableRange = typename IMPL::IterableRange;
 
   IterableRange Iterate(uint64_t begin, uint64_t end) const noexcept { return IMPL::Iterate(begin, end); }

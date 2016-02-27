@@ -124,39 +124,25 @@ class StreamImpl {
 
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
-      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<ARGS>(args)...)),
-        last_idx_ts_(std::make_shared<current::WaitableAtomic<std::pair<bool, idxts_t>>>()) {
-    if (!storage_->Empty()) {
-      last_idx_ts_->SetValue(std::make_pair(true, storage_->LastPublishedIndexAndTimestamp()));
-    }
-  }
+      : storage_(std::make_shared<T_PERSISTENCE_LAYER>(std::forward<ARGS>(args)...)) {}
 
-  StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)), last_idx_ts_(std::move(rhs.last_idx_ts_)) {}
+  StreamImpl(StreamImpl&& rhs) : storage_(std::move(rhs.storage_)) {}
 
-  void operator=(StreamImpl&& rhs) {
-    storage_ = std::move(rhs.storage_);
-    last_idx_ts_(std::move(rhs.last_idx_ts_));
-  }
+  void operator=(StreamImpl&& rhs) { storage_ = std::move(rhs.storage_); }
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
   idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-    const idxts_t result = storage_->Publish(entry, us);
-    last_idx_ts_->SetValue(std::make_pair(true, result));
-    return result;
+    return storage_->Publish(entry, us);
   }
   idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    const idxts_t result = storage_->Publish(std::move(entry), us);
-    last_idx_ts_->SetValue(std::make_pair(true, result));
-    return result;
+    return storage_->Publish(std::move(entry), us);
   }
 
   // template <typename... ARGS>
   // idxts_t DoEmplace(ARGS&&... entry_params) {
-  //   const idxts_t result = storage_->Emplace(std::forward<ARGS>(entry_params)...);
-  //   last_idx_ts_->SetValue(std::make_pair(true,result));
-  //   return result;
+  //   return storage_->Emplace(std::forward<ARGS>(entry_params)...);
   // }
 
   // `SubscriberThread` spawns the thread and runs stream subscriber within it.
@@ -194,15 +180,11 @@ class StreamImpl {
     struct SubscriberThreadSharedState {
       F subscriber;  // The ownership of the subscriber is transferred to instance of this class.
       std::shared_ptr<T_PERSISTENCE_LAYER> persister;
-      std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts;
 
       current::WaitableTerminateSignal terminate_signal;
 
-      SubscriberThreadSharedState(
-          std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-          std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts,
-          F&& subscriber)
-          : subscriber(std::move(subscriber)), persister(persister), last_idx_ts(last_idx_ts) {}
+      SubscriberThreadSharedState(std::shared_ptr<T_PERSISTENCE_LAYER> persister, F&& subscriber)
+          : subscriber(std::move(subscriber)), persister(persister) {}
 
       SubscriberThreadSharedState() = delete;
       SubscriberThreadSharedState(const SubscriberThreadSharedState&) = delete;
@@ -212,11 +194,8 @@ class StreamImpl {
     };
 
    public:
-    SubscriberThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                     std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts,
-                     F&& subscriber)
-        : state_(std::make_shared<SubscriberThreadSharedState>(
-              persister, last_idx_ts, std::forward<F>(subscriber))),
+    SubscriberThread(std::shared_ptr<T_PERSISTENCE_LAYER> persister, F&& subscriber)
+        : state_(std::make_shared<SubscriberThreadSharedState>(persister, std::forward<F>(subscriber))),
           thread_(&SubscriberThread::StaticSubscriberThread, state_) {}
 
     ~SubscriberThread() {
@@ -265,7 +244,7 @@ class StreamImpl {
                 return;
               }
             }
-            if (subscriber(e.entry, e.idx_ts, state->last_idx_ts->GetValue().second) ==
+            if (subscriber(e.entry, e.idx_ts, state->persister->LastPublishedIndexAndTimestamp()) ==
                 ss::EntryResponse::Done) {
               return;
             }
@@ -297,9 +276,8 @@ class StreamImpl {
 
    public:
     GenericSubscriberScope(std::shared_ptr<T_PERSISTENCE_LAYER> persister,
-                           std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts,
                            UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
-        : impl_(std::make_unique<LISTENER_THREAD>(persister, last_idx_ts, std::move(subscriber))) {}
+        : impl_(std::make_unique<LISTENER_THREAD>(persister, std::move(subscriber))) {}
 
     GenericSubscriberScope(GenericSubscriberScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
@@ -334,7 +312,7 @@ class StreamImpl {
   template <typename F>
   AsyncSubscriberScope<F> Subscribe(std::unique_ptr<F>&& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    return std::move(AsyncSubscriberScope<F>(storage_, last_idx_ts_, std::move(subscriber)));
+    return std::move(AsyncSubscriberScope<F>(storage_, std::move(subscriber)));
   }
 
   // Synchronous subscription: `subscriber` is a stack-allocated object, and thus the subscriber thread
@@ -347,8 +325,7 @@ class StreamImpl {
   template <typename F>
   SyncSubscriberScope<F> Subscribe(F& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, ENTRY>::value, "");
-    return std::move(
-        SyncSubscriberScope<F>(storage_, last_idx_ts_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
+    return std::move(SyncSubscriberScope<F>(storage_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
   }
 
   // Sherlock handler for serving stream data via HTTP.
@@ -386,8 +363,6 @@ class StreamImpl {
 
  private:
   std::shared_ptr<T_PERSISTENCE_LAYER> storage_;
-  // { bool was_there_anything_published, idxts_t last_published_index_if_valid }.
-  std::shared_ptr<current::WaitableAtomic<std::pair<bool, idxts_t>>> last_idx_ts_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;
