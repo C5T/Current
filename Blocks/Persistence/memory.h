@@ -105,17 +105,22 @@ class MemoryPersister {
     return idxts_t(index, timestamp);
   }
 
+  uint64_t Empty() const noexcept {
+    std::lock_guard<std::mutex> lock(container_->mutex);
+    return container_->entries.empty();
+  }
+
   uint64_t Size() const noexcept {
     std::lock_guard<std::mutex> lock(container_->mutex);
     return static_cast<uint64_t>(container_->entries.size());
   }
 
-  idxts_t LastIndexAndTimestamp() const noexcept {
+  idxts_t LastPublishedIndexAndTimestamp() const {
     std::lock_guard<std::mutex> lock(container_->mutex);
     if (!container_->entries.empty()) {
-      return idxts_t(container_->entries.size(), container_->entries.back().first);
+      return idxts_t(container_->entries.size() - 1, container_->entries.back().first);
     } else {
-      return idxts_t();
+      throw current::Exception("`LastPublishedIndexAndTimestamp()` called with no entries published.");
     }
   }
 

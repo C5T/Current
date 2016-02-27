@@ -23,6 +23,9 @@ else
 endif
 LDFLAGS=-pthread
 
+# Also `-latomic`, but due to discrepancies between g++ and clang++, not now. -- D.K.
+# http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840 -- M.Z.
+
 PWD=$(shell pwd)
 SRC=$(wildcard *.cc)
 BIN=$(SRC:%.cc=.current/%)

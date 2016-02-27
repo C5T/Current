@@ -265,8 +265,8 @@ TEST(Util, ROL64) {
 }
 
 #if 0
-// Test is disabled since even being initialized with constant seed, random number generator
-// returns different values on different platforms :(
+// This test is disabled since even being initialized with constant seed,
+// the random number generator returns different values on different platforms. :(
 TEST(Util, RandomWithFixedSeed) {
   EXPECT_EQ(114, current::random::RandomInt(-100, 200));
   EXPECT_EQ(258833541435025064u, current::random::RandomUInt64(1e10, 1e18));
