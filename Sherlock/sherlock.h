@@ -245,13 +245,14 @@ class StreamImpl {
     }
 
     static void StaticSubscriberThread(std::shared_ptr<SubscriberThreadSharedState> state) {
+      auto& subscriber = *state->subscriber;
       size_t index = 0;
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
         if (!terminate_sent && state->terminate_signal) {
           terminate_sent = true;
-          if ((*state->subscriber).Terminate() != ss::TerminationResponse::Wait) {
+          if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
         }
@@ -260,11 +261,11 @@ class StreamImpl {
           for (const auto& e : state->persister->Iterate(index, size)) {
             if (!terminate_sent && state->terminate_signal) {
               terminate_sent = true;
-              if ((*state->subscriber).Terminate() != ss::TerminationResponse::Wait) {
+              if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
                 return;
               }
             }
-            if ((*state->subscriber)(e.entry, e.idx_ts, state->last_idx_ts->GetValue().second) ==
+            if (subscriber(e.entry, e.idx_ts, state->last_idx_ts->GetValue().second) ==
                 ss::EntryResponse::Done) {
               return;
             }
