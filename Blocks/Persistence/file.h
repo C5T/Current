@@ -105,16 +105,20 @@ class FilePersister {
 
  private:
   struct Impl {
-    const std::string filename;
     // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
     // http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840
+    // std::atomic<end_t> end;
+    // Actually, the above line would work fine on my machine -- D.K. -- but only if `std::atomic<end_t> end`
+    // is the first member declaration in the class. I'll leave it commented out for now.
     current::atomic_that_works<end_t> end;
+
+    const std::string filename;
     std::ofstream appender;
 
     Impl() = delete;
     explicit Impl(const std::string& filename)
-        : filename(filename),
-          end(ValidateFileAndInitializeNext(filename)),
+        : end(ValidateFileAndInitializeNext(filename)),
+          filename(filename),
           appender(filename, std::ofstream::app) {
       assert(appender.good());
     }
