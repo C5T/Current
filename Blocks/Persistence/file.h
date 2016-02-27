@@ -106,7 +106,8 @@ class FilePersister {
  private:
   struct Impl {
     const std::string filename;
-    // std::atomic<end_t> end;
+    // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
+    // http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840
     current::atomic_that_works<end_t> end;
     std::ofstream appender;
 
