@@ -240,6 +240,7 @@ TEST(Sherlock, SubscribeAsynchronously) {
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   EXPECT_EQ(Join(expected_values, ','), d.results_);  // No `TERMINATE` for an asyncronous subscriber.
   EXPECT_TRUE(d.subscriber_alive_);
+  current::time::SetNow(std::chrono::microseconds(70));
   bar_stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
   while (d.subscriber_alive_) {
     ;  // Spin lock.
@@ -255,8 +256,11 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     while (wait) {
       ;  // Spin lock.
     }
+    current::time::SetNow(std::chrono::microseconds(1));
     baz_stream.Publish(7);
+    current::time::SetNow(std::chrono::microseconds(2));
     baz_stream.Publish(8);
+    current::time::SetNow(std::chrono::microseconds(3));
     baz_stream.Publish(9);
   });
   {
@@ -282,8 +286,11 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
   using namespace sherlock_unittest;
 
   auto meh_stream = current::sherlock::Stream<Record>();
+  current::time::SetNow(std::chrono::microseconds(1));
   meh_stream.Publish(10);
+  current::time::SetNow(std::chrono::microseconds(2));
   meh_stream.Publish(11);
+  current::time::SetNow(std::chrono::microseconds(3));
   meh_stream.Publish(12);
   Data d;
   SherlockTestProcessor p(d, true);
