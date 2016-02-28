@@ -196,7 +196,7 @@ struct ReflectorImpl {
     if (reflected_type_by_type_id_.count(type_id)) {
       return reflected_type_by_type_id_.at(type_id);
     } else {
-      throw UnknownTypeIDException();
+      throw UnknownTypeIDException();  // LCOV_EXCL_LINE
     }
   }
 

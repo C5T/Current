@@ -198,8 +198,8 @@ struct RESTfulHandlerGenerator {
                                   return handler.Run(args);
                                 },
                                 std::move(request)).Detach();
-                  } catch (const TypeSystemParseJSONException& e) {
-                    request(handler.ErrorBadJSON(e.What()));
+                  } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
+                    request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
                   }
                 });
           } else if (request.method == "DELETE") {
@@ -229,7 +229,7 @@ struct RESTfulHandlerGenerator {
                                         std::move(request)).Detach();
                           });
           } else {
-            request(T_REST_IMPL::ErrorMethodNotAllowed());
+            request(T_REST_IMPL::ErrorMethodNotAllowed());  // LCOV_EXCL_LINE
           }
         });
   }
@@ -259,7 +259,7 @@ class RESTfulStorage {
         restful_url_prefix_input.empty() ? "http://localhost:" + ToString(port) : restful_url_prefix_input;
 
     if (!route_prefix.empty() && route_prefix.back() == '/') {
-      CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));
+      CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(
@@ -289,7 +289,9 @@ class RESTfulStorage {
   void RegisterAlias(const std::string& target, const std::string& alias_name) {
     const auto cit = handlers_.find(target);
     if (cit == handlers_.end()) {
+      // LCOV_EXCL_START
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
+      // LCOV_EXCL_STOP
     }
     const std::string route = route_prefix_ + '/' + data_url_component_ + '/' + alias_name;
     handler_routes_.push_back(route);

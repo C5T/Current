@@ -49,9 +49,11 @@ SOFTWARE.
 namespace current {
 namespace http {
 
+// LCOV_EXCL_START
 struct InvalidHandlerPathException : current::net::HTTPException {
   using current::net::HTTPException::HTTPException;
 };
+// LCOV_EXCL_STOP
 
 struct PathDoesNotStartWithSlash : InvalidHandlerPathException {
   using InvalidHandlerPathException::InvalidHandlerPathException;
@@ -236,6 +238,7 @@ class HTTPServerPOSIX final {
                    std::function<void(Request)>& output_handler,
                    URLPathArgs& output_url_args) {
     // Just `return` is safe. Uninitialized `output_handler` would be interpreted as "no handler found".
+    // LCOV_EXCL_START
     if (path.empty()) {
       std::cerr << "HTTP: path is empty.\n";
       return;
@@ -244,6 +247,7 @@ class HTTPServerPOSIX final {
       std::cerr << "HTTP: path does not start with a slash.\n";
       return;
     }
+    // LCOV_EXCL_STOP
 
     // Work with the path by trying to match the full one, then the one with the last component removed,
     // then the one with two last components removed, etc.
@@ -326,7 +330,7 @@ class HTTPServerPOSIX final {
           connection->SendHTTPResponse(
               current::net::DefaultFourOhFourMessage(), HTTPResponseCode.NotFound, "text/html");
         }
-      } catch (const current::net::EmptySocketException&) {
+      } catch (const current::net::EmptySocketException&) {  // LCOV_EXCL_LINE
         // Silently discard errors if no data was sent in.
       } catch (const current::Exception& e) {  // LCOV_EXCL_LINE
         // TODO(dkorolev): More reliable logging.
@@ -339,7 +343,7 @@ class HTTPServerPOSIX final {
                                          std::function<void(Request)> handler,
                                          const URLPathArgs::CountMask path_args_count_mask,
                                          const ReRegisterRoute policy) {
-    // TODO(dkorolev): Type.
+    // LCOV_EXCL_START
     if (static_cast<uint16_t>(path_args_count_mask) == 0) {
       return HTTPRoutesScopeEntry();
     }
@@ -347,12 +351,13 @@ class HTTPServerPOSIX final {
     if (path.empty() || path[0] != '/') {
       CURRENT_THROW(PathDoesNotStartWithSlash("HTTP path does not start with a slash: `" + path + "`."));
     }
-    if (path.length() > 1 && path[path.length() - 1] == '/') {
+    if (path != "/" && path[path.length() - 1] == '/') {
       CURRENT_THROW(PathEndsWithSlash("HTTP path ends with slash: `" + path + "`."));
     }
     if (!URL::IsPathValidToRegister(path)) {
       CURRENT_THROW(PathContainsInvalidCharacters("HTTP path contains invalid characters: `" + path + "`."));
     }
+    // LCOV_EXCL_STOP
 
     {
       // Step 1: Confirm the request is valid.

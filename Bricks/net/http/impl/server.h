@@ -90,8 +90,10 @@ class HTTPDefaultHelper {
     // https://tools.ietf.org/html/rfc7230#section-3.2
     // TODO(mzhurovich): proper support of `Set-Cookie` via additional `cookies` member.
     if (headers_.count(key)) {
+      // LCOV_EXCL_START
       headers_[key] += ",";
       headers_[key] += value;
+      // LCOV_EXCL_STOP
     } else {
       headers_[key] = value;
     }

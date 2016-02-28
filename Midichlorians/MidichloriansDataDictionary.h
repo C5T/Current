@@ -104,7 +104,7 @@ CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
   CURRENT_FIELD(source, std::string);
   CURRENT_FIELD(fields, (std::map<std::string, std::string>));
   CURRENT_FIELD(unparsable_fields, std::vector<std::string>);
-  CURRENT_DEFAULT_CONSTRUCTOR(iOSGenericEvent) {}
+  CURRENT_DEFAULT_CONSTRUCTOR(iOSGenericEvent) {}  // LCOV_EXCL_LINE
 #ifdef COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
   CURRENT_CONSTRUCTOR(iOSGenericEvent)(
       NSString * event_name, NSString * event_source, NSDictionary * properties) {

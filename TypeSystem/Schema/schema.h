@@ -77,7 +77,7 @@ struct LanguageSyntax {
     for (TypeID type_id : order) {
       const auto cit = types.find(type_id);
       if (cit == types.end()) {
-        os << LanguageSyntaxImpl<L>::ErrorMessageWithTypeId(type_id);
+        os << LanguageSyntaxImpl<L>::ErrorMessageWithTypeId(type_id);  // LCOV_EXCL_LINE
       } else {
         cit->second.Call(printer);
       }
@@ -144,9 +144,11 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
 
   static std::string Footer() { return "}  // namespace current_userspace\n"; }
 
+  // LCOV_EXCL_START
   static std::string ErrorMessageWithTypeId(TypeID type_id) {
     return "#error \"Unknown struct with `type_id` = " + current::strings::ToString(type_id) + "\"\n";
   }
+  // LCOV_EXCL_STOP
 
   struct FullSchemaPrinter {
     const std::map<TypeID, ReflectedType>& types_;
@@ -155,7 +157,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
     std::string TypeName(TypeID type_id) const {
       const auto cit = types_.find(type_id);
       if (cit == types_.end()) {
-        return "UNKNOWN_TYPE_" + current::strings::ToString(type_id);
+        return "UNKNOWN_TYPE_" + current::strings::ToString(type_id);  // LCOV_EXCL_LINE
       } else {
         struct CurrentTypeNamePrinter {
           const FullSchemaPrinter& self_;
@@ -171,7 +173,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             if (globals.cpp_name.count(p.type_id) != 0u) {
               oss_ << globals.cpp_name.at(p.type_id);
             } else {
-              oss_ << "UNKNOWN_BASIC_TYPE_" + current::strings::ToString(p.type_id);
+              oss_ << "UNKNOWN_BASIC_TYPE_" + current::strings::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
 
@@ -243,9 +245,11 @@ struct LanguageSyntaxImpl<Language::FSharp> {
 
   static std::string Footer() { return ""; }
 
+  // LCOV_EXCL_START
   static std::string ErrorMessageWithTypeId(TypeID type_id) {
     return "#error \"Unknown struct with `type_id` = " + current::strings::ToString(type_id) + "\"\n";
   }
+  // LCOV_EXCL_STOP
 
   struct FullSchemaPrinter {
     const std::map<TypeID, ReflectedType>& types_;
@@ -254,7 +258,7 @@ struct LanguageSyntaxImpl<Language::FSharp> {
     std::string TypeName(TypeID type_id) const {
       const auto cit = types_.find(type_id);
       if (cit == types_.end()) {
-        return "UNKNOWN_TYPE_" + current::strings::ToString(type_id);
+        return "UNKNOWN_TYPE_" + current::strings::ToString(type_id);  // LCOV_EXCL_LINE
       } else {
         struct FSharpTypeNamePrinter {
           const FullSchemaPrinter& self_;

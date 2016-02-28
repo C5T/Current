@@ -157,6 +157,7 @@ TEST(Util, FromString) {
   EXPECT_FALSE(FromString<bool>("0"));
 
   EXPECT_TRUE(StringConversionTestEnum::TheAnswer == FromString<StringConversionTestEnum>("42"));
+  EXPECT_EQ(0, static_cast<int>(FromString<StringConversionTestEnum>("")));
 }
 
 TEST(ToString, SmokeTest) {
@@ -436,11 +437,19 @@ TEST(Chunk, SmokeTest) {
   EXPECT_TRUE(foo_copy.ExpungePrefix("f", result));
   EXPECT_EQ(2u, result.length());
   EXPECT_EQ(std::string("oo"), result.c_str());
+  EXPECT_FALSE(foo_copy.ExpungePrefix("blah", result));
 
   EXPECT_EQ(0, foo_copy.LexicographicalCompare(foo));
   EXPECT_EQ(0, bar_copy.LexicographicalCompare(bar));
   EXPECT_GT(foo_copy.LexicographicalCompare(bar_copy), 0);
   EXPECT_LT(bar_copy.LexicographicalCompare(foo_copy), 0);
+
+  {
+    Chunk foo("foo");
+    Chunk foo1("foo1");
+    EXPECT_LT(foo.LexicographicalCompare(foo1), 0);
+    EXPECT_GT(foo1.LexicographicalCompare(foo), 0);
+  }
 
   std::string new_foo;
   new_foo += 'f';

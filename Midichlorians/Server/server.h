@@ -84,11 +84,11 @@ class MidichloriansHTTPServer {
       } else if (r.method == "GET" || r.method == "HEAD") {
         // GET and HEAD requests could be only web events.
         if (!ParseRequestAsWebEvent(r)) {
-          LogUnparsableRequest(r);
+          LogUnparsableRequest(r);  // LCOV_EXCL_LINE
         }
       } else {
         // Wrong HTTP method or empty body in POST request.
-        LogUnparsableRequest(r);
+        LogUnparsableRequest(r);  // LCOV_EXCL_LINE
       }
     }
     r(response_text_);
@@ -130,7 +130,7 @@ class MidichloriansHTTPServer {
     }();
 
     if (!is_allowed_method) {
-      return false;
+      return false;  // LCOV_EXCL_LINE
     }
 
     Variant<T_WEB_EVENTS> web_event;
@@ -151,7 +151,7 @@ class MidichloriansHTTPServer {
     }
 
     if (!ExtractWebBaseEventFields(q, h, web_event)) {
-      return false;
+      return false;  // LCOV_EXCL_LINE
     }
 
     PassLogEntryToConsumer(EventLogEntry(current::time::Now(), std::move(web_event)));
@@ -174,11 +174,11 @@ class MidichloriansHTTPServer {
       dest_event.referer_host = url.host;
       dest_event.referer_path = url.path;
       dest_event.referer_querystring = url.query.AsImmutableMap();
-    } catch (const std::out_of_range&) {
+    } catch (const std::out_of_range&) {  // LCOV_EXCL_LINE
       // TODO(mz+dk): discuss the validity of partially filled event fields.
-      return false;
-    } catch (const url::EmptyURLException&) {
-      return false;
+      return false;                            // LCOV_EXCL_LINE
+    } catch (const url::EmptyURLException&) {  // LCOV_EXCL_LINE
+      return false;                            // LCOV_EXCL_LINE
     }
     return true;
   }

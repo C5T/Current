@@ -96,6 +96,7 @@ class TransactionResult<void> : public OptionalResult<void> {
     return TransactionResult<void>(exists, false);
   }
 
+  // TODO(dkorolev) + TODO(mzhurovich): Test this.
   static TransactionResult<void> Rollbacked(const OptionalResultMissing& missing) {
     return TransactionResult<void>(missing, false);
   }
@@ -107,6 +108,8 @@ class TransactionResult<void> : public OptionalResult<void> {
 
   TransactionResult(const OptionalResultExists& exists, bool commited)
       : OptionalResult<void>(exists), commited_(commited) {}
+
+  // TODO(dkorolev) + TODO(mzhurovich): Test this.
   TransactionResult(const OptionalResultMissing& missing, bool commited)
       : OptionalResult<void>(missing), commited_(commited) {}
 };

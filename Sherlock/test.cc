@@ -139,6 +139,8 @@ using SherlockTestProcessor =
 
 static_assert(current::ss::IsStreamSubscriber<SherlockTestProcessor, sherlock_unittest::Record>::value, "");
 
+// LCOV_EXCL_START
+// This function is executed by the test, but its branching is unpredictable, so `LCOV_EXCL` it. -- D.K.
 inline bool CompareValuesMixedWithTerminate(const std::string& lhs,
                                             std::vector<std::string> values,
                                             const std::string& terminate_str) {
@@ -156,6 +158,7 @@ inline bool CompareValuesMixedWithTerminate(const std::string& lhs,
   }
   return (lhs == Join(values, ','));
 }
+// LCOV_EXCL_STOP
 
 }  // namespace sherlock_unittest
 

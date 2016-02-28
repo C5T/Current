@@ -203,11 +203,12 @@ class FilePersister {
                   found = true;
                   result.idx_ts = cursor;
                   result.entry = ParseJSON<ENTRY>(json);
-                } else if (cursor.index > i_) {
-                  CURRENT_THROW(InconsistentIndexException(i_, cursor.index));
+                } else if (cursor.index > i_) {                                 // LCOV_EXCL_LINE
+                  CURRENT_THROW(InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
                 }
               }))) {
-            CURRENT_THROW(current::Exception());  // End of file. Should never happen.
+            // End of file. Should never happen.
+            CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
         }
         return result;
@@ -273,7 +274,7 @@ class FilePersister {
     if (iterator.index) {
       return idxts_t(iterator.index - 1, iterator.us - std::chrono::microseconds(1));
     } else {
-      throw current::Exception("`LastPublishedIndexAndTimestamp()` called with no entries published.");
+      CURRENT_THROW(NoEntriesPublishedYet());
     }
   }
 

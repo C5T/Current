@@ -38,6 +38,7 @@ SOFTWARE.
 namespace current {
 namespace utils {
 
+// LCOV_EXCL_START
 struct InferSchemaException : Exception {
   using Exception::Exception;
 };
@@ -69,31 +70,34 @@ struct InferSchemaIncompatibleTypes : InferSchemaIncompatibleTypesBase {
       : InferSchemaIncompatibleTypesBase("Incompatible types: '" + lhs.HumanReadableType() + "' and '" +
                                          rhs.HumanReadableType() + "'.") {}
 };
+// LCOV_EXCL_STOP
 
 namespace impl {
 
 inline bool IsValidCPPIdentifier(const std::string& s) {
   if (s.empty()) {
-    return false;
+    return false;  // LCOV_EXCL_LINE
   }
   if (s == "NULL" || s == "null" || s == "true" || s == "false") {
     // TODO(dkorolev): Test for other reserved words, such as "case" or "int".
-    return false;
+    return false;  // LCOV_EXCL_LINE
   }
   if (!(s[0] == '_' || std::isalpha(s[0]))) {
-    return false;
+    return false;  // LCOV_EXCL_LINE
   }
   for (size_t i = 1u; i < s.length(); ++i) {
     if (!std::isalnum(s[i])) {
-      return false;
+      return false;  // LCOV_EXCL_LINE
     }
   }
   return true;
 }
 
+// LCOV_EXCL_START
 inline std::string MaybeOptionalHumanReadableType(bool has_nulls, const std::string& type) {
   return (has_nulls ? "optional " : "") + type;
 }
+// LCOV_EXCL_STOP
 
 // Inferred JSON types for fields.
 // Internally, the type is maintained along with the histogram of its values seen.
@@ -105,7 +109,9 @@ CURRENT_STRUCT(String) {
   CURRENT_DEFAULT_CONSTRUCTOR(String) {}
   CURRENT_CONSTRUCTOR(String)(const std::string& string) { values[string] = 1; }
 
+  // LCOV_EXCL_START
   std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "std::string"); }
+  // LCOV_EXCL_STOP
 };
 
 CURRENT_STRUCT(Bool) {
@@ -113,7 +119,9 @@ CURRENT_STRUCT(Bool) {
   CURRENT_FIELD(values_true, uint32_t, 0);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
+  // LCOV_EXCL_START
   std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "bool"); }
+  // LCOV_EXCL_STOP
 };
 
 // Note: The `Null` type is largely ephemeral. Top-level "null" is still not allowed in input JSONs.
@@ -129,7 +137,9 @@ CURRENT_STRUCT(Array) {
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
+  // LCOV_EXCL_START
   std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "array"); }
+  // LCOV_EXCL_STOP
 };
 
 CURRENT_STRUCT(Object) {
@@ -137,7 +147,9 @@ CURRENT_STRUCT(Object) {
   CURRENT_FIELD(instances, uint32_t, 1);
   CURRENT_FIELD(nulls, uint32_t, 0);
 
+  // LCOV_EXCL_START
   std::string HumanReadableType() const { return MaybeOptionalHumanReadableType(nulls, "object"); }
+  // LCOV_EXCL_STOP
 };
 
 // `Reduce` and `CallReduce` implement the logic of building the schema for a superset of schemas.

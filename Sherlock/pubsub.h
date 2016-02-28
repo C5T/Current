@@ -113,15 +113,17 @@ class PubSubHTTPEndpointImpl {
         }
       }
       return ss::EntryResponse::More;
-    } catch (const current::net::NetworkException&) {
-      return ss::EntryResponse::Done;
+    } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
+      return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
     }
   }
 
+  // LCOV_EXCL_START
   ss::TerminationResponse Terminate() {
     http_response_("{\"error\":\"The subscriber has terminated.\"}\n");
-    return ss::TerminationResponse::Terminate;  // Confirm termination.
+    return ss::TerminationResponse::Terminate;
   }
+  // LCOV_EXCL_STOP
 
  private:
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.

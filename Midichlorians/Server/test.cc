@@ -89,6 +89,7 @@ struct GenericConsumer {
     }
   }
 
+  // LCOV_EXCL_START
   void operator()(const iOSGenericEvent& event) {
     std::string params = "source=" + event.source + " event=" + event.event;
     for (const auto& f : event.fields) {
@@ -97,8 +98,8 @@ struct GenericConsumer {
     }
     AppendToLastEvent(Printf("[iOSGenericEvent user_ms=%lld ", event.user_ms.count()) + params + ']');
   }
-
   void operator()(const iOSBaseEvent&) {}
+  // LCOV_EXCL_STOP
 
   // Web events.
   static std::string ExtractWebBaseEventParams(const WebBaseEvent& e) {
@@ -113,7 +114,7 @@ struct GenericConsumer {
       if (first) {
         first = false;
       } else {
-        result += ' ';
+        result += ' ';  // LCOV_EXCL_LINE
       }
       result += cit.first + '=' + cit.second;
     }

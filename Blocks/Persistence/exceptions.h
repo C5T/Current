@@ -65,6 +65,10 @@ struct InvalidIterableRangeException : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
+struct NoEntriesPublishedYet : PersistenceException {
+  using PersistenceException::PersistenceException;
+};
+
 }  // namespace peristence
 }  // namespace current
 
