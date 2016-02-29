@@ -162,10 +162,9 @@ TEST(PersistenceLayer, MemoryExceptions) {
     impl.Publish("2");
     current::time::SetNow(std::chrono::microseconds(3));
     impl.Publish("3");
-    // TODO(dkorolev): WHY DO THESE `ASSERT_THROW` tests fail when the exception is indeed thrown?
-    // ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
-    // ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
-    // ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
   }
 }
 
@@ -319,10 +318,9 @@ TEST(PersistenceLayer, FileExceptions) {
     impl.Publish("2");
     current::time::SetNow(std::chrono::microseconds(3));
     impl.Publish("3");
-    // TODO(dkorolev): WHY DO THESE `ASSERT_THROW` tests fail when the exception is indeed thrown?
-    // ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
-    // ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
-    // ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
+    ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
   }
 }
 
