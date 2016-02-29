@@ -65,11 +65,10 @@ class EntryPersister : public GenericEntryPersister<ENTRY>, public IMPL {
 
   using IterableRange = typename IMPL::IterableRange;
 
-  IterableRange Iterate(uint64_t begin, uint64_t end) const noexcept { return IMPL::Iterate(begin, end); }
-  IterableRange Iterate(uint64_t begin) const noexcept {
-    return IMPL::Iterate(begin, static_cast<uint64_t>(-1));
-  }
-  IterableRange Iterate() const noexcept { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
+  // NOTE: `IMPL::Iterate()` may throw.
+  IterableRange Iterate(uint64_t begin, uint64_t end) const { return IMPL::Iterate(begin, end); }
+  IterableRange Iterate(uint64_t begin) const { return IMPL::Iterate(begin, static_cast<uint64_t>(-1)); }
+  IterableRange Iterate() const { return IMPL::Iterate(0, static_cast<uint64_t>(-1)); }
 };
 
 // For `static_assert`-s.
