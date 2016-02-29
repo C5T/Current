@@ -34,10 +34,12 @@ struct StorageException : Exception {
   using Exception::Exception;
 };
 
+// LCOV_EXCL_START
 struct StorageCannotAppendToFileException : StorageException {
   explicit StorageCannotAppendToFileException(const std::string& filename)
       : StorageException("Cannot append to: `" + filename + "`.") {}
 };
+// LCOV_EXCL_STOP
 
 struct StorageRollbackExceptionWithNoValue : StorageException {
   using StorageException::StorageException;

@@ -62,8 +62,8 @@ struct Synchronous final {
     std::promise<TransactionResult<T_RESULT>> promise;
     Future<TransactionResult<T_RESULT>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
-      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
-      return future;
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
+      return future;                                                                         // LCOV_EXCL_LINE
     }
     bool successful = false;
     T_RESULT f_result;
@@ -78,12 +78,14 @@ struct Synchronous final {
       promise.set_value(TransactionResult<T_RESULT>::Rollbacked(OptionalResultMissing()));
     } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
+      // LCOV_EXCL_START
       try {
         promise.set_exception(std::current_exception());
       } catch (const std::exception& e) {
         std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
         std::exit(-1);
       }
+      // LCOV_EXCL_STOP
     }
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
@@ -113,12 +115,14 @@ struct Synchronous final {
       promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultExists()));
     } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
+      // LCOV_EXCL_START
       try {
         promise.set_exception(std::current_exception());
       } catch (const std::exception& e) {
         std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
         std::exit(-1);
       }
+      // LCOV_EXCL_STOP
     }
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
@@ -138,21 +142,22 @@ struct Synchronous final {
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
-      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
-      return future;
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
+      return future;                                                                         // LCOV_EXCL_LINE
     }
     bool successful = false;
     try {
       f2(f1());
       successful = true;
-    } catch (std::exception&) {
-      journal_.Rollback();
+    } catch (std::exception&) {  // LCOV_EXCL_LINE
+      journal_.Rollback();       // LCOV_EXCL_LINE
     }
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
       promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
     } else {
+      // TODO(dkorolev) + TODO(mzhurovich): Test this.
       promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultMissing()));
     }
     return future;

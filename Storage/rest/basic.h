@@ -125,7 +125,7 @@ struct Basic {
         input.field.Add(input.entry);
         return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
       } else {
-        return Response("Already exists.\n", HTTPResponseCode.Conflict);
+        return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }
     }
     static Response ErrorBadJSON(const std::string&) {
@@ -153,9 +153,11 @@ struct Basic {
         return Response("Object key doesn't match URL key.\n", HTTPResponseCode.BadRequest);
       }
     }
+    // LCOV_EXCL_START
     static Response ErrorBadJSON(const std::string&) {
       return Response("Bad JSON.\n", HTTPResponseCode.BadRequest);
     }
+    // LCOV_EXCL_STOP
   };
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -171,9 +173,11 @@ struct Basic {
     }
   };
 
+  // LCOV_EXCL_START
   static Response ErrorMethodNotAllowed() {
     return Response("Method not allowed.\n", HTTPResponseCode.MethodNotAllowed);
   }
+  // LCOV_EXCL_STOP
 };
 
 }  // namespace rest

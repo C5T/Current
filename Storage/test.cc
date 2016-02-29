@@ -292,7 +292,7 @@ TEST(TransactionalStorage, Exceptions) {
     if (should_throw) {
       throw 100500;
     } else {
-      return 42;
+      return 42;  // LCOV_EXCL_LINE
     }
   };
 
@@ -470,7 +470,7 @@ class StorageSherlockTestProcessorImpl {
 
   TerminationResponse Terminate() {
     if (allow_terminate_) {
-      return TerminationResponse::Terminate;
+      return TerminationResponse::Terminate;  // LCOV_EXCL_LINE
     } else {
       return TerminationResponse::Wait;
     }
@@ -798,7 +798,7 @@ CURRENT_STRUCT(SimplePost) {
   CURRENT_FIELD(text, std::string);
   CURRENT_CONSTRUCTOR(SimplePost)(const std::string& key = "", const std::string& text = "")
       : key(key), text(text) {}
-  void InitializeOwnKey() { key = ToString(std::hash<std::string>()(text)); }
+  void InitializeOwnKey() { key = ToString(std::hash<std::string>()(text)); }  // LCOV_EXCL_LINE
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
@@ -893,6 +893,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   EXPECT_EQ(12u, persisted_transactions.size());
 }
 
+// LCOV_EXCL_START
 // Test the `CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(field)` macro.
 namespace transactional_storage_test {
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersistedExposed);
@@ -902,6 +903,7 @@ CURRENT_STORAGE(PartiallyExposedStorage) {
   CURRENT_STORAGE_FIELD(post, SimplePostPersistedNotExposed);
 };
 }  // namespace transactional_storage_test
+// LCOV_EXCL_STOP
 
 CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(transactional_storage_test::SimplePostPersistedNotExposed);
 

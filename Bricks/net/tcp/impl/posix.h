@@ -244,6 +244,7 @@ class Connection : public SocketHandle {
         //    (Really, just a safety check).
       } while (false);
 
+// LCOV_EXCL_START
 #ifndef CURRENT_WINDOWS
       if (errno == ECONNRESET) {
         if (ptr != buffer) {
@@ -288,6 +289,7 @@ class Connection : public SocketHandle {
         }
       }
 #endif
+      // LCOV_EXCL_STOP
     }
   }
 

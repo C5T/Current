@@ -95,14 +95,21 @@ TEST(ArchitectureTest, CURRENT_ARCH_UNAME_AS_IDENTIFIER) {
 TEST(HTTPAPI, Register) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port).Register("/get", [](Request r) { r("OK"); });
-  auto tmp_handler = [](Request) {};  // LCOV_EXCL_LINE
-  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", tmp_handler), HandlerAlreadyExistsException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/get", nullptr), HandlerAlreadyExistsException);
   const string url = Printf("http://localhost:%d/get", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
   EXPECT_EQ("OK", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
+}
+
+TEST(HTTPAPI, RegisterExceptions) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("no_slash", nullptr), PathDoesNotStartWithSlash);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/wrong_slash/", nullptr), PathEndsWithSlash);
+  // The curly brackets are not necessarily wrong, but `URL::IsPathValidToRegister()` is `false` for them.
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).Register("/{}", nullptr), PathContainsInvalidCharacters);
 }
 
 TEST(HTTPAPI, RegisterWithURLPathParams) {
@@ -177,6 +184,14 @@ TEST(HTTPAPI, UnRegisterAndReRegister) {
   HTTP(FLAGS_net_api_test_port).Register<ReRegisterRoute::SilentlyUpdateExisting>("/foo", tmp_handler);
   EXPECT_EQ(200, static_cast<int>(HTTP(GET(url)).code));
   EXPECT_EQ("baz", HTTP(GET(url)).body);
+
+  // A special failure case to catch: The handler does exists, but with the wrong parameters count mask.
+  ASSERT_THROW(
+      HTTP(FLAGS_net_api_test_port)
+          .Register<ReRegisterRoute::SilentlyUpdateExisting>("/foo", URLPathArgs::CountMask::One, nullptr),
+      HandlerDoesNotExistException);
+  ASSERT_THROW(HTTP(FLAGS_net_api_test_port).UnRegister("/foo", URLPathArgs::CountMask::One),
+               HandlerDoesNotExistException);
 
   HTTP(FLAGS_net_api_test_port).UnRegister("/foo");
   EXPECT_EQ(404, static_cast<int>(HTTP(GET(url)).code));

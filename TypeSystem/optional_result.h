@@ -84,6 +84,7 @@ template <>
 class OptionalResult<void> {
  public:
   explicit OptionalResult(const OptionalResultExists&) : exists_(true) {}
+  // TODO(dkorolev) + TODO(mzhurovich): Test this.
   explicit OptionalResult(const OptionalResultMissing&) : exists_(false) {}
 
   OptionalResult(OptionalResult&& rhs) : exists_(rhs.exists_) {}

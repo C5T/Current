@@ -84,6 +84,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
     // Add two users.
+    current::time::SetNow(std::chrono::microseconds(1));
     storage.Transaction([](MutableFields<ExampleStorage> data) {
       EXPECT_TRUE(data.users.Empty());
       User alice;
@@ -98,6 +99,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     }).Wait();
 
     // Delete one, but rollback the transaction.
+    current::time::SetNow(std::chrono::microseconds(2));
     storage.Transaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
@@ -107,14 +109,17 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     }).Wait();
 
     // Confirm the previous transaction was reverted, and delete the privileged user for real now.
+    current::time::SetNow(std::chrono::microseconds(3));
     storage.Transaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
+      current::time::SetNow(std::chrono::microseconds(3001ull));
       data.users.Erase(static_cast<UserID>(102));
       EXPECT_EQ(1u, data.users.Size());
     }).Wait();
 
     // Confirm the non-reverted deleted user was indeed deleted.
+    current::time::SetNow(std::chrono::microseconds(4));
     storage.Transaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(1u, data.users.Size());

@@ -141,12 +141,14 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   // POST to a full resource-specifying URL, not allowed.
   {
+    current::time::SetNow(std::chrono::microseconds(101));
     const auto result = HTTP(POST(base_url + "/api1/data/client/42", "blah"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ("Should not have resource key in the URL.\n", result.body);
   }
 
   {
+    current::time::SetNow(std::chrono::microseconds(102));
     const auto result = HTTP(POST(base_url + "/api2/data/client/42", "blah"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ("{\"error\":\"Should not have resource key in the URL.\"}\n", result.body);
@@ -154,12 +156,14 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   // POST a JSON not following the schema, not allowed.
   {
+    current::time::SetNow(std::chrono::microseconds(103));
     const auto result = HTTP(POST(base_url + "/api1/data/client", "{\"trash\":true}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ("Bad JSON.\n", result.body);
   }
 
   {
+    current::time::SetNow(std::chrono::microseconds(104));
     const auto result = HTTP(POST(base_url + "/api2/data/client", "{\"trash\":true}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ(
@@ -172,12 +176,14 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   // POST another JSON not following the schema, still not allowed.
   {
+    current::time::SetNow(std::chrono::microseconds(105));
     const auto result = HTTP(POST(base_url + "/api1/data/client", "{\"key\":[]}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ("Bad JSON.\n", result.body);
   }
 
   {
+    current::time::SetNow(std::chrono::microseconds(106));
     const auto result = HTTP(POST(base_url + "/api2/data/client", "{\"key\":[]}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ(
@@ -189,6 +195,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // POST a real piece.
+  current::time::SetNow(std::chrono::microseconds(107));
   const auto post_response = HTTP(POST(base_url + "/api1/data/client", Client(ClientID(42))));
   const std::string client1_key_str = post_response.body;
   const ClientID client1_key = static_cast<ClientID>(FromString<uint64_t>(client1_key_str));
@@ -208,14 +215,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // PUT an entry with the key different from URL is not allowed.
+  current::time::SetNow(std::chrono::microseconds(108));
   EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/42", Client(ClientID(64)))).code));
+  current::time::SetNow(std::chrono::microseconds(109));
   EXPECT_EQ(400, static_cast<int>(HTTP(PUT(base_url + "/api2/data/client/42", Client(ClientID(64)))).code));
 
   // PUT a modified entry via both APIs.
   Client updated_client1((ClientID(client1_key)));
   updated_client1.name = "Jane Doe";
+  current::time::SetNow(std::chrono::microseconds(110));
   EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/" + client1_key_str, updated_client1)).code));
   updated_client1.male = false;
+  current::time::SetNow(std::chrono::microseconds(111));
   EXPECT_EQ(200, static_cast<int>(HTTP(PUT(base_url + "/api2/data/client/" + client1_key_str, updated_client1)).code));
 
   // Check if both updates took place.
@@ -233,7 +244,9 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // PUT two more records and GET the collection again.
+  current::time::SetNow(std::chrono::microseconds(112));
   EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/101", Client(ClientID(101)))).code));
+  current::time::SetNow(std::chrono::microseconds(113));
   EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api1/data/client/102", Client(ClientID(102)))).code));
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
@@ -262,6 +275,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   }
 
   // DELETE one record and GET the collection again.
+  current::time::SetNow(std::chrono::microseconds(114));
   EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api1/data/client/" + client1_key_str)).code));
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));

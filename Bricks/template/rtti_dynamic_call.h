@@ -79,14 +79,13 @@ struct SpecificUncastableTypeException : UncastableTypeException {
       : UncastableTypeException(typeid(BASE).name() + std::string(" -> ") + typeid(DERIVED).name()) {}
 };
 
-// LCOV_EXCL_STOP
-
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase {
   virtual void Handle(BASE&&, F&&, ARGS&&...) const {
-    CURRENT_THROW(SpecificUnhandledTypeException<BASE>());  // LCOV_EXCL_LINE
+    CURRENT_THROW(SpecificUnhandledTypeException<BASE>());
   }
 };
+// LCOV_EXCL_STOP
 
 template <typename BASE, typename F, typename DERIVED, typename... ARGS>
 struct RTTIDispatcher : RTTIDispatcherBase<BASE, F, ARGS...> {

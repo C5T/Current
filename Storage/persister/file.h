@@ -50,7 +50,7 @@ class JSONFilePersister<TypeList<TS...>> {
   void PersistJournal(MutationJournal& journal) {
     std::ofstream os(filename_, std::fstream::app);
     if (!os.good()) {
-      throw StorageCannotAppendToFileException(filename_);
+      throw StorageCannotAppendToFileException(filename_);  // LCOV_EXCL_LINE
     }
     for (auto&& entry : journal.commit_log) {
       os << JSON(T_VARIANT(std::move(entry))) << '\n';

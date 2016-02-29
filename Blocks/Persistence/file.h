@@ -54,7 +54,13 @@ namespace impl {
 template <typename ENTRY>
 class IteratorOverFileOfPersistedEntries {
  public:
-  explicit IteratorOverFileOfPersistedEntries(std::istream& fi) : fi_(fi) { assert(fi_.good()); }
+  explicit IteratorOverFileOfPersistedEntries(std::istream& fi, std::streampos offset, uint64_t index_at_offset)
+      : fi_(fi), next_(index_at_offset, std::chrono::microseconds(0)) {
+    assert(fi_.good());
+    if (offset) {
+      fi_.seekg(offset, std::ios_base::beg);
+    }
+  }
 
   template <typename F>
   bool ProcessNextEntry(F&& f) {
@@ -105,32 +111,41 @@ class FilePersister {
 
  private:
   struct Impl {
-    // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
-    // http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840
-    // std::atomic<end_t> end;
-    // Actually, the above line would work fine on my machine -- D.K. -- but only if `std::atomic<end_t> end`
-    // is the first member declaration in the class. I'll leave it commented out for now.
-    current::atomic_that_works<end_t> end;
-
     const std::string filename;
     std::ofstream appender;
 
+    // `offset.size() == end.index`, and `offset[i]` is the offset in bytes where the line for index `i` begins.
+    std::mutex mutex;
+    std::vector<std::streampos> offset;
+
+    // Just `std::atomic<end_t> end;` won't work in g++ until 5.1, ref.
+    // http://stackoverflow.com/questions/29824570/segfault-in-stdatomic-load/29824840#29824840
+    // std::atomic<end_t> end;
+    current::atomic_that_works<end_t> end;
+
     Impl() = delete;
     explicit Impl(const std::string& filename)
-        : end(ValidateFileAndInitializeNext(filename)),
-          filename(filename),
-          appender(filename, std::ofstream::app) {
+        : filename(filename),
+          appender(filename, std::ofstream::app),
+          end(ValidateFileAndInitializeNext(filename, offset)) {
       assert(appender.good());
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
-    static end_t ValidateFileAndInitializeNext(const std::string& filename) {
+    static end_t ValidateFileAndInitializeNext(const std::string& filename,
+                                               std::vector<std::streampos>& offset) {
       std::ifstream fi(filename);
       if (fi.good()) {
-        IteratorOverFileOfPersistedEntries<ENTRY> cit(fi);
-        while (cit.ProcessNextEntry([](const idxts_t&, const char*) {})) {
-          // Read through all the lines.
-          // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
+        // Read through all the lines.
+        // Let `IteratorOverFileOfPersistedEntries` maintain its own `next_`, which later becomes `this->end`.
+        // While reading the file, record the offset of each record and store it in `offset`.
+        IteratorOverFileOfPersistedEntries<ENTRY> cit(fi, 0, 0);
+        std::streampos current_offset(0);
+        while (cit.ProcessNextEntry([&fi, &offset, &current_offset](const idxts_t& current, const char*) {
+          assert(current.index == offset.size());
+          offset.push_back(current_offset);
+          current_offset = fi.tellg();
+        })) {
           ;
         }
         const auto& end = cit.Next();
@@ -146,8 +161,11 @@ class FilePersister {
 
   class IterableRange {
    public:
-    explicit IterableRange(ScopeOwnedByMe<Impl>& impl, uint64_t begin, uint64_t end)
-        : impl_(impl, [this]() {}), begin_(begin), end_(end) {}
+    explicit IterableRange(ScopeOwnedByMe<Impl>& impl,
+                           uint64_t begin,
+                           uint64_t end,
+                           std::streampos begin_offset)
+        : impl_(impl, [this]() {}), begin_(begin), end_(end), begin_offset_(begin_offset) {}
 
     struct Entry {
       idxts_t idx_ts;
@@ -156,10 +174,22 @@ class FilePersister {
 
     class Iterator {
      public:
-      explicit Iterator(const std::string& filename, uint64_t i) : i_(i) {
+      explicit Iterator(const std::string& filename,
+                        uint64_t i,
+                        std::streampos offset,
+                        uint64_t index_at_offset)
+          : i_(i) {
         if (!filename.empty()) {
           fi_ = std::make_unique<std::ifstream>(filename);
-          cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_);
+          // This `if` condition is only here to test performance with vs. without the `seekg`.
+          // The high performance version jumps to the desired entry right away,
+          // The poor performance one scans the file from the very beginning for each new iterator created.
+          if (true) {
+            cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, offset, index_at_offset);
+          } else {
+            // Inefficient, scan the file from the very beginning.
+            cit_ = std::make_unique<IteratorOverFileOfPersistedEntries<ENTRY>>(*fi_, 0, 0);
+          }
         }
       }
 
@@ -173,11 +203,12 @@ class FilePersister {
                   found = true;
                   result.idx_ts = cursor;
                   result.entry = ParseJSON<ENTRY>(json);
-                } else if (cursor.index > i_) {
-                  CURRENT_THROW(InconsistentIndexException(i_, cursor.index));
+                } else if (cursor.index > i_) {                                 // LCOV_EXCL_LINE
+                  CURRENT_THROW(InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
                 }
               }))) {
-            CURRENT_THROW(current::Exception());  // End of file. Should never happen.
+            // End of file. Should never happen.
+            CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
         }
         return result;
@@ -195,16 +226,16 @@ class FilePersister {
 
     Iterator begin() const {
       if (begin_ == end_) {
-        return Iterator("", 0);
+        return Iterator("", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator(impl_->filename, begin_);
+        return Iterator(impl_->filename, begin_, begin_offset_, begin_);
       }
     }
     Iterator end() const {
       if (begin_ == end_) {
-        return Iterator("", 0);
+        return Iterator("", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator(impl_->filename, end_);
+        return Iterator("", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
       }
     }
 
@@ -212,6 +243,7 @@ class FilePersister {
     mutable ScopeOwnedBySomeoneElse<Impl> impl_;
     const uint64_t begin_;
     const uint64_t end_;
+    const std::streampos begin_offset_;
   };
 
   template <typename E>
@@ -222,6 +254,11 @@ class FilePersister {
     }
     iterator.us = timestamp;
     const auto current = idxts_t(iterator.index, iterator.us);
+    {
+      std::lock_guard<std::mutex> lock(impl_->mutex);
+      assert(impl_->offset.size() == iterator.index);
+      impl_->offset.push_back(impl_->appender.tellp());
+    }
     impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.index;
     iterator.us += std::chrono::microseconds(1);
@@ -237,7 +274,7 @@ class FilePersister {
     if (iterator.index) {
       return idxts_t(iterator.index - 1, iterator.us - std::chrono::microseconds(1));
     } else {
-      throw current::Exception("`LastPublishedIndexAndTimestamp()` called with no entries published.");
+      CURRENT_THROW(NoEntriesPublishedYet());
     }
   }
 
@@ -250,12 +287,14 @@ class FilePersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin_index == end_index) {
-      return IterableRange(impl_, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
+      return IterableRange(impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
     }
     if (end_index < begin_index) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-    return IterableRange(impl_, begin_index, end_index);
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    assert(impl_->offset.size() >= current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
+    return IterableRange(impl_, begin_index, end_index, impl_->offset[begin_index]);
   }
 
  private:

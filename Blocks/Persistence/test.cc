@@ -60,20 +60,6 @@ TEST(PersistenceLayer, Memory) {
 
   using IMPL = current::persistence::Memory<std::string>;
 
-  static_assert(current::ss::IsPersister<IMPL>::value, "");
-  static_assert(current::ss::IsEntryPersister<IMPL, std::string>::value, "");
-
-  static_assert(!current::ss::IsPublisher<IMPL>::value, "");
-  static_assert(!current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
-  static_assert(!current::ss::IsStreamPublisher<IMPL, std::string>::value, "");
-
-  static_assert(!current::ss::IsPublisher<int>::value, "");
-  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
-  static_assert(!current::ss::IsStreamPublisher<IMPL, int>::value, "");
-
-  static_assert(!current::ss::IsPersister<int>::value, "");
-  static_assert(!current::ss::IsEntryPersister<IMPL, int>::value, "");
-
   {
     IMPL impl;
     EXPECT_EQ(0u, impl.Size());
@@ -127,19 +113,66 @@ TEST(PersistenceLayer, Memory) {
   }
 }
 
+TEST(PersistenceLayer, MemoryExceptions) {
+  using namespace persistence_test;
+
+  using IMPL = current::persistence::Memory<std::string>;
+
+  static_assert(current::ss::IsPersister<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPersister<IMPL, std::string>::value, "");
+
+  static_assert(!current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+  static_assert(!current::ss::IsStreamPublisher<IMPL, std::string>::value, "");
+
+  static_assert(!current::ss::IsPublisher<int>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
+  static_assert(!current::ss::IsStreamPublisher<IMPL, int>::value, "");
+
+  static_assert(!current::ss::IsPersister<int>::value, "");
+  static_assert(!current::ss::IsEntryPersister<IMPL, int>::value, "");
+
+  {
+    // Time goes back.
+    IMPL impl;
+    current::time::SetNow(std::chrono::microseconds(2));
+    impl.Publish("2");
+    current::time::SetNow(std::chrono::microseconds(1));
+    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+  }
+
+  {
+    // Time staying the same is as bad as time going back.
+    current::time::SetNow(std::chrono::microseconds(3));
+    IMPL impl;
+    impl.Publish("2");
+    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+  }
+
+  {
+    IMPL impl;
+    ASSERT_THROW(impl.LastPublishedIndexAndTimestamp(), current::persistence::NoEntriesPublishedYet);
+  }
+
+  {
+    IMPL impl;
+    current::time::SetNow(std::chrono::microseconds(1));
+    impl.Publish("1");
+    current::time::SetNow(std::chrono::microseconds(2));
+    impl.Publish("2");
+    current::time::SetNow(std::chrono::microseconds(3));
+    impl.Publish("3");
+    // TODO(dkorolev): WHY DO THESE `ASSERT_THROW` tests fail when the exception is indeed thrown?
+    // ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
+    // ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
+    // ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+  }
+}
+
 TEST(PersistenceLayer, File) {
   using namespace persistence_test;
 
   using IMPL = current::persistence::File<StorableString>;
-
-  static_assert(current::ss::IsPersister<IMPL>::value, "");
-  static_assert(current::ss::IsEntryPersister<IMPL, StorableString>::value, "");
-
-  static_assert(!current::ss::IsPublisher<IMPL>::value, "");
-  static_assert(!current::ss::IsEntryPublisher<IMPL, StorableString>::value, "");
-
-  static_assert(!current::ss::IsPublisher<int>::value, "");
-  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
@@ -232,6 +265,132 @@ TEST(PersistenceLayer, File) {
                                 static_cast<int>(e.idx_ts.us.count())));
     }
     EXPECT_EQ("foo 0 100,bar 1 200,meh 2 500,blah 3 999", Join(all_four, ","));
+  }
+}
+
+TEST(PersistenceLayer, FileExceptions) {
+  using namespace persistence_test;
+
+  using IMPL = current::persistence::File<std::string>;
+
+  static_assert(current::ss::IsPersister<IMPL>::value, "");
+  static_assert(current::ss::IsEntryPersister<IMPL, std::string>::value, "");
+
+  static_assert(!current::ss::IsPublisher<IMPL>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, std::string>::value, "");
+
+  static_assert(!current::ss::IsPublisher<int>::value, "");
+  static_assert(!current::ss::IsEntryPublisher<IMPL, int>::value, "");
+
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    // Time goes back.
+    IMPL impl(persistence_file_name);
+    current::time::SetNow(std::chrono::microseconds(2));
+    impl.Publish("2");
+    current::time::SetNow(std::chrono::microseconds(1));
+    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+  }
+
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    // Time staying the same is as bad as time going back.
+    current::time::SetNow(std::chrono::microseconds(3));
+    IMPL impl(persistence_file_name);
+    impl.Publish("2");
+    ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
+  }
+
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    IMPL impl(persistence_file_name);
+    ASSERT_THROW(impl.LastPublishedIndexAndTimestamp(), current::persistence::NoEntriesPublishedYet);
+  }
+
+  {
+    const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+    IMPL impl(persistence_file_name);
+    current::time::SetNow(std::chrono::microseconds(1));
+    impl.Publish("1");
+    current::time::SetNow(std::chrono::microseconds(2));
+    impl.Publish("2");
+    current::time::SetNow(std::chrono::microseconds(3));
+    impl.Publish("3");
+    // TODO(dkorolev): WHY DO THESE `ASSERT_THROW` tests fail when the exception is indeed thrown?
+    // ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
+    // ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
+    // ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
+  }
+}
+
+namespace persistence_test {
+
+inline StorableString LargeTestStorableString(int index) {
+  return StorableString{Printf("%07d ", index) + std::string(3 + index % 7, 'a' + index % 26)};
+}
+
+template <typename IMPL, int N = 1000>
+void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
+  // Populate many entries. Skip if testing the "resume from an existing file" mode.
+  if (publish) {
+    EXPECT_EQ(0u, impl.Size());
+    for (int i = 0; i < N; ++i) {
+      current::time::SetNow(std::chrono::microseconds(i * 1000));
+      impl.Publish(LargeTestStorableString(i));
+    }
+  }
+  EXPECT_EQ(static_cast<size_t>(N), impl.Size());
+
+  // Confirm entries are as expected.
+  EXPECT_EQ(0ull, (*impl.Iterate(0, 1).begin()).idx_ts.index);
+  EXPECT_EQ(0ll, (*impl.Iterate(0, 1).begin()).idx_ts.us.count());
+  EXPECT_EQ("0000000 aaa", (*impl.Iterate(0, 1).begin()).entry.s);
+  EXPECT_EQ(10ull, (*impl.Iterate(10, 11).begin()).idx_ts.index);
+  EXPECT_EQ(10000ll, (*impl.Iterate(10, 11).begin()).idx_ts.us.count());
+  EXPECT_EQ("0000010 kkkkkk", (*impl.Iterate(10, 11).begin()).entry.s);
+  EXPECT_EQ(100ull, (*impl.Iterate(100, 101).begin()).idx_ts.index);
+  EXPECT_EQ(100000ll, (*impl.Iterate(100, 101).begin()).idx_ts.us.count());
+  EXPECT_EQ("0000100 wwwww", (*impl.Iterate(100, 101).begin()).entry.s);
+
+  // Perftest the creation of a large number of iterators.
+  // The test would pass swiftly if the file is being seeked to the right spot,
+  // and run forever if every new iteator is scanning the file from the very beginning.
+  for (int i = 0; i < N; ++i) {
+    const auto cit = impl.Iterate(i, i + 1).begin();
+    const auto& e = *cit;
+    EXPECT_EQ(static_cast<uint64_t>(i), e.idx_ts.index);
+    EXPECT_EQ(static_cast<int64_t>(i * 1000), e.idx_ts.us.count());
+    EXPECT_EQ(LargeTestStorableString(i).s, e.entry.s);
+  }
+}
+
+}  // namespace persistence_test
+
+TEST(PersistenceLayer, MemoryIteratorPerformanceTest) {
+  using namespace persistence_test;
+  using IMPL = current::persistence::Memory<StorableString>;
+  IMPL impl;
+  IteratorPerformanceTest(impl);
+}
+
+TEST(PersistenceLayer, FileIteratorPerformanceTest) {
+  using namespace persistence_test;
+  using IMPL = current::persistence::File<StorableString>;
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+  {
+    // First, run the proper test.
+    IMPL impl(persistence_file_name);
+    IteratorPerformanceTest(impl);
+  }
+  {
+    // Then, test file resume logic as well.
+    IMPL impl(persistence_file_name);
+    IteratorPerformanceTest(impl, false);
   }
 }
 

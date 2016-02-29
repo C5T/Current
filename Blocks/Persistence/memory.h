@@ -100,6 +100,12 @@ class MemoryPersister {
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
     std::lock_guard<std::mutex> lock(container_->mutex);
+    if (!container_->entries.empty()) {
+      const std::chrono::microseconds expected = container_->entries.back().first;
+      if (!(timestamp > expected)) {
+        CURRENT_THROW(InconsistentTimestampException(expected + std::chrono::microseconds(1), timestamp));
+      }
+    }
     const auto index = static_cast<uint64_t>(container_->entries.size());
     container_->entries.emplace_back(timestamp, std::forward<E>(entry));
     return idxts_t(index, timestamp);
@@ -120,7 +126,7 @@ class MemoryPersister {
     if (!container_->entries.empty()) {
       return idxts_t(container_->entries.size() - 1, container_->entries.back().first);
     } else {
-      throw current::Exception("`LastPublishedIndexAndTimestamp()` called with no entries published.");
+      CURRENT_THROW(NoEntriesPublishedYet());
     }
   }
 

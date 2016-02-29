@@ -68,7 +68,8 @@ TEST(CompactTSV, Smoke) {
         " 0  1  1  5\n";
     EXPECT_EQ(golden, os.str());
   } else {
-    golden = os.str();  // Test TSV -> packed -> TSV for custom-sized inputs too.
+    // Test TSV -> packed -> TSV for custom-sized inputs too, if specified externally.
+    golden = os.str();  // LCOV_EXCL_LINE
   }
 
   CompactTSV fast;

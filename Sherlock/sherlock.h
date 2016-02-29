@@ -249,6 +249,7 @@ class StreamImpl {
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
+        // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
         if (!terminate_sent && state->terminate_signal) {
           terminate_sent = true;
           if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
