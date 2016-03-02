@@ -81,9 +81,7 @@ struct SpecificUncastableTypeException : UncastableTypeException {
 
 template <typename BASE, typename F, typename... ARGS>
 struct RTTIDispatcherBase {
-  virtual void Handle(BASE&&, F&&, ARGS&&...) const {
-    CURRENT_THROW(SpecificUnhandledTypeException<BASE>());
-  }
+  virtual void Handle(BASE&&, F&&, ARGS&&...) const { CURRENT_THROW(SpecificUnhandledTypeException<BASE>()); }
 };
 // LCOV_EXCL_STOP
 

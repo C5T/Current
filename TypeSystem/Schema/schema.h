@@ -139,10 +139,16 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
            "\n"
            "#include \"current.h\"\n"
            "\n"
+           "// clang-format off\n"
+           "\n"
            "namespace current_userspace {\n";
   }
 
-  static std::string Footer() { return "}  // namespace current_userspace\n"; }
+  static std::string Footer() {
+    return "}  // namespace current_userspace\n"
+           "\n"
+           "// clang-format off\n";
+  }
 
   // LCOV_EXCL_START
   static std::string ErrorMessageWithTypeId(TypeID type_id) {
@@ -236,7 +242,7 @@ struct LanguageSyntaxImpl<Language::CPP> : LanguageSyntaxCPP<CPPLanguageSelector
 template <>
 struct LanguageSyntaxImpl<Language::FSharp> {
   static std::string Header() {
-    return "// fsharpi -r Newtonsoft.Json.dll current.fsx\n"
+    return "// fsharpi -r Newtonsoft.Json.dll schema.fsx\n"
            "\n"
            "open Newtonsoft.Json\n"
            "let inline JSON o = JsonConvert.SerializeObject(o)\n"

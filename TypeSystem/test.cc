@@ -428,8 +428,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
 
   {
     std::string s;
-    const auto lambda =
-        [&s](const Foo& foo) { s += "lambda: Foo " + ToString(foo.i) + '\n'; };
+    const auto lambda = [&s](const Foo& foo) { s += "lambda: Foo " + ToString(foo.i) + '\n'; };
     {
       Variant<Foo> p(Foo(601u));
       p.Call(lambda);

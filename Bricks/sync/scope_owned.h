@@ -86,10 +86,7 @@ struct ConstructActualContainerViaMoveConstructor {};
 template <typename T>
 struct ActualInstance final {
   // Constructor: Construct an instance of the object.
-  ActualInstance()
-      : instance_(),
-        destructing_(false),
-        total_followers_spawned_throughout_lifetime_(0u) {}
+  ActualInstance() : instance_(), destructing_(false), total_followers_spawned_throughout_lifetime_(0u) {}
   template <typename... ARGS>
   ActualInstance(ARGS&&... args)
       : instance_(std::forward<ARGS>(args)...),
@@ -323,8 +320,7 @@ struct ActualInstanceContainer {
   ActualInstanceContainer(ConstructActualContainerViaMoveConstructor, ActualInstanceContainer&& rhs)
       : movable_instance_(std::move(rhs.movable_instance_)) {}
 
-  ActualInstanceContainer()
-      : movable_instance_(std::make_unique<ActualInstance<T>>()) {}
+  ActualInstanceContainer() : movable_instance_(std::make_unique<ActualInstance<T>>()) {}
 
   template <typename... ARGS>
   ActualInstanceContainer(ARGS&&... args)

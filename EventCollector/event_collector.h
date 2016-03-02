@@ -115,14 +115,10 @@ class EventCollectorHTTPServer {
     timer_thread_.join();
   }
 
-  void Join() {
-    HTTP(http_port_).Join();
-  }
+  void Join() { HTTP(http_port_).Join(); }
 
   void TimerThreadFunction() {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-    }
+    { std::lock_guard<std::mutex> lock(mutex_); }
     while (send_ticks_) {
       const std::chrono::microseconds sleep_us = [&]() {
         std::lock_guard<std::mutex> lock(mutex_);

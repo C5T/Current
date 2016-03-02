@@ -46,12 +46,10 @@ class PubSubHTTPEndpointImpl {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
-          r.timestamp -
-          std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["recent"]));
+          r.timestamp - std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["recent"]));
     } else if (http_request_.url.query.has("since")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
-      from_timestamp_ =
-          std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["since"]));
+      from_timestamp_ = std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["since"]));
     }
     if (http_request_.url.query.has("n")) {
       serving_ = false;  // Start in 'non-serving' mode when `n` is set.
