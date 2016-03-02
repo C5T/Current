@@ -90,11 +90,13 @@ class WaitableTerminateSignalBulkNotifier {
   class Scope {
    public:
     Scope(WaitableTerminateSignalBulkNotifier& bulk, WaitableTerminateSignal& signal) noexcept
-        : bulk_(bulk), notifier_(signal) {
+        : bulk_(bulk),
+          notifier_(signal) {
       bulk_.RegisterPendingNotifier(notifier_);
     }
     Scope(WaitableTerminateSignalBulkNotifier* bulk, WaitableTerminateSignal& signal) noexcept
-        : bulk_(*bulk), notifier_(signal) {
+        : bulk_(*bulk),
+          notifier_(signal) {
       bulk_.RegisterPendingNotifier(notifier_);
     }
     ~Scope() { bulk_.UnRegisterPendingNotifier(notifier_); }

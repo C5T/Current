@@ -211,9 +211,10 @@ inline std::string ToUpper(const T& input) {
 }
 
 }  // namespace strings
-}  // namespace current
 
-using current::strings::FromString;
-using current::strings::ToString;
+using strings::FromString;
+using strings::ToString;
+
+}  // namespace current
 
 #endif  // BRICKS_STRINGS_UTIL_H

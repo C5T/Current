@@ -178,12 +178,12 @@ struct CollectFieldValues {
 
   template <typename T>
   ENABLE_IF<!std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
-    output_.push_back(current::strings::ToString(value));
+    output_.push_back(current::ToString(value));
   }
 
   template <typename T>
   ENABLE_IF<std::is_enum<T>::value> operator()(const std::string&, const T& value) const {
-    output_.push_back(current::strings::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
+    output_.push_back(current::ToString(static_cast<typename std::underlying_type<T>::type>(value)));
   }
 
   template <typename T>
@@ -193,7 +193,7 @@ struct CollectFieldValues {
 
   template <typename TF, typename TS>
   void operator()(const std::string&, const std::pair<TF, TS>& value) const {
-    output_.push_back(current::strings::ToString(value.first) + ':' + current::strings::ToString(value.second));
+    output_.push_back(current::ToString(value.first) + ':' + current::ToString(value.second));
   }
 
   template <typename TK, typename TV>

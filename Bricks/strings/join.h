@@ -132,7 +132,7 @@ std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
       } else {
         result += separator;
       }
-      result += ToString(cit);
+      result += current::ToString(cit);
     }
     return result;
   }

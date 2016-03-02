@@ -2,6 +2,8 @@
 
 #include "current.h"
 
+// clang-format off
+
 namespace current_userspace {
 struct Primitives {
   uint8_t a;
@@ -47,3 +49,5 @@ struct FullTest {
   Variant<A, B, C, Empty> q;
 };
 }  // namespace current_userspace
+
+// clang-format off

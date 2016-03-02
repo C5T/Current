@@ -99,17 +99,16 @@ struct BinarySerializationException : Exception {
 struct BinarySaveToStreamException : BinarySerializationException {
   using BinarySerializationException::BinarySerializationException;
   BinarySaveToStreamException(const size_t bytes_to_write, const size_t actually_wrote)
-      : BinarySerializationException("Failed to write " + current::strings::ToString(bytes_to_write) +
-                                     " bytes, wrote only " + current::strings::ToString(actually_wrote) + '.') {
-  }
+      : BinarySerializationException("Failed to write " + current::ToString(bytes_to_write) +
+                                     " bytes, wrote only " + current::ToString(actually_wrote) + '.') {}
 };
 // LCOV_EXCL_STOP
 
 struct BinaryLoadFromStreamException : BinarySerializationException {
   using BinarySerializationException::BinarySerializationException;
   BinaryLoadFromStreamException(const size_t bytes_to_read, const size_t actually_read)
-      : BinarySerializationException("Failed to read " + current::strings::ToString(bytes_to_read) +
-                                     " bytes, read only " + current::strings::ToString(actually_read) + '.') {}
+      : BinarySerializationException("Failed to read " + current::ToString(bytes_to_read) +
+                                     " bytes, read only " + current::ToString(actually_read) + '.') {}
 };
 
 }  // namespace binary

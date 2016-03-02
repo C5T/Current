@@ -62,36 +62,38 @@ TEST(Iris, Demo) {
   size_t number_of_flowers = 0u;
   std::map<size_t, std::string> dimension_names;
 
-  auto http_scope = HTTP(FLAGS_iris_port)
-      .Register("/import",
-                [&db, &number_of_flowers, &dimension_names](Request request) {
-                  EXPECT_EQ("POST", request.method);
-                  const std::string body = request.body;
-                  db.Transaction([body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
-                    // Skip the first line with labels.
-                    bool first_line = true;
-                    for (auto flower_definition_line : Split<ByLines>(body)) {
-                      std::vector<std::string> flower_definition_fields = Split(flower_definition_line, '\t');
-                      assert(flower_definition_fields.size() == 5u);
-                      if (first_line && flower_definition_fields.back() == "Label") {
-                        // For this example, just overwrite the labels on each `/import`.
-                        dimension_names.clear();
-                        for (size_t i = 0; i < flower_definition_fields.size() - 1; ++i) {
-                          dimension_names[i] = flower_definition_fields[i];
-                        }
-                        continue;
+  auto http_scope =
+      HTTP(FLAGS_iris_port)
+          .Register(
+              "/import",
+              [&db, &number_of_flowers, &dimension_names](Request request) {
+                EXPECT_EQ("POST", request.method);
+                const std::string body = request.body;
+                db.Transaction([body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
+                  // Skip the first line with labels.
+                  bool first_line = true;
+                  for (auto flower_definition_line : Split<ByLines>(body)) {
+                    std::vector<std::string> flower_definition_fields = Split(flower_definition_line, '\t');
+                    assert(flower_definition_fields.size() == 5u);
+                    if (first_line && flower_definition_fields.back() == "Label") {
+                      // For this example, just overwrite the labels on each `/import`.
+                      dimension_names.clear();
+                      for (size_t i = 0; i < flower_definition_fields.size() - 1; ++i) {
+                        dimension_names[i] = flower_definition_fields[i];
                       }
-                      first_line = false;
-                      fields.flowers.Add(LabeledFlower(++number_of_flowers,
-                                              FromString<double>(flower_definition_fields[0]),
-                                              FromString<double>(flower_definition_fields[1]),
-                                              FromString<double>(flower_definition_fields[2]),
-                                              FromString<double>(flower_definition_fields[3]),
-                                              flower_definition_fields[4]));
+                      continue;
                     }
-                    return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
-                  }, std::move(request)).Wait();
-                });
+                    first_line = false;
+                    fields.flowers.Add(LabeledFlower(++number_of_flowers,
+                                                     current::FromString<double>(flower_definition_fields[0]),
+                                                     current::FromString<double>(flower_definition_fields[1]),
+                                                     current::FromString<double>(flower_definition_fields[2]),
+                                                     current::FromString<double>(flower_definition_fields[3]),
+                                                     flower_definition_fields[4]));
+                  }
+                  return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
+                }, std::move(request)).Wait();
+              });
 
   // The input file is in the `golden` directory for it to be successfully picked up by
   // `scripts/full-test.sh`.
@@ -130,7 +132,7 @@ TEST(Iris, Demo) {
     HTTP(FLAGS_iris_port)
         .Register("/get",
                   [&api](Request request) {
-                    const auto id = FromString<size_t>(request.url.query["id"]);
+                    const auto id = current::FromString<size_t>(request.url.query["id"]);
                     api.Transaction([id](TestDB::T_DATA data) {
                       return yoda::Dictionary<LabeledFlower>::Accessor(data)[id];
                     }, std::move(request));
@@ -141,10 +143,10 @@ TEST(Iris, Demo) {
         .Register("/add",
                   [&api](Request request) {
                     const std::string label = request.url.query["label"];
-                    const auto sl = FromString<double>(request.url.query["sl"]);
-                    const auto sw = FromString<double>(request.url.query["sw"]);
-                    const auto pl = FromString<double>(request.url.query["pl"]);
-                    const auto pw = FromString<double>(request.url.query["pw"]);
+                    const auto sl = current::FromString<double>(request.url.query["sl"]);
+                    const auto sw = current::FromString<double>(request.url.query["sw"]);
+                    const auto pl = current::FromString<double>(request.url.query["pl"]);
+                    const auto pw = current::FromString<double>(request.url.query["pw"]);
                     // In real life this should be a POST.
                     if (!label.empty()) {
                       const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
@@ -162,8 +164,8 @@ TEST(Iris, Demo) {
     HTTP(FLAGS_iris_port)
         .Register("/viz",
                   [&api](Request request) {
-                    auto x_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("x", "0")));
-                    auto y_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("y", "1")));
+                    auto x_dim = std::min(size_t(3), current::FromString<size_t>(request.url.query.get("x", "0")));
+                    auto y_dim = std::min(size_t(3), current::FromString<size_t>(request.url.query.get("y", "1")));
                     if (y_dim == x_dim) {
                       y_dim = (x_dim + 1) % 4;
                     }

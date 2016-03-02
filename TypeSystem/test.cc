@@ -411,7 +411,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
   {
     struct Visitor {
       std::string s;
-      void operator()(const Foo& foo) { s += "Foo " + current::strings::ToString(foo.i) + '\n'; }
+      void operator()(const Foo& foo) { s += "Foo " + current::ToString(foo.i) + '\n'; }
     };
     Visitor v;
     {
@@ -428,8 +428,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
 
   {
     std::string s;
-    const auto lambda =
-        [&s](const Foo& foo) { s += "lambda: Foo " + current::strings::ToString(foo.i) + '\n'; };
+    const auto lambda = [&s](const Foo& foo) { s += "lambda: Foo " + current::ToString(foo.i) + '\n'; };
     {
       Variant<Foo> p(Foo(601u));
       p.Call(lambda);
@@ -473,9 +472,9 @@ TEST(TypeSystemTest, VariantSmokeTestMultipleTypes) {
   struct Visitor {
     std::string s;
     void operator()(const Bar&) { s = "Bar"; }
-    void operator()(const Foo& foo) { s = "Foo " + current::strings::ToString(foo.i); }
+    void operator()(const Foo& foo) { s = "Foo " + current::ToString(foo.i); }
     void operator()(const DerivedFromFoo& object) {
-      s = "DerivedFromFoo [" + current::strings::ToString(object.baz.v1.size()) + "]";
+      s = "DerivedFromFoo [" + current::ToString(object.baz.v1.size()) + "]";
     }
   };
   Visitor v;

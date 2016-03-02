@@ -2,6 +2,8 @@
 
 #include "current.h"
 
+// clang-format off
+
 namespace current_userspace {
 CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(a, uint8_t);
@@ -47,3 +49,5 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(q, (Variant<A, B, C, Empty>));
 };
 }  // namespace current_userspace
+
+// clang-format off

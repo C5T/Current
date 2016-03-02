@@ -101,7 +101,8 @@ struct compiled_expression : noncopyable {
   static void syscall(const std::string& command) {
     int retval = system(command.c_str());
     if (retval) {
-      std::cerr << command << std::endl << retval << std::endl;
+      std::cerr << command << std::endl
+                << retval << std::endl;
       exit(-1);
     }
   }

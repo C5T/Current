@@ -165,7 +165,7 @@ class MidichloriansHTTPServer {
 
     WebBaseEvent& dest_event = Value<WebBaseEvent>(web_event);
     try {
-      dest_event.user_ms = std::chrono::milliseconds(strings::FromString<uint64_t>(q.at("_t")));
+      dest_event.user_ms = std::chrono::milliseconds(current::FromString<uint64_t>(q.at("_t")));
       dest_event.customer_id = q.at("CUSTOMER_ACCOUNT");
       dest_event.client_id = q.at("cid");
       dest_event.ip = h.at("X-Forwarded-For");

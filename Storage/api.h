@@ -165,7 +165,7 @@ struct RESTfulHandlerGenerator {
                 [&handler, &storage, &restful_url_prefix, field_name](Request request,
                                                                       const std::string& key_as_string) {
                   try {
-                    const auto url_key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
+                    const auto url_key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                     const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     const auto entry_key = sfinae::GetKey(entry);
                     T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
@@ -211,7 +211,8 @@ struct RESTfulHandlerGenerator {
             handler.Enter(std::move(request),
                           [&handler, &storage, &restful_url_prefix, field_name](
                               Request request, const std::string& key_as_string) {
-                            const auto key = FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
+                            const auto key =
+                                current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                             T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
                             storage.Transaction(
                                         [handler, &storage, &field, key, &restful_url_prefix, field_name](
@@ -255,8 +256,9 @@ class RESTfulStorage {
         up_status_(std::make_unique<std::atomic_bool>(true)),
         route_prefix_(route_prefix),
         data_url_component_(data_url_component) {
-    const std::string restful_url_prefix =
-        restful_url_prefix_input.empty() ? "http://localhost:" + ToString(port) : restful_url_prefix_input;
+    const std::string restful_url_prefix = restful_url_prefix_input.empty()
+                                               ? "http://localhost:" + current::ToString(port)
+                                               : restful_url_prefix_input;
 
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE

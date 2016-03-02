@@ -42,7 +42,7 @@ struct SaveIntoJSONImpl<reflection::TypeID, J> {
   static bool Save(rapidjson::Value& destination,
                    rapidjson::Document::AllocatorType& allocator,
                    reflection::TypeID value) {
-    destination.SetString("T" + strings::ToString(static_cast<uint64_t>(value)), allocator);
+    destination.SetString("T" + current::ToString(value), allocator);
     return true;
   }
 };
@@ -55,7 +55,7 @@ template <JSONFormat J>
 struct LoadFromJSONImpl<reflection::TypeID, J> {
   static void Load(rapidjson::Value* source, reflection::TypeID& destination, const std::string& path) {
     if (source && source->IsString() && *source->GetString() == 'T') {
-      destination = static_cast<reflection::TypeID>(strings::FromString<uint64_t>(source->GetString() + 1));
+      destination = static_cast<reflection::TypeID>(current::FromString<uint64_t>(source->GetString() + 1));
     } else {
       throw JSONSchemaException("TypeID", source, path);  // LCOV_EXCL_LINE
     }

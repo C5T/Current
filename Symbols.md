@@ -88,8 +88,9 @@ current::CRC32(x)
 current::SHA256(x)
 current::ROL64(x, n)
 
+current::ToString    // Analogous to `std::to_string`, but supports enum classes too.
+current::FromString  // Supports enum classes too.
 current::Printf
-current::ToString, current::FromString
 current::Split, current::Join, current::SplitIntoKeyValuePairs
 current::ToLower, current::ToUpper
 current::Trim
