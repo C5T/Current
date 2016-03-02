@@ -50,7 +50,6 @@ namespace sherlock_unittest {
 
 using current::strings::Join;
 using current::strings::Printf;
-using current::strings::ToString;
 using current::ss::EntryResponse;
 using current::ss::TerminationResponse;
 

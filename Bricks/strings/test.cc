@@ -37,8 +37,6 @@ using current::strings::PackToString;
 using current::strings::UnpackFromString;
 using current::strings::CompileTimeStringLength;
 using current::strings::Trim;
-using current::strings::ToString;
-using current::strings::FromString;
 using current::strings::ToLower;
 using current::strings::ToUpper;
 using current::strings::Join;

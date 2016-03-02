@@ -47,27 +47,27 @@ class PubSubHTTPEndpointImpl {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
           r.timestamp -
-          std::chrono::microseconds(current::strings::FromString<uint64_t>(http_request_.url.query["recent"]));
+          std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["recent"]));
     } else if (http_request_.url.query.has("since")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ =
-          std::chrono::microseconds(current::strings::FromString<uint64_t>(http_request_.url.query["since"]));
+          std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["since"]));
     }
     if (http_request_.url.query.has("n")) {
       serving_ = false;  // Start in 'non-serving' mode when `n` is set.
-      current::strings::FromString(http_request_.url.query["n"], n_);
+      FromString(http_request_.url.query["n"], n_);
       cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
     }
     if (http_request_.url.query.has("n_min")) {
       // `n_min` is same as `n`, but it does not set the cap; just the lower bound for `recent`.
       serving_ = false;  // Start in 'non-serving' mode when `n_min` is set.
-      current::strings::FromString(http_request_.url.query["n_min"], n_);
+      FromString(http_request_.url.query["n_min"], n_);
     }
     if (http_request_.url.query.has("cap")) {
-      current::strings::FromString(http_request_.url.query["cap"], cap_);
+      FromString(http_request_.url.query["cap"], cap_);
     }
     if (http_request_.url.query.has("stop_after_bytes")) {
-      current::strings::FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
+      FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
     }
     if (http_request_.url.query.has("nowait")) {
       no_wait_ = true;
