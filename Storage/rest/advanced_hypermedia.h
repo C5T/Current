@@ -61,7 +61,7 @@ static std::string json_content_type = current::net::HTTPServerConnection::Defau
 template <typename T, typename INPUT, typename TT>
 std::string FormatAsAdvancedHypermediaRecord(TT& record, const INPUT& input) {
   AdvancedHypermediaRESTRecordResponse response_builder;
-  const std::string key_as_string = ToString(sfinae::GetKey(record));
+  const std::string key_as_string = current::ToString(sfinae::GetKey(record));
   response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
   response_builder.url = response_builder.url_directory + '/' + key_as_string;
   response_builder.url_full = response_builder.url;
@@ -91,8 +91,8 @@ struct AdvancedHypermedia : Hypermedia {
     void Enter(Request request, F&& next) {
       const auto& q = request.url.query;
       brief = (q["fields"] == "brief");
-      query_i = FromString<uint64_t>(q.get("i", ToString(query_i)));
-      query_n = FromString<uint64_t>(q.get("n", ToString(query_n)));
+      query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));
+      query_n = current::FromString<uint64_t>(q.get("n", current::ToString(query_n)));
       WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
     }
 
@@ -100,7 +100,7 @@ struct AdvancedHypermedia : Hypermedia {
     Response Run(const INPUT& input) const {
       if (!input.url_key.empty()) {
         // Single record view.
-        const ImmutableOptional<ENTRY> result = input.field[FromString<KEY>(input.url_key)];
+        const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
         if (Exists(result)) {
           const auto& value = Value(result);
           return Response((brief ? FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(value, input)
@@ -115,8 +115,8 @@ struct AdvancedHypermedia : Hypermedia {
         AdvancedHypermediaRESTContainerResponse response_builder;
         response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
         const auto GenPageURL = [&](uint64_t i, uint64_t n) {
-          return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + ToString(i) + "&n=" +
-                 ToString(n);
+          return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) + "&n=" +
+                 current::ToString(n);
         };
         bool first = true;
         std::ostringstream os;

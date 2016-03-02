@@ -108,7 +108,7 @@ struct SherlockTestProcessorImpl {
       data_.results_ += Printf(
           "[%llu:%llu,%llu:%llu] %i", current.index, current.us.count(), last.index, last.us.count(), entry.x);
     } else {
-      data_.results_ += ToString(entry.x);
+      data_.results_ += current::ToString(entry.x);
     }
     ++data_.seen_;
     if (data_.seen_ < max_to_process_) {

@@ -198,7 +198,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   current::time::SetNow(std::chrono::microseconds(107));
   const auto post_response = HTTP(POST(base_url + "/api1/data/client", Client(ClientID(42))));
   const std::string client1_key_str = post_response.body;
-  const ClientID client1_key = static_cast<ClientID>(FromString<uint64_t>(client1_key_str));
+  const ClientID client1_key = static_cast<ClientID>(current::FromString<uint64_t>(client1_key_str));
   EXPECT_EQ(201, static_cast<int>(post_response.code));
 
   // Now GET it via both APIs.

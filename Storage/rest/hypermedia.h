@@ -128,7 +128,7 @@ struct Hypermedia {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (!input.url_key.empty()) {
-        const ImmutableOptional<ENTRY> result = input.field[FromString<KEY>(input.url_key)];
+        const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
         if (Exists(result)) {
           return Value(result);
         } else {
@@ -138,7 +138,7 @@ struct Hypermedia {
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + input.field_name;
         for (const auto& element : input.field) {
-          response.data.emplace_back(response.url + '/' + ToString(sfinae::GetKey(element)));
+          response.data.emplace_back(response.url + '/' + current::ToString(sfinae::GetKey(element)));
         }
         return Response(response);
       }
@@ -161,7 +161,7 @@ struct Hypermedia {
       if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
         // TODO(dkorolev): Return a JSON with a resource here.
-        return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+        return Response(current::ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
       } else {
         return Response(HypermediaRESTError("The key generated for entry already exists"),
                         HTTPResponseCode.Conflict);

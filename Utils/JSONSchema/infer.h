@@ -385,7 +385,7 @@ class SchemaToTSVPrinter {
       std::sort(sorted.begin(), sorted.end());
       std::vector<std::string> sorted_as_strings;
       for (const auto& e : sorted) {
-        sorted_as_strings.push_back(e.second + " : " + ToString(-e.first));
+        sorted_as_strings.push_back(e.second + " : " + current::ToString(-e.first));
       }
       os_ << '\t' << current::strings::Join(sorted_as_strings, ", ");
     }

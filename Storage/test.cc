@@ -790,7 +790,7 @@ CURRENT_STRUCT(SimpleUser) {
   CURRENT_FIELD(name, std::string);
   CURRENT_CONSTRUCTOR(SimpleUser)(const std::string& key = "", const std::string& name = "")
       : key(key), name(name) {}
-  void InitializeOwnKey() { key = ToString(std::hash<std::string>()(name)); }
+  void InitializeOwnKey() { key = current::ToString(std::hash<std::string>()(name)); }
 };
 
 CURRENT_STRUCT(SimplePost) {
@@ -798,7 +798,7 @@ CURRENT_STRUCT(SimplePost) {
   CURRENT_FIELD(text, std::string);
   CURRENT_CONSTRUCTOR(SimplePost)(const std::string& key = "", const std::string& text = "")
       : key(key), text(text) {}
-  void InitializeOwnKey() { key = ToString(std::hash<std::string>()(text)); }  // LCOV_EXCL_LINE
+  void InitializeOwnKey() { key = current::ToString(std::hash<std::string>()(text)); }  // LCOV_EXCL_LINE
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.

@@ -129,46 +129,46 @@ TEST(Util, Trim) {
 enum class StringConversionTestEnum : int { TheAnswer = 42 };
 
 TEST(Util, FromString) {
-  EXPECT_EQ(1, FromString<int>("1"));
+  EXPECT_EQ(1, current::FromString<int>("1"));
 
-  EXPECT_EQ(32767, static_cast<int>(FromString<int16_t>("32767")));
-  EXPECT_EQ(65535, static_cast<int>(FromString<uint16_t>("65535")));
+  EXPECT_EQ(32767, static_cast<int>(current::FromString<int16_t>("32767")));
+  EXPECT_EQ(65535, static_cast<int>(current::FromString<uint16_t>("65535")));
 
   double tmp;
-  EXPECT_EQ(0.5, FromString("0.5", tmp));
+  EXPECT_EQ(0.5, current::FromString("0.5", tmp));
   EXPECT_EQ(0.5, tmp);
 
-  EXPECT_EQ(0u, FromString<size_t>(""));
-  EXPECT_EQ(0u, FromString<size_t>("foo"));
-  EXPECT_EQ(0u, FromString<size_t>("\n"));
+  EXPECT_EQ(0u, current::FromString<size_t>(""));
+  EXPECT_EQ(0u, current::FromString<size_t>("foo"));
+  EXPECT_EQ(0u, current::FromString<size_t>("\n"));
 
-  EXPECT_EQ(0.0, FromString<double>(""));
-  EXPECT_EQ(0.0, FromString<double>("bar"));
-  EXPECT_EQ(0.0, FromString<double>("\t"));
+  EXPECT_EQ(0.0, current::FromString<double>(""));
+  EXPECT_EQ(0.0, current::FromString<double>("bar"));
+  EXPECT_EQ(0.0, current::FromString<double>("\t"));
 
-  EXPECT_EQ("one two", FromString<std::string>("one two"));
-  EXPECT_EQ("three four", FromString<std::string>(std::string("three four")));
+  EXPECT_EQ("one two", current::FromString<std::string>("one two"));
+  EXPECT_EQ("three four", current::FromString<std::string>(std::string("three four")));
 
-  EXPECT_TRUE(FromString<bool>("true"));
-  EXPECT_TRUE(FromString<bool>("1"));
-  EXPECT_FALSE(FromString<bool>("false"));
-  EXPECT_FALSE(FromString<bool>("0"));
+  EXPECT_TRUE(current::FromString<bool>("true"));
+  EXPECT_TRUE(current::FromString<bool>("1"));
+  EXPECT_FALSE(current::FromString<bool>("false"));
+  EXPECT_FALSE(current::FromString<bool>("0"));
 
-  EXPECT_TRUE(StringConversionTestEnum::TheAnswer == FromString<StringConversionTestEnum>("42"));
-  EXPECT_EQ(0, static_cast<int>(FromString<StringConversionTestEnum>("")));
+  EXPECT_TRUE(StringConversionTestEnum::TheAnswer == current::FromString<StringConversionTestEnum>("42"));
+  EXPECT_EQ(0, static_cast<int>(current::FromString<StringConversionTestEnum>("")));
 }
 
 TEST(ToString, SmokeTest) {
-  EXPECT_EQ("foo", ToString("foo"));
-  EXPECT_EQ("bar", ToString(std::string("bar")));
-  EXPECT_EQ("one two", ToString("one two"));
-  EXPECT_EQ("three four", ToString(std::string("three four")));
-  EXPECT_EQ("42", ToString(42));
-  EXPECT_EQ("0.500000", ToString(0.5));
-  EXPECT_EQ("c", ToString('c'));
-  EXPECT_EQ("true", ToString(true));
-  EXPECT_EQ("false", ToString(false));
-  EXPECT_EQ("42", ToString(StringConversionTestEnum::TheAnswer));
+  EXPECT_EQ("foo", current::ToString("foo"));
+  EXPECT_EQ("bar", current::ToString(std::string("bar")));
+  EXPECT_EQ("one two", current::ToString("one two"));
+  EXPECT_EQ("three four", current::ToString(std::string("three four")));
+  EXPECT_EQ("42", current::ToString(42));
+  EXPECT_EQ("0.500000", current::ToString(0.5));
+  EXPECT_EQ("c", current::ToString('c'));
+  EXPECT_EQ("true", current::ToString(true));
+  EXPECT_EQ("false", current::ToString(false));
+  EXPECT_EQ("42", current::ToString(StringConversionTestEnum::TheAnswer));
 }
 
 TEST(Util, ToUpperAndToLower) {

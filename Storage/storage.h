@@ -641,7 +641,7 @@ struct ReplayFromAndAppendToFile final {
           hook_pop_back_name_(name + ".pop_back") {
       instance.RegisterHook(hook_push_back_name_,
                             [&storage](const char* data) {
-                              const auto index = FromString<size_t>(data);
+                              const auto index = current::FromString<size_t>(data);
                               assert(index == storage.vector_.size());
                               const char* tab = std::find(data, data + strlen(data), '\t');
                               assert(*tab);
@@ -649,7 +649,7 @@ struct ReplayFromAndAppendToFile final {
                             });
       instance.RegisterHook(hook_pop_back_name_,
                             [&storage](const char* data) {
-                              const auto index = FromString<size_t>(data);
+                              const auto index = current::FromString<size_t>(data);
                               assert(index == storage.vector_.size());
                               assert(!storage.vector_.empty());
                               storage.vector_.pop_back();

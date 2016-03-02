@@ -91,7 +91,7 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       if (!input.url_key.empty()) {
-        const auto key = FromString<KEY>(input.url_key);
+        const auto key = current::FromString<KEY>(input.url_key);
         const ImmutableOptional<ENTRY> result = input.field[key];
         if (Exists(result)) {
           return Value(result);
@@ -101,7 +101,7 @@ struct Basic {
       } else {
         std::ostringstream result;
         for (const auto& element : input.field) {
-          result << ToString(sfinae::GetKey(element)) << '\n';
+          result << current::ToString(sfinae::GetKey(element)) << '\n';
         }
         return result.str();
       }
@@ -123,7 +123,7 @@ struct Basic {
       input.entry.InitializeOwnKey();
       if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
-        return Response(ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+        return Response(current::ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }

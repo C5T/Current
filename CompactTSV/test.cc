@@ -77,7 +77,7 @@ TEST(CompactTSV, Smoke) {
   CreateTSV([&fast](const std::vector<size_t> &row) {
     std::vector<std::string> row_of_strings(row.size());
     for (size_t i = 0; i < row.size(); ++i) {
-      row_of_strings[i] = ToString(row[i]);
+      row_of_strings[i] = current::ToString(row[i]);
     }
     fast(row_of_strings);
   }, FLAGS_rows, FLAGS_cols, FLAGS_scale, FLAGS_random_seed);

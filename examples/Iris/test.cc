@@ -85,10 +85,10 @@ TEST(Iris, Demo) {
                     }
                     first_line = false;
                     fields.flowers.Add(LabeledFlower(++number_of_flowers,
-                                                     FromString<double>(flower_definition_fields[0]),
-                                                     FromString<double>(flower_definition_fields[1]),
-                                                     FromString<double>(flower_definition_fields[2]),
-                                                     FromString<double>(flower_definition_fields[3]),
+                                                     current::FromString<double>(flower_definition_fields[0]),
+                                                     current::FromString<double>(flower_definition_fields[1]),
+                                                     current::FromString<double>(flower_definition_fields[2]),
+                                                     current::FromString<double>(flower_definition_fields[3]),
                                                      flower_definition_fields[4]));
                   }
                   return Printf("Successfully imported %d flowers.\n", static_cast<int>(number_of_flowers));
@@ -132,7 +132,7 @@ TEST(Iris, Demo) {
     HTTP(FLAGS_iris_port)
         .Register("/get",
                   [&api](Request request) {
-                    const auto id = FromString<size_t>(request.url.query["id"]);
+                    const auto id = current::FromString<size_t>(request.url.query["id"]);
                     api.Transaction([id](TestDB::T_DATA data) {
                       return yoda::Dictionary<LabeledFlower>::Accessor(data)[id];
                     }, std::move(request));
@@ -143,10 +143,10 @@ TEST(Iris, Demo) {
         .Register("/add",
                   [&api](Request request) {
                     const std::string label = request.url.query["label"];
-                    const auto sl = FromString<double>(request.url.query["sl"]);
-                    const auto sw = FromString<double>(request.url.query["sw"]);
-                    const auto pl = FromString<double>(request.url.query["pl"]);
-                    const auto pw = FromString<double>(request.url.query["pw"]);
+                    const auto sl = current::FromString<double>(request.url.query["sl"]);
+                    const auto sw = current::FromString<double>(request.url.query["sw"]);
+                    const auto pl = current::FromString<double>(request.url.query["pl"]);
+                    const auto pw = current::FromString<double>(request.url.query["pw"]);
                     // In real life this should be a POST.
                     if (!label.empty()) {
                       const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
@@ -164,8 +164,8 @@ TEST(Iris, Demo) {
     HTTP(FLAGS_iris_port)
         .Register("/viz",
                   [&api](Request request) {
-                    auto x_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("x", "0")));
-                    auto y_dim = std::min(size_t(3), FromString<size_t>(request.url.query.get("y", "1")));
+                    auto x_dim = std::min(size_t(3), current::FromString<size_t>(request.url.query.get("x", "0")));
+                    auto y_dim = std::min(size_t(3), current::FromString<size_t>(request.url.query.get("y", "1")));
                     if (y_dim == x_dim) {
                       y_dim = (x_dim + 1) % 4;
                     }

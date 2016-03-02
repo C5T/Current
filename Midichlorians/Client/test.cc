@@ -72,18 +72,18 @@ class Server {
     EXPECT_FALSE(event.binary_version.empty());
     EXPECT_GT(event.app_install_time, 1420000000000u);
     EXPECT_GT(event.app_update_time, 1420000000000u);
-    messages_.push_back(ToString(event.user_ms.count()) + ":Launch");
+    messages_.push_back(current::ToString(event.user_ms.count()) + ":Launch");
   }
 
   void operator()(const iOSIdentifyEvent& event) {
-    messages_.push_back(ToString(event.user_ms.count()) + ":Identify[" + event.client_id + ']');
+    messages_.push_back(current::ToString(event.user_ms.count()) + ":Identify[" + event.client_id + ']');
   }
 
   void operator()(const iOSFocusEvent& event) {
     if (event.gained_focus) {
-      messages_.push_back(ToString(event.user_ms.count()) + ":GainedFocus[" + event.source + ']');
+      messages_.push_back(current::ToString(event.user_ms.count()) + ":GainedFocus[" + event.source + ']');
     } else {
-      messages_.push_back(ToString(event.user_ms.count()) + ":LostFocus[" + event.source + ']');
+      messages_.push_back(current::ToString(event.user_ms.count()) + ":LostFocus[" + event.source + ']');
     }
   }
 
@@ -93,7 +93,7 @@ class Server {
       params += ',';
       params += f.first + '=' + f.second;
     }
-    messages_.push_back(ToString(event.user_ms.count()) + ':' + event.event + '[' + params + ']');
+    messages_.push_back(current::ToString(event.user_ms.count()) + ':' + event.event + '[' + params + ']');
   }
 
   void operator()(const iOSBaseEvent&) {}

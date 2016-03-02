@@ -45,27 +45,28 @@ class PubSubHTTPEndpointImpl {
       : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
-      from_timestamp_ =
-          r.timestamp - std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["recent"]));
+      from_timestamp_ = r.timestamp - std::chrono::microseconds(
+                                          current::FromString<uint64_t>(http_request_.url.query["recent"]));
     } else if (http_request_.url.query.has("since")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
-      from_timestamp_ = std::chrono::microseconds(FromString<uint64_t>(http_request_.url.query["since"]));
+      from_timestamp_ =
+          std::chrono::microseconds(current::FromString<uint64_t>(http_request_.url.query["since"]));
     }
     if (http_request_.url.query.has("n")) {
       serving_ = false;  // Start in 'non-serving' mode when `n` is set.
-      FromString(http_request_.url.query["n"], n_);
+      current::FromString(http_request_.url.query["n"], n_);
       cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
     }
     if (http_request_.url.query.has("n_min")) {
       // `n_min` is same as `n`, but it does not set the cap; just the lower bound for `recent`.
       serving_ = false;  // Start in 'non-serving' mode when `n_min` is set.
-      FromString(http_request_.url.query["n_min"], n_);
+      current::FromString(http_request_.url.query["n_min"], n_);
     }
     if (http_request_.url.query.has("cap")) {
-      FromString(http_request_.url.query["cap"], cap_);
+      current::FromString(http_request_.url.query["cap"], cap_);
     }
     if (http_request_.url.query.has("stop_after_bytes")) {
-      FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
+      current::FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
     }
     if (http_request_.url.query.has("nowait")) {
       no_wait_ = true;

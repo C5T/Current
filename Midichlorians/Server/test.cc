@@ -105,7 +105,7 @@ struct GenericConsumer {
   static std::string ExtractWebBaseEventParams(const WebBaseEvent& e) {
     std::string result;
     result += "customer_id=" + e.customer_id + ' ';
-    result += "user_ms=" + ToString(e.user_ms.count()) + ' ';
+    result += "user_ms=" + current::ToString(e.user_ms.count()) + ' ';
     result += "client_id=" + e.client_id + ' ';
     result += "referer_host=" + e.referer_host + ' ';
     result += "referer_path=" + e.referer_path + ' ';
@@ -263,7 +263,7 @@ GET MockGETRequest(const std::string& base_url,
       "CUSTOMER_ACCOUNT=test_customer"
       "&cid=unit_test"
       "&_t=" +
-      ToString(ms) + "&ea=" + ea + "&ec=" + ec;
+      current::ToString(ms) + "&ea=" + ea + "&ec=" + ec;
   GET r(base_url + '?' + query_params);
   r.UserAgent("test_ua")
       .SetHeader("X-Forwarded-For", "192.168.0.1")
@@ -279,7 +279,7 @@ POST MockPOSTRequest(const std::string& base_url,
   const std::string body =
       "&cid=unit_test"
       "&_t=" +
-      ToString(ms) + "&ea=" + ea + "&ec=" + ec;
+      current::ToString(ms) + "&ea=" + ea + "&ec=" + ec;
   POST r(base_url + '?' + query_params, body);
   r.UserAgent("test_ua")
       .SetHeader("X-Forwarded-For", "192.168.0.1")

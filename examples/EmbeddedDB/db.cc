@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
 
   // Example command lines to get started.
   if (FLAGS_legend) {
-    const auto url = "localhost:" + ToString(FLAGS_db_demo_port);
+    const auto url = "localhost:" + current::ToString(FLAGS_db_demo_port);
 
     std::cerr << "Health check:\n\tcurl " << url << "/healthz" << std::endl;
     std::cerr << "Schema as F#:\n\tcurl " << url << "/schema.fs" << std::endl;
