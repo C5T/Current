@@ -109,11 +109,13 @@ CURRENT_STRUCT(Cell) {
 CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector1);
 CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector2);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrix);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(v1, ElementVector1);
   CURRENT_STORAGE_FIELD(v2, ElementVector2);
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
+  CURRENT_STORAGE_FIELD(m, CellMatrix);
 };
 
 }  // namespace transactional_storage_test
@@ -128,7 +130,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
   {
     Storage storage(persistence_file_name);
-    EXPECT_EQ(3u, storage.FieldsCount());
+    EXPECT_EQ(4u, storage.FieldsCount());
 
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
@@ -178,16 +180,47 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_TRUE(WasCommited(result));
     }
+    {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_TRUE(fields.m.Empty());
+        EXPECT_EQ(0u, fields.m.Size());
+        EXPECT_TRUE(fields.m.Rows().Empty());
+        EXPECT_TRUE(fields.m.Cols().Empty());
+        fields.m.Add(Cell{1, "one", 1});
+        fields.m.Add(Cell{2, "two", 2});
+        fields.m.Add(Cell{2, "too", 3});
+        EXPECT_FALSE(fields.m.Empty());
+        EXPECT_EQ(3u, fields.m.Size());
+        EXPECT_FALSE(fields.m.Rows().Empty());
+        EXPECT_FALSE(fields.m.Cols().Empty());
+        EXPECT_TRUE(fields.m.Rows().Has(1));
+        EXPECT_TRUE(fields.m.Cols().Has("one"));
+        EXPECT_TRUE(Exists(fields.m.Get(1, "one")));
+        EXPECT_EQ(1, Value(fields.m.Get(1, "one")).phew);
+        EXPECT_EQ(2, Value(fields.m.Get(2, "two")).phew);
+        EXPECT_EQ(3, Value(fields.m.Get(2, "too")).phew);
+      }).Go();
+      EXPECT_TRUE(WasCommited(result));
+    }
 
+    // Rollback transaction.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         fields.v1.PushBack(Element(1));
         fields.v2.PushBack(Element(2));
-        fields.d.Add(Record{"three", 3});
+
+        fields.d.Add(Record{"one", 100});
+        fields.d.Add(Record{"four", 4});
+        fields.d.Erase("two");
+
+        fields.m.Add(Cell{1, "one", 42});
+        fields.m.Add(Cell{3, "three", 3});
+        fields.m.Erase(2, "two");
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
       EXPECT_FALSE(WasCommited(result));
     }
+
     {
       const auto f = [](ImmutableFields<Storage>) { return 42; };
 
@@ -211,6 +244,13 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
       EXPECT_FALSE(Exists(fields.d["three"]));
+
+      EXPECT_FALSE(fields.m.Empty());
+      EXPECT_EQ(3u, fields.m.Size());
+      EXPECT_EQ(1, Value(fields.m.Get(1, "one")).phew);
+      EXPECT_EQ(2, Value(fields.m.Get(2, "two")).phew);
+      EXPECT_EQ(3, Value(fields.m.Get(2, "too")).phew);
+      EXPECT_FALSE(Exists(fields.m.Get(3, "three")));
     }).Wait();
   }
 }
@@ -235,11 +275,12 @@ TEST(TransactionalStorage, FieldAccessors) {
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
   Storage storage;
-  EXPECT_EQ(3u, storage.FieldsCount());
+  EXPECT_EQ(4u, storage.FieldsCount());
 
   EXPECT_EQ("v1", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("v2", storage(::current::storage::FieldNameByIndex<1>()));
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<2>()));
+  EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<3>()));
 
   {
     std::string s;
