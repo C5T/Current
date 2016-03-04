@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include <set>
+
 #include "docu/docu_2_code.cc"
 #include "docu/docu_3_code.cc"
 
@@ -203,9 +205,41 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommited(result));
     }
 
-    // Rollback transaction.
+    // Iterate over the matrix.
+    {
+      storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.m.Empty());
+        std::multiset<std::string> data;
+        for (const auto& row : fields.m.Rows()) {
+          for (const auto& element : row) {
+            data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                        current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                        current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
+      }).Go();
+      storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.m.Empty());
+        std::multiset<std::string> data;
+        for (const auto& col : fields.m.Cols()) {
+          for (const auto& element : col) {
+            data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                        current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                        current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
+      }).Go();
+    }
+
+    // Rollback a transaction involving a `Matrix`.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_EQ(3u, fields.m.Size());
+        EXPECT_EQ(2u, fields.m.Rows().Size());
+        EXPECT_EQ(3u, fields.m.Cols().Size());
+
         fields.v1.PushBack(Element(1));
         fields.v2.PushBack(Element(2));
 
@@ -219,6 +253,57 @@ TEST(TransactionalStorage, SmokeTest) {
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
       EXPECT_FALSE(WasCommited(result));
+
+      storage.Transaction([](ImmutableFields<Storage> fields) {
+        EXPECT_EQ(3u, fields.m.Size());
+        EXPECT_EQ(2u, fields.m.Rows().Size());
+        EXPECT_EQ(3u, fields.m.Cols().Size());
+      }).Go();
+    }
+
+    // Iterate over the matrix with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    {
+      EXPECT_FALSE(WasCommited(storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_TRUE(fields.m.Rows().Has(2));
+        EXPECT_TRUE(fields.m.Cols().Has("two"));
+        EXPECT_TRUE(fields.m.Cols().Has("too"));
+
+        fields.m.Erase(2, "two");
+        EXPECT_TRUE(fields.m.Rows().Has(2));  // Still has another "2" left, the {2, "too"} key.
+        EXPECT_FALSE(fields.m.Cols().Has("two"));
+        EXPECT_TRUE(fields.m.Cols().Has("too"));
+        EXPECT_EQ(2u, fields.m.Rows().Size());
+        EXPECT_EQ(2u, fields.m.Cols().Size());
+
+        fields.m.Erase(2, "too");
+        EXPECT_FALSE(fields.m.Rows().Has(2));
+        EXPECT_FALSE(fields.m.Cols().Has("two"));
+        EXPECT_FALSE(fields.m.Cols().Has("too"));
+        EXPECT_EQ(1u, fields.m.Rows().Size());
+        EXPECT_EQ(1u, fields.m.Cols().Size());
+
+        std::multiset<std::string> data1;
+        std::multiset<std::string> data2;
+        for (const auto& row : fields.m.Rows()) {
+          for (const auto& element : row) {
+            data1.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                         current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                         current::ToString(element.phew));
+          }
+        }
+        for (const auto& col : fields.m.Cols()) {
+          for (const auto& element : col) {
+            data2.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                         current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                         current::ToString(element.phew));
+          }
+        }
+
+        EXPECT_EQ("1,one=1", current::strings::Join(data1, ' '));
+        EXPECT_EQ("1,one=1", current::strings::Join(data2, ' '));
+
+        CURRENT_STORAGE_THROW_ROLLBACK();
+      }).Go()));
     }
 
     {
