@@ -31,6 +31,8 @@ SOFTWARE.
 
 #include "../base.h"
 
+#include "../../TypeSystem/optional.h"
+
 namespace current {
 namespace storage {
 namespace container {
