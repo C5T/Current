@@ -119,7 +119,7 @@ class GenericMatrix {
     forward_[row][col] = placeholder.get();
     transposed_[col][row] = placeholder.get();
   }
-  void operator()(const T_DELETE_EVENT& e) { Erase(e.row, e.col); }
+  void operator()(const T_DELETE_EVENT& e) { Erase(e.key.first, e.key.second); }
 
   template <typename OUTER_KEY, typename INNER_MAP>
   struct InnerAccessor final {

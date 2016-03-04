@@ -106,11 +106,12 @@ namespace storage {
     CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {}                      \
   };                                                                                                        \
   CURRENT_STRUCT(entry_name##Deleted) {                                                                     \
-    CURRENT_FIELD(row, ::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>);                             \
-    CURRENT_FIELD(col, ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>);                             \
+    CURRENT_FIELD(key, (std::pair<::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>,                   \
+                                  ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>>));                \
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                                     \
     CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                                       \
-        : row(::current::storage::sfinae::GetRow(value)), col(::current::storage::sfinae::GetCol(value)) {} \
+        : key(std::make_pair(::current::storage::sfinae::GetRow(value),                                     \
+                             ::current::storage::sfinae::GetCol(value))) {}                                 \
   };                                                                                                        \
   struct entry_name {                                                                                       \
     template <typename T, typename E1, typename E2>                                                         \
