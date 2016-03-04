@@ -44,19 +44,19 @@ class TransactionResult : public OptionalResult<T> {
     return *this;
   }
 
-  static TransactionResult<T> Commited(T&& result) { return TransactionResult<T>(std::move(result), true); }
+  static TransactionResult<T> Committed(T&& result) { return TransactionResult<T>(std::move(result), true); }
 
-  static TransactionResult<T> Commited(const OptionalResultMissing& missing) {
+  static TransactionResult<T> Committed(const OptionalResultMissing& missing) {
     return TransactionResult<T>(missing, true);
   }
 
-  static TransactionResult<T> Rollbacked(T&& result) { return TransactionResult<T>(std::move(result), false); }
+  static TransactionResult<T> RolledBack(T&& result) { return TransactionResult<T>(std::move(result), false); }
 
-  static TransactionResult<T> Rollbacked(const OptionalResultMissing& missing) {
+  static TransactionResult<T> RolledBack(const OptionalResultMissing& missing) {
     return TransactionResult<T>(missing, false);
   }
 
-  bool WasCommitedImpl() const { return commited_; }
+  bool WasCommittedImpl() const { return commited_; }
 
  private:
   bool commited_;
@@ -84,24 +84,24 @@ class TransactionResult<void> : public OptionalResult<void> {
     return *this;
   }
 
-  static TransactionResult<void> Commited(const OptionalResultExists& exists) {
+  static TransactionResult<void> Committed(const OptionalResultExists& exists) {
     return TransactionResult<void>(exists, true);
   }
 
-  static TransactionResult<void> Commited(const OptionalResultMissing& missing) {
+  static TransactionResult<void> Committed(const OptionalResultMissing& missing) {
     return TransactionResult<void>(missing, true);
   }
 
-  static TransactionResult<void> Rollbacked(const OptionalResultExists& exists) {
+  static TransactionResult<void> RolledBack(const OptionalResultExists& exists) {
     return TransactionResult<void>(exists, false);
   }
 
   // TODO(dkorolev) + TODO(mzhurovich): Test this.
-  static TransactionResult<void> Rollbacked(const OptionalResultMissing& missing) {
+  static TransactionResult<void> RolledBack(const OptionalResultMissing& missing) {
     return TransactionResult<void>(missing, false);
   }
 
-  bool WasCommitedImpl() const { return commited_; }
+  bool WasCommittedImpl() const { return commited_; }
 
  private:
   bool commited_;
@@ -115,18 +115,18 @@ class TransactionResult<void> : public OptionalResult<void> {
 };
 
 template <typename T>
-bool WasCommited(const TransactionResult<T>& x) {
-  return x.WasCommitedImpl();
+bool WasCommitted(const TransactionResult<T>& x) {
+  return x.WasCommittedImpl();
 }
 
 template <typename T>
-bool WasCommited(TransactionResult<T>&& x) {
-  return x.WasCommitedImpl();
+bool WasCommitted(TransactionResult<T>&& x) {
+  return x.WasCommittedImpl();
 }
 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::WasCommited;
+using current::storage::WasCommitted;
 
 #endif  // CURRENT_STORAGE_TRANSACTION_RESULT_H
