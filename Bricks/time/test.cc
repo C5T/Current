@@ -36,7 +36,7 @@ TEST(Time, SmokeTest) {
   const std::chrono::microseconds a = current::time::Now();
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   const std::chrono::microseconds b = current::time::Now();
-  const int64_t dt = static_cast<int64_t>(b - a);
+  const int64_t dt = static_cast<int64_t>((b - a).count());
 #if !defined(CURRENT_WINDOWS) && !defined(CURRENT_APPLE)
   const int64_t allowed_skew = 3000;
 #else

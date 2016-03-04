@@ -32,6 +32,7 @@ SOFTWARE.
 #include <algorithm>
 #include <thread>
 #include <chrono>
+#include <mutex>
 
 #include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
@@ -43,16 +44,27 @@ namespace time {
 
 struct MockNowImpl {
   std::chrono::microseconds mock_now_value;
+  std::chrono::microseconds max_mock_now_value;
+  std::mutex mutex;
 };
 
-inline MockNowImpl& MockNow() {
-  static MockNowImpl impl;
-  return impl;
+inline const std::chrono::microseconds Now() {
+  auto& impl = Singleton<MockNowImpl>();
+  std::lock_guard<std::mutex> lock(impl.mutex);
+  const auto now = impl.mock_now_value;
+  if (impl.mock_now_value < impl.max_mock_now_value) {
+    ++impl.mock_now_value;
+  }
+  return now;
 }
 
-inline const std::chrono::microseconds Now() { return MockNow().mock_now_value; }
-
-inline void SetNow(std::chrono::microseconds us) { MockNow().mock_now_value = us; }
+inline void SetNow(std::chrono::microseconds us,
+                   std::chrono::microseconds max_us = std::chrono::microseconds(0)) {
+  auto& impl = Singleton<MockNowImpl>();
+  std::lock_guard<std::mutex> lock(impl.mutex);
+  impl.mock_now_value = us;
+  impl.max_mock_now_value = max_us;
+}
 
 template <typename T>
 void SleepUntil(T) {}
@@ -62,19 +74,18 @@ void SleepUntil(T) {}
 // Since chrono::system_clock is not monotonic, and chrono::steady_clock is not guaranteed to be Epoch,
 // use a simple wrapper around chrono::system_clock to make it strictly increasing.
 struct EpochClockGuaranteeingMonotonicity {
-  struct Impl {
-    mutable uint64_t monotonic_now_us = 0ull;
-    inline std::chrono::microseconds Now() const {
-      const uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
-                                  std::chrono::system_clock::now().time_since_epoch()).count();
-      monotonic_now_us = std::max(monotonic_now_us + 1, now_us);
-      return std::chrono::microseconds(monotonic_now_us);
-    }
-  };
-  static const Impl& Singleton() { return ThreadLocalSingleton<Impl>(); }
+  mutable uint64_t monotonic_now_us = 0ull;
+  mutable std::mutex mutex;
+  inline std::chrono::microseconds Now() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    const uint64_t now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                                std::chrono::system_clock::now().time_since_epoch()).count();
+    monotonic_now_us = std::max(monotonic_now_us + 1, now_us);
+    return std::chrono::microseconds(monotonic_now_us);
+  }
 };
 
-inline std::chrono::microseconds Now() { return EpochClockGuaranteeingMonotonicity::Singleton().Now(); }
+inline std::chrono::microseconds Now() { return Singleton<EpochClockGuaranteeingMonotonicity>().Now(); }
 
 template <typename T>
 inline void SleepUntil(T moment) {
