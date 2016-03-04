@@ -148,12 +148,13 @@ class Synchronous final {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
       return future;                                                                         // LCOV_EXCL_LINE
     }
-    bool successful = false;
     T_RESULT f1_result;
     try {
       f1_result = f1();
+      journal_.meta_fields = std::move(meta_fields);
+      PersistJournal();
       f2(std::move(f1_result));
-      successful = true;
+      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     } catch (StorageRollbackExceptionWithValue<T_RESULT> e) {
       // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
       journal_.Rollback();
@@ -173,11 +174,6 @@ class Synchronous final {
         std::exit(-1);
       }
       // LCOV_EXCL_STOP
-    }
-    if (successful) {
-      journal_.meta_fields = std::move(meta_fields);
-      PersistJournal();
-      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     }
     return future;
   }
