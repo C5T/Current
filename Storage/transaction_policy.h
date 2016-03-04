@@ -72,10 +72,10 @@ struct Synchronous final {
       successful = true;
     } catch (StorageRollbackExceptionWithValue<T_RESULT> e) {
       journal_.Rollback();
-      promise.set_value(TransactionResult<T_RESULT>::Rollbacked(std::move(e.value)));
+      promise.set_value(TransactionResult<T_RESULT>::RolledBack(std::move(e.value)));
     } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
-      promise.set_value(TransactionResult<T_RESULT>::Rollbacked(OptionalResultMissing()));
+      promise.set_value(TransactionResult<T_RESULT>::RolledBack(OptionalResultMissing()));
     } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
       // LCOV_EXCL_START
@@ -90,7 +90,7 @@ struct Synchronous final {
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
-      promise.set_value(TransactionResult<T_RESULT>::Commited(std::move(f_result)));
+      promise.set_value(TransactionResult<T_RESULT>::Committed(std::move(f_result)));
     }
     return future;
   }
@@ -112,7 +112,7 @@ struct Synchronous final {
       successful = true;
     } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
-      promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultExists()));
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
     } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
       // LCOV_EXCL_START
@@ -127,7 +127,7 @@ struct Synchronous final {
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
-      promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
+      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     }
     return future;
   }
@@ -155,10 +155,10 @@ struct Synchronous final {
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
       persister_.PersistJournal(journal_);
-      promise.set_value(TransactionResult<void>::Commited(OptionalResultExists()));
+      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     } else {
       // TODO(dkorolev) + TODO(mzhurovich): Test this.
-      promise.set_value(TransactionResult<void>::Rollbacked(OptionalResultMissing()));
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
     }
     return future;
   }

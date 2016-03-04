@@ -147,7 +147,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(42, Value(fields.v1[0]).x);
         EXPECT_EQ(100, Value(fields.v2[0]).x);
       }).Go();
-      EXPECT_TRUE(WasCommited(result));
+      EXPECT_TRUE(WasCommitted(result));
     }
 
     {
@@ -180,7 +180,7 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.d.Add(Record{"three", 3});
         fields.d.Erase("three");
       }).Go();
-      EXPECT_TRUE(WasCommited(result));
+      EXPECT_TRUE(WasCommitted(result));
     }
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
@@ -202,7 +202,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(2, Value(fields.m.Get(2, "two")).phew);
         EXPECT_EQ(3, Value(fields.m.Get(2, "too")).phew);
       }).Go();
-      EXPECT_TRUE(WasCommited(result));
+      EXPECT_TRUE(WasCommitted(result));
     }
 
     // Iterate over the matrix.
@@ -252,7 +252,7 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.m.Erase(2, "two");
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
-      EXPECT_FALSE(WasCommited(result));
+      EXPECT_FALSE(WasCommitted(result));
 
       storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.m.Size());
@@ -263,7 +263,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over the matrix with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      EXPECT_FALSE(WasCommited(storage.Transaction([](MutableFields<Storage> fields) {
+      EXPECT_FALSE(WasCommitted(storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.m.Rows().Has(2));
         EXPECT_TRUE(fields.m.Cols().Has("two"));
         EXPECT_TRUE(fields.m.Cols().Has("too"));
@@ -310,7 +310,7 @@ TEST(TransactionalStorage, SmokeTest) {
       const auto f = [](ImmutableFields<Storage>) { return 42; };
 
       const auto result = storage.Transaction(f).Go();
-      EXPECT_TRUE(WasCommited(result));
+      EXPECT_TRUE(WasCommitted(result));
       EXPECT_TRUE(Exists(result));
       EXPECT_EQ(42, Value(result));
     }
@@ -426,7 +426,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = false;
     const auto result = storage.Transaction(f_void).Go();
-    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
   }
 
@@ -434,7 +434,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = true;
     const auto result = storage.Transaction(f_void).Go();
-    EXPECT_FALSE(WasCommited(result));
+    EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
   }
 
@@ -451,7 +451,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = false;
     const auto result = storage.Transaction(f_int).Go();
-    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
     EXPECT_EQ(42, Value(result));
   }
@@ -461,7 +461,7 @@ TEST(TransactionalStorage, Exceptions) {
     should_throw = true;
     throw_with_value = false;
     const auto result = storage.Transaction(f_int).Go();
-    EXPECT_FALSE(WasCommited(result));
+    EXPECT_FALSE(WasCommitted(result));
     EXPECT_FALSE(Exists(result));
   }
 
@@ -470,7 +470,7 @@ TEST(TransactionalStorage, Exceptions) {
     should_throw = true;
     throw_with_value = true;
     const auto result = storage.Transaction(f_int).Go();
-    EXPECT_FALSE(WasCommited(result));
+    EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
     EXPECT_EQ(-1, Value(result));
   }
@@ -513,7 +513,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
       fields.d.Add(Record{"one", 1});
       fields.d.Add(Record{"two", 2});
     }, meta_fields).Go();
-    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(WasCommitted(result));
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
@@ -521,7 +521,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
       fields.d.Add(Record{"three", 3});
       fields.d.Erase("two");
     }).Go();
-    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(WasCommitted(result));
   }
 
   // Confirm empty transactions are not persisted.
@@ -622,14 +622,14 @@ TEST(TransactionalStorage, InternalExposeStream) {
     const auto result = storage.Transaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
     }).Go();
-    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(WasCommitted(result));
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
     const auto result = storage.Transaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"two", 2});
     }).Go();
-    EXPECT_TRUE(WasCommited(result));
+    EXPECT_TRUE(WasCommitted(result));
   }
 
   std::string collected;
