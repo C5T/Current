@@ -155,7 +155,7 @@ class GenericMatrix {
       void operator++() { ++iterator; }
       bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      INNER_KEY key() const { return iterator->first; }
+      sfinae::CF<INNER_KEY> key() const { return iterator->first; }
       const T& operator*() const { return *iterator->second; }
       const T* operator->() const { return iterator->second; }
     };
@@ -165,7 +165,7 @@ class GenericMatrix {
     bool Empty() const { return map_.empty(); }
     size_t Size() const { return map_.size(); }
 
-    OUTER_KEY Key() const { return key_; }
+    sfinae::CF<OUTER_KEY> key() const { return key_; }
 
     bool Has(const INNER_KEY& x) const { return map_.find(x) != map_.end(); }
 
@@ -186,7 +186,7 @@ class GenericMatrix {
       void operator++() { ++iterator; }
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
-      OUTER_KEY key() const { return iterator->first; }
+      sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
       InnerAccessor<OUTER_KEY, INNER_MAP> operator*() const {
         return InnerAccessor<OUTER_KEY, INNER_MAP>(iterator->first, iterator->second);
       }
