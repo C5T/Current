@@ -99,30 +99,32 @@ namespace storage {
 #define CURRENT_STORAGE_FIELD_ENTRY_OrderedDictionary(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Dictionary_IMPL(OrderedDictionary, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)                        \
-  CURRENT_STRUCT(entry_name##Updated) {                                                                     \
-    CURRENT_FIELD(data, entry_type);                                                                        \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                                     \
-    CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {}                      \
-  };                                                                                                        \
-  CURRENT_STRUCT(entry_name##Deleted) {                                                                     \
-    CURRENT_FIELD(row, ::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>);                             \
-    CURRENT_FIELD(col, ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>);                             \
-    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                                     \
-    CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                                       \
-        : row(::current::storage::sfinae::GetRow(value)), col(::current::storage::sfinae::GetCol(value)) {} \
-  };                                                                                                        \
-  struct entry_name {                                                                                       \
-    template <typename T, typename E1, typename E2>                                                         \
-    using T_FIELD_TYPE = matrix_type<T, E1, E2>;                                                            \
-    using T_ENTRY = entry_type;                                                                             \
-    using T_ROW = ::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>;                                   \
-    using T_COL = ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>;                                   \
-    using T_KEY = std::pair<T_ROW, T_COL>;                                                                  \
-    using T_UPDATE_EVENT = entry_name##Updated;                                                             \
-    using T_DELETE_EVENT = entry_name##Deleted;                                                             \
-    using T_PERSISTED_EVENT_1 = entry_name##Updated;                                                        \
-    using T_PERSISTED_EVENT_2 = entry_name##Deleted;                                                        \
+#define CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(matrix_type, entry_type, entry_name)    \
+  CURRENT_STRUCT(entry_name##Updated) {                                                 \
+    CURRENT_FIELD(data, entry_type);                                                    \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Updated) {}                                 \
+    CURRENT_CONSTRUCTOR(entry_name##Updated)(const entry_type& value) : data(value) {}  \
+  };                                                                                    \
+  CURRENT_STRUCT(entry_name##Deleted) {                                                 \
+    CURRENT_FIELD(key,                                                                  \
+                  (std::pair<::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>,    \
+                             ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>>)); \
+    CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                 \
+    CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                   \
+        : key(std::make_pair(::current::storage::sfinae::GetRow(value),                 \
+                             ::current::storage::sfinae::GetCol(value))) {}             \
+  };                                                                                    \
+  struct entry_name {                                                                   \
+    template <typename T, typename E1, typename E2>                                     \
+    using T_FIELD_TYPE = matrix_type<T, E1, E2>;                                        \
+    using T_ENTRY = entry_type;                                                         \
+    using T_ROW = ::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>;               \
+    using T_COL = ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>;               \
+    using T_KEY = std::pair<T_ROW, T_COL>;                                              \
+    using T_UPDATE_EVENT = entry_name##Updated;                                         \
+    using T_DELETE_EVENT = entry_name##Deleted;                                         \
+    using T_PERSISTED_EVENT_1 = entry_name##Updated;                                    \
+    using T_PERSISTED_EVENT_2 = entry_name##Deleted;                                    \
   }
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedMatrix(entry_type, entry_name) \
