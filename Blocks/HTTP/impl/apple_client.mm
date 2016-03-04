@@ -95,7 +95,12 @@ bool current::http::HTTPClientApple::Go() {
     }
 
     *async_request_completed.MutableScopedAccessor() = false;
-    NSURLSession *session = [NSURLSession sharedSession];
+    NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    configuration.URLCache = nil;
+    configuration.URLCredentialStorage = nil;
+    configuration.HTTPCookieStorage = nil;
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:configuration];
     [[session dataTaskWithRequest:request
         completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
           // Workaround to handle HTTP 401 response without errors.
