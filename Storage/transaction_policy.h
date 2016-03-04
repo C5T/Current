@@ -84,7 +84,7 @@ class Synchronous final {
       try {
         promise.set_exception(std::current_exception());
       } catch (const std::exception& e) {
-        std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
+        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
         std::exit(-1);
       }
       // LCOV_EXCL_STOP
@@ -121,7 +121,7 @@ class Synchronous final {
       try {
         promise.set_exception(std::current_exception());
       } catch (const std::exception& e) {
-        std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
+        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
         std::exit(-1);
       }
       // LCOV_EXCL_STOP
@@ -169,7 +169,7 @@ class Synchronous final {
       try {
         promise.set_exception(std::current_exception());
       } catch (const std::exception& e) {
-        std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
+        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
         std::exit(-1);
       }
       // LCOV_EXCL_STOP
