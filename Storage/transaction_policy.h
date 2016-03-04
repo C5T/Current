@@ -34,13 +34,15 @@ SOFTWARE.
 #include "../Bricks/util/future.h"
 
 #include "../Blocks/SS/ss.h"
+#include "../Blocks/Persistence/exceptions.h"
 
 namespace current {
 namespace storage {
 namespace transaction_policy {
 
 template <class PERSISTER>
-struct Synchronous final {
+class Synchronous final {
+ public:
   using T_TRANSACTION = typename PERSISTER::T_TRANSACTION;
 
   Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
@@ -89,7 +91,7 @@ struct Synchronous final {
     }
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
-      persister_.PersistJournal(journal_);
+      PersistJournal();
       promise.set_value(TransactionResult<T_RESULT>::Committed(std::move(f_result)));
     }
     return future;
@@ -126,7 +128,7 @@ struct Synchronous final {
     }
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
-      persister_.PersistJournal(journal_);
+      PersistJournal();
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     }
     return future;
@@ -137,6 +139,7 @@ struct Synchronous final {
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1,
                                                                     F2&& f2,
                                                                     TransactionMetaFields&& meta_fields) {
+    using T_RESULT = T_F_RESULT<F1>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
@@ -146,19 +149,35 @@ struct Synchronous final {
       return future;                                                                         // LCOV_EXCL_LINE
     }
     bool successful = false;
+    T_RESULT f1_result;
     try {
-      f2(f1());
+      f1_result = f1();
+      f2(std::move(f1_result));
       successful = true;
-    } catch (std::exception&) {  // LCOV_EXCL_LINE
-      journal_.Rollback();       // LCOV_EXCL_LINE
+    } catch (StorageRollbackExceptionWithValue<T_RESULT> e) {
+      // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
+      journal_.Rollback();
+      f2(std::move(e.value));
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+    } catch (StorageRollbackExceptionWithNoValue) {
+      // Transaction was rolled back and returned nothing we can pass to `f2`.
+      journal_.Rollback();
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+    } catch (...) {  // The exception is captured with `std::current_exception()` below.
+      // LCOV_EXCL_START
+      journal_.Rollback();
+      try {
+        promise.set_exception(std::current_exception());
+      } catch (const std::exception& e) {
+        std::cerr << "Storage internal error in Synchronous::Transaction: " << e.what() << std::endl;
+        std::exit(-1);
+      }
+      // LCOV_EXCL_STOP
     }
     if (successful) {
       journal_.meta_fields = std::move(meta_fields);
-      persister_.PersistJournal(journal_);
+      PersistJournal();
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-    } else {
-      // TODO(dkorolev) + TODO(mzhurovich): Test this.
-      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
     }
     return future;
   }
@@ -178,6 +197,22 @@ struct Synchronous final {
   }
 
  private:
+  void PersistJournal() {
+    try {
+      persister_.PersistJournal(journal_);
+    } catch (const persistence::InconsistentTimestampException& e) {
+      std::cerr << "PersistJournal() failed with InconsistentTimestampException: " << e.what() << std::endl;
+#ifdef CURRENT_MOCK_TIME
+      std::cerr << "Binary is compiled with `CURRENT_MOCK_TIME`. Probably `SetNow()` wasn't properly called."
+                << std::endl;
+#endif
+      std::exit(-1);
+    } catch (const std::exception& e) {
+      std::cerr << "PersistJournal() failed with exception: " << e.what() << std::endl;
+      std::exit(-1);
+    }
+  }
+
   PERSISTER& persister_;
   MutationJournal& journal_;
   std::mutex mutex_;
