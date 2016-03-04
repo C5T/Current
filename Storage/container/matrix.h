@@ -158,7 +158,7 @@ class GenericMatrix {
   template <typename OUTER_MAP>
   struct OuterAccessor final {
     using OUTER_KEY = typename OUTER_MAP::key_type;
-    using INNER_MAP = typename OUTER_MAP::value_type;
+    using INNER_MAP = typename OUTER_MAP::mapped_type;
     const OUTER_MAP& map_;
 
     struct OuterIterator final {
