@@ -68,6 +68,13 @@ class GenericMatrix {
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
 
+  void DoAdd(const std::pair<T_ROW, T_COL>& row_col, const T& object) {
+    auto& placeholder = map_[row_col];
+    placeholder = std::make_unique<T>(object);
+    forward_[row_col.first][row_col.second] = placeholder.get();
+    transposed_[row_col.second][row_col.first] = placeholder.get();
+  }
+
   void Add(const T& object) {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
@@ -76,14 +83,25 @@ class GenericMatrix {
     if (it != map_.end()) {
       const T previous_object = *(it->second);
       journal_.LogMutation(T_UPDATE_EVENT(object),
-                           [this, row_col, previous_object]() { *map_[row_col] = previous_object; });
+                           [this, row_col, previous_object]() { DoAdd(row_col, previous_object); });
     } else {
-      journal_.LogMutation(T_UPDATE_EVENT(object), [this, row_col]() { map_.erase(row_col); });
+      journal_.LogMutation(T_UPDATE_EVENT(object), [this, row_col]() { DoErase(row_col); });
     }
-    auto& placeholder = map_[row_col];
-    placeholder = std::make_unique<T>(object);
-    forward_[row][col] = placeholder.get();
-    transposed_[col][row] = placeholder.get();
+    DoAdd(row_col, object);
+  }
+
+  void DoErase(const std::pair<T_ROW, T_COL>& row_col) {
+    auto& map_row = forward_[row_col.first];
+    map_row.erase(row_col.second);
+    if (map_row.empty()) {
+      forward_.erase(row_col.first);
+    }
+    auto& map_col = transposed_[row_col.second];
+    map_col.erase(row_col.first);
+    if (map_col.empty()) {
+      transposed_.erase(row_col.second);
+    }
+    map_.erase(row_col);
   }
 
   void Erase(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) {
@@ -98,9 +116,7 @@ class GenericMatrix {
                              forward_[row][col] = placeholder.get();
                              transposed_[col][row] = placeholder.get();
                            });
-      forward_.erase(row);
-      transposed_.erase(col);
-      map_.erase(row_col);
+      DoErase(row_col);
     }
   }
 
@@ -122,7 +138,7 @@ class GenericMatrix {
     forward_[row][col] = placeholder.get();
     transposed_[col][row] = placeholder.get();
   }
-  void operator()(const T_DELETE_EVENT& e) { map_.erase(std::make_pair(e.row, e.col)); }
+  void operator()(const T_DELETE_EVENT& e) { Erase(e.row, e.col); }
 
   template <typename OUTER_KEY, typename INNER_MAP>
   struct InnerAccessor final {
