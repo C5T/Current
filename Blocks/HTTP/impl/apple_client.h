@@ -41,19 +41,23 @@ namespace current {
 namespace http {
 
 struct HTTPClientApple {
-  std::string url_requested = "";
-  std::string url_received = "";
-  int http_response_code = -1;
-  std::string method = "";
-  current::net::HTTPHeadersType headers;
-  std::string post_body = "";
+  // Request data.
+  std::string request_method = "";
+  std::string request_url = "";
+  current::net::HTTPHeadersType request_headers;
+  std::string request_body = "";
+  std::string request_body_content_type = "";
   std::string post_file = "";
-  std::string received_file = "";
-  std::string server_response = "";
-  std::string content_type = "";
-  std::string user_agent = "";
+  std::string request_user_agent = "";
   bool request_succeeded = false;
   current::WaitableAtomic<bool> async_request_completed;
+
+  // Response data.
+  int response_code = -1;
+  std::string response_url = "";
+  current::net::HTTPRequestData::HeadersType response_headers;
+  std::string received_file = "";
+  std::string response_body = "";
 
   inline bool Go();
 };
@@ -62,44 +66,44 @@ template <>
 struct ImplWrapper<HTTPClientApple> {
   // Populating the fields of HTTPClientApple given request parameters.
   inline static void PrepareInput(const GET& request, HTTPClientApple& client) {
-    client.method = "GET";
-    client.url_requested = request.url;
-    client.user_agent = request.custom_user_agent;
-    client.headers = request.custom_headers;
+    client.request_method = "GET";
+    client.request_url = request.url;
+    client.request_user_agent = request.custom_user_agent;
+    client.request_headers = request.custom_headers;
   }
 
   inline static void PrepareInput(const POST& request, HTTPClientApple& client) {
-    client.method = "POST";
-    client.url_requested = request.url;
-    client.user_agent = request.custom_user_agent;
-    client.headers = request.custom_headers;
-    client.post_body = request.body;
-    client.content_type = request.content_type;
+    client.request_method = "POST";
+    client.request_url = request.url;
+    client.request_user_agent = request.custom_user_agent;
+    client.request_headers = request.custom_headers;
+    client.request_body = request.body;
+    client.request_body_content_type = request.content_type;
   }
 
   inline static void PrepareInput(const POSTFromFile& request, HTTPClientApple& client) {
-    client.method = "POST";
-    client.url_requested = request.url;
-    client.user_agent = request.custom_user_agent;
-    client.headers = request.custom_headers;
+    client.request_method = "POST";
+    client.request_url = request.url;
+    client.request_user_agent = request.custom_user_agent;
+    client.request_headers = request.custom_headers;
     client.post_file = request.file_name;
-    client.content_type = request.content_type;
+    client.request_body_content_type = request.content_type;
   }
 
   inline static void PrepareInput(const PUT& request, HTTPClientApple& client) {
-    client.method = "PUT";
-    client.url_requested = request.url;
-    client.user_agent = request.custom_user_agent;
-    client.headers = request.custom_headers;
-    client.post_body = request.body;
-    client.content_type = request.content_type;
+    client.request_method = "PUT";
+    client.request_url = request.url;
+    client.request_user_agent = request.custom_user_agent;
+    client.request_headers = request.custom_headers;
+    client.request_body = request.body;
+    client.request_body_content_type = request.content_type;
   }
 
   inline static void PrepareInput(const DELETE& request, HTTPClientApple& client) {
-    client.method = "DELETE";
-    client.url_requested = request.url;
-    client.user_agent = request.custom_user_agent;
-    client.headers = request.custom_headers;
+    client.request_method = "DELETE";
+    client.request_url = request.url;
+    client.request_user_agent = request.custom_user_agent;
+    client.request_headers = request.custom_headers;
   }
 
   // Populating the fields of HTTPClientApple given response configuration parameters.
@@ -115,8 +119,9 @@ struct ImplWrapper<HTTPClientApple> {
                                  const HTTPClientApple& response,
                                  HTTPResponse& output) {
     // TODO(dkorolev): Handle redirects in Apple implementation.
-    output.url = response.url_received;
-    output.code = HTTPResponseCode(response.http_response_code);
+    output.url = response.response_url;
+    output.code = HTTPResponseCode(response.response_code);
+    output.headers = response.response_headers;
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
@@ -125,7 +130,7 @@ struct ImplWrapper<HTTPClientApple> {
                                  const HTTPClientApple& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
-    output.body = response.server_response;
+    output.body = response.response_body;
   }
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
   inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
