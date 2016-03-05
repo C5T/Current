@@ -42,11 +42,11 @@ SOFTWARE.
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/template/weed.h"
 
-#if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS)
+#if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 #include "impl/posix_client.h"
 #include "impl/posix_server.h"
 using HTTP_CLIENT = current::http::HTTPClientPOSIX;
-#elif defined(CURRENT_APPLE)
+#elif defined(CURRENT_APPLE) && !defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 #include "impl/apple_client.h"
 #include "impl/posix_server.h"
 using HTTP_CLIENT = current::http::HTTPClientApple;

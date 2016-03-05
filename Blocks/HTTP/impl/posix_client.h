@@ -50,6 +50,7 @@ class HTTPClientPOSIX final {
       if (std::string("Location") == key) {
         location = value;
       }
+      current::net::HTTPDefaultHelper::OnHeader(key, value);
     }
   };
   typedef current::net::TemplatedHTTPRequestData<HTTPRedirectHelper> HTTPRedirectableRequestData;
@@ -193,6 +194,8 @@ struct ImplWrapper<HTTPClientPOSIX> {
     }
     output.url = response.response_url_after_redirects_;
     output.code = response.response_code_;
+    const auto& http_request = response.HTTPRequest();
+    output.headers = http_request.headers();
   }
 
   template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
