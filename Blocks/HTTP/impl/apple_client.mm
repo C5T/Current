@@ -115,7 +115,7 @@ bool current::http::HTTPClientApple::Go() {
               response_code = http_response.statusCode;
               response_url = [http_response.URL.absoluteString UTF8String];
               NSDictionary *headers = http_response.allHeaderFields;
-              for (NSString* key in headers) {
+              for (NSString *key in headers) {
                 response_headers.emplace([key UTF8String], [[headers objectForKey:key] UTF8String]);
               }
               request_succeeded = true;
