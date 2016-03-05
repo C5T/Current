@@ -128,6 +128,9 @@ current::HTTPResponseCodeValue
 current::LazyInstantiationStrategy
 
 current::StrictFuture
+
+JSONFilePersister
+SherlockStreamPersister
 ```
 
 ### Metaprogramming
