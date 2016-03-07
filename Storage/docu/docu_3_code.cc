@@ -82,15 +82,17 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 
   TestStorage storage;
 
-  const auto rest1 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api1");
+  const auto rest1 = RESTfulStorage<TestStorage>(storage, FLAGS_client_storage_test_port, "/api1", "http://example.current.ai/api1");
   const auto rest2 = RESTfulStorage<TestStorage, current::storage::rest::Hypermedia>(
       storage,
       FLAGS_client_storage_test_port,
-      "/api2");
+      "/api2",
+      "http://example.current.ai/api2");
   const auto rest3 = RESTfulStorage<TestStorage, current::storage::rest::AdvancedHypermedia>(
       storage,
       FLAGS_client_storage_test_port,
-      "/api3");
+      "/api3",
+      "http://example.current.ai/api3");
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
 
@@ -105,7 +107,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     {
       const auto result = HTTP(GET(base_url + "/api2"));
       EXPECT_EQ(200, static_cast<int>(result.code));
-      EXPECT_EQ(base_url + "/status", ParseJSON<HypermediaRESTTopLevel>(result.body).url_status);
+      EXPECT_EQ("http://example.current.ai/api2/status", ParseJSON<HypermediaRESTTopLevel>(result.body).url_status);
     }
     {
       const auto result = HTTP(GET(base_url + "/api2/status"));
@@ -123,7 +125,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"url\":\"" + base_url + "/data/client\",\"data\":[]}\n", result.body);
+    EXPECT_EQ("{\"url\":\"http://example.current.ai/api2/data/client\",\"data\":[]}\n", result.body);
   }
 
   // GET a non-existing resource.
@@ -258,11 +260,11 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ(
         "{"
-        "\"url\":\"" + base_url + "/data/client\","
-        "\"data\":[\"" +
-        base_url + "/data/client/101\",\"" +
-        base_url + "/data/client/102\",\"" +
-        base_url + "/data/client/" + client1_key_str + "\"" +
+        "\"url\":\"http://example.current.ai/api2/data/client\","
+        "\"data\":[\""
+        "http://example.current.ai/api2/data/client/101\",\""
+        "http://example.current.ai/api2/data/client/102\",\""
+        "http://example.current.ai/api2/data/client/" + client1_key_str + "\"" +
         "]}\n",
         result.body);
   }
@@ -270,7 +272,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(GET(base_url + "/api3/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     // Shamelessly copy-pasted from the output. -- D.K.
-    EXPECT_EQ("{\"url\":\"" + base_url + "/data/client?i=0&n=10\",\"url_directory\":\"" + base_url + "/data/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"url\":\"" + base_url + "/data/client/101\",\"url_full\":\"" + base_url + "/data/client/101\",\"url_brief\":\"" + base_url + "/data/client/101?fields=brief\",\"url_directory\":\"" + base_url + "/data/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/data/client/102\",\"url_full\":\"" + base_url + "/data/client/102\",\"url_brief\":\"" + base_url + "/data/client/102?fields=brief\",\"url_directory\":\"" + base_url + "/data/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"url\":\"" + base_url + "/data/client/" + client1_key_str + "\",\"url_full\":\"" + base_url + "/data/client/" + client1_key_str + "\",\"url_brief\":\"" + base_url + "/data/client/" + client1_key_str + "?fields=brief\",\"url_directory\":\"" + base_url + "/data/client\",\"data\":{\"key\":" + client1_key_str + ",\"name\":\"Jane Doe\"}}]}",
+    EXPECT_EQ("{\"url\":\"http://example.current.ai/api3/data/client?i=0&n=10\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"url\":\"http://example.current.ai/api3/data/client/101\",\"url_full\":\"http://example.current.ai/api3/data/client/101\",\"url_brief\":\"http://example.current.ai/api3/data/client/101?fields=brief\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"url\":\"http://example.current.ai/api3/data/client/102\",\"url_full\":\"http://example.current.ai/api3/data/client/102\",\"url_brief\":\"http://example.current.ai/api3/data/client/102?fields=brief\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"url\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\",\"url_full\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\",\"url_brief\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "?fields=brief\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":" + client1_key_str + ",\"name\":\"Jane Doe\"}}]}",
         result.body);
   }
 

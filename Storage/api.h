@@ -268,17 +268,14 @@ class RESTfulStorage {
  public:
   RESTfulStorage(T_STORAGE_IMPL& storage,
                  int port,
-                 const std::string& route_prefix = "/api",
-                 const std::string& restful_url_prefix_input = "",
+                 const std::string& route_prefix,
+                 const std::string& restful_url_prefix_input,
                  const std::string& data_url_component = "data")
       : port_(port),
         up_status_(std::make_unique<std::atomic_bool>(true)),
         route_prefix_(route_prefix),
         data_url_component_(data_url_component) {
-    const std::string restful_url_prefix = restful_url_prefix_input.empty()
-                                               ? "http://localhost:" + current::ToString(port)
-                                               : restful_url_prefix_input;
-
+    const std::string restful_url_prefix = restful_url_prefix_input;
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
