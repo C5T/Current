@@ -136,7 +136,7 @@ struct Hypermedia {
         }
       } else {
         HypermediaRESTContainerResponse response;
-        response.url = input.restful_url_prefix + '/' + input.field_name;
+        response.url = input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name;
         for (const auto& element : input.field) {
           response.data.emplace_back(response.url + '/' + current::ToString(sfinae::GetKey(element)));
         }
