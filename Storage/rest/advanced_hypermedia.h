@@ -32,6 +32,7 @@ SOFTWARE.
 #define CURRENT_STORAGE_REST_ADVANCED_HYPERMEDIA_H
 
 #include "hypermedia.h"
+#include "sfinae.h"
 
 CURRENT_STRUCT(AdvancedHypermediaRESTRecordResponse) {
   CURRENT_FIELD(url, std::string);
@@ -61,7 +62,7 @@ static std::string json_content_type = current::net::HTTPServerConnection::Defau
 template <typename T, typename INPUT, typename TT>
 std::string FormatAsAdvancedHypermediaRecord(TT& record, const INPUT& input) {
   AdvancedHypermediaRESTRecordResponse response_builder;
-  const std::string key_as_string = current::ToString(sfinae::GetKey(record));
+  const std::string key_as_string = current::ToString(current::storage::sfinae::GetKey(record));
   response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
   response_builder.url = response_builder.url_directory + '/' + key_as_string;
   response_builder.url_full = response_builder.url;
@@ -78,7 +79,7 @@ struct AdvancedHypermedia : Hypermedia {
 
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
-    using T_BRIEF_ENTRY = typename ENTRY::T_BRIEF;
+    using T_BRIEF_ENTRY = sfinae::BRIEF_OF_T<ENTRY>;
 
     // For per-record view, whether a full or brief format should be used.
     bool brief = false;
