@@ -101,7 +101,7 @@ struct Basic {
       } else {
         std::ostringstream result;
         for (const auto& element : input.field) {
-          result << current::ToString(sfinae::GetKey(element)) << '\n';
+          result << current::ToString(current::storage::sfinae::GetKey(element)) << '\n';
         }
         return result.str();
       }
@@ -121,9 +121,9 @@ struct Basic {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
+      if (!Exists(input.field[current::storage::sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
-        return Response(current::ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+        return Response(current::ToString(current::storage::sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }
