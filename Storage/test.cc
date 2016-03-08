@@ -954,7 +954,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
-    auto rest = RESTfulStorage<Storage>(storage, FLAGS_transactional_storage_test_port);
+    auto rest = RESTfulStorage<Storage>(
+        storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
     rest.RegisterAlias("user", "user_alias");
 
     // Confirm an empty collection is returned.
@@ -1055,9 +1056,9 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
   auto rest1 = RESTfulStorage<Storage1, current::storage::rest::Hypermedia>(
-      storage1, FLAGS_transactional_storage_test_port, "/api1");
+      storage1, FLAGS_transactional_storage_test_port, "/api1", "http://unittest.current.ai/api1");
   auto rest2 = RESTfulStorage<Storage2, current::storage::rest::Hypermedia>(
-      storage2, FLAGS_transactional_storage_test_port, "/api2");
+      storage2, FLAGS_transactional_storage_test_port, "/api2", "http://unittest.current.ai/api2");
 
   const auto fields1 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api1")).body);
   const auto fields2 = ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api2")).body);
@@ -1069,6 +1070,13 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   EXPECT_TRUE(fields2.url_data.count("user") == 1);
   EXPECT_TRUE(fields2.url_data.count("post") == 0);
   EXPECT_EQ(1u, fields2.url_data.size());
+
+  // Confirms the status returns proper URL prefix.
+  EXPECT_EQ("http://unittest.current.ai/api1", fields1.url);
+  EXPECT_EQ("http://unittest.current.ai/api1/status", fields1.url_status);
+
+  EXPECT_EQ("http://unittest.current.ai/api2", fields2.url);
+  EXPECT_EQ("http://unittest.current.ai/api2/status", fields2.url_status);
 }
 
 TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
@@ -1080,7 +1088,7 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
   auto rest = RESTfulStorage<Storage, current::storage::rest::Hypermedia>(
-      storage, FLAGS_transactional_storage_test_port);
+      storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
 
   EXPECT_TRUE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
   EXPECT_TRUE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);

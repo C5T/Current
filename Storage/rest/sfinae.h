@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
+          (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,33 +23,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_TRANSACTION_H
-#define CURRENT_STORAGE_TRANSACTION_H
+#ifndef CURRENT_STORAGE_REST_SFINAE_H
+#define CURRENT_STORAGE_REST_SFINAE_H
 
-#include "../port.h"
-#include <chrono>
-
-#include "../TypeSystem/struct.h"
+#include "../storage.h"
 
 namespace current {
 namespace storage {
+namespace rest {
+namespace sfinae {
 
-using TransactionMetaFields = std::map<std::string, std::string>;
+template <typename T>
+constexpr bool Has_T_BRIEF(char) {
+  return false;
+}
 
-CURRENT_STRUCT(TransactionMeta) {
-  CURRENT_FIELD(timestamp, std::chrono::microseconds);
-  CURRENT_FIELD(fields, TransactionMetaFields);
-  CURRENT_USE_FIELD_AS_TIMESTAMP(timestamp);
+template <typename T>
+constexpr auto Has_T_BRIEF(int) -> decltype(sizeof(typename T::T_BRIEF), bool()) {
+  return true;
+}
+
+template <typename T, bool>
+struct BRIEF_OF_T_IMPL;
+
+template <typename T>
+struct BRIEF_OF_T_IMPL<T, false> {
+  using type = T;
 };
 
-CURRENT_STRUCT_T(Transaction) {
-  using T_VARIANT = T;
-  CURRENT_FIELD(meta, TransactionMeta);
-  CURRENT_FIELD(mutations, std::vector<T>);
-  CURRENT_USE_FIELD_AS_TIMESTAMP(meta.timestamp);
+template <typename T>
+struct BRIEF_OF_T_IMPL<T, true> {
+  using type = typename T::T_BRIEF;
 };
 
+template <typename T>
+using BRIEF_OF_T = typename BRIEF_OF_T_IMPL<T, Has_T_BRIEF<T>(0)>::type;
+
+}  // namespace sfinae
+}  // namespace rest
 }  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_STORAGE_TRANSACTION_H
+#endif  // CURRENT_STORAGE_REST_SFINAE_H
