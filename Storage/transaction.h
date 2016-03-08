@@ -42,6 +42,7 @@ CURRENT_STRUCT(TransactionMeta) {
 };
 
 CURRENT_STRUCT_T(Transaction) {
+  using T_VARIANT = T;
   CURRENT_FIELD(meta, TransactionMeta);
   CURRENT_FIELD(mutations, std::vector<T>);
   CURRENT_USE_FIELD_AS_TIMESTAMP(meta.timestamp);
