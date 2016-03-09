@@ -113,13 +113,9 @@ class GenericMatrix {
   void operator()(const T_UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    const auto row_col = std::make_pair(row, col);
-    auto& placeholder = map_[row_col];
-    placeholder = std::make_unique<T>(e.data);
-    forward_[row][col] = placeholder.get();
-    transposed_[col][row] = placeholder.get();
+    DoAdd(std::make_pair(row, col), e.data);
   }
-  void operator()(const T_DELETE_EVENT& e) { Erase(e.key.first, e.key.second); }
+  void operator()(const T_DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename OUTER_KEY, typename INNER_MAP>
   struct InnerAccessor final {
