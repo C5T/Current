@@ -32,6 +32,7 @@ SOFTWARE.
 #include "../base.h"
 
 #include "../../TypeSystem/optional.h"
+#include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
 
 namespace current {
 namespace storage {
@@ -40,8 +41,7 @@ namespace container {
 struct PairHash {
   template <typename T>
   void hash_combine(std::size_t& seed, const T& v) const {
-    std::hash<T> hasher;
-    seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= CurrentHashFunction<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
   }
 
   template <typename TF, typename TS>

@@ -288,8 +288,8 @@ struct CurrentStructFieldsConsistency<T, -1> {
   ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
-#define CURRENT_FIELD_WITH_VALUE(name, type, value)                            \
-  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{value}; \
+#define CURRENT_FIELD_WITH_VALUE(name, type, value)                                     \
+  ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{CF_TYPE(value)}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
 #define CURRENT_USE_FIELD_AS_KEY(field)                                                   \
@@ -297,6 +297,18 @@ struct CurrentStructFieldsConsistency<T, -1> {
   const T_COPY_FREE_KEY_TYPE key() const { return field; }                                \
   void set_key(const T_COPY_FREE_KEY_TYPE new_key_value) const { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
+
+#define CURRENT_USE_FIELD_AS_ROW(field)                                                   \
+  using T_COPY_FREE_KEY_TYPE = current::copy_free<decltype(field)>;                       \
+  const T_COPY_FREE_KEY_TYPE row() const { return field; }                                \
+  void set_row(const T_COPY_FREE_KEY_TYPE new_row_value) const { field = new_row_value; } \
+  using CURRENT_USE_FIELD_AS_ROW_##field##_implemented = void
+
+#define CURRENT_USE_FIELD_AS_COL(field)                                                   \
+  using T_COPY_FREE_KEY_TYPE = current::copy_free<decltype(field)>;                       \
+  const T_COPY_FREE_KEY_TYPE col() const { return field; }                                \
+  void set_col(const T_COPY_FREE_KEY_TYPE new_col_value) const { field = new_col_value; } \
+  using CURRENT_USE_FIELD_AS_COL_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_TIMESTAMP(field) \
   template <typename F>                       \
