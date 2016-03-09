@@ -299,15 +299,15 @@ struct CurrentStructFieldsConsistency<T, -1> {
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_ROW(field)                                                   \
-  using T_COPY_FREE_KEY_TYPE = current::copy_free<decltype(field)>;                       \
-  const T_COPY_FREE_KEY_TYPE row() const { return field; }                                \
-  void set_row(const T_COPY_FREE_KEY_TYPE new_row_value) const { field = new_row_value; } \
+  using T_COPY_FREE_ROW_TYPE = current::copy_free<decltype(field)>;                       \
+  const T_COPY_FREE_ROW_TYPE row() const { return field; }                                \
+  void set_row(const T_COPY_FREE_ROW_TYPE new_row_value) const { field = new_row_value; } \
   using CURRENT_USE_FIELD_AS_ROW_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_COL(field)                                                   \
-  using T_COPY_FREE_KEY_TYPE = current::copy_free<decltype(field)>;                       \
-  const T_COPY_FREE_KEY_TYPE col() const { return field; }                                \
-  void set_col(const T_COPY_FREE_KEY_TYPE new_col_value) const { field = new_col_value; } \
+  using T_COPY_FREE_COL_TYPE = current::copy_free<decltype(field)>;                       \
+  const T_COPY_FREE_COL_TYPE col() const { return field; }                                \
+  void set_col(const T_COPY_FREE_COL_TYPE new_col_value) const { field = new_col_value; } \
   using CURRENT_USE_FIELD_AS_COL_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_TIMESTAMP(field) \
