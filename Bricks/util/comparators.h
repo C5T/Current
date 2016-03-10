@@ -26,6 +26,7 @@ SOFTWARE.
 #ifndef BRICKS_UTIL_COMPARATOR_H
 #define BRICKS_UTIL_COMPARATOR_H
 
+#include <chrono>
 #include <map>
 #include <unordered_map>
 
@@ -42,7 +43,7 @@ struct CurrentHashFunctionImpl<T, false, false> : std::hash<T> {};
 template <typename R, typename P>
 struct CurrentHashFunctionImpl<std::chrono::duration<R, P>, false, false> {
   std::size_t operator()(std::chrono::duration<R, P> x) const {
-    return std::hash<int64_t>()(x.count());
+    return std::hash<int64_t>()(std::chrono::duration_cast<std::chrono::microseconds>(x).count());
   }
 };
 
