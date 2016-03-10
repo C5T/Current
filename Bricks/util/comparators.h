@@ -39,6 +39,13 @@ struct CurrentHashFunctionImpl;
 template <typename T>
 struct CurrentHashFunctionImpl<T, false, false> : std::hash<T> {};
 
+template <typename R, typename P>
+struct CurrentHashFunctionImpl<std::chrono::duration<R, P>, false, false> {
+  std::size_t operator()(std::chrono::duration<R, P> x) const {
+    return std::hash<int64_t>()(x.count());
+  }
+};
+
 template <typename T>
 struct CurrentHashFunctionImpl<T, false, true> {
   std::size_t operator()(T x) const { return static_cast<size_t>(x); }
