@@ -123,6 +123,31 @@ TEST(PosixHTTPServerTest, SmokeWithCaseInsensitiveHeader) {
   t.join();
 }
 
+TEST(PosixHTTPServerTest, SmokeWithUnderscoreInHeader) {
+  thread t([](Socket s) {
+    HTTPServerConnection c(s.Accept());
+    EXPECT_EQ("POST", c.HTTPRequest().Method());
+    EXPECT_EQ("/", c.HTTPRequest().RawPath());
+    c.SendHTTPResponse("Data: " + c.HTTPRequest().Body());
+  }, Socket(FLAGS_net_http_test_port));
+  Connection connection(ClientSocket("localhost", FLAGS_net_http_test_port));
+  connection.BlockingWrite("POST / HTTP/1.1\r\n", true);
+  connection.BlockingWrite("Host: localhost\r\n", true);
+  connection.BlockingWrite("CoNtEnT_lEnGtH: 4\r\n", true);
+  connection.BlockingWrite("\r\n", true);
+  connection.BlockingWrite("BODY", true);
+  connection.BlockingWrite("\r\n", false);
+  ExpectToReceive(
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/plain\r\n"
+      "Connection: close\r\n"
+      "Content-Length: 10\r\n"
+      "\r\n"
+      "Data: BODY",
+      connection);
+  t.join();
+}
+
 TEST(PosixHTTPServerTest, SmokeWithArray) {
   thread t([](Socket s) {
     HTTPServerConnection c(s.Accept());

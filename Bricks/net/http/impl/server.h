@@ -58,8 +58,8 @@ const char kCRLF[] = "\r\n";
 const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
 const char kHeaderKeyValueSeparator[] = ": ";
 const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
-const char* const kLowercaseContentLengthHeaderKey = "content-length";
-const char* const kLowercaseTransferEncodingHeaderKey = "transfer-encoding";
+const char* const kLowercaseContentLengthHeaderKey = "content_length";
+const char* const kLowercaseTransferEncodingHeaderKey = "transfer_encoding";
 const char* const kTransferEncodingChunkedValue = "chunked";  // Is this lowercase too? @sompylasar
 
 }  // namespace constants
@@ -256,6 +256,8 @@ class TemplatedHTTPRequestData : public HELPER {
               // Because `std::tolower` needs locale these days. -- D.K.
               if (c >= 'A' && c <= 'Z') {
                 c += 'a' - 'A';
+              } else if (c == '-') {
+                c = '_';
               }
             });
             HELPER::OnHeader(key, value);
