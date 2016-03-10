@@ -30,7 +30,7 @@ SOFTWARE.
 
 DEFINE_int32(port, 8686, "Port to spawn log collector on.");
 DEFINE_string(route, "/log", "The route to listen to events on.");
-DEFINE_int64(tick_interval_ms, 1000, "Maximum interval between entries.");
+DEFINE_int64(tick_interval_ms, 60 * 1000, "Maximum interval between entries.");
 
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);
