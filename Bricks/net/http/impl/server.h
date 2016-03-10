@@ -58,9 +58,9 @@ const char kCRLF[] = "\r\n";
 const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
 const char kHeaderKeyValueSeparator[] = ": ";
 const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
-const char* const kContentLengthHeaderKey = "Content-Length";
-const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
-const char* const kTransferEncodingChunkedValue = "chunked";
+const char* const kLowercaseContentLengthHeaderKey = "content-length";
+const char* const kLowercaseTransferEncodingHeaderKey = "transfer-encoding";
+const char* const kTransferEncodingChunkedValue = "chunked";  // Is this lowercase too? @sompylasar
 
 }  // namespace constants
 
@@ -252,10 +252,16 @@ class TemplatedHTTPRequestData : public HELPER {
             *p = '\0';
             const char* const key = &buffer_[current_line_offset];
             const char* const value = p + kHeaderKeyValueSeparatorLength;
+            std::for_each(&buffer_[current_line_offset], p, [](char& c) {
+              // Because `std::tolower` needs locale these days. -- D.K.
+              if (c >= 'A' && c <= 'Z') {
+                c += 'a' - 'A';
+              }
+            });
             HELPER::OnHeader(key, value);
-            if (!strcmp(key, kContentLengthHeaderKey)) {
+            if (!strcmp(key, kLowercaseContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
-            } else if (!strcmp(key, kTransferEncodingHeaderKey)) {
+            } else if (!strcmp(key, kLowercaseTransferEncodingHeaderKey)) {
               if (!strcmp(value, kTransferEncodingChunkedValue)) {
                 chunked_transfer_encoding = true;
               }
