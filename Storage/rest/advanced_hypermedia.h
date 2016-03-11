@@ -39,6 +39,7 @@ namespace storage {
 namespace rest {
 
 CURRENT_STRUCT_T(AdvancedHypermediaRESTRecordResponse) {
+  CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_full, std::string);
   CURRENT_FIELD(url_brief, std::string);
@@ -47,6 +48,7 @@ CURRENT_STRUCT_T(AdvancedHypermediaRESTRecordResponse) {
 };
 
 CURRENT_STRUCT_T(AdvancedHypermediaRESTContainerResponse) {
+  CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_directory, std::string);
   CURRENT_FIELD(i, uint64_t);
