@@ -112,22 +112,24 @@ class MidichloriansHTTPServer {
     using namespace current::midichlorians::web;
 
     std::map<std::string, std::string> extracted_q;  // Manually extracted query parameters.
-    const std::map<std::string, std::string>& h = r.headers;
+    const std::map<std::string, std::string>& h = r.headers.AsMap();
+    const std::map<std::string, std::string>& c = r.headers.cookies;
 
     bool is_allowed_method = false;
-    const std::map<std::string, std::string>& q = [&r, &extracted_q, &is_allowed_method]() {
-      if (r.method == "GET" || r.method == "HEAD") {
-        is_allowed_method = true;
-        return r.url.AllQueryParameters();
-      } else if (r.method == "POST") {
-        is_allowed_method = true;
-        extracted_q = current::url::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
-        for (const auto& cit : r.url.AllQueryParameters()) {
-          extracted_q.insert(cit);
-        }
-      }
-      return extracted_q;
-    }();
+    const std::map<std::string, std::string>& q =
+        [&r, &extracted_q, &is_allowed_method]() -> const std::map<std::string, std::string>& {
+          if (r.method == "GET" || r.method == "HEAD") {
+            is_allowed_method = true;
+            return r.url.AllQueryParameters();
+          } else if (r.method == "POST") {
+            is_allowed_method = true;
+            extracted_q = current::url::impl::URLParametersExtractor("?" + r.body).AllQueryParameters();
+            for (const auto& cit : r.url.AllQueryParameters()) {
+              extracted_q.insert(cit);
+            }
+          }
+          return extracted_q;
+        }();
 
     if (!is_allowed_method) {
       return false;  // LCOV_EXCL_LINE
@@ -150,7 +152,7 @@ class MidichloriansHTTPServer {
       return false;
     }
 
-    if (!ExtractWebBaseEventFields(q, h, web_event)) {
+    if (!ExtractWebBaseEventFields(q, h, c, web_event)) {
       return false;  // LCOV_EXCL_LINE
     }
 
@@ -160,8 +162,11 @@ class MidichloriansHTTPServer {
 
   bool ExtractWebBaseEventFields(const std::map<std::string, std::string>& q,
                                  const std::map<std::string, std::string>& h,
+                                 const std::map<std::string, std::string>& c,
                                  Variant<T_WEB_EVENTS>& web_event) {
     using namespace current::midichlorians::web;
+
+    static_cast<void>(c);  // Ignore cookies for now. -- D.K.
 
     WebBaseEvent& dest_event = Value<WebBaseEvent>(web_event);
     try {

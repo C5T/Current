@@ -35,6 +35,8 @@ SOFTWARE.
 
 #include "../../exceptions.h"
 
+#include "../../../strings/split.h"
+
 namespace current {
 namespace net {
 namespace http {
@@ -278,6 +280,15 @@ struct Headers final {
   Headers& SetCookie(const std::string& name, const std::string& value) {
     cookies[name] = value;
     return *this;
+  }
+
+  // Return all headers, but not cookes, as a single `std::map<std::string, std::string>`.
+  std::map<std::string, std::string> AsMap() const {
+    std::map<std::string, std::string> headers;
+    for (const auto& h : *this) {
+      headers.emplace(h.header, h.value);
+    }
+    return headers;
   }
 
   // `map[header]` either does not exist, or contains a valid `std::unique_ptr<Header>`.

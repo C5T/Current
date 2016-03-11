@@ -91,9 +91,7 @@ class EventCollectorHTTPServer {
                       entry.m = r.method;
                       entry.u = r.url.url_without_parameters;
                       entry.q = r.url.AllQueryParameters();
-                      for (const auto& h : r.headers) {
-                        entry.h.emplace(h.header, h.value);
-                      }
+                      entry.h = r.headers.AsMap();
                       entry.c = r.headers.cookies;
                       entry.b = r.body;
                       entry.f = r.url.fragment;
