@@ -57,7 +57,6 @@ CURRENT_STRUCT_T(AdvancedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(data, std::vector<T>);
 };
 
-
 template <typename T, typename INPUT, typename TT>
 inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(TT& record,
                                                                                 const INPUT& input) {

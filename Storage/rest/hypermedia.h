@@ -245,7 +245,7 @@ struct Hypermedia {
           return HypermediaRESTRecordResponse<ENTRY>(url, Value(result));
         } else {
           return ErrorResponse(
-              ResourceNotFoundError("Resource with requested key not found.", {{"key", input.url_key}}),
+              ResourceNotFoundError("The requested resource not found.", {{"key", input.url_key}}),
               HTTPResponseCode.NotFound);
         }
       } else {
@@ -281,12 +281,11 @@ struct Hypermedia {
         return Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
                         HTTPResponseCode.Created);
       } else {
-        return Response(
-            HypermediaRESTResourceUpdateResponse(
-                false,
-                "Resource creation failed.",
-                {ResourceAlreadyExistsError("The key generated for entry already exists", {{"key", key}})}),
-            HTTPResponseCode.Conflict);
+        return Response(HypermediaRESTResourceUpdateResponse(
+                            false,
+                            "Resource creation failed.",
+                            {ResourceAlreadyExistsError("The resource already exists", {{"key", key}})}),
+                        HTTPResponseCode.Conflict);
       }
     }
     static Response ErrorBadJSON(const std::string& error_message) {

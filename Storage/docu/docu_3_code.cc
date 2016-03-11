@@ -129,7 +129,15 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"url\":\"http://example.current.ai/api2/data/client\",\"data\":[]}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":true,"
+        "\"message\":null,"
+        "\"errors\":null,"
+        "\"url\":\"http://example.current.ai/api2/data/client\","
+        "\"data\":[]"
+        "}\n",
+        result.body);
   }
 
   // GET a non-existing resource.
@@ -142,7 +150,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client/42"));
     EXPECT_EQ(404, static_cast<int>(result.code));
-    EXPECT_EQ("{\"error\":\"Resource not found.\"}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"ResourceNotFound\","
+                    "\"description\":\"The requested resource not found.\","
+                    "\"details\":{\"key\":\"42\"}"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST to a full resource-specifying URL, not allowed.
@@ -157,7 +176,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     current::time::SetNow(std::chrono::microseconds(102));
     const auto result = HTTP(POST(base_url + "/api2/data/client/42", "blah"));
     EXPECT_EQ(400, static_cast<int>(result.code));
-    EXPECT_EQ("{\"error\":\"Should not have resource key in the URL.\"}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"InvalidKey\","
+                    "\"description\":\"Should not have resource key in the URL.\","
+                    "\"details\":null"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST a JSON not following the schema, not allowed.
@@ -173,11 +203,17 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(POST(base_url + "/api2/data/client", "{\"trash\":true}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ(
-      "{"
-      "\"error\":\"Invalid JSON in request body.\","
-      "\"json_details\":\"Expected number for `key`, got: missing field.\""
-      "}\n",
-      result.body);
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"ParseJSONError\","
+                    "\"description\":\"Invalid JSON in request body.\","
+                    "\"details\":{\"error_details\":\"Expected number for `key`, got: missing field.\"}"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST another JSON not following the schema, still not allowed.
@@ -193,11 +229,17 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(POST(base_url + "/api2/data/client", "{\"key\":[]}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ(
-      "{"
-      "\"error\":\"Invalid JSON in request body.\","
-      "\"json_details\":\"Expected number for `key`, got: []\""
-      "}\n",
-      result.body);
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"ParseJSONError\","
+                    "\"description\":\"Invalid JSON in request body.\","
+                    "\"details\":{\"error_details\":\"Expected number for `key`, got: []\"}"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST a real piece.
@@ -217,7 +259,19 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":" + client1_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":true,"
+        "\"url\":\"http://example.current.ai/api2/data/client/" + client1_key_str + "\","
+        "\"data\":{"
+                  "\"key\":" + client1_key_str + ","
+                  "\"name\":\"John Doe\","
+                  "\"white\":true,"
+                  "\"straight\":true,"
+                  "\"male\":true"
+                  "}"
+        "}\n",
+        result.body);
   }
 
   // PUT an entry with the key different from URL is not allowed.
@@ -264,12 +318,16 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ(
         "{"
+        "\"success\":true,"
+        "\"message\":null,"
+        "\"errors\":null,"
         "\"url\":\"http://example.current.ai/api2/data/client\","
-        "\"data\":[\""
-        "http://example.current.ai/api2/data/client/101\",\""
-        "http://example.current.ai/api2/data/client/102\",\""
-        "http://example.current.ai/api2/data/client/" + client1_key_str + "\"" +
-        "]}\n",
+        "\"data\":["
+                  "\"http://example.current.ai/api2/data/client/101\","
+                  "\"http://example.current.ai/api2/data/client/102\","
+                  "\"http://example.current.ai/api2/data/client/" + client1_key_str + "\""
+                  "]"
+        "}\n",
         result.body);
   }
   {
