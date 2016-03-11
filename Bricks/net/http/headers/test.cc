@@ -109,6 +109,30 @@ TEST(HTTPHeadersTest, Initialization) {
   }
 }
 
+TEST(HTTPHeadersTest, PushBackAndEmplace) {
+  using namespace current::net::http;  // `Headers`, `CookieIsNotYourRegularHeader`.
+
+  {
+    Headers headers;
+    headers.push_back(std::make_pair("foo", "bar"));
+    EXPECT_EQ(1u, headers.size());
+    EXPECT_EQ("bar", headers.Get("foo"));
+  }
+
+  {
+    Headers headers;
+    headers.emplace_back("foo", "bar");
+    EXPECT_EQ(1u, headers.size());
+    EXPECT_EQ("bar", headers.Get("foo"));
+  }
+
+  {
+    Headers headers;
+    ASSERT_THROW(headers.push_back(std::make_pair("Cookie", "")), CookieIsNotYourRegularHeader);
+    ASSERT_THROW(headers.emplace_back("Cookie", ""), CookieIsNotYourRegularHeader);
+  }
+}
+
 TEST(HTTPHeadersTest, NormalizedNames) {
   using namespace current::net::http;  // `Headers`.
 

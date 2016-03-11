@@ -128,10 +128,27 @@ struct Headers final {
   using T_COOKIES_MAP = std::map<std::string, std::string>;
 
   Headers() = default;
-  Headers(const Headers&) = default;
   Headers(Headers&&) = default;
-  Headers& operator=(const Headers&) = default;
   Headers& operator=(Headers&&) = default;
+
+  void DeepCopyFrom(const Headers& rhs) {
+    for (const auto& h : rhs.map) {
+      map[h.first] = std::make_unique<Header>(*h.second);
+    }
+    for (const auto& h : rhs.list) {
+      list.emplace_back(h.first, map[h.first].get());
+    }
+    cookies = rhs.cookies;
+  }
+
+  Headers(const Headers& rhs) {
+    DeepCopyFrom(rhs);
+  }
+
+  Headers& operator=(const Headers& rhs) {
+    DeepCopyFrom(rhs);
+    return *this;
+  }
 
   Headers(const std::string& header, const std::string& value) { Set(header, value); }
   Headers(std::initializer_list<std::pair<std::string, std::string>> initializer) {
@@ -239,8 +256,15 @@ struct Headers final {
   };
 
   Iterator begin() const { return Iterator{list.begin()}; }
-
   Iterator end() const { return Iterator{list.end()}; }
+
+  // Legacy.
+  void push_back(const std::pair<std::string, std::string>& pair) {
+    Set(pair.first, pair.second);
+  }
+  void emplace_back(const std::string& header, const std::string& value) {
+    Set(header, value);
+  }
 
   // An interface for the HTTP library to populate headers or cookies.
   void ApplyCookieHeader(const std::string& value) {

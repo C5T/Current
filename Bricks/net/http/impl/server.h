@@ -390,10 +390,10 @@ class HTTPServerConnection final {
     os << " " << HTTPResponseCodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
     os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << kCRLF;
-    for (const auto cit : extra_headers) {
+    for (const auto& cit : extra_headers) {
       os << cit.header << ": " << cit.value << kCRLF;
     }
-    for (const auto cit : extra_headers.cookies) {
+    for (const auto& cit : extra_headers.cookies) {
       os << "Set-Cookie: " << cit.first << '=' << cit.second << kCRLF;
     }
   }
