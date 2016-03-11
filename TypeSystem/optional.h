@@ -89,15 +89,6 @@ class Optional final {
   Optional(std::nullptr_t) : optional_object_(nullptr) {}
   Optional(const FromBarePointer&, T* object) : optional_object_(object) {}
 
-  // NOTE: Constructors taking references or const references are a bad idea,
-  // since it makes it very easy to make a mistake of passing in a short-lived temporary.
-  // The users are advised to explicitly pass in a pointer if the object is externally owned,
-  // or `std::move()` an `std::unique_ptr<>` into an `Optional`.
-  // Another alternative is construct an `Optional<>` directly from `make_unique<>`.
-
-  // TODO(dkorolev): Discuss the semantics with @mzhurovich.
-  // NOTE: I took the liberty to introduce these constructors as I see no harm. --M.Z.
-
   Optional(const T& value)
       : owned_optional_object_(std::make_unique<T>(value)), optional_object_(owned_optional_object_.get()) {}
 
