@@ -107,7 +107,7 @@ y:0.183947}
 
 using current::time::Now;
 using current::strings::Printf;
-using current::net::HTTPHeaders;
+using current::net::http::Headers;
 
 DEFINE_int32(port, 8181, "The port to serve chunked response on.");
 
@@ -160,7 +160,7 @@ int main() {
                     "layout",
                     HTTPResponseCode.OK,
                     "application/json; charset=utf-8",
-                    HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
+                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
                 });
   HTTP(FLAGS_port)
       .Register("/meta",
@@ -169,7 +169,7 @@ int main() {
                     "meta",
                     HTTPResponseCode.OK,
                     "application/json; charset=utf-8",
-                    HTTPHeaders({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
+                    Headers({{"Connection", "close"}, {"Access-Control-Allow-Origin", "*"}}));
                 });
   HTTP(FLAGS_port)
       .Register("/data",

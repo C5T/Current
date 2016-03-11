@@ -236,7 +236,7 @@ int main() {
                           "config",
                           HTTPResponseCode.OK,
                           "application/json; charset=utf-8",
-                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                          Headers({{"Access-Control-Allow-Origin", "*"}}));
                       });
 
   HTTP(port).Register(
@@ -257,7 +257,7 @@ int main() {
                           "meta",
                           HTTPResponseCode.OK,
                           "application/json; charset=utf-8",
-                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                          Headers({{"Access-Control-Allow-Origin", "*"}}));
                       });
 
   HTTP(port).Register("/layout/pic_meta",
@@ -266,7 +266,7 @@ int main() {
                           "meta",
                           HTTPResponseCode.OK,
                           "application/json; charset=utf-8",
-                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                          Headers({{"Access-Control-Allow-Origin", "*"}}));
                       });
 
   HTTP(port).Register("/layout",
@@ -277,7 +277,7 @@ int main() {
                           "layout",
                           HTTPResponseCode.OK,
                           "application/json; charset=utf-8",
-                          HTTPHeaders({{"Access-Control-Allow-Origin", "*"}}));
+                          Headers({{"Access-Control-Allow-Origin", "*"}}));
                       });
 
   const std::string dir = "Dashboard";  // Does not matter if it has a trailing slash or no here.

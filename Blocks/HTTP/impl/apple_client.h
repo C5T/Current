@@ -44,7 +44,7 @@ struct HTTPClientApple {
   // Request data.
   std::string request_method = "";
   std::string request_url = "";
-  current::net::HTTPHeadersType request_headers;
+  current::net::http::Headers request_headers;
   std::string request_body = "";
   std::string request_body_content_type = "";
   std::string post_file = "";

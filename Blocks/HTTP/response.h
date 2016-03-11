@@ -75,13 +75,12 @@ struct Response {
   std::string body;
   current::net::HTTPResponseCodeValue code;
   std::string content_type;
-  current::net::HTTPHeadersType extra_headers;
+  current::net::http::Headers headers;
 
   Response()
       : body(""),
         code(HTTPResponseCode.OK),
-        content_type(current::net::HTTPServerConnection::DefaultContentType()),
-        extra_headers(current::net::HTTPHeadersType()) {}
+        content_type(current::net::HTTPServerConnection::DefaultContentType()) {}
 
   Response(const Response&) = default;
   Response(Response&&) = default;
@@ -100,7 +99,7 @@ struct Response {
     body = rhs.body;
     code = rhs.code;
     content_type = rhs.content_type;
-    extra_headers = rhs.extra_headers;
+    headers = rhs.headers;
   }
 
   void Construct(Response&& rhs) {
@@ -108,16 +107,16 @@ struct Response {
     body = std::move(rhs.body);
     code = rhs.code;
     content_type = rhs.content_type;
-    extra_headers = rhs.extra_headers;
+    headers = rhs.headers;
   }
 
   void Construct(current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
                  const std::string& content_type = current::net::HTTPServerConnection::DefaultContentType(),
-                 const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
+                 const current::net::http::Headers& headers = current::net::http::Headers()) {
     this->body = "";
     this->code = code;
     this->content_type = content_type;
-    this->extra_headers = extra_headers;
+    this->headers = headers;
   }
 
   template <typename T>
@@ -141,36 +140,36 @@ struct Response {
   template <typename T>
   void Construct(T&& object,
                  current::net::HTTPResponseCodeValue code,
-                 const current::net::HTTPHeadersType& extra_headers) {
+                 const current::net::http::Headers& headers) {
     using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = G::DefaultContentType();
-    this->extra_headers = extra_headers;
+    this->headers = headers;
   }
 
   template <typename T>
   void Construct(T&& object,
                  const std::string& object_name,
                  current::net::HTTPResponseCodeValue code,
-                 const current::net::HTTPHeadersType& extra_headers) {
+                 const current::net::http::Headers& headers) {
     using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = G::DefaultContentType();
-    this->extra_headers = extra_headers;
+    this->headers = headers;
   }
 
   template <typename T>
   void Construct(T&& object,
                  current::net::HTTPResponseCodeValue code,
                  const std::string& content_type,
-                 const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
+                 const current::net::http::Headers& headers = current::net::http::Headers()) {
     using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object));
     this->code = code;
     this->content_type = content_type;
-    this->extra_headers = extra_headers;
+    this->headers = headers;
   }
 
   template <typename T>
@@ -178,12 +177,12 @@ struct Response {
                  const std::string& object_name,
                  current::net::HTTPResponseCodeValue code,
                  const std::string& content_type,
-                 const current::net::HTTPHeadersType& extra_headers = current::net::HTTPHeadersType()) {
+                 const current::net::http::Headers& headers = current::net::http::Headers()) {
     using G = impl::StringBodyGenerator<current::strings::is_string_type<T>::value>;
     this->body = G::AsString(std::forward<T>(object), object_name);
     this->code = code;
     this->content_type = content_type;
-    this->extra_headers = extra_headers;
+    this->headers = headers;
   }
 
   Response& Body(const std::string& s) {
@@ -220,15 +219,15 @@ struct Response {
     return *this;
   }
 
-  Response& Headers(const current::net::HTTPHeadersType& h) {
-    extra_headers = h;
+  Response& Headers(const current::net::http::Headers& h) {
+    headers = h;
     initialized = true;
     return *this;
   }
 
   void RespondViaHTTP(Request r) const {
     if (initialized) {
-      r(body, code, content_type, extra_headers);
+      r(body, code, content_type, headers);
     }
     // Else, a 500 "INTERNAL SERVER ERROR" will be returned, since `Request`
     // has not been served upon destructing at the exit from this method.

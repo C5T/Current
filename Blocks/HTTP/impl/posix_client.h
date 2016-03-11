@@ -79,7 +79,10 @@ class HTTPClientPOSIX final {
         connection.BlockingWrite("User-Agent: " + request_user_agent_ + "\r\n", true);
       }
       for (const auto& h : request_headers_) {
-        connection.BlockingWrite(h.first + ": " + h.second + "\r\n", true);
+        connection.BlockingWrite(h.header + ": " + h.value + "\r\n", true);
+      }
+      for (const auto& h : request_headers_.cookies) {
+        connection.BlockingWrite("Set-Cookie: " + h.first + "=" + h.second + "\r\n", true);
       }
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
@@ -121,7 +124,7 @@ class HTTPClientPOSIX final {
   bool request_has_body_ = false;  // TODO(dkorolev): Support this in ObjectiveC and Java code as well.
   std::string request_body_contents_ = "";
   std::string request_user_agent_ = "";
-  current::net::HTTPHeadersType request_headers_;
+  current::net::http::Headers request_headers_;
 
   // Output parameters.
   current::net::HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;

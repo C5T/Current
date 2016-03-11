@@ -42,7 +42,7 @@ HTTP(port).ResetAllHandlers();
     r("Yes.",
       HTTPResponseCode.Accepted,
       "text/html",
-      HTTPHeaders().Set("custom", "header").Set("another", "one"));
+      current::net::http::Headers().Set("custom", "header").Set("another", "one"));
   });
 EXPECT_EQ("Yes.", HTTP(GET(Printf("http://localhost:%d/found", port))).body);
 }
