@@ -362,6 +362,40 @@ TEST(HTTPHeadersTest, IterateOverHeaders) {
   }
 }
 
+TEST(HTTPHeadersTest, DeepCopy) {
+  using namespace current::net::http;  // `Headers`.
+
+  Headers mutable_headers;
+  const Headers& immutable_headers = mutable_headers;
+
+  // Create threee headers.
+  mutable_headers["header"].value = "1";
+  mutable_headers["another"].value = "2";
+  mutable_headers["Order-Is-Preserved"].value = "3";
+
+  EXPECT_EQ(3u, mutable_headers.size());
+  EXPECT_EQ(3u, immutable_headers.size());
+
+  {
+    Headers copy(immutable_headers);
+    std::vector<std::string> result;
+    for (const auto& h : copy) {
+      result.emplace_back(h.header + ":" + h.value);
+    }
+    EXPECT_EQ("header:1, another:2, Order-Is-Preserved:3", current::strings::Join(result, ", "));
+  }
+
+  {
+    Headers copy;
+    copy = immutable_headers;
+    std::vector<std::string> result;
+    for (const auto& h : copy) {
+      result.emplace_back(h.header + ":" + h.value);
+    }
+    EXPECT_EQ("header:1, another:2, Order-Is-Preserved:3", current::strings::Join(result, ", "));
+  }
+}
+
 TEST(HTTPHeadersTest, CookiesSmokeTest) {
   using namespace current::net::http;  // `Headers`.
 

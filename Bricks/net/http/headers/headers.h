@@ -141,9 +141,7 @@ struct Headers final {
     cookies = rhs.cookies;
   }
 
-  Headers(const Headers& rhs) {
-    DeepCopyFrom(rhs);
-  }
+  Headers(const Headers& rhs) { DeepCopyFrom(rhs); }
 
   Headers& operator=(const Headers& rhs) {
     DeepCopyFrom(rhs);
@@ -259,12 +257,8 @@ struct Headers final {
   Iterator end() const { return Iterator{list.end()}; }
 
   // Legacy.
-  void push_back(const std::pair<std::string, std::string>& pair) {
-    Set(pair.first, pair.second);
-  }
-  void emplace_back(const std::string& header, const std::string& value) {
-    Set(header, value);
-  }
+  void push_back(const std::pair<std::string, std::string>& pair) { Set(pair.first, pair.second); }
+  void emplace_back(const std::string& header, const std::string& value) { Set(header, value); }
 
   // An interface for the HTTP library to populate headers or cookies.
   void ApplyCookieHeader(const std::string& value) {
