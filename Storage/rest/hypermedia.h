@@ -31,39 +31,146 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 #include "../../Blocks/HTTP/api.h"
 
+namespace current {
+namespace storage {
+namespace rest {
+
 CURRENT_STRUCT(HypermediaRESTTopLevel) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_status, std::string);
   CURRENT_FIELD(url_data, (std::map<std::string, std::string>));
   CURRENT_FIELD(up, bool);
+
   CURRENT_CONSTRUCTOR(HypermediaRESTTopLevel)(const std::string& url_prefix = "", bool up = false)
       : url(url_prefix), url_status(url_prefix + "/status"), up(up) {}
 };
 
 CURRENT_STRUCT(HypermediaRESTStatus) {
   CURRENT_FIELD(up, bool);
+
   CURRENT_CONSTRUCTOR(HypermediaRESTStatus)(bool up = false) : up(up) {}
 };
 
-CURRENT_STRUCT(HypermediaRESTContainerResponse) {
+CURRENT_STRUCT(HypermediaRESTError) {
+  using T_DETAILS = std::map<std::string, std::string>;
+  CURRENT_FIELD(error, std::string);
+  CURRENT_FIELD(description, std::string);
+  CURRENT_FIELD(details, Optional<T_DETAILS>);
+
+  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& error, const std::string& description)
+      : error(error), description(description) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTError)(
+      const std::string& error, const std::string& description, const T_DETAILS& details)
+      : error(error), description(description), details(details) {}
+};
+
+CURRENT_STRUCT(HypermediaRESTGenericResponse) {
+  CURRENT_FIELD(success, bool, true);
+  CURRENT_FIELD(message, Optional<std::string>);
+  CURRENT_FIELD(errors, Optional<std::vector<HypermediaRESTError>>);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTGenericResponse) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success) : success(success) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success, const std::string& message)
+      : success(success), message(message) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(
+      bool success, const std::string& message, const std::vector<HypermediaRESTError>& errors)
+      : success(success), message(message), errors(errors) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success,
+                                                     const std::vector<HypermediaRESTError>& errors)
+      : success(success), errors(errors) {}
+};
+
+CURRENT_STRUCT_T(HypermediaRESTRecordResponse) {
+  CURRENT_FIELD(success, bool, true);  // No nested template structs yet :(
+  CURRENT_FIELD(url, std::string);
+  CURRENT_FIELD(data, T);
+
+  CURRENT_CONSTRUCTOR_T(HypermediaRESTRecordResponse)(const std::string& url, const T& data)
+      : url(url), data(data) {}
+  CURRENT_CONSTRUCTOR_T(HypermediaRESTRecordResponse)(const std::string& url, T&& data)
+      : url(url), data(std::move(data)) {}
+};
+
+CURRENT_STRUCT(HypermediaRESTContainerResponse, HypermediaRESTGenericResponse) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(data, std::vector<std::string>);
+
+  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTContainerResponse) : SUPER(true) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTContainerResponse)(const std::string& url,
+                                                       const std::vector<std::string>& data)
+      : SUPER(true), url(url), data(data) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTContainerResponse)(const std::string& url, std::vector<std::string>&& data)
+      : SUPER(true), url(url), data(std::move(data)) {}
 };
 
-CURRENT_STRUCT(HypermediaRESTError) {
-  CURRENT_FIELD(error, std::string);
-  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& error) : error(error) {}
+CURRENT_STRUCT(HypermediaRESTResourceUpdateResponse, HypermediaRESTGenericResponse) {
+  CURRENT_FIELD(resource_url, Optional<std::string>);
+
+  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(bool success) : SUPER(success) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(bool success, const std::string& message)
+      : SUPER(success, message) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(
+      bool success, const std::string& message, const std::string& resource_url)
+      : SUPER(success, message), resource_url(resource_url) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(
+      bool success, const std::string& message, const std::vector<HypermediaRESTError>& errors)
+      : SUPER(success, message, errors) {}
 };
 
-CURRENT_STRUCT(HypermediaRESTParseJSONError, HypermediaRESTError) {
-  CURRENT_FIELD(json_details, std::string);
-  CURRENT_CONSTRUCTOR(HypermediaRESTParseJSONError)(const std::string& error, const std::string& json_details)
-      : SUPER(error), json_details(json_details) {}
+inline HypermediaRESTGenericResponse ErrorResponseObject(const std::string& message,
+                                                         const std::vector<HypermediaRESTError>& errors) {
+  return HypermediaRESTGenericResponse(false, message, errors);
+}
+
+inline HypermediaRESTGenericResponse ErrorResponseObject(const std::vector<HypermediaRESTError>& errors) {
+  return HypermediaRESTGenericResponse(false, errors);
+}
+
+inline HypermediaRESTGenericResponse ErrorResponseObject(const std::string& message,
+                                                         const HypermediaRESTError& error) {
+  return HypermediaRESTGenericResponse(false, message, {error});
+}
+
+inline HypermediaRESTGenericResponse ErrorResponseObject(const HypermediaRESTError& error) {
+  return HypermediaRESTGenericResponse(false, {error});
+}
+
+inline Response ErrorResponse(const HypermediaRESTError& error_object, net::HTTPResponseCodeValue code) {
+  return Response(ErrorResponseObject(error_object), code);
+}
+
+inline HypermediaRESTError MethodNotAllowedError(const std::string& description,
+                                                 const std::string& requested_method) {
+  return HypermediaRESTError("MethodNotAllowed", description, {{"requested_method", requested_method}});
+}
+
+inline HypermediaRESTError ParseJSONError(const std::string& description, const std::string& error_details) {
+  return HypermediaRESTError("ParseJSONError", description, {{"error_details", error_details}});
 };
 
-namespace current {
-namespace storage {
-namespace rest {
+inline HypermediaRESTError RequiredKeyIsMissingError(const std::string& description) {
+  return HypermediaRESTError("RequiredKeyIsMissing", description);
+}
+
+inline HypermediaRESTError InvalidKeyError(const std::string& description) {
+  return HypermediaRESTError("InvalidKey", description);
+}
+
+inline HypermediaRESTError InvalidKeyError(const std::string& description,
+                                           const std::map<std::string, std::string>& details) {
+  return HypermediaRESTError("InvalidKey", description, details);
+}
+
+inline HypermediaRESTError ResourceNotFoundError(const std::string& description,
+                                                 const std::map<std::string, std::string>& details) {
+  return HypermediaRESTError("ResourceNotFound", description, details);
+}
+
+inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& description,
+                                                      const std::map<std::string, std::string>& details) {
+  return HypermediaRESTError("ResourceAlreadyExists", description, details);
+}
 
 struct Hypermedia {
   template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -110,7 +217,10 @@ struct Hypermedia {
     WithOrWithoutKeyFromURL(
         std::move(request),
         next_with_key,
-        [](Request request) { request("Need resource key in the URL.\n", HTTPResponseCode.BadRequest); });
+        [](Request request) {
+          request(ErrorResponseObject(RequiredKeyIsMissingError("Need resource key in the URL.")),
+                  HTTPResponseCode.BadRequest);
+        });
   }
 
   template <typename F>
@@ -130,9 +240,13 @@ struct Hypermedia {
       if (!input.url_key.empty()) {
         const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
         if (Exists(result)) {
-          return Value(result);
+          const std::string url = input.restful_url_prefix + '/' + input.data_url_component + '/' +
+                                  input.field_name + '/' + input.url_key;
+          return HypermediaRESTRecordResponse<ENTRY>(url, Value(result));
         } else {
-          return Response(HypermediaRESTError("Resource not found."), HTTPResponseCode.NotFound);
+          return ErrorResponse(
+              ResourceNotFoundError("The requested resource not found.", {{"key", input.url_key}}),
+              HTTPResponseCode.NotFound);
         }
       } else {
         HypermediaRESTContainerResponse response;
@@ -150,7 +264,8 @@ struct Hypermedia {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
-        request(HypermediaRESTError("Should not have resource key in the URL."), HTTPResponseCode.BadRequest);
+        request(ErrorResponseObject(InvalidKeyError("Should not have resource key in the URL.")),
+                HTTPResponseCode.BadRequest);
       } else {
         next(std::move(request));
       }
@@ -158,18 +273,24 @@ struct Hypermedia {
     template <class INPUT>
     Response Run(const INPUT& input) const {
       input.entry.InitializeOwnKey();
+      const std::string key = current::ToString(sfinae::GetKey(input.entry));
       if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
-        // TODO(dkorolev): Return a JSON with a resource here.
-        return Response(current::ToString(sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+        const std::string url =
+            input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + key;
+        return Response(HypermediaRESTResourceUpdateResponse(true, "Resource created.", url),
+                        HTTPResponseCode.Created);
       } else {
-        return Response(HypermediaRESTError("The key generated for entry already exists"),
+        return Response(HypermediaRESTResourceUpdateResponse(
+                            false,
+                            "Resource creation failed.",
+                            {ResourceAlreadyExistsError("The resource already exists", {{"key", key}})}),
                         HTTPResponseCode.Conflict);
       }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
-      return Response(HypermediaRESTParseJSONError("Invalid JSON in request body.", error_message),
-                      HTTPResponseCode.BadRequest);
+      return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message),
+                           HTTPResponseCode.BadRequest);
     }
   };
 
@@ -181,22 +302,30 @@ struct Hypermedia {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
+      const std::string url_key = current::ToString(input.url_key);
       if (input.entry_key == input.url_key) {
         const bool exists = Exists(input.field[input.entry_key]);
         input.field.Add(input.entry);
-        // TODO(dkorolev): Return a JSON with a resource here.
+        const std::string url =
+            input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
+        HypermediaRESTResourceUpdateResponse response(true);
         if (exists) {
-          return Response("Updated.\n", HTTPResponseCode.OK);
+          response.message = "Resource updated.";
+          return Response(response, HTTPResponseCode.OK);
         } else {
-          return Response("Created.\n", HTTPResponseCode.Created);
+          response.message = "Resource created.";
+          return Response(response, HTTPResponseCode.Created);
         }
       } else {
-        return Response(HypermediaRESTError("Object key doesn't match URL key."), HTTPResponseCode.BadRequest);
+        const std::string object_key = current::ToString(input.entry_key);
+        return ErrorResponse(InvalidKeyError("Object key doesn't match URL key.",
+                                             {{"object_key", object_key}, {"url_key", url_key}}),
+                             HTTPResponseCode.BadRequest);
       }
     }
     static Response ErrorBadJSON(const std::string& error_message) {
-      return Response(HypermediaRESTParseJSONError("Invalid JSON in request body.", error_message),
-                      HTTPResponseCode.BadRequest);
+      return ErrorResponse(ParseJSONError("Invalid JSON in request body.", error_message),
+                           HTTPResponseCode.BadRequest);
     }
   };
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -207,14 +336,20 @@ struct Hypermedia {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
+      std::string message;
+      if (Exists(input.field[input.key])) {
+        message = "Resource deleted.";
+      } else {
+        message = "Resource didn't exist.";
+      }
       input.field.Erase(input.key);
-      // TODO(dkorolev): Return a JSON with something more useful here.
-      return Response("Deleted.\n", HTTPResponseCode.OK);
+      return Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
     }
   };
 
-  static Response ErrorMethodNotAllowed() {
-    return Response(HypermediaRESTError("Method not allowed."), HTTPResponseCode.MethodNotAllowed);
+  static Response ErrorMethodNotAllowed(const std::string& method) {
+    return ErrorResponse(MethodNotAllowedError("Supported methods: GET, PUT, POST, DELETE.", method),
+                         HTTPResponseCode.MethodNotAllowed);
   }
 };
 

@@ -34,15 +34,21 @@ SOFTWARE.
 #include "hypermedia.h"
 #include "sfinae.h"
 
-CURRENT_STRUCT(AdvancedHypermediaRESTRecordResponse) {
+namespace current {
+namespace storage {
+namespace rest {
+
+CURRENT_STRUCT_T(AdvancedHypermediaRESTRecordResponse) {
+  CURRENT_FIELD(success, Optional<bool>);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_full, std::string);
   CURRENT_FIELD(url_brief, std::string);
   CURRENT_FIELD(url_directory, std::string);
-  // The `"data":{...}` blob is injected as a raw string for now. -- D.K.
+  CURRENT_FIELD(data, T);
 };
 
-CURRENT_STRUCT(AdvancedHypermediaRESTContainerResponse) {
+CURRENT_STRUCT_T(AdvancedHypermediaRESTContainerResponse) {
+  CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_directory, std::string);
   CURRENT_FIELD(i, uint64_t);
@@ -50,25 +56,24 @@ CURRENT_STRUCT(AdvancedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(total, uint64_t);
   CURRENT_FIELD(url_next_page, Optional<std::string>);
   CURRENT_FIELD(url_previous_page, Optional<std::string>);
-  // The `"data":[...]` blob is injected as a raw string for now. -- D.K.
+  CURRENT_FIELD(data, std::vector<T>);
 };
 
-namespace current {
-namespace storage {
-namespace rest {
-
-static std::string json_content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
-
 template <typename T, typename INPUT, typename TT>
-std::string FormatAsAdvancedHypermediaRecord(TT& record, const INPUT& input) {
-  AdvancedHypermediaRESTRecordResponse response_builder;
+inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(TT& record,
+                                                                                const INPUT& input,
+                                                                                bool set_success = true) {
+  AdvancedHypermediaRESTRecordResponse<T> response;
   const std::string key_as_string = current::ToString(current::storage::sfinae::GetKey(record));
-  response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
-  response_builder.url = response_builder.url_directory + '/' + key_as_string;
-  response_builder.url_full = response_builder.url;
-  response_builder.url_brief = response_builder.url + "?fields=brief";
-  const std::string response = JSON(response_builder);
-  return response.substr(0, response.length() - 1) + ",\"data\":" + JSON(static_cast<const T&>(record)) + '}';
+  if (set_success) {
+    response.success = true;
+  }
+  response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
+  response.url = response.url_directory + '/' + key_as_string;
+  response.url_full = response.url;
+  response.url_brief = response.url + "?fields=brief";
+  response.data = static_cast<const T&>(record);
+  return response;
 }
 
 struct AdvancedHypermedia : Hypermedia {
@@ -104,35 +109,30 @@ struct AdvancedHypermedia : Hypermedia {
         const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
         if (Exists(result)) {
           const auto& value = Value(result);
-          return Response((brief ? FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(value, input)
-                                 : FormatAsAdvancedHypermediaRecord<ENTRY>(value, input)),
-                          HTTPResponseCode.OK,
-                          json_content_type);
+          return (brief ? Response(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(value, input),
+                                   HTTPResponseCode.OK)
+                        : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
         } else {
-          return Response(HypermediaRESTError("Resource not found."), HTTPResponseCode.NotFound);
+          return ErrorResponse(
+              ResourceNotFoundError("Resource with requested key not found.", {{"key", input.url_key}}),
+              HTTPResponseCode.NotFound);
         }
       } else {
-        // Collection view.
-        AdvancedHypermediaRESTContainerResponse response_builder;
-        response_builder.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
+        // Collection view. `data` is an array of `AdvancedHypermediaRESTRecordResponse<T_BRIEF_ENTRY>`.
+        using T_DATA_ENTRY = AdvancedHypermediaRESTRecordResponse<T_BRIEF_ENTRY>;
+        AdvancedHypermediaRESTContainerResponse<T_DATA_ENTRY> response;
+        response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
         const auto GenPageURL = [&](uint64_t i, uint64_t n) {
           return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) + "&n=" +
                  current::ToString(n);
         };
-        bool first = true;
-        std::ostringstream os;
         // Poor man's pagination.
         uint64_t i = 0;
         bool has_previous_page = false;
         bool has_next_page = false;
         for (const auto& element : input.field) {
           if (i >= query_i && i < query_i + query_n) {
-            if (first) {
-              first = false;
-            } else {
-              os << ',';
-            }
-            os << FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(element, input);
+            response.data.push_back(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(element, input, false));
           } else if (i < query_i) {
             has_previous_page = true;
           } else if (i >= query_i + query_n) {
@@ -143,21 +143,18 @@ struct AdvancedHypermedia : Hypermedia {
         if (query_i > i) {
           query_i = i;
         }
-        response_builder.url = GenPageURL(query_i, query_n);
-        response_builder.i = query_i;
-        response_builder.n = std::min(query_n, i - query_i);
-        response_builder.total = i;
+        response.url = GenPageURL(query_i, query_n);
+        response.i = query_i;
+        response.n = std::min(query_n, i - query_i);
+        response.total = i;
         if (has_previous_page) {
-          response_builder.url_previous_page = GenPageURL(query_i >= query_n ? query_i - query_n : 0, query_n);
+          response.url_previous_page = GenPageURL(query_i >= query_n ? query_i - query_n : 0, query_n);
         }
         if (has_next_page) {
-          response_builder.url_next_page =
+          response.url_next_page =
               GenPageURL(query_i + query_n * 2 > i ? i - query_n : query_i + query_n, query_n);
         }
-        const std::string response = JSON(response_builder);
-        return Response(response.substr(0, response.length() - 1) + ",\"data\":[" + os.str() + "]}",
-                        HTTPResponseCode.OK,
-                        json_content_type);
+        return Response(response, HTTPResponseCode.OK);
       }
     }
   };

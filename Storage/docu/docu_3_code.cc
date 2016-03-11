@@ -77,6 +77,7 @@ CURRENT_STORAGE(StorageOfClients) {
 }  // namespace storage_docu
 
 TEST(StorageDocumentation, RESTifiedStorageExample) {
+  using namespace current::storage::rest;
   using namespace storage_docu;
   using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
 
@@ -128,7 +129,15 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"url\":\"http://example.current.ai/api2/data/client\",\"data\":[]}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":true,"
+        "\"message\":null,"
+        "\"errors\":null,"
+        "\"url\":\"http://example.current.ai/api2/data/client\","
+        "\"data\":[]"
+        "}\n",
+        result.body);
   }
 
   // GET a non-existing resource.
@@ -141,7 +150,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client/42"));
     EXPECT_EQ(404, static_cast<int>(result.code));
-    EXPECT_EQ("{\"error\":\"Resource not found.\"}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"ResourceNotFound\","
+                    "\"description\":\"The requested resource not found.\","
+                    "\"details\":{\"key\":\"42\"}"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST to a full resource-specifying URL, not allowed.
@@ -156,7 +176,18 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     current::time::SetNow(std::chrono::microseconds(102));
     const auto result = HTTP(POST(base_url + "/api2/data/client/42", "blah"));
     EXPECT_EQ(400, static_cast<int>(result.code));
-    EXPECT_EQ("{\"error\":\"Should not have resource key in the URL.\"}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"InvalidKey\","
+                    "\"description\":\"Should not have resource key in the URL.\","
+                    "\"details\":null"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST a JSON not following the schema, not allowed.
@@ -172,11 +203,17 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(POST(base_url + "/api2/data/client", "{\"trash\":true}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ(
-      "{"
-      "\"error\":\"Invalid JSON in request body.\","
-      "\"json_details\":\"Expected number for `key`, got: missing field.\""
-      "}\n",
-      result.body);
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"ParseJSONError\","
+                    "\"description\":\"Invalid JSON in request body.\","
+                    "\"details\":{\"error_details\":\"Expected number for `key`, got: missing field.\"}"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST another JSON not following the schema, still not allowed.
@@ -192,11 +229,17 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     const auto result = HTTP(POST(base_url + "/api2/data/client", "{\"key\":[]}"));
     EXPECT_EQ(400, static_cast<int>(result.code));
     EXPECT_EQ(
-      "{"
-      "\"error\":\"Invalid JSON in request body.\","
-      "\"json_details\":\"Expected number for `key`, got: []\""
-      "}\n",
-      result.body);
+        "{"
+        "\"success\":false,"
+        "\"message\":null,"
+        "\"errors\":["
+                    "{"
+                    "\"error\":\"ParseJSONError\","
+                    "\"description\":\"Invalid JSON in request body.\","
+                    "\"details\":{\"error_details\":\"Expected number for `key`, got: []\"}"
+                    "}]"
+        "}\n",
+        result.body);
   }
 
   // POST a real piece.
@@ -216,7 +259,19 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(GET(base_url + "/api2/data/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"key\":" + client1_key_str + ",\"name\":\"John Doe\",\"white\":true,\"straight\":true,\"male\":true}\n", result.body);
+    EXPECT_EQ(
+        "{"
+        "\"success\":true,"
+        "\"url\":\"http://example.current.ai/api2/data/client/" + client1_key_str + "\","
+        "\"data\":{"
+                  "\"key\":" + client1_key_str + ","
+                  "\"name\":\"John Doe\","
+                  "\"white\":true,"
+                  "\"straight\":true,"
+                  "\"male\":true"
+                  "}"
+        "}\n",
+        result.body);
   }
 
   // PUT an entry with the key different from URL is not allowed.
@@ -263,30 +318,92 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ(
         "{"
+        "\"success\":true,"
+        "\"message\":null,"
+        "\"errors\":null,"
         "\"url\":\"http://example.current.ai/api2/data/client\","
-        "\"data\":[\""
-        "http://example.current.ai/api2/data/client/101\",\""
-        "http://example.current.ai/api2/data/client/102\",\""
-        "http://example.current.ai/api2/data/client/" + client1_key_str + "\"" +
-        "]}\n",
+        "\"data\":["
+                  "\"http://example.current.ai/api2/data/client/101\","
+                  "\"http://example.current.ai/api2/data/client/102\","
+                  "\"http://example.current.ai/api2/data/client/" + client1_key_str + "\""
+                  "]"
+        "}\n",
         result.body);
   }
   {
     const auto result = HTTP(GET(base_url + "/api3/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     // Shamelessly copy-pasted from the output. -- D.K.
-    EXPECT_EQ("{\"url\":\"http://example.current.ai/api3/data/client?i=0&n=10\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"i\":0,\"n\":3,\"total\":3,\"url_next_page\":null,\"url_previous_page\":null,\"data\":[{\"url\":\"http://example.current.ai/api3/data/client/101\",\"url_full\":\"http://example.current.ai/api3/data/client/101\",\"url_brief\":\"http://example.current.ai/api3/data/client/101?fields=brief\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":101,\"name\":\"John Doe\"}},{\"url\":\"http://example.current.ai/api3/data/client/102\",\"url_full\":\"http://example.current.ai/api3/data/client/102\",\"url_brief\":\"http://example.current.ai/api3/data/client/102?fields=brief\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":102,\"name\":\"John Doe\"}},{\"url\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\",\"url_full\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\",\"url_brief\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "?fields=brief\",\"url_directory\":\"http://example.current.ai/api3/data/client\",\"data\":{\"key\":" + client1_key_str + ",\"name\":\"Jane Doe\"}}]}",
+    EXPECT_EQ(
+        "{"
+        "\"success\":true,"
+        "\"url\":\"http://example.current.ai/api3/data/client?i=0&n=10\","
+        "\"url_directory\":\"http://example.current.ai/api3/data/client\","
+        "\"i\":0,"
+        "\"n\":3,"
+        "\"total\":3,"
+        "\"url_next_page\":null,"
+        "\"url_previous_page\":null,"
+        "\"data\":["
+                  "{"
+                  "\"success\":null,"
+                  "\"url\":\"http://example.current.ai/api3/data/client/101\","
+                  "\"url_full\":\"http://example.current.ai/api3/data/client/101\","
+                  "\"url_brief\":\"http://example.current.ai/api3/data/client/101?fields=brief\","
+                  "\"url_directory\":\"http://example.current.ai/api3/data/client\","
+                  "\"data\":{"
+                            "\"key\":101,"
+                            "\"name\":\"John Doe\""
+                            "}"
+                  "},"
+                  "{"
+                  "\"success\":null,"
+                  "\"url\":\"http://example.current.ai/api3/data/client/102\","
+                  "\"url_full\":\"http://example.current.ai/api3/data/client/102\","
+                  "\"url_brief\":\"http://example.current.ai/api3/data/client/102?fields=brief\","
+                  "\"url_directory\":\"http://example.current.ai/api3/data/client\","
+                  "\"data\":{"
+                            "\"key\":102,"
+                            "\"name\":\"John Doe\""
+                            "}"
+                  "},"
+                  "{"
+                  "\"success\":null,"
+                  "\"url\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
+                  "\"url_full\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "\","
+                  "\"url_brief\":\"http://example.current.ai/api3/data/client/" + client1_key_str + "?fields=brief\","
+                  "\"url_directory\":\"http://example.current.ai/api3/data/client\","
+                  "\"data\":{"
+                            "\"key\":" + client1_key_str + ","
+                            "\"name\":\"Jane Doe\""
+                            "}"
+                  "}]"
+        "}\n",
         result.body);
   }
 
-  // DELETE one record and GET the collection again.
+  // DELETE non-existing record.
   current::time::SetNow(std::chrono::microseconds(114));
-  EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api1/data/client/" + client1_key_str)).code));
+  {
+    const auto result = HTTP(DELETE(base_url + "/api2/data/client/100500"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"success\":true,\"message\":\"Resource didn't exist.\",\"errors\":null,\"resource_url\":null}\n",
+              result.body);
+  }
+  // DELETE one record and GET the collection again.
+  current::time::SetNow(std::chrono::microseconds(115));
+  {
+    const auto result = HTTP(DELETE(base_url + "/api2/data/client/" + client1_key_str));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"success\":true,\"message\":\"Resource deleted.\",\"errors\":null,\"resource_url\":null}\n",
+              result.body);
+  }
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("101\n102\n", result.body);
   }
+
 }
 
 #endif  // CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC
