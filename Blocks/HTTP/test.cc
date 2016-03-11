@@ -247,7 +247,7 @@ TEST(HTTPAPI, RespondsWithString) {
   const string url = Printf("http://localhost:%d/responds_with_string", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("bar", response.headers.at("foo"));
+  EXPECT_EQ("bar", response.headers.Get("foo"));
   EXPECT_EQ("test_string", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());

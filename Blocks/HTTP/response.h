@@ -225,6 +225,12 @@ struct Response {
     return *this;
   }
 
+  Response& SetCookie(const std::string& name, const std::string& value) {
+    headers.SetCookie(name, value);
+    initialized = true;
+    return *this;
+  }
+
   void RespondViaHTTP(Request r) const {
     if (initialized) {
       r(body, code, content_type, headers);

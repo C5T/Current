@@ -55,7 +55,7 @@ struct HTTPClientApple {
   // Response data.
   int response_code = -1;
   std::string response_url = "";
-  current::net::HTTPRequestData::HeadersType response_headers;
+  current::net::http::Headers response_headers;
   std::string received_file = "";
   std::string response_body = "";
 

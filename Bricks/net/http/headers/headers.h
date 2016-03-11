@@ -262,11 +262,8 @@ struct Headers final {
 
   // An interface for the HTTP library to populate headers or cookies.
   void ApplyCookieHeader(const std::string& value) {
-    const size_t first_equals_sign = value.find('=');
-    if (first_equals_sign != std::string::npos) {
-      const size_t semicolon_or_npos = value.find(';');
-      cookies[value.substr(0, first_equals_sign)] =
-          value.substr(first_equals_sign + 1, semicolon_or_npos - (first_equals_sign + 1));
+    for (const auto& kv : strings::SplitIntoKeyValuePairs(value, '=', ';')) {
+      cookies.insert(kv);
     }
   }
   void SetHeaderOrCookie(const std::string& header, const std::string& value) {
@@ -275,6 +272,12 @@ struct Headers final {
     } else {
       Set(header, value);
     }
+  }
+
+  // An externally facing `SetCookie()`, to be used mostly while constructing the `Response`.
+  Headers& SetCookie(const std::string& name, const std::string& value) {
+    cookies[name] = value;
+    return *this;
   }
 
   // `map[header]` either does not exist, or contains a valid `std::unique_ptr<Header>`.

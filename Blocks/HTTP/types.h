@@ -148,7 +148,7 @@ struct HTTPResponse {
   // HTTP response code.
   current::net::HTTPResponseCodeValue code;
   // HTTP response headers.
-  current::net::HTTPRequestData::HeadersType headers;
+  current::net::http::Headers headers;
 };
 
 struct HTTPResponseWithBuffer : HTTPResponse {

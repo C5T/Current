@@ -47,6 +47,7 @@ SOFTWARE.
 #include "../../../../TypeSystem/Serialization/json.h"
 
 #include "../../../strings/util.h"
+#include "../../../strings/split.h"
 
 #include "../../../../Blocks/URL/url.h"
 
@@ -71,21 +72,11 @@ const char* const kTransferEncodingChunkedValue = "chunked";
 // TODO(dkorolev): This is not yet the case, but will be soon once I fix HTTP parse code.
 class HTTPDefaultHelper {
  public:
-  typedef std::map<std::string, std::string> HeadersType;
-  const HeadersType& headers() const { return headers_; }
+  const http::Headers& headers() const { return headers_; }
 
  protected:
   inline void OnHeader(const char* key, const char* value) {
-    // https://tools.ietf.org/html/rfc7230#section-3.2
-    // TODO(mzhurovich): proper support of `Set-Cookie` via additional `cookies` member.
-    if (headers_.count(key)) {
-      // LCOV_EXCL_START
-      headers_[key] += ",";
-      headers_[key] += value;
-      // LCOV_EXCL_STOP
-    } else {
-      headers_[key] = value;
-    }
+    headers_.SetHeaderOrCookie(key, value);
   }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
@@ -96,7 +87,7 @@ class HTTPDefaultHelper {
   }
 
  private:
-  HeadersType headers_;
+  http::Headers headers_;
   std::string body_;
 };
 
