@@ -128,7 +128,7 @@ inline HypermediaRESTGenericResponse ErrorResponseObject(const std::vector<Hyper
 }
 
 inline HypermediaRESTGenericResponse ErrorResponseObject(const std::string& message,
-                                                         const HypermediaRESTError error) {
+                                                         const HypermediaRESTError& error) {
   return HypermediaRESTGenericResponse(false, message, {error});
 }
 
