@@ -77,6 +77,7 @@ CURRENT_STORAGE(StorageOfClients) {
 }  // namespace storage_docu
 
 TEST(StorageDocumentation, RESTifiedStorageExample) {
+  using namespace current::storage::rest;
   using namespace storage_docu;
   using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
 

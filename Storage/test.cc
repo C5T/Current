@@ -940,6 +940,7 @@ CURRENT_STORAGE(SimpleStorage) {
 // RESTful API test.
 TEST(TransactionalStorage, RESTfulAPITest) {
   using namespace transactional_storage_test;
+  using namespace current::storage::rest;
   using Storage = SimpleStorage<JSONFilePersister>;
 
   const std::string persistence_file_name =
@@ -1036,6 +1037,7 @@ CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(transactional_storage_test::SimplePostPe
 
 TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using namespace transactional_storage_test;
+  using namespace current::storage::rest;
 
   using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
   using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
@@ -1081,6 +1083,7 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
 
 TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   using namespace transactional_storage_test;
+  using namespace current::storage::rest;
   using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
 
   Storage storage;

@@ -175,7 +175,7 @@ struct Basic {
   };
 
   // LCOV_EXCL_START
-  static Response ErrorMethodNotAllowed() {
+  static Response ErrorMethodNotAllowed(const std::string&) {
     return Response("Method not allowed.\n", HTTPResponseCode.MethodNotAllowed);
   }
   // LCOV_EXCL_STOP

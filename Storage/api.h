@@ -148,13 +148,18 @@ struct RESTfulHandlerGenerator {
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage, &restful_url_prefix, field_name](Request request) {
+                [&handler, &storage, &restful_url_prefix, field_name, data_url_component](Request request) {
                   try {
                     auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
                     storage.Transaction(
-                                [handler, &storage, &field, mutable_entry, &restful_url_prefix, field_name](
-                                    T_MUTABLE_FIELDS fields) mutable -> Response {
+                                [handler,
+                                 &storage,
+                                 &field,
+                                 mutable_entry,
+                                 &restful_url_prefix,
+                                 field_name,
+                                 data_url_component](T_MUTABLE_FIELDS fields) mutable -> Response {
                                   const struct {
                                     T_STORAGE& storage;
                                     T_MUTABLE_FIELDS fields;
@@ -162,7 +167,14 @@ struct RESTfulHandlerGenerator {
                                     typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
                                     const std::string& restful_url_prefix;
                                     const std::string& field_name;
-                                  } args{storage, fields, field, mutable_entry, restful_url_prefix, field_name};
+                                    const std::string& data_url_component;
+                                  } args{storage,
+                                         fields,
+                                         field,
+                                         mutable_entry,
+                                         restful_url_prefix,
+                                         field_name,
+                                         data_url_component};
                                   return handler.Run(args);
                                 },
                                 std::move(request)).Detach();
@@ -178,8 +190,8 @@ struct RESTfulHandlerGenerator {
                           typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage, &restful_url_prefix, field_name](Request request,
-                                                                      const std::string& key_as_string) {
+                [&handler, &storage, &restful_url_prefix, field_name, data_url_component](
+                    Request request, const std::string& key_as_string) {
                   try {
                     const auto url_key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                     const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
@@ -193,7 +205,8 @@ struct RESTfulHandlerGenerator {
                                  entry,
                                  entry_key,
                                  &restful_url_prefix,
-                                 field_name](T_MUTABLE_FIELDS fields) -> Response {
+                                 field_name,
+                                 data_url_component](T_MUTABLE_FIELDS fields) -> Response {
                                   const struct {
                                     T_STORAGE& storage;
                                     T_MUTABLE_FIELDS fields;
@@ -203,6 +216,7 @@ struct RESTfulHandlerGenerator {
                                     const typename ENTRY_TYPE_WRAPPER::T_KEY& entry_key;
                                     const std::string& restful_url_prefix;
                                     const std::string& field_name;
+                                    const std::string& data_url_component;
                                   } args{storage,
                                          fields,
                                          field,
@@ -210,7 +224,8 @@ struct RESTfulHandlerGenerator {
                                          entry,
                                          entry_key,
                                          restful_url_prefix,
-                                         field_name};
+                                         field_name,
+                                         data_url_component};
                                   return handler.Run(args);
                                 },
                                 std::move(request)).Detach();
@@ -246,7 +261,7 @@ struct RESTfulHandlerGenerator {
                                         std::move(request)).Detach();
                           });
           } else {
-            request(T_REST_IMPL::ErrorMethodNotAllowed());  // LCOV_EXCL_LINE
+            request(T_REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
           }
         });
   }

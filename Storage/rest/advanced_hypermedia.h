@@ -34,6 +34,10 @@ SOFTWARE.
 #include "hypermedia.h"
 #include "sfinae.h"
 
+namespace current {
+namespace storage {
+namespace rest {
+
 CURRENT_STRUCT_T(AdvancedHypermediaRESTRecordResponse) {
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_full, std::string);
@@ -53,9 +57,6 @@ CURRENT_STRUCT_T(AdvancedHypermediaRESTContainerResponse) {
   CURRENT_FIELD(data, std::vector<T>);
 };
 
-namespace current {
-namespace storage {
-namespace rest {
 
 template <typename T, typename INPUT, typename TT>
 inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(TT& record,
@@ -107,7 +108,9 @@ struct AdvancedHypermedia : Hypermedia {
                                    HTTPResponseCode.OK)
                         : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
         } else {
-          return Response(HypermediaRESTError("Resource not found."), HTTPResponseCode.NotFound);
+          return ErrorResponse(
+              ResourceNotFoundError("Resource with requested key not found.", {{"key", input.url_key}}),
+              HTTPResponseCode.NotFound);
         }
       } else {
         // Collection view. `data` is an array of `AdvancedHypermediaRESTRecordResponse<T_BRIEF_ENTRY>`.

@@ -96,6 +96,14 @@ class Optional final {
   // Another alternative is construct an `Optional<>` directly from `make_unique<>`.
 
   // TODO(dkorolev): Discuss the semantics with @mzhurovich.
+  // NOTE: I took the liberty to introduce these constructors as I see no harm. --M.Z.
+
+  Optional(const T& value)
+      : owned_optional_object_(std::make_unique<T>(value)), optional_object_(owned_optional_object_.get()) {}
+
+  Optional(T&& value)
+      : owned_optional_object_(std::make_unique<T>(std::move(value))),
+        optional_object_(owned_optional_object_.get()) {}
 
   Optional(std::unique_ptr<T>&& rhs)
       : owned_optional_object_(std::move(rhs)), optional_object_(owned_optional_object_.get()) {}
