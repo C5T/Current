@@ -24,6 +24,8 @@ SOFTWARE.
 
 #include "../../port.h"
 
+#include "headers/test.cc"
+
 #include <thread>
 
 #include "http.h"

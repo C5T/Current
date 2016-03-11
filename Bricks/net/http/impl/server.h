@@ -35,6 +35,8 @@ SOFTWARE.
 #include "../mime_type.h"
 #include "../default_messages.h"
 
+#include "../headers/headers.h"
+
 #include "../../exceptions.h"
 
 #include "../../tcp/tcp.h"
@@ -64,6 +66,7 @@ const char* const kTransferEncodingChunkedValue = "chunked";
 
 }  // namespace constants
 
+// This is to be commented out, begin. -- D.K.
 typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
 
 struct HTTPHeaders {
@@ -76,6 +79,7 @@ struct HTTPHeaders {
   }
   operator const HTTPHeadersType&() const { return headers; }
 };
+// This is to be commented out, end. -- D.K.
 
 // HTTPDefaultHelper handles headers and chunked transfers.
 // One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.

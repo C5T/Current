@@ -1,0 +1,277 @@
+/*******************************************************************************
+The MIT License (MIT)
+
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*******************************************************************************/
+
+#ifndef BRICKS_NET_HTTP_HEADERS_HEADERS_H
+#define BRICKS_NET_HTTP_HEADERS_HEADERS_H
+
+#include "../../../port.h"
+
+#include <algorithm>
+#include <cassert>
+#include <map>
+#include <string>
+#include <vector>
+
+#include "../../exceptions.h"
+
+namespace current {
+namespace net {
+namespace http {
+
+struct HeaderNotFoundException : Exception {
+  explicit HeaderNotFoundException(const std::string& h) : Exception("Header not found: `" + h + "`.") {}
+};
+
+struct CookieIsNotYourRegularHeader : Exception {
+  using Exception::Exception;
+};
+
+// A generic implementation for HTTP headers.
+// * Shared for client- and server-side use (set by the user or set by an internal HTTP response parser).
+// * Preserves the order in which headers have been added.
+// * Supports lookup by key as well, in case-insensitive way.
+// * Concatenates everything but cookies via ", ", stores cookies as a map.
+// * Preserves case, but allows case-insensitive iteration and lookup. The latter also equalized '-' and '_'.
+struct Header final {
+  const std::string header;  // Immutable as map key, even for a mutable `Header`.
+  std::string value;
+
+  Header() = delete;  // And `header`, the name of the header as string, has to be initalized explicitly.
+  explicit Header(const std::string& header) : header(header) { ThrowIfHeaderIsCookie(header); }
+
+  Header(const std::string& header, const std::string& value) : header(header), value(value) {
+    ThrowIfHeaderIsCookie(header);
+  }
+
+  Header(const Header&) = default;
+  Header(Header&&) = default;
+  Header& operator=(const Header&) = default;
+  Header& operator=(Header&&) = default;
+
+  Header& operator=(const std::string& rhs) {
+    value = rhs;
+    return *this;
+  }
+
+  // Case-insensitive and {'-'/'_'}-insensitive comparison.
+  struct KeyComparator {
+    char Canonical(char c) const {
+      if (c == '-') {
+        return '_';
+      } else if (c >= 'A' && c <= 'Z') {
+        return c + 'a' - 'A';
+      } else {
+        return c;
+      }
+    }
+    bool operator()(const std::string& lhs, const std::string& rhs) const {
+      const size_t lhs_length = lhs.length();
+      const size_t rhs_length = rhs.length();
+      const size_t min_length = std::min(lhs_length, rhs_length);
+      auto lhs_it = lhs.begin();
+      auto rhs_it = rhs.begin();
+      for (size_t i = 0; i < min_length; ++i, ++lhs_it, ++rhs_it) {
+        const char a = Canonical(*lhs_it);
+        const char b = Canonical(*rhs_it);
+        if (a < b) {
+          return true;
+        } else if (b < a) {
+          return false;
+        }
+      }
+      return lhs_length < rhs_length;
+    }
+  };
+
+  // Make sure `Cookies` are never accessed as regular headers.
+  static bool IsCookieHeader(const std::string& header) {
+    const char* kCookieHeaderName = "Cookie";
+    const auto cmp = Header::KeyComparator();
+    // Use equivalency to emulate equality. -- D.K.
+    return !cmp(header, kCookieHeaderName) && !cmp(kCookieHeaderName, header);
+  }
+
+  static void ThrowIfHeaderIsCookie(const std::string& header) {
+    if (IsCookieHeader(header)) {
+      CURRENT_THROW(CookieIsNotYourRegularHeader());
+    }
+  }
+};
+
+struct Headers final {
+  // An `std::unique_ptr<>` to preserve the address as the map grows. For case-insensitive lookup.
+  using T_HEADERS_MAP = std::map<std::string, std::unique_ptr<Header>, Header::KeyComparator>;
+  // A list preserving the order, pointing to persisted Header-s contained in `std::unique_ptr<>` of `std::map`.
+  using T_HEADERS_LIST = std::vector<std::pair<std::string, Header*>>;
+  // Cookies are just an `std::map<std::string, std::string>`.
+  using T_COOKIES_MAP = std::map<std::string, std::string>;
+
+  Headers() = default;
+  Headers(const Headers&) = default;
+  Headers(Headers&&) = default;
+  Headers& operator=(const Headers&) = default;
+  Headers& operator=(Headers&&) = default;
+
+  Headers(const std::string& header, const std::string& value) { Set(header, value); }
+  Headers(std::initializer_list<std::pair<std::string, std::string>> initializer) {
+    std::for_each(initializer.begin(),
+                  initializer.end(),
+                  [this](const std::pair<std::string, std::string>& h) { Set(h.first, h.second); });
+  }
+
+  // Can `Set()` / `Get()` / `Has()` headers.
+  Headers& Set(const std::string& header, const std::string& value) {
+    Header::ThrowIfHeaderIsCookie(header);
+    // Discard empty headers.
+    if (!header.empty()) {
+      std::unique_ptr<Header>& placeholder = map[header];
+      if (!placeholder) {
+        // Create new `Header` under this key.
+        placeholder = std::make_unique<Header>(header);
+        list.emplace_back(header, placeholder.get());
+      }
+      // Discard empty values.
+      // Exception: if the only value(s) for this key have been empty, the resulting value should be empty too.
+      if (!value.empty()) {
+        if (!placeholder->value.empty()) {
+          placeholder->value += ", ";
+        }
+        placeholder->value += value;
+      }
+    }
+    return *this;
+  }
+
+  bool Has(const std::string& header) const {
+    Header::ThrowIfHeaderIsCookie(header);
+    return map.find(header) != map.end();
+  }
+
+  const std::string& Get(const std::string& header) const {
+    Header::ThrowIfHeaderIsCookie(header);
+    const auto rhs = map.find(header);
+    if (rhs != map.end()) {
+      assert(rhs->second);  // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      return rhs->second->value;
+    } else {
+      CURRENT_THROW(HeaderNotFoundException(header));
+    }
+  }
+
+  std::string GetOrDefault(const std::string& header, const std::string& value_if_not_found) const {
+    Header::ThrowIfHeaderIsCookie(header);
+    const auto rhs = map.find(header);
+    if (rhs != map.end()) {
+      assert(rhs->second);  // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      return rhs->second->value;
+    } else {
+      return value_if_not_found;
+    }
+  }
+
+  // Can `operator[] const` headers. Returns the `Header`, with `.header` and `.value`.
+  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first
+  // seen.
+  const Header& operator[](const std::string& header) const {
+    Header::ThrowIfHeaderIsCookie(header);
+    const auto rhs = map.find(header);
+    if (rhs != map.end()) {
+      assert(rhs->second);  // Invariant: If `header` exists in map, its `std::unique_ptr<>` value is valid.
+      return *rhs->second;
+    } else {
+      CURRENT_THROW(HeaderNotFoundException(header));
+    }
+  }
+
+  // Can `Header& operator[]`. Creates the header if it does not exist. Its `.header` is const, `.value`
+  // mutable.
+  // Capitalization-wise, treats various spellings of the same header as one header, retains the name first
+  // seen.
+  Header& operator[](const std::string& header) {
+    Header::ThrowIfHeaderIsCookie(header);
+    std::unique_ptr<Header>& placeholder = map[header];
+    if (!placeholder) {
+      // Create new `Header` under this `header`.
+      placeholder = std::make_unique<Header>(header);
+      list.emplace_back(header, placeholder.get());
+    }
+    return *placeholder.get();
+  }
+
+  // STL-style accessors. Note that `Cookies` are not counted as regular headers.
+  bool empty() const { return list.empty(); }
+
+  size_t size() const { return list.size(); }
+
+  // Allow only const iteration.
+  struct Iterator final {
+    typename T_HEADERS_LIST::const_iterator iterator;
+
+    bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const Iterator& rhs) const { return iterator != rhs.iterator; }
+
+    const Header& operator*() const { return *iterator->second; }
+
+    const Header* operator->() const { return iterator->second; }
+
+    void operator++() { ++iterator; }
+  };
+
+  Iterator begin() const { return Iterator{list.begin()}; }
+
+  Iterator end() const { return Iterator{list.end()}; }
+
+  // An interface for the HTTP library to populate headers or cookies.
+  void ApplyCookieHeader(const std::string& value) {
+    const size_t first_equals_sign = value.find('=');
+    if (first_equals_sign != std::string::npos) {
+      const size_t semicolon_or_npos = value.find(';');
+      cookies[value.substr(0, first_equals_sign)] =
+          value.substr(first_equals_sign + 1, semicolon_or_npos - (first_equals_sign + 1));
+    }
+  }
+  void SetHeaderOrCookie(const std::string& header, const std::string& value) {
+    if (Header::IsCookieHeader(header)) {
+      ApplyCookieHeader(value);
+    } else {
+      Set(header, value);
+    }
+  }
+
+  // `map[header]` either does not exist, or contains a valid `std::unique_ptr<Header>`.
+  T_HEADERS_MAP map;
+
+  // `list[i]` points to the underlying `Header*` of the `std::unique_ptr<Header>` stored in `map`,
+  // respecting the order in which the headers have been added.
+  T_HEADERS_LIST list;
+
+  // Cookies are just an `std::map<std::string, std::string>`.
+  T_COOKIES_MAP cookies;
+};
+
+}  // namespace http
+}  // namespace net
+}  // namespace current
+
+#endif  // BRICKS_NET_HTTP_HEADERS_HEADERS_H
