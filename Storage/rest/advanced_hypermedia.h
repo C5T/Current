@@ -39,7 +39,7 @@ namespace storage {
 namespace rest {
 
 CURRENT_STRUCT_T(AdvancedHypermediaRESTRecordResponse) {
-  CURRENT_FIELD(success, bool, true);
+  CURRENT_FIELD(success, Optional<bool>);
   CURRENT_FIELD(url, std::string);
   CURRENT_FIELD(url_full, std::string);
   CURRENT_FIELD(url_brief, std::string);
@@ -61,9 +61,13 @@ CURRENT_STRUCT_T(AdvancedHypermediaRESTContainerResponse) {
 
 template <typename T, typename INPUT, typename TT>
 inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(TT& record,
-                                                                                const INPUT& input) {
+                                                                                const INPUT& input,
+                                                                                bool set_success = true) {
   AdvancedHypermediaRESTRecordResponse<T> response;
   const std::string key_as_string = current::ToString(current::storage::sfinae::GetKey(record));
+  if (set_success) {
+    response.success = true;
+  }
   response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
   response.url = response.url_directory + '/' + key_as_string;
   response.url_full = response.url;
@@ -128,7 +132,7 @@ struct AdvancedHypermedia : Hypermedia {
         bool has_next_page = false;
         for (const auto& element : input.field) {
           if (i >= query_i && i < query_i + query_n) {
-            response.data.push_back(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(element, input));
+            response.data.push_back(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(element, input, false));
           } else if (i < query_i) {
             has_previous_page = true;
           } else if (i >= query_i + query_n) {
