@@ -123,7 +123,8 @@ struct Basic {
       input.entry.InitializeOwnKey();
       if (!Exists(input.field[current::storage::sfinae::GetKey(input.entry)])) {
         input.field.Add(input.entry);
-        return Response(current::ToString(current::storage::sfinae::GetKey(input.entry)), HTTPResponseCode.Created);
+        return Response(current::ToString(current::storage::sfinae::GetKey(input.entry)),
+                        HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }
