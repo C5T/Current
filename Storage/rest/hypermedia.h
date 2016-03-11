@@ -336,8 +336,14 @@ struct Hypermedia {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
+      std::string message;
+      if (Exists(input.field[input.key])) {
+        message = "Resource deleted.";
+      } else {
+        message = "Resource didn't exist.";
+      }
       input.field.Erase(input.key);
-      return Response(HypermediaRESTResourceUpdateResponse(true, "Resource deleted."), HTTPResponseCode.OK);
+      return Response(HypermediaRESTResourceUpdateResponse(true, message), HTTPResponseCode.OK);
     }
   };
 

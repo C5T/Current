@@ -382,14 +382,28 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         result.body);
   }
 
-  // DELETE one record and GET the collection again.
+  // DELETE non-existing record.
   current::time::SetNow(std::chrono::microseconds(114));
-  EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api1/data/client/" + client1_key_str)).code));
+  {
+    const auto result = HTTP(DELETE(base_url + "/api2/data/client/100500"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"success\":true,\"message\":\"Resource didn't exist.\",\"errors\":null,\"resource_url\":null}\n",
+              result.body);
+  }
+  // DELETE one record and GET the collection again.
+  current::time::SetNow(std::chrono::microseconds(115));
+  {
+    const auto result = HTTP(DELETE(base_url + "/api2/data/client/" + client1_key_str));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"success\":true,\"message\":\"Resource deleted.\",\"errors\":null,\"resource_url\":null}\n",
+              result.body);
+  }
   {
     const auto result = HTTP(GET(base_url + "/api1/data/client"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("101\n102\n", result.body);
   }
+
 }
 
 #endif  // CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC
