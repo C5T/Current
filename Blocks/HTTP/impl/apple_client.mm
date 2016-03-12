@@ -126,10 +126,10 @@ bool current::http::HTTPClientApple::Go() {
                   response_headers.Set([key UTF8String], [[headers objectForKey:key] UTF8String]);
                 }
               }
-              NSArray *response_cookies = [NSHTTPCookie
+              NSArray *cookies = [NSHTTPCookie
                   cookiesWithResponseHeaderFields:[http_response allHeaderFields]
                   forURL:[NSURL URLWithString:@""]];
-              for (NSHTTPCookie *cookie in response_cookies) {
+              for (NSHTTPCookie *cookie in cookies) {
                 response_headers.SetCookie([[cookie name] UTF8String], [[cookie value] UTF8String]);
               }
               // TODO(mzhurovich): Support optional cookie attributes.

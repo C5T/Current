@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../../exceptions.h"
 
 #include "../../../strings/split.h"
+#include "../../../strings/util.h"
 
 namespace current {
 namespace net {
@@ -278,7 +279,7 @@ struct Headers final {
   // An interface for the HTTP library to populate headers or cookies.
   void ApplyCookieHeader(const std::string& value) {
     for (const auto& kv : strings::SplitIntoKeyValuePairs(value, '=', ';')) {
-      cookies.insert(kv);
+      cookies.emplace(strings::Trim(kv.first), strings::Trim(kv.second));
     }
   }
   void SetHeaderOrCookie(const std::string& header, const std::string& value) {
