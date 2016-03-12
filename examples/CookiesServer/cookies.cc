@@ -28,12 +28,6 @@ using namespace current;
 
 DEFINE_int32(cookies_demo_port, 3000, "Local port to spawn the server on.");
 
-CURRENT_STRUCT(CookiesTestResponse) {
-  CURRENT_FIELD(cookies, (std::map<std::string, std::string>));
-  CURRENT_DEFAULT_CONSTRUCTOR(CookiesTestResponse) {}
-  CURRENT_CONSTRUCTOR(CookiesTestResponse)(const std::map<std::string, std::string>& c) : cookies(c) {}
-};
-
 int main(int argc, char** argv) {
   ParseDFlags(&argc, &argv);
 
@@ -41,8 +35,9 @@ int main(int argc, char** argv) {
       .Register("/",
                 [](Request r) {
                   const auto now = current::ToString(current::time::Now().count());
-                  r(Response(CookiesTestResponse(r.headers.cookies))
+                  r(Response(r.headers.CookiesAsString())
                         .SetCookie("Now", now)
+                        .SetCookie("SecureNow", now, {{"secure", ""}})
                         .SetCookie("LoadedAt" + now, "Yes."));
                 });
 

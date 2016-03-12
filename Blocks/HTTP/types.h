@@ -74,6 +74,12 @@ struct HTTPRequestBase {
     custom_headers.emplace_back(key, value);
     return static_cast<T&>(*this);
   }
+
+  // Note: Client-side cookie, no params here. -- @mzhurovich, @dkorolev.
+  T& SetCookie(const std::string& cookie, const std::string& value) {
+    custom_headers.SetCookie(cookie, value);
+    return static_cast<T&>(*this);
+  }
 };
 
 struct GET : HTTPRequestBase<GET> {

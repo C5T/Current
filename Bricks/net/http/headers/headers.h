@@ -77,7 +77,7 @@ struct Header final {
   }
 
   // Case-insensitive and {'-'/'_'}-insensitive comparison.
-  struct KeyComparator {
+  struct KeyComparator final {
     char Canonical(char c) const {
       if (c == '-') {
         return '_';
@@ -123,13 +123,24 @@ struct Header final {
   }
 };
 
+struct Cookie final {
+  std::string value;
+  std::map<std::string, std::string> params;
+  Cookie(const std::string& value = "") : value(value) {}
+  Cookie& operator=(const std::string& new_value) {
+    value = new_value;
+    return *this;
+  }
+  std::string& operator[](const std::string& param_name) { return params[param_name]; }
+};
+
 struct Headers final {
   // An `std::unique_ptr<>` to preserve the address as the map grows. For case-insensitive lookup.
   using T_HEADERS_MAP = std::map<std::string, std::unique_ptr<Header>, Header::KeyComparator>;
   // A list preserving the order, pointing to persisted Header-s contained in `std::unique_ptr<>` of `std::map`.
   using T_HEADERS_LIST = std::vector<std::pair<std::string, Header*>>;
-  // Cookies are just an `std::map<std::string, std::string>`.
-  using T_COOKIES_MAP = std::map<std::string, std::string>;
+  // Cookies as a map of `std::string` cookie name into the value of this cookie and extra parameters for it.
+  using T_COOKIES_MAP = std::map<std::string, Cookie>;
 
   Headers() = default;
   Headers(Headers&&) = default;
@@ -284,6 +295,20 @@ struct Headers final {
     return *this;
   }
 
+  Headers& SetCookie(const std::string& name, const Cookie& cookie) {
+    cookies[name] = cookie;
+    return *this;
+  }
+
+  Headers& SetCookie(const std::string& name,
+                     const std::string& value,
+                     const std::map<std::string, std::string>& params) {
+    auto& placeholder = cookies[name];
+    placeholder.value = value;
+    placeholder.params = params;
+    return *this;
+  }
+
   // Return all headers, but not cookes, as a single `std::map<std::string, std::string>`.
   std::map<std::string, std::string> AsMap() const {
     std::map<std::string, std::string> headers;
@@ -291,6 +316,22 @@ struct Headers final {
       headers.emplace(h.header, h.value);
     }
     return headers;
+  }
+
+  std::string CookiesAsString() const {
+    if (cookies.empty()) {
+      return "";
+    } else {
+      std::string cookies_as_string;
+      for (const auto& c : cookies) {
+        if (!cookies_as_string.empty()) {
+          cookies_as_string += "; ";
+        }
+        cookies_as_string += c.first + '=' + c.second.value;
+        // TODO(dkorolev): Extra parameters for this cookie.
+      }
+      return cookies_as_string;
+    }
   }
 
   // `map[header]` either does not exist, or contains a valid `std::unique_ptr<Header>`.

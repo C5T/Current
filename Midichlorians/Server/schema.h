@@ -78,11 +78,11 @@ CURRENT_STRUCT(EventLogEntry, LogEntryBase) {
 CURRENT_STRUCT(UnparsableLogEntry, LogEntryBase) {
   CURRENT_FIELD(method, std::string);
   CURRENT_FIELD(headers, (std::map<std::string, std::string>));
-  CURRENT_FIELD(cookies, (std::map<std::string, std::string>));
+  CURRENT_FIELD(cookies, std::string);
   CURRENT_FIELD(body, std::string);
   CURRENT_DEFAULT_CONSTRUCTOR(UnparsableLogEntry) {}
   CURRENT_CONSTRUCTOR(UnparsableLogEntry)(std::chrono::microseconds us, const current::http::Request& r)
-      : SUPER(us), method(r.method), headers(r.headers.AsMap()), cookies(r.headers.cookies), body(r.body) {}
+      : SUPER(us), method(r.method), headers(r.headers.AsMap()), cookies(r.headers.CookiesAsString()), body(r.body) {}
 };
 // clang-format on
 

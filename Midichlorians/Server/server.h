@@ -113,7 +113,7 @@ class MidichloriansHTTPServer {
 
     std::map<std::string, std::string> extracted_q;  // Manually extracted query parameters.
     const std::map<std::string, std::string>& h = r.headers.AsMap();
-    const std::map<std::string, std::string>& c = r.headers.cookies;
+    const std::map<std::string, current::net::http::Cookie>& c = r.headers.cookies;
 
     bool is_allowed_method = false;
     const std::map<std::string, std::string>& q =
@@ -162,7 +162,7 @@ class MidichloriansHTTPServer {
 
   bool ExtractWebBaseEventFields(const std::map<std::string, std::string>& q,
                                  const std::map<std::string, std::string>& h,
-                                 const std::map<std::string, std::string>& c,
+                                 const std::map<std::string, current::net::http::Cookie>& c,
                                  Variant<T_WEB_EVENTS>& web_event) {
     using namespace current::midichlorians::web;
 
