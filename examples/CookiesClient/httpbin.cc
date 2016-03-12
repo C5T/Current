@@ -56,8 +56,7 @@ $ curl -H "Cookie: foo=bar; two=yes" localhost/httpbinmagic
 using namespace current;
 
 int main() {
-  std::cerr << HTTP(GET("localhost/httpbinmagic")).body << std::endl;
-  std::cerr << HTTP(GET("localhost/httpbinmagic").SetCookie("foo", "bar")).body << std::endl;
-  std::cerr << HTTP(GET("localhost/httpbinmagic").SetCookie("foo", "bar").SetCookie("two", "yes")).body
-            << std::endl;
+  std::cerr << HTTP(GET("localhost/httpbinmagic")).body;
+  std::cerr << HTTP(GET("localhost/httpbinmagic").SetCookie("foo", "bar")).body;
+  std::cerr << HTTP(GET("localhost/httpbinmagic").SetCookie("foo", "bar").SetCookie("two", "yes")).body;
 }
