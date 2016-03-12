@@ -41,6 +41,7 @@ SOFTWARE.
 #import <Foundation/NSURLRequest.h>
 #import <Foundation/NSURLResponse.h>
 #import <Foundation/NSURLSession.h>
+#import <Foundation/NSHTTPCookie.h>
 #import <Foundation/NSOperation.h>
 #import <Foundation/NSError.h>
 #import <Foundation/NSURLError.h>
@@ -66,8 +67,12 @@ bool current::http::HTTPClientApple::Go() {
     }
 
     for (const auto& h : request_headers) {
-      [request setValue:[NSString stringWithUTF8String:h.second.c_str()]
-          forHTTPHeaderField:[NSString stringWithUTF8String:h.first.c_str()]];
+      [request setValue:[NSString stringWithUTF8String:h.value.c_str()]
+          forHTTPHeaderField:[NSString stringWithUTF8String:h.header.c_str()]];
+    }
+    if (!request_headers.empty()) {
+      [request setValue:[NSString stringWithUTF8String:request_headers.CookiesAsString().c_str()]
+          forHTTPHeaderField:@"Cookie"];
     }
 
     if (!request_method.empty()) {
@@ -99,6 +104,7 @@ bool current::http::HTTPClientApple::Go() {
     *async_request_completed.MutableScopedAccessor() = false;
     NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
     configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    configuration.HTTPCookieAcceptPolicy = NSHTTPCookieAcceptPolicyNever;
     configuration.URLCache = nil;
     configuration.URLCredentialStorage = nil;
     configuration.HTTPCookieStorage = nil;
@@ -116,8 +122,17 @@ bool current::http::HTTPClientApple::Go() {
               response_url = [http_response.URL.absoluteString UTF8String];
               NSDictionary *headers = http_response.allHeaderFields;
               for (NSString *key in headers) {
-                response_headers.emplace([key UTF8String], [[headers objectForKey:key] UTF8String]);
+                if ([key caseInsensitiveCompare:@"Set-Cookie"] != NSOrderedSame) {
+                  response_headers.Set([key UTF8String], [[headers objectForKey:key] UTF8String]);
+                }
               }
+              NSArray *response_cookies = [NSHTTPCookie
+                  cookiesWithResponseHeaderFields:[http_response allHeaderFields]
+                  forURL:[NSURL URLWithString:@""]];
+              for (NSHTTPCookie *cookie in response_cookies) {
+                response_headers.SetCookie([[cookie name] UTF8String], [[cookie value] UTF8String]);
+              }
+              // TODO(mzhurovich): Support optional cookie attributes.
               request_succeeded = true;
             } else {
               response_code = -1;

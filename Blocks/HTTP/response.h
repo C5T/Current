@@ -225,14 +225,16 @@ struct Response {
     return *this;
   }
 
-  template<typename T>
+  template <typename T>
   Response& SetCookie(const std::string& name, T&& cookie) {
     headers.SetCookie(name, std::forward<T>(cookie));
     initialized = true;
     return *this;
   }
 
-  Response& SetCookie(const std::string& name, const std::string& cookie, const std::map<std::string, std::string>& params) {
+  Response& SetCookie(const std::string& name,
+                      const std::string& cookie,
+                      const std::map<std::string, std::string>& params) {
     headers.SetCookie(name, cookie, params);
     initialized = true;
     return *this;
