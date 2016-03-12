@@ -58,7 +58,7 @@ struct Request final {
   const current::url::URL url;
   const current::url::URLPathArgs url_path_args;
   const std::string method;
-  const current::net::HTTPRequestData::HeadersType& headers;
+  const current::net::http::Headers& headers;
   const std::string& body;  // TODO(dkorolev): This is inefficient, but will do.
   const std::chrono::microseconds timestamp;
 

@@ -35,6 +35,8 @@ SOFTWARE.
 #include "../mime_type.h"
 #include "../default_messages.h"
 
+#include "../headers/headers.h"
+
 #include "../../exceptions.h"
 
 #include "../../tcp/tcp.h"
@@ -45,6 +47,7 @@ SOFTWARE.
 #include "../../../../TypeSystem/Serialization/json.h"
 
 #include "../../../strings/util.h"
+#include "../../../strings/split.h"
 
 #include "../../../../Blocks/URL/url.h"
 
@@ -64,39 +67,16 @@ const char* const kTransferEncodingChunkedValue = "chunked";
 
 }  // namespace constants
 
-typedef std::vector<std::pair<std::string, std::string>> HTTPHeadersType;
-
-struct HTTPHeaders {
-  HTTPHeadersType headers;
-  HTTPHeaders() : headers() {}
-  HTTPHeaders(std::initializer_list<std::pair<std::string, std::string>> list) : headers(list) {}
-  HTTPHeaders& Set(const std::string& key, const std::string& value) {
-    headers.emplace_back(key, value);
-    return *this;
-  }
-  operator const HTTPHeadersType&() const { return headers; }
-};
-
 // HTTPDefaultHelper handles headers and chunked transfers.
 // One can inject a custom implementaion of it to avoid keeping all HTTP body in memory.
 // TODO(dkorolev): This is not yet the case, but will be soon once I fix HTTP parse code.
 class HTTPDefaultHelper {
  public:
-  typedef std::map<std::string, std::string> HeadersType;
-  const HeadersType& headers() const { return headers_; }
+  const http::Headers& headers() const { return headers_; }
 
  protected:
   inline void OnHeader(const char* key, const char* value) {
-    // https://tools.ietf.org/html/rfc7230#section-3.2
-    // TODO(mzhurovich): proper support of `Set-Cookie` via additional `cookies` member.
-    if (headers_.count(key)) {
-      // LCOV_EXCL_START
-      headers_[key] += ",";
-      headers_[key] += value;
-      // LCOV_EXCL_STOP
-    } else {
-      headers_[key] = value;
-    }
+    headers_.SetHeaderOrCookie(key, value);
   }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
@@ -107,7 +87,7 @@ class HTTPDefaultHelper {
   }
 
  private:
-  HeadersType headers_;
+  http::Headers headers_;
   std::string body_;
 };
 
@@ -388,21 +368,24 @@ class HTTPServerConnection final {
 
   inline static const std::string DefaultContentType() { return "text/plain"; }
   inline static const std::string DefaultJSONContentType() { return "application/json; charset=utf-8"; }
-  inline static const HTTPHeaders DefaultJSONHTTPHeaders() {
-    return HTTPHeaders().Set("Access-Control-Allow-Origin", "*");
+  inline static const http::Headers DefaultJSONHTTPHeaders() {
+    return http::Headers({{"Access-Control-Allow-Origin", "*"}});
   }
 
   inline static void PrepareHTTPResponseHeader(std::ostream& os,
                                                ConnectionType connection_type,
                                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                                const std::string& content_type = DefaultContentType(),
-                                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+                                               const http::Headers& extra_headers = http::Headers()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << kCRLF;
     os << "Content-Type: " << content_type << kCRLF;
     os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << kCRLF;
-    for (const auto cit : extra_headers) {
-      os << cit.first << ": " << cit.second << kCRLF;
+    for (const auto& cit : extra_headers) {
+      os << cit.header << ": " << cit.value << kCRLF;
+    }
+    for (const auto& cit : extra_headers.cookies) {
+      os << "Set-Cookie: " << cit.first << '=' << cit.second << kCRLF;
     }
   }
 
@@ -412,7 +395,7 @@ class HTTPServerConnection final {
                                    const T& end,
                                    HTTPResponseCodeValue code,
                                    const std::string& content_type,
-                                   const HTTPHeadersType& extra_headers) {
+                                   const http::Headers& extra_headers) {
     if (responded_) {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
@@ -432,7 +415,7 @@ class HTTPServerConnection final {
       const T& end,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const http::Headers& extra_headers = http::Headers()) {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
   template <typename T>
@@ -440,7 +423,7 @@ class HTTPServerConnection final {
       T&& container,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultContentType(),
-      const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+      const http::Headers& extra_headers = http::Headers()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
 
@@ -448,7 +431,7 @@ class HTTPServerConnection final {
   inline void SendHTTPResponse(const std::string& string,
                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
                                const std::string& content_type = DefaultContentType(),
-                               const HTTPHeadersType& extra_headers = HTTPHeadersType()) {
+                               const http::Headers& extra_headers = http::Headers()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
 
@@ -458,7 +441,7 @@ class HTTPServerConnection final {
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultJSONContentType(),
-      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+      const http::Headers& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -472,7 +455,7 @@ class HTTPServerConnection final {
       const std::string& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultJSONContentType(),
-      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+      const http::Headers& extra_headers = DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -568,7 +551,7 @@ class HTTPServerConnection final {
   inline ChunkedResponseSender SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
       const std::string& content_type = DefaultJSONContentType(),
-      const HTTPHeadersType& extra_headers = DefaultJSONHTTPHeaders()) {
+      const http::Headers& extra_headers = DefaultJSONHTTPHeaders()) {
     if (responded_) {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
@@ -612,7 +595,5 @@ class HTTPServerConnection final {
 
 }  // namespace net
 }  // namespace current
-
-using current::net::HTTPHeaders;
 
 #endif  // BRICKS_NET_HTTP_IMPL_SERVER_H

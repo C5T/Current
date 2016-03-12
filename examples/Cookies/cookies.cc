@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,29 +22,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BLOCKS_HTTP_DOCU_SERVER_03_TEST_CC
-#define BLOCKS_HTTP_DOCU_SERVER_03_TEST_CC
+#include "../../current.h"
 
-#include "../../api.h"
-#include "../../../../Bricks/strings/printf.h"
-#include "../../../../Bricks/dflags/dflags.h"
-#include "../../../../3rdparty/gtest/gtest-main-with-dflags.h"
+using namespace current;
 
-DEFINE_int32(docu_net_server_port_03, PickPortForUnitTest(), "");
+DEFINE_int32(cookies_demo_port, 3000, "Local port to spawn the server on.");
 
-using current::strings::Printf;
+CURRENT_STRUCT(CookiesTestResponse) {
+  CURRENT_FIELD(cookies, (std::map<std::string, std::string>));
+  CURRENT_DEFAULT_CONSTRUCTOR(CookiesTestResponse) {}
+  CURRENT_CONSTRUCTOR(CookiesTestResponse)(const std::map<std::string, std::string>& c) : cookies(c) {}
+};
 
-TEST(Docu, HTTPServer03) {
-const auto port = FLAGS_docu_net_server_port_03;
-HTTP(port).ResetAllHandlers();
-  // Constructing a more complex response.
-  HTTP(port).Register("/found", [](Request r) {
-    r("Yes.",
-      HTTPResponseCode.Accepted,
-      "text/html",
-      current::net::http::Headers().Set("custom", "header").Set("another", "one"));
-  });
-EXPECT_EQ("Yes.", HTTP(GET(Printf("http://localhost:%d/found", port))).body);
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
+
+  HTTP(FLAGS_cookies_demo_port)
+      .Register("/",
+                [](Request r) {
+                  const auto now = current::ToString(current::time::Now().count());
+                  r(Response(CookiesTestResponse(r.headers.cookies))
+                        .SetCookie("Now", now)
+                        .SetCookie("LoadedAt" + now, "Yes."));
+                });
+
+  HTTP(FLAGS_cookies_demo_port).Join();
 }
-
-#endif  // BLOCKS_HTTP_DOCU_SERVER_03_TEST_CC

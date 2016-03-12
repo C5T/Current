@@ -58,7 +58,7 @@ using current::FileException;
 
 using current::net::Connection;
 using current::net::HTTPResponseCodeValue;
-using current::net::HTTPHeaders;
+using current::net::http::Headers;
 
 using current::net::DefaultInternalServerErrorMessage;
 using current::net::DefaultFourOhFourMessage;
@@ -242,12 +242,12 @@ TEST(HTTPAPI, RespondsWithString) {
   HTTP(FLAGS_net_api_test_port)
       .Register("/responds_with_string",
                 [](Request r) {
-                  r("test_string", HTTPResponseCode.OK, "application/json", HTTPHeaders({{"foo", "bar"}}));
+                  r("test_string", HTTPResponseCode.OK, "application/json", Headers({{"foo", "bar"}}));
                 });
   const string url = Printf("http://localhost:%d/responds_with_string", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
   EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ("bar", response.headers.at("foo"));
+  EXPECT_EQ("bar", response.headers.Get("foo"));
   EXPECT_EQ("test_string", response.body);
   EXPECT_EQ(url, response.url);
   EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
@@ -262,7 +262,7 @@ TEST(HTTPAPI, RespondsWithObject) {
                     "test_object",
                     HTTPResponseCode.OK,
                     "application/json",
-                    HTTPHeaders({{"foo", "bar"}}));
+                    Headers({{"foo", "bar"}}));
                 });
   const string url = Printf("http://localhost:%d/responds_with_object", FLAGS_net_api_test_port);
   const auto response = HTTP(GET(url));
@@ -296,7 +296,7 @@ TEST(HTTPAPI, Redirect) {
   HTTP(FLAGS_net_api_test_port)
       .Register("/from",
                 [](Request r) {
-                  r("", HTTPResponseCode.Found, "text/html", HTTPHeaders({{"Location", "/to"}}));
+                  r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/to"}}));
                 });
   HTTP(FLAGS_net_api_test_port).Register("/to", [](Request r) { r("Done."); });
   // Redirect not allowed by default.
@@ -314,17 +314,17 @@ TEST(HTTPAPI, RedirectLoop) {
   HTTP(FLAGS_net_api_test_port)
       .Register("/p1",
                 [](Request r) {
-                  r("", HTTPResponseCode.Found, "text/html", HTTPHeaders({{"Location", "/p2"}}));
+                  r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p2"}}));
                 });
   HTTP(FLAGS_net_api_test_port)
       .Register("/p2",
                 [](Request r) {
-                  r("", HTTPResponseCode.Found, "text/html", HTTPHeaders({{"Location", "/p3"}}));
+                  r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p3"}}));
                 });
   HTTP(FLAGS_net_api_test_port)
       .Register("/p3",
                 [](Request r) {
-                  r("", HTTPResponseCode.Found, "text/html", HTTPHeaders({{"Location", "/p1"}}));
+                  r("", HTTPResponseCode.Found, "text/html", Headers({{"Location", "/p1"}}));
                 });
   ASSERT_THROW(HTTP(GET(Printf("http://localhost:%d/p1", FLAGS_net_api_test_port))), HTTPRedirectLoopException);
 }

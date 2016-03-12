@@ -55,7 +55,7 @@ template <typename T>
 struct HTTPRequestBase {
   std::string url;
   std::string custom_user_agent = "";
-  current::net::HTTPHeadersType custom_headers;
+  current::net::http::Headers custom_headers;
   bool allow_redirects = false;
 
   HTTPRequestBase(const std::string& url) : url(url) {}
@@ -148,7 +148,7 @@ struct HTTPResponse {
   // HTTP response code.
   current::net::HTTPResponseCodeValue code;
   // HTTP response headers.
-  current::net::HTTPRequestData::HeadersType headers;
+  current::net::http::Headers headers;
 };
 
 struct HTTPResponseWithBuffer : HTTPResponse {
