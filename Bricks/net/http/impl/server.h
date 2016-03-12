@@ -75,9 +75,7 @@ class HTTPDefaultHelper {
   const http::Headers& headers() const { return headers_; }
 
  protected:
-  inline void OnHeader(const char* key, const char* value) {
-    headers_.SetHeaderOrCookie(key, value);
-  }
+  inline void OnHeader(const char* key, const char* value) { headers_.SetHeaderOrCookie(key, value); }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
 
@@ -385,7 +383,14 @@ class HTTPServerConnection final {
       os << cit.header << ": " << cit.value << kCRLF;
     }
     for (const auto& cit : extra_headers.cookies) {
-      os << "Set-Cookie: " << cit.first << '=' << cit.second << kCRLF;
+      os << "Set-Cookie: " << cit.first << '=' << cit.second.value;
+      for (const auto& cit2 : cit.second.params) {
+        os << "; " << cit2.first;
+        if (!cit2.second.empty()) {
+          os << '=' + cit2.second;
+        }
+      }
+      os << kCRLF;
     }
   }
 

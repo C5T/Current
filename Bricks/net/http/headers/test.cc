@@ -409,13 +409,13 @@ TEST(HTTPHeadersTest, CookiesSmokeTest) {
   headers.ApplyCookieHeader("cookie=yes");
   EXPECT_EQ(1u, headers.cookies.size());
   EXPECT_EQ(headers.cookies.begin()->first, "cookie");
-  EXPECT_EQ(headers.cookies.begin()->second, "yes");
+  EXPECT_EQ(headers.cookies.begin()->second.value, "yes");
   EXPECT_EQ("cookie=yes", headers.CookiesAsString());
 
   headers.ApplyCookieHeader("another_cookie=oh_yes; this part is ignored");
   EXPECT_EQ(2u, headers.cookies.size());
   EXPECT_EQ(headers.cookies.begin()->first, "another_cookie");
-  EXPECT_EQ(headers.cookies.begin()->second, "oh_yes");
+  EXPECT_EQ(headers.cookies.begin()->second.value, "oh_yes");
   EXPECT_EQ("another_cookie=oh_yes; cookie=yes", headers.CookiesAsString());
 
   headers.SetCookie("fcuk", "yeah");
