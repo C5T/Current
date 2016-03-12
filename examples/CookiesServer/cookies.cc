@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
                   const auto now = current::ToString(current::time::Now().count());
                   r(Response(r.headers.CookiesAsString())
                         .SetCookie("Now", now)
-                        .SetCookie("SecureNow", now, std::map<std::string, std::string>({{"secure", ""}}))
+                        .SetCookie("SecureNow", now, {{"secure", ""}})
                         .SetCookie("LoadedAt" + now, "Yes."));
                 });
 
