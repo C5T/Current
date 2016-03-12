@@ -195,7 +195,7 @@ struct RESTfulHandlerGenerator {
                   try {
                     const auto url_key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                     const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
-                    const auto entry_key = current::storage::sfinae::GetKey(entry);
+                    const auto entry_key = PerStorageFieldType<T_SPECIFIC_FIELD>::ExtractOrComposeKey(entry);
                     T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
                     storage.Transaction(
                                 [handler,

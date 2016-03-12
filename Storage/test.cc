@@ -927,12 +927,31 @@ CURRENT_STRUCT(SimplePost) {
   void InitializeOwnKey() { key = current::ToString(std::hash<std::string>()(text)); }  // LCOV_EXCL_LINE
 };
 
+CURRENT_STRUCT(SimpleLikeBase) {
+  CURRENT_FIELD(row, std::string);
+  CURRENT_FIELD(col, std::string);
+  CURRENT_CONSTRUCTOR(SimpleLikeBase)(const std::string& who = "", const std::string& what = "")
+      : row(who), col(what) {}
+};
+
+CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
+  using T_BRIEF = SUPER;
+  CURRENT_FIELD(details, Optional<std::string>);
+  CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who = "", const std::string& what = "")
+      : SUPER(who, what) {}
+  CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who, const std::string& what, const std::string& details)
+      : SUPER(who, what), details(details) {}
+};
+
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
+// TODO(dkorolev): Ordered matrix too.
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, SimpleLike, SimpleLikePersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
   CURRENT_STORAGE_FIELD(post, SimplePostPersisted);
+  CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
 };
 
 }  // namespace transactional_storage_test
@@ -948,7 +967,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   Storage storage(persistence_file_name);
-  EXPECT_EQ(2u, storage.FieldsCount());
+  EXPECT_EQ(3u, storage.FieldsCount());
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
@@ -1002,23 +1021,70 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
 
-    rest.SwitchHTTPEndpointsTo503s();
-    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
-    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
+    // Test RESTful matrix too.
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima-beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max-beer")).code));
 
+    // For this test, we disallow POST for the `/like`-s matrix.
+    EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "/api/data/like", SimpleLike("dima", "beer"))).code));
+
+    // Add a few likes.
+    EXPECT_EQ(
+        201,
+        static_cast<int>(HTTP(PUT(base_url + "/api/data/like/dima-beer", SimpleLike("dima", "beer"))).code));
+    EXPECT_EQ(201,
+              static_cast<int>(
+                  HTTP(PUT(base_url + "/api/data/like/max-beer", SimpleLike("max", "beer", "Cheers!"))).code));
+
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima-beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max-beer")).code));
+
+    EXPECT_EQ("{\"row\":\"dima\",\"col\":\"beer\",\"details\":null}\n",
+              HTTP(GET(base_url + "/api/data/like/dima-beer")).body);
+    // Meh, this test is not for `AdvancedHypermedia`. -- D.K.
+    // EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\"}\n",
+    //           HTTP(GET(base_url + "/api/data/like/max-beer?fields=brief")).body);
+    EXPECT_EQ("{\"row\":\"max\",\"col\":\"beer\",\"details\":\"Cheers!\"}\n",
+              HTTP(GET(base_url + "/api/data/like/max-beer")).body);
+
+    // GET matrix as the collection.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/like")).code));
+    EXPECT_EQ("max:beer\ndima:beer\n", HTTP(GET(base_url + "/api/data/like")).body);
+
+    // Clean up the likes.
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/dima-beer")).code));
+    EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/max-beer")).code));
+
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/dima-beer")).code));
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/data/like/max-beer")).code));
+
+    // Confirm REST endpoints successfully change to 503s.
     rest.SwitchHTTPEndpointsTo503s();
     EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
     EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah-blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/like", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah-blah", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah-blah")).code));
+
+    // Twice, just in case.
+    rest.SwitchHTTPEndpointsTo503s();
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/post", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/post/test", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/post/test")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/like/blah-blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(POST(base_url + "/api/data/like", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(PUT(base_url + "/api/data/like/blah-blah", "blah")).code));
+    EXPECT_EQ(503, static_cast<int>(HTTP(DELETE(base_url + "/api/data/like/blah-blah")).code));
   }
 
   const std::vector<std::string> persisted_transactions = current::strings::Split<current::strings::ByLines>(
       current::FileSystem::ReadFileAsString(persistence_file_name));
 
-  EXPECT_EQ(12u, persisted_transactions.size());
+  EXPECT_EQ(20u, persisted_transactions.size());
 }
 
 // LCOV_EXCL_START
@@ -1029,6 +1095,7 @@ CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted
 CURRENT_STORAGE(PartiallyExposedStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersistedExposed);
   CURRENT_STORAGE_FIELD(post, SimplePostPersistedNotExposed);
+  CURRENT_STORAGE_FIELD(like, SimpleLikePersisted);
 };
 }  // namespace transactional_storage_test
 // LCOV_EXCL_STOP
@@ -1045,8 +1112,8 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   Storage1 storage1;
   Storage2 storage2;
 
-  EXPECT_EQ(2u, storage1.FieldsCount());
-  EXPECT_EQ(2u, storage2.FieldsCount());
+  EXPECT_EQ(3u, storage1.FieldsCount());
+  EXPECT_EQ(3u, storage2.FieldsCount());
 
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimpleUserPersisted>::exposed, "");
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimplePostPersisted>::exposed, "");
@@ -1067,11 +1134,13 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
 
   EXPECT_TRUE(fields1.url_data.count("user") == 1);
   EXPECT_TRUE(fields1.url_data.count("post") == 1);
-  EXPECT_EQ(2u, fields1.url_data.size());
+  EXPECT_TRUE(fields1.url_data.count("like") == 1);
+  EXPECT_EQ(3u, fields1.url_data.size());
 
   EXPECT_TRUE(fields2.url_data.count("user") == 1);
   EXPECT_TRUE(fields2.url_data.count("post") == 0);
-  EXPECT_EQ(1u, fields2.url_data.size());
+  EXPECT_TRUE(fields2.url_data.count("like") == 1);
+  EXPECT_EQ(2u, fields2.url_data.size());
 
   // Confirms the status returns proper URL prefix.
   EXPECT_EQ("http://unittest.current.ai/api1", fields1.url);

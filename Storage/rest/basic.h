@@ -29,6 +29,8 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_BASIC_H
 #define CURRENT_STORAGE_REST_BASIC_H
 
+#include "sfinae.h"
+
 #include "../storage.h"
 
 #include "../../Blocks/HTTP/api.h"
@@ -100,8 +102,9 @@ struct Basic {
         }
       } else {
         std::ostringstream result;
-        for (const auto& element : input.field) {
-          result << current::ToString(current::storage::sfinae::GetKey(element)) << '\n';
+        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+          result << current::ToString(PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element))
+                 << '\n';
         }
         return result.str();
       }
@@ -120,11 +123,19 @@ struct Basic {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
+      return RunImpl<INPUT, sfinae::HasInitializeOwnKey<decltype(std::declval<INPUT>().entry)>(0)>(input);
+    }
+    template <class INPUT, bool B>
+    ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
+      return Basic::ErrorMethodNotAllowed("POST");
+    }
+    template <class INPUT, bool B>
+    ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      if (!Exists(input.field[current::storage::sfinae::GetKey(input.entry)])) {
+      const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
+      if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
-        return Response(current::ToString(current::storage::sfinae::GetKey(input.entry)),
-                        HTTPResponseCode.Created);
+        return Response(current::ToString(entry_key), HTTPResponseCode.Created);
       } else {
         return Response("Already exists.\n", HTTPResponseCode.Conflict);  // LCOV_EXCL_LINE
       }

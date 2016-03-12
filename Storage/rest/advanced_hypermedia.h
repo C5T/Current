@@ -64,7 +64,8 @@ inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(
                                                                                 const INPUT& input,
                                                                                 bool set_success = true) {
   AdvancedHypermediaRESTRecordResponse<T> response;
-  const std::string key_as_string = current::ToString(current::storage::sfinae::GetKey(record));
+  const std::string key_as_string = current::ToString(
+      PerStorageFieldType<current::decay<decltype(input.field)>>::ExtractOrComposeKey(record));
   if (set_success) {
     response.success = true;
   }
@@ -130,7 +131,7 @@ struct AdvancedHypermedia : Hypermedia {
         uint64_t i = 0;
         bool has_previous_page = false;
         bool has_next_page = false;
-        for (const auto& element : input.field) {
+        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
           if (i >= query_i && i < query_i + query_n) {
             response.data.push_back(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(element, input, false));
           } else if (i < query_i) {

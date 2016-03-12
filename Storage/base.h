@@ -182,6 +182,14 @@ struct FieldsBase : BASE {
   MutationJournal current_storage_mutation_journal_;
 };
 
+// Field tags for REST calls dispatching.
+namespace rest {
+namespace behavior {
+struct Dictionary {};
+struct Matrix {};
+}  // namespace rest::behavior
+}  // namespace rest
+
 }  // namespace storage
 }  // namespace current
 
