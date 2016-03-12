@@ -441,6 +441,26 @@ TEST(HTTPHeadersTest, ShouldNotAccessCookiesAsRegularHeader) {
   ASSERT_THROW(mutable_headers.Set("cookie", "yes, please"), CookieIsNotYourRegularHeader);
   ASSERT_THROW(mutable_headers["Cookie"], CookieIsNotYourRegularHeader);
   ASSERT_THROW(mutable_headers["cookie"], CookieIsNotYourRegularHeader);
+
+  ASSERT_THROW(immutable_headers.Has("Set-Cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers.Has("set_cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers.Get("Set-Cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers.Get("set_cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers.GetOrDefault("Set-Cookie", ""), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers.GetOrDefault("set_cookie", ""), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers["Set-Cookie"], CookieIsNotYourRegularHeader);
+  ASSERT_THROW(immutable_headers["set_cookie"], CookieIsNotYourRegularHeader);
+
+  ASSERT_THROW(mutable_headers.Has("Set-Cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.Has("set_cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.Get("Set-Cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.Get("set_cookie"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.GetOrDefault("Set-Cookie", ""), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.GetOrDefault("set_cookie", ""), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.Set("Set-Cookie", "yes, please"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers.Set("set_cookie", "yes, please"), CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers["Set-Cookie"], CookieIsNotYourRegularHeader);
+  ASSERT_THROW(mutable_headers["set_cookie"], CookieIsNotYourRegularHeader);
 }
 
 #endif  // BRICKS_NET_HTTP_HEADERS_TEST_CC

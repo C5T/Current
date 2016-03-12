@@ -108,10 +108,12 @@ struct Header final {
 
   // Make sure `Cookies` are never accessed as regular headers.
   static bool IsCookieHeader(const std::string& header) {
-    const char* kCookieHeaderName = "Cookie";
+    const char* kClientCookieHeaderName = "Cookie";
+    const char* kServerCookieHeaderName = "Set-Cookie";
     const auto cmp = Header::KeyComparator();
     // Use equivalency to emulate equality. -- D.K.
-    return !cmp(header, kCookieHeaderName) && !cmp(kCookieHeaderName, header);
+    return (!cmp(header, kClientCookieHeaderName) && !cmp(kClientCookieHeaderName, header)) ||
+           (!cmp(header, kServerCookieHeaderName) && !cmp(kServerCookieHeaderName, header));
   }
 
   static void ThrowIfHeaderIsCookie(const std::string& header) {
