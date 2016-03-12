@@ -54,7 +54,7 @@ CURRENT_STRUCT(LogEntryWithHeaders) {
   CURRENT_FIELD(u, std::string);                           // URL without fragments and query parameters.
   CURRENT_FIELD(q, (std::map<std::string, std::string>));  // URL query parameters.
   CURRENT_FIELD(h, (std::map<std::string, std::string>));  // HTTP headers.
-  CURRENT_FIELD(c, (std::map<std::string, std::string>));  // HTTP cookies.
+  CURRENT_FIELD(c, std::string);                           // HTTP cookies, as string.
   CURRENT_FIELD(b, std::string);                           // HTTP body.
   CURRENT_FIELD(f, std::string);                           // URL fragment.
   // TODO(dkorolev): Inbound IP address.
@@ -92,7 +92,7 @@ class EventCollectorHTTPServer {
                       entry.u = r.url.url_without_parameters;
                       entry.q = r.url.AllQueryParameters();
                       entry.h = r.headers.AsMap();
-                      entry.c = r.headers.cookies;
+                      entry.c = r.headers.CookiesAsString();
                       entry.b = r.body;
                       entry.f = r.url.fragment;
                       ostream_ << JSON(entry) << std::endl;
