@@ -293,6 +293,21 @@ struct Headers final {
     return headers;
   }
 
+  std::string CookiesAsString() const {
+    if (cookies.empty()) {
+      return "";
+    } else {
+      std::string cookies_as_string;
+      for (const auto& c : cookies) {
+        if (!cookies_as_string.empty()) {
+          cookies_as_string += "; ";
+        }
+        cookies_as_string += c.first + '=' + c.second;
+      }
+      return cookies_as_string;
+    }
+  }
+
   // `map[header]` either does not exist, or contains a valid `std::unique_ptr<Header>`.
   T_HEADERS_MAP map;
 

@@ -82,14 +82,7 @@ class HTTPClientPOSIX final {
         connection.BlockingWrite(h.header + ": " + h.value + "\r\n", true);
       }
       if (!request_headers_.cookies.empty()) {
-        std::string cookies_as_string;
-        for (const auto& c : request_headers_.cookies) {
-          if (!cookies_as_string.empty()) {
-            cookies_as_string += "; ";
-          }
-          cookies_as_string += c.first + '=' + c.second;
-        }
-        connection.BlockingWrite("Cookie: " + cookies_as_string + "\r\n", true);
+        connection.BlockingWrite("Cookie: " + request_headers_.CookiesAsString() + "\r\n", true);
       }
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
