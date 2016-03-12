@@ -27,7 +27,7 @@ SOFTWARE.
 /*
 # nginx
 location /httpbinmagic {
-  proxy_pass https://httpbin.org/cookies; 
+  proxy_pass https://httpbin.org/cookies;
   proxy_pass_request_headers on;
 }
 
@@ -42,6 +42,13 @@ $ curl -H "Cookie: foo=bar" localhost/httpbinmagic
     "foo": "bar"
   }
 }
+$ curl -H "Cookie: foo=bar; two=yes" localhost/httpbinmagic
+{
+  "cookies": {
+    "foo": "bar",
+    "two": "yes"
+  }
+}
 */
 
 #include "../../current.h"
@@ -51,4 +58,6 @@ using namespace current;
 int main() {
   std::cerr << HTTP(GET("localhost/httpbinmagic")).body << std::endl;
   std::cerr << HTTP(GET("localhost/httpbinmagic").SetCookie("foo", "bar")).body << std::endl;
+  std::cerr << HTTP(GET("localhost/httpbinmagic").SetCookie("foo", "bar").SetCookie("two", "yes")).body
+            << std::endl;
 }

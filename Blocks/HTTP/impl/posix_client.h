@@ -85,7 +85,7 @@ class HTTPClientPOSIX final {
         std::string cookies_as_string;
         for (const auto& c : request_headers_.cookies) {
           if (!cookies_as_string.empty()) {
-            cookies_as_string += ", ";
+            cookies_as_string += "; ";
           }
           cookies_as_string += c.first + '=' + c.second;
         }
