@@ -81,8 +81,15 @@ class HTTPClientPOSIX final {
       for (const auto& h : request_headers_) {
         connection.BlockingWrite(h.header + ": " + h.value + "\r\n", true);
       }
-      for (const auto& h : request_headers_.cookies) {
-        connection.BlockingWrite("Set-Cookie: " + h.first + "=" + h.second + "\r\n", true);
+      if (!request_headers_.cookies.empty()) {
+        std::string cookies_as_string;
+        for (const auto& c : request_headers_.cookies) {
+          if (!cookies_as_string.empty()) {
+            cookies_as_string += ", ";
+          }
+          cookies_as_string += c.first + '=' + c.second;
+        }
+        connection.BlockingWrite("Cookie: " + cookies_as_string + "\r\n", true);
       }
       if (!request_body_content_type_.empty()) {
         connection.BlockingWrite("Content-Type: " + request_body_content_type_ + "\r\n", true);
