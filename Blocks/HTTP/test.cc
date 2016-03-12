@@ -237,6 +237,36 @@ TEST(HTTPAPI, URLParameters) {
             HTTP(GET(Printf("http://localhost:%d/query?x=test+passed", FLAGS_net_api_test_port))).body);
 }
 
+TEST(HTTPAPI, HeadersAndCookies) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/headers_and_cookies",
+                [](Request r) {
+                  EXPECT_TRUE(r.headers.Has("Header1"));
+                  EXPECT_TRUE(r.headers.Has("Header2"));
+                  EXPECT_EQ("foo", r.headers["Header1"].value);
+                  EXPECT_EQ("bar", r.headers["Header2"].value);
+                  EXPECT_EQ("x=1; y=2", r.headers.CookiesAsString());
+                  Response response("OK");
+                  response.headers.Set("X-Current-H1", "header1");
+                  response.SetCookie("cookie1", "value1");
+                  response.headers.Set("X-Current-H2", "header2");
+                  response.SetCookie("cookie2", "value2");
+                  r(response);
+                });
+  const auto response = HTTP(GET(Printf("http://localhost:%d/headers_and_cookies", FLAGS_net_api_test_port))
+                             .SetHeader("Header1", "foo")
+                             .SetCookie("x","1")
+                             .SetCookie("y","2")
+                             .SetHeader("Header2", "bar"));
+  EXPECT_EQ("OK", response.body);
+  EXPECT_TRUE(response.headers.Has("X-Current-H1"));
+  EXPECT_TRUE(response.headers.Has("X-Current-H2"));
+  EXPECT_EQ("header1", response.headers.Get("X-Current-H1"));
+  EXPECT_EQ("header2", response.headers.Get("X-Current-H2"));
+  EXPECT_EQ("cookie1=value1; cookie2=value2", response.headers.CookiesAsString());
+}
+
 TEST(HTTPAPI, RespondsWithString) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port)
