@@ -295,6 +295,20 @@ struct Headers final {
     return *this;
   }
 
+  Headers& SetCookie(const std::string& name, const Cookie& cookie) {
+    cookies[name] = cookie;
+    return *this;
+  }
+
+  Headers& SetCookie(const std::string& name,
+                     const std::string& value,
+                     const std::map<std::string, std::string>& params) {
+    auto& placeholder = cookies[name];
+    placeholder.value = value;
+    placeholder.params = params;
+    return *this;
+  }
+
   // Return all headers, but not cookes, as a single `std::map<std::string, std::string>`.
   std::map<std::string, std::string> AsMap() const {
     std::map<std::string, std::string> headers;
