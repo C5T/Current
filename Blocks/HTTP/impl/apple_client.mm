@@ -127,8 +127,7 @@ bool current::http::HTTPClientApple::Go() {
                 }
               }
               NSArray *cookies = [NSHTTPCookie
-                  cookiesWithResponseHeaderFields:[http_response allHeaderFields]
-                  forURL:[NSURL URLWithString:@""]];
+                  cookiesWithResponseHeaderFields:headers forURL:[NSURL URLWithString:@""]];
               for (NSHTTPCookie *cookie in cookies) {
                 response_headers.SetCookie([[cookie name] UTF8String], [[cookie value] UTF8String]);
               }
