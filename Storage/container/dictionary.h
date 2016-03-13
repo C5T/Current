@@ -42,6 +42,7 @@ class GenericDictionary {
  public:
   using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
   using T_MAP = MAP<T_KEY, T>;
+  using T_REST_BEHAVIOR = rest::behavior::Dictionary;
 
   explicit GenericDictionary(MutationJournal& journal) : journal_(journal) {}
 

@@ -321,6 +321,48 @@ using MutableFields = typename STORAGE::T_FIELDS_BY_REFERENCE;
 template <typename STORAGE>
 using ImmutableFields = typename STORAGE::T_FIELDS_BY_CONST_REFERENCE;
 
+template <typename>
+struct PerStorageFieldTypeImpl;
+
+template <typename T>
+using PerStorageFieldType = PerStorageFieldTypeImpl<typename T::T_REST_BEHAVIOR>;
+
+template <>
+struct PerStorageFieldTypeImpl<rest::behavior::Dictionary> {
+  template <typename T_RECORD>
+  static auto ExtractOrComposeKey(const T_RECORD& entry)
+      -> decltype(current::storage::sfinae::GetKey(std::declval<T_RECORD>())) {
+    return current::storage::sfinae::GetKey(entry);
+  }
+  template <typename T_DICTIONARY>
+  static const T_DICTIONARY& Iterate(const T_DICTIONARY& dictionary) {
+    return dictionary;
+  }
+};
+
+template <>
+struct PerStorageFieldTypeImpl<rest::behavior::Matrix> {
+  template <typename T_RECORD>
+  static auto ExtractOrComposeKey(const T_RECORD& entry)
+      -> std::pair<decltype(current::storage::sfinae::GetRow(std::declval<T_RECORD>())),
+                   decltype(current::storage::sfinae::GetCol(std::declval<T_RECORD>()))> {
+    return std::make_pair(current::storage::sfinae::GetRow(entry), current::storage::sfinae::GetCol(entry));
+  }
+  template <typename T_MATRIX>
+  struct Iterable {
+    const T_MATRIX& matrix;
+    explicit Iterable(const T_MATRIX& matrix) : matrix(matrix) {}
+    using Iterator = typename T_MATRIX::WholeMatrixIterator;
+    Iterator begin() const { return matrix.WholeMatrixBegin(); }
+    Iterator end() const { return matrix.WholeMatrixEnd(); }
+  };
+
+  template <typename T_MATRIX>
+  static Iterable<T_MATRIX> Iterate(const T_MATRIX& matrix) {
+    return Iterable<T_MATRIX>(matrix);
+  }
+};
+
 #if 0
 struct CannotPopBackFromEmptyVectorException : Exception {};
 typedef const CannotPopBackFromEmptyVectorException& CannotPopBackFromEmptyVector;

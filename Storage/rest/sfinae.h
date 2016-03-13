@@ -59,6 +59,18 @@ struct BRIEF_OF_T_IMPL<T, true> {
 template <typename T>
 using BRIEF_OF_T = typename BRIEF_OF_T_IMPL<T, Has_T_BRIEF<T>(0)>::type;
 
+// TODO(dkorolev) + TODO(mzhurovich): Rename it into something `POST`-related, like `POSTKey()`?
+// TODO(dkorolev) + TODO(mzhurovich): Perhaps have it a `const` function returning the calculated key instead?
+template <typename T>
+constexpr bool HasInitializeOwnKey(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasInitializeOwnKey(int) -> decltype(std::declval<T>().InitializeOwnKey(), bool()) {
+  return true;
+}
+
 }  // namespace sfinae
 }  // namespace rest
 }  // namespace storage

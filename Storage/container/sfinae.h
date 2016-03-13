@@ -125,6 +125,13 @@ struct ROW_ACCESSOR_IMPL<ENTRY, true> {
   static void SetRow(ENTRY& entry, CF<T_ROW> row) { entry.set_row(row); }
 };
 
+template <typename ROW, typename COL>
+struct ROW_ACCESSOR_IMPL<std::pair<ROW, COL>, false> {
+  typedef ROW T_ROW;
+  static CF<T_ROW> GetRow(const std::pair<ROW, COL>& entry) { return entry.first; }
+  static void SetRow(std::pair<ROW, COL>& entry, CF<T_ROW> row) { entry.first = row; }
+};
+
 template <typename ENTRY>
 using ROW_ACCESSOR = ROW_ACCESSOR_IMPL<ENTRY, HasRowFunction<ENTRY>(0)>;
 
@@ -167,6 +174,13 @@ struct COL_ACCESSOR_IMPL<ENTRY, true> {
   // Can not return a reference to a temporary.
   static const T_COL GetCol(const ENTRY& entry) { return entry.col(); }
   static void SetCol(ENTRY& entry, CF<T_COL> col) { entry.set_col(col); }
+};
+
+template <typename ROW, typename COL>
+struct COL_ACCESSOR_IMPL<std::pair<ROW, COL>, false> {
+  typedef COL T_COL;
+  static CF<T_COL> GetCol(const std::pair<COL, COL>& entry) { return entry.second; }
+  static void SetCol(std::pair<COL, COL>& entry, CF<T_COL> col) { entry.second = col; }
 };
 
 template <typename ENTRY>

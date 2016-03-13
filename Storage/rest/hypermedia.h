@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_STORAGE_REST_HYPERMEDIA_H
 #define CURRENT_STORAGE_REST_HYPERMEDIA_H
 
+#include "sfinae.h"
+
 #include "../storage.h"
 
 #include "../../TypeSystem/struct.h"
@@ -251,8 +253,10 @@ struct Hypermedia {
       } else {
         HypermediaRESTContainerResponse response;
         response.url = input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name;
-        for (const auto& element : input.field) {
-          response.data.emplace_back(response.url + '/' + current::ToString(sfinae::GetKey(element)));
+        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+          response.data.emplace_back(
+              response.url + '/' +
+              current::ToString(PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(element)));
         }
         return Response(response);
       }
@@ -272,9 +276,18 @@ struct Hypermedia {
     }
     template <class INPUT>
     Response Run(const INPUT& input) const {
+      return RunImpl<INPUT, sfinae::HasInitializeOwnKey<decltype(std::declval<INPUT>().entry)>(0)>(input);
+    }
+    template <class INPUT, bool B>
+    ENABLE_IF<!B, Response> RunImpl(const INPUT&) const {
+      return Hypermedia::ErrorMethodNotAllowed("POST");
+    }
+    template <class INPUT, bool B>
+    ENABLE_IF<B, Response> RunImpl(const INPUT& input) const {
       input.entry.InitializeOwnKey();
-      const std::string key = current::ToString(sfinae::GetKey(input.entry));
-      if (!Exists(input.field[sfinae::GetKey(input.entry)])) {
+      const auto entry_key = PerStorageFieldType<PARTICULAR_FIELD>::ExtractOrComposeKey(input.entry);
+      const std::string key = current::ToString(entry_key);
+      if (!Exists(input.field[entry_key])) {
         input.field.Add(input.entry);
         const std::string url =
             input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + key;

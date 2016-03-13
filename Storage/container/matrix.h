@@ -62,8 +62,10 @@ class GenericMatrix {
  public:
   using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
   using T_COL = sfinae::ENTRY_COL_TYPE<T>;
+  using T_WHOLE_MATRIX_MAP = std::unordered_map<std::pair<T_ROW, T_COL>, std::unique_ptr<T>, PairHash>;
   using T_FORWARD_MAP = ROW_MAP<T_ROW, COL_MAP<T_COL, const T*>>;
   using T_TRANSPOSED_MAP = COL_MAP<T_COL, ROW_MAP<T_ROW, const T*>>;
+  using T_REST_BEHAVIOR = rest::behavior::Matrix;
 
   explicit GenericMatrix(MutationJournal& journal) : journal_(journal) {}
 
@@ -100,6 +102,7 @@ class GenericMatrix {
       DoErase(row_col);
     }
   }
+  void Erase(const std::pair<T_ROW, T_COL>& key) { Erase(key.first, key.second); }
 
   ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
     const auto it = map_.find(std::make_pair(row, col));
@@ -192,6 +195,30 @@ class GenericMatrix {
 
   OuterAccessor<T_TRANSPOSED_MAP> Cols() const { return OuterAccessor<T_TRANSPOSED_MAP>(transposed_); }
 
+  ImmutableOptional<T> operator[](const std::pair<T_ROW, T_COL>& full_key_as_pair) const {
+    const auto cit = map_.find(full_key_as_pair);
+    if (cit != map_.end()) {
+      return ImmutableOptional<T>(FromBarePointer(), cit->second.get());
+    } else {
+      return nullptr;
+    }
+  }
+
+  // For REST, iterate over all the elemnts of the matrix, in no particular order.
+  struct WholeMatrixIterator final {
+    using T_ITERATOR = typename T_WHOLE_MATRIX_MAP::const_iterator;
+    T_ITERATOR iterator;
+    explicit WholeMatrixIterator(T_ITERATOR iterator) : iterator(iterator) {}
+    void operator++() { ++iterator; }
+    bool operator==(const WholeMatrixIterator& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const WholeMatrixIterator& rhs) const { return !operator==(rhs); }
+    const std::pair<T_ROW, T_COL> key() const { return iterator->first; }
+    const T& operator*() const { return *iterator->second; }
+    const T* operator->() const { return iterator->second; }
+  };
+  WholeMatrixIterator WholeMatrixBegin() const { return WholeMatrixIterator(map_.begin()); }
+  WholeMatrixIterator WholeMatrixEnd() const { return WholeMatrixIterator(map_.end()); }
+
  private:
   void DoAdd(const std::pair<T_ROW, T_COL>& row_col, const T& object) {
     auto& placeholder = map_[row_col];
@@ -214,7 +241,7 @@ class GenericMatrix {
     map_.erase(row_col);
   }
 
-  std::unordered_map<std::pair<T_ROW, T_COL>, std::unique_ptr<T>, PairHash> map_;
+  T_WHOLE_MATRIX_MAP map_;
   T_FORWARD_MAP forward_;
   T_TRANSPOSED_MAP transposed_;
   MutationJournal& journal_;

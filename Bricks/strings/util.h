@@ -40,14 +40,14 @@ namespace strings {
 
 template <typename DECAYED_T, bool IS_ENUM>
 struct ToStringImpl {
-  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> ToString(DECAYED_T value) {
+  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> DoIt(DECAYED_T value) {
     return std::to_string(value);
   }
 };
 
 template <typename DECAYED_T>
 struct ToStringImpl<DECAYED_T, true> {
-  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> ToString(DECAYED_T value) {
+  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> DoIt(DECAYED_T value) {
     return std::to_string(static_cast<typename std::underlying_type<DECAYED_T>::type>(value));
   }
 };
@@ -55,43 +55,43 @@ struct ToStringImpl<DECAYED_T, true> {
 template <>
 struct ToStringImpl<std::string, false> {
   template <typename T>
-  static std::string ToString(T&& string) {
+  static std::string DoIt(T&& string) {
     return string;
   }
 };
 
 template <>
 struct ToStringImpl<char*, false> {  // Decayed type in template parameters list.
-  static std::string ToString(const char* string) { return string; }
+  static std::string DoIt(const char* string) { return string; }
 };
 
 template <int N>
 struct ToStringImpl<char[N], false> {  // Decayed type in template parameters list.
-  static std::string ToString(const char string[N]) {
+  static std::string DoIt(const char string[N]) {
     return std::string(string, string + N - 1);  // Do not include the '\0' character.
   }
 };
 
 template <>
 struct ToStringImpl<char, false> {
-  static std::string ToString(char c) { return std::string(1u, c); }
+  static std::string DoIt(char c) { return std::string(1u, c); }
 };
 
 template <>
 struct ToStringImpl<bool, false> {
-  static std::string ToString(bool b) { return b ? "true" : "false"; }
+  static std::string DoIt(bool b) { return b ? "true" : "false"; }
 };
 
 // Keep the lowercase name to possibly act as a replacement for `std::to_string`.
 template <typename T>
 inline std::string to_string(T&& something) {
   using DECAYED_T = current::decay<T>;
-  return ToStringImpl<DECAYED_T, std::is_enum<DECAYED_T>::value>::ToString(something);
+  return ToStringImpl<DECAYED_T, std::is_enum<DECAYED_T>::value>::DoIt(something);
 }
 
 template <typename T>
 inline std::string to_string(std::reference_wrapper<T> something) {
-  return ToStringImpl<T, std::is_enum<T>::value>::ToString(something.get());
+  return ToStringImpl<T, std::is_enum<T>::value>::DoIt(something.get());
 }
 
 // Use camel-case `ToString()` within Bricks.
@@ -99,6 +99,15 @@ template <typename T>
 inline std::string ToString(T&& something) {
   return current::strings::to_string(std::forward<T>(something));
 }
+
+// Special case for `std::pair<>`. For Storage REST only for now.
+// TODO(dkorolev) + TODO(mzhurovich): Unify `ToString()` and `JSON()` under one `Serialize()` w/ policies?
+template <typename FST, typename SND>
+struct ToStringImpl<std::pair<FST, SND>, false> {
+  static std::string DoIt(const std::pair<FST, SND>& pair) {
+    return ToString(pair.first) + ':' + ToString(pair.second);
+  }
+};
 
 template <typename T_INPUT, typename T_OUTPUT, bool IS_ENUM>
 struct FromStringEnumImpl;
@@ -137,6 +146,23 @@ inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
   return FromStringEnumImpl<T_INPUT, T_OUTPUT, std::is_enum<T_OUTPUT>::value>::Go(std::forward<T_INPUT>(input),
                                                                                   output);
 }
+
+// Special case for `std::pair<>`. For Storage REST only for now.
+// TODO(dkorolev) + TODO(mzhurovich): Unify `FromString()` and `JSON()` under one `Serialize()` w/ policies?
+template <typename T_INPUT, typename T_OUTPUT_FST, typename T_OUTPUT_SND>
+struct FromStringEnumImpl<T_INPUT, std::pair<T_OUTPUT_FST, T_OUTPUT_SND>, false> {
+  static const std::pair<T_OUTPUT_FST, T_OUTPUT_SND>& Go(const std::string& input,
+                                                         std::pair<T_OUTPUT_FST, T_OUTPUT_SND>& output) {
+    const size_t dash = input.find('-');
+    FromString(input.substr(0, dash), output.first);
+    if (dash != std::string::npos) {
+      FromString(input.substr(dash + 1), output.second);
+    } else {
+      output.second = T_OUTPUT_SND();
+    }
+    return output;
+  }
+};
 
 template <typename T_INPUT>
 inline const std::string& FromString(T_INPUT&& input, std::string& output) {
@@ -212,8 +238,8 @@ inline std::string ToUpper(const T& input) {
 
 }  // namespace strings
 
-using strings::FromString;
 using strings::ToString;
+using strings::FromString;
 
 }  // namespace current
 
