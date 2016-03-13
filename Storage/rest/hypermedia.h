@@ -78,8 +78,7 @@ CURRENT_STRUCT(HypermediaRESTGenericResponse) {
   CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(
       bool success, const std::string& message, const HypermediaRESTError& error)
       : success(success), message(message), error(error) {}
-  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success,
-                                                     const HypermediaRESTError& error)
+  CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success, const HypermediaRESTError& error)
       : success(success), error(error) {}
 };
 
