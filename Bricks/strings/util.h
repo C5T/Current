@@ -38,22 +38,57 @@ SOFTWARE.
 namespace current {
 namespace strings {
 
-template <typename DECAYED_T, bool IS_ENUM>
+namespace sfinae {
+
+template <typename T>
+constexpr bool HasMemberToString(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasMemberToString(int) -> decltype(std::declval<const T>().ToString(), bool()) {
+  return true;
+}
+
+// TODO(dkorolev) + TODO(mzhurovich): Perhaps `C(ConstructFromString, s)`, not member `C.FromString(s)`?
+template <typename T>
+constexpr bool HasMemberFromString(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasMemberFromString(int) -> decltype(std::declval<T>().FromString(""), bool()) {
+  return true;
+}
+
+}  // namespace sfinae
+
+template <typename DECAYED_T, bool HAS_MEMBER_TO_STRING, bool IS_ENUM>
 struct ToStringImpl {
-  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> DoIt(DECAYED_T value) {
+  template <bool B = std::is_pod<DECAYED_T>::value>
+  static ENABLE_IF<B, std::string> DoIt(DECAYED_T value) {
     return std::to_string(value);
   }
 };
 
 template <typename DECAYED_T>
-struct ToStringImpl<DECAYED_T, true> {
-  static ENABLE_IF<std::is_pod<DECAYED_T>::value, std::string> DoIt(DECAYED_T value) {
+struct ToStringImpl<DECAYED_T, false, true> {
+  template <bool B = std::is_pod<DECAYED_T>::value>
+  static ENABLE_IF<B, std::string> DoIt(DECAYED_T value) {
     return std::to_string(static_cast<typename std::underlying_type<DECAYED_T>::type>(value));
   }
 };
 
+template <typename DECAYED_T, bool B>
+struct ToStringImpl<DECAYED_T, true, B> {
+  template <typename T>
+  static std::string DoIt(T&& x) {
+    return x.ToString();
+  }
+};
+
 template <>
-struct ToStringImpl<std::string, false> {
+struct ToStringImpl<std::string, false, false> {
   template <typename T>
   static std::string DoIt(T&& string) {
     return string;
@@ -61,24 +96,24 @@ struct ToStringImpl<std::string, false> {
 };
 
 template <>
-struct ToStringImpl<char*, false> {  // Decayed type in template parameters list.
+struct ToStringImpl<char*, false, false> {  // Decayed type in template parameters list.
   static std::string DoIt(const char* string) { return string; }
 };
 
 template <int N>
-struct ToStringImpl<char[N], false> {  // Decayed type in template parameters list.
+struct ToStringImpl<char[N], false, false> {  // Decayed type in template parameters list.
   static std::string DoIt(const char string[N]) {
     return std::string(string, string + N - 1);  // Do not include the '\0' character.
   }
 };
 
 template <>
-struct ToStringImpl<char, false> {
+struct ToStringImpl<char, false, false> {
   static std::string DoIt(char c) { return std::string(1u, c); }
 };
 
 template <>
-struct ToStringImpl<bool, false> {
+struct ToStringImpl<bool, false, false> {
   static std::string DoIt(bool b) { return b ? "true" : "false"; }
 };
 
@@ -86,12 +121,13 @@ struct ToStringImpl<bool, false> {
 template <typename T>
 inline std::string to_string(T&& something) {
   using DECAYED_T = current::decay<T>;
-  return ToStringImpl<DECAYED_T, std::is_enum<DECAYED_T>::value>::DoIt(something);
+  return ToStringImpl<DECAYED_T, sfinae::HasMemberToString<T>(0), std::is_enum<DECAYED_T>::value>::DoIt(
+      something);
 }
 
 template <typename T>
 inline std::string to_string(std::reference_wrapper<T> something) {
-  return ToStringImpl<T, std::is_enum<T>::value>::DoIt(something.get());
+  return ToStringImpl<T, sfinae::HasMemberToString<T>(0), std::is_enum<T>::value>::DoIt(something.get());
 }
 
 // Use camel-case `ToString()` within Bricks.
@@ -103,17 +139,26 @@ inline std::string ToString(T&& something) {
 // Special case for `std::pair<>`. For Storage REST only for now.
 // TODO(dkorolev) + TODO(mzhurovich): Unify `ToString()` and `JSON()` under one `Serialize()` w/ policies?
 template <typename FST, typename SND>
-struct ToStringImpl<std::pair<FST, SND>, false> {
+struct ToStringImpl<std::pair<FST, SND>, false, false> {
   static std::string DoIt(const std::pair<FST, SND>& pair) {
     return ToString(pair.first) + ':' + ToString(pair.second);
   }
 };
 
-template <typename T_INPUT, typename T_OUTPUT, bool IS_ENUM>
-struct FromStringEnumImpl;
+template <typename T_INPUT, typename T_OUTPUT, bool HAS_MEMBER_FROM_STRING, bool IS_ENUM>
+struct FromStringImpl;
 
 template <typename T_INPUT, typename T_OUTPUT>
-struct FromStringEnumImpl<T_INPUT, T_OUTPUT, false> {
+struct FromStringImpl<T_INPUT, T_OUTPUT, true, false> {
+  template <typename T>
+  static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
+    output.FromString(std::forward<T>(input));
+    return output;
+  }
+};
+
+template <typename T_INPUT, typename T_OUTPUT>
+struct FromStringImpl<T_INPUT, T_OUTPUT, false, false> {
   template <typename T>
   static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
     std::istringstream is(input);
@@ -126,7 +171,7 @@ struct FromStringEnumImpl<T_INPUT, T_OUTPUT, false> {
 };
 
 template <typename T_INPUT, typename T_OUTPUT>
-struct FromStringEnumImpl<T_INPUT, T_OUTPUT, true> {
+struct FromStringImpl<T_INPUT, T_OUTPUT, false, true> {
   template <typename T>
   static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
     std::istringstream is(input);
@@ -143,14 +188,16 @@ struct FromStringEnumImpl<T_INPUT, T_OUTPUT, true> {
 
 template <typename T_OUTPUT, typename T_INPUT = std::string>
 inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
-  return FromStringEnumImpl<T_INPUT, T_OUTPUT, std::is_enum<T_OUTPUT>::value>::Go(std::forward<T_INPUT>(input),
-                                                                                  output);
+  return FromStringImpl<T_INPUT,
+                        T_OUTPUT,
+                        sfinae::HasMemberFromString<T_OUTPUT>(0),
+                        std::is_enum<T_OUTPUT>::value>::Go(std::forward<T_INPUT>(input), output);
 }
 
 // Special case for `std::pair<>`. For Storage REST only for now.
 // TODO(dkorolev) + TODO(mzhurovich): Unify `FromString()` and `JSON()` under one `Serialize()` w/ policies?
 template <typename T_INPUT, typename T_OUTPUT_FST, typename T_OUTPUT_SND>
-struct FromStringEnumImpl<T_INPUT, std::pair<T_OUTPUT_FST, T_OUTPUT_SND>, false> {
+struct FromStringImpl<T_INPUT, std::pair<T_OUTPUT_FST, T_OUTPUT_SND>, false, false> {
   static const std::pair<T_OUTPUT_FST, T_OUTPUT_SND>& Go(const std::string& input,
                                                          std::pair<T_OUTPUT_FST, T_OUTPUT_SND>& output) {
     const size_t dash = input.find('-');
