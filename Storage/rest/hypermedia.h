@@ -55,32 +55,32 @@ CURRENT_STRUCT(HypermediaRESTStatus) {
 
 CURRENT_STRUCT(HypermediaRESTError) {
   using T_DETAILS = std::map<std::string, std::string>;
-  CURRENT_FIELD(error, std::string);
+  CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(description, std::string);
   CURRENT_FIELD(details, Optional<T_DETAILS>);
 
-  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& error, const std::string& description)
-      : error(error), description(description) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& name, const std::string& description)
+      : name(name), description(description) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(
-      const std::string& error, const std::string& description, const T_DETAILS& details)
-      : error(error), description(description), details(details) {}
+      const std::string& name, const std::string& description, const T_DETAILS& details)
+      : name(name), description(description), details(details) {}
 };
 
 CURRENT_STRUCT(HypermediaRESTGenericResponse) {
   CURRENT_FIELD(success, bool, true);
   CURRENT_FIELD(message, Optional<std::string>);
-  CURRENT_FIELD(errors, Optional<std::vector<HypermediaRESTError>>);
+  CURRENT_FIELD(error, Optional<HypermediaRESTError>);
 
   CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTGenericResponse) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success) : success(success) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success, const std::string& message)
       : success(success), message(message) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(
-      bool success, const std::string& message, const std::vector<HypermediaRESTError>& errors)
-      : success(success), message(message), errors(errors) {}
+      bool success, const std::string& message, const HypermediaRESTError& error)
+      : success(success), message(message), error(error) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTGenericResponse)(bool success,
-                                                     const std::vector<HypermediaRESTError>& errors)
-      : success(success), errors(errors) {}
+                                                     const HypermediaRESTError& error)
+      : success(success), error(error) {}
 };
 
 CURRENT_STRUCT_T(HypermediaRESTRecordResponse) {
@@ -116,26 +116,17 @@ CURRENT_STRUCT(HypermediaRESTResourceUpdateResponse, HypermediaRESTGenericRespon
       bool success, const std::string& message, const std::string& resource_url)
       : SUPER(success, message), resource_url(resource_url) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTResourceUpdateResponse)(
-      bool success, const std::string& message, const std::vector<HypermediaRESTError>& errors)
-      : SUPER(success, message, errors) {}
+      bool success, const std::string& message, const HypermediaRESTError& error)
+      : SUPER(success, message, error) {}
 };
 
 inline HypermediaRESTGenericResponse ErrorResponseObject(const std::string& message,
-                                                         const std::vector<HypermediaRESTError>& errors) {
-  return HypermediaRESTGenericResponse(false, message, errors);
-}
-
-inline HypermediaRESTGenericResponse ErrorResponseObject(const std::vector<HypermediaRESTError>& errors) {
-  return HypermediaRESTGenericResponse(false, errors);
-}
-
-inline HypermediaRESTGenericResponse ErrorResponseObject(const std::string& message,
                                                          const HypermediaRESTError& error) {
-  return HypermediaRESTGenericResponse(false, message, {error});
+  return HypermediaRESTGenericResponse(false, message, error);
 }
 
 inline HypermediaRESTGenericResponse ErrorResponseObject(const HypermediaRESTError& error) {
-  return HypermediaRESTGenericResponse(false, {error});
+  return HypermediaRESTGenericResponse(false, error);
 }
 
 inline Response ErrorResponse(const HypermediaRESTError& error_object, net::HTTPResponseCodeValue code) {

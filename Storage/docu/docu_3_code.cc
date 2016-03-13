@@ -133,7 +133,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"success\":true,"
         "\"message\":null,"
-        "\"errors\":null,"
+        "\"error\":null,"
         "\"url\":\"http://example.current.ai/api2/data/client\","
         "\"data\":[]"
         "}\n",
@@ -154,12 +154,12 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"success\":false,"
         "\"message\":null,"
-        "\"errors\":["
-                    "{"
-                    "\"error\":\"ResourceNotFound\","
-                    "\"description\":\"The requested resource not found.\","
-                    "\"details\":{\"key\":\"42\"}"
-                    "}]"
+        "\"error\":"
+                   "{"
+                   "\"name\":\"ResourceNotFound\","
+                   "\"description\":\"The requested resource not found.\","
+                   "\"details\":{\"key\":\"42\"}"
+                   "}"
         "}\n",
         result.body);
   }
@@ -180,12 +180,11 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"success\":false,"
         "\"message\":null,"
-        "\"errors\":["
-                    "{"
-                    "\"error\":\"InvalidKey\","
-                    "\"description\":\"Should not have resource key in the URL.\","
-                    "\"details\":null"
-                    "}]"
+        "\"error\":{"
+                   "\"name\":\"InvalidKey\","
+                   "\"description\":\"Should not have resource key in the URL.\","
+                   "\"details\":null"
+                   "}"
         "}\n",
         result.body);
   }
@@ -206,12 +205,11 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"success\":false,"
         "\"message\":null,"
-        "\"errors\":["
-                    "{"
-                    "\"error\":\"ParseJSONError\","
-                    "\"description\":\"Invalid JSON in request body.\","
-                    "\"details\":{\"error_details\":\"Expected number for `key`, got: missing field.\"}"
-                    "}]"
+        "\"error\":{"
+                   "\"name\":\"ParseJSONError\","
+                   "\"description\":\"Invalid JSON in request body.\","
+                   "\"details\":{\"error_details\":\"Expected number for `key`, got: missing field.\"}"
+                   "}"
         "}\n",
         result.body);
   }
@@ -232,12 +230,11 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"success\":false,"
         "\"message\":null,"
-        "\"errors\":["
-                    "{"
-                    "\"error\":\"ParseJSONError\","
-                    "\"description\":\"Invalid JSON in request body.\","
-                    "\"details\":{\"error_details\":\"Expected number for `key`, got: []\"}"
-                    "}]"
+        "\"error\":{"
+                   "\"name\":\"ParseJSONError\","
+                   "\"description\":\"Invalid JSON in request body.\","
+                   "\"details\":{\"error_details\":\"Expected number for `key`, got: []\"}"
+                   "}"
         "}\n",
         result.body);
   }
@@ -320,7 +317,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "{"
         "\"success\":true,"
         "\"message\":null,"
-        "\"errors\":null,"
+        "\"error\":null,"
         "\"url\":\"http://example.current.ai/api2/data/client\","
         "\"data\":["
                   "\"http://example.current.ai/api2/data/client/101\","
@@ -387,7 +384,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(DELETE(base_url + "/api2/data/client/100500"));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"success\":true,\"message\":\"Resource didn't exist.\",\"errors\":null,\"resource_url\":null}\n",
+    EXPECT_EQ("{\"success\":true,\"message\":\"Resource didn't exist.\",\"error\":null,\"resource_url\":null}\n",
               result.body);
   }
   // DELETE one record and GET the collection again.
@@ -395,7 +392,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
   {
     const auto result = HTTP(DELETE(base_url + "/api2/data/client/" + client1_key_str));
     EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("{\"success\":true,\"message\":\"Resource deleted.\",\"errors\":null,\"resource_url\":null}\n",
+    EXPECT_EQ("{\"success\":true,\"message\":\"Resource deleted.\",\"error\":null,\"resource_url\":null}\n",
               result.body);
   }
   {
