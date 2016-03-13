@@ -56,14 +56,14 @@ CURRENT_STRUCT(HypermediaRESTStatus) {
 CURRENT_STRUCT(HypermediaRESTError) {
   using T_DETAILS = std::map<std::string, std::string>;
   CURRENT_FIELD(name, std::string);
-  CURRENT_FIELD(description, std::string);
+  CURRENT_FIELD(message, std::string);
   CURRENT_FIELD(details, Optional<T_DETAILS>);
 
-  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& name, const std::string& description)
-      : name(name), description(description) {}
+  CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& name, const std::string& message)
+      : name(name), message(message) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(
-      const std::string& name, const std::string& description, const T_DETAILS& details)
-      : name(name), description(description), details(details) {}
+      const std::string& name, const std::string& message, const T_DETAILS& details)
+      : name(name), message(message), details(details) {}
 };
 
 CURRENT_STRUCT(HypermediaRESTGenericResponse) {
@@ -132,36 +132,36 @@ inline Response ErrorResponse(const HypermediaRESTError& error_object, net::HTTP
   return Response(ErrorResponseObject(error_object), code);
 }
 
-inline HypermediaRESTError MethodNotAllowedError(const std::string& description,
+inline HypermediaRESTError MethodNotAllowedError(const std::string& message,
                                                  const std::string& requested_method) {
-  return HypermediaRESTError("MethodNotAllowed", description, {{"requested_method", requested_method}});
+  return HypermediaRESTError("MethodNotAllowed", message, {{"requested_method", requested_method}});
 }
 
-inline HypermediaRESTError ParseJSONError(const std::string& description, const std::string& error_details) {
-  return HypermediaRESTError("ParseJSONError", description, {{"error_details", error_details}});
+inline HypermediaRESTError ParseJSONError(const std::string& message, const std::string& error_details) {
+  return HypermediaRESTError("ParseJSONError", message, {{"error_details", error_details}});
 };
 
-inline HypermediaRESTError RequiredKeyIsMissingError(const std::string& description) {
-  return HypermediaRESTError("RequiredKeyIsMissing", description);
+inline HypermediaRESTError RequiredKeyIsMissingError(const std::string& message) {
+  return HypermediaRESTError("RequiredKeyIsMissing", message);
 }
 
-inline HypermediaRESTError InvalidKeyError(const std::string& description) {
-  return HypermediaRESTError("InvalidKey", description);
+inline HypermediaRESTError InvalidKeyError(const std::string& message) {
+  return HypermediaRESTError("InvalidKey", message);
 }
 
-inline HypermediaRESTError InvalidKeyError(const std::string& description,
+inline HypermediaRESTError InvalidKeyError(const std::string& message,
                                            const std::map<std::string, std::string>& details) {
-  return HypermediaRESTError("InvalidKey", description, details);
+  return HypermediaRESTError("InvalidKey", message, details);
 }
 
-inline HypermediaRESTError ResourceNotFoundError(const std::string& description,
+inline HypermediaRESTError ResourceNotFoundError(const std::string& message,
                                                  const std::map<std::string, std::string>& details) {
-  return HypermediaRESTError("ResourceNotFound", description, details);
+  return HypermediaRESTError("ResourceNotFound", message, details);
 }
 
-inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& description,
+inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& message,
                                                       const std::map<std::string, std::string>& details) {
-  return HypermediaRESTError("ResourceAlreadyExists", description, details);
+  return HypermediaRESTError("ResourceAlreadyExists", message, details);
 }
 
 struct Hypermedia {

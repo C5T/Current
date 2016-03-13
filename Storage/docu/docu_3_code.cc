@@ -157,7 +157,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"error\":"
                    "{"
                    "\"name\":\"ResourceNotFound\","
-                   "\"description\":\"The requested resource not found.\","
+                   "\"message\":\"The requested resource not found.\","
                    "\"details\":{\"key\":\"42\"}"
                    "}"
         "}\n",
@@ -182,7 +182,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"message\":null,"
         "\"error\":{"
                    "\"name\":\"InvalidKey\","
-                   "\"description\":\"Should not have resource key in the URL.\","
+                   "\"message\":\"Should not have resource key in the URL.\","
                    "\"details\":null"
                    "}"
         "}\n",
@@ -207,7 +207,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"message\":null,"
         "\"error\":{"
                    "\"name\":\"ParseJSONError\","
-                   "\"description\":\"Invalid JSON in request body.\","
+                   "\"message\":\"Invalid JSON in request body.\","
                    "\"details\":{\"error_details\":\"Expected number for `key`, got: missing field.\"}"
                    "}"
         "}\n",
@@ -232,7 +232,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
         "\"message\":null,"
         "\"error\":{"
                    "\"name\":\"ParseJSONError\","
-                   "\"description\":\"Invalid JSON in request body.\","
+                   "\"message\":\"Invalid JSON in request body.\","
                    "\"details\":{\"error_details\":\"Expected number for `key`, got: []\"}"
                    "}"
         "}\n",
