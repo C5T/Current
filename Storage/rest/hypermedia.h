@@ -55,10 +55,11 @@ CURRENT_STRUCT(HypermediaRESTStatus) {
 
 CURRENT_STRUCT(HypermediaRESTError) {
   using T_DETAILS = std::map<std::string, std::string>;
-  CURRENT_FIELD(name, std::string);
-  CURRENT_FIELD(message, std::string);
+  CURRENT_FIELD(name, std::string, "");
+  CURRENT_FIELD(message, std::string, "");
   CURRENT_FIELD(details, Optional<T_DETAILS>);
 
+  CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTError) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& name, const std::string& message)
       : name(name), message(message) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(
@@ -84,9 +85,10 @@ CURRENT_STRUCT(HypermediaRESTGenericResponse) {
 
 CURRENT_STRUCT_T(HypermediaRESTRecordResponse) {
   CURRENT_FIELD(success, bool, true);  // No nested template structs yet :(
-  CURRENT_FIELD(url, std::string);
+  CURRENT_FIELD(url, std::string, "");
   CURRENT_FIELD(data, T);
 
+  CURRENT_DEFAULT_CONSTRUCTOR_T(HypermediaRESTRecordResponse) {}
   CURRENT_CONSTRUCTOR_T(HypermediaRESTRecordResponse)(const std::string& url, const T& data)
       : url(url), data(data) {}
   CURRENT_CONSTRUCTOR_T(HypermediaRESTRecordResponse)(const std::string& url, T&& data)
@@ -94,7 +96,7 @@ CURRENT_STRUCT_T(HypermediaRESTRecordResponse) {
 };
 
 CURRENT_STRUCT(HypermediaRESTContainerResponse, HypermediaRESTGenericResponse) {
-  CURRENT_FIELD(url, std::string);
+  CURRENT_FIELD(url, std::string, "");
   CURRENT_FIELD(data, std::vector<std::string>);
 
   CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTContainerResponse) : SUPER(true) {}
