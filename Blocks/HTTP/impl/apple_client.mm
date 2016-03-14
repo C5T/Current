@@ -70,7 +70,7 @@ bool current::http::HTTPClientApple::Go() {
       [request setValue:[NSString stringWithUTF8String:h.value.c_str()]
           forHTTPHeaderField:[NSString stringWithUTF8String:h.header.c_str()]];
     }
-    if (!request_headers.empty()) {
+    if (!request_headers.cookies.empty()) {
       [request setValue:[NSString stringWithUTF8String:request_headers.CookiesAsString().c_str()]
           forHTTPHeaderField:@"Cookie"];
     }
