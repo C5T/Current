@@ -25,6 +25,7 @@ SOFTWARE.
 #define BRICKS_RANDOM_FIX_SEED
 
 #include "accumulative_scoped_deleter.h"
+#include "base64.h"
 #include "comparators.h"
 #include "crc32.h"
 #include "lazy_instantiation.h"
@@ -36,6 +37,7 @@ SOFTWARE.
 #include "waitable_terminate_signal.h"
 
 #include "../exception.h"
+#include "../file/file.h"
 #include "../strings/printf.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -49,7 +51,7 @@ TEST(Util, BasicException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:47\tcurrent::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:49\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -66,7 +68,7 @@ TEST(Util, CustomException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:64\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:66\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -235,6 +237,48 @@ TEST(Util, ThreadLocalSingleton) {
   std::thread t2(add, 10);
   t1.join();
   t2.join();
+}
+
+TEST(Util, Base64) {
+  using current::Base64Encode;
+  using current::Base64URLEncode;
+  using current::Base64Decode;
+  using current::Base64URLDecode;
+
+  EXPECT_EQ("", Base64Encode(""));
+  EXPECT_EQ("Zg==", Base64Encode("f"));
+  EXPECT_EQ("Zm8=", Base64Encode("fo"));
+  EXPECT_EQ("Zm9v", Base64Encode("foo"));
+  EXPECT_EQ("Zm9vYg==", Base64Encode("foob"));
+  EXPECT_EQ("Zm9vYmE=", Base64Encode("fooba"));
+  EXPECT_EQ("Zm9vYmFy", Base64Encode("foobar"));
+  EXPECT_EQ("MDw+", Base64Encode("0<>"));
+  EXPECT_EQ("MDw-", Base64URLEncode("0<>"));
+
+  EXPECT_EQ("", Base64Decode(""));
+  EXPECT_EQ("f", Base64Decode("Zg=="));
+  EXPECT_EQ("fo", Base64Decode("Zm8="));
+  EXPECT_EQ("foo", Base64Decode("Zm9v"));
+  EXPECT_EQ("foob", Base64Decode("Zm9vYg=="));
+  EXPECT_EQ("fooba", Base64Decode("Zm9vYmE="));
+  EXPECT_EQ("foobar", Base64Decode("Zm9vYmFy"));
+  EXPECT_EQ("0<>", Base64Decode("MDw+"));
+  EXPECT_EQ("0<>", Base64URLDecode("MDw-"));
+
+  std::string all_chars;
+  all_chars.resize(256);
+  for (int i = 0; i < 256; ++i) {
+    all_chars[i] = char(i);
+  }
+  EXPECT_EQ(all_chars, Base64Decode(Base64Encode(all_chars)));
+  EXPECT_EQ(all_chars, Base64URLDecode(Base64URLEncode(all_chars)));
+
+  EXPECT_THROW(Base64Decode("MDw-"), current::Base64DecodeException);
+  EXPECT_THROW(Base64URLDecode("MDw+"), current::Base64DecodeException);
+
+  const std::string golden_file = current::FileSystem::ReadFileAsString("golden/base64test.txt");
+  EXPECT_EQ(golden_file, Base64Decode(current::FileSystem::ReadFileAsString("golden/base64test.base64")));
+  EXPECT_EQ(golden_file, Base64URLDecode(current::FileSystem::ReadFileAsString("golden/base64test.base64url")));
 }
 
 TEST(Util, CRC32) {
