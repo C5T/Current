@@ -37,6 +37,7 @@ SOFTWARE.
 #include "waitable_terminate_signal.h"
 
 #include "../exception.h"
+#include "../file/file.h"
 #include "../strings/printf.h"
 
 #include "../../3rdparty/gtest/gtest-main.h"
@@ -50,7 +51,7 @@ TEST(Util, BasicException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:48\tcurrent::Exception(\"Foo\")\tFoo";
+    const std::string golden = "test.cc:49\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -67,7 +68,7 @@ TEST(Util, CustomException) {
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:65\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
+    const std::string golden = "test.cc:66\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -264,16 +265,20 @@ TEST(Util, Base64) {
   EXPECT_EQ("0<>", Base64Decode("MDw+"));
   EXPECT_EQ("0<>", Base64URLDecode("MDw-"));
 
-  std::string golden;
-  golden.resize(256);
+  std::string all_chars;
+  all_chars.resize(256);
   for (int i = 0; i < 256; ++i) {
-    golden[i] = char(i);
+    all_chars[i] = char(i);
   }
-  EXPECT_EQ(golden, Base64Decode(Base64Encode(golden)));
-  EXPECT_EQ(golden, Base64URLDecode(Base64URLEncode(golden)));
+  EXPECT_EQ(all_chars, Base64Decode(Base64Encode(all_chars)));
+  EXPECT_EQ(all_chars, Base64URLDecode(Base64URLEncode(all_chars)));
 
   EXPECT_THROW(Base64Decode("MDw-"), current::Base64DecodeException);
   EXPECT_THROW(Base64URLDecode("MDw+"), current::Base64DecodeException);
+
+  const std::string golden_file = current::FileSystem::ReadFileAsString("golden/base64test.txt");
+  EXPECT_EQ(golden_file, Base64Decode(current::FileSystem::ReadFileAsString("golden/base64test.base64")));
+  EXPECT_EQ(golden_file, Base64URLDecode(current::FileSystem::ReadFileAsString("golden/base64test.base64url")));
 }
 
 TEST(Util, CRC32) {
