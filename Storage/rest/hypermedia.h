@@ -314,6 +314,7 @@ struct Hypermedia {
         const std::string url =
             input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
         HypermediaRESTResourceUpdateResponse response(true);
+        response.resource_url = url;
         if (exists) {
           response.message = "Resource updated.";
           return Response(response, HTTPResponseCode.OK);
