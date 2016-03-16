@@ -37,7 +37,9 @@ struct Base64DecodeException : Exception {
 
 namespace base64 {
 
+// Ref. https://tools.ietf.org/html/rfc3548#section-3
 constexpr static char encode_map[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+// Ref. https://tools.ietf.org/html/rfc3548#section-4
 constexpr static char url_encode_map[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 constexpr static char pad_char = '=';
 constexpr static uint8_t decode_map[128] = {
