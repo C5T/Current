@@ -205,8 +205,8 @@ namespace storage {
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
     ::current::Future<::current::storage::TransactionResult<T_F_RESULT<F>>, ::current::StrictFuture::Strict> \
-    Transaction(F&& f) {                \
-      return transaction_policy_.Transaction([&f, this]() { return f(fields_); });   \
+    Transaction(F&& f) {                                                                                     \
+      return transaction_policy_.Transaction([&f, this]() { return f(fields_); });                           \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
