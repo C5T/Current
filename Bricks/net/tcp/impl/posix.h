@@ -297,7 +297,7 @@ class Connection : public SocketHandle {
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
 #if defined(CURRENT_APPLE) || defined(CURRENT_WINDOWS)
-    static_cast<void>(more);  // Supress the 'unused parameter' warning on Apple.
+    static_cast<void>(more);  // Supress the 'unused parameter' warning.
 #endif
     assert(buffer);
     BRICKS_NET_LOG(
