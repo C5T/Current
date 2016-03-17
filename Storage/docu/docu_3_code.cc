@@ -42,6 +42,16 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest.h"
 
+#ifndef _MSC_VER
+DEFINE_string(client_storage_test_tmpdir,
+              ".current",
+              "Local path for the test to create temporary files in.");
+#else
+DEFINE_string(client_storage_test_tmpdir,
+              "Debug",
+              "Local path for the test to create temporary files in.");
+#endif
+
 DEFINE_int32(client_storage_test_port, PickPortForUnitTest(), "");
 
 namespace storage_docu {
@@ -401,6 +411,84 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
     EXPECT_EQ("101\n102\n", result.body);
   }
 
+}
+
+namespace storage_docu {
+
+// Example of custom REST implementation that annotates transactions.
+struct RESTWithMeta: current::storage::rest::AdvancedHypermedia {
+  using SUPER = current::storage::rest::AdvancedHypermedia;
+
+  template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful: SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+    using ACTUAL_SUPER = SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY>;
+
+    template <typename F>
+    void Enter(Request request, F&& next, current::storage::TransactionMetaFields& meta_fields) {
+      meta_fields.emplace("who", "unittest");
+      this->ACTUAL_SUPER::template Enter<F>(std::move(request), std::move(next), meta_fields);
+    }
+  };
+};
+
+}  // namespace storage_docu
+
+TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
+  using namespace current::storage::rest;
+  using namespace storage_docu;
+  using TestStorage = StorageOfClients<SherlockStreamPersister>;
+
+  const std::string client_storage_file_name =
+      current::FileSystem::JoinPath(FLAGS_client_storage_test_tmpdir, "client_with_meta");
+  const auto client_storage_file_remover = current::FileSystem::ScopedRmFile(client_storage_file_name);
+  TestStorage storage(client_storage_file_name);
+
+  const auto rest = RESTfulStorage<TestStorage, RESTWithMeta>(
+      storage,
+      FLAGS_client_storage_test_port,
+      "/api",
+      "http://example.current.ai/api");
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_client_storage_test_port);
+
+  // Add client.
+  current::time::SetNow(std::chrono::microseconds(1024));
+  EXPECT_EQ(201, static_cast<int>(HTTP(PUT(base_url + "/api/data/client/101", Client(ClientID(101)))).code));
+  // Delete client.
+  current::time::SetNow(std::chrono::microseconds(2000));
+  EXPECT_EQ(200, static_cast<int>(HTTP(DELETE(base_url + "/api/data/client/101")).code));
+
+  // Check that everything has been persisted correctly, including meta fields.
+  const auto persisted_entries =
+      current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(client_storage_file_name));
+  ASSERT_EQ(2u, persisted_entries.size());
+
+  const std::string& persisted_add = persisted_entries[0];
+  const size_t tab_pos = persisted_add.find('\t');
+  ASSERT_FALSE(tab_pos == std::string::npos);
+  const auto idx_ts = ParseJSON<idxts_t>(persisted_add.substr(0, persisted_add.find('\t')));
+  EXPECT_EQ(0u, idx_ts.index);
+  EXPECT_EQ(1024, idx_ts.us.count());
+  const auto add_transaction = ParseJSON<TestStorage::T_TRANSACTION>(persisted_add.substr(tab_pos + 1));
+  EXPECT_EQ(1024, add_transaction.meta.timestamp.count());
+  ASSERT_EQ(1u, add_transaction.meta.fields.size());
+  EXPECT_EQ("unittest", add_transaction.meta.fields.at("who"));
+  ASSERT_EQ(1u, add_transaction.mutations.size());
+
+  ASSERT_TRUE(Exists<PersistedClientUpdated>(add_transaction.mutations[0]));
+  const auto& client = Value<PersistedClientUpdated>(add_transaction.mutations[0]).data;
+  EXPECT_EQ(ClientID(101), client.key);
+  EXPECT_EQ("John Doe", client.name);
+  EXPECT_TRUE(client.white);
+  EXPECT_TRUE(client.straight);
+  EXPECT_TRUE(client.male);
+
+  const std::string& persisted_delete = persisted_entries[1];
+  const auto del_transaction =
+      ParseJSON<TestStorage::T_TRANSACTION>(persisted_delete.substr(persisted_delete.find('\t') + 1));
+  EXPECT_EQ(2000, del_transaction.meta.timestamp.count());
+  ASSERT_EQ(1u, del_transaction.meta.fields.size());
+  EXPECT_EQ("unittest", del_transaction.meta.fields.at("who"));
+  ASSERT_EQ(1u, del_transaction.mutations.size());
 }
 
 #endif  // CURRENT_STORAGE_DOCU_DOCU_3_CODE_CC

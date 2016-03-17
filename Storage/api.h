@@ -125,12 +125,17 @@ struct RESTfulHandlerGenerator {
         field_name,
         // Top-level capture by value to make own copy.
         [&storage, restful_url_prefix, field_name, data_url_component](Request request) {
+          typename T_STORAGE::T_TRANSACTION_META_FIELDS transaction_meta_fields;
           if (request.method == "GET") {
             GETHandler handler;
             handler.Enter(std::move(request),
                           // Capture by reference since this lambda is supposed to run synchronously.
-                          [&handler, &storage, &restful_url_prefix, &field_name, &data_url_component](
-                              Request request, const std::string& url_key) {
+                          [&handler,
+                           &storage,
+                           &restful_url_prefix,
+                           &field_name,
+                           &data_url_component,
+                           &transaction_meta_fields](Request request, const std::string& url_key) {
                             const T_SPECIFIC_FIELD& field =
                                 storage(::current::storage::ImmutableFieldByIndex<INDEX>());
 
@@ -160,14 +165,21 @@ struct RESTfulHandlerGenerator {
                                                  data_url_component};
                                           return handler.Run(args);
                                         },
-                                        std::move(request)).Detach();
-                          });
+                                        std::move(request),
+                                        transaction_meta_fields).Detach();  // Meta fields are copied here;
+                          },
+                          transaction_meta_fields);
           } else if (request.method == "POST") {
             POSTHandler handler;
             handler.Enter(
                 std::move(request),
                 // Capture by reference since this lambda is supposed to run synchronously.
-                [&handler, &storage, &restful_url_prefix, &field_name, &data_url_component](Request request) {
+                [&handler,
+                 &storage,
+                 &restful_url_prefix,
+                 &field_name,
+                 &data_url_component,
+                 &transaction_meta_fields](Request request) {
                   try {
                     auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
@@ -197,18 +209,24 @@ struct RESTfulHandlerGenerator {
                                          data_url_component};
                                   return handler.Run(args);
                                 },
-                                std::move(request)).Detach();
+                                std::move(request),
+                                transaction_meta_fields).Detach();  // Meta fields are copied here;
                   } catch (const TypeSystemParseJSONException& e) {
                     request(handler.ErrorBadJSON(e.What()));
                   }
-                });
+                },
+                transaction_meta_fields);
           } else if (request.method == "PUT") {
             PUTHandler handler;
             handler.Enter(
                 std::move(request),
                 // Capture by reference since this lambda is supposed to run synchronously.
-                [&handler, &storage, &restful_url_prefix, &field_name, &data_url_component](
-                    Request request, const std::string& key_as_string) {
+                [&handler,
+                 &storage,
+                 &restful_url_prefix,
+                 &field_name,
+                 &data_url_component,
+                 &transaction_meta_fields](Request request, const std::string& key_as_string) {
                   try {
                     const auto url_key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                     const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
@@ -246,16 +264,18 @@ struct RESTfulHandlerGenerator {
                                          data_url_component};
                                   return handler.Run(args);
                                 },
-                                std::move(request)).Detach();
+                                std::move(request),
+                                transaction_meta_fields).Detach();   // Meta fields are copied here;
                   } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
                     request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
                   }
-                });
+                },
+                transaction_meta_fields);
           } else if (request.method == "DELETE") {
             DELETEHandler handler;
             handler.Enter(std::move(request),
                           // Capture by reference since this lambda is supposed to run synchronously.
-                          [&handler, &storage, &restful_url_prefix, &field_name](
+                          [&handler, &storage, &restful_url_prefix, &field_name, &transaction_meta_fields](
                               Request request, const std::string& key_as_string) {
                             const auto key =
                                 current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
@@ -274,8 +294,10 @@ struct RESTfulHandlerGenerator {
                                           } args{storage, fields, field, key, restful_url_prefix, field_name};
                                           return handler.Run(args);
                                         },
-                                        std::move(request)).Detach();
-                          });
+                                        std::move(request),
+                                        transaction_meta_fields).Detach();  // Meta fields are copied here;
+                          },
+                          transaction_meta_fields);
           } else {
             request(T_REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
           }

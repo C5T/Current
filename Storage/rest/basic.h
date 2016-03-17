@@ -87,7 +87,7 @@ struct Basic {
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
-    void Enter(Request request, F&& next) {
+    void Enter(Request request, F&& next, TransactionMetaFields&) {
       WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
@@ -114,7 +114,7 @@ struct Basic {
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<POST, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
-    void Enter(Request request, F&& next) {
+    void Enter(Request request, F&& next, TransactionMetaFields&) {
       if (!request.url_path_args.empty()) {
         request("Should not have resource key in the URL.\n", HTTPResponseCode.BadRequest);
       } else {
@@ -148,7 +148,7 @@ struct Basic {
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<PUT, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
-    void Enter(Request request, F&& next) {
+    void Enter(Request request, F&& next, TransactionMetaFields&) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
@@ -175,7 +175,7 @@ struct Basic {
   template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
-    void Enter(Request request, F&& next) {
+    void Enter(Request request, F&& next, TransactionMetaFields&) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
     }
     template <class INPUT>
