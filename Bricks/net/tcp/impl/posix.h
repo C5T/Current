@@ -108,7 +108,7 @@ class SocketHandle : private SocketSystemInitializer {
   }
 
   inline ~SocketHandle() {
-    if (socket_ != -1) {
+    if (socket_ != static_cast<SOCKET>(-1)) {
       BRICKS_NET_LOG("S%05d close() ...\n", socket_);
 #ifndef CURRENT_WINDOWS
       ::close(socket_);
@@ -119,7 +119,9 @@ class SocketHandle : private SocketSystemInitializer {
     }
   }
 
-  inline explicit SocketHandle(SocketHandle&& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
+  inline explicit SocketHandle(SocketHandle&& rhs) : socket_(static_cast<SOCKET>(-1)) {
+    std::swap(socket_, rhs.socket_);
+  }
 
   // SocketHandle does not expose copy constructor and assignment operator. It should only be moved.
 
@@ -141,7 +143,7 @@ class SocketHandle : private SocketSystemInitializer {
       if (!ref_) {
         CURRENT_THROW(InvalidSocketException());  // LCOV_EXCL_LINE -- Not covered by unit tests.
       }
-      if (ref_ == -1) {
+      if (ref_ == static_cast<SOCKET>(-1)) {
         CURRENT_THROW(AttemptedToUseMovedAwayConnection());
       }
       return ref_;
@@ -164,7 +166,7 @@ class SocketHandle : private SocketSystemInitializer {
  public:
   // Visual Studio seem to require this constructor, since std::move()-ing away `SocketHandle`-s
   // as part of `Connection` objects doesn't seem to work. TODO(dkorolev): Investigate this.
-  SocketHandle(const SocketHandle& rhs) : socket_(-1) { std::swap(socket_, rhs.socket_); }
+  SocketHandle(const SocketHandle& rhs) : socket_(static_cast<SOCKET>(-1)) { std::swap(socket_, rhs.socket_); }
 
  private:
 #endif
@@ -194,7 +196,7 @@ class Connection : public SocketHandle {
       const int flags = ((policy == BlockingReadPolicy::ReturnASAP) ? 0 : MSG_WAITALL);
 
 #ifdef CURRENT_WINDOWS
-      int wsa_last_error;
+      int wsa_last_error = 0;
 #endif
 
       BRICKS_NET_LOG("S%05d BlockingRead() ...\n", static_cast<SOCKET>(socket));
@@ -294,8 +296,8 @@ class Connection : public SocketHandle {
   }
 
   inline Connection& BlockingWrite(const void* buffer, size_t write_length, bool more) {
-#ifdef CURRENT_APPLE
-    static_cast<void>(more);  // Supress the 'unused parameter' warning on Apple.
+#if defined(CURRENT_APPLE) || defined(CURRENT_WINDOWS)
+    static_cast<void>(more);  // Supress the 'unused parameter' warning.
 #endif
     assert(buffer);
     BRICKS_NET_LOG(
@@ -395,11 +397,13 @@ class Socket final : public SocketHandle {
     memset(&addr_server, 0, sizeof(addr_server));
     addr_server.sin_family = AF_INET;
     addr_server.sin_addr.s_addr = INADDR_ANY;
-    addr_server.sin_port = htons(port);
+    // Catch a level 4 warning of MSVS.
+    addr_server.sin_port = htons(static_cast<decltype(std::declval<sockaddr_in>().sin_port)>(port));
 
     BRICKS_NET_LOG("S%05d bind()+listen() ...\n", static_cast<SOCKET>(socket));
 
-    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) == -1) {
+    if (::bind(socket, reinterpret_cast<sockaddr*>(&addr_server), sizeof(addr_server)) ==
+        static_cast<SOCKET>(-1)) {
       CURRENT_THROW(SocketBindException());
     }
 
@@ -424,7 +428,7 @@ class Socket final : public SocketHandle {
     const SOCKET handle = ::accept(socket,
                                    reinterpret_cast<struct sockaddr*>(&addr_client),
                                    reinterpret_cast<socklen_t*>(&addr_client_length));
-    if (handle == -1) {
+    if (handle == static_cast<SOCKET>(-1)) {
       BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
