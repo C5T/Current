@@ -45,7 +45,8 @@ class Synchronous final {
  public:
   using T_TRANSACTION = typename PERSISTER::T_TRANSACTION;
 
-  Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
+  Synchronous(PERSISTER& persister, MutationJournal& journal, TransactionMetaFields& transaction_meta_fields)
+      : persister_(persister), journal_(journal), transaction_meta_fields_(transaction_meta_fields) {}
 
   ~Synchronous() {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -56,8 +57,7 @@ class Synchronous final {
   using T_F_RESULT = typename std::result_of<F()>::type;
 
   template <typename F, class = ENABLE_IF<!std::is_void<T_F_RESULT<F>>::value>>
-  Future<TransactionResult<T_F_RESULT<F>>, StrictFuture::Strict> Transaction(
-      F&& f, TransactionMetaFields&& meta_fields) {
+  Future<TransactionResult<T_F_RESULT<F>>, StrictFuture::Strict> Transaction(F&& f) {
     using T_RESULT = T_F_RESULT<F>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
@@ -90,7 +90,8 @@ class Synchronous final {
       // LCOV_EXCL_STOP
     }
     if (successful) {
-      journal_.meta_fields = std::move(meta_fields);
+      journal_.meta_fields = transaction_meta_fields_;
+      transaction_meta_fields_.clear();
       PersistJournal();
       promise.set_value(TransactionResult<T_RESULT>::Committed(std::move(f_result)));
     }
@@ -98,8 +99,7 @@ class Synchronous final {
   }
 
   template <typename F, class = ENABLE_IF<std::is_void<T_F_RESULT<F>>::value>>
-  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f,
-                                                                    TransactionMetaFields&& meta_fields) {
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) {
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
@@ -127,7 +127,8 @@ class Synchronous final {
       // LCOV_EXCL_STOP
     }
     if (successful) {
-      journal_.meta_fields = std::move(meta_fields);
+      journal_.meta_fields = transaction_meta_fields_;
+      transaction_meta_fields_.clear();
       PersistJournal();
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     }
@@ -136,9 +137,7 @@ class Synchronous final {
 
   // TODO(mz+dk): implement proper logic here (consider rollbacks & exceptions).
   template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<T_F_RESULT<F1>>::value>>
-  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1,
-                                                                    F2&& f2,
-                                                                    TransactionMetaFields&& meta_fields) {
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
     using T_RESULT = T_F_RESULT<F1>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
@@ -151,7 +150,8 @@ class Synchronous final {
     T_RESULT f1_result;
     try {
       f1_result = f1();
-      journal_.meta_fields = std::move(meta_fields);
+      journal_.meta_fields = transaction_meta_fields_;
+      transaction_meta_fields_.clear();
       PersistJournal();
       f2(std::move(f1_result));
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
@@ -211,6 +211,7 @@ class Synchronous final {
 
   PERSISTER& persister_;
   MutationJournal& journal_;
+  TransactionMetaFields& transaction_meta_fields_;
   std::mutex mutex_;
   bool destructing_ = false;
 };

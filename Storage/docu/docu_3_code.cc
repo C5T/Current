@@ -423,10 +423,10 @@ struct RESTWithMeta: current::storage::rest::AdvancedHypermedia {
   struct RESTful: SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
     using ACTUAL_SUPER = SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY>;
 
-    template <typename F>
-    void Enter(Request request, F&& next, current::storage::TransactionMetaFields& meta_fields) {
-      meta_fields.emplace("who", "unittest");
-      this->ACTUAL_SUPER::template Enter<F>(std::move(request), std::move(next), meta_fields);
+    template <class INPUT>
+    Response Run(const INPUT& input) const {
+      input.fields.SetTransactionMetaField("who", "unittest");
+      return this->ACTUAL_SUPER::template Run<INPUT>(input);
     }
   };
 };

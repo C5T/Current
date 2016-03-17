@@ -95,7 +95,7 @@ struct AdvancedHypermedia : Hypermedia {
     mutable uint64_t query_n = 10u;  // Default page size.
 
     template <typename F>
-    void Enter(Request request, F&& next, TransactionMetaFields&) {
+    void Enter(Request request, F&& next) {
       const auto& q = request.url.query;
       brief = (q["fields"] == "brief");
       query_i = current::FromString<uint64_t>(q.get("i", current::ToString(query_i)));

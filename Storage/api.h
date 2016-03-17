@@ -126,14 +126,12 @@ struct RESTfulHandlerGenerator {
         // Top-level capture by value to make own copy.
         [&storage, restful_url_prefix, field_name, data_url_component](Request request) {
           auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix, data_url_component);
-          typename T_STORAGE::T_TRANSACTION_META_FIELDS transaction_meta_fields;
           if (request.method == "GET") {
             GETHandler handler;
             handler.Enter(
                 std::move(request),
                 // Capture by reference since this lambda is supposed to run synchronously.
-                [&handler, &generic_input, &field_name, &transaction_meta_fields](Request request,
-                                                                                  const std::string& url_key) {
+                [&handler, &generic_input, &field_name](Request request, const std::string& url_key) {
                   const T_SPECIFIC_FIELD& field =
                       generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
 
@@ -146,16 +144,14 @@ struct RESTfulHandlerGenerator {
                                                   std::move(generic_input), fields, field, field_name, url_key);
                                               return handler.Run(input);
                                             },
-                                            std::move(request),
-                                            transaction_meta_fields).Detach();  // Meta fields are copied here;
-                },
-                transaction_meta_fields);
+                                            std::move(request)).Detach();
+                });
           } else if (request.method == "POST") {
             POSTHandler handler;
             handler.Enter(
                 std::move(request),
                 // Capture by reference since this lambda is supposed to run synchronously.
-                [&handler, &generic_input, &field_name, &transaction_meta_fields](Request request) {
+                [&handler, &generic_input, &field_name](Request request) {
                   try {
                     auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     T_SPECIFIC_FIELD& field =
@@ -175,21 +171,17 @@ struct RESTfulHandlerGenerator {
                                                                 mutable_entry);
                                                 return handler.Run(input);
                                               },
-                                              std::move(request),
-                                              transaction_meta_fields)
-                        .Detach();  // Meta fields are copied here;
+                                              std::move(request)).Detach();
                   } catch (const TypeSystemParseJSONException& e) {
                     request(handler.ErrorBadJSON(e.What()));
                   }
-                },
-                transaction_meta_fields);
+                });
           } else if (request.method == "PUT") {
             PUTHandler handler;
             handler.Enter(
                 std::move(request),
                 // Capture by reference since this lambda is supposed to run synchronously.
-                [&handler, &generic_input, &field_name, &transaction_meta_fields](
-                    Request request, const std::string& key_as_string) {
+                [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
                   try {
                     const auto url_key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                     const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
@@ -214,21 +206,18 @@ struct RESTfulHandlerGenerator {
                                               entry_key);
                                return handler.Run(input);
                              },
-                             std::move(request),
-                             transaction_meta_fields)
-                        .Detach();                                   // Meta fields are copied here;
+                             std::move(request))
+                        .Detach();
                   } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
                     request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
                   }
-                },
-                transaction_meta_fields);
+                });
           } else if (request.method == "DELETE") {
             DELETEHandler handler;
             handler.Enter(
                 std::move(request),
                 // Capture by reference since this lambda is supposed to run synchronously.
-                [&handler, &generic_input, &field_name, &transaction_meta_fields](
-                    Request request, const std::string& key_as_string) {
+                [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
                   const auto key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                   T_SPECIFIC_FIELD& field =
                       generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
@@ -244,10 +233,8 @@ struct RESTfulHandlerGenerator {
                                                   std::move(generic_input), fields, field, field_name, key);
                                               return handler.Run(input);
                                             },
-                                            std::move(request),
-                                            transaction_meta_fields).Detach();  // Meta fields are copied here;
-                },
-                transaction_meta_fields);
+                                            std::move(request)).Detach();
+                });
           } else {
             request(T_REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
           }
