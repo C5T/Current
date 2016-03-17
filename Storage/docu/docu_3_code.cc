@@ -419,9 +419,9 @@ namespace storage_docu {
 struct RESTWithMeta: current::storage::rest::AdvancedHypermedia {
   using SUPER = current::storage::rest::AdvancedHypermedia;
 
-  template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful: SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
-    using ACTUAL_SUPER = SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY>;
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful: SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {
+    using ACTUAL_SUPER = SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
 
     template <class INPUT>
     Response Run(const INPUT& input) const {

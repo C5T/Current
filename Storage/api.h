@@ -81,8 +81,8 @@ struct RESTfulHandlerGenerator {
       decltype(std::declval<STORAGE>()(::current::storage::FieldEntryTypeExtractor<INDEX>()));
   using T_SPECIFIC_ENTRY_TYPE = typename T_SPECIFIC_ENTRY_TYPE_EXTRACTOR::T_PARTICULAR_FIELD;
 
-  template <class VERB, typename T1, typename T2, typename T3, typename T4>
-  using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
+  template <class VERB, typename FIELD, typename ENTRY, typename KEY>
+  using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, FIELD, ENTRY, KEY>;
 
   STORAGE& storage;
   const std::string restful_url_prefix;
@@ -100,26 +100,12 @@ struct RESTfulHandlerGenerator {
     const std::string data_url_component = this->data_url_component;
     const std::string field_name = input_field_name;
 
-    using GETHandler = CustomHandler<GET,
-                                     T_IMMUTABLE_FIELDS,
-                                     T_SPECIFIC_FIELD,
-                                     typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                                     typename ENTRY_TYPE_WRAPPER::T_KEY>;
-    using POSTHandler = CustomHandler<POST,
-                                      T_MUTABLE_FIELDS,
-                                      T_SPECIFIC_FIELD,
-                                      typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                                      typename ENTRY_TYPE_WRAPPER::T_KEY>;
-    using PUTHandler = CustomHandler<PUT,
-                                     T_MUTABLE_FIELDS,
-                                     T_SPECIFIC_FIELD,
-                                     typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                                     typename ENTRY_TYPE_WRAPPER::T_KEY>;
-    using DELETEHandler = CustomHandler<DELETE,
-                                        T_MUTABLE_FIELDS,
-                                        T_SPECIFIC_FIELD,
-                                        typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                                        typename ENTRY_TYPE_WRAPPER::T_KEY>;
+    using T_ENTRY = typename ENTRY_TYPE_WRAPPER::T_ENTRY;
+    using T_KEY = typename ENTRY_TYPE_WRAPPER::T_KEY;
+    using GETHandler = CustomHandler<GET, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+    using POSTHandler = CustomHandler<POST, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+    using PUTHandler = CustomHandler<PUT, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+    using DELETEHandler = CustomHandler<DELETE, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
 
     return STORAGE_HANDLERS_MAP_ENTRY(
         field_name,

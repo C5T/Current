@@ -40,7 +40,7 @@ namespace storage {
 namespace rest {
 
 struct Basic {
-  template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
   static void RegisterTopLevel(HTTPRoutesScope& scope,
@@ -84,8 +84,8 @@ struct Basic {
         std::move(request), next, [&next](Request request) { next(std::move(request), ""); });
   }
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
@@ -111,8 +111,8 @@ struct Basic {
     }
   };
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<POST, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<POST, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -145,8 +145,8 @@ struct Basic {
     }
   };
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<PUT, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -172,8 +172,8 @@ struct Basic {
     // LCOV_EXCL_STOP
   };
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
