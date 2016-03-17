@@ -180,14 +180,13 @@ struct MutationJournal {
 template <typename BASE>
 struct FieldsBase : BASE {
   MutationJournal current_storage_mutation_journal_;
-  TransactionMetaFields current_storage_transaction_meta_fields_;
 
   void SetTransactionMetaField(const std::string& key, const std::string& value) {
-    current_storage_transaction_meta_fields_[key] = value;
+    current_storage_mutation_journal_.meta_fields[key] = value;
   }
 
   void EraseTransactionMetaField(const std::string& key) {
-    current_storage_transaction_meta_fields_.erase(key);
+    current_storage_mutation_journal_.meta_fields.erase(key);
   }
 };
 

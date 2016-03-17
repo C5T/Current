@@ -57,6 +57,7 @@ class JSONFilePersister<TypeList<TS...>> {
     }
     journal.commit_log.clear();
     journal.rollback_log.clear();
+    journal.meta_fields.clear();
   }
 
   template <typename F>

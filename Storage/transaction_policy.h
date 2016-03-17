@@ -45,8 +45,7 @@ class Synchronous final {
  public:
   using T_TRANSACTION = typename PERSISTER::T_TRANSACTION;
 
-  Synchronous(PERSISTER& persister, MutationJournal& journal, TransactionMetaFields& transaction_meta_fields)
-      : persister_(persister), journal_(journal), transaction_meta_fields_(transaction_meta_fields) {}
+  Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
 
   ~Synchronous() {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -90,8 +89,6 @@ class Synchronous final {
       // LCOV_EXCL_STOP
     }
     if (successful) {
-      journal_.meta_fields = transaction_meta_fields_;
-      transaction_meta_fields_.clear();
       PersistJournal();
       promise.set_value(TransactionResult<T_RESULT>::Committed(std::move(f_result)));
     }
@@ -127,8 +124,6 @@ class Synchronous final {
       // LCOV_EXCL_STOP
     }
     if (successful) {
-      journal_.meta_fields = transaction_meta_fields_;
-      transaction_meta_fields_.clear();
       PersistJournal();
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
     }
@@ -150,8 +145,6 @@ class Synchronous final {
     T_RESULT f1_result;
     try {
       f1_result = f1();
-      journal_.meta_fields = transaction_meta_fields_;
-      transaction_meta_fields_.clear();
       PersistJournal();
       f2(std::move(f1_result));
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
@@ -211,7 +204,6 @@ class Synchronous final {
 
   PERSISTER& persister_;
   MutationJournal& journal_;
-  TransactionMetaFields& transaction_meta_fields_;
   std::mutex mutex_;
   bool destructing_ = false;
 };

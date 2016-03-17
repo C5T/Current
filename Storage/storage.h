@@ -192,8 +192,7 @@ namespace storage {
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
         : persister_(std::forward<ARGS>(args)...),                                                           \
           transaction_policy_(persister_,                                                                    \
-                              fields_.current_storage_mutation_journal_,                                     \
-                              fields_.current_storage_transaction_meta_fields_) {                            \
+                              fields_.current_storage_mutation_journal_) {                                   \
       persister_.Replay([this](const T_FIELDS_VARIANT& entry) { entry.Call(fields_); });                     \
     }                                                                                                        \
     template <typename... ARGS>                                                                              \
