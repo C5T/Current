@@ -53,7 +53,12 @@ class OptionalResult {
     return *this;
   }
 
+#ifndef CURRENT_WINDOWS
   OptionalResult() = delete;
+#else
+  // MSVS needs this for `_Associated_state<>`, required by `std::promise<>`.
+  OptionalResult() = default;
+#endif
   OptionalResult(const OptionalResult&) = delete;
   OptionalResult& operator=(const OptionalResult&) = delete;
 
