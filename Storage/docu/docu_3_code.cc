@@ -42,7 +42,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest.h"
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 DEFINE_string(client_storage_test_tmpdir,
               ".current",
               "Local path for the test to create temporary files in.");
@@ -416,7 +416,7 @@ TEST(StorageDocumentation, RESTifiedStorageExample) {
 namespace storage_docu {
 
 // Example of custom REST implementation that annotates transactions.
-struct RESTWithMeta: current::storage::rest::AdvancedHypermedia {
+struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
   using SUPER = current::storage::rest::AdvancedHypermedia;
 
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
@@ -462,13 +462,12 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
       current::strings::Split<current::strings::ByLines>(current::FileSystem::ReadFileAsString(client_storage_file_name));
   ASSERT_EQ(2u, persisted_entries.size());
 
-  const std::string& persisted_add = persisted_entries[0];
-  const size_t tab_pos = persisted_add.find('\t');
-  ASSERT_FALSE(tab_pos == std::string::npos);
-  const auto idx_ts = ParseJSON<idxts_t>(persisted_add.substr(0, persisted_add.find('\t')));
+  const auto add_fields = current::strings::Split(persisted_entries[0], '\t');
+  ASSERT_TRUE(add_fields.size() == 2u);
+  const auto idx_ts = ParseJSON<idxts_t>(add_fields[0]);
   EXPECT_EQ(0u, idx_ts.index);
   EXPECT_EQ(1024, idx_ts.us.count());
-  const auto add_transaction = ParseJSON<TestStorage::T_TRANSACTION>(persisted_add.substr(tab_pos + 1));
+  const auto add_transaction = ParseJSON<TestStorage::T_TRANSACTION>(add_fields[1]);
   EXPECT_EQ(1024, add_transaction.meta.timestamp.count());
   ASSERT_EQ(1u, add_transaction.meta.fields.size());
   EXPECT_EQ("unittest", add_transaction.meta.fields.at("who"));
@@ -482,9 +481,9 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
   EXPECT_TRUE(client.straight);
   EXPECT_TRUE(client.male);
 
-  const std::string& persisted_delete = persisted_entries[1];
-  const auto del_transaction =
-      ParseJSON<TestStorage::T_TRANSACTION>(persisted_delete.substr(persisted_delete.find('\t') + 1));
+  const auto del_fields = current::strings::Split(persisted_entries[1], '\t');
+  ASSERT_TRUE(del_fields.size() == 2u);
+  const auto del_transaction = ParseJSON<TestStorage::T_TRANSACTION>(del_fields[1]);
   EXPECT_EQ(2000, del_transaction.meta.timestamp.count());
   ASSERT_EQ(1u, del_transaction.meta.fields.size());
   EXPECT_EQ("unittest", del_transaction.meta.fields.at("who"));
