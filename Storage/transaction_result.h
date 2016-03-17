@@ -33,7 +33,12 @@ namespace storage {
 template <typename T>
 class TransactionResult : public OptionalResult<T> {
  public:
+#ifndef CURRENT_WINDOWS
   TransactionResult() = delete;
+#else
+  // MSVS needs this for `_Associated_state<>`, required by `std::promise<>`.
+  TransactionResult() = default;
+#endif
   TransactionResult(const TransactionResult&) = delete;
   TransactionResult& operator=(const TransactionResult&) = delete;
 
