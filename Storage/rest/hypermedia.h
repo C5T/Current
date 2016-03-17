@@ -167,7 +167,7 @@ inline HypermediaRESTError ResourceAlreadyExistsError(const std::string& message
 }
 
 struct Hypermedia {
-  template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
   static void RegisterTopLevel(HTTPRoutesScope& scope,
@@ -223,8 +223,8 @@ struct Hypermedia {
         std::move(request), next, [&next](Request request) { next(std::move(request), ""); });
   }
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithOptionalKeyFromURL(std::move(request), std::forward<F>(next));
@@ -255,8 +255,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<POST, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<POST, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       if (!request.url_path_args.empty()) {
@@ -299,8 +299,8 @@ struct Hypermedia {
     }
   };
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<PUT, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<PUT, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));
@@ -314,6 +314,7 @@ struct Hypermedia {
         const std::string url =
             input.restful_url_prefix + '/' + input.data_url_component + '/' + input.field_name + '/' + url_key;
         HypermediaRESTResourceUpdateResponse response(true);
+        response.resource_url = url;
         if (exists) {
           response.message = "Resource updated.";
           return Response(response, HTTPResponseCode.OK);
@@ -333,8 +334,8 @@ struct Hypermedia {
                            HTTPResponseCode.BadRequest);
     }
   };
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<DELETE, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<DELETE, PARTICULAR_FIELD, ENTRY, KEY> {
     template <typename F>
     void Enter(Request request, F&& next) {
       WithKeyFromURL(std::move(request), std::forward<F>(next));

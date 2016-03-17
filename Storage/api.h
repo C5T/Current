@@ -31,7 +31,7 @@ SOFTWARE.
 #include <vector>
 #include <map>
 
-#include "storage.h"
+#include "api_base.h"
 
 #include "rest/basic.h"
 
@@ -81,8 +81,8 @@ struct RESTfulHandlerGenerator {
       decltype(std::declval<STORAGE>()(::current::storage::FieldEntryTypeExtractor<INDEX>()));
   using T_SPECIFIC_ENTRY_TYPE = typename T_SPECIFIC_ENTRY_TYPE_EXTRACTOR::T_PARTICULAR_FIELD;
 
-  template <class VERB, typename T1, typename T2, typename T3, typename T4>
-  using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, T1, T2, T3, T4>;
+  template <class VERB, typename FIELD, typename ENTRY, typename KEY>
+  using CustomHandler = typename T_REST_IMPL::template RESTful<VERB, FIELD, ENTRY, KEY>;
 
   STORAGE& storage;
   const std::string restful_url_prefix;
@@ -99,167 +99,128 @@ struct RESTfulHandlerGenerator {
     const std::string restful_url_prefix = this->restful_url_prefix;
     const std::string data_url_component = this->data_url_component;
     const std::string field_name = input_field_name;
+
+    using T_ENTRY = typename ENTRY_TYPE_WRAPPER::T_ENTRY;
+    using T_KEY = typename ENTRY_TYPE_WRAPPER::T_KEY;
+    using GETHandler = CustomHandler<GET, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+    using POSTHandler = CustomHandler<POST, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+    using PUTHandler = CustomHandler<PUT, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+    using DELETEHandler = CustomHandler<DELETE, T_SPECIFIC_FIELD, T_ENTRY, T_KEY>;
+
     return STORAGE_HANDLERS_MAP_ENTRY(
         field_name,
+        // Top-level capture by value to make own copy.
         [&storage, restful_url_prefix, field_name, data_url_component](Request request) {
+          auto generic_input = RESTfulGenericInput<STORAGE>(storage, restful_url_prefix, data_url_component);
           if (request.method == "GET") {
-            CustomHandler<GET,
-                          T_IMMUTABLE_FIELDS,
-                          T_SPECIFIC_FIELD,
-                          typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                          typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
-            handler.Enter(std::move(request),
-                          [&handler, &storage, &restful_url_prefix, field_name, data_url_component](
-                              Request request, const std::string& url_key) {
-                            const T_SPECIFIC_FIELD& field =
-                                storage(::current::storage::ImmutableFieldByIndex<INDEX>());
-                            storage.Transaction(
-                                        [handler,
-                                         url_key,
-                                         &storage,
-                                         &field,
-                                         &restful_url_prefix,
-                                         field_name,
-                                         data_url_component](T_IMMUTABLE_FIELDS fields) -> Response {
-                                          const struct {
-                                            T_STORAGE& storage;
-                                            T_IMMUTABLE_FIELDS fields;
-                                            const T_SPECIFIC_FIELD& field;
-                                            const std::string& url_key;
-                                            const std::string& restful_url_prefix;
-                                            const std::string& field_name;
-                                            const std::string& data_url_component;
-                                          } args{storage,
-                                                 fields,
-                                                 field,
-                                                 url_key,
-                                                 restful_url_prefix,
-                                                 field_name,
-                                                 data_url_component};
-                                          return handler.Run(args);
-                                        },
-                                        std::move(request)).Detach();
-                          });
-          } else if (request.method == "POST") {
-            CustomHandler<POST,
-                          T_IMMUTABLE_FIELDS,
-                          T_SPECIFIC_FIELD,
-                          typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                          typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
+            GETHandler handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage, &restful_url_prefix, field_name, data_url_component](Request request) {
+                // Capture by reference since this lambda is supposed to run synchronously.
+                [&handler, &generic_input, &field_name](Request request, const std::string& url_key) {
+                  const T_SPECIFIC_FIELD& field =
+                      generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
+
+                  generic_input.storage.Transaction(
+                                            // Capture local variables by value for safe async transactions.
+                                            [handler, generic_input, &field, url_key, field_name](
+                                                T_MUTABLE_FIELDS fields) -> Response {
+                                              using GETInput = RESTfulGETInput<STORAGE, T_SPECIFIC_FIELD>;
+                                              GETInput input(
+                                                  std::move(generic_input), fields, field, field_name, url_key);
+                                              return handler.Run(input);
+                                            },
+                                            std::move(request)).Detach();
+                });
+          } else if (request.method == "POST") {
+            POSTHandler handler;
+            handler.Enter(
+                std::move(request),
+                // Capture by reference since this lambda is supposed to run synchronously.
+                [&handler, &generic_input, &field_name](Request request) {
                   try {
                     auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
-                    T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-                    storage.Transaction(
-                                [handler,
-                                 &storage,
-                                 &field,
-                                 mutable_entry,
-                                 &restful_url_prefix,
-                                 field_name,
-                                 data_url_component](T_MUTABLE_FIELDS fields) mutable -> Response {
-                                  const struct {
-                                    T_STORAGE& storage;
-                                    T_MUTABLE_FIELDS fields;
-                                    T_SPECIFIC_FIELD& field;
-                                    typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
-                                    const std::string& restful_url_prefix;
-                                    const std::string& field_name;
-                                    const std::string& data_url_component;
-                                  } args{storage,
-                                         fields,
-                                         field,
-                                         mutable_entry,
-                                         restful_url_prefix,
-                                         field_name,
-                                         data_url_component};
-                                  return handler.Run(args);
-                                },
-                                std::move(request)).Detach();
+                    T_SPECIFIC_FIELD& field =
+                        generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+                    generic_input.storage.Transaction(
+                                              // Capture local variables by value for safe async transactions.
+                                              [handler, generic_input, &field, mutable_entry, field_name](
+                                                  T_MUTABLE_FIELDS fields) mutable -> Response {
+                                                using POSTInput =
+                                                    RESTfulPOSTInput<STORAGE,
+                                                                     T_SPECIFIC_FIELD,
+                                                                     typename ENTRY_TYPE_WRAPPER::T_ENTRY>;
+                                                POSTInput input(std::move(generic_input),
+                                                                fields,
+                                                                field,
+                                                                field_name,
+                                                                mutable_entry);
+                                                return handler.Run(input);
+                                              },
+                                              std::move(request)).Detach();
                   } catch (const TypeSystemParseJSONException& e) {
                     request(handler.ErrorBadJSON(e.What()));
                   }
                 });
           } else if (request.method == "PUT") {
-            CustomHandler<PUT,
-                          T_IMMUTABLE_FIELDS,
-                          T_SPECIFIC_FIELD,
-                          typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                          typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
+            PUTHandler handler;
             handler.Enter(
                 std::move(request),
-                [&handler, &storage, &restful_url_prefix, field_name, data_url_component](
-                    Request request, const std::string& key_as_string) {
+                // Capture by reference since this lambda is supposed to run synchronously.
+                [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
                   try {
                     const auto url_key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
                     const auto entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::T_ENTRY>(request.body);
                     const auto entry_key = PerStorageFieldType<T_SPECIFIC_FIELD>::ExtractOrComposeKey(entry);
-                    T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-                    storage.Transaction(
-                                [handler,
-                                 &storage,
-                                 &field,
-                                 url_key,
-                                 entry,
-                                 entry_key,
-                                 &restful_url_prefix,
-                                 field_name,
-                                 data_url_component](T_MUTABLE_FIELDS fields) -> Response {
-                                  const struct {
-                                    T_STORAGE& storage;
-                                    T_MUTABLE_FIELDS fields;
-                                    T_SPECIFIC_FIELD& field;
-                                    const typename ENTRY_TYPE_WRAPPER::T_KEY& url_key;
-                                    const typename ENTRY_TYPE_WRAPPER::T_ENTRY& entry;
-                                    const typename ENTRY_TYPE_WRAPPER::T_KEY& entry_key;
-                                    const std::string& restful_url_prefix;
-                                    const std::string& field_name;
-                                    const std::string& data_url_component;
-                                  } args{storage,
-                                         fields,
-                                         field,
-                                         url_key,
-                                         entry,
-                                         entry_key,
-                                         restful_url_prefix,
-                                         field_name,
-                                         data_url_component};
-                                  return handler.Run(args);
-                                },
-                                std::move(request)).Detach();
+                    T_SPECIFIC_FIELD& field =
+                        generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+                    generic_input.storage
+                        .Transaction(
+                             // Capture local variables by value for safe async transactions.
+                             [handler, generic_input, &field, url_key, entry, entry_key, field_name](
+                                 T_MUTABLE_FIELDS fields) -> Response {
+                               using PUTInput = RESTfulPUTInput<STORAGE,
+                                                                T_SPECIFIC_FIELD,
+                                                                typename ENTRY_TYPE_WRAPPER::T_ENTRY,
+                                                                typename ENTRY_TYPE_WRAPPER::T_KEY>;
+                               PUTInput input(std::move(generic_input),
+                                              fields,
+                                              field,
+                                              field_name,
+                                              url_key,
+                                              entry,
+                                              entry_key);
+                               return handler.Run(input);
+                             },
+                             std::move(request))
+                        .Detach();
                   } catch (const TypeSystemParseJSONException& e) {  // LCOV_EXCL_LINE
                     request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
                   }
                 });
           } else if (request.method == "DELETE") {
-            CustomHandler<DELETE,
-                          T_IMMUTABLE_FIELDS,
-                          T_SPECIFIC_FIELD,
-                          typename ENTRY_TYPE_WRAPPER::T_ENTRY,
-                          typename ENTRY_TYPE_WRAPPER::T_KEY> handler;
-            handler.Enter(std::move(request),
-                          [&handler, &storage, &restful_url_prefix, field_name](
-                              Request request, const std::string& key_as_string) {
-                            const auto key =
-                                current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
-                            T_SPECIFIC_FIELD& field = storage(::current::storage::MutableFieldByIndex<INDEX>());
-                            storage.Transaction(
-                                        [handler, &storage, &field, key, &restful_url_prefix, field_name](
-                                            T_MUTABLE_FIELDS fields) -> Response {
-                                          const struct {
-                                            T_STORAGE& storage;
-                                            T_MUTABLE_FIELDS fields;
-                                            T_SPECIFIC_FIELD& field;
-                                            const typename ENTRY_TYPE_WRAPPER::T_KEY& key;
-                                            const std::string& restful_url_prefix;
-                                            const std::string& field_name;
-                                          } args{storage, fields, field, key, restful_url_prefix, field_name};
-                                          return handler.Run(args);
-                                        },
-                                        std::move(request)).Detach();
-                          });
+            DELETEHandler handler;
+            handler.Enter(
+                std::move(request),
+                // Capture by reference since this lambda is supposed to run synchronously.
+                [&handler, &generic_input, &field_name](Request request, const std::string& key_as_string) {
+                  const auto key = current::FromString<typename ENTRY_TYPE_WRAPPER::T_KEY>(key_as_string);
+                  T_SPECIFIC_FIELD& field =
+                      generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
+                  generic_input.storage.Transaction(
+                                            // Capture local variables by value for safe async transactions.
+                                            [handler, generic_input, &field, key, field_name](
+                                                T_MUTABLE_FIELDS fields) -> Response {
+                                              using DELETEInput =
+                                                  RESTfulDELETEInput<STORAGE,
+                                                                     T_SPECIFIC_FIELD,
+                                                                     typename ENTRY_TYPE_WRAPPER::T_KEY>;
+                                              DELETEInput input(
+                                                  std::move(generic_input), fields, field, field_name, key);
+                                              return handler.Run(input);
+                                            },
+                                            std::move(request)).Detach();
+                });
           } else {
             request(T_REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
           }

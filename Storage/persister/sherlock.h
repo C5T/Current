@@ -55,7 +55,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
         transaction.mutations.emplace_back(std::move(entry));
       }
       transaction.meta.timestamp = current::time::Now();
-      transaction.meta.fields = std::move(journal.meta_fields);
+      std::swap(transaction.meta.fields, journal.meta_fields);
       stream_.Publish(std::move(transaction));
       journal.commit_log.clear();
       journal.rollback_log.clear();

@@ -80,11 +80,11 @@ inline AdvancedHypermediaRESTRecordResponse<T> FormatAsAdvancedHypermediaRecord(
 struct AdvancedHypermedia : Hypermedia {
   using SUPER = Hypermedia;
 
-  template <class HTTP_VERB, typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful : SUPER::RESTful<HTTP_VERB, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {};
+  template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful : SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {};
 
-  template <typename ALL_FIELDS, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
-  struct RESTful<GET, ALL_FIELDS, PARTICULAR_FIELD, ENTRY, KEY> {
+  template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
+  struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
     using T_BRIEF_ENTRY = sfinae::BRIEF_OF_T<ENTRY>;
 
     // For per-record view, whether a full or brief format should be used.

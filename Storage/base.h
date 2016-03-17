@@ -180,6 +180,14 @@ struct MutationJournal {
 template <typename BASE>
 struct FieldsBase : BASE {
   MutationJournal current_storage_mutation_journal_;
+
+  void SetTransactionMetaField(const std::string& key, const std::string& value) {
+    current_storage_mutation_journal_.meta_fields[key] = value;
+  }
+
+  void EraseTransactionMetaField(const std::string& key) {
+    current_storage_mutation_journal_.meta_fields.erase(key);
+  }
 };
 
 // Field tags for REST calls dispatching.

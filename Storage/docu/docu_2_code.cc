@@ -148,7 +148,6 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_EQ(1u, storage.FieldsCount());
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
-    const TransactionMetaFields meta_fields {{"user", "max"}};
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
     storage.Transaction([](MutableFields<ExampleStorage> data) {
       User test1;
@@ -160,8 +159,11 @@ TEST(StorageDocumentation, BasicUsage) {
       test2.straight = false;
       data.users.Add(test1);
       data.users.Add(test2);
+      data.SetTransactionMetaField("user", "vasya");
+      data.EraseTransactionMetaField("user");
+      data.SetTransactionMetaField("user", "max");
       current::time::SetNow(std::chrono::microseconds(1002ull));  // <-- This timestamp will be used.
-    }, meta_fields).Wait();
+    }).Wait();
 
     current::time::SetNow(std::chrono::microseconds(1003ull));
     storage.Transaction([](MutableFields<ExampleStorage> data) {
@@ -206,6 +208,7 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_FALSE(Value<PersistedUserUpdated>(t.mutations[1]).data.straight);
 
     EXPECT_EQ(1002, static_cast<int>(t.meta.timestamp.count()));
+    EXPECT_EQ(1u, t.meta.fields.size());
     EXPECT_EQ("max", t.meta.fields.at("user"));
   }
 

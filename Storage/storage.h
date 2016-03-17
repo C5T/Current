@@ -186,11 +186,13 @@ namespace storage {
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
     using T_FIELDS_BY_CONST_REFERENCE = const FIELDS&;                                                       \
     using T_TRANSACTION = ::current::storage::Transaction<T_FIELDS_VARIANT>;                                 \
+    using T_TRANSACTION_META_FIELDS = ::current::storage::TransactionMetaFields;                             \
     CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
     template <typename... ARGS>                                                                              \
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
         : persister_(std::forward<ARGS>(args)...),                                                           \
-          transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {                       \
+          transaction_policy_(persister_,                                                                    \
+                              fields_.current_storage_mutation_journal_) {                                   \
       persister_.Replay([this](const T_FIELDS_VARIANT& entry) { entry.Call(fields_); });                     \
     }                                                                                                        \
     template <typename... ARGS>                                                                              \
@@ -202,19 +204,15 @@ namespace storage {
     using T_F_RESULT = typename std::result_of<F(T_FIELDS_BY_REFERENCE)>::type;                              \
     template <typename F>                                                                                    \
     ::current::Future<::current::storage::TransactionResult<T_F_RESULT<F>>, ::current::StrictFuture::Strict> \
-    Transaction(F&& f, ::current::storage::TransactionMetaFields meta_fields =                               \
-                    ::current::storage::TransactionMetaFields()) {                                           \
-      return transaction_policy_.Transaction([&f, this]() { return f(fields_); }, std::move(meta_fields));   \
+    Transaction(F&& f) {                                                                                     \
+      return transaction_policy_.Transaction([&f, this]() { return f(fields_); });                           \
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
     Transaction(F1&& f1,                                                                                     \
-                F2&& f2,                                                                                     \
-                ::current::storage::TransactionMetaFields meta_fields =                                      \
-                    ::current::storage::TransactionMetaFields()) {                                           \
+                F2&& f2) {                                                                                   \
       return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); },                          \
-                                             std::forward<F2>(f2),                                           \
-                                             std::move(meta_fields));                                        \
+                                             std::forward<F2>(f2));                                          \
     }                                                                                                        \
     void ReplayTransaction(T_TRANSACTION&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {           \
       transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(fields_); },       \

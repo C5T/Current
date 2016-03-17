@@ -508,11 +508,11 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   // Perform a couple of transactions.
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const TransactionMetaFields meta_fields{{"user", "dima"}};
     const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
       fields.d.Add(Record{"two", 2});
-    }, meta_fields).Go();
+      fields.SetTransactionMetaField("user", "dima");
+    }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
   {
