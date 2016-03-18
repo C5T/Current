@@ -270,13 +270,15 @@ class RESTfulStorage {
     for (const auto& handler : handlers_) {
       fields.push_back(handler.first);
     }
-    T_REST_IMPL::RegisterTopLevel(handlers_scope_,
-                                  fields,
-                                  port,
-                                  route_prefix.empty() ? "/" : route_prefix,
-                                  restful_url_prefix,
-                                  data_url_component_,
-                                  *up_status_);
+    RESTfulRegisterTopLevelInput<T_STORAGE_IMPL> input(storage,
+                                                       restful_url_prefix,
+                                                       data_url_component_,
+                                                       port,
+                                                       handlers_scope_,
+                                                       fields,
+                                                       route_prefix.empty() ? "/" : route_prefix,
+                                                       *up_status_);
+    T_REST_IMPL::RegisterTopLevel(input);
   }
 
   // To enable exposing fields under different names / URLs.

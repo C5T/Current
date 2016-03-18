@@ -170,26 +170,24 @@ struct Hypermedia {
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
-  static void RegisterTopLevel(HTTPRoutesScope& scope,
-                               const std::vector<std::string>& fields,
-                               int port,
-                               const std::string& route_prefix,
-                               const std::string& restful_url_prefix,
-                               const std::string& data_url_component,
-                               std::atomic_bool& up_status) {
-    scope +=
-        HTTP(port).Register(route_prefix,
-                            [fields, restful_url_prefix, data_url_component, &up_status](Request request) {
-                              const bool up = up_status;
-                              HypermediaRESTTopLevel response(restful_url_prefix, up);
-                              for (const auto& f : fields) {
-                                response.url_data[f] = restful_url_prefix + '/' + data_url_component + '/' + f;
-                              }
-                              request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
-                            });
-    scope += HTTP(port).Register(route_prefix == "/" ? "/status" : route_prefix + "/status",
-                                 [restful_url_prefix, &up_status](Request request) {
-                                   const bool up = up_status;
+  template <class INPUT>
+  static void RegisterTopLevel(const INPUT& input) {
+    input.scope +=
+        HTTP(input.port)
+            .Register(input.route_prefix,
+                      [input](Request request) {
+                        const bool up = input.up_status;
+                        HypermediaRESTTopLevel response(input.restful_url_prefix, up);
+                        for (const auto& f : input.field_names) {
+                          response.url_data[f] =
+                              input.restful_url_prefix + '/' + input.data_url_component + '/' + f;
+                        }
+                        request(response, up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
+                      });
+    input.scope += HTTP(input.port)
+                       .Register(input.route_prefix == "/" ? "/status" : input.route_prefix + "/status",
+                                 [input](Request request) {
+                                   const bool up = input.up_status;
                                    request(HypermediaRESTStatus(up),
                                            up ? HTTPResponseCode.OK : HTTPResponseCode.ServiceUnavailable);
                                  });
