@@ -62,14 +62,20 @@ inline void SetRandomSeed(const size_t seed) {
   ThreadLocalSingleton<impl::SeedImpl>().is_set = true;
 }
 
+enum class Generator { MT19937_64, CSPRNG };
 inline std::mt19937_64& mt19937_64_tls() { return ThreadLocalSingleton<impl::mt19937_64_wrapper>().instance; }
+// Cryptographically secure pseudorandom number generator.
+// `std::random_device` does its job on Linux and Windows:
+//  * https://msdn.microsoft.com/en-us/library/bb982250.aspx#Anchor_2
+//  * http://en.cppreference.com/w/cpp/numeric/random/random_device/random_device
+inline std::random_device& cspnrg_tls() { return ThreadLocalSingleton<std::random_device>(); }
 
 // Generic templated function for integral types.
-template <typename T>
+template <typename T, Generator G = Generator::MT19937_64>
 inline T RandomIntegral(const T a, const T b) {
   static_assert(std::is_integral<T>::value, "`RandomInt` can be used only with integral types.");
   std::uniform_int_distribution<T> distribution(a, b);
-  return distribution(mt19937_64_tls());
+  return (G == Generator::MT19937_64) ? distribution(mt19937_64_tls()) : distribution(cspnrg_tls());
 }
 
 inline int RandomInt(const int a, const int b) { return RandomIntegral<int>(a, b); }
@@ -88,17 +94,45 @@ inline int64_t RandomInt64(const int64_t a, const int64_t b) { return RandomInte
 
 inline uint64_t RandomUInt64(const uint64_t a, const uint64_t b) { return RandomIntegral<uint64_t>(a, b); }
 
+// Cryptographically secure functions for integral types.
+inline int CSRandomInt(const int a, const int b) { return RandomIntegral<int, Generator::CSPRNG>(a, b); }
+
+inline unsigned int CSRandomUInt(const unsigned int a, const unsigned int b) {
+  return RandomIntegral<unsigned int, Generator::CSPRNG>(a, b);
+}
+
+inline long CSRandomLong(const long a, const long b) { return RandomIntegral<long, Generator::CSPRNG>(a, b); }
+
+inline unsigned long CSRandomULong(const unsigned long a, const unsigned long b) {
+  return RandomIntegral<unsigned long, Generator::CSPRNG>(a, b);
+}
+
+inline int64_t CSRandomInt64(const int64_t a, const int64_t b) {
+  return RandomIntegral<int64_t, Generator::CSPRNG>(a, b);
+}
+
+inline uint64_t CSRandomUInt64(const uint64_t a, const uint64_t b) {
+  return RandomIntegral<uint64_t, Generator::CSPRNG>(a, b);
+}
+
 // Generic templated function for floating point types.
-template <typename T>
+template <typename T, Generator G = Generator::MT19937_64>
 inline T RandomReal(const T a, const T b) {
   static_assert(std::is_floating_point<T>::value, "`RandomReal` can be used only with floating point types.");
   std::uniform_real_distribution<T> distribution(a, b);
-  return distribution(mt19937_64_tls());
+  return (G == Generator::MT19937_64) ? distribution(mt19937_64_tls()) : distribution(cspnrg_tls());
 }
 
 inline float RandomFloat(const float a, const float b) { return RandomReal<float>(a, b); }
 
 inline double RandomDouble(const double a, const double b) { return RandomReal<double>(a, b); }
+
+// Cryptographically secure functions for floating point types.
+inline float CSRandomFloat(const float a, const float b) { return RandomReal<float, Generator::CSPRNG>(a, b); }
+
+inline double CSRandomDouble(const double a, const double b) {
+  return RandomReal<double, Generator::CSPRNG>(a, b);
+}
 
 }  // namespace random
 }  // namespace current
