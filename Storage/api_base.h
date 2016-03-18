@@ -46,6 +46,54 @@ struct RESTfulGenericInput {
   RESTfulGenericInput(RESTfulGenericInput&&) = default;
 };
 
+template <typename STORAGE>
+struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
+  const int port;
+  HTTPRoutesScope& scope;
+  const std::vector<std::string> field_names;
+  const std::string route_prefix;
+  std::atomic_bool& up_status;
+
+  RESTfulRegisterTopLevelInput(STORAGE& storage,
+                               const std::string& restful_url_prefix,
+                               const std::string& data_url_component,
+                               int port,
+                               HTTPRoutesScope& scope,
+                               std::vector<std::string>& field_names,
+                               const std::string& route_prefix,
+                               std::atomic_bool& up_status)
+      : RESTfulGenericInput<STORAGE>(storage, restful_url_prefix, data_url_component),
+        port(port),
+        scope(scope),
+        field_names(field_names),
+        route_prefix(route_prefix),
+        up_status(up_status) {}
+  RESTfulRegisterTopLevelInput(const RESTfulGenericInput<STORAGE>& input,
+                               int port,
+                               HTTPRoutesScope& scope,
+                               std::vector<std::string>& field_names,
+                               const std::string& route_prefix,
+                               std::atomic_bool& up_status)
+      : RESTfulGenericInput<STORAGE>(input),
+        port(port),
+        scope(scope),
+        field_names(field_names),
+        route_prefix(route_prefix),
+        up_status(up_status) {}
+  RESTfulRegisterTopLevelInput(RESTfulGenericInput<STORAGE>&& input,
+                               int port,
+                               HTTPRoutesScope& scope,
+                               std::vector<std::string>& field_names,
+                               const std::string& route_prefix,
+                               std::atomic_bool& up_status)
+      : RESTfulGenericInput<STORAGE>(std::move(input)),
+        port(port),
+        scope(scope),
+        field_names(field_names),
+        route_prefix(route_prefix),
+        up_status(up_status) {}
+};
+
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
   using T_ALL_FIELDS_BY_REFERENCE = MutableFields<STORAGE>;

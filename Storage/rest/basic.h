@@ -43,21 +43,8 @@ struct Basic {
   template <class HTTP_VERB, typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful;
 
-  static void RegisterTopLevel(HTTPRoutesScope& scope,
-                               const std::vector<std::string>& fields,
-                               int port,
-                               const std::string& route_prefix,
-                               const std::string& restful_url_prefix,
-                               const std::string& data_url_component,
-                               std::atomic_bool& up_status) {
-    static_cast<void>(scope);
-    static_cast<void>(fields);
-    static_cast<void>(port);
-    static_cast<void>(route_prefix);
-    static_cast<void>(restful_url_prefix);
-    static_cast<void>(data_url_component);
-    static_cast<void>(up_status);
-  }
+  template <class INPUT>
+  static void RegisterTopLevel(const INPUT&) {}
 
   template <typename F_WITH, typename F_WITHOUT>
   static void WithOrWithoutKeyFromURL(Request request, F_WITH&& with, F_WITHOUT&& without) {
