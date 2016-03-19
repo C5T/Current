@@ -200,7 +200,7 @@ struct FileSystem {
   // TODO(dkorolev): Make OutputFile not as tightly coupled with std::ofstream as it is now.
   typedef std::ofstream OutputFile;
 
-  enum class ScanDirParameters { ListFilesOnly, ListFilesAndDirs };
+  enum class ScanDirParameters : int { ListFilesOnly = 1, ListDirsOnly = 2, ListFilesAndDirs = 3 };
   template <typename F>
   static inline void ScanDirUntil(const std::string& directory,
                                   F&& f,
@@ -218,8 +218,10 @@ struct FileSystem {
       };
       const ScopedCloseFindFileHandle closer(handle);
       do {
-        if (parameters == ScanDirParameters::ListFilesAndDirs ||
-            !(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+        const ScanDirParameters mask = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+                                           ? ScanDirParameters::ListDirsOnly
+                                           : ListFilesOnly;
+        if (static_cast<int>(parameters) & static_cast<int>(mask)) {
           if (!f(find_data.cFileName)) {
             return;
           }
@@ -240,7 +242,10 @@ struct FileSystem {
           // Proved to be required on Ubuntu running in Parallels on a Mac,
           // with Bricks' directory mounted from Mac's filesystem.
           // `entry->d_type` is always zero there, see http://comments.gmane.org/gmane.comp.lib.libcg.devel/4236
-          if (parameters == ScanDirParameters::ListFilesAndDirs || !IsDir(JoinPath(directory, filename))) {
+          const ScanDirParameters mask = IsDir(JoinPath(directory, filename))
+                                             ? ScanDirParameters::ListDirsOnly
+                                             : ScanDirParameters::ListFilesOnly;
+          if (static_cast<int>(parameters) & static_cast<int>(mask)) {
             if (!f(filename)) {
               return;
             }
