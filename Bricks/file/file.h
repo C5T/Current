@@ -220,7 +220,7 @@ struct FileSystem {
       do {
         const ScanDirParameters mask = (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
                                            ? ScanDirParameters::ListDirsOnly
-                                           : ListFilesOnly;
+                                           : ScanDirParameters::ListFilesOnly;
         if (static_cast<int>(parameters) & static_cast<int>(mask)) {
           if (!f(find_data.cFileName)) {
             return;
