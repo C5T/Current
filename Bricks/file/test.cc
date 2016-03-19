@@ -23,12 +23,14 @@ SOFTWARE.
 *******************************************************************************/
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "file.h"
 
 #include "../dflags/dflags.h"
+#include "../strings/join.h"
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
 using current::FileSystem;
@@ -168,7 +170,7 @@ TEST(File, DirOperations) {
   // Required for Windows tests.
   FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
 
-  const std::string& dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir");
+  const std::string dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir");
   const std::string fn = FileSystem::JoinPath(dir, "file");
 
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
@@ -213,7 +215,7 @@ TEST(File, ScanDir) {
   // Required for Windows tests.
   FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
 
-  const std::string& dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir_to_scan");
+  const std::string dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "dir_to_scan");
   const std::string fn1 = FileSystem::JoinPath(dir, "one");
   const std::string fn2 = FileSystem::JoinPath(dir, "two");
 
@@ -274,17 +276,59 @@ TEST(File, ScanDir) {
   FileSystem::RmDir(FileSystem::JoinPath(dir, "subdir"), FileSystem::RmDirParameters::Silent);
 }
 
+TEST(File, ScanDirParameters) {
+  const std::string base_dir = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "mixed");
+  const std::string f = FileSystem::JoinPath(base_dir, "f");
+  const std::string d = FileSystem::JoinPath(base_dir, "d");
+
+  const auto base_dir_remover = FileSystem::ScopedRmDir(base_dir);
+  const auto f_remover = FileSystem::ScopedRmFile(f);
+  const auto d_remover = FileSystem::ScopedRmDir(d);
+
+  FileSystem::MkDir(base_dir, FileSystem::MkDirParameters::Silent);
+  FileSystem::WriteStringToFile("file", f.c_str());
+  FileSystem::MkDir(d, FileSystem::MkDirParameters::Silent);
+
+  {
+    std::set<std::string> xs;
+    FileSystem::ScanDir(base_dir, [&xs](const std::string& x) { xs.insert(x); });
+    EXPECT_EQ("f", current::strings::Join(xs, ','));
+  }
+
+  {
+    std::set<std::string> xs;
+    FileSystem::ScanDir(
+        base_dir, [&xs](const std::string& x) { xs.insert(x); }, FileSystem::ScanDirParameters::ListFilesOnly);
+    EXPECT_EQ("f", current::strings::Join(xs, ','));
+  }
+
+  {
+    std::set<std::string> xs;
+    FileSystem::ScanDir(
+        base_dir, [&xs](const std::string& x) { xs.insert(x); }, FileSystem::ScanDirParameters::ListDirsOnly);
+    EXPECT_EQ("d", current::strings::Join(xs, ','));
+  }
+
+  {
+    std::set<std::string> xs;
+    FileSystem::ScanDir(base_dir,
+                        [&xs](const std::string& x) { xs.insert(x); },
+                        FileSystem::ScanDirParameters::ListFilesAndDirs);
+    EXPECT_EQ("d,f", current::strings::Join(xs, ','));
+  }
+}
+
 TEST(File, RmDirRecursive) {
   // Required for Windows tests.
   FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
 
-  const std::string& dir_x = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "x");
-  const std::string& f1 = FileSystem::JoinPath(dir_x, "1");
-  const std::string& dir_y = FileSystem::JoinPath(dir_x, "y");
-  const std::string& f2 = FileSystem::JoinPath(dir_y, "2");
-  const std::string& dir_z = FileSystem::JoinPath(dir_y, "z");
-  const std::string& f3 = FileSystem::JoinPath(dir_z, "3");
-  const std::string& f4 = FileSystem::JoinPath(dir_z, "4");
+  const std::string dir_x = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "x");
+  const std::string f1 = FileSystem::JoinPath(dir_x, "1");
+  const std::string dir_y = FileSystem::JoinPath(dir_x, "y");
+  const std::string f2 = FileSystem::JoinPath(dir_y, "2");
+  const std::string dir_z = FileSystem::JoinPath(dir_y, "z");
+  const std::string f3 = FileSystem::JoinPath(dir_z, "3");
+  const std::string f4 = FileSystem::JoinPath(dir_z, "4");
 
   FileSystem::MkDir(dir_x);
   FileSystem::WriteStringToFile("1", f1.c_str());
@@ -308,10 +352,10 @@ TEST(File, ScopedRmDir) {
   // Required for Windows tests.
   FileSystem::MkDir(FLAGS_file_test_tmpdir, FileSystem::MkDirParameters::Silent);
 
-  const std::string& dir_x = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "x");
-  const std::string& dir_y = FileSystem::JoinPath(dir_x, "y");
-  const std::string& dir_z = FileSystem::JoinPath(dir_y, "z");
-  const std::string& fn = FileSystem::JoinPath(dir_z, "test");
+  const std::string dir_x = FileSystem::JoinPath(FLAGS_file_test_tmpdir, "x");
+  const std::string dir_y = FileSystem::JoinPath(dir_x, "y");
+  const std::string dir_z = FileSystem::JoinPath(dir_y, "z");
+  const std::string fn = FileSystem::JoinPath(dir_z, "test");
 
   FileSystem::RmFile(fn, FileSystem::RmFileParameters::Silent);
   ASSERT_THROW(FileSystem::ReadFileAsString(fn), FileException);
