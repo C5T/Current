@@ -32,13 +32,56 @@ SOFTWARE.
 
 namespace current {
 
+// Hash combine function.
+// Source: http://www.boost.org/doc/libs/1_55_0/doc/html/hash/reference.html#boost.hash_combine
+template <typename T, class HASH = std::hash<T>>
+inline void HashCombine(std::size_t& seed, const T& v) {
+  seed ^= HASH()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
+
 namespace custom_comparator_and_hash_function {
 
+// Universal hash function implementation.
 template <typename T, bool HAS_MEMBER_HASH_FUNCTION, bool IS_ENUM>
 struct CurrentHashFunctionImpl;
 
 template <typename T>
+constexpr bool HasHashMethod(char) {
+  return false;
+}
+
+template <typename T>
+constexpr auto HasHashMethod(int) -> decltype(std::declval<const T>().Hash(), bool()) {
+  return true;
+}
+
+template <typename T>
+struct CurrentHashFunctionSelector {
+  typedef custom_comparator_and_hash_function::CurrentHashFunctionImpl<T,
+                                                                       HasHashMethod<T>(0),
+                                                                       std::is_enum<T>::value> type;
+};
+
+}  // namespace custom_comparator_and_hash_function
+
+//  `current::CurrentHashFunction<T>`.
+template <typename T>
+using CurrentHashFunction = typename custom_comparator_and_hash_function::CurrentHashFunctionSelector<T>::type;
+
+namespace custom_comparator_and_hash_function {
+
+template <typename T>
 struct CurrentHashFunctionImpl<T, false, false> : std::hash<T> {};
+
+template <typename TF, typename TS>
+struct CurrentHashFunctionImpl<std::pair<TF, TS>, false, false> {
+  std::size_t operator()(const std::pair<TF, TS>& p) const {
+    std::size_t seed = 0u;
+    HashCombine<TF, CurrentHashFunction<TF>>(seed, p.first);
+    HashCombine<TS, CurrentHashFunction<TS>>(seed, p.second);
+    return seed;
+  }
+};
 
 template <typename R, typename P>
 struct CurrentHashFunctionImpl<std::chrono::duration<R, P>, false, false> {
@@ -71,26 +114,7 @@ struct CurrentComparatorImpl<T, true> {
   }
 };
 
-template <typename T>
-constexpr bool HasHashMethod(char) {
-  return false;
-}
-
-template <typename T>
-constexpr auto HasHashMethod(int) -> decltype(std::declval<const T>().Hash(), bool()) {
-  return true;
-}
-
-template <typename T>
-struct CurrentHashFunctionSelector {
-  typedef custom_comparator_and_hash_function::CurrentHashFunctionImpl<T,
-                                                                       HasHashMethod<T>(0),
-                                                                       std::is_enum<T>::value> type;
-};
 }  // namespace custom_comparator_and_hash_function
-
-template <typename T>
-using CurrentHashFunction = typename custom_comparator_and_hash_function::CurrentHashFunctionSelector<T>::type;
 
 template <typename T>
 using CurrentComparator = custom_comparator_and_hash_function::CurrentComparatorImpl<T, std::is_enum<T>::value>;

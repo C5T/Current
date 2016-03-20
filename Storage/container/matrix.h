@@ -38,21 +38,6 @@ namespace current {
 namespace storage {
 namespace container {
 
-struct PairHash {
-  template <typename T>
-  void hash_combine(std::size_t& seed, const T& v) const {
-    seed ^= CurrentHashFunction<T>()(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-  }
-
-  template <typename TF, typename TS>
-  size_t operator()(const std::pair<TF, TS>& p) const {
-    size_t seed = 0u;
-    hash_combine(seed, p.first);
-    hash_combine(seed, p.second);
-    return seed;
-  }
-};
-
 template <typename T,
           typename T_UPDATE_EVENT,
           typename T_DELETE_EVENT,
@@ -62,7 +47,9 @@ class GenericMatrix {
  public:
   using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
   using T_COL = sfinae::ENTRY_COL_TYPE<T>;
-  using T_WHOLE_MATRIX_MAP = std::unordered_map<std::pair<T_ROW, T_COL>, std::unique_ptr<T>, PairHash>;
+  using T_WHOLE_MATRIX_MAP = std::unordered_map<std::pair<T_ROW, T_COL>,
+                                                std::unique_ptr<T>,
+                                                CurrentHashFunction<std::pair<T_ROW, T_COL>>>;
   using T_FORWARD_MAP = ROW_MAP<T_ROW, COL_MAP<T_COL, const T*>>;
   using T_TRANSPOSED_MAP = COL_MAP<T_COL, ROW_MAP<T_ROW, const T*>>;
   using T_REST_BEHAVIOR = rest::behavior::Matrix;
