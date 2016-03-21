@@ -33,6 +33,7 @@ namespace rest {
 
 template <typename STORAGE>
 struct RESTfulGenericInput {
+  using STORAGE_TYPE = STORAGE;
   STORAGE& storage;
   const std::string restful_url_prefix;
   const std::string data_url_component;

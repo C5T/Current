@@ -74,7 +74,7 @@ struct Impl {
     if (nbits > 0) {
       result.push_back(map[((buf << 6) >> nbits) & 0x3F]);
     }
-    const int num_pads = result_size - result.size();
+    const size_t num_pads = result_size - result.size();
     result.append(num_pads, pad_char);
     return result;
   }
