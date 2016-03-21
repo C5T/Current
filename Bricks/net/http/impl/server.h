@@ -580,6 +580,9 @@ class HTTPServerConnection final {
 
   const HTTPRequestData& HTTPRequest() const { return message_; }
 
+  const IPAndPort& LocalIPAndPort() const { return connection_.LocalIPAndPort(); }
+  const IPAndPort& RemoteIPAndPort() const { return connection_.RemoteIPAndPort(); }
+
   Connection& RawConnection() { return connection_; }
 
  private:

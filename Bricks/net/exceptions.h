@@ -44,6 +44,9 @@ struct SocketException : NetworkException {};
 struct SocketWSAStartupException : SocketException {};
 #endif
 
+struct InetAddrToStringException : SocketException {};   // LCOV_EXCL_LINE -- not covered by unit tests.
+struct SocketGetSockNameException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
+
 struct InvalidSocketException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
 struct AttemptedToUseMovedAwayConnection : SocketException {};
 struct SocketCreateException : SocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.

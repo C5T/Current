@@ -255,16 +255,36 @@ TEST(HTTPAPI, HeadersAndCookies) {
                   r(response);
                 });
   const auto response = HTTP(GET(Printf("http://localhost:%d/headers_and_cookies", FLAGS_net_api_test_port))
-                             .SetHeader("Header1", "foo")
-                             .SetCookie("x","1")
-                             .SetCookie("y","2")
-                             .SetHeader("Header2", "bar"));
+                                 .SetHeader("Header1", "foo")
+                                 .SetCookie("x", "1")
+                                 .SetCookie("y", "2")
+                                 .SetHeader("Header2", "bar"));
   EXPECT_EQ("OK", response.body);
   EXPECT_TRUE(response.headers.Has("X-Current-H1"));
   EXPECT_TRUE(response.headers.Has("X-Current-H2"));
   EXPECT_EQ("header1", response.headers.Get("X-Current-H1"));
   EXPECT_EQ("header2", response.headers.Get("X-Current-H2"));
   EXPECT_EQ("cookie1=value1; cookie2=value2", response.headers.CookiesAsString());
+}
+
+TEST(HTTPAPI, ConnectionIPAndPort) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/foo",
+                [](Request r) {
+                  const auto& c = r.connection;
+                  EXPECT_EQ("127.0.0.1", c.LocalIPAndPort().ip);
+                  EXPECT_EQ(FLAGS_net_api_test_port, c.LocalIPAndPort().port);
+                  EXPECT_EQ("127.0.0.1", c.RemoteIPAndPort().ip);
+                  EXPECT_LT(0, c.RemoteIPAndPort().port);
+                  r("bar", HTTPResponseCode.OK);
+                });
+  const string url = Printf("http://localhost:%d/foo", FLAGS_net_api_test_port);
+  const auto response = HTTP(GET(url));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("bar", response.body);
+  EXPECT_EQ(url, response.url);
+  EXPECT_EQ(1u, HTTP(FLAGS_net_api_test_port).PathHandlersCount());
 }
 
 TEST(HTTPAPI, RespondsWithString) {
