@@ -172,11 +172,35 @@ class SocketHandle : private SocketSystemInitializer {
 #endif
 };
 
+struct IPAndPort {
+  std::string ip;
+  int port;
+  IPAndPort(const std::string& ip = "", int port = 0) : ip(ip), port(port) {}
+  IPAndPort(const IPAndPort&) = default;
+  IPAndPort(IPAndPort&&) = default;
+};
+
+inline std::string InetAddrToString(const struct in_addr* in) {
+  const char* result = ::inet_ntoa(*in);
+  if (!result) {
+    CURRENT_THROW(InetAddrToStringException());
+  } else {
+    return std::string(result);
+  }
+}
+
 class Connection : public SocketHandle {
  public:
-  inline Connection(SocketHandle&& rhs) : SocketHandle(std::move(rhs)) {}
+  Connection(SocketHandle&& rhs, IPAndPort&& local_ip_and_port, IPAndPort&& remote_ip_and_port)
+      : SocketHandle(std::move(rhs)),
+        local_ip_and_port_(std::move(local_ip_and_port)),
+        remote_ip_and_port_(std::move(remote_ip_and_port)) {}
 
-  inline Connection(Connection&& rhs) : SocketHandle(std::move(rhs)) {}
+  Connection(Connection&& rhs) = default;
+
+  const IPAndPort& LocalIPAndPort() const { return local_ip_and_port_; }
+
+  const IPAndPort& RemoteIPAndPort() const { return remote_ip_and_port_; }
 
   // By default, BlockingRead() will return as soon as some data has been read,
   // with the exception being multibyte records (sizeof(T) > 1), where it will keep reading
@@ -343,6 +367,9 @@ class Connection : public SocketHandle {
   }
 
  private:
+  const IPAndPort local_ip_and_port_;
+  const IPAndPort remote_ip_and_port_;
+
   Connection() = delete;
   Connection(const Connection&) = delete;
   void operator=(const Connection&) = delete;
@@ -440,7 +467,23 @@ class Socket final : public SocketHandle {
     }
 #endif
     BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
-    return Connection(SocketHandle::FromHandle(handle));
+
+    sockaddr_in addr_serv;
+    auto addr_serv_length = sizeof(sockaddr_in);
+#ifndef CURRENT_WINDOWS
+    if (::getsockname(handle,
+                      reinterpret_cast<struct sockaddr*>(&addr_serv),
+                      reinterpret_cast<socklen_t*>(&addr_serv_length)) == -1) {
+      CURRENT_THROW(SocketGetSockNameException());
+    }
+#else
+    if (::getsockname(handle, reinterpret_cast<struct sockaddr*>(&addr_serv), &addr_serv_length) != 0) {
+      CURRENT_THROW(SocketGetSockNameException());
+    }
+#endif
+    IPAndPort local(InetAddrToString(&addr_serv.sin_addr), ntohs(addr_serv.sin_port));
+    IPAndPort remote(InetAddrToString(&addr_client.sin_addr), ntohs(addr_client.sin_port));
+    return Connection(SocketHandle::FromHandle(handle), std::move(local), std::move(remote));
   }
 
   // Note: The copy constructor is left public and default.
@@ -483,18 +526,43 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       // for (struct addrinfo* p = servinfo; p != NULL; p = p->ai_next) {
       //   p->ai_addr;
       // }
+      struct sockaddr_in* p_addr_in = reinterpret_cast<struct sockaddr_in*>(p_addr);
+      remote_ip_and_port.ip = InetAddrToString(&(p_addr_in->sin_addr));
+      remote_ip_and_port.port = htons(p_addr_in->sin_port);
+
       BRICKS_NET_LOG("S%05d connect() ...\n", static_cast<SOCKET>(socket));
       const int retval2 = ::connect(socket, p_addr, sizeof(*p_addr));
       if (retval2) {
         CURRENT_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
+
+      sockaddr_in addr_client;
+      auto addr_client_length = sizeof(sockaddr_in);
+#ifndef CURRENT_WINDOWS
+      if (::getsockname(socket,
+                        reinterpret_cast<struct sockaddr*>(&addr_client),
+                        reinterpret_cast<socklen_t*>(&addr_client_length)) == -1) {
+        CURRENT_THROW(SocketGetSockNameException());
+      }
+#else
+      if (::getsockname(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length) != 0) {
+        CURRENT_THROW(SocketGetSockNameException());
+      }
+#endif
+      local_ip_and_port.ip = InetAddrToString(&addr_client.sin_addr);
+      local_ip_and_port.port = htons(addr_client.sin_port);
+
       // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
       ::freeaddrinfo(servinfo);
       BRICKS_NET_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
     }
+    IPAndPort local_ip_and_port;
+    IPAndPort remote_ip_and_port;
   };
-
-  return Connection(ClientSocket(host, std::to_string(port_or_serv)));
+  auto client_socket = ClientSocket(host, std::to_string(port_or_serv));
+  IPAndPort local_ip_and_port(std::move(client_socket.local_ip_and_port));
+  IPAndPort remote_ip_and_port(std::move(client_socket.remote_ip_and_port));
+  return Connection(std::move(client_socket), std::move(local_ip_and_port), std::move(remote_ip_and_port));
 }
 
 }  // namespace net

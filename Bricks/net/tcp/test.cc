@@ -101,6 +101,26 @@ static void ExpectFromSocket(const std::string& golden,
   ExpectFromSocket(golden, server_thread, "localhost", FLAGS_net_tcp_test_port, message_to_send_from_client);
 }
 
+TEST(TCPTest, IPAndPort) {
+  thread server([](Socket socket) {
+    Connection connection = socket.Accept();
+    EXPECT_EQ("127.0.0.1", connection.LocalIPAndPort().ip);
+    EXPECT_EQ(FLAGS_net_tcp_test_port, connection.LocalIPAndPort().port);
+    EXPECT_EQ("127.0.0.1", connection.RemoteIPAndPort().ip);
+    EXPECT_LT(0, connection.RemoteIPAndPort().port);
+    connection.BlockingWrite("42", false);
+  }, Socket(FLAGS_net_tcp_test_port));
+  Connection client(ClientSocket("127.0.0.1", FLAGS_net_tcp_test_port));
+  EXPECT_EQ("127.0.0.1", client.LocalIPAndPort().ip);
+  EXPECT_LT(0, client.LocalIPAndPort().port);
+  EXPECT_EQ("127.0.0.1", client.RemoteIPAndPort().ip);
+  EXPECT_EQ(FLAGS_net_tcp_test_port, client.RemoteIPAndPort().port);
+  char response[2];
+  ASSERT_EQ(2u, client.BlockingRead(response, 2, Connection::FillFullBuffer));
+  EXPECT_EQ("42", std::string(response, 2));
+  server.join();
+}
+
 TEST(TCPTest, ReceiveMessage) {
   thread server([](Socket socket) { socket.Accept().BlockingWrite("BOOM", false); },
                 Socket(FLAGS_net_tcp_test_port));
