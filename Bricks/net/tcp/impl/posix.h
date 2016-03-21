@@ -449,19 +449,19 @@ class Socket final : public SocketHandle {
     BRICKS_NET_LOG("S%05d accept() ...\n", static_cast<SOCKET>(socket));
     sockaddr_in addr_client;
     memset(&addr_client, 0, sizeof(addr_client));
-    // TODO(dkorolev): Type socklen_t ?
-    auto addr_client_length = sizeof(sockaddr_in);
+
 #ifndef CURRENT_WINDOWS
-    const SOCKET handle = ::accept(socket,
-                                   reinterpret_cast<struct sockaddr*>(&addr_client),
-                                   reinterpret_cast<socklen_t*>(&addr_client_length));
+    socklen_t addr_client_length = sizeof(sockaddr_in);
+    const SOCKET handle =
+        ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (handle == static_cast<SOCKET>(-1)) {
       BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
 #else
-    const SOCKET handle = ::accept(
-        socket, reinterpret_cast<struct sockaddr*>(&addr_client), reinterpret_cast<int*>(&addr_client_length));
+    int addr_client_length = sizeof(sockaddr_in);
+    const SOCKET handle =
+        ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
     if (handle == INVALID_SOCKET) {
       CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
@@ -469,18 +469,14 @@ class Socket final : public SocketHandle {
     BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
 
     sockaddr_in addr_serv;
-    auto addr_serv_length = sizeof(sockaddr_in);
 #ifndef CURRENT_WINDOWS
-    if (::getsockname(handle,
-                      reinterpret_cast<struct sockaddr*>(&addr_serv),
-                      reinterpret_cast<socklen_t*>(&addr_serv_length)) == -1) {
-      CURRENT_THROW(SocketGetSockNameException());
-    }
+    socklen_t addr_serv_length = sizeof(sockaddr_in);
 #else
+    int addr_serv_length = sizeof(sockaddr_in);
+#endif
     if (::getsockname(handle, reinterpret_cast<struct sockaddr*>(&addr_serv), &addr_serv_length) != 0) {
       CURRENT_THROW(SocketGetSockNameException());
     }
-#endif
     IPAndPort local(InetAddrToString(&addr_serv.sin_addr), ntohs(addr_serv.sin_port));
     IPAndPort remote(InetAddrToString(&addr_client.sin_addr), ntohs(addr_client.sin_port));
     return Connection(SocketHandle::FromHandle(handle), std::move(local), std::move(remote));
@@ -536,19 +532,15 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
         CURRENT_THROW(SocketConnectException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
       }
 
-      sockaddr_in addr_client;
-      auto addr_client_length = sizeof(sockaddr_in);
 #ifndef CURRENT_WINDOWS
-      if (::getsockname(socket,
-                        reinterpret_cast<struct sockaddr*>(&addr_client),
-                        reinterpret_cast<socklen_t*>(&addr_client_length)) == -1) {
-        CURRENT_THROW(SocketGetSockNameException());
-      }
+      socklen_t addr_client_length = sizeof(sockaddr_in);
 #else
+      int addr_client_length = sizeof(sockaddr_in);
+#endif
+      sockaddr_in addr_client;
       if (::getsockname(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length) != 0) {
         CURRENT_THROW(SocketGetSockNameException());
       }
-#endif
       local_ip_and_port.ip = InetAddrToString(&addr_client.sin_addr);
       local_ip_and_port.port = htons(addr_client.sin_port);
 
