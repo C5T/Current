@@ -178,6 +178,8 @@ struct IPAndPort {
   IPAndPort(const std::string& ip = "", int port = 0) : ip(ip), port(port) {}
   IPAndPort(const IPAndPort&) = default;
   IPAndPort(IPAndPort&&) = default;
+  IPAndPort& operator=(const IPAndPort&) = default;
+  IPAndPort& operator=(IPAndPort&&) = default;
 };
 
 inline std::string InetAddrToString(const struct in_addr* in) {
@@ -452,20 +454,17 @@ class Socket final : public SocketHandle {
 
 #ifndef CURRENT_WINDOWS
     socklen_t addr_client_length = sizeof(sockaddr_in);
+    const auto invalid_socket = static_cast<SOCKET>(-1);
+#else
+    int addr_client_length = sizeof(sockaddr_in);
+    const auto invalid_socket = INVALID_SOCKET;
+#endif
     const SOCKET handle =
         ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
-    if (handle == static_cast<SOCKET>(-1)) {
+    if (handle == invalid_socket) {
       BRICKS_NET_LOG("S%05d accept() : Failed.\n", static_cast<SOCKET>(socket));
       CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
     }
-#else
-    int addr_client_length = sizeof(sockaddr_in);
-    const SOCKET handle =
-        ::accept(socket, reinterpret_cast<struct sockaddr*>(&addr_client), &addr_client_length);
-    if (handle == INVALID_SOCKET) {
-      CURRENT_THROW(SocketAcceptException());  // LCOV_EXCL_LINE -- Not covered by the unit tests.
-    }
-#endif
     BRICKS_NET_LOG("S%05d accept() : OK, FD = %d.\n", static_cast<SOCKET>(socket), handle);
 
     sockaddr_in addr_serv;
