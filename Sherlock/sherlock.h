@@ -367,9 +367,9 @@ class StreamImpl {
   // See `pubsub.h` for details.
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
-    if (r.method == "GET") {  // The only valid method is "GET".
+    if (r.method == "GET" || r.method == "HEAD") {  // The only valid method is "GET".
       const size_t count = data_->persistence.Size();
-      if (r.url.query.has("sizeonly")) {
+      if (r.method == "HEAD" || r.url.query.has("sizeonly")) {
         // Return the number of entries in the stream.
         r(current::ToString(count) + '\n', HTTPResponseCode.OK);
       } else if (count == 0u && r.url.query.has("nowait")) {

@@ -361,6 +361,12 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("0\n", result.body);
   }
+  {
+    // HEAD is equlvalent to `?sizeonly`.
+    const auto result = HTTP(HEAD(base_url));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("0\n", result.body);
+  }
 
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 milliseconds ago respectively.
@@ -391,6 +397,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 
   {
     const auto result = HTTP(GET(base_url + "?sizeonly"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("4\n", result.body);
+  }
+  {
+    const auto result = HTTP(HEAD(base_url));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("4\n", result.body);
   }
