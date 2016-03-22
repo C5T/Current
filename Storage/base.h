@@ -104,6 +104,10 @@ struct FieldUnderlyingTypesWrapper {
   // For the RESTful API to understand URLs.
   // Map key type for dictionaries, `size_t` for vectors, etc.
   using T_KEY = typename T::T_KEY;
+
+  // For reflection.
+  using T_UPDATE_EVENT = typename T::T_UPDATE_EVENT;
+  using T_DELETE_EVENT = typename T::T_DELETE_EVENT;
 };
 
 // Fields declaration and counting.

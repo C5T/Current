@@ -108,14 +108,14 @@ CURRENT_STRUCT(Cell) {
 #endif
 };
 
-CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector1);
-CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector2);
+// CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector1);
+// CURRENT_STORAGE_FIELD_ENTRY(Vector, Element, ElementVector2);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrix);
 
 CURRENT_STORAGE(TestStorage) {
-  CURRENT_STORAGE_FIELD(v1, ElementVector1);
-  CURRENT_STORAGE_FIELD(v2, ElementVector2);
+  // CURRENT_STORAGE_FIELD(v1, ElementVector1);
+  // CURRENT_STORAGE_FIELD(v2, ElementVector2);
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
   CURRENT_STORAGE_FIELD(m, CellMatrix);
 };
@@ -132,8 +132,9 @@ TEST(TransactionalStorage, SmokeTest) {
 
   {
     Storage storage(persistence_file_name);
-    EXPECT_EQ(4u, storage.FieldsCount());
+    EXPECT_EQ(2u, storage.FieldsCount());
 
+#if 0  // `Vector`, deprecated.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.v1.Empty());
@@ -149,6 +150,7 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
+#endif  // `Vector`, deprecated.
 
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
@@ -240,8 +242,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(2u, fields.m.Rows().Size());
         EXPECT_EQ(3u, fields.m.Cols().Size());
 
-        fields.v1.PushBack(Element(1));
-        fields.v2.PushBack(Element(2));
+        // fields.v1.PushBack(Element(1));
+        // fields.v2.PushBack(Element(2));
 
         fields.d.Add(Record{"one", 100});
         fields.d.Add(Record{"four", 4});
@@ -319,10 +321,10 @@ TEST(TransactionalStorage, SmokeTest) {
   {
     Storage replayed(persistence_file_name);
     replayed.Transaction([](ImmutableFields<Storage> fields) {
-      EXPECT_EQ(1u, fields.v1.Size());
-      EXPECT_EQ(1u, fields.v2.Size());
-      EXPECT_EQ(42, Value(fields.v1[0]).x);
-      EXPECT_EQ(100, Value(fields.v2[0]).x);
+      // EXPECT_EQ(1u, fields.v1.Size());
+      // EXPECT_EQ(1u, fields.v2.Size());
+      // EXPECT_EQ(42, Value(fields.v1[0]).x);
+      // EXPECT_EQ(100, Value(fields.v2[0]).x);
 
       EXPECT_FALSE(fields.d.Empty());
       EXPECT_EQ(2u, fields.d.Size());
@@ -360,8 +362,9 @@ TEST(TransactionalStorage, FieldAccessors) {
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
   Storage storage;
-  EXPECT_EQ(4u, storage.FieldsCount());
+  EXPECT_EQ(2u, storage.FieldsCount());
 
+#if 0  // `Vector`, deprecated.
   EXPECT_EQ("v1", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("v2", storage(::current::storage::FieldNameByIndex<1>()));
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<2>()));
@@ -380,6 +383,24 @@ TEST(TransactionalStorage, FieldAccessors) {
                       CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("v2, Vector, Element", s);
   }
+#else
+  EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
+  EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<1>()));
+
+  {
+    std::string s;
+    storage(::current::storage::FieldNameAndTypeByIndex<0>(), CurrentStorageTestMagicTypesExtractor(s));
+    EXPECT_EQ("d, OrderedDictionary, Record", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("m, UnorderedMatrix, Cell", s);
+  }
+#endif
 }
 
 TEST(TransactionalStorage, Exceptions) {
@@ -841,12 +862,12 @@ void RunUnitTest(UnitTestStorage<POLICY>& storage, bool leave_data_behind = fals
   EXPECT_FALSE(storage.m.Cols().Has("one"));
 
   // Test persistence. Leave some entries so that a restarted/replayed storage has some data to play with.
-  EXPECT_TRUE(storage.v.Empty());
+  // EXPECT_TRUE(storage.v.Empty());
   EXPECT_TRUE(storage.d.Empty());
   EXPECT_TRUE(storage.m.Empty());
 
   if (leave_data_behind) {
-    storage.v.PushBack(Element{100});
+    // storage.v.PushBack(Element{100});
     storage.d.Insert(Record{"answer", 42});
     storage.m.Add(Cell{101, "one-oh-one", 1001});
   }
@@ -884,9 +905,9 @@ TEST(TransactionalStorage, OnDisk) {
     // ... and confirm that data can be seen when resuming from the snapshot.
     UnitTestStorage<ReplayFromAndAppendToFile> resumed(persistence_file_name);
 
-    EXPECT_EQ(1u, resumed.v.Size());
-    EXPECT_TRUE(Exists(resumed.v[0]));
-    EXPECT_EQ(100, Value(resumed.v[0]).x);
+    // EXPECT_EQ(1u, resumed.v.Size());
+    // EXPECT_TRUE(Exists(resumed.v[0]));
+    // EXPECT_EQ(100, Value(resumed.v[0]).x);
 
     EXPECT_EQ(1u, resumed.d.Size());
     EXPECT_TRUE(Exists(resumed.d["answer"]));
