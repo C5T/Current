@@ -86,6 +86,10 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
+struct HEAD : HTTPRequestBase<HEAD> {
+  explicit HEAD(const std::string& url) : HTTPRequestBase(url) {}
+};
+
 // A helper class to fill in request body as either plain text or JSON-ified object.
 template <typename REQUEST, bool IS_STRING_TYPE>
 struct FillBody {};
@@ -239,6 +243,7 @@ struct HTTPImpl {
 }  // namespace current
 
 using current::http::GET;
+using current::http::HEAD;
 using current::http::POST;
 using current::http::POSTFromFile;
 using current::http::PUT;

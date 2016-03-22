@@ -72,6 +72,13 @@ struct ImplWrapper<HTTPClientApple> {
     client.request_headers = request.custom_headers;
   }
 
+  inline static void PrepareInput(const HEAD& request, HTTPClientApple& client) {
+    client.request_method = "HEAD";
+    client.request_url = request.url;
+    client.request_user_agent = request.custom_user_agent;
+    client.request_headers = request.custom_headers;
+  }
+
   inline static void PrepareInput(const POST& request, HTTPClientApple& client) {
     client.request_method = "POST";
     client.request_url = request.url;

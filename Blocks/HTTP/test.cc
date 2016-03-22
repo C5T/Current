@@ -650,7 +650,21 @@ TEST(HTTPAPI, PostFromFileToFile) {
             FileSystem::ReadFileAsString(response.body_file_name));
 }
 
-TEST(HTTPAPI, DeleteObject) {
+TEST(HTTPAPI, HeadRequest) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/head",
+                [](Request r) {
+                  EXPECT_EQ("HEAD", r.method);
+                  ASSERT_TRUE(r.body.empty());
+                  r("HEAD OK");
+                });
+  const auto response = HTTP(HEAD(Printf("http://localhost:%d/head", FLAGS_net_api_test_port)));
+  EXPECT_EQ("HEAD OK", response.body);
+  EXPECT_EQ(200, static_cast<int>(response.code));
+}
+
+TEST(HTTPAPI, DeleteRequest) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port)
       .Register("/delete",
