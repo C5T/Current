@@ -367,10 +367,16 @@ class StreamImpl {
   // See `pubsub.h` for details.
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
-    if (r.method == "GET" || r.method == "HEAD") {  // The only valid method is "GET".
+    if (r.method == "GET" || r.method == "HEAD") {
       const size_t count = data_->persistence.Size();
-      if (r.method == "HEAD" || r.url.query.has("sizeonly")) {
-        // Return the number of entries in the stream.
+      if (r.method == "HEAD") {
+        // Return the number of entries in the stream in `X-C5T-Stream-Size` header.
+        r("",
+          HTTPResponseCode.OK,
+          "text/html",
+          current::net::http::Headers({{"X-C5T-Stream-Size", current::ToString(count)}}));
+      } else if (r.url.query.has("sizeonly")) {
+        // Return the number of entries in the stream in body.
         r(current::ToString(count) + '\n', HTTPResponseCode.OK);
       } else if (count == 0u && r.url.query.has("nowait")) {
         // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
