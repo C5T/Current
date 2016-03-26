@@ -110,10 +110,12 @@ CURRENT_STRUCT(Cell) {
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrix);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOne2One, Cell, CellOne2One);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
   CURRENT_STORAGE_FIELD(m, CellMatrix);
+  CURRENT_STORAGE_FIELD(o, CellOne2One);
 };
 
 }  // namespace transactional_storage_test
@@ -127,7 +129,7 @@ TEST(TransactionalStorage, SmokeTest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    EXPECT_EQ(2u, Storage::FIELDS_COUNT);
+    EXPECT_EQ(3u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
 
     {
@@ -184,6 +186,31 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
+    {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_TRUE(fields.o.Empty());
+        EXPECT_EQ(0u, fields.o.Size());
+        EXPECT_TRUE(fields.o.Rows().Empty());
+        EXPECT_TRUE(fields.o.Cols().Empty());
+        fields.o.Add(Cell{1, "one", 1});
+        fields.o.Add(Cell{2, "two", 2});
+        fields.o.Add(Cell{2, "too", 3});
+        fields.o.Add(Cell{3, "too", 4});
+        EXPECT_FALSE(fields.o.Empty());
+        EXPECT_EQ(2u, fields.o.Size());
+        EXPECT_FALSE(fields.o.Rows().Empty());
+        EXPECT_FALSE(fields.o.Cols().Empty());
+        EXPECT_TRUE(fields.o.Rows().Has(1));
+        EXPECT_TRUE(fields.o.Cols().Has("one"));
+        EXPECT_FALSE(fields.o.Rows().Has(2));
+        EXPECT_FALSE(fields.o.Cols().Has("two"));
+        EXPECT_TRUE(Exists(fields.o.Get(3, "too")));
+        EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
+        EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
+        EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result));
+    }
 
     // Iterate over the matrix.
     {
@@ -210,6 +237,30 @@ TEST(TransactionalStorage, SmokeTest) {
           }
         }
         EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
+      }).Go();
+    }
+    
+    // Iterate over the One2One
+    {
+      storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.o.Empty());
+        std::multiset<std::string> data;
+        for (const auto& element : fields.o.Rows()) {
+          data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                      current::ToString(element.phew));
+        }
+        EXPECT_EQ("1,one=1 3,too=4", current::strings::Join(data, ' '));
+      }).Go();
+      storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.o.Empty());
+        std::multiset<std::string> data;
+        for (const auto& element : fields.o.Cols()) {
+          data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                      current::ToString(element.phew));
+        }
+        EXPECT_EQ("1,one=1 3,too=4", current::strings::Join(data, ' '));
       }).Go();
     }
 
@@ -331,10 +382,11 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  EXPECT_EQ(2u, Storage::FIELDS_COUNT);
+  EXPECT_EQ(3u, Storage::FIELDS_COUNT);
   Storage storage;
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<1>()));
+  EXPECT_EQ("o", storage(::current::storage::FieldNameByIndex<3>()));
 
   {
     std::string s;
