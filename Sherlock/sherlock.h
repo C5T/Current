@@ -370,11 +370,11 @@ class StreamImpl {
     if (r.method == "GET" || r.method == "HEAD") {
       const size_t count = data_->persistence.Size();
       if (r.method == "HEAD") {
-        // Return the number of entries in the stream in `X-C5T-Stream-Size` header.
+        // Return the number of entries in the stream in `X-Current-Stream-Size` header.
         r("",
           HTTPResponseCode.OK,
           "text/html",
-          current::net::http::Headers({{"X-C5T-Stream-Size", current::ToString(count)}}));
+          current::net::http::Headers({{"X-Current-Stream-Size", current::ToString(count)}}));
       } else if (r.url.query.has("sizeonly")) {
         // Return the number of entries in the stream in body.
         r(current::ToString(count) + '\n', HTTPResponseCode.OK);
