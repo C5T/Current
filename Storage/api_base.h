@@ -27,6 +27,8 @@ SOFTWARE.
 
 #include "storage.h"
 
+#include "../Blocks/HTTP/api.h"
+
 namespace current {
 namespace storage {
 namespace rest {

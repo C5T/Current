@@ -361,6 +361,14 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("0\n", result.body);
   }
+  {
+    // HEAD is equivalent to `?sizeonly` except that the size is returned in header.
+    const auto result = HTTP(HEAD(base_url));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("", result.body);
+    ASSERT_TRUE(result.headers.Has("X-C5T-Stream-Size"));
+    EXPECT_EQ("0", result.headers.Get("X-C5T-Stream-Size"));
+  }
 
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 milliseconds ago respectively.
@@ -393,6 +401,13 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     const auto result = HTTP(GET(base_url + "?sizeonly"));
     EXPECT_EQ(200, static_cast<int>(result.code));
     EXPECT_EQ("4\n", result.body);
+  }
+  {
+    const auto result = HTTP(HEAD(base_url));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("", result.body);
+    ASSERT_TRUE(result.headers.Has("X-C5T-Stream-Size"));
+    EXPECT_EQ("4", result.headers.Get("X-C5T-Stream-Size"));
   }
 
   // Test `?n=...`.

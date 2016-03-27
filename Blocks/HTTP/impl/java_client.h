@@ -37,7 +37,7 @@ SOFTWARE.
 
 #include <jni.h>
 
-// Wrapper over native Android/Java code for HTTP GET/POST.
+// Wrapper over native Android/Java code for HTTP requests.
 
 namespace java_wrapper {
 
@@ -231,6 +231,14 @@ template <>
 struct ImplWrapper<java_wrapper::HTTPClientPlatformWrapper> {
   // Populating the fields of java_wrapper::HTTPClientPlatformWrapper given request parameters.
   inline static void PrepareInput(const GET& request, java_wrapper::HTTPClientPlatformWrapper& client) {
+    // TODO(someone who refactors this with Java): Add `method` support.
+    client.url_requested_ = request.url;
+    if (!request.custom_user_agent.empty()) {
+      client.user_agent_ = request.custom_user_agent;
+    }
+  }
+  inline static void PrepareInput(const HEAD& request, java_wrapper::HTTPClientPlatformWrapper& client) {
+    // TODO(someone who refactors this with Java): Add `method` support.
     client.url_requested_ = request.url;
     if (!request.custom_user_agent.empty()) {
       client.user_agent_ = request.custom_user_agent;

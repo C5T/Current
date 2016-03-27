@@ -143,6 +143,13 @@ struct ImplWrapper<HTTPClientPOSIX> {
     client.request_headers_ = request.custom_headers;
   }
 
+  inline static void PrepareInput(const HEAD& request, HTTPClientPOSIX& client) {
+    client.request_method_ = "HEAD";
+    client.request_url_ = request.url;
+    client.request_user_agent_ = request.custom_user_agent;
+    client.request_headers_ = request.custom_headers;
+  }
+
   inline static void PrepareInput(const POST& request, HTTPClientPOSIX& client) {
     client.request_method_ = "POST";
     client.request_url_ = request.url;
