@@ -264,7 +264,7 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
     }
 
-    // Rollback a transaction involving a `Matrix`.
+    // Rollback a transaction involving a `Matrix` and a `One2One`.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.m.Size());
@@ -278,6 +278,10 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.m.Add(Cell{1, "one", 42});
         fields.m.Add(Cell{3, "three", 3});
         fields.m.Erase(2, "two");
+        
+        fields.o.Add(Cell{3, "three", 3});
+        fields.o.Add(Cell{4, "four", 4});
+        fields.o.Erase(1, "one");
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
       EXPECT_FALSE(WasCommitted(result));
@@ -286,6 +290,13 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.m.Size());
         EXPECT_EQ(2u, fields.m.Rows().Size());
         EXPECT_EQ(3u, fields.m.Cols().Size());
+        
+        EXPECT_EQ(2u, fields.o.Size());
+        EXPECT_EQ(2u, fields.o.Rows().Size());
+        EXPECT_EQ(2u, fields.o.Cols().Size());
+        EXPECT_FALSE(fields.o.Cols().Has("three"));
+        EXPECT_TRUE(fields.o.Rows().Has(3));
+        EXPECT_TRUE(fields.o.Cols().Has("one"));
       }).Go();
     }
 
@@ -333,6 +344,47 @@ TEST(TransactionalStorage, SmokeTest) {
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go()));
     }
+    
+    // Iterate over the One2One with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    {
+      EXPECT_FALSE(WasCommitted(storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_TRUE(fields.o.Rows().Has(1));
+        EXPECT_TRUE(fields.o.Cols().Has("one"));
+        EXPECT_TRUE(fields.o.Cols().Has("too"));
+
+        fields.o.Add(Cell{3, "two", 5});
+        EXPECT_TRUE(fields.o.Rows().Has(3));
+        EXPECT_FALSE(fields.o.Cols().Has("too"));
+        EXPECT_TRUE(fields.o.Cols().Has("two"));
+        EXPECT_EQ(2u, fields.o.Rows().Size());
+        EXPECT_EQ(2u, fields.o.Cols().Size());
+
+        fields.o.Erase(3, "two");
+        EXPECT_FALSE(fields.o.Rows().Has(3));
+        EXPECT_FALSE(fields.o.Cols().Has("too"));
+        EXPECT_FALSE(fields.o.Cols().Has("two"));
+        EXPECT_EQ(1u, fields.o.Rows().Size());
+        EXPECT_EQ(1u, fields.o.Cols().Size());
+        
+        std::multiset<std::string> rows;
+        std::multiset<std::string> cols;
+        for (const auto& element : fields.o.Rows()) {
+          rows.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                      current::ToString(element.phew));
+        }
+        for (const auto& element : fields.o.Cols()) {
+          cols.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                      current::ToString(element.phew));
+        }
+        
+        EXPECT_EQ("1,one=1", current::strings::Join(rows, ' '));
+        EXPECT_EQ("1,one=1", current::strings::Join(cols, ' '));
+        
+        CURRENT_STORAGE_THROW_ROLLBACK();
+      }).Go()));
+    }
 
     {
       const auto f = [](ImmutableFields<Storage>) { return 42; };
@@ -359,6 +411,15 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_EQ(2, Value(fields.m.Get(2, "two")).phew);
       EXPECT_EQ(3, Value(fields.m.Get(2, "too")).phew);
       EXPECT_FALSE(Exists(fields.m.Get(3, "three")));
+      
+      EXPECT_FALSE(fields.o.Empty());
+      EXPECT_EQ(2u, fields.o.Size());
+      EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
+      EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
+      EXPECT_FALSE(Exists(fields.o.Get(2, "two")));
+      EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
+      EXPECT_FALSE(fields.o.Cols().Has("three"));
+      EXPECT_FALSE(fields.o.Cols().Has("too"));
     }).Wait();
   }
 }
