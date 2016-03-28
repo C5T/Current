@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#include <chrono>
 #include <cmath>
 #include <set>
 #include <string>
@@ -154,6 +155,9 @@ TEST(Util, FromString) {
   EXPECT_FALSE(current::FromString<bool>("false"));
   EXPECT_FALSE(current::FromString<bool>("0"));
 
+  EXPECT_EQ(100042ll, current::FromString<std::chrono::milliseconds>("100042").count());
+  EXPECT_EQ(100000042ll, current::FromString<std::chrono::microseconds>("100000042").count());
+
   EXPECT_TRUE(StringConversionTestEnum::TheAnswer == current::FromString<StringConversionTestEnum>("42"));
   EXPECT_EQ(0, static_cast<int>(current::FromString<StringConversionTestEnum>("")));
 }
@@ -169,6 +173,8 @@ TEST(ToString, SmokeTest) {
   EXPECT_EQ("true", current::ToString(true));
   EXPECT_EQ("false", current::ToString(false));
   EXPECT_EQ("42", current::ToString(StringConversionTestEnum::TheAnswer));
+  EXPECT_EQ("100042", current::ToString(std::chrono::milliseconds(100042)));
+  EXPECT_EQ("100000042", current::ToString(std::chrono::microseconds(100000042)));
 }
 
 TEST(Util, ToUpperAndToLower) {
