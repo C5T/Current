@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_STRINGS_UTIL_H
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -96,6 +97,16 @@ struct ToStringImpl<std::string, false, false> {
 };
 
 template <>
+struct ToStringImpl<std::chrono::milliseconds, false, false> {
+  static std::string DoIt(std::chrono::milliseconds t) { return std::to_string(t.count()); }
+};
+
+template <>
+struct ToStringImpl<std::chrono::microseconds, false, false> {
+  static std::string DoIt(std::chrono::microseconds t) { return std::to_string(t.count()); }
+};
+
+template <>
 struct ToStringImpl<char*, false, false> {  // Decayed type in template parameters list.
   static std::string DoIt(const char* string) { return string; }
 };
@@ -117,23 +128,11 @@ struct ToStringImpl<bool, false, false> {
   static std::string DoIt(bool b) { return b ? "true" : "false"; }
 };
 
-// Keep the lowercase name to possibly act as a replacement for `std::to_string`.
 template <typename T>
-inline std::string to_string(T&& something) {
+inline std::string ToString(T&& something) {
   using DECAYED_T = current::decay<T>;
   return ToStringImpl<DECAYED_T, sfinae::HasMemberToString<T>(0), std::is_enum<DECAYED_T>::value>::DoIt(
       something);
-}
-
-template <typename T>
-inline std::string to_string(std::reference_wrapper<T> something) {
-  return ToStringImpl<T, sfinae::HasMemberToString<T>(0), std::is_enum<T>::value>::DoIt(something.get());
-}
-
-// Use camel-case `ToString()` within Bricks.
-template <typename T>
-inline std::string ToString(T&& something) {
-  return current::strings::to_string(std::forward<T>(something));
 }
 
 // Special case for `std::pair<>`. For Storage REST only for now.
@@ -182,6 +181,34 @@ struct FromStringImpl<T_INPUT, T_OUTPUT, false, true> {
       underlying_output = T_UNDERLYING_OUTPUT();
     }
     output = static_cast<T_OUTPUT>(underlying_output);
+    return output;
+  }
+};
+
+template <typename T_INPUT>
+struct FromStringImpl<T_INPUT, std::chrono::milliseconds, false, false> {
+  template <typename T>
+  static const std::chrono::milliseconds& Go(T&& input, std::chrono::milliseconds& output) {
+    std::istringstream is(input);
+    int64_t underlying_output;
+    if (!(is >> underlying_output)) {
+      underlying_output = 0ll;
+    }
+    output = static_cast<std::chrono::milliseconds>(underlying_output);
+    return output;
+  }
+};
+
+template <typename T_INPUT>
+struct FromStringImpl<T_INPUT, std::chrono::microseconds, false, false> {
+  template <typename T>
+  static const std::chrono::microseconds& Go(T&& input, std::chrono::microseconds& output) {
+    std::istringstream is(input);
+    int64_t underlying_output;
+    if (!(is >> underlying_output)) {
+      underlying_output = 0ll;
+    }
+    output = static_cast<std::chrono::microseconds>(underlying_output);
     return output;
   }
 };
