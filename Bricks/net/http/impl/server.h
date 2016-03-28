@@ -473,13 +473,15 @@ class HTTPServerConnection final {
       explicit Impl(Connection& connection) : connection_(connection) {}
 
       ~Impl() {
-        try {
-          connection_.BlockingWrite("0", true);
-          connection_.BlockingWrite(kCRLF, false);
-          connection_.BlockingWrite(kCRLF, false);  // We should send CRLF twice.
-        } catch (const Exception& e) {              // LCOV_EXCL_LINE
-          // TODO(dkorolev): More reliable logging.
-          std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
+        if (!can_no_longer_write_) {
+          try {
+            connection_.BlockingWrite("0", true);
+            // Should send CRLF twice.
+            connection_.BlockingWrite(kCRLF, true);
+            connection_.BlockingWrite(kCRLF, false);
+          } catch (const SocketException& e) {                                          // LCOV_EXCL_LINE
+            std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
+          }                                                                             // LCOV_EXCL_LINE
         }
       }
 
@@ -487,12 +489,18 @@ class HTTPServerConnection final {
       template <typename T>
       void SendImpl(T&& data) {
         if (!data.empty()) {
-          connection_.BlockingWrite(strings::Printf("%X", data.size()), true);
-          connection_.BlockingWrite(kCRLF, true);
-          connection_.BlockingWrite(std::forward<T>(data), true);
-          // Force every chunk to be sent out. This makes the demo dashboard smoother.
-          // TODO(dkorolev): Revisit `MSG_MORE`,
-          connection_.BlockingWrite(kCRLF, false);
+          try {
+            connection_.BlockingWrite(strings::Printf("%X", data.size()), true);
+            connection_.BlockingWrite(kCRLF, true);
+            connection_.BlockingWrite(std::forward<T>(data), true);
+            // Force every chunk to be sent out by passing `false` as the second argument.
+            connection_.BlockingWrite(kCRLF, false);
+          } catch (const SocketException&) {
+            // For chunked HTTP responses, if the receiving end has closed the connection,
+            // as detected during `Send`, surpass logging about the failure to send the final "zero" chunk.
+            can_no_longer_write_ = true;
+            throw;
+          }
         }
       }
 
@@ -516,6 +524,7 @@ class HTTPServerConnection final {
       }
 
       Connection& connection_;
+      bool can_no_longer_write_ = false;
 
       Impl() = delete;
       Impl(const Impl&) = delete;
