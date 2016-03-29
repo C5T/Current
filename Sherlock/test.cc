@@ -171,12 +171,10 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   using namespace sherlock_unittest;
 
   auto foo_stream = current::sherlock::Stream<Record>();
-  current::time::SetNow(std::chrono::microseconds(10));
-  foo_stream.Publish(1);
-  current::time::SetNow(std::chrono::microseconds(20));
-  foo_stream.Publish(2);
-  current::time::SetNow(std::chrono::microseconds(30));
-  foo_stream.Publish(3);
+  current::time::SetNow(std::chrono::microseconds(1));
+  foo_stream.Publish(1, std::chrono::microseconds(10));
+  foo_stream.Publish(2, std::chrono::microseconds(20));
+  foo_stream.Publish(3, std::chrono::microseconds(30));
   Data d;
   {
     ASSERT_FALSE(d.subscriber_alive_);
