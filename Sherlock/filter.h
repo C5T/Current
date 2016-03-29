@@ -33,11 +33,12 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
-// The "generic" case: Assume `SUBSCRIBER_TYPE` is a specific type, and `ENTRY` is a variant containing it.
-// This case is not generic by itself, it just happens to be the most general template "specialization".
-template <typename SUBSCRIBER_TYPE, typename ENTRY>
+// The "generic" case: Assume `SUBSCRIBER_TYPE` is a specific type, and the type stored in the stream
+// is a `Variant<...>` containing it. This case is not generic by itself, it just happens to be
+// the most general template "specialization".
+template <typename SUBSCRIBER_TYPE, typename STREAM_UNDERLYING_VARIANT>
 struct SubscriberFilter {
-  static_assert(TypeListContains<typename ENTRY::T_TYPELIST, SUBSCRIBER_TYPE>::value,
+  static_assert(TypeListContains<typename STREAM_UNDERLYING_VARIANT::T_TYPELIST, SUBSCRIBER_TYPE>::value,
                 "Sherlock subscription filter by type requires the top-level type of the stream"
                 " to be a `Variant<>` containing the desired type as a sub-type.");
 
@@ -58,9 +59,9 @@ struct SubscriberFilter {
 
 struct SubscribeToAllTypes {};  // The class for the policy which is the default one.
 
-template <typename ENTRY>
-struct SubscriberFilter<SubscribeToAllTypes, ENTRY> {
-  using entry_t = ENTRY;
+template <typename STREAM_TYPE>
+struct SubscriberFilter<SubscribeToAllTypes, STREAM_TYPE> {
+  using entry_t = STREAM_TYPE;
 
   template <typename F, typename E>
   static ss::EntryResponse ProcessEntry(F&& f, E&& entry, idxts_t current, idxts_t last) {
