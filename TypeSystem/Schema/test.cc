@@ -135,12 +135,7 @@ CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>)
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
-#ifndef _MSC_VER
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
-#else
-  typedef std::map<std::string, SelfContainingC> t_m;
-  CURRENT_FIELD(m, t_m);
-#endif
 };
 
 }  // namespace schema_test
