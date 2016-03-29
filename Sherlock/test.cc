@@ -207,9 +207,7 @@ TEST(Sherlock, SubscribeSynchronously) {
   p->SetMax(3u);
   bar_stream.Subscribe(std::move(p)).Join();  // `.Join()` blocks this thread waiting for three entries.
   EXPECT_EQ(3u, d.seen_);
-  while (d.subscriber_alive_) {
-    ;  // Spin lock.
-  }
+  EXPECT_FALSE(d.subscriber_alive_);
 
   const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
   // A careful condition, since the subscriber may process some or all entries before going out of scope.
