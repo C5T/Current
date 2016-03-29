@@ -27,17 +27,45 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include "../TypeSystem/variant.h"
+#include "../Blocks/SS/ss.h"
+
 namespace current {
 namespace sherlock {
 
-struct SubscribeToAllTypes {};
+// The "generic" case: Assume `SUBSCRIBER_TYPE` is a specific type, and `ENTRY` is a variant containing it.
+// This case is not generic by itself, it just happens to be the most general template "specialization".
+template <typename SUBSCRIBER_TYPE, typename ENTRY>
+struct SubscriberFilter {
+  static_assert(TypeListContains<typename ENTRY::T_TYPELIST, SUBSCRIBER_TYPE>::value,
+                "Sherlock subscription filter by type requires the top-level type of the stream"
+                " to be a `Variant<>` containing the desired type as a sub-type.");
 
-template <typename CUSTOM_FILTER, typename ENTRY>
-struct SubscriberFilter;
+  using entry_t = SUBSCRIBER_TYPE;
+
+  template <typename F, typename E>
+  static ss::EntryResponse ProcessEntry(F&& f, E&& entry, idxts_t current, idxts_t last) {
+    const E& entry_cref = entry;
+    if (Exists<SUBSCRIBER_TYPE>(entry_cref)) {
+      return f(Value<SUBSCRIBER_TYPE>(std::forward<E>(entry)), current, last);
+    } else {
+      return ss::EntryResponse::More;
+    }
+  }
+};
+
+// The "special" case, which actually *is* the generic, default one: pass records unchanged.
+
+struct SubscribeToAllTypes {};  // The class for the policy which is the default one.
 
 template <typename ENTRY>
 struct SubscriberFilter<SubscribeToAllTypes, ENTRY> {
   using entry_t = ENTRY;
+
+  template <typename F, typename E>
+  static ss::EntryResponse ProcessEntry(F&& f, E&& entry, idxts_t current, idxts_t last) {
+    return f(std::forward<E>(entry), current, last);
+  }
 };
 
 }  // namespace sherlock

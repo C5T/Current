@@ -32,6 +32,7 @@ SOFTWARE.
 #include <thread>
 
 #include "../TypeSystem/struct.h"
+#include "../TypeSystem/variant.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
@@ -66,6 +67,11 @@ CURRENT_STRUCT(RecordWithTimestamp) {
                                            std::chrono::microseconds t = std::chrono::microseconds(0ull))
       : s(s), t(t) {}
   CURRENT_USE_FIELD_AS_TIMESTAMP(t);
+};
+
+CURRENT_STRUCT(AnotherRecord) {
+  CURRENT_FIELD(y, int);
+  CURRENT_CONSTRUCTOR(AnotherRecord)(int y = 0) : y(y) {}
 };
 
 // Struct `Data` should be outside struct `SherlockTestProcessor`,
@@ -505,4 +511,82 @@ TEST(Sherlock, ParsesFromFile) {
   EXPECT_TRUE(
       CompareValuesMixedWithTerminate(d.results_, expected_values, SherlockTestProcessor::kTerminateStr))
       << d.results_;
+}
+
+TEST(Sherlock, SubscribeWithFilterByType) {
+  using namespace sherlock_unittest;
+
+  struct CollectorImpl {
+    CollectorImpl() = delete;
+    CollectorImpl(const CollectorImpl&) = delete;
+    CollectorImpl(CollectorImpl&&) = delete;
+
+    explicit CollectorImpl(size_t expected_count) : expected_count_(expected_count) {}
+
+    EntryResponse operator()(const Variant<Record, AnotherRecord>& entry, idxts_t, idxts_t) {
+      results_.push_back(JSON<JSONFormat::Minimalistic>(entry));
+      return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
+    }
+
+    EntryResponse operator()(const Record& record, idxts_t, idxts_t) {
+      results_.push_back("X=" + current::ToString(record.x));
+      return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
+    }
+
+    EntryResponse operator()(const AnotherRecord& another_record, idxts_t, idxts_t) {
+      results_.push_back("Y=" + current::ToString(another_record.y));
+      return results_.size() == expected_count_ ? EntryResponse::Done : EntryResponse::More;
+    }
+
+    TerminationResponse Terminate() const { return TerminationResponse::Wait; }
+
+    std::vector<std::string> results_;
+    const size_t expected_count_;
+  };
+
+  auto stream = current::sherlock::Stream<Variant<Record, AnotherRecord>>();
+  for (int i = 1; i <= 5; ++i) {
+    current::time::SetNow(std::chrono::microseconds(i));
+    if (i & 1) {
+      stream.Publish(Record(i));
+    } else {
+      stream.Publish(AnotherRecord(i));
+    }
+  }
+
+  {
+    using Collector = current::ss::StreamSubscriber<CollectorImpl, Variant<Record, AnotherRecord>>;
+    static_assert(current::ss::IsStreamSubscriber<Collector, Variant<Record, AnotherRecord>>::value, "");
+    static_assert(!current::ss::IsStreamSubscriber<Collector, Record>::value, "");
+    static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
+
+    Collector c(5);
+    stream.Subscribe(c).Join();
+    EXPECT_EQ(
+        "{\"Record\":{\"x\":1}} {\"AnotherRecord\":{\"y\":2}} {\"Record\":{\"x\":3}} "
+        "{\"AnotherRecord\":{\"y\":4}} {\"Record\":{\"x\":5}}",
+        Join(c.results_, ' '));
+  }
+
+  {
+    using Collector = current::ss::StreamSubscriber<CollectorImpl, Record>;
+    static_assert(!current::ss::IsStreamSubscriber<Collector, Variant<Record, AnotherRecord>>::value, "");
+    static_assert(current::ss::IsStreamSubscriber<Collector, Record>::value, "");
+    static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
+
+    Collector c(3);
+    stream.Subscribe<Record>(c).Join();
+    EXPECT_EQ("X=1 X=3 X=5", Join(c.results_, ' '));
+  }
+
+  {
+    using Collector = current::ss::StreamSubscriber<CollectorImpl, AnotherRecord>;
+    static_assert(!current::ss::IsStreamSubscriber<Collector, Variant<Record, AnotherRecord>>::value, "");
+    static_assert(!current::ss::IsStreamSubscriber<Collector, Record>::value, "");
+    static_assert(current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
+
+    Collector c(2);
+    stream.Subscribe<AnotherRecord>(c).Join();
+    EXPECT_EQ("Y=2 Y=4", Join(c.results_, ' '));
+  }
 }
