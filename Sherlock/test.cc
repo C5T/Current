@@ -332,6 +332,7 @@ struct RecordsCollectorImpl {
 };
 
 using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl, RecordWithTimestamp>;
+
 }  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
