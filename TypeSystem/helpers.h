@@ -58,11 +58,30 @@ SOFTWARE.
 
 namespace current {
 
+template <typename TEST, typename T, bool B>
+struct ExistsImplCallerRespectingVariant;
+
+template <typename TEST, typename T>
+struct ExistsImplCallerRespectingVariant<TEST, T, true> {
+  template <typename TT = T>
+  static bool CallExistsImpl(TT&& x) {
+    return x.template VariantExistsImpl<TEST>();
+  }
+};
+
+template <typename TEST, typename T>
+struct ExistsImplCallerRespectingVariant<TEST, T, false> {
+  template <typename TT = T>
+  static bool CallExistsImpl(TT&&) {
+    return false;
+  }
+};
+
 template <typename TEST, typename T>
 struct ExistsImplCaller {
   template <typename TT = T>
   static bool CallExistsImpl(TT&& x) {
-    return x.template VariantExistsImpl<TEST>();
+    return ExistsImplCallerRespectingVariant<TEST, T, IS_VARIANT(TT)>::CallExistsImpl(std::forward<TT>(x));
   }
 };
 
@@ -85,27 +104,32 @@ struct ExistsImplCaller<T, T> {
 struct DefaultExistsInvokation {};
 template <typename TEST = DefaultExistsInvokation, typename T>
 bool Exists(T&& x) {
-  return ExistsImplCaller<
-      typename std::conditional<std::is_same<TEST, DefaultExistsInvokation>::value, T, TEST>::type,
-      T>::CallExistsImpl(std::forward<T>(x));
+  return ExistsImplCaller<typename std::conditional<std::is_same<TEST, DefaultExistsInvokation>::value,
+                                                    current::decay<T>,
+                                                    TEST>::type,
+                          current::decay<T>>::CallExistsImpl(std::forward<T>(x));
 }
 
-template <typename OUTPUT, typename INPUT>
+template <typename OUTPUT, typename INPUT, bool HAS_VALUE_IMPL_METHOD>
 struct PowerfulValueImplCaller {
-  using DECAYED_INPUT = current::decay<INPUT>;
-  static OUTPUT& AccessValue(DECAYED_INPUT& x) { return x.template VariantValueImpl<OUTPUT>(); }
-  static const OUTPUT& AccessValue(const DECAYED_INPUT& x) { return x.template VariantValueImpl<OUTPUT>(); }
-  static OUTPUT&& AccessValue(DECAYED_INPUT&& x) { return x.template VariantValueImpl<OUTPUT>(); }
+  template <typename TT>
+  static decltype(std::declval<TT>().template VariantValueImpl<OUTPUT>()) AccessValue(TT&& x) {
+    return x.template VariantValueImpl<OUTPUT>();
+  }
 };
 
 // For `OUTPUT == INPUT`, it's either plain `return x;`, or `return x.ValueImpl()`.
 template <typename T>
-struct PowerfulValueImplCaller<T, T> {
-  template <typename TT = T, class = ENABLE_IF<!current::sfinae::HasValueImplMethod<TT>(0)>>
-  static T&& AccessValue(T&& x) {
-    return x;
+struct PowerfulValueImplCaller<T, T, false> {
+  template <typename TT>
+  static decltype(std::forward<TT>(std::declval<TT>())) AccessValue(TT&& x) {
+    return std::forward<TT>(x);
   }
-  template <typename TT = T, class = ENABLE_IF<current::sfinae::HasValueImplMethod<TT>(0)>>
+};
+
+template <typename T>
+struct PowerfulValueImplCaller<T, T, true> {
+  template <typename TT>
   static decltype(std::declval<TT>().ValueImpl()) AccessValue(TT&& x) {
     return x.ValueImpl();
   }
@@ -115,10 +139,12 @@ struct DefaultValueInvokation {};
 template <typename OUTPUT = DefaultValueInvokation, typename INPUT>
 auto Value(INPUT&& x) -> decltype(PowerfulValueImplCaller<
     typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
-    INPUT>::AccessValue(std::declval<INPUT>())) {
+    INPUT,
+    current::sfinae::HasValueImplMethod<INPUT>(0)>::AccessValue(std::declval<INPUT>())) {
   return PowerfulValueImplCaller<
       typename std::conditional<std::is_same<OUTPUT, DefaultValueInvokation>::value, INPUT, OUTPUT>::type,
-      INPUT>::AccessValue(std::forward<INPUT>(x));
+      INPUT,
+      current::sfinae::HasValueImplMethod<INPUT>(0)>::AccessValue(std::forward<INPUT>(x));
 }
 
 // MSVS is not friendly with `ENABLE_IF` as return type, but happy with it as a template parameter. -- D.K.

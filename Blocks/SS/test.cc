@@ -32,8 +32,10 @@ SOFTWARE.
 #include <deque>
 #include <string>
 
+#include "../../TypeSystem/Serialization/json.h"
 #include "../../Bricks/time/chrono.h"
 #include "../../Bricks/strings/join.h"
+
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace stream_system_test {
@@ -140,4 +142,121 @@ TEST(StreamSystem, EntryPublisher) {
     all_values += e.text;
   }
   EXPECT_EQ("Entry(copy of {Entry('E1')}),Entry(move of {Entry('E2')})", all_values);
+}
+
+namespace ss_unittest {
+
+CURRENT_STRUCT(A) {
+  CURRENT_FIELD(a, int);
+  CURRENT_CONSTRUCTOR(A)(int a = 0) : a(a) {}
+};
+
+CURRENT_STRUCT(B) {
+  CURRENT_FIELD(b, int);
+  CURRENT_CONSTRUCTOR(B)(int b = 0) : b(b) {}
+};
+
+}  // namespace ss_unittest
+
+TEST(StreamSystem, PassEntryToSubscriberOrSkipIt) {
+  using namespace ss_unittest;
+
+  struct AcceptorImpl {
+    AcceptorImpl() = default;
+    AcceptorImpl(const AcceptorImpl&) = delete;
+    AcceptorImpl(AcceptorImpl&&) = delete;
+
+    current::ss::EntryResponse operator()(const Variant<A, B>& entry, idxts_t, idxts_t) {
+      s = JSON<JSONFormat::Minimalistic>(entry);
+      return current::ss::EntryResponse::Done;
+    }
+
+    current::ss::EntryResponse operator()(const A& a, idxts_t, idxts_t) {
+      s = "A=" + current::ToString(a.a);
+      return current::ss::EntryResponse::Done;
+    }
+
+    current::ss::EntryResponse operator()(const B& b, idxts_t, idxts_t) {
+      s = "B=" + current::ToString(b.b);
+      return current::ss::EntryResponse::Done;
+    }
+
+    // cTerminationResponse Terminate() const { return TerminationResponse::Wait; }
+
+    std::string s;
+  };
+
+  {
+    // Direct calls.
+    current::ss::EntrySubscriber<AcceptorImpl, Variant<A, B>> ab;
+    static_assert(current::ss::IsEntrySubscriber<decltype(ab), Variant<A, B>>::value, "");
+    static_assert(!current::ss::IsEntrySubscriber<decltype(ab), A>::value, "");
+    static_assert(!current::ss::IsEntrySubscriber<decltype(ab), B>::value, "");
+    EXPECT_EQ(current::ss::EntryResponse::Done, ab(A(1), idxts_t(), idxts_t()));
+    EXPECT_EQ("{\"A\":{\"a\":1}}", ab.s);
+    EXPECT_EQ(current::ss::EntryResponse::Done, ab(B(2), idxts_t(), idxts_t()));
+    EXPECT_EQ("{\"B\":{\"b\":2}}", ab.s);
+  }
+
+  {
+    // Dispatching of the direct type.
+    current::ss::EntrySubscriber<AcceptorImpl, Variant<A, B>> ab;
+    static_assert(current::ss::IsEntrySubscriber<decltype(ab), Variant<A, B>>::value, "");
+    static_assert(!current::ss::IsEntrySubscriber<decltype(ab), A>::value, "");
+    static_assert(!current::ss::IsEntrySubscriber<decltype(ab), B>::value, "");
+    EXPECT_EQ(current::ss::EntryResponse::Done,
+              (current::ss::PassEntryToSubscriberOrSkipIt<Variant<A, B>, Variant<A, B>>(
+                  ab, Variant<A, B>(A(3)), idxts_t(), idxts_t())));
+    EXPECT_EQ("{\"A\":{\"a\":3}}", ab.s);
+    EXPECT_EQ(current::ss::EntryResponse::Done,
+              (current::ss::PassEntryToSubscriberOrSkipIt<Variant<A, B>, Variant<A, B>>(
+                  ab, Variant<A, B>(B(4)), idxts_t(), idxts_t())));
+    EXPECT_EQ("{\"B\":{\"b\":4}}", ab.s);
+  }
+
+  {
+    // Dispatching to a sub-type, A.
+    current::ss::EntrySubscriber<AcceptorImpl, A> just_a;
+    static_assert(!current::ss::IsEntrySubscriber<decltype(just_a), Variant<A, B>>::value, "");
+    static_assert(current::ss::IsEntrySubscriber<decltype(just_a), A>::value, "");
+    static_assert(!current::ss::IsEntrySubscriber<decltype(just_a), B>::value, "");
+    EXPECT_EQ(current::ss::EntryResponse::Done,
+              (current::ss::PassEntryToSubscriberOrSkipIt<A, Variant<A, B>>(
+                  just_a, Variant<A, B>(A(5)), idxts_t(), idxts_t())));
+    EXPECT_EQ("A=5", just_a.s);
+    just_a.s = "";
+    // Should request `More` on the type that is not accepted, in this case, `B`.
+    EXPECT_EQ(current::ss::EntryResponse::More,
+              (current::ss::PassEntryToSubscriberOrSkipIt<A, Variant<A, B>>(
+                  just_a, Variant<A, B>(B(6)), idxts_t(), idxts_t())));
+    EXPECT_EQ("", just_a.s);
+    // Should request `More` on the type that is not accepted, in this case, an uninitialized `Variant<A, B>`.
+    EXPECT_EQ(current::ss::EntryResponse::More,
+              (current::ss::PassEntryToSubscriberOrSkipIt<A, Variant<A, B>>(
+                  just_a, Variant<A, B>(), idxts_t(), idxts_t())));
+    EXPECT_EQ("", just_a.s);
+  }
+
+  {
+    // Dispatching to a sub-type, B.
+    current::ss::EntrySubscriber<AcceptorImpl, B> just_b;
+    static_assert(!current::ss::IsEntrySubscriber<decltype(just_b), Variant<A, B>>::value, "");
+    static_assert(!current::ss::IsEntrySubscriber<decltype(just_b), A>::value, "");
+    static_assert(current::ss::IsEntrySubscriber<decltype(just_b), B>::value, "");
+    // Should request `More` on the type that is not accepted, in this case, `A`.
+    EXPECT_EQ(current::ss::EntryResponse::More,
+              (current::ss::PassEntryToSubscriberOrSkipIt<B, Variant<A, B>>(
+                  just_b, Variant<A, B>(A(7)), idxts_t(), idxts_t())));
+    EXPECT_EQ("", just_b.s);
+    EXPECT_EQ(current::ss::EntryResponse::Done,
+              (current::ss::PassEntryToSubscriberOrSkipIt<B, Variant<A, B>>(
+                  just_b, Variant<A, B>(B(8)), idxts_t(), idxts_t())));
+    EXPECT_EQ("B=8", just_b.s);
+    just_b.s = "";
+    // Should request `More` on the type that is not accepted, in this case, an uninitialized `Variant<A, B>`.
+    EXPECT_EQ(current::ss::EntryResponse::More,
+              (current::ss::PassEntryToSubscriberOrSkipIt<B, Variant<A, B>>(
+                  just_b, Variant<A, B>(), idxts_t(), idxts_t())));
+    EXPECT_EQ("", just_b.s);
+  }
 }

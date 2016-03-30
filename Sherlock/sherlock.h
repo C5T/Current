@@ -34,7 +34,6 @@ SOFTWARE.
 #include <thread>
 
 #include "pubsub.h"
-#include "filter.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
@@ -195,7 +194,7 @@ class StreamImpl {
   // The `SubscriberScope` class handles the above two usecases, depending on whether a stack- or heap-allocated
   // instance of a subscriber has been passed into.
 
-  template <typename SUBSCRIBER_TYPE, typename F>
+  template <typename TYPE_SUBSCRIBED_TO, typename F>
   class SubscriberThread {
    private:
     // Subscriber thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
@@ -266,8 +265,9 @@ class StreamImpl {
                 return;
               }
             }
-            if (SubscriberFilter<SUBSCRIBER_TYPE, ENTRY>::ProcessEntry(
-                    subscriber, e.entry, e.idx_ts, state->data->persistence.LastPublishedIndexAndTimestamp()) ==
+            if (current::ss::PassEntryToSubscriberOrSkipIt<TYPE_SUBSCRIBED_TO, ENTRY>(
+                    subscriber,
+                    e.entry, e.idx_ts, state->data->persistence.LastPublishedIndexAndTimestamp()) ==
                 ss::EntryResponse::Done) {
               return;
             }
@@ -298,13 +298,11 @@ class StreamImpl {
   };
 
   // Expose the means to create both a sync ("scoped") and async ("detachable") subscribers.
-  template <typename SUBSCRIBER_TYPE, class F, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
+  template <typename F, typename TYPE_SUBSCRIBED_TO, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
   class GenericSubscriberScope {
    private:
-    static_assert(
-        current::ss::IsStreamSubscriber<F, typename SubscriberFilter<SUBSCRIBER_TYPE, ENTRY>::entry_t>::value,
-        "");
-    using LISTENER_THREAD = SubscriberThread<SUBSCRIBER_TYPE, UNIQUE_PTR_WITH_CORRECT_DELETER>;
+    static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    using LISTENER_THREAD = SubscriberThread<TYPE_SUBSCRIBED_TO, UNIQUE_PTR_WITH_CORRECT_DELETER>;
 
    public:
     GenericSubscriberScope(std::shared_ptr<StreamData> data, UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
@@ -337,34 +335,30 @@ class StreamImpl {
 
   // Asynchronous subscription: `subscriber` is a heap-allocated object, the ownership of which
   // can be `std::move()`-d into the subscriber thread. It can be `Join()`-ed or `Detach()`-ed.
-  // The order of two template parameters is flipped to provide the default value to the `SUBSCRIBER_TYPE` one,
+  // The order of two template parameters is flipped to provide the default value for `TYPE_SUBSCRIBED_TO`,
   // in case the user chooses to specialize `{Async/Sync}SubscriberScope<SINGLE_TEMPLATE_PARAMETER>` directly.
-  template <typename F, typename SUBSCRIBER_TYPE = SubscribeToAllTypes>
-  using AsyncSubscriberScope = GenericSubscriberScope<SUBSCRIBER_TYPE, F, std::unique_ptr<F>, true>;
+  template <typename F, typename TYPE_SUBSCRIBED_TO = T_ENTRY>
+  using AsyncSubscriberScope = GenericSubscriberScope<F, TYPE_SUBSCRIBED_TO, std::unique_ptr<F>, true>;
 
-  template <typename SUBSCRIBER_TYPE = SubscribeToAllTypes, typename F>
-  AsyncSubscriberScope<F, SUBSCRIBER_TYPE> Subscribe(std::unique_ptr<F>&& subscriber) {
-    static_assert(
-        current::ss::IsStreamSubscriber<F, typename SubscriberFilter<SUBSCRIBER_TYPE, ENTRY>::entry_t>::value,
-        "");
-    return std::move(AsyncSubscriberScope<F, SUBSCRIBER_TYPE>(data_, std::move(subscriber)));
+  template <typename TYPE_SUBSCRIBED_TO = T_ENTRY, typename F>
+  AsyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(std::unique_ptr<F>&& subscriber) {
+    static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    return AsyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_, std::move(subscriber));
   }
 
   // Synchronous subscription: `subscriber` is a stack-allocated object, and thus the subscriber thread
   // should ensure to terminate itself, when initiated from within the destructor of `SyncSubscriberScope`.
   // Note that the destructor of `SyncSubscriberScope` will wait until the subscriber terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
-  template <typename F, typename SUBSCRIBER_TYPE = SubscribeToAllTypes>
+  template <typename F, typename TYPE_SUBSCRIBED_TO = T_ENTRY>
   using SyncSubscriberScope =
-      GenericSubscriberScope<SUBSCRIBER_TYPE, F, std::unique_ptr<F, current::NullDeleter>, false>;
+      GenericSubscriberScope<F, TYPE_SUBSCRIBED_TO, std::unique_ptr<F, current::NullDeleter>, false>;
 
-  template <typename SUBSCRIBER_TYPE = SubscribeToAllTypes, typename F>
-  SyncSubscriberScope<F, SUBSCRIBER_TYPE> Subscribe(F& subscriber) {
-    static_assert(
-        current::ss::IsStreamSubscriber<F, typename SubscriberFilter<SUBSCRIBER_TYPE, ENTRY>::entry_t>::value,
-        "");
-    return std::move(
-        SyncSubscriberScope<F, SUBSCRIBER_TYPE>(data_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
+  template <typename TYPE_SUBSCRIBED_TO = T_ENTRY, typename F>
+  SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber) {
+    static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    return SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(
+        data_, std::unique_ptr<F, current::NullDeleter>(&subscriber));
   }
 
   // Sherlock handler for serving stream data via HTTP.
