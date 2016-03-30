@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
-#define CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
+#ifndef CURRENT_TYPE_SYSTEM_SCHEMA_SCHEMA_H
+#define CURRENT_TYPE_SYSTEM_SCHEMA_SCHEMA_H
 
 #include "../Reflection/reflection.h"
 #include "../Serialization/json.h"
@@ -497,4 +497,4 @@ struct StructSchema {
 }  // namespace reflection
 }  // namespace current
 
-#endif  // CURRENT_TYPE_SYSTEM_REFLECTION_SCHEMA_H
+#endif  // CURRENT_TYPE_SYSTEM_SCHEMA_SCHEMA_H
