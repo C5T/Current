@@ -35,19 +35,27 @@ namespace current {
 namespace storage {
 namespace persister {
 
-template <typename TYPELIST, template <typename> class PERSISTER>
+namespace impl {
+struct JustTransactionAsSherlockRecordType {};
+}  // namespace impl
+
+template <typename TYPELIST, template <typename> class PERSISTER, typename STREAM_RECORD_TYPE>
 class SherlockStreamPersisterImpl;
 
-template <template <typename> class PERSISTER, typename... TS>
-class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
+template <template <typename> class PERSISTER, typename STREAM_RECORD_TYPE, typename... TS>
+class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, STREAM_RECORD_TYPE> {
  public:
   using T_VARIANT = Variant<TS...>;
   using T_TRANSACTION = Transaction<T_VARIANT>;
+  using T_SHERLOCK_ENTRY = typename std::conditional<
+      std::is_same<STREAM_RECORD_TYPE, impl::JustTransactionAsSherlockRecordType>::value,
+      T_TRANSACTION,
+      STREAM_RECORD_TYPE>::type;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(ARGS&&... args)
       : stream_owned_if_any_(
-            std::make_unique<sherlock::Stream<T_TRANSACTION, PERSISTER>>(std::forward<ARGS>(args)...)),
+            std::make_unique<sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>>(std::forward<ARGS>(args)...)),
         stream_used_(*stream_owned_if_any_.get()) {}
 
   void PersistJournal(MutationJournal& journal) {
@@ -68,9 +76,12 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
   void Replay(F&& f) {
     // TODO(dkorolev) + TODO(mzhurovich): Perhaps `Replay()` should happen automatically,
     // during construction, in a blocking way?
-    for (const auto& transaction : stream_used_.InternalExposePersister().Iterate()) {
-      for (const auto& mutation : transaction.entry.mutations) {
-        f(mutation);
+    for (const auto& stream_record : stream_used_.InternalExposePersister().Iterate()) {
+      if (Exists<T_TRANSACTION>(stream_record.entry)) {
+        const T_TRANSACTION& transaction = Value<T_TRANSACTION>(stream_record.entry);
+        for (const auto& mutation : transaction.mutations) {
+          f(mutation);
+        }
       }
     }
   }
@@ -85,20 +96,22 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
     handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_used_);
   }
 
-  sherlock::Stream<T_TRANSACTION, PERSISTER>& InternalExposeStream() { return stream_used_; }
+  sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>& InternalExposeStream() { return stream_used_; }
 
   // `stream_{used/owned}_` are two variables to support both owning and non-owning Storage usage patterns.
   std::unique_ptr<sherlock::Stream<T_TRANSACTION, PERSISTER>> stream_owned_if_any_;
-  sherlock::Stream<T_TRANSACTION, PERSISTER>& stream_used_;
+  sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>& stream_used_;
 
   HTTPRoutesScope handlers_scope_;
 };
 
-template <typename TYPELIST>
-using SherlockInMemoryStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory>;
+template <typename TYPELIST, typename STREAM_RECORD_TYPE = impl::JustTransactionAsSherlockRecordType>
+using SherlockInMemoryStreamPersister =
+    SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory, STREAM_RECORD_TYPE>;
 
-template <typename TYPELIST>
-using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::File>;
+template <typename TYPELIST, typename STREAM_RECORD_TYPE = impl::JustTransactionAsSherlockRecordType>
+using SherlockStreamPersister =
+    SherlockStreamPersisterImpl<TYPELIST, current::persistence::File, STREAM_RECORD_TYPE>;
 
 }  // namespace persister
 }  // namespace storage

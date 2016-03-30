@@ -193,6 +193,43 @@ TEST(TypeSystemTest, ExistsForNonVariants) {
   EXPECT_FALSE(Exists<int>(foo_rref));
 }
 
+TEST(TypeSystemTest, ValueOfMutableAndImmutableObjects) {
+  using namespace struct_definition_test;
+
+  Foo foo(42);
+  EXPECT_TRUE(Exists<Foo>(foo));
+  EXPECT_EQ(42ull, Value(foo).i);
+  EXPECT_EQ(42ull, Value(Value(foo)).i);
+
+  uint64_t& i_ref = Value<Foo&>(foo).i;
+  i_ref += 10ull;
+  EXPECT_EQ(52ull, Value(foo).i);
+  EXPECT_EQ(52ull, Value(Value(foo)).i);
+
+  const Foo& foo_cref1 = foo;
+  const Foo& foo_cref2 = Value<const Foo&>(foo_cref1);
+  const Foo& foo_cref3 = Value<const Foo&>(foo_cref2);
+
+  ASSERT_TRUE(&foo_cref1 == &foo);
+  ASSERT_TRUE(&foo_cref2 == &foo);
+  ASSERT_TRUE(&foo_cref3 == &foo);
+
+  const uint64_t& i_cref = foo_cref3.i;
+  ASSERT_TRUE(&i_ref == &i_cref);
+
+  EXPECT_EQ(52ull, foo_cref1.i);
+  EXPECT_EQ(52ull, foo_cref2.i);
+  EXPECT_EQ(52ull, foo_cref3.i);
+  EXPECT_EQ(52ull, i_cref);
+
+  ++i_ref;
+
+  EXPECT_EQ(53ull, foo_cref1.i);
+  EXPECT_EQ(53ull, foo_cref2.i);
+  EXPECT_EQ(53ull, foo_cref3.i);
+  EXPECT_EQ(53ull, i_cref);
+}
+
 TEST(TypeSystemTest, CopyDoesItsJob) {
   using namespace struct_definition_test;
 
@@ -332,12 +369,20 @@ TEST(TypeSystemTest, VariantCreateAndCopy) {
     Variant<Foo, Bar> empty;
     Variant<Foo, Bar> moved(std::move(empty));
     EXPECT_FALSE(moved.ExistsImpl());
+    EXPECT_FALSE(Exists(moved));
+    EXPECT_FALSE(Exists<Foo>(moved));
+    EXPECT_FALSE(Exists<Bar>(moved));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
   }
   {
     Variant<Foo, Bar> empty;
     Variant<Foo, Bar> moved;
     moved = std::move(empty);
     EXPECT_FALSE(moved.ExistsImpl());
+    EXPECT_FALSE(Exists(moved));
+    EXPECT_FALSE(Exists<Foo>(moved));
+    EXPECT_FALSE(Exists<Bar>(moved));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(moved)));
   }
 
   // Copy empty.
@@ -345,25 +390,46 @@ TEST(TypeSystemTest, VariantCreateAndCopy) {
     Variant<Foo, Bar> empty;
     Variant<Foo, Bar> copied(empty);
     EXPECT_FALSE(copied.ExistsImpl());
+    EXPECT_FALSE(Exists(copied));
+    EXPECT_FALSE(Exists<Foo>(copied));
+    EXPECT_FALSE(Exists<Bar>(copied));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(copied)));
   }
   {
     Variant<Foo, Bar> empty;
     Variant<Foo, Bar> copied;
     copied = empty;
     EXPECT_FALSE(copied.ExistsImpl());
+    EXPECT_FALSE(Exists(copied));
+    EXPECT_FALSE(Exists<Foo>(copied));
+    EXPECT_FALSE(Exists<Bar>(copied));
+    EXPECT_FALSE((Exists<Variant<Foo, Bar>>(copied)));
   }
 
   // Move non-empty.
   {
     Variant<Foo, Bar> foo(Foo(100u));
+    EXPECT_TRUE(Exists(foo));
+    EXPECT_TRUE(Exists<Foo>(foo));
+    EXPECT_FALSE(Exists<Bar>(foo));
     Variant<Foo, Bar> moved(std::move(foo));
+    EXPECT_TRUE(Exists(moved));
+    EXPECT_TRUE(Exists<Foo>(moved));
+    EXPECT_FALSE(Exists<Bar>(moved));
     EXPECT_EQ(100u, Value<Foo>(moved).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
+    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
   }
   {
     Variant<Foo, Bar> foo(Foo(101u));
     Variant<Foo, Bar> moved;
     moved = std::move(foo);
+    EXPECT_TRUE(Exists(moved));
+    EXPECT_TRUE(Exists<Foo>(moved));
+    EXPECT_FALSE(Exists<Bar>(moved));
     EXPECT_EQ(101u, Value<Foo>(moved).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(moved)));
+    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(moved)).i));
   }
 
   // Copy non-empty.
@@ -371,16 +437,29 @@ TEST(TypeSystemTest, VariantCreateAndCopy) {
     Variant<Foo, Bar> foo(Foo(100u));
     Variant<Foo, Bar> copied(foo);
     Value<Foo>(foo).i = 101u;
+    EXPECT_TRUE(Exists(copied));
+    EXPECT_TRUE(Exists<Foo>(copied));
+    EXPECT_FALSE(Exists<Bar>(copied));
+    EXPECT_EQ(100u, Value<Foo>(copied).i);
     EXPECT_EQ(100u, Value<Foo>(copied).i);
     EXPECT_EQ(101u, Value<Foo>(foo).i);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(copied)));
+    EXPECT_EQ(100u, (Value<Foo>(Value<Variant<Foo, Bar>>(copied)).i));
+    EXPECT_EQ(101u, (Value<Foo>(Value<Variant<Foo, Bar>>(foo)).i));
   }
   {
     Variant<Foo, Bar> bar(Bar(100u));
     Variant<Foo, Bar> copied;
     copied = bar;
+    EXPECT_TRUE(Exists(copied));
+    EXPECT_FALSE(Exists<Foo>(copied));
+    EXPECT_TRUE(Exists<Bar>(copied));
     Value<Bar>(bar).j = 101u;
     EXPECT_EQ(100u, Value<Bar>(copied).j);
     EXPECT_EQ(101u, Value<Bar>(bar).j);
+    EXPECT_TRUE((Exists<Variant<Foo, Bar>>(copied)));
+    EXPECT_EQ(100u, (Value<Bar>(Value<Variant<Foo, Bar>>(copied)).j));
+    EXPECT_EQ(101u, (Value<Bar>(Value<Variant<Foo, Bar>>(bar)).j));
   }
 }
 

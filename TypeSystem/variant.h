@@ -219,6 +219,12 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
     return dynamic_cast<const X*>(object_.get()) != nullptr;
   }
 
+  // Variant `Exists<>` when queried for its own top-level `Variant` type.
+  template <typename X>
+  ENABLE_IF<std::is_same<X, VariantImpl>::value, bool> VariantExistsImpl() const {
+    return ExistsImpl();
+  }
+
   template <typename X>
   ENABLE_IF<!std::is_same<X, CurrentStruct>::value, X&> VariantValueImpl() {
     X* ptr = dynamic_cast<X*>(object_.get());
@@ -236,6 +242,25 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
       return *ptr;
     } else {
       throw NoValueOfTypeException<X>();
+    }
+  }
+
+  // Variant returns itself when `Value<>`-queried for its own top-level `Variant` type.
+  template <typename X>
+  ENABLE_IF<std::is_same<X, VariantImpl>::value, VariantImpl&> VariantValueImpl() {
+    if (ExistsImpl()) {
+      return *this;
+    } else {
+      throw NoValueOfTypeException<VariantImpl>();
+    }
+  }
+
+  template <typename X>
+  ENABLE_IF<std::is_same<X, VariantImpl>::value, const VariantImpl&> VariantValueImpl() const {
+    if (ExistsImpl()) {
+      return *this;
+    } else {
+      throw NoValueOfTypeException<VariantImpl>();
     }
   }
 
