@@ -32,17 +32,11 @@ CURRENT_STRUCT(Empty){};
 
 CURRENT_STRUCT(C) {
   CURRENT_FIELD(e, Empty);
-#ifndef _MSC_VER
   CURRENT_FIELD(c, (Variant<X, Y>));
-#else
-  typedef Variant<X, Y> t_c;
-  CURRENT_FIELD(c, t_c);
-#endif
   CURRENT_DEFAULT_CONSTRUCTOR(C) {}  // LCOV_EXCL_LINE
   CURRENT_CONSTRUCTOR(C)(Variant<X, Y> && c) : c(std::move(c)) {}
 };
 
-#ifndef _MSC_VER
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
   CURRENT_FIELD(v1, std::vector<std::string>);
@@ -52,20 +46,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(q, (Variant<A, B, C, Empty>));
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, C, Empty> && q) : q(std::move(q)) {}
 };
-#else
-CURRENT_STRUCT(FullTest) {
-  CURRENT_FIELD(primitives, Primitives);
-  CURRENT_FIELD(v1, std::vector<std::string>);
-  CURRENT_FIELD(v2, std::vector<Primitives>);
-  typedef std::pair<std::string, Primitives> t_p;
-  CURRENT_FIELD(p, t_p);
-  CURRENT_FIELD(o, Optional<Primitives>);
-  typedef Variant<A, B, C, Empty> t_q;
-  CURRENT_FIELD(q, t_q);
-  CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, C, Empty> && q) : q(std::move(q)) {}
-};
-#endif
 
-}  // namespace
+}  // namespace SMOKE_TEST_STRUCT_NAMESPACE
 
 #endif

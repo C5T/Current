@@ -361,16 +361,7 @@ class StreamImpl {
         data_, std::unique_ptr<F, current::NullDeleter>(&subscriber));
   }
 
-  // Sherlock handler for serving stream data via HTTP.
-  // Expects "GET" request with the following possible parameters:
-  // * `recent={us}` to get entries within `us` microseconds from now;
-  // * `since={us_timestamp}` to get entries since the specified timestamp;
-  // * `n={x}` to get last `x` entries;
-  // * `n_min={min}` to get at least `min` entries;
-  // * `cap={max}` to get at most `max` entries;
-  // * `nowait` to stop serving when the last entry in the stream reached;
-  // * `sizeonly` to get the current number of entries in the stream instead of its content.
-  // See `pubsub.h` for details.
+  // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
     if (r.method == "GET" || r.method == "HEAD") {

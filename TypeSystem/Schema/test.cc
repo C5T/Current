@@ -65,7 +65,7 @@ TEST(Schema, StructSchema) {
 
   StructSchema struct_schema;
   {
-    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
     EXPECT_EQ("", schema.Describe<Language::CPP>(false));
@@ -76,7 +76,7 @@ TEST(Schema, StructSchema) {
   struct_schema.AddType<std::string>();
 
   {
-    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_TRUE(schema.order.empty());
     EXPECT_TRUE(schema.types.empty());
     EXPECT_EQ("", schema.Describe<Language::CPP>(false));
@@ -85,7 +85,7 @@ TEST(Schema, StructSchema) {
   struct_schema.AddType<Z>();
 
   {
-    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_EQ(
         "struct X {\n"
         "  int32_t i;\n"
@@ -103,7 +103,7 @@ TEST(Schema, StructSchema) {
   struct_schema.AddType<C>();
 
   {
-    const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_EQ(
         "struct X {\n"
         "  int32_t i;\n"
@@ -135,12 +135,7 @@ CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>)
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
-#ifndef _MSC_VER
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
-#else
-  typedef std::map<std::string, SelfContainingC> t_m;
-  CURRENT_FIELD(m, t_m);
-#endif
 };
 
 }  // namespace schema_test
@@ -154,7 +149,7 @@ TEST(Schema, SelfContatiningStruct) {
   StructSchema struct_schema;
   struct_schema.AddType<SelfContainingC>();
 
-  const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
+  const SchemaInfo schema = struct_schema.GetSchemaInfo();
   EXPECT_EQ(
       "struct SelfContainingA {\n"
       "  std::vector<SelfContainingA> v;\n"
@@ -185,33 +180,7 @@ TEST(Schema, SmokeTestFullStruct) {
 
   StructSchema struct_schema;
   struct_schema.AddType<smoke_test_struct_namespace::FullTest>();
-  const SchemaInfo schema = Clone(struct_schema.GetSchemaInfo());
-
-  if (false) {
-    // This will not run, but should compile.
-    // LCOV_EXCL_START
-    {
-      using namespace smoke_test_struct_namespace;
-      A a;
-      B b;
-      X x;
-      C c(x);
-      FullTest original(std::move(c));
-
-      if (false) {
-        smoke_test_struct_namespace::FullTest clone_initialized(Clone(original));
-        smoke_test_struct_namespace::FullTest* clone_copied;
-        *clone_copied = Clone(original);
-      }
-
-      if (false) {
-        smoke_test_struct_namespace::FullTest move_initialized(std::move(original));
-        smoke_test_struct_namespace::FullTest* move_copied;
-        *move_copied = std::move(original);
-      }
-    }
-    // LCOV_EXCL_STOP
-  }
+  const SchemaInfo schema = struct_schema.GetSchemaInfo();
 
   if (FLAGS_write_reflection_golden_files) {
     // LCOV_EXCL_START
