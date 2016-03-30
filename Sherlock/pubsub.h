@@ -2,6 +2,7 @@
 The MIT License (MIT)
 
 Copyright (c) 2015 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +36,81 @@ SOFTWARE.
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/time/chrono.h"
 
+// HTTP publish-subscribe configuration.
+//
+// Accepted HTTP methods: GET, HEAD.
+//
+// 1. Range selection logic, defined by corresponding URL query parameters.
+//
+// 1.1. The beginning of the range, microsecond-based.
+//
+//      By default, the records are returned from the very beginning of the stream.
+//      Extra constraints can be specified by the user.
+//      For the record to be returned, all constraints should pass (i.e, the filters are logically AND-ed).
+//
+//      `since` :  The absolute epoch microseconds timestamp of the first record to be returned.
+//                 Records with the `timestamp >= since` pass this filter.
+//
+//      `recent` : Return the records with timestamps at most `recent` microseconds of age,
+//                 with respect to the time the request has been made.
+//
+//                 Conceptually equivalent to `&since=$(date -d '$((recent / 1000000)) sec ago' +"%s000000")`,
+//                 except the time difference is more precise and computed on the server side.
+//
+// 1.2. The beginning of the range, index-based.
+//
+//      `i`    : The index of the first record to return. Indexes of records in Sherlock are 0-based.
+//
+//      `tail` : Return the records beginning from the index, which is exactly `tail` records until the end.
+//
+//               Data-wise, `curl &tail=$COUNT` is equivalent to `tail -n $COUNT -f`.
+//               Use `&nowait` to remove the `-f` part of the logic.
+//
+//               The `tail` condition is tricky, as new data records may be added between the request was sent
+//               and this request being fulfilled. Sherlock provides the guarantee that if the stream contains
+//               at least `tail` records at the time the request is being fulfilled, the first `tail` records
+//               returned would be the ones already available, so no waiting would happen.
+//
+//               Conceptually, the above means that `curl &tail=$(curl &sizeonly)&nowait` would always return
+//               exactly `tail` records.
+//
+//      Combining `tail` and `i` is possible, in which case the tightest of the constraint would be used.
+//      For instance, if the stream contains 100 records, both `?i=50&tail=10 and `?i=90&tail=50` would return
+//      the entries starting from the 90-th 0-based one.
+//
+// 2. The end of the range.
+//
+//    `n`      : The total number of records to return.
+//               Can be combined with `i`, with an obvious pattern being `&i=$INDEX&n=1`.
+//
+//    `period` : The length, in microseconds, of the band between the first and the last record
+//               timestamp-wise.
+//               The subscription channel will close itself as soon as the next data record,
+//               or the HEAD of the stream, is `period` or more microseconds from the minimum between
+//               the first record returned and the earliest timestamp requested via `since` or `recent`.
+//
+// 3. Termination conditions.
+//
+//    By default, unless the end of the range has been specified, Sherlock's publish-subscribe
+//    behaves as a `tail -f` call: it will return the records indefinitely, waiting for the new ones to
+//    arrive.
+//
+//    There are several ways to request an early termination of the stream of data:
+//
+//    `nowait`            : If set, never wait for new entries, return immediately upon reaching the end.
+//                          Effectively, `nowait` to Sherlock is what the absence of `-f` does to `tail`.
+//
+//    `stop_after_bytes`  : If set, stop streaming as soon as total JTML response size exceeds certain size.
+//                          This flag is used for backup purposes.
+// 4. Special parameters.
+//
+//    `sizeonly`   : Instead of the actual data, return the total number of records in the stream.
+//
+//    HEAD request : Same as `sizeonly`, but return the total number of records in HTTP header, not body.
+
+// TODO(dkorolev): Add timestamps to `sizeonly` and `HEAD` too?
+// TODO(dkorolev): Mention head updates now as we're here?
+
 namespace current {
 namespace sherlock {
 
@@ -48,22 +124,22 @@ class PubSubHTTPEndpointImpl {
       from_timestamp_ = r.timestamp - std::chrono::microseconds(
                                           current::FromString<uint64_t>(http_request_.url.query["recent"]));
     } else if (http_request_.url.query.has("since")) {
-      serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
+      serving_ = false;  // Start in 'non-serving' mode when `since` is set.
       from_timestamp_ =
           std::chrono::microseconds(current::FromString<uint64_t>(http_request_.url.query["since"]));
+    } else if (http_request_.url.query.has("tail")) {
+      serving_ = false;  // Start in 'non-serving' mode when `tail` is set.
+      current::FromString(http_request_.url.query["tail"], tail_);
+    }
+    if (http_request_.url.query.has("i")) {
+      serving_ = false;  // Start in 'non-serving' mode when `i` is set.
+      current::FromString(http_request_.url.query["i"], i_);
     }
     if (http_request_.url.query.has("n")) {
-      serving_ = false;  // Start in 'non-serving' mode when `n` is set.
       current::FromString(http_request_.url.query["n"], n_);
-      cap_ = n_;  // If `?n=` parameter is set, it sets `cap_` too by default. Use `?n=...&cap=0` to override.
     }
-    if (http_request_.url.query.has("n_min")) {
-      // `n_min` is same as `n`, but it does not set the cap; just the lower bound for `recent`.
-      serving_ = false;  // Start in 'non-serving' mode when `n_min` is set.
-      current::FromString(http_request_.url.query["n_min"], n_);
-    }
-    if (http_request_.url.query.has("cap")) {
-      current::FromString(http_request_.url.query["cap"], cap_);
+    if (http_request_.url.query.has("period")) {
+      period_ = std::chrono::microseconds(current::FromString<uint64_t>(http_request_.url.query["period"]));
     }
     if (http_request_.url.query.has("stop_after_bytes")) {
       current::FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
@@ -80,41 +156,50 @@ class PubSubHTTPEndpointImpl {
   // It does so to respect the URL parameters of the range of entries to subscribe to.
   ss::EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
-    try {
-      if (!serving_) {
-        // Respect `n`.
-        if (last.index - current.index < n_) {
-          serving_ = true;
-        }
-        // Respect `recent`.
-        if (from_timestamp_.count() && current.us >= from_timestamp_) {
-          serving_ = true;
-        }
+    if (!serving_) {
+      if (current.index >= i_ &&                                               // Respect `i`.
+          (tail_ == 0u || (last.index - current.index) < tail_) &&             // Respect `tail`.
+          (from_timestamp_.count() == 0u || current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
+        serving_ = true;
       }
-      if (serving_) {
-        const std::string entry_json(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
-        current_response_size_ += entry_json.length();
-        http_response_(std::move(entry_json));
-        // Respect `stop_after_bytes`.
-        if (stop_after_bytes_ && current_response_size_ >= stop_after_bytes_) {
-          return ss::EntryResponse::Done;
-        }
-        // Respect `cap`.
-        if (cap_) {
-          --cap_;
-          if (!cap_) {
-            return ss::EntryResponse::Done;
-          }
-        }
-        // Respect `no_wait`.
-        if (current.index == last.index && no_wait_) {
-          return ss::EntryResponse::Done;
-        }
+      // Reached the end, didn't started serving and should not wait.
+      if (!serving_ && current.index == last.index && no_wait_) {
+        return ss::EntryResponse::Done;
       }
-      return ss::EntryResponse::More;
-    } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
-      return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
     }
+    if (serving_) {
+      // If `period` is set, set the maximum possible timestamp.
+      if (period_.count() && to_timestamp_.count() == 0u) {
+        to_timestamp_ = current.us + period_;
+      }
+      // Stop serving if the limit on timestamp is exceeded.
+      if (to_timestamp_.count() && current.us > to_timestamp_) {
+        return ss::EntryResponse::Done;
+      }
+      const std::string entry_json(JSON<J>(current) + '\t' + JSON<J>(entry) + '\n');
+      current_response_size_ += entry_json.length();
+      try {
+        http_response_(std::move(entry_json));
+      } catch (const current::net::NetworkException&) {  // LCOV_EXCL_LINE
+        return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
+      }
+      // Respect `stop_after_bytes`.
+      if (stop_after_bytes_ && current_response_size_ >= stop_after_bytes_) {
+        return ss::EntryResponse::Done;
+      }
+      // Respect `n`.
+      if (n_) {
+        --n_;
+        if (!n_) {
+          return ss::EntryResponse::Done;
+        }
+      }
+      // Respect `no_wait`.
+      if (current.index == last.index && no_wait_) {
+        return ss::EntryResponse::Done;
+      }
+    }
+    return ss::EntryResponse::More;
   }
 
   // LCOV_EXCL_START
@@ -134,14 +219,20 @@ class PubSubHTTPEndpointImpl {
 
   // Conditions on which parts of the stream to serve.
   bool serving_ = true;
-  // If set, the number of "last" entries to output.
-  size_t n_ = 0;
-  // If set, the hard limit on the maximum number of entries to output.
-  size_t cap_ = 0;
-  // If set, stop serving after the response size reached/exceeded the value.
-  size_t stop_after_bytes_ = 0;
   // If set, the timestamp from which the output should start.
   std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);
+  // If set, the number of "last" entries to output.
+  size_t tail_ = 0u;
+  // If set, the index of the first record to return.
+  uint64_t i_ = 0u;
+  // If set, the total number of records to return.
+  size_t n_ = 0u;
+  // If set, the maximum difference between the first and the last record's timestamp.
+  std::chrono::microseconds period_ = std::chrono::microseconds(0);
+  // Calculated if `period_` is set.
+  std::chrono::microseconds to_timestamp_ = std::chrono::microseconds(0);
+  // If set, stop serving after the response size reached/exceeded the value.
+  size_t stop_after_bytes_ = 0u;
   // If set, stop serving when current entry is the last entry.
   bool no_wait_ = false;
 
