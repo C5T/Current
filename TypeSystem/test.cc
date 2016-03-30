@@ -167,6 +167,32 @@ TEST(TypeSystemTest, ExistsAndValueSemantics) {
   }
 }
 
+TEST(TypeSystemTest, ExistsForNonVariants) {
+  using namespace struct_definition_test;
+
+  Foo foo;
+  EXPECT_TRUE(Exists<Foo>(foo));
+  EXPECT_FALSE(Exists<Bar>(foo));
+  EXPECT_FALSE(Exists<int>(foo));
+  const Foo& foo_cref = foo;
+  EXPECT_TRUE(Exists<Foo>(foo_cref));
+  EXPECT_FALSE(Exists<Bar>(foo_cref));
+  EXPECT_FALSE(Exists<int>(foo_cref));
+  Foo& foo_ref = foo;
+  EXPECT_TRUE(Exists<Foo>(foo_ref));
+  EXPECT_FALSE(Exists<Bar>(foo_ref));
+  Foo&& foo_rref = std::move(foo);
+  EXPECT_TRUE(Exists<Foo>(foo_rref));
+  EXPECT_FALSE(Exists<Bar>(foo_rref));
+  EXPECT_FALSE(Exists<int>(foo_rref));
+
+  EXPECT_TRUE(Exists<int>(42));
+  EXPECT_FALSE(Exists<int>(foo));
+  EXPECT_FALSE(Exists<int>(foo_cref));
+  EXPECT_FALSE(Exists<int>(foo_ref));
+  EXPECT_FALSE(Exists<int>(foo_rref));
+}
+
 TEST(TypeSystemTest, CopyDoesItsJob) {
   using namespace struct_definition_test;
 

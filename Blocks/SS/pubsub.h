@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include "idx_ts.h"
 
+#include "../../TypeSystem/variant.h"
 #include "../../Bricks/time/chrono.h"
 
 namespace current {
@@ -70,20 +71,22 @@ class StreamPublisher : public GenericStreamPublisher<ENTRY>, public EntryPublis
   // The real differentiation would be `UpdateHead()`. -- D.K.
 };
 
-// For `static_assert`-s.
+// For `static_assert`-s. Must `decay<>` for template xvalue references support.
 template <typename T>
 struct IsPublisher {
-  static constexpr bool value = std::is_base_of<GenericPublisher, T>::value;
+  static constexpr bool value = std::is_base_of<GenericPublisher, current::decay<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsEntryPublisher {
-  static constexpr bool value = std::is_base_of<GenericEntryPublisher<E>, T>::value;
+  static constexpr bool value =
+      std::is_base_of<GenericEntryPublisher<current::decay<E>>, current::decay<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsStreamPublisher {
-  static constexpr bool value = std::is_base_of<GenericStreamPublisher<E>, T>::value;
+  static constexpr bool value =
+      std::is_base_of<GenericStreamPublisher<current::decay<E>>, current::decay<T>>::value;
 };
 
 enum class EntryResponse { Done = 0, More = 1 };
@@ -121,20 +124,60 @@ class StreamSubscriber : public GenericStreamSubscriber<ENTRY>, public EntrySubs
   using EntrySubscriber<IMPL, ENTRY>::EntrySubscriber;
 };
 
+// For `static_assert`-s. Must `decay<>` for template xvalue references support.
 template <typename T>
 struct IsSubscriber {
-  static constexpr bool value = std::is_base_of<GenericSubscriber, T>::value;
+  static constexpr bool value = std::is_base_of<GenericSubscriber, current::decay<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsEntrySubscriber {
-  static constexpr bool value = std::is_base_of<GenericEntrySubscriber<E>, T>::value;
+  static constexpr bool value =
+      std::is_base_of<GenericEntrySubscriber<current::decay<E>>, current::decay<T>>::value;
 };
 
 template <typename T, typename E>
 struct IsStreamSubscriber {
-  static constexpr bool value = std::is_base_of<GenericStreamSubscriber<E>, T>::value;
+  static constexpr bool value =
+      std::is_base_of<GenericStreamSubscriber<current::decay<E>>, current::decay<T>>::value;
 };
+
+namespace impl {
+
+template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT>
+struct PassEntryToSubscriberOrSkipItImpl {
+  static_assert(TypeListContains<typename STREAM_UNDERLYING_VARIANT::T_TYPELIST, TYPE_SUBSCRIBED_TO>::value,
+                "Subscribing to the type different from the underlying type requires the underlying type"
+                " to be a `Variant<>` containing the subscribed to type as an option.");
+
+  template <typename F, typename E>
+  static EntryResponse Dispatch(F&& f, E&& entry, idxts_t current, idxts_t last) {
+    static_assert(IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    const E& entry_cref = entry;
+    if (Exists<TYPE_SUBSCRIBED_TO>(entry_cref)) {
+      return f(Value<TYPE_SUBSCRIBED_TO>(std::forward<E>(entry)), current, last);
+    } else {
+      return EntryResponse::More;
+    }
+  }
+};
+
+template <typename T>
+struct PassEntryToSubscriberOrSkipItImpl<T, T> {
+  template <typename F, typename E>
+  static EntryResponse Dispatch(F&& f, E&& entry, idxts_t current, idxts_t last) {
+    static_assert(IsEntrySubscriber<F, T>::value, "");
+    return f(std::forward<E>(entry), current, last);
+  }
+};
+
+}  // namespace current::ss::impl
+
+template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT, typename F, typename E>
+EntryResponse PassEntryToSubscriberOrSkipIt(F&& f, E&& entry, idxts_t current, idxts_t last) {
+  return impl::PassEntryToSubscriberOrSkipItImpl<TYPE_SUBSCRIBED_TO, STREAM_UNDERLYING_VARIANT>::Dispatch(
+      std::forward<F>(f), std::forward<E>(entry), current, last);
+}
 
 }  // namespace current::ss
 }  // namespace current
