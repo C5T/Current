@@ -371,16 +371,16 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   }
 
   // Publish four records.
-  // { "s[0]", "s[1]", "s[2]", "s[3]" } 40, 30, 20 and 10 milliseconds ago respectively.
-  const std::chrono::microseconds now = std::chrono::microseconds(100000u);
-  current::time::SetNow(now - std::chrono::microseconds(40000));
-  exposed_stream.Publish(RecordWithTimestamp("s[0]", now - std::chrono::microseconds(40000)));  // Emplace().
-  current::time::SetNow(now - std::chrono::microseconds(30000));
-  exposed_stream.Publish(RecordWithTimestamp("s[1]", now - std::chrono::microseconds(30000)));  // Emplace().
-  current::time::SetNow(now - std::chrono::microseconds(20000));
-  exposed_stream.Publish(RecordWithTimestamp("s[2]", now - std::chrono::microseconds(20000)));  // Emplace().
-  current::time::SetNow(now - std::chrono::microseconds(10000));
-  exposed_stream.Publish(RecordWithTimestamp("s[3]", now - std::chrono::microseconds(10000)));  // Emplace().
+  // { "s[0]", "s[1]", "s[2]", "s[3]" } at timestamps 100, 200, 300 and 400 microseconds respectively.
+  current::time::SetNow(std::chrono::microseconds(100));
+  exposed_stream.Publish(RecordWithTimestamp("s[0]", std::chrono::microseconds(100)));  // Emplace().
+  current::time::SetNow(std::chrono::microseconds(200));
+  exposed_stream.Publish(RecordWithTimestamp("s[1]", std::chrono::microseconds(200)));  // Emplace().
+  current::time::SetNow(std::chrono::microseconds(300));
+  exposed_stream.Publish(RecordWithTimestamp("s[2]", std::chrono::microseconds(300)));  // Emplace().
+  current::time::SetNow(std::chrono::microseconds(400));
+  exposed_stream.Publish(RecordWithTimestamp("s[3]", std::chrono::microseconds(400)));  // Emplace().
+  const auto now = std::chrono::microseconds(500);
   current::time::SetNow(now);
 
   std::vector<std::string> s;
@@ -410,42 +410,113 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ("4", result.headers.Get("X-Current-Stream-Size"));
   }
 
-  // Test `?n=...`.
-  EXPECT_EQ(s[3], HTTP(GET(base_url + "?n=1")).body);
-
-  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?n=2")).body);
-  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=3")).body);
+  // Test `n`.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?n=1")).body);
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?n=2")).body);
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4")).body);
-  // `?n={>4}` without `nowait` parameter will block forever.
-  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=1000&nowait")).body);
+  // Test `n` + `nowait`.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=100&nowait")).body);
 
-  // Test `?cap=...`.
-  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?cap=4")).body);
-  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap=2")).body);
-  EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap=1")).body);
+  // Test `since` + `nowait`.
+  // All entries since the timestamp of the last entry.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&nowait")).body);
+  // All entries since the moment 1 us later than the second entry timestamp.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?since=201&nowait")).body);
+  // All entries since the timestamp of the second entry.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=200&nowait")).body);
+  // All entries since the timestamp in the future.
+  EXPECT_EQ("", HTTP(GET(base_url + "?since=5000&nowait")).body);
+
+  // Test `since` + `n`.
+  // One entry since the timestamp of the last entry.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?since=400&n=1")).body);
+  // Two entries since the timestamp of the first entry.
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?since=100&n=2")).body);
+
+  // Test `recent` + `nowait`.
+  // All entries since (now - 400 us).
+  EXPECT_EQ(
+      s[3],
+      HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(400)))).body);
+  // All entries since (now - 300 us).
+  EXPECT_EQ(
+      s[2] + s[3],
+      HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(300)))).body);
+  // All entries since (now - 100 us).
+  EXPECT_EQ(
+      s[0] + s[1] + s[2] + s[3],
+      HTTP(GET(base_url + "?nowait&recent=" + current::ToString(now - std::chrono::microseconds(100)))).body);
+  // Large `recent` value => all entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?nowait&recent=10000")).body);
+
+  // Test `recent` + `n`.
+  // Two entries since (now - 101 us).
+  EXPECT_EQ(
+      s[1] + s[2],
+      HTTP(GET(base_url + "?n=2&recent=" + current::ToString(now - std::chrono::microseconds(101)))).body);
+  // Three entries with large `recent` value.
+  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3&recent=10000")).body);
+
+  // Test `i` + `nowait`
+  // All entries from `index = 3`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?i=3&nowait")).body);
+  // All entries from `index = 1`.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?i=1&nowait")).body);
+
+  // Test `i` + `n`
+  // One entry from `index = 0`.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?i=0&n=1")).body);
+  // Two entry from `index = 2`.
+  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?i=2&n=2")).body);
+
+  // Test `tail` + `nowait`
+  // Last three entries.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=3&nowait")).body);
+  // Large `tail` value => all entries.
+  EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?tail=50&nowait")).body);
+
+  // Test `tail` + `n`
+  // One entry starting from the 4th from the end.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?tail=4&n=1")).body);
+  // Two entries starting from the 3rd from the end.
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?tail=3&n=2")).body);
+
+  // Test `tail` + `i` + `nowait`.
+  // More strict constraint by `tail`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=1&i=0&nowait")).body);
+  // More strict constraint by `i`.
+  EXPECT_EQ(s[3], HTTP(GET(base_url + "?tail=4&i=3&nowait")).body);
+  // Nonexistent `i`.
+  EXPECT_EQ("", HTTP(GET(base_url + "?tail=4&i=10&nowait")).body);
+
+  // Test `tail` + `i` + `n`.
+  // More strict constraint by `tail`.
+  EXPECT_EQ(s[2], HTTP(GET(base_url + "?tail=2&i=0&n=1")).body);
+  // More strict constraint by `i`.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=4&i=1&n=1")).body);
+
+  // Test `period`.
+  // Start from the first entry with the `period` less than 100.
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?period=99")).body);
+  // Start 1 us later than the first entry with the `period` less than 200.
+  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?since=101&period=199")).body);
+  // Start 1 us later than the first entry with the `period` equal to 200.
+  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?since=101&period=200&nowait")).body);
+  // Start 1 us later than the first entry with the `period` equal to 200 and limit to one entry.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?since=101&period=200&n=1")).body);
+  // Start from the third entry from the end with the `period` less than 100.
+  EXPECT_EQ(s[1], HTTP(GET(base_url + "?tail=3&period=99")).body);
 
   // Test `?stop_after_bytes=...`'
   // Request exactly the size of the first entry.
-  EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=46")).body);
+  EXPECT_EQ(s[0], HTTP(GET(base_url + "?stop_after_bytes=42")).body);
   // Request slightly more max bytes than the size of the first entry.
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=50")).body);
   // Request exactly the size of the first two entries.
-  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=92")).body);
+  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?stop_after_bytes=84")).body);
   // Request with the capacity large enough to hold all the entries.
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?stop_after_bytes=100000&nowait")).body);
-
-  // Test `?recent=...`, have to use `?cap=...`.
-  EXPECT_EQ(s[3], HTTP(GET(base_url + "?cap=1&recent=15000")).body);
-  EXPECT_EQ(s[2], HTTP(GET(base_url + "?cap=1&recent=25000")).body);
-  EXPECT_EQ(s[1], HTTP(GET(base_url + "?cap=1&recent=35000")).body);
-  EXPECT_EQ(s[0], HTTP(GET(base_url + "?cap=1&recent=45000")).body);
-
-  EXPECT_EQ(s[2] + s[3], HTTP(GET(base_url + "?cap=2&recent=25000")).body);
-  EXPECT_EQ(s[1] + s[2], HTTP(GET(base_url + "?cap=2&recent=35000")).body);
-  EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?cap=2&recent=45000")).body);
-
-  EXPECT_EQ(s[1] + s[2] + s[3], HTTP(GET(base_url + "?cap=3&recent=35000")).body);
-  EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?cap=3&recent=45000")).body);
 
   // TODO(dkorolev): Add tests that add data while the chunked response is in progress.
   // TODO(dkorolev): Unregister the exposed endpoint and free its handler. It's hanging out there now...

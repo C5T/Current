@@ -355,16 +355,82 @@ class StreamImpl {
     return std::move(SyncSubscriberScope<F>(data_, std::unique_ptr<F, current::NullDeleter>(&subscriber)));
   }
 
-  // Sherlock handler for serving stream data via HTTP.
-  // Expects "GET" request with the following possible parameters:
-  // * `recent={us}` to get entries within `us` microseconds from now;
-  // * `since={us_timestamp}` to get entries since the specified timestamp;
-  // * `n={x}` to get last `x` entries;
-  // * `n_min={min}` to get at least `min` entries;
-  // * `cap={max}` to get at most `max` entries;
-  // * `nowait` to stop serving when the last entry in the stream reached;
-  // * `sizeonly` to get the current number of entries in the stream instead of its content.
-  // See `pubsub.h` for details.
+  // HTTP publish-subscribe configuration.
+  //
+  // Accepted HTTP methods: GET, HEAD.
+  //
+  // 1. Range selection logic, defined by corresponding URL query parameters.
+  //
+  // 1.1. The beginning of the range, microsecond-based.
+  //
+  //      By default, the records are returned from the very beginning of the stream.
+  //      Extra constraints can be specified by the user.
+  //      For the record to be returned, all constraints should pass (i.e, the filters are logically AND-ed).
+  //
+  //      `since` :  The absolute epoch microseconds timestamp of the first record to be returned.
+  //                 Records with the `timestamp >= since` pass this filter.
+  //
+  //      `recent` : Return the records with timestamps at most `recent` microseconds of age,
+  //                 with respect to the time the request has been made.
+  //
+  //                 Conceptually equivalent to `&since=$(date -d '$((recent / 1000000)) sec ago' +"%s000000")`,
+  //                 except the time difference is more precise and computed on the server side.
+  //
+  // 1.2. The beginning of the range, index-based.
+  //
+  //      `i`    : The index of the first record to return. Indexes of records in Sherlock are 0-based.
+  //
+  //      `tail` : Return the records beginning from the index, which is exactly `tail` records until the end.
+  //
+  //               Data-wise, `curl &tail=$COUNT` is equivalent to `tail -n $COUNT -f`.
+  //               Use `&nowait` to remove the `-f` part of the logic.
+  //
+  //               The `tail` condition is tricky, as new data records may be added between the request was sent
+  //               and this request being fulfilled. Sherlock provides the guarantee that if the stream contains
+  //               at least `tail` records at the time the request is being fulfilled, the first `tail` records
+  //               returned would be the ones already available, so no waiting would happen.
+  //
+  //               Conceptually, the above means that `curl &tail=$(curl &sizeonly)&nowait` would always return
+  //               exactly `tail` records.
+  //
+  //      Combining `tail` and `i` is possible, in which case the tightest of the constraint would be used.
+  //      For instance, if the stream contains 100 records, both `?i=50&tail=10 and `?i=90&tail=50` would return
+  //      the entries starting from the 90-th 0-based one.
+  //
+  // 2. The end of the range.
+  //
+  //    `n`      : The total number of records to return.
+  //               Can be combined with `i`, with an obvious pattern being `&i=$INDEX&n=1`.
+  //
+  //    `period` : The length, in microseconds, of the band between the first and the last record
+  //               timestamp-wise.
+  //               The subscription channel will close itself as soon as the next data record,
+  //               or the HEAD of the stream, is `period` or more microseconds from the minimum between
+  //               the first record returned and the earliest timestamp requested via `since` or `recent`.
+  //
+  // 3. Termination conditions.
+  //
+  //    By default, unless the end of the range has been specified, Sherlock's publish-subscribe
+  //    behaves as a `tail -f` call: it will return the records indefinitely, waiting for the new ones to
+  //    arrive.
+  //
+  //    There are several ways to request an early termination of the stream of data:
+  //
+  //    `nowait`            : If set, never wait for new entries, return immediately upon reaching the end.
+  //                          Effectively, `nowait` to Sherlock is what the absence of `-f` does to `tail`.
+  //
+  //    `stop_after_bytes`  : If set, stop streaming as soon as total JTML response size exceeds certain size.
+  //                          This flag is used for backup purposes.
+  // 4. Special parameters.
+  //
+  //    `sizeonly`   : Instead of the actual data, return the total number of records in the stream.
+  //
+  //    HEAD request : Same as `sizeonly`, but return the total number of records in HTTP header, not body.
+
+  // TODO(dkorolev): Add timestamps to `sizeonly` and `HEAD` too?
+  // TODO(dkorolev): Mention head updates now as we're here?
+
+  // See `pubsub.h` for implementation details.
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
     if (r.method == "GET" || r.method == "HEAD") {
