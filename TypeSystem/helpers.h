@@ -58,7 +58,7 @@ SOFTWARE.
 
 namespace current {
 
-template <typename TEST, typename T, bool B>
+template <typename TEST, typename T, bool BOOL_IS_VARIANT>
 struct ExistsImplCallerRespectingVariant;
 
 template <typename TEST, typename T>
