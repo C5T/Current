@@ -462,6 +462,14 @@ TEST(TransactionalStorage, FieldAccessors) {
                       CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("m, UnorderedMatrix, Cell", s);
   }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<2, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("o, UnorderedOne2One, Cell", s);
+  }
 }
 
 TEST(TransactionalStorage, Exceptions) {
