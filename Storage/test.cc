@@ -955,9 +955,6 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
                                                        current::persistence::Memory>>::value,
                 "");
 
-  // current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>, current::persistence::Memory>>
-  // stream;
-
   typename Storage::T_PERSISTER::T_SHERLOCK stream;
 
   Storage storage(stream);
