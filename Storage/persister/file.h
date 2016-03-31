@@ -36,11 +36,11 @@ namespace current {
 namespace storage {
 namespace persister {
 
-template <typename>
+template <typename, typename>
 class JSONFilePersister;
 
 template <typename... TS>
-class JSONFilePersister<TypeList<TS...>> {
+class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
  public:
   using T_VARIANT = Variant<TS...>;
   using T_TRANSACTION = std::vector<T_VARIANT>;  // Mock to make it compile.

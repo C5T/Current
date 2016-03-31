@@ -553,6 +553,8 @@ class StorageSherlockTestProcessorImpl {
  public:
   StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
 
+  void SetAllowTerminate() { allow_terminate_ = true; }
+
   EntryResponse operator()(const T_TRANSACTION& transaction, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
     if (current.index != last.index) {
@@ -563,11 +565,20 @@ class StorageSherlockTestProcessorImpl {
     }
   }
 
-  TerminationResponse Terminate() {
+  TerminationResponse Terminate() const {
     if (allow_terminate_) {
       return TerminationResponse::Terminate;  // LCOV_EXCL_LINE
     } else {
       return TerminationResponse::Wait;
+    }
+  }
+
+  EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
+    return EntryResponse::More;
+    if (allow_terminate_) {
+      return EntryResponse::Done;  // LCOV_EXCL_LINE
+    } else {
+      return EntryResponse::More;
     }
   }
 
@@ -914,4 +925,69 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
       "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
       "\"T9205381019427680739\"}]}\n",
       collected);
+}
+
+namespace transactional_storage_test {
+
+CURRENT_STRUCT(StreamEntryOutsideStorage) {
+  CURRENT_FIELD(s, std::string);
+  CURRENT_CONSTRUCTOR(StreamEntryOutsideStorage)(const std::string& s = "") : s(s) {}
+};
+
+}  // namespace transactional_storage_test
+
+TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
+  using namespace transactional_storage_test;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using transaction_t = typename storage_t::T_PERSISTER::T_TRANSACTION;
+
+  static_assert(std::is_same<transaction_t, typename storage_t::T_TRANSACTION>::value, "");
+
+  using Storage = TestStorage<SherlockInMemoryStreamPersister,
+                              current::storage::transaction_policy::Synchronous,
+                              Variant<transaction_t, StreamEntryOutsideStorage>>;
+
+  static_assert(std::is_same<typename Storage::T_PERSISTER::T_SHERLOCK,
+                             current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
+                                                       current::persistence::Memory>>::value,
+                "");
+
+  // current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>, current::persistence::Memory>>
+  // stream;
+
+  typename Storage::T_PERSISTER::T_SHERLOCK stream;
+
+  Storage storage(stream);
+
+  {
+    // Add three records to the stream: first and third externally, second through the storage.
+    { stream.Publish(StreamEntryOutsideStorage("one"), std::chrono::microseconds(1)); }
+
+    {
+      current::time::SetNow(std::chrono::microseconds(2));
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+        fields.d.Add(Record{"two", 2});
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result));
+    }
+    { stream.Publish(StreamEntryOutsideStorage("three"), std::chrono::microseconds(3)); }
+  }
+
+  {
+    // Subscribe to and collect transactions.
+    std::string collected_transactions;
+    StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected_transactions);
+    processor.SetAllowTerminate();  // Must set this as the last event is not a transaction.
+    storage.InternalExposeStream().Subscribe<transaction_t>(processor).Join();
+    EXPECT_EQ("TBD", collected_transactions);
+  }
+
+  {
+    // Subscribe to and collect non-transactions.
+    std::string collected_non_transactions;
+    StorageSherlockTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
+    storage.InternalExposeStream().Subscribe<StreamEntryOutsideStorage>(processor).Join();
+    EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
+              collected_non_transactions);
+  }
 }

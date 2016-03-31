@@ -149,18 +149,19 @@ namespace storage {
   struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
   template <template <typename...> class PERSISTER,                                                          \
             typename FIELDS,                                                                                 \
-            template <typename> class TRANSACTION_POLICY>                                                    \
+            template <typename> class TRANSACTION_POLICY, \
+            typename CUSTOM_PERSISTER_PARAM>                                                    \
   struct CURRENT_STORAGE_IMPL_##name {                                                                       \
    public:                                                                                                   \
     constexpr static size_t FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value;                  \
     using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;                     \
     using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
-    using T_PERSISTER = PERSISTER<T_FIELDS_TYPE_LIST>;                                                       \
+    using T_PERSISTER = PERSISTER<T_FIELDS_TYPE_LIST, CUSTOM_PERSISTER_PARAM>;                                                       \
                                                                                                              \
    private:                                                                                                  \
     FIELDS fields_;                                                                                          \
     T_PERSISTER persister_;                                                                                  \
-    TRANSACTION_POLICY<PERSISTER<T_FIELDS_TYPE_LIST>> transaction_policy_;                                   \
+    TRANSACTION_POLICY<T_PERSISTER> transaction_policy_;                                   \
                                                                                                              \
    public:                                                                                                   \
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
@@ -211,10 +212,12 @@ namespace storage {
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \
-                ::current::storage::transaction_policy::Synchronous>                                         \
+                ::current::storage::transaction_policy::Synchronous,                                         \
+            typename CUSTOM_PERSISTER_PARAM = ::current::storage::persister::NoCustomPersisterParam> \
   using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                        \
                                            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
-                                           TRANSACTION_POLICY>;                                              \
+                                           TRANSACTION_POLICY, \
+                                           CUSTOM_PERSISTER_PARAM>;                                              \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
 // clang-format on
 
