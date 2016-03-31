@@ -545,7 +545,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
 namespace transactional_storage_test {
 
-template <typename T_TRANSACTION>
+template <typename T_SHERLOCK_ENTRY>
 class StorageSherlockTestProcessorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
@@ -558,7 +558,7 @@ class StorageSherlockTestProcessorImpl {
     allow_terminate_on_no_more_entries_of_right_type_ = true;
   }
 
-  EntryResponse operator()(const T_TRANSACTION& transaction, idxts_t current, idxts_t last) const {
+  EntryResponse operator()(const T_SHERLOCK_ENTRY& transaction, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
     if (current.index != last.index) {
       return EntryResponse::More;
