@@ -885,3 +885,33 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   EXPECT_FALSE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
   EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/foo")).code));
 }
+
+TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  static_assert(std::is_same<typename Storage::T_PERSISTER::T_SHERLOCK,
+                             current::sherlock::Stream<typename Storage::T_PERSISTER::T_TRANSACTION,
+                                                       current::persistence::Memory>>::value,
+                "");
+
+  typename Storage::T_PERSISTER::T_SHERLOCK stream;
+  Storage storage(stream);
+
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"own_stream", 42});
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  std::string collected;
+  StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  storage.InternalExposeStream().Subscribe(processor).Join();
+  EXPECT_EQ(
+      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
+      "\"T9205381019427680739\"}]}\n",
+      collected);
+}

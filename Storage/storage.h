@@ -141,6 +141,8 @@ namespace storage {
     typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
   }
 
+// TODO(dkorolev) + TODO(mzhurovich): Perhaps deprecate `FieldsCount()` in favor of a public constexpr?
+
 // clang-format off
 #define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
   template <typename INSTANTIATION_TYPE>                                                                     \
@@ -149,12 +151,14 @@ namespace storage {
             typename FIELDS,                                                                                 \
             template <typename> class TRANSACTION_POLICY>                                                    \
   struct CURRENT_STORAGE_IMPL_##name {                                                                       \
-   private:                                                                                                  \
-    FIELDS fields_;                                                                                          \
-    constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                  \
-    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                     \
+   public:                                                                                                   \
+    constexpr static size_t FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value;                  \
+    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;                     \
     using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
     using T_PERSISTER = PERSISTER<T_FIELDS_TYPE_LIST>;                                                       \
+                                                                                                             \
+   private:                                                                                                  \
+    FIELDS fields_;                                                                                          \
     T_PERSISTER persister_;                                                                                  \
     TRANSACTION_POLICY<PERSISTER<T_FIELDS_TYPE_LIST>> transaction_policy_;                                   \
                                                                                                              \
@@ -195,7 +199,7 @@ namespace storage {
                                             std::forward<T_TRANSACTION>(transaction),                        \
                                             idx_ts);                                                         \
     }                                                                                                        \
-    constexpr static size_t FieldsCount() { return fields_count; }                                           \
+    constexpr static size_t FieldsCount() { return FIELDS_COUNT; }                                           \
     void ExposeRawLogViaHTTP(int port, const std::string& route) {                                           \
       persister_.ExposeRawLogViaHTTP(port, route);                                                           \
     }                                                                                                        \

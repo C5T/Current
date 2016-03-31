@@ -51,12 +51,17 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, STREAM_RECORD_TYPE
       std::is_same<STREAM_RECORD_TYPE, impl::JustTransactionAsSherlockRecordType>::value,
       T_TRANSACTION,
       STREAM_RECORD_TYPE>::type;
+  using T_SHERLOCK = sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(ARGS&&... args)
       : stream_owned_if_any_(
             std::make_unique<sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>>(std::forward<ARGS>(args)...)),
         stream_used_(*stream_owned_if_any_.get()) {}
+
+  // TODO(dkorolev): `ScopeOwnedBySomeoneElse<>` ?
+  explicit SherlockStreamPersisterImpl(T_SHERLOCK& stream_owned_by_someone_else)
+      : stream_used_(stream_owned_by_someone_else) {}
 
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
@@ -96,11 +101,11 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER, STREAM_RECORD_TYPE
     handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_used_);
   }
 
-  sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>& InternalExposeStream() { return stream_used_; }
+  T_SHERLOCK& InternalExposeStream() { return stream_used_; }
 
   // `stream_{used/owned}_` are two variables to support both owning and non-owning Storage usage patterns.
   std::unique_ptr<sherlock::Stream<T_TRANSACTION, PERSISTER>> stream_owned_if_any_;
-  sherlock::Stream<T_SHERLOCK_ENTRY, PERSISTER>& stream_used_;
+  T_SHERLOCK& stream_used_;
 
   HTTPRoutesScope handlers_scope_;
 };
