@@ -73,35 +73,34 @@ class GenericOne2One {
       const auto it_col = transposed_.find(col);
       bool row_occupied = it_row != forward_.end();
       bool col_occupied = it_col != transposed_.end();
-      // TODO: need to simplify, this is too complex
-      if (!row_occupied && !col_occupied) {
-        journal_.LogMutation(T_UPDATE_EVENT(object),
-                             [this, row_col]() { DoErase(row_col); });
-      } else if (row_occupied && col_occupied) {
+      if (row_occupied && col_occupied) {
         const T prev_object1 = *(it_row->second);
         const T prev_object2 = *(it_col->second);
         const auto row_col1 = std::make_pair(row, sfinae::GetCol(prev_object1));
         const auto row_col2 = std::make_pair(sfinae::GetRow(prev_object2), col);
-        journal_.LogMutation(T_UPDATE_EVENT(object),
-                             [this, row_col, row_col1, prev_object1, row_col2, prev_object2] {
-                               DoErase(row_col);
+        journal_.LogMutation(T_DELETE_EVENT(prev_object1),
+                             [this, row_col1, prev_object1]() {
                                DoAdd(row_col1, prev_object1);
+                             });
+        journal_.LogMutation(T_DELETE_EVENT(prev_object2),
+                             [this, row_col2, prev_object2]() {
                                DoAdd(row_col2, prev_object2);
                              });
         DoErase(row_col1);
         DoErase(row_col2);
-      } else {
+      } else if (row_occupied || col_occupied) {
         const T prev_object = row_occupied ? *(it_row->second) : *(it_col->second);
         const auto prev_row_col = std::make_pair(sfinae::GetRow(prev_object),
                                                  sfinae::GetCol(prev_object));
-        journal_.LogMutation(T_UPDATE_EVENT(object),
-                             [this, row_col, prev_row_col, prev_object]() {
-                               DoErase(row_col);
+        journal_.LogMutation(T_DELETE_EVENT(prev_object),
+                             [this, prev_row_col, prev_object]() {
                                DoAdd(prev_row_col, prev_object);
                              });
         DoErase(prev_row_col);
       }
     }
+    journal_.LogMutation(T_UPDATE_EVENT(object),
+                         [this, row_col]() { DoErase(row_col); });
     DoAdd(row_col, object);
   }
   
@@ -109,7 +108,7 @@ class GenericOne2One {
     auto it = map_.find(row_col);
     if (it != map_.end()) {
       const T previous_object = *(it->second);
-      journal_.LogMutation(T_UPDATE_EVENT(previous_object),
+      journal_.LogMutation(T_DELETE_EVENT(previous_object),
                            [this, row_col, previous_object]() {
                              DoAdd(row_col, previous_object);
                            });
@@ -131,7 +130,7 @@ class GenericOne2One {
   void operator()(const T_UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
-    DoAdd(std::make_pair(row, col), e.data); // ??? is it enough? What about integrity?
+    DoAdd(std::make_pair(row, col), e.data);
   }
   void operator()(const T_DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
   
