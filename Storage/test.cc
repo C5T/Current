@@ -996,4 +996,15 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
               collected_non_transactions);
   }
+
+  {
+    // Confirm replaying storage with a mixed-content stream does its job.
+    Storage replayed(stream);
+    const auto result = replayed.Transaction([](ImmutableFields<Storage> fields) {
+      EXPECT_EQ(1u, fields.d.Size());
+      ASSERT_TRUE(Exists(fields.d["two"]));
+      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
 }
