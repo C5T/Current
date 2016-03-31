@@ -419,7 +419,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(Exists(fields.o.Get(2, "two")));
       EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
       EXPECT_FALSE(fields.o.Cols().Has("three"));
-      EXPECT_FALSE(fields.o.Cols().Has("too"));
+      EXPECT_TRUE(fields.o.Cols().Has("too"));
     }).Wait();
   }
 }
@@ -447,7 +447,7 @@ TEST(TransactionalStorage, FieldAccessors) {
   Storage storage;
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<1>()));
-  EXPECT_EQ("o", storage(::current::storage::FieldNameByIndex<3>()));
+  EXPECT_EQ("o", storage(::current::storage::FieldNameByIndex<2>()));
 
   {
     std::string s;
