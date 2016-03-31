@@ -554,6 +554,9 @@ class StorageSherlockTestProcessorImpl {
   StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
 
   void SetAllowTerminate() { allow_terminate_ = true; }
+  void SetAllowTerminateOnOnMoreEntriesOfRightType() {
+    allow_terminate_on_no_more_entries_of_right_type_ = true;
+  }
 
   EntryResponse operator()(const T_TRANSACTION& transaction, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
@@ -574,8 +577,7 @@ class StorageSherlockTestProcessorImpl {
   }
 
   EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
-    return EntryResponse::More;
-    if (allow_terminate_) {
+    if (allow_terminate_on_no_more_entries_of_right_type_) {
       return EntryResponse::Done;  // LCOV_EXCL_LINE
     } else {
       return EntryResponse::More;
@@ -584,6 +586,7 @@ class StorageSherlockTestProcessorImpl {
 
  private:
   mutable bool allow_terminate_ = false;
+  bool allow_terminate_on_no_more_entries_of_right_type_ = false;
   std::string& output_;
 };
 
@@ -976,16 +979,22 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   {
     // Subscribe to and collect transactions.
     std::string collected_transactions;
-    StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected_transactions);
-    processor.SetAllowTerminate();  // Must set this as the last event is not a transaction.
+    StorageSherlockTestProcessor<transaction_t> processor(collected_transactions);
+    processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
     storage.InternalExposeStream().Subscribe<transaction_t>(processor).Join();
-    EXPECT_EQ("TBD", collected_transactions);
+    EXPECT_EQ(
+        "{\"index\":1,\"us\":2}\t"
+        "{\"meta\":{\"timestamp\":2,\"fields\":{}},\"mutations\":["
+        "{\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}"
+        "]}\n",
+        collected_transactions);
   }
 
   {
     // Subscribe to and collect non-transactions.
     std::string collected_non_transactions;
     StorageSherlockTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
+    processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
     storage.InternalExposeStream().Subscribe<StreamEntryOutsideStorage>(processor).Join();
     EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
               collected_non_transactions);
