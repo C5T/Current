@@ -141,6 +141,7 @@ namespace storage {
     typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
   }
 
+// clang-format off
 #define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
   template <typename INSTANTIATION_TYPE>                                                                     \
   struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
@@ -173,7 +174,7 @@ namespace storage {
       persister_.Replay([this](const T_FIELDS_VARIANT& entry) { entry.Call(fields_); });                     \
     }                                                                                                        \
     template <typename... ARGS>                                                                              \
-    typename std::result_of<FIELDS(ARGS...)>::type operator()(ARGS && ... args) {                            \
+    typename std::result_of<FIELDS(ARGS...)>::type operator()(ARGS&&... args) {                              \
       return fields_(std::forward<ARGS>(args)...);                                                           \
     }                                                                                                        \
                                                                                                              \
@@ -191,7 +192,7 @@ namespace storage {
       return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));   \
     }                                                                                                        \
     void ReplayTransaction(T_TRANSACTION&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {           \
-      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT && entry) {                              \
+      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) {                               \
         entry.Call(fields_);                                                                                 \
       }, std::forward<T_TRANSACTION>(transaction), idx_ts);                                                  \
     }                                                                                                        \
@@ -213,6 +214,7 @@ namespace storage {
                                            TRANSACTION_POLICY,                                               \
                                            CUSTOM_PERSISTER_PARAM>;                                          \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
+// clang-format on
 
 #define CURRENT_STORAGE(name)            \
   CURRENT_STORAGE_IMPLEMENTATION(name);  \
@@ -221,6 +223,7 @@ namespace storage {
       : ::current::storage::FieldsBase<  \
             CURRENT_STORAGE_FIELDS_HELPER<CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>>>
 
+// clang-format off
 #define CURRENT_STORAGE_FIELD(field_name, entry_name)                                                         \
   using T_FIELD_CONTAINER_TYPE_##field_name = entry_name::T_FIELD_TYPE<entry_name::T_ENTRY,                   \
                                                                        entry_name::T_PERSISTED_EVENT_1,       \
@@ -242,16 +245,16 @@ namespace storage {
     return field_name;                                                                                        \
   }                                                                                                           \
   template <typename F>                                                                                       \
-  void operator()(::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>, F && f) const {        \
+  void operator()(::current::storage::ImmutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) const {         \
     f(field_name);                                                                                            \
   }                                                                                                           \
   template <typename F, typename RETVAL>                                                                      \
   RETVAL operator()(::current::storage::ImmutableFieldByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,     \
-                    F && f) const {                                                                           \
+                    F&& f) const {                                                                            \
     return f(field_name);                                                                                     \
   }                                                                                                           \
   template <typename F>                                                                                       \
-  void operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>, F && f) {                \
+  void operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>, F&& f) {                 \
     f(field_name);                                                                                            \
   }                                                                                                           \
   T_FIELD_TYPE_##field_name& operator()(::current::storage::MutableFieldByIndex<FIELD_INDEX_##field_name>) {  \
@@ -259,11 +262,11 @@ namespace storage {
   }                                                                                                           \
   template <typename F, typename RETVAL>                                                                      \
   RETVAL operator()(::current::storage::MutableFieldByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,       \
-                    F && f) {                                                                                 \
+                    F&& f) {                                                                                  \
     return f(field_name);                                                                                     \
   }                                                                                                           \
   template <typename F>                                                                                       \
-  void operator()(::current::storage::FieldNameAndTypeByIndex<FIELD_INDEX_##field_name>, F && f) const {      \
+  void operator()(::current::storage::FieldNameAndTypeByIndex<FIELD_INDEX_##field_name>, F&& f) const {       \
     f(#field_name,                                                                                            \
       ::current::storage::StorageFieldTypeSelector<T_FIELD_CONTAINER_TYPE_##field_name>(),                    \
       ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                         \
@@ -278,7 +281,7 @@ namespace storage {
   }                                                                                                           \
   template <typename F, typename RETVAL>                                                                      \
   RETVAL operator()(::current::storage::FieldNameAndTypeByIndexAndReturn<FIELD_INDEX_##field_name, RETVAL>,   \
-                    F && f) const {                                                                           \
+                    F&& f) const {                                                                            \
     return f(#field_name,                                                                                     \
              ::current::storage::StorageFieldTypeSelector<T_FIELD_CONTAINER_TYPE_##field_name>(),             \
              ::current::storage::FieldUnderlyingTypesWrapper<entry_name>());                                  \
@@ -286,6 +289,7 @@ namespace storage {
   T_FIELD_TYPE_##field_name field_name = T_FIELD_TYPE_##field_name(current_storage_mutation_journal_);        \
   void operator()(const entry_name::T_PERSISTED_EVENT_1& e) { field_name(e); }                                \
   void operator()(const entry_name::T_PERSISTED_EVENT_2& e) { field_name(e); }
+// clang-format on
 
 template <typename STORAGE>
 using MutableFields = typename STORAGE::T_FIELDS_BY_REFERENCE;
