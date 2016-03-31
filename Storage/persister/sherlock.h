@@ -35,18 +35,29 @@ namespace current {
 namespace storage {
 namespace persister {
 
-template <typename TYPELIST, template <typename> class PERSISTER>
+template <typename TYPELIST, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
 class SherlockStreamPersisterImpl;
 
-template <template <typename> class PERSISTER, typename... TS>
-class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
+template <template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE, typename... TS>
+class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_RECORD_TYPE> {
  public:
   using T_VARIANT = Variant<TS...>;
   using T_TRANSACTION = Transaction<T_VARIANT>;
+  using T_SHERLOCK_ENTRY =
+      typename std::conditional<std::is_same<STREAM_RECORD_TYPE, NoCustomPersisterParam>::value,
+                                T_TRANSACTION,
+                                STREAM_RECORD_TYPE>::type;
+  using T_SHERLOCK = sherlock::Stream<T_SHERLOCK_ENTRY, UNDERLYING_PERSISTER>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(ARGS&&... args)
-      : stream_(sherlock::Stream<T_TRANSACTION, PERSISTER>(std::forward<ARGS>(args)...)) {}
+      : stream_owned_if_any_(std::make_unique<sherlock::Stream<T_SHERLOCK_ENTRY, UNDERLYING_PERSISTER>>(
+            std::forward<ARGS>(args)...)),
+        stream_used_(*stream_owned_if_any_.get()) {}
+
+  // TODO(dkorolev): `ScopeOwnedBySomeoneElse<>` ?
+  explicit SherlockStreamPersisterImpl(T_SHERLOCK& stream_owned_by_someone_else)
+      : stream_used_(stream_owned_by_someone_else) {}
 
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
@@ -56,7 +67,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
       }
       transaction.meta.timestamp = current::time::Now();
       std::swap(transaction.meta.fields, journal.meta_fields);
-      stream_.Publish(std::move(transaction));
+      stream_used_.Publish(std::move(transaction));
       journal.commit_log.clear();
       journal.rollback_log.clear();
     }
@@ -66,34 +77,42 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, PERSISTER> {
   void Replay(F&& f) {
     // TODO(dkorolev) + TODO(mzhurovich): Perhaps `Replay()` should happen automatically,
     // during construction, in a blocking way?
-    for (const auto& transaction : stream_.InternalExposePersister().Iterate()) {
-      for (const auto& mutation : transaction.entry.mutations) {
-        f(mutation);
+    for (const auto& stream_record : stream_used_.InternalExposePersister().Iterate()) {
+      if (Exists<T_TRANSACTION>(stream_record.entry)) {
+        const T_TRANSACTION& transaction = Value<T_TRANSACTION>(stream_record.entry);
+        for (const auto& mutation : transaction.mutations) {
+          f(mutation);
+        }
       }
     }
   }
 
   void ReplayTransaction(T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
-    if (stream_.Publish(transaction, idx_ts.us).index != idx_ts.index) {
+    if (stream_used_.Publish(transaction, idx_ts.us).index != idx_ts.index) {
       CURRENT_THROW(current::Exception());  // TODO(dkorolev): Proper exception text.
     }
   }
 
   void ExposeRawLogViaHTTP(int port, const std::string& route) {
-    handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_);
+    handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_used_);
   }
 
-  sherlock::Stream<T_TRANSACTION, PERSISTER>& InternalExposeStream() { return stream_; }
+  T_SHERLOCK& InternalExposeStream() { return stream_used_; }
 
-  sherlock::Stream<T_TRANSACTION, PERSISTER> stream_;
+  // `stream_{used/owned}_` are two variables to support both owning and non-owning Storage usage patterns.
+  std::unique_ptr<sherlock::Stream<T_TRANSACTION, UNDERLYING_PERSISTER>> stream_owned_if_any_;
+  T_SHERLOCK& stream_used_;
+
   HTTPRoutesScope handlers_scope_;
 };
 
-template <typename TYPELIST>
-using SherlockInMemoryStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory>;
+template <typename TYPELIST, typename STREAM_RECORD_TYPE = NoCustomPersisterParam>
+using SherlockInMemoryStreamPersister =
+    SherlockStreamPersisterImpl<TYPELIST, current::persistence::Memory, STREAM_RECORD_TYPE>;
 
-template <typename TYPELIST>
-using SherlockStreamPersister = SherlockStreamPersisterImpl<TYPELIST, current::persistence::File>;
+template <typename TYPELIST, typename STREAM_RECORD_TYPE = NoCustomPersisterParam>
+using SherlockStreamPersister =
+    SherlockStreamPersisterImpl<TYPELIST, current::persistence::File, STREAM_RECORD_TYPE>;
 
 }  // namespace persister
 }  // namespace storage

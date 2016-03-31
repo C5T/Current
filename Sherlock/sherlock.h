@@ -265,10 +265,13 @@ class StreamImpl {
                 return;
               }
             }
-            if (current::ss::PassEntryToSubscriberOrSkipIt<TYPE_SUBSCRIBED_TO, ENTRY>(
+            if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, ENTRY>(
                     subscriber,
-                    e.entry, e.idx_ts, state->data->persistence.LastPublishedIndexAndTimestamp()) ==
-                ss::EntryResponse::Done) {
+                    [&subscriber]()
+                        -> ss::EntryResponse { return subscriber.EntryResponseIfNoMorePassTypeFilter(); },
+                    e.entry,
+                    e.idx_ts,
+                    state->data->persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
               return;
             }
             index = size;
@@ -357,8 +360,8 @@ class StreamImpl {
   template <typename TYPE_SUBSCRIBED_TO = T_ENTRY, typename F>
   SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    return SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(
-        data_, std::unique_ptr<F, current::NullDeleter>(&subscriber));
+    return SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_,
+                                                      std::unique_ptr<F, current::NullDeleter>(&subscriber));
   }
 
   // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).

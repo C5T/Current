@@ -127,8 +127,8 @@ TEST(TransactionalStorage, SmokeTest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
+    EXPECT_EQ(2u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
-    EXPECT_EQ(2u, storage.FieldsCount());
 
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
@@ -331,8 +331,8 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
+  EXPECT_EQ(2u, Storage::FIELDS_COUNT);
   Storage storage;
-  EXPECT_EQ(2u, storage.FieldsCount());
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<1>()));
 
@@ -545,7 +545,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
 namespace transactional_storage_test {
 
-template <typename T_TRANSACTION>
+template <typename T_SHERLOCK_ENTRY>
 class StorageSherlockTestProcessorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
@@ -553,7 +553,12 @@ class StorageSherlockTestProcessorImpl {
  public:
   StorageSherlockTestProcessorImpl(std::string& output) : output_(output) {}
 
-  EntryResponse operator()(const T_TRANSACTION& transaction, idxts_t current, idxts_t last) const {
+  void SetAllowTerminate() { allow_terminate_ = true; }
+  void SetAllowTerminateOnOnMoreEntriesOfRightType() {
+    allow_terminate_on_no_more_entries_of_right_type_ = true;
+  }
+
+  EntryResponse operator()(const T_SHERLOCK_ENTRY& transaction, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
     if (current.index != last.index) {
       return EntryResponse::More;
@@ -563,7 +568,7 @@ class StorageSherlockTestProcessorImpl {
     }
   }
 
-  TerminationResponse Terminate() {
+  TerminationResponse Terminate() const {
     if (allow_terminate_) {
       return TerminationResponse::Terminate;  // LCOV_EXCL_LINE
     } else {
@@ -571,8 +576,17 @@ class StorageSherlockTestProcessorImpl {
     }
   }
 
+  EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
+    if (allow_terminate_on_no_more_entries_of_right_type_) {
+      return EntryResponse::Done;  // LCOV_EXCL_LINE
+    } else {
+      return EntryResponse::More;
+    }
+  }
+
  private:
   mutable bool allow_terminate_ = false;
+  bool allow_terminate_on_no_more_entries_of_right_type_ = false;
   std::string& output_;
 };
 
@@ -679,8 +693,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
+  EXPECT_EQ(3u, Storage::FIELDS_COUNT);
   Storage storage(persistence_file_name);
-  EXPECT_EQ(3u, storage.FieldsCount());
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
@@ -822,11 +836,11 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
   using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
 
+  EXPECT_EQ(3u, Storage1::FIELDS_COUNT);
+  EXPECT_EQ(3u, Storage2::FIELDS_COUNT);
+
   Storage1 storage1;
   Storage2 storage2;
-
-  EXPECT_EQ(3u, storage1.FieldsCount());
-  EXPECT_EQ(3u, storage2.FieldsCount());
 
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimpleUserPersisted>::exposed, "");
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimplePostPersisted>::exposed, "");
@@ -884,4 +898,113 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
   EXPECT_FALSE(ParseJSON<HypermediaRESTTopLevel>(HTTP(GET(base_url + "/api")).body).up);
   EXPECT_FALSE(ParseJSON<HypermediaRESTStatus>(HTTP(GET(base_url + "/api/status")).body).up);
   EXPECT_EQ(503, static_cast<int>(HTTP(GET(base_url + "/api/data/post/foo")).code));
+}
+
+TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockInMemoryStreamPersister>;
+
+  static_assert(std::is_same<typename Storage::T_PERSISTER::T_SHERLOCK,
+                             current::sherlock::Stream<typename Storage::T_PERSISTER::T_TRANSACTION,
+                                                       current::persistence::Memory>>::value,
+                "");
+
+  typename Storage::T_PERSISTER::T_SHERLOCK stream;
+  Storage storage(stream);
+
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"own_stream", 42});
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  std::string collected;
+  StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  storage.InternalExposeStream().Subscribe(processor).Join();
+  EXPECT_EQ(
+      "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
+      "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
+      "\"T9205381019427680739\"}]}\n",
+      collected);
+}
+
+namespace transactional_storage_test {
+
+CURRENT_STRUCT(StreamEntryOutsideStorage) {
+  CURRENT_FIELD(s, std::string);
+  CURRENT_CONSTRUCTOR(StreamEntryOutsideStorage)(const std::string& s = "") : s(s) {}
+};
+
+}  // namespace transactional_storage_test
+
+TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
+  using namespace transactional_storage_test;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using transaction_t = typename storage_t::T_PERSISTER::T_TRANSACTION;
+
+  static_assert(std::is_same<transaction_t, typename storage_t::T_TRANSACTION>::value, "");
+
+  using Storage = TestStorage<SherlockInMemoryStreamPersister,
+                              current::storage::transaction_policy::Synchronous,
+                              Variant<transaction_t, StreamEntryOutsideStorage>>;
+
+  static_assert(std::is_same<typename Storage::T_PERSISTER::T_SHERLOCK,
+                             current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
+                                                       current::persistence::Memory>>::value,
+                "");
+
+  typename Storage::T_PERSISTER::T_SHERLOCK stream;
+
+  Storage storage(stream);
+
+  {
+    // Add three records to the stream: first and third externally, second through the storage.
+    { stream.Publish(StreamEntryOutsideStorage("one"), std::chrono::microseconds(1)); }
+
+    {
+      current::time::SetNow(std::chrono::microseconds(2));
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+        fields.d.Add(Record{"two", 2});
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result));
+    }
+    { stream.Publish(StreamEntryOutsideStorage("three"), std::chrono::microseconds(3)); }
+  }
+
+  {
+    // Subscribe to and collect transactions.
+    std::string collected_transactions;
+    StorageSherlockTestProcessor<transaction_t> processor(collected_transactions);
+    processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
+    storage.InternalExposeStream().Subscribe<transaction_t>(processor).Join();
+    EXPECT_EQ(
+        "{\"index\":1,\"us\":2}\t"
+        "{\"meta\":{\"timestamp\":2,\"fields\":{}},\"mutations\":["
+        "{\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"two\",\"rhs\":2}},\"\":\"T9205381019427680739\"}"
+        "]}\n",
+        collected_transactions);
+  }
+
+  {
+    // Subscribe to and collect non-transactions.
+    std::string collected_non_transactions;
+    StorageSherlockTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
+    processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
+    storage.InternalExposeStream().Subscribe<StreamEntryOutsideStorage>(processor).Join();
+    EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
+              collected_non_transactions);
+  }
+
+  {
+    // Confirm replaying storage with a mixed-content stream does its job.
+    Storage replayed(stream);
+    const auto result = replayed.Transaction([](ImmutableFields<Storage> fields) {
+      EXPECT_EQ(1u, fields.d.Size());
+      ASSERT_TRUE(Exists(fields.d["two"]));
+      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
 }

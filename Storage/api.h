@@ -256,7 +256,7 @@ class RESTfulStorage {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
-    ForEachFieldByIndex<void, T_STORAGE_IMPL::FieldsCount()>::RegisterIt(
+    ForEachFieldByIndex<void, T_STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(
         storage, restful_url_prefix, data_url_component, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& handler : handlers_) {

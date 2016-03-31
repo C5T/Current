@@ -194,6 +194,11 @@ struct FieldsBase : BASE {
   }
 };
 
+// Default custom persister parameter, to enable binding Storage to a custom Sherlock.
+namespace persister {
+struct NoCustomPersisterParam {};
+}  // namespace current::storage::persister
+
 // Field tags for REST calls dispatching.
 namespace rest {
 namespace behavior {

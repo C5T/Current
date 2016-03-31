@@ -80,7 +80,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
   {
     ExampleStorage storage;
-    EXPECT_EQ(1u, storage.FieldsCount());
+    EXPECT_EQ(1u, storage.FIELDS_COUNT);
 
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
     // Add two users.
@@ -144,8 +144,8 @@ TEST(StorageDocumentation, BasicUsage) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
+    EXPECT_EQ(1u, ExampleStorage::FIELDS_COUNT);
     ExampleStorage storage(persistence_file_name);
-    EXPECT_EQ(1u, storage.FieldsCount());
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.

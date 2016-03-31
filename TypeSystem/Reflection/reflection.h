@@ -174,8 +174,8 @@ struct ReflectorImpl {
     const std::type_index type_index = std::type_index(typeid(T));
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.insert(std::make_pair(type_index, type_reflector_(TypeSelector<T>())));
-      reflected_type_by_type_id_.emplace(Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id,
-                                         reflected_cpp_types_.at(type_index));
+      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
+          type_index;
     }
     return reflected_cpp_types_.at(type_index);
   }
@@ -186,15 +186,16 @@ struct ReflectorImpl {
     if (!reflected_cpp_types_.count(type_index)) {
       reflected_cpp_types_.emplace(type_index, ReflectedType_Struct());
       type_reflector_(TypeSelector<T>(), Value<ReflectedType_Struct>(reflected_cpp_types_.at(type_index)));
-      reflected_type_by_type_id_.emplace(Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id,
-                                         reflected_cpp_types_.at(type_index));
+      type_index_by_type_id_[Value<ReflectedTypeBase>(reflected_cpp_types_.at(type_index)).type_id] =
+          type_index;
     }
     return reflected_cpp_types_.at(type_index);
   }
 
-  const ReflectedType& ReflectedTypeByTypeID(const TypeID type_id) {
-    if (reflected_type_by_type_id_.count(type_id)) {
-      return reflected_type_by_type_id_.at(type_id);
+  const ReflectedType& ReflectedTypeByTypeID(const TypeID type_id) const {
+    const auto cit = type_index_by_type_id_.find(type_id);
+    if (cit != type_index_by_type_id_.end()) {
+      return reflected_cpp_types_.at(cit->second.type_index);
     } else {
       throw UnknownTypeIDException();  // LCOV_EXCL_LINE
     }
@@ -204,8 +205,11 @@ struct ReflectorImpl {
 
  private:
   std::unordered_map<std::type_index, ReflectedType> reflected_cpp_types_;
-  std::unordered_map<TypeID, std::reference_wrapper<ReflectedType>, CurrentHashFunction<TypeID>>
-      reflected_type_by_type_id_;
+  struct DefaultConstructibleTypeIndex {
+    std::type_index type_index = std::type_index(typeid(void));
+    void operator=(const std::type_index new_value) { type_index = new_value; }
+  };
+  std::unordered_map<TypeID, DefaultConstructibleTypeIndex, CurrentHashFunction<TypeID>> type_index_by_type_id_;
   TypeReflector type_reflector_;
 
   void FixIncompleteTypeIDs(const TypeID incomplete_id, const TypeID real_id) {

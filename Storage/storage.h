@@ -147,16 +147,19 @@ namespace storage {
   struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
   template <template <typename...> class PERSISTER,                                                          \
             typename FIELDS,                                                                                 \
-            template <typename> class TRANSACTION_POLICY>                                                    \
+            template <typename> class TRANSACTION_POLICY,                                                    \
+            typename CUSTOM_PERSISTER_PARAM>                                                                 \
   struct CURRENT_STORAGE_IMPL_##name {                                                                       \
+   public:                                                                                                   \
+    enum { FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value };                                 \
+    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;                     \
+    using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
+    using T_PERSISTER = PERSISTER<T_FIELDS_TYPE_LIST, CUSTOM_PERSISTER_PARAM>;                               \
+                                                                                                             \
    private:                                                                                                  \
     FIELDS fields_;                                                                                          \
-    constexpr static size_t fields_count = ::current::storage::FieldCounter<FIELDS>::value;                  \
-    using T_FIELDS_TYPE_LIST = ::current::storage::FieldsTypeList<FIELDS, fields_count>;                     \
-    using T_FIELDS_VARIANT = Variant<T_FIELDS_TYPE_LIST>;                                                    \
-    using T_PERSISTER = PERSISTER<T_FIELDS_TYPE_LIST>;                                                       \
     T_PERSISTER persister_;                                                                                  \
-    TRANSACTION_POLICY<PERSISTER<T_FIELDS_TYPE_LIST>> transaction_policy_;                                   \
+    TRANSACTION_POLICY<T_PERSISTER> transaction_policy_;                                                     \
                                                                                                              \
    public:                                                                                                   \
     using T_FIELDS_BY_REFERENCE = FIELDS&;                                                                   \
@@ -167,13 +170,13 @@ namespace storage {
     template <typename... ARGS>                                                                              \
     CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
         : persister_(std::forward<ARGS>(args)...),                                                           \
-          transaction_policy_(persister_,                                                                    \
-                              fields_.current_storage_mutation_journal_) {                                   \
+          transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {                       \
       persister_.Replay([this](const T_FIELDS_VARIANT& entry) { entry.Call(fields_); });                     \
     }                                                                                                        \
     template <typename... ARGS>                                                                              \
-    typename std::result_of<FIELDS(ARGS...)>::type                                                           \
-    operator()(ARGS&&... args) { return fields_(std::forward<ARGS>(args)...); }                              \
+    typename std::result_of<FIELDS(ARGS...)>::type operator()(ARGS&&... args) {                              \
+      return fields_(std::forward<ARGS>(args)...);                                                           \
+    }                                                                                                        \
                                                                                                              \
    public:                                                                                                   \
     template <typename F>                                                                                    \
@@ -185,17 +188,14 @@ namespace storage {
     }                                                                                                        \
     template <typename F1, typename F2>                                                                      \
     ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
-    Transaction(F1&& f1,                                                                                     \
-                F2&& f2) {                                                                                   \
-      return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); },                          \
-                                             std::forward<F2>(f2));                                          \
+    Transaction(F1&& f1, F2&& f2) {                                                                          \
+      return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));   \
     }                                                                                                        \
     void ReplayTransaction(T_TRANSACTION&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {           \
-      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) { entry.Call(fields_); },       \
-                                            std::forward<T_TRANSACTION>(transaction),                        \
-                                            idx_ts);                                                         \
+      transaction_policy_.ReplayTransaction([this](T_FIELDS_VARIANT&& entry) {                               \
+        entry.Call(fields_);                                                                                 \
+      }, std::forward<T_TRANSACTION>(transaction), idx_ts);                                                  \
     }                                                                                                        \
-    constexpr static size_t FieldsCount() { return fields_count; }                                           \
     void ExposeRawLogViaHTTP(int port, const std::string& route) {                                           \
       persister_.ExposeRawLogViaHTTP(port, route);                                                           \
     }                                                                                                        \
@@ -207,10 +207,12 @@ namespace storage {
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \
-                ::current::storage::transaction_policy::Synchronous>                                         \
+                ::current::storage::transaction_policy::Synchronous,                                         \
+            typename CUSTOM_PERSISTER_PARAM = ::current::storage::persister::NoCustomPersisterParam>         \
   using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                        \
                                            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
-                                           TRANSACTION_POLICY>;                                              \
+                                           TRANSACTION_POLICY,                                               \
+                                           CUSTOM_PERSISTER_PARAM>;                                          \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
 // clang-format on
 

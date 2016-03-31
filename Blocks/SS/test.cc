@@ -158,8 +158,11 @@ CURRENT_STRUCT(B) {
 
 }  // namespace ss_unittest
 
-TEST(StreamSystem, PassEntryToSubscriberOrSkipIt) {
+TEST(StreamSystem, PassEntryToSubscriberIfTypeMatches) {
   using namespace ss_unittest;
+
+  // The fallback wrapper: If the passed in entry type is discarded, return `More`.
+  const auto return_more = []() -> current::ss::EntryResponse { return current::ss::EntryResponse::More; };
 
   struct AcceptorImpl {
     AcceptorImpl() = default;
@@ -205,12 +208,12 @@ TEST(StreamSystem, PassEntryToSubscriberOrSkipIt) {
     static_assert(!current::ss::IsEntrySubscriber<decltype(ab), A>::value, "");
     static_assert(!current::ss::IsEntrySubscriber<decltype(ab), B>::value, "");
     EXPECT_EQ(current::ss::EntryResponse::Done,
-              (current::ss::PassEntryToSubscriberOrSkipIt<Variant<A, B>, Variant<A, B>>(
-                  ab, Variant<A, B>(A(3)), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<Variant<A, B>, Variant<A, B>>(
+                  ab, return_more, Variant<A, B>(A(3)), idxts_t(), idxts_t())));
     EXPECT_EQ("{\"A\":{\"a\":3}}", ab.s);
     EXPECT_EQ(current::ss::EntryResponse::Done,
-              (current::ss::PassEntryToSubscriberOrSkipIt<Variant<A, B>, Variant<A, B>>(
-                  ab, Variant<A, B>(B(4)), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<Variant<A, B>, Variant<A, B>>(
+                  ab, return_more, Variant<A, B>(B(4)), idxts_t(), idxts_t())));
     EXPECT_EQ("{\"B\":{\"b\":4}}", ab.s);
   }
 
@@ -221,19 +224,19 @@ TEST(StreamSystem, PassEntryToSubscriberOrSkipIt) {
     static_assert(current::ss::IsEntrySubscriber<decltype(just_a), A>::value, "");
     static_assert(!current::ss::IsEntrySubscriber<decltype(just_a), B>::value, "");
     EXPECT_EQ(current::ss::EntryResponse::Done,
-              (current::ss::PassEntryToSubscriberOrSkipIt<A, Variant<A, B>>(
-                  just_a, Variant<A, B>(A(5)), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<A, Variant<A, B>>(
+                  just_a, return_more, Variant<A, B>(A(5)), idxts_t(), idxts_t())));
     EXPECT_EQ("A=5", just_a.s);
     just_a.s = "";
     // Should request `More` on the type that is not accepted, in this case, `B`.
     EXPECT_EQ(current::ss::EntryResponse::More,
-              (current::ss::PassEntryToSubscriberOrSkipIt<A, Variant<A, B>>(
-                  just_a, Variant<A, B>(B(6)), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<A, Variant<A, B>>(
+                  just_a, return_more, Variant<A, B>(B(6)), idxts_t(), idxts_t())));
     EXPECT_EQ("", just_a.s);
     // Should request `More` on the type that is not accepted, in this case, an uninitialized `Variant<A, B>`.
     EXPECT_EQ(current::ss::EntryResponse::More,
-              (current::ss::PassEntryToSubscriberOrSkipIt<A, Variant<A, B>>(
-                  just_a, Variant<A, B>(), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<A, Variant<A, B>>(
+                  just_a, return_more, Variant<A, B>(), idxts_t(), idxts_t())));
     EXPECT_EQ("", just_a.s);
   }
 
@@ -245,18 +248,18 @@ TEST(StreamSystem, PassEntryToSubscriberOrSkipIt) {
     static_assert(current::ss::IsEntrySubscriber<decltype(just_b), B>::value, "");
     // Should request `More` on the type that is not accepted, in this case, `A`.
     EXPECT_EQ(current::ss::EntryResponse::More,
-              (current::ss::PassEntryToSubscriberOrSkipIt<B, Variant<A, B>>(
-                  just_b, Variant<A, B>(A(7)), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<B, Variant<A, B>>(
+                  just_b, return_more, Variant<A, B>(A(7)), idxts_t(), idxts_t())));
     EXPECT_EQ("", just_b.s);
     EXPECT_EQ(current::ss::EntryResponse::Done,
-              (current::ss::PassEntryToSubscriberOrSkipIt<B, Variant<A, B>>(
-                  just_b, Variant<A, B>(B(8)), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<B, Variant<A, B>>(
+                  just_b, return_more, Variant<A, B>(B(8)), idxts_t(), idxts_t())));
     EXPECT_EQ("B=8", just_b.s);
     just_b.s = "";
     // Should request `More` on the type that is not accepted, in this case, an uninitialized `Variant<A, B>`.
     EXPECT_EQ(current::ss::EntryResponse::More,
-              (current::ss::PassEntryToSubscriberOrSkipIt<B, Variant<A, B>>(
-                  just_b, Variant<A, B>(), idxts_t(), idxts_t())));
+              (current::ss::PassEntryToSubscriberIfTypeMatches<B, Variant<A, B>>(
+                  just_b, return_more, Variant<A, B>(), idxts_t(), idxts_t())));
     EXPECT_EQ("", just_b.s);
   }
 }

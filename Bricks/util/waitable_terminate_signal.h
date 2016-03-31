@@ -47,7 +47,6 @@ class WaitableTerminateSignal {
 
   // Sends the termination signal. Thread-safe.
   void SignalExternalTermination() noexcept {
-    std::lock_guard<std::mutex> guard(mutex_);
     stop_signal_ = true;
     condition_variable_.notify_all();
   }
@@ -66,7 +65,8 @@ class WaitableTerminateSignal {
     };
 
     do {
-      condition_variable_.wait(lock, stop_condition);
+      // TODO(dkorolev): Fix this deadlock workaround. Should be enough with `wait()`, not `wait_for()`.
+      condition_variable_.wait_for(lock, std::chrono::milliseconds(25), stop_condition);
     } while (!wait_done);
 
     return stop_signal_;
@@ -77,7 +77,6 @@ class WaitableTerminateSignal {
 
   std::atomic_bool stop_signal_;
   std::condition_variable condition_variable_;
-  std::mutex mutex_;
 };
 
 // Enables subscribing multiple `WaitableTerminateSignal`-s to be notified of new events at once.
