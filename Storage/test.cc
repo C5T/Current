@@ -127,8 +127,8 @@ TEST(TransactionalStorage, SmokeTest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
+    EXPECT_EQ(2u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
-    EXPECT_EQ(2u, storage.FieldsCount());
 
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
@@ -331,8 +331,8 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
+  EXPECT_EQ(2u, Storage::FIELDS_COUNT);
   Storage storage;
-  EXPECT_EQ(2u, storage.FieldsCount());
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<1>()));
 
@@ -693,8 +693,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
+  EXPECT_EQ(3u, Storage::FIELDS_COUNT);
   Storage storage(persistence_file_name);
-  EXPECT_EQ(3u, storage.FieldsCount());
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
@@ -836,11 +836,11 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
   using Storage1 = SimpleStorage<SherlockInMemoryStreamPersister>;
   using Storage2 = PartiallyExposedStorage<SherlockInMemoryStreamPersister>;
 
+  EXPECT_EQ(3u, Storage1::FIELDS_COUNT);
+  EXPECT_EQ(3u, Storage2::FIELDS_COUNT);
+
   Storage1 storage1;
   Storage2 storage2;
-
-  EXPECT_EQ(3u, storage1.FieldsCount());
-  EXPECT_EQ(3u, storage2.FieldsCount());
 
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimpleUserPersisted>::exposed, "");
   static_assert(current::storage::rest::FieldExposedViaREST<Storage1, SimplePostPersisted>::exposed, "");
