@@ -124,6 +124,8 @@ struct SherlockTestProcessorImpl {
     }
   }
 
+  static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::Done; }
+
   TerminationResponse Terminate() {
     if (!data_.results_.empty()) {
       data_.results_ += ",";
@@ -329,6 +331,8 @@ struct RecordsCollectorImpl {
     ++count_;
     return EntryResponse::More;
   }
+
+  static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
 
   TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 };
@@ -608,6 +612,8 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     }
 
     TerminationResponse Terminate() const { return TerminationResponse::Wait; }
+
+    static EntryResponse EntryResponseIfNoMorePassTypeFilter() { return EntryResponse::More; }
 
     std::vector<std::string> results_;
     const size_t expected_count_;

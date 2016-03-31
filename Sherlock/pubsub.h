@@ -202,6 +202,12 @@ class PubSubHTTPEndpointImpl {
     return ss::EntryResponse::More;
   }
 
+  // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
+  // whether we should terminate or no depends on `nowait`.
+  ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
+    return no_wait_ ? ss::EntryResponse::Done : ss::EntryResponse::More;
+  }
+
   // LCOV_EXCL_START
   ss::TerminationResponse Terminate() {
     http_response_("{\"error\":\"The subscriber has terminated.\"}\n");

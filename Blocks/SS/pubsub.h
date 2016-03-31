@@ -26,6 +26,9 @@ SOFTWARE.
 #ifndef BLOCKS_SS_PUBSUB_H
 #define BLOCKS_SS_PUBSUB_H
 
+#include "../../port.h"
+#include <cassert>
+
 #include "idx_ts.h"
 
 #include "../../TypeSystem/variant.h"
@@ -112,6 +115,10 @@ class EntrySubscriber : public GenericEntrySubscriber<ENTRY>, public IMPL {
     return IMPL::operator()(std::move(e), current, last);
   }
 
+  // If a type-filtered subscriber hits the end which it doesn't see as the last entry does not pass the filter,
+  // we need a way to ask that subscriber whether it wants to terminate or continue.
+  EntryResponse EntryResponseIfNoMorePassTypeFilter() { return IMPL::EntryResponseIfNoMorePassTypeFilter(); }
+
   TerminationResponse Terminate() { return IMPL::Terminate(); }
 };
 
@@ -145,27 +152,32 @@ struct IsStreamSubscriber {
 namespace impl {
 
 template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT>
-struct PassEntryToSubscriberOrSkipItImpl {
+struct PassEntryToSubscriberIfTypeMatchesImpl {
   static_assert(TypeListContains<typename STREAM_UNDERLYING_VARIANT::T_TYPELIST, TYPE_SUBSCRIBED_TO>::value,
                 "Subscribing to the type different from the underlying type requires the underlying type"
                 " to be a `Variant<>` containing the subscribed to type as an option.");
 
-  template <typename F, typename E>
-  static EntryResponse Dispatch(F&& f, E&& entry, idxts_t current, idxts_t last) {
+  template <typename F, typename G, typename E>
+  static EntryResponse Dispatch(F&& f, G&& fallback, E&& entry, idxts_t current, idxts_t last) {
     static_assert(IsEntrySubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     const E& entry_cref = entry;
     if (Exists<TYPE_SUBSCRIBED_TO>(entry_cref)) {
       return f(Value<TYPE_SUBSCRIBED_TO>(std::forward<E>(entry)), current, last);
     } else {
-      return EntryResponse::More;
+      assert(current.index <= last.index);
+      if (current.index < last.index) {
+        return EntryResponse::More;
+      } else {
+        return fallback();
+      }
     }
   }
 };
 
 template <typename T>
-struct PassEntryToSubscriberOrSkipItImpl<T, T> {
-  template <typename F, typename E>
-  static EntryResponse Dispatch(F&& f, E&& entry, idxts_t current, idxts_t last) {
+struct PassEntryToSubscriberIfTypeMatchesImpl<T, T> {
+  template <typename F, typename E, typename G>
+  static EntryResponse Dispatch(F&& f, G&&, E&& entry, idxts_t current, idxts_t last) {
     static_assert(IsEntrySubscriber<F, T>::value, "");
     return f(std::forward<E>(entry), current, last);
   }
@@ -173,10 +185,11 @@ struct PassEntryToSubscriberOrSkipItImpl<T, T> {
 
 }  // namespace current::ss::impl
 
-template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT, typename F, typename E>
-EntryResponse PassEntryToSubscriberOrSkipIt(F&& f, E&& entry, idxts_t current, idxts_t last) {
-  return impl::PassEntryToSubscriberOrSkipItImpl<TYPE_SUBSCRIBED_TO, STREAM_UNDERLYING_VARIANT>::Dispatch(
-      std::forward<F>(f), std::forward<E>(entry), current, last);
+template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT, typename F, typename G, typename E>
+EntryResponse PassEntryToSubscriberIfTypeMatches(
+    F&& f, G&& fallback, E&& entry, idxts_t current, idxts_t last) {
+  return impl::PassEntryToSubscriberIfTypeMatchesImpl<TYPE_SUBSCRIBED_TO, STREAM_UNDERLYING_VARIANT>::Dispatch(
+      std::forward<F>(f), std::forward<G>(fallback), std::forward<E>(entry), current, last);
 }
 
 }  // namespace current::ss
