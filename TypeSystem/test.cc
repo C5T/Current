@@ -425,6 +425,7 @@ TEST(TypeSystemTest, VariantCreateAndCopy) {
     Variant<Foo, Bar> moved;
     moved = std::move(foo);
     EXPECT_TRUE(Exists(moved));
+    EXPECT_FALSE(Exists(foo));
     EXPECT_TRUE(Exists<Foo>(moved));
     EXPECT_FALSE(Exists<Bar>(moved));
     EXPECT_EQ(101u, Value<Foo>(moved).i);
