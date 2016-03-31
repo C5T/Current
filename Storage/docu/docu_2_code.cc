@@ -238,9 +238,9 @@ TEST(StorageDocumentation, BasicUsage) {
     replayed.Transaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_EQ(2u, data.users.Size());
       EXPECT_TRUE(Exists(data.users[static_cast<UserID>(1)]));
-      EXPECT_EQ("test1", Value(data.users[static_cast<UserID>(101)]).name);
+      EXPECT_EQ("test1", Value(data.users[static_cast<UserID>(1)]).name);
       EXPECT_TRUE(Exists(data.users[static_cast<UserID>(2)]));
-      EXPECT_EQ("test2", Value(data.users[static_cast<UserID>(101)]).name);
+      EXPECT_EQ("test2", Value(data.users[static_cast<UserID>(2)]).name);
     }).Wait();
   }
 }
