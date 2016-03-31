@@ -192,10 +192,10 @@ struct ReflectorImpl {
     return reflected_cpp_types_.at(type_index);
   }
 
-  const ReflectedType& ReflectedTypeByTypeID(const TypeID type_id) {
+  const ReflectedType& ReflectedTypeByTypeID(const TypeID type_id) const {
     const auto cit = type_index_by_type_id_.find(type_id);
     if (cit != type_index_by_type_id_.end()) {
-      return reflected_cpp_types_[cit->second.type_index];
+      return reflected_cpp_types_.at(cit->second.type_index);
     } else {
       throw UnknownTypeIDException();  // LCOV_EXCL_LINE
     }
