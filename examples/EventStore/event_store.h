@@ -90,9 +90,35 @@ struct EventStore final {
         }),
         readonly_stream_follower_scope(full_event_log.template Subscribe<EXTRA_TYPE>(readonly_stream_follower)),
         readonly_nonstorage_event_log_persister(readonly_nonstorage_event_log.InternalExposePersister()),
-        http_routes_scope(HTTP(port).Register(url_prefix + "/up", [](Request r) { r("UP!\n"); })) {}
+        http_routes_scope(HTTP(port).Register(url_prefix + "/up", [](Request r) { r("UP!\n"); }) +
+                          HTTP(port).Register(url_prefix + "/event",
+                                              URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                              [this](Request r) { EndpointEvent(std::move(r)); })) {}
 
   ~EventStore() { readonly_stream_follower_scope.Join(); }
+
+  void EndpointEvent(Request r) {
+    if (r.method == "GET") {
+      if (r.url_path_args.size() != 1u) {
+        r("Need one URL parameter.\n", HTTPResponseCode.BadRequest);
+      } else {
+        const std::string key = r.url_path_args[0];
+        event_store_storage.Transaction([key](ImmutableFields<event_store_storage_t> fields) -> Response {
+          auto event = fields.events[key];
+          // TODO(dkorolev) / TODO(mzhurovich): Why not enable creating `Response` from `ImmutableOptional<T>`,
+          // to return { 200, Value() } or a 404?
+          if (Exists(event)) {
+            return Value(event);
+          } else {
+            return Response("Not found.\n", HTTPResponseCode.NotFound);
+          }
+        }, std::move(r)).Wait();
+      }
+    } else if (r.method == "POST") {
+    } else {
+      r("Method not allowed.\n", HTTPResponseCode.MethodNotAllowed);
+    }
+  }
 };
 
 #endif  // EVENT_STORE_H

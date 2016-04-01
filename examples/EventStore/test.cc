@@ -91,6 +91,9 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
     event_store_t event_store(FLAGS_event_store_test_port, "", persistence_file_name);
 
     EXPECT_EQ("UP!\n", HTTP(GET(Printf("http://localhost:%d/up", FLAGS_event_store_test_port))).body);
+    EXPECT_EQ(404,
+              static_cast<int>(
+                  HTTP(GET(Printf("http://localhost:%d/event/another_id", FLAGS_event_store_test_port))).code));
 
     EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
@@ -102,6 +105,10 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
       fields.events.Add(event);
     }).Go();
     EXPECT_TRUE(WasCommitted(add_event_result));
+
+    EXPECT_EQ(200,
+              static_cast<int>(
+                  HTTP(GET(Printf("http://localhost:%d/event/another_id", FLAGS_event_store_test_port))).code));
 
     const auto verify_event_added_result =
         event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
