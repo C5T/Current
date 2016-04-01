@@ -167,6 +167,8 @@ TEST(EventStore, SmokeWithHTTP) {
     EXPECT_EQ("{\"key\":\"http1\",\"body\":{\"some_event_data\":\"yeah1\"}}\n", result.body);
   }
 
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
   {
     Event event2;
     event2.key = "http2";
@@ -176,6 +178,8 @@ TEST(EventStore, SmokeWithHTTP) {
                   HTTP(POST(Printf("http://localhost:%d/event", FLAGS_event_store_test_port), event2)).code));
   }
 
+  EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+
   const auto verify_http_event_added_result =
       event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
         EXPECT_EQ(2u, fields.events.Size());
@@ -184,18 +188,7 @@ TEST(EventStore, SmokeWithHTTP) {
       }).Go();
   EXPECT_TRUE(WasCommitted(verify_http_event_added_result));
 
-  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
-
-  {
-    EventOutsideStorage e;
-    e.message = "haha";
-    event_store.full_event_log.Publish(e);
-  }
-
-  while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
-    ;  // Spin lock.
-  }
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
-  EXPECT_EQ("haha",
+  EXPECT_EQ("Event added: http2",
             (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
 }

@@ -40,6 +40,10 @@ CURRENT_STRUCT(Event) {
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, Event, PersistedEvent);
 CURRENT_STORAGE(EventStoreDB) { CURRENT_STORAGE_FIELD(events, PersistedEvent); };
 
-CURRENT_STRUCT(EventOutsideStorage) { CURRENT_FIELD(message, std::string); };
+CURRENT_STRUCT(EventOutsideStorage) {
+  CURRENT_FIELD(message, std::string);
+  CURRENT_DEFAULT_CONSTRUCTOR(EventOutsideStorage) {}
+  CURRENT_CONSTRUCTOR(EventOutsideStorage)(const Event& e) : message("Event added: " + e.key) {}
+};
 
 #endif  // SCHEMA_H

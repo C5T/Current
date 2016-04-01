@@ -36,13 +36,14 @@ SOFTWARE.
 
 // TODO(dkorolev) + TODO(mzhurovich): Convert all `T_UPPER_CASE` into `upper_case_t`?
 
+// NOTE: This class assumes the storage has a Dictionary field called `events`.
+// NOTE: This class assumes the `events` storage field has the type `EVENT_TYPE`.
+// NOTE: This class assumes `EXTRA_TYPE` can be constructed from a `const EVENT_TYPE&`.
 template <template <template <typename...> class, template <typename> class, typename>
           class CURRENT_STORAGE_TYPE,
-          typename EVENT,
+          typename EVENT_TYPE,
           typename EXTRA_TYPE,
           template <typename...> class DB_PERSISTER>
-
-// NOTE: This class assumes the storage has a Dictionary field called `events`.
 struct EventStore final {
   // TODO(dkorolev) + TODO(mzhurovich): All three template parameters here are only to extract `T_TRANSACTION`.
   // Factor it out?
@@ -104,6 +105,7 @@ struct EventStore final {
         r("Need one URL parameter.\n", HTTPResponseCode.BadRequest);
       } else {
         const std::string key = r.url_path_args[0];
+        // TODO(dkorolev): `ScopeOwnedBySomeoneElse<Impl>` for the transaction?
         event_store_storage.Transaction([key](ImmutableFields<event_store_storage_t> fields) -> Response {
           auto event = fields.events[key];
           // TODO(dkorolev) / TODO(mzhurovich): Why not enable creating `Response` from `ImmutableOptional<T>`,
@@ -120,23 +122,28 @@ struct EventStore final {
         r("Need no URL parameters.\n", HTTPResponseCode.BadRequest);
       } else {
         try {
-          const auto event = ParseJSON<EVENT>(r.body);
-          event_store_storage.Transaction([event](MutableFields<event_store_storage_t> fields) -> Response {
-            auto existing_event = fields.events[event.key];
-            if (Exists(existing_event)) {
-              // TODO(dkorolev): Check timestamp? Not now, right. @mzhurovich
-              if (JSON(Value(existing_event)) == JSON(event)) {
-                return Response("Already published.\n", HTTPResponseCode.OK);
-              } else {
-                return Response("Conflict, not publishing.\n", HTTPResponseCode.Conflict);
-              }
-            } else {
-              fields.events.Add(event);
-              // TODO(dkorolev): Publish a non-Storage record.
-              // TODO(dkorolev): Hmm, should it be under a mutex? I vote for a Sherlock-wide mutex. @mzhurovich
-              return Response("Created.\n", HTTPResponseCode.Created);
-            }
-          }, std::move(r)).Wait();
+          const auto event = ParseJSON<EVENT_TYPE>(r.body);
+          // TODO(dkorolev): `ScopeOwnedBySomeoneElse<Impl>` for the transaction?
+          event_store_storage.Transaction(
+                                  [this, event](MutableFields<event_store_storage_t> fields) -> Response {
+                                    auto existing_event = fields.events[event.key];
+                                    if (Exists(existing_event)) {
+                                      // TODO(dkorolev): Check timestamp? Not now, right. @mzhurovich
+                                      if (JSON(Value(existing_event)) == JSON(event)) {
+                                        return Response("Already published.\n", HTTPResponseCode.OK);
+                                      } else {
+                                        return Response("Conflict, not publishing.\n",
+                                                        HTTPResponseCode.Conflict);
+                                      }
+                                    } else {
+                                      fields.events.Add(event);
+                                      // TODO(dkorolev): Hmm, should this be under a mutex? I vote for a
+                                      // Sherlock-wide mutex. @mzhurovich
+                                      full_event_log.Publish(EXTRA_TYPE(event));
+                                      return Response("Created.\n", HTTPResponseCode.Created);
+                                    }
+                                  },
+                                  std::move(r)).Wait();
         } catch (const TypeSystemParseJSONException& e) {
           r(std::string("JSON parse error:\n") + e.what() + '\n', HTTPResponseCode.BadRequest);
         }
