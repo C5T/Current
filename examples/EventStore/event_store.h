@@ -22,30 +22,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "event_store.h"
+#ifndef EVENT_STORE_H
+#define EVENT_STORE_H
 
-// #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
-#include "../../3rdparty/gtest/gtest-main.h"
+// TODO(dkorolev): Storage w/ a stream w/ another type.
+// TODO(dkorolev): Following stream w/ event-only log.
+// TODO(dkorolev): Split into test and "live" demo.
 
-TEST(EventStore, Demo) {
-  using event_store_t = EventStore<EventStoreDB<SherlockInMemoryStreamPersister>>;
-  using db_t = typename event_store_t::db_t;
+#include "../../TypeSystem/struct.h"
+#include "../../Storage/storage.h"
+#include "../../Storage/persister/sherlock.h"
 
-  event_store_t event_store;
+// #include "../../Blocks/HTTP/api.h"
 
-  const auto add_event_result = event_store.db.Transaction([](MutableFields<db_t> fields) {
-    EXPECT_TRUE(fields.events.Empty());
-    Event event;
-    event.key = "id";
-    event.body.some_event_data = "foo";
-    fields.events.Add(event);
-  }).Go();
-  EXPECT_TRUE(WasCommitted(add_event_result));
+#include "schema.h"
 
-  const auto verify_event_added_result = event_store.db.Transaction([](ImmutableFields<db_t> fields) {
-    EXPECT_EQ(1u, fields.events.Size());
-    EXPECT_TRUE(Exists(fields.events["id"]));
-    EXPECT_EQ("foo", Value(fields.events["id"]).body.some_event_data);
-  }).Go();
-  EXPECT_TRUE(WasCommitted(verify_event_added_result));
-}
+template<typename DB>
+struct EventStore {
+  using db_t = DB;
+  db_t db;
+
+  template<typename... ARGS>
+  EventStore(ARGS&&... args) : db(std::forward<ARGS>(args)...) {}
+};
+
+#endif  // EVENT_STORE_H
