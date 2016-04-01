@@ -23,55 +23,30 @@ SOFTWARE.
 *******************************************************************************/
 
 #include "event_store.h"
+#include "schema.h"
 
-// #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
-#include "../../3rdparty/gtest/gtest-main.h"
+#include "../../Bricks/dflags/dflags.h"
+#include "../../Bricks/file/file.h"
 
-TEST(EventStore, Demo) {
-  // TODO(dkorolev) + TODO(mzhurovich): Convert all `T_UPPER_CASE` into `upper_case_t` ?
+#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-  // TODO(dkorolev): This `SherlockInMemoryStreamPersister` thing is redundant here. Something to think of.
-  using transaction_t = typename EventStoreDB<SherlockInMemoryStreamPersister>::T_TRANSACTION;
-  using stream_type_t = Variant<transaction_t, EventOutsideStorage>;
+#ifndef _MSC_VER
+DEFINE_string(event_store_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
+#else
+DEFINE_string(event_store_test_tmpdir,
+              ".",
+              "Local path for the test to create temporary files in.");
+#endif
 
-  using event_store_storage_t = EventStoreDB<SherlockInMemoryStreamPersister,
-                                             current::storage::transaction_policy::Synchronous,
-                                             stream_type_t>;
-  using full_stream_t = typename event_store_storage_t::T_PERSISTER::T_SHERLOCK;
+TEST(EventStore, SmokeWithInMemoryEventStore) {
+  using event_store_t = EventStore<EventStoreDB, EventOutsideStorage, SherlockInMemoryStreamPersister>;
+  using db_t = event_store_t::event_store_storage_t;
 
-  using event_store_t = EventStore<event_store_storage_t>;
-  using db_t = typename event_store_t::db_t;
+  event_store_t event_store;
 
-  using nonstorage_stream_t = current::sherlock::Stream<EventOutsideStorage, current::persistence::Memory>;
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
-  full_stream_t full_event_log;
-  nonstorage_stream_t readonly_nonstorage_event_log;
-  event_store_t event_store(full_event_log);
-
-  struct ReadonlyStreamFollower {
-    using emitter_t = std::function<void(const EventOutsideStorage&, idxts_t)>;
-    const emitter_t emitter;
-    explicit ReadonlyStreamFollower(emitter_t emitter) : emitter(emitter) {}
-    current::ss::EntryResponse operator()(const EventOutsideStorage& e, idxts_t current, idxts_t) const {
-      emitter(e, current);
-      return current::ss::EntryResponse::More;
-    }
-    static current::ss::TerminationResponse Terminate() { return current::ss::TerminationResponse::Terminate; }
-    static current::ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() {
-      return current::ss::EntryResponse::More;
-    }
-  };
-  const auto emitter = [&readonly_nonstorage_event_log](const EventOutsideStorage& e, idxts_t idx_ts) {
-    readonly_nonstorage_event_log.Publish(e, idx_ts.us);
-  };
-  current::ss::StreamSubscriber<ReadonlyStreamFollower, EventOutsideStorage> readonly_stream_follower(emitter);
-  auto readonly_stream_follower_scope = full_event_log.Subscribe<EventOutsideStorage>(readonly_stream_follower);
-
-  const auto& readonly_nonstorage_event_log_persister = readonly_nonstorage_event_log.InternalExposePersister();
-
-  EXPECT_EQ(0u, readonly_nonstorage_event_log_persister.Size());
-
-  const auto add_event_result = event_store.db.Transaction([](MutableFields<db_t> fields) {
+  const auto add_event_result = event_store.event_store_storage.Transaction([](MutableFields<db_t> fields) {
     EXPECT_TRUE(fields.events.Empty());
     Event event;
     event.key = "id";
@@ -80,26 +55,83 @@ TEST(EventStore, Demo) {
   }).Go();
   EXPECT_TRUE(WasCommitted(add_event_result));
 
-  const auto verify_event_added_result = event_store.db.Transaction([](ImmutableFields<db_t> fields) {
-    EXPECT_EQ(1u, fields.events.Size());
-    EXPECT_TRUE(Exists(fields.events["id"]));
-    EXPECT_EQ("foo", Value(fields.events["id"]).body.some_event_data);
-  }).Go();
+  const auto verify_event_added_result =
+      event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
+        EXPECT_EQ(1u, fields.events.Size());
+        EXPECT_TRUE(Exists(fields.events["id"]));
+        EXPECT_EQ("foo", Value(fields.events["id"]).body.some_event_data);
+      }).Go();
   EXPECT_TRUE(WasCommitted(verify_event_added_result));
 
-  EXPECT_EQ(0u, readonly_nonstorage_event_log_persister.Size());
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
   {
     EventOutsideStorage e;
     e.message = "haha";
-    full_event_log.Publish(e);
+    event_store.full_event_log.Publish(e);
   }
 
-  while (readonly_nonstorage_event_log_persister.Size() < 1u) {
+  while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
     ;  // Spin lock.
   }
-  EXPECT_EQ(1u, readonly_nonstorage_event_log_persister.Size());
-  EXPECT_EQ("haha", (*readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
+  EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+  EXPECT_EQ("haha",
+            (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
+}
 
-  readonly_stream_follower_scope.Join();
+TEST(EventStore, SmokeWithDiskPersistedEventStore) {
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_event_store_test_tmpdir, ".current_testdb");
+  const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  using event_store_t = EventStore<EventStoreDB, EventOutsideStorage, SherlockStreamPersister>;
+  using db_t = event_store_t::event_store_storage_t;
+
+  event_store_t event_store(persistence_file_name);
+
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
+  const auto add_event_result = event_store.event_store_storage.Transaction([](MutableFields<db_t> fields) {
+    EXPECT_TRUE(fields.events.Empty());
+    Event event;
+    event.key = "another_id";
+    event.body.some_event_data = "bar";
+    fields.events.Add(event);
+  }).Go();
+  EXPECT_TRUE(WasCommitted(add_event_result));
+
+  const auto verify_event_added_result =
+      event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
+        EXPECT_EQ(1u, fields.events.Size());
+        EXPECT_TRUE(Exists(fields.events["another_id"]));
+        EXPECT_EQ("bar", Value(fields.events["another_id"]).body.some_event_data);
+      }).Go();
+  EXPECT_TRUE(WasCommitted(verify_event_added_result));
+
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
+  {
+    EventOutsideStorage e;
+    e.message = "haha";
+    event_store.full_event_log.Publish(e);
+  }
+
+  while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
+    ;  // Spin lock.
+  }
+  EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+  EXPECT_EQ("haha",
+            (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
+
+  {
+    event_store_t resumed_event_store(persistence_file_name);
+
+    const auto verify_persisted_result =
+        resumed_event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
+          EXPECT_EQ(1u, fields.events.Size());
+          EXPECT_TRUE(Exists(fields.events["another_id"]));
+          EXPECT_EQ("bar", Value(fields.events["another_id"]).body.some_event_data);
+        }).Go();
+    EXPECT_TRUE(WasCommitted(verify_persisted_result));
+  }
 }
