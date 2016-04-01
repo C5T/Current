@@ -40,4 +40,6 @@ CURRENT_STRUCT(Event) {
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, Event, PersistedEvent);
 CURRENT_STORAGE(EventStoreDB) { CURRENT_STORAGE_FIELD(events, PersistedEvent); };
 
+CURRENT_STRUCT(EventOutsideStorage) { CURRENT_FIELD(message, std::string); };
+
 #endif  // SCHEMA_H

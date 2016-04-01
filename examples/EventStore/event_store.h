@@ -37,13 +37,14 @@ SOFTWARE.
 
 #include "schema.h"
 
-template<typename DB>
+template <typename DB>
 struct EventStore {
   using db_t = DB;
   db_t db;
 
-  template<typename... ARGS>
-  EventStore(ARGS&&... args) : db(std::forward<ARGS>(args)...) {}
+  template <typename... ARGS>
+  EventStore(ARGS&&... args)
+      : db(std::forward<ARGS>(args)...) {}
 };
 
 #endif  // EVENT_STORE_H
