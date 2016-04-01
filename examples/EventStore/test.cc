@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME
+
 #include "event_store.h"
 #include "schema.h"
 
@@ -39,6 +41,8 @@ DEFINE_string(event_store_test_tmpdir, ".", "Local path for the test to create t
 DEFINE_int32(event_store_test_port, PickPortForUnitTest(), "Local port to run the test against.");
 
 TEST(EventStore, SmokeWithInMemoryEventStore) {
+  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(100));
+
   using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
@@ -80,6 +84,8 @@ TEST(EventStore, SmokeWithInMemoryEventStore) {
 }
 
 TEST(EventStore, SmokeWithDiskPersistedEventStore) {
+  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(100));
+
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_event_store_test_tmpdir, ".current_testdb");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
@@ -139,6 +145,8 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
 }
 
 TEST(EventStore, SmokeWithHTTP) {
+  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(100));
+
   using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
@@ -168,7 +176,10 @@ TEST(EventStore, SmokeWithHTTP) {
   }
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+  EXPECT_EQ("0\n",
+            HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", FLAGS_event_store_test_port))).body);
 
+  current::time::SetNow(std::chrono::microseconds(42000), std::chrono::microseconds(42100));
   {
     Event event2;
     event2.key = "http2";
@@ -179,6 +190,8 @@ TEST(EventStore, SmokeWithHTTP) {
   }
 
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+  EXPECT_EQ("1\n",
+            HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", FLAGS_event_store_test_port))).body);
 
   const auto verify_http_event_added_result =
       event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
@@ -191,4 +204,7 @@ TEST(EventStore, SmokeWithHTTP) {
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
   EXPECT_EQ("Event added: http2",
             (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
+  // `42001` as the non-storage event is published after the storage one.
+  EXPECT_EQ("{\"index\":0,\"us\":42001}\t{\"message\":\"Event added: http2\"}\n",
+            HTTP(GET(Printf("http://localhost:%d/subscribe?i=0&n=1", FLAGS_event_store_test_port))).body);
 }

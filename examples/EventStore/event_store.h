@@ -31,7 +31,6 @@ SOFTWARE.
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
-// TODO(dkorolev): Add HTTP pubsub support.
 #include "../../Blocks/HTTP/api.h"
 
 // TODO(dkorolev) + TODO(mzhurovich): Convert all `T_UPPER_CASE` into `upper_case_t`?
@@ -95,7 +94,8 @@ struct EventStore final {
         http_routes_scope(HTTP(port).Register(url_prefix + "/up", [](Request r) { r("UP!\n"); }) +
                           HTTP(port).Register(url_prefix + "/event",
                                               URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                              [this](Request r) { EndpointEvent(std::move(r)); })) {}
+                                              [this](Request r) { EndpointEvent(std::move(r)); }) +
+                          HTTP(port).Register(url_prefix + "/subscribe", readonly_nonstorage_event_log)) {}
 
   ~EventStore() { readonly_stream_follower_scope.Join(); }
 
