@@ -38,6 +38,7 @@ SOFTWARE.
 
 template <template <template <typename...> class, template <typename> class, typename>
           class CURRENT_STORAGE_TYPE,
+          typename EVENT,
           typename EXTRA_TYPE,
           template <typename...> class DB_PERSISTER>
 
@@ -115,6 +116,31 @@ struct EventStore final {
         }, std::move(r)).Wait();
       }
     } else if (r.method == "POST") {
+      if (!r.url_path_args.empty()) {
+        r("Need no URL parameters.\n", HTTPResponseCode.BadRequest);
+      } else {
+        try {
+          const auto event = ParseJSON<EVENT>(r.body);
+          event_store_storage.Transaction([event](MutableFields<event_store_storage_t> fields) -> Response {
+            auto existing_event = fields.events[event.key];
+            if (Exists(existing_event)) {
+              // TODO(dkorolev): Check timestamp? Not now, right. @mzhurovich
+              if (JSON(Value(existing_event)) == JSON(event)) {
+                return Response("Already published.\n", HTTPResponseCode.OK);
+              } else {
+                return Response("Conflict, not publishing.\n", HTTPResponseCode.Conflict);
+              }
+            } else {
+              fields.events.Add(event);
+              // TODO(dkorolev): Publish a non-Storage record.
+              // TODO(dkorolev): Hmm, should it be under a mutex? I vote for a Sherlock-wide mutex. @mzhurovich
+              return Response("Created.\n", HTTPResponseCode.Created);
+            }
+          }, std::move(r)).Wait();
+        } catch (const TypeSystemParseJSONException& e) {
+          r(std::string("JSON parse error:\n") + e.what() + '\n', HTTPResponseCode.BadRequest);
+        }
+      }
     } else {
       r("Method not allowed.\n", HTTPResponseCode.MethodNotAllowed);
     }

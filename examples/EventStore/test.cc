@@ -39,7 +39,7 @@ DEFINE_string(event_store_test_tmpdir, ".", "Local path for the test to create t
 DEFINE_int32(event_store_test_port, PickPortForUnitTest(), "Local port to run the test against.");
 
 TEST(EventStore, SmokeWithInMemoryEventStore) {
-  using event_store_t = EventStore<EventStoreDB, EventOutsideStorage, SherlockInMemoryStreamPersister>;
+  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
   event_store_t event_store(FLAGS_event_store_test_port, "");
@@ -84,16 +84,11 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
       current::FileSystem::JoinPath(FLAGS_event_store_test_tmpdir, ".current_testdb");
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
-  using event_store_t = EventStore<EventStoreDB, EventOutsideStorage, SherlockStreamPersister>;
+  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
   {
     event_store_t event_store(FLAGS_event_store_test_port, "", persistence_file_name);
-
-    EXPECT_EQ("UP!\n", HTTP(GET(Printf("http://localhost:%d/up", FLAGS_event_store_test_port))).body);
-    EXPECT_EQ(404,
-              static_cast<int>(
-                  HTTP(GET(Printf("http://localhost:%d/event/another_id", FLAGS_event_store_test_port))).code));
 
     EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
@@ -105,10 +100,6 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
       fields.events.Add(event);
     }).Go();
     EXPECT_TRUE(WasCommitted(add_event_result));
-
-    EXPECT_EQ(200,
-              static_cast<int>(
-                  HTTP(GET(Printf("http://localhost:%d/event/another_id", FLAGS_event_store_test_port))).code));
 
     const auto verify_event_added_result =
         event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
@@ -145,4 +136,66 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
         }).Go();
     EXPECT_TRUE(WasCommitted(verify_persisted_result));
   }
+}
+
+TEST(EventStore, SmokeWithHTTP) {
+  using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
+  using db_t = event_store_t::event_store_storage_t;
+
+  event_store_t event_store(FLAGS_event_store_test_port, "");
+
+  EXPECT_EQ("UP!\n", HTTP(GET(Printf("http://localhost:%d/up", FLAGS_event_store_test_port))).body);
+
+  EXPECT_EQ(
+      404,
+      static_cast<int>(HTTP(GET(Printf("http://localhost:%d/event/http1", FLAGS_event_store_test_port))).code));
+
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
+  const auto add_event_result = event_store.event_store_storage.Transaction([](MutableFields<db_t> fields) {
+    EXPECT_TRUE(fields.events.Empty());
+    Event event;
+    event.key = "http1";
+    event.body.some_event_data = "yeah1";
+    fields.events.Add(event);
+  }).Go();
+  EXPECT_TRUE(WasCommitted(add_event_result));
+
+  {
+    const auto result = HTTP(GET(Printf("http://localhost:%d/event/http1", FLAGS_event_store_test_port)));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("{\"key\":\"http1\",\"body\":{\"some_event_data\":\"yeah1\"}}\n", result.body);
+  }
+
+  {
+    Event event2;
+    event2.key = "http2";
+    event2.body.some_event_data = "yeah2";
+    EXPECT_EQ(201,
+              static_cast<int>(
+                  HTTP(POST(Printf("http://localhost:%d/event", FLAGS_event_store_test_port), event2)).code));
+  }
+
+  const auto verify_http_event_added_result =
+      event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
+        EXPECT_EQ(2u, fields.events.Size());
+        EXPECT_TRUE(Exists(fields.events["http2"]));
+        EXPECT_EQ("yeah2", Value(fields.events["http2"]).body.some_event_data);
+      }).Go();
+  EXPECT_TRUE(WasCommitted(verify_http_event_added_result));
+
+  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
+  {
+    EventOutsideStorage e;
+    e.message = "haha";
+    event_store.full_event_log.Publish(e);
+  }
+
+  while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
+    ;  // Spin lock.
+  }
+  EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+  EXPECT_EQ("haha",
+            (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
 }
