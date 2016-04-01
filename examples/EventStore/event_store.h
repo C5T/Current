@@ -32,7 +32,7 @@ SOFTWARE.
 #include "../../Storage/persister/sherlock.h"
 
 // TODO(dkorolev): Add HTTP pubsub support.
-// #include "../../Blocks/HTTP/api.h"
+#include "../../Blocks/HTTP/api.h"
 
 // TODO(dkorolev) + TODO(mzhurovich): Convert all `T_UPPER_CASE` into `upper_case_t`?
 
@@ -41,6 +41,7 @@ template <template <template <typename...> class, template <typename> class, typ
           typename EXTRA_TYPE,
           template <typename...> class DB_PERSISTER>
 
+// NOTE: This class assumes the storage has a Dictionary field called `events`.
 struct EventStore final {
   // TODO(dkorolev) + TODO(mzhurovich): All three template parameters here are only to extract `T_TRANSACTION`.
   // Factor it out?
@@ -78,16 +79,18 @@ struct EventStore final {
   typename full_stream_t::template SyncSubscriberScope<readonly_stream_follower_t, EXTRA_TYPE>
       readonly_stream_follower_scope;
   const typename nonstorage_stream_t::T_PERSISTENCE_LAYER& readonly_nonstorage_event_log_persister;
+  HTTPRoutesScope http_routes_scope;
 
   template <typename... ARGS>
-  EventStore(ARGS&&... args)
+  EventStore(int port, const std::string& url_prefix, ARGS&&... args)
       : full_event_log(std::forward<ARGS>(args)...),
         event_store_storage(full_event_log),
         readonly_stream_follower([this](const EXTRA_TYPE& e, idxts_t idx_ts) {
           readonly_nonstorage_event_log.Publish(e, idx_ts.us);
         }),
         readonly_stream_follower_scope(full_event_log.template Subscribe<EXTRA_TYPE>(readonly_stream_follower)),
-        readonly_nonstorage_event_log_persister(readonly_nonstorage_event_log.InternalExposePersister()) {}
+        readonly_nonstorage_event_log_persister(readonly_nonstorage_event_log.InternalExposePersister()),
+        http_routes_scope(HTTP(port).Register(url_prefix + "/up", [](Request r) { r("UP!\n"); })) {}
 
   ~EventStore() { readonly_stream_follower_scope.Join(); }
 };

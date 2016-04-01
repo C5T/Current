@@ -33,16 +33,16 @@ SOFTWARE.
 #ifndef _MSC_VER
 DEFINE_string(event_store_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 #else
-DEFINE_string(event_store_test_tmpdir,
-              ".",
-              "Local path for the test to create temporary files in.");
+DEFINE_string(event_store_test_tmpdir, ".", "Local path for the test to create temporary files in.");
 #endif
+
+DEFINE_int32(event_store_test_port, PickPortForUnitTest(), "Local port to run the test against.");
 
 TEST(EventStore, SmokeWithInMemoryEventStore) {
   using event_store_t = EventStore<EventStoreDB, EventOutsideStorage, SherlockInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
-  event_store_t event_store;
+  event_store_t event_store(FLAGS_event_store_test_port, "");
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
@@ -87,44 +87,48 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
   using event_store_t = EventStore<EventStoreDB, EventOutsideStorage, SherlockStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
 
-  event_store_t event_store(persistence_file_name);
-
-  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
-
-  const auto add_event_result = event_store.event_store_storage.Transaction([](MutableFields<db_t> fields) {
-    EXPECT_TRUE(fields.events.Empty());
-    Event event;
-    event.key = "another_id";
-    event.body.some_event_data = "bar";
-    fields.events.Add(event);
-  }).Go();
-  EXPECT_TRUE(WasCommitted(add_event_result));
-
-  const auto verify_event_added_result =
-      event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
-        EXPECT_EQ(1u, fields.events.Size());
-        EXPECT_TRUE(Exists(fields.events["another_id"]));
-        EXPECT_EQ("bar", Value(fields.events["another_id"]).body.some_event_data);
-      }).Go();
-  EXPECT_TRUE(WasCommitted(verify_event_added_result));
-
-  EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
-
   {
-    EventOutsideStorage e;
-    e.message = "haha";
-    event_store.full_event_log.Publish(e);
+    event_store_t event_store(FLAGS_event_store_test_port, "", persistence_file_name);
+
+    EXPECT_EQ("UP!\n", HTTP(GET(Printf("http://localhost:%d/up", FLAGS_event_store_test_port))).body);
+
+    EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
+    const auto add_event_result = event_store.event_store_storage.Transaction([](MutableFields<db_t> fields) {
+      EXPECT_TRUE(fields.events.Empty());
+      Event event;
+      event.key = "another_id";
+      event.body.some_event_data = "bar";
+      fields.events.Add(event);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(add_event_result));
+
+    const auto verify_event_added_result =
+        event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
+          EXPECT_EQ(1u, fields.events.Size());
+          EXPECT_TRUE(Exists(fields.events["another_id"]));
+          EXPECT_EQ("bar", Value(fields.events["another_id"]).body.some_event_data);
+        }).Go();
+    EXPECT_TRUE(WasCommitted(verify_event_added_result));
+
+    EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
+
+    {
+      EventOutsideStorage e;
+      e.message = "haha";
+      event_store.full_event_log.Publish(e);
+    }
+
+    while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
+      ;  // Spin lock.
+    }
+    EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+    EXPECT_EQ("haha",
+              (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
   }
 
-  while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
-    ;  // Spin lock.
-  }
-  EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
-  EXPECT_EQ("haha",
-            (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
-
   {
-    event_store_t resumed_event_store(persistence_file_name);
+    event_store_t resumed_event_store(FLAGS_event_store_test_port, "", persistence_file_name);
 
     const auto verify_persisted_result =
         resumed_event_store.event_store_storage.Transaction([](ImmutableFields<db_t> fields) {
