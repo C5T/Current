@@ -201,13 +201,22 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_FALSE(fields.o.Rows().Empty());
         EXPECT_FALSE(fields.o.Cols().Empty());
         EXPECT_TRUE(fields.o.Rows().Has(1));
+        EXPECT_TRUE(Exists(fields.o.GetRow(1)));
         EXPECT_TRUE(fields.o.Cols().Has("one"));
+        EXPECT_TRUE(Exists(fields.o.GetCol("one")));
         EXPECT_FALSE(fields.o.Rows().Has(2));
+        EXPECT_FALSE(Exists(fields.o.GetRow(2)));
         EXPECT_FALSE(fields.o.Cols().Has("two"));
+        EXPECT_FALSE(Exists(fields.o.GetCol("two")));
         EXPECT_TRUE(Exists(fields.o.Get(3, "too")));
         EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
         EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
+        EXPECT_EQ(1, Value(fields.o.GetRow(1)).phew);
         EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
+        EXPECT_EQ(4, Value(fields.o.GetCol("too")).phew);
+        EXPECT_TRUE(fields.o.CanAdd(2, "two"));
+        EXPECT_FALSE(fields.o.CanAdd(1, "three"));
+        EXPECT_FALSE(fields.o.CanAdd(4, "one"));
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
@@ -281,7 +290,7 @@ TEST(TransactionalStorage, SmokeTest) {
         
         fields.o.Add(Cell{3, "three", 3});
         fields.o.Add(Cell{4, "four", 4});
-        fields.o.Erase(1, "one");
+        fields.o.EraseRow(1);
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
       EXPECT_FALSE(WasCommitted(result));
@@ -359,7 +368,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(2u, fields.o.Rows().Size());
         EXPECT_EQ(2u, fields.o.Cols().Size());
 
-        fields.o.Erase(3, "two");
+        fields.o.EraseCol("two");
         EXPECT_FALSE(fields.o.Rows().Has(3));
         EXPECT_FALSE(fields.o.Cols().Has("too"));
         EXPECT_FALSE(fields.o.Cols().Has("two"));
@@ -415,9 +424,15 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(fields.o.Empty());
       EXPECT_EQ(2u, fields.o.Size());
       EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
+      EXPECT_EQ(1, Value(fields.o.GetCol("one")).phew);
       EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
+      EXPECT_EQ(4, Value(fields.o.GetRow(3)).phew);
       EXPECT_FALSE(Exists(fields.o.Get(2, "two")));
+      EXPECT_FALSE(Exists(fields.o.GetRow(2)));
+      EXPECT_FALSE(Exists(fields.o.GetCol("two")));
       EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
+      EXPECT_TRUE(Exists(fields.o.GetCol("too")));
+      EXPECT_FALSE(Exists(fields.o.GetCol("three")));
       EXPECT_FALSE(fields.o.Cols().Has("three"));
       EXPECT_TRUE(fields.o.Cols().Has("too"));
     }).Wait();
