@@ -132,6 +132,7 @@ TEST(TransactionalStorage, SmokeTest) {
     EXPECT_EQ(3u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
 
+    // Fill a `Dictionary` container
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         fields.d.Add(Record{"one", 1});
@@ -164,6 +165,8 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
+
+    // Fill a `Matrix` container
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.m.Empty());
@@ -186,16 +189,18 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
+
+    // Fill a `One2One` container
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.o.Empty());
         EXPECT_EQ(0u, fields.o.Size());
         EXPECT_TRUE(fields.o.Rows().Empty());
         EXPECT_TRUE(fields.o.Cols().Empty());
-        fields.o.Add(Cell{1, "one", 1});
-        fields.o.Add(Cell{2, "two", 2});
-        fields.o.Add(Cell{2, "too", 3});
-        fields.o.Add(Cell{3, "too", 4});
+        fields.o.Add(Cell{1, "one", 1});  // Adds {1,one=1}
+        fields.o.Add(Cell{2, "two", 2});  // Adds {2,two=2}
+        fields.o.Add(Cell{2, "too", 3});  // Adds {2,too=3}, removes {2,two=2}
+        fields.o.Add(Cell{3, "too", 4});  // Adds {3,too=4}, removes {2,too=3}
         EXPECT_FALSE(fields.o.Empty());
         EXPECT_EQ(2u, fields.o.Size());
         EXPECT_FALSE(fields.o.Rows().Empty());
@@ -221,9 +226,9 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Iterate over the matrix.
+    // Iterate over a matrix.
     {
-      storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.m.Empty());
         std::multiset<std::string> data;
         for (const auto& row : fields.m.Rows()) {
@@ -235,7 +240,8 @@ TEST(TransactionalStorage, SmokeTest) {
         }
         EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
       }).Go();
-      storage.Transaction([](MutableFields<Storage> fields) {
+      EXPECT_TRUE(WasCommitted(result1));
+      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.m.Empty());
         std::multiset<std::string> data;
         for (const auto& col : fields.m.Cols()) {
@@ -247,11 +253,12 @@ TEST(TransactionalStorage, SmokeTest) {
         }
         EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
       }).Go();
+      EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over the One2One
+    // Iterate over a One2One
     {
-      storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.o.Empty());
         std::multiset<std::string> data;
         for (const auto& element : fields.o.Rows()) {
@@ -261,7 +268,8 @@ TEST(TransactionalStorage, SmokeTest) {
         }
         EXPECT_EQ("1,one=1 3,too=4", current::strings::Join(data, ' '));
       }).Go();
-      storage.Transaction([](MutableFields<Storage> fields) {
+      EXPECT_TRUE(WasCommitted(result1));
+      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.o.Empty());
         std::multiset<std::string> data;
         for (const auto& element : fields.o.Cols()) {
@@ -271,11 +279,12 @@ TEST(TransactionalStorage, SmokeTest) {
         }
         EXPECT_EQ("1,one=1 3,too=4", current::strings::Join(data, ' '));
       }).Go();
+      EXPECT_TRUE(WasCommitted(result2));
     }
 
     // Rollback a transaction involving a `Matrix` and a `One2One`.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.m.Size());
         EXPECT_EQ(2u, fields.m.Rows().Size());
         EXPECT_EQ(3u, fields.m.Cols().Size());
@@ -293,9 +302,9 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.o.EraseRow(1);
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
-      EXPECT_FALSE(WasCommitted(result));
+      EXPECT_FALSE(WasCommitted(result1));
 
-      storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.m.Size());
         EXPECT_EQ(2u, fields.m.Rows().Size());
         EXPECT_EQ(3u, fields.m.Cols().Size());
@@ -307,11 +316,12 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.o.Rows().Has(3));
         EXPECT_TRUE(fields.o.Cols().Has("one"));
       }).Go();
+      EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over the matrix with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a matrix with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      EXPECT_FALSE(WasCommitted(storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.m.Rows().Has(2));
         EXPECT_TRUE(fields.m.Cols().Has("two"));
         EXPECT_TRUE(fields.m.Cols().Has("too"));
@@ -351,12 +361,13 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1", current::strings::Join(data2, ' '));
 
         CURRENT_STORAGE_THROW_ROLLBACK();
-      }).Go()));
+      }).Go();
+      EXPECT_FALSE(WasCommitted(result));
     }
 
-    // Iterate over the One2One with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a One2One with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      EXPECT_FALSE(WasCommitted(storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.o.Rows().Has(1));
         EXPECT_TRUE(fields.o.Cols().Has("one"));
         EXPECT_TRUE(fields.o.Cols().Has("too"));
@@ -392,7 +403,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1", current::strings::Join(cols, ' '));
 
         CURRENT_STORAGE_THROW_ROLLBACK();
-      }).Go()));
+      }).Go();
+      EXPECT_FALSE(WasCommitted(result));
     }
 
     {
@@ -405,9 +417,10 @@ TEST(TransactionalStorage, SmokeTest) {
     }
   }
 
+  // Replay the entire storage from file
   {
     Storage replayed(persistence_file_name);
-    replayed.Transaction([](ImmutableFields<Storage> fields) {
+    const auto result = replayed.Transaction([](ImmutableFields<Storage> fields) {
       EXPECT_FALSE(fields.d.Empty());
       EXPECT_EQ(2u, fields.d.Size());
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
@@ -435,7 +448,8 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(Exists(fields.o.GetCol("three")));
       EXPECT_FALSE(fields.o.Cols().Has("three"));
       EXPECT_TRUE(fields.o.Cols().Has("too"));
-    }).Wait();
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
   }
 }
 
