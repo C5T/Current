@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_CONTAINER_ONE2ONE_H
-#define CURRENT_STORAGE_CONTAINER_ONE2ONE_H
+#ifndef CURRENT_STORAGE_CONTAINER_ONE_TO_ONE_H
+#define CURRENT_STORAGE_CONTAINER_ONE_TO_ONE_H
 
 #include "common.h"
 #include "sfinae.h"
@@ -42,7 +42,7 @@ template <typename T,
           typename T_DELETE_EVENT,
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
-class GenericOne2One {
+class GenericOneToOne {
  public:
   using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
   using T_COL = sfinae::ENTRY_COL_TYPE<T>;
@@ -52,7 +52,7 @@ class GenericOne2One {
   using T_TRANSPOSED_MAP = COL_MAP<T_COL, const T*>;
   using T_REST_BEHAVIOR = rest::behavior::Matrix;
 
-  explicit GenericOne2One(MutationJournal& journal) : journal_(journal) {}
+  explicit GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -242,27 +242,27 @@ class GenericOne2One {
 };
 
 template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using UnorderedOne2One = GenericOne2One<T, T_UPDATE_EVENT, T_DELETE_EVENT, Unordered, Unordered>;
+using UnorderedOneToOne = GenericOneToOne<T, T_UPDATE_EVENT, T_DELETE_EVENT, Unordered, Unordered>;
 
 template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using OrderedOne2One = GenericOne2One<T, T_UPDATE_EVENT, T_DELETE_EVENT, Ordered, Ordered>;
+using OrderedOneToOne = GenericOneToOne<T, T_UPDATE_EVENT, T_DELETE_EVENT, Ordered, Ordered>;
 
 }  // namespace container
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedOne2One<T, E1, E2>> {
-  static const char* HumanReadableName() { return "UnorderedOne2One"; }
+struct StorageFieldTypeSelector<container::UnorderedOneToOne<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToOne"; }
 };
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedOne2One<T, E1, E2>> {
-  static const char* HumanReadableName() { return "OrderedOne2One"; }
+struct StorageFieldTypeSelector<container::OrderedOneToOne<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToOne"; }
 };
 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedOne2One;
-using current::storage::container::OrderedOne2One;
+using current::storage::container::UnorderedOneToOne;
+using current::storage::container::OrderedOneToOne;
 
-#endif  // CURRENT_STORAGE_CONTAINER_ONE2ONE_H
+#endif  // CURRENT_STORAGE_CONTAINER_ONE_TO_ONE_H

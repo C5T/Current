@@ -110,12 +110,12 @@ CURRENT_STRUCT(Cell) {
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrix);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOne2One, Cell, CellOne2One);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOne, Cell, CellOneToOne);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
   CURRENT_STORAGE_FIELD(m, CellMatrix);
-  CURRENT_STORAGE_FIELD(o, CellOne2One);
+  CURRENT_STORAGE_FIELD(o, CellOneToOne);
 };
 
 }  // namespace transactional_storage_test
@@ -190,7 +190,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Fill a `One2One` container
+    // Fill a `OneToOne` container
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.o.Empty());
@@ -256,7 +256,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over a One2One
+    // Iterate over a OneToOne
     {
       const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.o.Empty());
@@ -282,7 +282,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Rollback a transaction involving a `Matrix` and a `One2One`.
+    // Rollback a transaction involving a `Matrix` and a `OneToOne`.
     {
       const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.m.Size());
@@ -365,7 +365,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(WasCommitted(result));
     }
 
-    // Iterate over a One2One with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a OneToOne with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.o.Rows().Has(1));
@@ -497,7 +497,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<2, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("o, UnorderedOne2One, Cell", s);
+    EXPECT_EQ("o, UnorderedOneToOne, Cell", s);
   }
 }
 
