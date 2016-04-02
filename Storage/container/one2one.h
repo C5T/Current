@@ -65,9 +65,9 @@ class GenericOne2One {
     const auto row_col = std::make_pair(row, col);
     const auto it = map_.find(row_col);
     if (it != map_.end()) {
-      const T previous_object = *(it->second);
+      const T prev_object = *(it->second);
       journal_.LogMutation(T_UPDATE_EVENT(object),
-                           [this, row_col, previous_object]() { DoAdd(row_col, previous_object); });
+                           [this, row_col, prev_object]() { DoAdd(row_col, prev_object); });
     } else {
       const auto it_row = forward_.find(row);
       const auto it_col = transposed_.find(col);
@@ -107,15 +107,41 @@ class GenericOne2One {
   void Erase(const T_RCPAIR& row_col) {
     auto it = map_.find(row_col);
     if (it != map_.end()) {
-      const T previous_object = *(it->second);
-      journal_.LogMutation(T_DELETE_EVENT(previous_object),
-                           [this, row_col, previous_object]() {
-                             DoAdd(row_col, previous_object);
+      const T prev_object = *(it->second);
+      journal_.LogMutation(T_DELETE_EVENT(prev_object),
+                           [this, row_col, prev_object]() {
+                             DoAdd(row_col, prev_object);
                            });
       DoErase(row_col);
     }
   }
   void Erase(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) { Erase(std::make_pair(row, col)); }
+
+  void EraseRow(sfinae::CF<T_ROW> row) {
+    const auto it = forward_.find(row);
+    if (it != forward_.end()) {
+      const T prev_object = *(it->second);
+      const auto row_col = std::make_pair(row, sfinae::GetCol(prev_object));
+      journal_.LogMutation(T_DELETE_EVENT(prev_object),
+                           [this, row_col, prev_object]() {
+                             DoAdd(row_col, prev_object);
+                           });
+      DoErase(row_col);
+    }
+  }
+  
+  void EraseCol(sfinae::CF<T_COL> col) {
+    const auto it = transposed_.find(col);
+    if (it != transposed_.end()) {
+      const T prev_object = *(it->second);
+      const auto row_col = std::make_pair(sfinae::GetRow(prev_object), col);
+      journal_.LogMutation(T_DELETE_EVENT(prev_object),
+                           [this, row_col, prev_object]() {
+                             DoAdd(row_col, prev_object);
+                           });
+      DoErase(row_col);
+    }
+  }
   
   ImmutableOptional<T> operator[](const T_RCPAIR& row_col) const {
     const auto it = map_.find(row_col);
@@ -125,6 +151,27 @@ class GenericOne2One {
   }
   ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
     return operator[](std::make_pair(row, col));
+  }
+  ImmutableOptional<T> GetRow(sfinae::CF<T_ROW> row) const {
+    const auto it = forward_.find(row);
+    if (it == forward_.end())
+      return nullptr;
+    return ImmutableOptional<T>(FromBarePointer(), it->second);
+  }
+  ImmutableOptional<T> GetCol(sfinae::CF<T_COL> col) const {
+    const auto it = transposed_.find(col);
+    if (it == transposed_.end())
+      return nullptr;
+    return ImmutableOptional<T>(FromBarePointer(), it->second);
+  }
+
+  bool CanAdd(const T_RCPAIR& row_col) const {
+    return map_.find(row_col) == map_.end()
+      && forward_.find(row_col.first) == forward_.end()
+      && transposed_.find(row_col.second) == transposed_.end();
+  }
+  bool CanAdd(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+    return CanAdd(std::make_pair(row, col));
   }
 
   void operator()(const T_UPDATE_EVENT& e) {
