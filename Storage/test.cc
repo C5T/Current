@@ -248,7 +248,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
       }).Go();
     }
-    
+
     // Iterate over the One2One
     {
       storage.Transaction([](MutableFields<Storage> fields) {
@@ -287,7 +287,7 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.m.Add(Cell{1, "one", 42});
         fields.m.Add(Cell{3, "three", 3});
         fields.m.Erase(2, "two");
-        
+
         fields.o.Add(Cell{3, "three", 3});
         fields.o.Add(Cell{4, "four", 4});
         fields.o.EraseRow(1);
@@ -299,7 +299,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.m.Size());
         EXPECT_EQ(2u, fields.m.Rows().Size());
         EXPECT_EQ(3u, fields.m.Cols().Size());
-        
+
         EXPECT_EQ(2u, fields.o.Size());
         EXPECT_EQ(2u, fields.o.Rows().Size());
         EXPECT_EQ(2u, fields.o.Cols().Size());
@@ -353,7 +353,7 @@ TEST(TransactionalStorage, SmokeTest) {
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go()));
     }
-    
+
     // Iterate over the One2One with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
       EXPECT_FALSE(WasCommitted(storage.Transaction([](MutableFields<Storage> fields) {
@@ -374,7 +374,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_FALSE(fields.o.Cols().Has("two"));
         EXPECT_EQ(1u, fields.o.Rows().Size());
         EXPECT_EQ(1u, fields.o.Cols().Size());
-        
+
         std::multiset<std::string> rows;
         std::multiset<std::string> cols;
         for (const auto& element : fields.o.Rows()) {
@@ -387,10 +387,10 @@ TEST(TransactionalStorage, SmokeTest) {
                       current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
                       current::ToString(element.phew));
         }
-        
+
         EXPECT_EQ("1,one=1", current::strings::Join(rows, ' '));
         EXPECT_EQ("1,one=1", current::strings::Join(cols, ' '));
-        
+
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go()));
     }
@@ -420,7 +420,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_EQ(2, Value(fields.m.Get(2, "two")).phew);
       EXPECT_EQ(3, Value(fields.m.Get(2, "too")).phew);
       EXPECT_FALSE(Exists(fields.m.Get(3, "three")));
-      
+
       EXPECT_FALSE(fields.o.Empty());
       EXPECT_EQ(2u, fields.o.Size());
       EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
