@@ -588,7 +588,7 @@ TEST(AccumulativeScopedDeleter, DoesNotDeleteWhatShouldStay) {
     std::string tracker;
     {
       AccumulativeScopedDeleter<void> scope =
-          std::move(AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'e'; }));
+          AccumulativeScopedDeleter<void, false>([&tracker]() { tracker += 'e'; });
       EXPECT_EQ("", tracker);
     }
     EXPECT_EQ("e", tracker);

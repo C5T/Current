@@ -505,7 +505,7 @@ TEST(TypeSystemTest, VariantSmokeTestOneType) {
     EXPECT_EQ(101u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(101u, cp.VariantValueImpl<Foo>().i);
 
-    p = std::move(Foo(102u));
+    p = Foo(102u);
     EXPECT_EQ(102u, p.VariantValueImpl<Foo>().i);
     EXPECT_EQ(102u, cp.VariantValueImpl<Foo>().i);
 

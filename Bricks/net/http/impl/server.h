@@ -574,7 +574,7 @@ class HTTPServerConnection final {
       PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
       os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
       connection_.BlockingWrite(os.str(), true);
-      return std::move(ChunkedResponseSender(connection_));
+      return ChunkedResponseSender(connection_);
     }
   }
 

@@ -183,7 +183,7 @@ TEST(PersistenceLayer, File) {
     current::time::SetNow(std::chrono::microseconds(100));
     impl.Publish(StorableString("foo"));
     current::time::SetNow(std::chrono::microseconds(200));
-    impl.Publish(std::move(StorableString("bar")));
+    impl.Publish(StorableString("bar"));
     EXPECT_EQ(2u, impl.Size());
 
     {

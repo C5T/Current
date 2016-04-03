@@ -56,7 +56,7 @@ TEST(ScopeOwned, MoveConstructScopeOwnedByMe) {
     EXPECT_EQ(0, *x);
     ++*x;
     EXPECT_EQ(1, *x);
-    return std::move(x);
+    return x;
   }());
   EXPECT_EQ(1, *y);
   ++*y;
@@ -132,11 +132,11 @@ TEST(ScopeOwned, ScopeOwnedBySomeoneElseOutlivingTheOwner) {
             y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
           }
         },
-        std::move(ScopeOwnedBySomeoneElse<Container>(x,
-                                                     [&log, &terminating]() {
-                                                       terminating = true;
-                                                       log += "Terminating.\n";
-                                                     })));
+        ScopeOwnedBySomeoneElse<Container>(x,
+                                           [&log, &terminating]() {
+                                             terminating = true;
+                                             log += "Terminating.\n";
+                                           }));
 
     EXPECT_EQ(1u, x.NumberOfActiveFollowers());
     EXPECT_EQ(1u, x.TotalFollowersSpawnedThroughoutLifetime());
@@ -178,7 +178,7 @@ TEST(ScopeOwned, UseInternalIsDestructingGetter) {
       for (int i = 0; i < 1000; ++i) {
         y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
       }
-    }, std::move(ScopeOwnedBySomeoneElse<Container>(x, []() {})));
+    }, ScopeOwnedBySomeoneElse<Container>(x, []() {}));
 
     int extracted_value;
     do {
