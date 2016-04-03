@@ -117,7 +117,7 @@ struct FileSystem {
   }
 
   static inline std::string WriteStringToTmpFile(const std::string& contents) {
-    const std::string file_name = std::move(GenTmpFileName());
+    const std::string file_name = GenTmpFileName();
     WriteStringToFile(contents, file_name.c_str());
     return file_name;
   }

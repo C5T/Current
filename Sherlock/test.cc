@@ -396,7 +396,7 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
     current::sherlock::StreamImpl<RecordWithTimestamp>::SyncSubscriberScope<RecordsCollector> scope(
-        std::move(exposed_stream.Subscribe(collector)));
+        exposed_stream.Subscribe(collector));
     while (collector.count_ < 4u) {
       ;  // Spin lock.
     }
