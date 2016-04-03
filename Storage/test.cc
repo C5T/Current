@@ -111,11 +111,15 @@ CURRENT_STRUCT(Cell) {
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrix);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOne, Cell, CellOneToOne);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedMatrix, Cell, CellMatrixOrdered);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOne, Cell, CellOneToOneOrdered);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
   CURRENT_STORAGE_FIELD(m, CellMatrix);
   CURRENT_STORAGE_FIELD(o, CellOneToOne);
+  CURRENT_STORAGE_FIELD(mo, CellMatrixOrdered);
+  CURRENT_STORAGE_FIELD(oo, CellOneToOneOrdered);
 };
 
 }  // namespace transactional_storage_test
@@ -129,7 +133,7 @@ TEST(TransactionalStorage, SmokeTest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    EXPECT_EQ(3u, Storage::FIELDS_COUNT);
+    EXPECT_EQ(5u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
 
     // Fill a `Dictionary` container.
@@ -201,8 +205,9 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.o.Add(Cell{2, "two", 2});  // Adds {2,two=2}
         fields.o.Add(Cell{2, "too", 3});  // Adds {2,too=3}, removes {2,two=2}
         fields.o.Add(Cell{3, "too", 4});  // Adds {3,too=4}, removes {2,too=3}
+        fields.o.Add(Cell{4, "fiv", 5});  // Adds {4,fiv=5}
         EXPECT_FALSE(fields.o.Empty());
-        EXPECT_EQ(2u, fields.o.Size());
+        EXPECT_EQ(3u, fields.o.Size());
         EXPECT_FALSE(fields.o.Rows().Empty());
         EXPECT_FALSE(fields.o.Cols().Empty());
         EXPECT_TRUE(fields.o.Rows().Has(1));
@@ -219,6 +224,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(1, Value(fields.o.GetRowEntry(1)).phew);
         EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
         EXPECT_EQ(4, Value(fields.o.GetColEntry("too")).phew);
+        EXPECT_EQ(5, Value(fields.o.Get(4, "fiv")).phew);
+        EXPECT_EQ(5, Value(fields.o.GetRowEntry(4)).phew);
         EXPECT_TRUE(fields.o.DoesNotConflict(2, "two"));
         EXPECT_FALSE(fields.o.DoesNotConflict(1, "three"));
         EXPECT_FALSE(fields.o.DoesNotConflict(4, "one"));
@@ -226,58 +233,123 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Iterate over a `Matrix`.
+    // Copy data from unordered `Matrix` and `OneToOne` to corresponding ordered ones
     {
-      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.m.Empty());
-        std::multiset<std::string> data;
-        for (const auto& row : fields.m.Rows()) {
-          for (const auto& element : row) {
-            data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
-                        current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
-                        current::ToString(element.phew));
-          }
+        EXPECT_TRUE(fields.mo.Empty());
+
+        for (auto it = fields.m.WholeMatrixBegin(), end = fields.m.WholeMatrixEnd(); it != end; ++it) {
+          fields.mo.Add(*it);
         }
-        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
+        EXPECT_EQ(fields.m.Size(), fields.mo.Size());
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
-        EXPECT_FALSE(fields.m.Empty());
-        std::multiset<std::string> data;
-        for (const auto& col : fields.m.Cols()) {
-          for (const auto& element : col) {
-            data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
-                        current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
-                        current::ToString(element.phew));
-          }
+      const auto result2 = storage.Transaction([](MutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.o.Empty());
+        EXPECT_TRUE(fields.oo.Empty());
+
+        for (const auto& element : fields.o) {
+          fields.oo.Add(element);
         }
-        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data, ' '));
+        EXPECT_EQ(fields.o.Size(), fields.oo.Size());
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over a `OneToOne`.
+    // Iterate over a `Matrix`, compare its ordered and unordered versions
+    {
+      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.m.Empty());
+        EXPECT_FALSE(fields.mo.Empty());
+        std::multiset<std::string> data_set;
+        for (const auto& row : fields.m.Rows()) {
+          for (const auto& element : row) {
+            data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                            current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                            current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data_set, ' '));
+        // Use vector instead of set and expect the same result, because the data is already sorted.
+        std::vector<std::string> data_vec;
+        for (const auto& row : fields.mo.Rows()) {
+          for (const auto& element : row) {
+            data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                               current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                               current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
+
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result1));
+      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
+        EXPECT_FALSE(fields.m.Empty());
+        EXPECT_FALSE(fields.mo.Empty());
+        std::multiset<std::string> data_set;
+        for (const auto& col : fields.m.Cols()) {
+          for (const auto& element : col) {
+            data_set.insert(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                            current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                            current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_set, ' '));
+        // Use vector instead of set and expect the same result, because the data is already sorted.
+        std::vector<std::string> data_vec;
+        for (const auto& col : fields.mo.Cols()) {
+          for (const auto& element : col) {
+            data_vec.push_back(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                               current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                               current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_vec, ' '));
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result2));
+    }
+
+    // Iterate over a `OneToOne`, compare its ordered and unordered versions.
     {
       const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.o.Empty());
-        std::multiset<std::string> data;
+        EXPECT_FALSE(fields.oo.Empty());
+        std::multiset<std::string> data_set;
         for (const auto& element : fields.o.Rows()) {
-          data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
-                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
-                      current::ToString(element.phew));
+          data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                          current::ToString(element.phew));
         }
-        EXPECT_EQ("1,one=1 3,too=4", current::strings::Join(data, ' '));
+        EXPECT_EQ("1,one=1 3,too=4 4,fiv=5", current::strings::Join(data_set, ' '));
+        // Use vector instead of set and expect the same result, because the data is already sorted.
+        std::vector<std::string> data_vec;
+        for (const auto& element : fields.oo.Rows()) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("1,one=1 3,too=4 4,fiv=5", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
       const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.o.Empty());
-        std::multiset<std::string> data;
+        EXPECT_FALSE(fields.oo.Empty());
+        std::multiset<std::string> data_set;
         for (const auto& element : fields.o.Cols()) {
-          data.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
-                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
-                      current::ToString(element.phew));
+          data_set.insert(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                          current::ToString(element.phew));
         }
-        EXPECT_EQ("1,one=1 3,too=4", current::strings::Join(data, ' '));
+        EXPECT_EQ("fiv,4=5 one,1=1 too,3=4", current::strings::Join(data_set, ' '));
+        // Use vector instead of set and expect the same result, because the data is already sorted.
+        std::vector<std::string> data_vec;
+        for (const auto& element : fields.oo.Cols()) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("fiv,4=5 one,1=1 too,3=4", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
     }
@@ -309,9 +381,9 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(2u, fields.m.Rows().Size());
         EXPECT_EQ(3u, fields.m.Cols().Size());
 
-        EXPECT_EQ(2u, fields.o.Size());
-        EXPECT_EQ(2u, fields.o.Rows().Size());
-        EXPECT_EQ(2u, fields.o.Cols().Size());
+        EXPECT_EQ(3u, fields.o.Size());
+        EXPECT_EQ(3u, fields.o.Rows().Size());
+        EXPECT_EQ(3u, fields.o.Cols().Size());
         EXPECT_FALSE(fields.o.Cols().Has("three"));
         EXPECT_TRUE(fields.o.Rows().Has(3));
         EXPECT_TRUE(fields.o.Cols().Has("one"));
@@ -351,14 +423,14 @@ TEST(TransactionalStorage, SmokeTest) {
         }
         for (const auto& col : fields.m.Cols()) {
           for (const auto& element : col) {
-            data2.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
-                         current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+            data2.insert(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                         current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
                          current::ToString(element.phew));
           }
         }
 
         EXPECT_EQ("1,one=1", current::strings::Join(data1, ' '));
-        EXPECT_EQ("1,one=1", current::strings::Join(data2, ' '));
+        EXPECT_EQ("one,1=1", current::strings::Join(data2, ' '));
 
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
@@ -376,15 +448,15 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.o.Rows().Has(3));
         EXPECT_FALSE(fields.o.Cols().Has("too"));
         EXPECT_TRUE(fields.o.Cols().Has("two"));
-        EXPECT_EQ(2u, fields.o.Rows().Size());
-        EXPECT_EQ(2u, fields.o.Cols().Size());
+        EXPECT_EQ(3u, fields.o.Rows().Size());
+        EXPECT_EQ(3u, fields.o.Cols().Size());
 
         fields.o.EraseCol("two");
         EXPECT_FALSE(fields.o.Rows().Has(3));
         EXPECT_FALSE(fields.o.Cols().Has("too"));
         EXPECT_FALSE(fields.o.Cols().Has("two"));
-        EXPECT_EQ(1u, fields.o.Rows().Size());
-        EXPECT_EQ(1u, fields.o.Cols().Size());
+        EXPECT_EQ(2u, fields.o.Rows().Size());
+        EXPECT_EQ(2u, fields.o.Cols().Size());
 
         std::multiset<std::string> rows;
         std::multiset<std::string> cols;
@@ -394,13 +466,13 @@ TEST(TransactionalStorage, SmokeTest) {
                       current::ToString(element.phew));
         }
         for (const auto& element : fields.o.Cols()) {
-          cols.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
-                      current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+          cols.insert(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                      current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
                       current::ToString(element.phew));
         }
 
-        EXPECT_EQ("1,one=1", current::strings::Join(rows, ' '));
-        EXPECT_EQ("1,one=1", current::strings::Join(cols, ' '));
+        EXPECT_EQ("1,one=1 4,fiv=5", current::strings::Join(rows, ' '));
+        EXPECT_EQ("fiv,4=5 one,1=1", current::strings::Join(cols, ' '));
 
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
@@ -435,17 +507,20 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(Exists(fields.m.Get(3, "three")));
 
       EXPECT_FALSE(fields.o.Empty());
-      EXPECT_EQ(2u, fields.o.Size());
+      EXPECT_EQ(3u, fields.o.Size());
       EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
       EXPECT_EQ(1, Value(fields.o.GetColEntry("one")).phew);
       EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
       EXPECT_EQ(4, Value(fields.o.GetRowEntry(3)).phew);
+      EXPECT_EQ(5, Value(fields.o.Get(4, "fiv")).phew);
+      EXPECT_EQ(5, Value(fields.o.GetColEntry("fiv")).phew);
       EXPECT_FALSE(Exists(fields.o.Get(2, "two")));
       EXPECT_FALSE(Exists(fields.o.GetRowEntry(2)));
       EXPECT_FALSE(Exists(fields.o.GetColEntry("two")));
       EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
       EXPECT_TRUE(Exists(fields.o.GetColEntry("too")));
       EXPECT_FALSE(Exists(fields.o.GetColEntry("three")));
+      EXPECT_TRUE(Exists(fields.o.GetRowEntry(4)));
       EXPECT_FALSE(fields.o.Cols().Has("three"));
       EXPECT_TRUE(fields.o.Cols().Has("too"));
     }).Go();
@@ -472,11 +547,13 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  EXPECT_EQ(3u, Storage::FIELDS_COUNT);
+  EXPECT_EQ(5u, Storage::FIELDS_COUNT);
   Storage storage;
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("m", storage(::current::storage::FieldNameByIndex<1>()));
   EXPECT_EQ("o", storage(::current::storage::FieldNameByIndex<2>()));
+  EXPECT_EQ("mo", storage(::current::storage::FieldNameByIndex<3>()));
+  EXPECT_EQ("oo", storage(::current::storage::FieldNameByIndex<4>()));
 
   {
     std::string s;
@@ -498,6 +575,22 @@ TEST(TransactionalStorage, FieldAccessors) {
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<2, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
     EXPECT_EQ("o, UnorderedOneToOne, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<3, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("mo, OrderedMatrix, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<4, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("oo, OrderedOneToOne, Cell", s);
   }
 }
 

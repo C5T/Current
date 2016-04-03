@@ -165,7 +165,9 @@ class GenericOneToOne {
   bool DoesNotConflict(const T_KEY& key) const {
     return forward_.find(key.first) == forward_.end() && transposed_.find(key.second) == transposed_.end();
   }
-  bool DoesNotConflict(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const { return DoesNotConflict(std::make_pair(row, col)); }
+  bool DoesNotConflict(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+    return DoesNotConflict(std::make_pair(row, col));
+  }
 
   void operator()(const T_UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
@@ -218,8 +220,8 @@ class GenericOneToOne {
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
   };
-  Iterator Begin() const { return Iterator(map_.begin()); }
-  Iterator End() const { return Iterator(map_.end()); }
+  Iterator begin() const { return Iterator(map_.begin()); }
+  Iterator end() const { return Iterator(map_.end()); }
 
  private:
   void DoErase(const T_KEY& key) {
