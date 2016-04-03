@@ -145,7 +145,7 @@ class GenericOneToOne {
   ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
     return operator[](std::make_pair(row, col));
   }
-  ImmutableOptional<T> GetRowEntry(sfinae::CF<T_ROW> row) const {
+  ImmutableOptional<T> GetEntryFromRow(sfinae::CF<T_ROW> row) const {
     const auto it = forward_.find(row);
     if (it != forward_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second);
@@ -153,7 +153,7 @@ class GenericOneToOne {
       return nullptr;
     }
   }
-  ImmutableOptional<T> GetColEntry(sfinae::CF<T_COL> col) const {
+  ImmutableOptional<T> GetEntryFromCol(sfinae::CF<T_COL> col) const {
     const auto it = transposed_.find(col);
     if (it != transposed_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second);
