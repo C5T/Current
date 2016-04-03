@@ -132,7 +132,7 @@ TEST(TransactionalStorage, SmokeTest) {
     EXPECT_EQ(3u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
 
-    // Fill a `Dictionary` container
+    // Fill a `Dictionary` container.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         fields.d.Add(Record{"one", 1});
@@ -166,7 +166,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Fill a `Matrix` container
+    // Fill a `Matrix` container.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.m.Empty());
@@ -190,7 +190,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Fill a `OneToOne` container
+    // Fill a `OneToOne` container.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.o.Empty());
@@ -206,27 +206,27 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_FALSE(fields.o.Rows().Empty());
         EXPECT_FALSE(fields.o.Cols().Empty());
         EXPECT_TRUE(fields.o.Rows().Has(1));
-        EXPECT_TRUE(Exists(fields.o.GetRow(1)));
+        EXPECT_TRUE(Exists(fields.o.GetRowEntry(1)));
         EXPECT_TRUE(fields.o.Cols().Has("one"));
-        EXPECT_TRUE(Exists(fields.o.GetCol("one")));
+        EXPECT_TRUE(Exists(fields.o.GetColEntry("one")));
         EXPECT_FALSE(fields.o.Rows().Has(2));
-        EXPECT_FALSE(Exists(fields.o.GetRow(2)));
+        EXPECT_FALSE(Exists(fields.o.GetRowEntry(2)));
         EXPECT_FALSE(fields.o.Cols().Has("two"));
-        EXPECT_FALSE(Exists(fields.o.GetCol("two")));
+        EXPECT_FALSE(Exists(fields.o.GetColEntry("two")));
         EXPECT_TRUE(Exists(fields.o.Get(3, "too")));
         EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
         EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
-        EXPECT_EQ(1, Value(fields.o.GetRow(1)).phew);
+        EXPECT_EQ(1, Value(fields.o.GetRowEntry(1)).phew);
         EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
-        EXPECT_EQ(4, Value(fields.o.GetCol("too")).phew);
-        EXPECT_TRUE(fields.o.CanAdd(2, "two"));
-        EXPECT_FALSE(fields.o.CanAdd(1, "three"));
-        EXPECT_FALSE(fields.o.CanAdd(4, "one"));
+        EXPECT_EQ(4, Value(fields.o.GetColEntry("too")).phew);
+        EXPECT_TRUE(fields.o.DoesNotConflict(2, "two"));
+        EXPECT_FALSE(fields.o.DoesNotConflict(1, "three"));
+        EXPECT_FALSE(fields.o.DoesNotConflict(4, "one"));
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Iterate over a matrix.
+    // Iterate over a `Matrix`.
     {
       const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.m.Empty());
@@ -256,7 +256,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over a OneToOne
+    // Iterate over a `OneToOne`.
     {
       const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.o.Empty());
@@ -319,7 +319,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over a matrix with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a `Matrix` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.m.Rows().Has(2));
@@ -365,7 +365,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(WasCommitted(result));
     }
 
-    // Iterate over a OneToOne with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a `OneToOne` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.o.Rows().Has(1));
@@ -417,7 +417,7 @@ TEST(TransactionalStorage, SmokeTest) {
     }
   }
 
-  // Replay the entire storage from file
+  // Replay the entire storage from file.
   {
     Storage replayed(persistence_file_name);
     const auto result = replayed.Transaction([](ImmutableFields<Storage> fields) {
@@ -437,15 +437,15 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_FALSE(fields.o.Empty());
       EXPECT_EQ(2u, fields.o.Size());
       EXPECT_EQ(1, Value(fields.o.Get(1, "one")).phew);
-      EXPECT_EQ(1, Value(fields.o.GetCol("one")).phew);
+      EXPECT_EQ(1, Value(fields.o.GetColEntry("one")).phew);
       EXPECT_EQ(4, Value(fields.o.Get(3, "too")).phew);
-      EXPECT_EQ(4, Value(fields.o.GetRow(3)).phew);
+      EXPECT_EQ(4, Value(fields.o.GetRowEntry(3)).phew);
       EXPECT_FALSE(Exists(fields.o.Get(2, "two")));
-      EXPECT_FALSE(Exists(fields.o.GetRow(2)));
-      EXPECT_FALSE(Exists(fields.o.GetCol("two")));
+      EXPECT_FALSE(Exists(fields.o.GetRowEntry(2)));
+      EXPECT_FALSE(Exists(fields.o.GetColEntry("two")));
       EXPECT_FALSE(Exists(fields.o.Get(2, "too")));
-      EXPECT_TRUE(Exists(fields.o.GetCol("too")));
-      EXPECT_FALSE(Exists(fields.o.GetCol("three")));
+      EXPECT_TRUE(Exists(fields.o.GetColEntry("too")));
+      EXPECT_FALSE(Exists(fields.o.GetColEntry("three")));
       EXPECT_FALSE(fields.o.Cols().Has("three"));
       EXPECT_TRUE(fields.o.Cols().Has("too"));
     }).Go();

@@ -57,15 +57,15 @@ class GenericOneToOne {
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
 
-  // Adds specified object, removes and/or overwrites all existing entries
-  // with row and/or col value matching the corresponding values of the new entry
+  // Adds specified object and overwrites existing one if it has the same row and col.
+  // Removes all other existing objects with the same row or col.
   void Add(const T& object) {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
     const auto it = map_.find(key);
     if (it != map_.end()) {
-      const T previous_object = *(it->second);
+      const T& previous_object = *(it->second);
       journal_.LogMutation(T_UPDATE_EVENT(object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
@@ -74,8 +74,8 @@ class GenericOneToOne {
       const bool row_occupied = (it_row != forward_.end());
       const bool col_occupied = (it_col != transposed_.end());
       if (row_occupied && col_occupied) {
-        const T previous_object_same_row = *(it_row->second);
-        const T previous_object_same_col = *(it_col->second);
+        const T& previous_object_same_row = *(it_row->second);
+        const T& previous_object_same_col = *(it_col->second);
         const auto key_same_row = std::make_pair(row, sfinae::GetCol(previous_object_same_row));
         const auto key_same_col = std::make_pair(sfinae::GetRow(previous_object_same_col), col);
         journal_.LogMutation(T_DELETE_EVENT(previous_object_same_row),
@@ -89,7 +89,7 @@ class GenericOneToOne {
         DoErase(key_same_row);
         DoErase(key_same_col);
       } else if (row_occupied || col_occupied) {
-        const T previous_object = row_occupied ? *(it_row->second) : *(it_col->second);
+        const T& previous_object = row_occupied ? *(it_row->second) : *(it_col->second);
         const auto previous_key =
             std::make_pair(sfinae::GetRow(previous_object), sfinae::GetCol(previous_object));
         journal_.LogMutation(T_DELETE_EVENT(previous_object),
@@ -104,7 +104,7 @@ class GenericOneToOne {
   void Erase(const T_KEY& key) {
     const auto it = map_.find(key);
     if (it != map_.end()) {
-      const T previous_object = *(it->second);
+      const T& previous_object = *(it->second);
       journal_.LogMutation(T_DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
@@ -145,7 +145,7 @@ class GenericOneToOne {
   ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
     return operator[](std::make_pair(row, col));
   }
-  ImmutableOptional<T> GetRow(sfinae::CF<T_ROW> row) const {
+  ImmutableOptional<T> GetRowEntry(sfinae::CF<T_ROW> row) const {
     const auto it = forward_.find(row);
     if (it != forward_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second);
@@ -153,7 +153,7 @@ class GenericOneToOne {
       return nullptr;
     }
   }
-  ImmutableOptional<T> GetCol(sfinae::CF<T_COL> col) const {
+  ImmutableOptional<T> GetColEntry(sfinae::CF<T_COL> col) const {
     const auto it = transposed_.find(col);
     if (it != transposed_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second);
@@ -162,10 +162,10 @@ class GenericOneToOne {
     }
   }
 
-  bool CanAdd(const T_KEY& key) const {
+  bool DoesNotConflict(const T_KEY& key) const {
     return forward_.find(key.first) == forward_.end() && transposed_.find(key.second) == transposed_.end();
   }
-  bool CanAdd(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const { return CanAdd(std::make_pair(row, col)); }
+  bool DoesNotConflict(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const { return DoesNotConflict(std::make_pair(row, col)); }
 
   void operator()(const T_UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
@@ -214,7 +214,7 @@ class GenericOneToOne {
     void operator++() { ++iterator_; }
     bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    const T_KEY key() const { return iterator_->first; }
+    sfinae::CF<T_KEY> key() const { return iterator_->first; }
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
   };
