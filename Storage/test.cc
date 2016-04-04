@@ -204,7 +204,8 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.o.Add(Cell{1, "one", 1});  // Adds {1,one=1}
         fields.o.Add(Cell{2, "two", 2});  // Adds {2,two=2}
         fields.o.Add(Cell{2, "too", 3});  // Adds {2,too=3}, removes {2,two=2}
-        fields.o.Add(Cell{3, "too", 4});  // Adds {3,too=4}, removes {2,too=3}
+        fields.o.Add(Cell{3, "too", 6});  // Adds {3,too=6}, removes {2,too=3}
+        fields.o.Add(Cell{3, "too", 4});  // Adds {3,too=4}, overwrites {3,too=6}
         fields.o.Add(Cell{4, "fiv", 5});  // Adds {4,fiv=5}
         EXPECT_FALSE(fields.o.Empty());
         EXPECT_EQ(3u, fields.o.Size());
@@ -367,8 +368,9 @@ TEST(TransactionalStorage, SmokeTest) {
         fields.m.Add(Cell{3, "three", 3});
         fields.m.Erase(2, "two");
 
-        fields.o.Add(Cell{3, "three", 3});
-        fields.o.Add(Cell{4, "four", 4});
+        fields.o.Add(Cell{3, "too", 6});  // Adds {3,too=6}, overwrites {3,too=4}
+        fields.o.Add(Cell{4, "for", 4});  // Adds {4,for=4}, removes {4,fiv=5}
+        fields.o.Add(Cell{5, "fiv", 7});  // Adds {5,fiv=7}
         fields.o.EraseRow(1);
         CURRENT_STORAGE_THROW_ROLLBACK();
       }).Go();
