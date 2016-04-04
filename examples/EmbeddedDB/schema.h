@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// TODO(dkorolev): Refactor this example to use `CURRENT_STORAGE`, or retire it.
+
 #ifndef SCHEMA_H
 #define SCHEMA_H
 

@@ -40,7 +40,7 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 DEFINE_string(transactional_storage_test_tmpdir,
               ".current",
               "Local path for the test to create temporary files in.");
@@ -799,8 +799,8 @@ class StorageSherlockTestProcessorImpl {
     allow_terminate_on_no_more_entries_of_right_type_ = true;
   }
 
-  EntryResponse operator()(const T_SHERLOCK_ENTRY& transaction, idxts_t current, idxts_t last) const {
-    output_ += JSON(current) + '\t' + JSON(transaction) + '\n';
+  EntryResponse operator()(const T_SHERLOCK_ENTRY& entry, idxts_t current, idxts_t last) const {
+    output_ += JSON(current) + '\t' + JSON(entry) + '\n';
     if (current.index != last.index) {
       return EntryResponse::More;
     } else {
@@ -1182,23 +1182,23 @@ CURRENT_STRUCT(StreamEntryOutsideStorage) {
 
 TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   using namespace transactional_storage_test;
-  using storage_t = TestStorage<SherlockInMemoryStreamPersister>;
-  using transaction_t = typename storage_t::T_PERSISTER::T_TRANSACTION;
+  using pre_storage_t = TestStorage<SherlockInMemoryStreamPersister>;
+  using transaction_t = typename pre_storage_t::T_TRANSACTION;
 
-  static_assert(std::is_same<transaction_t, typename storage_t::T_TRANSACTION>::value, "");
+  static_assert(std::is_same<transaction_t, typename pre_storage_t::T_PERSISTER::T_TRANSACTION>::value, "");
 
-  using Storage = TestStorage<SherlockInMemoryStreamPersister,
-                              current::storage::transaction_policy::Synchronous,
-                              Variant<transaction_t, StreamEntryOutsideStorage>>;
+  using storage_t = TestStorage<SherlockInMemoryStreamPersister,
+                                current::storage::transaction_policy::Synchronous,
+                                Variant<transaction_t, StreamEntryOutsideStorage>>;
 
-  static_assert(std::is_same<typename Storage::T_PERSISTER::T_SHERLOCK,
+  static_assert(std::is_same<typename storage_t::T_PERSISTER::T_SHERLOCK,
                              current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
                                                        current::persistence::Memory>>::value,
                 "");
 
-  typename Storage::T_PERSISTER::T_SHERLOCK stream;
+  typename storage_t::T_PERSISTER::T_SHERLOCK stream;
 
-  Storage storage(stream);
+  storage_t storage(stream);
 
   {
     // Add three records to the stream: first and third externally, second through the storage.
@@ -1206,7 +1206,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
 
     {
       current::time::SetNow(std::chrono::microseconds(2));
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.Transaction([](MutableFields<storage_t> fields) {
         fields.d.Add(Record{"two", 2});
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
@@ -1240,8 +1240,8 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
 
   {
     // Confirm replaying storage with a mixed-content stream does its job.
-    Storage replayed(stream);
-    const auto result = replayed.Transaction([](ImmutableFields<Storage> fields) {
+    storage_t replayed(stream);
+    const auto result = replayed.Transaction([](ImmutableFields<storage_t> fields) {
       EXPECT_EQ(1u, fields.d.Size());
       ASSERT_TRUE(Exists(fields.d["two"]));
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);

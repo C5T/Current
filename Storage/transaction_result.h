@@ -74,7 +74,7 @@ class TransactionResult : public OptionalResult<T> {
 template <>
 class TransactionResult<void> : public OptionalResult<void> {
  public:
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
   TransactionResult() = delete;
 #else
   TransactionResult() = default;  // Required by Visual Studio.

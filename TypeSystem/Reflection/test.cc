@@ -43,7 +43,7 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
 #else
   typedef std::map<std::string, std::string> t_map_string_string;
@@ -65,7 +65,7 @@ CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>)
 CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
 #else
   typedef std::map<std::string, SelfContainingC> t_map_string_c;
@@ -155,7 +155,7 @@ CURRENT_STRUCT(StructWithAllSupportedTypes) {
   // Other primitive types.
   CURRENT_FIELD(s, std::string, "The String");
   CURRENT_FIELD(e, Enum, Enum::Value2);
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
   // STL containers.
   CURRENT_FIELD(pair_strdbl, (std::pair<std::string, double>));
   CURRENT_FIELD(vector_int32, std::vector<int32_t>);

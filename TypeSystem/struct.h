@@ -65,7 +65,7 @@ struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   using T_SUPER = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
   using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
   using typename REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
-#ifdef _MSC_VER
+#ifdef CURRENT_WINDOWS
   using REFLECTION_HELPER::CURRENT_FIELD_INDEX_BASE;
 #endif
 };
@@ -136,7 +136,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
   using s = CURRENT_STRUCT_IMPL_##s<::current::reflection::DeclareFields>
 
 // Current structure implementation.
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 
 #define CURRENT_STRUCT_HELPERS(s, super)                                                            \
   template <typename INSTANTIATION_TYPE>                                                            \
@@ -175,7 +175,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
                                                super>;                                                     \
   }
 
-#else  // _MSC_VER
+#else  // CURRENT_WINDOWS
 
 #define CURRENT_STRUCT_HELPERS(s, super)                                                            \
   template <typename INSTANTIATION_TYPE>                                                            \
@@ -204,12 +204,12 @@ struct CurrentStructFieldsConsistency<T, -1> {
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
   }
 
-#endif  // _MSC_VER
+#endif  // CURRENT_WINDOWS
 
 // `CURRENT_STRUCT` implementations need to extract `CURRENT_FIELD_INDEX_BASE`,
 // and its scope resolution for derived structs differs between Visual C++ and g++/clang++. -- D.K.
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
   CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                        \
@@ -235,7 +235,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
       : CURRENT_STRUCT_SUPER_HELPER_##s,                                                  \
         ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
 
-#else  // _MSC_VER
+#else  // CURRENT_WINDOWS
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
   CURRENT_STRUCT_HELPERS(s, ::current::CurrentStruct);                                        \
@@ -258,7 +258,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
   struct CURRENT_STRUCT_IMPL_##s                                                          \
       : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
 
-#endif  // _MSC_VER
+#endif  // CURRENT_WINDOWS
 
 // Macro to equally treat bare and parenthesized type arguments:
 // CF_TYPE((int)) = CF_TYPE(int) = int

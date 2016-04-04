@@ -148,6 +148,11 @@ namespace storage {
     typedef CURRENT_STORAGE_FIELDS_##name<::current::storage::CountFields> CURRENT_STORAGE_FIELD_COUNT_STRUCT; \
   }
 
+using CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM = persister::NoCustomPersisterParam;
+
+template <typename T>
+using CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY = transaction_policy::Synchronous<T>;
+
 // clang-format off
 #define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
   template <typename INSTANTIATION_TYPE>                                                                     \
@@ -214,14 +219,43 @@ namespace storage {
   };                                                                                                         \
   template <template <typename...> class PERSISTER,                                                          \
             template <typename> class TRANSACTION_POLICY =                                                   \
-                ::current::storage::transaction_policy::Synchronous,                                         \
-            typename CUSTOM_PERSISTER_PARAM = ::current::storage::persister::NoCustomPersisterParam>         \
+                ::current::storage::CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY,                              \
+            typename CUSTOM_PERSISTER_PARAM = ::current::storage::CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>   \
   using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                        \
                                            CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
                                            TRANSACTION_POLICY,                                               \
                                            CUSTOM_PERSISTER_PARAM>;                                          \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
 // clang-format on
+
+// A minimalistic `PERSISTER` which compiles with the above `CURRENT_STORAGE_IMPLEMENTATION` macro.
+// Used for the sole purpose of extracting the underlying `T_TRANSACTION` type without extra template magic.
+namespace persister {
+
+template <typename TYPELIST, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
+class NullStoragePersisterImpl;
+
+template <template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE, typename... TS>
+class NullStoragePersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_RECORD_TYPE> {
+ public:
+  using T_VARIANT = Variant<TS...>;
+  using T_TRANSACTION = Transaction<T_VARIANT>;
+
+  void InternalExposeStream() {}
+};
+
+template <typename>
+struct NullPersister {};
+
+template <typename TYPELIST, typename STREAM_RECORD_TYPE = CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>
+using NullStoragePersister = NullStoragePersisterImpl<TYPELIST, NullPersister, STREAM_RECORD_TYPE>;
+
+}  // namespace current::storage::persister
+
+template <template <template <typename...> class, template <typename> class, typename> class T_STORAGE>
+using transaction_t = typename T_STORAGE<persister::NullStoragePersister,
+                                         CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY,
+                                         CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>::T_TRANSACTION;
 
 #define CURRENT_STORAGE(name)            \
   CURRENT_STORAGE_IMPLEMENTATION(name);  \
