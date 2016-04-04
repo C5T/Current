@@ -25,31 +25,22 @@ SOFTWARE.
 #ifndef EVENT_STORE_H
 #define EVENT_STORE_H
 
-// TODO(dkorolev): Split into test and "live" demo.
-
 #include "../../TypeSystem/struct.h"
 #include "../../Storage/storage.h"
 #include "../../Storage/persister/sherlock.h"
 
 #include "../../Blocks/HTTP/api.h"
 
-// TODO(dkorolev) + TODO(mzhurovich): Convert all `T_UPPER_CASE` into `upper_case_t`?
-
-// NOTE: This class assumes the storage has a Dictionary field called `events`.
-// NOTE: This class assumes the `events` storage field has the type `EVENT_TYPE`.
-// NOTE: This class assumes `EXTRA_TYPE` can be constructed from a `const EVENT_TYPE&`.
+// Assumptions class `EventStore` makes:
+// * The storage has a field called `events`, type `Dictionary<EVENT_TYPE>`.
+// * The `EXTRA_TYPE` object can be constructed from a `const EVENT_TYPE&`.
 template <template <template <typename...> class, template <typename> class, typename>
           class CURRENT_STORAGE_TYPE,
           typename EVENT_TYPE,
           typename EXTRA_TYPE,
           template <typename...> class DB_PERSISTER>
 struct EventStore final {
-  // TODO(dkorolev) + TODO(mzhurovich): All three template parameters here are only to extract `T_TRANSACTION`.
-  // Factor it out?
-  using transaction_t =
-      typename CURRENT_STORAGE_TYPE<SherlockInMemoryStreamPersister,
-                                    ::current::storage::transaction_policy::Synchronous,
-                                    ::current::storage::persister::NoCustomPersisterParam>::T_TRANSACTION;
+  using transaction_t = current::storage::transaction_t<CURRENT_STORAGE_TYPE>;
   using stream_type_t = Variant<transaction_t, EXTRA_TYPE>;
 
   using event_store_storage_t =
@@ -105,11 +96,9 @@ struct EventStore final {
         r("Need one URL parameter.\n", HTTPResponseCode.BadRequest);
       } else {
         const std::string key = r.url_path_args[0];
-        // TODO(dkorolev): `ScopeOwnedBySomeoneElse<Impl>` for the transaction?
+        // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
         event_store_storage.Transaction([key](ImmutableFields<event_store_storage_t> fields) -> Response {
-          auto event = fields.events[key];
-          // TODO(dkorolev) / TODO(mzhurovich): Why not enable creating `Response` from `ImmutableOptional<T>`,
-          // to return { 200, Value() } or a 404?
+          const auto event = fields.events[key];
           if (Exists(event)) {
             return Value(event);
           } else {
@@ -123,12 +112,12 @@ struct EventStore final {
       } else {
         try {
           const auto event = ParseJSON<EVENT_TYPE>(r.body);
-          // TODO(dkorolev): `ScopeOwnedBySomeoneElse<Impl>` for the transaction?
+          // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
           event_store_storage.Transaction(
                                   [this, event](MutableFields<event_store_storage_t> fields) -> Response {
                                     auto existing_event = fields.events[event.key];
                                     if (Exists(existing_event)) {
-                                      // TODO(dkorolev): Check timestamp? Not now, right. @mzhurovich
+                                      // Ultimately, check the timestamp of an already existing record. -- D.K.
                                       if (JSON(Value(existing_event)) == JSON(event)) {
                                         return Response("Already published.\n", HTTPResponseCode.OK);
                                       } else {
@@ -137,8 +126,6 @@ struct EventStore final {
                                       }
                                     } else {
                                       fields.events.Add(event);
-                                      // TODO(dkorolev): Hmm, should this be under a mutex? I vote for a
-                                      // Sherlock-wide mutex. @mzhurovich
                                       full_event_log.Publish(EXTRA_TYPE(event));
                                       return Response("Created.\n", HTTPResponseCode.Created);
                                     }
