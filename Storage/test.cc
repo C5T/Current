@@ -776,12 +776,13 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
             current::FileSystem::ReadFileAsString(replicated_storage_file_name));
 
   // Test data consistency performing a transaction in the replicated storage.
-  replicated_storage.Transaction([](ImmutableFields<Storage> fields) {
+  const auto result = replicated_storage.Transaction([](ImmutableFields<Storage> fields) {
     EXPECT_EQ(2u, fields.d.Size());
     EXPECT_EQ(1, Value(fields.d["one"]).rhs);
     EXPECT_EQ(3, Value(fields.d["three"]).rhs);
     EXPECT_FALSE(Exists(fields.d["two"]));
-  }).Wait();
+  }).Go();
+  EXPECT_TRUE(WasCommitted(result));
 }
 
 namespace transactional_storage_test {
