@@ -40,7 +40,7 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 DEFINE_string(transactional_storage_test_tmpdir,
               ".current",
               "Local path for the test to create temporary files in.");

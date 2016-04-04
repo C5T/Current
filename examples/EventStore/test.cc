@@ -32,7 +32,7 @@ SOFTWARE.
 
 #include "../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 DEFINE_string(event_store_test_tmpdir, ".current", "Local path for the test to create temporary files in.");
 #else
 DEFINE_string(event_store_test_tmpdir, ".", "Local path for the test to create temporary files in.");

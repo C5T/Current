@@ -79,7 +79,7 @@ CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, VariantType); };
 
 CURRENT_STRUCT(DerivedSerializable, Serializable) { CURRENT_FIELD(d, double); };
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 
 CURRENT_STRUCT(WithVectorOfPairs) { CURRENT_FIELD(v, (std::vector<std::pair<int32_t, std::string>>)); };
 

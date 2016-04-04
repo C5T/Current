@@ -69,7 +69,7 @@ TEST(Time, SmokeTest) {
 #pragma message("A flaky test comparing against wall time is disabled for batch run.")
 #pragma message("===================================================================")
 
-#endif  // _MSC_VER
+#endif  // CURRENT_WINDOWS
 
 #endif  // CURRENT_COVERAGE_REPORT_MODE
 

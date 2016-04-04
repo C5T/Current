@@ -99,7 +99,7 @@ class OptionalResult<void> {
     return *this;
   }
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
   OptionalResult() = delete;
   OptionalResult(const OptionalResult&) = delete;
   OptionalResult& operator=(const OptionalResult&) = delete;

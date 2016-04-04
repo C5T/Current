@@ -66,7 +66,7 @@ struct KEY_ACCESSOR_IMPL<ENTRY, true> {
   static void SetKey(ENTRY& entry, CF<T_KEY> key) { entry.set_key(key); }
 };
 
-#ifndef _MSC_VER
+#ifndef CURRENT_WINDOWS
 template <typename ENTRY>
 using KEY_ACCESSOR = KEY_ACCESSOR_IMPL<ENTRY, HasKeyMethod<ENTRY>(0)>;
 #else
@@ -78,7 +78,7 @@ struct KEY_ACCESSOR_FOR_HANDICAPPED {
 };
 template <typename ENTRY>
 using KEY_ACCESSOR = typename KEY_ACCESSOR_FOR_HANDICAPPED<ENTRY>::type;
-#endif  // _MSC_VER
+#endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
 typename KEY_ACCESSOR<ENTRY>::T_KEY GetKey(const ENTRY& entry) {
