@@ -31,6 +31,7 @@ SOFTWARE.
 #ifndef BLOCKS_PERSISTENCE_MEMORY_H
 #define BLOCKS_PERSISTENCE_MEMORY_H
 
+#include <deque>
 #include <functional>
 #include <mutex>
 
@@ -51,7 +52,7 @@ class MemoryPersister {
  private:
   struct Container {
     std::mutex mutex;
-    std::vector<std::pair<std::chrono::microseconds, ENTRY>> entries;
+    std::deque<std::pair<std::chrono::microseconds, ENTRY>> entries;
   };
 
  public:
