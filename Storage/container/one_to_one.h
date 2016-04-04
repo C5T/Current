@@ -96,8 +96,8 @@ class GenericOneToOne {
                              [this, previous_key, previous_object]() { DoAdd(previous_key, previous_object); });
         DoErase(previous_key);
       }
+      journal_.LogMutation(T_UPDATE_EVENT(object), [this, key]() { DoErase(key); });
     }
-    journal_.LogMutation(T_UPDATE_EVENT(object), [this, key]() { DoErase(key); });
     DoAdd(key, object);
   }
 
