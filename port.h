@@ -33,7 +33,9 @@ SOFTWARE.
 #define NOMINMAX  // Tell Visual Studio to not mess with std::min() / std::max().
 
 #ifdef _MSC_VER
-#pragma warning (disable:4503)  // "decorated name length exceeded ...", duh.
+// clang-format off
+#pragma warning(disable:4503)  // "decorated name length exceeded ...", duh.
+// clang-format on
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
@@ -160,7 +162,7 @@ template <typename T, typename... PARAMS>
 std::unique_ptr<T> make_unique(PARAMS&&... params) {
   return std::unique_ptr<T>(new T(std::forward<PARAMS>(params)...));
 }
-template<bool B, class T = void>
+template <bool B, class T = void>
 using enable_if_t = typename std::enable_if<B, T>::type;
 }  // namespace add_some_of_cpp14_into_cpp11
 
