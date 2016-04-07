@@ -189,6 +189,9 @@ TEST(EventStore, SmokeWithHTTP) {
                   HTTP(POST(Printf("http://localhost:%d/event", FLAGS_event_store_test_port), event2)).code));
   }
 
+  while (event_store.readonly_nonstorage_event_log_persister.Size() < 1u) {
+    ;  // Spin lock.
+  }
   EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
   EXPECT_EQ("1\n",
             HTTP(GET(Printf("http://localhost:%d/subscribe?sizeonly", FLAGS_event_store_test_port))).body);
@@ -201,7 +204,7 @@ TEST(EventStore, SmokeWithHTTP) {
       }).Go();
   EXPECT_TRUE(WasCommitted(verify_http_event_added_result));
 
-  EXPECT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
+  ASSERT_EQ(1u, event_store.readonly_nonstorage_event_log_persister.Size());
   EXPECT_EQ("Event added: http2",
             (*event_store.readonly_nonstorage_event_log_persister.Iterate(0u, 1u).begin()).entry.message);
   // `42001` as the non-storage event is published after the storage one.
