@@ -47,6 +47,7 @@ class GenericManyToMany {
  public:
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
+  using key_t = std::pair<row_t, col_t>;
   using whole_matrix_map_t = std::unordered_map<std::pair<row_t, col_t>,
                                                 std::unique_ptr<T>,
                                                 CurrentHashFunction<std::pair<row_t, col_t>>>;
@@ -65,34 +66,34 @@ class GenericManyToMany {
   void Add(const T& object) {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
-    const auto row_col = std::make_pair(row, col);
-    const auto it = map_.find(row_col);
+    const auto key = std::make_pair(row, col);
+    const auto it = map_.find(key);
     if (it != map_.end()) {
       const T previous_object = *(it->second);
       journal_.LogMutation(UPDATE_EVENT(object),
-                           [this, row_col, previous_object]() { DoAdd(row_col, previous_object); });
+                           [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
-      journal_.LogMutation(UPDATE_EVENT(object), [this, row_col]() { DoErase(row_col); });
+      journal_.LogMutation(UPDATE_EVENT(object), [this, key]() { DoErase(key); });
     }
-    DoAdd(row_col, object);
+    DoAdd(key, object);
   }
 
   void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) {
-    const auto row_col = std::make_pair(row, col);
-    const auto it = map_.find(row_col);
+    const auto key = std::make_pair(row, col);
+    const auto it = map_.find(key);
     if (it != map_.end()) {
       const T previous_object = *(it->second);
       journal_.LogMutation(DELETE_EVENT(previous_object),
-                           [this, row, col, row_col, previous_object]() {
-                             auto& placeholder = map_[row_col];
+                           [this, row, col, key, previous_object]() {
+                             auto& placeholder = map_[key];
                              placeholder = std::make_unique<T>(previous_object);
                              forward_[row][col] = placeholder.get();
                              transposed_[col][row] = placeholder.get();
                            });
-      DoErase(row_col);
+      DoErase(key);
     }
   }
-  void Erase(const std::pair<row_t, col_t>& key) { Erase(key.first, key.second); }
+  void Erase(const key_t& key) { Erase(key.first, key.second); }
 
   ImmutableOptional<T> Get(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     const auto it = map_.find(std::make_pair(row, col));
@@ -187,7 +188,7 @@ class GenericManyToMany {
 
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
-  ImmutableOptional<T> operator[](const std::pair<row_t, col_t>& full_key_as_pair) const {
+  ImmutableOptional<T> operator[](const key_t& full_key_as_pair) const {
     const auto cit = map_.find(full_key_as_pair);
     if (cit != map_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), cit->second.get());
@@ -202,25 +203,25 @@ class GenericManyToMany {
   iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
-  void DoAdd(const std::pair<row_t, col_t>& row_col, const T& object) {
-    auto& placeholder = map_[row_col];
+  void DoAdd(const key_t& key, const T& object) {
+    auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
-    forward_[row_col.first][row_col.second] = placeholder.get();
-    transposed_[row_col.second][row_col.first] = placeholder.get();
+    forward_[key.first][key.second] = placeholder.get();
+    transposed_[key.second][key.first] = placeholder.get();
   }
 
-  void DoErase(const std::pair<row_t, col_t>& row_col) {
-    auto& map_row = forward_[row_col.first];
-    map_row.erase(row_col.second);
+  void DoErase(const key_t& key) {
+    auto& map_row = forward_[key.first];
+    map_row.erase(key.second);
     if (map_row.empty()) {
-      forward_.erase(row_col.first);
+      forward_.erase(key.first);
     }
-    auto& map_col = transposed_[row_col.second];
-    map_col.erase(row_col.first);
+    auto& map_col = transposed_[key.second];
+    map_col.erase(key.first);
     if (map_col.empty()) {
-      transposed_.erase(row_col.second);
+      transposed_.erase(key.second);
     }
-    map_.erase(row_col);
+    map_.erase(key);
   }
 
   whole_matrix_map_t map_;
