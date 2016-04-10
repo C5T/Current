@@ -69,7 +69,7 @@ class GenericManyToMany {
     const auto key = std::make_pair(row, col);
     const auto it = map_.find(key);
     if (it != map_.end()) {
-      const T previous_object = *(it->second);
+      const T& previous_object = *(it->second);
       journal_.LogMutation(UPDATE_EVENT(object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
@@ -78,30 +78,27 @@ class GenericManyToMany {
     DoAdd(key, object);
   }
 
-  void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) {
-    const auto key = std::make_pair(row, col);
+  void Erase(const key_t& key) {
     const auto it = map_.find(key);
     if (it != map_.end()) {
-      const T previous_object = *(it->second);
+      const T& previous_object = *(it->second);
       journal_.LogMutation(DELETE_EVENT(previous_object),
-                           [this, row, col, key, previous_object]() {
-                             auto& placeholder = map_[key];
-                             placeholder = std::make_unique<T>(previous_object);
-                             forward_[row][col] = placeholder.get();
-                             transposed_[col][row] = placeholder.get();
-                           });
+                           [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
     }
   }
-  void Erase(const key_t& key) { Erase(key.first, key.second); }
+  void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
 
-  ImmutableOptional<T> Get(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
-    const auto it = map_.find(std::make_pair(row, col));
+  ImmutableOptional<T> operator[](const key_t& key) const {
+    const auto it = map_.find(key);
     if (it != map_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second.get());
     } else {
       return nullptr;
     }
+  }
+  ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+    return operator[](std::make_pair(row, col));
   }
 
   void operator()(const UPDATE_EVENT& e) {
@@ -187,15 +184,6 @@ class GenericManyToMany {
   OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
 
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
-
-  ImmutableOptional<T> operator[](const key_t& full_key_as_pair) const {
-    const auto cit = map_.find(full_key_as_pair);
-    if (cit != map_.end()) {
-      return ImmutableOptional<T>(FromBarePointer(), cit->second.get());
-    } else {
-      return nullptr;
-    }
-  }
 
   // For REST, iterate over all the elemnts of the ManyToMany, in no particular order.
   using iterator_t = Iterator<whole_matrix_map_t>;

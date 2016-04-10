@@ -115,7 +115,7 @@ class GenericOneToOne {
   void EraseRow(sfinae::CF<row_t> row) {
     const auto it = forward_.find(row);
     if (it != forward_.end()) {
-      const T previous_object = *(it->second);
+      const T& previous_object = *(it->second);
       const auto key = std::make_pair(row, sfinae::GetCol(previous_object));
       journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
@@ -126,7 +126,7 @@ class GenericOneToOne {
   void EraseCol(sfinae::CF<col_t> col) {
     const auto it = transposed_.find(col);
     if (it != transposed_.end()) {
-      const T previous_object = *(it->second);
+      const T& previous_object = *(it->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
       journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
