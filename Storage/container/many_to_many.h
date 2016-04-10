@@ -110,23 +110,25 @@ class GenericManyToMany {
   }
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
+  template <typename MAP>
+  struct Iterator final {
+    using iterator_t = typename MAP::const_iterator;
+    using key_t = typename MAP::key_type;
+    iterator_t iterator;
+    explicit Iterator(iterator_t iterator) : iterator(iterator) {}
+    void operator++() { ++iterator; }
+    bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    sfinae::CF<key_t> key() const { return iterator->first; }
+    const T& operator*() const { return *iterator->second; }
+    const T* operator->() const { return iterator->second; }
+  };
+
   template <typename OUTER_KEY, typename INNER_MAP>
   struct InnerAccessor final {
     using INNER_KEY = typename INNER_MAP::key_type;
     const OUTER_KEY key_;
     const INNER_MAP& map_;
-
-    struct Iterator final {
-      using iterator_t = typename INNER_MAP::const_iterator;
-      iterator_t iterator;
-      explicit Iterator(iterator_t iterator) : iterator(iterator) {}
-      void operator++() { ++iterator; }
-      bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
-      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<INNER_KEY> key() const { return iterator->first; }
-      const T& operator*() const { return *iterator->second; }
-      const T* operator->() const { return iterator->second; }
-    };
 
     InnerAccessor(OUTER_KEY key, const INNER_MAP& map) : key_(key), map_(map) {}
 
@@ -137,8 +139,8 @@ class GenericManyToMany {
 
     bool Has(const INNER_KEY& x) const { return map_.find(x) != map_.end(); }
 
-    Iterator begin() const { return Iterator(map_.cbegin()); }
-    Iterator end() const { return Iterator(map_.cend()); }
+    Iterator<INNER_MAP> begin() const { return Iterator<INNER_MAP>(map_.cbegin()); }
+    Iterator<INNER_MAP> end() const { return Iterator<INNER_MAP>(map_.cend()); }
   };
 
   template <typename OUTER_MAP>
@@ -195,19 +197,9 @@ class GenericManyToMany {
   }
 
   // For REST, iterate over all the elemnts of the ManyToMany, in no particular order.
-  struct WholeMatrixIterator final {
-    using iterator_t = typename whole_matrix_map_t::const_iterator;
-    iterator_t iterator;
-    explicit WholeMatrixIterator(iterator_t iterator) : iterator(iterator) {}
-    void operator++() { ++iterator; }
-    bool operator==(const WholeMatrixIterator& rhs) const { return iterator == rhs.iterator; }
-    bool operator!=(const WholeMatrixIterator& rhs) const { return !operator==(rhs); }
-    const std::pair<row_t, col_t> key() const { return iterator->first; }
-    const T& operator*() const { return *iterator->second; }
-    const T* operator->() const { return iterator->second; }
-  };
-  WholeMatrixIterator WholeMatrixBegin() const { return WholeMatrixIterator(map_.begin()); }
-  WholeMatrixIterator WholeMatrixEnd() const { return WholeMatrixIterator(map_.end()); }
+  using iterator_t = Iterator<whole_matrix_map_t>;
+  iterator_t begin() const { return iterator_t(map_.begin()); }
+  iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
   void DoAdd(const std::pair<row_t, col_t>& row_col, const T& object) {

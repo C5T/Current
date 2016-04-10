@@ -402,9 +402,9 @@ struct PerStorageFieldTypeImpl<rest::behavior::Matrix> {
   struct Iterable {
     const MATRIX& matrix;
     explicit Iterable(const MATRIX& matrix) : matrix(matrix) {}
-    using Iterator = typename MATRIX::WholeMatrixIterator;
-    Iterator begin() const { return matrix.WholeMatrixBegin(); }
-    Iterator end() const { return matrix.WholeMatrixEnd(); }
+    using Iterator = typename MATRIX::iterator_t;
+    Iterator begin() const { return matrix.begin(); }
+    Iterator end() const { return matrix.end(); }
   };
 
   template <typename MATRIX>

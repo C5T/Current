@@ -280,10 +280,8 @@ TEST(TransactionalStorage, SmokeTest) {
       const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_TRUE(fields.omany_to_omany.Empty());
-        for (auto it = fields.umany_to_umany.WholeMatrixBegin(), end = fields.umany_to_umany.WholeMatrixEnd();
-             it != end;
-             ++it) {
-          fields.omany_to_omany.Add(*it);
+        for (const auto& element : fields.umany_to_umany) {
+          fields.omany_to_omany.Add(element);
         }
         EXPECT_EQ(fields.umany_to_umany.Size(), fields.omany_to_omany.Size());
       }).Go();
