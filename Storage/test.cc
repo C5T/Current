@@ -109,19 +109,19 @@ CURRENT_STRUCT(Cell) {
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrixUnordered);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToMany, Cell, CellManyToManyUnordered);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOne, Cell, CellOneToOneUnordered);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToMany, Cell, CellOneToManyUnordered);
-CURRENT_STORAGE_FIELD_ENTRY(OrderedMatrix, Cell, CellMatrixOrdered);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToMany, Cell, CellManyToManyOrdered);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOne, Cell, CellOneToOneOrdered);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToMany, Cell, CellOneToManyOrdered);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
-  CURRENT_STORAGE_FIELD(umany_to_umany, CellMatrixUnordered);
+  CURRENT_STORAGE_FIELD(umany_to_umany, CellManyToManyUnordered);
   CURRENT_STORAGE_FIELD(uone_to_uone, CellOneToOneUnordered);
   CURRENT_STORAGE_FIELD(uone_to_umany, CellOneToManyUnordered);
-  CURRENT_STORAGE_FIELD(omany_to_omany, CellMatrixOrdered);
+  CURRENT_STORAGE_FIELD(omany_to_omany, CellManyToManyOrdered);
   CURRENT_STORAGE_FIELD(oone_to_oone, CellOneToOneOrdered);
   CURRENT_STORAGE_FIELD(oone_to_omany, CellOneToManyOrdered);
 };
@@ -174,7 +174,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Fill a `Matrix` container.
+    // Fill a `ManyToMany` container.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Empty());
@@ -275,7 +275,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Copy data from unordered `Matrix`, `OneToOne` and `OneToMany` to corresponding ordered ones
+    // Copy data from unordered `ManyToMany`, `OneToOne` and `OneToMany` to corresponding ordered ones
     {
       const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
@@ -307,7 +307,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result3));
     }
 
-    // Iterate over a `Matrix`, compare its ordered and unordered versions
+    // Iterate over a `ManyToMany`, compare its ordered and unordered versions
     {
       const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
@@ -452,7 +452,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Rollback a transaction involving a `Matrix`, `OneToOne` and `OneToMany`.
+    // Rollback a transaction involving a `ManyToMany`, `OneToOne` and `OneToMany`.
     {
       const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
@@ -505,7 +505,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over a `Matrix` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a `ManyToMany` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
       const auto result = storage.Transaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(2));
@@ -745,7 +745,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("umany_to_umany, UnorderedMatrix, Cell", s);
+    EXPECT_EQ("umany_to_umany, UnorderedManyToMany, Cell", s);
   }
 
   {
@@ -769,7 +769,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<4, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("omany_to_omany, OrderedMatrix, Cell", s);
+    EXPECT_EQ("omany_to_omany, OrderedManyToMany, Cell", s);
   }
 
   {
@@ -1111,8 +1111,8 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
-// TODO(dkorolev): Ordered matrix too.
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, SimpleLike, SimpleLikePersisted);
+// TODO(dkorolev): Ordered `ManyToMany` too.
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToMany, SimpleLike, SimpleLikePersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);

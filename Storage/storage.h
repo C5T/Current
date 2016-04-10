@@ -29,7 +29,7 @@ SOFTWARE.
 //   Empty(), Size(), operator[](key), Erase(key) [, iteration, {lower/upper}_bound].
 //   `key_t` is either the type of `T.key` or of `T.get_key()`.
 //
-// * (Ordered/Unordered)Matrix<T> <=> { row_t, col_t } -> T, two `std::(map/unordered_map)<>`-s.
+// * (Ordered/Unordered)(One/Many)To(One/Many)<T> <=> { row_t, col_t } -> T, two `std::(map/unordered_map)<>`-s.
 //   Entries are stored in third `std::unordered_map<std::pair<row_t, col_t>, std::unique_ptr<T>>`.
 //   Empty(), Size(), Rows()/Cols(), Add(cell), Delete(row, col) [, iteration, {lower/upper}_bound].
 //   `row_t` and `col_t` are either the type of `T.row` / `T.col`, or of `T.get_row()` / `T.get_col()`.
@@ -49,7 +49,7 @@ SOFTWARE.
 #include "transaction_result.h"
 
 #include "container/dictionary.h"
-#include "container/matrix.h"
+#include "container/many_to_many.h"
 #include "container/one_to_one.h"
 #include "container/one_to_many.h"
 
@@ -137,11 +137,11 @@ namespace storage {
     using DEPRECATED_T_(PERSISTED_EVENT_2) = persisted_event_2_t;                      \
   }
 
-#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedMatrix(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedMatrix, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedManyToMany, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_OrderedMatrix(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedMatrix, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedManyToMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedManyToMany, entry_type, entry_name)
 
 #define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToOne(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToOne, entry_type, entry_name)

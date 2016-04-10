@@ -23,8 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_STORAGE_CONTAINER_MATRIX_H
-#define CURRENT_STORAGE_CONTAINER_MATRIX_H
+#ifndef CURRENT_STORAGE_CONTAINER_MANY_TO_MANY_H
+#define CURRENT_STORAGE_CONTAINER_MANY_TO_MANY_H
 
 #include "common.h"
 #include "sfinae.h"
@@ -43,7 +43,7 @@ template <typename T,
           typename DELETE_EVENT,
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
-class GenericMatrix {
+class GenericManyToMany {
  public:
   using row_t = sfinae::entry_row_t<T>;
   using col_t = sfinae::entry_col_t<T>;
@@ -57,7 +57,7 @@ class GenericMatrix {
   using DEPRECATED_T_(ROW) = row_t;
   using DEPRECATED_T_(COL) = col_t;
 
-  explicit GenericMatrix(MutationJournal& journal) : journal_(journal) {}
+  explicit GenericManyToMany(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -194,7 +194,7 @@ class GenericMatrix {
     }
   }
 
-  // For REST, iterate over all the elemnts of the matrix, in no particular order.
+  // For REST, iterate over all the elemnts of the ManyToMany, in no particular order.
   struct WholeMatrixIterator final {
     using iterator_t = typename whole_matrix_map_t::const_iterator;
     iterator_t iterator;
@@ -238,27 +238,27 @@ class GenericMatrix {
 };
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using UnorderedMatrix = GenericMatrix<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
+using UnorderedManyToMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using OrderedMatrix = GenericMatrix<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+using OrderedManyToMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
 
 }  // namespace container
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedMatrix<T, E1, E2>> {
-  static const char* HumanReadableName() { return "UnorderedMatrix"; }
+struct StorageFieldTypeSelector<container::UnorderedManyToMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedManyToMany"; }
 };
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedMatrix<T, E1, E2>> {
-  static const char* HumanReadableName() { return "OrderedMatrix"; }
+struct StorageFieldTypeSelector<container::OrderedManyToMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedManyToMany"; }
 };
 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedMatrix;
-using current::storage::container::OrderedMatrix;
+using current::storage::container::UnorderedManyToMany;
+using current::storage::container::OrderedManyToMany;
 
-#endif  // CURRENT_STORAGE_CONTAINER_MATRIX_H
+#endif  // CURRENT_STORAGE_CONTAINER_MANY_TO_MANY_H
