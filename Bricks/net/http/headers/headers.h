@@ -137,11 +137,15 @@ struct Cookie final {
 
 struct Headers final {
   // An `std::unique_ptr<>` to preserve the address as the map grows. For case-insensitive lookup.
-  using T_HEADERS_MAP = std::map<std::string, std::unique_ptr<Header>, Header::KeyComparator>;
+  using headers_map_t = std::map<std::string, std::unique_ptr<Header>, Header::KeyComparator>;
   // A list preserving the order, pointing to persisted Header-s contained in `std::unique_ptr<>` of `std::map`.
-  using T_HEADERS_LIST = std::vector<std::pair<std::string, Header*>>;
+  using headers_list_t = std::vector<std::pair<std::string, Header*>>;
   // Cookies as a map of `std::string` cookie name into the value of this cookie and extra parameters for it.
-  using T_COOKIES_MAP = std::map<std::string, Cookie>;
+  using cookies_map_t = std::map<std::string, Cookie>;
+
+  using DEPRECATED_T_(HEADERS_MAP) = headers_map_t;
+  using DEPRECATED_T_(HEADERS_LIST) = headers_list_t;
+  using DEPRECATED_T_(COOKIES_MAP) = cookies_map_t;
 
   Headers() = default;
   Headers(Headers&&) = default;
@@ -257,7 +261,7 @@ struct Headers final {
 
   // Allow only const iteration.
   struct Iterator final {
-    typename T_HEADERS_LIST::const_iterator iterator;
+    typename headers_list_t::const_iterator iterator;
 
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return iterator != rhs.iterator; }
@@ -336,14 +340,14 @@ struct Headers final {
   }
 
   // `map[header]` either does not exist, or contains a valid `std::unique_ptr<Header>`.
-  T_HEADERS_MAP map;
+  headers_map_t map;
 
   // `list[i]` points to the underlying `Header*` of the `std::unique_ptr<Header>` stored in `map`,
   // respecting the order in which the headers have been added.
-  T_HEADERS_LIST list;
+  headers_list_t list;
 
   // Cookies are just an `std::map<std::string, std::string>`.
-  T_COOKIES_MAP cookies;
+  cookies_map_t cookies;
 };
 
 }  // namespace http

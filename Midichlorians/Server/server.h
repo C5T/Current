@@ -97,9 +97,9 @@ class MidichloriansHTTPServer {
   bool ParseBodyLineAsiOSEvent(const std::string& line) {
     using namespace current::midichlorians::ios;
 
-    Variant<T_IOS_EVENTS> ios_event;
+    Variant<ios_events_t> ios_event;
     try {
-      ios_event = ParseJSON<Variant<T_IOS_EVENTS>>(line);
+      ios_event = ParseJSON<Variant<ios_events_t>>(line);
     } catch (const InvalidJSONException&) {
       return false;
     }
@@ -135,7 +135,7 @@ class MidichloriansHTTPServer {
       return false;  // LCOV_EXCL_LINE
     }
 
-    Variant<T_WEB_EVENTS> web_event;
+    Variant<web_events_t> web_event;
     try {
       if (q.at("ea") == "En") {
         web_event = WebEnterEvent();
@@ -163,7 +163,7 @@ class MidichloriansHTTPServer {
   bool ExtractWebBaseEventFields(const std::map<std::string, std::string>& q,
                                  const std::map<std::string, std::string>& h,
                                  const std::map<std::string, current::net::http::Cookie>& c,
-                                 Variant<T_WEB_EVENTS>& web_event) {
+                                 Variant<web_events_t>& web_event) {
     using namespace current::midichlorians::web;
 
     static_cast<void>(c);  // Ignore cookies for now. -- D.K.
@@ -188,9 +188,9 @@ class MidichloriansHTTPServer {
     return true;
   }
 
-  template <typename T_LOG_ENTRY>
-  void PassLogEntryToConsumer(T_LOG_ENTRY&& entry, bool is_valid_entry = true) {
-    T_LOG_ENTRY_VARIANT entry_variant(std::move(entry));
+  template <typename LOG_ENTRY>
+  void PassLogEntryToConsumer(LOG_ENTRY&& entry, bool is_valid_entry = true) {
+    log_entry_variant_t entry_variant(std::move(entry));
     entry_variant.Call(log_entry_consumer_);
     if (is_valid_entry) {
       ++events_pushed_;

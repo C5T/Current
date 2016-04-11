@@ -75,7 +75,7 @@ using current::http::HTTP;
 using current::http::Request;
 using current::http::Response;
 using current::http::ReRegisterRoute;
-using HTTPRoutesScope = typename HTTP_IMPL::T_SERVER_IMPL::HTTPRoutesScope;
+using HTTPRoutesScope = typename HTTP_IMPL::server_impl_t::HTTPRoutesScope;
 using HTTPRoutesScopeEntry = current::http::HTTPServerPOSIX::HTTPRoutesScopeEntry;
 
 #endif  // BLOCKS_HTTP_API_H

@@ -186,12 +186,14 @@ struct ResponseTypeFromRequestType {};
 
 template <>
 struct ResponseTypeFromRequestType<KeepResponseInMemory> {
-  typedef HTTPResponseWithBuffer T_RESPONSE_TYPE;
+  using response_type_t = HTTPResponseWithBuffer;
+  using DEPRECATED_T_(RESPONSE_TYPE) = response_type_t;
 };
 
 template <>
 struct ResponseTypeFromRequestType<SaveResponseToFile> {
-  typedef HTTPResponseWithResultingFileName T_RESPONSE_TYPE;
+  using response_type_t = HTTPResponseWithResultingFileName;
+  using DEPRECATED_T_(RESPONSE_TYPE) = response_type_t;
 };
 
 // To allow adding new implementation to the framework defined in api.h, the corresponding implementations
@@ -203,26 +205,25 @@ class ImplWrapper {};
 // The real work is done by templated implementations.
 template <typename CLIENT_IMPL, class SERVER_IMPL>
 struct HTTPImpl {
-  typedef CLIENT_IMPL T_CLIENT_IMPL;
-  typedef SERVER_IMPL T_SERVER_IMPL;
+  typedef CLIENT_IMPL client_impl_t;
+  typedef SERVER_IMPL server_impl_t;
 
-  T_SERVER_IMPL& operator()(int port) {
+  server_impl_t& operator()(int port) {
     static std::mutex mutex;
-    static std::map<size_t, std::unique_ptr<T_SERVER_IMPL>> servers;
+    static std::map<size_t, std::unique_ptr<server_impl_t>> servers;
     std::lock_guard<std::mutex> lock(mutex);
-    std::unique_ptr<T_SERVER_IMPL>& server = servers[port];
+    std::unique_ptr<server_impl_t>& server = servers[port];
     if (!server) {
-      server.reset(new T_SERVER_IMPL(port));
+      server.reset(new server_impl_t(port));
     }
     return *server;
   }
 
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS = KeepResponseInMemory>
-  inline typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE operator()(
-      const T_REQUEST_PARAMS& request_params,
-      const T_RESPONSE_PARAMS& response_params = T_RESPONSE_PARAMS()) const {
-    T_CLIENT_IMPL impl;
-    typedef ImplWrapper<T_CLIENT_IMPL> IMPL_HELPER;
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS = KeepResponseInMemory>
+  inline typename ResponseTypeFromRequestType<RESPONSE_PARAMS>::response_type_t operator()(
+      const REQUEST_PARAMS& request_params, const RESPONSE_PARAMS& response_params = RESPONSE_PARAMS()) const {
+    client_impl_t impl;
+    typedef ImplWrapper<client_impl_t> IMPL_HELPER;
     IMPL_HELPER::PrepareInput(request_params, impl);
     IMPL_HELPER::PrepareInput(response_params, impl);
     if (!impl.Go()) {
@@ -230,10 +231,10 @@ struct HTTPImpl {
       CURRENT_THROW(current::net::HTTPException());  // LCOV_EXCL_LINE
 #else
       // TODO(dkorolev): Chat with Alex. We can overcome the exception here, but should we?
-      return typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE();
+      return typename ResponseTypeFromRequestType<RESPONSE_PARAMS>::response_type_t();
 #endif
     }
-    typename ResponseTypeFromRequestType<T_RESPONSE_PARAMS>::T_RESPONSE_TYPE output;
+    typename ResponseTypeFromRequestType<RESPONSE_PARAMS>::response_type_t output;
     IMPL_HELPER::ParseOutput(request_params, response_params, impl, output);
     return output;
   }

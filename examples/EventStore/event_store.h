@@ -45,7 +45,7 @@ struct EventStore final {
 
   using event_store_storage_t =
       CURRENT_STORAGE_TYPE<DB_PERSISTER, current::storage::transaction_policy::Synchronous, stream_type_t>;
-  using full_stream_t = typename event_store_storage_t::T_PERSISTER::T_SHERLOCK;
+  using full_stream_t = typename event_store_storage_t::persister_t::sherlock_t;
 
   using nonstorage_stream_t = current::sherlock::Stream<EXTRA_TYPE, current::persistence::Memory>;
 
@@ -70,7 +70,7 @@ struct EventStore final {
   readonly_stream_follower_t readonly_stream_follower;
   typename full_stream_t::template SyncSubscriberScope<readonly_stream_follower_t, EXTRA_TYPE>
       readonly_stream_follower_scope;
-  const typename nonstorage_stream_t::T_PERSISTENCE_LAYER& readonly_nonstorage_event_log_persister;
+  const typename nonstorage_stream_t::persistence_layer_t& readonly_nonstorage_event_log_persister;
   HTTPRoutesScope http_routes_scope;
 
   template <typename... ARGS>

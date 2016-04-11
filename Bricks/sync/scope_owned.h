@@ -174,11 +174,12 @@ class ScopeOwnedBySomeoneElse;
 template <typename T>
 class ScopeOwned {
  private:
-  using T_INSTANCE = impl::ActualInstance<T>;
+  using instance_t = impl::ActualInstance<T>;
+  using DEPRECATED_T_(INSTANCE) = instance_t;
 
  protected:
   // `ScopeOwned<T>` is meant to be initialized by `ScopeOwnedByMe<T>` or `ScopeOwnedBySomeoneElse<T>` only.
-  ScopeOwned(impl::ConstructScopeOwnedByMe, T_INSTANCE& actual_instance)
+  ScopeOwned(impl::ConstructScopeOwnedByMe, instance_t& actual_instance)
       : p_actual_instance_(&actual_instance), key_(0u) {}
 
   ScopeOwned(impl::ConstructScopeOwnedBySomeoneElse,
@@ -304,7 +305,7 @@ class ScopeOwned {
     }
   }
 
-  T_INSTANCE* p_actual_instance_;
+  instance_t* p_actual_instance_;
   size_t key_;  // The index of the slave user to mark as left the scope, or `0u` if N/A (master or moved away).
 };
 
@@ -338,20 +339,23 @@ struct ActualInstanceContainer {
 template <typename T>
 class ScopeOwnedByMe final : private impl::ActualInstanceContainer<T>, public ScopeOwned<T> {
  private:
-  using T_IMPL = impl::ActualInstanceContainer<T>;
-  using T_BASE = ScopeOwned<T>;
+  using impl_t = impl::ActualInstanceContainer<T>;
+  using base_t = ScopeOwned<T>;
+
+  using DEPRECATED_T_(IMPL) = impl_t;
+  using DEPRECATED_T_(BASE) = base_t;
 
  public:
-  ScopeOwnedByMe() : T_IMPL(), T_BASE(impl::ConstructScopeOwnedByMe(), *T_IMPL::movable_instance_) {}
+  ScopeOwnedByMe() : impl_t(), base_t(impl::ConstructScopeOwnedByMe(), *impl_t::movable_instance_) {}
 
   template <typename... ARGS>
   ScopeOwnedByMe(ARGS&&... args)
-      : T_IMPL(std::forward<ARGS>(args)...),
-        T_BASE(impl::ConstructScopeOwnedByMe(), *T_IMPL::movable_instance_) {}
+      : impl_t(std::forward<ARGS>(args)...),
+        base_t(impl::ConstructScopeOwnedByMe(), *impl_t::movable_instance_) {}
 
   ScopeOwnedByMe(ScopeOwnedByMe&& rhs)
-      : T_IMPL(impl::ConstructActualContainerViaMoveConstructor(), std::move(static_cast<T_IMPL&&>(rhs))),
-        T_BASE(impl::ConstructScopeOwnedByMe(), *T_IMPL::movable_instance_) {}
+      : impl_t(impl::ConstructActualContainerViaMoveConstructor(), std::move(static_cast<impl_t&&>(rhs))),
+        base_t(impl::ConstructScopeOwnedByMe(), *impl_t::movable_instance_) {}
 
   ScopeOwnedByMe(const ScopeOwnedByMe&) = delete;
   ScopeOwnedByMe& operator=(const ScopeOwnedByMe&) = delete;
@@ -364,14 +368,14 @@ class ScopeOwnedByMe final : private impl::ActualInstanceContainer<T>, public Sc
 template <typename T>
 class ScopeOwnedBySomeoneElse final : public ScopeOwned<T> {
  private:
-  using T_BASE = ScopeOwned<T>;
+  using base_t = ScopeOwned<T>;
 
  public:
   ScopeOwnedBySomeoneElse(ScopeOwned<T>& rhs, std::function<void()> destruction_callback)
-      : T_BASE(impl::ConstructScopeOwnedBySomeoneElse(), rhs, destruction_callback) {}
+      : base_t(impl::ConstructScopeOwnedBySomeoneElse(), rhs, destruction_callback) {}
 
   ScopeOwnedBySomeoneElse(ScopeOwnedBySomeoneElse&& rhs)
-      : T_BASE(impl::ConstructScopeOwnedObjectViaMoveConstructor(), std::move(static_cast<T_BASE&&>(rhs))) {}
+      : base_t(impl::ConstructScopeOwnedObjectViaMoveConstructor(), std::move(static_cast<base_t&&>(rhs))) {}
 
   ScopeOwnedBySomeoneElse() = delete;
   ScopeOwnedBySomeoneElse(const ScopeOwnedBySomeoneElse&) = delete;

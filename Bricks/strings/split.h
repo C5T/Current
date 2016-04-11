@@ -129,10 +129,10 @@ struct DefaultSeparator<ByLines> {
 
 }  // namespace impl
 
-template <typename T_SEPARATOR, typename T_PROCESSOR>
+template <typename SEPARATOR, typename PROCESSOR>
 inline size_t Split(const std::string& s,
-                    T_SEPARATOR&& separator,
-                    T_PROCESSOR&& processor,
+                    SEPARATOR&& separator,
+                    PROCESSOR&& processor,
                     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   size_t i = 0;
   size_t j = 0;
@@ -144,7 +144,7 @@ inline size_t Split(const std::string& s,
     }
   };
   for (i = 0; i < s.size(); ++i) {
-    if (impl::Match(s[i], std::forward<T_SEPARATOR>(separator))) {
+    if (impl::Match(s[i], std::forward<SEPARATOR>(separator))) {
       emit();
       j = i + 1;
     }
@@ -156,11 +156,11 @@ inline size_t Split(const std::string& s,
 // A performant version accepting a mutable string, modifying it in-place, and emitting `Chunk`-s.
 // NOTE: The user should not save intermediate Chunk-s, they are only valid throughout the call to the lambda.
 //       (As soon as the call returns, the '\0' temporary injected into the string will no longer be there.)
-template <typename T_SEPARATOR, typename T_PROCESSOR>
+template <typename SEPARATOR, typename PROCESSOR>
 inline size_t Split(char* s,
                     const size_t length,
-                    T_SEPARATOR&& separator,
-                    T_PROCESSOR&& processor,
+                    SEPARATOR&& separator,
+                    PROCESSOR&& processor,
                     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   size_t i = 0;
   size_t j = 0;
@@ -175,7 +175,7 @@ inline size_t Split(char* s,
     }
   };
   for (i = 0; i < length; ++i) {
-    if (impl::Match(s[i], std::forward<T_SEPARATOR>(separator))) {
+    if (impl::Match(s[i], std::forward<SEPARATOR>(separator))) {
       emit();
       j = i + 1;
     }
@@ -185,96 +185,94 @@ inline size_t Split(char* s,
 }
 
 // `Split(std::string&, ...)` maps to `Split(char*, size_t, ...)`.
-template <typename T_SEPARATOR, typename T_PROCESSOR>
+template <typename SEPARATOR, typename PROCESSOR>
 inline size_t Split(std::string& string,
-                    T_SEPARATOR&& separator,
-                    T_PROCESSOR&& processor,
+                    SEPARATOR&& separator,
+                    PROCESSOR&& processor,
                     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
-  return Split<T_SEPARATOR, T_PROCESSOR>(&string[0],
-                                         string.length(),
-                                         std::forward<T_SEPARATOR>(separator),
-                                         std::forward<T_PROCESSOR>(processor),
-                                         empty_fields_strategy);
+  return Split<SEPARATOR, PROCESSOR>(&string[0],
+                                     string.length(),
+                                     std::forward<SEPARATOR>(separator),
+                                     std::forward<PROCESSOR>(processor),
+                                     empty_fields_strategy);
 }
 
 // Be careful with top-level `char*` and `const char*` implementations.
 // There's an issue with `gcc` attepmting to pass an "immutable string" as `char*`, not `const char*`, which
 // first emits a `deprecated conversion from string constant to ‘char*’` warning, and then breaks everything.
-template <typename T_SEPARATOR, typename T_PROCESSOR>
+template <typename SEPARATOR, typename PROCESSOR>
 inline size_t Split(char* string,
-                    T_SEPARATOR&& separator,
-                    T_PROCESSOR&& processor,
+                    SEPARATOR&& separator,
+                    PROCESSOR&& processor,
                     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
-  return Split<T_SEPARATOR, T_PROCESSOR>(string,
-                                         ::strlen(string),
-                                         std::forward<T_SEPARATOR>(separator),
-                                         std::forward<T_PROCESSOR>(processor),
-                                         empty_fields_strategy);
+  return Split<SEPARATOR, PROCESSOR>(string,
+                                     ::strlen(string),
+                                     std::forward<SEPARATOR>(separator),
+                                     std::forward<PROCESSOR>(processor),
+                                     empty_fields_strategy);
 }
 
-template <typename T_SEPARATOR, typename T_PROCESSOR>
-inline ENABLE_IF<!std::is_same<T_PROCESSOR, EmptyFields>::value, size_t> Split(
+template <typename SEPARATOR, typename PROCESSOR>
+inline ENABLE_IF<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
     const char* string,
-    T_SEPARATOR&& separator,
-    T_PROCESSOR&& processor,
+    SEPARATOR&& separator,
+    PROCESSOR&& processor,
     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
-  return Split<T_SEPARATOR, T_PROCESSOR>(std::string(string),
-                                         std::forward<T_SEPARATOR>(separator),
-                                         std::forward<T_PROCESSOR>(processor),
-                                         empty_fields_strategy);
+  return Split<SEPARATOR, PROCESSOR>(std::string(string),
+                                     std::forward<SEPARATOR>(separator),
+                                     std::forward<PROCESSOR>(processor),
+                                     empty_fields_strategy);
 }
 
 // Special case for `Chunk`: Treat even the `const` Chunk-s as mutable.
 // We assume the users of `Chunk` a) expect performance, and b) know what they are doing.
-template <typename T_SEPARATOR, typename T_PROCESSOR>
+template <typename SEPARATOR, typename PROCESSOR>
 inline size_t Split(const Chunk& chunk,
-                    T_SEPARATOR&& separator,
-                    T_PROCESSOR&& processor,
+                    SEPARATOR&& separator,
+                    PROCESSOR&& processor,
                     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
-  return Split<T_SEPARATOR, T_PROCESSOR>(const_cast<char*>(chunk.c_str()),
-                                         chunk.length(),
-                                         std::forward<T_SEPARATOR>(separator),
-                                         std::forward<T_PROCESSOR>(processor),
-                                         empty_fields_strategy);
+  return Split<SEPARATOR, PROCESSOR>(const_cast<char*>(chunk.c_str()),
+                                     chunk.length(),
+                                     std::forward<SEPARATOR>(separator),
+                                     std::forward<PROCESSOR>(processor),
+                                     empty_fields_strategy);
 }
 
 // Allow the `Split<ByWhitespace/ByLines>(string, processor [, empty_fields_strategy]);` synopsis.
-template <typename T_SEPARATOR, typename T_PROCESSOR, typename T_STRING>
-inline size_t Split(T_STRING&& s,
-                    T_PROCESSOR&& processor,
-                    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
-  return Split(std::forward<T_STRING>(s),
-               impl::DefaultSeparator<T_SEPARATOR>::value(),
-               std::forward<T_PROCESSOR>(processor),
+template <typename SEPARATOR, typename PROCESSOR, typename STRING>
+inline size_t Split(STRING&& s, PROCESSOR&& processor, EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+  return Split(std::forward<STRING>(s),
+               impl::DefaultSeparator<SEPARATOR>::value(),
+               std::forward<PROCESSOR>(processor),
                empty_fields_strategy);
 }
 
 // The versions returning an `std::vector<std::string>`, for those not caring about performance.
-template <typename T_SEPARATOR, typename T_STRING>
-inline ENABLE_IF<impl::IsValidSeparator<T_SEPARATOR>::value, std::vector<std::string>> Split(
-    T_STRING&& s,
-    T_SEPARATOR&& separator = impl::DefaultSeparator<T_SEPARATOR>::value(),
+template <typename SEPARATOR, typename STRING>
+inline ENABLE_IF<impl::IsValidSeparator<SEPARATOR>::value, std::vector<std::string>> Split(
+    STRING&& s,
+    SEPARATOR&& separator = impl::DefaultSeparator<SEPARATOR>::value(),
     EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   std::vector<std::string> result;
-  Split(std::forward<T_STRING>(s),
-        std::forward<T_SEPARATOR>(separator),
+  Split(std::forward<STRING>(s),
+        std::forward<SEPARATOR>(separator),
         [&result](std::string&& chunk) { result.emplace_back(std::move(chunk)); },
         empty_fields_strategy);
   return result;
 }
 
-template <typename T_KEY_VALUE_SEPARATOR, typename T_FIELDS_SEPARATOR, typename T_STRING>
+template <typename KEY_VALUE_SEPARATOR, typename FIELDS_SEPARATOR, typename STRING>
 inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
-    T_STRING&& s,
-    T_KEY_VALUE_SEPARATOR&& key_value_separator,
-    T_FIELDS_SEPARATOR&& fields_separator = impl::DefaultSeparator<T_FIELDS_SEPARATOR>::value(),
+    STRING&& s,
+    KEY_VALUE_SEPARATOR&& key_value_separator,
+    FIELDS_SEPARATOR&& fields_separator = impl::DefaultSeparator<FIELDS_SEPARATOR>::value(),
     KeyValueParsing throw_mode = KeyValueParsing::Silent) {
   std::vector<std::pair<std::string, std::string>> result;
-  Split(std::forward<T_STRING>(s),
-        std::forward<T_FIELDS_SEPARATOR>(fields_separator),
+  Split(std::forward<STRING>(s),
+        std::forward<FIELDS_SEPARATOR>(fields_separator),
         [&result, &key_value_separator, &throw_mode](std::string&& key_and_value_as_one_string) {
           const std::vector<std::string> key_and_value =
-              Split(key_and_value_as_one_string, std::forward<T_KEY_VALUE_SEPARATOR>(key_value_separator));
+              Split(key_and_value_as_one_string, std::forward<KEY_VALUE_SEPARATOR>(key_value_separator));
           if (key_and_value.size() >= 2) {
             if (key_and_value.size() == 2) {
               result.emplace_back(key_and_value[0], key_and_value[1]);
@@ -290,13 +288,13 @@ inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
   return result;
 }
 
-template <typename T_KEY_VALUE_SEPARATOR, typename T_STRING>
+template <typename KEY_VALUE_SEPARATOR, typename STRING>
 inline std::vector<std::pair<std::string, std::string>> SplitIntoKeyValuePairs(
-    T_STRING&& s,
-    T_KEY_VALUE_SEPARATOR&& key_value_separator,
+    STRING&& s,
+    KEY_VALUE_SEPARATOR&& key_value_separator,
     KeyValueParsing throw_mode = KeyValueParsing::Silent) {
   return SplitIntoKeyValuePairs(
-      std::forward<T_STRING>(s), key_value_separator, ByWhitespace::UseIsSpace, throw_mode);
+      std::forward<STRING>(s), key_value_separator, ByWhitespace::UseIsSpace, throw_mode);
 }
 
 }  // namespace strings

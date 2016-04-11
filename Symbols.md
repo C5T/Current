@@ -49,7 +49,7 @@ FileSystem
 
 current::StreamImpl<T>
 
-current::MMQ<T_MESSAGE, T_CONSUMER>
+current::MMQ<MESSAGE, CONSUMER>
 
 current::Chunk, current::ChunkDB.
 

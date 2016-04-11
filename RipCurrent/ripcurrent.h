@@ -206,9 +206,9 @@ class SharedUniqueDefinition;
 template <InputPolicy INPUT, typename... OUTPUT_TYPES>
 class SharedUniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> {
  public:
-  typedef UniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> T_IMPL;
+  typedef UniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> impl_t;
 
-  SharedUniqueDefinition(Definition definition) : unique_definition_(std::make_shared<T_IMPL>(definition)) {}
+  SharedUniqueDefinition(Definition definition) : unique_definition_(std::make_shared<impl_t>(definition)) {}
   void MarkAs(BlockUsageBit bit) const { unique_definition_->MarkAs(bit); }
 
   // User-facing methods.
@@ -227,7 +227,7 @@ class SharedUniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> {
   }
 
  private:
-  mutable std::shared_ptr<T_IMPL> unique_definition_;
+  mutable std::shared_ptr<impl_t> unique_definition_;
 };
 
 template <class OUTPUT_TYPE_LIST>
@@ -324,11 +324,11 @@ class AbstractCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>>
     typedef TypeListImpl<OUTPUT_TYPES...> OUTPUT_TYPES_AS_TYPELIST;
   };
 
-  typedef SharedUniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> T_DEFINITION;
+  typedef SharedUniqueDefinition<INPUT, TypeListImpl<OUTPUT_TYPES...>> definition_t;
   constexpr static InputPolicy NEXT_INPUT =
       InputPolicyGivenOutputTypeList<TypeListImpl<OUTPUT_TYPES...>>::RESULT;
 
-  explicit AbstractCurrent(T_DEFINITION definition) : T_DEFINITION(definition) {}
+  explicit AbstractCurrent(definition_t definition) : definition_t(definition) {}
   virtual ~AbstractCurrent() = default;
   virtual std::shared_ptr<InstanceBeingRun<INPUT, TypeListImpl<OUTPUT_TYPES...>>> SpawnAndRun(
       std::shared_ptr<EntriesConsumer<NEXT_INPUT>>) const = 0;
@@ -344,33 +344,33 @@ template <InputPolicy INPUT, class... OUTPUT_TYPES>
 class SharedCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>>
     : public AbstractCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>> {
  public:
-  typedef TypeListImpl<OUTPUT_TYPES...> T_OUTPUT;
-  typedef AbstractCurrent<INPUT, T_OUTPUT> T_BASE;
-  constexpr static InputPolicy NEXT_INPUT = InputPolicyGivenOutputTypeList<T_OUTPUT>::RESULT;
+  typedef TypeListImpl<OUTPUT_TYPES...> output_t;
+  typedef AbstractCurrent<INPUT, output_t> base_t;
+  constexpr static InputPolicy NEXT_INPUT = InputPolicyGivenOutputTypeList<output_t>::RESULT;
 
-  explicit SharedCurrent(std::shared_ptr<T_BASE> spawner)
-      : T_BASE(spawner->GetUniqueDefinition()), shared_impl_spawner_(spawner) {}
+  explicit SharedCurrent(std::shared_ptr<base_t> spawner)
+      : base_t(spawner->GetUniqueDefinition()), shared_impl_spawner_(spawner) {}
 
-  std::shared_ptr<InstanceBeingRun<INPUT, T_OUTPUT>> SpawnAndRun(
+  std::shared_ptr<InstanceBeingRun<INPUT, output_t>> SpawnAndRun(
       std::shared_ptr<EntriesConsumer<NEXT_INPUT>> next) const override {
     return shared_impl_spawner_->SpawnAndRun(next);
   }
 
   // User-facing `RipCurrent()` method.
-  template <InputPolicy T_IN = INPUT, size_t OUT_N = sizeof...(OUTPUT_TYPES)>
-  typename std::enable_if<T_IN == InputPolicy::DoesNotAccept && OUT_N == 0, RipCurrentRunContext>::type
+  template <InputPolicy IN = INPUT, size_t OUT_N = sizeof...(OUTPUT_TYPES)>
+  typename std::enable_if<IN == InputPolicy::DoesNotAccept && OUT_N == 0, RipCurrentRunContext>::type
   RipCurrent() {
     SpawnAndRun(std::make_shared<DummyNoEntryTypeAcceptor>());
 
     // TODO(dkorolev): Return proper run context. So far, just require `.Sync()` to be called on it.
     std::ostringstream os;
     os << "RipCurrent run context was left hanging. Call `.Sync()`, or, well, something else. -- D.K.\n";
-    T_BASE::GetDefinition().FullDescription(os);
+    base_t::GetDefinition().FullDescription(os);
     return std::move(RipCurrentRunContext(os.str()));
   }
 
  private:
-  std::shared_ptr<T_BASE> shared_impl_spawner_;
+  std::shared_ptr<base_t> shared_impl_spawner_;
 };
 
 // Helper code to initialize the next handler in the chain before the user code is constructed.
@@ -510,10 +510,10 @@ class UserClassInstantiator<InputPolicy::DoesNotAccept,
  public:
   typedef GenericUserClassInstantiator<InputPolicy::DoesNotAccept,
                                        TypeListImpl<OUTPUT_TYPE_X, OUTPUT_TYPE_XS...>,
-                                       USER_CLASS> T_BASE;
+                                       USER_CLASS> base_t;
   template <class ARGS_AS_TUPLE>
   UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : T_BASE(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
+      : base_t(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
 };
 
 // Top-level class to wrap user-defined "VIA" code into a corresponding subflow.
@@ -531,10 +531,10 @@ class UserClassInstantiator<InputPolicy::Accepts, TypeListImpl<OUTPUT_TYPE_X, OU
  public:
   typedef GenericUserClassInstantiator<InputPolicy::Accepts,
                                        TypeListImpl<OUTPUT_TYPE_X, OUTPUT_TYPE_XS...>,
-                                       USER_CLASS> T_BASE;
+                                       USER_CLASS> base_t;
   template <class ARGS_AS_TUPLE>
   UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : T_BASE(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
+      : base_t(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
 };
 
 // Top-level class to wrap user-defined "RHS" code into a corresponding subflow.
@@ -546,10 +546,10 @@ class UserClassInstantiator<InputPolicy::Accepts, TypeListImpl<>, USER_CLASS>
                 "User class for RipCurrent data destination should use `CURRENT_RHS()` + `REGISTER_RHS()`.");
 
  public:
-  typedef GenericUserClassInstantiator<InputPolicy::Accepts, TypeListImpl<>, USER_CLASS> T_BASE;
+  typedef GenericUserClassInstantiator<InputPolicy::Accepts, TypeListImpl<>, USER_CLASS> base_t;
   template <class ARGS_AS_TUPLE>
   UserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : T_BASE(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
+      : base_t(definition, std::forward<ARGS_AS_TUPLE>(params)) {}
 };
 
 // `SharedUserClassInstantiator` is the `shared_ptr<>` holder of the wrapper class
@@ -563,14 +563,14 @@ class SharedUserClassInstantiator;
 template <InputPolicy INPUT, typename... OUTPUT_TYPES, typename USER_CLASS>
 class SharedUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS> {
  public:
-  typedef UserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS> T_IMPL;
+  typedef UserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS> impl_t;
   template <class ARGS_AS_TUPLE>
   SharedUserClassInstantiator(Definition definition, ARGS_AS_TUPLE&& params)
-      : shared_spawner_(std::make_shared<T_IMPL>(definition, std::forward<ARGS_AS_TUPLE>(params))) {}
+      : shared_spawner_(std::make_shared<impl_t>(definition, std::forward<ARGS_AS_TUPLE>(params))) {}
 
  private:
   friend class UserClass<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS>;
-  std::shared_ptr<T_IMPL> shared_spawner_;
+  std::shared_ptr<impl_t> shared_spawner_;
 };
 
 // `UserClass<INPUT, OUTPUT, USER_CLASS>` initializes `SharedUserClassInstantiator<INPUT, OUTPUT, USER_CLASS>`
@@ -584,11 +584,11 @@ class UserClass<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS>
     : public SharedUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS>,
       public SharedCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>> {
  public:
-  typedef SharedUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS> T_IMPL;
+  typedef SharedUserClassInstantiator<INPUT, TypeListImpl<OUTPUT_TYPES...>, USER_CLASS> impl_t;
   template <class ARGS_AS_TUPLE>
   UserClass(Definition definition, ARGS_AS_TUPLE&& params)
-      : T_IMPL(definition, std::forward<ARGS_AS_TUPLE>(params)),
-        SharedCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>>(T_IMPL::shared_spawner_) {}
+      : impl_t(definition, std::forward<ARGS_AS_TUPLE>(params)),
+        SharedCurrent<INPUT, TypeListImpl<OUTPUT_TYPES...>>(impl_t::shared_spawner_) {}
 
   // For the `CURRENT_USER_TYPE` macro to be able to extract the underlying user-defined type.
   USER_CLASS UnderlyingType() const;
@@ -687,10 +687,10 @@ template <InputPolicy INPUT,
 class SubflowSequence<INPUT, OUTPUT_TYPE_LIST, TypeListImpl<INTERMEDIATE_TYPE_X, INTERMEDIATE_TYPE_XS...>>
     : public SharedCurrent<INPUT, OUTPUT_TYPE_LIST> {
  public:
-  typedef SharedCurrent<INPUT, OUTPUT_TYPE_LIST> T_SUBFLOW;
+  typedef SharedCurrent<INPUT, OUTPUT_TYPE_LIST> subflow_t;
   SubflowSequence(SharedCurrent<INPUT, TypeListImpl<INTERMEDIATE_TYPE_X, INTERMEDIATE_TYPE_XS...>> from,
                   SharedCurrent<InputPolicy::Accepts, OUTPUT_TYPE_LIST> into)
-      : T_SUBFLOW(std::make_shared<
+      : subflow_t(std::make_shared<
             GenericCurrentSequence<INPUT,
                                    OUTPUT_TYPE_LIST,
                                    TypeListImpl<INTERMEDIATE_TYPE_X, INTERMEDIATE_TYPE_XS...>>>(from, into)) {}

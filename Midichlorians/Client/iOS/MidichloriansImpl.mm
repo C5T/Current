@@ -162,8 +162,8 @@ namespace impl {
         // preserving the order.
         // NOTE: In production, a more advanced implementation should be used,
         // with more efficient in-memory message queue and with optionally persistent storage of events.
-        template <class T_SINGLE_THREADED_IMPL>
-        class SimplestThreadSafeWrapper : public T_SINGLE_THREADED_IMPL {
+        template <class SINGLE_THREADED_IMPL>
+        class SimplestThreadSafeWrapper : public SINGLE_THREADED_IMPL {
         public:
             SimplestThreadSafeWrapper() : up_(true), thread_(&SimplestThreadSafeWrapper::Thread, this) {}
             ~SimplestThreadSafeWrapper() {
@@ -202,7 +202,7 @@ namespace impl {
                         }
                     }
                     // Mutex-free section: Process this message.
-                    T_SINGLE_THREADED_IMPL::OnMessage(message);
+                    SINGLE_THREADED_IMPL::OnMessage(message);
                 }
             }
             
@@ -223,12 +223,12 @@ namespace impl {
     using Stats = consumer::POSTviaHTTP;
 
     struct EventsVariantDispatchedAssigner {
-        explicit EventsVariantDispatchedAssigner(Variant<T_IOS_EVENTS>& variant) : variant_(variant) {}
+        explicit EventsVariantDispatchedAssigner(Variant<ios_events_t>& variant) : variant_(variant) {}
 
         template <typename T>
         void operator()(const T& event) { variant_ = event; }
 
-        Variant<T_IOS_EVENTS>& variant_;
+        Variant<ios_events_t>& variant_;
     };
 
 }  // namespace impl
@@ -330,9 +330,9 @@ using namespace current::midichlorians::ios::impl;
 
 + (void)emit:(const iOSBaseEvent &)event {
     Stats &instance = current::Singleton<Stats>();
-    Variant<T_IOS_EVENTS> v;
+    Variant<ios_events_t> v;
     EventsVariantDispatchedAssigner assigner(v);
-    current::metaprogramming::RTTIDynamicCall<T_IOS_EVENTS>(event, assigner);
+    current::metaprogramming::RTTIDynamicCall<ios_events_t>(event, assigner);
     Value<iOSBaseEvent>(v).device_id = instance.GetDeviceId();
     Value<iOSBaseEvent>(v).client_id = instance.GetClientId();
     Value<iOSBaseEvent>(v).user_ms = std::chrono::duration_cast<std::chrono::milliseconds>(current::time::Now());

@@ -144,49 +144,49 @@ struct ToStringImpl<std::pair<FST, SND>, false, false> {
   }
 };
 
-template <typename T_INPUT, typename T_OUTPUT, bool HAS_MEMBER_FROM_STRING, bool IS_ENUM>
+template <typename INPUT, typename OUTPUT, bool HAS_MEMBER_FROM_STRING, bool IS_ENUM>
 struct FromStringImpl;
 
-template <typename T_INPUT, typename T_OUTPUT>
-struct FromStringImpl<T_INPUT, T_OUTPUT, true, false> {
+template <typename INPUT, typename OUTPUT>
+struct FromStringImpl<INPUT, OUTPUT, true, false> {
   template <typename T>
-  static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
+  static const OUTPUT& Go(T&& input, OUTPUT& output) {
     output.FromString(std::forward<T>(input));
     return output;
   }
 };
 
-template <typename T_INPUT, typename T_OUTPUT>
-struct FromStringImpl<T_INPUT, T_OUTPUT, false, false> {
+template <typename INPUT, typename OUTPUT>
+struct FromStringImpl<INPUT, OUTPUT, false, false> {
   template <typename T>
-  static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
+  static const OUTPUT& Go(T&& input, OUTPUT& output) {
     std::istringstream is(input);
     if (!(is >> output)) {
       // Default initializer, zero for primitive types.
-      output = T_OUTPUT();
+      output = OUTPUT();
     }
     return output;
   }
 };
 
-template <typename T_INPUT, typename T_OUTPUT>
-struct FromStringImpl<T_INPUT, T_OUTPUT, false, true> {
+template <typename INPUT, typename OUTPUT>
+struct FromStringImpl<INPUT, OUTPUT, false, true> {
   template <typename T>
-  static const T_OUTPUT& Go(T&& input, T_OUTPUT& output) {
+  static const OUTPUT& Go(T&& input, OUTPUT& output) {
     std::istringstream is(input);
-    using T_UNDERLYING_OUTPUT = typename std::underlying_type<T_OUTPUT>::type;
-    T_UNDERLYING_OUTPUT underlying_output;
+    using underlying_output_t = typename std::underlying_type<OUTPUT>::type;
+    underlying_output_t underlying_output;
     if (!(is >> underlying_output)) {
       // Default initializer, zero for primitive types.
-      underlying_output = T_UNDERLYING_OUTPUT();
+      underlying_output = underlying_output_t();
     }
-    output = static_cast<T_OUTPUT>(underlying_output);
+    output = static_cast<OUTPUT>(underlying_output);
     return output;
   }
 };
 
-template <typename T_INPUT>
-struct FromStringImpl<T_INPUT, std::chrono::milliseconds, false, false> {
+template <typename INPUT>
+struct FromStringImpl<INPUT, std::chrono::milliseconds, false, false> {
   template <typename T>
   static const std::chrono::milliseconds& Go(T&& input, std::chrono::milliseconds& output) {
     std::istringstream is(input);
@@ -199,8 +199,8 @@ struct FromStringImpl<T_INPUT, std::chrono::milliseconds, false, false> {
   }
 };
 
-template <typename T_INPUT>
-struct FromStringImpl<T_INPUT, std::chrono::microseconds, false, false> {
+template <typename INPUT>
+struct FromStringImpl<INPUT, std::chrono::microseconds, false, false> {
   template <typename T>
   static const std::chrono::microseconds& Go(T&& input, std::chrono::microseconds& output) {
     std::istringstream is(input);
@@ -213,47 +213,45 @@ struct FromStringImpl<T_INPUT, std::chrono::microseconds, false, false> {
   }
 };
 
-template <typename T_OUTPUT, typename T_INPUT = std::string>
-inline const T_OUTPUT& FromString(T_INPUT&& input, T_OUTPUT& output) {
-  return FromStringImpl<T_INPUT,
-                        T_OUTPUT,
-                        sfinae::HasMemberFromString<T_OUTPUT>(0),
-                        std::is_enum<T_OUTPUT>::value>::Go(std::forward<T_INPUT>(input), output);
+template <typename OUTPUT, typename INPUT = std::string>
+inline const OUTPUT& FromString(INPUT&& input, OUTPUT& output) {
+  return FromStringImpl<INPUT, OUTPUT, sfinae::HasMemberFromString<OUTPUT>(0), std::is_enum<OUTPUT>::value>::Go(
+      std::forward<INPUT>(input), output);
 }
 
 // Special case for `std::pair<>`. For Storage REST only for now.
 // TODO(dkorolev) + TODO(mzhurovich): Unify `FromString()` and `JSON()` under one `Serialize()` w/ policies?
-template <typename T_INPUT, typename T_OUTPUT_FST, typename T_OUTPUT_SND>
-struct FromStringImpl<T_INPUT, std::pair<T_OUTPUT_FST, T_OUTPUT_SND>, false, false> {
-  static const std::pair<T_OUTPUT_FST, T_OUTPUT_SND>& Go(const std::string& input,
-                                                         std::pair<T_OUTPUT_FST, T_OUTPUT_SND>& output) {
+template <typename INPUT, typename OUTPUT_FST, typename OUTPUT_SND>
+struct FromStringImpl<INPUT, std::pair<OUTPUT_FST, OUTPUT_SND>, false, false> {
+  static const std::pair<OUTPUT_FST, OUTPUT_SND>& Go(const std::string& input,
+                                                     std::pair<OUTPUT_FST, OUTPUT_SND>& output) {
     const size_t dash = input.find('-');
     FromString(input.substr(0, dash), output.first);
     if (dash != std::string::npos) {
       FromString(input.substr(dash + 1), output.second);
     } else {
-      output.second = T_OUTPUT_SND();
+      output.second = OUTPUT_SND();
     }
     return output;
   }
 };
 
-template <typename T_INPUT>
-inline const std::string& FromString(T_INPUT&& input, std::string& output) {
+template <typename INPUT>
+inline const std::string& FromString(INPUT&& input, std::string& output) {
   output = input;
   return output;
 }
 
-template <typename T_INPUT>
-inline bool FromString(T_INPUT&& input, bool& output) {
+template <typename INPUT>
+inline bool FromString(INPUT&& input, bool& output) {
   output = (std::string("") != input && std::string("0") != input && std::string("false") != input);
   return output;
 }
 
-template <typename T_OUTPUT, typename T_INPUT = std::string>
-inline T_OUTPUT FromString(T_INPUT&& input) {
-  T_OUTPUT output;
-  FromString(std::forward<T_INPUT>(input), output);
+template <typename OUTPUT, typename INPUT = std::string>
+inline OUTPUT FromString(INPUT&& input) {
+  OUTPUT output;
+  FromString(std::forward<INPUT>(input), output);
   return output;
 }
 

@@ -47,12 +47,19 @@ struct TypeListCatImpl<TypeListImpl<LHS...>, TypeListImpl<RHS...>> {
 template <typename... TS>
 using TypeListCat = typename TypeListCatImpl<TS...>::result;
 
-using current::midichlorians::ios::T_IOS_EVENTS;
-using current::midichlorians::web::T_WEB_EVENTS;
+using current::midichlorians::ios::ios_events_t;
+using current::midichlorians::web::web_events_t;
 
-using T_IOS_VARIANT = Variant<T_IOS_EVENTS>;
-using T_WEB_VARIANT = Variant<T_WEB_EVENTS>;
-using T_EVENT_VARIANT = Variant<TypeListCat<T_IOS_EVENTS, T_WEB_EVENTS>>;
+using current::midichlorians::ios::DEPRECATED_T_(IOS_EVENTS);
+using current::midichlorians::web::DEPRECATED_T_(WEB_EVENTS);
+
+using ios_variant_t = Variant<ios_events_t>;
+using web_variant_t = Variant<web_events_t>;
+using event_variant_t = Variant<TypeListCat<ios_events_t, web_events_t>>;
+
+using DEPRECATED_T_(IOS_VARIANT) = ios_variant_t;
+using DEPRECATED_T_(WEB_VARIANT) = web_variant_t;
+using DEPRECATED_T_(EVENT_VARIANT) = event_variant_t;
 
 // clang-format off
 CURRENT_STRUCT(LogEntryBase) {
@@ -67,11 +74,11 @@ CURRENT_STRUCT(TickLogEntry, LogEntryBase){
 };
 
 CURRENT_STRUCT(EventLogEntry, LogEntryBase) {
-  CURRENT_FIELD(event, T_EVENT_VARIANT);
+  CURRENT_FIELD(event, event_variant_t);
   CURRENT_DEFAULT_CONSTRUCTOR(EventLogEntry) {}
-  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, T_WEB_VARIANT&& event)
+  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, web_variant_t&& event)
       : SUPER(us), event(std::move(event)) {}
-  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, T_IOS_VARIANT&& event)
+  CURRENT_CONSTRUCTOR(EventLogEntry)(std::chrono::microseconds us, ios_variant_t&& event)
       : SUPER(us), event(std::move(event)) {}
 };
 
@@ -86,7 +93,8 @@ CURRENT_STRUCT(UnparsableLogEntry, LogEntryBase) {
 };
 // clang-format on
 
-using T_LOG_ENTRY_VARIANT = Variant<TickLogEntry, EventLogEntry, UnparsableLogEntry>;
+using log_entry_variant_t = Variant<TickLogEntry, EventLogEntry, UnparsableLogEntry>;
+using DEPRECATED_T_(LOG_ENTRY_VARIANT) = log_entry_variant_t;
 
 }  // namespace server
 }  // namespace midichlorians

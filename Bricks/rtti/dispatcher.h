@@ -36,18 +36,18 @@ namespace rtti {
 
 template <typename BASE, typename DERIVED, typename... TAIL>
 struct RuntimeDispatcher {
-  typedef BASE T_BASE;
-  typedef DERIVED T_DERIVED;
-  template <typename TYPE, typename PROCESSOR>
-  static void DispatchCall(const TYPE &x, PROCESSOR &c) {
+  typedef BASE base_t;
+  typedef DERIVED deriver_t;
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(const T &x, PROCESSOR &c) {
     if (const DERIVED *d = dynamic_cast<const DERIVED *>(&x)) {
       c(*d);
     } else {
       RuntimeDispatcher<BASE, TAIL...>::DispatchCall(x, c);
     }
   }
-  template <typename TYPE, typename PROCESSOR>
-  static void DispatchCall(TYPE &x, PROCESSOR &c) {
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(T &x, PROCESSOR &c) {
     if (DERIVED *d = dynamic_cast<DERIVED *>(&x)) {
       c(*d);
     } else {
@@ -58,10 +58,10 @@ struct RuntimeDispatcher {
 
 template <typename BASE, typename DERIVED>
 struct RuntimeDispatcher<BASE, DERIVED> {
-  typedef BASE T_BASE;
-  typedef DERIVED T_DERIVED;
-  template <typename TYPE, typename PROCESSOR>
-  static void DispatchCall(const TYPE &x, PROCESSOR &c) {
+  typedef BASE base_t;
+  typedef DERIVED deriver_t;
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(const T &x, PROCESSOR &c) {
     if (const DERIVED *d = dynamic_cast<const DERIVED *>(&x)) {
       c(*d);
     } else {
@@ -73,8 +73,8 @@ struct RuntimeDispatcher<BASE, DERIVED> {
       }
     }
   }
-  template <typename TYPE, typename PROCESSOR>
-  static void DispatchCall(TYPE &x, PROCESSOR &c) {
+  template <typename T, typename PROCESSOR>
+  static void DispatchCall(T &x, PROCESSOR &c) {
     if (DERIVED *d = dynamic_cast<DERIVED *>(&x)) {
       c(*d);
     } else {

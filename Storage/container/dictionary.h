@@ -37,19 +37,19 @@ namespace current {
 namespace storage {
 namespace container {
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT, template <typename...> class MAP>
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT, template <typename...> class MAP>
 class GenericDictionary {
  public:
-  using T_KEY = sfinae::ENTRY_KEY_TYPE<T>;
-  using T_MAP = MAP<T_KEY, T>;
-  using T_REST_BEHAVIOR = rest::behavior::Dictionary;
+  using key_t = sfinae::ENTRY_KEY_TYPE<T>;
+  using map_t = MAP<key_t, T>;
+  using rest_behavior_t = rest::behavior::Dictionary;
 
   explicit GenericDictionary(MutationJournal& journal) : journal_(journal) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
 
-  ImmutableOptional<T> operator[](sfinae::CF<T_KEY> key) const {
+  ImmutableOptional<T> operator[](sfinae::CF<key_t> key) const {
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), &iterator->second);
@@ -63,35 +63,35 @@ class GenericDictionary {
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {
       const T previous_object = iterator->second;
-      journal_.LogMutation(T_UPDATE_EVENT(object),
+      journal_.LogMutation(UPDATE_EVENT(object),
                            [this, key, previous_object]() { map_[key] = previous_object; });
     } else {
-      journal_.LogMutation(T_UPDATE_EVENT(object), [this, key]() { map_.erase(key); });
+      journal_.LogMutation(UPDATE_EVENT(object), [this, key]() { map_.erase(key); });
     }
     map_[key] = object;
   }
 
-  void Erase(sfinae::CF<T_KEY> key) {
+  void Erase(sfinae::CF<key_t> key) {
     const auto iterator = map_.find(key);
     if (iterator != map_.end()) {
       const T previous_object = iterator->second;
-      journal_.LogMutation(T_DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { map_[key] = previous_object; });
       map_.erase(key);
     }
   }
 
-  void operator()(const T_UPDATE_EVENT& e) { map_[sfinae::GetKey(e.data)] = e.data; }
-  void operator()(const T_DELETE_EVENT& e) { map_.erase(e.key); }
+  void operator()(const UPDATE_EVENT& e) { map_[sfinae::GetKey(e.data)] = e.data; }
+  void operator()(const DELETE_EVENT& e) { map_.erase(e.key); }
 
   struct Iterator final {
-    using T_ITERATOR = typename T_MAP::const_iterator;
-    T_ITERATOR iterator;
-    explicit Iterator(T_ITERATOR iterator) : iterator(std::move(iterator)) {}
+    using iterator_t = typename map_t::const_iterator;
+    iterator_t iterator;
+    explicit Iterator(iterator_t iterator) : iterator(std::move(iterator)) {}
     void operator++() { ++iterator; }
     bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    sfinae::CF<T_KEY> key() const { return iterator->first; }
+    sfinae::CF<key_t> key() const { return iterator->first; }
     const T& operator*() const { return iterator->second; }
     const T* operator->() const { return &iterator->second; }
   };
@@ -100,15 +100,15 @@ class GenericDictionary {
   Iterator end() const { return Iterator(map_.cend()); }
 
  private:
-  T_MAP map_;
+  map_t map_;
   MutationJournal& journal_;
 };
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using UnorderedDictionary = GenericDictionary<T, T_UPDATE_EVENT, T_DELETE_EVENT, Unordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, Unordered>;
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using OrderedDictionary = GenericDictionary<T, T_UPDATE_EVENT, T_DELETE_EVENT, Ordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedDictionary = GenericDictionary<T, UPDATE_EVENT, DELETE_EVENT, Ordered>;
 
 }  // namespace container
 

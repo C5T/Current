@@ -536,7 +536,7 @@ struct CurrentStorageTestMagicTypesExtractor {
   template <typename CONTAINER_TYPE_WRAPPER, typename ENTRY_TYPE_WRAPPER>
   int operator()(const char* name, CONTAINER_TYPE_WRAPPER, ENTRY_TYPE_WRAPPER) {
     s = std::string(name) + ", " + CONTAINER_TYPE_WRAPPER::HumanReadableName() + ", " +
-        current::reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::T_ENTRY>();
+        current::reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::entry_t>();
     return 42;  // Checked against via `::current::storage::FieldNameAndTypeByIndexAndReturn`.
   }
 };
@@ -768,7 +768,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     ASSERT_FALSE(tab_pos == std::string::npos);
     const auto idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
     EXPECT_EQ(expected_index, idx_ts.index);
-    auto transaction = ParseJSON<Storage::T_TRANSACTION>(line.substr(tab_pos + 1));
+    auto transaction = ParseJSON<Storage::transaction_t>(line.substr(tab_pos + 1));
     ASSERT_NO_THROW(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
     ++expected_index;
   }
@@ -789,7 +789,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
 
 namespace transactional_storage_test {
 
-template <typename T_SHERLOCK_ENTRY>
+template <typename SHERLOCK_ENTRY>
 class StorageSherlockTestProcessorImpl {
   using EntryResponse = current::ss::EntryResponse;
   using TerminationResponse = current::ss::TerminationResponse;
@@ -802,7 +802,7 @@ class StorageSherlockTestProcessorImpl {
     allow_terminate_on_no_more_entries_of_right_type_ = true;
   }
 
-  EntryResponse operator()(const T_SHERLOCK_ENTRY& entry, idxts_t current, idxts_t last) const {
+  EntryResponse operator()(const SHERLOCK_ENTRY& entry, idxts_t current, idxts_t last) const {
     output_ += JSON(current) + '\t' + JSON(entry) + '\n';
     if (current.index != last.index) {
       return EntryResponse::More;
@@ -860,7 +860,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
   }
 
   std::string collected;
-  StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
   storage.InternalExposeStream().Subscribe(processor).Join();
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
@@ -906,7 +906,7 @@ CURRENT_STRUCT(SimpleLikeBase) {
 };
 
 CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
-  using T_BRIEF = SUPER;
+  using brief_t = SUPER;
   CURRENT_FIELD(details, Optional<std::string>);
   CURRENT_CONSTRUCTOR(SimpleLike)(const std::string& who = "", const std::string& what = "")
       : SUPER(who, what) {}
@@ -1148,12 +1148,12 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  static_assert(std::is_same<typename Storage::T_PERSISTER::T_SHERLOCK,
-                             current::sherlock::Stream<typename Storage::T_PERSISTER::T_TRANSACTION,
+  static_assert(std::is_same<typename Storage::persister_t::sherlock_t,
+                             current::sherlock::Stream<typename Storage::persister_t::transaction_t,
                                                        current::persistence::Memory>>::value,
                 "");
 
-  typename Storage::T_PERSISTER::T_SHERLOCK stream;
+  typename Storage::persister_t::sherlock_t stream;
   Storage storage(stream);
 
   {
@@ -1165,7 +1165,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
   }
 
   std::string collected;
-  StorageSherlockTestProcessor<Storage::T_TRANSACTION> processor(collected);
+  StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
   storage.InternalExposeStream().Subscribe(processor).Join();
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
@@ -1186,20 +1186,20 @@ CURRENT_STRUCT(StreamEntryOutsideStorage) {
 TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   using namespace transactional_storage_test;
   using pre_storage_t = TestStorage<SherlockInMemoryStreamPersister>;
-  using transaction_t = typename pre_storage_t::T_TRANSACTION;
+  using transaction_t = typename pre_storage_t::transaction_t;
 
-  static_assert(std::is_same<transaction_t, typename pre_storage_t::T_PERSISTER::T_TRANSACTION>::value, "");
+  static_assert(std::is_same<transaction_t, typename pre_storage_t::persister_t::transaction_t>::value, "");
 
   using storage_t = TestStorage<SherlockInMemoryStreamPersister,
                                 current::storage::transaction_policy::Synchronous,
                                 Variant<transaction_t, StreamEntryOutsideStorage>>;
 
-  static_assert(std::is_same<typename storage_t::T_PERSISTER::T_SHERLOCK,
+  static_assert(std::is_same<typename storage_t::persister_t::sherlock_t,
                              current::sherlock::Stream<Variant<transaction_t, StreamEntryOutsideStorage>,
                                                        current::persistence::Memory>>::value,
                 "");
 
-  typename storage_t::T_PERSISTER::T_SHERLOCK stream;
+  typename storage_t::persister_t::sherlock_t stream;
 
   storage_t storage(stream);
 

@@ -66,13 +66,16 @@ class MMQImpl {
 
  public:
   // Type of messages to store and dispatch.
-  using T_MESSAGE = MESSAGE;
+  using message_t = MESSAGE;
 
   // This method will be called from one thread, which is spawned and owned by an instance of MMQImpl.
   // See "Blocks/SS/ss.h" and its test for possible callee signatures.
-  using T_CONSUMER = CONSUMER;
+  using consumer_t = CONSUMER;
 
-  MMQImpl(T_CONSUMER& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
+  using DEPRECATED_T_(MESSAGE) = message_t;
+  using DEPRECATED_T_(CONSUMER) = consumer_t;
+
+  MMQImpl(consumer_t& consumer, size_t buffer_size = DEFAULT_BUFFER_SIZE)
       : consumer_(consumer),
         circular_buffer_size_(buffer_size),
         circular_buffer_(circular_buffer_size_),
@@ -92,7 +95,7 @@ class MMQImpl {
   // Adds a message to the buffer.
   // Supports both copy and move semantics.
   // THREAD SAFE. Blocks the calling thread for as short period of time as possible.
-  idxts_t DoPublish(const T_MESSAGE& message, std::chrono::microseconds) {
+  idxts_t DoPublish(const message_t& message, std::chrono::microseconds) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
       circular_buffer_[index.second].message_body = message;
@@ -103,7 +106,7 @@ class MMQImpl {
     }
   }
 
-  idxts_t DoPublish(T_MESSAGE&& message, std::chrono::microseconds) {
+  idxts_t DoPublish(message_t&& message, std::chrono::microseconds) {
     const std::pair<bool, size_t> index = CircularBufferAllocate();
     if (index.first) {
       circular_buffer_[index.second].message_body = std::move(message);
@@ -118,7 +121,7 @@ class MMQImpl {
   // idxts_t DoEmplace(ARGS&&... args) {
   //   const std::pair<bool, size_t> index = CircularBufferAllocate();
   //   if (index.first) {
-  //     circular_buffer_[index.second].message_body = T_MESSAGE(std::forward<ARGS>(args)...);
+  //     circular_buffer_[index.second].message_body = message_t(std::forward<ARGS>(args)...);
   //     CircularBufferCommit(index.second);
   //     return circular_buffer_[index.second].index_timestamp;
   //   } else {
@@ -242,7 +245,7 @@ class MMQImpl {
   }
 
   // The instance of the consuming side of the FIFO buffer.
-  T_CONSUMER& consumer_;
+  consumer_t& consumer_;
 
   // The capacity of the circular buffer for intermediate messages.
   // Messages beyond it will be dropped.
@@ -251,7 +254,7 @@ class MMQImpl {
   // The `Entry` struct keeps the entries along with their completion status.
   struct Entry {
     idxts_t index_timestamp;
-    T_MESSAGE message_body;
+    message_t message_body;
     enum { FREE, BEING_IMPORTED, READY, BEING_EXPORTED } status = Entry::FREE;
   };
 

@@ -194,9 +194,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
     assert(!save_to_file_request.file_name.empty());
   }
 
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& /*response_params*/,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& /*response_params*/,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponse& output) {
     if (!request_params.allow_redirects && request_params.url != response.response_url_after_redirects_) {
@@ -208,9 +208,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
     output.headers = http_request.headers();
   }
 
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
@@ -218,9 +218,9 @@ struct ImplWrapper<HTTPClientPOSIX> {
     output.body = http_request.Body();
   }
 
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const HTTPClientPOSIX& response,
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));

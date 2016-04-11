@@ -64,9 +64,9 @@ struct InferSchemaIncompatibleTypesBase : InferSchemaInputException {
   explicit InferSchemaIncompatibleTypesBase(const std::string& message) : InferSchemaInputException(message) {}
 };
 
-template <typename T_LHS, typename T_RHS>
+template <typename LHS, typename RHS>
 struct InferSchemaIncompatibleTypes : InferSchemaIncompatibleTypesBase {
-  InferSchemaIncompatibleTypes(const T_LHS& lhs, const T_RHS& rhs)
+  InferSchemaIncompatibleTypes(const LHS& lhs, const RHS& rhs)
       : InferSchemaIncompatibleTypesBase("Incompatible types: '" + lhs.HumanReadableType() + "' and '" +
                                          rhs.HumanReadableType() + "'.") {}
 };
@@ -162,23 +162,23 @@ CURRENT_STRUCT(Object) {
 // 2) `CallReduce(const Schema& lhs, const Schema& rhs)` calls the above `Reduce<LHS, RHS>`
 //     for the right underlying types of `lhs` and `rhs` respectively.
 
-template <typename T_LHS, typename T_RHS>
+template <typename LHS, typename RHS>
 struct Reduce {
-  static Schema DoIt(const T_LHS& lhs, const T_RHS& rhs) {
-    using InferSchemaIncompatibleTypesException = InferSchemaIncompatibleTypes<T_LHS, T_RHS>;
+  static Schema DoIt(const LHS& lhs, const RHS& rhs) {
+    using InferSchemaIncompatibleTypesException = InferSchemaIncompatibleTypes<LHS, RHS>;
     CURRENT_THROW(InferSchemaIncompatibleTypesException(lhs, rhs));
   }
 };
 
-template <typename T_LHS>
+template <typename LHS>
 struct RHSExpander {
-  const T_LHS& lhs;
+  const LHS& lhs;
   Schema& result;
-  RHSExpander(const T_LHS& lhs, Schema& result) : lhs(lhs), result(result) {}
+  RHSExpander(const LHS& lhs, Schema& result) : lhs(lhs), result(result) {}
 
-  template <typename T_RHS>
-  void operator()(const T_RHS& rhs) {
-    result = Reduce<T_LHS, T_RHS>::DoIt(lhs, rhs);
+  template <typename RHS>
+  void operator()(const RHS& rhs) {
+    result = Reduce<LHS, RHS>::DoIt(lhs, rhs);
   }
 };
 
@@ -187,9 +187,9 @@ struct LHSExpander {
   Schema& result;
   LHSExpander(const Schema& rhs, Schema& result) : rhs(rhs), result(result) {}
 
-  template <typename T_LHS>
-  void operator()(const T_LHS& lhs) const {
-    rhs.Call(RHSExpander<T_LHS>(lhs, result));
+  template <typename LHS>
+  void operator()(const LHS& lhs) const {
+    rhs.Call(RHSExpander<LHS>(lhs, result));
   }
 };
 

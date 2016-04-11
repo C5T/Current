@@ -198,7 +198,7 @@ TEST(StorageDocumentation, BasicUsage) {
     const auto persisted_idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
     EXPECT_EQ(index, persisted_idx_ts.index);
     EXPECT_EQ(timestamp, persisted_idx_ts.us);
-    return ParseJSON<ExampleStorage::T_TRANSACTION>(line.substr(tab_pos + 1));
+    return ParseJSON<ExampleStorage::transaction_t>(line.substr(tab_pos + 1));
   };
 
   {

@@ -39,7 +39,7 @@ constexpr bool Has_T_BRIEF(char) {
 }
 
 template <typename T>
-constexpr auto Has_T_BRIEF(int) -> decltype(sizeof(typename T::T_BRIEF), bool()) {
+constexpr auto Has_T_BRIEF(int) -> decltype(sizeof(typename T::brief_t), bool()) {
   return true;
 }
 
@@ -53,7 +53,7 @@ struct BRIEF_OF_T_IMPL<T, false> {
 
 template <typename T>
 struct BRIEF_OF_T_IMPL<T, true> {
-  using type = typename T::T_BRIEF;
+  using type = typename T::brief_t;
 };
 
 template <typename T>
