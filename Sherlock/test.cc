@@ -666,8 +666,6 @@ TEST(Sherlock, SubscribeWithFilterByType) {
   }
 }
 
-namespace sherlock_unittest {}
-
 TEST(Sherlock, ReleaseAndAcquirePublisher) {
   using namespace sherlock_unittest;
   using Stream = current::sherlock::Stream<Record>;
@@ -688,18 +686,17 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
   stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the subscriber running on its own.
 
   // Publish the first entry as usual.
-  current::time::SetNow(std::chrono::microseconds(100));
-  stream.Publish(1);
+  stream.Publish(1, std::chrono::microseconds(100));
 
   // Transfer ownership of the stream publisher to the external object.
   SherlockPublisherAcquirer acquirer;
   stream.MovePublisherTo(acquirer);
 
-  current::time::SetNow(std::chrono::microseconds(200));
   // Publish to the stream is not allowed since the publisher has been moved.
-  ASSERT_THROW(stream.Publish(2), current::sherlock::PublishToStreamWithReleasedPublisherException);
+  ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
+               current::sherlock::PublishToStreamWithReleasedPublisherException);
   // Now we can publish only via `acquirer` that owns stream publisher object.
-  acquirer.publisher_->Publish(2);
+  acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
 
   // Can't move publisher once more since we don't own it at this moment.
   SherlockPublisherAcquirer other_acquirer;
@@ -712,17 +709,16 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
                current::sherlock::PublisherAlreadyOwnedException);
 
   // Publish third entry.
-  current::time::SetNow(std::chrono::microseconds(300));
-  stream.Publish(3);
+  stream.Publish(4, std::chrono::microseconds(400));
 
   while (d.seen_ < 3u) {
     ;  // Spin lock.
   }
   EXPECT_EQ(3u, d.seen_);
-  EXPECT_EQ("1,2,3", d.results_);  // No `TERMINATE` for an asyncronous subscriber.
+  EXPECT_EQ("1,3,4", d.results_);  // No `TERMINATE` for an asyncronous subscriber.
   EXPECT_TRUE(d.subscriber_alive_);
-  current::time::SetNow(std::chrono::microseconds(1000));
-  stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
+  stream.Publish(42,
+                 std::chrono::microseconds(1000));  // Need the 4th entry for the async subscriber to terminate.
   while (d.subscriber_alive_) {
     ;  // Spin lock.
   }
