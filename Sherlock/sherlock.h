@@ -121,6 +121,7 @@ class StreamImpl {
  public:
   using T_ENTRY = ENTRY;
   using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
+  using MutexLockStatus = current::locks::MutexLockStatus;
 
   // The inner structure containing all the data required for the stream to function.
   // TODO(dkorolev): Make it a `ScopeOwnedByMe` type of thing.
@@ -139,30 +140,31 @@ class StreamImpl {
    public:
     explicit StreamPublisher(std::shared_ptr<StreamData> data) : data_(data) {}
 
+    template <MutexLockStatus MLS>
     idxts_t DoPublish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-      std::lock_guard<std::mutex> lock(data_->mutex);
+      current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
       const auto result = data_->persistence.Publish(entry, us);
       data_->notifier.NotifyAllOfExternalWaitableEvent();
       return result;
     }
 
+    template <MutexLockStatus MLS>
     idxts_t DoPublish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-      std::lock_guard<std::mutex> lock(data_->mutex);
+      current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
       const auto result = data_->persistence.Publish(std::move(entry), us);
       data_->notifier.NotifyAllOfExternalWaitableEvent();
       return result;
     }
 
-   private: 
+   private:
     std::shared_ptr<StreamData> data_;
   };
-  using T_PUBLISHER = ss::StreamPublisher<StreamPublisher, ENTRY>;
+  using publisher_t = ss::StreamPublisher<StreamPublisher, ENTRY>;
 
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
       : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)),
-        publisher_(std::make_unique<T_PUBLISHER>(data_)),
-        is_publisher_owned_(true) {}
+        publisher_(std::make_unique<publisher_t>(data_)) {}
 
   StreamImpl(StreamImpl&& rhs) : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)) {}
 
@@ -211,39 +213,37 @@ class StreamImpl {
   // instance of a subscriber has been passed into.
 
   idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-    // TODO(dk+mz): This is not completely safe, but additional mutex for very rare operation of moving a
-    // publisher looks like an overkill.
-    if (is_publisher_owned_) {
-      return publisher_->Publish(entry, us);
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (publisher_) {
+      return publisher_->template Publish<MutexLockStatus::AlreadyLocked>(entry, us);
     } else {
       CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
     }
   }
 
   idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    if (is_publisher_owned_) {
-      return publisher_->Publish(std::move(entry), us);
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (publisher_) {
+      return publisher_->template Publish<MutexLockStatus::AlreadyLocked>(std::move(entry), us);
     } else {
       CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
     }
   }
 
-  template <typename ACCEPTOR>
-  void ReleasePublisher(ACCEPTOR&& acceptor) {
-    if (is_publisher_owned_) {
-      assert(publisher_);
-      is_publisher_owned_ = false;
-      acceptor.AcceptPublisher(std::move(publisher_));
+  template <typename ACQUIRER>
+  void MovePublisherTo(ACQUIRER&& acquirer) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (publisher_) {
+      acquirer.AcceptPublisher(std::move(publisher_));
     } else {
       CURRENT_THROW(PublisherAlreadyReleasedException());
     }
   }
 
-  void AcquirePublisher(std::unique_ptr<T_PUBLISHER> publisher) {
-    if (!is_publisher_owned_) {
-      assert(!publisher_);
+  void AcquirePublisher(std::unique_ptr<publisher_t> publisher) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!publisher_) {
       publisher_ = std::move(publisher);
-      is_publisher_owned_ = true;
     } else {
       CURRENT_THROW(PublisherAlreadyOwnedException());
     }
@@ -451,8 +451,8 @@ class StreamImpl {
 
  private:
   std::shared_ptr<StreamData> data_;
-  std::unique_ptr<T_PUBLISHER> publisher_;
-  std::atomic_bool is_publisher_owned_;
+  std::unique_ptr<publisher_t> publisher_;
+  std::mutex mutex_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;

@@ -22,31 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_SHERLOCK_EXCEPTIONS_H
-#define CURRENT_SHERLOCK_EXCEPTIONS_H
+#ifndef CURRENT_BRICKS_UTIL_LOCK_H
+#define CURRENT_BRICKS_UTIL_LOCK_H
 
-#include "../Bricks/exception.h"
+#include <mutex>
+#include <type_traits>
 
 namespace current {
-namespace sherlock {
+namespace locks {
 
-struct SherlockException : current::Exception {
-  using current::Exception::Exception;
+enum class MutexLockStatus : bool { NeedToLock = false, AlreadyLocked = true };
+
+struct NoOpLock {
+  template <typename... ARGS>
+  NoOpLock(ARGS&&...) {}
 };
 
-struct PublishToStreamWithReleasedPublisherException : SherlockException {
-  using SherlockException::SherlockException;
-};
+template <MutexLockStatus MLS, class MUTEX = std::mutex>
+using SmartMutexLockGuard =
+    typename std::conditional<MLS == MutexLockStatus::NeedToLock, std::lock_guard<MUTEX>, NoOpLock>::type;
 
-struct PublisherAlreadyReleasedException : SherlockException {
-  using SherlockException::SherlockException;
-};
+static_assert(std::is_same<std::lock_guard<std::mutex>, SmartMutexLockGuard<MutexLockStatus::NeedToLock>>::value, "");
+static_assert(std::is_same<NoOpLock, SmartMutexLockGuard<MutexLockStatus::AlreadyLocked>>::value, "");
 
-struct PublisherAlreadyOwnedException : SherlockException {
-  using SherlockException::SherlockException;
-};
-
-}  // namespace sherlock
+}  // namespace locks
 }  // namespace current
 
-#endif  // CURRENT_SHERLOCK_EXCEPTIONS_H
+
+#endif  // CURRENT_BRICKS_UTIL_LOCK_H

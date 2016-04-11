@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/variant.h"
 #include "../../Bricks/time/chrono.h"
+#include "../../Bricks/util/locks.h"
 
 namespace current {
 namespace ss {
@@ -50,11 +51,14 @@ class EntryPublisher : public GenericEntryPublisher<ENTRY>, public IMPL {
       : IMPL(std::forward<ARGS>(args)...) {}
   virtual ~EntryPublisher() {}
 
+  using MutexLockStatus = current::locks::MutexLockStatus;
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
   idxts_t Publish(const ENTRY& e, std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoPublish(e, us);
+    return IMPL::template DoPublish<MLS>(e, us);
   }
+  template <MutexLockStatus MLS = MutexLockStatus::NeedToLock>
   idxts_t Publish(ENTRY&& e, std::chrono::microseconds us = current::time::Now()) {
-    return IMPL::DoPublish(std::move(e), us);
+    return IMPL::template DoPublish<MLS>(std::move(e), us);
   }
 
   // template <typename... ARGS>
