@@ -177,40 +177,9 @@ class GenericOneToOne {
   void operator()(const T_DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename T_MAP>
-  struct MapAccessor final {
-    using T_KEY = typename T_MAP::key_type;
-    const T_MAP& map_;
-
-    struct Iterator final {
-      using T_ITERATOR = typename T_MAP::const_iterator;
-      T_ITERATOR iterator_;
-      explicit Iterator(T_ITERATOR iterator) : iterator_(iterator) {}
-      void operator++() { ++iterator_; }
-      bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }
-      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<T_KEY> key() const { return iterator_->first; }
-      const T& operator*() const { return *iterator_->second; }
-      const T* operator->() const { return iterator_->second; }
-    };
-
-    explicit MapAccessor(const T_MAP& map) : map_(map) {}
-
-    bool Empty() const { return map_.empty(); }
-
-    size_t Size() const { return map_.size(); }
-
-    bool Has(const T_KEY& x) const { return map_.find(x) != map_.end(); }
-
-    Iterator begin() const { return Iterator(map_.cbegin()); }
-    Iterator end() const { return Iterator(map_.cend()); }
-  };
-
-  const MapAccessor<T_FORWARD_MAP> Rows() const { return MapAccessor<T_FORWARD_MAP>(forward_); }
-
-  const MapAccessor<T_TRANSPOSED_MAP> Cols() const { return MapAccessor<T_TRANSPOSED_MAP>(transposed_); }
-
   struct Iterator final {
-    using T_ITERATOR = typename T_ELEMENTS_MAP::const_iterator;
+    using T_ITERATOR = typename T_MAP::const_iterator;
+    using T_KEY = typename T_MAP::key_type;
     T_ITERATOR iterator_;
     explicit Iterator(T_ITERATOR iterator) : iterator_(iterator) {}
     void operator++() { ++iterator_; }
@@ -220,8 +189,30 @@ class GenericOneToOne {
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
   };
-  Iterator begin() const { return Iterator(map_.begin()); }
-  Iterator end() const { return Iterator(map_.end()); }
+
+  template <typename T_MAP>
+  struct MapAccessor final {
+    using T_KEY = typename T_MAP::key_type;
+    const T_MAP& map_;
+
+    explicit MapAccessor(const T_MAP& map) : map_(map) {}
+
+    bool Empty() const { return map_.empty(); }
+
+    size_t Size() const { return map_.size(); }
+
+    bool Has(const T_KEY& x) const { return map_.find(x) != map_.end(); }
+
+    Iterator<T_MAP> begin() const { return Iterator<T_MAP>(map_.cbegin()); }
+    Iterator<T_MAP> end() const { return Iterator<T_MAP>(map_.cend()); }
+  };
+
+  const MapAccessor<T_FORWARD_MAP> Rows() const { return MapAccessor<T_FORWARD_MAP>(forward_); }
+
+  const MapAccessor<T_TRANSPOSED_MAP> Cols() const { return MapAccessor<T_TRANSPOSED_MAP>(transposed_); }
+
+  Iterator<T_ELEMENTS_MAP> begin() const { return Iterator<T_ELEMENTS_MAP>(map_.begin()); }
+  Iterator<T_ELEMENTS_MAP> end() const { return Iterator<T_ELEMENTS_MAP>(map_.end()); }
 
  private:
   void DoErase(const T_KEY& key) {
