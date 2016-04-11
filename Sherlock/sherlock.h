@@ -33,6 +33,7 @@ SOFTWARE.
 #include <string>
 #include <thread>
 
+#include "exceptions.h"
 #include "pubsub.h"
 
 #include "../Blocks/HTTP/api.h"
@@ -134,30 +135,45 @@ class StreamImpl {
         : persistence(std::forward<ARGS>(args)...) {}
   };
 
+  class StreamPublisher {
+   public:
+    explicit StreamPublisher(std::shared_ptr<StreamData> data) : data_(data) {}
+
+    idxts_t DoPublish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
+      std::lock_guard<std::mutex> lock(data_->mutex);
+      const auto result = data_->persistence.Publish(entry, us);
+      data_->notifier.NotifyAllOfExternalWaitableEvent();
+      return result;
+    }
+
+    idxts_t DoPublish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
+      std::lock_guard<std::mutex> lock(data_->mutex);
+      const auto result = data_->persistence.Publish(std::move(entry), us);
+      data_->notifier.NotifyAllOfExternalWaitableEvent();
+      return result;
+    }
+
+   private: 
+    std::shared_ptr<StreamData> data_;
+  };
+  using T_PUBLISHER = ss::StreamPublisher<StreamPublisher, ENTRY>;
+
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
-      : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)) {}
+      : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)),
+        publisher_(std::make_unique<T_PUBLISHER>(data_)),
+        is_publisher_owned_(true) {}
 
-  StreamImpl(StreamImpl&& rhs) : data_(std::move(rhs.data_)) {}
+  StreamImpl(StreamImpl&& rhs) : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)) {}
 
-  void operator=(StreamImpl&& rhs) { data_ = std::move(rhs.data_); }
+  void operator=(StreamImpl&& rhs) {
+    data_ = std::move(rhs.data_);
+    publisher_ = std::move(rhs.publisher_);
+  }
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
   // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
   // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
-  idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(data_->mutex);
-    const auto result = data_->persistence.Publish(entry, us);
-    data_->notifier.NotifyAllOfExternalWaitableEvent();
-    return result;
-  }
-  idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(data_->mutex);
-    const auto result = data_->persistence.Publish(std::move(entry), us);
-    data_->notifier.NotifyAllOfExternalWaitableEvent();
-    return result;
-  }
-
   // template <typename... ARGS>
   // idxts_t DoEmplace(ARGS&&... entry_params) {
   //   std::lock_guard<std::mutex> lock(data_->mutex);
@@ -193,6 +209,45 @@ class StreamImpl {
   //
   // The `SubscriberScope` class handles the above two usecases, depending on whether a stack- or heap-allocated
   // instance of a subscriber has been passed into.
+
+  idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
+    // TODO(dk+mz): This is not completely safe, but additional mutex for very rare operation of moving a
+    // publisher looks like an overkill.
+    if (is_publisher_owned_) {
+      return publisher_->Publish(entry, us);
+    } else {
+      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
+    }
+  }
+
+  idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
+    if (is_publisher_owned_) {
+      return publisher_->Publish(std::move(entry), us);
+    } else {
+      CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
+    }
+  }
+
+  template <typename ACCEPTOR>
+  void ReleasePublisher(ACCEPTOR&& acceptor) {
+    if (is_publisher_owned_) {
+      assert(publisher_);
+      is_publisher_owned_ = false;
+      acceptor.AcceptPublisher(std::move(publisher_));
+    } else {
+      CURRENT_THROW(PublisherAlreadyReleasedException());
+    }
+  }
+
+  void AcquirePublisher(std::unique_ptr<T_PUBLISHER> publisher) {
+    if (!is_publisher_owned_) {
+      assert(!publisher_);
+      publisher_ = std::move(publisher);
+      is_publisher_owned_ = true;
+    } else {
+      CURRENT_THROW(PublisherAlreadyOwnedException());
+    }
+  }
 
   template <typename TYPE_SUBSCRIBED_TO, typename F>
   class SubscriberThread {
@@ -396,6 +451,8 @@ class StreamImpl {
 
  private:
   std::shared_ptr<StreamData> data_;
+  std::unique_ptr<T_PUBLISHER> publisher_;
+  std::atomic_bool is_publisher_owned_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;

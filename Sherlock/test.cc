@@ -665,3 +665,62 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     EXPECT_EQ("Y=2 Y=4", Join(c.results_, ' '));
   }
 }
+
+namespace sherlock_unittest {
+  template <typename STREAM>
+  struct SherlockPublisherAcceptor {
+    using T_PUBLISHER = typename STREAM::T_PUBLISHER;
+    void AcceptPublisher(std::unique_ptr<T_PUBLISHER> publisher) {
+      publisher_ = std::move(publisher);
+    }
+    std::unique_ptr<T_PUBLISHER> publisher_;
+  };
+}
+
+TEST(Sherlock, ReleaseAndAcquirePublisher) {
+  using namespace sherlock_unittest;
+
+  using Stream = current::sherlock::Stream<Record>;
+  Stream stream;
+  Data d;
+  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false, true));
+  p->SetMax(4u);
+  stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the subscriber running on its own.
+
+  {
+    current::time::SetNow(std::chrono::microseconds(100));
+    stream.Publish(1);
+  }
+
+  SherlockPublisherAcceptor<Stream> acceptor;
+  stream.ReleasePublisher(acceptor);
+
+  {
+    current::time::SetNow(std::chrono::microseconds(200));
+    ASSERT_THROW(stream.Publish(2), current::sherlock::PublishToStreamWithReleasedPublisherException);
+    acceptor.publisher_->Publish(2);
+  }
+  {
+    SherlockPublisherAcceptor<Stream> other_acceptor;
+    ASSERT_THROW(stream.ReleasePublisher(other_acceptor), current::sherlock::PublisherAlreadyReleasedException);
+  }
+
+  stream.AcquirePublisher(std::move(acceptor.publisher_));
+  {
+    current::time::SetNow(std::chrono::microseconds(300));
+    stream.Publish(3);
+  }
+
+  while (d.seen_ < 3u) {
+    ;  // Spin lock.
+  }
+  EXPECT_EQ(3u, d.seen_);
+  const std::vector<std::string> expected_values{"[0:100,0:100] 1", "[1:200,1:200] 2", "[2:300,2:300] 3"};
+  EXPECT_EQ(Join(expected_values, ','), d.results_);  // No `TERMINATE` for an asyncronous subscriber.
+  EXPECT_TRUE(d.subscriber_alive_);
+  current::time::SetNow(std::chrono::microseconds(1000));
+  stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
+  while (d.subscriber_alive_) {
+    ;  // Spin lock.
+  }
+}
