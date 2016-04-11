@@ -121,7 +121,6 @@ class StreamImpl {
  public:
   using T_ENTRY = ENTRY;
   using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
-  using MutexLockStatus = current::locks::MutexLockStatus;
 
   // The inner structure containing all the data required for the stream to function.
   // TODO(dkorolev): Make it a `ScopeOwnedByMe` type of thing.
@@ -140,7 +139,7 @@ class StreamImpl {
    public:
     explicit StreamPublisher(std::shared_ptr<StreamData> data) : data_(data) {}
 
-    template <MutexLockStatus MLS>
+    template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
       current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
       const auto result = data_->persistence.Publish(entry, us);
@@ -148,7 +147,7 @@ class StreamImpl {
       return result;
     }
 
-    template <MutexLockStatus MLS>
+    template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
       current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
       const auto result = data_->persistence.Publish(std::move(entry), us);
@@ -215,7 +214,7 @@ class StreamImpl {
   idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (publisher_) {
-      return publisher_->template Publish<MutexLockStatus::AlreadyLocked>(entry, us);
+      return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
     } else {
       CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
     }
@@ -224,7 +223,7 @@ class StreamImpl {
   idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (publisher_) {
-      return publisher_->template Publish<MutexLockStatus::AlreadyLocked>(std::move(entry), us);
+      return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
     } else {
       CURRENT_THROW(PublishToStreamWithReleasedPublisherException());
     }

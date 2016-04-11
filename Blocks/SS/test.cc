@@ -77,19 +77,17 @@ TEST(StreamSystem, TestHelperClassSmokeTest) {
 namespace stream_system_test {
 
 struct DemoEntryPublisherImpl {
-  using MutexLockStatus = current::locks::MutexLockStatus;
-
   size_t index = 0u;
   std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
 
-  template <MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus>
   idxts_t DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
     ++index;
     values.push_back(e);
     return idxts_t(index, current::time::Now());
   }
 
-  template <MutexLockStatus MLS>
+  template <current::locks::MutexLockStatus>
   idxts_t DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
     ++index;
     values.push_back(std::move(e));

@@ -666,8 +666,6 @@ TEST(Sherlock, SubscribeWithFilterByType) {
   }
 }
 
-namespace sherlock_unittest {}
-
 TEST(Sherlock, ReleaseAndAcquirePublisher) {
   using namespace sherlock_unittest;
   using Stream = current::sherlock::Stream<Record>;

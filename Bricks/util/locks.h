@@ -48,5 +48,4 @@ static_assert(std::is_same<NoOpLock, SmartMutexLockGuard<MutexLockStatus::Alread
 }  // namespace locks
 }  // namespace current
 
-
 #endif  // CURRENT_BRICKS_UTIL_LOCK_H
