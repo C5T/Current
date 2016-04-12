@@ -35,6 +35,8 @@ namespace current {
 namespace storage {
 namespace persister {
 
+enum class PersisterDataAuthority : bool { Own = true, External = false };
+
 template <typename TYPELIST, template <typename> class UNDERLYING_PERSISTER, typename STREAM_RECORD_TYPE>
 class SherlockStreamPersisterImpl;
 
@@ -48,19 +50,60 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
                                 transaction_t,
                                 STREAM_RECORD_TYPE>::type;
   using sherlock_t = sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>;
+  using fields_update_function_t = std::function<void(const variant_t&)>;
 
   using DEPRECATED_T_(VARIANT) = variant_t;
   using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
+  struct SherlockSubscriberImpl {
+    using EntryResponse = current::ss::EntryResponse;
+    using TerminationResponse = current::ss::TerminationResponse;
+    using replay_function_t = std::function<void(const transaction_t&)>;
+    replay_function_t replay_f_;
+    idxts_t& last_idxts_;
+
+    SherlockSubscriberImpl(replay_function_t f, idxts_t& last_idxts) : replay_f_(f), last_idxts_(last_idxts) {}
+
+    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) const {
+      replay_f_(transaction);
+      last_idxts_ = current;
+      return EntryResponse::More;
+    }
+
+    EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
+
+    TerminationResponse Terminate() { return TerminationResponse::Terminate; }
+  };
+  using SherlockSubscriber = current::ss::StreamSubscriber<SherlockSubscriberImpl, transaction_t>;
+  using subscriber_scope_t = typename sherlock_t::template SyncSubscriberScope<SherlockSubscriber, transaction_t>;
+
   template <typename... ARGS>
-  explicit SherlockStreamPersisterImpl(ARGS&&... args)
-      : stream_owned_if_any_(std::make_unique<sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>>(
+  explicit SherlockStreamPersisterImpl(fields_update_function_t f, ARGS&&... args)
+      : fields_update_f_(f),
+        stream_owned_if_any_(std::make_unique<sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>>(
             std::forward<ARGS>(args)...)),
-        stream_used_(*stream_owned_if_any_.get()) {}
+        stream_used_(*stream_owned_if_any_.get()),
+        subscriber_([this](const transaction_t& transaction) { ApplyMutations(transaction); }, last_idxts_),
+        authority_(PersisterDataAuthority::Own) {
+    ReplayStream();
+  }
 
   // TODO(dkorolev): `ScopeOwnedBySomeoneElse<>` ?
-  explicit SherlockStreamPersisterImpl(sherlock_t& stream_owned_by_someone_else)
-      : stream_used_(stream_owned_by_someone_else) {}
+  explicit SherlockStreamPersisterImpl(fields_update_function_t f, sherlock_t& stream_owned_by_someone_else)
+      : fields_update_f_(f),
+        stream_used_(stream_owned_by_someone_else),
+        subscriber_([this](const transaction_t& transaction) { ApplyMutations(transaction); }, last_idxts_) {
+    authority_ = (stream_used_.DataAuthority() == current::sherlock::StreamDataAuthority::Own)
+                     ? PersisterDataAuthority::Own
+                     : PersisterDataAuthority::External;
+    if (authority_ == PersisterDataAuthority::Own) {
+      ReplayStream();
+    } else {
+      SubscribeToStream();
+    }
+  }
+
+  ~SherlockStreamPersisterImpl() { TerminateStreamSubscription(); }
 
   void PersistJournal(MutationJournal& journal) {
     if (!journal.commit_log.empty()) {
@@ -76,20 +119,6 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     }
   }
 
-  template <typename F>
-  void Replay(F&& f) {
-    // TODO(dkorolev) + TODO(mzhurovich): Perhaps `Replay()` should happen automatically,
-    // during construction, in a blocking way?
-    for (const auto& stream_record : stream_used_.InternalExposePersister().Iterate()) {
-      if (Exists<transaction_t>(stream_record.entry)) {
-        const transaction_t& transaction = Value<transaction_t>(stream_record.entry);
-        for (const auto& mutation : transaction.mutations) {
-          f(mutation);
-        }
-      }
-    }
-  }
-
   void ReplayTransaction(transaction_t&& transaction, current::ss::IndexAndTimestamp idx_ts) {
     if (stream_used_.Publish(transaction, idx_ts.us).index != idx_ts.index) {
       CURRENT_THROW(current::Exception());  // TODO(dkorolev): Proper exception text.
@@ -102,10 +131,45 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
 
   sherlock_t& InternalExposeStream() { return stream_used_; }
 
+ private:
+  void ReplayStream() {
+    for (const auto& stream_record : stream_used_.InternalExposePersister().Iterate()) {
+      if (Exists<transaction_t>(stream_record.entry)) {
+        const transaction_t& transaction = Value<transaction_t>(stream_record.entry);
+        ApplyMutations(transaction);
+      }
+    }
+  }
+
+  void ApplyMutations(const transaction_t& transaction) {
+    for (const auto& mutation : transaction.mutations) {
+      fields_update_f_(mutation);
+    }
+  }
+
+  void SubscribeToStream() {
+    assert(!subscriber_scope_);
+    subscriber_scope_ = std::make_unique<subscriber_scope_t>(
+        std::move(stream_used_.template Subscribe<transaction_t>(subscriber_)));
+    // subscriber_scope_ = std::make_unique<subscriber_scope_t>(stream_used_.Subscribe(subscriber_));
+  }
+
+  void TerminateStreamSubscription() {
+    if (subscriber_scope_) {
+      subscriber_scope_->Join();
+      subscriber_scope_.release();
+    }
+  }
+
+ private:
+  fields_update_function_t fields_update_f_;
   // `stream_{used/owned}_` are two variables to support both owning and non-owning Storage usage patterns.
   std::unique_ptr<sherlock::Stream<transaction_t, UNDERLYING_PERSISTER>> stream_owned_if_any_;
   sherlock_t& stream_used_;
-
+  idxts_t last_idxts_;
+  SherlockSubscriber subscriber_;
+  std::unique_ptr<subscriber_scope_t> subscriber_scope_;
+  PersisterDataAuthority authority_;
   HTTPRoutesScope handlers_scope_;
 };
 

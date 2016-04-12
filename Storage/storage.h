@@ -211,9 +211,9 @@ class GenericStorageImpl {
 
   template <typename... ARGS>
   GenericStorageImpl(ARGS&&... args)
-      : persister_(std::forward<ARGS>(args)...),
+      : persister_([this](const fields_variant_t& entry) { entry.Call(fields_); }, std::forward<ARGS>(args)...),
         transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {
-    persister_.Replay([this](const fields_variant_t& entry) { entry.Call(fields_); });
+    //    persister_.Replay([this](const fields_variant_t& entry) { entry.Call(fields_); });
   }
 
   // Used for applying updates by dispatching corresponding events.

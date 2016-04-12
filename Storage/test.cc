@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME
+
 #include <set>
 
 #include "docu/docu_2_code.cc"
@@ -30,6 +32,7 @@ SOFTWARE.
 
 #include "storage.h"
 #include "api.h"
+#include "persister/sherlock.h"
 
 #include "rest/hypermedia.h"
 
@@ -37,6 +40,7 @@ SOFTWARE.
 
 #include "../Bricks/file/file.h"
 #include "../Bricks/dflags/dflags.h"
+//#include "../Bricks/time/chrono.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -1446,4 +1450,86 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
+}
+
+TEST(TransactionalStorage, FollowingStorage) {
+  using namespace transactional_storage_test;
+  using Storage = TestStorage<SherlockStreamPersister>;
+  using transaction_t = typename Storage::transaction_t;
+  using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+
+  struct StreamReplicatorImpl {
+    using EntryResponse = current::ss::EntryResponse;
+    using TerminationResponse = current::ss::TerminationResponse;
+    using publisher_t = typename sherlock_t::publisher_t;
+
+    StreamReplicatorImpl(sherlock_t& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
+    ~StreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
+
+    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
+
+    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
+      assert(publisher_);
+      publisher_->Publish(transaction, current.us);
+      return EntryResponse::More;
+    }
+
+    EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
+
+    TerminationResponse Terminate() {
+      return TerminationResponse::Terminate;
+    }
+
+   private:
+    sherlock_t& stream_;
+    std::unique_ptr<publisher_t> publisher_;
+  };
+  using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl, transaction_t>;
+
+  const std::string master_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
+  const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
+
+  const std::string follower_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "follower");
+  const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
+
+  sherlock_t follower_stream(follower_file_name);
+  StreamReplicator replicator(follower_stream);
+
+  Storage master_storage(master_file_name);
+  Storage follower_storage(follower_stream);
+
+  auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(replicator);
+
+  {
+    const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"one", 1});
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  {
+    size_t d_size = 0u;
+    do {
+      const auto result =
+          follower_storage.Transaction([](ImmutableFields<Storage> fields) { return fields.d.Size(); }).Go();
+      EXPECT_TRUE(WasCommitted(result));
+      d_size = Value(result);
+    } while (d_size == 0u);
+    EXPECT_EQ(1u, d_size);
+  }
+  {
+    const auto result =
+        follower_storage.Transaction([](ImmutableFields<Storage> fields) {
+                                     ASSERT_TRUE(Exists(fields.d["one"]));
+                                     EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+                                     }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+   }
+
+  EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
+            current::FileSystem::ReadFileAsString(follower_file_name));
+
+  replicator_scope.Join();
 }
