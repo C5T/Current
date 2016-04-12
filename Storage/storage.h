@@ -51,6 +51,7 @@ SOFTWARE.
 #include "container/dictionary.h"
 #include "container/matrix.h"
 #include "container/one_to_one.h"
+#include "container/one_to_many.h"
 
 #include "persister/file.h"
 
@@ -147,6 +148,12 @@ namespace storage {
 
 #define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToOne(entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToOne, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToMany, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToMany, entry_type, entry_name)
 
 #define CURRENT_STORAGE_FIELD_ENTRY(container, entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_##container(entry_type, entry_name)
