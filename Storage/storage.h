@@ -109,8 +109,8 @@ namespace storage {
   };                                                                                    \
   CURRENT_STRUCT(entry_name##Deleted) {                                                 \
     CURRENT_FIELD(key,                                                                  \
-                  (std::pair<::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>,    \
-                             ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>>)); \
+                  (std::pair<::current::storage::sfinae::entry_row_t<entry_type>,       \
+                             ::current::storage::sfinae::entry_col_t<entry_type>>));    \
     CURRENT_DEFAULT_CONSTRUCTOR(entry_name##Deleted) {}                                 \
     CURRENT_CONSTRUCTOR(entry_name##Deleted)(const entry_type& value)                   \
         : key(std::make_pair(::current::storage::sfinae::GetRow(value),                 \
@@ -120,8 +120,8 @@ namespace storage {
     template <typename T, typename E1, typename E2>                                     \
     using field_t = matrix_type<T, E1, E2>;                                             \
     using entry_t = entry_type;                                                         \
-    using row_t = ::current::storage::sfinae::ENTRY_ROW_TYPE<entry_type>;               \
-    using col_t = ::current::storage::sfinae::ENTRY_COL_TYPE<entry_type>;               \
+    using row_t = ::current::storage::sfinae::entry_row_t<entry_type>;                  \
+    using col_t = ::current::storage::sfinae::entry_col_t<entry_type>;                  \
     using key_t = std::pair<row_t, col_t>;                                              \
     using update_event_t = entry_name##Updated;                                         \
     using delete_event_t = entry_name##Deleted;                                         \
