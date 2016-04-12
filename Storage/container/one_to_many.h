@@ -38,19 +38,19 @@ namespace storage {
 namespace container {
 
 template <typename T,
-          typename T_UPDATE_EVENT,
-          typename T_DELETE_EVENT,
+          typename UPDATE_EVENT,
+          typename DELETE_EVENT,
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
 class GenericOneToMany {
  public:
-  using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
-  using T_COL = sfinae::ENTRY_COL_TYPE<T>;
-  using T_KEY = std::pair<T_ROW, T_COL>;
-  using T_ELEMENTS_MAP = std::unordered_map<T_KEY, std::unique_ptr<T>, CurrentHashFunction<T_KEY>>;
-  using T_FORWARD_MAP = ROW_MAP<T_ROW, COL_MAP<T_COL, const T*>>;
-  using T_TRANSPOSED_MAP = COL_MAP<T_COL, const T*>;
-  using T_REST_BEHAVIOR = rest::behavior::Matrix;
+  using row_t = sfinae::ENTRY_ROW_TYPE<T>;
+  using col_t = sfinae::ENTRY_COL_TYPE<T>;
+  using key_t = std::pair<row_t, col_t>;
+  using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
+  using forward_map_t = ROW_MAP<row_t, COL_MAP<col_t, const T*>>;
+  using transposed_map_t = COL_MAP<col_t, const T*>;
+  using rest_behavior_t = rest::behavior::Matrix;
 
   explicit GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
 
@@ -66,45 +66,45 @@ class GenericOneToMany {
     const auto it = map_.find(key);
     if (it != map_.end()) {
       const T& previous_object = *(it->second);
-      journal_.LogMutation(T_UPDATE_EVENT(object),
+      journal_.LogMutation(UPDATE_EVENT(object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
       const auto it = transposed_.find(col);
       if (it != transposed_.end()) {
         const T& previous_object = *(it->second);
         const auto previous_key = std::make_pair(sfinae::GetRow(previous_object), col);
-        journal_.LogMutation(T_DELETE_EVENT(previous_object),
+        journal_.LogMutation(DELETE_EVENT(previous_object),
                              [this, previous_key, previous_object]() { DoAdd(previous_key, previous_object); });
         DoErase(previous_key);
       }
-      journal_.LogMutation(T_UPDATE_EVENT(object), [this, key]() { DoErase(key); });
+      journal_.LogMutation(UPDATE_EVENT(object), [this, key]() { DoErase(key); });
     }
     DoAdd(key, object);
   }
 
-  void Erase(const T_KEY& key) {
+  void Erase(const key_t& key) {
     const auto it = map_.find(key);
     if (it != map_.end()) {
       const T& previous_object = *(it->second);
-      journal_.LogMutation(T_DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
     }
   }
-  void Erase(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) { Erase(std::make_pair(row, col)); }
+  void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
 
-  void EraseCol(sfinae::CF<T_COL> col) {
+  void EraseCol(sfinae::CF<col_t> col) {
     const auto it = transposed_.find(col);
     if (it != transposed_.end()) {
       const T previous_object = *(it->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
-      journal_.LogMutation(T_DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
     }
   }
 
-  ImmutableOptional<T> operator[](const T_KEY& key) const {
+  ImmutableOptional<T> operator[](const key_t& key) const {
     const auto it = map_.find(key);
     if (it != map_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second.get());
@@ -112,10 +112,10 @@ class GenericOneToMany {
       return nullptr;
     }
   }
-  ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+  ImmutableOptional<T> Get(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     return operator[](std::make_pair(row, col));
   }
-  ImmutableOptional<T> GetEntryFromCol(sfinae::CF<T_COL> col) const {
+  ImmutableOptional<T> GetEntryFromCol(sfinae::CF<col_t> col) const {
     const auto it = transposed_.find(col);
     if (it != transposed_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second);
@@ -124,28 +124,28 @@ class GenericOneToMany {
     }
   }
 
-  bool DoesNotConflict(const T_KEY& key) const { return transposed_.find(key.second) == transposed_.end(); }
-  bool DoesNotConflict(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+  bool DoesNotConflict(const key_t& key) const { return transposed_.find(key.second) == transposed_.end(); }
+  bool DoesNotConflict(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     return DoesNotConflict(std::make_pair(row, col));
   }
 
-  void operator()(const T_UPDATE_EVENT& e) {
+  void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
     DoAdd(std::make_pair(row, col), e.data);
   }
-  void operator()(const T_DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
+  void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
-  template <typename T_MAP>
+  template <typename MAP>
   struct Iterator final {
-    using T_ITERATOR = typename T_MAP::const_iterator;
-    using T_KEY = typename T_MAP::key_type;
-    T_ITERATOR iterator_;
-    explicit Iterator(T_ITERATOR iterator) : iterator_(iterator) {}
+    using iterator_t = typename MAP::const_iterator;
+    using key_t = typename MAP::key_type;
+    iterator_t iterator_;
+    explicit Iterator(iterator_t iterator) : iterator_(iterator) {}
     void operator++() { ++iterator_; }
     bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }
     bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-    sfinae::CF<T_KEY> key() const { return iterator_->first; }
+    sfinae::CF<key_t> key() const { return iterator_->first; }
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
   };
@@ -173,9 +173,9 @@ class GenericOneToMany {
     const OUTER_MAP& map_;
 
     struct OuterIterator final {
-      using T_ITERATOR = typename OUTER_MAP::const_iterator;
-      T_ITERATOR iterator;
-      explicit OuterIterator(T_ITERATOR iterator) : iterator(iterator) {}
+      using iterator_t = typename OUTER_MAP::const_iterator;
+      iterator_t iterator;
+      explicit OuterIterator(iterator_t iterator) : iterator(iterator) {}
       void operator++() { ++iterator; }
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
@@ -203,15 +203,15 @@ class GenericOneToMany {
     OuterIterator end() const { return OuterIterator(map_.cend()); }
   };
 
-  const OuterAccessor<T_FORWARD_MAP> Rows() const { return OuterAccessor<T_FORWARD_MAP>(forward_); }
+  const OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
 
-  const InnerAccessor<T_TRANSPOSED_MAP> Cols() const { return InnerAccessor<T_TRANSPOSED_MAP>(transposed_); }
+  const InnerAccessor<transposed_map_t> Cols() const { return InnerAccessor<transposed_map_t>(transposed_); }
 
-  Iterator<T_ELEMENTS_MAP> begin() const { return Iterator<T_ELEMENTS_MAP>(map_.begin()); }
-  Iterator<T_ELEMENTS_MAP> end() const { return Iterator<T_ELEMENTS_MAP>(map_.end()); }
+  Iterator<elements_map_t> begin() const { return Iterator<elements_map_t>(map_.begin()); }
+  Iterator<elements_map_t> end() const { return Iterator<elements_map_t>(map_.end()); }
 
  private:
-  void DoErase(const T_KEY& key) {
+  void DoErase(const key_t& key) {
     auto& map_row = forward_[key.first];
     map_row.erase(key.second);
     if (map_row.empty()) {
@@ -221,24 +221,24 @@ class GenericOneToMany {
     map_.erase(key);
   }
 
-  void DoAdd(const T_KEY& key, const T& object) {
+  void DoAdd(const key_t& key, const T& object) {
     auto& placeholder = map_[key];
     placeholder = std::make_unique<T>(object);
     forward_[key.first][key.second] = placeholder.get();
     transposed_[key.second] = placeholder.get();
   }
 
-  T_ELEMENTS_MAP map_;
-  T_FORWARD_MAP forward_;
-  T_TRANSPOSED_MAP transposed_;
+  elements_map_t map_;
+  forward_map_t forward_;
+  transposed_map_t transposed_;
   MutationJournal& journal_;
 };
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using UnorderedOneToMany = GenericOneToMany<T, T_UPDATE_EVENT, T_DELETE_EVENT, Unordered, Unordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedOneToMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using OrderedOneToMany = GenericOneToMany<T, T_UPDATE_EVENT, T_DELETE_EVENT, Ordered, Ordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedOneToMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
 
 }  // namespace container
 
