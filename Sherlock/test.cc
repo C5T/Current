@@ -665,3 +665,61 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     EXPECT_EQ("Y=2 Y=4", Join(c.results_, ' '));
   }
 }
+
+TEST(Sherlock, ReleaseAndAcquirePublisher) {
+  using namespace sherlock_unittest;
+  using Stream = current::sherlock::Stream<Record>;
+
+  struct SherlockPublisherAcquirer {
+    using publisher_t = typename Stream::publisher_t;
+    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
+    std::unique_ptr<publisher_t> publisher_;
+  };
+
+  Stream stream;
+  Data d;
+  // In this test we start the subscriber before we publish anything into the stream.
+  // That's why `idxts_t last` is not determined for each particular entry and we collect and check only the
+  // values of `Record`s.
+  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false));
+  p->SetMax(4u);
+  stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the subscriber running on its own.
+
+  // Publish the first entry as usual.
+  stream.Publish(1, std::chrono::microseconds(100));
+
+  // Transfer ownership of the stream publisher to the external object.
+  SherlockPublisherAcquirer acquirer;
+  stream.MovePublisherTo(acquirer);
+
+  // Publish to the stream is not allowed since the publisher has been moved.
+  ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
+               current::sherlock::PublishToStreamWithReleasedPublisherException);
+  // Now we can publish only via `acquirer` that owns stream publisher object.
+  acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
+
+  // Can't move publisher once more since we don't own it at this moment.
+  SherlockPublisherAcquirer other_acquirer;
+  ASSERT_THROW(stream.MovePublisherTo(other_acquirer), current::sherlock::PublisherAlreadyReleasedException);
+
+  // Acquire publisher back.
+  stream.AcquirePublisher(std::move(acquirer.publisher_));
+  // Can't acquire publisher since we already have one in the stream.
+  ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
+               current::sherlock::PublisherAlreadyOwnedException);
+
+  // Publish third entry.
+  stream.Publish(4, std::chrono::microseconds(400));
+
+  while (d.seen_ < 3u) {
+    ;  // Spin lock.
+  }
+  EXPECT_EQ(3u, d.seen_);
+  EXPECT_EQ("1,3,4", d.results_);  // No `TERMINATE` for an asyncronous subscriber.
+  EXPECT_TRUE(d.subscriber_alive_);
+  stream.Publish(42,
+                 std::chrono::microseconds(1000));  // Need the 4th entry for the async subscriber to terminate.
+  while (d.subscriber_alive_) {
+    ;  // Spin lock.
+  }
+}

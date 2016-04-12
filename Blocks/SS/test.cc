@@ -80,12 +80,14 @@ struct DemoEntryPublisherImpl {
   size_t index = 0u;
   std::deque<DispatchDemoEntry> values;  // Use `deque` to avoid extra copies.
 
+  template <current::locks::MutexLockStatus>
   idxts_t DoPublish(const DispatchDemoEntry& e, std::chrono::microseconds) {
     ++index;
     values.push_back(e);
     return idxts_t(index, current::time::Now());
   }
 
+  template <current::locks::MutexLockStatus>
   idxts_t DoPublish(DispatchDemoEntry&& e, std::chrono::microseconds) {
     ++index;
     values.push_back(std::move(e));

@@ -50,7 +50,7 @@ class GenericOneToOne {
   using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
   using forward_map_t = ROW_MAP<row_t, const T*>;
   using transposed_map_t = COL_MAP<col_t, const T*>;
-  using rest_behavior_t = rest::behavior::Matrix;
+  using t_rest_behavior = rest::behavior::Matrix;
 
   explicit GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
 
@@ -177,40 +177,9 @@ class GenericOneToOne {
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename MAP>
-  struct MapAccessor final {
-    using key_t = typename MAP::key_type;
-    const MAP& map_;
-
-    struct Iterator final {
-      using iterator_t = typename MAP::const_iterator;
-      iterator_t iterator_;
-      explicit Iterator(iterator_t iterator) : iterator_(iterator) {}
-      void operator++() { ++iterator_; }
-      bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }
-      bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<key_t> key() const { return iterator_->first; }
-      const T& operator*() const { return *iterator_->second; }
-      const T* operator->() const { return iterator_->second; }
-    };
-
-    explicit MapAccessor(const MAP& map) : map_(map) {}
-
-    bool Empty() const { return map_.empty(); }
-
-    size_t Size() const { return map_.size(); }
-
-    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
-
-    Iterator begin() const { return Iterator(map_.cbegin()); }
-    Iterator end() const { return Iterator(map_.cend()); }
-  };
-
-  const MapAccessor<forward_map_t> Rows() const { return MapAccessor<forward_map_t>(forward_); }
-
-  const MapAccessor<transposed_map_t> Cols() const { return MapAccessor<transposed_map_t>(transposed_); }
-
   struct Iterator final {
-    using iterator_t = typename elements_map_t::const_iterator;
+    using iterator_t = typename MAP::const_iterator;
+    using key_t = typename MAP::key_type;
     iterator_t iterator_;
     explicit Iterator(iterator_t iterator) : iterator_(iterator) {}
     void operator++() { ++iterator_; }
@@ -220,8 +189,30 @@ class GenericOneToOne {
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
   };
-  Iterator begin() const { return Iterator(map_.begin()); }
-  Iterator end() const { return Iterator(map_.end()); }
+
+  template <typename MAP>
+  struct MapAccessor final {
+    using key_t = typename MAP::key_type;
+    const MAP& map_;
+
+    explicit MapAccessor(const MAP& map) : map_(map) {}
+
+    bool Empty() const { return map_.empty(); }
+
+    size_t Size() const { return map_.size(); }
+
+    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
+
+    Iterator<MAP> begin() const { return Iterator<MAP>(map_.cbegin()); }
+    Iterator<MAP> end() const { return Iterator<MAP>(map_.cend()); }
+  };
+
+  const MapAccessor<forward_map_t> Rows() const { return MapAccessor<forward_map_t>(forward_); }
+
+  const MapAccessor<transposed_map_t> Cols() const { return MapAccessor<transposed_map_t>(transposed_); }
+
+  Iterator<elements_map_t> begin() const { return Iterator<elements_map_t>(map_.begin()); }
+  Iterator<elements_map_t> end() const { return Iterator<elements_map_t>(map_.end()); }
 
  private:
   void DoErase(const key_t& key) {
