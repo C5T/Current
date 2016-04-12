@@ -174,87 +174,98 @@ using CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM = persister::NoCustomPersisterPara
 template <typename T>
 using CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY = transaction_policy::Synchronous<T>;
 
-// clang-format off
-#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                 \
-  template <typename INSTANTIATION_TYPE>                                                                     \
-  struct CURRENT_STORAGE_FIELDS_##name;                                                                      \
-  template <template <typename...> class PERSISTER,                                                          \
-            typename FIELDS,                                                                                 \
-            template <typename> class TRANSACTION_POLICY,                                                    \
-            typename CUSTOM_PERSISTER_PARAM>                                                                 \
-  struct CURRENT_STORAGE_IMPL_##name {                                                                       \
-   public:                                                                                                   \
-    enum { FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value };                                 \
-    using fields_type_list_t = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;                     \
-    using fields_variant_t = Variant<fields_type_list_t>;                                                    \
-    using persister_t = PERSISTER<fields_type_list_t, CUSTOM_PERSISTER_PARAM>;                               \
-    using DEPRECATED_T_(FIELDS_TYPE_LIST) = fields_type_list_t;                                              \
-    using DEPRECATED_T_(FIELDS_VARIANT) = fields_variant_t;                                                  \
-    using DEPRECATED_T_(PERSISTER) = persister_t;                                                            \
-                                                                                                             \
-   private:                                                                                                  \
-    FIELDS fields_;                                                                                          \
-    persister_t persister_;                                                                                  \
-    TRANSACTION_POLICY<persister_t> transaction_policy_;                                                     \
-                                                                                                             \
-   public:                                                                                                   \
-    using fields_by_ref_t = FIELDS&;                                                                         \
-    using fields_by_cref_t = const FIELDS&;                                                                  \
-    using transaction_t = ::current::storage::Transaction<fields_variant_t>;                                 \
-    using transaction_meta_fields_t = ::current::storage::TransactionMetaFields;                             \
-    using DEPRECATED_T_(FIELDS_BY_REFERENCE) = fields_by_ref_t;                                              \
-    using DEPRECATED_T_(FIELDS_BY_CONST_REFERENCE) = fields_by_cref_t;                                       \
-    using DEPRECATED_T_(TRANSACTION) = transaction_t;                                                        \
-    using DEPRECATED_T_(TRANSACTION_META_FIELDS) = transaction_meta_fields_t;                                \
-    CURRENT_STORAGE_IMPL_##name& operator=(const CURRENT_STORAGE_IMPL_##name&) = delete;                     \
-    template <typename... ARGS>                                                                              \
-    CURRENT_STORAGE_IMPL_##name(ARGS&&... args)                                                              \
-        : persister_(std::forward<ARGS>(args)...),                                                           \
-          transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {                       \
-      persister_.Replay([this](const fields_variant_t& entry) { entry.Call(fields_); });                     \
-    }                                                                                                        \
-    template <typename... ARGS>                                                                              \
-    typename std::result_of<FIELDS(ARGS...)>::type operator()(ARGS&&... args) {                              \
-      return fields_(std::forward<ARGS>(args)...);                                                           \
-    }                                                                                                        \
-                                                                                                             \
-   public:                                                                                                   \
-    template <typename F>                                                                                    \
-    using f_result_t = typename std::result_of<F(fields_by_ref_t)>::type;                                    \
-    template <typename F>                                                                                    \
-    ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict> \
-    Transaction(F&& f) {                                                                                     \
-      return transaction_policy_.Transaction([&f, this]() { return f(fields_); });                           \
-    }                                                                                                        \
-    template <typename F1, typename F2>                                                                      \
-    ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>          \
-    Transaction(F1&& f1, F2&& f2) {                                                                          \
-      return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));   \
-    }                                                                                                        \
-    void ReplayTransaction(transaction_t&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {           \
-      transaction_policy_.ReplayTransaction([this](fields_variant_t&& entry) {                               \
-        entry.Call(fields_);                                                                                 \
-      }, std::forward<transaction_t>(transaction), idx_ts);                                                  \
-    }                                                                                                        \
-    void ExposeRawLogViaHTTP(int port, const std::string& route) {                                           \
-      persister_.ExposeRawLogViaHTTP(port, route);                                                           \
-    }                                                                                                        \
-    typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type                 \
-    InternalExposeStream() {                                                                                 \
-      return persister_.InternalExposeStream();                                                              \
-    }                                                                                                        \
-    void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }                                      \
-  };                                                                                                         \
-  template <template <typename...> class PERSISTER,                                                          \
-            template <typename> class TRANSACTION_POLICY =                                                   \
-                ::current::storage::CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY,                              \
-            typename CUSTOM_PERSISTER_PARAM = ::current::storage::CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>   \
-  using name = CURRENT_STORAGE_IMPL_##name<PERSISTER,                                                        \
-                                           CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
-                                           TRANSACTION_POLICY,                                               \
-                                           CUSTOM_PERSISTER_PARAM>;                                          \
+// Generic storage implementation.
+template <template <typename...> class PERSISTER,
+          typename FIELDS,
+          template <typename> class TRANSACTION_POLICY,
+          typename CUSTOM_PERSISTER_PARAM>
+class GenericStorageImpl {
+ public:
+  enum { FIELDS_COUNT = ::current::storage::FieldCounter<FIELDS>::value };
+  using fields_type_list_t = ::current::storage::FieldsTypeList<FIELDS, FIELDS_COUNT>;
+  using fields_variant_t = Variant<fields_type_list_t>;
+  using persister_t = PERSISTER<fields_type_list_t, CUSTOM_PERSISTER_PARAM>;
+  using DEPRECATED_T_(FIELDS_TYPE_LIST) = fields_type_list_t;
+  using DEPRECATED_T_(FIELDS_VARIANT) = fields_variant_t;
+  using DEPRECATED_T_(PERSISTER) = persister_t;
+
+ private:
+  FIELDS fields_;
+  persister_t persister_;
+  TRANSACTION_POLICY<persister_t> transaction_policy_;
+
+ public:
+  using fields_by_ref_t = FIELDS&;
+  using fields_by_cref_t = const FIELDS&;
+  using transaction_t = ::current::storage::Transaction<fields_variant_t>;
+  using transaction_meta_fields_t = ::current::storage::TransactionMetaFields;
+  using DEPRECATED_T_(FIELDS_BY_REFERENCE) = fields_by_ref_t;
+  using DEPRECATED_T_(FIELDS_BY_CONST_REFERENCE) = fields_by_cref_t;
+  using DEPRECATED_T_(TRANSACTION) = transaction_t;
+  using DEPRECATED_T_(TRANSACTION_META_FIELDS) = transaction_meta_fields_t;
+
+  GenericStorageImpl(const GenericStorageImpl&) = delete;
+  GenericStorageImpl(GenericStorageImpl&&) = delete;
+  GenericStorageImpl& operator=(const GenericStorageImpl&) = delete;
+  GenericStorageImpl& operator=(GenericStorageImpl&&) = delete;
+
+  template <typename... ARGS>
+  GenericStorageImpl(ARGS&&... args)
+      : persister_(std::forward<ARGS>(args)...),
+        transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {
+    persister_.Replay([this](const fields_variant_t& entry) { entry.Call(fields_); });
+  }
+
+  // Used for applying updates by dispatching corresponding events.
+  template <typename... ARGS>
+  typename std::result_of<FIELDS(ARGS...)>::type operator()(ARGS&&... args) {
+    return fields_(std::forward<ARGS>(args)...);
+  }
+
+  template <typename F>
+  using f_result_t = typename std::result_of<F(fields_by_ref_t)>::type;
+
+  template <typename F>
+  ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict>
+  Transaction(F&& f) {
+    return transaction_policy_.Transaction([&f, this]() { return f(fields_); });
+  }
+
+  template <typename F1, typename F2>
+  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict> Transaction(
+      F1&& f1, F2&& f2) {
+    return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));
+  }
+
+  void ReplayTransaction(transaction_t&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {
+    transaction_policy_.ReplayTransaction([this](fields_variant_t&& entry) {
+      entry.Call(fields_);
+    }, std::forward<transaction_t>(transaction), idx_ts);
+  }
+
+  void ExposeRawLogViaHTTP(int port, const std::string& route) { persister_.ExposeRawLogViaHTTP(port, route); }
+
+  typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type
+  InternalExposeStream() {
+    return persister_.InternalExposeStream();
+  }
+
+  void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }
+};
+
+#define CURRENT_STORAGE_IMPLEMENTATION(name)                                                                   \
+  template <typename INSTANTIATION_TYPE>                                                                       \
+  struct CURRENT_STORAGE_FIELDS_##name;                                                                        \
+  template <template <typename...> class PERSISTER,                                                            \
+            template <typename> class TRANSACTION_POLICY =                                                     \
+                ::current::storage::CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY,                                \
+            typename CUSTOM_PERSISTER_PARAM = ::current::storage::CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM>     \
+  using name =                                                                                                 \
+      ::current::storage::GenericStorageImpl<PERSISTER,                                                        \
+                                             CURRENT_STORAGE_FIELDS_##name<::current::storage::DeclareFields>, \
+                                             TRANSACTION_POLICY,                                               \
+                                             CUSTOM_PERSISTER_PARAM>;                                          \
   CURRENT_STORAGE_FIELDS_HELPERS(name)
-// clang-format on
 
 // A minimalistic `PERSISTER` which compiles with the above `CURRENT_STORAGE_IMPLEMENTATION` macro.
 // Used for the sole purpose of extracting the underlying `transaction_t` type without extra template magic.
