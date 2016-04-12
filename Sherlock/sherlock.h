@@ -113,6 +113,8 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
+enum class StreamDataAuthority : bool { Own = true, External = false };
+
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
@@ -163,13 +165,16 @@ class StreamImpl {
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
       : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)),
-        publisher_(std::make_unique<publisher_t>(data_)) {}
+        publisher_(std::make_unique<publisher_t>(data_)),
+        authority_(StreamDataAuthority::Own) {}
 
-  StreamImpl(StreamImpl&& rhs) : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)) {}
+  StreamImpl(StreamImpl&& rhs)
+      : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)), authority_(rhs.authority_) {}
 
   void operator=(StreamImpl&& rhs) {
     data_ = std::move(rhs.data_);
     publisher_ = std::move(rhs.publisher_);
+    authority_ = rhs.authority_;
   }
 
   // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
@@ -234,6 +239,7 @@ class StreamImpl {
     std::lock_guard<std::mutex> lock(mutex_);
     if (publisher_) {
       acquirer.AcceptPublisher(std::move(publisher_));
+      authority_ = StreamDataAuthority::External;
     } else {
       CURRENT_THROW(PublisherAlreadyReleasedException());
     }
@@ -243,9 +249,15 @@ class StreamImpl {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!publisher_) {
       publisher_ = std::move(publisher);
+      authority_ = StreamDataAuthority::Own;
     } else {
       CURRENT_THROW(PublisherAlreadyOwnedException());
     }
+  }
+
+  StreamDataAuthority DataAuthority() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return authority_;
   }
 
   template <typename TYPE_SUBSCRIBED_TO, typename F>
@@ -451,7 +463,8 @@ class StreamImpl {
  private:
   std::shared_ptr<StreamData> data_;
   std::unique_ptr<publisher_t> publisher_;
-  std::mutex mutex_;
+  StreamDataAuthority authority_;
+  mutable std::mutex mutex_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;

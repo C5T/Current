@@ -690,7 +690,9 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
 
   // Transfer ownership of the stream publisher to the external object.
   SherlockPublisherAcquirer acquirer;
+  EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
   stream.MovePublisherTo(acquirer);
+  EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
 
   // Publish to the stream is not allowed since the publisher has been moved.
   ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
@@ -704,6 +706,7 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
 
   // Acquire publisher back.
   stream.AcquirePublisher(std::move(acquirer.publisher_));
+  EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
   // Can't acquire publisher since we already have one in the stream.
   ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
                current::sherlock::PublisherAlreadyOwnedException);
