@@ -270,9 +270,9 @@ struct ImplWrapper<java_wrapper::HTTPClientPlatformWrapper> {
   }
 
   // Parsing the response from within java_wrapper::HTTPClientPlatformWrapper.
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS&,
-                                 const T_RESPONSE_PARAMS&,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS&,
+                                 const RESPONSE_PARAMS&,
                                  const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponse& output) {
     output.url = response.url_requested_;
@@ -280,17 +280,17 @@ struct ImplWrapper<java_wrapper::HTTPClientPlatformWrapper> {
     output.url_after_redirects = response.url_received_;
   }
 
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     output.body = response.server_response_;
   }
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const java_wrapper::HTTPClientPlatformWrapper& response,
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));

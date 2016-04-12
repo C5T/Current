@@ -133,7 +133,7 @@ TEST(Iris, Demo) {
         .Register("/get",
                   [&api](Request request) {
                     const auto id = current::FromString<size_t>(request.url.query["id"]);
-                    api.Transaction([id](TestDB::T_DATA data) {
+                    api.Transaction([id](TestDB::data_t data) {
                       return yoda::Dictionary<LabeledFlower>::Accessor(data)[id];
                     }, std::move(request));
                   });
@@ -150,7 +150,7 @@ TEST(Iris, Demo) {
                     // In real life this should be a POST.
                     if (!label.empty()) {
                       const LabeledFlower flower(++number_of_flowers, sl, sw, pl, pw, label);
-                      api.Transaction([flower](TestDB::T_DATA data) {
+                      api.Transaction([flower](TestDB::data_t data) {
                         yoda::Dictionary<LabeledFlower>::Mutator(data).Add(flower);
                         return "OK\n";
                       }, std::move(request));
@@ -195,7 +195,7 @@ TEST(Iris, Demo) {
                         request(graph);
                       }
                     };
-                    api.Transaction([x_dim, y_dim](TestDB::T_DATA data) {
+                    api.Transaction([x_dim, y_dim](TestDB::data_t data) {
                       PlotIrises::Info info;
                       for (size_t i = 1; i <= number_of_flowers; ++i) {
                         const LabeledFlower& flower = yoda::Dictionary<LabeledFlower>::Accessor(data)[i];

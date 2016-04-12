@@ -317,9 +317,11 @@ struct URLPathArgs {
 
   const std::string& operator[](size_t index) const { return args_.at(args_.size() - 1 - index); }
 
-  using T_ITERATOR = std::vector<std::string>::const_reverse_iterator;
-  T_ITERATOR begin() const { return args_.crbegin(); }
-  T_ITERATOR end() const { return args_.crend(); }
+  using iterator_t = std::vector<std::string>::const_reverse_iterator;
+  using DEPRECATED_T_(ITERATOR) = iterator_t;
+
+  iterator_t begin() const { return args_.crbegin(); }
+  iterator_t end() const { return args_.crend(); }
 
   bool empty() const { return args_.empty(); }
   size_t size() const { return args_.size(); }

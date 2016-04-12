@@ -75,7 +75,7 @@ CURRENT_STRUCT(Client, BriefClient) {
 
   CURRENT_CONSTRUCTOR(Client)(ClientID key = ClientID::INVALID) : SUPER(key) {}
 
-  using T_BRIEF = BriefClient;
+  using brief_t = BriefClient;
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Client, PersistedClient);
@@ -467,7 +467,7 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
   const auto idx_ts = ParseJSON<idxts_t>(add_fields[0]);
   EXPECT_EQ(0u, idx_ts.index);
   EXPECT_EQ(1024, idx_ts.us.count());
-  const auto add_transaction = ParseJSON<TestStorage::T_TRANSACTION>(add_fields[1]);
+  const auto add_transaction = ParseJSON<TestStorage::transaction_t>(add_fields[1]);
   EXPECT_EQ(1024, add_transaction.meta.timestamp.count());
   ASSERT_EQ(1u, add_transaction.meta.fields.size());
   EXPECT_EQ("unittest", add_transaction.meta.fields.at("who"));
@@ -483,7 +483,7 @@ TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
 
   const auto del_fields = current::strings::Split(persisted_entries[1], '\t');
   ASSERT_TRUE(del_fields.size() == 2u);
-  const auto del_transaction = ParseJSON<TestStorage::T_TRANSACTION>(del_fields[1]);
+  const auto del_transaction = ParseJSON<TestStorage::transaction_t>(del_fields[1]);
   EXPECT_EQ(2000, del_transaction.meta.timestamp.count());
   ASSERT_EQ(1u, del_transaction.meta.fields.size());
   EXPECT_EQ("unittest", del_transaction.meta.fields.at("who"));

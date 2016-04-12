@@ -120,9 +120,9 @@ struct ImplWrapper<HTTPClientApple> {
   }
 
   // Parsing the response from within HTTPClientApple.
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS&,
-                                 const T_RESPONSE_PARAMS&,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS&,
+                                 const RESPONSE_PARAMS&,
                                  const HTTPClientApple& response,
                                  HTTPResponse& output) {
     // TODO(dkorolev): Handle redirects in Apple implementation.
@@ -131,17 +131,17 @@ struct ImplWrapper<HTTPClientApple> {
     output.headers = response.response_headers;
   }
 
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const HTTPClientApple& response,
                                  HTTPResponseWithBuffer& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));
     output.body = response.response_body;
   }
-  template <typename T_REQUEST_PARAMS, typename T_RESPONSE_PARAMS>
-  inline static void ParseOutput(const T_REQUEST_PARAMS& request_params,
-                                 const T_RESPONSE_PARAMS& response_params,
+  template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS>
+  inline static void ParseOutput(const REQUEST_PARAMS& request_params,
+                                 const RESPONSE_PARAMS& response_params,
                                  const HTTPClientApple& response,
                                  HTTPResponseWithResultingFileName& output) {
     ParseOutput(request_params, response_params, response, static_cast<HTTPResponse&>(output));

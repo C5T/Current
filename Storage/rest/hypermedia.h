@@ -54,16 +54,16 @@ CURRENT_STRUCT(HypermediaRESTStatus) {
 };
 
 CURRENT_STRUCT(HypermediaRESTError) {
-  using T_DETAILS = std::map<std::string, std::string>;
+  using details_t = std::map<std::string, std::string>;
   CURRENT_FIELD(name, std::string, "");
   CURRENT_FIELD(message, std::string, "");
-  CURRENT_FIELD(details, Optional<T_DETAILS>);
+  CURRENT_FIELD(details, Optional<details_t>);
 
   CURRENT_DEFAULT_CONSTRUCTOR(HypermediaRESTError) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(const std::string& name, const std::string& message)
       : name(name), message(message) {}
   CURRENT_CONSTRUCTOR(HypermediaRESTError)(
-      const std::string& name, const std::string& message, const T_DETAILS& details)
+      const std::string& name, const std::string& message, const details_t& details)
       : name(name), message(message), details(details) {}
 };
 

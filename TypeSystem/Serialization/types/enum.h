@@ -84,11 +84,11 @@ namespace load {
 template <typename T>
 struct LoadFromBinaryImpl<T, ENABLE_IF<std::is_enum<T>::value>> {
   static void Load(std::istream& istream, T& destination) {
-    using T_UNDERLYING = typename std::underlying_type<T>::type;
+    using underlying_t = typename std::underlying_type<T>::type;
     const size_t bytes_read =
-        istream.rdbuf()->sgetn(reinterpret_cast<char*>(std::addressof(destination)), sizeof(T_UNDERLYING));
-    if (bytes_read != sizeof(T_UNDERLYING)) {
-      throw BinaryLoadFromStreamException(sizeof(T_UNDERLYING), bytes_read);  // LCOV_EXCL_LINE
+        istream.rdbuf()->sgetn(reinterpret_cast<char*>(std::addressof(destination)), sizeof(underlying_t));
+    if (bytes_read != sizeof(underlying_t)) {
+      throw BinaryLoadFromStreamException(sizeof(underlying_t), bytes_read);  // LCOV_EXCL_LINE
     }
   }
 };

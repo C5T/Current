@@ -53,17 +53,17 @@ struct KEY_ACCESSOR_IMPL {};
 
 template <typename ENTRY>
 struct KEY_ACCESSOR_IMPL<ENTRY, false> {
-  typedef decltype(std::declval<ENTRY>().key) T_KEY;
-  static CF<T_KEY> GetKey(const ENTRY& entry) { return entry.key; }
-  static void SetKey(ENTRY& entry, T_KEY key) { entry.key = key; }
+  typedef decltype(std::declval<ENTRY>().key) key_t;
+  static CF<key_t> GetKey(const ENTRY& entry) { return entry.key; }
+  static void SetKey(ENTRY& entry, key_t key) { entry.key = key; }
 };
 
 template <typename ENTRY>
 struct KEY_ACCESSOR_IMPL<ENTRY, true> {
-  typedef decltype(std::declval<ENTRY>().key()) T_KEY;
+  typedef decltype(std::declval<ENTRY>().key()) key_t;
   // Can not return a reference to a temporary.
-  static const T_KEY GetKey(const ENTRY& entry) { return entry.key(); }
-  static void SetKey(ENTRY& entry, CF<T_KEY> key) { entry.set_key(key); }
+  static const key_t GetKey(const ENTRY& entry) { return entry.key(); }
+  static void SetKey(ENTRY& entry, CF<key_t> key) { entry.set_key(key); }
 };
 
 #ifndef CURRENT_WINDOWS
@@ -81,12 +81,12 @@ using KEY_ACCESSOR = typename KEY_ACCESSOR_FOR_HANDICAPPED<ENTRY>::type;
 #endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
-typename KEY_ACCESSOR<ENTRY>::T_KEY GetKey(const ENTRY& entry) {
+typename KEY_ACCESSOR<ENTRY>::key_t GetKey(const ENTRY& entry) {
   return KEY_ACCESSOR<ENTRY>::GetKey(entry);
 }
 
 template <typename ENTRY>
-using ENTRY_KEY_TYPE = current::decay<typename KEY_ACCESSOR<ENTRY>::T_KEY>;
+using ENTRY_KEY_TYPE = current::decay<typename KEY_ACCESSOR<ENTRY>::key_t>;
 
 template <typename ENTRY>
 void SetKey(ENTRY& entry, CF<ENTRY_KEY_TYPE<ENTRY>> key) {
@@ -112,36 +112,36 @@ struct ROW_ACCESSOR_IMPL {};
 
 template <typename ENTRY>
 struct ROW_ACCESSOR_IMPL<ENTRY, false> {
-  typedef decltype(std::declval<ENTRY>().row) T_ROW;
-  static CF<T_ROW> GetRow(const ENTRY& entry) { return entry.row; }
-  static void SetRow(ENTRY& entry, CF<T_ROW> row) { entry.row = row; }
+  typedef decltype(std::declval<ENTRY>().row) row_t;
+  static CF<row_t> GetRow(const ENTRY& entry) { return entry.row; }
+  static void SetRow(ENTRY& entry, CF<row_t> row) { entry.row = row; }
 };
 
 template <typename ENTRY>
 struct ROW_ACCESSOR_IMPL<ENTRY, true> {
-  typedef decltype(std::declval<ENTRY>().row()) T_ROW;
+  typedef decltype(std::declval<ENTRY>().row()) row_t;
   // Can not return a reference to a temporary.
-  static const T_ROW GetRow(const ENTRY& entry) { return entry.row(); }
-  static void SetRow(ENTRY& entry, CF<T_ROW> row) { entry.set_row(row); }
+  static const row_t GetRow(const ENTRY& entry) { return entry.row(); }
+  static void SetRow(ENTRY& entry, CF<row_t> row) { entry.set_row(row); }
 };
 
 template <typename ROW, typename COL>
 struct ROW_ACCESSOR_IMPL<std::pair<ROW, COL>, false> {
-  typedef ROW T_ROW;
-  static CF<T_ROW> GetRow(const std::pair<ROW, COL>& entry) { return entry.first; }
-  static void SetRow(std::pair<ROW, COL>& entry, CF<T_ROW> row) { entry.first = row; }
+  typedef ROW row_t;
+  static CF<row_t> GetRow(const std::pair<ROW, COL>& entry) { return entry.first; }
+  static void SetRow(std::pair<ROW, COL>& entry, CF<row_t> row) { entry.first = row; }
 };
 
 template <typename ENTRY>
 using ROW_ACCESSOR = ROW_ACCESSOR_IMPL<ENTRY, HasRowFunction<ENTRY>(0)>;
 
 template <typename ENTRY>
-typename ROW_ACCESSOR<ENTRY>::T_ROW GetRow(const ENTRY& entry) {
+typename ROW_ACCESSOR<ENTRY>::row_t GetRow(const ENTRY& entry) {
   return ROW_ACCESSOR<ENTRY>::GetRow(entry);
 }
 
 template <typename ENTRY>
-using ENTRY_ROW_TYPE = current::decay<typename ROW_ACCESSOR<ENTRY>::T_ROW>;
+using ENTRY_ROW_TYPE = current::decay<typename ROW_ACCESSOR<ENTRY>::row_t>;
 
 template <typename ENTRY>
 void SetRow(ENTRY& entry, CF<ENTRY_ROW_TYPE<ENTRY>> row) {
@@ -163,36 +163,36 @@ struct COL_ACCESSOR_IMPL {};
 
 template <typename ENTRY>
 struct COL_ACCESSOR_IMPL<ENTRY, false> {
-  typedef decltype(std::declval<ENTRY>().col) T_COL;
-  static CF<T_COL> GetCol(const ENTRY& entry) { return entry.col; }
-  static void SetCol(ENTRY& entry, T_COL col) { entry.col = col; }
+  typedef decltype(std::declval<ENTRY>().col) col_t;
+  static CF<col_t> GetCol(const ENTRY& entry) { return entry.col; }
+  static void SetCol(ENTRY& entry, col_t col) { entry.col = col; }
 };
 
 template <typename ENTRY>
 struct COL_ACCESSOR_IMPL<ENTRY, true> {
-  typedef decltype(std::declval<ENTRY>().col()) T_COL;
+  typedef decltype(std::declval<ENTRY>().col()) col_t;
   // Can not return a reference to a temporary.
-  static const T_COL GetCol(const ENTRY& entry) { return entry.col(); }
-  static void SetCol(ENTRY& entry, CF<T_COL> col) { entry.set_col(col); }
+  static const col_t GetCol(const ENTRY& entry) { return entry.col(); }
+  static void SetCol(ENTRY& entry, CF<col_t> col) { entry.set_col(col); }
 };
 
 template <typename ROW, typename COL>
 struct COL_ACCESSOR_IMPL<std::pair<ROW, COL>, false> {
-  typedef COL T_COL;
-  static CF<T_COL> GetCol(const std::pair<COL, COL>& entry) { return entry.second; }
-  static void SetCol(std::pair<COL, COL>& entry, CF<T_COL> col) { entry.second = col; }
+  typedef COL col_t;
+  static CF<col_t> GetCol(const std::pair<COL, COL>& entry) { return entry.second; }
+  static void SetCol(std::pair<COL, COL>& entry, CF<col_t> col) { entry.second = col; }
 };
 
 template <typename ENTRY>
 using COL_ACCESSOR = COL_ACCESSOR_IMPL<ENTRY, HasColFunction<ENTRY>(0)>;
 
 template <typename ENTRY>
-typename COL_ACCESSOR<ENTRY>::T_COL GetCol(const ENTRY& entry) {
+typename COL_ACCESSOR<ENTRY>::col_t GetCol(const ENTRY& entry) {
   return COL_ACCESSOR<ENTRY>::GetCol(entry);
 }
 
 template <typename ENTRY>
-using ENTRY_COL_TYPE = current::decay<typename COL_ACCESSOR<ENTRY>::T_COL>;
+using ENTRY_COL_TYPE = current::decay<typename COL_ACCESSOR<ENTRY>::col_t>;
 
 template <typename ENTRY>
 void SetCol(ENTRY& entry, CF<ENTRY_COL_TYPE<ENTRY>> col) {

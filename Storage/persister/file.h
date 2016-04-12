@@ -42,8 +42,11 @@ class JSONFilePersister;
 template <typename... TS>
 class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
  public:
-  using T_VARIANT = Variant<TS...>;
-  using T_TRANSACTION = std::vector<T_VARIANT>;  // Mock to make it compile.
+  using variant_t = Variant<TS...>;
+  using transaction_t = std::vector<variant_t>;  // Mock to make it compile.
+
+  using DEPRECATED_T_(VARIANT) = variant_t;
+  using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
   explicit JSONFilePersister(const std::string& filename) : filename_(filename) {}
 
@@ -53,7 +56,7 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
       throw StorageCannotAppendToFileException(filename_);  // LCOV_EXCL_LINE
     }
     for (auto&& entry : journal.commit_log) {
-      os << JSON(T_VARIANT(std::move(entry))) << '\n';
+      os << JSON(variant_t(std::move(entry))) << '\n';
     }
     journal.commit_log.clear();
     journal.rollback_log.clear();
@@ -65,7 +68,7 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
     std::ifstream is(filename_);
     if (is.good()) {
       for (std::string line; std::getline(is, line);) {
-        f(std::move(ParseJSON<T_VARIANT>(line)));
+        f(std::move(ParseJSON<variant_t>(line)));
       }
     }
   }

@@ -34,11 +34,11 @@ SOFTWARE.
 
 namespace current {
 
-template <typename T, typename T_EXTRA_PARAMETER>
+template <typename T, typename EXTRA_PARAMETER>
 struct LazyInstantiatorAbstract {
   virtual ~LazyInstantiatorAbstract() = default;
-  virtual std::shared_ptr<T> InstantiateAsSharedPtr(const T_EXTRA_PARAMETER&) const = 0;
-  virtual std::unique_ptr<T> InstantiateAsUniquePtr(const T_EXTRA_PARAMETER&) const = 0;
+  virtual std::shared_ptr<T> InstantiateAsSharedPtr(const EXTRA_PARAMETER&) const = 0;
+  virtual std::unique_ptr<T> InstantiateAsUniquePtr(const EXTRA_PARAMETER&) const = 0;
 };
 
 template <typename T>
@@ -48,30 +48,30 @@ struct LazyInstantiatorAbstract<T, void> {
   virtual std::unique_ptr<T> InstantiateAsUniquePtr() const = 0;
 };
 
-template <typename T, typename T_EXTRA_PARAMETER, typename... ARGS>
-class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, T_EXTRA_PARAMETER> {
+template <typename T, typename EXTRA_PARAMETER, typename... ARGS>
+class LazyInstantiatorPerType : public LazyInstantiatorAbstract<T, EXTRA_PARAMETER> {
  public:
   template <typename PASSED_IN_TUPLE>
   LazyInstantiatorPerType(PASSED_IN_TUPLE&& args_as_tuple)
       : constructor_parameters_(std::forward<std::tuple<ARGS...>>(args_as_tuple)) {}
 
-  std::shared_ptr<T> InstantiateAsSharedPtr(const T_EXTRA_PARAMETER& parameter) const override {
+  std::shared_ptr<T> InstantiateAsSharedPtr(const EXTRA_PARAMETER& parameter) const override {
     return DoInstantiateShared(parameter, current::variadic_indexes::generate_indexes<sizeof...(ARGS)>());
   }
 
-  std::unique_ptr<T> InstantiateAsUniquePtr(const T_EXTRA_PARAMETER& parameter) const override {
+  std::unique_ptr<T> InstantiateAsUniquePtr(const EXTRA_PARAMETER& parameter) const override {
     return DoInstantiateUnique(parameter, current::variadic_indexes::generate_indexes<sizeof...(ARGS)>());
   }
 
  private:
   template <int... XS>
-  std::shared_ptr<T> DoInstantiateShared(const T_EXTRA_PARAMETER& parameter,
+  std::shared_ptr<T> DoInstantiateShared(const EXTRA_PARAMETER& parameter,
                                          current::variadic_indexes::indexes<XS...>) const {
     return std::make_shared<T>(parameter, std::get<XS>(constructor_parameters_)...);
   }
 
   template <int... XS>
-  std::unique_ptr<T> DoInstantiateUnique(const T_EXTRA_PARAMETER& parameter,
+  std::unique_ptr<T> DoInstantiateUnique(const EXTRA_PARAMETER& parameter,
                                          current::variadic_indexes::indexes<XS...>) const {
     return std::make_unique<T>(parameter, std::get<XS>(constructor_parameters_)...);
   }
@@ -110,22 +110,22 @@ class LazyInstantiatorPerType<T, void, ARGS...> : public LazyInstantiatorAbstrac
 
 enum class LazyInstantiationStrategy { Flexible = 0, ShouldNotBeInitialized, ShouldAlreadyBeInitialized };
 
-template <typename T, typename T_EXTRA_PARAMETER = void>
+template <typename T, typename EXTRA_PARAMETER = void>
 class LazilyInstantiated {
  public:
-  LazilyInstantiated(std::unique_ptr<LazyInstantiatorAbstract<T, T_EXTRA_PARAMETER>>&& impl)
+  LazilyInstantiated(std::unique_ptr<LazyInstantiatorAbstract<T, EXTRA_PARAMETER>>&& impl)
       : impl_(std::move(impl)) {}
 
   // Instantiates as a `shared_ptr<T>`.
   std::shared_ptr<T> InstantiateAsSharedPtr() const { return impl_->InstantiateAsSharedPtr(); }
-  template <typename TT = T_EXTRA_PARAMETER>
+  template <typename TT = EXTRA_PARAMETER>
   std::shared_ptr<T> InstantiateAsSharedPtrWithExtraParameter(const TT& parameter) const {
     return impl_->InstantiateAsSharedPtr(parameter);
   }
 
   // Instantiates as a `unique_ptr<T>`.
   std::unique_ptr<T> InstantiateAsUniquePtr() const { return impl_->InstantiateAsUniquePtr(); }
-  template <typename TT = T_EXTRA_PARAMETER>
+  template <typename TT = EXTRA_PARAMETER>
   std::unique_ptr<T> InstantiateAsUniquePtrWithExtraParameter(const TT& parameter) const {
     return impl_->InstantiateAsUniquePtr(parameter);
   }
@@ -146,7 +146,7 @@ class LazilyInstantiated {
   }
 
  private:
-  std::unique_ptr<LazyInstantiatorAbstract<T, T_EXTRA_PARAMETER>> impl_;
+  std::unique_ptr<LazyInstantiatorAbstract<T, EXTRA_PARAMETER>> impl_;
 };
 
 // Construction from variadic future constructor parameters.

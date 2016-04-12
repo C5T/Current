@@ -64,14 +64,14 @@ inline size_t StringLengthOrOneForChar(T&& param) {
 
 template <bool CAN_GET_LENGTH>
 struct OptionallyReserveOutputBufferImpl {
-  template <typename T_CONTAINER, typename T_SEPARATOR>
-  static void Impl(std::string&, const T_CONTAINER&, T_SEPARATOR&&) {}
+  template <typename CONTAINER, typename SEPARATOR>
+  static void Impl(std::string&, const CONTAINER&, SEPARATOR&&) {}
 };
 
 template <>
 struct OptionallyReserveOutputBufferImpl<true> {
-  template <typename T_CONTAINER, typename T_SEPARATOR>
-  static void Impl(std::string& output, const T_CONTAINER& components, T_SEPARATOR&& separator) {
+  template <typename CONTAINER, typename SEPARATOR>
+  static void Impl(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
     size_t length = 0;
     for (const auto& cit : components) {
       length += cit.length();
@@ -109,17 +109,15 @@ struct IsContainerOfStrings {
 
 }  // namespace sfinae
 
-template <typename T_CONTAINER, typename T_SEPARATOR>
-void OptionallyReserveOutputBuffer(std::string& output,
-                                   const T_CONTAINER& components,
-                                   T_SEPARATOR&& separator) {
+template <typename CONTAINER, typename SEPARATOR>
+void OptionallyReserveOutputBuffer(std::string& output, const CONTAINER& components, SEPARATOR&& separator) {
   // Note: this implementation does not do `reserve()` for chars, the length of which is always known to be 1.
-  OptionallyReserveOutputBufferImpl<sfinae::IsContainerOfStrings<T_CONTAINER>::value>::Impl(
+  OptionallyReserveOutputBufferImpl<sfinae::IsContainerOfStrings<CONTAINER>::value>::Impl(
       output, components, separator);
 }
 
-template <typename T_CONTAINER, typename T_SEPARATOR>
-std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
+template <typename CONTAINER, typename SEPARATOR>
+std::string Join(const CONTAINER& components, SEPARATOR&& separator) {
   if (components.empty()) {
     return "";
   } else {
@@ -140,14 +138,14 @@ std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
 
 }  // namespace impl
 
-template <typename T_CONTAINER, typename T_SEPARATOR>
-std::string Join(const T_CONTAINER& components, T_SEPARATOR&& separator) {
-  return impl::Join(components, std::forward<T_SEPARATOR>(separator));
+template <typename CONTAINER, typename SEPARATOR>
+std::string Join(const CONTAINER& components, SEPARATOR&& separator) {
+  return impl::Join(components, std::forward<SEPARATOR>(separator));
 }
 
-template <typename T_SEPARATOR>
-std::string Join(const std::vector<std::string>& components, T_SEPARATOR&& separator) {
-  return impl::Join(components, std::forward<T_SEPARATOR>(separator));
+template <typename SEPARATOR>
+std::string Join(const std::vector<std::string>& components, SEPARATOR&& separator) {
+  return impl::Join(components, std::forward<SEPARATOR>(separator));
 }
 
 }  // namespace strings

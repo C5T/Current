@@ -134,12 +134,14 @@ CURRENT_STRUCT(iOSGenericEvent, iOSBaseEvent) {
 #endif  // COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 };
 
-using T_IOS_EVENTS = TypeList<iOSFirstLaunchEvent,
+using ios_events_t = TypeList<iOSFirstLaunchEvent,
                               iOSAppLaunchEvent,
                               iOSDeviceInfo,
                               iOSIdentifyEvent,
                               iOSFocusEvent,
                               iOSGenericEvent>;
+
+using DEPRECATED_T_(IOS_EVENTS) = ios_events_t;
 
 }  // namespace ios
 
@@ -177,8 +179,10 @@ CURRENT_STRUCT(WebGenericEvent, WebBaseEvent) {
       : event_category(category), event_action(action) {}
 };
 
-using T_WEB_EVENTS =
+using web_events_t =
     TypeList<WebEnterEvent, WebExitEvent, WebForegroundEvent, WebBackgroundEvent, WebGenericEvent>;
+
+using DEPRECATED_T_(WEB_EVENTS) = web_events_t;
 
 }  // namespace web
 

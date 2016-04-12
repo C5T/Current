@@ -62,7 +62,8 @@ struct SUPER : REFLECTION_HELPER, SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type {
   template <typename... ARGS>
   SUPER(ARGS&&... args)
       : SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type(std::forward<ARGS>(args)...) {}
-  using T_SUPER = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
+  using super_t = typename SUPER_SELECTOR<INSTANTIATION_TYPE, T>::type;
+  using DEPRECATED_T_(SUPER) = super_t;
   using REFLECTION_HELPER::CURRENT_STRUCT_NAME;
   using typename REFLECTION_HELPER::CURRENT_FIELD_COUNT_STRUCT;
 #ifdef CURRENT_WINDOWS
@@ -292,22 +293,25 @@ struct CurrentStructFieldsConsistency<T, -1> {
   ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{CF_TYPE(value)}; \
   CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
 
-#define CURRENT_USE_FIELD_AS_KEY(field)                                                   \
-  using T_COPY_FREE_KEY_TYPE = current::copy_free<decltype(field)>;                       \
-  const T_COPY_FREE_KEY_TYPE key() const { return field; }                                \
-  void set_key(const T_COPY_FREE_KEY_TYPE new_key_value) const { field = new_key_value; } \
+#define CURRENT_USE_FIELD_AS_KEY(field)                                       \
+  using cf_key_t = current::copy_free<decltype(field)>;                       \
+  using DEPRECATED_T_(COPY_FREE_KEY_TYPE) = cf_key_t;                         \
+  const cf_key_t key() const { return field; }                                \
+  void set_key(const cf_key_t new_key_value) const { field = new_key_value; } \
   using CURRENT_USE_FIELD_AS_KEY_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_ROW(field)                                                   \
-  using T_COPY_FREE_ROW_TYPE = current::copy_free<decltype(field)>;                       \
-  const T_COPY_FREE_ROW_TYPE row() const { return field; }                                \
-  void set_row(const T_COPY_FREE_ROW_TYPE new_row_value) const { field = new_row_value; } \
+#define CURRENT_USE_FIELD_AS_ROW(field)                                       \
+  using cf_row_t = current::copy_free<decltype(field)>;                       \
+  using DEPRECATED_T_(COPY_FREE_ROW_TYPE) = cf_row_t;                         \
+  const cf_row_t row() const { return field; }                                \
+  void set_row(const cf_row_t new_row_value) const { field = new_row_value; } \
   using CURRENT_USE_FIELD_AS_ROW_##field##_implemented = void
 
-#define CURRENT_USE_FIELD_AS_COL(field)                                                   \
-  using T_COPY_FREE_COL_TYPE = current::copy_free<decltype(field)>;                       \
-  const T_COPY_FREE_COL_TYPE col() const { return field; }                                \
-  void set_col(const T_COPY_FREE_COL_TYPE new_col_value) const { field = new_col_value; } \
+#define CURRENT_USE_FIELD_AS_COL(field)                                       \
+  using cf_col_t = current::copy_free<decltype(field)>;                       \
+  using DEPRECATED_T_(COPY_FREE_COL_TYPE) = cf_col_t;                         \
+  const cf_col_t col() const { return field; }                                \
+  void set_col(const cf_col_t new_col_value) const { field = new_col_value; } \
   using CURRENT_USE_FIELD_AS_COL_##field##_implemented = void
 
 #define CURRENT_USE_FIELD_AS_TIMESTAMP(field) \
@@ -372,7 +376,7 @@ template <typename T>
 struct SuperTypeImpl {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`SuperType` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  typedef typename T::T_SUPER type;
+  using type = typename T::super_t;
 };
 
 template <typename T>

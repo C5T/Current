@@ -99,14 +99,14 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
-  using T_ALL_FIELDS_BY_REFERENCE = MutableFields<STORAGE>;
-  T_ALL_FIELDS_BY_REFERENCE fields;
+  using mutable_fields_t = MutableFields<STORAGE>;
+  mutable_fields_t fields;
   const FIELD& field;
   const std::string field_name;
   const std::string url_key;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
-                  T_ALL_FIELDS_BY_REFERENCE fields,
+                  mutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
@@ -116,7 +116,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
         field_name(field_name),
         url_key(url_key) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
-                  T_ALL_FIELDS_BY_REFERENCE fields,
+                  mutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
@@ -129,14 +129,14 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD, typename ENTRY>
 struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
-  using T_ALL_FIELDS_BY_REFERENCE = MutableFields<STORAGE>;
-  T_ALL_FIELDS_BY_REFERENCE fields;
+  using mutable_fields_t = MutableFields<STORAGE>;
+  mutable_fields_t fields;
   FIELD& field;
   const std::string field_name;
   ENTRY& entry;
 
   RESTfulPOSTInput(const RESTfulGenericInput<STORAGE>& input,
-                   T_ALL_FIELDS_BY_REFERENCE fields,
+                   mutable_fields_t fields,
                    FIELD& field,
                    const std::string& field_name,
                    ENTRY& entry)
@@ -146,7 +146,7 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
         field_name(field_name),
         entry(entry) {}
   RESTfulPOSTInput(RESTfulGenericInput<STORAGE>&& input,
-                   T_ALL_FIELDS_BY_REFERENCE fields,
+                   mutable_fields_t fields,
                    FIELD& field,
                    const std::string& field_name,
                    ENTRY& entry)
@@ -159,8 +159,8 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD, typename ENTRY, typename KEY>
 struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
-  using T_ALL_FIELDS_BY_REFERENCE = MutableFields<STORAGE>;
-  T_ALL_FIELDS_BY_REFERENCE fields;
+  using mutable_fields_t = MutableFields<STORAGE>;
+  mutable_fields_t fields;
   FIELD& field;
   const std::string field_name;
   const KEY& url_key;
@@ -168,7 +168,7 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
   const KEY& entry_key;
 
   RESTfulPUTInput(const RESTfulGenericInput<STORAGE>& input,
-                  T_ALL_FIELDS_BY_REFERENCE fields,
+                  mutable_fields_t fields,
                   FIELD& field,
                   const std::string& field_name,
                   const KEY& url_key,
@@ -182,7 +182,7 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
         entry(entry),
         entry_key(entry_key) {}
   RESTfulPUTInput(RESTfulGenericInput<STORAGE>&& input,
-                  T_ALL_FIELDS_BY_REFERENCE fields,
+                  mutable_fields_t fields,
                   FIELD& field,
                   const std::string& field_name,
                   const KEY& url_key,
@@ -199,20 +199,20 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD, typename KEY>
 struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
-  using T_ALL_FIELDS_BY_REFERENCE = MutableFields<STORAGE>;
-  T_ALL_FIELDS_BY_REFERENCE fields;
+  using mutable_fields_t = MutableFields<STORAGE>;
+  mutable_fields_t fields;
   FIELD& field;
   const std::string field_name;
   const KEY& key;
 
   RESTfulDELETEInput(const RESTfulGenericInput<STORAGE>& input,
-                     T_ALL_FIELDS_BY_REFERENCE fields,
+                     mutable_fields_t fields,
                      FIELD& field,
                      const std::string& field_name,
                      const KEY& key)
       : RESTfulGenericInput<STORAGE>(input), fields(fields), field(field), field_name(field_name), key(key) {}
   RESTfulDELETEInput(RESTfulGenericInput<STORAGE>&& input,
-                     T_ALL_FIELDS_BY_REFERENCE fields,
+                     mutable_fields_t fields,
                      FIELD& field,
                      const std::string& field_name,
                      const KEY& key)

@@ -39,20 +39,23 @@ namespace storage {
 namespace container {
 
 template <typename T,
-          typename T_UPDATE_EVENT,
-          typename T_DELETE_EVENT,
+          typename UPDATE_EVENT,
+          typename DELETE_EVENT,
           template <typename...> class ROW_MAP,
           template <typename...> class COL_MAP>
 class GenericMatrix {
  public:
-  using T_ROW = sfinae::ENTRY_ROW_TYPE<T>;
-  using T_COL = sfinae::ENTRY_COL_TYPE<T>;
-  using T_WHOLE_MATRIX_MAP = std::unordered_map<std::pair<T_ROW, T_COL>,
+  using row_t = sfinae::ENTRY_ROW_TYPE<T>;
+  using col_t = sfinae::ENTRY_COL_TYPE<T>;
+  using whole_matrix_map_t = std::unordered_map<std::pair<row_t, col_t>,
                                                 std::unique_ptr<T>,
-                                                CurrentHashFunction<std::pair<T_ROW, T_COL>>>;
-  using T_FORWARD_MAP = ROW_MAP<T_ROW, COL_MAP<T_COL, const T*>>;
-  using T_TRANSPOSED_MAP = COL_MAP<T_COL, ROW_MAP<T_ROW, const T*>>;
-  using T_REST_BEHAVIOR = rest::behavior::Matrix;
+                                                CurrentHashFunction<std::pair<row_t, col_t>>>;
+  using forward_map_t = ROW_MAP<row_t, COL_MAP<col_t, const T*>>;
+  using transposed_map_t = COL_MAP<col_t, ROW_MAP<row_t, const T*>>;
+  using rest_behavior_t = rest::behavior::Matrix;
+
+  using DEPRECATED_T_(ROW) = row_t;
+  using DEPRECATED_T_(COL) = col_t;
 
   explicit GenericMatrix(MutationJournal& journal) : journal_(journal) {}
 
@@ -66,20 +69,20 @@ class GenericMatrix {
     const auto it = map_.find(row_col);
     if (it != map_.end()) {
       const T previous_object = *(it->second);
-      journal_.LogMutation(T_UPDATE_EVENT(object),
+      journal_.LogMutation(UPDATE_EVENT(object),
                            [this, row_col, previous_object]() { DoAdd(row_col, previous_object); });
     } else {
-      journal_.LogMutation(T_UPDATE_EVENT(object), [this, row_col]() { DoErase(row_col); });
+      journal_.LogMutation(UPDATE_EVENT(object), [this, row_col]() { DoErase(row_col); });
     }
     DoAdd(row_col, object);
   }
 
-  void Erase(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) {
+  void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) {
     const auto row_col = std::make_pair(row, col);
     const auto it = map_.find(row_col);
     if (it != map_.end()) {
       const T previous_object = *(it->second);
-      journal_.LogMutation(T_DELETE_EVENT(previous_object),
+      journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, row, col, row_col, previous_object]() {
                              auto& placeholder = map_[row_col];
                              placeholder = std::make_unique<T>(previous_object);
@@ -89,9 +92,9 @@ class GenericMatrix {
       DoErase(row_col);
     }
   }
-  void Erase(const std::pair<T_ROW, T_COL>& key) { Erase(key.first, key.second); }
+  void Erase(const std::pair<row_t, col_t>& key) { Erase(key.first, key.second); }
 
-  ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+  ImmutableOptional<T> Get(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     const auto it = map_.find(std::make_pair(row, col));
     if (it != map_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), it->second.get());
@@ -100,12 +103,12 @@ class GenericMatrix {
     }
   }
 
-  void operator()(const T_UPDATE_EVENT& e) {
+  void operator()(const UPDATE_EVENT& e) {
     const auto row = sfinae::GetRow(e.data);
     const auto col = sfinae::GetCol(e.data);
     DoAdd(std::make_pair(row, col), e.data);
   }
-  void operator()(const T_DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
+  void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename OUTER_KEY, typename INNER_MAP>
   struct InnerAccessor final {
@@ -114,9 +117,9 @@ class GenericMatrix {
     const INNER_MAP& map_;
 
     struct Iterator final {
-      using T_ITERATOR = typename INNER_MAP::const_iterator;
-      T_ITERATOR iterator;
-      explicit Iterator(T_ITERATOR iterator) : iterator(iterator) {}
+      using iterator_t = typename INNER_MAP::const_iterator;
+      iterator_t iterator;
+      explicit Iterator(iterator_t iterator) : iterator(iterator) {}
       void operator++() { ++iterator; }
       bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
@@ -145,9 +148,9 @@ class GenericMatrix {
     const OUTER_MAP& map_;
 
     struct OuterIterator final {
-      using T_ITERATOR = typename OUTER_MAP::const_iterator;
-      T_ITERATOR iterator;
-      explicit OuterIterator(T_ITERATOR iterator) : iterator(iterator) {}
+      using iterator_t = typename OUTER_MAP::const_iterator;
+      iterator_t iterator;
+      explicit OuterIterator(iterator_t iterator) : iterator(iterator) {}
       void operator++() { ++iterator; }
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
@@ -178,11 +181,11 @@ class GenericMatrix {
     OuterIterator end() const { return OuterIterator(map_.cend()); }
   };
 
-  OuterAccessor<T_FORWARD_MAP> Rows() const { return OuterAccessor<T_FORWARD_MAP>(forward_); }
+  OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
 
-  OuterAccessor<T_TRANSPOSED_MAP> Cols() const { return OuterAccessor<T_TRANSPOSED_MAP>(transposed_); }
+  OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
-  ImmutableOptional<T> operator[](const std::pair<T_ROW, T_COL>& full_key_as_pair) const {
+  ImmutableOptional<T> operator[](const std::pair<row_t, col_t>& full_key_as_pair) const {
     const auto cit = map_.find(full_key_as_pair);
     if (cit != map_.end()) {
       return ImmutableOptional<T>(FromBarePointer(), cit->second.get());
@@ -193,13 +196,13 @@ class GenericMatrix {
 
   // For REST, iterate over all the elemnts of the matrix, in no particular order.
   struct WholeMatrixIterator final {
-    using T_ITERATOR = typename T_WHOLE_MATRIX_MAP::const_iterator;
-    T_ITERATOR iterator;
-    explicit WholeMatrixIterator(T_ITERATOR iterator) : iterator(iterator) {}
+    using iterator_t = typename whole_matrix_map_t::const_iterator;
+    iterator_t iterator;
+    explicit WholeMatrixIterator(iterator_t iterator) : iterator(iterator) {}
     void operator++() { ++iterator; }
     bool operator==(const WholeMatrixIterator& rhs) const { return iterator == rhs.iterator; }
     bool operator!=(const WholeMatrixIterator& rhs) const { return !operator==(rhs); }
-    const std::pair<T_ROW, T_COL> key() const { return iterator->first; }
+    const std::pair<row_t, col_t> key() const { return iterator->first; }
     const T& operator*() const { return *iterator->second; }
     const T* operator->() const { return iterator->second; }
   };
@@ -207,14 +210,14 @@ class GenericMatrix {
   WholeMatrixIterator WholeMatrixEnd() const { return WholeMatrixIterator(map_.end()); }
 
  private:
-  void DoAdd(const std::pair<T_ROW, T_COL>& row_col, const T& object) {
+  void DoAdd(const std::pair<row_t, col_t>& row_col, const T& object) {
     auto& placeholder = map_[row_col];
     placeholder = std::make_unique<T>(object);
     forward_[row_col.first][row_col.second] = placeholder.get();
     transposed_[row_col.second][row_col.first] = placeholder.get();
   }
 
-  void DoErase(const std::pair<T_ROW, T_COL>& row_col) {
+  void DoErase(const std::pair<row_t, col_t>& row_col) {
     auto& map_row = forward_[row_col.first];
     map_row.erase(row_col.second);
     if (map_row.empty()) {
@@ -228,17 +231,17 @@ class GenericMatrix {
     map_.erase(row_col);
   }
 
-  T_WHOLE_MATRIX_MAP map_;
-  T_FORWARD_MAP forward_;
-  T_TRANSPOSED_MAP transposed_;
+  whole_matrix_map_t map_;
+  forward_map_t forward_;
+  transposed_map_t transposed_;
   MutationJournal& journal_;
 };
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using UnorderedMatrix = GenericMatrix<T, T_UPDATE_EVENT, T_DELETE_EVENT, Unordered, Unordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedMatrix = GenericMatrix<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
-template <typename T, typename T_UPDATE_EVENT, typename T_DELETE_EVENT>
-using OrderedMatrix = GenericMatrix<T, T_UPDATE_EVENT, T_DELETE_EVENT, Ordered, Ordered>;
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedMatrix = GenericMatrix<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
 
 }  // namespace container
 

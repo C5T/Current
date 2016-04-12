@@ -85,7 +85,7 @@ struct AdvancedHypermedia : Hypermedia {
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
-    using T_BRIEF_ENTRY = sfinae::BRIEF_OF_T<ENTRY>;
+    using brief_entry_t = sfinae::BRIEF_OF_T<ENTRY>;
 
     // For per-record view, whether a full or brief format should be used.
     bool brief = false;
@@ -110,7 +110,7 @@ struct AdvancedHypermedia : Hypermedia {
         const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
         if (Exists(result)) {
           const auto& value = Value(result);
-          return (brief ? Response(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(value, input),
+          return (brief ? Response(FormatAsAdvancedHypermediaRecord<brief_entry_t>(value, input),
                                    HTTPResponseCode.OK)
                         : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
         } else {
@@ -119,9 +119,9 @@ struct AdvancedHypermedia : Hypermedia {
               HTTPResponseCode.NotFound);
         }
       } else {
-        // Collection view. `data` is an array of `AdvancedHypermediaRESTRecordResponse<T_BRIEF_ENTRY>`.
-        using T_DATA_ENTRY = AdvancedHypermediaRESTRecordResponse<T_BRIEF_ENTRY>;
-        AdvancedHypermediaRESTContainerResponse<T_DATA_ENTRY> response;
+        // Collection view. `data` is an array of `AdvancedHypermediaRESTRecordResponse<brief_entry_t>`.
+        using data_entry_t = AdvancedHypermediaRESTRecordResponse<brief_entry_t>;
+        AdvancedHypermediaRESTContainerResponse<data_entry_t> response;
         response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
         const auto GenPageURL = [&](uint64_t i, uint64_t n) {
           return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) + "&n=" +
@@ -133,7 +133,7 @@ struct AdvancedHypermedia : Hypermedia {
         bool has_next_page = false;
         for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
           if (i >= query_i && i < query_i + query_n) {
-            response.data.push_back(FormatAsAdvancedHypermediaRecord<T_BRIEF_ENTRY>(element, input, false));
+            response.data.push_back(FormatAsAdvancedHypermediaRecord<brief_entry_t>(element, input, false));
           } else if (i < query_i) {
             has_previous_page = true;
           } else if (i >= query_i + query_n) {

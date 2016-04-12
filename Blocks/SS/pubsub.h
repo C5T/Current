@@ -157,7 +157,7 @@ namespace impl {
 
 template <typename TYPE_SUBSCRIBED_TO, typename STREAM_UNDERLYING_VARIANT>
 struct PassEntryToSubscriberIfTypeMatchesImpl {
-  static_assert(TypeListContains<typename STREAM_UNDERLYING_VARIANT::T_TYPELIST, TYPE_SUBSCRIBED_TO>::value,
+  static_assert(TypeListContains<typename STREAM_UNDERLYING_VARIANT::typelist_t, TYPE_SUBSCRIBED_TO>::value,
                 "Subscribing to the type different from the underlying type requires the underlying type"
                 " to be a `Variant<>` containing the subscribed to type as an option.");
 

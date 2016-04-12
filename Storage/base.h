@@ -61,19 +61,19 @@ struct FieldNameByIndex {};
 template <int N>
 struct ImmutableFieldByIndex {};
 
-template <int N, typename T_RETVAL>
+template <int N, typename RETVAL>
 struct ImmutableFieldByIndexAndReturn {};
 
 template <int N>
 struct MutableFieldByIndex {};
 
-template <int N, typename T_RETVAL>
+template <int N, typename RETVAL>
 struct MutableFieldByIndexAndReturn {};
 
 template <int N>
 struct FieldNameAndTypeByIndex {};
 
-template <int N, typename T_RETVAL>
+template <int N, typename RETVAL>
 struct FieldNameAndTypeByIndexAndReturn {};
 
 template <typename T>
@@ -87,7 +87,8 @@ struct FieldEntryTypeExtractor {};
 
 template <typename T>
 struct StorageExtractedFieldType {
-  using T_PARTICULAR_FIELD = T;
+  using particular_field_t = T;
+  using DEPRECATED_T_(PARTICULAR_FIELD) = T;
 };
 
 template <typename T>
@@ -99,15 +100,20 @@ template <typename T>
 struct FieldUnderlyingTypesWrapper {
   // The entry type itself.
   // For template-specialize user-defined API code with the specific entry underlying type.
-  using T_ENTRY = typename T::T_ENTRY;
+  using entry_t = typename T::entry_t;
 
   // For the RESTful API to understand URLs.
   // Map key type for dictionaries, `size_t` for vectors, etc.
-  using T_KEY = typename T::T_KEY;
+  using key_t = typename T::key_t;
 
   // For reflection.
-  using T_UPDATE_EVENT = typename T::T_UPDATE_EVENT;
-  using T_DELETE_EVENT = typename T::T_DELETE_EVENT;
+  using update_event_t = typename T::update_event_t;
+  using delete_event_t = typename T::delete_event_t;
+
+  using DEPRECATED_T_(ENTRY) = entry_t;
+  using DEPRECATED_T_(KEY) = key_t;
+  using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;
+  using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;
 };
 
 // Fields declaration and counting.
@@ -137,8 +143,10 @@ struct FieldCounter {
 // Helper class to get the corresponding persisted types for each of the storage fields.
 template <typename UPDATE_EVENT, typename DELETE_EVENT>
 struct FieldInfo {
-  using T_UPDATE_EVENT = UPDATE_EVENT;
-  using T_DELETE_EVENT = DELETE_EVENT;
+  using update_event_t = UPDATE_EVENT;
+  using delete_event_t = DELETE_EVENT;
+  using DEPRECATED_T_(UPDATE_EVENT) = update_event_t;
+  using DEPRECATED_T_(DELETE_EVENT) = delete_event_t;
 };
 
 // Persisted types list generator.
@@ -147,8 +155,8 @@ struct TypeListMapperImpl;
 
 template <typename FIELDS, int... NS>
 struct TypeListMapperImpl<FIELDS, current::variadic_indexes::indexes<NS...>> {
-  using result = TypeList<typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::T_UPDATE_EVENT...,
-                          typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::T_DELETE_EVENT...>;
+  using result = TypeList<typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::update_event_t...,
+                          typename std::result_of<FIELDS(FieldInfoByIndex<NS>)>::type::delete_event_t...>;
 };
 
 template <typename FIELDS, int COUNT>

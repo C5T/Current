@@ -169,7 +169,7 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
   current::time::SetNow(std::chrono::microseconds(12000));
   iOSAppLaunchEvent launch_event;
   launch_event.user_ms = std::chrono::milliseconds(1);
-  T_IOS_VARIANT event1(std::move(launch_event));
+  ios_variant_t event1(std::move(launch_event));
   const auto response1 = HTTP(POST(server_url, JSON(event1) + "\nblah"));
   EXPECT_EQ(200, static_cast<int>(response1.code));
   EXPECT_EQ("OK\n", response1.body);
@@ -186,11 +186,11 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
   iOSIdentifyEvent identify_event;
   identify_event.user_ms = std::chrono::milliseconds(42);
   identify_event.client_id = "unit_test";
-  T_IOS_VARIANT event2(std::move(identify_event));
+  ios_variant_t event2(std::move(identify_event));
   iOSFocusEvent focus_event;
   focus_event.user_ms = std::chrono::milliseconds(50);
   focus_event.gained_focus = true;
-  T_IOS_VARIANT event3(std::move(focus_event));
+  ios_variant_t event3(std::move(focus_event));
   const auto response2 = HTTP(POST(server_url, JSON(event2) + "\nmeh\n" + JSON(event3)));
   EXPECT_EQ(200, static_cast<int>(response2.code));
   EXPECT_EQ("OK\n", response2.body);

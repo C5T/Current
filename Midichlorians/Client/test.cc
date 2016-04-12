@@ -52,15 +52,15 @@ DEFINE_string(midichlorians_client_test_http_route, "/log", "HTTP route of the s
 
 class Server {
  public:
-  using T_EVENT_VARIANT = Variant<T_IOS_EVENTS>;
+  using events_variant_t = Variant<ios_events_t>;
 
   Server(int http_port, const std::string& http_route)
       : messages_processed_(0u),
         routes_(HTTP(http_port).Register(http_route,
                                          [this](Request r) {
-                                           T_EVENT_VARIANT event;
+                                           events_variant_t event;
                                            try {
-                                             event = ParseJSON<T_EVENT_VARIANT>(r.body);
+                                             event = ParseJSON<events_variant_t>(r.body);
                                              event.Call(*this);
                                              ++messages_processed_;
                                            } catch (const current::Exception&) {

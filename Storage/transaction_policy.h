@@ -43,7 +43,8 @@ namespace transaction_policy {
 template <class PERSISTER>
 class Synchronous final {
  public:
-  using T_TRANSACTION = typename PERSISTER::T_TRANSACTION;
+  using transaction_t = typename PERSISTER::transaction_t;
+  using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
   Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
 
@@ -53,30 +54,30 @@ class Synchronous final {
   }
 
   template <typename F>
-  using T_F_RESULT = typename std::result_of<F()>::type;
+  using f_result_t = typename std::result_of<F()>::type;
 
-  template <typename F, class = ENABLE_IF<!std::is_void<T_F_RESULT<F>>::value>>
-  Future<TransactionResult<T_F_RESULT<F>>, StrictFuture::Strict> Transaction(F&& f) {
-    using T_RESULT = T_F_RESULT<F>;
+  template <typename F, class = ENABLE_IF<!std::is_void<f_result_t<F>>::value>>
+  Future<TransactionResult<f_result_t<F>>, StrictFuture::Strict> Transaction(F&& f) {
+    using result_t = f_result_t<F>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
-    std::promise<TransactionResult<T_RESULT>> promise;
-    Future<TransactionResult<T_RESULT>, StrictFuture::Strict> future = promise.get_future();
+    std::promise<TransactionResult<result_t>> promise;
+    Future<TransactionResult<result_t>, StrictFuture::Strict> future = promise.get_future();
     if (destructing_) {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
       return future;                                                                         // LCOV_EXCL_LINE
     }
     bool successful = false;
-    T_RESULT f_result;
+    result_t f_result;
     try {
       f_result = f();
       successful = true;
-    } catch (StorageRollbackExceptionWithValue<T_RESULT> e) {
+    } catch (StorageRollbackExceptionWithValue<result_t> e) {
       journal_.Rollback();
-      promise.set_value(TransactionResult<T_RESULT>::RolledBack(std::move(e.value)));
+      promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
     } catch (StorageRollbackExceptionWithNoValue) {
       journal_.Rollback();
-      promise.set_value(TransactionResult<T_RESULT>::RolledBack(OptionalResultMissing()));
+      promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
     } catch (...) {  // The exception is captured with `std::current_exception()` below.
       journal_.Rollback();
       // LCOV_EXCL_START
@@ -90,12 +91,12 @@ class Synchronous final {
     }
     if (successful) {
       PersistJournal();
-      promise.set_value(TransactionResult<T_RESULT>::Committed(std::move(f_result)));
+      promise.set_value(TransactionResult<result_t>::Committed(std::move(f_result)));
     }
     return future;
   }
 
-  template <typename F, class = ENABLE_IF<std::is_void<T_F_RESULT<F>>::value>>
+  template <typename F, class = ENABLE_IF<std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) {
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
@@ -131,9 +132,9 @@ class Synchronous final {
   }
 
   // TODO(mz+dk): implement proper logic here (consider rollbacks & exceptions).
-  template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<T_F_RESULT<F1>>::value>>
+  template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<f_result_t<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
-    using T_RESULT = T_F_RESULT<F1>;
+    using result_t = f_result_t<F1>;
     std::lock_guard<std::mutex> lock(mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
@@ -142,13 +143,13 @@ class Synchronous final {
       promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
       return future;                                                                         // LCOV_EXCL_LINE
     }
-    T_RESULT f1_result;
+    result_t f1_result;
     try {
       f1_result = f1();
       PersistJournal();
       f2(std::move(f1_result));
       promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
-    } catch (StorageRollbackExceptionWithValue<T_RESULT> e) {
+    } catch (StorageRollbackExceptionWithValue<result_t> e) {
       // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
       journal_.Rollback();
       f2(std::move(e.value));
@@ -172,9 +173,9 @@ class Synchronous final {
   }
 
   template <typename F>
-  void ReplayTransaction(F&& f, T_TRANSACTION&& transaction, current::ss::IndexAndTimestamp idx_ts) {
+  void ReplayTransaction(F&& f, transaction_t&& transaction, current::ss::IndexAndTimestamp idx_ts) {
     std::lock_guard<std::mutex> lock(mutex_);
-    persister_.ReplayTransaction(std::forward<T_TRANSACTION>(transaction), idx_ts);
+    persister_.ReplayTransaction(std::forward<transaction_t>(transaction), idx_ts);
     for (auto&& mutation : transaction.mutations) {
       f(std::move(mutation));
     }

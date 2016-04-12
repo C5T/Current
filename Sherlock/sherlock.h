@@ -119,13 +119,13 @@ using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_PERSISTENCE_LAYER>
 class StreamImpl {
  public:
-  using T_ENTRY = ENTRY;
-  using T_PERSISTENCE_LAYER = PERSISTENCE_LAYER<ENTRY>;
+  using entry_t = ENTRY;
+  using persistence_layer_t = PERSISTENCE_LAYER<ENTRY>;
 
   // The inner structure containing all the data required for the stream to function.
   // TODO(dkorolev): Make it a `ScopeOwnedByMe` type of thing.
   struct StreamData {
-    T_PERSISTENCE_LAYER persistence;
+    persistence_layer_t persistence;
 
     current::WaitableTerminateSignalBulkNotifier notifier;
     std::mutex mutex;
@@ -394,10 +394,10 @@ class StreamImpl {
   // can be `std::move()`-d into the subscriber thread. It can be `Join()`-ed or `Detach()`-ed.
   // The order of two template parameters is flipped to provide the default value for `TYPE_SUBSCRIBED_TO`,
   // in case the user chooses to specialize `{Async/Sync}SubscriberScope<SINGLE_TEMPLATE_PARAMETER>` directly.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = T_ENTRY>
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
   using AsyncSubscriberScope = GenericSubscriberScope<F, TYPE_SUBSCRIBED_TO, std::unique_ptr<F>, true>;
 
-  template <typename TYPE_SUBSCRIBED_TO = T_ENTRY, typename F>
+  template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   AsyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(std::unique_ptr<F>&& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     return AsyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_, std::move(subscriber));
@@ -407,11 +407,11 @@ class StreamImpl {
   // should ensure to terminate itself, when initiated from within the destructor of `SyncSubscriberScope`.
   // Note that the destructor of `SyncSubscriberScope` will wait until the subscriber terminates, thus,
   // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = T_ENTRY>
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
   using SyncSubscriberScope =
       GenericSubscriberScope<F, TYPE_SUBSCRIBED_TO, std::unique_ptr<F, current::NullDeleter>, false>;
 
-  template <typename TYPE_SUBSCRIBED_TO = T_ENTRY, typename F>
+  template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     return SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_,
@@ -446,7 +446,7 @@ class StreamImpl {
   // TODO(dkorolev): Have this co-own the Stream.
   void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
 
-  T_PERSISTENCE_LAYER& InternalExposePersister() { return data_->persistence; }
+  persistence_layer_t& InternalExposePersister() { return data_->persistence; }
 
  private:
   std::shared_ptr<StreamData> data_;

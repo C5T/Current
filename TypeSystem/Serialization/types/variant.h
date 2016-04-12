@@ -139,18 +139,17 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
 
 namespace load {
 
-template <typename T_VARIANT>
+template <typename VARIANT>
 struct LoadVariantCurrent {
   class Impl {
    public:
     Impl() {
-      current::metaprogramming::combine<
-          current::metaprogramming::map<Registerer, typename T_VARIANT::T_TYPELIST>>
+      current::metaprogramming::combine<current::metaprogramming::map<Registerer, typename VARIANT::typelist_t>>
           bulk_deserializers_registerer;
       bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
     }
 
-    void DoLoadVariant(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) const {
+    void DoLoadVariant(rapidjson::Value* source, VARIANT& destination, const std::string& path) const {
       using namespace ::current::reflection;
       if (source && source->IsObject()) {
         TypeID type_id;
@@ -173,14 +172,14 @@ struct LoadVariantCurrent {
 
    private:
     struct GenericDeserializer {
-      virtual void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) = 0;
+      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
     };
 
     template <typename X>
     struct TypedDeserializer : GenericDeserializer {
       explicit TypedDeserializer(const std::string& key_name) : key_name_(key_name) {}
 
-      void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) override {
+      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
         if (source->HasMember(key_name_)) {
           destination = std::make_unique<X>();
           LoadFromJSONImpl<X, JSONFormat::Current>::Load(
@@ -195,15 +194,15 @@ struct LoadVariantCurrent {
       const std::string key_name_;
     };
 
-    using T_DESERIALIZERS_MAP =
+    using deserializers_map_t =
         std::unordered_map<::current::reflection::TypeID,
                            std::unique_ptr<GenericDeserializer>,
                            ::current::CurrentHashFunction<::current::reflection::TypeID>>;
-    T_DESERIALIZERS_MAP deserializers_;
+    deserializers_map_t deserializers_;
 
     template <typename X>
     struct Registerer {
-      void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+      void DispatchToAll(deserializers_map_t& deserializers) {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list. They would be deserialized correctly.
         deserializers[Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id] =
@@ -215,18 +214,18 @@ struct LoadVariantCurrent {
   static const Impl& Instance() { return ThreadLocalSingleton<Impl>(); }
 };
 
-template <typename T_VARIANT>
+template <typename VARIANT>
 struct LoadVariantMinimalistic {
   class ImplMinimalistic {
    public:
     ImplMinimalistic() {
       current::metaprogramming::combine<
-          current::metaprogramming::map<RegistererByName, typename T_VARIANT::T_TYPELIST>>
+          current::metaprogramming::map<RegistererByName, typename VARIANT::typelist_t>>
           bulk_deserializers_registerer;
       bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
     }
 
-    void DoLoadVariant(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) const {
+    void DoLoadVariant(rapidjson::Value* source, VARIANT& destination, const std::string& path) const {
       using namespace ::current::reflection;
       if (source && source->IsObject()) {
         std::string case_name = "";
@@ -267,24 +266,24 @@ struct LoadVariantMinimalistic {
 
    private:
     struct GenericDeserializerMinimalistic {
-      virtual void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) = 0;
+      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
     };
 
     template <typename X>
     struct TypedDeserializerMinimalistic : GenericDeserializerMinimalistic {
-      void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) override {
+      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
         destination = std::make_unique<X>();
         LoadFromJSONImpl<X, JSONFormat::Minimalistic>::Load(source, Value<X>(destination), path);
       }
     };
 
-    using T_DESERIALIZERS_MAP =
+    using deserializers_map_t =
         std::unordered_map<std::string, std::unique_ptr<GenericDeserializerMinimalistic>>;
-    T_DESERIALIZERS_MAP deserializers_;
+    deserializers_map_t deserializers_;
 
     template <typename X>
     struct RegistererByName {
-      void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+      void DispatchToAll(deserializers_map_t& deserializers) {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.
@@ -296,18 +295,18 @@ struct LoadVariantMinimalistic {
   static const ImplMinimalistic& Instance() { return ThreadLocalSingleton<ImplMinimalistic>(); }
 };
 
-template <typename T_VARIANT>
+template <typename VARIANT>
 struct LoadVariantFSharp {
   class ImplFSharp {
    public:
     ImplFSharp() {
       current::metaprogramming::combine<
-          current::metaprogramming::map<RegistererByName, typename T_VARIANT::T_TYPELIST>>
+          current::metaprogramming::map<RegistererByName, typename VARIANT::typelist_t>>
           bulk_deserializers_registerer;
       bulk_deserializers_registerer.DispatchToAll(std::ref(deserializers_));
     }
 
-    void DoLoadVariant(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) const {
+    void DoLoadVariant(rapidjson::Value* source, VARIANT& destination, const std::string& path) const {
       using namespace ::current::reflection;
       if (source && source->IsObject()) {
         if (source->HasMember("Case")) {
@@ -331,12 +330,12 @@ struct LoadVariantFSharp {
 
    private:
     struct GenericDeserializerFSharp {
-      virtual void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) = 0;
+      virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
     };
 
     template <typename X>
     struct TypedDeserializerFSharp : GenericDeserializerFSharp {
-      void Deserialize(rapidjson::Value* source, T_VARIANT& destination, const std::string& path) override {
+      void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) override {
         if (source->HasMember("Fields")) {
           rapidjson::Value* fields = &(*source)["Fields"];
           if (fields && fields->IsArray() && fields->Size() == 1u) {
@@ -356,12 +355,12 @@ struct LoadVariantFSharp {
       }
     };
 
-    using T_DESERIALIZERS_MAP = std::unordered_map<std::string, std::unique_ptr<GenericDeserializerFSharp>>;
-    T_DESERIALIZERS_MAP deserializers_;
+    using deserializers_map_t = std::unordered_map<std::string, std::unique_ptr<GenericDeserializerFSharp>>;
+    deserializers_map_t deserializers_;
 
     template <typename X>
     struct RegistererByName {
-      void DispatchToAll(T_DESERIALIZERS_MAP& deserializers) {
+      void DispatchToAll(deserializers_map_t& deserializers) {
         using namespace ::current::reflection;
         // Silently discard duplicate types in the input type list.
         // TODO(dkorolev): This is oh so wrong here.

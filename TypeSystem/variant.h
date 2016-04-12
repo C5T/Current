@@ -140,8 +140,9 @@ struct VariantImpl;
 
 template <typename... TYPES>
 struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
-  using T_TYPELIST = TypeListImpl<TYPES...>;
-  enum { T_TYPELIST_SIZE = TypeListSize<T_TYPELIST>::value };
+  using typelist_t = TypeListImpl<TYPES...>;
+  using DEPRECATED_T_(TYPELIST) = typelist_t;
+  enum { typelist_size = TypeListSize<typelist_t>::value };
 
   std::unique_ptr<CurrentSuper> object_;
 
@@ -151,16 +152,16 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
 
   VariantImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
-  VariantImpl(const VariantImpl<T_TYPELIST>& rhs) { CopyFrom(rhs); }
+  VariantImpl(const VariantImpl<typelist_t>& rhs) { CopyFrom(rhs); }
 
-  VariantImpl(VariantImpl<T_TYPELIST>&& rhs) : object_(std::move(rhs.object_)) {}
+  VariantImpl(VariantImpl<typelist_t>&& rhs) : object_(std::move(rhs.object_)) {}
 
-  VariantImpl& operator=(const VariantImpl<T_TYPELIST>& rhs) {
+  VariantImpl& operator=(const VariantImpl<typelist_t>& rhs) {
     CopyFrom(rhs);
     return *this;
   }
 
-  VariantImpl& operator=(VariantImpl<T_TYPELIST>&& rhs) {
+  VariantImpl& operator=(VariantImpl<typelist_t>&& rhs) {
     object_ = std::move(rhs.object_);
     return *this;
   }
@@ -169,7 +170,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
             bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
-    VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+    VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
   }
 
   template <typename... TS>
@@ -182,7 +183,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
             bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   VariantImpl(X&& input) {
-    VariantTypeCheckedAssignment<T_TYPELIST>::Perform(std::forward<X>(input), object_);
+    VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
     CheckIntegrityImpl();
   }
 
@@ -197,19 +198,19 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
   template <typename F>
   void Call(F&& f) {
     CheckIntegrityImpl();
-    current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
+    current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
   }
 
   template <typename F>
   void Call(F&& f) const {
     CheckIntegrityImpl();
-    current::metaprogramming::RTTIDynamicCall<T_TYPELIST>(*object_, std::forward<F>(f));
+    current::metaprogramming::RTTIDynamicCall<typelist_t>(*object_, std::forward<F>(f));
   }
 
   // By design, `VariantExistsImpl<T>()` and `VariantValueImpl<T>()` do not check
-  // whether `X` is part of `T_TYPELIST`. More specifically, they pass if `dynamic_cast<>` succeeds,
+  // whether `X` is part of `typelist_t`. More specifically, they pass if `dynamic_cast<>` succeeds,
   // and thus will successfully retrieve a derived type as a base one,
-  // regardless of whether the base one is present in `T_TYPELIST`.
+  // regardless of whether the base one is present in `typelist_t`.
   // Use `Call()` to run a strict check.
 
   bool ExistsImpl() const { return (object_.get() != nullptr); }
