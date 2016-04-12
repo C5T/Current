@@ -62,8 +62,8 @@ struct FieldExposedViaREST {
 
 namespace impl {
 
-using STORAGE_HANDLERS_MAP = std::map<std::string, std::function<void(Request)>>;
-using STORAGE_HANDLERS_MAP_ENTRY = std::pair<std::string, std::function<void(Request)>>;
+using storage_handlers_map_t = std::map<std::string, std::function<void(Request)>>;
+using storage_handlers_map_entry_t = std::pair<std::string, std::function<void(Request)>>;
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
 struct RESTfulHandlerGenerator {
@@ -94,7 +94,7 @@ struct RESTfulHandlerGenerator {
       : storage(storage), restful_url_prefix(restful_url_prefix), data_url_component(data_url_component) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
-  STORAGE_HANDLERS_MAP_ENTRY operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
+  storage_handlers_map_entry_t operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
     const std::string restful_url_prefix = this->restful_url_prefix;
     const std::string data_url_component = this->data_url_component;
@@ -107,7 +107,7 @@ struct RESTfulHandlerGenerator {
     using PUTHandler = CustomHandler<PUT, specific_field_t, entry_t, key_t>;
     using DELETEHandler = CustomHandler<DELETE, specific_field_t, entry_t, key_t>;
 
-    return STORAGE_HANDLERS_MAP_ENTRY(
+    return storage_handlers_map_entry_t(
         field_name,
         // Top-level capture by value to make own copy.
         [&storage, restful_url_prefix, field_name, data_url_component](Request request) {
@@ -229,11 +229,11 @@ struct RESTfulHandlerGenerator {
 };
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-STORAGE_HANDLERS_MAP_ENTRY GenerateRESTfulHandler(STORAGE& storage,
-                                                  const std::string& restful_url_prefix,
-                                                  const std::string& data_url_component) {
+storage_handlers_map_entry_t GenerateRESTfulHandler(STORAGE& storage,
+                                                    const std::string& restful_url_prefix,
+                                                    const std::string& data_url_component) {
   return storage(
-      ::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, STORAGE_HANDLERS_MAP_ENTRY>(),
+      ::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, storage_handlers_map_entry_t>(),
       RESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(storage, restful_url_prefix, data_url_component));
 }
 
@@ -311,7 +311,7 @@ class RESTfulStorage {
   const std::string route_prefix_;
   const std::string data_url_component_;
   std::vector<std::string> handler_routes_;
-  impl::STORAGE_HANDLERS_MAP handlers_;
+  impl::storage_handlers_map_t handlers_;
   HTTPRoutesScope handlers_scope_;
 
   // The `BLAH` template parameter is required to fight the "explicit specialization in class scope" error.
@@ -320,7 +320,7 @@ class RESTfulStorage {
     static void RegisterIt(STORAGE_IMPL& storage,
                            const std::string& restful_url_prefix,
                            const std::string& data_url_component,
-                           impl::STORAGE_HANDLERS_MAP& handlers) {
+                           impl::storage_handlers_map_t& handlers) {
       ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, data_url_component, handlers);
       using specific_entry_type_t =
           typename impl::RESTfulHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
@@ -334,8 +334,10 @@ class RESTfulStorage {
 
   template <typename BLAH>
   struct ForEachFieldByIndex<BLAH, 0> {
-    static void RegisterIt(STORAGE_IMPL&, const std::string&, const std::string&, impl::STORAGE_HANDLERS_MAP&) {
-    }
+    static void RegisterIt(STORAGE_IMPL&,
+                           const std::string&,
+                           const std::string&,
+                           impl::storage_handlers_map_t&) {}
   };
 
   static void Serve503(Request r) {
