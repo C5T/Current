@@ -44,13 +44,13 @@ template <typename T,
           template <typename...> class COL_MAP>
 class GenericOneToOne {
  public:
-  using row_t = sfinae::ENTRY_ROW_TYPE<T>;
-  using col_t = sfinae::ENTRY_COL_TYPE<T>;
+  using row_t = sfinae::entry_row_t<T>;
+  using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
   using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
   using forward_map_t = ROW_MAP<row_t, const T*>;
   using transposed_map_t = COL_MAP<col_t, const T*>;
-  using t_rest_behavior = rest::behavior::Matrix;
+  using rest_behavior_t = rest::behavior::Matrix;
 
   explicit GenericOneToOne(MutationJournal& journal) : journal_(journal) {}
 

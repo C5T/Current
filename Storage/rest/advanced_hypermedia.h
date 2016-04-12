@@ -85,7 +85,7 @@ struct AdvancedHypermedia : Hypermedia {
 
   template <typename PARTICULAR_FIELD, typename ENTRY, typename KEY>
   struct RESTful<GET, PARTICULAR_FIELD, ENTRY, KEY> {
-    using brief_entry_t = sfinae::BRIEF_OF_T<ENTRY>;
+    using brief_entry_t = sfinae::brief_of_t<ENTRY>;
 
     // For per-record view, whether a full or brief format should be used.
     bool brief = false;
