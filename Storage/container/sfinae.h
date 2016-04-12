@@ -49,17 +49,17 @@ constexpr auto HasKeyMethod(int) -> decltype(std::declval<const ENTRY>().key(), 
 }
 
 template <typename ENTRY, bool HAS_KEY_FUNCTION>
-struct impl_t_accessor_t {};
+struct impl_key_accessor_t {};
 
 template <typename ENTRY>
-struct impl_t_accessor_t<ENTRY, false> {
+struct impl_key_accessor_t<ENTRY, false> {
   typedef decltype(std::declval<ENTRY>().key) key_t;
   static CF<key_t> GetKey(const ENTRY& entry) { return entry.key; }
   static void SetKey(ENTRY& entry, key_t key) { entry.key = key; }
 };
 
 template <typename ENTRY>
-struct impl_t_accessor_t<ENTRY, true> {
+struct impl_key_accessor_t<ENTRY, true> {
   typedef decltype(std::declval<ENTRY>().key()) key_t;
   // Can not return a reference to a temporary.
   static const key_t GetKey(const ENTRY& entry) { return entry.key(); }
@@ -68,16 +68,16 @@ struct impl_t_accessor_t<ENTRY, true> {
 
 #ifndef CURRENT_WINDOWS
 template <typename ENTRY>
-using key_accessor_t = impl_t_accessor_t<ENTRY, HasKeyMethod<ENTRY>(0)>;
+using key_accessor_t = impl_key_accessor_t<ENTRY, HasKeyMethod<ENTRY>(0)>;
 #else
 // Visual C++ [Enterprise 2015, 00322-8000-00000-AA343] is not friendly with a `constexpr` "call" from "using".
 // Work around it by introducing another `struct`. -- D.K.
 template <typename ENTRY>
-struct vs_impl_t_accessor_t {
-  typedef impl_t_accessor_t<ENTRY, HasKeyMethod<ENTRY>(0)> type;
+struct vs_impl_key_accessor_t {
+  typedef impl_key_accessor_t<ENTRY, HasKeyMethod<ENTRY>(0)> type;
 };
 template <typename ENTRY>
-using key_accessor_t = typename vs_impl_t_accessor_t<ENTRY>::type;
+using key_accessor_t = typename vs_impl_key_accessor_t<ENTRY>::type;
 #endif  // CURRENT_WINDOWS
 
 template <typename ENTRY>
