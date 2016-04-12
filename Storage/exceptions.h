@@ -52,6 +52,14 @@ struct StorageRollbackExceptionWithValue : StorageException {
   T value;
 };
 
+struct UnderlyingStreamHasExternalDataAuthorityException : StorageException {
+  using StorageException::StorageException;
+};
+
+struct StorageIsAlreadyMasterException : StorageException {
+  using StorageException::StorageException;
+};
+
 struct StorageInGracefulShutdownException : InGracefulShutdownException {
   using InGracefulShutdownException::InGracefulShutdownException;
 };

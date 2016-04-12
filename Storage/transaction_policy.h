@@ -46,10 +46,11 @@ class Synchronous final {
   using transaction_t = typename PERSISTER::transaction_t;
   using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
-  Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
+  Synchronous(std::mutex& storage_mutex, PERSISTER& persister, MutationJournal& journal)
+      : storage_mutex_(storage_mutex), persister_(persister), journal_(journal) {}
 
   ~Synchronous() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_);
     destructing_ = true;
   }
 
@@ -59,7 +60,7 @@ class Synchronous final {
   template <typename F, class = ENABLE_IF<!std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<f_result_t<F>>, StrictFuture::Strict> Transaction(F&& f) {
     using result_t = f_result_t<F>;
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<result_t>> promise;
     Future<TransactionResult<result_t>, StrictFuture::Strict> future = promise.get_future();
@@ -98,7 +99,7 @@ class Synchronous final {
 
   template <typename F, class = ENABLE_IF<std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
@@ -135,7 +136,7 @@ class Synchronous final {
   template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<f_result_t<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
     using result_t = f_result_t<F1>;
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
@@ -174,7 +175,7 @@ class Synchronous final {
 
   template <typename F>
   void ReplayTransaction(F&& f, transaction_t&& transaction, current::ss::IndexAndTimestamp idx_ts) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_);
     persister_.ReplayTransaction(std::forward<transaction_t>(transaction), idx_ts);
     for (auto&& mutation : transaction.mutations) {
       f(std::move(mutation));
@@ -182,7 +183,7 @@ class Synchronous final {
   }
 
   void GracefulShutdown() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_);
     destructing_ = true;
   }
 
@@ -203,6 +204,7 @@ class Synchronous final {
     }
   }
 
+  std::mutex& storage_mutex_;
   PERSISTER& persister_;
   MutationJournal& journal_;
   std::mutex mutex_;

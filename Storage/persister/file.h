@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <fstream>
 
+#include "common.h"
 #include "../base.h"
 #include "../exceptions.h"
 #include "../../TypeSystem/Serialization/json.h"
@@ -49,9 +50,12 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
   using DEPRECATED_T_(VARIANT) = variant_t;
   using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
-  explicit JSONFilePersister(fields_update_function_t f, const std::string& filename) : filename_(filename) {
+  explicit JSONFilePersister(std::mutex&, fields_update_function_t f, const std::string& filename)
+      : filename_(filename) {
     Replay(f);
   }
+
+  PersisterDataAuthority DataAuthority() const { return PersisterDataAuthority::Own; }
 
   void PersistJournal(MutationJournal& journal) {
     std::ofstream os(filename_, std::fstream::app);

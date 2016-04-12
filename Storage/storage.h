@@ -174,6 +174,8 @@ using CURRENT_STORAGE_DEFAULT_PERSISTER_PARAM = persister::NoCustomPersisterPara
 template <typename T>
 using CURRENT_STORAGE_DEFAULT_TRANSACTION_POLICY = transaction_policy::Synchronous<T>;
 
+enum class StorageRole : bool { Master = true, Follower = false };
+
 // Generic storage implementation.
 template <template <typename...> class PERSISTER,
           typename FIELDS,
@@ -190,15 +192,17 @@ class GenericStorageImpl {
   using DEPRECATED_T_(PERSISTER) = persister_t;
 
  private:
+  std::mutex mutex_;
   FIELDS fields_;
   persister_t persister_;
   TRANSACTION_POLICY<persister_t> transaction_policy_;
+  StorageRole role_;
 
  public:
   using fields_by_ref_t = FIELDS&;
   using fields_by_cref_t = const FIELDS&;
-  using transaction_t = ::current::storage::Transaction<fields_variant_t>;
-  using transaction_meta_fields_t = ::current::storage::TransactionMetaFields;
+  using transaction_t = Transaction<fields_variant_t>;
+  using transaction_meta_fields_t = TransactionMetaFields;
   using DEPRECATED_T_(FIELDS_BY_REFERENCE) = fields_by_ref_t;
   using DEPRECATED_T_(FIELDS_BY_CONST_REFERENCE) = fields_by_cref_t;
   using DEPRECATED_T_(TRANSACTION) = transaction_t;
@@ -211,9 +215,17 @@ class GenericStorageImpl {
 
   template <typename... ARGS>
   GenericStorageImpl(ARGS&&... args)
-      : persister_([this](const fields_variant_t& entry) { entry.Call(fields_); }, std::forward<ARGS>(args)...),
-        transaction_policy_(persister_, fields_.current_storage_mutation_journal_) {
-    //    persister_.Replay([this](const fields_variant_t& entry) { entry.Call(fields_); });
+      : persister_(mutex_,
+                   [this](const fields_variant_t& entry) { entry.Call(fields_); },
+                   std::forward<ARGS>(args)...),
+        transaction_policy_(mutex_, persister_, fields_.current_storage_mutation_journal_) {
+    role_ = (persister_.DataAuthority() == persister::PersisterDataAuthority::Own) ? StorageRole::Master
+                                                                                   : StorageRole::Follower;
+  }
+
+  StorageRole GetRole() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return role_;
   }
 
   // Used for applying updates by dispatching corresponding events.
@@ -248,6 +260,16 @@ class GenericStorageImpl {
   typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type
   InternalExposeStream() {
     return persister_.InternalExposeStream();
+  }
+
+  void FlipToMaster() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (role_ == StorageRole::Follower) {
+      persister_.AcquireDataAuthority();
+      role_ = StorageRole::Master;
+    } else {
+      CURRENT_THROW(StorageIsAlreadyMasterException());
+    }
   }
 
   void GracefulShutdown() { transaction_policy_.GracefulShutdown(); }

@@ -40,7 +40,6 @@ SOFTWARE.
 
 #include "../Bricks/file/file.h"
 #include "../Bricks/dflags/dflags.h"
-//#include "../Bricks/time/chrono.h"
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
@@ -1476,9 +1475,7 @@ TEST(TransactionalStorage, FollowingStorage) {
 
     EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
 
-    TerminationResponse Terminate() {
-      return TerminationResponse::Terminate;
-    }
+    TerminationResponse Terminate() { return TerminationResponse::Terminate; }
 
    private:
     sherlock_t& stream_;
@@ -1495,13 +1492,14 @@ TEST(TransactionalStorage, FollowingStorage) {
   const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
 
   sherlock_t follower_stream(follower_file_name);
-  StreamReplicator replicator(follower_stream);
+  auto replicator = std::make_unique<StreamReplicator>(follower_stream);
 
   Storage master_storage(master_file_name);
   Storage follower_storage(follower_stream);
 
-  auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(replicator);
+  auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
 
+  current::time::SetNow(std::chrono::microseconds(100));
   {
     const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
@@ -1520,16 +1518,40 @@ TEST(TransactionalStorage, FollowingStorage) {
     EXPECT_EQ(1u, d_size);
   }
   {
-    const auto result =
-        follower_storage.Transaction([](ImmutableFields<Storage> fields) {
-                                     ASSERT_TRUE(Exists(fields.d["one"]));
-                                     EXPECT_EQ(1, Value(fields.d["one"]).rhs);
-                                     }).Go();
+    const auto result = follower_storage.Transaction([](ImmutableFields<Storage> fields) {
+      ASSERT_TRUE(Exists(fields.d["one"]));
+      EXPECT_EQ(1, Value(fields.d["one"]).rhs);
+    }).Go();
     EXPECT_TRUE(WasCommitted(result));
-   }
+  }
 
+  // At this moment the content of both persisted files must be identical.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
             current::FileSystem::ReadFileAsString(follower_file_name));
 
+  EXPECT_THROW(master_storage.FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
+  // Publisher of the `follower_stream` is still in the `replicator`.
+  EXPECT_THROW(follower_storage.FlipToMaster(),
+               current::storage::UnderlyingStreamHasExternalDataAuthorityException);
+
+  // Stop following and become master.
   replicator_scope.Join();
+  replicator.reset();  // Returns publisher to the stream.
+  ASSERT_NO_THROW(follower_storage.FlipToMaster());
+
+  current::time::SetNow(std::chrono::microseconds(200));
+  {
+    const auto result = follower_storage.Transaction([](MutableFields<Storage> fields) {
+      fields.d.Add(Record{"two", 2});
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+  {
+    const auto result = follower_storage.Transaction([](ImmutableFields<Storage> fields) {
+      EXPECT_EQ(2u, fields.d.Size());
+      ASSERT_TRUE(Exists(fields.d["two"]));
+      EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
 }
