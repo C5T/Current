@@ -177,14 +177,14 @@ class GenericOneToOne {
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename MAP>
-  struct Iterator final {
+  struct IteratorImpl final {
     using iterator_t = typename MAP::const_iterator;
     using key_t = typename MAP::key_type;
     iterator_t iterator_;
-    explicit Iterator(iterator_t iterator) : iterator_(iterator) {}
+    explicit IteratorImpl(iterator_t iterator) : iterator_(iterator) {}
     void operator++() { ++iterator_; }
-    bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }
-    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    bool operator==(const IteratorImpl& rhs) const { return iterator_ == rhs.iterator_; }
+    bool operator!=(const IteratorImpl& rhs) const { return !operator==(rhs); }
     sfinae::CF<key_t> key() const { return iterator_->first; }
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
@@ -192,6 +192,7 @@ class GenericOneToOne {
 
   template <typename MAP>
   struct MapAccessor final {
+    using iterator_t = IteratorImpl<MAP>;
     using key_t = typename MAP::key_type;
     const MAP& map_;
 
@@ -203,8 +204,8 @@ class GenericOneToOne {
 
     bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
-    Iterator<MAP> begin() const { return Iterator<MAP>(map_.cbegin()); }
-    Iterator<MAP> end() const { return Iterator<MAP>(map_.cend()); }
+    iterator_t begin() const { return iterator_t(map_.cbegin()); }
+    iterator_t end() const { return iterator_t(map_.cend()); }
   };
 
   const MapAccessor<forward_map_t> Rows() const { return MapAccessor<forward_map_t>(forward_); }
@@ -212,7 +213,7 @@ class GenericOneToOne {
   const MapAccessor<transposed_map_t> Cols() const { return MapAccessor<transposed_map_t>(transposed_); }
 
   // For REST, iterate over all the elemnts of the OneToMany, in no particular order.
-  using iterator_t = Iterator<elements_map_t>;
+  using iterator_t = IteratorImpl<elements_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }
 

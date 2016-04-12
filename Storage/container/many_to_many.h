@@ -109,14 +109,14 @@ class GenericManyToMany {
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename MAP>
-  struct Iterator final {
+  struct IteratorImpl final {
     using iterator_t = typename MAP::const_iterator;
     using key_t = typename MAP::key_type;
     iterator_t iterator;
-    explicit Iterator(iterator_t iterator) : iterator(iterator) {}
+    explicit IteratorImpl(iterator_t iterator) : iterator(iterator) {}
     void operator++() { ++iterator; }
-    bool operator==(const Iterator& rhs) const { return iterator == rhs.iterator; }
-    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    bool operator==(const IteratorImpl& rhs) const { return iterator == rhs.iterator; }
+    bool operator!=(const IteratorImpl& rhs) const { return !operator==(rhs); }
     sfinae::CF<key_t> key() const { return iterator->first; }
     const T& operator*() const { return *iterator->second; }
     const T* operator->() const { return iterator->second; }
@@ -124,6 +124,7 @@ class GenericManyToMany {
 
   template <typename OUTER_KEY, typename INNER_MAP>
   struct InnerAccessor final {
+    using iterator_t = IteratorImpl<INNER_MAP>;
     using INNER_KEY = typename INNER_MAP::key_type;
     const OUTER_KEY key_;
     const INNER_MAP& map_;
@@ -137,8 +138,8 @@ class GenericManyToMany {
 
     bool Has(const INNER_KEY& x) const { return map_.find(x) != map_.end(); }
 
-    Iterator<INNER_MAP> begin() const { return Iterator<INNER_MAP>(map_.cbegin()); }
-    Iterator<INNER_MAP> end() const { return Iterator<INNER_MAP>(map_.cend()); }
+    iterator_t begin() const { return iterator_t(map_.cbegin()); }
+    iterator_t end() const { return iterator_t(map_.cend()); }
   };
 
   template <typename OUTER_MAP>
@@ -186,7 +187,7 @@ class GenericManyToMany {
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
   // For REST, iterate over all the elemnts of the ManyToMany, in no particular order.
-  using iterator_t = Iterator<whole_matrix_map_t>;
+  using iterator_t = IteratorImpl<whole_matrix_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }
 
