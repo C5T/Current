@@ -29,12 +29,16 @@ SOFTWARE.
 
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
 
 #include "exceptions.h"
 #include "pubsub.h"
+
+#include "../TypeSystem/struct.h"
+#include "../TypeSystem/Schema/schema.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
@@ -112,6 +116,14 @@ SOFTWARE.
 
 namespace current {
 namespace sherlock {
+
+CURRENT_STRUCT(SherlockSchema) {
+  CURRENT_FIELD(language, (std::map<std::string, std::string>));
+  CURRENT_FIELD(type_name, std::string);
+  CURRENT_FIELD(type_id, current::reflection::TypeID);
+  CURRENT_FIELD(type_schema, reflection::SchemaInfo);
+  CURRENT_DEFAULT_CONSTRUCTOR(SherlockSchema) {}
+};
 
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
@@ -429,6 +441,10 @@ class StreamImpl {
           HTTPResponseCode.OK,
           "text/html",
           current::net::http::Headers({{"X-Current-Stream-Size", current::ToString(count)}}));
+      } else if (r.url.query.has("schema")) {
+        // Return the schema the user is requesting, in a top-level, or more fine-grained format.
+        // const std::string format = r.url.query["schema"];
+        r(schema_as_http_response_);
       } else if (r.url.query.has("sizeonly")) {
         // Return the number of entries in the stream in body.
         r(current::ToString(count) + '\n', HTTPResponseCode.OK);
@@ -449,6 +465,26 @@ class StreamImpl {
   persistence_layer_t& InternalExposePersister() { return data_->persistence; }
 
  private:
+  static SherlockSchema ConstructSchemaAsObject() {
+    SherlockSchema schema;
+
+    schema.type_name = current::reflection::CurrentTypeName<entry_t>();
+    schema.type_id = Value<current::reflection::ReflectedTypeBase>(
+                         current::reflection::Reflector().ReflectType<entry_t>()).type_id;
+
+    reflection::StructSchema underlying_type_schema;
+    underlying_type_schema.AddType<entry_t>();
+    schema.type_schema = underlying_type_schema.GetSchemaInfo();
+
+    return schema;
+  }
+
+ private:
+  const SherlockSchema schema_as_object_ = ConstructSchemaAsObject();
+  const Response schema_as_http_response_ =
+      Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
+               HTTPResponseCode.OK,
+               current::net::HTTPServerConnection::DefaultJSONContentType());
   std::shared_ptr<StreamData> data_;
   std::unique_ptr<publisher_t> publisher_;
   std::mutex mutex_;

@@ -376,6 +376,15 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     ASSERT_TRUE(result.headers.Has("X-Current-Stream-Size"));
     EXPECT_EQ("0", result.headers.Get("X-Current-Stream-Size"));
   }
+  {
+    // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,
+    // and various serializations.
+    const auto result = HTTP(GET(base_url + "?schema"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    const auto body = ParseJSON<current::sherlock::SherlockSchema, JSONFormat::Minimalistic>(result.body);
+    EXPECT_EQ("RecordWithTimestamp", body.type_name);
+    EXPECT_EQ("9205399982292878352", current::ToString(body.type_id));
+  }
 
   // Publish four records.
   // { "s[0]", "s[1]", "s[2]", "s[3]" } at timestamps 100, 200, 300 and 400 microseconds respectively.
