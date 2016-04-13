@@ -253,7 +253,7 @@ class StreamImpl {
    private:
     // Subscriber thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
     struct SubscriberThreadSharedState {
-      F subscriber;  // The ownership of the subscriber is transferred to instance of this class.
+      F subscriber;  // The ownership of the subscriber is transferred to the instance of this class.
       std::shared_ptr<StreamData> data;
       current::WaitableTerminateSignal terminate_signal;
 
@@ -304,6 +304,7 @@ class StreamImpl {
       bool terminate_sent = false;
       while (true) {
         // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
+        // TODO(dkorolev): This is actually more a case of `EndReached()` first, right?
         if (!terminate_sent && state->terminate_signal) {
           terminate_sent = true;
           if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
@@ -359,11 +360,11 @@ class StreamImpl {
   class GenericSubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    using LISTENER_THREAD = SubscriberThread<TYPE_SUBSCRIBED_TO, UNIQUE_PTR_WITH_CORRECT_DELETER>;
+    using SUBSCRIBER_THREAD = SubscriberThread<TYPE_SUBSCRIBED_TO, UNIQUE_PTR_WITH_CORRECT_DELETER>;
 
    public:
     GenericSubscriberScope(std::shared_ptr<StreamData> data, UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
-        : impl_(std::make_unique<LISTENER_THREAD>(data, std::move(subscriber))) {}
+        : impl_(std::make_unique<SUBSCRIBER_THREAD>(data, std::move(subscriber))) {}
 
     GenericSubscriberScope(GenericSubscriberScope&& rhs) : impl_(std::move(rhs.impl_)) {
       assert(impl_);
@@ -382,7 +383,7 @@ class StreamImpl {
     }
 
    private:
-    std::unique_ptr<LISTENER_THREAD> impl_;
+    std::unique_ptr<SUBSCRIBER_THREAD> impl_;
 
     GenericSubscriberScope() = delete;
     GenericSubscriberScope(const GenericSubscriberScope&) = delete;
