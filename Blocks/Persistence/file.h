@@ -26,7 +26,7 @@ SOFTWARE.
 // A simple, reference, implementation of an file-based persister.
 // The file is replayed at startup to check its integriry and to extract the most recent index/timestamp.
 // Each iterator opens the same file again, to read its first N lines.
-// Uses `ScopeOwnedBy{Me,SomeoneElse}`.
+// Iterators never outlive the persister.
 
 #ifndef BLOCKS_PERSISTENCE_FILE_H
 #define BLOCKS_PERSISTENCE_FILE_H
@@ -161,11 +161,8 @@ class FilePersister {
 
   class IterableRange {
    public:
-    explicit IterableRange(ScopeOwnedByMe<Impl>& impl,
-                           uint64_t begin,
-                           uint64_t end,
-                           std::streampos begin_offset)
-        : impl_(impl, [this]() {}), begin_(begin), end_(end), begin_offset_(begin_offset) {}
+    explicit IterableRange(ScopeOwned<Impl>& impl, uint64_t begin, uint64_t end, std::streampos begin_offset)
+        : impl_(impl, [this]() { valid_ = false; }), begin_(begin), end_(end), begin_offset_(begin_offset) {}
 
     struct Entry {
       idxts_t idx_ts;
@@ -174,11 +171,12 @@ class FilePersister {
 
     class Iterator {
      public:
-      explicit Iterator(const std::string& filename,
-                        uint64_t i,
-                        std::streampos offset,
-                        uint64_t index_at_offset)
-          : i_(i) {
+      Iterator(ScopeOwned<Impl>& impl,
+               const std::string& filename,
+               uint64_t i,
+               std::streampos offset,
+               uint64_t index_at_offset)
+          : impl_(impl, [this]() { valid_ = false; }), i_(i) {
         if (!filename.empty()) {
           fi_ = std::make_unique<std::ifstream>(filename);
           // This `if` condition is only here to test performance with vs. without the `seekg`.
@@ -195,6 +193,9 @@ class FilePersister {
 
       // `operator*` relies each entry will be requested at most once. -- D.K.
       Entry operator*() const {
+        if (!valid_) {
+          CURRENT_THROW(PersistenceFileNoLongerAvailable());
+        }
         Entry result;
         bool found = false;
         while (!found) {
@@ -207,40 +208,57 @@ class FilePersister {
                   CURRENT_THROW(InconsistentIndexException(i_, cursor.index));  // LCOV_EXCL_LINE
                 }
               }))) {
-            // End of file. Should never happen.
+            // End of file. Should never happen as long as the user only iterates over valid ranges.
             CURRENT_THROW(current::Exception());  // LCOV_EXCL_LINE
           }
         }
         return result;
       }
 
-      void operator++() { ++i_; }
+      void operator++() {
+        if (!valid_) {
+          CURRENT_THROW(PersistenceFileNoLongerAvailable());
+        }
+        ++i_;
+      }
       bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+      operator bool() const { return valid_; }
 
      private:
+      ScopeOwnedBySomeoneElse<Impl> impl_;
+      bool valid_ = true;
       std::unique_ptr<std::ifstream> fi_;
       std::unique_ptr<IteratorOverFileOfPersistedEntries<ENTRY>> cit_;
       uint64_t i_;
     };
 
     Iterator begin() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceFileNoLongerAvailable());
+      }
       if (begin_ == end_) {
-        return Iterator("", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return Iterator(impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator(impl_->filename, begin_, begin_offset_, begin_);
+        return Iterator(impl_, impl_->filename, begin_, begin_offset_, begin_);
       }
     }
     Iterator end() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceFileNoLongerAvailable());
+      }
       if (begin_ == end_) {
-        return Iterator("", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return Iterator(impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator("", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
+        return Iterator(impl_, "", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
       }
     }
 
+    operator bool() const { return valid_; }
+
    private:
     mutable ScopeOwnedBySomeoneElse<Impl> impl_;
+    bool valid_ = true;
     const uint64_t begin_;
     const uint64_t end_;
     const std::streampos begin_offset_;

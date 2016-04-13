@@ -27,7 +27,8 @@ SOFTWARE.
 
 #include <chrono>
 
-#include "../../Bricks/exception.h"
+#include "../exceptions.h"
+
 #include "../../Bricks/strings/printf.h"
 
 namespace current {
@@ -67,6 +68,14 @@ struct InvalidIterableRangeException : PersistenceException {
 
 struct NoEntriesPublishedYet : PersistenceException {
   using PersistenceException::PersistenceException;
+};
+
+struct PersistenceMemoryBlockNoLongerAvailable : GracefulShutdownException {
+  using GracefulShutdownException::GracefulShutdownException;
+};
+
+struct PersistenceFileNoLongerAvailable : GracefulShutdownException {
+  using GracefulShutdownException::GracefulShutdownException;
 };
 
 }  // namespace peristence
