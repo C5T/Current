@@ -46,6 +46,11 @@ struct PublisherAlreadyOwnedException : SherlockException {
   using SherlockException::SherlockException;
 };
 
+// TODO(dkorolev) + TODO(mzhurovich): Type hierarchy?
+struct StreamInGracefulShutdownMode : SherlockException {
+  using SherlockException::SherlockException;
+};
+
 }  // namespace sherlock
 }  // namespace current
 

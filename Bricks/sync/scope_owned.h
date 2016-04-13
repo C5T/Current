@@ -219,7 +219,7 @@ class ScopeOwned {
   // Whether the object is destructing.
   // THREAD-SAFE. NEVER THROW.
   bool IsDestructing() const noexcept { return p_actual_instance_->destructing_; }
-  operator bool() const noexcept { return IsDestructing(); }
+  operator bool() const noexcept { return !IsDestructing(); }
 
   // Smart-pointer-style accessors.
   // NOT THREAD-SAFE. CAN THROW IF ALREADY DESTRUCTING.

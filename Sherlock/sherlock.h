@@ -40,6 +40,7 @@ SOFTWARE.
 #include "../Blocks/Persistence/persistence.h"
 #include "../Blocks/SS/ss.h"
 
+#include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/template/decay.h"
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/null_deleter.h"
@@ -137,10 +138,13 @@ class StreamImpl {
 
   class StreamPublisher {
    public:
-    explicit StreamPublisher(std::shared_ptr<StreamData> data) : data_(data) {}
+    explicit StreamPublisher(ScopeOwned<StreamData>& data) : data_(data, []() {}) {}
 
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
+      if (!data_) {
+        CURRENT_THROW(StreamInGracefulShutdownMode());
+      }
       current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
       const auto result = data_->persistence.Publish(entry, us);
       data_->notifier.NotifyAllOfExternalWaitableEvent();
@@ -149,21 +153,25 @@ class StreamImpl {
 
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
+      if (!data_) {
+        CURRENT_THROW(StreamInGracefulShutdownMode());
+      }
       current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
       const auto result = data_->persistence.Publish(std::move(entry), us);
       data_->notifier.NotifyAllOfExternalWaitableEvent();
       return result;
     }
 
+    operator bool() const { return data_; }
+
    private:
-    std::shared_ptr<StreamData> data_;
+    ScopeOwnedBySomeoneElse<StreamData> data_;
   };
   using publisher_t = ss::StreamPublisher<StreamPublisher, ENTRY>;
 
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
-      : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)),
-        publisher_(std::make_unique<publisher_t>(data_)) {}
+      : data_(std::forward<ARGS>(args)...), publisher_(std::make_unique<publisher_t>(data_)) {}
 
   StreamImpl(StreamImpl&& rhs) : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)) {}
 
@@ -254,11 +262,12 @@ class StreamImpl {
     // Subscriber thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
     struct SubscriberThreadSharedState {
       F subscriber;  // The ownership of the subscriber is transferred to the instance of this class.
-      std::shared_ptr<StreamData> data;
+      ScopeOwnedBySomeoneElse<StreamData> data;
       current::WaitableTerminateSignal terminate_signal;
 
-      SubscriberThreadSharedState(std::shared_ptr<StreamData> data, F&& subscriber)
-          : subscriber(std::move(subscriber)), data(data) {}
+      SubscriberThreadSharedState(ScopeOwned<StreamData>& data, F&& subscriber)
+          : subscriber(std::move(subscriber)),
+            data(data, [this]() { terminate_signal.SignalExternalTermination(); }) {}
 
       SubscriberThreadSharedState() = delete;
       SubscriberThreadSharedState(const SubscriberThreadSharedState&) = delete;
@@ -268,7 +277,7 @@ class StreamImpl {
     };
 
    public:
-    SubscriberThread(std::shared_ptr<StreamData> data, F&& subscriber)
+    SubscriberThread(ScopeOwned<StreamData>& data, F&& subscriber)
         : state_(std::make_shared<SubscriberThreadSharedState>(data, std::forward<F>(subscriber))),
           thread_(&SubscriberThread::StaticSubscriberThread, state_) {}
 
@@ -363,7 +372,7 @@ class StreamImpl {
     using SUBSCRIBER_THREAD = SubscriberThread<TYPE_SUBSCRIBED_TO, UNIQUE_PTR_WITH_CORRECT_DELETER>;
 
    public:
-    GenericSubscriberScope(std::shared_ptr<StreamData> data, UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
+    GenericSubscriberScope(ScopeOwned<StreamData>& data, UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
         : impl_(std::make_unique<SUBSCRIBER_THREAD>(data, std::move(subscriber))) {}
 
     GenericSubscriberScope(GenericSubscriberScope&& rhs) : impl_(std::move(rhs.impl_)) {
@@ -450,7 +459,7 @@ class StreamImpl {
   persistence_layer_t& InternalExposePersister() { return data_->persistence; }
 
  private:
-  std::shared_ptr<StreamData> data_;
+  ScopeOwnedByMe<StreamData> data_;
   std::unique_ptr<publisher_t> publisher_;
   std::mutex mutex_;
 
