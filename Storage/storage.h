@@ -43,6 +43,8 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <atomic>
+
 #include "base.h"
 #include "transaction.h"
 #include "transaction_policy.h"
@@ -196,12 +198,12 @@ class GenericStorageImpl {
   FIELDS fields_;
   persister_t persister_;
   TRANSACTION_POLICY<persister_t> transaction_policy_;
-  StorageRole role_;
+  std::atomic<StorageRole> role_;
 
  public:
   using fields_by_ref_t = FIELDS&;
   using fields_by_cref_t = const FIELDS&;
-  using transaction_t = Transaction<fields_variant_t>;
+  using transaction_t = current::storage::Transaction<fields_variant_t>;
   using transaction_meta_fields_t = TransactionMetaFields;
   using DEPRECATED_T_(FIELDS_BY_REFERENCE) = fields_by_ref_t;
   using DEPRECATED_T_(FIELDS_BY_CONST_REFERENCE) = fields_by_cref_t;
@@ -223,10 +225,7 @@ class GenericStorageImpl {
                                                                                    : StorageRole::Follower;
   }
 
-  StorageRole GetRole() const {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return role_;
-  }
+  StorageRole GetRole() const { return role_; }
 
   // Used for applying updates by dispatching corresponding events.
   template <typename... ARGS>
@@ -249,12 +248,6 @@ class GenericStorageImpl {
     return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));
   }
 
-  void ReplayTransaction(transaction_t&& transaction, ::current::ss::IndexAndTimestamp idx_ts) {
-    transaction_policy_.ReplayTransaction([this](fields_variant_t&& entry) {
-      entry.Call(fields_);
-    }, std::forward<transaction_t>(transaction), idx_ts);
-  }
-
   void ExposeRawLogViaHTTP(int port, const std::string& route) { persister_.ExposeRawLogViaHTTP(port, route); }
 
   typename std::result_of<decltype(&persister_t::InternalExposeStream)(persister_t)>::type
@@ -265,7 +258,7 @@ class GenericStorageImpl {
   void FlipToMaster() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (role_ == StorageRole::Follower) {
-      persister_.AcquireDataAuthority();
+      persister_.template AcquireDataAuthority<current::locks::MutexLockStatus::AlreadyLocked>();
       role_ = StorageRole::Master;
     } else {
       CURRENT_THROW(StorageIsAlreadyMasterException());

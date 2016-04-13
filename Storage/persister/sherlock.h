@@ -61,19 +61,18 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     using TerminationResponse = current::ss::TerminationResponse;
     using replay_function_t = std::function<void(const transaction_t&)>;
     replay_function_t replay_f_;
-    idxts_t& last_idxts_;
+    idxts_t last_idxts_;
 
-    SherlockSubscriberImpl(replay_function_t f, idxts_t& last_idxts) : replay_f_(f), last_idxts_(last_idxts) {}
+    SherlockSubscriberImpl(replay_function_t f) : replay_f_(f) {}
 
-    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) const {
+    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
       replay_f_(transaction);
       last_idxts_ = current;
       return EntryResponse::More;
     }
 
     EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
-
-    TerminationResponse Terminate() { return TerminationResponse::Terminate; }
+    TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
   };
   using SherlockSubscriber = current::ss::StreamSubscriber<SherlockSubscriberImpl, transaction_t>;
   using subscriber_scope_t =
@@ -81,7 +80,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(std::mutex& storage_mutex, fields_update_function_t f, ARGS&&... args)
-      : storage_mutex_(storage_mutex),
+      : storage_mutex_ref_(storage_mutex),
         fields_update_f_(f),
         stream_owned_if_any_(std::make_unique<sherlock::Stream<sherlock_entry_t, UNDERLYING_PERSISTER>>(
             std::forward<ARGS>(args)...)),
@@ -95,12 +94,12 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   explicit SherlockStreamPersisterImpl(std::mutex& storage_mutex,
                                        fields_update_function_t f,
                                        sherlock_t& stream_owned_by_someone_else)
-      : storage_mutex_(storage_mutex), fields_update_f_(f), stream_used_(stream_owned_by_someone_else) {
+      : storage_mutex_ref_(storage_mutex), fields_update_f_(f), stream_used_(stream_owned_by_someone_else) {
     authority_ = (stream_used_.DataAuthority() == current::sherlock::StreamDataAuthority::Own)
                      ? PersisterDataAuthority::Own
                      : PersisterDataAuthority::External;
     subscriber_ = std::make_unique<SherlockSubscriber>(
-        [this](const transaction_t& transaction) { ApplyMutations(transaction); }, last_idxts_);
+        [this](const transaction_t& transaction) { ApplyMutations(transaction); });
     if (authority_ == PersisterDataAuthority::Own) {
       // Do not use lock since we are in ctor.
       ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>();
@@ -112,7 +111,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   ~SherlockStreamPersisterImpl() { TerminateStreamSubscription(); }
 
   PersisterDataAuthority DataAuthority() const {
-    std::lock_guard<std::mutex> lock(storage_mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     return authority_;
   }
 
@@ -130,24 +129,19 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     }
   }
 
-  void ReplayTransaction(transaction_t&& transaction, current::ss::IndexAndTimestamp idx_ts) {
-    if (stream_used_.Publish(transaction, idx_ts.us).index != idx_ts.index) {
-      CURRENT_THROW(current::Exception());  // TODO(dkorolev): Proper exception text.
-    }
-  }
-
   void ExposeRawLogViaHTTP(int port, const std::string& route) {
     handlers_scope_ += HTTP(port).Register(route, URLPathArgs::CountMask::None, stream_used_);
   }
 
   sherlock_t& InternalExposeStream() { return stream_used_; }
 
-  // This method should be called by Storage from the locked section.
+  template <current::locks::MutexLockStatus MLS>
   void AcquireDataAuthority() {
+    current::locks::SmartMutexLockGuard<MLS> lock(storage_mutex_ref_);
     if (stream_used_.DataAuthority() == current::sherlock::StreamDataAuthority::Own) {
       TerminateStreamSubscription();
       ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>(subscriber_->last_idxts_.index + 1u);
-      subscriber_.reset();
+      subscriber_ = nullptr;
     } else {
       CURRENT_THROW(UnderlyingStreamHasExternalDataAuthorityException());
     }
@@ -166,7 +160,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
 
   template <current::locks::MutexLockStatus MLS = current::locks::MutexLockStatus::NeedToLock>
   void ApplyMutations(const transaction_t& transaction) {
-    current::locks::SmartMutexLockGuard<MLS> lock(storage_mutex_);
+    current::locks::SmartMutexLockGuard<MLS> lock(storage_mutex_ref_);
     for (const auto& mutation : transaction.mutations) {
       fields_update_f_(mutation);
     }
@@ -182,17 +176,16 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   void TerminateStreamSubscription() {
     if (subscriber_scope_) {
       subscriber_scope_->Join();
-      subscriber_scope_.release();
+      subscriber_scope_ = nullptr;
     }
   }
 
  private:
-  std::mutex& storage_mutex_;
+  std::mutex& storage_mutex_ref_;
   fields_update_function_t fields_update_f_;
   // `stream_{used/owned}_` are two variables to support both owning and non-owning Storage usage patterns.
   std::unique_ptr<sherlock::Stream<transaction_t, UNDERLYING_PERSISTER>> stream_owned_if_any_;
   sherlock_t& stream_used_;
-  idxts_t last_idxts_;
   std::unique_ptr<SherlockSubscriber> subscriber_;
   std::unique_ptr<subscriber_scope_t> subscriber_scope_;
   PersisterDataAuthority authority_;
