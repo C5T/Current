@@ -125,6 +125,11 @@ CURRENT_STRUCT(SherlockSchema) {
   CURRENT_DEFAULT_CONSTRUCTOR(SherlockSchema) {}
 };
 
+CURRENT_STRUCT(SherlockSchemaFormatNotFound) {
+  CURRENT_FIELD(error, std::string, "Unsupported schema format requested.");
+  CURRENT_FIELD(unsupported_format_requested, Optional<std::string>);
+};
+
 template <typename ENTRY>
 using DEFAULT_PERSISTENCE_LAYER = current::persistence::Memory<ENTRY>;
 
@@ -443,8 +448,19 @@ class StreamImpl {
           current::net::http::Headers({{"X-Current-Stream-Size", current::ToString(count)}}));
       } else if (r.url.query.has("schema")) {
         // Return the schema the user is requesting, in a top-level, or more fine-grained format.
-        // const std::string format = r.url.query["schema"];
-        r(schema_as_http_response_);
+        const std::string format = r.url.query["schema"];
+        if (format.empty()) {
+          r(schema_as_http_response_);
+        } else {
+          const auto cit = schema_as_object_.language.find(format);
+          if (cit != schema_as_object_.language.end()) {
+            r(cit->second);
+          } else {
+            SherlockSchemaFormatNotFound four_oh_four;
+            four_oh_four.unsupported_format_requested = format;
+            r(four_oh_four, HTTPResponseCode.NotFound);
+          }
+        }
       } else if (r.url.query.has("sizeonly")) {
         // Return the number of entries in the stream in body.
         r(current::ToString(count) + '\n', HTTPResponseCode.OK);

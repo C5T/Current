@@ -416,6 +416,23 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
       ASSERT_TRUE(body.language.count("fs"));
       EXPECT_EQ(golden_fs, body.language.at("fs"));
     }
+    {
+      const auto result = HTTP(GET(base_url + "?schema=h"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_h, result.body);
+    }
+    {
+      const auto result = HTTP(GET(base_url + "?schema=fs"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_fs, result.body);
+    }
+    {
+      const auto result = HTTP(GET(base_url + "?schema=blah"));
+      EXPECT_EQ(404, static_cast<int>(result.code));
+      EXPECT_EQ("blah",
+                Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFound>(result.body)
+                          .unsupported_format_requested));
+    }
   }
 
   // Publish four records.
