@@ -217,13 +217,30 @@ TEST(TypeSystemTest, LanguageEnumToString) {
   EXPECT_EQ("fs", current::ToString(current::reflection::Language::FSharp));
 }
 
-TEST(TypeSystemTest, LanguageEnumIterationAndToString) {
+TEST(TypeSystemTest, LanguageEnumIteration) {
   using current::reflection::Language;
   std::vector<std::string> s;
   for (auto l = Language::begin; l != Language::end; ++l) {
     s.push_back(current::ToString(l));
   }
   EXPECT_EQ("internal_json h cpp fs", current::strings::Join(s, ' '));
+}
+
+namespace schema_test {
+struct LanguagesIterator {
+  std::vector<std::string> s;
+  template <current::reflection::Language language_as_compile_time_parameter>
+  void PerLanguage() {
+    s.push_back(current::ToString(language_as_compile_time_parameter));
+  }
+};
+}  // namespace schema_test
+
+TEST(TypeSystemTest, LanguageEnumCompileTimeForEach) {
+  auto it = schema_test::LanguagesIterator();
+  EXPECT_EQ("", current::strings::Join(it.s, ' '));
+  current::reflection::ForEachLanguage(it);
+  EXPECT_EQ("internal_json h cpp fs", current::strings::Join(it.s, ' '));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC

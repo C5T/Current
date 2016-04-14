@@ -63,6 +63,26 @@ enum class Language : int {
   end
 };
 
+template <Language begin, Language end>
+struct ForEachLanguageImpl {
+  template <typename F>
+  static void Call(F&& f) {
+    f.template PerLanguage<begin>();
+    ForEachLanguageImpl<static_cast<Language>(static_cast<int>(begin) + 1), end>::Call(std::forward<F>(f));
+  }
+};
+
+template <Language empty_range>
+struct ForEachLanguageImpl<empty_range, empty_range> {
+  template <typename F>
+  static void Call(F&&) {}
+};
+
+template <typename F>
+void ForEachLanguage(F&& f) {
+  ForEachLanguageImpl<Language::begin, Language::end>::Call(std::forward<F>(f));
+}
+
 inline Language& operator++(Language& language) {
   language = static_cast<Language>(static_cast<int>(language) + 1);
   return language;
