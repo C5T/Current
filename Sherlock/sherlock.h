@@ -465,6 +465,14 @@ class StreamImpl {
   persistence_layer_t& InternalExposePersister() { return data_->persistence; }
 
  private:
+  struct FillPerLanguageSchema {
+    SherlockSchema& schema_ref;
+    explicit FillPerLanguageSchema(SherlockSchema& schema) : schema_ref(schema) {}
+    template <current::reflection::Language language>
+    void PerLanguage() {
+      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>();
+    }
+  };
   static SherlockSchema ConstructSchemaAsObject() {
     SherlockSchema schema;
 
@@ -475,6 +483,8 @@ class StreamImpl {
     reflection::StructSchema underlying_type_schema;
     underlying_type_schema.AddType<entry_t>();
     schema.type_schema = underlying_type_schema.GetSchemaInfo();
+
+    current::reflection::ForEachLanguage(FillPerLanguageSchema(schema));
 
     return schema;
   }

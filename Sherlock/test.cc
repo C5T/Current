@@ -379,11 +379,43 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,
     // and various serializations.
-    const auto result = HTTP(GET(base_url + "?schema"));
-    EXPECT_EQ(200, static_cast<int>(result.code));
-    const auto body = ParseJSON<current::sherlock::SherlockSchema, JSONFormat::Minimalistic>(result.body);
-    EXPECT_EQ("RecordWithTimestamp", body.type_name);
-    EXPECT_EQ("9205399982292878352", current::ToString(body.type_id));
+    const std::string golden_h =
+        "// g++ -c -std=c++11 current.cc\n"
+        "\n"
+        "#include \"current.h\"\n"
+        "\n"
+        "// clang-format off\n"
+        "\n"
+        "namespace current_userspace {\n"
+        "CURRENT_STRUCT(RecordWithTimestamp) {\n"
+        "  CURRENT_FIELD(s, std::string);\n"
+        "  CURRENT_FIELD(t, std::chrono::microseconds);\n"
+        "};\n"
+        "}  // namespace current_userspace\n"
+        "\n"
+        "// clang-format off\n";
+    const std::string golden_fs =
+        "// fsharpi -r Newtonsoft.Json.dll schema.fsx\n"
+        "\n"
+        "open Newtonsoft.Json\n"
+        "let inline JSON o = JsonConvert.SerializeObject(o)\n"
+        "let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
+        "\n"
+        "type RecordWithTimestamp = {\n"
+        "  s : string\n"
+        "  t : int64  // microseconds.\n"
+        "}\n";
+    {
+      const auto result = HTTP(GET(base_url + "?schema"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      const auto body = ParseJSON<current::sherlock::SherlockSchema, JSONFormat::Minimalistic>(result.body);
+      EXPECT_EQ("RecordWithTimestamp", body.type_name);
+      EXPECT_EQ("9205399982292878352", current::ToString(body.type_id));
+      ASSERT_TRUE(body.language.count("h"));
+      EXPECT_EQ(golden_h, body.language.at("h"));
+      ASSERT_TRUE(body.language.count("fs"));
+      EXPECT_EQ(golden_fs, body.language.at("fs"));
+    }
   }
 
   // Publish four records.
