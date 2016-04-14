@@ -188,8 +188,9 @@ TEST(Schema, SmokeTestFullStruct) {
                                   Golden("smoke_test_current_struct.cc").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::CPP>(), Golden("smoke_test_struct.cc").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), Golden("smoke_test_struct.fsx").c_str());
-    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), Golden("smoke_test_struct.json").c_str());
-    // `schema.Describe<Language::JSON>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
+    FileSystem::WriteStringToFile(schema.Describe<Language::InternalFormat>(),
+                                  Golden("smoke_test_struct.json").c_str());
+    // `schema.Describe<Language::InternalFormat>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
     // LCOV_EXCL_STOP
   }
 

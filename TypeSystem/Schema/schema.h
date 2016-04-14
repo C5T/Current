@@ -54,12 +54,19 @@ inline const PrimitiveTypesListImpl& PrimitiveTypesList() {
 }
 
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
-enum class Language {
-  Current,  // C++, `CURRENT_STRUCT`-s.
-  CPP,      // C++, native `struct`-s.
-  FSharp,   // F#.
-  JSON,     // Schema as JSON, which can be parsed back.
+enum class Language : int {
+  begin = 0,
+  InternalFormat = 0,  // Schema as the JSON of an internal format, which can be parsed back.
+  Current,             // C++, `CURRENT_STRUCT`-s.
+  CPP,                 // C++, native `struct`-s.
+  FSharp,              // F#.
+  end
 };
+
+inline Language& operator++(Language& language) {
+  language = static_cast<Language>(static_cast<int>(language) + 1);
+  return language;
+}
 
 template <Language>
 struct LanguageSyntaxImpl;
@@ -392,7 +399,7 @@ CURRENT_STRUCT(SchemaInfo) {
 };
 
 template <>
-struct LanguageDescribeCaller<Language::JSON> {
+struct LanguageDescribeCaller<Language::InternalFormat> {
   static std::string CallDescribe(const SchemaInfo* instance, bool) { return JSON(*instance); }
 };
 
@@ -495,6 +502,28 @@ struct StructSchema {
 };
 
 }  // namespace reflection
+
+// TODO(dkorolev) + TODO(mzhurovich): Unify the semantics for `ToString*<>` Current-wide.
+namespace strings {
+template <>
+struct ToStringImpl<reflection::Language, false, true> {
+  static std::string DoIt(reflection::Language language) {
+    switch (language) {
+      case reflection::Language::InternalFormat:
+        return "internal_json";
+      case reflection::Language::Current:
+        return "h";
+      case reflection::Language::CPP:
+        return "cpp";
+      case reflection::Language::FSharp:
+        return "fs";
+      default:
+        return "language_code_" + ToString(static_cast<int>(language));
+    }
+  }
+};
+}  // namespace current::strings
+
 }  // namespace current
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_SCHEMA_H

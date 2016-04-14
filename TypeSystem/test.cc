@@ -747,3 +747,18 @@ TEST(TypeSystemTest, ComplexCloneCases) {
     EXPECT_EQ(2u, Value<Foo>(y.p).i);
   }
 }
+
+TEST(TypeSystemTest, LanguageEnumToString) {
+  EXPECT_EQ("h", current::ToString(current::reflection::Language::Current));
+  EXPECT_EQ("cpp", current::ToString(current::reflection::Language::CPP));
+  EXPECT_EQ("fs", current::ToString(current::reflection::Language::FSharp));
+}
+
+TEST(TypeSystemTest, LanguageEnumIterationAndToString) {
+  using current::reflection::Language;
+  std::vector<std::string> s;
+  for (auto l = Language::begin; l != Language::end; ++l) {
+    s.push_back(current::ToString(l));
+  }
+  EXPECT_EQ("internal_json h cpp fs", current::strings::Join(s, ' '));
+}
