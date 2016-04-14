@@ -99,14 +99,14 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
-  using mutable_fields_t = MutableFields<STORAGE>;
-  mutable_fields_t fields;
+  using immutable_fields_t = ImmutableFields<STORAGE>;
+  immutable_fields_t fields;
   const FIELD& field;
   const std::string field_name;
   const std::string url_key;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
-                  mutable_fields_t fields,
+                  immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
@@ -116,7 +116,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
         field_name(field_name),
         url_key(url_key) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
-                  mutable_fields_t fields,
+                  immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
