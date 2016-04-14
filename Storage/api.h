@@ -66,7 +66,7 @@ using storage_handlers_map_t = std::map<std::string, std::function<void(Request)
 using storage_handlers_map_entry_t = std::pair<std::string, std::function<void(Request)>>;
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-struct RESTfulHandlerGenerator {
+struct RESTfulDataHandlerGenerator {
   using storage_t = STORAGE;
   using immutable_fields_t = ImmutableFields<STORAGE>;
   using mutable_fields_t = MutableFields<STORAGE>;
@@ -87,17 +87,23 @@ struct RESTfulHandlerGenerator {
   STORAGE& storage;
   const std::string restful_url_prefix;
   const std::string data_url_component;
+  const std::string schema_url_component;
 
-  RESTfulHandlerGenerator(STORAGE& storage,
-                          const std::string& restful_url_prefix,
-                          const std::string& data_url_component)
-      : storage(storage), restful_url_prefix(restful_url_prefix), data_url_component(data_url_component) {}
+  RESTfulDataHandlerGenerator(STORAGE& storage,
+                              const std::string& restful_url_prefix,
+                              const std::string& data_url_component,
+                              const std::string& schema_url_component)
+      : storage(storage),
+        restful_url_prefix(restful_url_prefix),
+        data_url_component(data_url_component),
+        schema_url_component(schema_url_component) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
   storage_handlers_map_entry_t operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
     const std::string restful_url_prefix = this->restful_url_prefix;
     const std::string data_url_component = this->data_url_component;
+    const std::string schema_url_component = this->schema_url_component;
     const std::string field_name = input_field_name;
 
     using entry_t = typename ENTRY_TYPE_WRAPPER::entry_t;
@@ -229,12 +235,13 @@ struct RESTfulHandlerGenerator {
 };
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-storage_handlers_map_entry_t GenerateRESTfulHandler(STORAGE& storage,
-                                                    const std::string& restful_url_prefix,
-                                                    const std::string& data_url_component) {
-  return storage(
-      ::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, storage_handlers_map_entry_t>(),
-      RESTfulHandlerGenerator<REST_IMPL, INDEX, STORAGE>(storage, restful_url_prefix, data_url_component));
+storage_handlers_map_entry_t GenerateRESTfulDataHandler(STORAGE& storage,
+                                                        const std::string& restful_url_prefix,
+                                                        const std::string& data_url_component,
+                                                        const std::string& schema_url_component) {
+  return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, storage_handlers_map_entry_t>(),
+                 RESTfulDataHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
+                     storage, restful_url_prefix, data_url_component, schema_url_component));
 }
 
 }  // namespace impl
@@ -259,7 +266,7 @@ class RESTfulStorage {
     }
     // Fill in the map of `Storage field name` -> `HTTP handler`.
     ForEachFieldByIndex<void, STORAGE_IMPL::FIELDS_COUNT>::RegisterIt(
-        storage, restful_url_prefix, data_url_component, handlers_);
+        storage, restful_url_prefix, data_url_component, schema_url_component, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& handler : handlers_) {
       const auto route = std::make_pair(route_prefix + '/' + data_url_component_ + '/' + handler.first,
@@ -323,14 +330,17 @@ class RESTfulStorage {
     static void RegisterIt(STORAGE_IMPL& storage,
                            const std::string& restful_url_prefix,
                            const std::string& data_url_component,
+                           const std::string& schema_url_component,
                            impl::storage_handlers_map_t& handlers) {
-      ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(storage, restful_url_prefix, data_url_component, handlers);
+      ForEachFieldByIndex<BLAH, I - 1>::RegisterIt(
+          storage, restful_url_prefix, data_url_component, schema_url_component, handlers);
       using specific_entry_type_t =
-          typename impl::RESTfulHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
+          typename impl::RESTfulDataHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
       current::metaprogramming::CallIf<FieldExposedViaREST<STORAGE_IMPL, specific_entry_type_t>::exposed>::With(
           [&] {
-            handlers.insert(impl::GenerateRESTfulHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
-                storage, restful_url_prefix, data_url_component));
+            handlers.insert(impl::GenerateRESTfulDataHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
+                storage, restful_url_prefix, data_url_component, schema_url_component));
+            // TODO(dkorolev): GenerateRESTfulSchemaHandler() here too.
           });
     }
   };
@@ -338,6 +348,7 @@ class RESTfulStorage {
   template <typename BLAH>
   struct ForEachFieldByIndex<BLAH, 0> {
     static void RegisterIt(STORAGE_IMPL&,
+                           const std::string&,
                            const std::string&,
                            const std::string&,
                            impl::storage_handlers_map_t&) {}
