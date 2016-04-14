@@ -120,19 +120,33 @@ struct RESTfulHandlerGenerator {
                 [&handler, &generic_input, &field_name](Request request, const std::string& url_key) {
                   const specific_field_t& field =
                       generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
-
-                  generic_input.storage.Transaction(
-                                            // Capture local variables by value for safe async transactions.
-                                            [handler, generic_input, &field, url_key, field_name](
-                                                mutable_fields_t fields) -> Response {
-                                              using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
-                                              GETInput input(
-                                                  std::move(generic_input), fields, field, field_name, url_key);
-                                              return handler.Run(input);
-                                            },
-                                            std::move(request)).Detach();
+                  if (generic_input.storage.GetRole() == StorageRole::Master) {
+                    generic_input.storage
+                        .ReadWriteTransaction(
+                             // Capture local variables by value for safe async transactions.
+                             [handler, generic_input, &field, url_key, field_name](mutable_fields_t fields)
+                                 -> Response {
+                                   using GETInput = RESTfulGETInput<STORAGE, specific_field_t, false>;
+                                   GETInput input(std::move(generic_input), fields, field, field_name, url_key);
+                                   return handler.Run(input);
+                                 },
+                             std::move(request))
+                        .Detach();
+                  } else {
+                    generic_input.storage
+                        .ReadOnlyTransaction(
+                             // Capture local variables by value for safe async transactions.
+                             [handler, generic_input, &field, url_key, field_name](immutable_fields_t fields)
+                                 -> Response {
+                                   using GETInput = RESTfulGETInput<STORAGE, specific_field_t, true>;
+                                   GETInput input(std::move(generic_input), fields, field, field_name, url_key);
+                                   return handler.Run(input);
+                                 },
+                             std::move(request))
+                        .Detach();
+                  }
                 });
-          } else if (request.method == "POST") {
+          } else if (request.method == "POST" && storage.GetRole() == StorageRole::Master) {
             POSTHandler handler;
             handler.Enter(
                 std::move(request),
@@ -142,7 +156,7 @@ struct RESTfulHandlerGenerator {
                     auto mutable_entry = ParseJSON<typename ENTRY_TYPE_WRAPPER::entry_t>(request.body);
                     specific_field_t& field =
                         generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
-                    generic_input.storage.Transaction(
+                    generic_input.storage.ReadWriteTransaction(
                                               // Capture local variables by value for safe async transactions.
                                               [handler, generic_input, &field, mutable_entry, field_name](
                                                   mutable_fields_t fields) mutable -> Response {
@@ -162,7 +176,7 @@ struct RESTfulHandlerGenerator {
                     request(handler.ErrorBadJSON(e.What()));
                   }
                 });
-          } else if (request.method == "PUT") {
+          } else if (request.method == "PUT" && storage.GetRole() == StorageRole::Master) {
             PUTHandler handler;
             handler.Enter(
                 std::move(request),
@@ -175,7 +189,7 @@ struct RESTfulHandlerGenerator {
                     specific_field_t& field =
                         generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
                     generic_input.storage
-                        .Transaction(
+                        .ReadWriteTransaction(
                              // Capture local variables by value for safe async transactions.
                              [handler, generic_input, &field, url_key, entry, entry_key, field_name](
                                  mutable_fields_t fields) -> Response {
@@ -198,7 +212,7 @@ struct RESTfulHandlerGenerator {
                     request(handler.ErrorBadJSON(e.What()));         // LCOV_EXCL_LINE
                   }
                 });
-          } else if (request.method == "DELETE") {
+          } else if (request.method == "DELETE" && storage.GetRole() == StorageRole::Master) {
             DELETEHandler handler;
             handler.Enter(
                 std::move(request),
@@ -207,7 +221,7 @@ struct RESTfulHandlerGenerator {
                   const auto key = current::FromString<typename ENTRY_TYPE_WRAPPER::key_t>(key_as_string);
                   specific_field_t& field =
                       generic_input.storage(::current::storage::MutableFieldByIndex<INDEX>());
-                  generic_input.storage.Transaction(
+                  generic_input.storage.ReadWriteTransaction(
                                             // Capture local variables by value for safe async transactions.
                                             [handler, generic_input, &field, key, field_name](
                                                 mutable_fields_t fields) -> Response {

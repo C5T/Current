@@ -69,7 +69,7 @@ TEST(Iris, Demo) {
               [&db, &number_of_flowers, &dimension_names](Request request) {
                 EXPECT_EQ("POST", request.method);
                 const std::string body = request.body;
-                db.Transaction([body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
+                db.ReadWriteTransaction([body, &number_of_flowers, &dimension_names](MutableFields<TestDB> fields) {
                   // Skip the first line with labels.
                   bool first_line = true;
                   for (auto flower_definition_line : Split<ByLines>(body)) {

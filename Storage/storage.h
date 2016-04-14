@@ -238,14 +238,33 @@ class GenericStorageImpl {
 
   template <typename F>
   ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict>
-  Transaction(F&& f) {
+  ReadWriteTransaction(F&& f) {
+    if (role_ == StorageRole::Follower) {
+      CURRENT_THROW(ReadWriteTransactionInFollowerStorageException());
+    }
     return transaction_policy_.Transaction([&f, this]() { return f(fields_); });
   }
 
   template <typename F1, typename F2>
-  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict> Transaction(
-      F1&& f1, F2&& f2) {
+  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>
+  ReadWriteTransaction(F1&& f1, F2&& f2) {
+    if (role_ == StorageRole::Follower) {
+      CURRENT_THROW(ReadWriteTransactionInFollowerStorageException());
+    }
     return transaction_policy_.Transaction([&f1, this]() { return f1(fields_); }, std::forward<F2>(f2));
+  }
+
+  template <typename F>
+  ::current::Future<::current::storage::TransactionResult<f_result_t<F>>, ::current::StrictFuture::Strict>
+  ReadOnlyTransaction(F&& f) const {
+    return transaction_policy_.Transaction([&f, this]() { return f(static_cast<const FIELDS&>(fields_)); });
+  }
+
+  template <typename F1, typename F2>
+  ::current::Future<::current::storage::TransactionResult<void>, ::current::StrictFuture::Strict>
+  ReadOnlyTransaction(F1&& f1, F2&& f2) const {
+    return transaction_policy_.Transaction([&f1, this]() { return f1(static_cast<const FIELDS&>(fields_)); },
+                                           std::forward<F2>(f2));
   }
 
   void ExposeRawLogViaHTTP(int port, const std::string& route) { persister_.ExposeRawLogViaHTTP(port, route); }
