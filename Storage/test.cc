@@ -181,6 +181,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(0u, fields.umany_to_umany.Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Empty());
         EXPECT_TRUE(fields.umany_to_umany.Cols().Empty());
+        EXPECT_EQ(0u, fields.umany_to_umany.Rows().Size());
+        EXPECT_EQ(0u, fields.umany_to_umany.Cols().Size());
         fields.umany_to_umany.Add(Cell{1, "one", 1});
         fields.umany_to_umany.Add(Cell{2, "two", 2});
         fields.umany_to_umany.Add(Cell{2, "too", 3});
@@ -188,6 +190,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_FALSE(fields.umany_to_umany.Rows().Empty());
         EXPECT_FALSE(fields.umany_to_umany.Cols().Empty());
+        EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
+        EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(1));
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("one"));
         EXPECT_TRUE(Exists(fields.umany_to_umany.Get(1, "one")));
@@ -205,6 +209,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(0u, fields.uone_to_uone.Size());
         EXPECT_TRUE(fields.uone_to_uone.Rows().Empty());
         EXPECT_TRUE(fields.uone_to_uone.Cols().Empty());
+        EXPECT_EQ(0u, fields.uone_to_uone.Rows().Size());
+        EXPECT_EQ(0u, fields.uone_to_uone.Cols().Size());
         fields.uone_to_uone.Add(Cell{1, "one", 1});  // Adds {1,one=1}
         fields.uone_to_uone.Add(Cell{2, "two", 2});  // Adds {2,two=2}
         fields.uone_to_uone.Add(Cell{2, "too", 3});  // Adds {2,too=3}, removes {2,two=2}
@@ -215,6 +221,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.uone_to_uone.Size());
         EXPECT_FALSE(fields.uone_to_uone.Rows().Empty());
         EXPECT_FALSE(fields.uone_to_uone.Cols().Empty());
+        EXPECT_EQ(3u, fields.uone_to_uone.Rows().Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Cols().Size());
         EXPECT_TRUE(fields.uone_to_uone.Rows().Has(1));
         EXPECT_TRUE(Exists(fields.uone_to_uone.GetEntryFromRow(1)));
         EXPECT_TRUE(fields.uone_to_uone.Cols().Has("one"));
@@ -245,6 +253,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(0u, fields.uone_to_umany.Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Empty());
         EXPECT_TRUE(fields.uone_to_umany.Cols().Empty());
+        EXPECT_EQ(0u, fields.uone_to_umany.Rows().Size());
+        EXPECT_EQ(0u, fields.uone_to_umany.Cols().Size());
         fields.uone_to_umany.Add(Cell{1, "one", 1});   // Adds {1,one=1 }
         fields.uone_to_umany.Add(Cell{2, "two", 5});   // Adds {2,two=5 }
         fields.uone_to_umany.Add(Cell{2, "two", 4});   // Adds {2,two=4 }, overwrites {2,two=5}
@@ -256,6 +266,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(4u, fields.uone_to_umany.Size());
         EXPECT_FALSE(fields.uone_to_umany.Rows().Empty());
         EXPECT_FALSE(fields.uone_to_umany.Cols().Empty());
+        EXPECT_EQ(2u, fields.uone_to_umany.Rows().Size());
+        EXPECT_EQ(4u, fields.uone_to_umany.Cols().Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Has(1));
         EXPECT_FALSE(fields.uone_to_umany.Rows().Has(3));
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("two"));
@@ -402,7 +414,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterage over a `OneToMany`, compari its ordered and unordered versions.
+    // Iterate over a `OneToMany`, compare its ordered and unordered versions.
     {
       const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
@@ -456,6 +468,12 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Rows().Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Cols().Size());
+        EXPECT_EQ(4u, fields.uone_to_umany.Size());
+        EXPECT_EQ(2u, fields.uone_to_umany.Rows().Size());
+        EXPECT_EQ(4u, fields.uone_to_umany.Cols().Size());
 
         fields.d.Add(Record{"one", 100});
         fields.d.Add(Record{"four", 4});
