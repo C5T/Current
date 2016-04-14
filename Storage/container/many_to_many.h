@@ -97,7 +97,7 @@ class GenericManyToMany {
       return nullptr;
     }
   }
-  ImmutableOptional<T> Get(sfinae::CF<T_ROW> row, sfinae::CF<T_COL> col) const {
+  ImmutableOptional<T> Get(sfinae::CF<row_t> row, sfinae::CF<col_t> col) const {
     return operator[](std::make_pair(row, col));
   }
 
