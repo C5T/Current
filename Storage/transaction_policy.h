@@ -58,7 +58,7 @@ class Synchronous final {
   using f_result_t = typename std::result_of<F()>::type;
 
   // Read-write transaction returning non-void type.
-  template <typename F, class = ENABLE_IF<!std::is_void<f_result_t<F>>::value>>
+  template <typename F, class = std::enable_if_t<!std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<f_result_t<F>>, StrictFuture::Strict> Transaction(F&& f) {
     using result_t = f_result_t<F>;
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
@@ -99,7 +99,7 @@ class Synchronous final {
   }
 
   // Read-only transaction returning non-void type.
-  template <typename F, class = ENABLE_IF<!std::is_void<f_result_t<F>>::value>>
+  template <typename F, class = std::enable_if_t<!std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<f_result_t<F>>, StrictFuture::Strict> Transaction(F&& f) const {
     using result_t = f_result_t<F>;
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
@@ -136,7 +136,7 @@ class Synchronous final {
   }
 
   // Read-write transaction returning void type.
-  template <typename F, class = ENABLE_IF<std::is_void<f_result_t<F>>::value>>
+  template <typename F, class = std::enable_if_t<std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
@@ -172,7 +172,7 @@ class Synchronous final {
   }
 
   // Read-only transaction returning void type.
-  template <typename F, class = ENABLE_IF<std::is_void<f_result_t<F>>::value>>
+  template <typename F, class = std::enable_if_t<std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) const {
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
@@ -206,7 +206,7 @@ class Synchronous final {
 
   // TODO(mz+dk): implement proper logic here (consider rollbacks & exceptions).
   // Read-write two-step transaction.
-  template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<f_result_t<F1>>::value>>
+  template <typename F1, typename F2, class = std::enable_if_t<!std::is_void<f_result_t<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
     using result_t = f_result_t<F1>;
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);
@@ -247,7 +247,7 @@ class Synchronous final {
   }
 
   // Read-only two-step transaction.
-  template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<f_result_t<F1>>::value>>
+  template <typename F1, typename F2, class = std::enable_if_t<!std::is_void<f_result_t<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) const {
     using result_t = f_result_t<F1>;
     std::lock_guard<std::mutex> lock(storage_mutex_ref_);

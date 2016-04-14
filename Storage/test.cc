@@ -960,7 +960,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     sherlock_t& stream_;
     std::unique_ptr<sherlock_t::publisher_t> publisher_;
     explicit StreamPublisherOwner(sherlock_t& stream) : stream_(stream) {}
-    ~StreamPublisherOwner() { assert(!publisher_); }
+    ~StreamPublisherOwner() { EXPECT_FALSE(static_cast<bool>(publisher_)); }
     void AcceptPublisher(std::unique_ptr<sherlock_t::publisher_t> publisher) {
       publisher_ = std::move(publisher);
     }
@@ -1610,7 +1610,7 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   EXPECT_THROW(follower_storage.FlipToMaster(),
                current::storage::UnderlyingStreamHasExternalDataAuthorityException);
 
-  // Stop replication process.
+  // Stop the replication process.
   replicator_scope.Join();
   // `StreamReplicator` returns publisher to the stream in its destructor.
   replicator = nullptr;

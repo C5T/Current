@@ -97,20 +97,16 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
         up_status(up_status) {}
 };
 
-template <typename STORAGE, typename FIELD, bool READ_ONLY_TRANSACTION>
+template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
-  using mutable_fields_t = MutableFields<STORAGE>;
   using immutable_fields_t = ImmutableFields<STORAGE>;
-  using fields_type_t =
-      typename std::conditional<READ_ONLY_TRANSACTION, immutable_fields_t, mutable_fields_t>::type;
-  constexpr static bool read_only_transaction = READ_ONLY_TRANSACTION;
-  fields_type_t fields;
+  immutable_fields_t fields;
   const FIELD& field;
   const std::string field_name;
   const std::string url_key;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
-                  fields_type_t fields,
+                  immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
@@ -120,7 +116,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
         field_name(field_name),
         url_key(url_key) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
-                  fields_type_t fields,
+                  immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
@@ -134,7 +130,6 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
 template <typename STORAGE, typename FIELD, typename ENTRY>
 struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
   using mutable_fields_t = MutableFields<STORAGE>;
-  constexpr static bool read_only_transaction = false;
   mutable_fields_t fields;
   FIELD& field;
   const std::string field_name;
@@ -165,7 +160,6 @@ struct RESTfulPOSTInput : RESTfulGenericInput<STORAGE> {
 template <typename STORAGE, typename FIELD, typename ENTRY, typename KEY>
 struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
   using mutable_fields_t = MutableFields<STORAGE>;
-  constexpr static bool read_only_transaction = false;
   mutable_fields_t fields;
   FIELD& field;
   const std::string field_name;
@@ -206,7 +200,6 @@ struct RESTfulPUTInput : RESTfulGenericInput<STORAGE> {
 template <typename STORAGE, typename FIELD, typename KEY>
 struct RESTfulDELETEInput : RESTfulGenericInput<STORAGE> {
   using mutable_fields_t = MutableFields<STORAGE>;
-  constexpr static bool read_only_transaction = false;
   mutable_fields_t fields;
   FIELD& field;
   const std::string field_name;

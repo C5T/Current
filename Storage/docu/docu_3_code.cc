@@ -423,14 +423,14 @@ struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
   struct RESTful: SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY> {
     using ACTUAL_SUPER = SUPER::RESTful<HTTP_VERB, PARTICULAR_FIELD, ENTRY, KEY>;
 
-    template <class INPUT, std::enable_if_t<!INPUT::read_only_transaction>* = nullptr>
-    Response Run(const INPUT& input) const {
+    template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
+    std::enable_if_t<!IS_GET, Response> Run(const INPUT& input) const {
       input.fields.SetTransactionMetaField("who", "unittest");
       return this->ACTUAL_SUPER::template Run<INPUT>(input);
     }
 
-    template <class INPUT, std::enable_if_t<INPUT::read_only_transaction>* = nullptr>
-    Response Run(const INPUT& input) const {
+    template <class INPUT, bool IS_GET = std::is_same<HTTP_VERB, GET>::value>
+    std::enable_if_t<IS_GET, Response> Run(const INPUT& input) const {
       return this->ACTUAL_SUPER::template Run<INPUT>(input);
     }
   };
