@@ -63,15 +63,15 @@ class GenericOneToMany {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
-    const auto it = map_.find(key);
-    if (it != map_.end()) {
-      const T& previous_object = *(it->second);
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      const T& previous_object = *(cit->second);
       journal_.LogMutation(UPDATE_EVENT(object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
-      const auto it = transposed_.find(col);
-      if (it != transposed_.end()) {
-        const T& previous_object = *(it->second);
+      const auto cit = transposed_.find(col);
+      if (cit != transposed_.end()) {
+        const T& previous_object = *(cit->second);
         const auto previous_key = std::make_pair(sfinae::GetRow(previous_object), col);
         journal_.LogMutation(DELETE_EVENT(previous_object),
                              [this, previous_key, previous_object]() { DoAdd(previous_key, previous_object); });
@@ -83,9 +83,9 @@ class GenericOneToMany {
   }
 
   void Erase(const key_t& key) {
-    const auto it = map_.find(key);
-    if (it != map_.end()) {
-      const T& previous_object = *(it->second);
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      const T& previous_object = *(cit->second);
       journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
@@ -94,9 +94,9 @@ class GenericOneToMany {
   void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
 
   void EraseCol(sfinae::CF<col_t> col) {
-    const auto it = transposed_.find(col);
-    if (it != transposed_.end()) {
-      const T& previous_object = *(it->second);
+    const auto cit = transposed_.find(col);
+    if (cit != transposed_.end()) {
+      const T& previous_object = *(cit->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
       journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
@@ -105,9 +105,9 @@ class GenericOneToMany {
   }
 
   ImmutableOptional<T> operator[](const key_t& key) const {
-    const auto it = map_.find(key);
-    if (it != map_.end()) {
-      return ImmutableOptional<T>(FromBarePointer(), it->second.get());
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      return ImmutableOptional<T>(FromBarePointer(), cit->second.get());
     } else {
       return nullptr;
     }
@@ -116,9 +116,9 @@ class GenericOneToMany {
     return operator[](std::make_pair(row, col));
   }
   ImmutableOptional<T> GetEntryFromCol(sfinae::CF<col_t> col) const {
-    const auto it = transposed_.find(col);
-    if (it != transposed_.end()) {
-      return ImmutableOptional<T>(FromBarePointer(), it->second);
+    const auto cit = transposed_.find(col);
+    if (cit != transposed_.end()) {
+      return ImmutableOptional<T>(FromBarePointer(), cit->second);
     } else {
       return nullptr;
     }
