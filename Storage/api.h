@@ -246,11 +246,13 @@ class RESTfulStorage {
                  int port,
                  const std::string& route_prefix,
                  const std::string& restful_url_prefix_input,
-                 const std::string& data_url_component = "data")
+                 const std::string& data_url_component = "data",
+                 const std::string& schema_url_component = "schema")
       : port_(port),
         up_status_(std::make_unique<std::atomic_bool>(true)),
         route_prefix_(route_prefix),
-        data_url_component_(data_url_component) {
+        data_url_component_(data_url_component),
+        schema_url_component_(schema_url_component) {
     const std::string restful_url_prefix = restful_url_prefix_input;
     if (!route_prefix.empty() && route_prefix.back() == '/') {
       CURRENT_THROW(current::Exception("`route_prefix` should not end with a slash."));  // LCOV_EXCL_LINE
@@ -260,10 +262,10 @@ class RESTfulStorage {
         storage, restful_url_prefix, data_url_component, handlers_);
     // Register handlers on a specific port under a specific path prefix.
     for (const auto& handler : handlers_) {
-      const std::string route = route_prefix + '/' + data_url_component_ + '/' + handler.first;
+      const auto route = std::make_pair(route_prefix + '/' + data_url_component_ + '/' + handler.first,
+                                        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One);
       handler_routes_.push_back(route);
-      handlers_scope_ += HTTP(port).Register(
-          route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, handler.second);
+      handlers_scope_ += HTTP(port).Register(route.first, route.second, handler.second);
     }
 
     std::vector<std::string> fields;
@@ -289,18 +291,18 @@ class RESTfulStorage {
       CURRENT_THROW(current::Exception("RESTfulStorage::RegisterAlias(), `" + target + "` is undefined."));
       // LCOV_EXCL_STOP
     }
-    const std::string route = route_prefix_ + '/' + data_url_component_ + '/' + alias_name;
+    const auto route = std::make_pair(route_prefix_ + '/' + data_url_component_ + '/' + alias_name,
+                                      URLPathArgs::CountMask::None | URLPathArgs::CountMask::One);
     handler_routes_.push_back(route);
-    handlers_scope_ +=
-        HTTP(port_).Register(route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, cit->second);
+    handlers_scope_ += HTTP(port_).Register(route.first, route.second, cit->second);
   }
 
   // Support for graceful shutdown. Alpha.
   void SwitchHTTPEndpointsTo503s() {
     *up_status_ = false;
     for (auto& route : handler_routes_) {
-      HTTP(port_).template Register<ReRegisterRoute::SilentlyUpdateExisting>(
-          route, URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, Serve503);
+      HTTP(port_)
+          .template Register<ReRegisterRoute::SilentlyUpdateExisting>(route.first, route.second, Serve503);
     }
   }
 
@@ -310,7 +312,8 @@ class RESTfulStorage {
   std::unique_ptr<std::atomic_bool> up_status_;
   const std::string route_prefix_;
   const std::string data_url_component_;
-  std::vector<std::string> handler_routes_;
+  const std::string schema_url_component_;
+  std::vector<std::pair<std::string, URLPathArgs::CountMask>> handler_routes_;
   impl::storage_handlers_map_t handlers_;
   HTTPRoutesScope handlers_scope_;
 
