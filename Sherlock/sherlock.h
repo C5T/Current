@@ -29,12 +29,16 @@ SOFTWARE.
 
 #include <functional>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <thread>
 
 #include "exceptions.h"
 #include "pubsub.h"
+
+#include "../TypeSystem/struct.h"
+#include "../TypeSystem/Schema/schema.h"
 
 #include "../Blocks/HTTP/api.h"
 #include "../Blocks/Persistence/persistence.h"
@@ -112,6 +116,19 @@ SOFTWARE.
 
 namespace current {
 namespace sherlock {
+
+CURRENT_STRUCT(SherlockSchema) {
+  CURRENT_FIELD(language, (std::map<std::string, std::string>));
+  CURRENT_FIELD(type_name, std::string);
+  CURRENT_FIELD(type_id, current::reflection::TypeID);
+  CURRENT_FIELD(type_schema, reflection::SchemaInfo);
+  CURRENT_DEFAULT_CONSTRUCTOR(SherlockSchema) {}
+};
+
+CURRENT_STRUCT(SherlockSchemaFormatNotFound) {
+  CURRENT_FIELD(error, std::string, "Unsupported schema format requested.");
+  CURRENT_FIELD(unsupported_format_requested, Optional<std::string>);
+};
 
 enum class StreamDataAuthority : bool { Own = true, External = false };
 
@@ -441,14 +458,47 @@ class StreamImpl {
           HTTPResponseCode.OK,
           "text/html",
           current::net::http::Headers({{"X-Current-Stream-Size", current::ToString(count)}}));
-      } else if (r.url.query.has("sizeonly")) {
-        // Return the number of entries in the stream in body.
-        r(current::ToString(count) + '\n', HTTPResponseCode.OK);
-      } else if (count == 0u && r.url.query.has("nowait")) {
-        // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
-        r("", HTTPResponseCode.OK);
       } else {
-        Subscribe(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+        bool schema_requested = false;
+        std::string schema_format;
+        const std::string schema_prefix = "schema.";
+        if (r.url.query.has("schema")) {
+          schema_requested = true;
+          schema_format = r.url.query["schema"];
+        } else if (r.url_path_args.size() == 1) {
+          if (r.url_path_args[0].substr(0, schema_prefix.length()) == schema_prefix) {
+            schema_requested = true;
+            schema_format = r.url_path_args[0].substr(schema_prefix.length());
+          } else {
+            SherlockSchemaFormatNotFound four_oh_four;
+            four_oh_four.unsupported_format_requested = r.url_path_args[0];
+            r(four_oh_four, HTTPResponseCode.NotFound);
+            return;
+          }
+        }
+        if (schema_requested) {
+          // Return the schema the user is requesting, in a top-level, or more fine-grained format.
+          if (schema_format.empty()) {
+            r(schema_as_http_response_);
+          } else {
+            const auto cit = schema_as_object_.language.find(schema_format);
+            if (cit != schema_as_object_.language.end()) {
+              r(cit->second);
+            } else {
+              SherlockSchemaFormatNotFound four_oh_four;
+              four_oh_four.unsupported_format_requested = schema_format;
+              r(four_oh_four, HTTPResponseCode.NotFound);
+            }
+          }
+        } else if (r.url.query.has("sizeonly")) {
+          // Return the number of entries in the stream in body.
+          r(current::ToString(count) + '\n', HTTPResponseCode.OK);
+        } else if (count == 0u && r.url.query.has("nowait")) {
+          // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
+          r("", HTTPResponseCode.OK);
+        } else {
+          Subscribe(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+        }
       }
     } else {
       r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
@@ -461,6 +511,36 @@ class StreamImpl {
   persistence_layer_t& InternalExposePersister() { return data_->persistence; }
 
  private:
+  struct FillPerLanguageSchema {
+    SherlockSchema& schema_ref;
+    explicit FillPerLanguageSchema(SherlockSchema& schema) : schema_ref(schema) {}
+    template <current::reflection::Language language>
+    void PerLanguage() {
+      schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>();
+    }
+  };
+  static SherlockSchema ConstructSchemaAsObject() {
+    SherlockSchema schema;
+
+    schema.type_name = current::reflection::CurrentTypeName<entry_t>();
+    schema.type_id = Value<current::reflection::ReflectedTypeBase>(
+                         current::reflection::Reflector().ReflectType<entry_t>()).type_id;
+
+    reflection::StructSchema underlying_type_schema;
+    underlying_type_schema.AddType<entry_t>();
+    schema.type_schema = underlying_type_schema.GetSchemaInfo();
+
+    current::reflection::ForEachLanguage(FillPerLanguageSchema(schema));
+
+    return schema;
+  }
+
+ private:
+  const SherlockSchema schema_as_object_ = ConstructSchemaAsObject();
+  const Response schema_as_http_response_ =
+      Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
+               HTTPResponseCode.OK,
+               current::net::HTTPServerConnection::DefaultJSONContentType());
   std::shared_ptr<StreamData> data_;
   std::unique_ptr<publisher_t> publisher_;
   StreamDataAuthority authority_;

@@ -34,30 +34,30 @@ namespace rest {
 namespace sfinae {
 
 template <typename T>
-constexpr bool Has_T_BRIEF(char) {
+constexpr bool has_brief_t_type(char) {
   return false;
 }
 
 template <typename T>
-constexpr auto Has_T_BRIEF(int) -> decltype(sizeof(typename T::brief_t), bool()) {
+constexpr auto has_brief_t_type(int) -> decltype(sizeof(typename T::brief_t), bool()) {
   return true;
 }
 
 template <typename T, bool>
-struct BRIEF_OF_T_IMPL;
+struct impl_brief_of_t;
 
 template <typename T>
-struct BRIEF_OF_T_IMPL<T, false> {
+struct impl_brief_of_t<T, false> {
   using type = T;
 };
 
 template <typename T>
-struct BRIEF_OF_T_IMPL<T, true> {
+struct impl_brief_of_t<T, true> {
   using type = typename T::brief_t;
 };
 
 template <typename T>
-using BRIEF_OF_T = typename BRIEF_OF_T_IMPL<T, Has_T_BRIEF<T>(0)>::type;
+using brief_of_t = typename impl_brief_of_t<T, has_brief_t_type<T>(0)>::type;
 
 // TODO(dkorolev) + TODO(mzhurovich): Rename it into something `POST`-related, like `POSTKey()`?
 // TODO(dkorolev) + TODO(mzhurovich): Perhaps have it a `const` function returning the calculated key instead?

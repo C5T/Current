@@ -188,8 +188,9 @@ TEST(Schema, SmokeTestFullStruct) {
                                   Golden("smoke_test_current_struct.cc").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::CPP>(), Golden("smoke_test_struct.cc").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), Golden("smoke_test_struct.fsx").c_str());
-    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), Golden("smoke_test_struct.json").c_str());
-    // `schema.Describe<Language::JSON>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
+    FileSystem::WriteStringToFile(schema.Describe<Language::InternalFormat>(),
+                                  Golden("smoke_test_struct.json").c_str());
+    // `schema.Describe<Language::InternalFormat>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
     // LCOV_EXCL_STOP
   }
 
@@ -208,6 +209,38 @@ TEST(Schema, SmokeTestFullStruct) {
             restored_schema.Describe<Language::CPP>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.fsx")),
             restored_schema.Describe<Language::FSharp>());
+}
+
+TEST(TypeSystemTest, LanguageEnumToString) {
+  EXPECT_EQ("h", current::ToString(current::reflection::Language::Current));
+  EXPECT_EQ("cpp", current::ToString(current::reflection::Language::CPP));
+  EXPECT_EQ("fs", current::ToString(current::reflection::Language::FSharp));
+}
+
+TEST(TypeSystemTest, LanguageEnumIteration) {
+  using current::reflection::Language;
+  std::vector<std::string> s;
+  for (auto l = Language::begin; l != Language::end; ++l) {
+    s.push_back(current::ToString(l));
+  }
+  EXPECT_EQ("internal_json h cpp fs", current::strings::Join(s, ' '));
+}
+
+namespace schema_test {
+struct LanguagesIterator {
+  std::vector<std::string> s;
+  template <current::reflection::Language language_as_compile_time_parameter>
+  void PerLanguage() {
+    s.push_back(current::ToString(language_as_compile_time_parameter));
+  }
+};
+}  // namespace schema_test
+
+TEST(TypeSystemTest, LanguageEnumCompileTimeForEach) {
+  auto it = schema_test::LanguagesIterator();
+  EXPECT_EQ("", current::strings::Join(it.s, ' '));
+  current::reflection::ForEachLanguage(it);
+  EXPECT_EQ("internal_json h cpp fs", current::strings::Join(it.s, ' '));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC
