@@ -350,6 +350,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
 
+  HTTP(FLAGS_sherlock_http_test_port)
+      .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
+  const std::string base_url_with_args =
+      Printf("http://localhost:%d/exposed_more", FLAGS_sherlock_http_test_port);
+
   {
     // Test that verbs other than "GET" result in '405 Method not allowed' error.
     EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "?n=1", "")).code));
@@ -432,6 +437,23 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
       EXPECT_EQ("blah",
                 Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFound>(result.body)
                           .unsupported_format_requested));
+    }
+    {
+      // The `base_url` location does not have the URL argument registered, so it's a plain "standard" 404.
+      const auto result = HTTP(GET(base_url + "/schema.h"));
+      EXPECT_EQ(404, static_cast<int>(result.code));
+    }
+    {
+      // The `base_url_with_args` location can return the schema by its "resource" name.
+      const auto result = HTTP(GET(base_url_with_args + "/schema.h"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_h, result.body);
+    }
+    {
+      // URL querystring parameter overrides the path.
+      const auto result = HTTP(GET(base_url_with_args + "/schema.meh?schema=h"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_h, result.body);
     }
   }
 
