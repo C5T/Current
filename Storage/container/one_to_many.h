@@ -150,63 +150,63 @@ class GenericOneToMany {
     const T* operator->() const { return iterator_->second; }
   };
 
-  template <typename INNER_MAP>
-  struct InnerAccessor final {
-    using iterator_t = IteratorImpl<INNER_MAP>;
-    using INNER_KEY = typename INNER_MAP::key_type;
-    const INNER_MAP& map_;
+  template <typename MAP>
+  struct ElementsAccessor final {
+    using iterator_t = IteratorImpl<MAP>;
+    using key_t = typename MAP::key_type;
+    const MAP& map_;
 
-    InnerAccessor(const INNER_MAP& map) : map_(map) {}
+    ElementsAccessor(const MAP& map) : map_(map) {}
 
     bool Empty() const { return map_.empty(); }
     size_t Size() const { return map_.size(); }
 
-    bool Has(const INNER_KEY& x) const { return map_.find(x) != map_.end(); }
+    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
     iterator_t begin() const { return iterator_t(map_.cbegin()); }
     iterator_t end() const { return iterator_t(map_.cend()); }
   };
 
-  template <typename OUTER_MAP>
-  struct OuterAccessor final {
-    using OUTER_KEY = typename OUTER_MAP::key_type;
-    using INNER_MAP = typename OUTER_MAP::mapped_type;
-    const OUTER_MAP& map_;
+  template <typename ROWS_MAP>
+  struct RowsAccessor final {
+    using key_t = typename ROWS_MAP::key_type;
+    using ELEMENTS_MAP = typename ROWS_MAP::mapped_type;
+    const ROWS_MAP& map_;
 
-    struct OuterIterator final {
-      using iterator_t = typename OUTER_MAP::const_iterator;
+    struct RowsIterator final {
+      using iterator_t = typename ROWS_MAP::const_iterator;
       iterator_t iterator;
-      explicit OuterIterator(iterator_t iterator) : iterator(iterator) {}
+      explicit RowsIterator(iterator_t iterator) : iterator(iterator) {}
       void operator++() { ++iterator; }
-      bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
-      bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
-      InnerAccessor<INNER_MAP> operator*() const { return InnerAccessor<INNER_MAP>(iterator->second); }
+      bool operator==(const RowsIterator& rhs) const { return iterator == rhs.iterator; }
+      bool operator!=(const RowsIterator& rhs) const { return !operator==(rhs); }
+      sfinae::CF<key_t> key() const { return iterator->first; }
+      ElementsAccessor<ELEMENTS_MAP> operator*() const { return ElementsAccessor<ELEMENTS_MAP>(iterator->second); }
     };
 
-    explicit OuterAccessor(const OUTER_MAP& map) : map_(map) {}
+    explicit RowsAccessor(const ROWS_MAP& map) : map_(map) {}
 
     bool Empty() const { return map_.empty(); }
     size_t Size() const { return map_.size(); }
 
-    bool Has(const OUTER_KEY& x) const { return map_.find(x) != map_.end(); }
+    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
-    ImmutableOptional<InnerAccessor<INNER_MAP>> operator[](OUTER_KEY key) const {
+    ImmutableOptional<ElementsAccessor<ELEMENTS_MAP>> operator[](key_t key) const {
       const auto iterator = map_.find(key);
       if (iterator != map_.end()) {
-        return std::move(std::make_unique<InnerAccessor<INNER_MAP>>(iterator->second));
+        return std::move(std::make_unique<ElementsAccessor<ELEMENTS_MAP>>(iterator->second));
       } else {
         return nullptr;
       }
     }
 
-    OuterIterator begin() const { return OuterIterator(map_.cbegin()); }
-    OuterIterator end() const { return OuterIterator(map_.cend()); }
+    RowsIterator begin() const { return RowsIterator(map_.cbegin()); }
+    RowsIterator end() const { return RowsIterator(map_.cend()); }
   };
 
-  const OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
+  const RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
 
-  const InnerAccessor<transposed_map_t> Cols() const { return InnerAccessor<transposed_map_t>(transposed_); }
+  const ElementsAccessor<transposed_map_t> Cols() const { return ElementsAccessor<transposed_map_t>(transposed_); }
 
   // For REST, iterate over all the elemnts of the OneToMany, in no particular order.
   using iterator_t = IteratorImpl<elements_map_t>;
