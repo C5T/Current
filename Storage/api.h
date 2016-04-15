@@ -64,11 +64,18 @@ namespace impl {
 
 struct Route {
   std::string resource_prefix;                // "data" or "schema".
+  std::string resource_suffix;                // "" or ".h", for per-language schema formats.
   URLPathArgs::CountMask resource_args_mask;  // `None|One` for  "data", `None` for "schema".
   std::function<void(Request)> handler;
   Route() = default;
-  Route(const std::string& resource_prefix, URLPathArgs::CountMask mask, std::function<void(Request)> handler)
-      : resource_prefix(resource_prefix), resource_args_mask(mask), handler(handler) {}
+  Route(const std::string& resource_prefix,
+        const std::string& resource_suffix,
+        URLPathArgs::CountMask mask,
+        std::function<void(Request)> handler)
+      : resource_prefix(resource_prefix),
+        resource_suffix(resource_suffix),
+        resource_args_mask(mask),
+        handler(handler) {}
 };
 
 // RESTful routes per fields. Multimap to allow both `/data/$FIELD` and `/schema/$FIELD`.
@@ -76,6 +83,8 @@ using storage_handlers_map_t = std::multimap<std::string, Route>;
 
 // The inner `std::pair<>` of the above multimap.
 using storage_handlers_map_entry_t = typename storage_handlers_map_t::value_type;
+
+using registerer_t = std::function<void(const storage_handlers_map_entry_t&)>;
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
 struct RESTfulDataHandlerGenerator {
@@ -96,22 +105,25 @@ struct RESTfulDataHandlerGenerator {
   template <class VERB, typename FIELD, typename ENTRY, typename KEY>
   using CustomHandler = typename REST_IMPL::template RESTful<VERB, FIELD, ENTRY, KEY>;
 
+  const registerer_t registerer;
   STORAGE& storage;
   const std::string restful_url_prefix;
   const std::string data_url_component;
   const std::string schema_url_component;
 
-  RESTfulDataHandlerGenerator(STORAGE& storage,
+  RESTfulDataHandlerGenerator(registerer_t registerer,
+                              STORAGE& storage,
                               const std::string& restful_url_prefix,
                               const std::string& data_url_component,
                               const std::string& schema_url_component)
-      : storage(storage),
+      : registerer(registerer),
+        storage(storage),
         restful_url_prefix(restful_url_prefix),
         data_url_component(data_url_component),
         schema_url_component(schema_url_component) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
-  storage_handlers_map_entry_t operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
+  void operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
     auto& storage = this->storage;  // For lambdas.
     const std::string restful_url_prefix = this->restful_url_prefix;
     const std::string data_url_component = this->data_url_component;
@@ -125,10 +137,11 @@ struct RESTfulDataHandlerGenerator {
     using PUTHandler = CustomHandler<PUT, specific_field_t, entry_t, key_t>;
     using DELETEHandler = CustomHandler<DELETE, specific_field_t, entry_t, key_t>;
 
-    return storage_handlers_map_entry_t(
+    registerer(storage_handlers_map_entry_t(
         field_name,
         Route(
             data_url_component,
+            "",
             URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
             // Top-level capture by value to make own copy.
             [&storage, restful_url_prefix, field_name, data_url_component, schema_url_component](
@@ -249,48 +262,67 @@ struct RESTfulDataHandlerGenerator {
               } else {
                 request(REST_IMPL::ErrorMethodNotAllowed(request.method));  // LCOV_EXCL_LINE
               }
-            }));
+            })));
   }
 };
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
 struct RESTfulSchemaHandlerGenerator {
+  registerer_t registerer;
   const std::string schema_url_component;
 
-  RESTfulSchemaHandlerGenerator(STORAGE&,            // storage,
+  RESTfulSchemaHandlerGenerator(registerer_t registerer,
+                                STORAGE&,            // storage,
                                 const std::string&,  // restful_url_prefix,
                                 const std::string&,  // data_url_component,
                                 const std::string& schema_url_component)
-      : schema_url_component(schema_url_component) {}
+      : registerer(registerer), schema_url_component(schema_url_component) {}
 
   template <typename FIELD_TYPE, typename ENTRY_TYPE_WRAPPER>
-  storage_handlers_map_entry_t operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
-    return storage_handlers_map_entry_t(
+  void operator()(const char* input_field_name, FIELD_TYPE, ENTRY_TYPE_WRAPPER) {
+    registerer(storage_handlers_map_entry_t(
         input_field_name,
         Route(schema_url_component,
+              "",
               URLPathArgs::CountMask::None,
-              [](Request r) { r(reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::entry_t>()); }));
+              [](Request r) { r(reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::entry_t>()); })));
+    registerer(storage_handlers_map_entry_t(
+        input_field_name,
+        Route(schema_url_component,
+              ".h",
+              URLPathArgs::CountMask::None,
+              [](Request r) {
+                // TODO:
+                // 1) REST-ify top-level schema and data responses.
+                // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
+                // 3) Cache.
+                reflection::StructSchema underlying_type_schema;
+                underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
+                r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>());
+              })));
   }
 };
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-storage_handlers_map_entry_t GenerateRESTfulDataHandler(STORAGE& storage,
-                                                        const std::string& restful_url_prefix,
-                                                        const std::string& data_url_component,
-                                                        const std::string& schema_url_component) {
-  return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, storage_handlers_map_entry_t>(),
-                 RESTfulDataHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
-                     storage, restful_url_prefix, data_url_component, schema_url_component));
+void GenerateRESTfulDataHandler(registerer_t registerer,
+                                STORAGE& storage,
+                                const std::string& restful_url_prefix,
+                                const std::string& data_url_component,
+                                const std::string& schema_url_component) {
+  storage(::current::storage::FieldNameAndTypeByIndex<INDEX>(),
+          RESTfulDataHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
+              registerer, storage, restful_url_prefix, data_url_component, schema_url_component));
 }
 
 template <class REST_IMPL, int INDEX, typename STORAGE>
-storage_handlers_map_entry_t GenerateRESTfulSchemaHandler(STORAGE& storage,
-                                                          const std::string& restful_url_prefix,
-                                                          const std::string& data_url_component,
-                                                          const std::string& schema_url_component) {
-  return storage(::current::storage::FieldNameAndTypeByIndexAndReturn<INDEX, storage_handlers_map_entry_t>(),
-                 RESTfulSchemaHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
-                     storage, restful_url_prefix, data_url_component, schema_url_component));
+void GenerateRESTfulSchemaHandler(registerer_t registerer,
+                                  STORAGE& storage,
+                                  const std::string& restful_url_prefix,
+                                  const std::string& data_url_component,
+                                  const std::string& schema_url_component) {
+  storage(::current::storage::FieldNameAndTypeByIndex<INDEX>(),
+          RESTfulSchemaHandlerGenerator<REST_IMPL, INDEX, STORAGE>(
+              registerer, storage, restful_url_prefix, data_url_component, schema_url_component));
 }
 
 }  // namespace impl
@@ -387,10 +419,13 @@ class RESTfulStorage {
           typename impl::RESTfulDataHandlerGenerator<REST_IMPL, I - 1, STORAGE_IMPL>::specific_entry_type_t;
       current::metaprogramming::CallIf<FieldExposedViaREST<STORAGE_IMPL, specific_entry_type_t>::exposed>::With(
           [&] {
-            handlers.insert(impl::GenerateRESTfulDataHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
-                storage, restful_url_prefix, data_url_component, schema_url_component));
-            handlers.insert(impl::GenerateRESTfulSchemaHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
-                storage, restful_url_prefix, data_url_component, schema_url_component));
+            const auto registerer = [&handlers](const impl::storage_handlers_map_entry_t& restful_route) {
+              handlers.insert(restful_route);
+            };
+            impl::GenerateRESTfulDataHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
+                registerer, storage, restful_url_prefix, data_url_component, schema_url_component);
+            impl::GenerateRESTfulSchemaHandler<REST_IMPL, I - 1, STORAGE_IMPL>(
+                registerer, storage, restful_url_prefix, data_url_component, schema_url_component);
           });
     }
   };
@@ -405,7 +440,7 @@ class RESTfulStorage {
   };
 
   void RegisterRoute(const std::string& field_name, const impl::Route& route) {
-    const auto path = route_prefix_ + '/' + route.resource_prefix + '/' + field_name;
+    const auto path = route_prefix_ + '/' + route.resource_prefix + '/' + field_name + route.resource_suffix;
     handler_routes_.emplace_back(path, route.resource_args_mask);
     handlers_scope_ += HTTP(port_).Register(path, route.resource_args_mask, route.handler);
   }
