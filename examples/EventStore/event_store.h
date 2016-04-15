@@ -97,7 +97,7 @@ struct EventStore final {
       } else {
         const std::string key = r.url_path_args[0];
         // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
-        event_store_storage.Transaction([key](ImmutableFields<event_store_storage_t> fields) -> Response {
+        event_store_storage.ReadOnlyTransaction([key](ImmutableFields<event_store_storage_t> fields) -> Response {
           const auto event = fields.events[key];
           if (Exists(event)) {
             return Value(event);
@@ -113,7 +113,7 @@ struct EventStore final {
         try {
           const auto event = ParseJSON<EVENT_TYPE>(r.body);
           // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
-          event_store_storage.Transaction(
+          event_store_storage.ReadWriteTransaction(
                                   [this, event](MutableFields<event_store_storage_t> fields) -> Response {
                                     auto existing_event = fields.events[event.key];
                                     if (Exists(existing_event)) {

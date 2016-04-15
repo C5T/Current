@@ -27,7 +27,7 @@ SOFTWARE.
 
 #include <chrono>
 
-#include "../exceptions.h"
+#include "../GracefulShutdown/exceptions.h"
 
 #include "../../Bricks/strings/printf.h"
 
@@ -70,12 +70,12 @@ struct NoEntriesPublishedYet : PersistenceException {
   using PersistenceException::PersistenceException;
 };
 
-struct PersistenceMemoryBlockNoLongerAvailable : GracefulShutdownException {
-  using GracefulShutdownException::GracefulShutdownException;
+struct PersistenceMemoryBlockNoLongerAvailable : InGracefulShutdownException {
+  using InGracefulShutdownException::InGracefulShutdownException;
 };
 
-struct PersistenceFileNoLongerAvailable : GracefulShutdownException {
-  using GracefulShutdownException::GracefulShutdownException;
+struct PersistenceFileNoLongerAvailable : InGracefulShutdownException {
+  using InGracefulShutdownException::InGracefulShutdownException;
 };
 
 }  // namespace peristence

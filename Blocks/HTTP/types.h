@@ -222,7 +222,8 @@ struct HTTPImpl {
   template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS = KeepResponseInMemory>
   inline typename ResponseTypeFromRequestType<RESPONSE_PARAMS>::response_type_t operator()(
       const REQUEST_PARAMS& request_params, const RESPONSE_PARAMS& response_params = RESPONSE_PARAMS()) const {
-    client_impl_t impl;
+    typename client_impl_t::http_helper_t::ConstructionParams impl_params;
+    client_impl_t impl(impl_params);
     typedef ImplWrapper<client_impl_t> IMPL_HELPER;
     IMPL_HELPER::PrepareInput(request_params, impl);
     IMPL_HELPER::PrepareInput(response_params, impl);

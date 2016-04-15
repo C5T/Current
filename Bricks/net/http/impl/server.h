@@ -72,9 +72,14 @@ const char* const kTransferEncodingChunkedValue = "chunked";
 // TODO(dkorolev): This is not yet the case, but will be soon once I fix HTTP parse code.
 class HTTPDefaultHelper {
  public:
+  struct ConstructionParams {};
+  HTTPDefaultHelper(const ConstructionParams&) {}
+
   const http::Headers& headers() const { return headers_; }
 
  protected:
+  HTTPDefaultHelper() = default;
+
   inline void OnHeader(const char* key, const char* value) { headers_.SetHeaderOrCookie(key, value); }
 
   inline void OnChunk(const char* chunk, size_t length) { body_.append(chunk, length); }
@@ -89,7 +94,7 @@ class HTTPDefaultHelper {
   std::string body_;
 };
 
-// In constructor, TemplatedHTTPRequestData parses HTTP response from `Connection&` is was provided with.
+// In constructor, GenericHTTPRequestData parses HTTP response from `Connection&` is was provided with.
 // Extracts method, path (URL + parameters), and, if provided, the body.
 //
 // Getters:
@@ -103,13 +108,15 @@ class HTTPDefaultHelper {
 //
 // HTTP message: http://www.w3.org/Protocols/rfc2616/rfc2616.html
 template <class HELPER>
-class TemplatedHTTPRequestData : public HELPER {
+class GenericHTTPRequestData : public HELPER {
  public:
-  inline TemplatedHTTPRequestData(Connection& c,
-                                  const int intial_buffer_size = 1600,
-                                  const double buffer_growth_k = 1.95,
-                                  const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
-      : buffer_(intial_buffer_size) {
+  inline GenericHTTPRequestData(
+      Connection& c,
+      const typename HELPER::ConstructionParams& params = typename HELPER::ConstructionParams(),
+      const int intial_buffer_size = 1600,
+      const double buffer_growth_k = 1.95,
+      const size_t buffer_max_growth_due_to_content_length = 1024 * 1024)
+      : HELPER(params), buffer_(intial_buffer_size) {
     // `offset` is the number of bytes read into `buffer_` so far.
     // `length_cap` is infinity first (size_t is unsigned), and it changes/ to the absolute offset
     // of the end of HTTP body in the buffer_, once `Content-Length` and two consecutive CRLS have been seen.
@@ -322,23 +329,27 @@ class TemplatedHTTPRequestData : public HELPER {
   mutable std::unique_ptr<std::string> prepared_body_;
 
   // Disable any copy/move support since this class uses pointers.
-  TemplatedHTTPRequestData() = delete;
-  TemplatedHTTPRequestData(const TemplatedHTTPRequestData&) = delete;
-  TemplatedHTTPRequestData(TemplatedHTTPRequestData&&) = delete;
-  void operator=(const TemplatedHTTPRequestData&) = delete;
-  void operator=(TemplatedHTTPRequestData&&) = delete;
+  GenericHTTPRequestData() = delete;
+  GenericHTTPRequestData(const GenericHTTPRequestData&) = delete;
+  GenericHTTPRequestData(GenericHTTPRequestData&&) = delete;
+  void operator=(const GenericHTTPRequestData&) = delete;
+  void operator=(GenericHTTPRequestData&&) = delete;
 };
 
 // The default implementation is exposed as HTTPRequestData.
-typedef TemplatedHTTPRequestData<HTTPDefaultHelper> HTTPRequestData;
+using HTTPRequestData = GenericHTTPRequestData<HTTPDefaultHelper>;
 
-class HTTPServerConnection final {
+template <class HTTP_REQUEST_DATA>
+class GenericHTTPServerConnection final {
  public:
   typedef enum { ConnectionClose, ConnectionKeepAlive } ConnectionType;
   // The only constructor parses HTTP headers coming from the socket
   // in the constructor of `message_(connection_)`.
-  HTTPServerConnection(Connection&& c) : connection_(std::move(c)), message_(connection_) {}
-  ~HTTPServerConnection() {
+  GenericHTTPServerConnection(Connection&& c,
+                              const typename HTTP_REQUEST_DATA::ConstructionParams& params =
+                                  typename HTTP_REQUEST_DATA::ConstructionParams())
+      : connection_(std::move(c)), message_(connection_, params) {}
+  ~GenericHTTPServerConnection() {
     if (!responded_) {
       // If a user code throws an exception in a different thread, it will not be caught.
       // But, at least, capitalized "INTERNAL SERVER ERROR" will be returned.
@@ -587,7 +598,7 @@ class HTTPServerConnection final {
     responded_ = true;
   }
 
-  const HTTPRequestData& HTTPRequest() const { return message_; }
+  const GenericHTTPRequestData<HTTP_REQUEST_DATA>& HTTPRequest() const { return message_; }
 
   const IPAndPort& LocalIPAndPort() const { return connection_.LocalIPAndPort(); }
   const IPAndPort& RemoteIPAndPort() const { return connection_.RemoteIPAndPort(); }
@@ -597,18 +608,20 @@ class HTTPServerConnection final {
  private:
   bool responded_ = false;
   Connection connection_;
-  HTTPRequestData message_;
+  GenericHTTPRequestData<HTTP_REQUEST_DATA> message_;
 
   // Disable any copy/move support for extra safety.
-  HTTPServerConnection(const HTTPServerConnection&) = delete;
-  HTTPServerConnection(const Connection&) = delete;
-  HTTPServerConnection(HTTPServerConnection&&) = delete;
-  // The only legit constructor is `HTTPServerConnection(Connection&&)`.
+  GenericHTTPServerConnection(const GenericHTTPServerConnection&) = delete;
+  GenericHTTPServerConnection(const Connection&) = delete;
+  GenericHTTPServerConnection(GenericHTTPServerConnection&&) = delete;
+  // The only legit constructor is `GenericHTTPServerConnection(Connection&&)`.
   void operator=(const Connection&) = delete;
-  void operator=(const HTTPServerConnection&) = delete;
+  void operator=(const GenericHTTPServerConnection&) = delete;
   void operator=(Connection&&) = delete;
-  void operator=(HTTPServerConnection&&) = delete;
+  void operator=(GenericHTTPServerConnection&&) = delete;
 };
+
+using HTTPServerConnection = GenericHTTPServerConnection<HTTPDefaultHelper>;
 
 }  // namespace net
 }  // namespace current
