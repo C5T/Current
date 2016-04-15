@@ -36,7 +36,7 @@ SOFTWARE.
 #include <string>
 #include <vector>
 
-#include "../exceptions.h"
+#include "../Bricks/exception.h"
 
 #include "../../Bricks/strings/printf.h"
 #include "../../Bricks/strings/split.h"
