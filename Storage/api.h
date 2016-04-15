@@ -64,11 +64,18 @@ namespace impl {
 
 struct Route {
   std::string resource_prefix;                // "data" or "schema".
+  std::string resource_suffix;                // "" or ".h", for per-language schema formats.
   URLPathArgs::CountMask resource_args_mask;  // `None|One` for  "data", `None` for "schema".
   std::function<void(Request)> handler;
   Route() = default;
-  Route(const std::string& resource_prefix, URLPathArgs::CountMask mask, std::function<void(Request)> handler)
-      : resource_prefix(resource_prefix), resource_args_mask(mask), handler(handler) {}
+  Route(const std::string& resource_prefix,
+        const std::string& resource_suffix,
+        URLPathArgs::CountMask mask,
+        std::function<void(Request)> handler)
+      : resource_prefix(resource_prefix),
+        resource_suffix(resource_suffix),
+        resource_args_mask(mask),
+        handler(handler) {}
 };
 
 // RESTful routes per fields. Multimap to allow both `/data/$FIELD` and `/schema/$FIELD`.
@@ -134,6 +141,7 @@ struct RESTfulDataHandlerGenerator {
         field_name,
         Route(
             data_url_component,
+            "",
             URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
             // Top-level capture by value to make own copy.
             [&storage, restful_url_prefix, field_name, data_url_component, schema_url_component](
@@ -275,8 +283,23 @@ struct RESTfulSchemaHandlerGenerator {
     registerer(storage_handlers_map_entry_t(
         input_field_name,
         Route(schema_url_component,
+              "",
               URLPathArgs::CountMask::None,
               [](Request r) { r(reflection::CurrentTypeName<typename ENTRY_TYPE_WRAPPER::entry_t>()); })));
+    registerer(storage_handlers_map_entry_t(
+        input_field_name,
+        Route(schema_url_component,
+              ".h",
+              URLPathArgs::CountMask::None,
+              [](Request r) {
+                // TODO:
+                // 1) REST-ify top-level schema and data responses.
+                // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
+                // 3) Cache.
+                reflection::StructSchema underlying_type_schema;
+                underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
+                r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Current>());
+              })));
   }
 };
 
@@ -417,7 +440,7 @@ class RESTfulStorage {
   };
 
   void RegisterRoute(const std::string& field_name, const impl::Route& route) {
-    const auto path = route_prefix_ + '/' + route.resource_prefix + '/' + field_name;
+    const auto path = route_prefix_ + '/' + route.resource_prefix + '/' + field_name + route.resource_suffix;
     handler_routes_.emplace_back(path, route.resource_args_mask);
     handlers_scope_ += HTTP(port_).Register(path, route.resource_args_mask, route.handler);
   }

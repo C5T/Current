@@ -1172,6 +1172,22 @@ TEST(TransactionalStorage, RESTfulAPITest) {
 
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
+  const std::string golden_user_schema_h =
+      "// g++ -c -std=c++11 current.cc\n"
+      "\n"
+      "#include \"current.h\"\n"
+      "\n"
+      "// clang-format off\n"
+      "\n"
+      "namespace current_userspace {\n"
+      "CURRENT_STRUCT(SimpleUser) {\n"
+      "  CURRENT_FIELD(key, std::string);\n"
+      "  CURRENT_FIELD(name, std::string);\n"
+      "};\n"
+      "}  // namespace current_userspace\n"
+      "\n"
+      "// clang-format off\n";
+
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
@@ -1180,6 +1196,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Confirm the schema is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user")).code));
     EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user")).body);
+    EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api/schema/user.h")).body);
     EXPECT_EQ("SimplePost", HTTP(GET(base_url + "/api/schema/post")).body);
     EXPECT_EQ("SimpleLike", HTTP(GET(base_url + "/api/schema/like")).body);
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));
@@ -1189,6 +1206,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Confirm the schema is returned as the alias too.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));
     EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user_alias")).body);
+    EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api/schema/user_alias.h")).body);
 
     // Confirm an empty collection is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
