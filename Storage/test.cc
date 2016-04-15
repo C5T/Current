@@ -23,6 +23,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+#define CURRENT_MOCK_TIME
+
 #include <set>
 
 #include "docu/docu_2_code.cc"
@@ -30,6 +32,7 @@ SOFTWARE.
 
 #include "storage.h"
 #include "api.h"
+#include "persister/sherlock.h"
 
 #include "rest/hypermedia.h"
 
@@ -142,7 +145,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Fill a `Dictionary` container.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         fields.d.Add(Record{"one", 1});
 
         {
@@ -176,7 +179,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Fill a `Matrix` container.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Empty());
         EXPECT_EQ(0u, fields.umany_to_umany.Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Empty());
@@ -200,7 +203,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Fill a `OneToOne` container.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.uone_to_uone.Empty());
         EXPECT_EQ(0u, fields.uone_to_uone.Size());
         EXPECT_TRUE(fields.uone_to_uone.Rows().Empty());
@@ -240,7 +243,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Fill a `OneToMany` container.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.uone_to_umany.Empty());
         EXPECT_EQ(0u, fields.uone_to_umany.Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Empty());
@@ -277,7 +280,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Copy data from unordered `Matrix`, `OneToOne` and `OneToMany` to corresponding ordered ones
     {
-      const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result1 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_TRUE(fields.omany_to_omany.Empty());
         for (auto it = fields.umany_to_umany.WholeMatrixBegin(), end = fields.umany_to_umany.WholeMatrixEnd();
@@ -288,7 +291,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(fields.umany_to_umany.Size(), fields.omany_to_omany.Size());
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result2 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_uone.Empty());
         EXPECT_TRUE(fields.oone_to_oone.Empty());
         for (const auto& element : fields.uone_to_uone) {
@@ -297,7 +300,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(fields.uone_to_uone.Size(), fields.oone_to_oone.Size());
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
-      const auto result3 = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result3 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_TRUE(fields.oone_to_omany.Empty());
         for (const auto& element : fields.uone_to_umany) {
@@ -309,7 +312,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `Matrix`, compare its ordered and unordered versions
     {
-      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_FALSE(fields.omany_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -334,7 +337,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_FALSE(fields.omany_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -362,7 +365,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToOne`, compare its ordered and unordered versions.
     {
-      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_uone.Empty());
         EXPECT_FALSE(fields.oone_to_oone.Empty());
         std::multiset<std::string> data_set;
@@ -382,7 +385,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1 3,too=4 4,fiv=5", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_uone.Empty());
         EXPECT_FALSE(fields.oone_to_oone.Empty());
         std::multiset<std::string> data_set;
@@ -406,7 +409,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterage over a `OneToMany`, compari its ordered and unordered versions.
     {
-      const auto result1 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_FALSE(fields.oone_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -430,7 +433,7 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("1,one=1 1,six=6 2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
-      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
         EXPECT_FALSE(fields.oone_to_omany.Empty());
         std::multiset<std::string> data_set;
@@ -454,7 +457,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Rollback a transaction involving a `Matrix`, `OneToOne` and `OneToMany`.
     {
-      const auto result1 = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result1 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
@@ -482,7 +485,7 @@ TEST(TransactionalStorage, SmokeTest) {
       }).Go();
       EXPECT_FALSE(WasCommitted(result1));
 
-      const auto result2 = storage.Transaction([](ImmutableFields<Storage> fields) {
+      const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
@@ -507,7 +510,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `Matrix` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(2));
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("two"));
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("too"));
@@ -553,7 +556,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToOne` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.uone_to_uone.Rows().Has(1));
         EXPECT_TRUE(fields.uone_to_uone.Cols().Has("one"));
         EXPECT_TRUE(fields.uone_to_uone.Cols().Has("too"));
@@ -595,7 +598,7 @@ TEST(TransactionalStorage, SmokeTest) {
 
     // Iterate over a `OneToMany` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
-      const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.uone_to_umany.Rows().Has(1));
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("six"));
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("one"));
@@ -638,7 +641,7 @@ TEST(TransactionalStorage, SmokeTest) {
     {
       const auto f = [](ImmutableFields<Storage>) { return 42; };
 
-      const auto result = storage.Transaction(f).Go();
+      const auto result = storage.ReadOnlyTransaction(f).Go();
       EXPECT_TRUE(WasCommitted(result));
       EXPECT_TRUE(Exists(result));
       EXPECT_EQ(42, Value(result));
@@ -648,7 +651,7 @@ TEST(TransactionalStorage, SmokeTest) {
   // Replay the entire storage from file.
   {
     Storage replayed(persistence_file_name);
-    const auto result = replayed.Transaction([](ImmutableFields<Storage> fields) {
+    const auto result = replayed.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
       EXPECT_FALSE(fields.d.Empty());
       EXPECT_EQ(2u, fields.d.Size());
       EXPECT_EQ(1, Value(fields.d["one"]).rhs);
@@ -832,7 +835,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `void` lambda successfully returned.
   {
     should_throw = false;
-    const auto result = storage.Transaction(f_void).Go();
+    const auto result = storage.ReadOnlyTransaction(f_void).Go();
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
   }
@@ -840,7 +843,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `void` lambda with rollback requested by user.
   {
     should_throw = true;
-    const auto result = storage.Transaction(f_void).Go();
+    const auto result = storage.ReadOnlyTransaction(f_void).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
   }
@@ -848,7 +851,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `void` lambda with exception.
   {
     should_throw = true;
-    auto result = storage.Transaction(f_void_custom_exception);
+    auto result = storage.ReadOnlyTransaction(f_void_custom_exception);
     result.Wait();
     // We can ignore the exception until we try to get the result.
     EXPECT_THROW(result.Go(), std::logic_error);
@@ -857,7 +860,7 @@ TEST(TransactionalStorage, Exceptions) {
   // `int` lambda successfully returned.
   {
     should_throw = false;
-    const auto result = storage.Transaction(f_int).Go();
+    const auto result = storage.ReadOnlyTransaction(f_int).Go();
     EXPECT_TRUE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
     EXPECT_EQ(42, Value(result));
@@ -867,7 +870,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = true;
     throw_with_value = false;
-    const auto result = storage.Transaction(f_int).Go();
+    const auto result = storage.ReadOnlyTransaction(f_int).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_FALSE(Exists(result));
   }
@@ -876,7 +879,7 @@ TEST(TransactionalStorage, Exceptions) {
   {
     should_throw = true;
     throw_with_value = true;
-    const auto result = storage.Transaction(f_int).Go();
+    const auto result = storage.ReadOnlyTransaction(f_int).Go();
     EXPECT_FALSE(WasCommitted(result));
     EXPECT_TRUE(Exists(result));
     EXPECT_EQ(-1, Value(result));
@@ -887,7 +890,7 @@ TEST(TransactionalStorage, Exceptions) {
     should_throw = true;
     bool was_thrown = false;
     try {
-      storage.Transaction(f_int_custom_exception).Go();
+      storage.ReadOnlyTransaction(f_int_custom_exception).Go();
     } catch (int e) {
       was_thrown = true;
       EXPECT_EQ(100500, e);
@@ -915,7 +918,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   // Perform a couple of transactions.
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
+    const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
       fields.d.Add(Record{"two", 2});
       fields.SetTransactionMetaField("user", "dima");
@@ -924,7 +927,7 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = master_storage.Transaction([](MutableFields<Storage> fields) {
+    const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"three", 3});
       fields.d.Erase("two");
     }).Go();
@@ -934,22 +937,41 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
   // Confirm empty transactions are not persisted.
   {
     current::time::SetNow(std::chrono::microseconds(301));
-    master_storage.Transaction([](ImmutableFields<Storage>) {}).Wait();
+    master_storage.ReadOnlyTransaction([](ImmutableFields<Storage>) {}).Wait();
   }
   {
     current::time::SetNow(std::chrono::microseconds(302));
-    master_storage.Transaction([](MutableFields<Storage>) {}).Wait();
+    master_storage.ReadWriteTransaction([](MutableFields<Storage>) {}).Wait();
   }
 
   // Confirm the non-empty transactions have been persisted, while the empty ones have been skipped.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(golden_storage_file_name),
             current::FileSystem::ReadFileAsString(master_storage_file_name));
 
-  // Create storage for replication.
-  const std::string replicated_storage_file_name =
+  // Create stream for replication.
+  const std::string replicated_stream_file_name =
       current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "data2");
-  const auto replicated_storage_file_remover = current::FileSystem::ScopedRmFile(replicated_storage_file_name);
-  Storage replicated_storage(replicated_storage_file_name);
+  const auto replicated_stream_file_remover = current::FileSystem::ScopedRmFile(replicated_stream_file_name);
+  using transaction_t = typename Storage::transaction_t;
+  using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+  sherlock_t replicated_stream(replicated_stream_file_name);
+
+  struct StreamPublisherOwner {
+    sherlock_t& stream_;
+    std::unique_ptr<sherlock_t::publisher_t> publisher_;
+    explicit StreamPublisherOwner(sherlock_t& stream) : stream_(stream) {}
+    ~StreamPublisherOwner() { EXPECT_FALSE(static_cast<bool>(publisher_)); }
+    void AcceptPublisher(std::unique_ptr<sherlock_t::publisher_t> publisher) {
+      publisher_ = std::move(publisher);
+    }
+    void ReturnPublisherToStream() { stream_.AcquirePublisher(std::move(publisher_)); }
+  };
+  // Move the data authority of the stream to a `StreamPublisherOwner` instance.
+  StreamPublisherOwner stream_publisher_owner(replicated_stream);
+  replicated_stream.MovePublisherTo(stream_publisher_owner);
+
+  // Create storage using following stream.
+  Storage replicated_storage(replicated_stream);
 
   // Replicate data via subscription to master storage raw log.
   const auto response =
@@ -964,16 +986,29 @@ TEST(TransactionalStorage, ReplicationViaHTTP) {
     const auto idx_ts = ParseJSON<idxts_t>(line.substr(0, tab_pos));
     EXPECT_EQ(expected_index, idx_ts.index);
     auto transaction = ParseJSON<Storage::transaction_t>(line.substr(tab_pos + 1));
-    ASSERT_NO_THROW(replicated_storage.ReplayTransaction(std::move(transaction), idx_ts));
+    ASSERT_NO_THROW(stream_publisher_owner.publisher_->Publish(std::move(transaction), idx_ts.us));
     ++expected_index;
   }
 
+  // Return data authority to the stream as we completed the replication process.
+  stream_publisher_owner.ReturnPublisherToStream();
+
   // Check that persisted files are the same.
   EXPECT_EQ(current::FileSystem::ReadFileAsString(master_storage_file_name),
-            current::FileSystem::ReadFileAsString(replicated_storage_file_name));
+            current::FileSystem::ReadFileAsString(replicated_stream_file_name));
+
+  // Wait until the we can see the mutation made in the last transaction.
+  bool last_added_entry_exists;
+  do {
+    const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      return Exists(fields.d["three"]);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+    last_added_entry_exists = Value(result);
+  } while (!last_added_entry_exists);
 
   // Test data consistency performing a transaction in the replicated storage.
-  const auto result = replicated_storage.Transaction([](ImmutableFields<Storage> fields) {
+  const auto result = replicated_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
     EXPECT_EQ(2u, fields.d.Size());
     EXPECT_EQ(1, Value(fields.d["one"]).rhs);
     EXPECT_EQ(3, Value(fields.d["three"]).rhs);
@@ -1041,14 +1076,14 @@ TEST(TransactionalStorage, InternalExposeStream) {
   Storage storage;
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"one", 1});
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }
   {
     current::time::SetNow(std::chrono::microseconds(200));
-    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"two", 2});
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
@@ -1071,7 +1106,7 @@ TEST(TransactionalStorage, GracefulShutdown) {
 
   Storage storage;
   storage.GracefulShutdown();
-  auto result = storage.Transaction([](ImmutableFields<Storage>) {});
+  auto result = storage.ReadOnlyTransaction([](ImmutableFields<Storage>) {});
   ASSERT_THROW(result.Go(), current::storage::StorageInGracefulShutdownException);
 };
 
@@ -1364,7 +1399,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
 
   {
     current::time::SetNow(std::chrono::microseconds(100));
-    const auto result = storage.Transaction([](MutableFields<Storage> fields) {
+    const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
       fields.d.Add(Record{"own_stream", 42});
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
@@ -1415,7 +1450,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
 
     {
       current::time::SetNow(std::chrono::microseconds(2));
-      const auto result = storage.Transaction([](MutableFields<storage_t> fields) {
+      const auto result = storage.ReadWriteTransaction([](MutableFields<storage_t> fields) {
         fields.d.Add(Record{"two", 2});
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
@@ -1450,10 +1485,171 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
   {
     // Confirm replaying storage with a mixed-content stream does its job.
     storage_t replayed(stream);
-    const auto result = replayed.Transaction([](ImmutableFields<storage_t> fields) {
+    const auto result = replayed.ReadOnlyTransaction([](ImmutableFields<storage_t> fields) {
       EXPECT_EQ(1u, fields.d.Size());
       ASSERT_TRUE(Exists(fields.d["two"]));
       EXPECT_EQ(2, Value(fields.d["two"]).rhs);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+}
+
+TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
+  using namespace transactional_storage_test;
+  using Storage = SimpleStorage<SherlockStreamPersister>;
+  using transaction_t = typename Storage::transaction_t;
+  using sherlock_t = current::sherlock::Stream<transaction_t, current::persistence::File>;
+
+  // Class performing stream-level replication.
+  struct StreamReplicatorImpl {
+    using EntryResponse = current::ss::EntryResponse;
+    using TerminationResponse = current::ss::TerminationResponse;
+    using publisher_t = typename sherlock_t::publisher_t;
+
+    StreamReplicatorImpl(sherlock_t& stream) : stream_(stream) { stream.MovePublisherTo(*this); }
+    ~StreamReplicatorImpl() { stream_.AcquirePublisher(std::move(publisher_)); }
+
+    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
+
+    EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
+      assert(publisher_);
+      publisher_->Publish(transaction, current.us);
+      return EntryResponse::More;
+    }
+
+    EntryResponse EntryResponseIfNoMorePassTypeFilter() const { return EntryResponse::More; }
+    TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
+
+   private:
+    sherlock_t& stream_;
+    std::unique_ptr<publisher_t> publisher_;
+  };
+  using StreamReplicator = current::ss::StreamSubscriber<StreamReplicatorImpl, transaction_t>;
+
+  const std::string master_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "master");
+  const auto master_file_remover = current::FileSystem::ScopedRmFile(master_file_name);
+
+  const std::string follower_file_name =
+      current::FileSystem::JoinPath(FLAGS_transactional_storage_test_tmpdir, "follower");
+  const auto follower_file_remover = current::FileSystem::ScopedRmFile(follower_file_name);
+
+  sherlock_t follower_stream(follower_file_name);
+  // Replicator acquires the stream's persister object in its constructor.
+  auto replicator = std::make_unique<StreamReplicator>(follower_stream);
+
+  // Underlying stream is created and owned by `master_storage`.
+  Storage master_storage(master_file_name);
+  // Follower storage is created atop a stream with external data authority.
+  Storage follower_storage(follower_stream);
+
+  // Launch continuos replication process.
+  auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
+
+  // Start RESTful service atop follower storage.
+  auto rest = RESTfulStorage<Storage>(
+      follower_storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
+  // Confirm an empty collection is returned.
+  {
+    const auto result = HTTP(GET(base_url + "/api/data/user"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("", result.body);
+  }
+
+  // Publish one record.
+  current::time::SetNow(std::chrono::microseconds(100));
+  {
+    const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.user.Add(SimpleUser("John", "JD"));
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+
+  // Wait until the transaction performed above is replicated to the `follower_stream` and imported by
+  // the `follower_storage`.
+  {
+    size_t user_size = 0u;
+    do {
+      const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+        return fields.user.Size();
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result));
+      user_size = Value(result);
+    } while (user_size == 0u);
+    EXPECT_EQ(1u, user_size);
+  }
+
+  // Check that the the following storage now has the same record as the master one.
+  {
+    const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+      ASSERT_TRUE(Exists(fields.user["John"]));
+      EXPECT_EQ("JD", Value(fields.user["John"]).name);
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+  {
+    const auto result = HTTP(GET(base_url + "/api/data/user/John"));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("JD", ParseJSON<SimpleUser>(result.body).name);
+  }
+
+  // Mutating access to the RESTful service of the `follower` is not allowed.
+  {
+    const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
+    EXPECT_EQ(405, static_cast<int>(post_response.code));
+    const auto put_response = HTTP(PUT(base_url + "/api/data/user/John", SimpleUser("John", "DJ")));
+    EXPECT_EQ(405, static_cast<int>(post_response.code));
+    const auto delete_response = HTTP(DELETE(base_url + "/api/data/user/John"));
+    EXPECT_EQ(405, static_cast<int>(post_response.code));
+  }
+
+  // Attempt to run read-write transaction in `Follower` mode throws an exception.
+  EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) {}),
+               current::storage::ReadWriteTransactionInFollowerStorageException);
+  EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) { return 42; }, [](int) {}),
+               current::storage::ReadWriteTransactionInFollowerStorageException);
+
+  // At this moment the content of both persisted files must be identical.
+  EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
+            current::FileSystem::ReadFileAsString(follower_file_name));
+
+  // `FlipToMaster()` method on a storage with `Master` role throws an exception.
+  EXPECT_THROW(master_storage.FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
+  // Publisher of the `follower_stream` is still in the `replicator`.
+  EXPECT_THROW(follower_storage.FlipToMaster(),
+               current::storage::UnderlyingStreamHasExternalDataAuthorityException);
+
+  // Stop the replication process.
+  replicator_scope.Join();
+  // `StreamReplicator` returns publisher to the stream in its destructor.
+  replicator = nullptr;
+  // Switch to a `Master` role.
+  ASSERT_NO_THROW(follower_storage.FlipToMaster());
+
+  // Publish record and check that everything goes well.
+  current::time::SetNow(std::chrono::microseconds(200));
+  {
+    const auto result = follower_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+      fields.user.Add(SimpleUser("max", "MZ"));
+    }).Go();
+    EXPECT_TRUE(WasCommitted(result));
+  }
+  current::time::SetNow(std::chrono::microseconds(300));
+  {
+    // Publish one more record using REST.
+    const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("dima", "DK")));
+    EXPECT_EQ(201, static_cast<int>(post_response.code));
+    const auto user_key = post_response.body;
+
+    // Ensure that all the records are in place.
+    const auto result = follower_storage.ReadOnlyTransaction([user_key](ImmutableFields<Storage> fields) {
+      EXPECT_EQ(3u, fields.user.Size());
+      ASSERT_TRUE(Exists(fields.user["max"]));
+      EXPECT_EQ("MZ", Value(fields.user["max"]).name);
+      ASSERT_TRUE(Exists(fields.user[user_key]));
+      EXPECT_EQ("DK", Value(fields.user[user_key]).name);
     }).Go();
     EXPECT_TRUE(WasCommitted(result));
   }

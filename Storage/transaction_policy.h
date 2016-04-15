@@ -46,20 +46,22 @@ class Synchronous final {
   using transaction_t = typename PERSISTER::transaction_t;
   using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
-  Synchronous(PERSISTER& persister, MutationJournal& journal) : persister_(persister), journal_(journal) {}
+  Synchronous(std::mutex& storage_mutex, PERSISTER& persister, MutationJournal& journal)
+      : storage_mutex_ref_(storage_mutex), persister_(persister), journal_(journal) {}
 
   ~Synchronous() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     destructing_ = true;
   }
 
   template <typename F>
   using f_result_t = typename std::result_of<F()>::type;
 
-  template <typename F, class = ENABLE_IF<!std::is_void<f_result_t<F>>::value>>
+  // Read-write transaction returning non-void type.
+  template <typename F, class = std::enable_if_t<!std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<f_result_t<F>>, StrictFuture::Strict> Transaction(F&& f) {
     using result_t = f_result_t<F>;
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<result_t>> promise;
     Future<TransactionResult<result_t>, StrictFuture::Strict> future = promise.get_future();
@@ -96,9 +98,47 @@ class Synchronous final {
     return future;
   }
 
-  template <typename F, class = ENABLE_IF<std::is_void<f_result_t<F>>::value>>
+  // Read-only transaction returning non-void type.
+  template <typename F, class = std::enable_if_t<!std::is_void<f_result_t<F>>::value>>
+  Future<TransactionResult<f_result_t<F>>, StrictFuture::Strict> Transaction(F&& f) const {
+    using result_t = f_result_t<F>;
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
+    journal_.AssertEmpty();
+    std::promise<TransactionResult<result_t>> promise;
+    Future<TransactionResult<result_t>, StrictFuture::Strict> future = promise.get_future();
+    if (destructing_) {
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
+      return future;                                                                         // LCOV_EXCL_LINE
+    }
+    bool successful = false;
+    result_t f_result;
+    try {
+      f_result = f();
+      successful = true;
+    } catch (StorageRollbackExceptionWithValue<result_t> e) {
+      promise.set_value(TransactionResult<result_t>::RolledBack(std::move(e.value)));
+    } catch (StorageRollbackExceptionWithNoValue) {
+      promise.set_value(TransactionResult<result_t>::RolledBack(OptionalResultMissing()));
+    } catch (...) {  // The exception is captured with `std::current_exception()` below.
+      // LCOV_EXCL_START
+      try {
+        promise.set_exception(std::current_exception());
+      } catch (const std::exception& e) {
+        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
+        std::exit(-1);
+      }
+      // LCOV_EXCL_STOP
+    }
+    if (successful) {
+      promise.set_value(TransactionResult<result_t>::Committed(std::move(f_result)));
+    }
+    return future;
+  }
+
+  // Read-write transaction returning void type.
+  template <typename F, class = std::enable_if_t<std::is_void<f_result_t<F>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
@@ -131,11 +171,45 @@ class Synchronous final {
     return future;
   }
 
+  // Read-only transaction returning void type.
+  template <typename F, class = std::enable_if_t<std::is_void<f_result_t<F>>::value>>
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F&& f) const {
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
+    journal_.AssertEmpty();
+    std::promise<TransactionResult<void>> promise;
+    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
+    if (destructing_) {
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));
+      return future;
+    }
+    bool successful = false;
+    try {
+      f();
+      successful = true;
+    } catch (StorageRollbackExceptionWithNoValue) {
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultExists()));
+    } catch (...) {  // The exception is captured with `std::current_exception()` below.
+      // LCOV_EXCL_START
+      try {
+        promise.set_exception(std::current_exception());
+      } catch (const std::exception& e) {
+        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
+        std::exit(-1);
+      }
+      // LCOV_EXCL_STOP
+    }
+    if (successful) {
+      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
+    }
+    return future;
+  }
+
   // TODO(mz+dk): implement proper logic here (consider rollbacks & exceptions).
-  template <typename F1, typename F2, class = ENABLE_IF<!std::is_void<f_result_t<F1>>::value>>
+  // Read-write two-step transaction.
+  template <typename F1, typename F2, class = std::enable_if_t<!std::is_void<f_result_t<F1>>::value>>
   Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) {
     using result_t = f_result_t<F1>;
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     journal_.AssertEmpty();
     std::promise<TransactionResult<void>> promise;
     Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
@@ -172,17 +246,43 @@ class Synchronous final {
     return future;
   }
 
-  template <typename F>
-  void ReplayTransaction(F&& f, transaction_t&& transaction, current::ss::IndexAndTimestamp idx_ts) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    persister_.ReplayTransaction(std::forward<transaction_t>(transaction), idx_ts);
-    for (auto&& mutation : transaction.mutations) {
-      f(std::move(mutation));
+  // Read-only two-step transaction.
+  template <typename F1, typename F2, class = std::enable_if_t<!std::is_void<f_result_t<F1>>::value>>
+  Future<TransactionResult<void>, StrictFuture::Strict> Transaction(F1&& f1, F2&& f2) const {
+    using result_t = f_result_t<F1>;
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
+    journal_.AssertEmpty();
+    std::promise<TransactionResult<void>> promise;
+    Future<TransactionResult<void>, StrictFuture::Strict> future = promise.get_future();
+    if (destructing_) {
+      promise.set_exception(std::make_exception_ptr(StorageInGracefulShutdownException()));  // LCOV_EXCL_LINE
+      return future;                                                                         // LCOV_EXCL_LINE
     }
+    try {
+      f2(f1());
+      promise.set_value(TransactionResult<void>::Committed(OptionalResultExists()));
+    } catch (StorageRollbackExceptionWithValue<result_t> e) {
+      // Transaction was rolled back, but returned a value, which we try to pass again to `f2`.
+      f2(std::move(e.value));
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+    } catch (StorageRollbackExceptionWithNoValue) {
+      // Transaction was rolled back and returned nothing we can pass to `f2`.
+      promise.set_value(TransactionResult<void>::RolledBack(OptionalResultMissing()));
+    } catch (...) {  // The exception is captured with `std::current_exception()` below.
+      // LCOV_EXCL_START
+      try {
+        promise.set_exception(std::current_exception());
+      } catch (const std::exception& e) {
+        std::cerr << "`promise.set_exception()` failed in Synchronous::Transaction: " << e.what() << std::endl;
+        std::exit(-1);
+      }
+      // LCOV_EXCL_STOP
+    }
+    return future;
   }
 
   void GracefulShutdown() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(storage_mutex_ref_);
     destructing_ = true;
   }
 
@@ -203,6 +303,7 @@ class Synchronous final {
     }
   }
 
+  std::mutex& storage_mutex_ref_;
   PERSISTER& persister_;
   MutationJournal& journal_;
   std::mutex mutex_;
