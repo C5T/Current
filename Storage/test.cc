@@ -1177,7 +1177,18 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     // Register RESTful HTTP endpoints, in a scoped way.
     auto rest = RESTfulStorage<Storage>(
         storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
+    // Confirm the schema is returned.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user")).code));
+    EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user")).body);
+    EXPECT_EQ("SimplePost", HTTP(GET(base_url + "/api/schema/post")).body);
+    EXPECT_EQ("SimpleLike", HTTP(GET(base_url + "/api/schema/like")).body);
+    EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));
+
     rest.RegisterAlias("user", "user_alias");
+
+    // Confirm the schema is returned as the alias too.
+    EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));
+    EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user_alias")).body);
 
     // Confirm an empty collection is returned.
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/data/user")).code));
