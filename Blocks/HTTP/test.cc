@@ -476,6 +476,93 @@ TEST(HTTPAPI, GetToFile) {
   EXPECT_EQ("*ab12*ab12*ab12", FileSystem::ReadFileAsString(response.body_file_name));
 }
 
+// A hacky way to get back the response chunk by chunk. TODO(dkorolev): `ChunkedGET`.
+TEST(HTTPAPI, GetByChunksPrototype) {
+  // Handler returning the result chunk by chunk.
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/chunks",
+                [](Request r) {
+                  auto response = r.connection.SendChunkedHTTPResponse();
+                  response.Send("1\n");
+                  response.Send("23\n");
+                  response.Send("456\n");
+                });
+  const string url = Printf("http://localhost:%d/chunks", FLAGS_net_api_test_port);
+  {
+    // A conventional GET, ignoring chunk boundaries and concatenating all the data together.
+    const auto response = HTTP(GET(url));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ("1\n23\n456\n", response.body);
+  }
+  {
+    // A slightly more internal version.
+    HTTPClientPOSIX client((current::http::impl::HTTPRedirectHelper::ConstructionParams()));
+    client.request_method_ = "GET";
+    client.request_url_ = url;
+    ASSERT_TRUE(client.Go());
+    EXPECT_EQ("1\n23\n456\n", client.HTTPRequest().Body());
+  }
+  {
+    // A prototype of fetching the result chunk by chunk.
+    class ChunkByChunkHTTPResponseReceiver {
+     public:
+      struct ConstructionParams {
+        std::function<void(const std::string&)> chunk_callback;
+        std::function<void()> chunk_done_callback;
+        int foo = 0;
+
+        ConstructionParams() = delete;
+
+        ConstructionParams(std::function<void(const std::string&)> chunk_callback,
+                           std::function<void()> chunk_done_callback,
+                           int foo)
+            : chunk_callback(chunk_callback), chunk_done_callback(chunk_done_callback), foo(foo) {}
+
+        ConstructionParams(const ConstructionParams& rhs)
+            : chunk_callback(rhs.chunk_callback), chunk_done_callback(rhs.chunk_done_callback), foo(rhs.foo) {}
+      };
+
+      ChunkByChunkHTTPResponseReceiver() = delete;
+      ChunkByChunkHTTPResponseReceiver(const ConstructionParams& params) : params(params) {}
+
+      const ConstructionParams params;
+
+      const std::string location = "";  // To please `HTTPClientPOSIX`. -- D.K.
+      const current::net::http::Headers& headers() const { return headers_; }
+
+     protected:
+      inline void OnHeader(const char* key, const char* value) { headers_.SetHeaderOrCookie(key, value); }
+
+      inline void OnChunk(const char* chunk, size_t length) {
+        params.chunk_callback(std::string(chunk, length));
+      }
+
+      inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
+        params.chunk_done_callback();
+        begin = nullptr;
+        end = nullptr;
+      }
+
+     private:
+      current::net::http::Headers headers_;
+    };
+
+    std::vector<std::string> chunk_by_chunk_response;
+    const auto chunk_callback =
+        [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); };
+    const auto chunk_done_callback =
+        [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); };
+
+    GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver> client(
+        ChunkByChunkHTTPResponseReceiver::ConstructionParams(chunk_callback, chunk_done_callback, 10042));
+    client.request_method_ = "GET";
+    client.request_url_ = url;
+    ASSERT_TRUE(client.Go());
+    EXPECT_EQ("1\n|23\n|456\n|DONE", current::strings::Join(chunk_by_chunk_response, '|'));
+  }
+}
+
 TEST(HTTPAPI, PostFromBufferToBuffer) {
   HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
   HTTP(FLAGS_net_api_test_port)

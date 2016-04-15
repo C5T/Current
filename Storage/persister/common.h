@@ -22,31 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_BRICKS_UTIL_LOCK_H
-#define CURRENT_BRICKS_UTIL_LOCK_H
-
-#include <mutex>
-#include <type_traits>
+#ifndef CURRENT_STORAGE_PERSISTER_COMMON_H
+#define CURRENT_STORAGE_PERSISTER_COMMON_H
 
 namespace current {
-namespace locks {
+namespace storage {
+namespace persister {
 
-enum class MutexLockStatus : bool { NeedToLock = false, AlreadyLocked = true };
+enum class PersisterDataAuthority : bool { Own = true, External = false };
 
-struct NoOpLock {
-  template <typename... ARGS>
-  NoOpLock(ARGS&&...) {}
-};
-
-template <MutexLockStatus MLS, class MUTEX = std::mutex>
-using SmartMutexLockGuard =
-    typename std::conditional<MLS == MutexLockStatus::NeedToLock, std::lock_guard<MUTEX>, NoOpLock>::type;
-
-static_assert(
-    std::is_same<std::lock_guard<std::mutex>, SmartMutexLockGuard<MutexLockStatus::NeedToLock>>::value, "");
-static_assert(std::is_same<NoOpLock, SmartMutexLockGuard<MutexLockStatus::AlreadyLocked>>::value, "");
-
-}  // namespace locks
+}  // namespace persister
+}  // namespace storage
 }  // namespace current
 
-#endif  // CURRENT_BRICKS_UTIL_LOCK_H
+#endif  // CURRENT_STORAGE_PERSISTER_COMMON_H

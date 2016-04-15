@@ -39,12 +39,17 @@ struct RESTfulGenericInput {
   STORAGE& storage;
   const std::string restful_url_prefix;
   const std::string data_url_component;
+  const std::string schema_url_component;
 
   explicit RESTfulGenericInput(STORAGE& storage) : storage(storage) {}
   RESTfulGenericInput(STORAGE& storage,
                       const std::string& restful_url_prefix,
-                      const std::string& data_url_component)
-      : storage(storage), restful_url_prefix(restful_url_prefix), data_url_component(data_url_component) {}
+                      const std::string& data_url_component,
+                      const std::string& schema_url_component)
+      : storage(storage),
+        restful_url_prefix(restful_url_prefix),
+        data_url_component(data_url_component),
+        schema_url_component(schema_url_component) {}
   RESTfulGenericInput(const RESTfulGenericInput&) = default;
   RESTfulGenericInput(RESTfulGenericInput&&) = default;
 };
@@ -60,12 +65,13 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
   RESTfulRegisterTopLevelInput(STORAGE& storage,
                                const std::string& restful_url_prefix,
                                const std::string& data_url_component,
+                               const std::string& schema_url_component,
                                int port,
                                HTTPRoutesScope& scope,
-                               std::vector<std::string>& field_names,
+                               const std::vector<std::string>& field_names,
                                const std::string& route_prefix,
                                std::atomic_bool& up_status)
-      : RESTfulGenericInput<STORAGE>(storage, restful_url_prefix, data_url_component),
+      : RESTfulGenericInput<STORAGE>(storage, restful_url_prefix, data_url_component, schema_url_component),
         port(port),
         scope(scope),
         field_names(field_names),
@@ -74,7 +80,7 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
   RESTfulRegisterTopLevelInput(const RESTfulGenericInput<STORAGE>& input,
                                int port,
                                HTTPRoutesScope& scope,
-                               std::vector<std::string>& field_names,
+                               const std::vector<std::string>& field_names,
                                const std::string& route_prefix,
                                std::atomic_bool& up_status)
       : RESTfulGenericInput<STORAGE>(input),
@@ -86,7 +92,7 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
   RESTfulRegisterTopLevelInput(RESTfulGenericInput<STORAGE>&& input,
                                int port,
                                HTTPRoutesScope& scope,
-                               std::vector<std::string>& field_names,
+                               const std::vector<std::string>& field_names,
                                const std::string& route_prefix,
                                std::atomic_bool& up_status)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
@@ -99,14 +105,14 @@ struct RESTfulRegisterTopLevelInput : RESTfulGenericInput<STORAGE> {
 
 template <typename STORAGE, typename FIELD>
 struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
-  using mutable_fields_t = MutableFields<STORAGE>;
-  mutable_fields_t fields;
+  using immutable_fields_t = ImmutableFields<STORAGE>;
+  immutable_fields_t fields;
   const FIELD& field;
   const std::string field_name;
   const std::string url_key;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
-                  mutable_fields_t fields,
+                  immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)
@@ -116,7 +122,7 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
         field_name(field_name),
         url_key(url_key) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
-                  mutable_fields_t fields,
+                  immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
                   const std::string& url_key)

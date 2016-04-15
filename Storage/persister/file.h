@@ -28,6 +28,7 @@ SOFTWARE.
 
 #include <fstream>
 
+#include "common.h"
 #include "../base.h"
 #include "../exceptions.h"
 #include "../../TypeSystem/Serialization/json.h"
@@ -44,11 +45,17 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
  public:
   using variant_t = Variant<TS...>;
   using transaction_t = std::vector<variant_t>;  // Mock to make it compile.
+  using fields_update_function_t = std::function<void(const variant_t&)>;
 
   using DEPRECATED_T_(VARIANT) = variant_t;
   using DEPRECATED_T_(TRANSACTION) = transaction_t;
 
-  explicit JSONFilePersister(const std::string& filename) : filename_(filename) {}
+  explicit JSONFilePersister(std::mutex&, fields_update_function_t f, const std::string& filename)
+      : filename_(filename) {
+    Replay(f);
+  }
+
+  PersisterDataAuthority DataAuthority() const { return PersisterDataAuthority::Own; }
 
   void PersistJournal(MutationJournal& journal) {
     std::ofstream os(filename_, std::fstream::app);
@@ -63,6 +70,11 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
     journal.meta_fields.clear();
   }
 
+  void InternalExposeStream() {}  // No-op to make it compile.
+
+ private:
+  std::string filename_;
+
   template <typename F>
   void Replay(F&& f) {
     std::ifstream is(filename_);
@@ -72,11 +84,6 @@ class JSONFilePersister<TypeList<TS...>, NoCustomPersisterParam> {
       }
     }
   }
-
-  void InternalExposeStream() {}  // No-op to make it compile.
-
- private:
-  std::string filename_;
 };
 
 }  // namespace persister

@@ -350,6 +350,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
   const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
 
+  HTTP(FLAGS_sherlock_http_test_port)
+      .Register("/exposed_more", URLPathArgs::CountMask::None | URLPathArgs::CountMask::One, exposed_stream);
+  const std::string base_url_with_args =
+      Printf("http://localhost:%d/exposed_more", FLAGS_sherlock_http_test_port);
+
   {
     // Test that verbs other than "GET" result in '405 Method not allowed' error.
     EXPECT_EQ(405, static_cast<int>(HTTP(POST(base_url + "?n=1", "")).code));
@@ -375,6 +380,81 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ("", result.body);
     ASSERT_TRUE(result.headers.Has("X-Current-Stream-Size"));
     EXPECT_EQ("0", result.headers.Get("X-Current-Stream-Size"));
+  }
+  {
+    // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,
+    // and various serializations.
+    const std::string golden_h =
+        "// g++ -c -std=c++11 current.cc\n"
+        "\n"
+        "#include \"current.h\"\n"
+        "\n"
+        "// clang-format off\n"
+        "\n"
+        "namespace current_userspace {\n"
+        "CURRENT_STRUCT(RecordWithTimestamp) {\n"
+        "  CURRENT_FIELD(s, std::string);\n"
+        "  CURRENT_FIELD(t, std::chrono::microseconds);\n"
+        "};\n"
+        "}  // namespace current_userspace\n"
+        "\n"
+        "// clang-format off\n";
+    const std::string golden_fs =
+        "// fsharpi -r Newtonsoft.Json.dll schema.fsx\n"
+        "\n"
+        "open Newtonsoft.Json\n"
+        "let inline JSON o = JsonConvert.SerializeObject(o)\n"
+        "let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
+        "\n"
+        "type RecordWithTimestamp = {\n"
+        "  s : string\n"
+        "  t : int64  // microseconds.\n"
+        "}\n";
+    {
+      const auto result = HTTP(GET(base_url + "?schema"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      const auto body = ParseJSON<current::sherlock::SherlockSchema, JSONFormat::Minimalistic>(result.body);
+      EXPECT_EQ("RecordWithTimestamp", body.type_name);
+      EXPECT_EQ("9205399982292878352", current::ToString(body.type_id));
+      ASSERT_TRUE(body.language.count("h"));
+      EXPECT_EQ(golden_h, body.language.at("h"));
+      ASSERT_TRUE(body.language.count("fs"));
+      EXPECT_EQ(golden_fs, body.language.at("fs"));
+    }
+    {
+      const auto result = HTTP(GET(base_url + "?schema=h"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_h, result.body);
+    }
+    {
+      const auto result = HTTP(GET(base_url + "?schema=fs"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_fs, result.body);
+    }
+    {
+      const auto result = HTTP(GET(base_url + "?schema=blah"));
+      EXPECT_EQ(404, static_cast<int>(result.code));
+      EXPECT_EQ("blah",
+                Value(ParseJSON<current::sherlock::SherlockSchemaFormatNotFound>(result.body)
+                          .unsupported_format_requested));
+    }
+    {
+      // The `base_url` location does not have the URL argument registered, so it's a plain "standard" 404.
+      const auto result = HTTP(GET(base_url + "/schema.h"));
+      EXPECT_EQ(404, static_cast<int>(result.code));
+    }
+    {
+      // The `base_url_with_args` location can return the schema by its "resource" name.
+      const auto result = HTTP(GET(base_url_with_args + "/schema.h"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_h, result.body);
+    }
+    {
+      // URL querystring parameter overrides the path.
+      const auto result = HTTP(GET(base_url_with_args + "/schema.meh?schema=h"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ(golden_h, result.body);
+    }
   }
 
   // Publish four records.
@@ -690,7 +770,9 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
 
   // Transfer ownership of the stream publisher to the external object.
   SherlockPublisherAcquirer acquirer;
+  EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
   stream.MovePublisherTo(acquirer);
+  EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
 
   // Publish to the stream is not allowed since the publisher has been moved.
   ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
@@ -704,6 +786,7 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
 
   // Acquire publisher back.
   stream.AcquirePublisher(std::move(acquirer.publisher_));
+  EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
   // Can't acquire publisher since we already have one in the stream.
   ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
                current::sherlock::PublisherAlreadyOwnedException);

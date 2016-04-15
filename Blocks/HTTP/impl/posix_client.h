@@ -42,20 +42,33 @@ SOFTWARE.
 namespace current {
 namespace http {
 
-class HTTPClientPOSIX final {
- private:
-  struct HTTPRedirectHelper : current::net::HTTPDefaultHelper {
-    std::string location = "";
-    inline void OnHeader(const char* key, const char* value) {
-      if (std::string("Location") == key) {
-        location = value;
-      }
-      current::net::HTTPDefaultHelper::OnHeader(key, value);
+namespace impl {
+struct HTTPRedirectHelper : current::net::HTTPDefaultHelper {
+  struct ConstructionParams {};
+  HTTPRedirectHelper() = delete;
+  HTTPRedirectHelper(const ConstructionParams&) {}
+
+  std::string location = "";
+
+  inline void OnHeader(const char* key, const char* value) {
+    if (std::string("Location") == key) {
+      location = value;
     }
-  };
-  typedef current::net::TemplatedHTTPRequestData<HTTPRedirectHelper> HTTPRedirectableRequestData;
+    current::net::HTTPDefaultHelper::OnHeader(key, value);
+  }
+};
+}  // namespace current::http::impl
+
+template <class HTTP_HELPER>
+class GenericHTTPClientPOSIX final {
+ private:
+  using CustomHTTPRequestData = current::net::GenericHTTPRequestData<HTTP_HELPER>;
 
  public:
+  using http_helper_t = HTTP_HELPER;
+  GenericHTTPClientPOSIX(const typename HTTP_HELPER::ConstructionParams& params)
+      : request_data_construction_params_(params) {}
+
   // The actual implementation.
   bool Go() {
     // TODO(dkorolev): Always use the URL returned by the server here.
@@ -95,7 +108,7 @@ class HTTPClientPOSIX final {
       } else {
         connection.BlockingWrite("\r\n", false);
       }
-      http_request_.reset(new HTTPRedirectableRequestData(connection));
+      http_request_.reset(new CustomHTTPRequestData(connection, request_data_construction_params_));
       // TODO(dkorolev): Rename `Path()`, it's only called so now because of HTTP request/response format.
       // Elaboration:
       // HTTP request  message is: `GET /path HTTP/1.1`, "/path" is the second component of it.
@@ -114,7 +127,7 @@ class HTTPClientPOSIX final {
     return true;
   }
 
-  const HTTPRedirectableRequestData& HTTPRequest() const { return *http_request_.get(); }
+  const CustomHTTPRequestData& HTTPRequest() const { return *http_request_.get(); }
 
  public:
   // Request parameters.
@@ -125,14 +138,17 @@ class HTTPClientPOSIX final {
   std::string request_body_contents_ = "";
   std::string request_user_agent_ = "";
   current::net::http::Headers request_headers_;
+  const typename HTTP_HELPER::ConstructionParams request_data_construction_params_;
 
   // Output parameters.
   current::net::HTTPResponseCodeValue response_code_ = HTTPResponseCode.InvalidCode;
   std::string response_url_after_redirects_ = "";
 
  private:
-  std::unique_ptr<HTTPRedirectableRequestData> http_request_;
+  std::unique_ptr<CustomHTTPRequestData> http_request_;
 };
+
+using HTTPClientPOSIX = GenericHTTPClientPOSIX<impl::HTTPRedirectHelper>;
 
 template <>
 struct ImplWrapper<HTTPClientPOSIX> {

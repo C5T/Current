@@ -84,7 +84,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
     // Add two users.
     current::time::SetNow(std::chrono::microseconds(1));
-    const auto result1 = storage.Transaction([](MutableFields<ExampleStorage> data) {
+    const auto result1 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       EXPECT_TRUE(data.users.Empty());
       User alice;
       alice.name = "Alice";
@@ -100,7 +100,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
     // Delete one, but rollback the transaction.
     current::time::SetNow(std::chrono::microseconds(2));
-    const auto result2 = storage.Transaction([](MutableFields<ExampleStorage> data) {
+    const auto result2 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
       data.users.Erase(static_cast<UserID>(101));
@@ -111,7 +111,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
     // Confirm the previous transaction was reverted, and delete the privileged user for real now.
     current::time::SetNow(std::chrono::microseconds(3));
-    const auto result3 = storage.Transaction([](MutableFields<ExampleStorage> data) {
+    const auto result3 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
       current::time::SetNow(std::chrono::microseconds(3001ull));
@@ -122,7 +122,7 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 
     // Confirm the non-reverted deleted user was indeed deleted.
     current::time::SetNow(std::chrono::microseconds(4));
-    const auto result4 = storage.Transaction([](ImmutableFields<ExampleStorage> data) {
+    const auto result4 = storage.ReadOnlyTransaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(1u, data.users.Size());
 
@@ -152,7 +152,7 @@ TEST(StorageDocumentation, BasicUsage) {
 
     current::time::SetNow(std::chrono::microseconds(1001ull));
     // TODO(dkorolev) + TODO(mzhurovich): Use the return value of `.Transaction(...)`.
-    const auto result1 = storage.Transaction([](MutableFields<ExampleStorage> data) {
+    const auto result1 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       User test1;
       User test2;
       test1.key = static_cast<UserID>(1);
@@ -170,7 +170,7 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_TRUE(WasCommitted(result1));
 
     current::time::SetNow(std::chrono::microseconds(1003ull));
-    const auto result2 = storage.Transaction([](MutableFields<ExampleStorage> data) {
+    const auto result2 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       User test3;
       test3.key = static_cast<UserID>(3);
       test3.name = "to be deleted";
@@ -180,7 +180,7 @@ TEST(StorageDocumentation, BasicUsage) {
     EXPECT_TRUE(WasCommitted(result2));
 
     current::time::SetNow(std::chrono::microseconds(1005ull));
-    const auto result3 = storage.Transaction([](MutableFields<ExampleStorage> data) {
+    const auto result3 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       data.users.Erase(static_cast<UserID>(3));
       current::time::SetNow(std::chrono::microseconds(1006ull));
     }).Go();
@@ -241,7 +241,7 @@ TEST(StorageDocumentation, BasicUsage) {
 
   {
     ExampleStorage replayed(persistence_file_name);
-    const auto result = replayed.Transaction([](ImmutableFields<ExampleStorage> data) {
+    const auto result = replayed.ReadOnlyTransaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_EQ(2u, data.users.Size());
       EXPECT_TRUE(Exists(data.users[static_cast<UserID>(1)]));
       EXPECT_EQ("test1", Value(data.users[static_cast<UserID>(1)]).name);
