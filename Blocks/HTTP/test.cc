@@ -476,6 +476,25 @@ TEST(HTTPAPI, GetToFile) {
   EXPECT_EQ("*ab12*ab12*ab12", FileSystem::ReadFileAsString(response.body_file_name));
 }
 
+TEST(HTTPAPI, ChunkedResponseWithHeaders) {
+  HTTP(FLAGS_net_api_test_port).ResetAllHandlers();
+  HTTP(FLAGS_net_api_test_port)
+      .Register("/chunked_with_header",
+                [](Request r) {
+                  EXPECT_EQ("GET", r.method);
+                  auto response = r.connection.SendChunkedHTTPResponse(
+                      HTTPResponseCode.OK, "text/plain", Headers({{"header", "yeah"}}));
+                  response.Send("A");
+                  response.Send("B");
+                  response.Send("C");
+                });
+  const auto response = HTTP(GET(Printf("http://localhost:%d/chunked_with_header", FLAGS_net_api_test_port)));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ("ABC", response.body);
+  ASSERT_TRUE(response.headers.Has("header"));
+  EXPECT_EQ("yeah", response.headers.Get("header"));
+}
+
 // A hacky way to get back the response chunk by chunk. TODO(dkorolev): `ChunkedGET`.
 TEST(HTTPAPI, GetByChunksPrototype) {
   // Handler returning the result chunk by chunk.
@@ -483,7 +502,8 @@ TEST(HTTPAPI, GetByChunksPrototype) {
   HTTP(FLAGS_net_api_test_port)
       .Register("/chunks",
                 [](Request r) {
-                  auto response = r.connection.SendChunkedHTTPResponse();
+                  auto response = r.connection.SendChunkedHTTPResponse(
+                      HTTPResponseCode.OK, "text/plain", Headers({{"header", "oh-well"}}));
                   response.Send("1\n");
                   response.Send("23\n");
                   response.Send("456\n");
@@ -494,6 +514,8 @@ TEST(HTTPAPI, GetByChunksPrototype) {
     const auto response = HTTP(GET(url));
     EXPECT_EQ(200, static_cast<int>(response.code));
     EXPECT_EQ("1\n23\n456\n", response.body);
+    ASSERT_TRUE(response.headers.Has("header"));
+    EXPECT_EQ("oh-well", response.headers.Get("header"));
   }
   {
     // A slightly more internal version.
@@ -508,19 +530,18 @@ TEST(HTTPAPI, GetByChunksPrototype) {
     class ChunkByChunkHTTPResponseReceiver {
      public:
       struct ConstructionParams {
+        std::function<void(const std::string&, const std::string&)> header_callback;
         std::function<void(const std::string&)> chunk_callback;
-        std::function<void()> chunk_done_callback;
-        int foo = 0;
+        std::function<void()> done_callback;
 
         ConstructionParams() = delete;
 
-        ConstructionParams(std::function<void(const std::string&)> chunk_callback,
-                           std::function<void()> chunk_done_callback,
-                           int foo)
-            : chunk_callback(chunk_callback), chunk_done_callback(chunk_done_callback), foo(foo) {}
+        ConstructionParams(std::function<void(const std::string&, const std::string&)> header_callback,
+                           std::function<void(const std::string&)> chunk_callback,
+                           std::function<void()> done_callback)
+            : header_callback(header_callback), chunk_callback(chunk_callback), done_callback(done_callback) {}
 
-        ConstructionParams(const ConstructionParams& rhs)
-            : chunk_callback(rhs.chunk_callback), chunk_done_callback(rhs.chunk_done_callback), foo(rhs.foo) {}
+        ConstructionParams(const ConstructionParams& rhs) = default;
       };
 
       ChunkByChunkHTTPResponseReceiver() = delete;
@@ -532,14 +553,14 @@ TEST(HTTPAPI, GetByChunksPrototype) {
       const current::net::http::Headers& headers() const { return headers_; }
 
      protected:
-      inline void OnHeader(const char* key, const char* value) { headers_.SetHeaderOrCookie(key, value); }
+      inline void OnHeader(const char* key, const char* value) { params.header_callback(key, value); }
 
       inline void OnChunk(const char* chunk, size_t length) {
         params.chunk_callback(std::string(chunk, length));
       }
 
       inline void OnChunkedBodyDone(const char*& begin, const char*& end) {
-        params.chunk_done_callback();
+        params.done_callback();
         begin = nullptr;
         end = nullptr;
       }
@@ -548,18 +569,23 @@ TEST(HTTPAPI, GetByChunksPrototype) {
       current::net::http::Headers headers_;
     };
 
+    std::vector<std::string> headers;
     std::vector<std::string> chunk_by_chunk_response;
+    const auto header_callback =
+        [&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); };
     const auto chunk_callback =
         [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); };
-    const auto chunk_done_callback =
-        [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); };
+    const auto done_callback = [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); };
 
     GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver> client(
-        ChunkByChunkHTTPResponseReceiver::ConstructionParams(chunk_callback, chunk_done_callback, 10042));
+        ChunkByChunkHTTPResponseReceiver::ConstructionParams(header_callback, chunk_callback, done_callback));
     client.request_method_ = "GET";
     client.request_url_ = url;
     ASSERT_TRUE(client.Go());
     EXPECT_EQ("1\n|23\n|456\n|DONE", current::strings::Join(chunk_by_chunk_response, '|'));
+    EXPECT_EQ(4u, headers.size());
+    EXPECT_EQ("Content-Type=text/plain Connection=keep-alive header=oh-well Transfer-Encoding=chunked",
+              current::strings::Join(headers, ' '));
   }
 }
 
