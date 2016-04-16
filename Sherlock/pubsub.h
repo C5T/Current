@@ -114,8 +114,14 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
+template <typename E>
+class PubSubHTTPEndpointBase {
+ public:
+  virtual ~PubSubHTTPEndpointBase() = default;
+};
+
 template <typename E, JSONFormat J = JSONFormat::Current>
-class PubSubHTTPEndpointImpl {
+class PubSubHTTPEndpointImpl : public PubSubHTTPEndpointBase<E> {
  public:
   explicit PubSubHTTPEndpointImpl(Request r)
       : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
