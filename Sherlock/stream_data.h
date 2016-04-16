@@ -38,6 +38,9 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
+constexpr static const char* kSherlockHeaderCurrentStreamSize = "X-Current-Stream-Size";
+constexpr static const char* kSherlockHeaderCurrentSubscriptionId = "X-Current-Stream-Subscription-Id";
+
 class AbstractSubscriptionThread {
  public:
   virtual ~AbstractSubscriptionThread() = default;
@@ -53,13 +56,14 @@ struct StreamData {
   using entry_t = ENTRY;
   using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
 
+  using http_subscriptions_t = std::unordered_map<std::string,
+                     std::pair<std::unique_ptr<AbstractSubscriptionThread>,
+                               std::unique_ptr<AbstractSubscriberObject>>>;
   persistence_layer_t persistence;
   current::WaitableTerminateSignalBulkNotifier notifier;
   std::mutex publish_mutex;
 
-  std::unordered_map<std::string,
-                     std::pair<std::unique_ptr<AbstractSubscriptionThread>,
-                               std::unique_ptr<AbstractSubscriberObject>>> http_subscriptions;
+  http_subscriptions_t http_subscriptions;
   std::mutex http_subscriptions_mutex;
 
   template <typename... ARGS>

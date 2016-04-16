@@ -123,10 +123,16 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
  public:
   using stream_data_t = StreamData<E, PERSISTENCE_LAYER>;
 
-  PubSubHTTPEndpointImpl(ScopeOwned<stream_data_t>& data, Request r)
+  PubSubHTTPEndpointImpl(const std::string& subscription_id, ScopeOwned<stream_data_t>& data, Request r)
       : data_(data, [this]() { time_to_terminate_ = true; }),
         http_request_(std::move(r)),
-        http_response_(http_request_.SendChunkedResponse()) {
+        http_response_(http_request_.SendChunkedResponse(
+            HTTPResponseCode.OK,
+            current::net::constants::kDefaultJSONContentType,
+            current::net::http::Headers({
+                {kSherlockHeaderCurrentSubscriptionId, subscription_id},
+                {kSherlockHeaderCurrentStreamSize, current::ToString(data_->persistence.Size())},
+            }))) {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ = r.timestamp - std::chrono::microseconds(

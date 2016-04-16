@@ -582,6 +582,73 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   // TODO(dkorolev): Add tests that the endpoint is not unregistered until its last client is done. (?)
 }
 
+TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
+  using namespace sherlock_unittest;
+
+  auto exposed_stream = current::sherlock::Stream<Record>();
+  HTTP(FLAGS_sherlock_http_test_port).ResetAllHandlers();
+  HTTP(FLAGS_sherlock_http_test_port).Register("/exposed", exposed_stream);
+  const std::string base_url = Printf("http://localhost:%d/exposed", FLAGS_sherlock_http_test_port);
+
+  std::atomic_bool keep_publishing(true);
+  std::thread slow_publisher([&exposed_stream, &keep_publishing]() {
+    int i = 1;
+    while (keep_publishing) {
+      exposed_stream.Publish(Record(i), std::chrono::microseconds(i));
+      ++i;
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  });
+
+  std::string subscription_id;
+  std::atomic_size_t chunks_count(0);
+  std::atomic_bool chunks_done(false);
+  std::vector<std::string> chunks;
+
+  std::thread slow_subscriber([&] {
+    const auto result =
+        HTTP(ChunkedGET(base_url,
+                        [&subscription_id](const std::string& header, const std::string& value) {
+                          if (header == "X-Current-Stream-Subscription-Id") {
+                            subscription_id = value;
+                          }
+                        },
+                        [&chunks_count, &chunks](const std::string& chunk_body) {
+                          ++chunks_count;
+                          chunks.push_back(chunk_body);
+                        },
+                        [&chunks_done]() {
+                          chunks_done = true;
+                        }));
+    EXPECT_EQ(200, static_cast<int>(result));
+  });
+
+  while (chunks_count < 100) {
+    ;  // Spin lock.
+  }
+
+  ASSERT_TRUE(!subscription_id.empty());
+  EXPECT_EQ(64u, subscription_id.length());
+
+  EXPECT_FALSE(chunks_done);
+
+  {
+    const auto result = HTTP(GET(base_url + "?terminate=" + subscription_id));
+    EXPECT_EQ(200, static_cast<int>(result.code));
+    EXPECT_EQ("", result.body);
+  }
+
+  keep_publishing = false;
+  slow_publisher.join();
+
+  EXPECT_TRUE(chunks_done);
+
+  EXPECT_GE(chunks_count, 100u);
+  EXPECT_GE(chunks.size(), 100u);
+
+  slow_subscriber.join();
+}
+
 const std::string sherlock_golden_data =
     "{\"index\":0,\"us\":100}\t{\"x\":1}\n"
     "{\"index\":1,\"us\":200}\t{\"x\":2}\n"

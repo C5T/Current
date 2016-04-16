@@ -903,7 +903,6 @@ TEST(TransactionalStorage, Exceptions) {
 
 TEST(TransactionalStorage, ReplicationViaHTTP) {
   using namespace transactional_storage_test;
-  using current::storage::TransactionMetaFields;
   using Storage = TestStorage<SherlockStreamPersister>;
 
   // Create master storage.
