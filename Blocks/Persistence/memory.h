@@ -26,7 +26,7 @@ SOFTWARE.
 // A simple, reference, implementation of an in-memory persister.
 // Store all entries in an `std::vector<std::pair<std::chrono::microseconds, ENTRY>>`,
 // and accesses this vector by indexes from under a mutex when iterating over the entries.
-// Uses `ScopeOwnedBy{Me,SomeoneElse}`.
+// Iterators never outlive the persister.
 
 #ifndef BLOCKS_PERSISTENCE_MEMORY_H
 #define BLOCKS_PERSISTENCE_MEMORY_H
@@ -60,8 +60,8 @@ class MemoryPersister {
 
   class IterableRange {
    public:
-    explicit IterableRange(ScopeOwnedByMe<Container>& container, uint64_t begin, uint64_t end)
-        : container_(container, [this]() {}), begin_(begin), end_(end) {}
+    explicit IterableRange(ScopeOwned<Container>& container, uint64_t begin, uint64_t end)
+        : container_(container, [this]() { valid_ = false; }), begin_(begin), end_(end) {}
 
     struct Entry {
       const idxts_t idx_ts;
@@ -74,26 +74,50 @@ class MemoryPersister {
 
     class Iterator {
      public:
-      explicit Iterator(Container& container, uint64_t i) : container_(container), i_(i) {}
+      Iterator(ScopeOwned<Container>& container, uint64_t i)
+          : container_(container, [this]() { valid_ = false; }), i_(i) {}
 
       Entry operator*() const {
-        std::lock_guard<std::mutex> lock(container_.mutex);
-        return Entry(i_, container_.entries[i_]);
+        if (!valid_) {
+          CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+        }
+        std::lock_guard<std::mutex> lock(container_->mutex);
+        return Entry(i_, container_->entries[i_]);
       }
-      void operator++() { ++i_; }
+      void operator++() {
+        if (!valid_) {
+          CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+        }
+
+        ++i_;
+      }
       bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }
       bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+      operator bool() const { return valid_; }
 
      private:
-      Container& container_;
+      mutable ScopeOwnedBySomeoneElse<Container> container_;
+      bool valid_ = true;
       uint64_t i_;
     };
 
-    Iterator begin() const { return Iterator(*container_, begin_); }
-    Iterator end() const { return Iterator(*container_, end_); }
+    Iterator begin() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      return Iterator(container_, begin_);
+    }
+    Iterator end() const {
+      if (!valid_) {
+        CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
+      }
+      return Iterator(container_, end_);
+    }
+    operator bool() const { return valid_; }
 
    private:
     mutable ScopeOwnedBySomeoneElse<Container> container_;
+    bool valid_ = true;
     const uint64_t begin_;
     const uint64_t end_;
   };

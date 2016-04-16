@@ -64,10 +64,8 @@ TEST(PersistenceLayer, Memory) {
     IMPL impl;
     EXPECT_EQ(0u, impl.Size());
 
-    current::time::SetNow(std::chrono::microseconds(100));
-    impl.Publish("foo");
-    current::time::SetNow(std::chrono::microseconds(200));
-    impl.Publish("bar");
+    impl.Publish("foo", std::chrono::microseconds(100));
+    impl.Publish("bar", std::chrono::microseconds(200));
     current::time::SetNow(std::chrono::microseconds(300));
     EXPECT_EQ(2u, impl.Size());
 
@@ -135,8 +133,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
   {
     // Time goes back.
     IMPL impl;
-    current::time::SetNow(std::chrono::microseconds(2));
-    impl.Publish("2");
+    impl.Publish("2", std::chrono::microseconds(2));
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
   }
@@ -156,16 +153,52 @@ TEST(PersistenceLayer, MemoryExceptions) {
 
   {
     IMPL impl;
-    current::time::SetNow(std::chrono::microseconds(1));
-    impl.Publish("1");
-    current::time::SetNow(std::chrono::microseconds(2));
-    impl.Publish("2");
-    current::time::SetNow(std::chrono::microseconds(3));
-    impl.Publish("3");
+    impl.Publish("1", std::chrono::microseconds(1));
+    impl.Publish("2", std::chrono::microseconds(2));
+    impl.Publish("3", std::chrono::microseconds(3));
     ASSERT_THROW(impl.Iterate(1, 0), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 101), current::persistence::InvalidIterableRangeException);
     ASSERT_THROW(impl.Iterate(100, 100), current::persistence::InvalidIterableRangeException);
   }
+}
+
+TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
+  using namespace persistence_test;
+  using IMPL = current::persistence::Memory<std::string>;
+
+  auto p = std::make_unique<IMPL>();
+  p->Publish("1", std::chrono::microseconds(1));
+  p->Publish("2", std::chrono::microseconds(2));
+  p->Publish("3", std::chrono::microseconds(3));
+
+  std::thread t;  // To wait for the persister to shut down as iterators over it are done.
+
+  {
+    auto iterable = p->Iterate();
+    EXPECT_TRUE(static_cast<bool>(iterable));
+    auto iterator = iterable.begin();
+    EXPECT_TRUE(static_cast<bool>(iterator));
+    EXPECT_EQ("1", (*iterator).entry);
+
+    t = std::thread([&p]() {
+      // Release the persister. Well, begin to, as this "call" would block until the iterators are done.
+      p = nullptr;
+    });
+
+    do {
+      ;  // Spin lock.
+    } while (static_cast<bool>(iterator));
+    ASSERT_THROW(*iterator, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    ASSERT_THROW(++iterator, current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+
+    do {
+      ;  // Spin lock.
+    } while (static_cast<bool>(iterable));
+    ASSERT_THROW(iterable.begin(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+    ASSERT_THROW(iterable.end(), current::persistence::PersistenceMemoryBlockNoLongerAvailable);
+  }
+
+  t.join();
 }
 
 TEST(PersistenceLayer, File) {
@@ -390,6 +423,48 @@ TEST(PersistenceLayer, FileIteratorPerformanceTest) {
     IMPL impl(persistence_file_name);
     IteratorPerformanceTest(impl, false);
   }
+}
+
+TEST(PersistenceLayer, FileIteratorCanNotOutliveFile) {
+  using namespace persistence_test;
+  using IMPL = current::persistence::File<std::string>;
+  const std::string persistence_file_name =
+      current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
+  const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
+
+  auto p = std::make_unique<IMPL>(persistence_file_name);
+  p->Publish("1", std::chrono::microseconds(1));
+  p->Publish("2", std::chrono::microseconds(2));
+  p->Publish("3", std::chrono::microseconds(3));
+
+  std::thread t;  // To wait for the persister to shut down as iterators over it are done.
+
+  {
+    auto iterable = p->Iterate();
+    EXPECT_TRUE(static_cast<bool>(iterable));
+    auto iterator = iterable.begin();
+    EXPECT_TRUE(static_cast<bool>(iterator));
+    EXPECT_EQ("1", (*iterator).entry);
+
+    t = std::thread([&p]() {
+      // Release the persister. Well, begin to, as this "call" would block until the iterators are done.
+      p = nullptr;
+    });
+
+    do {
+      ;  // Spin lock.
+    } while (static_cast<bool>(iterator));
+    ASSERT_THROW(*iterator, current::persistence::PersistenceFileNoLongerAvailable);
+    ASSERT_THROW(++iterator, current::persistence::PersistenceFileNoLongerAvailable);
+
+    do {
+      ;  // Spin lock.
+    } while (static_cast<bool>(iterable));
+    ASSERT_THROW(iterable.begin(), current::persistence::PersistenceFileNoLongerAvailable);
+    ASSERT_THROW(iterable.end(), current::persistence::PersistenceFileNoLongerAvailable);
+  }
+
+  t.join();
 }
 
 TEST(PersistenceLayer, Exceptions) {
