@@ -76,7 +76,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   };
   using SherlockSubscriber = current::ss::StreamSubscriber<SherlockSubscriberImpl, transaction_t>;
   using subscriber_scope_t =
-      typename sherlock_t::template SyncSubscriberScope<SherlockSubscriber, transaction_t>;
+      typename sherlock_t::template SubscriberScope<SherlockSubscriber, transaction_t>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(std::mutex& storage_mutex, fields_update_function_t f, ARGS&&... args)
@@ -174,10 +174,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
   }
 
   void TerminateStreamSubscription() {
-    if (subscriber_scope_) {
-      subscriber_scope_->Join();
-      subscriber_scope_ = nullptr;
-    }
+    subscriber_scope_ = nullptr;
   }
 
  private:

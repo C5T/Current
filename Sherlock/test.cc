@@ -183,7 +183,7 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
     SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
-    foo_stream.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
+    foo_stream.Subscribe(p);  // With no return value collection to capture the scope, it's a blocking call.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
   }
@@ -213,8 +213,8 @@ TEST(Sherlock, SubscribeSynchronously) {
     SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
-    // As `.SetMax(3)` was called, `.Join()` blocks the thread until all three are processed.
-    bar_stream.Subscribe(p).Join();
+    // As `.SetMax(3)` was called, blocks the thread until all three recods are processed.
+    bar_stream.Subscribe(p);
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
   }
@@ -228,36 +228,6 @@ TEST(Sherlock, SubscribeSynchronously) {
       << Join(expected_values, ',') << " != " << d.results_;
 }
 
-/*
-TEST(Sherlock, SubscribeAsynchronously) {
-  using namespace sherlock_unittest;
-
-  auto bar_stream = current::sherlock::Stream<Record>();
-  current::time::SetNow(std::chrono::microseconds(40));
-  bar_stream.Publish(4);
-  current::time::SetNow(std::chrono::microseconds(50));
-  bar_stream.Publish(5);
-  current::time::SetNow(std::chrono::microseconds(60));
-  bar_stream.Publish(6);
-  Data d;
-  std::unique_ptr<SherlockTestProcessor> p(new SherlockTestProcessor(d, false, true));
-  p->SetMax(4u);
-  bar_stream.Subscribe(std::move(p)).Detach();  // `.Detach()` results in the subscriber running on its own.
-  while (d.seen_ < 3u) {
-    ;  // Spin lock.
-  }
-  EXPECT_EQ(3u, d.seen_);
-  const std::vector<std::string> expected_values{"[0:40,2:60] 4", "[1:50,2:60] 5", "[2:60,2:60] 6"};
-  EXPECT_EQ(Join(expected_values, ','), d.results_);  // No `TERMINATE` for an asyncronous subscriber.
-  EXPECT_TRUE(d.subscriber_alive_);
-  current::time::SetNow(std::chrono::microseconds(70));
-  bar_stream.Publish(42);  // Need the 4th entry for the async subscriber to terminate.
-  while (d.subscriber_alive_) {
-    ;  // Spin lock.
-  }
-}
-*/
-
 TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
   using namespace sherlock_unittest;
 
@@ -267,31 +237,25 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
     while (wait) {
       ;  // Spin lock.
     }
-    current::time::SetNow(std::chrono::microseconds(1));
-    baz_stream.Publish(7);
-    current::time::SetNow(std::chrono::microseconds(2));
-    baz_stream.Publish(8);
-    current::time::SetNow(std::chrono::microseconds(3));
-    baz_stream.Publish(9);
+    baz_stream.Publish(7, std::chrono::microseconds(1));
+    baz_stream.Publish(8, std::chrono::microseconds(2));
+    baz_stream.Publish(9, std::chrono::microseconds(3));
   });
   {
     Data d;
     SherlockTestProcessor p(d, true);
-    // NOTE: plain `baz_stream.Subscribe(p);` will fail with exception
-    // in the destructor of `SyncSubscriberScope`.
-    auto x = baz_stream.Subscribe(p);
-    x.Join();
-    EXPECT_EQ(0u, d.seen_);
-  }
-  {
-    Data d;
-    SherlockTestProcessor p(d, true);
-    auto scope = baz_stream.Subscribe(p);
-    scope.Join();
+    baz_stream.Subscribe(p);
     EXPECT_EQ(0u, d.seen_);
   }
   wait = false;
   delayed_publish_thread.join();
+  {
+    Data d;
+    SherlockTestProcessor p(d, false, true);
+    p.SetMax(3u);
+    baz_stream.Subscribe(p);
+    EXPECT_EQ(3u, d.seen_);
+  }
 }
 
 TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
@@ -315,9 +279,6 @@ TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
         while (d.seen_ < 3u) {
           ;  // Spin lock.
         }
-        // If the next line is commented out, an unrecoverable exception
-        // will be thrown in the destructor of `SyncSubscriberScope`.
-        scope3.Join();
       }
     }
   }
@@ -484,12 +445,11 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
   {
     // Explicitly confirm the return type for ths scope is what is should be, no `auto`. -- D.K.
     // This is to fight the trouble with an `unique_ptr<*, NullDeleter>` mistakenly emerging due to internals.
-    current::sherlock::StreamImpl<RecordWithTimestamp>::SyncSubscriberScope<RecordsCollector> scope(
+    const current::sherlock::StreamImpl<RecordWithTimestamp>::SubscriberScope<RecordsCollector> scope(
         exposed_stream.Subscribe(collector));
     while (collector.count_ < 4u) {
       ;  // Spin lock.
     }
-    scope.Join();
   }
   EXPECT_EQ(4u, s.size());
 
@@ -665,7 +625,7 @@ TEST(Sherlock, ParsesFromFile) {
     SherlockTestProcessor p(d, false, true);
     ASSERT_TRUE(d.subscriber_alive_);
     p.SetMax(3u);
-    parsed.Subscribe(p).Join();  // `.Join()` blocks this thread waiting for three entries.
+    parsed.Subscribe(p);  // A blocking call until the subscriber processes three entries.
     EXPECT_EQ(3u, d.seen_);
     ASSERT_TRUE(d.subscriber_alive_);
   }
@@ -728,7 +688,7 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(5);
-    stream.Subscribe(c).Join();
+    stream.Subscribe(c);
     EXPECT_EQ(
         "{\"Record\":{\"x\":1}} {\"AnotherRecord\":{\"y\":2}} {\"Record\":{\"x\":3}} "
         "{\"AnotherRecord\":{\"y\":4}} {\"Record\":{\"x\":5}}",
@@ -742,7 +702,7 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(!current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(3);
-    stream.Subscribe<Record>(c).Join();
+    stream.Subscribe<Record>(c);
     EXPECT_EQ("X=1 X=3 X=5", Join(c.results_, ' '));
   }
 
@@ -753,7 +713,7 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     static_assert(current::ss::IsStreamSubscriber<Collector, AnotherRecord>::value, "");
 
     Collector c(2);
-    stream.Subscribe<AnotherRecord>(c).Join();
+    stream.Subscribe<AnotherRecord>(c);
     EXPECT_EQ("Y=2 Y=4", Join(c.results_, ' '));
   }
 }
@@ -770,53 +730,49 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
 
   Stream stream;
   Data d;
-  // In this test we start the subscriber before we publish anything into the stream.
-  // That's why `idxts_t last` is not determined for each particular entry and we collect and check only the
-  // values of `Record`s.
-  SherlockTestProcessor p(d, true);
-  auto scope = stream.Subscribe(p);
+  {
+    // In this test we start the subscriber before we publish anything into the stream.
+    // That's why `idxts_t last` is not determined for each particular entry and we collect and check only the
+    // values of `Record`s.
+    SherlockTestProcessor p(d, true);
+    auto scope = stream.Subscribe(p);
 
-  // Publish the first entry as usual.
-  stream.Publish(1, std::chrono::microseconds(100));
+    // Publish the first entry as usual.
+    stream.Publish(1, std::chrono::microseconds(100));
 
-  // Transfer ownership of the stream publisher to the external object.
-  SherlockPublisherAcquirer acquirer;
-  EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
-  stream.MovePublisherTo(acquirer);
-  EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
+    // Transfer ownership of the stream publisher to the external object.
+    SherlockPublisherAcquirer acquirer;
+    EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
+    stream.MovePublisherTo(acquirer);
+    EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
 
-  // Publish to the stream is not allowed since the publisher has been moved.
-  ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
-               current::sherlock::PublishToStreamWithReleasedPublisherException);
-  // Now we can publish only via `acquirer` that owns stream publisher object.
-  acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
+    // Publish to the stream is not allowed since the publisher has been moved.
+    ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
+                 current::sherlock::PublishToStreamWithReleasedPublisherException);
+    // Now we can publish only via `acquirer` that owns stream publisher object.
+    acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
 
-  // Can't move publisher once more since we don't own it at this moment.
-  SherlockPublisherAcquirer other_acquirer;
-  ASSERT_THROW(stream.MovePublisherTo(other_acquirer), current::sherlock::PublisherAlreadyReleasedException);
+    // Can't move publisher once more since we don't own it at this moment.
+    SherlockPublisherAcquirer other_acquirer;
+    ASSERT_THROW(stream.MovePublisherTo(other_acquirer), current::sherlock::PublisherAlreadyReleasedException);
 
-  // Acquire publisher back.
-  stream.AcquirePublisher(std::move(acquirer.publisher_));
-  EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
-  // Can't acquire publisher since we already have one in the stream.
-  ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
-               current::sherlock::PublisherAlreadyOwnedException);
+    // Acquire publisher back.
+    stream.AcquirePublisher(std::move(acquirer.publisher_));
+    EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
+    // Can't acquire publisher since we already have one in the stream.
+    ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
+                 current::sherlock::PublisherAlreadyOwnedException);
 
-  // Publish the third entry.
-  stream.Publish(4, std::chrono::microseconds(400));
+    // Publish the third entry.
+    stream.Publish(4, std::chrono::microseconds(400));
 
-  while (d.seen_ < 3u) {
-    ;  // Spin lock.
+    while (d.seen_ < 3u) {
+      ;  // Spin lock.
+    }
+    EXPECT_EQ(3u, d.seen_);
+    EXPECT_EQ("1,3,4", d.results_);
+    EXPECT_TRUE(d.subscriber_alive_);
   }
-  EXPECT_EQ(3u, d.seen_);
-  EXPECT_EQ("1,3,4", d.results_);  // No `TERMINATE` for an asyncronous subscriber.
-  EXPECT_TRUE(d.subscriber_alive_);
-  /*
-  stream.Publish(42,
-                 std::chrono::microseconds(1000));  // Need the 4th entry for the async subscriber to terminate.
-  while (d.subscriber_alive_) {
-    ;  // Spin lock.
-  }
-  */
-  scope.Join();
+  EXPECT_EQ("1,3,4,TERMINATE", d.results_);
+  EXPECT_FALSE(d.subscriber_alive_);
 }

@@ -68,7 +68,7 @@ struct EventStore final {
   nonstorage_stream_t readonly_nonstorage_event_log;
   event_store_storage_t event_store_storage;
   readonly_stream_follower_t readonly_stream_follower;
-  typename full_stream_t::template SyncSubscriberScope<readonly_stream_follower_t, EXTRA_TYPE>
+  typename full_stream_t::template SubscriberScope<readonly_stream_follower_t, EXTRA_TYPE>
       readonly_stream_follower_scope;
   const typename nonstorage_stream_t::persistence_layer_t& readonly_nonstorage_event_log_persister;
   HTTPRoutesScope http_routes_scope;
