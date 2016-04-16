@@ -577,11 +577,27 @@ TEST(HTTPAPI, GetByChunksPrototype) {
         [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); };
     const auto done_callback = [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); };
 
-    GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver> client(
+    current::http::GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver> client(
         ChunkByChunkHTTPResponseReceiver::ConstructionParams(header_callback, chunk_callback, done_callback));
     client.request_method_ = "GET";
     client.request_url_ = url;
     ASSERT_TRUE(client.Go());
+    EXPECT_EQ("1\n|23\n|456\n|DONE", current::strings::Join(chunk_by_chunk_response, '|'));
+    EXPECT_EQ(4u, headers.size());
+    EXPECT_EQ("Content-Type=text/plain Connection=keep-alive header=oh-well Transfer-Encoding=chunked",
+              current::strings::Join(headers, ' '));
+  }
+  {
+    // The full version of how continuous `ChunkedGET` functions.
+    std::vector<std::string> headers;
+    std::vector<std::string> chunk_by_chunk_response;
+
+    const auto response = HTTP(
+        ChunkedGET(url,
+                   [&headers](const std::string& k, const std::string& v) { headers.push_back(k + '=' + v); },
+                   [&chunk_by_chunk_response](const std::string& s) { chunk_by_chunk_response.push_back(s); },
+                   [&chunk_by_chunk_response]() { chunk_by_chunk_response.push_back("DONE"); }));
+    EXPECT_EQ(200, static_cast<int>(response));
     EXPECT_EQ("1\n|23\n|456\n|DONE", current::strings::Join(chunk_by_chunk_response, '|'));
     EXPECT_EQ(4u, headers.size());
     EXPECT_EQ("Content-Type=text/plain Connection=keep-alive header=oh-well Transfer-Encoding=chunked",

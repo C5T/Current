@@ -45,20 +45,24 @@ SOFTWARE.
 #if defined(CURRENT_POSIX) || defined(CURRENT_WINDOWS) || defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 #include "impl/posix_client.h"
 #include "impl/posix_server.h"
+#include "chunked_response_parser.h"
 using HTTP_CLIENT = current::http::HTTPClientPOSIX;
+using CHUNKED_HTTP_CLIENT = current::http::GenericHTTPClientPOSIX<ChunkByChunkHTTPResponseReceiver>;
 #elif defined(CURRENT_APPLE) && !defined(CURRENT_APPLE_HTTP_CLIENT_POSIX)
 #include "impl/apple_client.h"
 #include "impl/posix_server.h"
 using HTTP_CLIENT = current::http::HTTPClientApple;
+// Won't compile w/o CHUNKED_HTTP_CLIENT -- D.K.
 #elif defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 #include "impl/java_client.h"
 #include "impl/posix_server.h"
 using HTTP_CLIENT = java_wrapper::HTTPClientPlatformWrapper;
+// Won't compile w/o CHUNKED_HTTP_CLIENT -- D.K.
 #else
 #error "No implementation for `net/api/api.h` is available for your system."
 #endif
 
-using HTTP_IMPL = current::http::HTTPImpl<HTTP_CLIENT, current::http::HTTPServerPOSIX>;
+using HTTP_IMPL = current::http::HTTPImpl<HTTP_CLIENT, CHUNKED_HTTP_CLIENT, current::http::HTTPServerPOSIX>;
 
 namespace current {
 namespace http {

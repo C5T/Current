@@ -86,6 +86,21 @@ struct GET : HTTPRequestBase<GET> {
   explicit GET(const std::string& url) : HTTPRequestBase(url) {}
 };
 
+struct ChunkedGET {
+  const std::string url;
+  std::function<void(const std::string&, const std::string&)> header_callback;
+  std::function<void(const std::string&)> chunk_callback;
+  std::function<void()> done_callback;
+  explicit ChunkedGET(const std::string& url,
+                      std::function<void(const std::string&, const std::string&)> header_callback,
+                      std::function<void(const std::string&)> chunk_callback,
+                      std::function<void()> done_callback)
+      : url(url),
+        header_callback(header_callback),
+        chunk_callback(chunk_callback),
+        done_callback(done_callback) {}
+};
+
 struct HEAD : HTTPRequestBase<HEAD> {
   explicit HEAD(const std::string& url) : HTTPRequestBase(url) {}
 };
@@ -203,9 +218,10 @@ class ImplWrapper {};
 
 // The main implementation of what `HTTP` actually is.
 // The real work is done by templated implementations.
-template <typename CLIENT_IMPL, class SERVER_IMPL>
+template <class CLIENT_IMPL, class CHUNKED_CLIENT_IMPL, class SERVER_IMPL>
 struct HTTPImpl {
   typedef CLIENT_IMPL client_impl_t;
+  typedef CHUNKED_CLIENT_IMPL chunked_client_impl_t;
   typedef SERVER_IMPL server_impl_t;
 
   server_impl_t& operator()(int port) {
@@ -239,6 +255,20 @@ struct HTTPImpl {
     IMPL_HELPER::ParseOutput(request_params, response_params, impl, output);
     return output;
   }
+
+  inline net::HTTPResponseCodeValue operator()(const ChunkedGET& request_params) const {
+    typename chunked_client_impl_t::http_helper_t::ConstructionParams impl_params(
+        request_params.header_callback, request_params.chunk_callback, request_params.done_callback);
+    chunked_client_impl_t impl(impl_params);
+    impl.request_method_ = "GET";
+    impl.request_url_ = request_params.url;
+
+    if (impl.Go()) {
+      return impl.response_code_;
+    } else {
+      return HTTPResponseCode.InvalidCode;
+    }
+  }
 };
 
 }  // namespace http
@@ -250,5 +280,7 @@ using current::http::POST;
 using current::http::POSTFromFile;
 using current::http::PUT;
 using current::http::DELETE;
+
+using current::http::ChunkedGET;
 
 #endif  // BLOCKS_HTTP_TYPES_H

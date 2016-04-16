@@ -55,15 +55,24 @@ namespace current {
 namespace net {
 
 // HTTP constants to parse the header and extract method, URL, headers and body.
-namespace {
+namespace constants {
 
-const char kCRLF[] = "\r\n";
-const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
-const char kHeaderKeyValueSeparator[] = ": ";
-const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
-const char* const kContentLengthHeaderKey = "Content-Length";
-const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
-const char* const kTransferEncodingChunkedValue = "chunked";
+constexpr static const char kCRLF[] = "\r\n";
+constexpr const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
+  
+constexpr const char* kDefaultContentType = "text/plain";
+constexpr const char* kDefaultJSONContentType = "application/json; charset=utf-8";
+
+constexpr const char kHeaderKeyValueSeparator[] = ": ";
+constexpr const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
+
+constexpr const char* const kContentLengthHeaderKey = "Content-Length";
+constexpr const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
+constexpr const char* const kTransferEncodingChunkedValue = "chunked";
+
+inline static const http::Headers DefaultJSONHTTPHeaders() {
+  return http::Headers({{"Access-Control-Allow-Origin", "*"}});
+}
 
 }  // namespace constants
 
@@ -164,11 +173,11 @@ class GenericHTTPRequestData : public HELPER {
       buffer_[offset] = '\0';
       char* next_crlf_ptr;
       while ((body_offset == static_cast<size_t>(-1) || offset < body_offset) &&
-             (next_crlf_ptr = strstr(&buffer_[current_line_offset], kCRLF))) {
+             (next_crlf_ptr = strstr(&buffer_[current_line_offset], constants::kCRLF))) {
         const bool line_is_blank = (next_crlf_ptr == &buffer_[current_line_offset]);
         *next_crlf_ptr = '\0';
         // `next_line_offset` is mutable since reading chunked body will change it.
-        size_t next_line_offset = next_crlf_ptr + kCRLFLength - &buffer_[0];
+        size_t next_line_offset = next_crlf_ptr + constants::kCRLFLength - &buffer_[0];
         if (!first_line_parsed) {
           if (!line_is_blank) {
             // It's recommended by W3 to wait for the first line ignoring prior CRLF-s.
@@ -232,16 +241,16 @@ class GenericHTTPRequestData : public HELPER {
             }
           }
         } else if (!line_is_blank) {
-          char* p = strstr(&buffer_[current_line_offset], kHeaderKeyValueSeparator);
+          char* p = strstr(&buffer_[current_line_offset], constants::kHeaderKeyValueSeparator);
           if (p) {
             *p = '\0';
             const char* const key = &buffer_[current_line_offset];
-            const char* const value = p + kHeaderKeyValueSeparatorLength;
+            const char* const value = p + constants::kHeaderKeyValueSeparatorLength;
             HELPER::OnHeader(key, value);
-            if (!strcmp(key, kContentLengthHeaderKey)) {
+            if (!strcmp(key, constants::kContentLengthHeaderKey)) {
               body_length = static_cast<size_t>(atoi(value));
-            } else if (!strcmp(key, kTransferEncodingHeaderKey)) {
-              if (!strcmp(value, kTransferEncodingChunkedValue)) {
+            } else if (!strcmp(key, constants::kTransferEncodingHeaderKey)) {
+              if (!strcmp(value, constants::kTransferEncodingChunkedValue)) {
                 chunked_transfer_encoding = true;
               }
             }
@@ -375,23 +384,17 @@ class GenericHTTPServerConnection final {
     }
   }
 
-  inline static const std::string DefaultContentType() { return "text/plain"; }
-  inline static const std::string DefaultJSONContentType() { return "application/json; charset=utf-8"; }
-  inline static const http::Headers DefaultJSONHTTPHeaders() {
-    return http::Headers({{"Access-Control-Allow-Origin", "*"}});
-  }
-
   inline static void PrepareHTTPResponseHeader(std::ostream& os,
                                                ConnectionType connection_type,
                                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                                               const std::string& content_type = DefaultContentType(),
+                                               const std::string& content_type = constants::kDefaultContentType,
                                                const http::Headers& extra_headers = http::Headers()) {
     os << "HTTP/1.1 " << static_cast<int>(code);
-    os << " " << HTTPResponseCodeAsString(code) << kCRLF;
-    os << "Content-Type: " << content_type << kCRLF;
-    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << kCRLF;
+    os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
+    os << "Content-Type: " << content_type << constants::kCRLF;
+    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;
     for (const auto& cit : extra_headers) {
-      os << cit.header << ": " << cit.value << kCRLF;
+      os << cit.header << ": " << cit.value << constants::kCRLF;
     }
     for (const auto& cit : extra_headers.cookies) {
       os << "Set-Cookie: " << cit.first << '=' << cit.second.value;
@@ -401,7 +404,7 @@ class GenericHTTPServerConnection final {
           os << '=' + cit2.second;
         }
       }
-      os << kCRLF;
+      os << constants::kCRLF;
     }
   }
 
@@ -418,7 +421,7 @@ class GenericHTTPServerConnection final {
       responded_ = true;
       std::ostringstream os;
       PrepareHTTPResponseHeader(os, ConnectionClose, code, content_type, extra_headers);
-      os << "Content-Length: " << (end - begin) << kCRLF << kCRLF;
+      os << "Content-Length: " << (end - begin) << constants::kCRLF << constants::kCRLF;
       connection_.BlockingWrite(os.str(), true);
       connection_.BlockingWrite(begin, end, false);
     }
@@ -430,7 +433,7 @@ class GenericHTTPServerConnection final {
       const T& begin,
       const T& end,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultContentType(),
+      const std::string& content_type = constants::kDefaultContentType,
       const http::Headers& extra_headers = http::Headers()) {
     SendHTTPResponseImpl(begin, end, code, content_type, extra_headers);
   }
@@ -438,7 +441,7 @@ class GenericHTTPServerConnection final {
   inline ENABLE_IF<sizeof(typename T::value_type) == 1> SendHTTPResponse(
       T&& container,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultContentType(),
+      const std::string& content_type = constants::kDefaultContentType,
       const http::Headers& extra_headers = http::Headers()) {
     SendHTTPResponseImpl(container.begin(), container.end(), code, content_type, extra_headers);
   }
@@ -446,7 +449,7 @@ class GenericHTTPServerConnection final {
   // Special case to handle std::string.
   inline void SendHTTPResponse(const std::string& string,
                                HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                               const std::string& content_type = DefaultContentType(),
+                               const std::string& content_type = constants::kDefaultContentType,
                                const http::Headers& extra_headers = http::Headers()) {
     SendHTTPResponseImpl(string.begin(), string.end(), code, content_type, extra_headers);
   }
@@ -456,8 +459,8 @@ class GenericHTTPServerConnection final {
   inline ENABLE_IF<IS_CURRENT_STRUCT(current::decay<T>)> SendHTTPResponse(
       T&& object,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultJSONContentType(),
-      const http::Headers& extra_headers = DefaultJSONHTTPHeaders()) {
+      const std::string& content_type = constants::kDefaultJSONContentType,
+      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = JSON(std::forward<T>(object)) + '\n';
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -470,8 +473,8 @@ class GenericHTTPServerConnection final {
       T&& object,
       const std::string& name,
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultJSONContentType(),
-      const http::Headers& extra_headers = DefaultJSONHTTPHeaders()) {
+      const std::string& content_type = constants::kDefaultJSONContentType,
+      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
     // TODO(dkorolev): We should probably make this not only correct but also efficient.
     const std::string s = "{\"" + name + "\":" + JSON(std::forward<T>(object)) + "}\n";
     SendHTTPResponseImpl(s.begin(), s.end(), code, content_type, extra_headers);
@@ -488,8 +491,8 @@ class GenericHTTPServerConnection final {
           try {
             connection_.BlockingWrite("0", true);
             // Should send CRLF twice.
-            connection_.BlockingWrite(kCRLF, true);
-            connection_.BlockingWrite(kCRLF, false);
+            connection_.BlockingWrite(constants::kCRLF, true);
+            connection_.BlockingWrite(constants::kCRLF, false);
           } catch (const SocketException& e) {                                          // LCOV_EXCL_LINE
             std::cerr << "Chunked response closure failed: " << e.what() << std::endl;  // LCOV_EXCL_LINE
           }                                                                             // LCOV_EXCL_LINE
@@ -502,10 +505,10 @@ class GenericHTTPServerConnection final {
         if (!data.empty()) {
           try {
             connection_.BlockingWrite(strings::Printf("%X", data.size()), true);
-            connection_.BlockingWrite(kCRLF, true);
+            connection_.BlockingWrite(constants::kCRLF, true);
             connection_.BlockingWrite(std::forward<T>(data), true);
             // Force every chunk to be sent out by passing `false` as the second argument.
-            connection_.BlockingWrite(kCRLF, false);
+            connection_.BlockingWrite(constants::kCRLF, false);
           } catch (const SocketException&) {
             // For chunked HTTP responses, if the receiving end has closed the connection,
             // as detected during `Send`, surpass logging about the failure to send the final "zero" chunk.
@@ -575,15 +578,15 @@ class GenericHTTPServerConnection final {
 
   inline ChunkedResponseSender SendChunkedHTTPResponse(
       HTTPResponseCodeValue code = HTTPResponseCode.OK,
-      const std::string& content_type = DefaultJSONContentType(),
-      const http::Headers& extra_headers = DefaultJSONHTTPHeaders()) {
+      const std::string& content_type = constants::kDefaultJSONContentType,
+      const http::Headers& extra_headers = constants::DefaultJSONHTTPHeaders()) {
     if (responded_) {
       CURRENT_THROW(AttemptedToSendHTTPResponseMoreThanOnce());
     } else {
       responded_ = true;
       std::ostringstream os;
       PrepareHTTPResponseHeader(os, ConnectionKeepAlive, code, content_type, extra_headers);
-      os << "Transfer-Encoding: chunked" << kCRLF << kCRLF;
+      os << "Transfer-Encoding: chunked" << constants::kCRLF << constants::kCRLF;
       connection_.BlockingWrite(os.str(), true);
       return ChunkedResponseSender(connection_);
     }
