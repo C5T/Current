@@ -222,10 +222,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
   // whether we should terminate or no depends on `nowait`.
   ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
-    if (time_to_terminate_) {
-      return ss::EntryResponse::Done;
-    }
-    return no_wait_ ? ss::EntryResponse::Done : ss::EntryResponse::More;
+    return (time_to_terminate_ || no_wait_) ? ss::EntryResponse::Done : ss::EntryResponse::More;
   }
 
   // LCOV_EXCL_START

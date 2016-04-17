@@ -62,7 +62,6 @@ SOFTWARE.
 // Sherlock streams can be published into and subscribed to.
 //
 // Publishing is done via `my_stream.Publish(ENTRY{...});`.
-// to ensure publishing is done from one thread only (Sherlock itself offers no locking).
 //
 // Subscription is done via `auto scope = my_stream.Subscribe(my_subscriber);`, where `my_subscriber`
 // is an instance of the class doing the subscription. Sherlock runs each subscriber in a dedicated thread.
@@ -108,7 +107,7 @@ class StreamImpl {
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
       if (!data_) {
-        CURRENT_THROW(StreamInGracefulShutdownMode());
+        CURRENT_THROW(StreamInGracefulShutdownException());
       }
       current::locks::SmartMutexLockGuard<MLS> lock(data_->publish_mutex);
       const auto result = data_->persistence.Publish(entry, us);
@@ -119,7 +118,7 @@ class StreamImpl {
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
       if (!data_) {
-        CURRENT_THROW(StreamInGracefulShutdownMode());
+        CURRENT_THROW(StreamInGracefulShutdownException());
       }
       current::locks::SmartMutexLockGuard<MLS> lock(data_->publish_mutex);
       const auto result = data_->persistence.Publish(std::move(entry), us);
