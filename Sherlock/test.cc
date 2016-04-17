@@ -466,11 +466,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     EXPECT_EQ("4", result.headers.Get("X-Current-Stream-Size"));
   }
 
-  // DIMA
-  return;
   // Test `n`.
   EXPECT_EQ(s[0], HTTP(GET(base_url + "?n=1")).body);
-  return;
   EXPECT_EQ(s[0] + s[1], HTTP(GET(base_url + "?n=2")).body);
   EXPECT_EQ(s[0] + s[1] + s[2], HTTP(GET(base_url + "?n=3")).body);
   EXPECT_EQ(s[0] + s[1] + s[2] + s[3], HTTP(GET(base_url + "?n=4")).body);

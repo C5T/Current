@@ -233,7 +233,7 @@ class StreamImpl {
       ThreadImpl();
       thread_done_ = true;
       if (done_callback_) {
-        // DIMA
+        // TODO(dkorolev): Fix this ownership issue.
         std::lock_guard<std::mutex> lock(data->http_subscriptions_mutex);
         done_callback_();
       }
