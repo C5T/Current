@@ -42,21 +42,24 @@ constexpr static const char* kSherlockHeaderCurrentStreamSize = "X-Current-Strea
 constexpr static const char* kSherlockHeaderCurrentSubscriptionId = "X-Current-Stream-Subscription-Id";
 
 // A generic top-level `SubscriberScope` to unite any implementations, to allow `std::move()`-ing them into one.
+// Features:
+// 1) Any per-stream and per-type `SyncSubscriber` can be moved into this "global" `SubscriberScope`.
+// 2) A `nullptr` can be assigned to this "global" `SubscriberScope`.
+// 3) Unlike per-{stream/type} subscriber scopes, the "global" `SubscriberScope` can be default-constructed.
 struct SubscriberScope {
   struct SubscriberThread {
     virtual ~SubscriberThread() = default;
   };
   std::unique_ptr<SubscriberThread> impl;
 
+  SubscriberScope() = default;
   SubscriberScope(std::unique_ptr<SubscriberThread>&& impl) : impl(std::move(impl)) {}
 
-  struct CreateAsUninitialized {};
-  SubscriberScope(const CreateAsUninitialized&) {}
+  void operator=(std::nullptr_t) { impl = nullptr; }
 
   SubscriberScope(SubscriberScope&&) = default;
   SubscriberScope& operator=(SubscriberScope&&) = default;
 
-  SubscriberScope() = delete;
   SubscriberScope(const SubscriberScope&) = delete;
   SubscriberScope& operator=(const SubscriberScope&) = delete;
 };
@@ -71,9 +74,8 @@ struct StreamData {
   using entry_t = ENTRY;
   using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
 
-  using http_subscriptions_t = std::unordered_map<
-      std::string,
-      std::pair<std::unique_ptr<SubscriberScope::SubscriberThread>, std::unique_ptr<AbstractSubscriberObject>>>;
+  using http_subscriptions_t =
+      std::unordered_map<std::string, std::pair<SubscriberScope, std::unique_ptr<AbstractSubscriberObject>>>;
   persistence_layer_t persistence;
   current::WaitableTerminateSignalBulkNotifier notifier;
   std::mutex publish_mutex;

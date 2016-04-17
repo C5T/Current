@@ -294,13 +294,6 @@ class StreamImpl {
 
     SubscriberScope(ScopeOwned<stream_data_t>& data, F& subscriber, std::function<void()> done_callback)
         : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, done_callback))) {}
-
-    // An internal method to release the thread as a generic `unique_ptr<>`.
-    // Used to keep all long-lasting HTTP subscriber within one container within an instance of the stream.
-    std::unique_ptr<current::sherlock::SubscriberScope::SubscriberThread> ReleaseThread() {
-      assert(impl);
-      return std::move(impl);
-    }
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
@@ -385,24 +378,23 @@ class StreamImpl {
         } else {
           const std::string subscription_id = data_->GenerateRandomHTTPSubscriptionID();
 
-          auto subscriber_instance = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
+          auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
               subscription_id, data_, std::move(r));
 
-          stream_data_t& inner_data = *data_;
-          std::unique_ptr<current::sherlock::SubscriberScope::SubscriberThread> subscriber_thread_scope =
-              Subscribe(*subscriber_instance,
-                        [&inner_data, subscription_id]() {
+          current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+              Subscribe(*http_chunked_subscriber,
+                        [this, subscription_id]() {
                           // NOTE: Need to figure out when and where to lock.
                           // Chat w/ Max about the logic to clean up completed listeners.
                           // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                          inner_data.http_subscriptions[subscription_id].second = nullptr;
-                        }).ReleaseThread();
+                          data_->http_subscriptions[subscription_id].second = nullptr;
+                        });
 
           {
             std::lock_guard<std::mutex> lock(data_->http_subscriptions_mutex);
             assert(!data_->http_subscriptions.count(subscription_id));
             data_->http_subscriptions[subscription_id] =
-                std::make_pair(std::move(subscriber_thread_scope), std::move(subscriber_instance));
+                std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
           }
         }
       }
