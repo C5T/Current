@@ -56,9 +56,9 @@ struct StreamData {
   using entry_t = ENTRY;
   using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
 
-  using http_subscriptions_t = std::unordered_map<std::string,
-                     std::pair<std::unique_ptr<AbstractSubscriptionThread>,
-                               std::unique_ptr<AbstractSubscriberObject>>>;
+  using http_subscriptions_t = std::unordered_map<
+      std::string,
+      std::pair<std::unique_ptr<AbstractSubscriptionThread>, std::unique_ptr<AbstractSubscriberObject>>>;
   persistence_layer_t persistence;
   current::WaitableTerminateSignalBulkNotifier notifier;
   std::mutex publish_mutex;

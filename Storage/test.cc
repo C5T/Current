@@ -1568,7 +1568,8 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
 
   // Launch continuos replication process.
   {
-    const auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
+    const auto replicator_scope =
+        master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
 
     // Confirm an empty collection is returned.
     {

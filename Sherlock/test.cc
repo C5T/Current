@@ -617,9 +617,7 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
                           ++chunks_count;
                           chunks.push_back(chunk_body);
                         },
-                        [&chunks_done]() {
-                          chunks_done = true;
-                        }));
+                        [&chunks_done]() { chunks_done = true; }));
     EXPECT_EQ(200, static_cast<int>(result));
   });
 

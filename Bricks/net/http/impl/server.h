@@ -59,12 +59,13 @@ namespace constants {
 
 constexpr static const char kCRLF[] = "\r\n";
 constexpr const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
-  
+
 constexpr const char* kDefaultContentType = "text/plain";
 constexpr const char* kDefaultJSONContentType = "application/json; charset=utf-8";
 
 constexpr const char kHeaderKeyValueSeparator[] = ": ";
-constexpr const size_t kHeaderKeyValueSeparatorLength = strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
+constexpr const size_t kHeaderKeyValueSeparatorLength =
+    strings::CompileTimeStringLength(kHeaderKeyValueSeparator);
 
 constexpr const char* const kContentLengthHeaderKey = "Content-Length";
 constexpr const char* const kTransferEncodingHeaderKey = "Transfer-Encoding";
@@ -392,7 +393,8 @@ class GenericHTTPServerConnection final {
     os << "HTTP/1.1 " << static_cast<int>(code);
     os << " " << HTTPResponseCodeAsString(code) << constants::kCRLF;
     os << "Content-Type: " << content_type << constants::kCRLF;
-    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close") << constants::kCRLF;
+    os << "Connection: " << (connection_type == ConnectionKeepAlive ? "keep-alive" : "close")
+       << constants::kCRLF;
     for (const auto& cit : extra_headers) {
       os << cit.header << ": " << cit.value << constants::kCRLF;
     }
