@@ -164,7 +164,7 @@ class ScopeOwnedByMe;
 template <typename T>
 class ScopeOwnedBySomeoneElse;
 
-// `ScopeOwned<T>` is the  base class for `ScopeOwnedByMe<T>` and `ScopeOwnedBySomeoneElse<T>`.
+// `ScopeOwned<T>` is the base class for `ScopeOwnedByMe<T>` and `ScopeOwnedBySomeoneElse<T>`.
 //
 // Unifies and simplifies:
 // 1) Basic usage patterns, such as `operator*()`, `operator->()`, and exceptions.
@@ -195,7 +195,7 @@ class ScopeOwned {
     std::lock_guard<std::mutex> lock(rhs.p_actual_instance_->mutex_);
     p_actual_instance_ = rhs.p_actual_instance_;
     key_ = rhs.key_;
-    rhs.key_ = 0u;  // Must mark the passed in xvalue of `ScopeOwner<>` as abandoned.
+    rhs.key_ = 0u;  // Must mark the passed in xvalue of `ScopeOwned<>` as abandoned.
   }
 
   ScopeOwned(const ScopeOwned&) = delete;
@@ -222,7 +222,8 @@ class ScopeOwned {
   operator bool() const noexcept { return !IsDestructing(); }
 
   // Smart-pointer-style accessors.
-  // NOT THREAD-SAFE. CAN THROW IF ALREADY DESTRUCTING.
+  // NOT THREAD-SAFE, POTENTIALLY ALLOWS NON-EXCLUSIVE USE TO THE UNDERLYING OBJECT.
+  // THROWS IF THE SCOPE OF THE UNDERLYING OBJECT IS ALREADY DESTRUCTING.
   T& operator*() {
     CheckPrivilege();
     return p_actual_instance_->instance_;
@@ -241,7 +242,8 @@ class ScopeOwned {
   }
 
   // Exclusive accessors.
-  // NOT THREAD-SAFE. CAN THROW IF ALREADY DESTRUCTING.
+  // THREAD-SAFE WITH RESPECT TO MAKING SURE UNDERLYING OBJECT IS ACCESSED EXCLUSIVELY BY THE PASSED IN FUNCTOR.
+  // THROWS IF THE SCOPE OF THE UNDERLYING OBJECT IS ALREADY DESTRUCTING.
   void ExclusiveUse(std::function<void(T&)> f) {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     f(operator*());
@@ -262,7 +264,8 @@ class ScopeOwned {
   }
 
   // Exclusive accessors ignoring the `destructing_` flag.
-  // NOT THREAD-SAFE. NEVER THROW.
+  // THREAD-SAFE WITH RESPECT TO MAKING SURE UNDERLYING OBJECT IS ACCESSED EXCLUSIVELY BY THE PASSED IN FUNCTOR.
+  // NEVER THROWS, PROLONGS THE LIFETIME OF THE UNDERLYING OBJECT, EVEN IF IT IS ALREADY BEING DESTRUCTED.
   void ExclusiveUseDespitePossiblyDestructing(std::function<void(T&)> f) noexcept {
     std::lock_guard<std::mutex> lock(p_actual_instance_->mutex_);
     f(p_actual_instance_->instance_);
