@@ -110,7 +110,7 @@ class FilePersister {
   static_assert(sizeof(end_t) == 16, "");
 
  private:
-  struct Impl {
+  struct FilePersisterImpl {
     const std::string filename;
     std::ofstream appender;
 
@@ -123,8 +123,8 @@ class FilePersister {
     // std::atomic<end_t> end;
     current::atomic_that_works<end_t> end;
 
-    Impl() = delete;
-    explicit Impl(const std::string& filename)
+    FilePersisterImpl() = delete;
+    explicit FilePersisterImpl(const std::string& filename)
         : filename(filename),
           appender(filename, std::ofstream::app),
           end(ValidateFileAndInitializeNext(filename, offset)) {
@@ -157,12 +157,18 @@ class FilePersister {
   };
 
  public:
-  FilePersister(const std::string& filename) : impl_(filename) {}
+  FilePersister(const std::string& filename) : file_persister_impl_(filename) {}
 
   class IterableRange {
    public:
-    explicit IterableRange(ScopeOwned<Impl>& impl, uint64_t begin, uint64_t end, std::streampos begin_offset)
-        : impl_(impl, [this]() { valid_ = false; }), begin_(begin), end_(end), begin_offset_(begin_offset) {}
+    explicit IterableRange(ScopeOwned<FilePersisterImpl>& file_persister_impl,
+                           uint64_t begin,
+                           uint64_t end,
+                           std::streampos begin_offset)
+        : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }),
+          begin_(begin),
+          end_(end),
+          begin_offset_(begin_offset) {}
 
     struct Entry {
       idxts_t idx_ts;
@@ -171,12 +177,12 @@ class FilePersister {
 
     class Iterator {
      public:
-      Iterator(ScopeOwned<Impl>& impl,
+      Iterator(ScopeOwned<FilePersisterImpl>& file_persister_impl,
                const std::string& filename,
                uint64_t i,
                std::streampos offset,
                uint64_t index_at_offset)
-          : impl_(impl, [this]() { valid_ = false; }), i_(i) {
+          : file_persister_impl_(file_persister_impl, [this]() { valid_ = false; }), i_(i) {
         if (!filename.empty()) {
           fi_ = std::make_unique<std::ifstream>(filename);
           // This `if` condition is only here to test performance with vs. without the `seekg`.
@@ -226,7 +232,7 @@ class FilePersister {
       operator bool() const { return valid_; }
 
      private:
-      ScopeOwnedBySomeoneElse<Impl> impl_;
+      ScopeOwnedBySomeoneElse<FilePersisterImpl> file_persister_impl_;
       bool valid_ = true;
       std::unique_ptr<std::ifstream> fi_;
       std::unique_ptr<IteratorOverFileOfPersistedEntries<ENTRY>> cit_;
@@ -238,9 +244,10 @@ class FilePersister {
         CURRENT_THROW(PersistenceFileNoLongerAvailable());
       }
       if (begin_ == end_) {
-        return Iterator(impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return Iterator(
+            file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator(impl_, impl_->filename, begin_, begin_offset_, begin_);
+        return Iterator(file_persister_impl_, file_persister_impl_->filename, begin_, begin_offset_, begin_);
       }
     }
     Iterator end() const {
@@ -248,16 +255,18 @@ class FilePersister {
         CURRENT_THROW(PersistenceFileNoLongerAvailable());
       }
       if (begin_ == end_) {
-        return Iterator(impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
+        return Iterator(
+            file_persister_impl_, "", 0, 0, 0);  // No need in accessing the file for a null iterator.
       } else {
-        return Iterator(impl_, "", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
+        return Iterator(
+            file_persister_impl_, "", end_, 0, 0);  // No need in accessing the file for a no-op `end` iterator.
       }
     }
 
     operator bool() const { return valid_; }
 
    private:
-    mutable ScopeOwnedBySomeoneElse<Impl> impl_;
+    mutable ScopeOwnedBySomeoneElse<FilePersisterImpl> file_persister_impl_;
     bool valid_ = true;
     const uint64_t begin_;
     const uint64_t end_;
@@ -266,29 +275,29 @@ class FilePersister {
 
   template <typename E>
   idxts_t DoPublish(E&& entry, const std::chrono::microseconds timestamp) {
-    end_t iterator = impl_->end.load();
+    end_t iterator = file_persister_impl_->end.load();
     if (timestamp < iterator.us) {
       CURRENT_THROW(InconsistentTimestampException(iterator.us, timestamp));
     }
     iterator.us = timestamp;
     const auto current = idxts_t(iterator.index, iterator.us);
     {
-      std::lock_guard<std::mutex> lock(impl_->mutex);
-      assert(impl_->offset.size() == iterator.index);
-      impl_->offset.push_back(impl_->appender.tellp());
+      std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+      assert(file_persister_impl_->offset.size() == iterator.index);
+      file_persister_impl_->offset.push_back(file_persister_impl_->appender.tellp());
     }
-    impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
+    file_persister_impl_->appender << JSON(current) << '\t' << JSON(std::forward<E>(entry)) << std::endl;
     ++iterator.index;
     iterator.us += std::chrono::microseconds(1);
-    impl_->end.store(iterator);
+    file_persister_impl_->end.store(iterator);
     return current;
   }
 
-  bool Empty() const noexcept { return !impl_->end.load().index; }
-  uint64_t Size() const noexcept { return impl_->end.load().index; }
+  bool Empty() const noexcept { return !file_persister_impl_->end.load().index; }
+  uint64_t Size() const noexcept { return file_persister_impl_->end.load().index; }
 
   idxts_t LastPublishedIndexAndTimestamp() const {
-    const auto iterator = impl_->end.load();
+    const auto iterator = file_persister_impl_->end.load();
     if (iterator.index) {
       return idxts_t(iterator.index - 1, iterator.us - std::chrono::microseconds(1));
     } else {
@@ -297,7 +306,7 @@ class FilePersister {
   }
 
   IterableRange Iterate(uint64_t begin_index, uint64_t end_index) const {
-    const uint64_t current_size = impl_->end.load().index;
+    const uint64_t current_size = file_persister_impl_->end.load().index;
     if (end_index == static_cast<uint64_t>(-1)) {
       end_index = current_size;
     }
@@ -305,18 +314,21 @@ class FilePersister {
       CURRENT_THROW(InvalidIterableRangeException());
     }
     if (begin_index == end_index) {
-      return IterableRange(impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
+      return IterableRange(
+          file_persister_impl_, 0, 0, 0);  // OK, even for an empty persister, where 0 is an invalid index.
     }
     if (end_index < begin_index) {
       CURRENT_THROW(InvalidIterableRangeException());
     }
-    std::lock_guard<std::mutex> lock(impl_->mutex);
-    assert(impl_->offset.size() >= current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
-    return IterableRange(impl_, begin_index, end_index, impl_->offset[begin_index]);
+    std::lock_guard<std::mutex> lock(file_persister_impl_->mutex);
+    assert(file_persister_impl_->offset.size() >=
+           current_size);  // "Greater" is OK, `Iterate()` is multithreaded. -- D.K.
+    return IterableRange(
+        file_persister_impl_, begin_index, end_index, file_persister_impl_->offset[begin_index]);
   }
 
  private:
-  mutable ScopeOwnedByMe<Impl> impl_;
+  mutable ScopeOwnedByMe<FilePersisterImpl> file_persister_impl_;
 };
 
 }  // namespace current::persistence::impl
