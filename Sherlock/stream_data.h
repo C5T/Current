@@ -41,9 +41,24 @@ namespace sherlock {
 constexpr static const char* kSherlockHeaderCurrentStreamSize = "X-Current-Stream-Size";
 constexpr static const char* kSherlockHeaderCurrentSubscriptionId = "X-Current-Stream-Subscription-Id";
 
-class AbstractSubscriptionThread {
- public:
-  virtual ~AbstractSubscriptionThread() = default;
+// A generic top-level `SubscriberScope` to unite any implementations, to allow `std::move()`-ing them into one.
+struct SubscriberScope {
+  struct SubscriberThread {
+    virtual ~SubscriberThread() = default;
+  };
+  std::unique_ptr<SubscriberThread> impl;
+
+  SubscriberScope(std::unique_ptr<SubscriberThread>&& impl) : impl(std::move(impl)) {}
+
+  struct CreateAsUninitialized {};
+  SubscriberScope(const CreateAsUninitialized&) {}
+
+  SubscriberScope(SubscriberScope&&) = default;
+  SubscriberScope& operator=(SubscriberScope&&) = default;
+
+  SubscriberScope() = delete;
+  SubscriberScope(const SubscriberScope&) = delete;
+  SubscriberScope& operator=(const SubscriberScope&) = delete;
 };
 
 class AbstractSubscriberObject {
@@ -58,7 +73,7 @@ struct StreamData {
 
   using http_subscriptions_t = std::unordered_map<
       std::string,
-      std::pair<std::unique_ptr<AbstractSubscriptionThread>, std::unique_ptr<AbstractSubscriberObject>>>;
+      std::pair<std::unique_ptr<SubscriberScope::SubscriberThread>, std::unique_ptr<AbstractSubscriberObject>>>;
   persistence_layer_t persistence;
   current::WaitableTerminateSignalBulkNotifier notifier;
   std::mutex publish_mutex;

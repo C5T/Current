@@ -198,7 +198,7 @@ class StreamImpl {
   }
 
   template <typename TYPE_SUBSCRIBED_TO, typename F>
-  class SubscriberThread final : public AbstractSubscriptionThread {
+  class SubscriberThreadInstance final : public current::sherlock::SubscriberScope::SubscriberThread {
    private:
     F& subscriber;
     std::function<void()> done_callback_;
@@ -207,20 +207,22 @@ class StreamImpl {
     current::WaitableTerminateSignal terminate_signal;
     std::thread thread_;
 
-    SubscriberThread() = delete;
-    SubscriberThread(const SubscriberThread&) = delete;
-    SubscriberThread(SubscriberThread&&) = delete;
-    void operator=(const SubscriberThread&) = delete;
-    void operator=(SubscriberThread&&) = delete;
+    SubscriberThreadInstance() = delete;
+    SubscriberThreadInstance(const SubscriberThreadInstance&) = delete;
+    SubscriberThreadInstance(SubscriberThreadInstance&&) = delete;
+    void operator=(const SubscriberThreadInstance&) = delete;
+    void operator=(SubscriberThreadInstance&&) = delete;
 
    public:
-    SubscriberThread(ScopeOwned<stream_data_t>& data, F& subscriber, std::function<void()> done_callback)
+    SubscriberThreadInstance(ScopeOwned<stream_data_t>& data,
+                             F& subscriber,
+                             std::function<void()> done_callback)
         : subscriber(subscriber),
           done_callback_(done_callback),
           data(data, [this]() { terminate_signal.SignalExternalTermination(); }),
-          thread_(&SubscriberThread::Thread, this) {}
+          thread_(&SubscriberThreadInstance::Thread, this) {}
 
-    ~SubscriberThread() {
+    ~SubscriberThreadInstance() {
       assert(thread_.joinable());
       if (!thread_done_) {
         terminate_signal.SignalExternalTermination();
@@ -282,32 +284,23 @@ class StreamImpl {
 
   // Expose the means to control the scope of the subscriber.
   template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  class SubscriberScope {
+  class SubscriberScope : public current::sherlock::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
+    using base_t = current::sherlock::SubscriberScope;
 
    public:
-    using subscriber_thread_t = SubscriberThread<TYPE_SUBSCRIBED_TO, F>;
+    using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
     SubscriberScope(ScopeOwned<stream_data_t>& data, F& subscriber, std::function<void()> done_callback)
-        : impl_(std::make_unique<subscriber_thread_t>(data, subscriber, done_callback)) {}
-
-    SubscriberScope(SubscriberScope&& rhs) = default;
-    SubscriberScope& operator=(SubscriberScope&&) = default;
+        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, done_callback))) {}
 
     // An internal method to release the thread as a generic `unique_ptr<>`.
     // Used to keep all long-lasting HTTP subscriber within one container within an instance of the stream.
-    std::unique_ptr<AbstractSubscriptionThread> ReleaseThread() {
-      assert(impl_);
-      return std::move(impl_);
+    std::unique_ptr<current::sherlock::SubscriberScope::SubscriberThread> ReleaseThread() {
+      assert(impl);
+      return std::move(impl);
     }
-
-   private:
-    std::unique_ptr<subscriber_thread_t> impl_;
-
-    SubscriberScope() = delete;
-    void operator=(const SubscriberScope&) = delete;
-    SubscriberScope(const SubscriberScope&) = delete;
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
@@ -396,7 +389,7 @@ class StreamImpl {
               subscription_id, data_, std::move(r));
 
           stream_data_t& inner_data = *data_;
-          std::unique_ptr<AbstractSubscriptionThread> subscriber_thread_scope =
+          std::unique_ptr<current::sherlock::SubscriberScope::SubscriberThread> subscriber_thread_scope =
               Subscribe(*subscriber_instance,
                         [&inner_data, subscription_id]() {
                           // NOTE: Need to figure out when and where to lock.
