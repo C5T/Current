@@ -903,7 +903,6 @@ TEST(TransactionalStorage, Exceptions) {
 
 TEST(TransactionalStorage, ReplicationViaHTTP) {
   using namespace transactional_storage_test;
-  using current::storage::TransactionMetaFields;
   using Storage = TestStorage<SherlockStreamPersister>;
 
   // Create master storage.
@@ -1091,7 +1090,7 @@ TEST(TransactionalStorage, InternalExposeStream) {
 
   std::string collected;
   StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
-  storage.InternalExposeStream().Subscribe(processor).Join();
+  storage.InternalExposeStream().Subscribe(processor);
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"one\",\"rhs\":1}},\"\":\"T9205381019427680739\"}]}\n"
@@ -1425,7 +1424,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
 
   std::string collected;
   StorageSherlockTestProcessor<Storage::transaction_t> processor(collected);
-  storage.InternalExposeStream().Subscribe(processor).Join();
+  storage.InternalExposeStream().Subscribe(processor);
   EXPECT_EQ(
       "{\"index\":0,\"us\":100}\t{\"meta\":{\"timestamp\":100,\"fields\":{}},\"mutations\":[{"
       "\"RecordDictionaryUpdated\":{\"data\":{\"lhs\":\"own_stream\",\"rhs\":42}},\"\":"
@@ -1481,7 +1480,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     std::string collected_transactions;
     StorageSherlockTestProcessor<transaction_t> processor(collected_transactions);
     processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
-    storage.InternalExposeStream().Subscribe<transaction_t>(processor).Join();
+    storage.InternalExposeStream().Subscribe<transaction_t>(processor);
     EXPECT_EQ(
         "{\"index\":1,\"us\":2}\t"
         "{\"meta\":{\"timestamp\":2,\"fields\":{}},\"mutations\":["
@@ -1495,7 +1494,7 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
     std::string collected_non_transactions;
     StorageSherlockTestProcessor<StreamEntryOutsideStorage> processor(collected_non_transactions);
     processor.SetAllowTerminateOnOnMoreEntriesOfRightType();
-    storage.InternalExposeStream().Subscribe<StreamEntryOutsideStorage>(processor).Join();
+    storage.InternalExposeStream().Subscribe<StreamEntryOutsideStorage>(processor);
     EXPECT_EQ("{\"index\":0,\"us\":1}\t{\"s\":\"one\"}\n{\"index\":2,\"us\":3}\t{\"s\":\"three\"}\n",
               collected_non_transactions);
   }
@@ -1561,86 +1560,90 @@ TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
   // Follower storage is created atop a stream with external data authority.
   Storage follower_storage(follower_stream);
 
-  // Launch continuos replication process.
-  auto replicator_scope = master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
+  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
   // Start RESTful service atop follower storage.
   auto rest = RESTfulStorage<Storage>(
       follower_storage, FLAGS_transactional_storage_test_port, "/api", "http://unittest.current.ai");
 
-  const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
-  // Confirm an empty collection is returned.
+  // Launch continuos replication process.
   {
-    const auto result = HTTP(GET(base_url + "/api/data/user"));
-    EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("", result.body);
-  }
+    const auto replicator_scope =
+        master_storage.InternalExposeStream().template Subscribe<transaction_t>(*replicator);
 
-  // Publish one record.
-  current::time::SetNow(std::chrono::microseconds(100));
-  {
-    const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
-      fields.user.Add(SimpleUser("John", "JD"));
-    }).Go();
-    EXPECT_TRUE(WasCommitted(result));
-  }
+    // Confirm an empty collection is returned.
+    {
+      const auto result = HTTP(GET(base_url + "/api/data/user"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ("", result.body);
+    }
 
-  // Wait until the transaction performed above is replicated to the `follower_stream` and imported by
-  // the `follower_storage`.
-  {
-    size_t user_size = 0u;
-    do {
-      const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
-        return fields.user.Size();
+    // Publish one record.
+    current::time::SetNow(std::chrono::microseconds(100));
+    {
+      const auto result = master_storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
+        fields.user.Add(SimpleUser("John", "JD"));
       }).Go();
       EXPECT_TRUE(WasCommitted(result));
-      user_size = Value(result);
-    } while (user_size == 0u);
-    EXPECT_EQ(1u, user_size);
+    }
+
+    // Wait until the transaction performed above is replicated to the `follower_stream` and imported by
+    // the `follower_storage`.
+    {
+      size_t user_size = 0u;
+      do {
+        const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+          return fields.user.Size();
+        }).Go();
+        EXPECT_TRUE(WasCommitted(result));
+        user_size = Value(result);
+      } while (user_size == 0u);
+      EXPECT_EQ(1u, user_size);
+    }
+
+    // Check that the the following storage now has the same record as the master one.
+    {
+      const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+        ASSERT_TRUE(Exists(fields.user["John"]));
+        EXPECT_EQ("JD", Value(fields.user["John"]).name);
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result));
+    }
+    {
+      const auto result = HTTP(GET(base_url + "/api/data/user/John"));
+      EXPECT_EQ(200, static_cast<int>(result.code));
+      EXPECT_EQ("JD", ParseJSON<SimpleUser>(result.body).name);
+    }
+
+    // Mutating access to the RESTful service of the `follower` is not allowed.
+    {
+      const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
+      EXPECT_EQ(405, static_cast<int>(post_response.code));
+      const auto put_response = HTTP(PUT(base_url + "/api/data/user/John", SimpleUser("John", "DJ")));
+      EXPECT_EQ(405, static_cast<int>(post_response.code));
+      const auto delete_response = HTTP(DELETE(base_url + "/api/data/user/John"));
+      EXPECT_EQ(405, static_cast<int>(post_response.code));
+    }
+
+    // Attempt to run read-write transaction in `Follower` mode throws an exception.
+    EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) {}),
+                 current::storage::ReadWriteTransactionInFollowerStorageException);
+    EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) { return 42; }, [](int) {}),
+                 current::storage::ReadWriteTransactionInFollowerStorageException);
+
+    // At this moment the content of both persisted files must be identical.
+    EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
+              current::FileSystem::ReadFileAsString(follower_file_name));
+
+    // `FlipToMaster()` method on a storage with `Master` role throws an exception.
+    EXPECT_THROW(master_storage.FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
+    // Publisher of the `follower_stream` is still in the `replicator`.
+    EXPECT_THROW(follower_storage.FlipToMaster(),
+                 current::storage::UnderlyingStreamHasExternalDataAuthorityException);
+
+    // Stop the replication process by ending its scope.
   }
 
-  // Check that the the following storage now has the same record as the master one.
-  {
-    const auto result = follower_storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
-      ASSERT_TRUE(Exists(fields.user["John"]));
-      EXPECT_EQ("JD", Value(fields.user["John"]).name);
-    }).Go();
-    EXPECT_TRUE(WasCommitted(result));
-  }
-  {
-    const auto result = HTTP(GET(base_url + "/api/data/user/John"));
-    EXPECT_EQ(200, static_cast<int>(result.code));
-    EXPECT_EQ("JD", ParseJSON<SimpleUser>(result.body).name);
-  }
-
-  // Mutating access to the RESTful service of the `follower` is not allowed.
-  {
-    const auto post_response = HTTP(POST(base_url + "/api/data/user", SimpleUser("max", "MZ")));
-    EXPECT_EQ(405, static_cast<int>(post_response.code));
-    const auto put_response = HTTP(PUT(base_url + "/api/data/user/John", SimpleUser("John", "DJ")));
-    EXPECT_EQ(405, static_cast<int>(post_response.code));
-    const auto delete_response = HTTP(DELETE(base_url + "/api/data/user/John"));
-    EXPECT_EQ(405, static_cast<int>(post_response.code));
-  }
-
-  // Attempt to run read-write transaction in `Follower` mode throws an exception.
-  EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) {}),
-               current::storage::ReadWriteTransactionInFollowerStorageException);
-  EXPECT_THROW(follower_storage.ReadWriteTransaction([](MutableFields<Storage>) { return 42; }, [](int) {}),
-               current::storage::ReadWriteTransactionInFollowerStorageException);
-
-  // At this moment the content of both persisted files must be identical.
-  EXPECT_EQ(current::FileSystem::ReadFileAsString(master_file_name),
-            current::FileSystem::ReadFileAsString(follower_file_name));
-
-  // `FlipToMaster()` method on a storage with `Master` role throws an exception.
-  EXPECT_THROW(master_storage.FlipToMaster(), current::storage::StorageIsAlreadyMasterException);
-  // Publisher of the `follower_stream` is still in the `replicator`.
-  EXPECT_THROW(follower_storage.FlipToMaster(),
-               current::storage::UnderlyingStreamHasExternalDataAuthorityException);
-
-  // Stop the replication process.
-  replicator_scope.Join();
   // `StreamReplicator` returns publisher to the stream in its destructor.
   replicator = nullptr;
   // Switch to a `Master` role.

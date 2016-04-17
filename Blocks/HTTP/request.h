@@ -105,8 +105,11 @@ struct Request final {
     connection.SendHTTPResponse(std::forward<TS>(params)...);
   }
 
-  current::net::HTTPServerConnection::ChunkedResponseSender SendChunkedResponse() {
-    return connection.SendChunkedHTTPResponse();
+  current::net::HTTPServerConnection::ChunkedResponseSender SendChunkedResponse(
+      net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
+      const std::string& content_type = net::constants::kDefaultJSONContentType,
+      const net::http::Headers& extra_headers = net::constants::DefaultJSONHTTPHeaders()) {
+    return connection.SendChunkedHTTPResponse(code, content_type, extra_headers);
   }
 
   Request(const Request&) = delete;

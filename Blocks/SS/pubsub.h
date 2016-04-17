@@ -33,7 +33,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/variant.h"
 #include "../../Bricks/time/chrono.h"
-#include "../../Bricks/util/locks.h"
+#include "../../Bricks/sync/locks.h"
 
 namespace current {
 namespace ss {

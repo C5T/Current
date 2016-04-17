@@ -30,10 +30,14 @@ SOFTWARE.
 
 #include <utility>
 
+#include "stream_data.h"
+
 #include "../TypeSystem/timestamp.h"
 
 #include "../Blocks/SS/ss.h"
 #include "../Blocks/HTTP/api.h"
+
+#include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/time/chrono.h"
 
 // HTTP publish-subscribe configuration.
@@ -114,11 +118,21 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
-template <typename E, JSONFormat J = JSONFormat::Current>
-class PubSubHTTPEndpointImpl {
+template <typename E, template <typename> class PERSISTENCE_LAYER, JSONFormat J>
+class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
  public:
-  explicit PubSubHTTPEndpointImpl(Request r)
-      : http_request_(std::move(r)), http_response_(http_request_.SendChunkedResponse()) {
+  using stream_data_t = StreamData<E, PERSISTENCE_LAYER>;
+
+  PubSubHTTPEndpointImpl(const std::string& subscription_id, ScopeOwned<stream_data_t>& data, Request r)
+      : data_(data, [this]() { time_to_terminate_ = true; }),
+        http_request_(std::move(r)),
+        http_response_(http_request_.SendChunkedResponse(
+            HTTPResponseCode.OK,
+            current::net::constants::kDefaultJSONContentType,
+            current::net::http::Headers({
+                {kSherlockHeaderCurrentSubscriptionId, subscription_id},
+                {kSherlockHeaderCurrentStreamSize, current::ToString(data_->persistence.Size())},
+            }))) {
     if (http_request_.url.query.has("recent")) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
       from_timestamp_ = r.timestamp - std::chrono::microseconds(
@@ -155,6 +169,9 @@ class PubSubHTTPEndpointImpl {
   // * `EntryResponse` as the return value.
   // It does so to respect the URL parameters of the range of entries to subscribe to.
   ss::EntryResponse operator()(const E& entry, idxts_t current, idxts_t last) {
+    if (time_to_terminate_) {
+      return ss::EntryResponse::Done;
+    }
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     if (!serving_) {
       if (current.index >= i_ &&                                               // Respect `i`.
@@ -205,7 +222,7 @@ class PubSubHTTPEndpointImpl {
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
   // whether we should terminate or no depends on `nowait`.
   ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
-    return no_wait_ ? ss::EntryResponse::Done : ss::EntryResponse::More;
+    return (time_to_terminate_ || no_wait_) ? ss::EntryResponse::Done : ss::EntryResponse::More;
   }
 
   // LCOV_EXCL_START
@@ -216,6 +233,10 @@ class PubSubHTTPEndpointImpl {
   // LCOV_EXCL_STOP
 
  private:
+  // The HTTP listener must register itself as a user of stream data to ensure the lifetime of stream data.
+  ScopeOwnedBySomeoneElse<stream_data_t> data_;
+  std::atomic_bool time_to_terminate_{false};
+
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
   Request http_request_;
   // `http_response_`: the instance of the chunked response object to use.
@@ -249,8 +270,8 @@ class PubSubHTTPEndpointImpl {
   void operator=(PubSubHTTPEndpointImpl&&) = delete;
 };
 
-template <typename E, JSONFormat J = JSONFormat::Current>
-using PubSubHTTPEndpoint = current::ss::StreamSubscriber<PubSubHTTPEndpointImpl<E, J>, E>;
+template <typename E, template <typename> class PERSISTENCE_LAYER, JSONFormat J = JSONFormat::Current>
+using PubSubHTTPEndpoint = current::ss::StreamSubscriber<PubSubHTTPEndpointImpl<E, PERSISTENCE_LAYER, J>, E>;
 
 }  // namespace sherlock
 }  // namespace current

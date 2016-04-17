@@ -88,7 +88,6 @@ class MemoryPersister {
         if (!valid_) {
           CURRENT_THROW(PersistenceMemoryBlockNoLongerAvailable());
         }
-
         ++i_;
       }
       bool operator==(const Iterator& rhs) const { return i_ == rhs.i_; }

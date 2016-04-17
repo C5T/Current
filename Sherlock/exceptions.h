@@ -26,6 +26,7 @@ SOFTWARE.
 #define CURRENT_SHERLOCK_EXCEPTIONS_H
 
 #include "../Bricks/exception.h"
+#include "../Blocks/GracefulShutdown/exceptions.h"
 
 namespace current {
 namespace sherlock {
@@ -44,6 +45,10 @@ struct PublisherAlreadyReleasedException : SherlockException {
 
 struct PublisherAlreadyOwnedException : SherlockException {
   using SherlockException::SherlockException;
+};
+
+struct StreamInGracefulShutdownException : InGracefulShutdownException {
+  using InGracefulShutdownException::InGracefulShutdownException;
 };
 
 }  // namespace sherlock

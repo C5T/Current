@@ -43,7 +43,7 @@ HTTP(port).Register("/found", [](Request r) {
   r("Yes.",
     HTTPResponseCode.Accepted,
     "text/html",
-    Headers().Set("custom", "header").Set("another", "one"));
+    current::net::http::Headers().Set("custom", "header").Set("another", "one"));
 });
 ```
 ```cpp

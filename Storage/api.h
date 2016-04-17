@@ -35,6 +35,8 @@ SOFTWARE.
 
 #include "rest/basic.h"
 
+#include "../TypeSystem/Reflection/reflection.h"
+#include "../TypeSystem/Schema/schema.h"
 #include "../Blocks/HTTP/api.h"
 #include "../Bricks/template/call_if.h"
 

@@ -32,7 +32,7 @@ SOFTWARE.
 #include "../transaction.h"
 #include "../../Sherlock/sherlock.h"
 
-#include "../../Bricks/util/locks.h"
+#include "../../Bricks/sync/locks.h"
 
 namespace current {
 namespace storage {
@@ -75,8 +75,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     TerminationResponse Terminate() const { return TerminationResponse::Terminate; }
   };
   using SherlockSubscriber = current::ss::StreamSubscriber<SherlockSubscriberImpl, transaction_t>;
-  using subscriber_scope_t =
-      typename sherlock_t::template SyncSubscriberScope<SherlockSubscriber, transaction_t>;
+  using subscriber_scope_t = typename sherlock_t::template SubscriberScope<SherlockSubscriber, transaction_t>;
 
   template <typename... ARGS>
   explicit SherlockStreamPersisterImpl(std::mutex& storage_mutex, fields_update_function_t f, ARGS&&... args)
@@ -173,12 +172,7 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
         std::move(stream_used_.template Subscribe<transaction_t>(*subscriber_)));
   }
 
-  void TerminateStreamSubscription() {
-    if (subscriber_scope_) {
-      subscriber_scope_->Join();
-      subscriber_scope_ = nullptr;
-    }
-  }
+  void TerminateStreamSubscription() { subscriber_scope_ = nullptr; }
 
  private:
   std::mutex& storage_mutex_ref_;

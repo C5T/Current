@@ -34,6 +34,7 @@ TEST(ScopeOwned, ScopeOwnedByMe) {
   EXPECT_EQ(0, *x);
   ++*x;
   EXPECT_EQ(1, *x);
+  EXPECT_TRUE(static_cast<bool>(x));
 
   // The following two lines should not compile.
   // ScopeOwnedByMe<int> y;
@@ -123,10 +124,12 @@ TEST(ScopeOwned, ScopeOwnedBySomeoneElseOutlivingTheOwner) {
     std::atomic_bool terminating(false);
     thread = std::make_unique<std::thread>(
         [&log, &terminating](ScopeOwnedBySomeoneElse<Container> y) {
+          EXPECT_TRUE(static_cast<bool>(y));
           // Keep incrementing until external termination request.
           while (!terminating) {
             y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });
           }
+          EXPECT_FALSE(static_cast<bool>(y));
           // And do another one thousand increments just because we can.
           for (int i = 0; i < 1000; ++i) {
             y.ExclusiveUseDespitePossiblyDestructing([](Container& container) { ++container.ref; });

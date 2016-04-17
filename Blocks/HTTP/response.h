@@ -50,7 +50,7 @@ struct StringBodyGenerator<true> {
   static std::string AsString(T&& object) {
     return object;
   }
-  static std::string DefaultContentType() { return current::net::HTTPServerConnection::DefaultContentType(); }
+  static std::string DefaultContentType() { return current::net::constants::kDefaultContentType; }
 };
 
 template <>
@@ -63,9 +63,7 @@ struct StringBodyGenerator<false> {
   static std::string AsString(T&& object, const std::string& object_name) {
     return "{\"" + object_name + "\":" + current::JSON(std::forward<T>(object)) + "}\n";
   }
-  static std::string DefaultContentType() {
-    return current::net::HTTPServerConnection::DefaultJSONContentType();
-  }
+  static std::string DefaultContentType() { return current::net::constants::kDefaultJSONContentType; }
 };
 }  // namespace impl
 
@@ -78,9 +76,7 @@ struct Response {
   current::net::http::Headers headers;
 
   Response()
-      : body(""),
-        code(HTTPResponseCode.OK),
-        content_type(current::net::HTTPServerConnection::DefaultContentType()) {}
+      : body(""), code(HTTPResponseCode.OK), content_type(current::net::constants::kDefaultContentType) {}
 
   Response(const Response&) = default;
   Response(Response&&) = default;
@@ -111,7 +107,7 @@ struct Response {
   }
 
   void Construct(current::net::HTTPResponseCodeValue code = HTTPResponseCode.OK,
-                 const std::string& content_type = current::net::HTTPServerConnection::DefaultContentType(),
+                 const std::string& content_type = current::net::constants::kDefaultContentType,
                  const current::net::http::Headers& headers = current::net::http::Headers()) {
     this->body = "";
     this->code = code;
@@ -194,7 +190,7 @@ struct Response {
   template <typename T>
   Response& JSON(const T& object) {
     body = current::JSON(object) + '\n';
-    content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
+    content_type = current::net::constants::kDefaultJSONContentType;
     initialized = true;
     return *this;
   }
@@ -202,7 +198,7 @@ struct Response {
   template <typename T>
   Response& JSON(const T& object, const std::string& object_name) {
     body = "{\"" + object_name + "\":" + current::JSON(object) + "}\n";
-    content_type = current::net::HTTPServerConnection::DefaultJSONContentType();
+    content_type = current::net::constants::kDefaultJSONContentType;
     initialized = true;
     return *this;
   }

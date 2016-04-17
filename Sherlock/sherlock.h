@@ -35,6 +35,7 @@ SOFTWARE.
 #include <thread>
 
 #include "exceptions.h"
+#include "stream_data.h"
 #include "pubsub.h"
 
 #include "../TypeSystem/struct.h"
@@ -44,12 +45,10 @@ SOFTWARE.
 #include "../Blocks/Persistence/persistence.h"
 #include "../Blocks/SS/ss.h"
 
-#include "../Bricks/template/decay.h"
+#include "../Bricks/sync/scope_owned.h"
 #include "../Bricks/time/chrono.h"
-#include "../Bricks/util/null_deleter.h"
 #include "../Bricks/util/waitable_terminate_signal.h"
 
-// TODO(dk+mz): Revisit all the comments here.
 // Sherlock is the overlord of streamed data storage and processing in Current.
 // Sherlock's streams are persistent, immutable, append-only typed sequences of records ("entries").
 // Each record is annotated with its the 1-based index and its epoch microsecond timestamp.
@@ -62,57 +61,16 @@ SOFTWARE.
 //
 // Sherlock streams can be published into and subscribed to.
 //
-// Publishing is done via `my_stream.Publish(ENTRY{...});`. It is the caller's responsibility
-// to ensure publishing is done from one thread only (Sherlock itself offers no locking).
+// Publishing is done via `my_stream.Publish(ENTRY{...});`.
 //
-// Subscription is done via `my_stream.Subscribe(my_subscriber);`, where `my_subscriber` is an instance
-// of the class doing the subscription. Sherlock runs each subscriber in a dedicated thread.
+// Subscription is done via `auto scope = my_stream.Subscribe(my_subscriber);`, where `my_subscriber`
+// is an instance of the class doing the subscription. Sherlock runs each subscriber in a dedicated thread.
 //
-// The parameter to `Subscribe()` can be an `std::unique_ptr<F>`, or a reference to a stack-allocated object.
-// In the first case, subscriber thread takes ownership of the subscriber, and returns an
-// `AsyncSubscriberScope`.
-// In the second case, stack ownership is respected, and `SyncSubscriberScope` is returned.
-// Both scopes can be `.Join()`-ed, which would be a blocking call waiting until the subscriber is done.
-// Asynchronous scope can also be `.Detach()`-ed, internally calling `std::thread::detach()`.
-// A detached subscriber will live until it decides to terminate. In case the stream itself would be
-// destructing, each subscriber, detached subscribers included, will be notified of stream termination,
-// and the destructor of the stream object will wait for all subscribers, detached included, to terminate
-// themselves.
+// Stack ownership of `my_subscriber` is respected, and `SubscriberScope` is returned for the user to store.
+// As the returned `scope` object leaves the scope, the subscriber is sent a signal to terminate,
+// and the destructor of `scope` waits for the subscriber to do so. The `scope` objects can be `std::move()`-d.
 //
 // The `my_subscriber` object should be an instance of `StreamSubscriber<IMPL, ENTRY>`,
-// and `IMPL should implement the following methods with respective return values.
-//
-// 1) `bool operator()({const ENTRY& / ENTRY&&} entry, IndexAndTimestamp current, IndexAndTimestamp last))`:
-//
-//    The `ENTRY` type is RTTI-dispatched against the supplied type list.
-//    As long as `my_subscriber` returns `true`, it will keep receiving new entries,
-//    which may end up blocking the thread until new, yet unseen, entries have been published.
-//
-//    If `operator()` is defined as `bool`, returning `false` will tell Sherlock that no more entries
-//    should be passed to this subscriber, and the thread serving this subscriber should be terminated.
-//
-//    More details on the calling convention: "Bricks/mq/interface/interface.h"
-//
-// 2) `bool Terminate()`:
-//
-//    This member function will be called if the subscriber has to be terminated externally,
-//    which happens when the handler returned by `Subscribe()` goes out of scope.
-//    If the signature is `bool Terminate()`, returning `false` will prevent the termination from happening,
-//    allowing the user code to process more entries. Note that this can yield to the calling thread
-//    waiting indefinitely.
-//
-// 3) `HeadUpdated()`: TBD.
-//
-// The call to `my_stream.Subscribe(my_subscriber);` launches the subscriber and returns
-// an instance of a handle, the scope of which will define the lifetime of the subscriber.
-//
-// If the subscribing thread would like the subscriber to run forever, it can use `.Join()` or `.Detach()`
-// on the handle. `Join()` will block the calling thread unconditionally, until the subscriber itself
-// decides to stop functioning. `Detach()` will ensure that the ownership of the subscriber object
-// has been transferred to the thread running the subscriber, and detach this thread to run in the background.
-//
-// TODO(dkorolev): Add timestamps support and tests.
-// TODO(dkorolev): Ensure the timestamps always come in a non-decreasing order.
 
 namespace current {
 namespace sherlock {
@@ -139,54 +97,55 @@ template <typename ENTRY, template <typename> class PERSISTENCE_LAYER = DEFAULT_
 class StreamImpl {
  public:
   using entry_t = ENTRY;
-  using persistence_layer_t = PERSISTENCE_LAYER<ENTRY>;
-
-  // The inner structure containing all the data required for the stream to function.
-  // TODO(dkorolev): Make it a `ScopeOwnedByMe` type of thing.
-  struct StreamData {
-    persistence_layer_t persistence;
-
-    current::WaitableTerminateSignalBulkNotifier notifier;
-    std::mutex mutex;
-
-    template <typename... ARGS>
-    StreamData(ARGS&&... args)
-        : persistence(std::forward<ARGS>(args)...) {}
-  };
+  using persistence_layer_t = PERSISTENCE_LAYER<entry_t>;
+  using stream_data_t = StreamData<entry_t, PERSISTENCE_LAYER>;
 
   class StreamPublisher {
    public:
-    explicit StreamPublisher(std::shared_ptr<StreamData> data) : data_(data) {}
+    explicit StreamPublisher(ScopeOwned<stream_data_t>& data) : data_(data, []() {}) {}
 
     template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-      current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
+    idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
+      if (!data_) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+      current::locks::SmartMutexLockGuard<MLS> lock(data_->publish_mutex);
       const auto result = data_->persistence.Publish(entry, us);
       data_->notifier.NotifyAllOfExternalWaitableEvent();
       return result;
     }
 
     template <current::locks::MutexLockStatus MLS>
-    idxts_t DoPublish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-      current::locks::SmartMutexLockGuard<MLS> lock(data_->mutex);
+    idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
+      if (!data_) {
+        CURRENT_THROW(StreamInGracefulShutdownException());
+      }
+      current::locks::SmartMutexLockGuard<MLS> lock(data_->publish_mutex);
       const auto result = data_->persistence.Publish(std::move(entry), us);
       data_->notifier.NotifyAllOfExternalWaitableEvent();
       return result;
     }
 
+    operator bool() const { return data_; }
+
    private:
-    std::shared_ptr<StreamData> data_;
+    ScopeOwnedBySomeoneElse<stream_data_t> data_;
   };
-  using publisher_t = ss::StreamPublisher<StreamPublisher, ENTRY>;
+  using publisher_t = ss::StreamPublisher<StreamPublisher, entry_t>;
 
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
-      : data_(std::make_shared<StreamData>(std::forward<ARGS>(args)...)),
+      : data_(std::forward<ARGS>(args)...),
         publisher_(std::make_unique<publisher_t>(data_)),
         authority_(StreamDataAuthority::Own) {}
 
   StreamImpl(StreamImpl&& rhs)
       : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)), authority_(rhs.authority_) {}
+
+  ~StreamImpl() {
+    // TODO(dkorolev): These should be erased in an ongoing fashion.
+    data_->http_subscriptions.clear();
+  }
 
   void operator=(StreamImpl&& rhs) {
     data_ = std::move(rhs.data_);
@@ -194,47 +153,8 @@ class StreamImpl {
     authority_ = rhs.authority_;
   }
 
-  // `Publish()` and `Emplace()` return the index and the timestamp of the added entry.
-  // Deliberately keep these two signatures and not one with `std::forward<>` to ensure the type is right.
-  // TODO(dkorolev) + TODO(mzhurovich): Shoudn't these be `DoPublish()`?
-  // template <typename... ARGS>
-  // idxts_t DoEmplace(ARGS&&... entry_params) {
-  //   std::lock_guard<std::mutex> lock(data_->mutex);
-  //   const auto result = data_->persistence.Emplace(std::forward<ARGS>(entry_params)...);
-  //   data_->notifier.NotifyAllOfExternalWaitableEvent();
-  //   return result;
-  // }
-
-  // `SubscriberThread` spawns the thread and runs stream subscriber within it.
-  //
-  // Subscriber thread can always be `std::thread::join()`-ed. When this happens, the subscriber itself is
-  // notified
-  // that the user has requested to join the subscriber thread, and then the thread is joined.
-  // The subscriber code itself may choose to stop immediately, later, or never; in the latter cases
-  // `join()`-ing
-  // the thread will run for a long time or forever.
-  // Most commonly though, `join()` on a subscriber thread will result it in completing processing the entry
-  // that it is currently processing, and then shutting down gracefully.
-  // This makes working with C++ Sherlock almost as cozy as it could have been in node.js or Python.
-  //
-  // With respect to `std::thread::detach()`, we have two very different usecases:
-  //
-  // 1) If `SubscriberThread` has been provided with a fair `unique_ptr<>` (which obviously is immediately
-  //    `std::move()`-d into the thread, thus enabling `thread::detach()`), then `thread::detach()`
-  //    is a legal operation, and it is the way to detach the subscriber from the caller thread,
-  //    enabling to run the subscriber indefinitely, or until it itself decides to stop.
-  //    The most notable example here would be spawning a subscriber to serve an HTTP request.
-  //    (NOTE: This logic requires `Stream` objects to live forever. TODO(dk+mz): Make sure it is the case.)
-  //
-  // 2) The alternate usecase is when a stack-allocated object should acts as a subscriber.
-  //    Implementation-wise, it is handled by wrapping the stack-allocated object into a `unique_ptr<>`
-  //    with null deleter. Obviously, `thread::detach()` is then unsafe and thus impossible.
-  //
-  // The `SubscriberScope` class handles the above two usecases, depending on whether a stack- or heap-allocated
-  // instance of a subscriber has been passed into.
-
-  idxts_t Publish(const ENTRY& entry, const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  idxts_t Publish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(entry, us);
     } else {
@@ -242,8 +162,8 @@ class StreamImpl {
     }
   }
 
-  idxts_t Publish(ENTRY&& entry, const std::chrono::microseconds us = current::time::Now()) {
-    std::lock_guard<std::mutex> lock(mutex_);
+  idxts_t Publish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       return publisher_->template Publish<current::locks::MutexLockStatus::AlreadyLocked>(std::move(entry), us);
     } else {
@@ -253,7 +173,7 @@ class StreamImpl {
 
   template <typename ACQUIRER>
   void MovePublisherTo(ACQUIRER&& acquirer) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (publisher_) {
       acquirer.AcceptPublisher(std::move(publisher_));
       authority_ = StreamDataAuthority::External;
@@ -263,7 +183,7 @@ class StreamImpl {
   }
 
   void AcquirePublisher(std::unique_ptr<publisher_t> publisher) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
     if (!publisher_) {
       publisher_ = std::move(publisher);
       authority_ = StreamDataAuthority::Own;
@@ -273,192 +193,150 @@ class StreamImpl {
   }
 
   StreamDataAuthority DataAuthority() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(publisher_mutex_);
     return authority_;
   }
 
   template <typename TYPE_SUBSCRIBED_TO, typename F>
-  class SubscriberThread {
+  class SubscriberThreadInstance final : public current::sherlock::SubscriberScope::SubscriberThread {
    private:
-    // Subscriber thread shared state is a `shared_ptr<>` itself, to ensure its lifetime.
-    struct SubscriberThreadSharedState {
-      F subscriber;  // The ownership of the subscriber is transferred to the instance of this class.
-      std::shared_ptr<StreamData> data;
-      current::WaitableTerminateSignal terminate_signal;
+    F& subscriber;
+    std::function<void()> done_callback_;
+    ScopeOwnedBySomeoneElse<stream_data_t> data;
+    std::atomic_bool thread_done_{false};
+    current::WaitableTerminateSignal terminate_signal;
+    std::thread thread_;
 
-      SubscriberThreadSharedState(std::shared_ptr<StreamData> data, F&& subscriber)
-          : subscriber(std::move(subscriber)), data(data) {}
-
-      SubscriberThreadSharedState() = delete;
-      SubscriberThreadSharedState(const SubscriberThreadSharedState&) = delete;
-      SubscriberThreadSharedState(SubscriberThreadSharedState&&) = delete;
-      void operator=(const SubscriberThreadSharedState&) = delete;
-      void operator=(SubscriberThreadSharedState&&) = delete;
-    };
+    SubscriberThreadInstance() = delete;
+    SubscriberThreadInstance(const SubscriberThreadInstance&) = delete;
+    SubscriberThreadInstance(SubscriberThreadInstance&&) = delete;
+    void operator=(const SubscriberThreadInstance&) = delete;
+    void operator=(SubscriberThreadInstance&&) = delete;
 
    public:
-    SubscriberThread(std::shared_ptr<StreamData> data, F&& subscriber)
-        : state_(std::make_shared<SubscriberThreadSharedState>(data, std::forward<F>(subscriber))),
-          thread_(&SubscriberThread::StaticSubscriberThread, state_) {}
+    SubscriberThreadInstance(ScopeOwned<stream_data_t>& data,
+                             F& subscriber,
+                             std::function<void()> done_callback)
+        : subscriber(subscriber),
+          done_callback_(done_callback),
+          data(data, [this]() { terminate_signal.SignalExternalTermination(); }),
+          thread_(&SubscriberThreadInstance::Thread, this) {}
 
-    ~SubscriberThread() {
-      if (thread_.joinable()) {
-        // TODO(dkorolev): Phrase the error message better.
-        // LCOV_EXCL_START
-        std::cerr << "Unrecoverable error in destructor: SubscriberThread was not joined/detached.\n";
-        std::exit(-1);
-        // LCOV_EXCL_STOP
+    ~SubscriberThreadInstance() {
+      assert(thread_.joinable());
+      if (!thread_done_) {
+        terminate_signal.SignalExternalTermination();
       }
-    }
-
-    void SafeJoinThread() {
-      assert(thread_.joinable());  // TODO(dkorolev): Exception && test?
-
-      state_->terminate_signal.SignalExternalTermination();
-
-      // Wait for the thread to terminate.
-      // Note that this code will only be executed if neither `Join()` nor `Detach()` has been done before.
       thread_.join();
     }
 
-    void PotentiallyUnsafeDetachThread() {
-      assert(thread_.joinable());  // TODO(dkorolev): Exception && test?
-      thread_.detach();
+    void Thread() {
+      ThreadImpl();
+      thread_done_ = true;
+      if (done_callback_) {
+        // TODO(dkorolev): Fix this ownership issue.
+        std::lock_guard<std::mutex> lock(data->http_subscriptions_mutex);
+        done_callback_();
+      }
     }
 
-    static void StaticSubscriberThread(std::shared_ptr<SubscriberThreadSharedState> state) {
-      auto& subscriber = *state->subscriber;
+    void ThreadImpl() {
       size_t index = 0;
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
         // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
         // TODO(dkorolev): This is actually more a case of `EndReached()` first, right?
-        if (!terminate_sent && state->terminate_signal) {
+        if (!terminate_sent && terminate_signal) {
           terminate_sent = true;
           if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
         }
-        size = state->data->persistence.Size();
+        size = data->persistence.Size();
         if (size > index) {
-          for (const auto& e : state->data->persistence.Iterate(index, size)) {
-            if (!terminate_sent && state->terminate_signal) {
+          for (const auto& e : data->persistence.Iterate(index, size)) {
+            if (!terminate_sent && terminate_signal) {
               terminate_sent = true;
               if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
                 return;
               }
             }
-            if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, ENTRY>(
+            if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
                     subscriber,
-                    [&subscriber]()
-                        -> ss::EntryResponse { return subscriber.EntryResponseIfNoMorePassTypeFilter(); },
+                    [this]() -> ss::EntryResponse { return subscriber.EntryResponseIfNoMorePassTypeFilter(); },
                     e.entry,
                     e.idx_ts,
-                    state->data->persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+                    data->persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
               return;
             }
             index = size;
           }
         } else {
-          std::unique_lock<std::mutex> lock(state->data->mutex);
-          current::WaitableTerminateSignalBulkNotifier::Scope scope(state->data->notifier,
-                                                                    state->terminate_signal);
-          state->terminate_signal.WaitUntil(lock,
-                                            [&state, &index]() {
-                                              return state->terminate_signal ||
-                                                     state->data->persistence.Size() > index;
-                                            });
+          std::unique_lock<std::mutex> lock(data->publish_mutex);
+          current::WaitableTerminateSignalBulkNotifier::Scope scope(data->notifier, terminate_signal);
+          terminate_signal.WaitUntil(
+              lock, [this, &index]() { return terminate_signal || data->persistence.Size() > index; });
         }
       }
     }
-
-    std::shared_ptr<SubscriberThreadSharedState> state_;
-    std::thread thread_;
-
-    SubscriberThread(SubscriberThread&&) = delete;  // Yep -- no move constructor.
-
-    SubscriberThread() = delete;
-    SubscriberThread(const SubscriberThread&) = delete;
-    void operator=(const SubscriberThread&) = delete;
-    void operator=(SubscriberThread&&) = delete;
   };
 
-  // Expose the means to create both a sync ("scoped") and async ("detachable") subscribers.
-  template <typename F, typename TYPE_SUBSCRIBED_TO, class UNIQUE_PTR_WITH_CORRECT_DELETER, bool CAN_DETACH>
-  class GenericSubscriberScope {
+  // Expose the means to control the scope of the subscriber.
+  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
+  class SubscriberScope : public current::sherlock::SubscriberScope {
    private:
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    using SUBSCRIBER_THREAD = SubscriberThread<TYPE_SUBSCRIBED_TO, UNIQUE_PTR_WITH_CORRECT_DELETER>;
+    using base_t = current::sherlock::SubscriberScope;
 
    public:
-    GenericSubscriberScope(std::shared_ptr<StreamData> data, UNIQUE_PTR_WITH_CORRECT_DELETER&& subscriber)
-        : impl_(std::make_unique<SUBSCRIBER_THREAD>(data, std::move(subscriber))) {}
+    using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
-    GenericSubscriberScope(GenericSubscriberScope&& rhs) : impl_(std::move(rhs.impl_)) {
-      assert(impl_);
-      assert(!rhs.impl_);
-    }
-
-    void Join() {
-      assert(impl_);
-      impl_->SafeJoinThread();
-    }
-
-    template <bool B = CAN_DETACH>
-    ENABLE_IF<B> Detach() {
-      assert(impl_);
-      impl_->PotentiallyUnsafeDetachThread();
-    }
-
-   private:
-    std::unique_ptr<SUBSCRIBER_THREAD> impl_;
-
-    GenericSubscriberScope() = delete;
-    GenericSubscriberScope(const GenericSubscriberScope&) = delete;
-    void operator=(const GenericSubscriberScope&) = delete;
-    void operator=(GenericSubscriberScope&&) = delete;
+    SubscriberScope(ScopeOwned<stream_data_t>& data, F& subscriber, std::function<void()> done_callback)
+        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, done_callback))) {}
   };
 
-  // Asynchronous subscription: `subscriber` is a heap-allocated object, the ownership of which
-  // can be `std::move()`-d into the subscriber thread. It can be `Join()`-ed or `Detach()`-ed.
-  // The order of two template parameters is flipped to provide the default value for `TYPE_SUBSCRIBED_TO`,
-  // in case the user chooses to specialize `{Async/Sync}SubscriberScope<SINGLE_TEMPLATE_PARAMETER>` directly.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  using AsyncSubscriberScope = GenericSubscriberScope<F, TYPE_SUBSCRIBED_TO, std::unique_ptr<F>, true>;
-
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
-  AsyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(std::unique_ptr<F>&& subscriber) {
+  SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
+                                                   std::function<void()> done_callback = nullptr) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    return AsyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_, std::move(subscriber));
-  }
-
-  // Synchronous subscription: `subscriber` is a stack-allocated object, and thus the subscriber thread
-  // should ensure to terminate itself, when initiated from within the destructor of `SyncSubscriberScope`.
-  // Note that the destructor of `SyncSubscriberScope` will wait until the subscriber terminates, thus,
-  // not terminating as requested may result in the calling thread blocking for an unbounded amount of time.
-  template <typename F, typename TYPE_SUBSCRIBED_TO = entry_t>
-  using SyncSubscriberScope =
-      GenericSubscriberScope<F, TYPE_SUBSCRIBED_TO, std::unique_ptr<F, current::NullDeleter>, false>;
-
-  template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
-  SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber) {
-    static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    return SyncSubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_,
-                                                      std::unique_ptr<F, current::NullDeleter>(&subscriber));
+    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_, subscriber, done_callback);
   }
 
   // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
+    if (r.url.query.has("terminate")) {
+      const std::string id = r.url.query["terminate"];
+      typename stream_data_t::http_subscriptions_t::iterator it;
+      {
+        // NOTE: This is not thread-safe!!!
+        // The iterator may get invalidated in between the next few lines.
+        // However, during the call to `= nullptr` the mutex will be locked again from within the
+        // thread terminating callback. Need to clean this up. TODO(dkorolev).
+        std::lock_guard<std::mutex> lock(data_->http_subscriptions_mutex);
+        it = data_->http_subscriptions.find(id);
+      }
+      if (it != data_->http_subscriptions.end()) {
+        // Subscription found. Delete the scope, triggering the thread to shut down.
+        // TODO(dkorolev): This should certainly not happen synchronously.
+        it->second.first = nullptr;
+        // Subscription terminated.
+        r("", HTTPResponseCode.OK);
+      } else {
+        // Subscription not found.
+        r("", HTTPResponseCode.NotFound);
+      }
+      return;
+    }
     if (r.method == "GET" || r.method == "HEAD") {
       const size_t count = data_->persistence.Size();
       if (r.method == "HEAD") {
         // Return the number of entries in the stream in `X-Current-Stream-Size` header.
         r("",
           HTTPResponseCode.OK,
-          "text/html",
-          current::net::http::Headers({{"X-Current-Stream-Size", current::ToString(count)}}));
+          current::net::constants::kDefaultContentType,
+          current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, current::ToString(count)}}));
       } else {
         bool schema_requested = false;
         std::string schema_format;
@@ -498,7 +376,26 @@ class StreamImpl {
           // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
           r("", HTTPResponseCode.OK);
         } else {
-          Subscribe(std::make_unique<PubSubHTTPEndpoint<ENTRY, J>>(std::move(r))).Detach();
+          const std::string subscription_id = data_->GenerateRandomHTTPSubscriptionID();
+
+          auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
+              subscription_id, data_, std::move(r));
+
+          current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+              Subscribe(*http_chunked_subscriber,
+                        [this, subscription_id]() {
+                          // NOTE: Need to figure out when and where to lock.
+                          // Chat w/ Max about the logic to clean up completed listeners.
+                          // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
+                          data_->http_subscriptions[subscription_id].second = nullptr;
+                        });
+
+          {
+            std::lock_guard<std::mutex> lock(data_->http_subscriptions_mutex);
+            assert(!data_->http_subscriptions.count(subscription_id));
+            data_->http_subscriptions[subscription_id] =
+                std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+          }
         }
       }
     } else {
@@ -506,12 +403,12 @@ class StreamImpl {
     }
   }
 
-  // TODO(dkorolev): Have this co-own the Stream.
   void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
 
   persistence_layer_t& InternalExposePersister() { return data_->persistence; }
 
  private:
+  ScopeOwnedByMe<stream_data_t> data_;
   struct FillPerLanguageSchema {
     SherlockSchema& schema_ref;
     explicit FillPerLanguageSchema(SherlockSchema& schema) : schema_ref(schema) {}
@@ -520,6 +417,7 @@ class StreamImpl {
       schema_ref.language[current::ToString(language)] = schema_ref.type_schema.Describe<language>();
     }
   };
+
   static SherlockSchema ConstructSchemaAsObject() {
     SherlockSchema schema;
 
@@ -538,14 +436,13 @@ class StreamImpl {
 
  private:
   const SherlockSchema schema_as_object_ = ConstructSchemaAsObject();
-  const Response schema_as_http_response_ =
-      Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
-               HTTPResponseCode.OK,
-               current::net::HTTPServerConnection::DefaultJSONContentType());
-  std::shared_ptr<StreamData> data_;
+  const Response schema_as_http_response_ = Response(JSON<JSONFormat::Minimalistic>(schema_as_object_),
+                                                     HTTPResponseCode.OK,
+                                                     current::net::constants::kDefaultJSONContentType);
+
+  mutable std::mutex publisher_mutex_;
   std::unique_ptr<publisher_t> publisher_;
   StreamDataAuthority authority_;
-  mutable std::mutex mutex_;
 
   StreamImpl(const StreamImpl&) = delete;
   void operator=(const StreamImpl&) = delete;
