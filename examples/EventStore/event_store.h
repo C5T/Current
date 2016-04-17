@@ -88,8 +88,6 @@ struct EventStore final {
                                               [this](Request r) { EndpointEvent(std::move(r)); }) +
                           HTTP(port).Register(url_prefix + "/subscribe", readonly_nonstorage_event_log)) {}
 
-  ~EventStore() { readonly_stream_follower_scope.Join(); }
-
   void EndpointEvent(Request r) {
     if (r.method == "GET") {
       if (r.url_path_args.size() != 1u) {
