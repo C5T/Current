@@ -303,23 +303,12 @@ class StreamImpl {
             index = size;
           }
         } else {
-            std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
+          std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
-          //{
-          //  std::lock_guard<std::mutex> lock(bare_data.publish_mutex);
-          //  bare_data.notifier.RegisterPendingNotifier(terminate_signal_);
-          //}
-          {
-//            std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
-            terminate_signal_.WaitUntil(lock,
-                                        [this, &bare_data, &index]() {
-                                          return terminate_signal_ || bare_data.persistence.Size() > index;
-                                        });
-          }
-//          {
-//            std::lock_guard<std::mutex> lock(bare_data.publish_mutex);
-//            bare_data.notifier.UnRegisterPendingNotifier(terminate_signal_);
-//          }
+          terminate_signal_.WaitUntil(lock,
+                                      [this, &bare_data, &index]() {
+                                        return terminate_signal_ || bare_data.persistence.Size() > index;
+                                      });
         }
       }
     }

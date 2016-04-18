@@ -169,7 +169,6 @@ inline bool CompareValuesMixedWithTerminate(const std::string& lhs,
 
 }  // namespace sherlock_unittest
 
-/*
 TEST(Sherlock, SubscribeAndProcessThreeEntries) {
   using namespace sherlock_unittest;
 
@@ -780,68 +779,63 @@ TEST(Sherlock, SubscribeWithFilterByType) {
     EXPECT_EQ("Y=2 Y=4", Join(c.results_, ' '));
   }
 }
-*/
 
 TEST(Sherlock, ReleaseAndAcquirePublisher) {
   using namespace sherlock_unittest;
   using Stream = current::sherlock::Stream<Record>;
 
-  for (size_t i = 0; i < 1000000; ++i) {
-    std::cerr << i << std::endl;
+  struct SherlockPublisherAcquirer {
+    using publisher_t = typename Stream::publisher_t;
+    void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
+    std::unique_ptr<publisher_t> publisher_;
+  };
 
-    struct SherlockPublisherAcquirer {
-      using publisher_t = typename Stream::publisher_t;
-      void AcceptPublisher(std::unique_ptr<publisher_t> publisher) { publisher_ = std::move(publisher); }
-      std::unique_ptr<publisher_t> publisher_;
-    };
+  Stream stream;
+  Data d;
+  {
+    // In this test we start the subscriber before we publish anything into the stream.
+    // That's why `idxts_t last` is not determined for each particular entry and we collect and check only the
+    // values of `Record`s.
+    SherlockTestProcessor p(d, true);
+    auto scope = stream.Subscribe(p);
 
-    Stream stream;
-    Data d;
-    {
-      // In this test we start the subscriber before we publish anything into the stream.
-      // That's why `idxts_t last` is not determined for each particular entry and we collect and check only the
-      // values of `Record`s.
-      SherlockTestProcessor p(d, true);
-      auto scope = stream.Subscribe(p);
+    // Publish the first entry as usual.
+    stream.Publish(1, std::chrono::microseconds(100));
 
-      // Publish the first entry as usual.
-      stream.Publish(1, std::chrono::microseconds(100));
+    // Transfer ownership of the stream publisher to the external object.
+    SherlockPublisherAcquirer acquirer;
+    EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
+    stream.MovePublisherTo(acquirer);
+    EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
 
-      // Transfer ownership of the stream publisher to the external object.
-      SherlockPublisherAcquirer acquirer;
-      EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
-      stream.MovePublisherTo(acquirer);
-      EXPECT_EQ(current::sherlock::StreamDataAuthority::External, stream.DataAuthority());
+    // Publish to the stream is not allowed since the publisher has been moved.
+    ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
+                 current::sherlock::PublishToStreamWithReleasedPublisherException);
+    // Now we can publish only via `acquirer` that owns stream publisher object.
+    acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
 
-      // Publish to the stream is not allowed since the publisher has been moved.
-      ASSERT_THROW(stream.Publish(2, std::chrono::microseconds(200)),
-                   current::sherlock::PublishToStreamWithReleasedPublisherException);
-      // Now we can publish only via `acquirer` that owns stream publisher object.
-      acquirer.publisher_->Publish(3, std::chrono::microseconds(300));
+    // Can't move publisher once more since we don't own it at this moment.
+    SherlockPublisherAcquirer other_acquirer;
+    ASSERT_THROW(stream.MovePublisherTo(other_acquirer),
+                 current::sherlock::PublisherAlreadyReleasedException);
 
-      // Can't move publisher once more since we don't own it at this moment.
-      SherlockPublisherAcquirer other_acquirer;
-      ASSERT_THROW(stream.MovePublisherTo(other_acquirer),
-                   current::sherlock::PublisherAlreadyReleasedException);
+    // Acquire publisher back.
+    stream.AcquirePublisher(std::move(acquirer.publisher_));
+    EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
+    // Can't acquire publisher since we already have one in the stream.
+    ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
+                 current::sherlock::PublisherAlreadyOwnedException);
 
-      // Acquire publisher back.
-      stream.AcquirePublisher(std::move(acquirer.publisher_));
-      EXPECT_EQ(current::sherlock::StreamDataAuthority::Own, stream.DataAuthority());
-      // Can't acquire publisher since we already have one in the stream.
-      ASSERT_THROW(stream.AcquirePublisher(std::move(other_acquirer.publisher_)),
-                   current::sherlock::PublisherAlreadyOwnedException);
+    // Publish the third entry.
+    stream.Publish(4, std::chrono::microseconds(400));
 
-      // Publish the third entry.
-      stream.Publish(4, std::chrono::microseconds(400));
-
-      while (d.seen_ < 3u) {
-        ;  // Spin lock.
-      }
-      EXPECT_EQ(3u, d.seen_);
-      EXPECT_EQ("1,3,4", d.results_);
-      EXPECT_TRUE(d.subscriber_alive_);
+    while (d.seen_ < 3u) {
+      ;  // Spin lock.
     }
-    EXPECT_EQ("1,3,4,TERMINATE", d.results_);
-    EXPECT_FALSE(d.subscriber_alive_);
+    EXPECT_EQ(3u, d.seen_);
+    EXPECT_EQ("1,3,4", d.results_);
+    EXPECT_TRUE(d.subscriber_alive_);
   }
+  EXPECT_EQ("1,3,4,TERMINATE", d.results_);
+  EXPECT_FALSE(d.subscriber_alive_);
 }
