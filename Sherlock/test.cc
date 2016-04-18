@@ -355,7 +355,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
     // `?schema` responds back with a top-level schema JSON, providing the name, TypeID,
     // and various serializations.
     const std::string golden_h =
-        "// g++ -c -std=c++11 current.cc\n"
+        "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
+        "// Compile with `-std=c++11` or higher.\n"
         "\n"
         "#include \"current.h\"\n"
         "\n"
@@ -368,9 +369,9 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "};\n"
         "}  // namespace current_userspace\n"
         "\n"
-        "// clang-format off\n";
+        "// clang-format on\n";
     const std::string golden_fs =
-        "// fsharpi -r Newtonsoft.Json.dll schema.fsx\n"
+        "// fsharpi -r Newtonsoft.Json.dll schema.fs\n"
         "\n"
         "open Newtonsoft.Json\n"
         "let inline JSON o = JsonConvert.SerializeObject(o)\n"
