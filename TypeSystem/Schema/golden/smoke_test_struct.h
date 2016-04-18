@@ -1,4 +1,5 @@
-// g++ -c -std=c++11 current.cc
+// The `current.h` file is the one from `https://github.com/C5T/Current`.
+// Compile with `-std=c++11` or higher.
 
 #include "current.h"
 
@@ -50,4 +51,4 @@ CURRENT_STRUCT(FullTest) {
 };
 }  // namespace current_userspace
 
-// clang-format off
+// clang-format on

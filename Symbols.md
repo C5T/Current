@@ -111,7 +111,7 @@ std::make_unique<T>(...)  // Until c++14 is mainstream, we injected our own.
 ```
 JSONFormat  // Current, Minimalistic, NewtonsoftFSharp.
 
-current::Language (CPP, FSharp, JSON)
+current::Language (CPP, Current, Markdown, FSharp, InternalFormat)
 
 current::ByLines, current::ByWhitespaces (for current::Split), current::EmptyFields, current::KeyValueParsing
 

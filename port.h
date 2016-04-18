@@ -197,4 +197,9 @@ struct PortForUnitTestPicker {
 // TODO(dkorolev): Finalize the retirement.
 #define DEPRECATED_T_(FOO_BAR) T_##FOO_BAR
 
+// We added `ChunkedGET` alongside `GET` into our `HTTP` library. Sadly, it only supports the POSIX,
+// not Mac native, implementation. Thus, to keep Current building on Mac, until we have a workaround or stub,
+// force Mac builds to use POSIX HTTP client implementation.
+#define CURRENT_APPLE_HTTP_CLIENT_POSIX
+
 #endif

@@ -40,10 +40,12 @@ namespace reflection {
 struct PrimitiveTypesListImpl {
   std::map<TypeID, std::string> cpp_name;
   std::map<TypeID, std::string> fsharp_name;
+  std::map<TypeID, std::string> markdown_name;
   PrimitiveTypesListImpl() {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type, fsharp_type) \
-  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;                   \
-  fsharp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = fsharp_type;
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, unused_current_type, fs_type, md_type) \
+  cpp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = #cpp_type;                        \
+  fsharp_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = fs_type;                       \
+  markdown_name[static_cast<TypeID>(TYPEID_BASIC_TYPE + typeid_index)] = md_type;
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
   }
@@ -60,6 +62,7 @@ enum class Language : int {
   Current,             // C++, `CURRENT_STRUCT`-s.
   CPP,                 // C++, native `struct`-s.
   FSharp,              // F#.
+  Markdown,            // [GitHub] Markdown.
   end
 };
 
@@ -162,7 +165,8 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
 template <CPPLanguageSelector CPP_LANGUAGE_SELECTOR>
 struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
   static std::string Header() {
-    return "// g++ -c -std=c++11 current.cc\n"
+    return "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
+           "// Compile with `-std=c++11` or higher.\n"
            "\n"
            "#include \"current.h\"\n"
            "\n"
@@ -174,7 +178,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
   static std::string Footer() {
     return "}  // namespace current_userspace\n"
            "\n"
-           "// clang-format off\n";
+           "// clang-format on\n";
   }
 
   // LCOV_EXCL_START
@@ -269,7 +273,7 @@ struct LanguageSyntaxImpl<Language::CPP> : LanguageSyntaxCPP<CPPLanguageSelector
 template <>
 struct LanguageSyntaxImpl<Language::FSharp> {
   static std::string Header() {
-    return "// fsharpi -r Newtonsoft.Json.dll schema.fsx\n"
+    return "// fsharpi -r Newtonsoft.Json.dll schema.fs\n"
            "\n"
            "open Newtonsoft.Json\n"
            "let inline JSON o = JsonConvert.SerializeObject(o)\n"
@@ -387,6 +391,113 @@ struct LanguageSyntaxImpl<Language::FSharp> {
     }
 
   };  // struct LanguageSyntax<Language::FSharp>::LanguagePrinter
+};
+
+template <>
+struct LanguageSyntaxImpl<Language::Markdown> {
+  static std::string Header() { return "# Data Dictionary\n"; }
+
+  static std::string Footer() { return ""; }
+
+  // LCOV_EXCL_START
+  static std::string ErrorMessageWithTypeId(TypeID type_id) {
+    return "#error \"Unknown struct with `type_id` = " + current::ToString(type_id) + "\"\n";
+  }
+  // LCOV_EXCL_STOP
+
+  struct FullSchemaPrinter {
+    const std::map<TypeID, ReflectedType>& types_;
+    std::ostream& os_;
+
+    std::string TypeName(TypeID type_id) const {
+      const auto cit = types_.find(type_id);
+      if (cit == types_.end()) {
+        return "UNKNOWN_TYPE_" + current::ToString(type_id);  // LCOV_EXCL_LINE
+      } else {
+        struct MarkdownTypeNamePrinter {
+          const FullSchemaPrinter& self_;
+          std::ostringstream& oss_;
+
+          MarkdownTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss)
+              : self_(self), oss_(oss) {}
+
+          // `operator()(...)`-s of this block print the type name, without the expansion.
+          void operator()(const ReflectedType_Primitive& p) const {
+            const auto& globals = PrimitiveTypesList();
+            if (globals.markdown_name.count(p.type_id) != 0u) {
+              oss_ << globals.markdown_name.at(p.type_id);
+            } else {
+              oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
+            }
+          }
+          void operator()(const ReflectedType_Enum& e) const { oss_ << "Index `" << e.name << '`'; }
+          void operator()(const ReflectedType_Vector& v) const {
+            oss_ << "Array of " << self_.TypeName(v.element_type);
+          }
+          void operator()(const ReflectedType_Map& m) const {
+            oss_ << "Map of " << self_.TypeName(m.key_type) << " into " << self_.TypeName(m.value_type);
+          }
+          void operator()(const ReflectedType_Pair& p) const {
+            oss_ << "Pair of " << self_.TypeName(p.first_type) << " and " << self_.TypeName(p.second_type);
+          }
+          void operator()(const ReflectedType_Optional& o) const {
+            oss_ << "`null` or " << self_.TypeName(o.optional_type);
+          }
+          void operator()(const ReflectedType_Variant& p) const {
+            std::vector<std::string> cases;
+            for (TypeID c : p.cases) {
+              cases.push_back(self_.TypeName(c));
+            }
+            oss_ << "Algebraic " << current::strings::Join(cases, " / ");
+          }
+
+          void operator()(const ReflectedType_Struct& s) const { oss_ << '`' << s.name << '`'; }
+        };
+
+        std::ostringstream oss;
+        cit->second.Call(MarkdownTypeNamePrinter(*this, oss));
+        return oss.str();
+      }
+    }
+
+    FullSchemaPrinter(const std::map<TypeID, ReflectedType>& types, std::ostream& os)
+        : types_(types), os_(os) {}
+
+    // `operator()`-s of this block print complete declarations of F# types.
+    // The types that require complete declarations in F# are records and discriminated unions.
+    void operator()(const ReflectedType_Primitive&) const {}
+    void operator()(const ReflectedType_Enum&) const {}
+    void operator()(const ReflectedType_Vector&) const {}
+    void operator()(const ReflectedType_Pair&) const {}
+    void operator()(const ReflectedType_Map&) const {}
+    void operator()(const ReflectedType_Optional&) const {}
+    void operator()(const ReflectedType_Variant&) const {
+      // No need to define `Variant` types explicitly in Markdown format.
+    }
+
+    // When dumping a derived `CURRENT_STRUCT` as a Markdown table, hoist base class variables to the top.
+    void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
+      if (s.super_id != TypeID::CurrentStruct) {
+        // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
+        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+      }
+      for (const auto& f : s.fields) {
+        temporary_os << "| `" << f.second << "` | " << TypeName(f.first) << " |\n";
+      }
+    }
+
+    void operator()(const ReflectedType_Struct& s) const {
+      std::ostringstream temporary_os;
+      RecursivelyListStructFields(temporary_os, s);
+      const std::string fields = temporary_os.str();
+      if (!fields.empty()) {
+        os_ << "\n### `" << s.name << "`\n| **Field** | **Type** |\n| ---: | :--- |\n" << fields << '\n';
+      } else {
+        os_ << "\n### `" << s.name << "`\nIntentionally contains no fields.\n";
+      }
+    }
+
+  };  // struct LanguageSyntax<Language::Markdown>::LanguagePrinter
 };
 
 template <Language L>
@@ -537,6 +648,8 @@ struct ToStringImpl<reflection::Language, false, true> {
         return "cpp";
       case reflection::Language::FSharp:
         return "fs";
+      case reflection::Language::Markdown:
+        return "md";
       default:
         return "language_code_" + ToString(static_cast<int>(language));
     }
