@@ -1172,7 +1172,8 @@ TEST(TransactionalStorage, RESTfulAPITest) {
   const auto base_url = current::strings::Printf("http://localhost:%d", FLAGS_transactional_storage_test_port);
 
   const std::string golden_user_schema_h =
-      "// g++ -c -std=c++11 current.cc\n"
+      "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
+      "// Compile with `-std=c++11` or higher.\n"
       "\n"
       "#include \"current.h\"\n"
       "\n"
@@ -1185,7 +1186,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "};\n"
       "}  // namespace current_userspace\n"
       "\n"
-      "// clang-format off\n";
+      "// clang-format on\n";
 
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
