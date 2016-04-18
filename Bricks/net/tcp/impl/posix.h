@@ -183,7 +183,9 @@ struct IPAndPort {
 };
 
 inline std::string InetAddrToString(const struct in_addr* in) {
-  const char* result = ::inet_ntoa(*in);
+  // 16 bytes buffer for IPv4.
+  char buffer[16];
+  const char* result = ::inet_ntop(AF_INET, reinterpret_cast<const void*>(in), buffer, sizeof(buffer));
   if (!result) {
     CURRENT_THROW(InetAddrToStringException());
   } else {
