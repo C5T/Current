@@ -372,7 +372,11 @@ TEST(Util, WaitableTerminateSignalGotExternalTerminateSignal) {
     signal.NotifyOfExternalWaitableEvent();
   }
 
-  signal.SignalExternalTermination();
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    signal.SignalExternalTermination();
+  }
+
   thread.join();
 
   EXPECT_TRUE(result);

@@ -106,24 +106,28 @@ class StreamImpl {
 
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(const entry_t& entry, const std::chrono::microseconds us = current::time::Now()) {
-      if (!data_) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        const auto result = data.persistence.Publish(entry, us);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+        return result;
+      } catch (const current::sync::InDestructingModeException&) {
         CURRENT_THROW(StreamInGracefulShutdownException());
       }
-      current::locks::SmartMutexLockGuard<MLS> lock(data_->publish_mutex);
-      const auto result = data_->persistence.Publish(entry, us);
-      data_->notifier.NotifyAllOfExternalWaitableEvent();
-      return result;
     }
 
     template <current::locks::MutexLockStatus MLS>
     idxts_t DoPublish(entry_t&& entry, const std::chrono::microseconds us = current::time::Now()) {
-      if (!data_) {
+      try {
+        auto& data = *data_;
+        current::locks::SmartMutexLockGuard<MLS> lock(data.publish_mutex);
+        const auto result = data.persistence.Publish(std::move(entry), us);
+        data.notifier.NotifyAllOfExternalWaitableEvent();
+        return result;
+      } catch (const current::sync::InDestructingModeException&) {
         CURRENT_THROW(StreamInGracefulShutdownException());
       }
-      current::locks::SmartMutexLockGuard<MLS> lock(data_->publish_mutex);
-      const auto result = data_->persistence.Publish(std::move(entry), us);
-      data_->notifier.NotifyAllOfExternalWaitableEvent();
-      return result;
     }
 
     operator bool() const { return data_; }
@@ -135,20 +139,22 @@ class StreamImpl {
 
   template <typename... ARGS>
   StreamImpl(ARGS&&... args)
-      : data_(std::forward<ARGS>(args)...),
-        publisher_(std::make_unique<publisher_t>(data_)),
+      : own_data_(std::forward<ARGS>(args)...),
+        publisher_(std::make_unique<publisher_t>(own_data_)),
         authority_(StreamDataAuthority::Own) {}
 
   StreamImpl(StreamImpl&& rhs)
-      : data_(std::move(rhs.data_)), publisher_(std::move(rhs.publisher_)), authority_(rhs.authority_) {}
+      : own_data_(std::move(rhs.own_data_)),
+        publisher_(std::move(rhs.publisher_)),
+        authority_(rhs.authority_) {}
 
   ~StreamImpl() {
     // TODO(dkorolev): These should be erased in an ongoing fashion.
-    data_->http_subscriptions.clear();
+    own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions.clear();
   }
 
   void operator=(StreamImpl&& rhs) {
-    data_ = std::move(rhs.data_);
+    own_data_ = std::move(rhs.own_data_);
     publisher_ = std::move(rhs.publisher_);
     authority_ = rhs.authority_;
   }
@@ -200,11 +206,12 @@ class StreamImpl {
   template <typename TYPE_SUBSCRIBED_TO, typename F>
   class SubscriberThreadInstance final : public current::sherlock::SubscriberScope::SubscriberThread {
    private:
-    F& subscriber;
+    bool this_is_valid_;
     std::function<void()> done_callback_;
-    ScopeOwnedBySomeoneElse<stream_data_t> data;
-    std::atomic_bool thread_done_{false};
-    current::WaitableTerminateSignal terminate_signal;
+    current::WaitableTerminateSignal terminate_signal_;
+    ScopeOwnedBySomeoneElse<stream_data_t> data_;
+    F& subscriber_;
+    std::atomic_bool thread_done_;
     std::thread thread_;
 
     SubscriberThreadInstance() = delete;
@@ -217,66 +224,91 @@ class StreamImpl {
     SubscriberThreadInstance(ScopeOwned<stream_data_t>& data,
                              F& subscriber,
                              std::function<void()> done_callback)
-        : subscriber(subscriber),
+        : this_is_valid_(false),
           done_callback_(done_callback),
-          data(data, [this]() { terminate_signal.SignalExternalTermination(); }),
-          thread_(&SubscriberThreadInstance::Thread, this) {}
+          terminate_signal_(),
+          data_(data,
+                [this]() {
+                  std::lock_guard<std::mutex> lock(
+                      data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
+                  terminate_signal_.SignalExternalTermination();
+                }),
+          subscriber_(subscriber),
+          thread_done_(false),
+          thread_(&SubscriberThreadInstance::Thread, this) {
+      // Must guard against the constructor of `ScopeOwnedBySomeoneElse<stream_data_t> data_` throwing.
+      this_is_valid_ = true;
+    }
 
     ~SubscriberThreadInstance() {
-      assert(thread_.joinable());
-      if (!thread_done_) {
-        terminate_signal.SignalExternalTermination();
+      if (this_is_valid_) {
+        // The constructor has completed successfully. The thread has started, and `data_` is valid.
+        assert(thread_.joinable());
+        if (!thread_done_) {
+          std::lock_guard<std::mutex> lock(data_.ObjectAccessorDespitePossiblyDestructing().publish_mutex);
+          terminate_signal_.SignalExternalTermination();
+        }
+        thread_.join();
+      } else {
+        // The constructor has not completed successfully. The thread was not started, and `data_` is garbage.
+        if (done_callback_) {
+          // TODO(dkorolev): Fix this ownership issue.
+          done_callback_();
+        }
       }
-      thread_.join();
     }
 
     void Thread() {
-      ThreadImpl();
+      // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
+      // strictly within the scope of existence of `stream_data_t` contained in `data_`.
+      stream_data_t& bare_data = data_.ObjectAccessorDespitePossiblyDestructing();
+      ThreadImpl(bare_data);
       thread_done_ = true;
+      std::lock_guard<std::mutex> lock(bare_data.http_subscriptions_mutex);
       if (done_callback_) {
-        // TODO(dkorolev): Fix this ownership issue.
-        std::lock_guard<std::mutex> lock(data->http_subscriptions_mutex);
         done_callback_();
       }
     }
 
-    void ThreadImpl() {
+    void ThreadImpl(stream_data_t& bare_data) {
       size_t index = 0;
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
         // TODO(dkorolev): This `EXCL` section can and should be tested by subscribing to an empty stream.
         // TODO(dkorolev): This is actually more a case of `EndReached()` first, right?
-        if (!terminate_sent && terminate_signal) {
+        if (!terminate_sent && terminate_signal_) {
           terminate_sent = true;
-          if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
+          if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
             return;
           }
         }
-        size = data->persistence.Size();
+        size = bare_data.persistence.Size();
         if (size > index) {
-          for (const auto& e : data->persistence.Iterate(index, size)) {
-            if (!terminate_sent && terminate_signal) {
+          for (const auto& e : bare_data.persistence.Iterate(index, size)) {
+            if (!terminate_sent && terminate_signal_) {
               terminate_sent = true;
-              if (subscriber.Terminate() != ss::TerminationResponse::Wait) {
+              if (subscriber_.Terminate() != ss::TerminationResponse::Wait) {
                 return;
               }
             }
             if (current::ss::PassEntryToSubscriberIfTypeMatches<TYPE_SUBSCRIBED_TO, entry_t>(
-                    subscriber,
-                    [this]() -> ss::EntryResponse { return subscriber.EntryResponseIfNoMorePassTypeFilter(); },
+                    subscriber_,
+                    [this]() -> ss::EntryResponse { return subscriber_.EntryResponseIfNoMorePassTypeFilter(); },
                     e.entry,
                     e.idx_ts,
-                    data->persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
+                    bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
               return;
             }
             index = size;
           }
         } else {
-          std::unique_lock<std::mutex> lock(data->publish_mutex);
-          current::WaitableTerminateSignalBulkNotifier::Scope scope(data->notifier, terminate_signal);
-          terminate_signal.WaitUntil(
-              lock, [this, &index]() { return terminate_signal || data->persistence.Size() > index; });
+          std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
+          current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
+          terminate_signal_.WaitUntil(lock,
+                                      [this, &bare_data, &index]() {
+                                        return terminate_signal_ || bare_data.persistence.Size() > index;
+                                      });
         }
       }
     }
@@ -300,115 +332,136 @@ class StreamImpl {
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
                                                    std::function<void()> done_callback = nullptr) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
-    return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(data_, subscriber, done_callback);
+    try {
+      return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, done_callback);
+    } catch (const current::sync::InDestructingModeException&) {
+      CURRENT_THROW(StreamInGracefulShutdownException());
+    }
   }
 
   // Sherlock handler for serving stream data via HTTP (see `pubsub.h` for details).
   template <JSONFormat J = JSONFormat::Current>
   void ServeDataViaHTTP(Request r) {
-    if (r.url.query.has("terminate")) {
-      const std::string id = r.url.query["terminate"];
-      typename stream_data_t::http_subscriptions_t::iterator it;
-      {
-        // NOTE: This is not thread-safe!!!
-        // The iterator may get invalidated in between the next few lines.
-        // However, during the call to `= nullptr` the mutex will be locked again from within the
-        // thread terminating callback. Need to clean this up. TODO(dkorolev).
-        std::lock_guard<std::mutex> lock(data_->http_subscriptions_mutex);
-        it = data_->http_subscriptions.find(id);
-      }
-      if (it != data_->http_subscriptions.end()) {
-        // Subscription found. Delete the scope, triggering the thread to shut down.
-        // TODO(dkorolev): This should certainly not happen synchronously.
-        it->second.first = nullptr;
-        // Subscription terminated.
-        r("", HTTPResponseCode.OK);
-      } else {
-        // Subscription not found.
-        r("", HTTPResponseCode.NotFound);
-      }
-      return;
-    }
-    if (r.method == "GET" || r.method == "HEAD") {
-      const size_t count = data_->persistence.Size();
-      if (r.method == "HEAD") {
-        // Return the number of entries in the stream in `X-Current-Stream-Size` header.
-        r("",
-          HTTPResponseCode.OK,
-          current::net::constants::kDefaultContentType,
-          current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, current::ToString(count)}}));
-      } else {
-        bool schema_requested = false;
-        std::string schema_format;
-        const std::string schema_prefix = "schema.";
-        if (r.url.query.has("schema")) {
-          schema_requested = true;
-          schema_format = r.url.query["schema"];
-        } else if (r.url_path_args.size() == 1) {
-          if (r.url_path_args[0].substr(0, schema_prefix.length()) == schema_prefix) {
-            schema_requested = true;
-            schema_format = r.url_path_args[0].substr(schema_prefix.length());
-          } else {
-            SherlockSchemaFormatNotFound four_oh_four;
-            four_oh_four.unsupported_format_requested = r.url_path_args[0];
-            r(four_oh_four, HTTPResponseCode.NotFound);
-            return;
-          }
+    try {
+      // Prevent `own_data_` from being destroyed between the entry into this function
+      // and the call to the construction of `PubSubHTTPEndpoint`.
+      //
+      // Granted, an overkill, as whoever could call `ServeDataViaHTTP` from another thread should have
+      // its own `ScopeOwnedBySomeoneElse<>` copy of the stream object. But err on the safe side. -- D.K.
+      ScopeOwnedBySomeoneElse<stream_data_t> scoped_data(own_data_, []() {});
+      stream_data_t& data = *scoped_data;
+
+      if (r.url.query.has("terminate")) {
+        const std::string id = r.url.query["terminate"];
+        typename stream_data_t::http_subscriptions_t::iterator it;
+        {
+          // NOTE: This is not thread-safe!!!
+          // The iterator may get invalidated in between the next few lines.
+          // However, during the call to `= nullptr` the mutex will be locked again from within the
+          // thread terminating callback. Need to clean this up. TODO(dkorolev).
+          std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
+          it = data.http_subscriptions.find(id);
         }
-        if (schema_requested) {
-          // Return the schema the user is requesting, in a top-level, or more fine-grained format.
-          if (schema_format.empty()) {
-            r(schema_as_http_response_);
-          } else {
-            const auto cit = schema_as_object_.language.find(schema_format);
-            if (cit != schema_as_object_.language.end()) {
-              r(cit->second);
-            } else {
-              SherlockSchemaFormatNotFound four_oh_four;
-              four_oh_four.unsupported_format_requested = schema_format;
-              r(four_oh_four, HTTPResponseCode.NotFound);
-            }
-          }
-        } else if (r.url.query.has("sizeonly")) {
-          // Return the number of entries in the stream in body.
-          r(current::ToString(count) + '\n', HTTPResponseCode.OK);
-        } else if (count == 0u && r.url.query.has("nowait")) {
-          // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
+        if (it != data.http_subscriptions.end()) {
+          // Subscription found. Delete the scope, triggering the thread to shut down.
+          // TODO(dkorolev): This should certainly not happen synchronously.
+          it->second.first = nullptr;
+          // Subscription terminated.
           r("", HTTPResponseCode.OK);
         } else {
-          const std::string subscription_id = data_->GenerateRandomHTTPSubscriptionID();
+          // Subscription not found.
+          r("", HTTPResponseCode.NotFound);
+        }
+        return;
+      }
+      if (r.method == "GET" || r.method == "HEAD") {
+        const size_t count = data.persistence.Size();
+        if (r.method == "HEAD") {
+          // Return the number of entries in the stream in `X-Current-Stream-Size` header.
+          r("",
+            HTTPResponseCode.OK,
+            current::net::constants::kDefaultContentType,
+            current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, current::ToString(count)}}));
+        } else {
+          bool schema_requested = false;
+          std::string schema_format;
+          const std::string schema_prefix = "schema.";
+          if (r.url.query.has("schema")) {
+            schema_requested = true;
+            schema_format = r.url.query["schema"];
+          } else if (r.url_path_args.size() == 1) {
+            if (r.url_path_args[0].substr(0, schema_prefix.length()) == schema_prefix) {
+              schema_requested = true;
+              schema_format = r.url_path_args[0].substr(schema_prefix.length());
+            } else {
+              SherlockSchemaFormatNotFound four_oh_four;
+              four_oh_four.unsupported_format_requested = r.url_path_args[0];
+              r(four_oh_four, HTTPResponseCode.NotFound);
+              return;
+            }
+          }
+          if (schema_requested) {
+            // Return the schema the user is requesting, in a top-level, or more fine-grained format.
+            if (schema_format.empty()) {
+              r(schema_as_http_response_);
+            } else {
+              const auto cit = schema_as_object_.language.find(schema_format);
+              if (cit != schema_as_object_.language.end()) {
+                r(cit->second);
+              } else {
+                SherlockSchemaFormatNotFound four_oh_four;
+                four_oh_four.unsupported_format_requested = schema_format;
+                r(four_oh_four, HTTPResponseCode.NotFound);
+              }
+            }
+          } else if (r.url.query.has("sizeonly")) {
+            // Return the number of entries in the stream in body.
+            r(current::ToString(count) + '\n', HTTPResponseCode.OK);
+          } else if (count == 0u && r.url.query.has("nowait")) {
+            // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
+            r("", HTTPResponseCode.OK);
+          } else {
+            const std::string subscription_id = data.GenerateRandomHTTPSubscriptionID();
 
-          auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
-              subscription_id, data_, std::move(r));
+            auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
+                subscription_id, scoped_data, std::move(r));
 
-          current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-              Subscribe(*http_chunked_subscriber,
-                        [this, subscription_id]() {
-                          // NOTE: Need to figure out when and where to lock.
-                          // Chat w/ Max about the logic to clean up completed listeners.
-                          // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                          data_->http_subscriptions[subscription_id].second = nullptr;
-                        });
+            current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+                Subscribe(*http_chunked_subscriber,
+                          [this, &data, subscription_id]() {
+                            // NOTE: Need to figure out when and where to lock.
+                            // Chat w/ Max about the logic to clean up completed listeners.
+                            // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
+                            data.http_subscriptions[subscription_id].second = nullptr;
+                          });
 
-          {
-            std::lock_guard<std::mutex> lock(data_->http_subscriptions_mutex);
-            assert(!data_->http_subscriptions.count(subscription_id));
-            data_->http_subscriptions[subscription_id] =
-                std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+            {
+              std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
+              // TODO(dkorolev): This condition is to be rewritten correctly.
+              if (!data.http_subscriptions.count(subscription_id)) {
+                data.http_subscriptions[subscription_id] = std::make_pair(
+                    std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+              }
+            }
           }
         }
+      } else {
+        r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
       }
-    } else {
-      r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
+    } catch (const current::sync::InDestructingModeException&) {
+      r("", HTTPResponseCode.ServiceUnavailable);
     }
   }
 
   void operator()(Request r) { ServeDataViaHTTP(std::move(r)); }
 
-  persistence_layer_t& InternalExposePersister() { return data_->persistence; }
+  persistence_layer_t& InternalExposePersister() {
+    return own_data_.ObjectAccessorDespitePossiblyDestructing().persistence;
+  }
 
  private:
-  ScopeOwnedByMe<stream_data_t> data_;
+  ScopeOwnedByMe<stream_data_t> own_data_;
+
   struct FillPerLanguageSchema {
     SherlockSchema& schema_ref;
     explicit FillPerLanguageSchema(SherlockSchema& schema) : schema_ref(schema) {}
