@@ -421,8 +421,7 @@ struct LanguageSyntaxImpl<Language::Markdown> {
           MarkdownTypeNamePrinter(const FullSchemaPrinter& self, std::ostringstream& oss)
               : self_(self), oss_(oss) {}
 
-          // `operator()(...)`-s of this block print F# type name only, without the expansion.
-          // They assume the declaration order is respected, and any dependencies have already been listed.
+          // `operator()(...)`-s of this block print the type name, without the expansion.
           void operator()(const ReflectedType_Primitive& p) const {
             const auto& globals = PrimitiveTypesList();
             if (globals.markdown_name.count(p.type_id) != 0u) {
@@ -476,8 +475,7 @@ struct LanguageSyntaxImpl<Language::Markdown> {
       // No need to define `Variant` types explicitly in Markdown format.
     }
 
-    // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
-    // all base class variables are hoisted to the top of the record.
+    // When dumping a derived `CURRENT_STRUCT` as a Markdown table, hoist base class variables to the top.
     void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
       if (s.super_id != TypeID::CurrentStruct) {
         // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
