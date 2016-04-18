@@ -439,8 +439,8 @@ class StreamImpl {
               std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
               // TODO(dkorolev): This condition is to be rewritten correctly.
               if (!data.http_subscriptions.count(subscription_id)) {
-                data.http_subscriptions[subscription_id] =
-                  std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+                data.http_subscriptions[subscription_id] = std::make_pair(
+                    std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
               }
             }
           }

@@ -600,7 +600,6 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   std::string subscription_id;
   std::atomic_size_t chunks_count(0);
   std::atomic_bool chunks_done(false);
-  std::vector<std::string> chunks;
 
   std::thread slow_subscriber([&] {
     const auto result =
@@ -610,9 +609,8 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
                             subscription_id = value;
                           }
                         },
-                        [&chunks_count, &chunks](const std::string& chunk_body) {
+                        [&chunks_count](const std::string& chunk_body) {
                           ++chunks_count;
-                          chunks.push_back(chunk_body);
                         },
                         [&chunks_done]() { chunks_done = true; }));
     EXPECT_EQ(200, static_cast<int>(result));
@@ -639,7 +637,6 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
   EXPECT_TRUE(chunks_done);
 
   EXPECT_GE(chunks_count, 100u);
-  EXPECT_GE(chunks.size(), 100u);
 
   slow_subscriber.join();
 }
@@ -816,8 +813,7 @@ TEST(Sherlock, ReleaseAndAcquirePublisher) {
 
     // Can't move publisher once more since we don't own it at this moment.
     SherlockPublisherAcquirer other_acquirer;
-    ASSERT_THROW(stream.MovePublisherTo(other_acquirer),
-                 current::sherlock::PublisherAlreadyReleasedException);
+    ASSERT_THROW(stream.MovePublisherTo(other_acquirer), current::sherlock::PublisherAlreadyReleasedException);
 
     // Acquire publisher back.
     stream.AcquirePublisher(std::move(acquirer.publisher_));
