@@ -70,9 +70,9 @@ struct ReflectorImpl {
   };
 
   struct TypeReflector {
-#define CURRENT_DECLARE_PRIMITIVE_TYPE(unused_typeid_index, cpp_type, current_type, unused_fsharp_type) \
-  ReflectedType operator()(TypeSelector<cpp_type>) {                                                    \
-    return ReflectedType(ReflectedType_Primitive(TypeID::current_type));                                \
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type) \
+  ReflectedType operator()(TypeSelector<cpp_type>) {                                           \
+    return ReflectedType(ReflectedType_Primitive(TypeID::current_type));                       \
   }
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE

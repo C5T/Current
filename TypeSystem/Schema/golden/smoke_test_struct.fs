@@ -1,4 +1,4 @@
-// fsharpi -r Newtonsoft.Json.dll schema.fsx
+// fsharpi -r Newtonsoft.Json.dll schema.fs
 
 open Newtonsoft.Json
 let inline JSON o = JsonConvert.SerializeObject(o)

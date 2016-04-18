@@ -609,7 +609,8 @@ TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
                             subscription_id = value;
                           }
                         },
-                        [&chunks_count](const std::string& chunk_body) {
+                        [&chunks_count](const std::string& unused_chunk_body) {
+                          static_cast<void>(unused_chunk_body);
                           ++chunks_count;
                         },
                         [&chunks_done]() { chunks_done = true; }));
