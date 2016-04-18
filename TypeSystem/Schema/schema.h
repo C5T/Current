@@ -162,7 +162,8 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
 template <CPPLanguageSelector CPP_LANGUAGE_SELECTOR>
 struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
   static std::string Header() {
-    return "// g++ -c -std=c++11 current.cc\n"
+    return "// The `current.h` file is the one from `https://github.com/C5T/Current`.\n"
+           "// Compile with `-std=c++11` or higher.\n"
            "\n"
            "#include \"current.h\"\n"
            "\n"
@@ -174,7 +175,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
   static std::string Footer() {
     return "}  // namespace current_userspace\n"
            "\n"
-           "// clang-format off\n";
+           "// clang-format on\n";
   }
 
   // LCOV_EXCL_START
