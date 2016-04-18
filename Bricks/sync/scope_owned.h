@@ -285,6 +285,13 @@ class ScopeOwned {
     return f(p_actual_instance_->instance_);
   }
 
+  // A non-throwing inner object accessor, for doing cleanup work, mostly from destructors.
+  // Should only be called from a C++ scope guarded by a broader `ScopeOwned*<>` scope,
+  // to ensure no destrution of the inner object can possibly happen concurrently with this call.
+  // Never throws.
+  T& ObjectAccessorDespitePossiblyDestructing() { return p_actual_instance_->instance_; }
+  const T& ObjectAccessorDespitePossiblyDestructing() const { return p_actual_instance_->instance_; }
+
   // Return the number of registered follower users besides the master one.
   // For unit-testing purposes mostly, but may end up useful. -- D.K.
   // THREAD-SAFE. NEVER THROWS.

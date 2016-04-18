@@ -80,12 +80,9 @@ class WaitableTerminateSignal {
 };
 
 // Enables subscribing multiple `WaitableTerminateSignal`-s to be notified of new events at once.
-// NOT THREAD-SAFE!
-// The user is responsible for not intersecting the calls to `Register/Unregister`,
-// and for the timing of `Scope` construction/destruction.
 class WaitableTerminateSignalBulkNotifier {
  public:
-  // NOT THREAD SAFE.
+  // THREAD-SAFE.
   class Scope {
    public:
     Scope(WaitableTerminateSignalBulkNotifier& bulk, WaitableTerminateSignal& signal) noexcept
@@ -107,21 +104,29 @@ class WaitableTerminateSignalBulkNotifier {
     WaitableTerminateSignal& notifier_;
   };
 
-  // NOT THREAD SAFE.
+  // THREAD-SAFE.
   void NotifyAllOfExternalWaitableEvent() {
+    std::lock_guard<std::mutex> lock(mutex_);
     for (WaitableTerminateSignal* signal : active_signals_) {
       signal->NotifyOfExternalWaitableEvent();
     }
   }
 
-  // NOT THREAD SAFE.
-  void RegisterPendingNotifier(WaitableTerminateSignal& signal) { active_signals_.insert(&signal); }
+  // THREAD-SAFE.
+  void RegisterPendingNotifier(WaitableTerminateSignal& signal) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    active_signals_.insert(&signal);
+  }
 
-  // NOT THREAD SAFE.
-  void UnRegisterPendingNotifier(WaitableTerminateSignal& signal) { active_signals_.erase(&signal); }
+  // THREAD-SAFE.
+  void UnRegisterPendingNotifier(WaitableTerminateSignal& signal) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    active_signals_.erase(&signal);
+  }
 
  private:
   // Can't use `reference_wrapper` w/o a global `operator<()` -- a member one doesn't nail it. -- D.K.
+  std::mutex mutex_;
   std::unordered_set<WaitableTerminateSignal*> active_signals_;
 };
 
