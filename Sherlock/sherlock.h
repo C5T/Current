@@ -150,6 +150,10 @@ class StreamImpl {
 
   ~StreamImpl() {
     // TODO(dkorolev): These should be erased in an ongoing fashion.
+    // Order of destruction in `http_subscriptions` does matter - scopes should be deleted first -- M.Z.
+    for (auto& it : own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions) {
+      it.second.first = nullptr;
+    }
     own_data_.ObjectAccessorDespitePossiblyDestructing().http_subscriptions.clear();
   }
 
