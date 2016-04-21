@@ -62,12 +62,14 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     using replay_function_t = std::function<void(const transaction_t&)>;
     replay_function_t replay_f_;
     idxts_t last_idxts_;
+    uint64_t entries_seen_ = 0u;
 
     SherlockSubscriberImpl(replay_function_t f) : replay_f_(f) {}
 
     EntryResponse operator()(const transaction_t& transaction, idxts_t current, idxts_t) {
       replay_f_(transaction);
       last_idxts_ = current;
+      ++entries_seen_;
       return EntryResponse::More;
     }
 
@@ -139,7 +141,9 @@ class SherlockStreamPersisterImpl<TypeList<TS...>, UNDERLYING_PERSISTER, STREAM_
     current::locks::SmartMutexLockGuard<MLS> lock(storage_mutex_ref_);
     if (stream_used_.DataAuthority() == current::sherlock::StreamDataAuthority::Own) {
       TerminateStreamSubscription();
-      ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>(subscriber_->last_idxts_.index + 1u);
+      const uint64_t index_to_replay_from =
+          subscriber_->entries_seen_ ? subscriber_->last_idxts_.index + 1u : 0u;
+      ReplayStream<current::locks::MutexLockStatus::AlreadyLocked>(index_to_replay_from);
       subscriber_ = nullptr;
     } else {
       CURRENT_THROW(UnderlyingStreamHasExternalDataAuthorityException());
