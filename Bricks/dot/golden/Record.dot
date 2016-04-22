@@ -1,0 +1,5 @@
+digraph {
+  node1 [ label="horizontal|does|work" shape="record" ];
+  node2 [ label="{vertical|works|too}" shape="record" ];
+  node3 [ label="mixed|{can|be|used}|as well" shape="record" ];
+}

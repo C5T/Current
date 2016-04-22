@@ -1,0 +1,9 @@
+digraph {
+  rankdir="LR";
+  node1 [ label="Hello" ];
+  node2 [ label="Current" shape="box" ];
+  node3 [ label="World" shape="octagon" ];
+  node1 -> node3;
+  node1 -> node2;
+  node2 -> node3;
+}

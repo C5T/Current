@@ -1,0 +1,5 @@
+graph {
+  node1 [ label="Hello" ];
+  node2 [ label="World" ];
+  node1 -- node2;
+}
