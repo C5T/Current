@@ -5,4 +5,9 @@
 
 #include "src/gtest-all.cc"
 
+// From within `TEST(Module, Smoke)` returns "Smoke".
+static std::string CurrentTestName() {
+  return testing::GetUnitTestImpl()->current_test_info()->name();
+}
+
 #endif  // THIRDPARTY_GTEST_H
