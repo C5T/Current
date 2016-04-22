@@ -1,0 +1,8 @@
+graph {
+  node1 [ label="plain" ];
+  node2 [ label="with whitespace" ];
+  node3 [ label="multi
+line" ];
+  node4 [ label="contains 'single-quoted' text" ];
+  node5 [ label="contains \"double-quoted\" text" ];
+}

@@ -1,0 +1,19 @@
+digraph {
+  node1 [ label="a" ];
+  node2 [ label="b" ];
+  node3 [ label="c" ];
+  node4 [ label="d" ];
+  node5 [ label="e" ];
+  node6 [ label="f" ];
+  subgraph cluster_1 {
+    node1;
+    node3;
+    node4;
+  }
+  node1 -> node2;
+  node1 -> node3;
+  node1 -> node4;
+  node2 -> node5;
+  node2 -> node6;
+  node3 -> node5;
+}
