@@ -3,6 +3,6 @@ graph {
   node2 [ label="with whitespace" ];
   node3 [ label="multi
 line" ];
-  node4 [ label="contains 'double-quoted' text" ];
+  node4 [ label="contains 'single-quoted' text" ];
   node5 [ label="contains \"double-quoted\" text" ];
 }

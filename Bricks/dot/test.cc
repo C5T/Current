@@ -72,7 +72,7 @@ TEST(GraphViz, TextEscaping) {
   g += Node("plain");
   g += Node("with whitespace");
   g += Node("multi\nline");
-  g += Node("contains 'double-quoted' text");
+  g += Node("contains 'single-quoted' text");
   g += Node("contains \"double-quoted\" text");
   RunTest(g);
 }
