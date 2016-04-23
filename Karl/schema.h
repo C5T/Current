@@ -37,18 +37,13 @@ CURRENT_STRUCT(ClaireToKarlBase) {
   // A required field. Changes to `true` as Karl has accepted Claire.
   CURRENT_FIELD(up, bool, false);
 
-  // Service name, ex. "ctfo_server".
-  // By convention, must be a valid C++ identifier.
   CURRENT_FIELD(service, std::string);
-
-  // Unique instance ID, six uppercase Latin characters, ex. "ABCDEF".
-  // https://en.wikipedia.org/wiki/Secret_Service_codename
   CURRENT_FIELD(codename, std::string);
 
   // Local port. For the outer world to be able to connect to this service.
   // By convention, `http://localhost:local_port/current` or `http://localhost:local_port/.../current`
   // should respond with the JSON representation of this structure.
-  CURRENT_FIELD(local_port, uint32_t);
+  CURRENT_FIELD(local_port, uint16_t);
 };
 
 CURRENT_STRUCT(ClaireToKarl, ClaireToKarlBase) {
