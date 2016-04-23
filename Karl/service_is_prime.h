@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_IS_PRIME_H
-#define KERL_SERVICE_IS_PRIME_H
+#ifndef KARL_SERVICE_IS_PRIME_H
+#define KARL_SERVICE_IS_PRIME_H
 
-#include "karl.h"
+#include "claire.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -33,7 +33,7 @@ namespace karl_unittest {
 
 class ServiceIsPrime final {
  public:
-  explicit ServiceIsPrime(int port, const current::karl::Locator& karl)
+  explicit ServiceIsPrime(uint16_t port, const current::karl::Locator& karl)
       : http_scope_(HTTP(port).Register(
             "/is_prime",
             [this](Request r) {

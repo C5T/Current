@@ -51,7 +51,7 @@ class Claire {
 
   Claire(const std::string& service,
          Locator karl,
-         int port,
+         uint16_t port,
          status_filler_t status_filler = nullptr,
          const std::string& url = "/current")
       : up_(false),

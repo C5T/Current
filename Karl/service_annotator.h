@@ -22,10 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_ANNOTATOR_H
-#define KERL_SERVICE_ANNOTATOR_H
+#ifndef KARL_SERVICE_ANNOTATOR_H
+#define KARL_SERVICE_ANNOTATOR_H
 
-#include "karl.h"
+#include "claire.h"
 
 #include "service_schema.h"
 
@@ -37,7 +37,7 @@ namespace karl_unittest {
 
 class ServiceAnnotator final {
  public:
-  ServiceAnnotator(int port,
+  ServiceAnnotator(uint16_t port,
                    const std::string& source_numbers_stream,
                    const std::string& is_prime_logic_endpoint,
                    const current::karl::Locator& karl)

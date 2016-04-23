@@ -28,6 +28,7 @@ SOFTWARE.
 #include "../port.h"
 
 #include "schema.h"
+#include "locator.h"
 
 #include "../Storage/storage.h"
 #include "../Storage/persister/sherlock.h"
@@ -75,7 +76,7 @@ class Karl final {
   using logger_t = std::function<void(const Request&)>;
   using storage_t = ServiceStorage<SherlockInMemoryStreamPersister>;
 
-  explicit Karl(int port, const std::string& url = "/karl", logger_t logger = nullptr)
+  explicit Karl(uint16_t port, const std::string& url = "/", logger_t logger = nullptr)
       : logger_(logger),
         http_scope_(HTTP(port).Register(
             url,

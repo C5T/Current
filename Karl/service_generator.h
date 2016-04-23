@@ -22,8 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_GENERATOR_H
-#define KERL_SERVICE_GENERATOR_H
+#ifndef KARL_SERVICE_GENERATOR_H
+#define KARL_SERVICE_GENERATOR_H
 
 #include "karl.h"
 
@@ -42,9 +42,9 @@ namespace karl_unittest {
 
 class ServiceGenerator final {
  public:
-  ServiceGenerator(int port,
-                   const current::karl::Locator& karl,
-                   std::chrono::microseconds sleep_between_numbers = std::chrono::microseconds(10 * 1000))
+  ServiceGenerator(uint16_t port,
+                   std::chrono::microseconds sleep_between_numbers,
+                   const current::karl::Locator& karl)
       : current_value_(0),
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/numbers", stream_)),

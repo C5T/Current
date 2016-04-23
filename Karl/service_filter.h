@@ -22,10 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_FILTER_H
-#define KERL_SERVICE_FILTER_H
+#ifndef KARL_SERVICE_FILTER_H
+#define KARL_SERVICE_FILTER_H
 
 #include "karl.h"
+#include "claire.h"
+#include "locator.h"
 
 #include "service_schema.h"
 
@@ -37,12 +39,14 @@ namespace karl_unittest {
 
 class ServiceFilter final {
  public:
-  ServiceFilter(int port,
+  ServiceFilter(uint16_t port,
                 const std::string& source_annotated_numbers_stream,
                 const current::karl::Locator& karl)
       : source_annotated_numbers_stream_(source_annotated_numbers_stream),
-        stream_(current::sherlock::Stream<Number>()),
-        http_scope_(HTTP(port).Register("/filtered", stream_)),
+        stream_primes_(current::sherlock::Stream<Number>()),
+        stream_composites_(current::sherlock::Stream<Number>()),
+        http_scope_(HTTP(port).Register("/primes", stream_primes_) +
+                    HTTP(port).Register("/composites", stream_composites_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
         claire_("filter", karl, port) {}
@@ -65,9 +69,7 @@ class ServiceFilter final {
         assert(split.size() == 2u);
         auto number = ParseJSON<Number>(split[1]);
         assert(Exists(number.is_prime));
-        if (Value(number.is_prime)) {
-          stream_.Publish(number);
-        }
+        (Value(number.is_prime) ? stream_primes_ : stream_composites_).Publish(number);
       }
     } catch (current::net::NetworkException&) {
       // Ignore for the purposes of this test. -- D.K.
@@ -75,7 +77,8 @@ class ServiceFilter final {
   }
 
   const std::string source_annotated_numbers_stream_;
-  current::sherlock::Stream<Number> stream_;
+  current::sherlock::Stream<Number> stream_primes_;
+  current::sherlock::Stream<Number> stream_composites_;
   const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   std::thread thread_;

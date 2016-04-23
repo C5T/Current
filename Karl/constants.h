@@ -22,22 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KARL_SERVICE_SCHEMA_H
-#define KARL_SERVICE_SCHEMA_H
+#ifndef KARL_CONSTANTS_H
+#define KARL_CONSTANTS_H
 
-#include "karl.h"
+#include "../port.h"
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/optional.h"
+namespace current {
+namespace karl {
+namespace constants {
 
-namespace karl_unittest {
+constexpr static uint16_t kDefaultKarlPort = 7576;  // ASCII { 'K', 'L' }.
 
-CURRENT_STRUCT(Number) {
-  CURRENT_FIELD(x, int64_t);
-  CURRENT_FIELD(is_prime, Optional<bool>);
-  CURRENT_CONSTRUCTOR(Number)(int64_t x = 0) : x(x) {}
-};
+}  // namespace current::karl::constants
+}  // namespace current::karl
+}  // namespace current
 
-}  // namespace karl_unittest
-
-#endif  // KARL_SERVICE_SCHEMA_H
+#endif  // KARL_CONSTANTS_H

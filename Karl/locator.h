@@ -30,7 +30,9 @@ SOFTWARE.
 #include "../port.h"
 
 #include "schema.h"
-#include "locator.h"
+#include "constants.h"
+
+#include "../Bricks/strings/util.h"
 
 namespace current {
 namespace karl {
@@ -38,7 +40,10 @@ namespace karl {
 struct Locator {
   std::string address_port_route;
   Locator(const std::string& address_port_route) : address_port_route(address_port_route) {}
-  // TODO(dkorolev): Default construction from command-line flags, `DECLARE_*`-d above?
+};
+
+inline Locator LocalKarl() {
+  return Locator("http://localhost:" + current::ToString(constants::kDefaultKarlPort));
 };
 
 }  // namespace current::karl
