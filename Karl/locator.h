@@ -22,43 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_IS_PRIME_H
-#define KERL_SERVICE_IS_PRIME_H
+// `Locator` defines the path to the Karl server, or the strategy to find one.
 
-#include "karl.h"
+#ifndef KARL_LOCATOR_H
+#define KARL_LOCATOR_H
 
-#include "../Blocks/HTTP/api.h"
+#include "../port.h"
 
-namespace karl_unittest {
+#include "schema.h"
+#include "locator.h"
 
-class ServiceIsPrime final {
- public:
-  explicit ServiceIsPrime(int port, const current::karl::Locator& karl)
-      : http_scope_(HTTP(port).Register(
-            "/is_prime",
-            [this](Request r) {
-              r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n" : "NO\n");
-            })),
-        claire_("is_prime", karl, port) {}
+namespace current {
+namespace karl {
 
- private:
-  static bool IsPrime(int x) {
-    if (x < 2) {
-      return false;
-    } else {
-      for (int i = 2; i * i <= x; ++i) {
-        if ((x % i) == 0) {
-          return false;
-        }
-      }
-      return true;
-    }
-  }
-
-  const HTTPRoutesScope http_scope_;
-  const current::karl::Claire claire_;
+struct Locator {
+  std::string address_port_route;
+  Locator(const std::string& address_port_route) : address_port_route(address_port_route) {}
+  // TODO(dkorolev): Default construction from command-line flags, `DECLARE_*`-d above?
 };
 
-}  // namespace karl_unittest
+}  // namespace current::karl
+}  // namespace current
 
-#endif  // KARL_SERVICE_IS_PRIME_H
+#endif  // KARL_LOCATOR_H

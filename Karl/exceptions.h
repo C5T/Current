@@ -22,43 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_IS_PRIME_H
-#define KERL_SERVICE_IS_PRIME_H
+#ifndef CURRENT_KARL_EXCEPTIONS_H
+#define CURRENT_KARL_EXCEPTIONS_H
 
-#include "karl.h"
+#include "../Blocks/GracefulShutdown/exceptions.h"
 
-#include "../Blocks/HTTP/api.h"
+namespace current {
+namespace karl {
 
-namespace karl_unittest {
-
-class ServiceIsPrime final {
- public:
-  explicit ServiceIsPrime(int port, const current::karl::Locator& karl)
-      : http_scope_(HTTP(port).Register(
-            "/is_prime",
-            [this](Request r) {
-              r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n" : "NO\n");
-            })),
-        claire_("is_prime", karl, port) {}
-
- private:
-  static bool IsPrime(int x) {
-    if (x < 2) {
-      return false;
-    } else {
-      for (int i = 2; i * i <= x; ++i) {
-        if ((x % i) == 0) {
-          return false;
-        }
-      }
-      return true;
-    }
-  }
-
-  const HTTPRoutesScope http_scope_;
-  const current::karl::Claire claire_;
+struct KarlException : Exception {
+  using Exception::Exception;
 };
 
-}  // namespace karl_unittest
+struct ClaireRegistrationException : KarlException {
+  ClaireRegistrationException(const std::string& service, const std::string& route)
+      : KarlException(service + " @ " + route) {}
+};
 
-#endif  // KARL_SERVICE_IS_PRIME_H
+}  // namespace current::karl
+}  // namespace current
+
+#endif  // CURRENT_KARL_EXCEPTIONS_H

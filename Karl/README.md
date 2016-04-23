@@ -1,3 +1,30 @@
+# TODO
+
+Once the prototype is done, this doc should be made up to date.
+
+The prototype in its present form resembles the idea, but the implementation is skewed towards a different usecase. -- @dkorolev
+
+Done:
+
+* Prototyped Karl (server).
+* Prototyped Claire (client).
+* Base response (`ClaireToKarlBase`)
+* More complex response (`ClaireToKarl`)
+* Claire-to-Karl-to-Claire loopback registration.
+* Karl keeping the state of the fleet and returning it.
+
+Remains to code:
+
+* Claire sending pings to Karl.
+* Reporting dependencies.
+* Visualization as .DOT (for unit testing) and .SVG (with browsing).
+* A standalone test where several binaries are started, and Karl can be killed and re-started. Claire-s should not die.
+
+Remains to think:
+
+* Claire graceful shutdown. (Keep it last as the class member? Have it un-register w/ Karl at destruction?)
+* What is the key of the server. (Would just `location`, w/o `/current`, do? If yes, must fix empty URL registration.)
+
 # Karl
 
 *Your service should be up and running. Up and running, Karl!*

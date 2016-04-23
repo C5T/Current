@@ -27,9 +27,10 @@ SOFTWARE.
 
 #include "karl.h"
 
-#include "service_schema.h"
-
 #include <atomic>
+
+#include "claire.h"
+#include "service_schema.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -42,13 +43,21 @@ namespace karl_unittest {
 class ServiceGenerator final {
  public:
   ServiceGenerator(int port,
+                   const current::karl::Locator& karl,
                    std::chrono::microseconds sleep_between_numbers = std::chrono::microseconds(10 * 1000))
       : current_value_(0),
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/numbers", stream_)),
         sleep_between_numbers_(sleep_between_numbers),
         destructing_(false),
-        thread_([this]() { Thread(); }) {}
+        thread_([this]() { Thread(); }),
+        claire_("generator",
+                karl,
+                port,
+                [this](std::map<std::string, std::string>& status) {
+                  status["i"] = current::ToString(current_value_.load());
+                },
+                "/nonstandard/current") {}
 
   ~ServiceGenerator() {
     destructing_ = true;
@@ -69,12 +78,13 @@ class ServiceGenerator final {
   }
 
  private:
-  int current_value_;
+  std::atomic_int current_value_;
   current::sherlock::Stream<Number> stream_;
-  HTTPRoutesScope http_scope_;
+  const HTTPRoutesScope http_scope_;
   const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;
   std::thread thread_;
+  const current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest

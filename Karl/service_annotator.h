@@ -39,13 +39,15 @@ class ServiceAnnotator final {
  public:
   ServiceAnnotator(int port,
                    const std::string& source_numbers_stream,
-                   const std::string& is_prime_logic_endpoint)
+                   const std::string& is_prime_logic_endpoint,
+                   const current::karl::Locator& karl)
       : source_numbers_stream_(source_numbers_stream),
         is_prime_logic_endpoint_(is_prime_logic_endpoint),
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
-        thread_([this]() { Thread(); }) {}
+        thread_([this]() { Thread(); }),
+        claire_("annotator", karl, port) {}
 
   ~ServiceAnnotator() {
     destructing_ = true;
@@ -55,7 +57,7 @@ class ServiceAnnotator final {
  private:
   void Thread() {
     // Poor man's stream subscriber. -- D.K.
-    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as as coin the notion of `HTTPSherlockSusbcriber`.
+    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as we coin the notion of `HTTPSherlockSusbcriber`.
     int index = 0;
     try {
       while (!destructing_) {
@@ -77,9 +79,10 @@ class ServiceAnnotator final {
   const std::string source_numbers_stream_;
   const std::string is_prime_logic_endpoint_;
   current::sherlock::Stream<Number> stream_;
-  HTTPRoutesScope http_scope_;
+  const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   std::thread thread_;
+  const current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest

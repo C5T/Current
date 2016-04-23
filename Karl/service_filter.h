@@ -37,12 +37,15 @@ namespace karl_unittest {
 
 class ServiceFilter final {
  public:
-  ServiceFilter(int port, const std::string& source_annotated_numbers_stream)
+  ServiceFilter(int port,
+                const std::string& source_annotated_numbers_stream,
+                const current::karl::Locator& karl)
       : source_annotated_numbers_stream_(source_annotated_numbers_stream),
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/filtered", stream_)),
         destructing_(false),
-        thread_([this]() { Thread(); }) {}
+        thread_([this]() { Thread(); }),
+        claire_("filter", karl, port) {}
 
   ~ServiceFilter() {
     destructing_ = true;
@@ -52,7 +55,7 @@ class ServiceFilter final {
  private:
   void Thread() {
     // Poor man's stream subscriber. -- D.K.
-    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as as coin the notion of `HTTPSherlockSusbcriber`.
+    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as we coin the notion of `HTTPSherlockSusbcriber`.
     int index = 0;
     try {
       while (!destructing_) {
@@ -73,9 +76,10 @@ class ServiceFilter final {
 
   const std::string source_annotated_numbers_stream_;
   current::sherlock::Stream<Number> stream_;
-  HTTPRoutesScope http_scope_;
+  const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   std::thread thread_;
+  const current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest
