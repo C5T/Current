@@ -1,4 +1,60 @@
-# TODO
+# Karl
+
+*Your service should be up and running. Up and running, Karl!*
+
+## Objective
+
+Current services typically run as separate binaries, exposing certain functionality on certain HTTP port.
+Karl is the supervisor of Current services. TL;DR: Karl is a tool to browse the topology of Current services, in its present and past state.
+
+The way to have a Current service communicate with Karl is to use Claire. TL;DR: An instance of Claire within the scope of service lifetime makes it comunicate with Karl.
+
+General ideas behind Karl and Claire are:
+* Claire communicates with Karl on a nice-to-have basis.
+  * Generally, if Karl is unreachable, the client binary with Claire remains fully functional.
+* Karl can be run in stateless mode.
+  * If a production Karl is replaced by a virgin-state one, it would be populated with the state of the fleet within the next half a minute.
+* Karl maintains the historical state of all keepalives it has received.
+  * Basic Karl reporting page is a state of the fleet over certain period of time, "last five minutes" by default.
+    * The report will be based on all keepalives received within this time period.
+  * Drilldown pages include slicing per:
+    * IP address (server view),
+    * IP address and port ("endpoint" view, the "socket" other services may depent on), per codename ("
+* Both Claire and Karl are embedded C++ libraries.
+  * Claire extends the user code.
+  * Karl is designed to be linked into the user code providing active supervision (ex. stream data authority master flip).
+
+## Terminology
+
+* **Service** name, ex. `"ctfo_server"`.
+  Human-readable function of the service. By convention, a valid C++ identifier. Linked into the binary.
+
+* **Codename**, ex. "ABCDEF".
+  A random, unique, identifier of a running service. Regenerated on each binary run, changes with restart.
+
+* **Claire status**
+  A generic status report, containing, at the very least, generic binary info, and generic runtime info with basic user data.
+  Claire status reports are sent from Claire-powered services to Karl every 20 seconds.
+
+* **Binary info**
+  Service name, build date/time, compiler/environment info, git branch and commit hash, and whether the build was performed from a vanilla branch, etc.
+
+* **Runtime info**
+  Codename, uptime and local time, the time of the last keepalive accepted by Karl, basic user data in the form of one string (`status`) and one string-to-string-map (`details`).
+
+* **Keepalive**
+  A periodic (~20 seconds) message sent from Claire to Karl to report its status.
+  Karl persists all keepalive messages, except for build info, which is only stored if different from previously reported build info.
+
+* **Claire status page**
+  A page available via a `GET`/`POST` request to `localhost:${port}/.current`.
+  Returns a [generally] service-dependent response, which, however, should be JSON-parsable as a Generic Claire status.
+  A complete page (what is sent as a keepalive) is accessible via `?all`; the default page returns uptime status, and `?build` returns build status.
+
+* **Build Info**
+  A `current_build.h` file generated as `make` is run, containing static build information to be incorporated into the binary and returned as binary info.
+
+## TODO
 
 Once the prototype is done, this doc should be made up to date.
 
@@ -25,9 +81,7 @@ Remains to think:
 * Claire graceful shutdown. (Keep it last as the class member? Have it un-register w/ Karl at destruction?)
 * What is the key of the server. (Would just `location`, w/o `/current`, do? If yes, must fix empty URL registration.)
 
-# Karl
-
-*Your service should be up and running. Up and running, Karl!*
+# Obsolete
 
 Karl is Current's monitoring, alerting, and continuous integration service.
 
