@@ -22,61 +22,62 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KERL_SERVICE_GENERATOR_H
-#define KERL_SERVICE_GENERATOR_H
+#ifndef KERL_SERVICE_FILTER_H
+#define KERL_SERVICE_FILTER_H
 
 #include "karl.h"
 
 #include "service_schema.h"
 
-#include <atomic>
-
 #include "../Blocks/HTTP/api.h"
 
 #include "../Sherlock/sherlock.h"
 
-#include "../Bricks/time/chrono.h"
-
 namespace karl_unittest {
 
-class ServiceGenerator final {
+class ServiceFilter final {
  public:
-  ServiceGenerator(int port,
-                   std::chrono::microseconds sleep_between_numbers = std::chrono::microseconds(10 * 1000))
-      : current_value_(0),
+  ServiceFilter(int port, const std::string& source_annotated_numbers_stream)
+      : source_annotated_numbers_stream_(source_annotated_numbers_stream),
         stream_(current::sherlock::Stream<Number>()),
-        http_scope_(HTTP(port).Register("/numbers", stream_)),
-        sleep_between_numbers_(sleep_between_numbers),
+        http_scope_(HTTP(port).Register("/filtered", stream_)),
         destructing_(false),
         thread_([this]() { Thread(); }) {}
 
-  ~ServiceGenerator() {
+  ~ServiceFilter() {
     destructing_ = true;
     thread_.join();
   }
 
  private:
   void Thread() {
-    while (!destructing_) {
-#ifdef CURRENT_MOCK_TIME
-      current::time::SetNow(std::chrono::microseconds(current_value_ * 1000ull * 1000ull),
-                            std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull - 1));
-#endif
-      stream_.Publish(Number(current_value_));
-      ++current_value_;
-      std::this_thread::sleep_for(sleep_between_numbers_);
+    // Poor man's stream subscriber. -- D.K.
+    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as as coin the notion of `HTTPSherlockSusbcriber`.
+    int index = 0;
+    try {
+      while (!destructing_) {
+        const auto row =
+            HTTP(GET(source_annotated_numbers_stream_ + "?i=" + current::ToString(index++) + "&n=1")).body;
+        const auto split = current::strings::Split(row, '\t');
+        assert(split.size() == 2u);
+        auto number = ParseJSON<Number>(split[1]);
+        assert(Exists(number.is_prime));
+        if (Value(number.is_prime)) {
+          stream_.Publish(number);
+        }
+      }
+    } catch (current::net::NetworkException&) {
+      // Ignore for the purposes of this test. -- D.K.
     }
   }
 
- private:
-  int current_value_;
+  const std::string source_annotated_numbers_stream_;
   current::sherlock::Stream<Number> stream_;
   HTTPRoutesScope http_scope_;
-  const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;
   std::thread thread_;
 };
 
 }  // namespace karl_unittest
 
-#endif  // KARL_SERVICE_GENERATOR_H
+#endif  // KARL_SERVICE_FILTER_H

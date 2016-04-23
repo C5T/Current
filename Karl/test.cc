@@ -29,6 +29,7 @@ SOFTWARE.
 #include "service_generator.h"
 #include "service_is_prime.h"
 #include "service_annotator.h"
+#include "service_filter.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -43,9 +44,11 @@ SOFTWARE.
 DEFINE_int32(karl_generator_test_port, PickPortForUnitTest(), "Local test port for the `generator` service.");
 DEFINE_int32(karl_is_prime_test_port, PickPortForUnitTest(), "Local test port for the `is_prime` service.");
 DEFINE_int32(karl_annotator_test_port, PickPortForUnitTest(), "Local test port for the `annotator` service.");
+DEFINE_int32(karl_filter_test_port, PickPortForUnitTest(), "Local test port for the `filter` service.");
+DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test forever.");
 
 TEST(Karl, SmokeGenerator) {
-  const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port, std::chrono::milliseconds(1));
+  const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port, std::chrono::microseconds(1));
   EXPECT_EQ("{\"index\":100,\"us\":100000000}\t{\"x\":100,\"is_prime\":null}\n",
             HTTP(GET(Printf("localhost:%d/numbers?i=100&n=1", FLAGS_karl_generator_test_port))).body);
 }
@@ -64,7 +67,7 @@ TEST(Karl, SmokeIsPrime) {
 }
 
 TEST(Karl, SmokeAnnotator) {
-  const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port, std::chrono::milliseconds(1));
+  const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port, std::chrono::microseconds(1));
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port);
   const karl_unittest::ServiceAnnotator annotator(
       FLAGS_karl_annotator_test_port,
@@ -87,5 +90,67 @@ TEST(Karl, SmokeAnnotator) {
     EXPECT_EQ(39, x39.x);
     ASSERT_TRUE(Exists(x39.is_prime));
     EXPECT_FALSE(Value(x39.is_prime));
+  }
+}
+
+TEST(Karl, SmokeFilter) {
+  const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port, std::chrono::microseconds(1));
+  const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port);
+  const karl_unittest::ServiceAnnotator annotator(
+      FLAGS_karl_annotator_test_port,
+      Printf("localhost:%d/numbers", FLAGS_karl_generator_test_port),
+      Printf("localhost:%d/is_prime", FLAGS_karl_is_prime_test_port));
+  const karl_unittest::ServiceFilter filter(FLAGS_karl_filter_test_port,
+                                            Printf("localhost:%d/annotated", FLAGS_karl_annotator_test_port));
+
+  {
+    // 10-th (index=9 for 0-based) prime is `29`.
+    const auto x29 = ParseJSON<karl_unittest::Number>(
+        current::strings::Split(
+            HTTP(GET(Printf("localhost:%d/filtered?i=9&n=1", FLAGS_karl_filter_test_port))).body, '\t').back());
+    EXPECT_EQ(29, x29.x);
+    ASSERT_TRUE(Exists(x29.is_prime));
+    EXPECT_TRUE(Value(x29.is_prime));
+  }
+  {
+    // 10-th (index=9 for 0-based) prime is `29`.
+    const auto x29 = ParseJSON<karl_unittest::Number>(
+        current::strings::Split(
+            HTTP(GET(Printf("localhost:%d/filtered?i=9&n=1", FLAGS_karl_filter_test_port))).body, '\t').back());
+    EXPECT_EQ(29, x29.x);
+    ASSERT_TRUE(Exists(x29.is_prime));
+    EXPECT_TRUE(Value(x29.is_prime));
+  }
+  {
+    // 20-th (index=19 for 0-based) prime is `71`.
+    const auto x71 = ParseJSON<karl_unittest::Number>(
+        current::strings::Split(
+            HTTP(GET(Printf("localhost:%d/filtered?i=19&n=1", FLAGS_karl_filter_test_port))).body, '\t')
+            .back());
+    EXPECT_EQ(71, x71.x);
+    ASSERT_TRUE(Exists(x71.is_prime));
+    EXPECT_TRUE(Value(x71.is_prime));
+  }
+}
+
+TEST(Karl, RunForeverIfEnabledByTheFlag) {
+  if (FLAGS_karl_run_test_forever) {
+    std::cerr << "Generator :: localhost:" << FLAGS_karl_generator_test_port << "/numbers\n";
+    std::cerr << "IsPrime   :: localhost:" << FLAGS_karl_is_prime_test_port << "/is_prime?x=42\n";
+    std::cerr << "Annotator :: localhost:" << FLAGS_karl_annotator_test_port << "/annotated\n";
+    std::cerr << "Filter    :: localhost:" << FLAGS_karl_filter_test_port << "/filtered\n";
+    const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port,
+                                                    std::chrono::microseconds(10000));  // 100 per second.
+    const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port);
+    const karl_unittest::ServiceAnnotator annotator(
+        FLAGS_karl_annotator_test_port,
+        Printf("localhost:%d/numbers", FLAGS_karl_generator_test_port),
+        Printf("localhost:%d/is_prime", FLAGS_karl_is_prime_test_port));
+    const karl_unittest::ServiceFilter filter(FLAGS_karl_filter_test_port,
+                                              Printf("localhost:%d/annotated", FLAGS_karl_annotator_test_port));
+    std::cerr << "Running forever, CTRL+C to terminate.\n";
+    while (true) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
   }
 }
