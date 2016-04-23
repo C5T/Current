@@ -35,7 +35,6 @@ namespace karl_unittest {
 CURRENT_STRUCT(Number) {
   CURRENT_FIELD(x, int64_t);
   CURRENT_FIELD(is_prime, Optional<bool>);
-  CURRENT_FIELD(is_perfect, Optional<bool>);
   CURRENT_CONSTRUCTOR(Number)(int64_t x = 0) : x(x) {}
 };
 
