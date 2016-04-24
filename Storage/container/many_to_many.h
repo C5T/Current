@@ -186,7 +186,7 @@ class GenericManyToMany {
 
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
-  // For REST, iterate over all the elemnts of the ManyToMany, in no particular order.
+  // For REST, iterate over all the elements of the ManyToMany, in no particular order.
   using iterator_t = IteratorImpl<whole_matrix_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }

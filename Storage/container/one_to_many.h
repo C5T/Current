@@ -170,7 +170,7 @@ class GenericOneToMany {
   template <typename ROWS_MAP>
   struct RowsAccessor final {
     using key_t = typename ROWS_MAP::key_type;
-    using ELEMENTS_MAP = typename ROWS_MAP::mapped_type;
+    using elements_map_t = typename ROWS_MAP::mapped_type;
     const ROWS_MAP& map_;
 
     struct RowsIterator final {
@@ -181,7 +181,7 @@ class GenericOneToMany {
       bool operator==(const RowsIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const RowsIterator& rhs) const { return !operator==(rhs); }
       sfinae::CF<key_t> key() const { return iterator->first; }
-      ElementsAccessor<ELEMENTS_MAP> operator*() const { return ElementsAccessor<ELEMENTS_MAP>(iterator->second); }
+      ElementsAccessor<elements_map_t> operator*() const { return ElementsAccessor<elements_map_t>(iterator->second); }
     };
 
     explicit RowsAccessor(const ROWS_MAP& map) : map_(map) {}
@@ -191,10 +191,10 @@ class GenericOneToMany {
 
     bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
-    ImmutableOptional<ElementsAccessor<ELEMENTS_MAP>> operator[](key_t key) const {
+    ImmutableOptional<ElementsAccessor<elements_map_t>> operator[](key_t key) const {
       const auto iterator = map_.find(key);
       if (iterator != map_.end()) {
-        return std::move(std::make_unique<ElementsAccessor<ELEMENTS_MAP>>(iterator->second));
+        return std::move(std::make_unique<ElementsAccessor<elements_map_t>>(iterator->second));
       } else {
         return nullptr;
       }
@@ -208,7 +208,7 @@ class GenericOneToMany {
 
   const ElementsAccessor<transposed_map_t> Cols() const { return ElementsAccessor<transposed_map_t>(transposed_); }
 
-  // For REST, iterate over all the elemnts of the OneToMany, in no particular order.
+  // For REST, iterate over all the elements of the OneToMany, in no particular order.
   using iterator_t = IteratorImpl<elements_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }
