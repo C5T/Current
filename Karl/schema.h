@@ -31,11 +31,14 @@ SOFTWARE.
 
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/optional.h"
+#include "../TypeSystem/variant.h"
 #include "../Bricks/time/chrono.h"
 
 namespace current {
 namespace karl {
 
+// The generic status, persisted by Karl.
+// (Except for the `build` part, which is only persisted if it has changed.)
 CURRENT_STRUCT(ClaireStatusBase) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
@@ -49,9 +52,22 @@ CURRENT_STRUCT(ClaireStatusBase) {
   CURRENT_FIELD(build, Optional<build::Info>);
 };
 
-CURRENT_STRUCT(ClaireStatus, ClaireStatusBase) {
-  CURRENT_FIELD(status, Optional<std::string>);
+namespace default_user_status {
+// The default user-defined status. Wrapped into a namespace for cleaner JSON output.
+CURRENT_STRUCT(status) {
+  CURRENT_FIELD(message, std::string, "OK");
   CURRENT_FIELD(details, (std::map<std::string, std::string>));
+};
+}  // namespace current::karl::default_user_status
+
+using ClaireBoilerplateUserStatus = default_user_status::status;
+
+// The full status `CURRENT_STRUCT`, with a variant supporting one type: `ClaireBoilerplateUserStatus`.
+// The user can use `GenericClaire<CustomClaireStatusDerivedFromClaireStatusBase>` instead of plain `Claire` to
+// have custom `Karl<>` (the template/embedded part for Karl TBD) to persist and process custom statuses. --
+// D.K.
+CURRENT_STRUCT(ClaireStatus, ClaireStatusBase) {
+  CURRENT_FIELD(runtime, Variant<ClaireBoilerplateUserStatus>);
 };
 
 }  // namespace current::karl

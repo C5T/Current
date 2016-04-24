@@ -52,9 +52,11 @@ class ServiceGenerator final {
         destructing_(false),
         thread_([this]() { Thread(); }),
         claire_(karl, "generator", port) {
-    const auto status_filler = [this](current::karl::ClaireStatus& status) {
-      status.status = "Up and running!";
-      status.details["i"] = current::ToString(current_value_.load());
+    const auto status_filler = [this]() -> current::karl::ClaireBoilerplateUserStatus {
+      current::karl::ClaireBoilerplateUserStatus user;
+      user.message = "Up and running!";
+      user.details["i"] = current::ToString(current_value_.load());
+      return user;
     };
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.

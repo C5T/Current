@@ -43,11 +43,12 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
-template <class STATUS>
+template <class SPECIFIC_STATUS_TYPE, class TOP_LEVEL_STATUS_TYPE>
 class GenericClaire final {
  public:
-  using status_t = STATUS;
-  using status_filler_t = std::function<void(status_t&)>;
+  using specific_status_t = SPECIFIC_STATUS_TYPE;
+  using status_t = TOP_LEVEL_STATUS_TYPE;
+  using status_generator_t = std::function<specific_status_t()>;
 
   static std::string GenerateRandomCodename() {
     std::string codename;
@@ -67,19 +68,22 @@ class GenericClaire final {
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current",
                                         [this](Request r) {
-                                          if (r.url.query.has("build")) {
+                                          const auto& qs = r.url.query;
+                                          const bool all = qs.has("all") || qs.has("a");
+                                          const bool build = qs.has("build") || qs.has("b");
+                                          if (!all && build) {
                                             r(build::Info());
                                           } else {
                                             if (!registered_) {
                                               ClaireStatusBase response;
-                                              FillBase(response, r.url.query.has("all"));
+                                              FillBase(response, all);
                                               r(response);
                                             } else {
                                               status_t response;
-                                              FillBase(response, r.url.query.has("all"));
-                                              if (status_filler_) {
+                                              FillBase(response, all);
+                                              if (status_generator_) {
                                                 std::lock_guard<std::mutex> lock(mutex_);
-                                                status_filler_(response);
+                                                response.runtime = status_generator_();
                                               }
                                               r(response);
                                             }
@@ -95,14 +99,14 @@ class GenericClaire final {
     }
   }
 
-  void Register(status_filler_t status_filler = nullptr, bool strict = false) {
+  void Register(status_generator_t status_filler = nullptr, bool strict = false) {
     // Register this Claire with Karl and spawn the thread to send regular keepalives.
     // If `strict` is true, throw if Karl can be not be reached.
     // If `strict` is false, just start the keepalives thread.
     std::lock_guard<std::mutex> lock(mutex_);
     if (!register_called_) {
       register_called_ = true;
-      status_filler_ = status_filler;
+      status_generator_ = status_filler;
       // Only register once.
       if (strict) {
         // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
@@ -155,14 +159,14 @@ class GenericClaire final {
   const std::string service_;
   const std::string codename_;
   const int port_;
-  status_filler_t status_filler_;
+  status_generator_t status_generator_;
   const std::chrono::microseconds us_start_;
   const HTTPRoutesScope http_scope_;
 
   std::thread keepalive_thread_;
 };
 
-using Claire = GenericClaire<ClaireStatus>;
+using Claire = GenericClaire<ClaireBoilerplateUserStatus, ClaireStatus>;
 
 }  // namespace current::karl
 }  // namespace current
