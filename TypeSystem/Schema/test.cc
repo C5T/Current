@@ -93,6 +93,7 @@ TEST(Schema, StructSchema) {
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n"
+        "enum class Enum : uint32_t {};\n"
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
@@ -111,6 +112,7 @@ TEST(Schema, StructSchema) {
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n"
+        "enum class Enum : uint32_t {};\n"
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
@@ -189,9 +191,9 @@ TEST(Schema, SmokeTestFullStruct) {
     FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), Golden("smoke_test_struct.fs").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::Markdown>(),
                                   Golden("smoke_test_struct.md").c_str());
+    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), Golden("smoke_test_struct.json").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::InternalFormat>(),
-                                  Golden("smoke_test_struct.json").c_str());
-    // `schema.Describe<Language::InternalFormat>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
+                                  Golden("smoke_test_struct.internal_json").c_str());
     // LCOV_EXCL_STOP
   }
 
@@ -201,8 +203,10 @@ TEST(Schema, SmokeTestFullStruct) {
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.md")),
             schema.Describe<Language::Markdown>());
 
-  // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
-  auto restored_schema = ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
+  // Don't just `EXPECT_EQ(golden, ReadFileAsString("golden/...))`, but compare re-generated JSON,
+  // as the JSON file in the golden directory is pretty-printed.
+  const auto restored_schema =
+      ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString(Golden("smoke_test_struct.internal_json")));
   EXPECT_EQ(JSON(schema), JSON(struct_schema.GetSchemaInfo()));
 
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
@@ -213,6 +217,13 @@ TEST(Schema, SmokeTestFullStruct) {
             restored_schema.Describe<Language::FSharp>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.md")),
             restored_schema.Describe<Language::Markdown>());
+
+  // Don't just `EXPECT_EQ(golden, ReadFileAsString("golden/...))`, but compare re-generated JSON,
+  // as the JSON file in the golden directory is pretty-printed.
+
+  const auto restored_short_schema = ParseJSON<current::reflection::JSONSchema, JSONFormat::Minimalistic>(
+      FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
+  EXPECT_EQ(schema.Describe<Language::JSON>(), JSON<JSONFormat::Minimalistic>(restored_short_schema));
 }
 
 TEST(TypeSystemTest, LanguageEnumToString) {
@@ -220,6 +231,7 @@ TEST(TypeSystemTest, LanguageEnumToString) {
   EXPECT_EQ("cpp", current::ToString(current::reflection::Language::CPP));
   EXPECT_EQ("fs", current::ToString(current::reflection::Language::FSharp));
   EXPECT_EQ("md", current::ToString(current::reflection::Language::Markdown));
+  EXPECT_EQ("json", current::ToString(current::reflection::Language::JSON));
 }
 
 TEST(TypeSystemTest, LanguageEnumIteration) {
@@ -228,7 +240,7 @@ TEST(TypeSystemTest, LanguageEnumIteration) {
   for (auto l = Language::begin; l != Language::end; ++l) {
     s.push_back(current::ToString(l));
   }
-  EXPECT_EQ("internal_json h cpp fs md", current::strings::Join(s, ' '));
+  EXPECT_EQ("internal_json h cpp fs md json", current::strings::Join(s, ' '));
 }
 
 namespace schema_test {
@@ -245,7 +257,7 @@ TEST(TypeSystemTest, LanguageEnumCompileTimeForEach) {
   auto it = schema_test::LanguagesIterator();
   EXPECT_EQ("", current::strings::Join(it.s, ' '));
   current::reflection::ForEachLanguage(it);
-  EXPECT_EQ("internal_json h cpp fs md", current::strings::Join(it.s, ' '));
+  EXPECT_EQ("internal_json h cpp fs md json", current::strings::Join(it.s, ' '));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC

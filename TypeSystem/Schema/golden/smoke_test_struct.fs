@@ -38,7 +38,7 @@ type X = {
 }
 
 type Y = {
-  x : int32
+  e : E
 }
 
 type DU_X_Y =

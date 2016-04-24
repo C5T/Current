@@ -34,8 +34,9 @@ struct Empty {
 struct X {
   int32_t x;
 };
+enum class E : uint16_t {};
 struct Y {
-  int32_t x;
+  E e;
 };
 struct C {
   Empty e;

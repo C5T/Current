@@ -45,7 +45,7 @@ Intentionally contains no fields.
 ### `Y`
 | **Field** | **Type** |
 | ---: | :--- |
-| `x` | Integer (32-bit signed) |
+| `e` | Index `E` |
 
 
 ### `C`
