@@ -27,9 +27,13 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include <atomic>
+
 #include "schema.h"
 #include "locator.h"
 #include "exceptions.h"
+
+#include "../Blocks/HTTP/api.h"
 
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/random.h"

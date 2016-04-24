@@ -1,1 +1,1 @@
-../scripts/Makefile
+../scripts/MakefileWithCurrentBuild

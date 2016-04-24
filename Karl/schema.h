@@ -27,6 +27,8 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include "current_build.h"
+
 #include "../TypeSystem/struct.h"
 #include "../Bricks/time/chrono.h"
 
@@ -34,16 +36,14 @@ namespace current {
 namespace karl {
 
 CURRENT_STRUCT(ClaireToKarlBase) {
-  // A required field. Changes to `true` as Karl has accepted Claire.
   CURRENT_FIELD(up, bool, false);
 
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
 
-  // Local port. For the outer world to be able to connect to this service.
-  // By convention, `http://localhost:local_port/current` or `http://localhost:local_port/.../current`
-  // should respond with the JSON representation of this structure.
   CURRENT_FIELD(local_port, uint16_t);
+
+  CURRENT_FIELD(build, build::Info);
 };
 
 CURRENT_STRUCT(ClaireToKarl, ClaireToKarlBase) {
