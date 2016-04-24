@@ -49,7 +49,9 @@ class ServiceFilter final {
                     HTTP(port).Register("/composites", stream_composites_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_("filter", karl, port) {}
+        claire_(karl, "filter", port) {
+    claire_.Register();
+  }
 
   ~ServiceFilter() {
     destructing_ = true;
@@ -82,7 +84,7 @@ class ServiceFilter final {
   const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   std::thread thread_;
-  const current::karl::Claire claire_;
+  current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest

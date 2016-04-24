@@ -53,8 +53,9 @@ class Claire {
     return codename;
   }
 
-  Claire(const std::string& service, Locator karl, uint16_t port, status_filler_t status_filler = nullptr)
+  Claire(Locator karl, const std::string& service, uint16_t port, status_filler_t status_filler = nullptr)
       : up_(false),
+        karl_(karl),
         service_(service),
         codename_(GenerateRandomCodename()),
         port_(port),
@@ -78,20 +79,21 @@ class Claire {
                                             }
                                             r(response);
                                           }
-                                        })) {
+                                        })) {}
+  void Register() {
     // Register self with Karl.
     // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
     // register this service as the running and browsable one.
     const std::string route =
-        karl.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
+        karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
     try {
       if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
         up_ = true;
       } else {
-        CURRENT_THROW(ClaireRegistrationException(service, route));
+        CURRENT_THROW(ClaireRegistrationException(service_, route));
       }
     } catch (const current::Exception&) {
-      CURRENT_THROW(ClaireRegistrationException(service, route));
+      CURRENT_THROW(ClaireRegistrationException(service_, route));
     }
   }
 
@@ -106,6 +108,7 @@ class Claire {
   Claire() = delete;
 
   std::atomic_bool up_;
+  const Locator karl_;
   const std::string service_;
   const std::string codename_;
   const int port_;

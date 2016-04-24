@@ -51,12 +51,14 @@ class ServiceGenerator final {
         sleep_between_numbers_(sleep_between_numbers),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_("generator",
-                karl,
+        claire_(karl,
+                "generator",
                 port,
                 [this](std::map<std::string, std::string>& status) {
                   status["i"] = current::ToString(current_value_.load());
-                }) {}
+                }) {
+    claire_.Register();
+  }
 
   ~ServiceGenerator() {
     destructing_ = true;
@@ -83,7 +85,7 @@ class ServiceGenerator final {
   const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;
   std::thread thread_;
-  const current::karl::Claire claire_;
+  current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest

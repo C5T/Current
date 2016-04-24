@@ -47,7 +47,9 @@ class ServiceAnnotator final {
         http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_("annotator", karl, port) {}
+        claire_(karl, "annotator", port) {
+    claire_.Register();
+  }
 
   ~ServiceAnnotator() {
     destructing_ = true;
@@ -82,7 +84,7 @@ class ServiceAnnotator final {
   const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
   std::thread thread_;
-  const current::karl::Claire claire_;
+  current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest

@@ -39,7 +39,9 @@ class ServiceIsPrime final {
             [this](Request r) {
               r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n" : "NO\n");
             })),
-        claire_("is_prime", karl, port) {}
+        claire_(karl, "is_prime", port) {
+    claire_.Register();
+  }
 
  private:
   static bool IsPrime(int x) {
@@ -56,7 +58,7 @@ class ServiceIsPrime final {
   }
 
   const HTTPRoutesScope http_scope_;
-  const current::karl::Claire claire_;
+  current::karl::Claire claire_;
 };
 
 }  // namespace karl_unittest
