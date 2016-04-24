@@ -30,38 +30,29 @@ SOFTWARE.
 #include "current_build.h"
 
 #include "../TypeSystem/struct.h"
+#include "../TypeSystem/optional.h"
 #include "../Bricks/time/chrono.h"
 
 namespace current {
 namespace karl {
 
-CURRENT_STRUCT(ClaireToKarlBase) {
-  CURRENT_FIELD(up, bool, false);
-
+CURRENT_STRUCT(ClaireStatusBase) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
-
   CURRENT_FIELD(local_port, uint16_t);
 
-  CURRENT_FIELD(build, build::Info);
-};
+  CURRENT_FIELD(registered, bool, false);
 
-CURRENT_STRUCT(ClaireToKarl, ClaireToKarlBase) {
-  // TODO(dkorolev): Dependencies.
-  // TODO(dkorolev): PID.
-
-  // Other basic fields.
   CURRENT_FIELD(us_start, std::chrono::microseconds);
-  CURRENT_FIELD(us_now, std::chrono::microseconds);     // For time sync check.
-  CURRENT_FIELD(us_uptime, std::chrono::microseconds);  // The actual uptime.
+  CURRENT_FIELD(us_now, std::chrono::microseconds);  // Uptime is calculated by Karl, along with time skew.
 
-  // A custom-filled-in `map<string,string>` for what has to be journaled by Karl.
-  CURRENT_FIELD(status, (std::map<std::string, std::string>));
+  CURRENT_FIELD(build, Optional<build::Info>);
 };
 
-// TODO(dkorolev): The above was the structure for runtime data. Need to inject static data too.
-//                 Can do it in a clever way so that the type of static data is binary-specific,
-//                 and it has a default in the default Current built; much like we injected `make_unique<>`.
+CURRENT_STRUCT(ClaireStatus, ClaireStatusBase) {
+  CURRENT_FIELD(status, Optional<std::string>);
+  CURRENT_FIELD(details, (std::map<std::string, std::string>));
+};
 
 }  // namespace current::karl
 }  // namespace current

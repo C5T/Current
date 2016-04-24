@@ -91,7 +91,7 @@ class Karl final {
                     "http://" + r.connection.RemoteIPAndPort().ip + ':' + r.url.query["port"] + "/.current";
 
                 // TODO(dkorolev): Error checking.
-                const auto loopback = ParseJSON<ClaireToKarlBase>(HTTP(POST(location, "")).body);
+                const auto loopback = ParseJSON<ClaireStatusBase>(HTTP(POST(location, "")).body);
 
                 const std::string service = loopback.service;
                 const std::string codename = r.url.query["codename"];

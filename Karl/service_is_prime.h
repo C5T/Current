@@ -40,7 +40,13 @@ class ServiceIsPrime final {
               r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n" : "NO\n");
             })),
         claire_(karl, "is_prime", port) {
+#ifdef CURRENT_MOCK_TIME
+    // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
+    claire_.Register(nullptr, true);
+#else
+    // In example "production" mode just start regular keepalives.
     claire_.Register();
+#endif
   }
 
  private:

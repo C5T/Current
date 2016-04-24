@@ -51,13 +51,18 @@ class ServiceGenerator final {
         sleep_between_numbers_(sleep_between_numbers),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_(karl,
-                "generator",
-                port,
-                [this](std::map<std::string, std::string>& status) {
-                  status["i"] = current::ToString(current_value_.load());
-                }) {
-    claire_.Register();
+        claire_(karl, "generator", port) {
+    const auto status_filler = [this](current::karl::ClaireStatus& status) {
+      status.status = "Up and running!";
+      status.details["i"] = current::ToString(current_value_.load());
+    };
+#ifdef CURRENT_MOCK_TIME
+    // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
+    claire_.Register(status_filler, true);
+#else
+    // In example "production" mode just start regular keepalives.
+    claire_.Register(status_filler);
+#endif
   }
 
   ~ServiceGenerator() {

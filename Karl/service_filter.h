@@ -50,7 +50,13 @@ class ServiceFilter final {
         destructing_(false),
         thread_([this]() { Thread(); }),
         claire_(karl, "filter", port) {
+#ifdef CURRENT_MOCK_TIME
+    // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
+    claire_.Register(nullptr, true);
+#else
+    // In example "production" mode just start regular keepalives.
     claire_.Register();
+#endif
   }
 
   ~ServiceFilter() {

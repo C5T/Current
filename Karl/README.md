@@ -64,8 +64,8 @@ Done:
 
 * Prototyped Karl (server).
 * Prototyped Claire (client).
-* Base response (`ClaireToKarlBase`)
-* More complex response (`ClaireToKarl`)
+* Base response (`ClaireStatusBase`)
+* More complex response (`ClaireStatus`)
 * Claire-to-Karl-to-Claire loopback registration.
 * Karl keeping the state of the fleet and returning it.
 

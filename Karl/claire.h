@@ -28,6 +28,8 @@ SOFTWARE.
 #include "../port.h"
 
 #include <atomic>
+#include <thread>
+#include <mutex>
 
 #include "schema.h"
 #include "locator.h"
@@ -41,9 +43,11 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
-class Claire {
+template <class STATUS>
+class GenericClaire final {
  public:
-  using status_filler_t = std::function<void(std::map<std::string, std::string>&)>;
+  using status_t = STATUS;
+  using status_filler_t = std::function<void(status_t&)>;
 
   static std::string GenerateRandomCodename() {
     std::string codename;
@@ -53,69 +57,112 @@ class Claire {
     return codename;
   }
 
-  Claire(Locator karl, const std::string& service, uint16_t port, status_filler_t status_filler = nullptr)
-      : up_(false),
+  GenericClaire(Locator karl, const std::string& service, uint16_t port)
+      : register_called_(false),
+        registered_(false),
         karl_(karl),
         service_(service),
         codename_(GenerateRandomCodename()),
         port_(port),
-        status_filler_(status_filler),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current",
                                         [this](Request r) {
-                                          if (!up_) {
-                                            ClaireToKarlBase response;
-                                            FillBase(response);
-                                            r(response);
+                                          if (r.url.query.has("build")) {
+                                            r(build::Info());
                                           } else {
-                                            const auto now = current::time::Now();
-                                            ClaireToKarl response;
-                                            FillBase(response);
-                                            response.us_start = us_start_;
-                                            response.us_now = now;
-                                            response.us_uptime = now - us_start_;
-                                            if (status_filler_) {
-                                              status_filler_(response.status);
+                                            if (!registered_) {
+                                              ClaireStatusBase response;
+                                              FillBase(response, r.url.query.has("all"));
+                                              r(response);
+                                            } else {
+                                              status_t response;
+                                              FillBase(response, r.url.query.has("all"));
+                                              if (status_filler_) {
+                                                std::lock_guard<std::mutex> lock(mutex_);
+                                                status_filler_(response);
+                                              }
+                                              r(response);
                                             }
-                                            r(response);
                                           }
-                                        })) {}
-  void Register() {
-    // Register self with Karl.
-    // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
-    // register this service as the running and browsable one.
-    const std::string route =
-        karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
-    try {
-      if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
-        up_ = true;
+                                        })) {
+    // TODO(dkorolev) + TODO(mzhurovich): Should Claire at least check whether Karl is available at
+    // construction?
+  }
+
+  ~GenericClaire() {
+    if (keepalive_thread_.joinable()) {
+      keepalive_thread_.join();
+    }
+  }
+
+  void Register(status_filler_t status_filler = nullptr, bool strict = false) {
+    // Register this Claire with Karl and spawn the thread to send regular keepalives.
+    // If `strict` is true, throw if Karl can be not be reached.
+    // If `strict` is false, just start the keepalives thread.
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!register_called_) {
+      register_called_ = true;
+      status_filler_ = status_filler;
+      // Only register once.
+      if (strict) {
+        // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
+        // register this service as the running and browsable one.
+        const std::string route =
+            karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
+        try {
+          if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
+            registered_ = true;
+          } else {
+            CURRENT_THROW(ClaireRegistrationException(service_, route));
+          }
+        } catch (const current::Exception&) {
+          CURRENT_THROW(ClaireRegistrationException(service_, route));
+        }
       } else {
-        CURRENT_THROW(ClaireRegistrationException(service_, route));
+        // In non-`strict` more, simply mark the service as `registered`.
+        registered_ = true;
       }
-    } catch (const current::Exception&) {
-      CURRENT_THROW(ClaireRegistrationException(service_, route));
+
+      keepalive_thread_ = std::thread([this]() { Thread(); });
     }
   }
 
  private:
-  void FillBase(ClaireToKarlBase& response) const {
-    response.up = up_;
-    response.codename = codename_;
-    response.service = service_;
-    response.local_port = port_;
+  void FillBase(ClaireStatusBase& status, bool fill_build) const {
+    status.service = service_;
+    status.codename = codename_;
+    status.local_port = port_;
+
+    status.registered = registered_;
+
+    status.us_start = us_start_;
+    status.us_now = current::time::Now();
+
+    if (fill_build) {
+      status.build = build::Info();
+    }
   }
 
-  Claire() = delete;
+  void Thread() {}
 
-  std::atomic_bool up_;
+  GenericClaire() = delete;
+
+  bool register_called_;
+  std::atomic_bool registered_;
+  std::mutex mutex_;
+
   const Locator karl_;
   const std::string service_;
   const std::string codename_;
   const int port_;
-  const status_filler_t status_filler_;
+  status_filler_t status_filler_;
   const std::chrono::microseconds us_start_;
   const HTTPRoutesScope http_scope_;
+
+  std::thread keepalive_thread_;
 };
+
+using Claire = GenericClaire<ClaireStatus>;
 
 }  // namespace current::karl
 }  // namespace current
