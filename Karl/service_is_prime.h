@@ -27,25 +27,39 @@ SOFTWARE.
 
 #include "claire.h"
 
+#include <atomic>
+
 #include "../Blocks/HTTP/api.h"
 
 namespace karl_unittest {
 
+// Lowercase struct name for cleaner JSON format, as it's part of a `Variant<>`.
+CURRENT_STRUCT(is_prime) {
+  CURRENT_FIELD(test, std::string, "PASS");
+  CURRENT_FIELD(requests, uint64_t, 0ull);
+  CURRENT_CONSTRUCTOR(is_prime)(uint64_t requests = 0ull) : requests(requests) {}
+};
+
+CURRENT_STRUCT(IsPrimeStatus, current::karl::ClaireStatusBase) { CURRENT_FIELD(runtime, Variant<is_prime>); };
+
 class ServiceIsPrime final {
  public:
   explicit ServiceIsPrime(uint16_t port, const current::karl::Locator& karl)
-      : http_scope_(HTTP(port).Register(
+      : counter_(0ull),
+        http_scope_(HTTP(port).Register(
             "/is_prime",
             [this](Request r) {
+              ++counter_;
               r(IsPrime(current::FromString<int>(r.url.query.get("x", "0"))) ? "YES\n" : "NO\n");
             })),
         claire_(karl, "is_prime", port) {
+    const auto status_reporter = [this]() -> is_prime { return is_prime(counter_); };
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
-    claire_.Register(nullptr, true);
+    claire_.Register(status_reporter, true);
 #else
     // In example "production" mode just start regular keepalives.
-    claire_.Register();
+    claire_.Register(status_reporter);
 #endif
   }
 
@@ -63,8 +77,9 @@ class ServiceIsPrime final {
     }
   }
 
+  std::atomic<uint64_t> counter_;
   const HTTPRoutesScope http_scope_;
-  current::karl::Claire claire_;
+  current::karl::GenericClaire<is_prime, IsPrimeStatus> claire_;
 };
 
 }  // namespace karl_unittest
