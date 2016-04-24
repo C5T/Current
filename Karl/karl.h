@@ -81,38 +81,55 @@ class Karl final {
         http_scope_(HTTP(port).Register(
             url,
             [this](Request r) {
+              const auto& qs = r.url.query;
+              /*
               if (logger_) {
                 logger_(r);
               }
-              // Convention: state mutations are POSTs, user-level getters are GETs.
-              if (r.method == "POST" && r.url.query.has("codename") && r.url.query.has("port")) {
-                // The key for the newly registering service.
-                const std::string location =
-                    "http://" + r.connection.RemoteIPAndPort().ip + ':' + r.url.query["port"] + "/.current";
+              */
+              // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
+              // via the URL from the inbound request and the port the service has provided,
+              // to confirm two-way communication.
+              if (r.method == "POST" && qs.has("codename") && qs.has("port") && qs.has("confirm")) {
+                try {
+                  const std::string location =
+                      "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
+                  const auto loopback = ParseJSON<ClaireStatusBase>(HTTP(POST(location, "")).body);
+                  if (loopback.codename == qs["codename"] &&
+                      loopback.local_port == current::FromString<uint16_t>(qs["port"])) {
+                    "http://" + r.connection.RemoteIPAndPort().ip + ':' +
+                        current::ToString(loopback.local_port) + "/.current";
 
-                // TODO(dkorolev): Error checking.
-                const auto loopback = ParseJSON<ClaireStatusBase>(HTTP(POST(location, "")).body);
+                    const std::string service = loopback.service;
+                    const std::string codename = loopback.codename;  // qs["codename"];
 
-                const std::string service = loopback.service;
-                const std::string codename = r.url.query["codename"];
+                    storage_.ReadWriteTransaction(
+                                 [location, service, codename](MutableFields<storage_t> fields) -> Response {
+                                   Service service_record;
+                                   service_record.location = location;
+                                   service_record.service = service;
+                                   service_record.codename = codename;
+                                   fields.services.Add(service_record);
 
-                storage_.ReadWriteTransaction(
-                             [location, service, codename](MutableFields<storage_t> fields) -> Response {
-                               Service service_record;
-                               service_record.location = location;
-                               service_record.service = service;
-                               service_record.codename = codename;
-                               fields.services.Add(service_record);
+                                   Server server_record;
+                                   server_record.location = location;
+                                   server_record.service = service;
+                                   server_record.codename = codename;
+                                   fields.servers.Add(server_record);
 
-                               Server server_record;
-                               server_record.location = location;
-                               server_record.service = service;
-                               server_record.codename = codename;
-                               fields.servers.Add(server_record);
-
-                               return Response("OK\n");
-                             },
-                             std::move(r)).Detach();
+                                   return Response("OK\n");
+                                 },
+                                 std::move(r)).Detach();
+                  } else {
+                    r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
+                  }
+                } catch (const net::NetworkException&) {
+                  r("Callback error.\n", HTTPResponseCode.BadRequest);
+                } catch (const TypeSystemParseJSONException&) {
+                  r("JSON parse error.\n", HTTPResponseCode.BadRequest);
+                } catch (const Exception&) {
+                  r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
+                }
               } else {
                 storage_.ReadOnlyTransaction([](ImmutableFields<storage_t> fields) -> Response {
                   KarlStatus status;

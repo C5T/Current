@@ -111,8 +111,8 @@ class GenericClaire final {
       if (strict) {
         // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
         // register this service as the running and browsable one.
-        const std::string route =
-            karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
+        const std::string route = karl_.address_port_route + "?codename=" + codename_ + "&port=" +
+                                  current::ToString(port_) + "&confirm";
         try {
           if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
             registered_ = true;
