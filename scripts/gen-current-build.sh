@@ -13,7 +13,7 @@ COMPILER_INFO="$($CPLUSPLUS -v 2>&1)"
 if [[ $? -ne 0 ]]; then
 	exit 1
 fi
-COMPILER_INFO=${COMPILER_INFO//$'\n'/;' '}  # Replace newlines.
+COMPILER_INFO=${COMPILER_INFO//$'\n'/\\n}  # JSON-friendly newlines.
 
 GIT_COMMIT="$(git rev-parse HEAD)"
 if [[ $? -ne 0 ]]; then
@@ -52,12 +52,12 @@ constexpr static const char* kGitCommit = "$GIT_COMMIT";
 constexpr static const char* kGitBranch = "$GIT_BRANCH";
 constexpr static const char* kOS = "$OS_VERSION";
 constexpr static const char* kCompiler = "$CPLUSPLUS";
-constexpr static const char* kCompilerInfo = "$COMPILER_INFO";
 constexpr static const char* kCompilerFlags = "$CPPFLAGS";
 constexpr static const char* kLinkerFlags = "$LDFLAGS";
+constexpr static const char* kCompilerInfo = "$COMPILER_INFO";
 
 CURRENT_STRUCT(Info) {
-  CURRENT_FIELD(datetime, std::string, __DATE__ ", " __TIME__);
+  CURRENT_FIELD(date_time, std::string, __DATE__ ", " __TIME__);
   CURRENT_FIELD(git_commit, std::string, kGitCommit);
   CURRENT_FIELD(git_branch, std::string, kGitBranch);
   CURRENT_FIELD(os, std::string, kOS);

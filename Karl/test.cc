@@ -61,7 +61,7 @@ TEST(Karl, SmokeGenerator) {
     current::karl::ClaireToKarlBase status;
     ASSERT_NO_THROW(
         status = ParseJSON<current::karl::ClaireToKarlBase>(
-            HTTP(GET(Printf("http://localhost:%d/nonstandard/current", FLAGS_karl_generator_test_port))).body));
+            HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port))).body));
     EXPECT_TRUE(status.up);
     EXPECT_EQ("generator", status.service);
   }
@@ -94,7 +94,7 @@ TEST(Karl, SmokeIsPrime) {
   {
     current::karl::ClaireToKarlBase status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireToKarlBase>(
-                        HTTP(GET(Printf("http://localhost:%d/current", FLAGS_karl_is_prime_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_is_prime_test_port))).body));
     EXPECT_TRUE(status.up);
     EXPECT_EQ("is_prime", status.service);
   }
@@ -136,8 +136,9 @@ TEST(Karl, SmokeAnnotator) {
 
   {
     current::karl::ClaireToKarlBase status;
-    ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireToKarlBase>(
-                        HTTP(GET(Printf("http://localhost:%d/current", FLAGS_karl_annotator_test_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<current::karl::ClaireToKarlBase>(
+            HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_annotator_test_port))).body));
     EXPECT_TRUE(status.up);
     EXPECT_EQ("annotator", status.service);
   }
@@ -182,8 +183,8 @@ TEST(Karl, SmokeFilter) {
       // 20-th (index=19 for 0-based) prime is `71`.
       const auto x71 = ParseJSON<karl_unittest::Number>(
           current::strings::Split(
-              HTTP(GET(Printf("http://localhost:%d/primes?i=19&n=1", FLAGS_karl_filter_test_port))).body,
-              '\t').back());
+              HTTP(GET(Printf("http://localhost:%d/primes?i=19&n=1", FLAGS_karl_filter_test_port))).body, '\t')
+              .back());
       EXPECT_EQ(71, x71.x);
       ASSERT_TRUE(Exists(x71.is_prime));
       EXPECT_TRUE(Value(x71.is_prime)););
@@ -191,7 +192,7 @@ TEST(Karl, SmokeFilter) {
   {
     current::karl::ClaireToKarlBase status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireToKarlBase>(
-                        HTTP(GET(Printf("http://localhost:%d/current", FLAGS_karl_filter_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_filter_test_port))).body));
     EXPECT_TRUE(status.up);
     EXPECT_EQ("filter", status.service);
   }
@@ -242,7 +243,7 @@ TEST(Karl, EndToEndTest) {
   {
     current::karl::ClaireToKarlBase status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireToKarlBase>(
-                        HTTP(GET(Printf("http://localhost:%d/current", FLAGS_karl_filter_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_filter_test_port))).body));
     EXPECT_TRUE(status.up);
     EXPECT_EQ("filter", status.service);
   }

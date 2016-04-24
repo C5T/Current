@@ -56,8 +56,7 @@ class ServiceGenerator final {
                 port,
                 [this](std::map<std::string, std::string>& status) {
                   status["i"] = current::ToString(current_value_.load());
-                },
-                "/nonstandard/current") {}
+                }) {}
 
   ~ServiceGenerator() {
     destructing_ = true;

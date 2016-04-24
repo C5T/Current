@@ -85,11 +85,10 @@ class Karl final {
                 logger_(r);
               }
               // Convention: state mutations are POSTs, user-level getters are GETs.
-              if (r.method == "POST" && r.url.query.has("codename") && r.url.query.has("port") &&
-                  r.url.query.has("url")) {
+              if (r.method == "POST" && r.url.query.has("codename") && r.url.query.has("port")) {
                 // The key for the newly registering service.
                 const std::string location =
-                    r.connection.RemoteIPAndPort().ip + ':' + r.url.query["port"] + r.url.query["url"];
+                    "http://" + r.connection.RemoteIPAndPort().ip + ':' + r.url.query["port"] + "/.current";
 
                 // TODO(dkorolev): Error checking.
                 const auto loopback = ParseJSON<ClaireToKarlBase>(HTTP(POST(location, "")).body);

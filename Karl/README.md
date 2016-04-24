@@ -76,11 +76,6 @@ Remains to code:
 * Visualization as .DOT (for unit testing) and .SVG (with browsing).
 * A standalone test where several binaries are started, and Karl can be killed and re-started. Claire-s should not die.
 
-Remains to think:
-
-* Claire graceful shutdown. (Keep it last as the class member? Have it un-register w/ Karl at destruction?)
-* What is the key of the server. (Would just `location`, w/o `/current`, do? If yes, must fix empty URL registration.)
-
 # Obsolete
 
 Karl is Current's monitoring, alerting, and continuous integration service.
