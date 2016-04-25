@@ -411,7 +411,7 @@ struct CurrentTypeNameImpl<T, true, false> {
 // TODO(dkorolev): refactor it, pls.
 template <typename T>
 struct CurrentTypeNameImpl<T, false, true> {
-  static const char* GetCurrentTypeName() { return "Variant"; }
+  static const char* GetCurrentTypeName() { return T::VariantName(); }
 };
 
 template <typename T>

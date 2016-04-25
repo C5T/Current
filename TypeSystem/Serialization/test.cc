@@ -116,6 +116,35 @@ CURRENT_STRUCT(WithTime) {
   CURRENT_FIELD(micros, std::chrono::microseconds, std::chrono::microseconds(0));
 };
 
+namespace named_variant {
+
+CURRENT_STRUCT(X) { CURRENT_FIELD(x, int32_t, 1); };
+
+CURRENT_STRUCT(Y) { CURRENT_FIELD(y, int32_t, 2); };
+
+CURRENT_STRUCT(Z) { CURRENT_FIELD(z, int32_t, 3); };
+
+CURRENT_STRUCT(T) { CURRENT_FIELD(t, int32_t, 4); };
+
+using A_VariantTypes = TypeListImpl<X, Y>;
+struct A_VariantName {
+  static const char* VariantNameImpl() { return "A"; }
+};
+using A = NamedVariant<A_VariantName, A_VariantTypes>;
+
+using B_VariantTypes = TypeListImpl<Z, T>;
+struct B_VariantName {
+  static const char* VariantNameImpl() { return "B"; }
+};
+using B = NamedVariant<B_VariantName, B_VariantTypes>;
+
+using E_VariantTypes = TypeListImpl<A, B>;
+struct E_VariantName {
+  static const char* VariantNameImpl() { return "E"; }
+};
+using E = NamedVariant<E_VariantName, E_VariantTypes>;
+
+}  // namespace serialization_test::named_variant
 }  // namespace serialization_test
 
 TEST(Serialization, Binary) {
@@ -758,6 +787,77 @@ TEST(Serialization, VariantAsJSON) {
     const WithOptional& inner_parsed_object = Value<WithOptional>(Value<OtherVariantType>(parsed_object));
     EXPECT_EQ(42, Value(inner_parsed_object.i));
     EXPECT_FALSE(Exists(inner_parsed_object.b));
+  }
+}
+
+TEST(Serialization, NamedVariantAsJSON) {
+  using namespace serialization_test::named_variant;
+
+  {
+    E e;
+    A a;
+    X x;
+    a = x;
+    e = a;
+
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(X), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(A), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(E), "");
+
+    static_assert(IS_CURRENT_STRUCT(X), "");
+    static_assert(!IS_VARIANT(X), "");
+
+    static_assert(!IS_CURRENT_STRUCT(A), "");
+    static_assert(IS_VARIANT(A), "");
+
+    static_assert(!IS_CURRENT_STRUCT(E), "");
+    static_assert(IS_VARIANT(E), "");
+
+    const auto json = JSON(e);
+    EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880155644462248\"}", json);
+
+    const auto result = ParseJSON<E>(json);
+    ASSERT_TRUE(Exists<A>(result));
+    EXPECT_FALSE(Exists<B>(result));
+    ASSERT_TRUE(Exists<X>(Value<A>(result)));
+    EXPECT_FALSE(Exists<Y>(Value<A>(result)));
+    EXPECT_EQ(1, Value<X>(Value<A>(result)).x);
+  }
+
+  {
+    E e;
+    A a;
+    Y y;
+    a = y;
+    e = a;
+
+    const auto json = JSON<JSONFormat::Minimalistic>(e);
+    EXPECT_EQ("{\"A\":{\"Y\":{\"y\":2}}}", json);
+
+    const auto result = ParseJSON<E, JSONFormat::Minimalistic>(json);
+    ASSERT_TRUE(Exists<A>(result));
+    EXPECT_FALSE(Exists<B>(result));
+    ASSERT_TRUE(Exists<Y>(Value<A>(result)));
+    EXPECT_FALSE(Exists<X>(Value<A>(result)));
+    EXPECT_EQ(2, Value<Y>(Value<A>(result)).y);
+  }
+
+  {
+    E e;
+    B b;
+    Z z;
+    b = z;
+    e = b;
+
+    const auto json = JSON<JSONFormat::NewtonsoftFSharp>(e);
+    EXPECT_EQ("{\"Case\":\"B\",\"Fields\":[{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}]}", json);
+
+    const auto result = ParseJSON<E, JSONFormat::NewtonsoftFSharp>(json);
+    ASSERT_FALSE(Exists<A>(result));
+    EXPECT_TRUE(Exists<B>(result));
+    ASSERT_TRUE(Exists<Z>(Value<B>(result)));
+    EXPECT_FALSE(Exists<T>(Value<B>(result)));
+    EXPECT_EQ(3, Value<Z>(Value<B>(result)).z);
   }
 }
 

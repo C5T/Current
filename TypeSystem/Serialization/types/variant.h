@@ -62,7 +62,7 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT(X) || IS_VARIANT(X)> operator()(const X& object) {
+    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
       rapidjson::Value serialized_object;
       SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
 
@@ -92,7 +92,7 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT(X)> operator()(const X& object) {
+    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
       rapidjson::Value serialized_object;
       SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
 

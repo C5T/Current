@@ -44,15 +44,28 @@ struct CurrentSuper {
 // The superclass for all Current structures.
 struct CurrentStruct : CurrentSuper {};
 
-#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, ::current::decay<T>>::value)
-
-#define IS_NONEMPTY_CURRENT_STRUCT(T) \
-  ::current::reflection::IsNonemptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value
-
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
+template<typename NAME>
+struct CurrentVariantImpl : CurrentVariant {
+  static const char* VariantName() {
+    return NAME::VariantNameImpl();
+  }
+};
+
+struct CurrentVariantDefaultName final {
+  static const char* VariantNameImpl() {
+    return "Variant";
+  }
+};
+
+#define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, ::current::decay<T>>::value)
 #define IS_VARIANT(T) (std::is_base_of<::current::CurrentVariant, ::current::decay<T>>::value)
+#define IS_CURRENT_STRUCT_OR_VARIANT(T) (std::is_base_of<::current::CurrentSuper, ::current::decay<T>>::value)
+
+#define IS_NONEMPTY_CURRENT_STRUCT(T) \
+  ::current::reflection::IsNonemptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value
 
 namespace sfinae {
 
