@@ -561,6 +561,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
             if (globals.cpp_name.count(p.type_id) != 0u) {
               variant_clean_type_names::primitive result;
               result.type = globals.cpp_name.at(p.type_id);
+              result.text = globals.markdown_name.at(p.type_id);
               result_ = result;
             } else {
               variant_clean_type_names::error error;
@@ -576,6 +577,7 @@ struct LanguageSyntaxImpl<Language::JSON> final {
               variant_clean_type_names::key result;
               result.name = e.name;
               result.type = globals.cpp_name.at(e.underlying_type);
+              result.text = globals.markdown_name.at(e.underlying_type);
               result_ = result;
             } else {
               variant_clean_type_names::error error;

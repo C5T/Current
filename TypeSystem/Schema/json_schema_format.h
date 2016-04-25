@@ -49,11 +49,15 @@ CURRENT_FORWARD_DECLARE_STRUCT(error);
 
 using type_variant_t = Variant<primitive, key, array, dictionary, pair, optional, algebraic, object, error>;
 
-CURRENT_STRUCT(primitive) { CURRENT_FIELD(type, std::string); };
+CURRENT_STRUCT(primitive) {
+  CURRENT_FIELD(type, std::string);
+  CURRENT_FIELD(text, std::string);
+};
 
 CURRENT_STRUCT(key) {
   CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(type, std::string);
+  CURRENT_FIELD(text, std::string);
 };
 
 CURRENT_STRUCT(array) {

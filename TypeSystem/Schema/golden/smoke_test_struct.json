@@ -6,7 +6,8 @@
         "field": "a",
         "as": {
           "primitive": {
-            "type": "uint8_t"
+            "type": "uint8_t",
+            "text": "Integer (8-bit unsigned)"
           }
         }
       },
@@ -14,7 +15,8 @@
         "field": "b",
         "as": {
           "primitive": {
-            "type": "uint16_t"
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
           }
         }
       },
@@ -22,7 +24,8 @@
         "field": "c",
         "as": {
           "primitive": {
-            "type": "uint32_t"
+            "type": "uint32_t",
+            "text": "Integer (32-bit unsigned)"
           }
         }
       },
@@ -30,7 +33,8 @@
         "field": "d",
         "as": {
           "primitive": {
-            "type": "uint64_t"
+            "type": "uint64_t",
+            "text": "Integer (64-bit unsigned)"
           }
         }
       },
@@ -38,7 +42,8 @@
         "field": "e",
         "as": {
           "primitive": {
-            "type": "int8_t"
+            "type": "int8_t",
+            "text": "Integer (8-bit signed)"
           }
         }
       },
@@ -46,7 +51,8 @@
         "field": "f",
         "as": {
           "primitive": {
-            "type": "int16_t"
+            "type": "int16_t",
+            "text": "Integer (16-bit signed)"
           }
         }
       },
@@ -54,7 +60,8 @@
         "field": "g",
         "as": {
           "primitive": {
-            "type": "int32_t"
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
           }
         }
       },
@@ -62,7 +69,8 @@
         "field": "h",
         "as": {
           "primitive": {
-            "type": "int64_t"
+            "type": "int64_t",
+            "text": "Integer (64-bit signed)"
           }
         }
       },
@@ -70,7 +78,8 @@
         "field": "i",
         "as": {
           "primitive": {
-            "type": "char"
+            "type": "char",
+            "text": "Character"
           }
         }
       },
@@ -78,7 +87,8 @@
         "field": "j",
         "as": {
           "primitive": {
-            "type": "std::string"
+            "type": "std::string",
+            "text": "String"
           }
         }
       },
@@ -86,7 +96,8 @@
         "field": "k",
         "as": {
           "primitive": {
-            "type": "float"
+            "type": "float",
+            "text": "Number (floating point, single precision)"
           }
         }
       },
@@ -94,7 +105,8 @@
         "field": "l",
         "as": {
           "primitive": {
-            "type": "double"
+            "type": "double",
+            "text": "Number (floating point, double precision)"
           }
         }
       },
@@ -102,7 +114,8 @@
         "field": "m",
         "as": {
           "primitive": {
-            "type": "bool"
+            "type": "bool",
+            "text": "`true` or `false`"
           }
         }
       },
@@ -110,7 +123,8 @@
         "field": "n",
         "as": {
           "primitive": {
-            "type": "std::chrono::microseconds"
+            "type": "std::chrono::microseconds",
+            "text": "Time (microseconds since epoch)"
           }
         }
       },
@@ -118,7 +132,8 @@
         "field": "o",
         "as": {
           "primitive": {
-            "type": "std::chrono::milliseconds"
+            "type": "std::chrono::milliseconds",
+            "text": "Time (milliseconds since epoch)"
           }
         }
       }
@@ -131,7 +146,8 @@
         "field": "a",
         "as": {
           "primitive": {
-            "type": "int32_t"
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
           }
         }
       }
@@ -144,7 +160,8 @@
         "field": "a",
         "as": {
           "primitive": {
-            "type": "int32_t"
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
           }
         }
       },
@@ -152,7 +169,8 @@
         "field": "b",
         "as": {
           "primitive": {
-            "type": "int32_t"
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
           }
         }
       }
@@ -169,7 +187,8 @@
         "field": "x",
         "as": {
           "primitive": {
-            "type": "int32_t"
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
           }
         }
       }
@@ -183,7 +202,8 @@
         "as": {
           "key": {
             "name": "E",
-            "type": "uint16_t"
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
           }
         }
       }
@@ -238,7 +258,8 @@
           "array": {
             "element": {
               "primitive": {
-                "type": "std::string"
+                "type": "std::string",
+                "text": "String"
               }
             }
           }
@@ -262,7 +283,8 @@
           "pair": {
             "first": {
               "primitive": {
-                "type": "std::string"
+                "type": "std::string",
+                "text": "String"
               }
             },
             "second": {
