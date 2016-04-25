@@ -44,6 +44,7 @@ namespace serialization_test {
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
 CURRENT_STRUCT(Empty){};
+CURRENT_STRUCT(AlternativeEmpty){};
 
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
@@ -73,7 +74,7 @@ CURRENT_STRUCT(ComplexSerializable) {
   }
 };
 
-using VariantType = Variant<Empty, Serializable, ComplexSerializable>;
+using VariantType = Variant<Empty, AlternativeEmpty, Serializable, ComplexSerializable>;
 
 CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, VariantType); };
 
@@ -493,6 +494,7 @@ TEST(Serialization, StructSchemaSerialization) {
   const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
 
   EXPECT_EQ(
+      "enum class Enum : uint32_t {};\n"
       "struct Serializable {\n"
       "  uint64_t i;\n"
       "  std::string s;\n"
@@ -690,6 +692,15 @@ TEST(Serialization, VariantAsJSON) {
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
               JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
+  }
+  {
+    const auto empty1 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Empty\"}");
+    EXPECT_TRUE(Exists<Empty>(empty1));
+    EXPECT_FALSE(Exists<AlternativeEmpty>(empty1));
+
+    const auto empty2 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"AlternativeEmpty\"}");
+    EXPECT_FALSE(Exists<Empty>(empty2));
+    EXPECT_TRUE(Exists<AlternativeEmpty>(empty2));
   }
   {
     const VariantType object(std::make_unique<Serializable>(42));

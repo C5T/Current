@@ -348,9 +348,14 @@ struct LoadVariantFSharp {
             // LCOV_EXCL_STOP
           }
         } else {
-          // LCOV_EXCL_START
-          throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
-          // LCOV_EXCL_STOP
+          if (reflection::FieldCounter<X>::value > 0) {
+            // LCOV_EXCL_START
+            throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
+            // LCOV_EXCL_STOP
+          } else {
+            // Allow just `"Case"` and no `"Fields"` for empty structures.
+            destination = std::make_unique<X>();
+          }
         }
       }
     };
