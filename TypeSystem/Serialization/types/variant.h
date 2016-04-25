@@ -103,11 +103,13 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
                              rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
                              allocator_);
 
-      rapidjson::Value fields_as_array;
-      fields_as_array.SetArray();
-      fields_as_array.PushBack(serialized_object.Move(), allocator_);
+      if (IS_VARIANT(X) || IS_NONEMPTY_CURRENT_STRUCT(X)) {
+        rapidjson::Value fields_as_array;
+        fields_as_array.SetArray();
+        fields_as_array.PushBack(serialized_object.Move(), allocator_);
 
-      destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+        destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+      }
     }
 
    private:
@@ -348,13 +350,13 @@ struct LoadVariantFSharp {
             // LCOV_EXCL_STOP
           }
         } else {
-          if (IS_NONEMPTY_CURRENT_STRUCT(X)) {
+          if (IS_CURRENT_STRUCT(X) && !IS_NONEMPTY_CURRENT_STRUCT(X)) {
+            // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
+            destination = std::make_unique<X>();
+          } else {
             // LCOV_EXCL_START
             throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
             // LCOV_EXCL_STOP
-          } else {
-            // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s or `Variant`-s.
-            destination = std::make_unique<X>();
           }
         }
       }

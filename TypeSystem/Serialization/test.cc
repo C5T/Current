@@ -716,7 +716,7 @@ TEST(Serialization, VariantAsJSON) {
   }
   {
     const VariantType object(std::make_unique<Empty>());
-    const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
+    const std::string json = "{\"Case\":\"Empty\"}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
