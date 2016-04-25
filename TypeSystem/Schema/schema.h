@@ -364,7 +364,9 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     // `operator()`-s of this block print complete declarations of F# types.
     // The types that require complete declarations in F# are records and discriminated unions.
     void operator()(const ReflectedType_Primitive&) const {}
-    void operator()(const ReflectedType_Enum&) const {}
+    void operator()(const ReflectedType_Enum& e) const {
+      os_ << "\ntype " << e.name << " = " << TypeName(e.underlying_type) << '\n';
+    }
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
@@ -442,7 +444,9 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
               oss_ << "UNKNOWN_BASIC_TYPE_" + current::ToString(p.type_id);  // LCOV_EXCL_LINE
             }
           }
-          void operator()(const ReflectedType_Enum& e) const { oss_ << "Index `" << e.name << '`'; }
+          void operator()(const ReflectedType_Enum& e) const {
+            oss_ << "Index `" << e.name << "`, underlying type `" << self_.TypeName(e.underlying_type) << '`';
+          }
           void operator()(const ReflectedType_Vector& v) const {
             oss_ << "Array of " << self_.TypeName(v.element_type);
           }
@@ -570,7 +574,8 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
             if (globals.cpp_name.count(e.underlying_type) != 0u) {
               variant_clean_type_names::key result;
-              result.from = globals.cpp_name.at(e.underlying_type);
+              result.name = e.name;
+              result.type = globals.cpp_name.at(e.underlying_type);
               result_ = result;
             } else {
               variant_clean_type_names::error error;

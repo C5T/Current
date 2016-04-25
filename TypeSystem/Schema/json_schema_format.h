@@ -35,6 +35,8 @@ namespace reflection {
 
 namespace variant_clean_type_names {
 
+// clang-format off
+
 CURRENT_FORWARD_DECLARE_STRUCT(primitive);
 CURRENT_FORWARD_DECLARE_STRUCT(key);         // a.k.a. `CURRENT_ENUM()`.
 CURRENT_FORWARD_DECLARE_STRUCT(array);       // a.k.a. `vector<>`.
@@ -49,9 +51,14 @@ using type_variant_t = Variant<primitive, key, array, dictionary, pair, optional
 
 CURRENT_STRUCT(primitive) { CURRENT_FIELD(type, std::string); };
 
-CURRENT_STRUCT(key) { CURRENT_FIELD(from, std::string); };
+CURRENT_STRUCT(key) {
+  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(type, std::string);
+};
 
-CURRENT_STRUCT(array) { CURRENT_FIELD(element, type_variant_t); };
+CURRENT_STRUCT(array) {
+  CURRENT_FIELD(element, type_variant_t);
+};
 
 CURRENT_STRUCT(dictionary) {
   CURRENT_FIELD(from, type_variant_t);
@@ -63,16 +70,24 @@ CURRENT_STRUCT(pair) {
   CURRENT_FIELD(second, type_variant_t);
 };
 
-CURRENT_STRUCT(optional) { CURRENT_FIELD(underlying, type_variant_t); };
+CURRENT_STRUCT(optional) {
+  CURRENT_FIELD(underlying, type_variant_t);
+};
 
-CURRENT_STRUCT(algebraic) { CURRENT_FIELD(cases, std::vector<type_variant_t>); };
+CURRENT_STRUCT(algebraic) {
+  CURRENT_FIELD(cases, std::vector<type_variant_t>);
+};
 
-CURRENT_STRUCT(object) { CURRENT_FIELD(kind, std::string); };
+CURRENT_STRUCT(object) {
+  CURRENT_FIELD(kind, std::string);
+};
 
 CURRENT_STRUCT(error) {
   CURRENT_FIELD(error, std::string);
   CURRENT_FIELD(internal, TypeID);
 };
+
+// clang-format on
 
 }  // namespace current::reflection::variant_clean_type_names
 

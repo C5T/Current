@@ -45,7 +45,7 @@ Intentionally contains no fields.
 ### `Y`
 | **Field** | **Type** |
 | ---: | :--- |
-| `e` | Index `E` |
+| `e` | Index `E`, underlying type `Integer (16-bit unsigned)` |
 
 
 ### `C`

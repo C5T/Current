@@ -37,6 +37,8 @@ type X = {
   x : int32
 }
 
+type E = uint16
+
 type Y = {
   e : E
 }

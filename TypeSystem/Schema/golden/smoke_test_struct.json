@@ -182,7 +182,8 @@
         "field": "e",
         "as": {
           "key": {
-            "from": "uint16_t"
+            "name": "E",
+            "type": "uint16_t"
           }
         }
       }
