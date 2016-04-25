@@ -348,12 +348,12 @@ struct LoadVariantFSharp {
             // LCOV_EXCL_STOP
           }
         } else {
-          if (reflection::FieldCounter<X>::value > 0) {
+          if (IS_NONEMPTY_CURRENT_STRUCT(X)) {
             // LCOV_EXCL_START
             throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
             // LCOV_EXCL_STOP
           } else {
-            // Allow just `"Case"` and no `"Fields"` for empty structures.
+            // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s or `Variant`-s.
             destination = std::make_unique<X>();
           }
         }

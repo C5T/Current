@@ -389,6 +389,16 @@ struct FieldCounter {
   enum { value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) };
 };
 
+template <typename T, bool IS_STRUCT>
+struct IsNonemptyCurrentStruct {
+  constexpr static bool value = false;
+};
+
+template <typename T>
+struct IsNonemptyCurrentStruct<T, true> {
+  constexpr static bool value = (FieldCounter<T>::value > 0);
+};
+
 template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT>
 struct CurrentTypeNameImpl;
 

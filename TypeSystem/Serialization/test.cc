@@ -694,6 +694,14 @@ TEST(Serialization, VariantAsJSON) {
               JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
   }
   {
+    static_assert(IS_CURRENT_STRUCT(Empty), "");
+    static_assert(IS_CURRENT_STRUCT(AlternativeEmpty), "");
+
+    static_assert(!IS_NONEMPTY_CURRENT_STRUCT(Empty), "");
+    static_assert(!IS_NONEMPTY_CURRENT_STRUCT(VariantType), "");
+
+    static_assert(IS_NONEMPTY_CURRENT_STRUCT(Serializable), "");
+
     const auto empty1 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Empty\"}");
     EXPECT_TRUE(Exists<Empty>(empty1));
     EXPECT_FALSE(Exists<AlternativeEmpty>(empty1));

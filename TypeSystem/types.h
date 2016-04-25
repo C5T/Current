@@ -46,6 +46,9 @@ struct CurrentStruct : CurrentSuper {};
 
 #define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, ::current::decay<T>>::value)
 
+#define IS_NONEMPTY_CURRENT_STRUCT(T) \
+  ::current::reflection::IsNonemptyCurrentStruct<T, IS_CURRENT_STRUCT(T)>::value
+
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
