@@ -988,5 +988,137 @@
     <ClInclude Include="Bricks\template\call_if.h">
       <Filter>Header Files\Bricks\template</Filter>
     </ClInclude>
+    <ClInclude Include="Blocks\GracefulShutdown\exceptions.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\HTTP\chunked_response_parser.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\Persistence\exceptions.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\Persistence\file.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\Persistence\memory.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\SS\idx_ts.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\SS\persister.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Blocks\SS\pubsub.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\net\http\headers\headers.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\sync\locks.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\sync\scope_owned.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\atomic_that_works.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Bricks\util\base64.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\dummy.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\MidichloriansDataDictionary.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Server\schema.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Server\server.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Client\iOS\MidichloriansImpl.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Client\iOS\Midichlorians.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Midichlorians\Client\dummy.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Sherlock\exceptions.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Sherlock\stream_data.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\matrix.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\one_to_one.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\container\one_to_many.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\persister\common.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\advanced_hypermedia.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\basic.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\hypermedia.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\rest\sfinae.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\api.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\api_base.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\transaction.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\base.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\current_struct.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\current_typeid.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\enum.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\map.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\optional.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\pair.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\primitive.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\variant.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="TypeSystem\Serialization\types\vector.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\JSONSchema\infer.h">
+      <Filter>Third Party</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

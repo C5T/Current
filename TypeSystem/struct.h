@@ -354,6 +354,12 @@ struct CurrentStructFieldsConsistency<T, -1> {
                 ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
   CURRENT_STRUCT_IMPL_##s
 
+#define CURRENT_ASSIGN_OPER(s)                                                                                 \
+  template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
+            class =                                                                                            \
+                ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
+  CURRENT_STRUCT_IMPL_##s & operator=
+
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
 #define CURRENT_CONSTRUCTOR_T(s)                                                                               \
