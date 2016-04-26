@@ -22,74 +22,72 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KARL_SERVICE_GENERATOR_H
-#define KARL_SERVICE_GENERATOR_H
+#ifndef KARL_TEST_SERVICE_ANNOTATOR_H
+#define KARL_TEST_SERVICE_ANNOTATOR_H
 
-#include "karl.h"
+#include "schema.h"
 
-#include <atomic>
+#include "../claire.h"
 
-#include "claire.h"
-#include "service_schema.h"
+#include "../../Blocks/HTTP/api.h"
 
-#include "../Blocks/HTTP/api.h"
-
-#include "../Sherlock/sherlock.h"
-
-#include "../Bricks/time/chrono.h"
+#include "../../Sherlock/sherlock.h"
 
 namespace karl_unittest {
 
-class ServiceGenerator final {
+class ServiceAnnotator final {
  public:
-  ServiceGenerator(uint16_t port,
-                   std::chrono::microseconds sleep_between_numbers,
+  ServiceAnnotator(uint16_t port,
+                   const std::string& source_numbers_stream,
+                   const std::string& is_prime_logic_endpoint,
                    const current::karl::Locator& karl)
-      : current_value_(0),
+      : source_numbers_stream_(source_numbers_stream),
+        is_prime_logic_endpoint_(is_prime_logic_endpoint),
         stream_(current::sherlock::Stream<Number>()),
-        http_scope_(HTTP(port).Register("/numbers", stream_)),
-        sleep_between_numbers_(sleep_between_numbers),
+        http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_(karl, "generator", port) {
-    const auto status_reporter = [this]() -> current::karl::ClaireBoilerplateUserStatus {
-      current::karl::ClaireBoilerplateUserStatus user;
-      user.message = "Up and running!";
-      user.details["i"] = current::ToString(current_value_.load());
-      return user;
-    };
+        claire_(karl, "annotator", port) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
-    claire_.Register(status_reporter, true);
+    claire_.Register(nullptr, true);
 #else
     // In example "production" mode just start regular keepalives.
-    claire_.Register(status_reporter);
+    claire_.Register();
 #endif
   }
 
-  ~ServiceGenerator() {
+  ~ServiceAnnotator() {
     destructing_ = true;
     thread_.join();
   }
 
  private:
   void Thread() {
-    while (!destructing_) {
-#ifdef CURRENT_MOCK_TIME
-      current::time::SetNow(std::chrono::microseconds(current_value_ * 1000ull * 1000ull),
-                            std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull - 1));
-#endif
-      stream_.Publish(Number(current_value_));
-      ++current_value_;
-      std::this_thread::sleep_for(sleep_between_numbers_);
+    // Poor man's stream subscriber. -- D.K.
+    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as we coin the notion of `HTTPSherlockSusbcriber`.
+    int index = 0;
+    try {
+      while (!destructing_) {
+        const auto row = HTTP(GET(source_numbers_stream_ + "?i=" + current::ToString(index++) + "&n=1")).body;
+        const auto split = current::strings::Split(row, '\t');
+        assert(split.size() == 2u);
+        auto number = ParseJSON<Number>(split[1]);
+        const auto prime_result =
+            HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
+        assert(prime_result == "YES\n" || prime_result == "NO\n");
+        number.is_prime = (prime_result == "YES\n");
+        stream_.Publish(number);
+      }
+    } catch (current::net::NetworkException&) {
+      // Ignore for the purposes of this test. -- D.K.
     }
   }
 
- private:
-  std::atomic_int current_value_;
+  const std::string source_numbers_stream_;
+  const std::string is_prime_logic_endpoint_;
   current::sherlock::Stream<Number> stream_;
   const HTTPRoutesScope http_scope_;
-  const std::chrono::microseconds sleep_between_numbers_;
   std::atomic_bool destructing_;
   std::thread thread_;
   current::karl::Claire claire_;
@@ -97,4 +95,4 @@ class ServiceGenerator final {
 
 }  // namespace karl_unittest
 
-#endif  // KARL_SERVICE_GENERATOR_H
+#endif  // KARL_TEST_SERVICE_ANNOTATOR_H

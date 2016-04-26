@@ -22,18 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KARL_SERVICE_FILTER_H
-#define KARL_SERVICE_FILTER_H
+#ifndef KARL_TEST_SERVICE_FILTER_H
+#define KARL_TEST_SERVICE_FILTER_H
 
-#include "karl.h"
-#include "claire.h"
-#include "locator.h"
+#include "schema.h"
 
-#include "service_schema.h"
+#include "../karl.h"
+#include "../claire.h"
+#include "../locator.h"
 
-#include "../Blocks/HTTP/api.h"
+#include "../../Blocks/HTTP/api.h"
 
-#include "../Sherlock/sherlock.h"
+#include "../../Sherlock/sherlock.h"
 
 namespace karl_unittest {
 
@@ -95,4 +95,4 @@ class ServiceFilter final {
 
 }  // namespace karl_unittest
 
-#endif  // KARL_SERVICE_FILTER_H
+#endif  // KARL_TEST_SERVICE_FILTER_H

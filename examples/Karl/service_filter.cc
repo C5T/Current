@@ -1,6 +1,6 @@
 #include "../../Blocks/HTTP/api.h"
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Karl/service_filter.h"
+#include "../../Karl/test_service/filter.h"
 
 DEFINE_uint16(port, 42004, "The port to spawn ServiceAnnotator on.");
 DEFINE_string(annotator, "http://localhost:42003/annotated", "The route to `ServiceAnnotator`.");

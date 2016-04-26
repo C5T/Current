@@ -22,14 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KARL_SERVICE_IS_PRIME_H
-#define KARL_SERVICE_IS_PRIME_H
+#ifndef KARL_TEST_SERVICE_IS_PRIME_H
+#define KARL_TEST_SERVICE_IS_PRIME_H
 
-#include "claire.h"
+#include "../../port.h"
 
 #include <atomic>
 
-#include "../Blocks/HTTP/api.h"
+#include "../claire.h"
+
+#include "../../Blocks/HTTP/api.h"
 
 namespace karl_unittest {
 
@@ -84,4 +86,4 @@ class ServiceIsPrime final {
 
 }  // namespace karl_unittest
 
-#endif  // KARL_SERVICE_IS_PRIME_H
+#endif  // KARL_TEST_SERVICE_IS_PRIME_H

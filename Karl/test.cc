@@ -26,10 +26,10 @@ SOFTWARE.
 
 #include "karl.h"
 
-#include "service_generator.h"
-#include "service_is_prime.h"
-#include "service_annotator.h"
-#include "service_filter.h"
+#include "test_service/generator.h"
+#include "test_service/is_prime.h"
+#include "test_service/annotator.h"
+#include "test_service/filter.h"
 
 #include "../Blocks/HTTP/api.h"
 

@@ -22,13 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef KARL_SERVICE_SCHEMA_H
-#define KARL_SERVICE_SCHEMA_H
+#ifndef KARL_TEST_SERVICE_SCHEMA_H
+#define KARL_TEST_SERVICE_SCHEMA_H
 
-#include "karl.h"
+#include "../karl.h"
 
-#include "../TypeSystem/struct.h"
-#include "../TypeSystem/optional.h"
+#include "../../TypeSystem/struct.h"
+#include "../../TypeSystem/optional.h"
 
 namespace karl_unittest {
 
@@ -40,4 +40,4 @@ CURRENT_STRUCT(Number) {
 
 }  // namespace karl_unittest
 
-#endif  // KARL_SERVICE_SCHEMA_H
+#endif  // KARL_TEST_SERVICE_SCHEMA_H

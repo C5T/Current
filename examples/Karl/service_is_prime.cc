@@ -1,6 +1,6 @@
 #include "../../Blocks/HTTP/api.h"
 #include "../../Bricks/dflags/dflags.h"
-#include "../../Karl/service_is_prime.h"
+#include "../../Karl/test_service/is_prime.h"
 
 DEFINE_uint16(port, 42002, "The port to spawn ServiceIsPrime on.");
 
