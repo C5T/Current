@@ -18,8 +18,10 @@ General ideas behind Karl and Claire are:
   * Basic Karl reporting page is a state of the fleet over certain period of time, "last five minutes" by default.
     * The report will be based on all keepalives received within this time period.
   * Drilldown pages include slicing per:
-    * IP address (server view),
-    * IP address and port ("endpoint" view, the "socket" other services may depent on), per codename ("
+    * IP address (server/machine view),
+    * IP address and port ("endpoint" view, the "socket" other services may depend upon),
+    * Service name (service availability history), and
+    * Codename (service instance history, down to individual keepalive messages).
 * Both Claire and Karl are embedded C++ libraries.
   * Claire extends the user code.
   * Karl is designed to be linked into the user code providing active supervision (ex. stream data authority master flip).
