@@ -63,15 +63,15 @@ class GenericOneToMany {
     const auto row = sfinae::GetRow(object);
     const auto col = sfinae::GetCol(object);
     const auto key = std::make_pair(row, col);
-    const auto it = map_.find(key);
-    if (it != map_.end()) {
-      const T& previous_object = *(it->second);
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      const T& previous_object = *(cit->second);
       journal_.LogMutation(UPDATE_EVENT(object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
     } else {
-      const auto it = transposed_.find(col);
-      if (it != transposed_.end()) {
-        const T& previous_object = *(it->second);
+      const auto cit = transposed_.find(col);
+      if (cit != transposed_.end()) {
+        const T& previous_object = *(cit->second);
         const auto previous_key = std::make_pair(sfinae::GetRow(previous_object), col);
         journal_.LogMutation(DELETE_EVENT(previous_object),
                              [this, previous_key, previous_object]() { DoAdd(previous_key, previous_object); });
@@ -83,9 +83,9 @@ class GenericOneToMany {
   }
 
   void Erase(const key_t& key) {
-    const auto it = map_.find(key);
-    if (it != map_.end()) {
-      const T& previous_object = *(it->second);
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      const T& previous_object = *(cit->second);
       journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
       DoErase(key);
@@ -94,9 +94,9 @@ class GenericOneToMany {
   void Erase(sfinae::CF<row_t> row, sfinae::CF<col_t> col) { Erase(std::make_pair(row, col)); }
 
   void EraseCol(sfinae::CF<col_t> col) {
-    const auto it = transposed_.find(col);
-    if (it != transposed_.end()) {
-      const T previous_object = *(it->second);
+    const auto cit = transposed_.find(col);
+    if (cit != transposed_.end()) {
+      const T& previous_object = *(cit->second);
       const auto key = std::make_pair(sfinae::GetRow(previous_object), col);
       journal_.LogMutation(DELETE_EVENT(previous_object),
                            [this, key, previous_object]() { DoAdd(key, previous_object); });
@@ -105,9 +105,9 @@ class GenericOneToMany {
   }
 
   ImmutableOptional<T> operator[](const key_t& key) const {
-    const auto it = map_.find(key);
-    if (it != map_.end()) {
-      return ImmutableOptional<T>(FromBarePointer(), it->second.get());
+    const auto cit = map_.find(key);
+    if (cit != map_.end()) {
+      return ImmutableOptional<T>(FromBarePointer(), cit->second.get());
     } else {
       return nullptr;
     }
@@ -116,9 +116,9 @@ class GenericOneToMany {
     return operator[](std::make_pair(row, col));
   }
   ImmutableOptional<T> GetEntryFromCol(sfinae::CF<col_t> col) const {
-    const auto it = transposed_.find(col);
-    if (it != transposed_.end()) {
-      return ImmutableOptional<T>(FromBarePointer(), it->second);
+    const auto cit = transposed_.find(col);
+    if (cit != transposed_.end()) {
+      return ImmutableOptional<T>(FromBarePointer(), cit->second);
     } else {
       return nullptr;
     }
@@ -137,78 +137,81 @@ class GenericOneToMany {
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
   template <typename MAP>
-  struct Iterator final {
+  struct IteratorImpl final {
     using iterator_t = typename MAP::const_iterator;
     using key_t = typename MAP::key_type;
     iterator_t iterator_;
-    explicit Iterator(iterator_t iterator) : iterator_(iterator) {}
+    explicit IteratorImpl(iterator_t iterator) : iterator_(iterator) {}
     void operator++() { ++iterator_; }
-    bool operator==(const Iterator& rhs) const { return iterator_ == rhs.iterator_; }
-    bool operator!=(const Iterator& rhs) const { return !operator==(rhs); }
+    bool operator==(const IteratorImpl& rhs) const { return iterator_ == rhs.iterator_; }
+    bool operator!=(const IteratorImpl& rhs) const { return !operator==(rhs); }
     sfinae::CF<key_t> key() const { return iterator_->first; }
     const T& operator*() const { return *iterator_->second; }
     const T* operator->() const { return iterator_->second; }
   };
 
-  template <typename INNER_MAP>
-  struct InnerAccessor final {
-    using INNER_KEY = typename INNER_MAP::key_type;
-    const INNER_MAP& map_;
+  template <typename MAP>
+  struct ElementsAccessor final {
+    using iterator_t = IteratorImpl<MAP>;
+    using key_t = typename MAP::key_type;
+    const MAP& map_;
 
-    InnerAccessor(const INNER_MAP& map) : map_(map) {}
+    ElementsAccessor(const MAP& map) : map_(map) {}
 
     bool Empty() const { return map_.empty(); }
     size_t Size() const { return map_.size(); }
 
-    bool Has(const INNER_KEY& x) const { return map_.find(x) != map_.end(); }
+    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
-    Iterator<INNER_MAP> begin() const { return Iterator<INNER_MAP>(map_.cbegin()); }
-    Iterator<INNER_MAP> end() const { return Iterator<INNER_MAP>(map_.cend()); }
+    iterator_t begin() const { return iterator_t(map_.cbegin()); }
+    iterator_t end() const { return iterator_t(map_.cend()); }
   };
 
-  template <typename OUTER_MAP>
-  struct OuterAccessor final {
-    using OUTER_KEY = typename OUTER_MAP::key_type;
-    using INNER_MAP = typename OUTER_MAP::mapped_type;
-    const OUTER_MAP& map_;
+  template <typename ROWS_MAP>
+  struct RowsAccessor final {
+    using key_t = typename ROWS_MAP::key_type;
+    using elements_map_t = typename ROWS_MAP::mapped_type;
+    const ROWS_MAP& map_;
 
-    struct OuterIterator final {
-      using iterator_t = typename OUTER_MAP::const_iterator;
+    struct RowsIterator final {
+      using iterator_t = typename ROWS_MAP::const_iterator;
       iterator_t iterator;
-      explicit OuterIterator(iterator_t iterator) : iterator(iterator) {}
+      explicit RowsIterator(iterator_t iterator) : iterator(iterator) {}
       void operator++() { ++iterator; }
-      bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
-      bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
-      sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
-      InnerAccessor<INNER_MAP> operator*() const { return InnerAccessor<INNER_MAP>(iterator->second); }
+      bool operator==(const RowsIterator& rhs) const { return iterator == rhs.iterator; }
+      bool operator!=(const RowsIterator& rhs) const { return !operator==(rhs); }
+      sfinae::CF<key_t> key() const { return iterator->first; }
+      ElementsAccessor<elements_map_t> operator*() const { return ElementsAccessor<elements_map_t>(iterator->second); }
     };
 
-    explicit OuterAccessor(const OUTER_MAP& map) : map_(map) {}
+    explicit RowsAccessor(const ROWS_MAP& map) : map_(map) {}
 
     bool Empty() const { return map_.empty(); }
     size_t Size() const { return map_.size(); }
 
-    bool Has(const OUTER_KEY& x) const { return map_.find(x) != map_.end(); }
+    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
-    ImmutableOptional<InnerAccessor<INNER_MAP>> operator[](OUTER_KEY key) const {
+    ImmutableOptional<ElementsAccessor<elements_map_t>> operator[](key_t key) const {
       const auto iterator = map_.find(key);
       if (iterator != map_.end()) {
-        return std::move(std::make_unique<InnerAccessor<INNER_MAP>>(iterator->second));
+        return std::move(std::make_unique<ElementsAccessor<elements_map_t>>(iterator->second));
       } else {
         return nullptr;
       }
     }
 
-    OuterIterator begin() const { return OuterIterator(map_.cbegin()); }
-    OuterIterator end() const { return OuterIterator(map_.cend()); }
+    RowsIterator begin() const { return RowsIterator(map_.cbegin()); }
+    RowsIterator end() const { return RowsIterator(map_.cend()); }
   };
 
-  const OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
+  const RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
 
-  const InnerAccessor<transposed_map_t> Cols() const { return InnerAccessor<transposed_map_t>(transposed_); }
+  const ElementsAccessor<transposed_map_t> Cols() const { return ElementsAccessor<transposed_map_t>(transposed_); }
 
-  Iterator<elements_map_t> begin() const { return Iterator<elements_map_t>(map_.begin()); }
-  Iterator<elements_map_t> end() const { return Iterator<elements_map_t>(map_.end()); }
+  // For REST, iterate over all the elements of the OneToMany, in no particular order.
+  using iterator_t = IteratorImpl<elements_map_t>;
+  iterator_t begin() const { return iterator_t(map_.begin()); }
+  iterator_t end() const { return iterator_t(map_.end()); }
 
  private:
   void DoErase(const key_t& key) {

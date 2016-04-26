@@ -112,19 +112,19 @@ CURRENT_STRUCT(Cell) {
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, Cell, CellMatrixUnordered);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToMany, Cell, CellManyToManyUnordered);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOne, Cell, CellOneToOneUnordered);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToMany, Cell, CellOneToManyUnordered);
-CURRENT_STORAGE_FIELD_ENTRY(OrderedMatrix, Cell, CellMatrixOrdered);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToMany, Cell, CellManyToManyOrdered);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOne, Cell, CellOneToOneOrdered);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToMany, Cell, CellOneToManyOrdered);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
-  CURRENT_STORAGE_FIELD(umany_to_umany, CellMatrixUnordered);
+  CURRENT_STORAGE_FIELD(umany_to_umany, CellManyToManyUnordered);
   CURRENT_STORAGE_FIELD(uone_to_uone, CellOneToOneUnordered);
   CURRENT_STORAGE_FIELD(uone_to_umany, CellOneToManyUnordered);
-  CURRENT_STORAGE_FIELD(omany_to_omany, CellMatrixOrdered);
+  CURRENT_STORAGE_FIELD(omany_to_omany, CellManyToManyOrdered);
   CURRENT_STORAGE_FIELD(oone_to_oone, CellOneToOneOrdered);
   CURRENT_STORAGE_FIELD(oone_to_omany, CellOneToManyOrdered);
 };
@@ -177,13 +177,15 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Fill a `Matrix` container.
+    // Fill a `ManyToMany` container.
     {
       const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Empty());
         EXPECT_EQ(0u, fields.umany_to_umany.Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Empty());
         EXPECT_TRUE(fields.umany_to_umany.Cols().Empty());
+        EXPECT_EQ(0u, fields.umany_to_umany.Rows().Size());
+        EXPECT_EQ(0u, fields.umany_to_umany.Cols().Size());
         fields.umany_to_umany.Add(Cell{1, "one", 1});
         fields.umany_to_umany.Add(Cell{2, "two", 2});
         fields.umany_to_umany.Add(Cell{2, "too", 3});
@@ -191,6 +193,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_FALSE(fields.umany_to_umany.Rows().Empty());
         EXPECT_FALSE(fields.umany_to_umany.Cols().Empty());
+        EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
+        EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(1));
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("one"));
         EXPECT_TRUE(Exists(fields.umany_to_umany.Get(1, "one")));
@@ -208,6 +212,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(0u, fields.uone_to_uone.Size());
         EXPECT_TRUE(fields.uone_to_uone.Rows().Empty());
         EXPECT_TRUE(fields.uone_to_uone.Cols().Empty());
+        EXPECT_EQ(0u, fields.uone_to_uone.Rows().Size());
+        EXPECT_EQ(0u, fields.uone_to_uone.Cols().Size());
         fields.uone_to_uone.Add(Cell{1, "one", 1});  // Adds {1,one=1}
         fields.uone_to_uone.Add(Cell{2, "two", 2});  // Adds {2,two=2}
         fields.uone_to_uone.Add(Cell{2, "too", 3});  // Adds {2,too=3}, removes {2,two=2}
@@ -218,6 +224,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(3u, fields.uone_to_uone.Size());
         EXPECT_FALSE(fields.uone_to_uone.Rows().Empty());
         EXPECT_FALSE(fields.uone_to_uone.Cols().Empty());
+        EXPECT_EQ(3u, fields.uone_to_uone.Rows().Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Cols().Size());
         EXPECT_TRUE(fields.uone_to_uone.Rows().Has(1));
         EXPECT_TRUE(Exists(fields.uone_to_uone.GetEntryFromRow(1)));
         EXPECT_TRUE(fields.uone_to_uone.Cols().Has("one"));
@@ -248,6 +256,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(0u, fields.uone_to_umany.Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Empty());
         EXPECT_TRUE(fields.uone_to_umany.Cols().Empty());
+        EXPECT_EQ(0u, fields.uone_to_umany.Rows().Size());
+        EXPECT_EQ(0u, fields.uone_to_umany.Cols().Size());
         fields.uone_to_umany.Add(Cell{1, "one", 1});   // Adds {1,one=1 }
         fields.uone_to_umany.Add(Cell{2, "two", 5});   // Adds {2,two=5 }
         fields.uone_to_umany.Add(Cell{2, "two", 4});   // Adds {2,two=4 }, overwrites {2,two=5}
@@ -259,6 +269,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ(4u, fields.uone_to_umany.Size());
         EXPECT_FALSE(fields.uone_to_umany.Rows().Empty());
         EXPECT_FALSE(fields.uone_to_umany.Cols().Empty());
+        EXPECT_EQ(2u, fields.uone_to_umany.Rows().Size());
+        EXPECT_EQ(4u, fields.uone_to_umany.Cols().Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Has(1));
         EXPECT_FALSE(fields.uone_to_umany.Rows().Has(3));
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("two"));
@@ -278,15 +290,13 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result));
     }
 
-    // Copy data from unordered `Matrix`, `OneToOne` and `OneToMany` to corresponding ordered ones
+    // Copy data from unordered `ManyToMany`, `OneToOne` and `OneToMany` to corresponding ordered ones
     {
       const auto result1 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
         EXPECT_TRUE(fields.omany_to_omany.Empty());
-        for (auto it = fields.umany_to_umany.WholeMatrixBegin(), end = fields.umany_to_umany.WholeMatrixEnd();
-             it != end;
-             ++it) {
-          fields.omany_to_omany.Add(*it);
+        for (const auto& element : fields.umany_to_umany) {
+          fields.omany_to_omany.Add(element);
         }
         EXPECT_EQ(fields.umany_to_umany.Size(), fields.omany_to_omany.Size());
       }).Go();
@@ -310,7 +320,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result3));
     }
 
-    // Iterate over a `Matrix`, compare its ordered and unordered versions
+    // Iterate over a `ManyToMany`, compare its ordered and unordered versions
     {
       const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.umany_to_umany.Empty());
@@ -407,7 +417,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterage over a `OneToMany`, compari its ordered and unordered versions.
+    // Iterate over a `OneToMany`, compare its ordered and unordered versions.
     {
       const auto result1 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
         EXPECT_FALSE(fields.uone_to_umany.Empty());
@@ -455,12 +465,18 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Rollback a transaction involving a `Matrix`, `OneToOne` and `OneToMany`.
+    // Rollback a transaction involving a `ManyToMany`, `OneToOne` and `OneToMany`.
     {
       const auto result1 = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_EQ(3u, fields.umany_to_umany.Size());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Rows().Size());
+        EXPECT_EQ(3u, fields.uone_to_uone.Cols().Size());
+        EXPECT_EQ(4u, fields.uone_to_umany.Size());
+        EXPECT_EQ(2u, fields.uone_to_umany.Rows().Size());
+        EXPECT_EQ(4u, fields.uone_to_umany.Cols().Size());
 
         fields.d.Add(Record{"one", 100});
         fields.d.Add(Record{"four", 4});
@@ -508,7 +524,7 @@ TEST(TransactionalStorage, SmokeTest) {
       EXPECT_TRUE(WasCommitted(result2));
     }
 
-    // Iterate over a `Matrix` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
+    // Iterate over a `ManyToMany` with deleted elements, confirm the integrity of `forward_` and `transposed_`.
     {
       const auto result = storage.ReadWriteTransaction([](MutableFields<Storage> fields) {
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(2));
@@ -748,7 +764,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("umany_to_umany, UnorderedMatrix, Cell", s);
+    EXPECT_EQ("umany_to_umany, UnorderedManyToMany, Cell", s);
   }
 
   {
@@ -772,7 +788,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<4, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("omany_to_omany, OrderedMatrix, Cell", s);
+    EXPECT_EQ("omany_to_omany, OrderedManyToMany, Cell", s);
   }
 
   {
@@ -1145,8 +1161,8 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
-// TODO(dkorolev): Ordered matrix too.
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedMatrix, SimpleLike, SimpleLikePersisted);
+// TODO(dkorolev): Ordered `ManyToMany` too.
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToMany, SimpleLike, SimpleLikePersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);
