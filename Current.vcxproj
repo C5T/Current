@@ -110,8 +110,28 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="Blocks\GracefulShutdown\exceptions.h" />
+    <ClInclude Include="Blocks\HTTP\chunked_response_parser.h" />
+    <ClInclude Include="Blocks\Persistence\exceptions.h" />
+    <ClInclude Include="Blocks\Persistence\file.h" />
+    <ClInclude Include="Blocks\Persistence\memory.h" />
+    <ClInclude Include="Blocks\SS\idx_ts.h" />
+    <ClInclude Include="Blocks\SS\persister.h" />
+    <ClInclude Include="Blocks\SS\pubsub.h" />
+    <ClInclude Include="Bricks\net\http\headers\headers.h" />
+    <ClInclude Include="Bricks\sync\locks.h" />
+    <ClInclude Include="Bricks\sync\scope_owned.h" />
     <ClInclude Include="Bricks\template\call_if.h" />
+    <ClInclude Include="Bricks\util\atomic_that_works.h" />
+    <ClInclude Include="Bricks\util\base64.h" />
     <ClInclude Include="current.h" />
+    <ClInclude Include="Midichlorians\Client\dummy.h" />
+    <ClInclude Include="Midichlorians\Client\iOS\Midichlorians.h" />
+    <ClInclude Include="Midichlorians\Client\iOS\MidichloriansImpl.h" />
+    <ClInclude Include="Midichlorians\dummy.h" />
+    <ClInclude Include="Midichlorians\MidichloriansDataDictionary.h" />
+    <ClInclude Include="Midichlorians\Server\schema.h" />
+    <ClInclude Include="Midichlorians\Server\server.h" />
     <ClInclude Include="port.h" />
     <ClInclude Include="3rdparty\cereal\include\access.hpp" />
     <ClInclude Include="3rdparty\cereal\include\cereal.hpp" />
@@ -316,12 +336,25 @@
     <ClInclude Include="Midichlorians\Dev\Beta\iOS\MidichloriansImpl.h" />
     <ClInclude Include="Profiler\profiler.h" />
     <ClInclude Include="RipCurrent\ripcurrent.h" />
+    <ClInclude Include="Sherlock\exceptions.h" />
     <ClInclude Include="Sherlock\port.h" />
     <ClInclude Include="Sherlock\pubsub.h" />
     <ClInclude Include="Sherlock\sherlock.h" />
+    <ClInclude Include="Sherlock\stream_data.h" />
+    <ClInclude Include="Storage\api.h" />
+    <ClInclude Include="Storage\api_base.h" />
     <ClInclude Include="Storage\base.h" />
+    <ClInclude Include="Storage\container\matrix.h" />
+    <ClInclude Include="Storage\container\one_to_many.h" />
+    <ClInclude Include="Storage\container\one_to_one.h" />
     <ClInclude Include="Storage\exceptions.h" />
+    <ClInclude Include="Storage\persister\common.h" />
+    <ClInclude Include="Storage\rest\advanced_hypermedia.h" />
+    <ClInclude Include="Storage\rest\basic.h" />
+    <ClInclude Include="Storage\rest\hypermedia.h" />
+    <ClInclude Include="Storage\rest\sfinae.h" />
     <ClInclude Include="Storage\storage.h" />
+    <ClInclude Include="Storage\transaction.h" />
     <ClInclude Include="Storage\transaction_policy.h" />
     <ClInclude Include="Storage\transaction_result.h" />
     <ClInclude Include="Storage\container\common.h" />
@@ -337,6 +370,16 @@
     <ClInclude Include="TypeSystem\optional.h" />
     <ClInclude Include="TypeSystem\optional_result.h" />
     <ClInclude Include="TypeSystem\primitive_types.dsl.h" />
+    <ClInclude Include="TypeSystem\Serialization\base.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\current_struct.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\current_typeid.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\enum.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\map.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\optional.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\pair.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\primitive.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\variant.h" />
+    <ClInclude Include="TypeSystem\Serialization\types\vector.h" />
     <ClInclude Include="TypeSystem\struct.h" />
     <ClInclude Include="TypeSystem\timestamp.h" />
     <ClInclude Include="TypeSystem\types.h" />
@@ -349,6 +392,7 @@
     <ClInclude Include="TypeSystem\Serialization\binary.h" />
     <ClInclude Include="TypeSystem\Serialization\exceptions.h" />
     <ClInclude Include="TypeSystem\Serialization\json.h" />
+    <ClInclude Include="Utils\JSONSchema\infer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

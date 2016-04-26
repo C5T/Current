@@ -185,7 +185,16 @@ struct IPAndPort {
 inline std::string InetAddrToString(const struct in_addr* in) {
   // 16 bytes buffer for IPv4.
   char buffer[16];
+#ifndef CURRENT_WINDOWS
   const char* result = ::inet_ntop(AF_INET, reinterpret_cast<const void*>(in), buffer, sizeof(buffer));
+#else
+  // note: this will not support UTF-8 encoded domains in output; to support international domain names on Windows,
+  // replace this call with InetNtopW => WideCharToMultiByte(CP_UTF8, ...)
+  const char* result = ::inet_ntop(AF_INET,
+                                   const_cast<void *>(reinterpret_cast<const void*>(in)),
+                                   buffer,
+                                   sizeof(buffer));
+#endif // !CURRENT_WINDOWS
   if (!result) {
     CURRENT_THROW(InetAddrToStringException());
   } else {
