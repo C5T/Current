@@ -215,6 +215,7 @@ class StreamImpl {
     current::WaitableTerminateSignal terminate_signal_;
     ScopeOwnedBySomeoneElse<stream_data_t> data_;
     F& subscriber_;
+    const uint64_t begin_idx_;
     std::atomic_bool thread_done_;
     std::thread thread_;
 
@@ -227,6 +228,7 @@ class StreamImpl {
    public:
     SubscriberThreadInstance(ScopeOwned<stream_data_t>& data,
                              F& subscriber,
+                             uint64_t begin_idx,
                              std::function<void()> done_callback)
         : this_is_valid_(false),
           done_callback_(done_callback),
@@ -238,6 +240,7 @@ class StreamImpl {
                   terminate_signal_.SignalExternalTermination();
                 }),
           subscriber_(subscriber),
+          begin_idx_(begin_idx),
           thread_done_(false),
           thread_(&SubscriberThreadInstance::Thread, this) {
       // Must guard against the constructor of `ScopeOwnedBySomeoneElse<stream_data_t> data_` throwing.
@@ -266,7 +269,7 @@ class StreamImpl {
       // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
       // strictly within the scope of existence of `stream_data_t` contained in `data_`.
       stream_data_t& bare_data = data_.ObjectAccessorDespitePossiblyDestructing();
-      ThreadImpl(bare_data);
+      ThreadImpl(bare_data, begin_idx_);
       thread_done_ = true;
       std::lock_guard<std::mutex> lock(bare_data.http_subscriptions_mutex);
       if (done_callback_) {
@@ -274,8 +277,8 @@ class StreamImpl {
       }
     }
 
-    void ThreadImpl(stream_data_t& bare_data) {
-      size_t index = 0;
+    void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
+      size_t index = begin_idx;
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
@@ -304,8 +307,8 @@ class StreamImpl {
                     bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
               return;
             }
-            index = size;
           }
+          index = size;
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
@@ -328,16 +331,21 @@ class StreamImpl {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
-    SubscriberScope(ScopeOwned<stream_data_t>& data, F& subscriber, std::function<void()> done_callback)
-        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, done_callback))) {}
+    SubscriberScope(ScopeOwned<stream_data_t>& data,
+                    F& subscriber,
+                    uint64_t begin_idx,
+                    std::function<void()> done_callback)
+        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {
+    }
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
+                                                   uint64_t begin_idx = 0u,
                                                    std::function<void()> done_callback = nullptr) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     try {
-      return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, done_callback);
+      return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, begin_idx, done_callback);
     } catch (const current::sync::InDestructingModeException&) {
       CURRENT_THROW(StreamInGracefulShutdownException());
     }
@@ -355,8 +363,9 @@ class StreamImpl {
       ScopeOwnedBySomeoneElse<stream_data_t> scoped_data(own_data_, []() {});
       stream_data_t& data = *scoped_data;
 
-      if (r.url.query.has("terminate")) {
-        const std::string id = r.url.query["terminate"];
+      const auto request_params = ParsePubSubHTTPRequest(r);
+
+      if (request_params.terminate_requested) {
         typename stream_data_t::http_subscriptions_t::iterator it;
         {
           // NOTE: This is not thread-safe!!!
@@ -364,7 +373,7 @@ class StreamImpl {
           // However, during the call to `= nullptr` the mutex will be locked again from within the
           // thread terminating callback. Need to clean this up. TODO(dkorolev).
           std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-          it = data.http_subscriptions.find(id);
+          it = data.http_subscriptions.find(request_params.terminate_id);
         }
         if (it != data.http_subscriptions.end()) {
           // Subscription found. Delete the scope, triggering the thread to shut down.
@@ -378,79 +387,82 @@ class StreamImpl {
         }
         return;
       }
-      if (r.method == "GET" || r.method == "HEAD") {
-        const size_t count = data.persistence.Size();
-        if (r.method == "HEAD") {
-          // Return the number of entries in the stream in `X-Current-Stream-Size` header.
-          r("",
-            HTTPResponseCode.OK,
-            current::net::constants::kDefaultContentType,
-            current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, current::ToString(count)}}));
+
+      // Unsupported HTTP method.
+      if (r.method != "GET" && r.method != "HEAD") {
+        r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
+        return;
+      }
+
+      const auto stream_size = data.persistence.Size();
+
+      if (request_params.size_only) {
+        // Return the number of entries in the stream in `X-Current-Stream-Size` header and in the body in
+        // case of `GET` method.
+        const std::string size_str = current::ToString(stream_size);
+        const std::string body = (r.method == "GET") ? size_str + '\n' : "";
+        r(body,
+          HTTPResponseCode.OK,
+          current::net::constants::kDefaultContentType,
+          current::net::http::Headers({{kSherlockHeaderCurrentStreamSize, size_str}}));
+        return;
+      }
+
+      if (request_params.schema_requested) {
+        const std::string& schema_format = request_params.schema_format;
+        // Return the schema the user is requesting, in a top-level, or more fine-grained format.
+        if (schema_format.empty()) {
+          r(schema_as_http_response_);
         } else {
-          bool schema_requested = false;
-          std::string schema_format;
-          const std::string schema_prefix = "schema.";
-          if (r.url.query.has("schema")) {
-            schema_requested = true;
-            schema_format = r.url.query["schema"];
-          } else if (r.url_path_args.size() == 1) {
-            if (r.url_path_args[0].substr(0, schema_prefix.length()) == schema_prefix) {
-              schema_requested = true;
-              schema_format = r.url_path_args[0].substr(schema_prefix.length());
-            } else {
-              SherlockSchemaFormatNotFound four_oh_four;
-              four_oh_four.unsupported_format_requested = r.url_path_args[0];
-              r(four_oh_four, HTTPResponseCode.NotFound);
-              return;
-            }
-          }
-          if (schema_requested) {
-            // Return the schema the user is requesting, in a top-level, or more fine-grained format.
-            if (schema_format.empty()) {
-              r(schema_as_http_response_);
-            } else {
-              const auto cit = schema_as_object_.language.find(schema_format);
-              if (cit != schema_as_object_.language.end()) {
-                r(cit->second);
-              } else {
-                SherlockSchemaFormatNotFound four_oh_four;
-                four_oh_four.unsupported_format_requested = schema_format;
-                r(four_oh_four, HTTPResponseCode.NotFound);
-              }
-            }
-          } else if (r.url.query.has("sizeonly")) {
-            // Return the number of entries in the stream in body.
-            r(current::ToString(count) + '\n', HTTPResponseCode.OK);
-          } else if (count == 0u && r.url.query.has("nowait")) {
-            // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
-            r("", HTTPResponseCode.OK);
+          const auto cit = schema_as_object_.language.find(schema_format);
+          if (cit != schema_as_object_.language.end()) {
+            r(cit->second);
           } else {
-            const std::string subscription_id = data.GenerateRandomHTTPSubscriptionID();
-
-            auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
-                subscription_id, scoped_data, std::move(r));
-
-            current::sherlock::SubscriberScope http_chunked_subscriber_scope =
-                Subscribe(*http_chunked_subscriber,
-                          [this, &data, subscription_id]() {
-                            // NOTE: Need to figure out when and where to lock.
-                            // Chat w/ Max about the logic to clean up completed listeners.
-                            // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
-                            data.http_subscriptions[subscription_id].second = nullptr;
-                          });
-
-            {
-              std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
-              // TODO(dkorolev): This condition is to be rewritten correctly.
-              if (!data.http_subscriptions.count(subscription_id)) {
-                data.http_subscriptions[subscription_id] = std::make_pair(
-                    std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
-              }
-            }
+            SherlockSchemaFormatNotFound four_oh_four;
+            four_oh_four.unsupported_format_requested = schema_format;
+            r(four_oh_four, HTTPResponseCode.NotFound);
           }
         }
       } else {
-        r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed);
+        // NOTE: "Smart" start from the certain point in the stream is supported only for `n` and `tail`.
+        // TODO(dk+mz): Add iteration over timestamps in our persisters as well?
+        uint64_t begin_idx;
+        if (request_params.tail > 0u) {
+          const uint64_t idx_by_tail =
+              request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
+          begin_idx = std::max(request_params.i, idx_by_tail);
+        } else {
+          begin_idx = request_params.i;
+        }
+        if (request_params.no_wait && begin_idx >= stream_size) {
+          // Return "200 OK" if there is nothing to return now and we were asked to not wait for new entries.
+          r("", HTTPResponseCode.OK);
+          return;
+        }
+
+        const std::string subscription_id = data.GenerateRandomHTTPSubscriptionID();
+
+        auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
+            subscription_id, scoped_data, std::move(r), std::move(request_params));
+
+        current::sherlock::SubscriberScope http_chunked_subscriber_scope =
+            Subscribe(*http_chunked_subscriber,
+                      begin_idx,
+                      [this, &data, subscription_id]() {
+                        // NOTE: Need to figure out when and where to lock.
+                        // Chat w/ Max about the logic to clean up completed listeners.
+                        // std::lock_guard<std::mutex> lock(inner_data.http_subscriptions_mutex);
+                        data.http_subscriptions[subscription_id].second = nullptr;
+                      });
+
+        {
+          std::lock_guard<std::mutex> lock(data.http_subscriptions_mutex);
+          // TODO(dkorolev): This condition is to be rewritten correctly.
+          if (!data.http_subscriptions.count(subscription_id)) {
+            data.http_subscriptions[subscription_id] =
+                std::make_pair(std::move(http_chunked_subscriber_scope), std::move(http_chunked_subscriber));
+          }
+        }
       }
     } catch (const current::sync::InDestructingModeException&) {
       r("", HTTPResponseCode.ServiceUnavailable);
