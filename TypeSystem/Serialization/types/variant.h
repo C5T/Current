@@ -108,7 +108,8 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
         fields_as_array.SetArray();
         fields_as_array.PushBack(serialized_object.Move(), allocator_);
 
-        destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+        destination_.AddMember(
+            rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
       }
     }
 

@@ -861,6 +861,15 @@ TEST(Serialization, NamedVariantAsJSON) {
   }
 }
 
+TEST(Serialization, PairsInNewtonsoftJSONFSharpFormat) {
+  auto a = std::make_pair(1, 2);
+  EXPECT_EQ("[1,2]", JSON(a));
+  EXPECT_EQ("{\"Item1\":1,\"Item2\":2}", JSON<JSONFormat::NewtonsoftFSharp>(a));
+  EXPECT_EQ(JSON(a), JSON(ParseJSON<decltype(a)>(JSON(a))));
+  EXPECT_EQ(JSON(a),
+            JSON(ParseJSON<decltype(a), JSONFormat::NewtonsoftFSharp>(JSON<JSONFormat::NewtonsoftFSharp>(a))));
+};
+
 TEST(Serialization, OptionalNullOmittedInMinimalisticFormat) {
   using namespace serialization_test;
 
