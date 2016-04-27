@@ -234,9 +234,6 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
       serving_ = false;  // Start in 'non-serving' mode when `since` is set.
       from_timestamp_ = params_.since;
     }
-    if (params_.tail > 0u || params_.i > 0u) {
-      serving_ = false;  // Start in 'non-serving' mode when `tail` or `i` is set.
-    }
     if (params_.n > 0u) {
       n_ = params_.n;
     }

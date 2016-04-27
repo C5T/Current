@@ -215,6 +215,7 @@ class StreamImpl {
     current::WaitableTerminateSignal terminate_signal_;
     ScopeOwnedBySomeoneElse<stream_data_t> data_;
     F& subscriber_;
+    const uint64_t begin_idx_;
     std::atomic_bool thread_done_;
     std::thread thread_;
 
@@ -227,6 +228,7 @@ class StreamImpl {
    public:
     SubscriberThreadInstance(ScopeOwned<stream_data_t>& data,
                              F& subscriber,
+                             uint64_t begin_idx,
                              std::function<void()> done_callback)
         : this_is_valid_(false),
           done_callback_(done_callback),
@@ -238,6 +240,7 @@ class StreamImpl {
                   terminate_signal_.SignalExternalTermination();
                 }),
           subscriber_(subscriber),
+          begin_idx_(begin_idx),
           thread_done_(false),
           thread_(&SubscriberThreadInstance::Thread, this) {
       // Must guard against the constructor of `ScopeOwnedBySomeoneElse<stream_data_t> data_` throwing.
@@ -266,7 +269,7 @@ class StreamImpl {
       // Keep the subscriber thread exception-safe. By construction, it's guaranteed to live
       // strictly within the scope of existence of `stream_data_t` contained in `data_`.
       stream_data_t& bare_data = data_.ObjectAccessorDespitePossiblyDestructing();
-      ThreadImpl(bare_data);
+      ThreadImpl(bare_data, begin_idx_);
       thread_done_ = true;
       std::lock_guard<std::mutex> lock(bare_data.http_subscriptions_mutex);
       if (done_callback_) {
@@ -274,8 +277,8 @@ class StreamImpl {
       }
     }
 
-    void ThreadImpl(stream_data_t& bare_data) {
-      size_t index = 0;
+    void ThreadImpl(stream_data_t& bare_data, uint64_t begin_idx) {
+      size_t index = begin_idx;
       size_t size = 0;
       bool terminate_sent = false;
       while (true) {
@@ -304,8 +307,8 @@ class StreamImpl {
                     bare_data.persistence.LastPublishedIndexAndTimestamp()) == ss::EntryResponse::Done) {
               return;
             }
-            index = size;
           }
+          index = size;
         } else {
           std::unique_lock<std::mutex> lock(bare_data.publish_mutex);
           current::WaitableTerminateSignalBulkNotifier::Scope scope(bare_data.notifier, terminate_signal_);
@@ -328,16 +331,21 @@ class StreamImpl {
    public:
     using subscriber_thread_t = SubscriberThreadInstance<TYPE_SUBSCRIBED_TO, F>;
 
-    SubscriberScope(ScopeOwned<stream_data_t>& data, F& subscriber, std::function<void()> done_callback)
-        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, done_callback))) {}
+    SubscriberScope(ScopeOwned<stream_data_t>& data,
+                    F& subscriber,
+                    uint64_t begin_idx,
+                    std::function<void()> done_callback)
+        : base_t(std::move(std::make_unique<subscriber_thread_t>(data, subscriber, begin_idx, done_callback))) {
+    }
   };
 
   template <typename TYPE_SUBSCRIBED_TO = entry_t, typename F>
   SubscriberScope<F, TYPE_SUBSCRIBED_TO> Subscribe(F& subscriber,
+                                                   uint64_t begin_idx = 0u,
                                                    std::function<void()> done_callback = nullptr) {
     static_assert(current::ss::IsStreamSubscriber<F, TYPE_SUBSCRIBED_TO>::value, "");
     try {
-      return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, done_callback);
+      return SubscriberScope<F, TYPE_SUBSCRIBED_TO>(own_data_, subscriber, begin_idx, done_callback);
     } catch (const current::sync::InDestructingModeException&) {
       CURRENT_THROW(StreamInGracefulShutdownException());
     }
@@ -415,10 +423,23 @@ class StreamImpl {
             r(four_oh_four, HTTPResponseCode.NotFound);
           }
         }
-      } else if (stream_size == 0u && request_params.no_wait) {
-        // Return "200 OK" if stream is empty and we were asked to not wait for new entries.
-        r("", HTTPResponseCode.OK);
       } else {
+        // NOTE: "Smart" start from the certain point in the stream is supported only for `n` and `tail`.
+        // TODO(dk+mz): Add iteration over timestamps in our persisters as well?
+        uint64_t begin_idx;
+        if (request_params.tail > 0u) {
+          const uint64_t idx_by_tail =
+              request_params.tail < stream_size ? (stream_size - request_params.tail) : 0u;
+          begin_idx = std::max(request_params.i, idx_by_tail);
+        } else {
+          begin_idx = request_params.i;
+        }
+        if (request_params.no_wait && begin_idx >= stream_size) {
+          // Return "200 OK" if there is nothing to return now and we were asked to not wait for new entries.
+          r("", HTTPResponseCode.OK);
+          return;
+        }
+
         const std::string subscription_id = data.GenerateRandomHTTPSubscriptionID();
 
         auto http_chunked_subscriber = std::make_unique<PubSubHTTPEndpoint<entry_t, PERSISTENCE_LAYER, J>>(
@@ -426,6 +447,7 @@ class StreamImpl {
 
         current::sherlock::SubscriberScope http_chunked_subscriber_scope =
             Subscribe(*http_chunked_subscriber,
+                      begin_idx,
                       [this, &data, subscription_id]() {
                         // NOTE: Need to figure out when and where to lock.
                         // Chat w/ Max about the logic to clean up completed listeners.
