@@ -111,6 +111,8 @@ SOFTWARE.
 //    `sizeonly`   : Instead of the actual data, return the total number of records in the stream.
 //
 //    HEAD request : Same as `sizeonly`, but return the total number of records in HTTP header, not body.
+//
+//    `terminate`  : Terminate HTTP connection for the subscription id passed as the value of this parameter.
 
 // TODO(dkorolev): Add timestamps to `sizeonly` and `HEAD` too?
 // TODO(dkorolev): Mention head updates now as we're here?
@@ -118,14 +120,106 @@ SOFTWARE.
 namespace current {
 namespace sherlock {
 
+struct ParsedHTTPRequestParams {
+  // If set, return current stream size.
+  // Controlled by `sizeonly` URL parameter or using `HEAD` method.
+  bool size_only = false;
+  // If set, termination of the HTTP connection is requested.
+  // Controlled by `terminate` URL parameter.
+  bool terminate_requested = false;
+  // Id of the subscription to terminate.
+  std::string terminate_id;
+  // If set, return the schema of stream.
+  // Controlled by `schema` URL parameter or by the first URL path argument.
+  bool schema_requested = false;
+  // Schema format requested. If empty, top-level object with all supported languages is returned.
+  std::string schema_format;
+  // If set, return entries with timestamp >= (request_timestamp - recent).
+  // Controlled by `recent` URL parameter.
+  std::chrono::microseconds recent = std::chrono::microseconds(0);
+  // If set, return entries with timestamp >= since.
+  // Controlled by `since` URL parameter.
+  std::chrono::microseconds since = std::chrono::microseconds(0);
+  // If set, the index of the first record to return. Controlled by `i` URL parameter.
+  uint64_t i = 0u;
+  // If set, the number of "last" entries to output. Controlled by `tail` URL parameter.
+  uint64_t tail = 0u;
+  // If set, the total number of records to return. Controlled by `n` URL parameter.
+  uint64_t n = 0u;
+  // If set, the maximum difference between the first and the last record's timestamp.
+  // Controlled by `period` URL parameter.
+  std::chrono::microseconds period = std::chrono::microseconds(0);
+  // If set, stop serving when current entry is the last entry. Controlled by `nowait` URL parameter.
+  bool no_wait = false;
+  // If set, stop serving after the response size reached/exceeded the value.
+  // Controlled by `stop_after_bytes` URL parameter.
+  uint64_t stop_after_bytes = 0u;
+};
+
+inline ParsedHTTPRequestParams ParsePubSubHTTPRequest(const Request& r) {
+  ParsedHTTPRequestParams result;
+
+  if (r.url.query.has("terminate")) {
+    result.terminate_requested = true;
+    result.terminate_id = r.url.query["terminate"];
+  }
+  if (r.url.query.has("sizeonly") || r.method == "HEAD") {
+    result.size_only = true;
+  }
+
+  if (r.url.query.has("schema")) {
+    result.schema_requested = true;
+    result.schema_format = r.url.query["schema"];
+  } else if (r.url_path_args.size() == 1) {
+    const std::string schema_prefix = "schema.";
+    result.schema_requested = true;
+    if (r.url_path_args[0].substr(0, schema_prefix.length()) == schema_prefix) {
+      result.schema_format = r.url_path_args[0].substr(schema_prefix.length());
+    } else {
+      result.schema_format = r.url_path_args[0];
+    }
+  }
+
+  if (r.url.query.has("recent")) {
+    result.recent = std::chrono::microseconds(current::FromString<uint64_t>(r.url.query["recent"]));
+  }
+  if (r.url.query.has("since")) {
+    result.since = std::chrono::microseconds(current::FromString<uint64_t>(r.url.query["since"]));
+  }
+  if (r.url.query.has("tail")) {
+    result.tail = current::FromString<uint64_t>(r.url.query["tail"]);
+  }
+  if (r.url.query.has("i")) {
+    result.i = current::FromString<uint64_t>(r.url.query["i"]);
+  }
+  if (r.url.query.has("n")) {
+    result.n = current::FromString<uint64_t>(r.url.query["n"]);
+  }
+  if (r.url.query.has("period")) {
+    result.period = std::chrono::microseconds(current::FromString<uint64_t>(r.url.query["period"]));
+  }
+  if (r.url.query.has("stop_after_bytes")) {
+    result.stop_after_bytes = current::FromString<uint64_t>(r.url.query["stop_after_bytes"]);
+  }
+  if (r.url.query.has("nowait")) {
+    result.no_wait = true;
+  }
+
+  return result;
+}
+
 template <typename E, template <typename> class PERSISTENCE_LAYER, JSONFormat J>
 class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
  public:
   using stream_data_t = StreamData<E, PERSISTENCE_LAYER>;
 
-  PubSubHTTPEndpointImpl(const std::string& subscription_id, ScopeOwned<stream_data_t>& data, Request r)
+  PubSubHTTPEndpointImpl(const std::string& subscription_id,
+                         ScopeOwned<stream_data_t>& data,
+                         Request r,
+                         ParsedHTTPRequestParams params)
       : data_(data, [this]() { time_to_terminate_ = true; }),
         http_request_(std::move(r)),
+        params_(std::move(params)),
         http_response_(http_request_.SendChunkedResponse(
             HTTPResponseCode.OK,
             current::net::constants::kDefaultJSONContentType,
@@ -133,33 +227,18 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
                 {kSherlockHeaderCurrentSubscriptionId, subscription_id},
                 {kSherlockHeaderCurrentStreamSize, current::ToString(data_->persistence.Size())},
             }))) {
-    if (http_request_.url.query.has("recent")) {
+    if (params_.recent.count() > 0) {
       serving_ = false;  // Start in 'non-serving' mode when `recent` is set.
-      from_timestamp_ = r.timestamp - std::chrono::microseconds(
-                                          current::FromString<uint64_t>(http_request_.url.query["recent"]));
-    } else if (http_request_.url.query.has("since")) {
+      from_timestamp_ = r.timestamp - params_.recent;
+    } else if (params_.since.count() > 0) {
       serving_ = false;  // Start in 'non-serving' mode when `since` is set.
-      from_timestamp_ =
-          std::chrono::microseconds(current::FromString<uint64_t>(http_request_.url.query["since"]));
-    } else if (http_request_.url.query.has("tail")) {
-      serving_ = false;  // Start in 'non-serving' mode when `tail` is set.
-      current::FromString(http_request_.url.query["tail"], tail_);
+      from_timestamp_ = params_.since;
     }
-    if (http_request_.url.query.has("i")) {
-      serving_ = false;  // Start in 'non-serving' mode when `i` is set.
-      current::FromString(http_request_.url.query["i"], i_);
+    if (params_.tail > 0u || params_.i > 0u) {
+      serving_ = false;  // Start in 'non-serving' mode when `tail` or `i` is set.
     }
-    if (http_request_.url.query.has("n")) {
-      current::FromString(http_request_.url.query["n"], n_);
-    }
-    if (http_request_.url.query.has("period")) {
-      period_ = std::chrono::microseconds(current::FromString<uint64_t>(http_request_.url.query["period"]));
-    }
-    if (http_request_.url.query.has("stop_after_bytes")) {
-      current::FromString(http_request_.url.query["stop_after_bytes"], stop_after_bytes_);
-    }
-    if (http_request_.url.query.has("nowait")) {
-      no_wait_ = true;
+    if (params_.n > 0u) {
+      n_ = params_.n;
     }
   }
 
@@ -174,20 +253,20 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
     }
     // TODO(dkorolev): Should we always extract the timestamp and throw an exception if there is a mismatch?
     if (!serving_) {
-      if (current.index >= i_ &&                                               // Respect `i`.
-          (tail_ == 0u || (last.index - current.index) < tail_) &&             // Respect `tail`.
+      if (current.index >= params_.i &&                                           // Respect `i`.
+          (params_.tail == 0u || (last.index - current.index) < params_.tail) &&  // Respect `tail`.
           (from_timestamp_.count() == 0u || current.us >= from_timestamp_)) {  // Respect `since` and `recent`.
         serving_ = true;
       }
       // Reached the end, didn't started serving and should not wait.
-      if (!serving_ && current.index == last.index && no_wait_) {
+      if (!serving_ && current.index == last.index && params_.no_wait) {
         return ss::EntryResponse::Done;
       }
     }
     if (serving_) {
       // If `period` is set, set the maximum possible timestamp.
-      if (period_.count() && to_timestamp_.count() == 0u) {
-        to_timestamp_ = current.us + period_;
+      if (params_.period.count() && to_timestamp_.count() == 0u) {
+        to_timestamp_ = current.us + params_.period;
       }
       // Stop serving if the limit on timestamp is exceeded.
       if (to_timestamp_.count() && current.us > to_timestamp_) {
@@ -201,7 +280,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         return ss::EntryResponse::Done;                  // LCOV_EXCL_LINE
       }
       // Respect `stop_after_bytes`.
-      if (stop_after_bytes_ && current_response_size_ >= stop_after_bytes_) {
+      if (params_.stop_after_bytes && current_response_size_ >= params_.stop_after_bytes) {
         return ss::EntryResponse::Done;
       }
       // Respect `n`.
@@ -212,7 +291,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
         }
       }
       // Respect `no_wait`.
-      if (current.index == last.index && no_wait_) {
+      if (current.index == last.index && params_.no_wait) {
         return ss::EntryResponse::Done;
       }
     }
@@ -222,7 +301,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   // TODO(dkorolev): This is a long shot, but looks right: For type-filtered HTTP subscriptions,
   // whether we should terminate or no depends on `nowait`.
   ss::EntryResponse EntryResponseIfNoMorePassTypeFilter() const {
-    return (time_to_terminate_ || no_wait_) ? ss::EntryResponse::Done : ss::EntryResponse::More;
+    return (time_to_terminate_ || params_.no_wait) ? ss::EntryResponse::Done : ss::EntryResponse::More;
   }
 
   // LCOV_EXCL_START
@@ -239,6 +318,7 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
 
   // `http_request_`:  need to keep the passed in request in scope for the lifetime of the chunked response.
   Request http_request_;
+  const ParsedHTTPRequestParams params_;
   // `http_response_`: the instance of the chunked response object to use.
   current::net::HTTPServerConnection::ChunkedResponseSender http_response_;
   // Current response size in bytes.
@@ -248,20 +328,10 @@ class PubSubHTTPEndpointImpl : public AbstractSubscriberObject {
   bool serving_ = true;
   // If set, the timestamp from which the output should start.
   std::chrono::microseconds from_timestamp_ = std::chrono::microseconds(0);
-  // If set, the number of "last" entries to output.
-  size_t tail_ = 0u;
-  // If set, the index of the first record to return.
-  uint64_t i_ = 0u;
-  // If set, the total number of records to return.
-  size_t n_ = 0u;
-  // If set, the maximum difference between the first and the last record's timestamp.
-  std::chrono::microseconds period_ = std::chrono::microseconds(0);
   // Calculated if `period_` is set.
   std::chrono::microseconds to_timestamp_ = std::chrono::microseconds(0);
-  // If set, stop serving after the response size reached/exceeded the value.
-  size_t stop_after_bytes_ = 0u;
-  // If set, stop serving when current entry is the last entry.
-  bool no_wait_ = false;
+  // Remaining number of records to return. Initialized if `n` URL parameter is set.
+  uint64_t n_ = 0u;
 
   PubSubHTTPEndpointImpl() = delete;
   PubSubHTTPEndpointImpl(const PubSubHTTPEndpointImpl&) = delete;
