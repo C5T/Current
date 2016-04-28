@@ -381,13 +381,16 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant& v) const {
-      std::vector<std::string> cases;
-      for (TypeID c : v.cases) {
-        cases.push_back(TypeName(c));
-      }
       os_ << "\ntype " << v.name << " =\n";
-      for (const auto& s : cases) {
-        os_ << "| " << s << " of " << s << '\n';
+      for (TypeID c : v.cases) {
+        const auto name = TypeName(c);
+        os_ << "| " << name;
+        const auto& t = types_.at(c);
+        assert(Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t));  // Must be one of.
+        if (Exists<ReflectedType_Variant>(t) || !Value<ReflectedType_Struct>(t).fields.empty()) {
+          os_ << " of " << name;
+        }
+        os_ << '\n';
       }
     }
 
@@ -404,13 +407,17 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     }
 
     void operator()(const ReflectedType_Struct& s) const {
-      std::ostringstream temporary_os;
-      RecursivelyListStructFields(temporary_os, s);
-      const std::string fields = temporary_os.str();
-      if (!fields.empty()) {
-        os_ << "\ntype " << s.name << " = {\n" << fields << "}\n";
-      } else {
-        os_ << "\ntype " << s.name << " = class end\n";
+      if (!s.fields.empty() || s.super_id != TypeID::CurrentStruct) {
+        // Only dump the type if it's not empty. Empty structs are used in DU-s w/o their contents.
+        // Unless it's a derived struct, to stay on a safe side.
+        if (!s.fields.empty()) {
+          std::ostringstream temporary_os;
+          RecursivelyListStructFields(temporary_os, s);
+          const std::string fields = temporary_os.str();
+          os_ << "\ntype " << s.name << " = {\n" << fields << "}\n";
+        } else {
+          os_ << "\ntype " << s.name << " = class end\n";
+        }
       }
     }
   };  // struct LanguageSyntax<Language::FSharp>::FullSchemaPrinter

@@ -32,8 +32,6 @@ type B = {
   b : int32
 }
 
-type Empty = class end
-
 type X = {
   x : int32
 }
@@ -58,7 +56,7 @@ type Variant_B_A_B_C_Empty_E =
 | A of A
 | B of B
 | C of C
-| Empty of Empty
+| Empty
 
 type FullTest = {
   primitives : Primitives
