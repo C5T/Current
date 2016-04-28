@@ -93,13 +93,13 @@ struct TypeListNamesAsCSV<TypeListImpl<T>> {
 template <typename T, typename... TS>
 struct TypeListNamesAsCSV<TypeListImpl<T, TS...>> {
   static std::string Value() {
-    return CurrentTypeName<T>() + ',' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value();
+    return CurrentTypeName<T>() + '_' + TypeListNamesAsCSV<TypeListImpl<TS...>>::Value();
   }
 };
 
 template <typename T>
 struct VariantFullNamePrinter {
-  static std::string Value() { return "Variant<" + TypeListNamesAsCSV<T>::Value() + '>'; }
+  static std::string Value() { return "Variant_B_" + TypeListNamesAsCSV<T>::Value() + "_E"; }
 };
 
 }  // namespace current::reflection::impl

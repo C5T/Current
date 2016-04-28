@@ -766,7 +766,7 @@ TEST(Serialization, VariantAsJSON) {
     WeHaveToGoDeeper outer_variant(inner_variant);
     const std::string json = JSON(outer_variant);
     EXPECT_EQ(
-        "{\"Variant<WithVectorOfPairs,WithOptional>\":"
+        "{\"Variant_B_WithVectorOfPairs_WithOptional_E\":"
         "{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
         "\"T9227628135528596528\"}",
         json);

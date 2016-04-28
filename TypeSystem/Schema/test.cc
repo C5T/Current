@@ -158,13 +158,14 @@ TEST(Schema, CurrentTypeName) {
   EXPECT_EQ("X", CurrentTypeName<X>());
   EXPECT_EQ("Y", CurrentTypeName<Y>());
 
-  EXPECT_EQ("Variant<X>", CurrentTypeName<Variant<X>>());
-  EXPECT_EQ("Variant<X,Y>", (CurrentTypeName<Variant<X, Y>>()));
+  EXPECT_EQ("Variant_B_X_E", CurrentTypeName<Variant<X>>());
+  EXPECT_EQ("Variant_B_X_Y_E", (CurrentTypeName<Variant<X, Y>>()));
 
   EXPECT_EQ("NamedVariantX", CurrentTypeName<NamedVariantX>());
   EXPECT_EQ("NamedVariantXY", CurrentTypeName<NamedVariantXY>());
 
-  EXPECT_EQ("Variant<Variant<X,Y>,Variant<Y,X>>", (CurrentTypeName<Variant<Variant<X, Y>, Variant<Y, X>>>()));
+  EXPECT_EQ("Variant_B_Variant_B_X_Y_E_Variant_B_Y_X_E_E",
+            (CurrentTypeName<Variant<Variant<X, Y>, Variant<Y, X>>>()));
 };
 
 // FIXME -- DIMA.
