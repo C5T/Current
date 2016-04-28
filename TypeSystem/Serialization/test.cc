@@ -126,23 +126,9 @@ CURRENT_STRUCT(Z) { CURRENT_FIELD(z, int32_t, 3); };
 
 CURRENT_STRUCT(T) { CURRENT_FIELD(t, int32_t, 4); };
 
-using A_VariantTypes = TypeListImpl<X, Y>;
-struct A_VariantName {
-  static const char* VariantNameImpl() { return "A"; }
-};
-using A = NamedVariant<A_VariantName, A_VariantTypes>;
-
-using B_VariantTypes = TypeListImpl<Z, T>;
-struct B_VariantName {
-  static const char* VariantNameImpl() { return "B"; }
-};
-using B = NamedVariant<B_VariantName, B_VariantTypes>;
-
-using E_VariantTypes = TypeListImpl<A, B>;
-struct E_VariantName {
-  static const char* VariantNameImpl() { return "E"; }
-};
-using E = NamedVariant<E_VariantName, E_VariantTypes>;
+CURRENT_VARIANT(A, X, Y);
+CURRENT_VARIANT(B, Z, T);
+CURRENT_VARIANT(Q, A, B);
 
 }  // namespace serialization_test::named_variant
 }  // namespace serialization_test
@@ -780,7 +766,8 @@ TEST(Serialization, VariantAsJSON) {
     WeHaveToGoDeeper outer_variant(inner_variant);
     const std::string json = JSON(outer_variant);
     EXPECT_EQ(
-        "{\"Variant\":{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
+        "{\"Variant<WithVectorOfPairs,WithOptional>\":"
+        "{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
         "\"T9227628135528596528\"}",
         json);
     const WeHaveToGoDeeper parsed_object = ParseJSON<WeHaveToGoDeeper>(json);
@@ -794,7 +781,7 @@ TEST(Serialization, NamedVariantAsJSON) {
   using namespace serialization_test::named_variant;
 
   {
-    E e;
+    Q e;
     A a;
     X x;
     a = x;
@@ -802,7 +789,7 @@ TEST(Serialization, NamedVariantAsJSON) {
 
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(X), "");
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(A), "");
-    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(E), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(Q), "");
 
     static_assert(IS_CURRENT_STRUCT(X), "");
     static_assert(!IS_VARIANT(X), "");
@@ -810,13 +797,13 @@ TEST(Serialization, NamedVariantAsJSON) {
     static_assert(!IS_CURRENT_STRUCT(A), "");
     static_assert(IS_VARIANT(A), "");
 
-    static_assert(!IS_CURRENT_STRUCT(E), "");
-    static_assert(IS_VARIANT(E), "");
+    static_assert(!IS_CURRENT_STRUCT(Q), "");
+    static_assert(IS_VARIANT(Q), "");
 
     const auto json = JSON(e);
     EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880155644462248\"}", json);
 
-    const auto result = ParseJSON<E>(json);
+    const auto result = ParseJSON<Q>(json);
     ASSERT_TRUE(Exists<A>(result));
     EXPECT_FALSE(Exists<B>(result));
     ASSERT_TRUE(Exists<X>(Value<A>(result)));
@@ -825,7 +812,7 @@ TEST(Serialization, NamedVariantAsJSON) {
   }
 
   {
-    E e;
+    Q e;
     A a;
     Y y;
     a = y;
@@ -834,7 +821,7 @@ TEST(Serialization, NamedVariantAsJSON) {
     const auto json = JSON<JSONFormat::Minimalistic>(e);
     EXPECT_EQ("{\"A\":{\"Y\":{\"y\":2}}}", json);
 
-    const auto result = ParseJSON<E, JSONFormat::Minimalistic>(json);
+    const auto result = ParseJSON<Q, JSONFormat::Minimalistic>(json);
     ASSERT_TRUE(Exists<A>(result));
     EXPECT_FALSE(Exists<B>(result));
     ASSERT_TRUE(Exists<Y>(Value<A>(result)));
@@ -843,7 +830,7 @@ TEST(Serialization, NamedVariantAsJSON) {
   }
 
   {
-    E e;
+    Q e;
     B b;
     Z z;
     b = z;
@@ -852,7 +839,7 @@ TEST(Serialization, NamedVariantAsJSON) {
     const auto json = JSON<JSONFormat::NewtonsoftFSharp>(e);
     EXPECT_EQ("{\"Case\":\"B\",\"Fields\":[{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}]}", json);
 
-    const auto result = ParseJSON<E, JSONFormat::NewtonsoftFSharp>(json);
+    const auto result = ParseJSON<Q, JSONFormat::NewtonsoftFSharp>(json);
     ASSERT_FALSE(Exists<A>(result));
     EXPECT_TRUE(Exists<B>(result));
     ASSERT_TRUE(Exists<Z>(Value<B>(result)));

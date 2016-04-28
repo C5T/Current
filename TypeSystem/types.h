@@ -47,17 +47,9 @@ struct CurrentStruct : CurrentSuper {};
 // The superclass for `Variant` type.
 struct CurrentVariant : CurrentSuper {};
 
-template<typename NAME>
+template <typename NAME>
 struct CurrentVariantImpl : CurrentVariant {
-  static const char* VariantName() {
-    return NAME::VariantNameImpl();
-  }
-};
-
-struct CurrentVariantDefaultName final {
-  static const char* VariantNameImpl() {
-    return "Variant";
-  }
+  static std::string VariantName() { return NAME::VariantNameImpl(); }
 };
 
 #define IS_CURRENT_STRUCT(T) (std::is_base_of<::current::CurrentStruct, ::current::decay<T>>::value)

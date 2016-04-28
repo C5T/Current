@@ -40,22 +40,42 @@ DEFINE_bool(write_reflection_golden_files, false, "Set to true to [over]write th
 
 namespace schema_test {
 
-CURRENT_ENUM(Enum, uint32_t){};
+// clang-format off
 
-CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
-CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
+CURRENT_ENUM(Enum, uint32_t) {};
+
+CURRENT_STRUCT(X) {
+  CURRENT_FIELD(i, int32_t);
+};
+
+CURRENT_STRUCT(Y) {
+  CURRENT_FIELD(v, std::vector<X>);
+};
+
 CURRENT_STRUCT(Z, Y) {
   CURRENT_FIELD(d, double);
   CURRENT_FIELD(v2, std::vector<std::vector<Enum>>);
 };
 
-CURRENT_STRUCT(A) { CURRENT_FIELD(i, uint32_t); };
+CURRENT_STRUCT(A) {
+  CURRENT_FIELD(i, uint32_t);
+};
+
 CURRENT_STRUCT(B) {
   CURRENT_FIELD(x, X);
   CURRENT_FIELD(a, A);
 };
-CURRENT_STRUCT(C) { CURRENT_FIELD(b, Optional<B>); };
-}
+
+CURRENT_STRUCT(C) {
+  CURRENT_FIELD(b, Optional<B>);
+};
+
+CURRENT_VARIANT(NamedVariantX, X);  // using NamedVariantX = Variant<X>;
+CURRENT_VARIANT(NamedVariantXY, X, Y);  // using NamedVariantXY = Variant<X, Y>;
+
+// clang-format on
+
+}  // namespace schema_test
 
 TEST(Schema, StructSchema) {
   using namespace schema_test;
@@ -128,6 +148,51 @@ TEST(Schema, StructSchema) {
         "  Optional<B> b;\n"
         "};\n",
         schema.Describe<Language::CPP>(false));
+  }
+}
+
+TEST(Schema, CurrentTypeName) {
+  using namespace schema_test;
+  using current::reflection::CurrentTypeName;
+
+  EXPECT_EQ("X", CurrentTypeName<X>());
+  EXPECT_EQ("Y", CurrentTypeName<Y>());
+
+  EXPECT_EQ("Variant<X>", CurrentTypeName<Variant<X>>());
+  EXPECT_EQ("Variant<X,Y>", (CurrentTypeName<Variant<X, Y>>()));
+
+  EXPECT_EQ("NamedVariantX", CurrentTypeName<NamedVariantX>());
+  EXPECT_EQ("NamedVariantXY", CurrentTypeName<NamedVariantXY>());
+
+  EXPECT_EQ("Variant<Variant<X,Y>,Variant<Y,X>>", (CurrentTypeName<Variant<Variant<X, Y>, Variant<Y, X>>>()));
+};
+
+// FIXME -- DIMA.
+TEST(Schema, DISABLED_VariantSchema) {
+  using namespace schema_test;
+  using current::reflection::SchemaInfo;
+  using current::reflection::StructSchema;
+  using current::reflection::Language;
+
+  StructSchema struct_schema;
+
+  struct_schema.AddType<Variant<X, Y>>();
+
+  {
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
+    EXPECT_EQ(
+        "struct X {\n"
+        "  int32_t i;\n"
+        "};\n"
+        "struct Y {\n"
+        "  std::vector<X> v;\n"
+        "};\n"
+        "enum class Enum : uint32_t {};\n"
+        "struct Z : Y {\n"
+        "  double d;\n"
+        "  std::vector<std::vector<Enum>> v2;\n"
+        "};\n",
+        schema.Describe<Language::FSharp>(false));
   }
 }
 

@@ -72,8 +72,10 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
           serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
 
       destination_.SetObject();
-      destination_.AddMember(
-          rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(), serialized_object, allocator_);
+
+      destination_.AddMember(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
+                             serialized_object,
+                             allocator_);
 
       if (J == JSONFormat::Current) {
         destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);

@@ -307,25 +307,36 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 };
 
 // `Variant<...>` can accept either a list of types, or a `TypeList<...>`.
-template <typename NAME, typename T, typename... TS>
+template <template <typename> class NAME, typename T, typename... TS>
 struct VariantSelector {
-  using type = VariantImpl<NAME, TypeListImpl<T, TS...>>;
+  using typelist_t = TypeListImpl<T, TS...>;
+  using type = VariantImpl<NAME<typelist_t>, typelist_t>;
 };
 
-template <typename NAME, typename T, typename... TS>
+template <template <typename> class NAME, typename T, typename... TS>
 struct VariantSelector<NAME, TypeListImpl<T, TS...>> {
-  using type = VariantImpl<NAME, TypeListImpl<T, TS...>>;
+  using typelist_t = TypeListImpl<T, TS...>;
+  using type = VariantImpl<NAME<typelist_t>, typelist_t>;
 };
 
 template <typename... TS>
-using Variant = typename VariantSelector<CurrentVariantDefaultName, TS...>::type;
+using Variant = typename VariantSelector<reflection::CurrentVariantDefaultName, TS...>::type;
 
-template <typename NAME, typename... TS>
-using NamedVariant = typename VariantSelector<NAME, TS...>::type;
+// `NamedVariant` is only used from the `CURRENT_VARIANT` macro, so only support `TS...`, not `TypeList<TS...>`.
+template <class NAME, typename... TS>
+using NamedVariant = VariantImpl<NAME, TypeListImpl<TS...>>;
 
 }  // namespace current
 
 using current::Variant;
-using current::NamedVariant;
+
+#define CURRENT_VARIANT(name, ...)                         \
+  template <int>                                           \
+  struct CURRENT_VARIANT_MACRO;                            \
+  template <>                                              \
+  struct CURRENT_VARIANT_MACRO<__COUNTER__> {              \
+    static const char* VariantNameImpl() { return #name; } \
+  };                                                       \
+  using name = ::current::NamedVariant<CURRENT_VARIANT_MACRO<__COUNTER__ - 1>, __VA_ARGS__>;
 
 #endif  // CURRENT_TYPE_SYSTEM_VARIANT_H

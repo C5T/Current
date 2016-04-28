@@ -635,15 +635,21 @@ struct LanguageSyntaxImpl<Language::JSON> final {
 
     ~FullSchemaPrinter() { ostream_to_write_schema_to_ << JSON<JSONFormat::Minimalistic>(schema_object_); }
 
-    // `operator()`-s of this block print complete declarations of F# types.
-    // The types that require complete declarations in F# are records and discriminated unions.
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum&) const {}
     void operator()(const ReflectedType_Vector&) const {}
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
+
     void operator()(const ReflectedType_Variant&) const {
+      /*
+      for (auto& c : v.cases) {
+        Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
+        Call
+      DIMA
+      */
+
       // No need to define `Variant` types explicitly in JSON format.
     }
 
