@@ -294,7 +294,6 @@ TEST(Schema, SmokeTestFullStruct) {
 
   // Don't just `EXPECT_EQ(golden, ReadFileAsString("golden/...))`, but compare re-generated JSON,
   // as the JSON file in the golden directory is pretty-printed.
-
   const auto restored_short_schema = ParseJSON<current::reflection::JSONSchema, JSONFormat::Minimalistic>(
       FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
   EXPECT_EQ(schema.Describe<Language::JSON>(), JSON<JSONFormat::Minimalistic>(restored_short_schema));
