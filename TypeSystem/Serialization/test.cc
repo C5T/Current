@@ -712,10 +712,10 @@ TEST(Serialization, VariantAsJSON) {
     static_assert(IS_CURRENT_STRUCT(Empty), "");
     static_assert(IS_CURRENT_STRUCT(AlternativeEmpty), "");
 
-    static_assert(!IS_NONEMPTY_CURRENT_STRUCT(Empty), "");
-    static_assert(!IS_NONEMPTY_CURRENT_STRUCT(VariantType), "");
+    static_assert(IS_EMPTY_CURRENT_STRUCT(Empty), "");
 
-    static_assert(IS_NONEMPTY_CURRENT_STRUCT(Serializable), "");
+    static_assert(!IS_EMPTY_CURRENT_STRUCT(VariantType), "");
+    static_assert(!IS_EMPTY_CURRENT_STRUCT(Serializable), "");
 
     const auto empty1 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Empty\"}");
     EXPECT_TRUE(Exists<Empty>(empty1));

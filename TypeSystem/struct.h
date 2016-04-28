@@ -390,13 +390,13 @@ struct FieldCounter {
 };
 
 template <typename T, bool IS_STRUCT>
-struct IsNonemptyCurrentStruct {
+struct IsEmptyCurrentStruct {
   constexpr static bool value = false;
 };
 
 template <typename T>
-struct IsNonemptyCurrentStruct<T, true> {
-  constexpr static bool value = (FieldCounter<T>::value > 0);
+struct IsEmptyCurrentStruct<T, true> {
+  constexpr static bool value = (FieldCounter<T>::value == 0);
 };
 
 template <typename T, typename VISITOR_TYPE>
