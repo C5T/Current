@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "config.h"
+#include "nginx.h"
 
 #include "../../TypeSystem/Serialization/json.h"
 
@@ -38,11 +38,12 @@ TEST(Nginx, FullConfig) {
   using namespace current::utils::nginx::config;
 
   FullConfig config;
-  config.AddSimpleDirective("error_log", "/var/log/nginx/error.log");
+  config.AddSimpleDirective("worker_processes", "1");
   config.AddBlockDirective("events", "").AddSimpleDirective("worker_connections", "1024");
-  config.http.AddSimpleDirective("log_format", "main '$remote_addr [$time_local] \"$request\"'");
-  config.http.AddSimpleDirective("access_log", "/var/log/nginx/access.log main");
-  auto& server = config.http.AddServer(80);
+  config.http.AddSimpleDirective("default_type", "application/octet-stream");
+  config.http.AddSimpleDirective("keepalive_timeout", "100");
+  auto& server = config.http.AddServer(8910);
+  EXPECT_THROW(config.http.AddServer(8910), current::utils::nginx::PortAlreadyUsedException);
   server.AddSimpleDirective("server_name", "myserver");
   server.AddDefaultLocation("/").AddSimpleDirective("proxy_pass", "http://127.0.0.1:8888/");
   auto& complex_location = server.AddLocation("~ /a|/b");
@@ -57,3 +58,19 @@ TEST(Nginx, FullConfig) {
 
   EXPECT_EQ(FileSystem::ReadFileAsString(golden_filename), nginx_config);
 }
+
+// Disable `NginxManager` tests if the full test is built.
+#ifndef CURRENT_MOCK_TIME
+
+TEST(Nginx, NginxManagerCheckGoldenConfig) {
+  using current::FileSystem;
+  using current::utils::nginx::NginxManager;
+
+  NginxManager nginx;
+  const std::string config_relative_path =
+      FileSystem::JoinPath(FileSystem::JoinPath("..", "golden"), "full.conf");
+  const std::string full_config_path = FileSystem::JoinPath(CurrentBinaryFullPath(), config_relative_path);
+  EXPECT_TRUE(nginx.IsFullConfigValid(full_config_path));
+}
+
+#endif  // CURRENT_MOCK_TIME

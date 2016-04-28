@@ -22,35 +22,51 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../Bricks/exception.h"
-#include "../../Bricks/strings/util.h"
+#ifndef CURRENT_UTILS_NGINX_NGINX_H
+#define CURRENT_UTILS_NGINX_NGINX_H
 
-#ifndef CURRENT_UTILS_NGINX_EXCEPTIONS_H
-#define CURRENT_UTILS_NGINX_EXCEPTIONS_H
+#include <cstdlib>
+
+#include "config.h"
 
 namespace current {
 namespace utils {
 namespace nginx {
 
-struct NginxException : Exception {
-  using Exception::Exception;
-};
+class NginxManager {
+ public:
+  NginxManager(const std::string& nginx = "nginx") : nginx_(nginx) {
+    if (ExecNginx("-v") != 0) {
+      CURRENT_THROW(NginxNotAvailableException());
+    }
+  }
 
-struct NginxConfigException : NginxException {
-  using NginxException::NginxException;
-};
+  bool IsFullConfigValid(const std::string& config_full_path) {
+    return ExecNginx("-t -c " + config_full_path) == 0;
+  }
 
-struct PortAlreadyUsedException : NginxConfigException {
-  PortAlreadyUsedException(uint16_t port)
-      : NginxConfigException("Port " + current::ToString(port) + " was already used in this config.") {}
-};
+  bool ReloadConfig() {
+    return ExecNginx("-s reload") == 0;
+  }
 
-struct NginxNotAvailableException : NginxException {
-  using NginxException::NginxException;
+ private:
+  int ExecNginx(const std::string& args) {
+#ifdef CURRENT_WINDOWS
+    const std::string dev_null = "NUL";
+#else
+    const std::string dev_null = "/dev/null";
+#endif
+    const std::string cmd_line = nginx_ + ' ' + args + " >" + dev_null + " 2>&1";
+    int result = std::system(cmd_line.c_str());
+    return WEXITSTATUS(result);
+  }
+
+ private:
+  const std::string nginx_;
 };
 
 }  // namespace current::utils::nginx
 }  // namespace current::utils
 }  // namespace current
 
-#endif  // CURRENT_UTILS_NGINX_EXCEPTIONS_H
+#endif  // CURRENT_UTILS_NGINX_NGINX_H
