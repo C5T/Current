@@ -257,13 +257,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << "Optional<" << self_.TypeName(o.optional_type) << '>';
           }
-          void operator()(const ReflectedType_Variant& v) const {
-            std::vector<std::string> cases;
-            for (TypeID c : v.cases) {
-              cases.push_back(self_.TypeName(c));
-            }
-            oss_ << "VarianT_B_" << current::strings::Join(cases, '_') << "_E";
-          }
+          void operator()(const ReflectedType_Variant& v) const { oss_ << v.name; }
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
 
