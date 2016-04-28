@@ -210,6 +210,49 @@
     ]
   },
   {
+    "object": "A",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "X",
+    "contains": [
+      {
+        "field": "x",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Y",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "key": {
+            "name": "E",
+            "type": "uint16_t",
+            "text": "Integer (16-bit unsigned)"
+          }
+        }
+      }
+    ]
+  },
+  {
     "object": "C",
     "contains": [
       {
@@ -245,6 +288,84 @@
         }
       }
     ]
+  },
+  {
+    "object": "A",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "B",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      },
+      {
+        "field": "b",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "C",
+    "contains": [
+      {
+        "field": "e",
+        "as": {
+          "object": {
+            "kind": "Empty"
+          }
+        }
+      },
+      {
+        "field": "c",
+        "as": {
+          "algebraic": {
+            "cases": [
+              {
+                "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
+                  "kind": "X"
+                }
+              },
+              {
+                "object": {
+                  "kind": "Y"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "object": "Empty",
+    "contains": []
   },
   {
     "object": "FullTest",

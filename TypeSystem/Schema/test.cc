@@ -168,8 +168,7 @@ TEST(Schema, CurrentTypeName) {
             (CurrentTypeName<Variant<Variant<X, Y>, Variant<Y, X>>>()));
 };
 
-// FIXME -- DIMA.
-TEST(Schema, DISABLED_VariantSchema) {
+TEST(Schema, VariantAloneIsTraversed) {
   using namespace schema_test;
   using current::reflection::SchemaInfo;
   using current::reflection::StructSchema;
@@ -177,23 +176,22 @@ TEST(Schema, DISABLED_VariantSchema) {
 
   StructSchema struct_schema;
 
-  struct_schema.AddType<Variant<X, Y>>();
+  struct_schema.AddType<Variant<A, X, Y>>();
 
   {
     const SchemaInfo schema = struct_schema.GetSchemaInfo();
     EXPECT_EQ(
+        "struct A {\n"
+        "  uint32_t i;\n"
+        "};\n"
         "struct X {\n"
         "  int32_t i;\n"
         "};\n"
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n"
-        "enum class Enum : uint32_t {};\n"
-        "struct Z : Y {\n"
-        "  double d;\n"
-        "  std::vector<std::vector<Enum>> v2;\n"
-        "};\n",
-        schema.Describe<Language::FSharp>(false));
+        "using Variant_B_A_X_Y_E = Variant<A, X, Y>;\n",
+        schema.Describe<Language::CPP>(false));
   }
 }
 

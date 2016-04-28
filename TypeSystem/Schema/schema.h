@@ -357,7 +357,6 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
             oss_ << self_.TypeName(o.optional_type) << " option";
           }
           void operator()(const ReflectedType_Variant& v) const { oss_ << v.name; }
-
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
 
@@ -473,6 +472,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
             for (TypeID c : v.cases) {
               cases.push_back(self_.TypeName(c));
             }
+            // DIMA: Add `.name` here too.
             oss_ << "Algebraic " << current::strings::Join(cases, " / ");
           }
 
@@ -497,6 +497,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant&) const {
+      // DIMA: Add a dedicated section per `Variant<>`.
       // No need to define `Variant` types explicitly in Markdown format.
     }
 
@@ -651,15 +652,10 @@ struct LanguageSyntaxImpl<Language::JSON> final {
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
 
-    void operator()(const ReflectedType_Variant&) const {
-      /*
+    void operator()(const ReflectedType_Variant& v) const {
       for (auto& c : v.cases) {
-        Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
-        Call
-      DIMA
-      */
-
-      // No need to define `Variant` types explicitly in JSON format.
+        Reflector().ReflectedTypeByTypeID(c).Call(*this);
+      }
     }
 
     // When dumping fields of a derived `CURRENT_STRUCT` as a JSON, hoist base class fields to the top.
@@ -826,10 +822,10 @@ struct StructSchema final {
   StructSchema(SchemaInfo&& schema) : schema_(std::move(schema)) {}
 
   template <typename T>
-  ENABLE_IF<!IS_CURRENT_STRUCT(T)> AddType() {}
+  ENABLE_IF<!IS_CURRENT_STRUCT_OR_VARIANT(T)> AddType() {}
 
   template <typename T>
-  ENABLE_IF<IS_CURRENT_STRUCT(T)> AddType() {
+  ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(T)> AddType() {
     Reflector().ReflectType<T>().Call(TypeTraverser(schema_));
   }
 
