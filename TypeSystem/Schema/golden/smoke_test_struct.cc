@@ -34,20 +34,23 @@ struct Empty {
 struct X {
   int32_t x;
 };
+enum class E : uint16_t {};
 struct Y {
-  int32_t x;
+  E e;
 };
+using MyFreakingVariant = Variant<A, X, Y>;
 struct C {
   Empty e;
-  Variant<X, Y> c;
+  MyFreakingVariant c;
 };
+using Variant_B_A_B_C_Empty_E = Variant<A, B, C, Empty>;
 struct FullTest {
   Primitives primitives;
   std::vector<std::string> v1;
   std::vector<Primitives> v2;
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
-  Variant<A, B, C, Empty> q;
+  Variant_B_A_B_C_Empty_E q;
 };
 }  // namespace current_userspace
 

@@ -316,6 +316,34 @@ struct RESTfulSchemaHandlerGenerator {
                 underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
                 r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::Markdown>());
               })));
+    registerer(storage_handlers_map_entry_t(
+        input_field_name,
+        Route(schema_url_component,
+              ".fs",
+              URLPathArgs::CountMask::None,
+              [](Request r) {
+                // TODO:
+                // 1) REST-ify top-level schema and data responses.
+                // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
+                // 3) Cache.
+                reflection::StructSchema underlying_type_schema;
+                underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
+                r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::FSharp>());
+              })));
+    registerer(storage_handlers_map_entry_t(
+        input_field_name,
+        Route(schema_url_component,
+              ".json",
+              URLPathArgs::CountMask::None,
+              [](Request r) {
+                // TODO:
+                // 1) REST-ify top-level schema and data responses.
+                // 2) Support all languages (ref. `FillPerLanguageSchema` in `Sherlock/sherlock.h`).
+                // 3) Cache.
+                reflection::StructSchema underlying_type_schema;
+                underlying_type_schema.AddType<typename ENTRY_TYPE_WRAPPER::entry_t>();
+                r(underlying_type_schema.GetSchemaInfo().Describe<current::reflection::Language::JSON>());
+              })));
   }
 };
 

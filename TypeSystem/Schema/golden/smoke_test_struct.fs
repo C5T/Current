@@ -1,8 +1,9 @@
-// fsharpi -r Newtonsoft.Json.dll schema.fs
-
+// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`
+(*
 open Newtonsoft.Json
 let inline JSON o = JsonConvert.SerializeObject(o)
 let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)
+*)
 
 type Primitives = {
   a : byte
@@ -31,30 +32,31 @@ type B = {
   b : int32
 }
 
-type Empty = class end
-
 type X = {
   x : int32
 }
 
+type E = uint16
+
 type Y = {
-  x : int32
+  e : E
 }
 
-type DU_X_Y =
+type MyFreakingVariant =
+| A of A
 | X of X
 | Y of Y
 
 type C = {
   e : Empty
-  c : DU_X_Y
+  c : MyFreakingVariant
 }
 
-type DU_A_B_C_Empty =
+type Variant_B_A_B_C_Empty_E =
 | A of A
 | B of B
 | C of C
-| Empty of Empty
+| Empty
 
 type FullTest = {
   primitives : Primitives
@@ -62,5 +64,5 @@ type FullTest = {
   v2 : Primitives array
   p : string * Primitives
   o : Primitives option
-  q : DU_A_B_C_Empty
+  q : Variant_B_A_B_C_Empty_E
 }

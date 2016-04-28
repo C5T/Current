@@ -62,7 +62,7 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT(X) || IS_VARIANT(X)> operator()(const X& object) {
+    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
       rapidjson::Value serialized_object;
       SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
 
@@ -72,8 +72,10 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
           serialized_type_id, allocator_, Value<ReflectedTypeBase>(Reflector().ReflectType<X>()).type_id);
 
       destination_.SetObject();
-      destination_.AddMember(
-          rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(), serialized_object, allocator_);
+
+      destination_.AddMember(rapidjson::Value(CurrentTypeNameAsConstCharPtr<X>(), allocator_).Move(),
+                             serialized_object,
+                             allocator_);
 
       if (J == JSONFormat::Current) {
         destination_.AddMember(rapidjson::Value("", allocator_).Move(), serialized_type_id, allocator_);
@@ -92,7 +94,7 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
         : destination_(destination), allocator_(allocator) {}
 
     template <typename X>
-    ENABLE_IF<IS_CURRENT_STRUCT(X)> operator()(const X& object) {
+    ENABLE_IF<IS_CURRENT_STRUCT_OR_VARIANT(X)> operator()(const X& object) {
       rapidjson::Value serialized_object;
       SaveIntoJSONImpl<X, J>::Save(serialized_object, allocator_, object);
 
@@ -103,11 +105,14 @@ struct SaveIntoJSONImpl<T, J, ENABLE_IF<IS_VARIANT(T)>> {
                              rapidjson::Value(CurrentTypeName<X>(), allocator_).Move(),
                              allocator_);
 
-      rapidjson::Value fields_as_array;
-      fields_as_array.SetArray();
-      fields_as_array.PushBack(serialized_object.Move(), allocator_);
+      if (IS_VARIANT(X) || !IS_EMPTY_CURRENT_STRUCT(X)) {
+        rapidjson::Value fields_as_array;
+        fields_as_array.SetArray();
+        fields_as_array.PushBack(serialized_object.Move(), allocator_);
 
-      destination_.AddMember(rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+        destination_.AddMember(
+            rapidjson::Value("Fields", allocator_).Move(), fields_as_array.Move(), allocator_);
+      }
     }
 
    private:
@@ -348,9 +353,14 @@ struct LoadVariantFSharp {
             // LCOV_EXCL_STOP
           }
         } else {
-          // LCOV_EXCL_START
-          throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
-          // LCOV_EXCL_STOP
+          if (IS_EMPTY_CURRENT_STRUCT(X)) {
+            // Allow just `"Case"` and no `"Fields"` for empty `CURRENT_STRUCT`-s.
+            destination = std::make_unique<X>();
+          } else {
+            // LCOV_EXCL_START
+            throw JSONSchemaException("data in \"Fields\"", source, path + ".[\"Fields\"]");
+            // LCOV_EXCL_STOP
+          }
         }
       }
     };

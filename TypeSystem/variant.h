@@ -135,13 +135,16 @@ struct VariantTypeCheckedAssignment<TypeListImpl<TS...>> {
   }
 };
 
-template <typename... TYPES>
+template <typename NAME, typename TYPE_LIST>
 struct VariantImpl;
 
-template <typename... TYPES>
-struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
+template <typename NAME, typename... TYPES>
+struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   using typelist_t = TypeListImpl<TYPES...>;
   using DEPRECATED_T_(TYPELIST) = typelist_t;
+
+  using variant_impl_t = VariantImpl<NAME, typelist_t>;
+
   enum { typelist_size = TypeListSize<typelist_t>::value };
 
   std::unique_ptr<CurrentSuper> object_;
@@ -152,22 +155,22 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
 
   VariantImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
-  VariantImpl(const VariantImpl<typelist_t>& rhs) { CopyFrom(rhs); }
+  VariantImpl(const variant_impl_t& rhs) { CopyFrom(rhs); }
 
-  VariantImpl(VariantImpl<typelist_t>&& rhs) : object_(std::move(rhs.object_)) {}
+  VariantImpl(variant_impl_t&& rhs) : object_(std::move(rhs.object_)) {}
 
-  VariantImpl& operator=(const VariantImpl<typelist_t>& rhs) {
+  VariantImpl& operator=(const variant_impl_t& rhs) {
     CopyFrom(rhs);
     return *this;
   }
 
-  VariantImpl& operator=(VariantImpl<typelist_t>&& rhs) {
+  VariantImpl& operator=(variant_impl_t&& rhs) {
     object_ = std::move(rhs.object_);
     return *this;
   }
 
   template <typename X,
-            bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
+            bool ENABLE = !std::is_same<current::decay<X>, variant_impl_t>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
     VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
@@ -180,7 +183,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
   }
 
   template <typename X,
-            bool ENABLE = !std::is_same<current::decay<X>, VariantImpl<TypeListImpl<TYPES...>>>::value,
+            bool ENABLE = !std::is_same<current::decay<X>, variant_impl_t>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   VariantImpl(X&& input) {
     VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
@@ -273,8 +276,8 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
 
  private:
   struct TypeAwareClone {
-    VariantImpl<TypeListImpl<TYPES...>>& result;
-    TypeAwareClone(VariantImpl<TypeListImpl<TYPES...>>& result) : result(result) {}
+    variant_impl_t& result;
+    TypeAwareClone(variant_impl_t& result) : result(result) {}
 
     template <typename TT>
     void operator()(const TT& instance) {
@@ -283,8 +286,8 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
   };
 
   struct TypeAwareMove {
-    VariantImpl<TypeListImpl<TYPES...>>& result;
-    TypeAwareMove(VariantImpl<TypeListImpl<TYPES...>>& result) : result(result) {}
+    variant_impl_t& result;
+    TypeAwareMove(variant_impl_t& result) : result(result) {}
 
     template <typename TT>
     void operator()(TT&& instance) {
@@ -292,7 +295,7 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
     }
   };
 
-  void CopyFrom(const VariantImpl<TypeListImpl<TYPES...>>& rhs) {
+  void CopyFrom(const variant_impl_t& rhs) {
     if (rhs.object_) {
       TypeAwareClone cloner(*this);
       rhs.Call(cloner);
@@ -304,21 +307,36 @@ struct VariantImpl<TypeListImpl<TYPES...>> : CurrentVariant {
 };
 
 // `Variant<...>` can accept either a list of types, or a `TypeList<...>`.
-template <typename T, typename... TS>
+template <template <typename> class NAME, typename T, typename... TS>
 struct VariantSelector {
-  using type = VariantImpl<TypeListImpl<T, TS...>>;
+  using typelist_t = TypeListImpl<T, TS...>;
+  using type = VariantImpl<NAME<typelist_t>, typelist_t>;
 };
 
-template <typename T, typename... TS>
-struct VariantSelector<TypeListImpl<T, TS...>> {
-  using type = VariantImpl<TypeListImpl<T, TS...>>;
+template <template <typename> class NAME, typename T, typename... TS>
+struct VariantSelector<NAME, TypeListImpl<T, TS...>> {
+  using typelist_t = TypeListImpl<T, TS...>;
+  using type = VariantImpl<NAME<typelist_t>, typelist_t>;
 };
 
 template <typename... TS>
-using Variant = typename VariantSelector<TS...>::type;
+using Variant = typename VariantSelector<reflection::CurrentVariantDefaultName, TS...>::type;
+
+// `NamedVariant` is only used from the `CURRENT_VARIANT` macro, so only support `TS...`, not `TypeList<TS...>`.
+template <class NAME, typename... TS>
+using NamedVariant = VariantImpl<NAME, TypeListImpl<TS...>>;
 
 }  // namespace current
 
 using current::Variant;
+
+#define CURRENT_VARIANT(name, ...)                         \
+  template <int>                                           \
+  struct CURRENT_VARIANT_MACRO;                            \
+  template <>                                              \
+  struct CURRENT_VARIANT_MACRO<__COUNTER__> {              \
+    static const char* VariantNameImpl() { return #name; } \
+  };                                                       \
+  using name = ::current::NamedVariant<CURRENT_VARIANT_MACRO<__COUNTER__ - 1>, __VA_ARGS__>;
 
 #endif  // CURRENT_TYPE_SYSTEM_VARIANT_H

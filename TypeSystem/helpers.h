@@ -54,6 +54,8 @@ SOFTWARE.
 #include <memory>
 
 #include "types.h"
+#include "typename.h"
+
 #include "../Bricks/template/decay.h"
 
 namespace current {

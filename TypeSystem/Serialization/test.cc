@@ -44,6 +44,7 @@ namespace serialization_test {
 CURRENT_ENUM(Enum, uint32_t){DEFAULT = 0u, SET = 100u};
 
 CURRENT_STRUCT(Empty){};
+CURRENT_STRUCT(AlternativeEmpty){};
 
 CURRENT_STRUCT(Serializable) {
   CURRENT_FIELD(i, uint64_t);
@@ -73,7 +74,7 @@ CURRENT_STRUCT(ComplexSerializable) {
   }
 };
 
-using VariantType = Variant<Empty, Serializable, ComplexSerializable>;
+using VariantType = Variant<Empty, AlternativeEmpty, Serializable, ComplexSerializable>;
 
 CURRENT_STRUCT(ContainsVariant) { CURRENT_FIELD(variant, VariantType); };
 
@@ -115,6 +116,21 @@ CURRENT_STRUCT(WithTime) {
   CURRENT_FIELD(micros, std::chrono::microseconds, std::chrono::microseconds(0));
 };
 
+namespace named_variant {
+
+CURRENT_STRUCT(X) { CURRENT_FIELD(x, int32_t, 1); };
+
+CURRENT_STRUCT(Y) { CURRENT_FIELD(y, int32_t, 2); };
+
+CURRENT_STRUCT(Z) { CURRENT_FIELD(z, int32_t, 3); };
+
+CURRENT_STRUCT(T) { CURRENT_FIELD(t, int32_t, 4); };
+
+CURRENT_VARIANT(A, X, Y);
+CURRENT_VARIANT(B, Z, T);
+CURRENT_VARIANT(Q, A, B);
+
+}  // namespace serialization_test::named_variant
 }  // namespace serialization_test
 
 TEST(Serialization, Binary) {
@@ -493,6 +509,7 @@ TEST(Serialization, StructSchemaSerialization) {
   const SchemaInfo loaded_schema(ParseJSON<SchemaInfo>(schema_json));
 
   EXPECT_EQ(
+      "enum class Enum : uint32_t {};\n"
       "struct Serializable {\n"
       "  uint64_t i;\n"
       "  std::string s;\n"
@@ -685,11 +702,28 @@ TEST(Serialization, VariantAsJSON) {
   }
   {
     const VariantType object(std::make_unique<Empty>());
-    const std::string json = "{\"Case\":\"Empty\",\"Fields\":[{}]}";
+    const std::string json = "{\"Case\":\"Empty\"}";
     EXPECT_EQ(json, JSON<JSONFormat::NewtonsoftFSharp>(object));
     // Confirm that `ParseJSON()` does the job. Top-level `JSON()` is just to simplify the comparison.
     EXPECT_EQ(json,
               JSON<JSONFormat::NewtonsoftFSharp>(ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>(json)));
+  }
+  {
+    static_assert(IS_CURRENT_STRUCT(Empty), "");
+    static_assert(IS_CURRENT_STRUCT(AlternativeEmpty), "");
+
+    static_assert(IS_EMPTY_CURRENT_STRUCT(Empty), "");
+
+    static_assert(!IS_EMPTY_CURRENT_STRUCT(VariantType), "");
+    static_assert(!IS_EMPTY_CURRENT_STRUCT(Serializable), "");
+
+    const auto empty1 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"Empty\"}");
+    EXPECT_TRUE(Exists<Empty>(empty1));
+    EXPECT_FALSE(Exists<AlternativeEmpty>(empty1));
+
+    const auto empty2 = ParseJSON<VariantType, JSONFormat::NewtonsoftFSharp>("{\"Case\":\"AlternativeEmpty\"}");
+    EXPECT_FALSE(Exists<Empty>(empty2));
+    EXPECT_TRUE(Exists<AlternativeEmpty>(empty2));
   }
   {
     const VariantType object(std::make_unique<Serializable>(42));
@@ -732,8 +766,9 @@ TEST(Serialization, VariantAsJSON) {
     WeHaveToGoDeeper outer_variant(inner_variant);
     const std::string json = JSON(outer_variant);
     EXPECT_EQ(
-        "{\"Variant\":{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
-        "\"T9227628135528596528\"}",
+        "{\"Variant_B_WithVectorOfPairs_WithOptional_E\":"
+        "{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
+        "\"T9227628134042111965\"}",
         json);
     const WeHaveToGoDeeper parsed_object = ParseJSON<WeHaveToGoDeeper>(json);
     const WithOptional& inner_parsed_object = Value<WithOptional>(Value<OtherVariantType>(parsed_object));
@@ -741,6 +776,86 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_FALSE(Exists(inner_parsed_object.b));
   }
 }
+
+TEST(Serialization, NamedVariantAsJSON) {
+  using namespace serialization_test::named_variant;
+
+  {
+    Q q;
+    A a;
+    X x;
+    a = x;
+    q = a;
+
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(X), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(A), "");
+    static_assert(IS_CURRENT_STRUCT_OR_VARIANT(Q), "");
+
+    static_assert(IS_CURRENT_STRUCT(X), "");
+    static_assert(!IS_VARIANT(X), "");
+
+    static_assert(!IS_CURRENT_STRUCT(A), "");
+    static_assert(IS_VARIANT(A), "");
+
+    static_assert(!IS_CURRENT_STRUCT(Q), "");
+    static_assert(IS_VARIANT(Q), "");
+
+    const auto json = JSON(q);
+    EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880156980845091\"}", json);
+
+    const auto result = ParseJSON<Q>(json);
+    ASSERT_TRUE(Exists<A>(result));
+    EXPECT_FALSE(Exists<B>(result));
+    ASSERT_TRUE(Exists<X>(Value<A>(result)));
+    EXPECT_FALSE(Exists<Y>(Value<A>(result)));
+    EXPECT_EQ(1, Value<X>(Value<A>(result)).x);
+  }
+
+  {
+    Q q;
+    A a;
+    Y y;
+    a = y;
+    q = a;
+
+    const auto json = JSON<JSONFormat::Minimalistic>(q);
+    EXPECT_EQ("{\"A\":{\"Y\":{\"y\":2}}}", json);
+
+    const auto result = ParseJSON<Q, JSONFormat::Minimalistic>(json);
+    ASSERT_TRUE(Exists<A>(result));
+    EXPECT_FALSE(Exists<B>(result));
+    ASSERT_TRUE(Exists<Y>(Value<A>(result)));
+    EXPECT_FALSE(Exists<X>(Value<A>(result)));
+    EXPECT_EQ(2, Value<Y>(Value<A>(result)).y);
+  }
+
+  {
+    Q q;
+    B b;
+    Z z;
+    b = z;
+    q = b;
+
+    const auto json = JSON<JSONFormat::NewtonsoftFSharp>(q);
+    EXPECT_EQ("{\"Case\":\"B\",\"Fields\":[{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}]}", json);
+
+    const auto result = ParseJSON<Q, JSONFormat::NewtonsoftFSharp>(json);
+    ASSERT_FALSE(Exists<A>(result));
+    EXPECT_TRUE(Exists<B>(result));
+    ASSERT_TRUE(Exists<Z>(Value<B>(result)));
+    EXPECT_FALSE(Exists<T>(Value<B>(result)));
+    EXPECT_EQ(3, Value<Z>(Value<B>(result)).z);
+  }
+}
+
+TEST(Serialization, PairsInNewtonsoftJSONFSharpFormat) {
+  auto a = std::make_pair(1, 2);
+  EXPECT_EQ("[1,2]", JSON(a));
+  EXPECT_EQ("{\"Item1\":1,\"Item2\":2}", JSON<JSONFormat::NewtonsoftFSharp>(a));
+  EXPECT_EQ(JSON(a), JSON(ParseJSON<decltype(a)>(JSON(a))));
+  EXPECT_EQ(JSON(a),
+            JSON(ParseJSON<decltype(a), JSONFormat::NewtonsoftFSharp>(JSON<JSONFormat::NewtonsoftFSharp>(a))));
+};
 
 TEST(Serialization, OptionalNullOmittedInMinimalisticFormat) {
   using namespace serialization_test;
