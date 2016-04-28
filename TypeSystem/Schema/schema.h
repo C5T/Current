@@ -541,7 +541,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
 
 template <>
 struct LanguageSyntaxImpl<Language::JSON> final {
-  // The `Language::JSON` format ignores `Header()/Footer()`, all work is is done by `struct FullSchemaPrinter`.
+  // The `Language::JSON` format ignores `Header()/Footer()`, all work is done by `struct FullSchemaPrinter`.
   static std::string Header() { return ""; }
   static std::string Footer() { return ""; }
 
