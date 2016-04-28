@@ -154,6 +154,15 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
                                std::function<std::string(TypeID)> type_name) {
     os << "CURRENT_ENUM(" << e.name << ", " << type_name(e.underlying_type) << ") {};\n";
   }
+  static void PrintCurrentVariant(std::ostream& os,
+                                  const ReflectedType_Variant& v,
+                                  std::function<std::string(TypeID)> type_name) {
+    std::vector<std::string> cases;
+    for (TypeID c : v.cases) {
+      cases.push_back(type_name(c));
+    }
+    os << "CURRENT_VARIANT(" << v.name << ", " << current::strings::Join(cases, ", ") << ");\n";
+  }
 };
 
 template <>
@@ -175,6 +184,15 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
                                const ReflectedType_Enum& e,
                                std::function<std::string(TypeID)> type_name) {
     os << "enum class " << e.name << " : " << type_name(e.underlying_type) << " {};\n";
+  }
+  static void PrintCurrentVariant(std::ostream& os,
+                                  const ReflectedType_Variant& v,
+                                  std::function<std::string(TypeID)> type_name) {
+    std::vector<std::string> cases;
+    for (TypeID c : v.cases) {
+      cases.push_back(type_name(c));
+    }
+    os << "using " << v.name << " = Variant<" << current::strings::Join(cases, ", ") << ">;\n";
   }
 };
 
@@ -270,11 +288,8 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
     void operator()(const ReflectedType_Variant& v) const {
-      std::vector<std::string> cases;
-      for (TypeID c : v.cases) {
-        cases.push_back(TypeName(c));
-      }
-      os_ << "using " << v.name << " = Variant<" << current::strings::Join(cases, ", ") << ">;\n";
+      CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::PrintCurrentVariant(
+          os_, v, [this](TypeID id) -> std::string { return TypeName(id); });
     }
     void operator()(const ReflectedType_Struct& s) const {
       CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::PrintCurrentStruct(
