@@ -768,7 +768,7 @@ TEST(Serialization, VariantAsJSON) {
     EXPECT_EQ(
         "{\"Variant_B_WithVectorOfPairs_WithOptional_E\":"
         "{\"WithOptional\":{\"i\":42,\"b\":null},\"\":\"T9202463557075072772\"},\"\":"
-        "\"T9227628135528596528\"}",
+        "\"T9227628134042111965\"}",
         json);
     const WeHaveToGoDeeper parsed_object = ParseJSON<WeHaveToGoDeeper>(json);
     const WithOptional& inner_parsed_object = Value<WithOptional>(Value<OtherVariantType>(parsed_object));
@@ -801,7 +801,7 @@ TEST(Serialization, NamedVariantAsJSON) {
     static_assert(IS_VARIANT(Q), "");
 
     const auto json = JSON(e);
-    EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880155644462248\"}", json);
+    EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880156980845091\"}", json);
 
     const auto result = ParseJSON<Q>(json);
     ASSERT_TRUE(Exists<A>(result));

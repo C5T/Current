@@ -209,10 +209,10 @@ inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
   return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE + ROL64(o.optional_type, 5u) % TYPEID_TYPE_RANGE);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Variant& p) {
-  uint64_t hash = 0ull;
+inline TypeID CalculateTypeID(const ReflectedType_Variant& v) {
+  uint64_t hash = current::CRC32(v.name);
   size_t i = 0u;
-  for (const auto& c : p.cases) {
+  for (const auto& c : v.cases) {
     hash ^= ROL64(c, i * 3u + 17u);
     ++i;
   }
