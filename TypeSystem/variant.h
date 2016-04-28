@@ -143,7 +143,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   using typelist_t = TypeListImpl<TYPES...>;
   using DEPRECATED_T_(TYPELIST) = typelist_t;
 
-  using variant_t = VariantImpl<NAME, typelist_t>;
+  using variant_impl_t = VariantImpl<NAME, typelist_t>;
 
   enum { typelist_size = TypeListSize<typelist_t>::value };
 
@@ -155,22 +155,22 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
   VariantImpl(std::unique_ptr<CurrentSuper>&& rhs) : object_(std::move(rhs)) {}
 
-  VariantImpl(const variant_t& rhs) { CopyFrom(rhs); }
+  VariantImpl(const variant_impl_t& rhs) { CopyFrom(rhs); }
 
-  VariantImpl(variant_t&& rhs) : object_(std::move(rhs.object_)) {}
+  VariantImpl(variant_impl_t&& rhs) : object_(std::move(rhs.object_)) {}
 
-  VariantImpl& operator=(const variant_t& rhs) {
+  VariantImpl& operator=(const variant_impl_t& rhs) {
     CopyFrom(rhs);
     return *this;
   }
 
-  VariantImpl& operator=(variant_t&& rhs) {
+  VariantImpl& operator=(variant_impl_t&& rhs) {
     object_ = std::move(rhs.object_);
     return *this;
   }
 
   template <typename X,
-            bool ENABLE = !std::is_same<current::decay<X>, variant_t>::value,
+            bool ENABLE = !std::is_same<current::decay<X>, variant_impl_t>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   void operator=(X&& input) {
     VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
@@ -183,7 +183,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
   template <typename X,
-            bool ENABLE = !std::is_same<current::decay<X>, variant_t>::value,
+            bool ENABLE = !std::is_same<current::decay<X>, variant_impl_t>::value,
             class SFINAE = ENABLE_IF<ENABLE>>
   VariantImpl(X&& input) {
     VariantTypeCheckedAssignment<typelist_t>::Perform(std::forward<X>(input), object_);
@@ -276,8 +276,8 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
 
  private:
   struct TypeAwareClone {
-    variant_t& result;
-    TypeAwareClone(variant_t& result) : result(result) {}
+    variant_impl_t& result;
+    TypeAwareClone(variant_impl_t& result) : result(result) {}
 
     template <typename TT>
     void operator()(const TT& instance) {
@@ -286,8 +286,8 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   };
 
   struct TypeAwareMove {
-    variant_t& result;
-    TypeAwareMove(variant_t& result) : result(result) {}
+    variant_impl_t& result;
+    TypeAwareMove(variant_impl_t& result) : result(result) {}
 
     template <typename TT>
     void operator()(TT&& instance) {
@@ -295,7 +295,7 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
     }
   };
 
-  void CopyFrom(const variant_t& rhs) {
+  void CopyFrom(const variant_impl_t& rhs) {
     if (rhs.object_) {
       TypeAwareClone cloner(*this);
       rhs.Call(cloner);
