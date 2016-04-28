@@ -43,17 +43,17 @@ type Y = {
   e : E
 }
 
-type DU_A_X_Y =
+type MyFreakingVariant =
 | A of A
 | X of X
 | Y of Y
 
 type C = {
   e : Empty
-  c : DU_A_X_Y
+  c : MyFreakingVariant
 }
 
-type DU_A_B_C_Empty =
+type Variant_B_A_B_C_Empty_E =
 | A of A
 | B of B
 | C of C
@@ -65,5 +65,5 @@ type FullTest = {
   v2 : Primitives array
   p : string * Primitives
   o : Primitives option
-  q : DU_A_B_C_Empty
+  q : Variant_B_A_B_C_Empty_E
 }

@@ -347,13 +347,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
           void operator()(const ReflectedType_Optional& o) const {
             oss_ << self_.TypeName(o.optional_type) << " option";
           }
-          void operator()(const ReflectedType_Variant& v) const {
-            std::vector<std::string> cases;
-            for (TypeID c : v.cases) {
-              cases.push_back(self_.TypeName(c));
-            }
-            oss_ << "DU_" << current::strings::Join(cases, '_');
-          }
+          void operator()(const ReflectedType_Variant& v) const { oss_ << v.name; }
 
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
@@ -382,7 +376,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       for (TypeID c : v.cases) {
         cases.push_back(TypeName(c));
       }
-      os_ << "\ntype DU_" << current::strings::Join(cases, '_') << " =\n";
+      os_ << "\ntype " << v.name << " =\n";
       for (const auto& s : cases) {
         os_ << "| " << s << " of " << s << '\n';
       }
