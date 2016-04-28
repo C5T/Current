@@ -308,11 +308,11 @@ template <>
 struct LanguageSyntaxImpl<Language::FSharp> final {
   static std::string Header() {
     return "// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`\n"
-           "// (*\n"
-           "// open Newtonsoft.Json\n"
-           "// let inline JSON o = JsonConvert.SerializeObject(o)\n"
-           "// let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
-           "// *)\n";
+           "(*\n"
+           "open Newtonsoft.Json\n"
+           "let inline JSON o = JsonConvert.SerializeObject(o)\n"
+           "let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
+           "*)\n";
   }
 
   static std::string Footer() { return ""; }
@@ -409,7 +409,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
     void operator()(const ReflectedType_Struct& s) const {
       if (!s.fields.empty() || s.super_id != TypeID::CurrentStruct) {
         // Only dump the type if it's not empty. Empty structs are used in DU-s w/o their contents.
-        // Unless it's a derived struct, to stay on a safe side.
+        // Unless it's a derived struct, to stay on the safe side.
         if (!s.fields.empty()) {
           std::ostringstream temporary_os;
           RecursivelyListStructFields(temporary_os, s);
