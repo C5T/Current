@@ -244,7 +244,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
             for (TypeID c : v.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            oss_ << "Variant<" << current::strings::Join(cases, ", ") << '>';
+            oss_ << "VarianT_B_" << current::strings::Join(cases, '_') << "_E";
           }
           void operator()(const ReflectedType_Struct& s) const { oss_ << s.name; }
         };
@@ -269,7 +269,13 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
-    void operator()(const ReflectedType_Variant&) const {}
+    void operator()(const ReflectedType_Variant& v) const {
+      std::vector<std::string> cases;
+      for (TypeID c : v.cases) {
+        cases.push_back(TypeName(c));
+      }
+      os_ << "using " << v.name << " = Variant<" << current::strings::Join(cases, ", ") << ">;\n";
+    }
     void operator()(const ReflectedType_Struct& s) const {
       CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::PrintCurrentStruct(
           os_, s, [this](TypeID id) -> std::string { return TypeName(id); });

@@ -52,7 +52,7 @@ Intentionally contains no fields.
 | **Field** | **Type** |
 | ---: | :--- |
 | `e` | `Empty` |
-| `c` | Algebraic `X` / `Y` |
+| `c` | Algebraic `A` / `X` / `Y` |
 
 
 ### `FullTest`

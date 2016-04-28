@@ -227,6 +227,11 @@
             "cases": [
               {
                 "object": {
+                  "kind": "A"
+                }
+              },
+              {
+                "object": {
                   "kind": "X"
                 }
               },

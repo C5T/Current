@@ -43,13 +43,14 @@ type Y = {
   e : E
 }
 
-type DU_X_Y =
+type DU_A_X_Y =
+| A of A
 | X of X
 | Y of Y
 
 type C = {
   e : Empty
-  c : DU_X_Y
+  c : DU_A_X_Y
 }
 
 type DU_A_B_C_Empty =

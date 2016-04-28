@@ -135,6 +135,7 @@ CURRENT_STRUCT(ReflectedType_Optional, ReflectedTypeBase) {
 };
 
 CURRENT_STRUCT(ReflectedType_Variant, ReflectedTypeBase) {
+  CURRENT_FIELD(name, std::string);  // `"Variant_B_" + Join(cases, '_') + "_E"` or the user-supplied name.
   CURRENT_FIELD(cases, std::vector<TypeID>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Variant) {}
 };

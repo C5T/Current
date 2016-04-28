@@ -38,17 +38,19 @@ CURRENT_ENUM(E, uint16_t) {};
 CURRENT_STRUCT(Y) {
   CURRENT_FIELD(e, E);
 };
+using MyFreakingVariant = Variant<A, X, Y>;
 CURRENT_STRUCT(C) {
   CURRENT_FIELD(e, Empty);
-  CURRENT_FIELD(c, (Variant<X, Y>));
+  CURRENT_FIELD(c, VarianT_B_A_X_Y_E);
 };
+using Variant_B_A_B_C_Empty_E = Variant<A, B, C, Empty>;
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
   CURRENT_FIELD(v1, std::vector<std::string>);
   CURRENT_FIELD(v2, std::vector<Primitives>);
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
-  CURRENT_FIELD(q, (Variant<A, B, C, Empty>));
+  CURRENT_FIELD(q, VarianT_B_A_B_C_Empty_E);
 };
 }  // namespace current_userspace
 
