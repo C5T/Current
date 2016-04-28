@@ -52,7 +52,7 @@ Intentionally contains no fields.
 | **Field** | **Type** |
 | ---: | :--- |
 | `e` | `Empty` |
-| `c` | Algebraic `A` / `X` / `Y` |
+| `c` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
 
 
 ### `FullTest`
@@ -63,5 +63,5 @@ Intentionally contains no fields.
 | `v2` | Array of `Primitives` |
 | `p` | Pair of String and `Primitives` |
 | `o` | `null` or `Primitives` |
-| `q` | Algebraic `A` / `B` / `C` / `Empty` |
+| `q` | Algebraic `A` / `B` / `C` / `Empty` (a.k.a. `Variant_B_A_B_C_Empty_E`) |
 

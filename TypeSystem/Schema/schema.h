@@ -480,8 +480,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
             for (TypeID c : v.cases) {
               cases.push_back(self_.TypeName(c));
             }
-            // DIMA: Add `.name` here too.
-            oss_ << "Algebraic " << current::strings::Join(cases, " / ");
+            oss_ << "Algebraic " << current::strings::Join(cases, " / ") << " (a.k.a. `" << v.name << "`)";
           }
 
           void operator()(const ReflectedType_Struct& s) const { oss_ << '`' << s.name << '`'; }
