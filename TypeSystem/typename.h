@@ -33,7 +33,6 @@ SOFTWARE.
 #include "types.h"
 
 #include "../Bricks/template/decay.h"
-#include "../Bricks/util/singleton.h"
 
 namespace current {
 namespace reflection {
@@ -60,10 +59,8 @@ inline std::string CurrentTypeName() {
 template <typename T, typename>
 struct CurrentTypeNameAsConstCharPtrImpl {
   static const char* Value() {
-    struct LocalSingleton {
-      const std::string cached_name = CurrentTypeName<T>();
-    };
-    return ThreadLocalSingleton<LocalSingleton>().cached_name.c_str();
+    static const std::string cached_name = CurrentTypeName<T>();
+    return cached_name.c_str();
   }
 };
 
