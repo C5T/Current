@@ -781,11 +781,11 @@ TEST(Serialization, NamedVariantAsJSON) {
   using namespace serialization_test::named_variant;
 
   {
-    Q e;
+    Q q;
     A a;
     X x;
     a = x;
-    e = a;
+    q = a;
 
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(X), "");
     static_assert(IS_CURRENT_STRUCT_OR_VARIANT(A), "");
@@ -800,7 +800,7 @@ TEST(Serialization, NamedVariantAsJSON) {
     static_assert(!IS_CURRENT_STRUCT(Q), "");
     static_assert(IS_VARIANT(Q), "");
 
-    const auto json = JSON(e);
+    const auto json = JSON(q);
     EXPECT_EQ("{\"A\":{\"X\":{\"x\":1},\"\":\"T9209980946934124423\"},\"\":\"T9224880156980845091\"}", json);
 
     const auto result = ParseJSON<Q>(json);
@@ -812,13 +812,13 @@ TEST(Serialization, NamedVariantAsJSON) {
   }
 
   {
-    Q e;
+    Q q;
     A a;
     Y y;
     a = y;
-    e = a;
+    q = a;
 
-    const auto json = JSON<JSONFormat::Minimalistic>(e);
+    const auto json = JSON<JSONFormat::Minimalistic>(q);
     EXPECT_EQ("{\"A\":{\"Y\":{\"y\":2}}}", json);
 
     const auto result = ParseJSON<Q, JSONFormat::Minimalistic>(json);
@@ -830,13 +830,13 @@ TEST(Serialization, NamedVariantAsJSON) {
   }
 
   {
-    Q e;
+    Q q;
     B b;
     Z z;
     b = z;
-    e = b;
+    q = b;
 
-    const auto json = JSON<JSONFormat::NewtonsoftFSharp>(e);
+    const auto json = JSON<JSONFormat::NewtonsoftFSharp>(q);
     EXPECT_EQ("{\"Case\":\"B\",\"Fields\":[{\"Case\":\"Z\",\"Fields\":[{\"z\":3}]}]}", json);
 
     const auto result = ParseJSON<Q, JSONFormat::NewtonsoftFSharp>(json);

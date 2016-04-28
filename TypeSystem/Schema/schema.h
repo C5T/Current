@@ -271,7 +271,7 @@ struct LanguageSyntaxCPP : CurrentStructPrinter<CPP_LANGUAGE_SELECTOR> {
         : types_(types), os_(os) {}
 
     // `operator()`-s of this block print the complete declaration of a type in C++, if necessary.
-    // Effectively, they ignore everything but `struct`-s.
+    // Effectively, they ignore everything but `struct`-s and `Variant`-s.
     void operator()(const ReflectedType_Primitive&) const {}
     void operator()(const ReflectedType_Enum& e) const {
       CurrentStructPrinter<CPP_LANGUAGE_SELECTOR>::PrintCurrentEnum(
