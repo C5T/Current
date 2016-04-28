@@ -61,11 +61,9 @@ template <typename T, typename>
 struct CurrentTypeNameAsConstCharPtrImpl {
   static const char* Value() {
     struct LocalSingleton {
-      std::string s;
+      const std::string cached_name = CurrentTypeName<T>();
     };
-    auto& singleton = ThreadLocalSingleton<LocalSingleton>();
-    singleton.s = CurrentTypeName<T>();
-    return singleton.s.c_str();
+    return ThreadLocalSingleton<LocalSingleton>().cached_name.c_str();
   }
 };
 
