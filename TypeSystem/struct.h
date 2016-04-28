@@ -395,25 +395,15 @@ struct FieldCounter {
   enum { value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) };
 };
 
-template <typename T, bool TRUE_IF_CURRENT_STRUCT, bool TRUE_IF_VARIANT>
-struct CurrentTypeNameImpl;
-
-template <typename T>
-struct CurrentTypeNameImpl<T, true, false> {
-  static const char* GetCurrentTypeName() { return T::CURRENT_STRUCT_NAME(); }
-};
-
-// UNcommented out the **really confusing** part for now to make test work. -- M.Z.
-// TODO(dkorolev): refactor it, pls.
-template <typename T>
-struct CurrentTypeNameImpl<T, false, true> {
-  static const char* GetCurrentTypeName() { return "Variant"; }
+template <typename T, bool IS_STRUCT>
+struct IsEmptyCurrentStruct {
+  constexpr static bool value = false;
 };
 
 template <typename T>
-inline const char* CurrentTypeName() {
-  return CurrentTypeNameImpl<T, IS_CURRENT_STRUCT(T), IS_VARIANT(T)>::GetCurrentTypeName();
-}
+struct IsEmptyCurrentStruct<T, true> {
+  constexpr static bool value = (FieldCounter<T>::value == 0);
+};
 
 template <typename T, typename VISITOR_TYPE>
 struct VisitAllFields {

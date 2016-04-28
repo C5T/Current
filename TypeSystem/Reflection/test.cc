@@ -58,6 +58,9 @@ CURRENT_STRUCT(Baz) {
   CURRENT_FIELD(blah, bool);
 };
 
+CURRENT_VARIANT(FooBarBaz, Foo, Bar, Baz);
+CURRENT_VARIANT(AnotherFooBarBaz, Foo, Bar, Baz);  // To confirm TypeID-s are different for different names.
+
 CURRENT_STRUCT(SimpleDerivedFromFoo, Foo) { CURRENT_FIELD(s, std::string); };
 CURRENT_STRUCT(DerivedFromFoo, Foo) { CURRENT_FIELD(bar, Bar); };
 
@@ -80,6 +83,7 @@ using current::reflection::Reflector;
 TEST(Reflection, TypeID) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;
+  using current::reflection::ReflectedType_Variant;
 
   const ReflectedType_Struct& bar = Value<ReflectedType_Struct>(Reflector().ReflectType<Bar>());
   EXPECT_EQ(4u, bar.fields.size());
@@ -102,6 +106,14 @@ TEST(Reflection, TypeID) {
   EXPECT_EQ(9200564679597442224ull, static_cast<uint64_t>(self_c.type_id));
   EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_c.fields[0].first));
   EXPECT_EQ(9345487227046290999ull, static_cast<uint64_t>(self_c.fields[1].first));
+
+  EXPECT_NE(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
+            static_cast<uint64_t>(
+                Value<ReflectedType_Variant>(Reflector().ReflectType<Variant<Foo, Bar, Baz>>()).type_id));
+
+  EXPECT_NE(
+      static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
+      static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<AnotherFooBarBaz>()).type_id));
 }
 
 TEST(Reflection, CurrentStructInternals) {

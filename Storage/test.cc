@@ -1204,6 +1204,16 @@ TEST(TransactionalStorage, RESTfulAPITest) {
       "\n"
       "// clang-format on\n";
 
+  // clang-format off
+  const std::string golden_user_schema_json =
+  "["
+    "{\"object\":\"SimpleUser\",\"contains\":["
+      "{\"field\":\"key\",\"as\":{\"primitive\":{\"type\":\"std::string\",\"text\":\"String\"}}},"
+      "{\"field\":\"name\",\"as\":{\"primitive\":{\"type\":\"std::string\",\"text\":\"String\"}}}"
+    "]}"
+  "]";
+  // clang-format on
+
   // Run twice to make sure the `GET-POST-GET-DELETE` cycle is complete.
   for (size_t i = 0; i < 2; ++i) {
     // Register RESTful HTTP endpoints, in a scoped way.
@@ -1213,6 +1223,7 @@ TEST(TransactionalStorage, RESTfulAPITest) {
     EXPECT_EQ(200, static_cast<int>(HTTP(GET(base_url + "/api/schema/user")).code));
     EXPECT_EQ("SimpleUser", HTTP(GET(base_url + "/api/schema/user")).body);
     EXPECT_EQ(golden_user_schema_h, HTTP(GET(base_url + "/api/schema/user.h")).body);
+    EXPECT_EQ(golden_user_schema_json, HTTP(GET(base_url + "/api/schema/user.json")).body);
     EXPECT_EQ("SimplePost", HTTP(GET(base_url + "/api/schema/post")).body);
     EXPECT_EQ("SimpleLike", HTTP(GET(base_url + "/api/schema/like")).body);
     EXPECT_EQ(404, static_cast<int>(HTTP(GET(base_url + "/api/schema/user_alias")).code));

@@ -135,6 +135,7 @@ CURRENT_STRUCT(ReflectedType_Optional, ReflectedTypeBase) {
 };
 
 CURRENT_STRUCT(ReflectedType_Variant, ReflectedTypeBase) {
+  CURRENT_FIELD(name, std::string);  // `"Variant_B_" + Join(cases, '_') + "_E"` or the user-supplied name.
   CURRENT_FIELD(cases, std::vector<TypeID>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Variant) {}
 };
@@ -208,10 +209,10 @@ inline TypeID CalculateTypeID(const ReflectedType_Optional& o) {
   return static_cast<TypeID>(TYPEID_OPTIONAL_TYPE + ROL64(o.optional_type, 5u) % TYPEID_TYPE_RANGE);
 }
 
-inline TypeID CalculateTypeID(const ReflectedType_Variant& p) {
-  uint64_t hash = 0ull;
+inline TypeID CalculateTypeID(const ReflectedType_Variant& v) {
+  uint64_t hash = current::CRC32(v.name);
   size_t i = 0u;
-  for (const auto& c : p.cases) {
+  for (const auto& c : v.cases) {
     hash ^= ROL64(c, i * 3u + 17u);
     ++i;
   }

@@ -33,9 +33,6 @@
 | `b` | Integer (32-bit signed) |
 
 
-### `Empty`
-Intentionally contains no fields.
-
 ### `X`
 | **Field** | **Type** |
 | ---: | :--- |
@@ -45,14 +42,22 @@ Intentionally contains no fields.
 ### `Y`
 | **Field** | **Type** |
 | ---: | :--- |
-| `x` | Integer (32-bit signed) |
+| `e` | Index `E`, underlying type `Integer (16-bit unsigned)` |
+
+
+### `MyFreakingVariant`
+Algebraic type, `A` or `X` or `Y`
 
 
 ### `C`
 | **Field** | **Type** |
 | ---: | :--- |
 | `e` | `Empty` |
-| `c` | Algebraic `X` / `Y` |
+| `c` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
+
+
+### `Variant_B_A_B_C_Empty_E`
+Algebraic type, `A` or `B` or `C` or `Empty`
 
 
 ### `FullTest`
@@ -63,5 +68,5 @@ Intentionally contains no fields.
 | `v2` | Array of `Primitives` |
 | `p` | Pair of String and `Primitives` |
 | `o` | `null` or `Primitives` |
-| `q` | Algebraic `A` / `B` / `C` / `Empty` |
+| `q` | Algebraic `A` / `B` / `C` / `Empty` (a.k.a. `Variant_B_A_B_C_Empty_E`) |
 
