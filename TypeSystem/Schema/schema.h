@@ -503,9 +503,12 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
     void operator()(const ReflectedType_Pair&) const {}
     void operator()(const ReflectedType_Map&) const {}
     void operator()(const ReflectedType_Optional&) const {}
-    void operator()(const ReflectedType_Variant&) const {
-      // DIMA: Add a dedicated section per `Variant<>`.
-      // No need to define `Variant` types explicitly in Markdown format.
+    void operator()(const ReflectedType_Variant& v) const {
+      std::vector<std::string> cases;
+      for (auto c : v.cases) {
+        cases.push_back(TypeName(c));  // Will be taken into tick quotes by itself.
+      }
+      os_ << "\n### `" << v.name << "`\nAlgebraic type, " << current::strings::Join(cases, " or ") << "\n\n";
     }
 
     // When dumping a derived `CURRENT_STRUCT` as a Markdown table, hoist base class fields to the top.
@@ -525,8 +528,6 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       const std::string fields = temporary_os.str();
       if (!fields.empty()) {
         os_ << "\n### `" << s.name << "`\n| **Field** | **Type** |\n| ---: | :--- |\n" << fields << '\n';
-      } else {
-        os_ << "\n### `" << s.name << "`\nIntentionally contains no fields.\n";
       }
     }
   };  // struct LanguageSyntax<Language::Markdown>::FullSchemaPrinter
