@@ -1,8 +1,9 @@
-// fsharpi -r Newtonsoft.Json.dll schema.fs
-
-open Newtonsoft.Json
-let inline JSON o = JsonConvert.SerializeObject(o)
-let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)
+// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`
+// (*
+// open Newtonsoft.Json
+// let inline JSON o = JsonConvert.SerializeObject(o)
+// let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)
+// *)
 
 type Primitives = {
   a : byte

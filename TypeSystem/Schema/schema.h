@@ -307,11 +307,12 @@ struct LanguageSyntaxImpl<Language::CPP> final : LanguageSyntaxCPP<CPPLanguageSe
 template <>
 struct LanguageSyntaxImpl<Language::FSharp> final {
   static std::string Header() {
-    return "// fsharpi -r Newtonsoft.Json.dll schema.fs\n"
-           "\n"
-           "open Newtonsoft.Json\n"
-           "let inline JSON o = JsonConvert.SerializeObject(o)\n"
-           "let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n";
+    return "// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`\n"
+           "// (*\n"
+           "// open Newtonsoft.Json\n"
+           "// let inline JSON o = JsonConvert.SerializeObject(o)\n"
+           "// let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
+           "// *)\n";
   }
 
   static std::string Footer() { return ""; }
