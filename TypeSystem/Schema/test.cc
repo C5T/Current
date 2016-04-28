@@ -197,12 +197,22 @@ TEST(Schema, VariantAloneIsTraversed) {
 
 namespace schema_test {
 
-CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>); };
-CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
+// clang-format off
+
+CURRENT_STRUCT(SelfContainingA) {
+  CURRENT_FIELD(v, std::vector<SelfContainingA>);
+};
+
+CURRENT_STRUCT(SelfContainingB) {
+  CURRENT_FIELD(v, std::vector<SelfContainingB>);
+};
+
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
 };
+
+// clang-format on
 
 }  // namespace schema_test
 
@@ -271,7 +281,7 @@ TEST(Schema, SmokeTestFullStruct) {
   // as the JSON file in the golden directory is pretty-printed.
   const auto restored_schema =
       ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString(Golden("smoke_test_struct.internal_json")));
-  EXPECT_EQ(JSON(schema), JSON(struct_schema.GetSchemaInfo()));
+  EXPECT_EQ(JSON(restored_schema), JSON(struct_schema.GetSchemaInfo()));
 
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
             restored_schema.Describe<Language::Current>());
