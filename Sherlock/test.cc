@@ -371,11 +371,12 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
         "\n"
         "// clang-format on\n";
     const std::string golden_fs =
-        "// fsharpi -r Newtonsoft.Json.dll schema.fs\n"
-        "\n"
+        "// Usage: `fsharpi -r Newtonsoft.Json.dll schema.fs`\n"
+        "(*\n"
         "open Newtonsoft.Json\n"
         "let inline JSON o = JsonConvert.SerializeObject(o)\n"
         "let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)\n"
+        "*)\n"
         "\n"
         "type RecordWithTimestamp = {\n"
         "  s : string\n"

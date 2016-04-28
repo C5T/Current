@@ -51,6 +51,22 @@ struct SaveIntoJSONImpl<std::pair<TF, TS>, J> {
   }
 };
 
+template <typename TF, typename TS>
+struct SaveIntoJSONImpl<std::pair<TF, TS>, JSONFormat::NewtonsoftFSharp> {
+  static bool Save(rapidjson::Value& destination,
+                   rapidjson::Document::AllocatorType& allocator,
+                   const std::pair<TF, TS>& value) {
+    destination.SetObject();
+    rapidjson::Value first_value;
+    rapidjson::Value second_value;
+    SaveIntoJSONImpl<TF, JSONFormat::NewtonsoftFSharp>::Save(first_value, allocator, value.first);
+    SaveIntoJSONImpl<TS, JSONFormat::NewtonsoftFSharp>::Save(second_value, allocator, value.second);
+    destination.AddMember("Item1", first_value, allocator);
+    destination.AddMember("Item2", second_value, allocator);
+    return true;
+  }
+};
+
 }  // namespace save
 
 namespace load {
@@ -64,6 +80,18 @@ struct LoadFromJSONImpl<std::pair<TF, TS>, J> {
           &((*source)[static_cast<rapidjson::SizeType>(1)]), destination.second, path);
     } else {
       throw JSONSchemaException("pair as array", source, path);  // LCOV_EXCL_LINE
+    }
+  }
+};
+
+template <typename TF, typename TS>
+struct LoadFromJSONImpl<std::pair<TF, TS>, JSONFormat::NewtonsoftFSharp> {
+  static void Load(rapidjson::Value* source, std::pair<TF, TS>& destination, const std::string& path) {
+    if (source && source->IsObject() && source->HasMember("Item1") && source->HasMember("Item2")) {
+      LoadFromJSONImpl<TF, JSONFormat::NewtonsoftFSharp>::Load(&((*source)["Item1"]), destination.first, path);
+      LoadFromJSONImpl<TS, JSONFormat::NewtonsoftFSharp>::Load(&((*source)["Item2"]), destination.second, path);
+    } else {
+      throw JSONSchemaException("pair as an object of {Item1,Item2}", source, path);  // LCOV_EXCL_LINE
     }
   }
 };

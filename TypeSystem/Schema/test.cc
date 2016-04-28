@@ -40,22 +40,42 @@ DEFINE_bool(write_reflection_golden_files, false, "Set to true to [over]write th
 
 namespace schema_test {
 
-CURRENT_ENUM(Enum, uint32_t){};
+// clang-format off
 
-CURRENT_STRUCT(X) { CURRENT_FIELD(i, int32_t); };
-CURRENT_STRUCT(Y) { CURRENT_FIELD(v, std::vector<X>); };
+CURRENT_ENUM(Enum, uint32_t) {};
+
+CURRENT_STRUCT(X) {
+  CURRENT_FIELD(i, int32_t);
+};
+
+CURRENT_STRUCT(Y) {
+  CURRENT_FIELD(v, std::vector<X>);
+};
+
 CURRENT_STRUCT(Z, Y) {
   CURRENT_FIELD(d, double);
   CURRENT_FIELD(v2, std::vector<std::vector<Enum>>);
 };
 
-CURRENT_STRUCT(A) { CURRENT_FIELD(i, uint32_t); };
+CURRENT_STRUCT(A) {
+  CURRENT_FIELD(i, uint32_t);
+};
+
 CURRENT_STRUCT(B) {
   CURRENT_FIELD(x, X);
   CURRENT_FIELD(a, A);
 };
-CURRENT_STRUCT(C) { CURRENT_FIELD(b, Optional<B>); };
-}
+
+CURRENT_STRUCT(C) {
+  CURRENT_FIELD(b, Optional<B>);
+};
+
+CURRENT_VARIANT(NamedVariantX, X);  // using NamedVariantX = Variant<X>;
+CURRENT_VARIANT(NamedVariantXY, X, Y);  // using NamedVariantXY = Variant<X, Y>;
+
+// clang-format on
+
+}  // namespace schema_test
 
 TEST(Schema, StructSchema) {
   using namespace schema_test;
@@ -93,6 +113,7 @@ TEST(Schema, StructSchema) {
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n"
+        "enum class Enum : uint32_t {};\n"
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
@@ -111,6 +132,7 @@ TEST(Schema, StructSchema) {
         "struct Y {\n"
         "  std::vector<X> v;\n"
         "};\n"
+        "enum class Enum : uint32_t {};\n"
         "struct Z : Y {\n"
         "  double d;\n"
         "  std::vector<std::vector<Enum>> v2;\n"
@@ -129,14 +151,68 @@ TEST(Schema, StructSchema) {
   }
 }
 
+TEST(Schema, CurrentTypeName) {
+  using namespace schema_test;
+  using current::reflection::CurrentTypeName;
+
+  EXPECT_EQ("X", CurrentTypeName<X>());
+  EXPECT_EQ("Y", CurrentTypeName<Y>());
+
+  EXPECT_EQ("Variant_B_X_E", CurrentTypeName<Variant<X>>());
+  EXPECT_EQ("Variant_B_X_Y_E", (CurrentTypeName<Variant<X, Y>>()));
+
+  EXPECT_EQ("NamedVariantX", CurrentTypeName<NamedVariantX>());
+  EXPECT_EQ("NamedVariantXY", CurrentTypeName<NamedVariantXY>());
+
+  EXPECT_EQ("Variant_B_Variant_B_X_Y_E_Variant_B_Y_X_E_E",
+            (CurrentTypeName<Variant<Variant<X, Y>, Variant<Y, X>>>()));
+};
+
+TEST(Schema, VariantAloneIsTraversed) {
+  using namespace schema_test;
+  using current::reflection::SchemaInfo;
+  using current::reflection::StructSchema;
+  using current::reflection::Language;
+
+  StructSchema struct_schema;
+
+  struct_schema.AddType<Variant<A, X, Y>>();
+
+  {
+    const SchemaInfo schema = struct_schema.GetSchemaInfo();
+    EXPECT_EQ(
+        "struct A {\n"
+        "  uint32_t i;\n"
+        "};\n"
+        "struct X {\n"
+        "  int32_t i;\n"
+        "};\n"
+        "struct Y {\n"
+        "  std::vector<X> v;\n"
+        "};\n"
+        "using Variant_B_A_X_Y_E = Variant<A, X, Y>;\n",
+        schema.Describe<Language::CPP>(false));
+  }
+}
+
 namespace schema_test {
 
-CURRENT_STRUCT(SelfContainingA) { CURRENT_FIELD(v, std::vector<SelfContainingA>); };
-CURRENT_STRUCT(SelfContainingB) { CURRENT_FIELD(v, std::vector<SelfContainingB>); };
+// clang-format off
+
+CURRENT_STRUCT(SelfContainingA) {
+  CURRENT_FIELD(v, std::vector<SelfContainingA>);
+};
+
+CURRENT_STRUCT(SelfContainingB) {
+  CURRENT_FIELD(v, std::vector<SelfContainingB>);
+};
+
 CURRENT_STRUCT(SelfContainingC, SelfContainingA) {
   CURRENT_FIELD(v, std::vector<SelfContainingB>);
   CURRENT_FIELD(m, (std::map<std::string, SelfContainingC>));
 };
+
+// clang-format on
 
 }  // namespace schema_test
 
@@ -189,9 +265,9 @@ TEST(Schema, SmokeTestFullStruct) {
     FileSystem::WriteStringToFile(schema.Describe<Language::FSharp>(), Golden("smoke_test_struct.fs").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::Markdown>(),
                                   Golden("smoke_test_struct.md").c_str());
+    FileSystem::WriteStringToFile(schema.Describe<Language::JSON>(), Golden("smoke_test_struct.json").c_str());
     FileSystem::WriteStringToFile(schema.Describe<Language::InternalFormat>(),
-                                  Golden("smoke_test_struct.json").c_str());
-    // `schema.Describe<Language::InternalFormat>()` is equivalent to `JSON(struct_schema.GetSchemaInfo())`.
+                                  Golden("smoke_test_struct.internal_json").c_str());
     // LCOV_EXCL_STOP
   }
 
@@ -201,9 +277,11 @@ TEST(Schema, SmokeTestFullStruct) {
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.md")),
             schema.Describe<Language::Markdown>());
 
-  // JSON is a special case, as it might be pretty-printed. `JSON(ParseJSON<>(...))` does the trick.
-  auto restored_schema = ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
-  EXPECT_EQ(JSON(schema), JSON(struct_schema.GetSchemaInfo()));
+  // Don't just `EXPECT_EQ(golden, ReadFileAsString("golden/...))`, but compare re-generated JSON,
+  // as the JSON file in the golden directory is pretty-printed.
+  const auto restored_schema =
+      ParseJSON<SchemaInfo>(FileSystem::ReadFileAsString(Golden("smoke_test_struct.internal_json")));
+  EXPECT_EQ(JSON(restored_schema), JSON(struct_schema.GetSchemaInfo()));
 
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.h")),
             restored_schema.Describe<Language::Current>());
@@ -213,6 +291,12 @@ TEST(Schema, SmokeTestFullStruct) {
             restored_schema.Describe<Language::FSharp>());
   EXPECT_EQ(FileSystem::ReadFileAsString(Golden("smoke_test_struct.md")),
             restored_schema.Describe<Language::Markdown>());
+
+  // Don't just `EXPECT_EQ(golden, ReadFileAsString("golden/...))`, but compare re-generated JSON,
+  // as the JSON file in the golden directory is pretty-printed.
+  const auto restored_short_schema = ParseJSON<current::reflection::JSONSchema, JSONFormat::Minimalistic>(
+      FileSystem::ReadFileAsString(Golden("smoke_test_struct.json")));
+  EXPECT_EQ(schema.Describe<Language::JSON>(), JSON<JSONFormat::Minimalistic>(restored_short_schema));
 }
 
 TEST(TypeSystemTest, LanguageEnumToString) {
@@ -220,6 +304,7 @@ TEST(TypeSystemTest, LanguageEnumToString) {
   EXPECT_EQ("cpp", current::ToString(current::reflection::Language::CPP));
   EXPECT_EQ("fs", current::ToString(current::reflection::Language::FSharp));
   EXPECT_EQ("md", current::ToString(current::reflection::Language::Markdown));
+  EXPECT_EQ("json", current::ToString(current::reflection::Language::JSON));
 }
 
 TEST(TypeSystemTest, LanguageEnumIteration) {
@@ -228,7 +313,7 @@ TEST(TypeSystemTest, LanguageEnumIteration) {
   for (auto l = Language::begin; l != Language::end; ++l) {
     s.push_back(current::ToString(l));
   }
-  EXPECT_EQ("internal_json h cpp fs md", current::strings::Join(s, ' '));
+  EXPECT_EQ("internal_json h cpp fs md json", current::strings::Join(s, ' '));
 }
 
 namespace schema_test {
@@ -245,7 +330,7 @@ TEST(TypeSystemTest, LanguageEnumCompileTimeForEach) {
   auto it = schema_test::LanguagesIterator();
   EXPECT_EQ("", current::strings::Join(it.s, ' '));
   current::reflection::ForEachLanguage(it);
-  EXPECT_EQ("internal_json h cpp fs md", current::strings::Join(it.s, ' '));
+  EXPECT_EQ("internal_json h cpp fs md json", current::strings::Join(it.s, ' '));
 }
 
 #endif  // CURRENT_TYPE_SYSTEM_SCHEMA_TEST_CC

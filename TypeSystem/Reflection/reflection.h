@@ -128,9 +128,10 @@ struct ReflectorImpl {
       }
     };
 
-    template <typename... TS>
-    ReflectedType operator()(TypeSelector<VariantImpl<TypeListImpl<TS...>>>) {
+    template <typename NAME, typename... TS>
+    ReflectedType operator()(TypeSelector<VariantImpl<NAME, TypeListImpl<TS...>>>) {
       ReflectedType_Variant result;
+      result.name = NAME::VariantNameImpl();
       VisitAllVariantTypes<TS...>::Run(result);
       result.type_id = CalculateTypeID(result);
       return ReflectedType(std::move(result));
