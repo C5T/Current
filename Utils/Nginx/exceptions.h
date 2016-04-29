@@ -29,7 +29,6 @@ SOFTWARE.
 #define CURRENT_UTILS_NGINX_EXCEPTIONS_H
 
 namespace current {
-namespace utils {
 namespace nginx {
 
 struct NginxException : Exception {
@@ -49,8 +48,7 @@ struct NginxNotAvailableException : NginxException {
   using NginxException::NginxException;
 };
 
-}  // namespace current::utils::nginx
-}  // namespace current::utils
+}  // namespace current::nginx
 }  // namespace current
 
 #endif  // CURRENT_UTILS_NGINX_EXCEPTIONS_H

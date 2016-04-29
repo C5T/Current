@@ -30,12 +30,11 @@ SOFTWARE.
 #include "config.h"
 
 namespace current {
-namespace utils {
 namespace nginx {
 
-class NginxManager {
+class NginxInvoker {
  public:
-  NginxManager(const std::string& nginx = "nginx") : nginx_(nginx) {
+  NginxInvoker(const std::string& nginx = "nginx") : nginx_(nginx) {
     if (ExecNginx("-v") != 0) {
       CURRENT_THROW(NginxNotAvailableException());
     }
@@ -45,9 +44,7 @@ class NginxManager {
     return ExecNginx("-t -c " + config_full_path) == 0;
   }
 
-  bool ReloadConfig() {
-    return ExecNginx("-s reload") == 0;
-  }
+  bool ReloadConfig() { return ExecNginx("-s reload") == 0; }
 
  private:
   int ExecNginx(const std::string& args) {
@@ -65,8 +62,7 @@ class NginxManager {
   const std::string nginx_;
 };
 
-}  // namespace current::utils::nginx
-}  // namespace current::utils
+}  // namespace current::nginx
 }  // namespace current
 
 #endif  // CURRENT_UTILS_NGINX_NGINX_H

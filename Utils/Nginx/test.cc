@@ -35,20 +35,19 @@ DEFINE_bool(nginx_overwrite_golden_files, false, "Set to true to have Nginx gold
 
 TEST(Nginx, FullConfig) {
   using current::FileSystem;
-  using namespace current::utils::nginx::config;
+  using namespace current::nginx::config;
 
   FullConfig config;
-  config.AddSimpleDirective("worker_processes", "1");
-  config.AddBlockDirective("events", "").AddSimpleDirective("worker_connections", "1024");
-  config.http.AddSimpleDirective("default_type", "application/octet-stream");
-  config.http.AddSimpleDirective("keepalive_timeout", "100");
-  auto& server = config.http.AddServer(8910);
-  EXPECT_THROW(config.http.AddServer(8910), current::utils::nginx::PortAlreadyUsedException);
-  server.AddSimpleDirective("server_name", "myserver");
-  server.AddDefaultLocation("/").AddSimpleDirective("proxy_pass", "http://127.0.0.1:8888/");
-  auto& complex_location = server.AddLocation("~ /a|/b");
-  complex_location.AddNestedLocation("~ /a");
-  complex_location.AddNestedLocation("~ /b");
+  config.Add(SimpleDirective("worker_processes", "1"));
+  config.Add(BlockDirective("events", {SimpleDirective("worker_connections", "1024")}));
+  config.http.Add(SimpleDirective("default_type", "application/octet-stream"))
+      .Add(SimpleDirective("keepalive_timeout", "100"));
+  auto& server = config.http.CreateServer(8910);
+  EXPECT_THROW(config.http.CreateServer(8910), current::nginx::PortAlreadyUsedException);
+  server.Add(SimpleDirective("server_name", "myserver"));
+  server.CreateDefaultLocation("/").Add(SimpleDirective("proxy_pass", "http://127.0.0.1:8888/"));
+  auto& complex_location = server.CreateLocation("~ /a|/b");
+  complex_location.Add(LocationDirective("~ /a")).Add(LocationDirective("~ /b"));
   const std::string nginx_config = ConfigPrinter::AsString(config);
 
   const std::string golden_filename = FileSystem::JoinPath("golden", "full.conf");
@@ -59,14 +58,14 @@ TEST(Nginx, FullConfig) {
   EXPECT_EQ(FileSystem::ReadFileAsString(golden_filename), nginx_config);
 }
 
-// Disable `NginxManager` tests if the full test is built.
+// Disable `NginxInvoker` tests if the full test is built.
 #ifndef CURRENT_MOCK_TIME
 
-TEST(Nginx, NginxManagerCheckGoldenConfig) {
+TEST(Nginx, NginxInvokerCheckGoldenConfig) {
   using current::FileSystem;
-  using current::utils::nginx::NginxManager;
+  using current::nginx::NginxInvoker;
 
-  NginxManager nginx;
+  NginxInvoker nginx;
   const std::string config_relative_path =
       FileSystem::JoinPath(FileSystem::JoinPath("..", "golden"), "full.conf");
   const std::string full_config_path = FileSystem::JoinPath(CurrentBinaryFullPath(), config_relative_path);

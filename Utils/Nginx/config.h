@@ -33,9 +33,11 @@ SOFTWARE.
 #include "../../TypeSystem/struct.h"
 
 namespace current {
-namespace utils {
 namespace nginx {
 namespace config {
+
+// NOTE: Parameters for simple and complex directives, are defined as a single string for simplicity.
+// It is user's responsibility to supply properly formatted parameters pack for the directive.
 
 CURRENT_STRUCT(SimpleDirective) {
   CURRENT_FIELD(name, std::string);
@@ -51,43 +53,44 @@ CURRENT_FORWARD_DECLARE_STRUCT(LocationDirective);
 
 using directives_t = Variant<SimpleDirective, BlockDirective, ServerDirective, LocationDirective>;
 
+// clang-format off
 CURRENT_STRUCT(BlockDirective) {
   CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(parameters, std::string);
   CURRENT_FIELD(directives, std::vector<directives_t>);
   CURRENT_DEFAULT_CONSTRUCTOR(BlockDirective) {}
-  CURRENT_CONSTRUCTOR(BlockDirective)(const std::string& name) : name(name) {}
-  CURRENT_CONSTRUCTOR(BlockDirective)(const std::string& name, const std::string& parameters)
-      : name(name), parameters(parameters) {}
+  CURRENT_CONSTRUCTOR(BlockDirective)(const std::string& name,
+                                      std::initializer_list<directives_t> directives = {})
+      : name(name), directives(directives) {}
+  CURRENT_CONSTRUCTOR(BlockDirective)(const std::string& name,
+                                      const std::string& parameters,
+                                      std::initializer_list<directives_t> directives = {})
+      : name(name), parameters(parameters), directives(directives) {}
 
-  SimpleDirective& AddSimpleDirective(const std::string& name, const std::string& parameters) {
-    directives.push_back(SimpleDirective(name, parameters));
-    return Value<SimpleDirective>(directives.back());
+  template <typename T>
+  BlockDirective& Add(T&& directive) {
+    directives.emplace_back(std::forward<T>(directive));
+    return *this;
   }
 
   template <typename T>
-  T& AddDirective(T && directive) {
-    directives.push_back(std::forward<T>(directive));
+  T& Create(T&& directive) {
+    directives.emplace_back(std::forward<T>(directive));
     return Value<T>(directives.back());
   }
 };
 
-// clang-format off
 CURRENT_STRUCT(LocationDirective, BlockDirective) {
   CURRENT_DEFAULT_CONSTRUCTOR(LocationDirective) : SUPER("location") {}
   CURRENT_CONSTRUCTOR(LocationDirective)(const std::string& location) : SUPER("location", location) {}
-
-  LocationDirective& AddNestedLocation(const std::string& location) {
-    return SUPER::AddDirective(LocationDirective(location));
-  }
 };
 // clang-format on
 
 inline LocationDirective DefaultLocationDirective(const std::string& location) {
   LocationDirective result(location);
-  result.AddSimpleDirective("proxy_set_header", "X-Real-IP $remote_addr");
-  result.AddSimpleDirective("proxy_set_header", "X-Forwarded-For $proxy_add_x_forwarded_for");
-  result.AddSimpleDirective("proxy_pass_request_headers", "on");
+  result.Add(SimpleDirective("proxy_set_header", "X-Real-IP $remote_addr"))
+      .Add(SimpleDirective("proxy_set_header", "X-Forwarded-For $proxy_add_x_forwarded_for"))
+      .Add(SimpleDirective("proxy_pass_request_headers", "on"));
   return result;
 }
 
@@ -96,48 +99,46 @@ CURRENT_STRUCT(ServerDirective, BlockDirective) {
   CURRENT_FIELD(port, uint16_t, 0u);
   CURRENT_DEFAULT_CONSTRUCTOR(ServerDirective) : SUPER("server") {}
   CURRENT_CONSTRUCTOR(ServerDirective)(uint16_t port) : SUPER("server"), port(port) {
-    SUPER::AddSimpleDirective("listen", current::ToString(port));
+    SUPER::Add(SimpleDirective("listen", current::ToString(port)));
   }
 
-  LocationDirective& AddLocation(const std::string& location) {
-    return SUPER::AddDirective(LocationDirective(location));
+  LocationDirective& CreateLocation(const std::string& location) {
+    return SUPER::Create(LocationDirective(location));
   }
 
-  LocationDirective& AddDefaultLocation(const std::string& location) {
-    return SUPER::AddDirective(DefaultLocationDirective(location));
+  LocationDirective& CreateDefaultLocation(const std::string& location) {
+    return SUPER::Create(DefaultLocationDirective(location));
   }
 };
 
 CURRENT_STRUCT(HttpDirective, BlockDirective) {
   CURRENT_DEFAULT_CONSTRUCTOR(HttpDirective) : SUPER("http") {}
 
-  ServerDirective& AddServer(uint16_t port) {
+  ServerDirective& CreateServer(uint16_t port) {
     for (const auto& d : SUPER::directives) {
       if (Exists<ServerDirective>(d) && Value<ServerDirective>(d).port == port) {
          CURRENT_THROW(PortAlreadyUsedException(port));
       }
     }
-    return SUPER::AddDirective(ServerDirective(port));
+    return SUPER::Create(ServerDirective(port));
   }
 };
 // clang-format on
 
 using full_config_directives_t = Variant<SimpleDirective, BlockDirective>;
 
+// clang-format off
 CURRENT_STRUCT(FullConfig) {
   CURRENT_FIELD(directives, std::vector<full_config_directives_t>);
   CURRENT_FIELD(http, HttpDirective);
 
-  SimpleDirective& AddSimpleDirective(const std::string& name, const std::string& parameters) {
-    directives.push_back(SimpleDirective(name, parameters));
-    return Value<SimpleDirective>(directives.back());
-  }
-
-  BlockDirective& AddBlockDirective(const std::string& name, const std::string& parameters) {
-    directives.push_back(BlockDirective(name, parameters));
-    return Value<BlockDirective>(directives.back());
+  template <typename T>
+  FullConfig& Add(T&& directive) {
+    directives.emplace_back(std::forward<T>(directive));
+    return *this;
   }
 };
+// clang-format on
 
 struct ConfigPrinter {
   struct DirectivesPrinter {
@@ -170,7 +171,7 @@ struct ConfigPrinter {
 
     void PrintIndent() const {
       for (size_t i = 0; i < indent_; ++i) {
-        os_ << '\t';
+        os_ << "  ";
       }
     }
 
@@ -199,9 +200,8 @@ struct ConfigPrinter {
   }
 };
 
-}  // namespace current::utils::nginx::config
-}  // namespace current::utils::nginx
-}  // namespace current::utils
+}  // namespace current::nginx::config
+}  // namespace current::nginx
 }  // namespace current
 
 #endif  // CURRENT_UTILS_NGINX_CONFIG_H
