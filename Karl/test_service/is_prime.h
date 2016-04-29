@@ -42,7 +42,11 @@ CURRENT_STRUCT(is_prime) {
   CURRENT_CONSTRUCTOR(is_prime)(uint64_t requests = 0ull) : requests(requests) {}
 };
 
-CURRENT_STRUCT(IsPrimeStatus, current::karl::ClaireStatusBase) { CURRENT_FIELD(runtime, Variant<is_prime>); };
+// clang-format off
+CURRENT_STRUCT(IsPrimeStatus, current::karl::ClaireStatusBase) {
+  CURRENT_FIELD(runtime, Variant<is_prime>);
+};
+// clang-format on
 
 class ServiceIsPrime final {
  public:

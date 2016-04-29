@@ -62,7 +62,6 @@ TEST(Karl, SmokeGenerator) {
     ASSERT_NO_THROW(
         status = ParseJSON<current::karl::ClaireStatusBase>(
             HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_generator_test_port))).body));
-    EXPECT_TRUE(status.registered);
     EXPECT_EQ("generator", status.service);
   }
 
@@ -95,7 +94,6 @@ TEST(Karl, SmokeIsPrime) {
     current::karl::ClaireStatusBase status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireStatusBase>(
                         HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_is_prime_test_port))).body));
-    EXPECT_TRUE(status.registered);
     EXPECT_EQ("is_prime", status.service);
   }
 
@@ -139,7 +137,6 @@ TEST(Karl, SmokeAnnotator) {
     ASSERT_NO_THROW(
         status = ParseJSON<current::karl::ClaireStatusBase>(
             HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_annotator_test_port))).body));
-    EXPECT_TRUE(status.registered);
     EXPECT_EQ("annotator", status.service);
   }
 
@@ -193,7 +190,6 @@ TEST(Karl, SmokeFilter) {
     current::karl::ClaireStatusBase status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireStatusBase>(
                         HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_filter_test_port))).body));
-    EXPECT_TRUE(status.registered);
     EXPECT_EQ("filter", status.service);
   }
 
@@ -244,7 +240,6 @@ TEST(Karl, EndToEndTest) {
     current::karl::ClaireStatusBase status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::ClaireStatusBase>(
                         HTTP(GET(Printf("http://localhost:%d/.current", FLAGS_karl_filter_test_port))).body));
-    EXPECT_TRUE(status.registered);
     EXPECT_EQ("filter", status.service);
   }
 

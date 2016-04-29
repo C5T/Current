@@ -4,16 +4,17 @@
 
 ## Objective
 
-Current services typically run as separate binaries, exposing certain functionality on certain HTTP port.
-Karl is the supervisor of Current services. TL;DR: Karl is a tool to browse the topology of Current services, in its present and past state.
+Current services typically run as separate binaries, exposing certain functionality on certain HTTP port. TL;DR: Karl is a tool to browse the topology of Current services, in its present and past state.
 
-The way to have a Current service communicate with Karl is to use Claire. TL;DR: An instance of Claire within the scope of service lifetime makes it comunicate with Karl.
+Karl is the dedicated supervisor binary for a set of running Current services. Normally, Karl would run on a separate server.
 
-General ideas behind Karl and Claire are:
+The way to have a Current service communicate with Karl is to use Claire. TL;DR: The scope of an instance of Claire maps to the scope of service lifetime during which it comunicates with Karl declaring itself up and running.
+
+The general ideas behind Karl and Claire are:
 * Claire communicates with Karl on a nice-to-have basis.
-  * Generally, if Karl is unreachable, the client binary with Claire remains fully functional.
-* Karl can be run in stateless mode.
-  * If a production Karl is replaced by a virgin-state one, it would be populated with the state of the fleet within the next half a minute.
+  * Unless configured othwerise, even if Karl is unreachable, Claire-powered client binary remains fully functional.
+* Karl maintains historical state of the fleet, but can be run in stateless mode.
+  * If a production Karl is replaced by a virgin-state one, it would be populated with the present state of the fleet within the next half a minute.
 * Karl maintains the historical state of all keepalives it has received.
   * Basic Karl reporting page is a state of the fleet over certain period of time, "last five minutes" by default.
     * The report will be based on all keepalives received within this time period.
@@ -23,38 +24,46 @@ General ideas behind Karl and Claire are:
     * Service name (service availability history), and
     * Codename (service instance history, down to individual keepalive messages).
 * Both Claire and Karl are embedded C++ libraries.
-  * Claire extends the user code.
+  * Claire extends the user code (TODO(dkoroleV): ... injecting itself between port+route ownership acquisition and individual routes handlers initialization).
   * Karl is designed to be linked into the user code providing active supervision (ex. stream data authority master flip).
 
 ## Terminology
 
 * **Service** name, ex. `"ctfo_server"`.
-  Human-readable function of the service. By convention, a valid C++ identifier. Linked into the binary.
+  A human-readable function of the service. By convention, a valid C++ identifier. Linked into the binary.
 
 * **Codename**, ex. "ABCDEF".
   A random, unique, identifier of a running service. Regenerated on each binary run, changes with restart.
 
 * **Claire status**
-  A generic status report, containing, at the very least, generic binary info, and generic runtime info with basic user data.
-  Claire status reports are sent from Claire-powered services to Karl every 20 seconds.
+  A common denominator status report, containing the binary info, generic runtime ifo, and, if the service has completed initialization and informed Claire aboutit, the runtime info for this service.
 
-* **Binary info**
-  Service name, build date/time, compiler/environment info, git branch and commit hash, and whether the build was performed from a vanilla branch, etc.
-
-* **Runtime info**
-  Codename, uptime and local time, the time of the last keepalive accepted by Karl, basic user data in the form of one string (`status`) and one string-to-string-map (`details`).
+* **Claire beacon**
+  A scoped object, during the lifetime of which Claire periodically sends its status upwards to Karl. The default beacon keepalive frequency is 20 seconds (in Claire; and the default unhealthy interval in Karl is 45 seconds, twice this plus five seconds).
 
 * **Keepalive**
-  A periodic (~20 seconds) message sent from Claire to Karl to report its status.
-  Karl persists all keepalive messages, except for build info, which is only stored if different from previously reported build info.
+  A periodic message sent from beacon-enabled Claire to Karl. Contains the Claire status.
+  Karl persists all keepalive messages, except for build info which is only stored if it is different from the previously reported one from the binary with this codename. Effectively, "which is only stored once", as build info does not change at runtime.
+
+* **Binary info**
+  Service name, build date/time, compiler/environment info, git branch and commit hash, and whether the build was performed from a vanilla branch, etc. Generated at build time by a custom `Makefile` (`current_build.h`, ref. `Current/scripts/MakefileWithCurrentBuild`).
+
+* **Generic runtime info**
+  The generic part of Claire binary status: codename, uptime and local time, the time of the last keepalive accepted by Karl if already in talking-to-Karl mode.
 
 * **Claire status page**
-  A page available via a `GET`/`POST` request to `localhost:${port}/.current`.
-  Returns a [generally] service-dependent response, which, however, should be JSON-parsable as a Generic Claire status.
-  A complete page (what is sent as a keepalive) is accessible via `?all`; the default page returns uptime status, and `?build` returns build status.
+  A page available via a `GET`/`POST` request to `localhost:${port}[possible_prefix]/.current`. Returns a JSON with Claire status.
+  
+  This JSON, by convention, is always parsable as a generic Claire status (no service-specific runtime data).
+  
+  This JSON and can be parsed as a Claire status with a custom user status type, as long as the latter is linked into Karl's typelist. This is the way to tailor Karl's status reporting and supervision to specific service needs.
 
-* **Build Info**
-  A `current_build.h` file generated as `make` is run, containing static build information to be incorporated into the binary and returned as binary info.
+* **Claire status page options**
+  Just opening the `/.current` page from the browser yields the JSON without the build info (with `null` instead of it).
+  
+  To report a JSON with build info, request `?all` or `?a`. The `?all` page is what Claire reports to Karl in keepalives.
+  
+  To report build info only, use `?build` or `?b`.
 
 ## TODO
 

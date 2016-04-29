@@ -60,7 +60,7 @@ class GenericClaire final {
 
   GenericClaire(Locator karl, const std::string& service, uint16_t port)
       : register_called_(false),
-        registered_(false),
+        in_beacon_mode_(false),
         karl_(karl),
         service_(service),
         codename_(GenerateRandomCodename()),
@@ -74,7 +74,7 @@ class GenericClaire final {
                                           if (!all && build) {
                                             r(build::Info());
                                           } else {
-                                            if (!registered_) {
+                                            if (!in_beacon_mode_) {
                                               ClaireStatusBase response;
                                               FillBase(response, all);
                                               r(response);
@@ -89,33 +89,31 @@ class GenericClaire final {
                                             }
                                           }
                                         })) {
-    // TODO(dkorolev) + TODO(mzhurovich): Should Claire at least check whether Karl is available at
-    // construction?
   }
 
-  ~GenericClaire() {
+  virtual ~GenericClaire() {
     if (keepalive_thread_.joinable()) {
       keepalive_thread_.join();
     }
   }
 
-  void Register(status_generator_t status_filler = nullptr, bool strict = false) {
+  void Register(status_generator_t status_filler = nullptr, bool require_karls_confirmation = false) {
     // Register this Claire with Karl and spawn the thread to send regular keepalives.
-    // If `strict` is true, throw if Karl can be not be reached.
-    // If `strict` is false, just start the keepalives thread.
+    // If `require_karls_confirmation` is true, throw if Karl can be not be reached.
+    // If `require_karls_confirmation` is false, just start the keepalives thread.
     std::lock_guard<std::mutex> lock(mutex_);
     if (!register_called_) {
       register_called_ = true;
       status_generator_ = status_filler;
       // Only register once.
-      if (strict) {
+      if (require_karls_confirmation) {
         // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
         // register this service as the running and browsable one.
         const std::string route = karl_.address_port_route + "?codename=" + codename_ + "&port=" +
                                   current::ToString(port_) + "&confirm";
         try {
           if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
-            registered_ = true;
+            in_beacon_mode_ = true;
           } else {
             CURRENT_THROW(ClaireRegistrationException(service_, route));
           }
@@ -123,8 +121,9 @@ class GenericClaire final {
           CURRENT_THROW(ClaireRegistrationException(service_, route));
         }
       } else {
-        // In non-`strict` more, simply mark the service as `registered`.
-        registered_ = true;
+        // In non-`require_karls_confirmation` more, upon being passed in the `status_filler`,
+        // simply turn on the beacon.
+        in_beacon_mode_ = true;
       }
 
       keepalive_thread_ = std::thread([this]() { Thread(); });
@@ -136,8 +135,6 @@ class GenericClaire final {
     status.service = service_;
     status.codename = codename_;
     status.local_port = port_;
-
-    status.registered = registered_;
 
     status.us_start = us_start_;
     status.us_now = current::time::Now();
@@ -152,7 +149,7 @@ class GenericClaire final {
   GenericClaire() = delete;
 
   bool register_called_;
-  std::atomic_bool registered_;
+  std::atomic_bool in_beacon_mode_;
   std::mutex mutex_;
 
   const Locator karl_;
@@ -166,7 +163,7 @@ class GenericClaire final {
   std::thread keepalive_thread_;
 };
 
-using Claire = GenericClaire<ClaireBoilerplateUserStatus, ClaireStatus>;
+using Claire = GenericClaire<ClaireBoilerplateUserStatus, ClaireStatusBase>;
 
 }  // namespace current::karl
 }  // namespace current

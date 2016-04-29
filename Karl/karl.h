@@ -71,12 +71,14 @@ CURRENT_STRUCT(KarlStatus) {
   CURRENT_FIELD(servers, std::vector<Server>);
 };
 
-class Karl final {
+template<typename T>
+class GenericKarl final {
  public:
+  using claire_status_t = T;
   using logger_t = std::function<void(const Request&)>;
   using storage_t = ServiceStorage<SherlockInMemoryStreamPersister>;
 
-  explicit Karl(uint16_t port, const std::string& url = "/", logger_t logger = nullptr)
+  explicit GenericKarl(uint16_t port, const std::string& url = "/", logger_t logger = nullptr)
       : logger_(logger),
         http_scope_(HTTP(port).Register(
             url,
@@ -93,8 +95,14 @@ class Karl final {
               if (r.method == "POST" && qs.has("codename") && qs.has("port") && qs.has("confirm")) {
                 try {
                   const std::string location =
-                      "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
-                  const auto loopback = ParseJSON<ClaireStatusBase>(HTTP(POST(location, "")).body);
+                      "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current?all";
+                  const auto body = HTTP(POST(location, "")).body;
+                  const auto loopback = ParseJSON<ClaireStatusBase>(body);
+
+                  // For unit test so far -- fail if the body contains a service-specific status
+                  // not listed as part of this Karl's `Variant<>`.
+                  static_cast<void>(ParseJSON<claire_status_t>(body));
+
                   if (loopback.codename == qs["codename"] &&
                       loopback.local_port == current::FromString<uint16_t>(qs["port"])) {
                     "http://" + r.connection.RemoteIPAndPort().ip + ':' +
@@ -149,6 +157,8 @@ class Karl final {
   storage_t storage_;
   const HTTPRoutesScope http_scope_;
 };
+
+using Karl = GenericKarl<Variant<ClaireBoilerplateUserStatus>>;
 
 }  // namespace current::karl
 }  // namespace current

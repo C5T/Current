@@ -32,19 +32,18 @@ SOFTWARE.
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/optional.h"
 #include "../TypeSystem/variant.h"
+
 #include "../Bricks/time/chrono.h"
 
 namespace current {
 namespace karl {
 
-// The generic status, persisted by Karl.
-// (Except for the `build` part, which is only persisted if it has changed.)
+// The generic status.
+// Persisted by Karl, except for the `build` part, which is only persisted on the first call, or if changed.
 CURRENT_STRUCT(ClaireStatusBase) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(local_port, uint16_t);
-
-  CURRENT_FIELD(registered, bool, false);
 
   CURRENT_FIELD(us_start, std::chrono::microseconds);
   CURRENT_FIELD(us_now, std::chrono::microseconds);  // Uptime is calculated by Karl, along with time skew.
@@ -66,8 +65,18 @@ using ClaireBoilerplateUserStatus = default_user_status::status;
 // The user can use `GenericClaire<CustomClaireStatusDerivedFromClaireStatusBase>` instead of plain `Claire` to
 // have custom `Karl<>` (the template/embedded part for Karl TBD) to persist and process custom statuses. --
 // D.K.
-CURRENT_STRUCT(ClaireStatus, ClaireStatusBase) {
-  CURRENT_FIELD(runtime, Variant<ClaireBoilerplateUserStatus>);
+CURRENT_STRUCT_T(ClaireStatus) {
+  // Fields list embarrasingly copy-pasted from ClaireStatusBase, as we don't support derived `CURRENT_STRUCT_T`.
+  CURRENT_FIELD(service, std::string);
+  CURRENT_FIELD(codename, std::string);
+  CURRENT_FIELD(local_port, uint16_t);
+
+  CURRENT_FIELD(us_start, std::chrono::microseconds);
+  CURRENT_FIELD(us_now, std::chrono::microseconds);  // Uptime is calculated by Karl, along with time skew.
+
+  CURRENT_FIELD(build, Optional<build::Info>);
+
+  CURRENT_FIELD(runtime, T);
 };
 
 }  // namespace current::karl
