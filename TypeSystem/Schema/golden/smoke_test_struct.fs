@@ -32,6 +32,10 @@ type B = {
   b : int32
 }
 
+type B2 = {
+  a : int32
+}
+
 type X = {
   x : int32
 }
@@ -52,9 +56,10 @@ type C = {
   c : MyFreakingVariant
 }
 
-type Variant_B_A_B_C_Empty_E =
+type Variant_B_A_B_B2_C_Empty_E =
 | A of A
 | B of B
+| B2 of B2
 | C of C
 | Empty
 
@@ -64,5 +69,5 @@ type FullTest = {
   v2 : Primitives array
   p : string * Primitives
   o : Primitives option
-  q : Variant_B_A_B_C_Empty_E
+  q : Variant_B_A_B_B2_C_Empty_E
 }

@@ -29,6 +29,8 @@ CURRENT_STRUCT(A) {
 CURRENT_STRUCT(B, A) {
   CURRENT_FIELD(b, int32_t);
 };
+CURRENT_STRUCT(B2, A) {
+};
 CURRENT_STRUCT(Empty) {
 };
 CURRENT_STRUCT(X) {
@@ -43,14 +45,14 @@ CURRENT_STRUCT(C) {
   CURRENT_FIELD(e, Empty);
   CURRENT_FIELD(c, MyFreakingVariant);
 };
-CURRENT_VARIANT(Variant_B_A_B_C_Empty_E, A, B, C, Empty);
+CURRENT_VARIANT(Variant_B_A_B_B2_C_Empty_E, A, B, B2, C, Empty);
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
   CURRENT_FIELD(v1, std::vector<std::string>);
   CURRENT_FIELD(v2, std::vector<Primitives>);
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
-  CURRENT_FIELD(q, Variant_B_A_B_C_Empty_E);
+  CURRENT_FIELD(q, Variant_B_A_B_B2_C_Empty_E);
 };
 }  // namespace current_userspace
 

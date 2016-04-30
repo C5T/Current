@@ -32,6 +32,8 @@ CURRENT_STRUCT(B, A) {
   CURRENT_FIELD(b, int32_t);
 };
 
+CURRENT_STRUCT(B2, A) {};  // Should still have field `a` from the base class `A` in it.
+
 CURRENT_STRUCT(X) {
   CURRENT_FIELD(x, int32_t);
 };
@@ -58,8 +60,8 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(v2, std::vector<Primitives>);
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
-  CURRENT_FIELD(q, (Variant<A, B, C, Empty>));
-  CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, C, Empty> q) : q(q) {}
+  CURRENT_FIELD(q, (Variant<A, B, B2, C, Empty>));
+  CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 
 }  // namespace SMOKE_TEST_STRUCT_NAMESPACE
