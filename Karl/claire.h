@@ -131,12 +131,16 @@ class GenericClaire final {
 
  private:
   void FillBase(ClaireStatus& status, bool fill_build) const {
+    const auto now = current::time::Now();
+    assert(now >= us_start_);
+
     status.service = service_;
     status.codename = codename_;
     status.local_port = port_;
 
-    status.us_start = us_start_;
-    status.us_now = current::time::Now();
+    status.now = now;
+    status.uptime = now - us_start_;
+    status.uptime_as_string = current::strings::TimeIntervalAsHumanReadableString(status.uptime);
 
     if (fill_build) {
       status.build = build::Info();

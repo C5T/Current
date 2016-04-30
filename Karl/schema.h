@@ -45,8 +45,9 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(local_port, uint16_t);
 
-  CURRENT_FIELD(us_start, std::chrono::microseconds);
-  CURRENT_FIELD(us_now, std::chrono::microseconds);  // Uptime is calculated by Karl, along with time skew.
+  CURRENT_FIELD(now, std::chrono::microseconds);  // To calculated time skew as well.
+  CURRENT_FIELD(uptime, std::chrono::microseconds);
+  CURRENT_FIELD(uptime_as_string, std::string);
 
   CURRENT_FIELD(build, Optional<build::Info>);
 };
