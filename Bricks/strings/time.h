@@ -31,7 +31,7 @@ namespace current {
 namespace strings {
 
 inline std::string TimeIntervalAsHumanReadableString(std::chrono::microseconds us) {
-  size_t seconds = static_cast<size_t>(us.count() * 1e-9);
+  size_t seconds = static_cast<size_t>(us.count() * 1e-6);
   if (seconds < 60) {
     return ToString(seconds) + 's';
   } else {
