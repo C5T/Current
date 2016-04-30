@@ -23,6 +23,22 @@ TMP_STDERR="$PWD/.current_stderr.txt"
 
 rm -f $PWD/.current_*.cc $PWD/.current_*.o $PWD/.current_.txt $SOURCE_FILE
 
+ADDITIONAL_INCLUDES=""
+while getopts ":i:" opt; do
+  case $opt in
+    i)
+      ADDITIONAL_INCLUDES+="#include \"$OPTARG\"\n"
+      ;;
+    \?)
+      echo "Invalid option: $OPTARG"
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument."
+      exit 1;
+      ;;
+  esac
+done
 echo -e -n "\033[1mCompiling\033[0m: "
 for i in $(ls *.h | grep -v ".cc.h$") ; do
   echo -e -n "\033[36m"
@@ -31,8 +47,16 @@ for i in $(ls *.h | grep -v ".cc.h$") ; do
   HEADER_GCC="$PWD/.current_$i.g++.cc"
   HEADER_CLANG="$PWD/.current_$i.clang++.cc"
   COMBINED_OBJECT="$PWD/.current_${i}_combined"
-  ln -sf "$PWD/$i" $HEADER_GCC
-  ln -sf "$PWD/$i" $HEADER_CLANG
+
+  if [[ -n $ADDITIONAL_INCLUDES ]]; then
+    echo "$ADDITIONAL_INCLUDES" > $HEADER_GCC
+    echo "$ADDITIONAL_INCLUDES" > $HEADER_CLANG
+    cat "$PWD/$i" >> $HEADER_GCC
+    cat "$PWD/$i" >> $HEADER_CLANG
+  else
+    ln -sf "$PWD/$i" $HEADER_GCC
+    ln -sf "$PWD/$i" $HEADER_CLANG
+  fi
   g++ $CPPFLAGS -c "$HEADER_GCC" -o "${HEADER_GCC}.o" $LDFLAGS \
     >"$TMP_STDOUT" 2>"$TMP_STDERR" || (cat "$TMP_STDOUT" "$TMP_STDERR" && exit 1)
   clang++ $CPPFLAGS -c "$HEADER_CLANG" -o "${HEADER_CLANG}.o" $LDFLAGS \

@@ -24,6 +24,7 @@ SOFTWARE.
 
 #define CURRENT_MOCK_TIME
 
+#include "current_build.h"
 #include "karl.h"
 
 #include "test_service/generator.h"
