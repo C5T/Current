@@ -43,12 +43,11 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
-template <class SPECIFIC_STATUS_TYPE, class TOP_LEVEL_STATUS_TYPE>
+template <class T>
 class GenericClaire final {
  public:
-  using specific_status_t = SPECIFIC_STATUS_TYPE;
-  using status_t = TOP_LEVEL_STATUS_TYPE;
-  using status_generator_t = std::function<specific_status_t()>;
+  using specific_status_t = ClaireServiceStatus<T>;
+  using status_generator_t = std::function<T()>;
 
   static std::string GenerateRandomCodename() {
     std::string codename;
@@ -75,11 +74,11 @@ class GenericClaire final {
                                             r(build::Info());
                                           } else {
                                             if (!in_beacon_mode_) {
-                                              ClaireStatusBase response;
+                                              ClaireStatus response;
                                               FillBase(response, all);
                                               r(response);
                                             } else {
-                                              status_t response;
+                                              specific_status_t response;
                                               FillBase(response, all);
                                               if (status_generator_) {
                                                 std::lock_guard<std::mutex> lock(mutex_);
@@ -131,7 +130,7 @@ class GenericClaire final {
   }
 
  private:
-  void FillBase(ClaireStatusBase& status, bool fill_build) const {
+  void FillBase(ClaireStatus& status, bool fill_build) const {
     status.service = service_;
     status.codename = codename_;
     status.local_port = port_;
@@ -163,7 +162,7 @@ class GenericClaire final {
   std::thread keepalive_thread_;
 };
 
-using Claire = GenericClaire<ClaireBoilerplateUserStatus, ClaireStatusBase>;
+using Claire = GenericClaire<DefaultClaireServiceStatus>;
 
 }  // namespace current::karl
 }  // namespace current

@@ -54,8 +54,8 @@ class ServiceGenerator final {
         destructing_(false),
         thread_([this]() { Thread(); }),
         claire_(karl, "generator", port) {
-    const auto status_reporter = [this]() -> current::karl::ClaireBoilerplateUserStatus {
-      current::karl::ClaireBoilerplateUserStatus user;
+    const auto status_reporter = [this]() -> current::karl::DefaultClaireServiceStatus {
+      current::karl::DefaultClaireServiceStatus user;
       user.message = "Up and running!";
       user.details["i"] = current::ToString(current_value_.load());
       return user;

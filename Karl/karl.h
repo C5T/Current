@@ -97,7 +97,7 @@ class GenericKarl final {
                   const std::string location =
                       "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current?all";
                   const auto body = HTTP(POST(location, "")).body;
-                  const auto loopback = ParseJSON<ClaireStatusBase>(body);
+                  const auto loopback = ParseJSON<ClaireStatus>(body);
 
                   // For unit test so far -- fail if the body contains a service-specific status
                   // not listed as part of this Karl's `Variant<>`.
@@ -158,7 +158,7 @@ class GenericKarl final {
   const HTTPRoutesScope http_scope_;
 };
 
-using Karl = GenericKarl<Variant<ClaireBoilerplateUserStatus>>;
+using Karl = GenericKarl<Variant<DefaultClaireServiceStatus>>;
 
 }  // namespace current::karl
 }  // namespace current

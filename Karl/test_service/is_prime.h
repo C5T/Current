@@ -42,12 +42,6 @@ CURRENT_STRUCT(is_prime) {
   CURRENT_CONSTRUCTOR(is_prime)(uint64_t requests = 0ull) : requests(requests) {}
 };
 
-// clang-format off
-CURRENT_STRUCT(IsPrimeStatus, current::karl::ClaireStatusBase) {
-  CURRENT_FIELD(runtime, Variant<is_prime>);
-};
-// clang-format on
-
 class ServiceIsPrime final {
  public:
   explicit ServiceIsPrime(uint16_t port, const current::karl::Locator& karl)
@@ -85,7 +79,7 @@ class ServiceIsPrime final {
 
   std::atomic<uint64_t> counter_;
   const HTTPRoutesScope http_scope_;
-  current::karl::GenericClaire<is_prime, IsPrimeStatus> claire_;
+  current::karl::GenericClaire<is_prime> claire_;
 };
 
 }  // namespace karl_unittest

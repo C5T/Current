@@ -40,7 +40,7 @@ namespace karl {
 
 // The generic status.
 // Persisted by Karl, except for the `build` part, which is only persisted on the first call, or if changed.
-CURRENT_STRUCT(ClaireStatusBase) {
+CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(local_port, uint16_t);
@@ -59,23 +59,11 @@ CURRENT_STRUCT(status) {
 };
 }  // namespace current::karl::default_user_status
 
-using ClaireBoilerplateUserStatus = default_user_status::status;
+using DefaultClaireServiceStatus = default_user_status::status;
 
-// The full status `CURRENT_STRUCT`, with a variant supporting one type: `ClaireBoilerplateUserStatus`.
-// The user can use `GenericClaire<CustomClaireStatusDerivedFromClaireStatusBase>` instead of plain `Claire` to
-// have custom `Karl<>` (the template/embedded part for Karl TBD) to persist and process custom statuses. --
-// D.K.
-CURRENT_STRUCT_T(ClaireStatus) {
-  // Fields list embarrasingly copy-pasted from ClaireStatusBase, as we don't support derived `CURRENT_STRUCT_T`.
-  CURRENT_FIELD(service, std::string);
-  CURRENT_FIELD(codename, std::string);
-  CURRENT_FIELD(local_port, uint16_t);
-
-  CURRENT_FIELD(us_start, std::chrono::microseconds);
-  CURRENT_FIELD(us_now, std::chrono::microseconds);  // Uptime is calculated by Karl, along with time skew.
-
-  CURRENT_FIELD(build, Optional<build::Info>);
-
+// For now, Karl parses the passed in JSON twice: once as `ClaireStatus` for generic response,
+// and once as `ClaireServiceStatus<T>`, where `T` is a `Variant` containing the client-, service-side blob.
+CURRENT_STRUCT_T_DERIVED(ClaireServiceStatus, ClaireStatus) {
   CURRENT_FIELD(runtime, T);
 };
 
