@@ -55,6 +55,7 @@ using current::strings::Chunk;
 using current::strings::UniqueChunk;
 using current::strings::ChunkDB;
 using current::strings::RoundDoubleToString;
+using current::strings::TimeIntervalAsHumanReadableString;
 using current::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
@@ -594,6 +595,40 @@ TEST(Rounding, SmokeTest) {
   EXPECT_EQ("0.006", RoundDoubleToString(0.006 + 1e-7, 2));
   EXPECT_EQ("0.007", RoundDoubleToString(0.007 + 1e-7, 3));
   EXPECT_EQ("0.008", RoundDoubleToString(0.008 + 1e-7, 4));
+}
+
+TEST(TimeIntervalAsString, SmokeTest) {
+  EXPECT_EQ("0s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(0)));
+  EXPECT_EQ("0s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(1)));
+  EXPECT_EQ("0s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(1e9 - 1))));
+
+  EXPECT_EQ("1s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(1e9))));
+  EXPECT_EQ("1s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(1e9 + 1))));
+  EXPECT_EQ("59s",
+            TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(60 * 1e9 - 1))));
+  EXPECT_EQ("1m 0s",
+            TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(60 * 1e9))));
+  EXPECT_EQ("1m 0s",
+            TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(60 * 1e9 + 1))));
+
+  EXPECT_EQ(
+      "59m 59s",
+      TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(60 * 60 * 1e9 - 1))));
+  EXPECT_EQ("1h 0m 0s",
+            TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(60 * 60 * 1e9))));
+  EXPECT_EQ(
+      "1h 0m 0s",
+      TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(60 * 60 * 1e9 + 1))));
+
+  EXPECT_EQ("23h 59m 59s",
+            TimeIntervalAsHumanReadableString(
+                std::chrono::microseconds(static_cast<int64_t>(24 * 60 * 60 * 1e9 - 1))));
+  EXPECT_EQ(
+      "1d 0h 0m 0s",
+      TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(24 * 60 * 60 * 1e9))));
+  EXPECT_EQ("1d 0h 0m 0s",
+            TimeIntervalAsHumanReadableString(
+                std::chrono::microseconds(static_cast<int64_t>(24 * 60 * 60 * 1e9 + 1))));
 }
 
 TEST(IsStringType, StaticAsserts) {
