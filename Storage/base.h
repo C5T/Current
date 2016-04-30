@@ -29,6 +29,7 @@ SOFTWARE.
 #include "../port.h"
 
 #include <cassert>
+#include <functional>
 
 #include "transaction.h"
 

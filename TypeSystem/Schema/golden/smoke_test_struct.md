@@ -33,6 +33,12 @@
 | `b` | Integer (32-bit signed) |
 
 
+### `B2`
+| **Field** | **Type** |
+| ---: | :--- |
+| `a` | Integer (32-bit signed) |
+
+
 ### `X`
 | **Field** | **Type** |
 | ---: | :--- |
@@ -56,8 +62,8 @@ Algebraic type, `A` or `X` or `Y`
 | `c` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
 
 
-### `Variant_B_A_B_C_Empty_E`
-Algebraic type, `A` or `B` or `C` or `Empty`
+### `Variant_B_A_B_B2_C_Empty_E`
+Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 
 
 ### `FullTest`
@@ -68,5 +74,5 @@ Algebraic type, `A` or `B` or `C` or `Empty`
 | `v2` | Array of `Primitives` |
 | `p` | Pair of String and `Primitives` |
 | `o` | `null` or `Primitives` |
-| `q` | Algebraic `A` / `B` / `C` / `Empty` (a.k.a. `Variant_B_A_B_C_Empty_E`) |
+| `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) |
 

@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
-          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,36 +22,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef THIRDPARTY_GTEST_H
-#define THIRDPARTY_GTEST_H
+#include "../../Bricks/exception.h"
+#include "../../Bricks/strings/util.h"
 
-#include "src/gtest-all.cc"
+#ifndef CURRENT_UTILS_NGINX_EXCEPTIONS_H
+#define CURRENT_UTILS_NGINX_EXCEPTIONS_H
 
-// From within `TEST(Module, Smoke)` returns "Smoke".
-inline std::string CurrentTestName() {
-  return testing::GetUnitTestImpl()->current_test_info()->name();
-}
+namespace current {
+namespace nginx {
 
-// Effectively returns `argv[0]`.
-inline std::string CurrentBinaryRelativePathAndName() {
-  return testing::internal::g_executable_path;
-}
+struct NginxException : Exception {
+  using Exception::Exception;
+};
 
-// Returns path part of `argv[0]`.
-inline std::string CurrentBinaryRelativePath() {
-  using namespace testing::internal;
-  return FilePath(g_executable_path).RemoveFileName().RemoveTrailingPathSeparator().string();
-}
+struct NginxConfigException : NginxException {
+  using NginxException::NginxException;
+};
 
-// Returns current working directory.
-inline std::string CurrentDir() {
-  return testing::internal::FilePath::GetCurrentDir().string();
-}
+struct PortAlreadyUsedException : NginxConfigException {
+  PortAlreadyUsedException(uint16_t port)
+      : NginxConfigException("Port " + current::ToString(port) + " was already used in this config.") {}
+};
 
-// Returns "working directory + path_separator + binary relative path".
-inline std::string CurrentBinaryFullPath() {
-  using namespace testing::internal;
-  return FilePath::ConcatPaths(FilePath::GetCurrentDir(), FilePath(CurrentBinaryRelativePath())).string();
-}
+struct NginxNotAvailableException : NginxException {
+  using NginxException::NginxException;
+};
 
-#endif  // THIRDPARTY_GTEST_H
+}  // namespace current::nginx
+}  // namespace current
+
+#endif  // CURRENT_UTILS_NGINX_EXCEPTIONS_H

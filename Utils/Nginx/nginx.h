@@ -1,8 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
-          (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
+Copyright (c) 2016 Maxim Zhurovich <zhurovich@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,36 +22,47 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef THIRDPARTY_GTEST_H
-#define THIRDPARTY_GTEST_H
+#ifndef CURRENT_UTILS_NGINX_NGINX_H
+#define CURRENT_UTILS_NGINX_NGINX_H
 
-#include "src/gtest-all.cc"
+#include <cstdlib>
 
-// From within `TEST(Module, Smoke)` returns "Smoke".
-inline std::string CurrentTestName() {
-  return testing::GetUnitTestImpl()->current_test_info()->name();
-}
+#include "config.h"
 
-// Effectively returns `argv[0]`.
-inline std::string CurrentBinaryRelativePathAndName() {
-  return testing::internal::g_executable_path;
-}
+namespace current {
+namespace nginx {
 
-// Returns path part of `argv[0]`.
-inline std::string CurrentBinaryRelativePath() {
-  using namespace testing::internal;
-  return FilePath(g_executable_path).RemoveFileName().RemoveTrailingPathSeparator().string();
-}
+class NginxInvoker {
+ public:
+  NginxInvoker(const std::string& nginx = "nginx") : nginx_(nginx) {
+    if (ExecNginx("-v") != 0) {
+      CURRENT_THROW(NginxNotAvailableException());
+    }
+  }
 
-// Returns current working directory.
-inline std::string CurrentDir() {
-  return testing::internal::FilePath::GetCurrentDir().string();
-}
+  bool IsFullConfigValid(const std::string& config_full_path) {
+    return ExecNginx("-t -c " + config_full_path) == 0;
+  }
 
-// Returns "working directory + path_separator + binary relative path".
-inline std::string CurrentBinaryFullPath() {
-  using namespace testing::internal;
-  return FilePath::ConcatPaths(FilePath::GetCurrentDir(), FilePath(CurrentBinaryRelativePath())).string();
-}
+  bool ReloadConfig() { return ExecNginx("-s reload") == 0; }
 
-#endif  // THIRDPARTY_GTEST_H
+ private:
+  int ExecNginx(const std::string& args) {
+#ifdef CURRENT_WINDOWS
+    const std::string dev_null = "NUL";
+#else
+    const std::string dev_null = "/dev/null";
+#endif
+    const std::string cmd_line = nginx_ + ' ' + args + " >" + dev_null + " 2>&1";
+    int result = std::system(cmd_line.c_str());
+    return WEXITSTATUS(result);
+  }
+
+ private:
+  const std::string nginx_;
+};
+
+}  // namespace current::nginx
+}  // namespace current
+
+#endif  // CURRENT_UTILS_NGINX_NGINX_H
