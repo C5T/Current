@@ -1,3 +1,4 @@
+#include "current_build.h"
 #include "../../Blocks/HTTP/api.h"
 #include "../../Bricks/dflags/dflags.h"
 #include "../../Karl/test_service/filter.h"

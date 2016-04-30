@@ -27,8 +27,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "current_build.h"
-
 #include "../TypeSystem/struct.h"
 #include "../TypeSystem/optional.h"
 #include "../TypeSystem/variant.h"
