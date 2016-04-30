@@ -29,6 +29,8 @@ struct A {
 struct B : A {
   int32_t b;
 };
+struct B2 : A {
+};
 struct Empty {
 };
 struct X {
@@ -43,14 +45,14 @@ struct C {
   Empty e;
   MyFreakingVariant c;
 };
-using Variant_B_A_B_C_Empty_E = Variant<A, B, C, Empty>;
+using Variant_B_A_B_B2_C_Empty_E = Variant<A, B, B2, C, Empty>;
 struct FullTest {
   Primitives primitives;
   std::vector<std::string> v1;
   std::vector<Primitives> v2;
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
-  Variant_B_A_B_C_Empty_E q;
+  Variant_B_A_B_B2_C_Empty_E q;
 };
 }  // namespace current_userspace
 

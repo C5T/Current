@@ -177,6 +177,20 @@
     ]
   },
   {
+    "object": "B2",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
     "object": "Empty",
     "contains": []
   },
@@ -327,6 +341,20 @@
     ]
   },
   {
+    "object": "B2",
+    "contains": [
+      {
+        "field": "a",
+        "as": {
+          "primitive": {
+            "type": "int32_t",
+            "text": "Integer (32-bit signed)"
+          }
+        }
+      }
+    ]
+  },
+  {
     "object": "C",
     "contains": [
       {
@@ -446,6 +474,11 @@
               {
                 "object": {
                   "kind": "B"
+                }
+              },
+              {
+                "object": {
+                  "kind": "B2"
                 }
               },
               {
