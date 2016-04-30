@@ -77,12 +77,13 @@ struct TimestampAccessorImpl {
   }
 };
 
-template <typename... TS>
-struct TimestampAccessorImpl<VariantImpl<TS...>> {
-  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, const VariantImpl<TS...>& p) {
+// Must use both `T` and `TS...` to match the "signature" of `VariantImpl<>`, to please MSVS. -- D.K.
+template <typename T, typename... TS>
+struct TimestampAccessorImpl<VariantImpl<T, TS...>> {
+  static void ExtractDirectlyOrFromVariant(ExtractTimestampFunctor& functor, const VariantImpl<T, TS...>& p) {
     p.Call(functor);
   }
-  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, VariantImpl<TS...>& p) {
+  static void UpdateDirectlyOrInVariant(UpdateTimestampFunctor& functor, VariantImpl<T, TS...>& p) {
     p.Call(functor);
   }
 };
