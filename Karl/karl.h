@@ -101,7 +101,7 @@ class GenericKarl final {
 
                   // For unit test so far -- fail if the body contains a service-specific status
                   // not listed as part of this Karl's `Variant<>`.
-                  static_cast<void>(ParseJSON<claire_status_t>(body));
+                  // static_cast<void>(ParseJSON<claire_status_t>(body));
 
                   if (loopback.codename == qs["codename"] &&
                       loopback.local_port == current::FromString<uint16_t>(qs["port"])) {
