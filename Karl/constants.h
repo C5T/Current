@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,18 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifndef KARL_CONSTANTS_H
+#define KARL_CONSTANTS_H
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
-#include "util.h"
-#include "rounding.h"
-#include "time.h"
+#include "../port.h"
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+namespace current {
+namespace karl {
+namespace constants {
+
+constexpr static uint16_t kDefaultKarlPort = 7576;  // ASCII { 'K', 'L' }.
+
+}  // namespace current::karl::constants
+}  // namespace current::karl
+}  // namespace current
+
+#endif  // KARL_CONSTANTS_H

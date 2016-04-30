@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,18 +22,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifndef CURRENT_KARL_EXCEPTIONS_H
+#define CURRENT_KARL_EXCEPTIONS_H
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
-#include "util.h"
-#include "rounding.h"
-#include "time.h"
+#include "../Blocks/GracefulShutdown/exceptions.h"
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+namespace current {
+namespace karl {
+
+struct KarlException : Exception {
+  using Exception::Exception;
+};
+
+struct ClaireRegistrationException : KarlException {
+  ClaireRegistrationException(const std::string& service, const std::string& route)
+      : KarlException(service + " @ " + route) {}
+};
+
+}  // namespace current::karl
+}  // namespace current
+
+#endif  // CURRENT_KARL_EXCEPTIONS_H

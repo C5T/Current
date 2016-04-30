@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,18 +22,31 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+// `Locator` defines the path to the Karl server, or the strategy to find one.
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
-#include "util.h"
-#include "rounding.h"
-#include "time.h"
+#ifndef KARL_LOCATOR_H
+#define KARL_LOCATOR_H
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+#include "../port.h"
+
+#include "schema.h"
+#include "constants.h"
+
+#include "../Bricks/strings/util.h"
+
+namespace current {
+namespace karl {
+
+struct Locator {
+  std::string address_port_route;
+  Locator(const std::string& address_port_route) : address_port_route(address_port_route) {}
+};
+
+inline Locator LocalKarl() {
+  return Locator("http://localhost:" + current::ToString(constants::kDefaultKarlPort));
+};
+
+}  // namespace current::karl
+}  // namespace current
+
+#endif  // KARL_LOCATOR_H

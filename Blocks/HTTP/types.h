@@ -224,15 +224,21 @@ struct HTTPImpl {
   typedef CHUNKED_CLIENT_IMPL chunked_client_impl_t;
   typedef SERVER_IMPL server_impl_t;
 
-  server_impl_t& operator()(int port) {
+  server_impl_t& operator()(uint16_t port) {
     static std::mutex mutex;
-    static std::map<size_t, std::unique_ptr<server_impl_t>> servers;
+    static std::map<uint16_t, std::unique_ptr<server_impl_t>> servers;
     std::lock_guard<std::mutex> lock(mutex);
     std::unique_ptr<server_impl_t>& server = servers[port];
     if (!server) {
       server.reset(new server_impl_t(port));
     }
     return *server;
+  }
+  
+  // TODO(dkorolev): Deprecate the below some time in the future. And perhaps add an `http_port_t`.
+  server_impl_t& operator()(int port) {
+    assert(port > 0 && port < 65536);
+    return operator()(static_cast<uint16_t>(port));
   }
 
   template <typename REQUEST_PARAMS, typename RESPONSE_PARAMS = KeepResponseInMemory>

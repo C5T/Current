@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,18 +22,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifndef BRICKS_STRINGS_TIME_H
+#define BRICKS_STRINGS_TIME_H
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
 #include "util.h"
-#include "rounding.h"
-#include "time.h"
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+namespace current {
+namespace strings {
+
+inline std::string TimeIntervalAsHumanReadableString(std::chrono::microseconds us) {
+  size_t seconds = static_cast<size_t>(us.count() * 1e-6);
+  if (seconds < 60) {
+    return ToString(seconds) + 's';
+  } else {
+    size_t minutes = seconds / 60;
+    seconds %= 60;
+    if (minutes < 60) {
+      return ToString(minutes) + "m " + ToString(seconds) + 's';
+    } else {
+      size_t hours = minutes / 60;
+      minutes %= 60;
+      if (hours < 24) {
+        return ToString(hours) + "h " + ToString(minutes) + "m " + ToString(seconds) + 's';
+      } else {
+        const size_t days = hours / 24;
+        hours %= 24;
+        return ToString(days) + "d " + ToString(hours) + "h " + ToString(minutes) + "m " + ToString(seconds) +
+               's';
+      }
+    }
+  }
+}
+
+}  // namespace strings
+}  // namespace current
+
+#endif  // BRICKS_STRINGS_TIME_H

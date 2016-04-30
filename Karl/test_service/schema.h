@@ -1,7 +1,7 @@
 /*******************************************************************************
 The MIT License (MIT)
 
-Copyright (c) 2014 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
+Copyright (c) 2016 Dmitry "Dima" Korolev <dmitry.korolev@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,18 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef BRICKS_STRINGS_STRINGS_H
-#define BRICKS_STRINGS_STRINGS_H
+#ifndef KARL_TEST_SERVICE_SCHEMA_H
+#define KARL_TEST_SERVICE_SCHEMA_H
 
-#include "chunk.h"
-#include "distance.h"
-#include "fixed_size_serializer.h"
-#include "is_string_type.h"
-#include "join.h"
-#include "printf.h"
-#include "split.h"
-#include "util.h"
-#include "rounding.h"
-#include "time.h"
+#include "../karl.h"
 
-#endif  // BRICKS_STRINGS_STRINGS_H
+#include "../../TypeSystem/struct.h"
+#include "../../TypeSystem/optional.h"
+
+namespace karl_unittest {
+
+CURRENT_STRUCT(Number) {
+  CURRENT_FIELD(x, int64_t);
+  CURRENT_FIELD(is_prime, Optional<bool>);
+  CURRENT_CONSTRUCTOR(Number)(int64_t x = 0) : x(x) {}
+};
+
+}  // namespace karl_unittest
+
+#endif  // KARL_TEST_SERVICE_SCHEMA_H

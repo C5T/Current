@@ -27,6 +27,8 @@ SOFTWARE.
 #ifndef BRICKS_DOT_GRAPHVIZ_H
 #define BRICKS_DOT_GRAPHVIZ_H
 
+#include "../port.h"
+
 #include <cassert>
 #include <vector>
 #include <string>
