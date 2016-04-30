@@ -26,6 +26,11 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_SCHEMA_SCHEMA_H
 #define CURRENT_TYPE_SYSTEM_SCHEMA_SCHEMA_H
 
+#include "../../port.h"
+
+#include <unordered_map>
+#include <unordered_set>
+
 #include "json_schema_format.h"
 
 #include "../Reflection/reflection.h"
@@ -320,6 +325,8 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
   struct FullSchemaPrinter final {
     const std::map<TypeID, ReflectedType>& types_;
     std::ostream& os_;
+    mutable std::unordered_set<TypeID, CurrentHashFunction<TypeID>>
+        empty_structs_;  // To not print the type of a DU case for empty structs.
 
     std::string TypeName(TypeID type_id) const {
       const auto cit = types_.find(type_id);
@@ -387,7 +394,7 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
         os_ << "| " << name;
         const auto& t = types_.at(c);
         assert(Exists<ReflectedType_Struct>(t) || Exists<ReflectedType_Variant>(t));  // Must be one of.
-        if (Exists<ReflectedType_Variant>(t) || !Value<ReflectedType_Struct>(t).fields.empty()) {
+        if (!empty_structs_.count(Value<ReflectedTypeBase>(t).type_id)) {
           os_ << " of " << name;
         }
         os_ << '\n';
@@ -406,18 +413,22 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       }
     }
 
+    void RecursivelyListStructFieldsForFSharp(std::ostringstream& os, const ReflectedType_Struct& s) const {
+      if (s.super_id != TypeID::CurrentStruct) {
+        RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
+      }
+      for (const auto& f : s.fields) {
+        os << "  " << f.second << " : " << TypeName(f.first) << '\n';
+      }
+    }
     void operator()(const ReflectedType_Struct& s) const {
-      if (!s.fields.empty() || s.super_id != TypeID::CurrentStruct) {
-        // Only dump the type if it's not empty. Empty structs are used in DU-s w/o their contents.
-        // Unless it's a derived struct, to stay on the safe side.
-        if (!s.fields.empty()) {
-          std::ostringstream temporary_os;
-          RecursivelyListStructFields(temporary_os, s);
-          const std::string fields = temporary_os.str();
-          os_ << "\ntype " << s.name << " = {\n" << fields << "}\n";
-        } else {
-          os_ << "\ntype " << s.name << " = class end\n";
-        }
+      std::ostringstream os;
+      RecursivelyListStructFieldsForFSharp(os, s);
+      const std::string fields = os.str();
+      if (!fields.empty()) {
+        os_ << "\ntype " << s.name << " = {\n" << fields << "}\n";
+      } else {
+        empty_structs_.insert(s.type_id);
       }
     }
   };  // struct LanguageSyntax<Language::FSharp>::FullSchemaPrinter
