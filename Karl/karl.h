@@ -92,11 +92,20 @@ class GenericKarl final {
               // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
               // via the URL from the inbound request and the port the service has provided,
               // to confirm two-way communication.
-              if (r.method == "POST" && qs.has("codename") && qs.has("port") && qs.has("confirm")) {
+              if (r.method == "POST" && qs.has("codename")) {
                 try {
                   const std::string location =
-                      "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current?all";
-                  const auto body = HTTP(POST(location, "")).body;
+                      "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
+                  const std::string body = [&]() -> std::string {
+                    if (qs.has("port") && qs.has("confirm")) {
+                      // Send a GET request, with a random component in the URL to prevent caching.
+                      return HTTP(GET(location + "?all&rnd" +
+                                      current::ToString(current::random::CSRandomUInt(1e9, 2e9)))).body;
+                    } else {
+                      return r.body;
+                    }
+                  }();
+
                   const auto loopback = ParseJSON<ClaireStatus>(body);
 
                   // For unit test so far -- fail if the body contains a service-specific status
