@@ -36,7 +36,7 @@ The general ideas behind Karl and Claire are:
   A random, unique, identifier of a running service. Regenerated on each binary run, changes with restart.
 
 * **Claire status**
-  A common denominator status report, containing the binary info, generic runtime ifo, and, if the service has completed initialization and informed Claire aboutit, the runtime info for this service.
+  A common denominator status report, containing the binary info, generic runtime info, and, if the service has completed initialization and informed Claire about it, the runtime info for this service.
 
 * **Claire beacon**
   A scoped object, during the lifetime of which Claire periodically sends its status upwards to Karl. The default beacon keepalive frequency is 20 seconds (in Claire; and the default unhealthy interval in Karl is 45 seconds, twice this plus five seconds).
@@ -56,7 +56,7 @@ The general ideas behind Karl and Claire are:
   
   This JSON, by convention, is always parsable as a generic Claire status (no service-specific runtime data).
   
-  This JSON and can be parsed as a Claire status with a custom user status type, as long as the latter is linked into Karl's typelist. This is the way to tailor Karl's status reporting and supervision to specific service needs.
+  This JSON can be parsed as a Claire status with a custom user status type, as long as the latter is linked into Karl's typelist. This is the way to tailor Karl's status reporting and supervision to specific service needs.
 
 * **Claire status page options**
   Just opening the `/.current` page from the browser yields the JSON without the build info (with `null` instead of it).
