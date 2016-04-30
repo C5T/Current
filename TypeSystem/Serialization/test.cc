@@ -947,6 +947,18 @@ CURRENT_STRUCT_T(ComplexTemplatedUsage) {
   CURRENT_FIELD(b, TemplatedValue<T>);
 };
 
+CURRENT_STRUCT(DummyBaseClass) {
+  CURRENT_FIELD(base, int32_t);
+  CURRENT_CONSTRUCTOR(DummyBaseClass)(int32_t base = 0) : base(base) {}
+};
+
+// TODO(dkorolev): Test `: SUPER(42)` does the job.
+CURRENT_STRUCT_T(DerivedTemplatedValue, DummyBaseClass) {
+  CURRENT_FIELD(derived, T);
+  CURRENT_DEFAULT_CONSTRUCTOR_T(DerivedTemplatedValue) : derived() {}
+  CURRENT_CONSTRUCTOR_T(DerivedTemplatedValue)(const T& derived) : derived(derived) {}
+};
+
 }  // namespace serialization_test
 
 TEST(Serialization, TemplatedValue) {
@@ -964,6 +976,24 @@ TEST(Serialization, TemplatedValue) {
   EXPECT_EQ(100ull,
             ParseJSON<TemplatedValue<Serializable>>("{\"value\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}")
                 .value.i);
+
+  EXPECT_EQ("{\"base\":0,\"derived\":1}", JSON(DerivedTemplatedValue<uint64_t>(1)));
+  EXPECT_EQ("{\"base\":0,\"derived\":true}", JSON(DerivedTemplatedValue<bool>(true)));
+  EXPECT_EQ("{\"base\":0,\"derived\":\"foo\"}", JSON(DerivedTemplatedValue<std::string>("foo")));
+  EXPECT_EQ("{\"base\":0,\"derived\":{\"i\":1,\"s\":\"one\",\"b\":false,\"e\":0}}",
+            JSON(DerivedTemplatedValue<Serializable>(Serializable(1, "one", false, Enum::DEFAULT))));
+
+  EXPECT_EQ(42ull, ParseJSON<DerivedTemplatedValue<uint64_t>>("{\"base\":1,\"derived\":42}").derived);
+  EXPECT_EQ(43, ParseJSON<DerivedTemplatedValue<uint64_t>>("{\"base\":43,\"derived\":0}").base);
+  EXPECT_TRUE(ParseJSON<DerivedTemplatedValue<bool>>("{\"base\":1,\"derived\":true}").derived);
+  EXPECT_EQ("ok", ParseJSON<DerivedTemplatedValue<std::string>>("{\"base\":1,\"derived\":\"ok\"}").derived);
+  EXPECT_EQ(43, ParseJSON<DerivedTemplatedValue<std::string>>("{\"base\":43,\"derived\":\"meh\"}").base);
+  EXPECT_EQ(100ull,
+            ParseJSON<DerivedTemplatedValue<Serializable>>(
+                "{\"base\":1,\"derived\":{\"i\":100,\"s\":\"one\",\"b\":false,\"e\":0}}").derived.i);
+  EXPECT_EQ(43,
+            ParseJSON<DerivedTemplatedValue<Serializable>>(
+                "{\"base\":43,\"derived\":{\"i\":1,\"s\":\"\",\"b\":true,\"e\":0}}").base);
 }
 
 TEST(Serialization, SimpleTemplatedUsage) {

@@ -128,7 +128,20 @@ struct CurrentStructFieldsConsistency<T, -1> {
 #define CS_SWITCH(x, y) x y
 #define CURRENT_STRUCT(...) CS_SWITCH(CS_CHOOSERX(CS_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
-#define CURRENT_STRUCT_T CURRENT_STRUCT_T_NOT_DERIVED  // No support for nested templated structs yet. -- D.K.
+#define CST_IMPL1(a) CURRENT_STRUCT_T_NOT_DERIVED(a)
+#define CST_IMPL2(a, b) CURRENT_STRUCT_T_DERIVED(a, b)
+
+#define CST_N_ARGS_IMPL2(_1, _2, n, ...) n
+#define CST_N_ARGS_IMPL(args) CST_N_ARGS_IMPL2 args
+
+#define CST_NARGS(...) CST_N_ARGS_IMPL((__VA_ARGS__, 2, 1, 0))
+
+#define CST_CHOOSER2(n) CST_IMPL##n
+#define CST_CHOOSER1(n) CST_CHOOSER2(n)
+#define CST_CHOOSERX(n) CST_CHOOSER1(n)
+
+#define CST_SWITCH(x, y) x y
+#define CURRENT_STRUCT_T(...) CST_SWITCH(CST_CHOOSERX(CST_NARGS(__VA_ARGS__)), (__VA_ARGS__))
 
 // Current structure forward declaration.
 #define CURRENT_FORWARD_DECLARE_STRUCT(s) \
@@ -236,6 +249,14 @@ struct CurrentStructFieldsConsistency<T, -1> {
       : CURRENT_STRUCT_SUPER_HELPER_##s,                                                  \
         ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
 
+#define CURRENT_STRUCT_T_DERIVED(s, base)                                                 \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
+  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                  \
+  template <typename T, typename INSTANTIATION_TYPE>                                      \
+  struct CURRENT_STRUCT_T_IMPL_##s                                                        \
+      : CURRENT_STRUCT_T_SUPER_HELPER_##s,                                                \
+        ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base>
+
 #else  // CURRENT_WINDOWS
 
 #define CURRENT_STRUCT_NOT_DERIVED(s)                                                         \
@@ -258,6 +279,13 @@ struct CurrentStructFieldsConsistency<T, -1> {
   template <typename INSTANTIATION_TYPE>                                                  \
   struct CURRENT_STRUCT_IMPL_##s                                                          \
       : ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>, INSTANTIATION_TYPE, base>
+
+#define CURRENT_STRUCT_T_DERIVED(s, base)                                                 \
+  static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
+  CURRENT_STRUCT_T_HELPERS(s, base);                                                      \
+  template <typename T, typename INSTANTIATION_TYPE>                                      \
+  struct CURRENT_STRUCT_T_IMPL_##s                                                        \
+      : ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>, INSTANTIATION_TYPE, base>
 
 #endif  // CURRENT_WINDOWS
 
