@@ -30,6 +30,7 @@ SOFTWARE.
 #include <atomic>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 
 #include "schema.h"
 #include "locator.h"
@@ -133,8 +134,12 @@ class GenericClaire final {
 
  private:
   void FillBase(ClaireStatus& status, bool fill_build) const {
+#ifndef CURRENT_MOCK_TIME
     const auto now = current::time::Now();
     assert(now >= us_start_);
+#else
+    const auto now = us_start_;  // To avoid negatives in `status.uptime`, which would kill `ParseJSON`. -- D.K.
+#endif
 
     status.service = service_;
     status.codename = codename_;
@@ -158,7 +163,7 @@ class GenericClaire final {
       std::unique_lock<std::mutex> lock(keepalive_thread_mutex_);
 
       // TODO(dkorolev): Parameter or named constant for keepalive frequency?
-      keepalive_condition_variable_.wait_for(lock, std::chrono::seconds(1));
+      keepalive_condition_variable_.wait_for(lock, std::chrono::seconds(20));
 
       if (keepalive_thread_terminating_) {
         return;

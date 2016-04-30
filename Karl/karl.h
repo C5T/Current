@@ -44,8 +44,7 @@ CURRENT_STRUCT(Server) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
 
-  const std::string& key() const { return location; }
-  void set_key(const std::string& key) const { location = key; }
+  CURRENT_USE_FIELD_AS_KEY(location);
 };
 
 CURRENT_STRUCT(Service) {
@@ -53,21 +52,37 @@ CURRENT_STRUCT(Service) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(location, std::string);
 
-  const std::string& key() const { return service; }
-  void set_key(const std::string& key) const { service = key; }
+  CURRENT_USE_FIELD_AS_KEY(service);
+};
+
+CURRENT_STRUCT(ServiceMostRecentReport) {
+  CURRENT_FIELD(service, std::string);
+  CURRENT_FIELD(most_recent_keepalive, std::chrono::microseconds);
+  CURRENT_FIELD(most_recent_reported_uptime, std::chrono::microseconds);
+
+  CURRENT_USE_FIELD_AS_KEY(service);
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, Server, ServerDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Service, ServiceDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ServiceMostRecentReport, ServiceMostRecentReportDictionary);
 
 CURRENT_STORAGE(ServiceStorage) {
   CURRENT_STORAGE_FIELD(servers, ServerDictionary);
   CURRENT_STORAGE_FIELD(services, ServiceDictionary);
+  CURRENT_STORAGE_FIELD(service_most_recent_report, ServiceMostRecentReportDictionary);
 };
 
 // Karl's HTTP responses.
+CURRENT_STRUCT(ReportedService, Service) {
+  CURRENT_FIELD(most_recent_report_age, std::string);
+  CURRENT_FIELD(most_recent_reported_uptime, std::string);
+  CURRENT_DEFAULT_CONSTRUCTOR(ReportedService) {}
+  CURRENT_CONSTRUCTOR(ReportedService)(const Service& service) : SUPER(service) {}
+};
+
 CURRENT_STRUCT(KarlStatus) {
-  CURRENT_FIELD(services, std::vector<Service>);
+  CURRENT_FIELD(services, std::vector<ReportedService>);
   CURRENT_FIELD(servers, std::vector<Server>);
 };
 
@@ -102,7 +117,6 @@ class GenericKarl final {
                       return HTTP(GET(location + "?all&rnd" +
                                       current::ToString(current::random::CSRandomUInt(1e9, 2e9)))).body;
                     } else {
-                      std::cerr << "TODO(dkoroev): Remove this.\n" << r.body << std::endl;
                       return r.body;
                     }
                   }();
@@ -113,30 +127,37 @@ class GenericKarl final {
                   // not listed as part of this Karl's `Variant<>`.
                   // static_cast<void>(ParseJSON<claire_status_t>(body));
 
-                  if (loopback.codename == qs["codename"] &&
-                      loopback.local_port == current::FromString<uint16_t>(qs["port"])) {
-                    "http://" + r.connection.RemoteIPAndPort().ip + ':' +
-                        current::ToString(loopback.local_port) + "/.current";
-
+                  // TODO(dkorolev): What should this condition be?
+                  if (true) {
+                    // if (loopback.codename == qs["codename"] &&
+                    //     loopback.local_port == current::FromString<uint16_t>(qs["port"]))
                     const std::string service = loopback.service;
-                    const std::string codename = loopback.codename;  // qs["codename"];
+                    const std::string codename = loopback.codename;
 
+                    const auto now = current::time::Now();
                     storage_.ReadWriteTransaction(
-                                 [location, service, codename](MutableFields<storage_t> fields) -> Response {
-                                   Service service_record;
-                                   service_record.location = location;
-                                   service_record.service = service;
-                                   service_record.codename = codename;
-                                   fields.services.Add(service_record);
+                                 [now, location, service, codename, &loopback](MutableFields<storage_t> fields)
+                                     -> Response {
+                                       Service service_record;
+                                       service_record.location = location;
+                                       service_record.service = service;
+                                       service_record.codename = codename;
+                                       fields.services.Add(service_record);
 
-                                   Server server_record;
-                                   server_record.location = location;
-                                   server_record.service = service;
-                                   server_record.codename = codename;
-                                   fields.servers.Add(server_record);
+                                       Server server_record;
+                                       server_record.location = location;
+                                       server_record.service = service;
+                                       server_record.codename = codename;
+                                       fields.servers.Add(server_record);
 
-                                   return Response("OK\n");
-                                 },
+                                       ServiceMostRecentReport keepalive;
+                                       keepalive.service = service;
+                                       keepalive.most_recent_keepalive = now;
+                                       keepalive.most_recent_reported_uptime = loopback.uptime;
+                                       fields.service_most_recent_report.Add(keepalive);
+
+                                       return Response("OK\n");
+                                     },
                                  std::move(r)).Detach();
                   } else {
                     r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
@@ -149,10 +170,21 @@ class GenericKarl final {
                   r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
                 }
               } else {
-                storage_.ReadOnlyTransaction([](ImmutableFields<storage_t> fields) -> Response {
+                const auto now = current::time::Now();
+                storage_.ReadOnlyTransaction([now](ImmutableFields<storage_t> fields) -> Response {
                   KarlStatus status;
                   for (const auto& service : fields.services) {
-                    status.services.push_back(service);
+                    ReportedService filled_in_service = service;
+                    const auto keepalive_data = fields.service_most_recent_report[service.service];
+                    if (Exists(keepalive_data)) {
+                      filled_in_service.most_recent_report_age =
+                          current::strings::TimeIntervalAsHumanReadableString(
+                              now - Value(keepalive_data).most_recent_keepalive);
+                      filled_in_service.most_recent_reported_uptime =
+                          current::strings::TimeIntervalAsHumanReadableString(
+                              Value(keepalive_data).most_recent_reported_uptime);
+                    }
+                    status.services.push_back(filled_in_service);
                   }
                   for (const auto& server : fields.servers) {
                     status.servers.push_back(server);

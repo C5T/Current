@@ -64,9 +64,11 @@ using DefaultClaireServiceStatus = default_user_status::status;
 
 // For now, Karl parses the passed in JSON twice: once as `ClaireStatus` for generic response,
 // and once as `ClaireServiceStatus<T>`, where `T` is a `Variant` containing the client-, service-side blob.
+// clang-format off
 CURRENT_STRUCT_T_DERIVED(ClaireServiceStatus, ClaireStatus) {
   CURRENT_FIELD(runtime, T);
 };
+// clang-format on
 
 }  // namespace current::karl
 }  // namespace current
