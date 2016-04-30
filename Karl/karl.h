@@ -71,7 +71,7 @@ CURRENT_STRUCT(KarlStatus) {
   CURRENT_FIELD(servers, std::vector<Server>);
 };
 
-template<typename T>
+template <typename T>
 class GenericKarl final {
  public:
   using claire_status_t = T;
@@ -102,6 +102,7 @@ class GenericKarl final {
                       return HTTP(GET(location + "?all&rnd" +
                                       current::ToString(current::random::CSRandomUInt(1e9, 2e9)))).body;
                     } else {
+                      std::cerr << "TODO(dkoroev): Remove this.\n" << r.body << std::endl;
                       return r.body;
                     }
                   }();

@@ -87,11 +87,13 @@ class GenericClaire final {
                                               r(response);
                                             }
                                           }
-                                        })) {
-  }
+                                        })),
+        keepalive_thread_terminating_(false) {}
 
   virtual ~GenericClaire() {
     if (keepalive_thread_.joinable()) {
+      keepalive_thread_terminating_ = true;
+      keepalive_condition_variable_.notify_one();
       keepalive_thread_.join();
     }
   }
@@ -125,7 +127,7 @@ class GenericClaire final {
         in_beacon_mode_ = true;
       }
 
-      keepalive_thread_ = std::thread([this]() { Thread(); });
+      keepalive_thread_ = std::thread([this]() { KeepaliveThread(); });
     }
   }
 
@@ -147,7 +149,34 @@ class GenericClaire final {
     }
   }
 
-  void Thread() {}
+  void KeepaliveThread() {
+    // TODO(dkorolev): Pre-generatate this string?
+    const std::string route =
+        karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
+
+    while (!keepalive_thread_terminating_) {
+      std::unique_lock<std::mutex> lock(keepalive_thread_mutex_);
+
+      // TODO(dkorolev): Parameter or named constant for keepalive frequency?
+      keepalive_condition_variable_.wait_for(lock, std::chrono::seconds(1));
+
+      if (keepalive_thread_terminating_) {
+        return;
+      }
+
+      specific_status_t keepalive_body;
+      FillBase(keepalive_body, true);
+      if (status_generator_) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        keepalive_body.runtime = status_generator_();
+      }
+      try {
+        HTTP(POST(route, JSON(keepalive_body)));
+      } catch (const current::Exception&) {
+        CURRENT_THROW(ClaireRegistrationException(service_, route));
+      }
+    }
+  }
 
   GenericClaire() = delete;
 
@@ -163,6 +192,9 @@ class GenericClaire final {
   const std::chrono::microseconds us_start_;
   const HTTPRoutesScope http_scope_;
 
+  std::atomic_bool keepalive_thread_terminating_;
+  std::mutex keepalive_thread_mutex_;
+  std::condition_variable keepalive_condition_variable_;
   std::thread keepalive_thread_;
 };
 
