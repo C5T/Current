@@ -64,7 +64,8 @@ class GenericClaire final {
         service_(service),
         codename_(GenerateRandomCodename()),
         port_(port),
-        karl_url_to_post_to_(karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_)),
+        karl_keepalive_route_(karl_.address_port_route + "?codename=" + codename_ + "&port=" +
+                              current::ToString(port_)),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current",
                                         [this](Request r) {
@@ -81,9 +82,12 @@ class GenericClaire final {
                                             } else {
                                               specific_status_t response;
                                               FillBase(response, all);
-                                              if (status_generator_) {
-                                                std::lock_guard<std::mutex> lock(mutex_);
-                                                response.runtime = status_generator_();
+
+                                              {
+                                                std::lock_guard<std::mutex> lock(status_generator_mutex_);
+                                                if (status_generator_) {
+                                                  response.runtime = status_generator_();
+                                                }
                                               }
                                               r(response);
                                             }
@@ -103,16 +107,19 @@ class GenericClaire final {
     // Register this Claire with Karl and spawn the thread to send regular keepalives.
     // If `require_karls_confirmation` is true, throw if Karl can be not be reached.
     // If `require_karls_confirmation` is false, just start the keepalives thread.
-    std::lock_guard<std::mutex> lock(mutex_);
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
-      status_generator_ = status_filler;
+      {
+        std::lock_guard<std::mutex> lock(status_generator_mutex_);
+        status_generator_ = status_filler;
+      }
 
       if (require_karls_confirmation) {
-        const std::string route = karl_url_to_post_to_ + "&confirm";
+        const std::string route = karl_keepalive_route_ + "&confirm";
         // The call to `SendKeepaliveToKarl` is blocking.
         // With "&confirm" at the end, the call to Karl would require Karl calling Claire back.
         // Can throw, the exception should propagate up.
-        SendKeepaliveToKarl(karl_url_to_post_to_ + "&confirm");
+        SendKeepaliveToKarl(lock, karl_keepalive_route_ + "&confirm");
       }
 
       StartKeepaliveThread();
@@ -151,8 +158,17 @@ class GenericClaire final {
   // Possibly via a custom `route`: adding "&confirm", for example, would require Karl to crawl Claire back.
   void SendKeepaliveToKarl(std::unique_lock<std::mutex>&, const std::string& route) {
     // Basically, throw in case of any error, and throw only one type: `ClaireRegistrationException`.
+    specific_status_t keepalive_body;
+    FillBase(keepalive_body, true);
+    {
+      std::lock_guard<std::mutex> lock(status_generator_mutex_);
+      if (status_generator_) {
+        keepalive_body.runtime = status_generator_();
+      }
+    }
+
     try {
-      if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
+      if (HTTP(POST(route, JSON<JSONFormat::Minimalistic>(keepalive_body))).code == HTTPResponseCode.OK) {
         return;
       }
     } catch (const current::Exception&) {
@@ -162,14 +178,14 @@ class GenericClaire final {
 
   // The semantic to ensure keepalives only happen from a locked section.
   void SendKeepaliveToKarl(const std::string& route) {
-    std::unique_lock<std::mutex> lock(keepalive_thread_mutex_);
+    std::unique_lock<std::mutex> lock(keepalive_mutex_);
     SendKeepaliveToKarl(lock, route);
   }
 
   // The thread sends periodic keepalive messages.
   void KeepaliveThread() {
     while (!keepalive_thread_terminating_) {
-      std::unique_lock<std::mutex> lock(keepalive_thread_mutex_);
+      std::unique_lock<std::mutex> lock(keepalive_mutex_);
 
       // TODO(dkorolev): Parameter or named constant for keepalive frequency?
       keepalive_condition_variable_.wait_for(lock, std::chrono::seconds(20));
@@ -178,16 +194,10 @@ class GenericClaire final {
         return;
       }
 
-      specific_status_t keepalive_body;
-      FillBase(keepalive_body, true);
-      if (status_generator_) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        keepalive_body.runtime = status_generator_();
-      }
       try {
-        HTTP(POST(karl_url_to_post_to_, JSON(keepalive_body)));
-      } catch (const current::Exception&) {
-        CURRENT_THROW(ClaireRegistrationException(service_, karl_url_to_post_to_));
+        SendKeepaliveToKarl(lock, karl_keepalive_route_);
+      } catch (const ClaireRegistrationException&) {
+        // Ignore exceptions if there's a problem talking to Karl. He'll come back. He's Karl.
       }
     }
   }
@@ -195,19 +205,19 @@ class GenericClaire final {
   GenericClaire() = delete;
 
   std::atomic_bool in_beacon_mode_;
-  std::mutex mutex_;
 
   const Locator karl_;
   const std::string service_;
   const std::string codename_;
   const int port_;
-  const std::string karl_url_to_post_to_;
+  const std::string karl_keepalive_route_;
+  std::mutex status_generator_mutex_;
   status_generator_t status_generator_;
   const std::chrono::microseconds us_start_;
   const HTTPRoutesScope http_scope_;
 
   std::atomic_bool keepalive_thread_terminating_;
-  std::mutex keepalive_thread_mutex_;
+  std::mutex keepalive_mutex_;
   std::condition_variable keepalive_condition_variable_;
   std::thread keepalive_thread_;
 };
