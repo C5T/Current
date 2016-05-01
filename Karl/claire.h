@@ -117,11 +117,11 @@ class GenericClaire final {
 
  private:
   void FillBaseKeepaliveStatus(ClaireStatus& status, bool fill_current_build = true) const {
-#ifndef CURRENT_MOCK_TIME
     const auto now = current::time::Now();
+
+#ifndef CURRENT_MOCK_TIME
+    // With mock time, can result in trouble. -- D.K.
     assert(now >= us_start_);
-#else
-    const auto now = us_start_;  // To avoid negatives in `status.uptime`, which would kill `ParseJSON`. -- D.K.
 #endif
 
     status.service = service_;
@@ -129,8 +129,33 @@ class GenericClaire final {
     status.local_port = port_;
 
     status.now = now;
-    status.uptime = now - us_start_;
-    status.uptime_as_string = current::strings::TimeIntervalAsHumanReadableString(status.uptime);
+
+#ifndef CURRENT_MOCK_TIME
+    // With mock time, can result in negatives in `status.uptime`, which would kill `ParseJSON`. -- D.K.
+    status.uptime_epoch_microseconds = now - us_start_;
+    status.uptime = current::strings::TimeIntervalAsHumanReadableString(status.uptime_epoch_microseconds);
+
+    {
+      std::lock_guard<std::mutex> lock(status_mutex_);
+      if (last_keepalive_attempt_timestamp_.count()) {
+        status.last_keepalive_sent =
+            current::strings::TimeIntervalAsHumanReadableString(now - last_keepalive_attempt_timestamp_) +
+            " ago";
+      }
+      if (last_keepalive_attempt_result_ != net::HTTPResponseCodeValue::InvalidCode) {
+        status.last_keepalive_code = static_cast<int>(last_keepalive_attempt_result_);
+      }
+      if (last_successful_keepalive_timestamp_.count()) {
+        status.last_successful_keepalive =
+            current::strings::TimeIntervalAsHumanReadableString(now - last_successful_keepalive_timestamp_) +
+            " ago";
+      }
+      if (last_successful_keepalive_ping_.count()) {
+        status.last_successful_keepalive_ping =
+            current::strings::Printf("%.2lfms", 1e-3 * last_successful_keepalive_ping_.count());
+      }
+    }
+#endif
 
     if (fill_current_build) {
       status.build = build::Info();
@@ -165,16 +190,22 @@ class GenericClaire final {
     const auto keepalive_body = GenerateKeepaliveStatus();
 
     try {
+      {
+        std::lock_guard<std::mutex> lock(status_mutex_);
+        last_keepalive_attempt_timestamp_ = current::time::Now();
+        last_keepalive_attempt_result_ = net::HTTPResponseCodeValue::InvalidCode;
+      }
+
       const auto code = HTTP(POST(route,
                                   JSON<JSONFormat::Minimalistic>(keepalive_body),
                                   current::net::constants::kDefaultJSONContentType)).code;
 
       {
         std::lock_guard<std::mutex> lock(status_mutex_);
-        last_keepalive_attempt_timestamp_ = current::time::Now();
         last_keepalive_attempt_result_ = code;
         if (static_cast<int>(code) >= 200 && static_cast<int>(code) <= 299) {
           last_successful_keepalive_timestamp_ = last_keepalive_attempt_timestamp_;
+          last_successful_keepalive_ping_ = current::time::Now() - last_keepalive_attempt_timestamp_;
         }
       }
 
@@ -239,6 +270,7 @@ class GenericClaire final {
   std::chrono::microseconds last_keepalive_attempt_timestamp_ = std::chrono::microseconds(0);
   net::HTTPResponseCodeValue last_keepalive_attempt_result_ = net::HTTPResponseCodeValue::InvalidCode;
   std::chrono::microseconds last_successful_keepalive_timestamp_ = std::chrono::microseconds(0);
+  std::chrono::microseconds last_successful_keepalive_ping_ = std::chrono::microseconds(0);
 
   const HTTPRoutesScope http_scope_;
 
