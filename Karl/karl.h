@@ -116,7 +116,11 @@ CURRENT_STRUCT(KarlStatus) {
 };
 */
 
-CURRENT_STRUCT(KarlStatus) { CURRENT_FIELD(foo, std::string, "bar"); };
+CURRENT_STRUCT(KarlStatus) {
+  CURRENT_FIELD(keepalives_per_codename, (std::map<std::string, std::string>));
+  CURRENT_FIELD(uptime_per_codename, (std::map<std::string, std::string>));
+  CURRENT_FIELD(codenames_per_service, (std::map<std::string, std::vector<std::string>>));
+};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -233,7 +237,37 @@ class GenericKarl final {
         r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
       }
     } else {
-      r(KarlStatus());
+      const auto now = current::time::Now();
+      const auto from = [&]() -> std::chrono::microseconds {
+        if (r.url.query.has("from")) {
+          return current::FromString<std::chrono::microseconds>(r.url.query["from"]);
+        }
+        if (r.url.query.has("m")) {  // `m` stands for minutes.
+          return now - std::chrono::microseconds(
+                           static_cast<int64_t>(current::FromString<double>(r.url.query["m"]) * 1e6 * 60));
+        }
+        if (r.url.query.has("h")) {  // `h` stands for hours.
+          return now - std::chrono::microseconds(
+                           static_cast<int64_t>(current::FromString<double>(r.url.query["h"]) * 1e6 * 60 * 60));
+        }
+        if (r.url.query.has("d")) {  // `d` stands for days.
+          return now - std::chrono::microseconds(static_cast<int64_t>(
+                           current::FromString<double>(r.url.query["d"]) * 1e6 * 60 * 60 * 24));
+        }
+        // Five minutes by default.
+        return now - std::chrono::microseconds(static_cast<int64_t>(1e6 * 60 * 5));
+      }();
+      const auto to = [&]() -> std::chrono::microseconds {
+        if (r.url.query.has("to")) {
+          return current::FromString<std::chrono::microseconds>(r.url.query["to"]);
+        }
+        if (r.url.query.has("interval_us")) {
+          return from + current::FromString<std::chrono::microseconds>(r.url.query["interval_us"]);
+        }
+        // By the present moment by default.
+        return now;
+      }();
+      r(PrepareKarlStatus(from, to));
       /*
       const auto now = current::time::Now();
       storage_.ReadOnlyTransaction([now](ImmutableFields<storage_t> fields) -> Response {
@@ -255,6 +289,25 @@ class GenericKarl final {
       }, std::move(r)).Detach();
       */
     }
+  }
+
+  KarlStatus PrepareKarlStatus(const std::chrono::microseconds from, const std::chrono::microseconds to) {
+    const auto now = current::time::Now();
+    KarlStatus result;
+    std::map<std::string, std::set<std::string>> codenames_per_service;
+    for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
+      if (e.idx_ts.us >= from && e.idx_ts.us < to) {
+        const auto& keepalive = e.entry;
+        result.keepalives_per_codename[keepalive.codename] = current::strings::TimeIntervalAsHumanReadableString(
+                now - e.idx_ts.us) + " ago";
+        result.uptime_per_codename[keepalive.codename] = keepalive.uptime;
+        codenames_per_service[keepalive.service].insert(keepalive.codename);
+      }
+    }
+    for (const auto& c : codenames_per_service) {
+      result.codenames_per_service[c.first].assign(c.second.begin(), c.second.end());
+    }
+    return result;
   }
 
   stream_t keepalives_stream_;

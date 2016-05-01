@@ -4,7 +4,8 @@
 
 int main() {
   using namespace current::karl::constants;
-  const current::karl::Karl karl(kDefaultKarlPort);
+  // TODO(dkorolev): Make these paths less non-Windows.
+  const current::karl::Karl karl(kDefaultKarlPort, ".current/stream", ".current/storage");
   std::cout << "Karl up, http://localhost:" << kDefaultKarlPort << '/' << std::endl;
   HTTP(kDefaultKarlPort).Join();
 }
