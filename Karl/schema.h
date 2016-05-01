@@ -44,8 +44,13 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(local_port, uint16_t);
 
   CURRENT_FIELD(now, std::chrono::microseconds);  // To calculated time skew as well.
-  CURRENT_FIELD(uptime, std::chrono::microseconds);
-  CURRENT_FIELD(uptime_as_string, std::string);
+  CURRENT_FIELD(uptime_epoch_microseconds, std::chrono::microseconds);
+  CURRENT_FIELD(uptime, std::string);
+
+  CURRENT_FIELD(last_keepalive_sent, std::string);
+  CURRENT_FIELD(last_keepalive_code, Optional<int32_t>);
+  CURRENT_FIELD(last_successful_keepalive, Optional<std::string>);
+  CURRENT_FIELD(last_successful_keepalive_ping, Optional<std::string>);
 
   CURRENT_FIELD(build, Optional<build::Info>);
 };

@@ -138,28 +138,28 @@ class GenericKarl final {
 
                     const auto now = current::time::Now();
                     storage_.ReadWriteTransaction(
-                                 [now, location, service, codename, &loopback](MutableFields<storage_t> fields)
-                                     -> Response {
-                                       Service service_record;
-                                       service_record.location = location;
-                                       service_record.service = service;
-                                       service_record.codename = codename;
-                                       fields.services.Add(service_record);
+                                 [now, location, service, codename, &loopback](
+                                     MutableFields<storage_t> fields) -> Response {
+                                   Service service_record;
+                                   service_record.location = location;
+                                   service_record.service = service;
+                                   service_record.codename = codename;
+                                   fields.services.Add(service_record);
 
-                                       Server server_record;
-                                       server_record.location = location;
-                                       server_record.service = service;
-                                       server_record.codename = codename;
-                                       fields.servers.Add(server_record);
+                                   Server server_record;
+                                   server_record.location = location;
+                                   server_record.service = service;
+                                   server_record.codename = codename;
+                                   fields.servers.Add(server_record);
 
-                                       ServiceMostRecentReport keepalive;
-                                       keepalive.service = service;
-                                       keepalive.most_recent_keepalive = now;
-                                       keepalive.most_recent_reported_uptime = loopback.uptime;
-                                       fields.service_most_recent_report.Add(keepalive);
+                                   ServiceMostRecentReport keepalive;
+                                   keepalive.service = service;
+                                   keepalive.most_recent_keepalive = now;
+                                   keepalive.most_recent_reported_uptime = loopback.uptime_epoch_microseconds;
+                                   fields.service_most_recent_report.Add(keepalive);
 
-                                       return Response("OK\n");
-                                     },
+                                   return Response("OK\n");
+                                 },
                                  std::move(r)).Detach();
                   } else {
                     r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
