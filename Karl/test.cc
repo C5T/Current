@@ -57,12 +57,14 @@ DEFINE_string(karl_test_storage_persistence_file, ".current/storage", "Local fil
 
 DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test forever.");
 
+using unittest_karl_t = current::karl::GenericKarl<current::karl::ClaireStatus, karl_unittest::is_prime>;
+
 TEST(Karl, SmokeGenerator) {
   current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Karl karl(
+  const unittest_karl_t karl(
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(
@@ -94,7 +96,7 @@ TEST(Karl, SmokeIsPrime) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Karl karl(
+  const unittest_karl_t karl(
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
@@ -132,7 +134,7 @@ TEST(Karl, SmokeAnnotator) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Karl karl(
+  const unittest_karl_t karl(
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(
@@ -183,7 +185,7 @@ TEST(Karl, SmokeFilter) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Karl karl(
+  const unittest_karl_t karl(
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(
@@ -257,7 +259,7 @@ TEST(Karl, EndToEndTest) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Karl karl(
+  const unittest_karl_t karl(
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port,
