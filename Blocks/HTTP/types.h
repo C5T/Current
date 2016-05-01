@@ -35,6 +35,7 @@ SOFTWARE.
 
 #include "../../Bricks/net/exceptions.h"
 #include "../../Bricks/net/http/http.h"
+#include "../../Bricks/net/http/impl/server.h"  // net::constants
 #include "../../Bricks/strings/is_string_type.h"
 #include "../../Bricks/template/decay.h"
 
@@ -114,7 +115,7 @@ template <typename REQUEST>
 struct FillBody<REQUEST, true> {
   static void Fill(REQUEST& request, const std::string& body, const std::string& content_type) {
     request.body = body;
-    request.content_type = !content_type.empty() ? content_type : "text/plain";
+    request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultContentType;
   }
 };
 
@@ -125,7 +126,7 @@ struct FillBody<REQUEST, false> {
   static typename std::enable_if<IS_CURRENT_STRUCT(current::decay<T>)>::type Fill(
       REQUEST& request, T&& object, const std::string& content_type) {
     request.body = JSON(std::forward<T>(object));
-    request.content_type = !content_type.empty() ? content_type : "application/json";
+    request.content_type = !content_type.empty() ? content_type : net::constants::kDefaultJSONContentType;
   }
 };
 
