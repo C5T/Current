@@ -88,8 +88,19 @@ class GenericClaire final {
                                           const auto& qs = r.url.query;
                                           const bool all = qs.has("all") || qs.has("a");
                                           const bool build = qs.has("build") || qs.has("b");
+                                          const bool runtime = qs.has("runtime") || qs.has("r");
                                           if (!all && build) {
                                             r(build::Info());
+                                          } else if (!all && runtime) {
+                                            r(([this]() -> Response {
+                                              std::lock_guard<std::mutex> lock(status_mutex_);
+                                              if (status_generator_) {
+                                                return Response(status_generator_());
+                                              } else {
+                                                return Response("Not ready.\n",
+                                                                HTTPResponseCode.ServiceUnavailable);
+                                              }
+                                            })());
                                           } else {
                                             // Don't use `JSONFormat::Minimalistic` to support type evolution
                                             // of how to report/aggregate/render statuses on the Karl side.
@@ -211,7 +222,7 @@ class GenericClaire final {
             static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode);
       }
 
-      const auto code = HTTP(POST(route,keepalive_body)).code;
+      const auto code = HTTP(POST(route, keepalive_body)).code;
 
       {
         std::lock_guard<std::mutex> lock(status_mutex_);
