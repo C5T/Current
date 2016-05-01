@@ -269,6 +269,8 @@ struct VariantImpl<NAME, TypeListImpl<TYPES...>> : CurrentVariantImpl<NAME> {
   }
 
   void CheckIntegrityImpl() const {
+    // NOTE by @dkorolev on 5/1/16: Should we be OK to have an uninitialized `Variant<>`?
+    // TODO(dkorolev) + TODO(mzhurovich): Revisit this.
     if (!object_) {
       throw UninitializedVariantOfTypeException<TYPES...>();  // LCOV_EXCL_LINE
     }
