@@ -94,101 +94,100 @@ class GenericKarl final {
   using claire_status_t = Variant<TS...>;
   using storage_t = ServiceStorage<SherlockInMemoryStreamPersister>;
 
-  explicit GenericKarl(uint16_t port, const std::string& url = "/") : http_scope_(HTTP(port).Register(
-            url,
-            [this](Request r) {
-              const auto& qs = r.url.query;
-              // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
-              // via the URL from the inbound request and the port the service has provided,
-              // to confirm two-way communication.
-              if (r.method == "POST" && qs.has("codename")) {
-                try {
-                  const std::string location =
-                      "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
-                  const std::string body = [&]() -> std::string {
-                    if (qs.has("port") && qs.has("confirm")) {
-                      // Send a GET request, with a random component in the URL to prevent caching.
-                      return HTTP(GET(location + "?all&rnd" +
-                                      current::ToString(current::random::CSRandomUInt(1e9, 2e9)))).body;
-                    } else {
-                      return r.body;
-                    }
-                  }();
-
-                  const auto loopback = ParseJSON<ClaireStatus>(body);
-
-                  // For unit test so far -- fail if the body contains a service-specific status
-                  // not listed as part of this Karl's `Variant<>`.
-                  // static_cast<void>(ParseJSON<claire_status_t>(body));
-
-                  // TODO(dkorolev): What should this condition be?
-                  if (true) {
-                    // if (loopback.codename == qs["codename"] &&
-                    //     loopback.local_port == current::FromString<uint16_t>(qs["port"]))
-                    const std::string service = loopback.service;
-                    const std::string codename = loopback.codename;
-
-                    const auto now = current::time::Now();
-                    storage_.ReadWriteTransaction(
-                                 [now, location, service, codename, &loopback](
-                                     MutableFields<storage_t> fields) -> Response {
-                                   Service service_record;
-                                   service_record.location = location;
-                                   service_record.service = service;
-                                   service_record.codename = codename;
-                                   fields.services.Add(service_record);
-
-                                   Server server_record;
-                                   server_record.location = location;
-                                   server_record.service = service;
-                                   server_record.codename = codename;
-                                   fields.servers.Add(server_record);
-
-                                   ServiceMostRecentReport keepalive;
-                                   keepalive.service = service;
-                                   keepalive.most_recent_keepalive = now;
-                                   keepalive.most_recent_reported_uptime = loopback.uptime_epoch_microseconds;
-                                   fields.service_most_recent_report.Add(keepalive);
-
-                                   return Response("OK\n");
-                                 },
-                                 std::move(r)).Detach();
-                  } else {
-                    r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
-                  }
-                } catch (const net::NetworkException&) {
-                  r("Callback error.\n", HTTPResponseCode.BadRequest);
-                } catch (const TypeSystemParseJSONException&) {
-                  r("JSON parse error.\n", HTTPResponseCode.BadRequest);
-                } catch (const Exception&) {
-                  r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
-                }
-              } else {
-                const auto now = current::time::Now();
-                storage_.ReadOnlyTransaction([now](ImmutableFields<storage_t> fields) -> Response {
-                  KarlStatus status;
-                  for (const auto& service : fields.services) {
-                    ReportedService filled_in_service = service;
-                    const auto keepalive_data = fields.service_most_recent_report[service.service];
-                    if (Exists(keepalive_data)) {
-                      filled_in_service.most_recent_report_age =
-                          current::strings::TimeIntervalAsHumanReadableString(
-                              now - Value(keepalive_data).most_recent_keepalive);
-                      filled_in_service.most_recent_reported_uptime =
-                          current::strings::TimeIntervalAsHumanReadableString(
-                              Value(keepalive_data).most_recent_reported_uptime);
-                    }
-                    status.services.push_back(filled_in_service);
-                  }
-                  for (const auto& server : fields.servers) {
-                    status.servers.push_back(server);
-                  }
-                  return status;
-                }, std::move(r)).Detach();
-              }
-            })) {}
+  explicit GenericKarl(uint16_t port, const std::string& url = "/")
+      : http_scope_(HTTP(port).Register(url, [this](Request r) { return Serve(std::move(r)); })) {}
 
  private:
+  void Serve(Request r) {
+    const auto& qs = r.url.query;
+    // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
+    // via the URL from the inbound request and the port the service has provided,
+    // to confirm two-way communication.
+    if (r.method == "POST" && qs.has("codename")) {
+      try {
+        const std::string location =
+            "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
+        const std::string body = [&]() -> std::string {
+          if (qs.has("port") && qs.has("confirm")) {
+            // Send a GET request, with a random component in the URL to prevent caching.
+            return HTTP(GET(location + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
+                .body;
+          } else {
+            return r.body;
+          }
+        }();
+
+        const auto loopback = ParseJSON<ClaireStatus>(body);
+
+        // For unit test so far -- fail if the body contains a service-specific status
+        // not listed as part of this Karl's `Variant<>`.
+        // static_cast<void>(ParseJSON<claire_status_t>(body));
+
+        // TODO(dkorolev): What should this condition be?
+        if (true) {
+          // if (loopback.codename == qs["codename"] &&
+          //     loopback.local_port == current::FromString<uint16_t>(qs["port"]))
+          const std::string service = loopback.service;
+          const std::string codename = loopback.codename;
+
+          const auto now = current::time::Now();
+          storage_.ReadWriteTransaction(
+                       [now, location, service, codename, &loopback](MutableFields<storage_t> fields)
+                           -> Response {
+                             Service service_record;
+                             service_record.location = location;
+                             service_record.service = service;
+                             service_record.codename = codename;
+                             fields.services.Add(service_record);
+
+                             Server server_record;
+                             server_record.location = location;
+                             server_record.service = service;
+                             server_record.codename = codename;
+                             fields.servers.Add(server_record);
+
+                             ServiceMostRecentReport keepalive;
+                             keepalive.service = service;
+                             keepalive.most_recent_keepalive = now;
+                             keepalive.most_recent_reported_uptime = loopback.uptime_epoch_microseconds;
+                             fields.service_most_recent_report.Add(keepalive);
+
+                             return Response("OK\n");
+                           },
+                       std::move(r)).Detach();
+        } else {
+          r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
+        }
+      } catch (const net::NetworkException&) {
+        r("Callback error.\n", HTTPResponseCode.BadRequest);
+      } catch (const TypeSystemParseJSONException&) {
+        r("JSON parse error.\n", HTTPResponseCode.BadRequest);
+      } catch (const Exception&) {
+        r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
+      }
+    } else {
+      const auto now = current::time::Now();
+      storage_.ReadOnlyTransaction([now](ImmutableFields<storage_t> fields) -> Response {
+        KarlStatus status;
+        for (const auto& service : fields.services) {
+          ReportedService filled_in_service = service;
+          const auto keepalive_data = fields.service_most_recent_report[service.service];
+          if (Exists(keepalive_data)) {
+            filled_in_service.most_recent_report_age = current::strings::TimeIntervalAsHumanReadableString(
+                now - Value(keepalive_data).most_recent_keepalive);
+            filled_in_service.most_recent_reported_uptime = current::strings::TimeIntervalAsHumanReadableString(
+                Value(keepalive_data).most_recent_reported_uptime);
+          }
+          status.services.push_back(filled_in_service);
+        }
+        for (const auto& server : fields.servers) {
+          status.servers.push_back(server);
+        }
+        return status;
+      }, std::move(r)).Detach();
+    }
+  }
+
   storage_t storage_;
   const HTTPRoutesScope http_scope_;
 };
