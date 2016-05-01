@@ -88,24 +88,16 @@ CURRENT_STRUCT(KarlStatus) {
   CURRENT_FIELD(servers, std::vector<Server>);
 };
 
-template <typename T>
+template <typename... TS>
 class GenericKarl final {
  public:
-  using claire_status_t = T;
-  using logger_t = std::function<void(const Request&)>;
+  using claire_status_t = Variant<TS...>;
   using storage_t = ServiceStorage<SherlockInMemoryStreamPersister>;
 
-  explicit GenericKarl(uint16_t port, const std::string& url = "/", logger_t logger = nullptr)
-      : logger_(logger),
-        http_scope_(HTTP(port).Register(
+  explicit GenericKarl(uint16_t port, const std::string& url = "/") : http_scope_(HTTP(port).Register(
             url,
             [this](Request r) {
               const auto& qs = r.url.query;
-              /*
-              if (logger_) {
-                logger_(r);
-              }
-              */
               // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
               // via the URL from the inbound request and the port the service has provided,
               // to confirm two-way communication.
@@ -197,12 +189,11 @@ class GenericKarl final {
             })) {}
 
  private:
-  const logger_t logger_;
   storage_t storage_;
   const HTTPRoutesScope http_scope_;
 };
 
-using Karl = GenericKarl<Variant<DefaultClaireServiceStatus>>;
+using Karl = GenericKarl<DefaultClaireServiceStatus>;
 
 }  // namespace current::karl
 }  // namespace current
