@@ -119,14 +119,10 @@ class GenericKarl final {
 
         const auto loopback = ParseJSON<ClaireStatus>(body);
 
-        // For unit test so far -- fail if the body contains a service-specific status
-        // not listed as part of this Karl's `Variant<>`.
         // static_cast<void>(ParseJSON<claire_status_t>(body));
 
-        // TODO(dkorolev): What should this condition be?
-        if (true) {
-          // if (loopback.codename == qs["codename"] &&
-          //     loopback.local_port == current::FromString<uint16_t>(qs["port"]))
+        if (loopback.codename == qs["codename"] &&
+            loopback.local_port == current::FromString<uint16_t>(qs["port"])) {
           const std::string service = loopback.service;
           const std::string codename = loopback.codename;
 
