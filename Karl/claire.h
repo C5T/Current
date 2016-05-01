@@ -98,7 +98,7 @@ class GenericClaire final {
     std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
       {
-        std::lock_guard<std::mutex> lock(status_generator_mutex_);
+        std::lock_guard<std::mutex> lock(status_mutex_);
         status_generator_ = status_filler;
       }
 
@@ -140,7 +140,7 @@ class GenericClaire final {
   void FillKeepaliveStatus(specific_status_t& status, bool fill_current_build = true) const {
     FillBaseKeepaliveStatus(status, fill_current_build);
     {
-      std::lock_guard<std::mutex> lock(status_generator_mutex_);
+      std::lock_guard<std::mutex> lock(status_mutex_);
       if (status_generator_) {
         status.runtime = status_generator_();
       }
@@ -165,9 +165,21 @@ class GenericClaire final {
     const auto keepalive_body = GenerateKeepaliveStatus();
 
     try {
-      if (HTTP(POST(route,
-                    JSON<JSONFormat::Minimalistic>(keepalive_body),
-                    current::net::constants::kDefaultJSONContentType)).code == HTTPResponseCode.OK) {
+      const auto code = HTTP(POST(route,
+                                  JSON<JSONFormat::Minimalistic>(keepalive_body),
+                                  current::net::constants::kDefaultJSONContentType)).code;
+
+      {
+        std::lock_guard<std::mutex> lock(status_mutex_);
+        last_keepalive_attempt_timestamp_ = current::time::Now();
+        last_keepalive_attempt_result_ = code;
+        if (static_cast<int>(code) >= 200 && static_cast<int>(code) <= 299) {
+          last_successful_keepalive_timestamp_ = last_keepalive_attempt_timestamp_;
+        }
+      }
+
+      if (code == HTTPResponseCode.OK) {
+        // Success. And anything else is failure.
         return;
       }
     } catch (const current::Exception&) {
@@ -186,8 +198,17 @@ class GenericClaire final {
     while (!keepalive_thread_terminating_) {
       std::unique_lock<std::mutex> lock(keepalive_mutex_);
 
+      // Have the interval normalized a bit.
       // TODO(dkorolev): Parameter or named constant for keepalive frequency?
-      keepalive_condition_variable_.wait_for(lock, std::chrono::seconds(20));
+      const std::chrono::microseconds projected_next_keepalive =
+          last_keepalive_attempt_timestamp_ +
+          std::chrono::microseconds(current::random::CSRandomUInt64(20e6 * 0.9, 20e6 * 1.1));
+
+      const std::chrono::microseconds now = current::time::Now();
+
+      if (projected_next_keepalive > now) {
+        keepalive_condition_variable_.wait_for(lock, projected_next_keepalive - now);
+      }
 
       if (keepalive_thread_terminating_) {
         return;
@@ -211,10 +232,14 @@ class GenericClaire final {
   const int port_;
   const std::string karl_keepalive_route_;
 
-  mutable std::mutex status_generator_mutex_;
-  status_generator_t status_generator_;
-
   const std::chrono::microseconds us_start_;
+
+  mutable std::mutex status_mutex_;
+  status_generator_t status_generator_;
+  std::chrono::microseconds last_keepalive_attempt_timestamp_ = std::chrono::microseconds(0);
+  net::HTTPResponseCodeValue last_keepalive_attempt_result_ = net::HTTPResponseCodeValue::InvalidCode;
+  std::chrono::microseconds last_successful_keepalive_timestamp_ = std::chrono::microseconds(0);
+
   const HTTPRoutesScope http_scope_;
 
   std::atomic_bool keepalive_thread_terminating_;
