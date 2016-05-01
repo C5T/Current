@@ -40,6 +40,7 @@ SOFTWARE.
 
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/random.h"
+#include "../Bricks/net/http/impl/server.h"  // current::net::constants::kDefaultJSONContentType
 
 namespace current {
 namespace karl {
@@ -75,22 +76,17 @@ class GenericClaire final {
                                           if (!all && build) {
                                             r(build::Info());
                                           } else {
-                                            if (!in_beacon_mode_) {
-                                              ClaireStatus response;
-                                              FillBase(response, all);
-                                              r(response);
-                                            } else {
-                                              specific_status_t response;
-                                              FillBase(response, all);
-
-                                              {
-                                                std::lock_guard<std::mutex> lock(status_generator_mutex_);
-                                                if (status_generator_) {
-                                                  response.runtime = status_generator_();
-                                                }
+                                            specific_status_t response;
+                                            FillBase(response, all);
+                                            {
+                                              std::lock_guard<std::mutex> lock(status_generator_mutex_);
+                                              if (status_generator_) {
+                                                response.runtime = status_generator_();
                                               }
-                                              r(response);
                                             }
+                                            r(JSON<JSONFormat::Minimalistic>(response),
+                                              HTTPResponseCode.OK,
+                                              current::net::constants::kDefaultJSONContentType);
                                           }
                                         })),
         keepalive_thread_terminating_(false) {}
@@ -168,7 +164,9 @@ class GenericClaire final {
     }
 
     try {
-      if (HTTP(POST(route, JSON<JSONFormat::Minimalistic>(keepalive_body))).code == HTTPResponseCode.OK) {
+      if (HTTP(POST(route,
+                    JSON<JSONFormat::Minimalistic>(keepalive_body),
+                    current::net::constants::kDefaultJSONContentType)).code == HTTPResponseCode.OK) {
         return;
       }
     } catch (const current::Exception&) {
