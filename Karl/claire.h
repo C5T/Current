@@ -76,15 +76,7 @@ class GenericClaire final {
                                           if (!all && build) {
                                             r(build::Info());
                                           } else {
-                                            specific_status_t response;
-                                            FillBase(response, all);
-                                            {
-                                              std::lock_guard<std::mutex> lock(status_generator_mutex_);
-                                              if (status_generator_) {
-                                                response.runtime = status_generator_();
-                                              }
-                                            }
-                                            r(JSON<JSONFormat::Minimalistic>(response),
+                                            r(JSON<JSONFormat::Minimalistic>(GenerateKeepaliveStatus(all)),
                                               HTTPResponseCode.OK,
                                               current::net::constants::kDefaultJSONContentType);
                                           }
@@ -124,7 +116,7 @@ class GenericClaire final {
   }
 
  private:
-  void FillBase(ClaireStatus& status, bool fill_build) const {
+  void FillBaseKeepaliveStatus(ClaireStatus& status, bool fill_current_build = true) const {
 #ifndef CURRENT_MOCK_TIME
     const auto now = current::time::Now();
     assert(now >= us_start_);
@@ -140,9 +132,25 @@ class GenericClaire final {
     status.uptime = now - us_start_;
     status.uptime_as_string = current::strings::TimeIntervalAsHumanReadableString(status.uptime);
 
-    if (fill_build) {
+    if (fill_current_build) {
       status.build = build::Info();
     }
+  }
+
+  void FillKeepaliveStatus(specific_status_t& status, bool fill_current_build = true) const {
+    FillBaseKeepaliveStatus(status, fill_current_build);
+    {
+      std::lock_guard<std::mutex> lock(status_generator_mutex_);
+      if (status_generator_) {
+        status.runtime = status_generator_();
+      }
+    }
+  }
+
+  specific_status_t GenerateKeepaliveStatus(bool fill_current_build = true) const {
+    specific_status_t status;
+    FillKeepaliveStatus(status, fill_current_build);
+    return status;
   }
 
   void StartKeepaliveThread() {
@@ -154,14 +162,7 @@ class GenericClaire final {
   // Possibly via a custom `route`: adding "&confirm", for example, would require Karl to crawl Claire back.
   void SendKeepaliveToKarl(std::unique_lock<std::mutex>&, const std::string& route) {
     // Basically, throw in case of any error, and throw only one type: `ClaireRegistrationException`.
-    specific_status_t keepalive_body;
-    FillBase(keepalive_body, true);
-    {
-      std::lock_guard<std::mutex> lock(status_generator_mutex_);
-      if (status_generator_) {
-        keepalive_body.runtime = status_generator_();
-      }
-    }
+    const auto keepalive_body = GenerateKeepaliveStatus();
 
     try {
       if (HTTP(POST(route,
@@ -209,8 +210,10 @@ class GenericClaire final {
   const std::string codename_;
   const int port_;
   const std::string karl_keepalive_route_;
-  std::mutex status_generator_mutex_;
+
+  mutable std::mutex status_generator_mutex_;
   status_generator_t status_generator_;
+
   const std::chrono::microseconds us_start_;
   const HTTPRoutesScope http_scope_;
 
