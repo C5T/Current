@@ -125,7 +125,7 @@ CURRENT_STRUCT(KarlStatus) { CURRENT_FIELD(foo, std::string, "bar"); };
 template <typename... TS>
 class GenericKarl final {
  public:
-  using claire_status_t = Variant<TS...>;
+  using claire_status_t = ClaireServiceStatus<Variant<TS...>>;
   using stream_t = sherlock::Stream<claire_status_t, current::persistence::File>;
   using storage_t = ServiceStorage<SherlockStreamPersister>;
 
@@ -167,7 +167,7 @@ class GenericKarl final {
       try {
         const std::string location =
             "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
-        const std::string body = [&]() -> std::string {
+        const std::string json = [&]() -> std::string {
           if (qs.has("port") && qs.has("confirm")) {
             // Send a GET request, with a random component in the URL to prevent caching.
             return HTTP(GET(location + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
@@ -177,12 +177,23 @@ class GenericKarl final {
           }
         }();
 
-        const auto loopback = ParseJSON<ClaireStatus>(body);
+        const auto body = ParseJSON<ClaireStatus>(json);
 
-        // static_cast<void>(ParseJSON<claire_status_t>(body));
+        if (body.codename == qs["codename"] && body.local_port == current::FromString<uint16_t>(qs["port"])) {
+          // If the received status can be parsed in detail, including the "runtime" variant, persist it.
+          // If no, no big deal, keep the top-level one regardless.
+          const auto status = [&]() -> claire_status_t {
+            try {
+              return ParseJSON<claire_status_t>(json);
+            } catch (const TypeSystemParseJSONException&) {
+              claire_status_t status;
+              // Initialize `ClaireStatus` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
+              static_cast<ClaireStatus&>(status) = body;
+              return status;
+            }
+          }();
+          keepalives_stream_.Publish(status);
 
-        if (loopback.codename == qs["codename"] &&
-            loopback.local_port == current::FromString<uint16_t>(qs["port"])) {
           /*
           const std::string service = loopback.service;
           const std::string codename = loopback.codename;
