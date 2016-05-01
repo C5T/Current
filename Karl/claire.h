@@ -91,9 +91,9 @@ class GenericClaire final {
                                           if (!all && build) {
                                             r(build::Info());
                                           } else {
-                                            r(JSON<JSONFormat::Minimalistic>(GenerateKeepaliveStatus(all)),
-                                              HTTPResponseCode.OK,
-                                              current::net::constants::kDefaultJSONContentType);
+                                            // Don't use `JSONFormat::Minimalistic` to support type evolution
+                                            // of how to report/aggregate/render statuses on the Karl side.
+                                            r(GenerateKeepaliveStatus(all));
                                           }
                                         })),
         keepalive_thread_terminating_(false) {}
@@ -211,9 +211,7 @@ class GenericClaire final {
             static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode);
       }
 
-      const auto code = HTTP(POST(route,
-                                  JSON<JSONFormat::Minimalistic>(keepalive_body),
-                                  current::net::constants::kDefaultJSONContentType)).code;
+      const auto code = HTTP(POST(route,keepalive_body)).code;
 
       {
         std::lock_guard<std::mutex> lock(status_mutex_);
