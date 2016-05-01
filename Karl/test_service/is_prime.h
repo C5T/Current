@@ -79,7 +79,7 @@ class ServiceIsPrime final {
 
   std::atomic<uint64_t> counter_;
   const HTTPRoutesScope http_scope_;
-  current::karl::GenericClaire<is_prime> claire_;
+  current::karl::GenericClaire<Variant<is_prime>> claire_;
 };
 
 }  // namespace karl_unittest

@@ -305,7 +305,7 @@ class GenericClaire final {
   std::thread keepalive_thread_;
 };
 
-using Claire = GenericClaire<DefaultClaireServiceStatus>;
+using Claire = GenericClaire<Variant<DefaultClaireServiceStatus>>;
 
 }  // namespace current::karl
 }  // namespace current
