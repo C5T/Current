@@ -33,8 +33,25 @@ SOFTWARE.
 
 #include "../Bricks/time/chrono.h"
 
+#include "../Bricks/net/http/impl/server.h"  // current::net::constants
+
 namespace current {
 namespace karl {
+
+// clang-format off
+CURRENT_ENUM(KeepaliveAttemptStatus, uint8_t) {
+  Unknown = 0u,
+  Success = 1u,
+  CouldNotConnect = 2u,
+  ErrorCodeReturned = 3u
+};
+// clang-format on
+
+CURRENT_STRUCT(KeepaliveAttemptResult) {
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(status, KeepaliveAttemptStatus, KeepaliveAttemptStatus::Unknown);
+  CURRENT_FIELD(http_code, uint16_t, static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode));
+};
 
 // The generic status.
 // Persisted by Karl, except for the `build` part, which is only persisted on the first call, or if changed.
@@ -48,7 +65,7 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(uptime, std::string);
 
   CURRENT_FIELD(last_keepalive_sent, std::string);
-  CURRENT_FIELD(last_keepalive_code, Optional<int32_t>);
+  CURRENT_FIELD(last_keepalive_status, std::string);
   CURRENT_FIELD(last_successful_keepalive, Optional<std::string>);
   CURRENT_FIELD(last_successful_keepalive_ping, Optional<std::string>);
 

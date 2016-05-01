@@ -42,10 +42,23 @@ SOFTWARE.
 
 #include "../Bricks/time/chrono.h"
 #include "../Bricks/util/random.h"
-#include "../Bricks/net/http/impl/server.h"  // current::net::constants::kDefaultJSONContentType
 
 namespace current {
 namespace karl {
+
+inline std::string KeepaliveAttemptResultAsString(const KeepaliveAttemptResult& result) {
+  if (result.status == KeepaliveAttemptStatus::Unknown) {
+    return "Unknown";
+  } else if (result.status == KeepaliveAttemptStatus::Success) {
+    return "Success";
+  } else if (result.status == KeepaliveAttemptStatus::CouldNotConnect) {
+    return "HTTP connection attempt failed";
+  } else if (result.status == KeepaliveAttemptStatus::ErrorCodeReturned) {
+    return "HTTP response code " + current::ToString(result.http_code);
+  } else {
+    return "";
+  }
+}
 
 template <class T>
 class GenericClaire final {
@@ -139,13 +152,11 @@ class GenericClaire final {
 
     {
       std::lock_guard<std::mutex> lock(status_mutex_);
-      if (last_keepalive_attempt_timestamp_.count()) {
-        status.last_keepalive_sent =
-            current::strings::TimeIntervalAsHumanReadableString(now - last_keepalive_attempt_timestamp_) +
-            " ago";
-      }
-      if (last_keepalive_attempt_result_ != net::HTTPResponseCodeValue::InvalidCode) {
-        status.last_keepalive_code = static_cast<int>(last_keepalive_attempt_result_);
+      if (last_keepalive_attempt_result_.timestamp.count()) {
+        status.last_keepalive_sent = current::strings::TimeIntervalAsHumanReadableString(
+                                         now - last_keepalive_attempt_result_.timestamp) +
+                                     " ago";
+        status.last_keepalive_status = KeepaliveAttemptResultAsString(last_keepalive_attempt_result_);
       }
       if (last_successful_keepalive_timestamp_.count()) {
         status.last_successful_keepalive =
@@ -194,8 +205,10 @@ class GenericClaire final {
     try {
       {
         std::lock_guard<std::mutex> lock(status_mutex_);
-        last_keepalive_attempt_timestamp_ = current::time::Now();
-        last_keepalive_attempt_result_ = net::HTTPResponseCodeValue::InvalidCode;
+        last_keepalive_attempt_result_.timestamp = current::time::Now();
+        last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::Unknown;
+        last_keepalive_attempt_result_.http_code =
+            static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode);
       }
 
       const auto code = HTTP(POST(route,
@@ -204,19 +217,21 @@ class GenericClaire final {
 
       {
         std::lock_guard<std::mutex> lock(status_mutex_);
-        last_keepalive_attempt_result_ = code;
         if (static_cast<int>(code) >= 200 && static_cast<int>(code) <= 299) {
-          last_successful_keepalive_timestamp_ = last_keepalive_attempt_timestamp_;
-          last_successful_keepalive_ping_ = current::time::Now() - last_keepalive_attempt_timestamp_;
+          // Success. And anything else is failure.
+          last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::Success;
+          last_successful_keepalive_timestamp_ = last_keepalive_attempt_result_.timestamp;
+          last_successful_keepalive_ping_ = current::time::Now() - last_keepalive_attempt_result_.timestamp;
+          return;
+        } else {
+          last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::ErrorCodeReturned;
+          last_keepalive_attempt_result_.http_code = static_cast<uint16_t>(code);
         }
       }
-
-      if (code == HTTPResponseCode.OK) {
-        // Success. And anything else is failure.
-        return;
-      }
     } catch (const current::Exception&) {
+      last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::CouldNotConnect;
     }
+    // TODO(dk+mz): Should it really throw in keepalive thread? It will crash the binary.
     CURRENT_THROW(ClaireRegistrationException(service_, route));
   }
 
@@ -234,7 +249,7 @@ class GenericClaire final {
       // Have the interval normalized a bit.
       // TODO(dkorolev): Parameter or named constant for keepalive frequency?
       const std::chrono::microseconds projected_next_keepalive =
-          last_keepalive_attempt_timestamp_ +
+          last_keepalive_attempt_result_.timestamp +
           std::chrono::microseconds(current::random::CSRandomUInt64(20e6 * 0.9, 20e6 * 1.1));
 
       const std::chrono::microseconds now = current::time::Now();
@@ -269,8 +284,7 @@ class GenericClaire final {
 
   mutable std::mutex status_mutex_;
   status_generator_t status_generator_;
-  std::chrono::microseconds last_keepalive_attempt_timestamp_ = std::chrono::microseconds(0);
-  net::HTTPResponseCodeValue last_keepalive_attempt_result_ = net::HTTPResponseCodeValue::InvalidCode;
+  KeepaliveAttemptResult last_keepalive_attempt_result_;
   std::chrono::microseconds last_successful_keepalive_timestamp_ = std::chrono::microseconds(0);
   std::chrono::microseconds last_successful_keepalive_ping_ = std::chrono::microseconds(0);
 
