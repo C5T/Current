@@ -59,12 +59,12 @@ class GenericClaire final {
   }
 
   GenericClaire(Locator karl, const std::string& service, uint16_t port)
-      : register_called_(false),
-        in_beacon_mode_(false),
+      : in_beacon_mode_(false),
         karl_(karl),
         service_(service),
         codename_(GenerateRandomCodename()),
         port_(port),
+        karl_url_to_post_to_(karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_)),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current",
                                         [this](Request r) {
@@ -104,31 +104,19 @@ class GenericClaire final {
     // If `require_karls_confirmation` is true, throw if Karl can be not be reached.
     // If `require_karls_confirmation` is false, just start the keepalives thread.
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!register_called_) {
-      register_called_ = true;
+    if (!in_beacon_mode_) {
       status_generator_ = status_filler;
-      // Only register once.
+
       if (require_karls_confirmation) {
-        // During this call, Karl would crawl the endpoint of this service, and, if everything is successful,
-        // register this service as the running and browsable one.
-        const std::string route = karl_.address_port_route + "?codename=" + codename_ + "&port=" +
-                                  current::ToString(port_) + "&confirm";
-        try {
-          if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
-            in_beacon_mode_ = true;
-          } else {
-            CURRENT_THROW(ClaireRegistrationException(service_, route));
-          }
-        } catch (const current::Exception&) {
-          CURRENT_THROW(ClaireRegistrationException(service_, route));
-        }
-      } else {
-        // In non-`require_karls_confirmation` more, upon being passed in the `status_filler`,
-        // simply turn on the beacon.
-        in_beacon_mode_ = true;
+        const std::string route = karl_url_to_post_to_ + "&confirm";
+        // The call to `SendKeepaliveToKarl` is blocking.
+        // With "&confirm" at the end, the call to Karl would require Karl calling Claire back.
+        // Can throw, the exception should propagate up.
+        SendKeepaliveToKarl(karl_url_to_post_to_ + "&confirm");
       }
 
-      keepalive_thread_ = std::thread([this]() { KeepaliveThread(); });
+      StartKeepaliveThread();
+      in_beacon_mode_ = true;
     }
   }
 
@@ -154,11 +142,32 @@ class GenericClaire final {
     }
   }
 
-  void KeepaliveThread() {
-    // TODO(dkorolev): Pre-generatate this string?
-    const std::string route =
-        karl_.address_port_route + "?codename=" + codename_ + "&port=" + current::ToString(port_);
+  void StartKeepaliveThread() {
+    keepalive_thread_ = std::thread([this]() { KeepaliveThread(); });
+  }
 
+  // Sends a keepalive message to Karl.
+  // Blocking, and can throw.
+  // Possibly via a custom `route`: adding "&confirm", for example, would require Karl to crawl Claire back.
+  void SendKeepaliveToKarl(std::unique_lock<std::mutex>&, const std::string& route) {
+    // Basically, throw in case of any error, and throw only one type: `ClaireRegistrationException`.
+    try {
+      if (HTTP(POST(route, "")).code == HTTPResponseCode.OK) {
+        return;
+      }
+    } catch (const current::Exception&) {
+    }
+    CURRENT_THROW(ClaireRegistrationException(service_, route));
+  }
+
+  // The semantic to ensure keepalives only happen from a locked section.
+  void SendKeepaliveToKarl(const std::string& route) {
+    std::unique_lock<std::mutex> lock(keepalive_thread_mutex_);
+    SendKeepaliveToKarl(lock, route);
+  }
+
+  // The thread sends periodic keepalive messages.
+  void KeepaliveThread() {
     while (!keepalive_thread_terminating_) {
       std::unique_lock<std::mutex> lock(keepalive_thread_mutex_);
 
@@ -176,16 +185,15 @@ class GenericClaire final {
         keepalive_body.runtime = status_generator_();
       }
       try {
-        HTTP(POST(route, JSON(keepalive_body)));
+        HTTP(POST(karl_url_to_post_to_, JSON(keepalive_body)));
       } catch (const current::Exception&) {
-        CURRENT_THROW(ClaireRegistrationException(service_, route));
+        CURRENT_THROW(ClaireRegistrationException(service_, karl_url_to_post_to_));
       }
     }
   }
 
   GenericClaire() = delete;
 
-  bool register_called_;
   std::atomic_bool in_beacon_mode_;
   std::mutex mutex_;
 
@@ -193,6 +201,7 @@ class GenericClaire final {
   const std::string service_;
   const std::string codename_;
   const int port_;
+  const std::string karl_url_to_post_to_;
   status_generator_t status_generator_;
   const std::chrono::microseconds us_start_;
   const HTTPRoutesScope http_scope_;
