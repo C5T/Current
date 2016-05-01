@@ -82,7 +82,9 @@ CURRENT_STRUCT(ClaireBuildInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
 
-  CURRENT_FIELD(build_info, build::Info);
+  CURRENT_FIELD(service, std::string);
+  CURRENT_FIELD(location, std::string);  // TODO(dkorolev): A record of separate IP, port, URL prefix.
+  CURRENT_FIELD(build, current::build::Info);
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
 };
 
@@ -194,36 +196,32 @@ class GenericKarl final {
           }();
           keepalives_stream_.Publish(status);
 
-          /*
-          const std::string service = loopback.service;
-          const std::string codename = loopback.codename;
+          if (Exists(body.build)) {
+            const auto build = Value(body.build);
 
-          const auto now = current::time::Now();
-          storage_.ReadWriteTransaction(
-                       [now, location, service, codename, &loopback](MutableFields<storage_t> fields)
-                           -> Response {
-                             Service service_record;
-                             service_record.location = location;
-                             service_record.service = service;
-                             service_record.codename = codename;
-                             fields.services.Add(service_record);
+            const std::string service = body.service;
+            const std::string codename = body.codename;
 
-                             Server server_record;
-                             server_record.location = location;
-                             server_record.service = service;
-                             server_record.codename = codename;
-                             fields.servers.Add(server_record);
-
-                             ServiceMostRecentReport keepalive;
-                             keepalive.service = service;
-                             keepalive.most_recent_keepalive = now;
-                             keepalive.most_recent_reported_uptime = loopback.uptime_epoch_microseconds;
-                             fields.service_most_recent_report.Add(keepalive);
-                             return Response("OK\n");
-                           },
-                       std::move(r)).Detach();
-*/
-          r("OK\n");
+            const auto now = current::time::Now();
+            storage_.ReadWriteTransaction(
+                         [now, codename, service, location, build](MutableFields<storage_t> fields)
+                             -> Response {
+                               const auto current = fields.claires[codename];
+                               if (!(Exists(current) && Value(current).build == build)) {
+                                 ClaireBuildInfo record;
+                                 record.codename = codename;
+                                 record.service = service;
+                                 record.location = location;
+                                 record.build = build;
+                                 record.reported_timestamp = now;
+                                 fields.claires.Add(record);
+                               }
+                               return Response("OK\n");
+                             },
+                         std::move(r)).Detach();
+          } else {
+            r("OK\n");
+          }
         } else {
           r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
         }

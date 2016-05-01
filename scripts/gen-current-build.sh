@@ -65,6 +65,13 @@ CURRENT_STRUCT(Info) {
   CURRENT_FIELD(compiler_flags, std::string, kCompilerFlags);
   CURRENT_FIELD(linker_flags, std::string, kLinkerFlags);
   CURRENT_FIELD(compiler_info, std::string, kCompilerInfo);
+  std::tuple<std::string, std::string, std::string, std::string, std::string, std::string, std::string, std::string>
+  AsTuple() const {
+    return std::tie(date_time, git_commit, git_branch, os, compiler, compiler_flags, linker_flags, compiler_info);
+  }
+  bool operator==(const Info& rhs) const {
+    return AsTuple() == rhs.AsTuple();
+  }
 };
 
 }  // namespace current::build
