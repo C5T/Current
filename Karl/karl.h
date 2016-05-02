@@ -107,18 +107,19 @@ CURRENT_STORAGE(ServiceStorage) {
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CURRENT_STRUCT(Node) {
+CURRENT_STRUCT(ServiceToReport) {
   CURRENT_FIELD(up, bool);
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
-  CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
+  CURRENT_FIELD(dependencies, std::vector<std::string>);             // Codenames.
+  CURRENT_FIELD(unresolved_dependencies, std::vector<std::string>);  // Status page URLs.
   CURRENT_FIELD(url_status_page_proxied, std::string);
   CURRENT_FIELD(url_status_page_direct, std::string);
   CURRENT_FIELD(uptime_as_of_last_keepalive, std::string);
 };
 
-using KarlStatus = std::map<std::string, std::map<std::string, Node>>;
+using KarlStatus = std::map<std::string, std::map<std::string, ServiceToReport>>;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -126,11 +127,17 @@ using KarlStatus = std::map<std::string, std::map<std::string, Node>>;
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+CURRENT_STRUCT_T(KarlPersistedKeepalive) {
+  CURRENT_FIELD(location, ClaireServiceKey);
+  CURRENT_FIELD(keepalive, T);
+};
+
 template <typename... TS>
 class GenericKarl final {
  public:
   using claire_status_t = ClaireServiceStatus<Variant<TS...>>;
-  using stream_t = sherlock::Stream<claire_status_t, current::persistence::File>;
+  using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
+  using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
   using storage_t = ServiceStorage<SherlockStreamPersister>;
 
   explicit GenericKarl(uint16_t port,
@@ -208,7 +215,13 @@ class GenericKarl final {
               return status;
             }
           }();
-          keepalives_stream_.Publish(status);
+
+          {
+            persisted_keepalive_t record;
+            record.location = location;
+            record.keepalive = status;
+            keepalives_stream_.Publish(record);
+          }
 
           const auto now = current::time::Now();
           const std::string service = body.service;
@@ -320,12 +333,14 @@ class GenericKarl final {
     };
     std::map<std::string, ProtoReport> report_for_codename;
     std::map<std::string, std::set<std::string>> codenames_per_service;
+    std::map<ClaireServiceKey, std::string> service_key_into_codename;
 
     for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
       if (e.idx_ts.us >= from && e.idx_ts.us < to) {
-        const auto& keepalive = e.entry;
+        const auto& keepalive = e.entry.keepalive;
 
         codenames_to_resolve.insert(keepalive.codename);
+        service_key_into_codename[e.entry.location] = keepalive.codename;
 
         codenames_per_service[keepalive.service].insert(keepalive.codename);
         // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`, etc.
@@ -339,8 +354,11 @@ class GenericKarl final {
     }
 
     storage_.ReadOnlyTransaction(
-                 [this, codenames_to_resolve, report_for_codename, codenames_per_service](
-                     ImmutableFields<storage_t> fields) -> Response {
+                 [this,
+                  codenames_to_resolve,
+                  report_for_codename,
+                  codenames_per_service,
+                  service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
                    std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
                    KarlStatus result;
                    for (const auto& codename : codenames_to_resolve) {
@@ -359,13 +377,20 @@ class GenericKarl final {
                    for (const auto& iterating_over_services : codenames_per_service) {
                      const std::string& service = iterating_over_services.first;
                      for (const auto& codename : iterating_over_services.second) {
-                       Node blob;
+                       ServiceToReport blob;
                        const auto& rhs = report_for_codename.at(codename);
                        blob.up = rhs.up;
                        blob.service = service;
                        blob.codename = codename;
                        blob.location = resolved_codenames[codename];
-                       blob.dependencies = rhs.dependencies;
+                       for (const auto& dep : rhs.dependencies) {
+                         const auto cit = service_key_into_codename.find(dep);
+                         if (cit != service_key_into_codename.end()) {
+                           blob.dependencies.push_back(cit->second);
+                         } else {
+                           blob.unresolved_dependencies.push_back(dep.StatusPageURL());
+                         }
+                       }
                        blob.url_status_page_proxied = external_url_ + "proxied/" + codename;
                        blob.url_status_page_direct = blob.location.StatusPageURL();
                        // DIMA: More per-codename reporting fields go here.
