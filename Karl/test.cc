@@ -26,6 +26,7 @@ SOFTWARE.
 // TODO(dkorolev): Test runtime status.
 
 #define CURRENT_MOCK_TIME
+#define EXTRA_KARL_LOGGING  // Make sure the schema dump part compiles. -- D.K.
 
 #include "current_build.h"
 #include "karl.h"
@@ -60,7 +61,8 @@ DEFINE_string(karl_test_storage_persistence_file, ".current/storage", "Local fil
 
 DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test forever.");
 
-using unittest_karl_t = current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
+using unittest_karl_t =
+    current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
 using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
 
 TEST(Karl, SmokeGenerator) {

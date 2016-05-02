@@ -58,6 +58,10 @@ SOFTWARE.
 
 #include "../Blocks/HTTP/api.h"
 
+#ifdef EXTRA_KARL_LOGGING
+#include "../TypeSystem/Schema/schema.h"
+#endif
+
 namespace current {
 namespace karl {
 
@@ -217,6 +221,15 @@ class GenericKarl final {
             try {
               return ParseJSON<claire_status_t>(json);
             } catch (const TypeSystemParseJSONException&) {
+
+#ifdef EXTRA_KARL_LOGGING
+              std::cerr << "Could not parse: " << json << '\n';
+              reflection::StructSchema struct_schema;
+              struct_schema.AddType<claire_status_t>();
+              std::cerr << "As:\n" << struct_schema.GetSchemaInfo().Describe<reflection::Language::Current>()
+                        << '\n';
+#endif
+
               claire_status_t status;
               // Initialize `ClaireStatus` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
               static_cast<ClaireStatus&>(status) = body;
