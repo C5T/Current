@@ -9,6 +9,6 @@ DEFINE_string(annotator, "http://localhost:42003/annotated", "The route to `Serv
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);
   const karl_unittest::ServiceFilter service(FLAGS_port, FLAGS_annotator, current::karl::LocalKarl());
-  std::cout << "ServiceFilter up, http://localhost:" << FLAGS_port << "/primes" << std::endl;
+  std::cout << "ServiceFilter up, http://localhost:" << FLAGS_port << "/annotated" << std::endl;
   HTTP(FLAGS_port).Join();
 }
