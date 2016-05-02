@@ -54,8 +54,8 @@ class ServiceGenerator final {
         destructing_(false),
         thread_([this]() { Thread(); }),
         claire_(karl, "generator", port) {
-    const auto status_reporter = [this]() -> current::karl::DefaultClaireServiceStatus {
-      current::karl::DefaultClaireServiceStatus user;
+    const auto status_reporter = [this]() -> current::karl::default_user_status::status {
+      current::karl::default_user_status::status user;
       user.message = "Up and running!";
       user.details["i"] = current::ToString(current_value_.load());
       return user;
@@ -73,6 +73,8 @@ class ServiceGenerator final {
     destructing_ = true;
     thread_.join();
   }
+
+  const std::string& ClaireCodename() const { return claire_.Codename(); }
 
  private:
   void Thread() {

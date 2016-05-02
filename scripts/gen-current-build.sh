@@ -9,7 +9,7 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-COMPILER_INFO="$($CPLUSPLUS -v 2>&1)"
+COMPILER_INFO="$($CPLUSPLUS --version 2>&1)"
 if [[ $? -ne 0 ]]; then
 	exit 1
 fi
@@ -65,6 +65,16 @@ CURRENT_STRUCT(Info) {
   CURRENT_FIELD(compiler_flags, std::string, kCompilerFlags);
   CURRENT_FIELD(linker_flags, std::string, kLinkerFlags);
   CURRENT_FIELD(compiler_info, std::string, kCompilerInfo);
+  std::tuple<std::string, std::string, std::string, std::string, std::string, std::string, std::string, std::string>
+  AsTuple() const {
+    return std::tie(date_time, git_commit, git_branch, os, compiler, compiler_flags, linker_flags, compiler_info);
+  }
+  bool operator==(const Info& rhs) const {
+    return AsTuple() == rhs.AsTuple();
+  }
+  bool operator!=(const Info& rhs) const {
+    return !operator==(rhs);
+  }
 };
 
 }  // namespace current::build

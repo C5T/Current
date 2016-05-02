@@ -39,17 +39,15 @@ namespace karl_unittest {
 
 class ServiceFilter final {
  public:
-  ServiceFilter(uint16_t port,
-                const std::string& source_annotated_numbers_stream,
-                const current::karl::Locator& karl)
-      : source_annotated_numbers_stream_(source_annotated_numbers_stream),
+  ServiceFilter(uint16_t port, const std::string& service_annotated, const current::karl::Locator& karl)
+      : source_annotated_numbers_stream_(service_annotated + "/annotated"),
         stream_primes_(current::sherlock::Stream<Number>()),
         stream_composites_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/primes", stream_primes_) +
                     HTTP(port).Register("/composites", stream_composites_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_(karl, "filter", port) {
+        claire_(karl, "filter", port, {service_annotated}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
     claire_.Register(nullptr, true);
@@ -63,6 +61,8 @@ class ServiceFilter final {
     destructing_ = true;
     thread_.join();
   }
+
+  const std::string& ClaireCodename() const { return claire_.Codename(); }
 
  private:
   void Thread() {
