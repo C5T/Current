@@ -150,11 +150,10 @@ TEST(Karl, SmokeAnnotator) {
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1), karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
-  const karl_unittest::ServiceAnnotator annotator(
-      FLAGS_karl_annotator_test_port,
-      Printf("http://localhost:%d/numbers", FLAGS_karl_generator_test_port),
-      Printf("http://localhost:%d/is_prime", FLAGS_karl_is_prime_test_port),
-      karl_locator);
+  const karl_unittest::ServiceAnnotator annotator(FLAGS_karl_annotator_test_port,
+                                                  Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
+                                                  Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
+                                                  karl_locator);
   ASSERT_NO_THROW(const auto x37 = ParseJSON<karl_unittest::Number>(
                       current::strings::Split(HTTP(GET(Printf("http://localhost:%d/annotated?i=37&n=1",
                                                               FLAGS_karl_annotator_test_port))).body,
@@ -204,15 +203,12 @@ TEST(Karl, SmokeFilter) {
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1), karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
-  const karl_unittest::ServiceAnnotator annotator(
-      FLAGS_karl_annotator_test_port,
-      Printf("http://localhost:%d/numbers", FLAGS_karl_generator_test_port),
-      Printf("http://localhost:%d/is_prime", FLAGS_karl_is_prime_test_port),
-      karl_locator);
+  const karl_unittest::ServiceAnnotator annotator(FLAGS_karl_annotator_test_port,
+                                                  Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
+                                                  Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
+                                                  karl_locator);
   const karl_unittest::ServiceFilter filter(
-      FLAGS_karl_filter_test_port,
-      Printf("http://localhost:%d/annotated", FLAGS_karl_annotator_test_port),
-      karl_locator);
+      FLAGS_karl_filter_test_port, Printf("http://localhost:%d", FLAGS_karl_annotator_test_port), karl_locator);
 
   ASSERT_NO_THROW(
       // 10-th (index=9 for 0-based) prime is `29`.
@@ -281,15 +277,12 @@ TEST(Karl, EndToEndTest) {
                                                   std::chrono::microseconds(10000),  // 100 per second.
                                                   karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
-  const karl_unittest::ServiceAnnotator annotator(
-      FLAGS_karl_annotator_test_port,
-      Printf("http://localhost:%d/numbers", FLAGS_karl_generator_test_port),
-      Printf("http://localhost:%d/is_prime", FLAGS_karl_is_prime_test_port),
-      karl_locator);
+  const karl_unittest::ServiceAnnotator annotator(FLAGS_karl_annotator_test_port,
+                                                  Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
+                                                  Printf("http://localhost:%d", FLAGS_karl_is_prime_test_port),
+                                                  karl_locator);
   const karl_unittest::ServiceFilter filter(
-      FLAGS_karl_filter_test_port,
-      Printf("http://localhost:%d/annotated", FLAGS_karl_annotator_test_port),
-      karl_locator);
+      FLAGS_karl_filter_test_port, Printf("http://localhost:%d", FLAGS_karl_annotator_test_port), karl_locator);
 
   {
     current::karl::ClaireStatus status;

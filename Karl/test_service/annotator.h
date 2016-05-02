@@ -38,11 +38,11 @@ namespace karl_unittest {
 class ServiceAnnotator final {
  public:
   ServiceAnnotator(uint16_t port,
-                   const std::string& source_numbers_stream,
-                   const std::string& is_prime_logic_endpoint,
+                   const std::string& service_generator,
+                   const std::string& service_is_prime,
                    const current::karl::Locator& karl)
-      : source_numbers_stream_(source_numbers_stream),
-        is_prime_logic_endpoint_(is_prime_logic_endpoint),
+      : source_numbers_stream_(service_generator + "/numbers"),
+        is_prime_logic_endpoint_(service_is_prime + "/is_prime"),
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
@@ -62,9 +62,7 @@ class ServiceAnnotator final {
     thread_.join();
   }
 
-  const std::string& ClaireCodename() const {
-    return claire_.Codename();
-  }
+  const std::string& ClaireCodename() const { return claire_.Codename(); }
 
  private:
   void Thread() {

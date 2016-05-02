@@ -133,9 +133,7 @@ class GenericClaire final {
     }
   }
 
-  const std::string& Codename() const {
-    return codename_;
-  }
+  const std::string& Codename() const { return codename_; }
 
  private:
   static std::string GenerateRandomCodename() {
