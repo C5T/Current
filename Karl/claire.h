@@ -66,12 +66,16 @@ class GenericClaire final {
   using specific_status_t = ClaireServiceStatus<T>;
   using status_generator_t = std::function<T()>;
 
-  GenericClaire(Locator karl, const std::string& service, uint16_t port)
+  GenericClaire(Locator karl,
+                const std::string& service,
+                uint16_t port,
+                std::vector<std::string> dependencies = std::vector<std::string>())
       : in_beacon_mode_(false),
         karl_(karl),
         service_(service),
         codename_(GenerateRandomCodename()),
         port_(port),
+        dependencies_(ParseDependencies(dependencies)),
         karl_keepalive_route_(karl_.address_port_route + "?codename=" + codename_ + "&port=" +
                               current::ToString(port_)),
         us_start_(current::time::Now()),
@@ -109,6 +113,14 @@ class GenericClaire final {
     }
   }
 
+  void AddDependency(const std::string& service) { dependencies_.insert(service); }
+
+  void AddDependency(const ClaireServiceKey& service) { dependencies_.insert(service); }
+
+  void RemoveDependency(const std::string& service) { dependencies_.erase(service); }
+
+  void RemoveDependency(const ClaireServiceKey& service) { dependencies_.erase(service); }
+
   void Register(status_generator_t status_filler = nullptr, bool require_karls_confirmation = false) {
     // Register this Claire with Karl and spawn the thread to send regular keepalives.
     // If `require_karls_confirmation` is true, throw if Karl can be not be reached.
@@ -144,6 +156,14 @@ class GenericClaire final {
     return codename;
   }
 
+  static std::set<ClaireServiceKey> ParseDependencies(const std::vector<std::string>& dependencies) {
+    std::vector<ClaireServiceKey> result;
+    for (const auto& dependency : dependencies) {
+      result.push_back(ClaireServiceKey(dependency));
+    }
+    return std::set<ClaireServiceKey>(result.begin(), result.end());
+  }
+
   void FillBaseKeepaliveStatus(ClaireStatus& status, bool fill_current_build = true) const {
     const auto now = current::time::Now();
 
@@ -155,6 +175,7 @@ class GenericClaire final {
     status.service = service_;
     status.codename = codename_;
     status.local_port = port_;
+    status.dependencies.assign(dependencies_.begin(), dependencies_.end());
 
     status.now = now;
 
@@ -289,6 +310,7 @@ class GenericClaire final {
   const std::string service_;
   const std::string codename_;
   const int port_;
+  std::set<ClaireServiceKey> dependencies_;
   const std::string karl_keepalive_route_;
 
   const std::chrono::microseconds us_start_;

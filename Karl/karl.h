@@ -78,23 +78,6 @@ CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD(karl_build_info, build::Info, build::Info());
 };
 
-CURRENT_STRUCT(ClaireServiceKey) {
-  // TODO(dkorolev)+TODO(mzhurovich): DNS / `/etc/hosts` must be resolved by Claire when reporting dependencies.
-  CURRENT_FIELD(ip, std::string);
-  CURRENT_FIELD(port, uint16_t);
-  // TODO(dkorolev) + TODO(mzhurovich): Should or should not end with '/'?
-  CURRENT_FIELD(prefix, std::string, "");
-
-  std::tuple<std::string, uint16_t, std::string> AsTuple() const { return std::tie(ip, port, prefix); }
-  bool operator==(const ClaireServiceKey& rhs) const { return AsTuple() == rhs.AsTuple(); }
-  bool operator!=(const ClaireServiceKey& rhs) const { return !operator==(rhs); }
-  bool operator<(const ClaireServiceKey& rhs) const { return AsTuple() < rhs.AsTuple(); }
-
-  std::string StatusPageURL() const {
-    return "http://" + ip + ':' + current::ToString(port) + prefix + "/.current";
-  }
-};
-
 CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
@@ -207,6 +190,7 @@ class GenericKarl final {
           ClaireServiceKey location;
           location.ip = ip;
           location.port = body.local_port;
+          location.prefix = "/";  // TODO(dkorolev) + TODO(mzhurovich): Add support for `qs["prefix"]`.
 
           // If the received status can be parsed in detail, including the "runtime" variant, persist it.
           // If no, no big deal, keep the top-level one regardless.
@@ -255,11 +239,6 @@ class GenericKarl final {
                                // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
                                claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
                                claire.url_status_page_direct = location.StatusPageURL();
-                               /*
-                               "http://" + location.ip + ':' +
-                                                               current::ToString(location.port) +
-                                                               location.prefix;
-                                                               */
 
                                claire.service = service;
                                claire.location = location;

@@ -4,8 +4,8 @@
 #include "../../Karl/test_service/annotator.h"
 
 DEFINE_uint16(port, 42003, "The port to spawn ServiceAnnotator on.");
-DEFINE_string(generator, "http://localhost:42001/numbers", "The route to `ServiceGenerator`.");
-DEFINE_string(is_prime, "http://localhost:42002/is_prime", "The route to `ServiceIsPrime`.");
+DEFINE_string(generator, "http://localhost:42001", "The route to `ServiceGenerator`.");
+DEFINE_string(is_prime, "http://localhost:42002", "The route to `ServiceIsPrime`.");
 
 int main(int argc, char **argv) {
   ParseDFlags(&argc, &argv);

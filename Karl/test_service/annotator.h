@@ -47,7 +47,7 @@ class ServiceAnnotator final {
         http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_(karl, "annotator", port) {
+        claire_(karl, "annotator", port, {service_generator, service_is_prime}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
     claire_.Register(nullptr, true);

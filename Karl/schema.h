@@ -31,12 +31,42 @@ SOFTWARE.
 #include "../TypeSystem/optional.h"
 #include "../TypeSystem/variant.h"
 
+#include "../Blocks/URL/url.h"
+
 #include "../Bricks/time/chrono.h"
 
 #include "../Bricks/net/http/impl/server.h"  // current::net::constants
 
 namespace current {
 namespace karl {
+
+CURRENT_STRUCT(ClaireServiceKey) {
+  // TODO(dkorolev)+TODO(mzhurovich): DNS / `/etc/hosts` must be resolved by Claire when reporting dependencies.
+  CURRENT_FIELD(ip, std::string);
+  CURRENT_FIELD(port, uint16_t);
+  // TODO(dkorolev) + TODO(mzhurovich): Should or should not end with '/'?
+  CURRENT_FIELD(prefix, std::string, "");
+
+  CURRENT_DEFAULT_CONSTRUCTOR(ClaireServiceKey) {}
+  CURRENT_CONSTRUCTOR(ClaireServiceKey)(const ClaireServiceKey& rhs)
+      : ip(rhs.ip), port(rhs.port), prefix(rhs.prefix) {}
+  CURRENT_CONSTRUCTOR(ClaireServiceKey)(const std::string& url) {
+    URL decomposed(url);
+    // TODO(dkorolev) + TODO(mzhurovich): This dirty hack should be fixed once and for all.
+    ip = decomposed.host == "localhost" ? "127.0.0.1" : decomposed.host;
+    port = decomposed.port;
+    prefix = decomposed.path;
+  }
+
+  std::tuple<std::string, uint16_t, std::string> AsTuple() const { return std::tie(ip, port, prefix); }
+  bool operator==(const ClaireServiceKey& rhs) const { return AsTuple() == rhs.AsTuple(); }
+  bool operator!=(const ClaireServiceKey& rhs) const { return !operator==(rhs); }
+  bool operator<(const ClaireServiceKey& rhs) const { return AsTuple() < rhs.AsTuple(); }
+
+  std::string StatusPageURL() const {
+    return "http://" + ip + ':' + current::ToString(port) + prefix + ".current";
+  }
+};
 
 // clang-format off
 CURRENT_ENUM(KeepaliveAttemptStatus, uint8_t) {
@@ -59,6 +89,9 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(local_port, uint16_t);
+
+  // Dependencies as "ip:port[/prefix]" for now.
+  CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
 
   CURRENT_FIELD(now, std::chrono::microseconds);  // To calculated time skew as well.
   CURRENT_FIELD(uptime_epoch_microseconds, std::chrono::microseconds);

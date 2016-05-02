@@ -47,7 +47,7 @@ class ServiceFilter final {
                     HTTP(port).Register("/composites", stream_composites_)),
         destructing_(false),
         thread_([this]() { Thread(); }),
-        claire_(karl, "filter", port) {
+        claire_(karl, "filter", port, {service_annotated}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
     claire_.Register(nullptr, true);
