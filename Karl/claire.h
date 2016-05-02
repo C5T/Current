@@ -66,14 +66,6 @@ class GenericClaire final {
   using specific_status_t = ClaireServiceStatus<T>;
   using status_generator_t = std::function<T()>;
 
-  static std::string GenerateRandomCodename() {
-    std::string codename;
-    for (int i = 0; i < 6; ++i) {
-      codename += static_cast<char>(current::random::CSRandomInt('A', 'Z'));
-    }
-    return codename;
-  }
-
   GenericClaire(Locator karl, const std::string& service, uint16_t port)
       : in_beacon_mode_(false),
         karl_(karl),
@@ -141,7 +133,19 @@ class GenericClaire final {
     }
   }
 
+  const std::string& Codename() const {
+    return codename_;
+  }
+
  private:
+  static std::string GenerateRandomCodename() {
+    std::string codename;
+    for (int i = 0; i < 6; ++i) {
+      codename += static_cast<char>(current::random::CSRandomInt('A', 'Z'));
+    }
+    return codename;
+  }
+
   void FillBaseKeepaliveStatus(ClaireStatus& status, bool fill_current_build = true) const {
     const auto now = current::time::Now();
 

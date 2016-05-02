@@ -63,6 +63,10 @@ class ServiceIsPrime final {
 #endif
   }
 
+  const std::string& ClaireCodename() const {
+    return claire_.Codename();
+  }
+
  private:
   static bool IsPrime(int x) {
     if (x < 2) {

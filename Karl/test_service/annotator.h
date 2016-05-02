@@ -62,6 +62,10 @@ class ServiceAnnotator final {
     thread_.join();
   }
 
+  const std::string& ClaireCodename() const {
+    return claire_.Codename();
+  }
+
  private:
   void Thread() {
     // Poor man's stream subscriber. -- D.K.

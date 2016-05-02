@@ -74,6 +74,10 @@ class ServiceGenerator final {
     thread_.join();
   }
 
+  const std::string& ClaireCodename() const {
+    return claire_.Codename();
+  }
+
  private:
   void Thread() {
     while (!destructing_) {

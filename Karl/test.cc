@@ -84,10 +84,15 @@ TEST(Karl, SmokeGenerator) {
   {
     current::karl::KarlStatus status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
-                        HTTP(GET(Printf("http://localhost:%d", FLAGS_karl_test_port))).body));
-    // DIMA
-    // EXPECT_EQ(1u, status.services.size());
-    // EXPECT_EQ("generator", status.services[0].service);
+                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+    EXPECT_EQ(1u, status.size());
+    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+    auto& per_ip = status["127.0.0.1"];
+    EXPECT_EQ(1u, per_ip.size());
+    ASSERT_TRUE(per_ip.count(generator.ClaireCodename())) << JSON(per_ip);
+    auto& per_codename = per_ip[generator.ClaireCodename()];
+    // As a lot of "time" has passed since the "last" keepalive, `up` would actually be `false`. Don't test it.
+    EXPECT_EQ("generator", per_codename.service);
   }
 }
 
@@ -122,10 +127,15 @@ TEST(Karl, SmokeIsPrime) {
   {
     current::karl::KarlStatus status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
-                        HTTP(GET(Printf("http://localhost:%d", FLAGS_karl_test_port))).body));
-    // DIMA
-    // EXPECT_EQ(1u, status.services.size());
-    // EXPECT_EQ("is_prime", status.services[0].service);
+                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+    EXPECT_EQ(1u, status.size());
+    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+    auto& per_ip = status["127.0.0.1"];
+    EXPECT_EQ(1u, per_ip.size());
+    ASSERT_TRUE(per_ip.count(is_prime.ClaireCodename())) << JSON(per_ip);
+    auto& per_codename = per_ip[is_prime.ClaireCodename()];
+    EXPECT_TRUE(per_codename.up);
+    EXPECT_EQ("is_prime", per_codename.service);
   }
 }
 
@@ -171,12 +181,15 @@ TEST(Karl, SmokeAnnotator) {
   {
     current::karl::KarlStatus status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
-                        HTTP(GET(Printf("http://localhost:%d", FLAGS_karl_test_port))).body));
-    // DIMA
-    // EXPECT_EQ(3u, status.services.size());
-    // EXPECT_EQ("annotator", status.services[0].service);
-    // EXPECT_EQ("generator", status.services[1].service);
-    // EXPECT_EQ("is_prime", status.services[2].service);
+                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+
+    EXPECT_EQ(1u, status.size());
+    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+    auto& per_ip = status["127.0.0.1"];
+    EXPECT_EQ(3u, per_ip.size());
+    EXPECT_EQ("annotator", per_ip[annotator.ClaireCodename()].service);
+    EXPECT_EQ("generator", per_ip[generator.ClaireCodename()].service);
+    EXPECT_EQ("is_prime", per_ip[is_prime.ClaireCodename()].service);
   }
 }
 
@@ -230,13 +243,15 @@ TEST(Karl, SmokeFilter) {
   {
     current::karl::KarlStatus status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
-                        HTTP(GET(Printf("http://localhost:%d", FLAGS_karl_test_port))).body));
-    // DIMA
-    // EXPECT_EQ(4u, status.services.size());
-    // EXPECT_EQ("annotator", status.services[0].service);
-    // EXPECT_EQ("filter", status.services[1].service);
-    // EXPECT_EQ("generator", status.services[2].service);
-    // EXPECT_EQ("is_prime", status.services[3].service);
+                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+    EXPECT_EQ(1u, status.size());
+    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+    auto& per_ip = status["127.0.0.1"];
+    EXPECT_EQ(4u, per_ip.size());
+    EXPECT_EQ("annotator", per_ip[annotator.ClaireCodename()].service);
+    EXPECT_EQ("filter", per_ip[filter.ClaireCodename()].service);
+    EXPECT_EQ("generator", per_ip[generator.ClaireCodename()].service);
+    EXPECT_EQ("is_prime", per_ip[is_prime.ClaireCodename()].service);
   }
 }
 
@@ -286,13 +301,15 @@ TEST(Karl, EndToEndTest) {
   {
     current::karl::KarlStatus status;
     ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
-                        HTTP(GET(Printf("http://localhost:%d", FLAGS_karl_test_port))).body));
-    // DIMA
-    // EXPECT_EQ(4u, status.services.size());
-    // EXPECT_EQ("annotator", status.services[0].service);
-    // EXPECT_EQ("filter", status.services[1].service);
-    // EXPECT_EQ("generator", status.services[2].service);
-    // EXPECT_EQ("is_prime", status.services[3].service);
+                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+    EXPECT_EQ(1u, status.size());
+    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+    auto& per_ip = status["127.0.0.1"];
+    EXPECT_EQ(4u, per_ip.size());
+    EXPECT_EQ("annotator", per_ip[annotator.ClaireCodename()].service);
+    EXPECT_EQ("filter", per_ip[filter.ClaireCodename()].service);
+    EXPECT_EQ("generator", per_ip[generator.ClaireCodename()].service);
+    EXPECT_EQ("is_prime", per_ip[is_prime.ClaireCodename()].service);
   }
 
   if (FLAGS_karl_run_test_forever) {

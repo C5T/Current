@@ -133,7 +133,7 @@ CURRENT_STRUCT(Node) {
   CURRENT_FIELD(uptime_as_of_last_keepalive, std::string);
 };
 
-using KarlStatus = std::map<std::string, std::map<std::string, std::vector<Node>>>;
+using KarlStatus = std::map<std::string, std::map<std::string, Node>>;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -382,7 +382,7 @@ class GenericKarl final {
                        // DIMA: More per-codename reporting fields go here.
                        blob.location = resolved_codenames[codename];
                        blob.uptime_as_of_last_keepalive = rhs.uptime;
-                       result[blob.location.ip][codename].push_back(std::move(blob));
+                       result[blob.location.ip][codename] = std::move(blob);
                      }
                    }
                    return result;
