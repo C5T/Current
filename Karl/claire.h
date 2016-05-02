@@ -29,8 +29,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "current_build.h"
-
 #include <atomic>
 #include <thread>
 #include <mutex>

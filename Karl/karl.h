@@ -46,8 +46,6 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "current_build.h"
-
 #include "schema.h"
 #include "locator.h"
 
