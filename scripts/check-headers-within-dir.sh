@@ -49,8 +49,8 @@ for i in $(ls *.h | grep -v ".cc.h$") ; do
   COMBINED_OBJECT="$PWD/.current_${i}_combined"
 
   if [[ -n $ADDITIONAL_INCLUDES ]]; then
-    echo "$ADDITIONAL_INCLUDES" > $HEADER_GCC
-    echo "$ADDITIONAL_INCLUDES" > $HEADER_CLANG
+    echo -e "$ADDITIONAL_INCLUDES" > $HEADER_GCC
+    echo -e "$ADDITIONAL_INCLUDES" > $HEADER_CLANG
     cat "$PWD/$i" >> $HEADER_GCC
     cat "$PWD/$i" >> $HEADER_CLANG
   else
