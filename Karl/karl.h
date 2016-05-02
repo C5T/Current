@@ -107,7 +107,7 @@ CURRENT_STORAGE(ServiceStorage) {
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CURRENT_STRUCT(ServiceToReport) {
+CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD(up, bool);
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
@@ -117,9 +117,11 @@ CURRENT_STRUCT(ServiceToReport) {
   CURRENT_FIELD(url_status_page_proxied, std::string);
   CURRENT_FIELD(url_status_page_direct, std::string);
   CURRENT_FIELD(uptime_as_of_last_keepalive, std::string);
+  CURRENT_FIELD(runtime, T);
 };
 
-using KarlStatus = std::map<std::string, std::map<std::string, ServiceToReport>>;
+template <typename RUNTIME_STATUS_VARIANT>
+using GenericKarlStatus = std::map<std::string, std::map<std::string, ServiceToReport<RUNTIME_STATUS_VARIANT>>>;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -135,7 +137,9 @@ CURRENT_STRUCT_T(KarlPersistedKeepalive) {
 template <typename... TS>
 class GenericKarl final {
  public:
-  using claire_status_t = ClaireServiceStatus<Variant<TS...>>;
+  using runtime_status_variant_t = Variant<TS...>;
+  using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
+  using karl_status_t = GenericKarlStatus<runtime_status_variant_t>;
   using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
   using storage_t = ServiceStorage<SherlockStreamPersister>;
@@ -360,7 +364,7 @@ class GenericKarl final {
                   codenames_per_service,
                   service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
                    std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
-                   KarlStatus result;
+                   karl_status_t result;
                    for (const auto& codename : codenames_to_resolve) {
                      resolved_codenames[codename] = [&]() -> ClaireServiceKey {
                        const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
@@ -377,7 +381,7 @@ class GenericKarl final {
                    for (const auto& iterating_over_services : codenames_per_service) {
                      const std::string& service = iterating_over_services.first;
                      for (const auto& codename : iterating_over_services.second) {
-                       ServiceToReport blob;
+                       ServiceToReport<runtime_status_variant_t> blob;
                        const auto& rhs = report_for_codename.at(codename);
                        blob.up = rhs.up;
                        blob.service = service;

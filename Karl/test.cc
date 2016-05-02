@@ -22,6 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// TODO(dkorolev): Test dependency resolution to codenames.
+// TODO(dkorolev): Test runtime status.
+
 #define CURRENT_MOCK_TIME
 
 #include "current_build.h"
@@ -59,6 +62,10 @@ DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test fo
 
 using unittest_karl_t = current::karl::GenericKarl<current::karl::ClaireStatus, karl_unittest::is_prime>;
 
+// TODO(dkorolev): The `Optional<>` part is redundant here, should be safe to remove as we're done. -- D.K.
+using unittest_karl_status_t =
+    current::karl::GenericKarlStatus<Optional<Variant<current::karl::DefaultClaireServiceStatus, karl_unittest::is_prime>>>;
+
 TEST(Karl, SmokeGenerator) {
   current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
 
@@ -82,8 +89,8 @@ TEST(Karl, SmokeGenerator) {
   }
 
   {
-    current::karl::KarlStatus status;
-    ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
@@ -125,8 +132,8 @@ TEST(Karl, SmokeIsPrime) {
   }
 
   {
-    current::karl::KarlStatus status;
-    ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
@@ -178,8 +185,8 @@ TEST(Karl, SmokeAnnotator) {
   }
 
   {
-    current::karl::KarlStatus status;
-    ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
 
     EXPECT_EQ(1u, status.size());
@@ -237,8 +244,8 @@ TEST(Karl, SmokeFilter) {
   }
 
   {
-    current::karl::KarlStatus status;
-    ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
@@ -292,8 +299,8 @@ TEST(Karl, EndToEndTest) {
   }
 
   {
-    current::karl::KarlStatus status;
-    ASSERT_NO_THROW(status = ParseJSON<current::karl::KarlStatus>(
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
