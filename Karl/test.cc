@@ -62,9 +62,8 @@ DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test fo
 
 using unittest_karl_t = current::karl::GenericKarl<current::karl::ClaireStatus, karl_unittest::is_prime>;
 
-// TODO(dkorolev): The `Optional<>` part is redundant here, should be safe to remove as we're done. -- D.K.
-using unittest_karl_status_t =
-    current::karl::GenericKarlStatus<Optional<Variant<current::karl::DefaultClaireServiceStatus, karl_unittest::is_prime>>>;
+using unittest_karl_status_t = current::karl::GenericKarlStatus<
+    Variant<current::karl::DefaultClaireServiceStatus, karl_unittest::is_prime>>;
 
 TEST(Karl, SmokeGenerator) {
   current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));

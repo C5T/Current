@@ -64,6 +64,8 @@ namespace karl {
 // Karl's persisted storage schema.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// System info, startup/teardown.
 CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds, current::time::Now());
   CURRENT_USE_FIELD_AS_KEY(timestamp);
@@ -78,6 +80,7 @@ CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD(karl_build_info, build::Info, build::Info());
 };
 
+// Per-service static info -- ideally, what changes once during its startup, [ WTF ] but also dependencies.
 CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
@@ -87,7 +90,6 @@ CURRENT_STRUCT(ClaireInfo) {
 
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
-  CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
 
   CURRENT_FIELD(build, current::build::Info);
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
@@ -117,7 +119,7 @@ CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD(url_status_page_proxied, std::string);
   CURRENT_FIELD(url_status_page_direct, std::string);
   CURRENT_FIELD(uptime_as_of_last_keepalive, std::string);
-  CURRENT_FIELD(runtime, T);
+  CURRENT_FIELD(runtime, Optional<T>);
 };
 
 template <typename RUNTIME_STATUS_VARIANT>
@@ -246,8 +248,6 @@ class GenericKarl final {
                                  return true;
                                } else if (Value(current_claire_info).location != location) {
                                  return true;
-                               } else if (Value(current_claire_info).dependencies != dependencies) {
-                                 return true;
                                } else {
                                  return false;
                                }
@@ -265,7 +265,6 @@ class GenericKarl final {
 
                            claire.service = service;
                            claire.location = location;
-                           claire.dependencies = dependencies;
 
                            if (Exists(optional_build)) {
                              claire.build = Value(optional_build);
@@ -334,6 +333,7 @@ class GenericKarl final {
       bool up;
       std::string uptime;
       std::vector<ClaireServiceKey> dependencies;
+      Optional<runtime_status_variant_t> runtime;  // Must be `Optional<>`, as it is in `ClaireServiceStatus`.
     };
     std::map<std::string, ProtoReport> report_for_codename;
     std::map<std::string, std::set<std::string>> codenames_per_service;
@@ -341,7 +341,7 @@ class GenericKarl final {
 
     for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
       if (e.idx_ts.us >= from && e.idx_ts.us < to) {
-        const auto& keepalive = e.entry.keepalive;
+        const claire_status_t keepalive = e.entry.keepalive;
 
         codenames_to_resolve.insert(keepalive.codename);
         service_key_into_codename[e.entry.location] = keepalive.codename;
@@ -353,6 +353,7 @@ class GenericKarl final {
         report.uptime = keepalive.uptime + ", reported " +
                         current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
         report.dependencies = keepalive.dependencies;
+        report.runtime = keepalive.runtime;
         report_for_codename[keepalive.codename] = report;
       }
     }
@@ -397,9 +398,9 @@ class GenericKarl final {
                        }
                        blob.url_status_page_proxied = external_url_ + "proxied/" + codename;
                        blob.url_status_page_direct = blob.location.StatusPageURL();
-                       // DIMA: More per-codename reporting fields go here.
                        blob.location = resolved_codenames[codename];
                        blob.uptime_as_of_last_keepalive = rhs.uptime;
+                       blob.runtime = rhs.runtime;
                        result[blob.location.ip][codename] = std::move(blob);
                      }
                    }
