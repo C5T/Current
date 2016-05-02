@@ -61,7 +61,7 @@ namespace karl {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Karl's persisted storage.
+// Karl's persisted storage schema.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CURRENT_STRUCT(KarlInfo) {
@@ -98,23 +98,9 @@ CURRENT_STORAGE(ServiceStorage) {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Karl's HTTP responses.
+// Karl's HTTP response(s) schema.
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-CURRENT_STRUCT(ReportedService, Service) {
-  CURRENT_FIELD(most_recent_report_age, std::string);
-  CURRENT_FIELD(most_recent_reported_uptime, std::string);
-  CURRENT_DEFAULT_CONSTRUCTOR(ReportedService) {}
-  CURRENT_CONSTRUCTOR(ReportedService)(const Service& service) : SUPER(service) {}
-};
-
-CURRENT_STRUCT(KarlStatus) {
-  CURRENT_FIELD(services, std::vector<ReportedService>);
-  CURRENT_FIELD(servers, std::vector<Server>);
-};
-*/
 
 CURRENT_STRUCT(KarlStatus) {
   CURRENT_FIELD(keepalives_per_codename, (std::map<std::string, std::string>));
@@ -268,26 +254,6 @@ class GenericKarl final {
         return now;
       }();
       r(PrepareKarlStatus(from, to));
-      /*
-      const auto now = current::time::Now();
-      storage_.ReadOnlyTransaction([now](ImmutableFields<storage_t> fields) -> Response {
-        for (const auto& service : fields.services) {
-          ReportedService filled_in_service = service;
-          const auto keepalive_data = fields.service_most_recent_report[service.service];
-          if (Exists(keepalive_data)) {
-            filled_in_service.most_recent_report_age = current::strings::TimeIntervalAsHumanReadableString(
-                now - Value(keepalive_data).most_recent_keepalive);
-            filled_in_service.most_recent_reported_uptime = current::strings::TimeIntervalAsHumanReadableString(
-                Value(keepalive_data).most_recent_reported_uptime);
-          }
-          status.services.push_back(filled_in_service);
-        }
-        for (const auto& server : fields.servers) {
-          status.servers.push_back(server);
-        }
-        return status;
-      }, std::move(r)).Detach();
-      */
     }
   }
 
