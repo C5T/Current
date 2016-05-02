@@ -87,6 +87,7 @@ CURRENT_STRUCT(ClaireInfo) {
 
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
+  CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
 
   CURRENT_FIELD(build, current::build::Info);
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
@@ -111,6 +112,7 @@ CURRENT_STRUCT(Node) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(codename, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
+  CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
   CURRENT_FIELD(url_status_page_proxied, std::string);
   CURRENT_FIELD(url_status_page_direct, std::string);
   CURRENT_FIELD(uptime_as_of_last_keepalive, std::string);
@@ -192,6 +194,8 @@ class GenericKarl final {
           location.port = body.local_port;
           location.prefix = "/";  // TODO(dkorolev) + TODO(mzhurovich): Add support for `qs["prefix"]`.
 
+          const auto dependencies = body.dependencies;
+
           // If the received status can be parsed in detail, including the "runtime" variant, persist it.
           // If no, no big deal, keep the top-level one regardless.
           const auto status = [&]() -> claire_status_t {
@@ -213,46 +217,49 @@ class GenericKarl final {
           Optional<current::build::Info> optional_build = body.build;
 
           storage_.ReadWriteTransaction(
-                       [this, now, codename, service, location, optional_build](MutableFields<storage_t> fields)
-                           -> Response {
-                             // Update the `DB` if either "codename" or "location" differ.
-                             const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
-                             if ([&]() {
-                                   if (!Exists(current_claire_info)) {
-                                     return true;
-                                   } else if (Exists(optional_build) &&
-                                              Value(current_claire_info).build != Value(optional_build)) {
-                                     return true;
-                                   } else if (Value(current_claire_info).location != location) {
-                                     return true;
-                                   } else {
-                                     return false;
-                                   }
-                                 }()) {
-                               ClaireInfo claire;
-                               if (Exists(current_claire_info)) {
-                                 // Do not overwrite `build` with `null`.
-                                 claire = Value(current_claire_info);
+                       [this, now, codename, service, location, dependencies, optional_build](
+                           MutableFields<storage_t> fields) -> Response {
+                         // Update the `DB` if "codename", "location", or "dependencies" differ.
+                         const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
+                         if ([&]() {
+                               if (!Exists(current_claire_info)) {
+                                 return true;
+                               } else if (Exists(optional_build) &&
+                                          Value(current_claire_info).build != Value(optional_build)) {
+                                 return true;
+                               } else if (Value(current_claire_info).location != location) {
+                                 return true;
+                               } else if (Value(current_claire_info).dependencies != dependencies) {
+                                 return true;
+                               } else {
+                                 return false;
                                }
-                               claire.codename = codename;
+                             }()) {
+                           ClaireInfo claire;
+                           if (Exists(current_claire_info)) {
+                             // Do not overwrite `build` with `null`.
+                             claire = Value(current_claire_info);
+                           }
+                           claire.codename = codename;
 
-                               // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
-                               claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
-                               claire.url_status_page_direct = location.StatusPageURL();
+                           // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
+                           claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
+                           claire.url_status_page_direct = location.StatusPageURL();
 
-                               claire.service = service;
-                               claire.location = location;
+                           claire.service = service;
+                           claire.location = location;
+                           claire.dependencies = dependencies;
 
-                               if (Exists(optional_build)) {
-                                 claire.build = Value(optional_build);
-                               }
+                           if (Exists(optional_build)) {
+                             claire.build = Value(optional_build);
+                           }
 
-                               claire.reported_timestamp = now;
+                           claire.reported_timestamp = now;
 
-                               fields.claires.Add(claire);
-                             }
-                             return Response("OK\n");
-                           },
+                           fields.claires.Add(claire);
+                         }
+                         return Response("OK\n");
+                       },
                        std::move(r)).Detach();
         } else {
           r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
@@ -309,6 +316,7 @@ class GenericKarl final {
     struct ProtoReport {
       bool up;
       std::string uptime;
+      std::vector<ClaireServiceKey> dependencies;
     };
     std::map<std::string, ProtoReport> report_for_codename;
     std::map<std::string, std::set<std::string>> codenames_per_service;
@@ -325,6 +333,7 @@ class GenericKarl final {
         report.up = (now - e.idx_ts.us) < up_threshold_;
         report.uptime = keepalive.uptime + ", reported " +
                         current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
+        report.dependencies = keepalive.dependencies;
         report_for_codename[keepalive.codename] = report;
       }
     }
@@ -356,6 +365,7 @@ class GenericKarl final {
                        blob.service = service;
                        blob.codename = codename;
                        blob.location = resolved_codenames[codename];
+                       blob.dependencies = rhs.dependencies;
                        blob.url_status_page_proxied = external_url_ + "proxied/" + codename;
                        blob.url_status_page_direct = blob.location.StatusPageURL();
                        // DIMA: More per-codename reporting fields go here.
