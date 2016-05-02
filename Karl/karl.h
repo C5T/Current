@@ -78,22 +78,43 @@ CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD(karl_build_info, build::Info, build::Info());
 };
 
-CURRENT_STRUCT(ClaireBuildInfo) {
+CURRENT_STRUCT(ClaireServiceKey) {
+  // TODO(dkorolev)+TODO(mzhurovich): DNS / `/etc/hosts` must be resolved by Claire when reporting dependencies.
+  CURRENT_FIELD(ip, std::string);
+  CURRENT_FIELD(port, uint16_t);
+  // TODO(dkorolev) + TODO(mzhurovich): Should or should not end with '/'?
+  CURRENT_FIELD(prefix, std::string, "");
+
+  std::tuple<std::string, uint16_t, std::string> AsTuple() const { return std::tie(ip, port, prefix); }
+  bool operator==(const ClaireServiceKey& rhs) const { return AsTuple() == rhs.AsTuple(); }
+  bool operator!=(const ClaireServiceKey& rhs) const { return !operator==(rhs); }
+  bool operator<(const ClaireServiceKey& rhs) const { return AsTuple() < rhs.AsTuple(); }
+
+  std::string StatusPageURL() const {
+    return "http://" + ip + ':' + current::ToString(port) + prefix + "/.current";
+  }
+};
+
+CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
 
+  CURRENT_FIELD(url_status_page_proxied, std::string);
+  CURRENT_FIELD(url_status_page_direct, std::string);
+
   CURRENT_FIELD(service, std::string);
-  CURRENT_FIELD(location, std::string);  // TODO(dkorolev): A record of separate IP, port, URL prefix.
+  CURRENT_FIELD(location, ClaireServiceKey);
+
   CURRENT_FIELD(build, current::build::Info);
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, KarlInfo, KarlInfoDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ClaireBuildInfo, ClaireBuildInfoDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ClaireInfo, ClaireInfoDictionary);
 
 CURRENT_STORAGE(ServiceStorage) {
   CURRENT_STORAGE_FIELD(karl, KarlInfoDictionary);
-  CURRENT_STORAGE_FIELD(claires, ClaireBuildInfoDictionary);
+  CURRENT_STORAGE_FIELD(claires, ClaireInfoDictionary);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,11 +123,17 @@ CURRENT_STORAGE(ServiceStorage) {
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CURRENT_STRUCT(KarlStatus) {
-  CURRENT_FIELD(keepalives_per_codename, (std::map<std::string, std::string>));
-  CURRENT_FIELD(uptime_per_codename, (std::map<std::string, std::string>));
-  CURRENT_FIELD(codenames_per_service, (std::map<std::string, std::vector<std::string>>));
+CURRENT_STRUCT(Node) {
+  CURRENT_FIELD(up, bool);
+  CURRENT_FIELD(service, std::string);
+  CURRENT_FIELD(codename, std::string);
+  CURRENT_FIELD(location, ClaireServiceKey);
+  CURRENT_FIELD(url_status_page_proxied, std::string);
+  CURRENT_FIELD(url_status_page_direct, std::string);
+  CURRENT_FIELD(uptime_as_of_last_keepalive, std::string);
 };
+
+using KarlStatus = std::map<std::string, std::map<std::string, std::vector<Node>>>;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -124,8 +151,12 @@ class GenericKarl final {
   explicit GenericKarl(uint16_t port,
                        const std::string& stream_persistence_file,
                        const std::string& storage_persistence_file,
-                       const std::string& url = "/")
-      : keepalives_stream_(stream_persistence_file),
+                       const std::string& url = "/",
+                       const std::string& external_url = "http://localhost:7576/",
+                       std::chrono::microseconds up_threshold = std::chrono::microseconds(1000ll * 1000ll * 45))
+      : external_url_(external_url),
+        up_threshold_(up_threshold),
+        keepalives_stream_(stream_persistence_file),
         storage_(storage_persistence_file),
         http_scope_(HTTP(port).Register(url, [this](Request r) { return Serve(std::move(r)); })) {
     // Report this Karl as up and running.
@@ -151,18 +182,19 @@ class GenericKarl final {
 
  private:
   void Serve(Request r) {
-    const auto& qs = r.url.query;
-    // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
-    // via the URL from the inbound request and the port the service has provided,
-    // to confirm two-way communication.
-    if (r.method == "POST" && qs.has("codename")) {
+    if (r.method == "POST") {
+      const auto& qs = r.url.query;
+      // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
+      // via the URL from the inbound request and the port the service has provided,
+      // to confirm two-way communication.
       try {
-        const std::string location =
-            "http://" + r.connection.RemoteIPAndPort().ip + ':' + qs["port"] + "/.current";
+        const std::string ip = r.connection.RemoteIPAndPort().ip;
+        const std::string url = "http://" + ip + ':' + qs["port"] + "/.current";
+
         const std::string json = [&]() -> std::string {
-          if (qs.has("port") && qs.has("confirm")) {
+          if (r.method == "POST" && qs.has("confirm") && qs.has("port")) {
             // Send a GET request, with a random component in the URL to prevent caching.
-            return HTTP(GET(location + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
+            return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
                 .body;
           } else {
             return r.body;
@@ -170,8 +202,12 @@ class GenericKarl final {
         }();
 
         const auto body = ParseJSON<ClaireStatus>(json);
+        if ((!qs.has("codename") || body.codename == qs["codename"]) &&
+            (!qs.has("port") || body.local_port == current::FromString<uint16_t>(qs["port"]))) {
+          ClaireServiceKey location;
+          location.ip = ip;
+          location.port = body.local_port;
 
-        if (body.codename == qs["codename"] && body.local_port == current::FromString<uint16_t>(qs["port"])) {
           // If the received status can be parsed in detail, including the "runtime" variant, persist it.
           // If no, no big deal, keep the top-level one regardless.
           const auto status = [&]() -> claire_status_t {
@@ -186,32 +222,59 @@ class GenericKarl final {
           }();
           keepalives_stream_.Publish(status);
 
-          if (Exists(body.build)) {
-            const auto build = Value(body.build);
+          const auto now = current::time::Now();
+          const std::string service = body.service;
+          const std::string codename = body.codename;
 
-            const std::string service = body.service;
-            const std::string codename = body.codename;
+          Optional<current::build::Info> optional_build = body.build;
 
-            const auto now = current::time::Now();
-            storage_.ReadWriteTransaction(
-                         [now, codename, service, location, build](MutableFields<storage_t> fields)
-                             -> Response {
-                               const auto current = fields.claires[codename];
-                               if (!(Exists(current) && Value(current).build == build)) {
-                                 ClaireBuildInfo record;
-                                 record.codename = codename;
-                                 record.service = service;
-                                 record.location = location;
-                                 record.build = build;
-                                 record.reported_timestamp = now;
-                                 fields.claires.Add(record);
+          storage_.ReadWriteTransaction(
+                       [this, now, codename, service, location, optional_build](MutableFields<storage_t> fields)
+                           -> Response {
+                             // Update the `DB` if either "codename" or "location" differ.
+                             const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
+                             if ([&]() {
+                                   if (!Exists(current_claire_info)) {
+                                     return true;
+                                   } else if (Exists(optional_build) &&
+                                              Value(current_claire_info).build != Value(optional_build)) {
+                                     return true;
+                                   } else if (Value(current_claire_info).location != location) {
+                                     return true;
+                                   } else {
+                                     return false;
+                                   }
+                                 }()) {
+                               ClaireInfo claire;
+                               if (Exists(current_claire_info)) {
+                                 // Do not overwrite `build` with `null`.
+                                 claire = Value(current_claire_info);
                                }
-                               return Response("OK\n");
-                             },
-                         std::move(r)).Detach();
-          } else {
-            r("OK\n");
-          }
+                               claire.codename = codename;
+
+                               // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
+                               claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
+                               claire.url_status_page_direct = location.StatusPageURL();
+                               /*
+                               "http://" + location.ip + ':' +
+                                                               current::ToString(location.port) +
+                                                               location.prefix;
+                                                               */
+
+                               claire.service = service;
+                               claire.location = location;
+
+                               if (Exists(optional_build)) {
+                                 claire.build = Value(optional_build);
+                               }
+
+                               claire.reported_timestamp = now;
+
+                               fields.claires.Add(claire);
+                             }
+                             return Response("OK\n");
+                           },
+                       std::move(r)).Detach();
         } else {
           r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
         }
@@ -223,59 +286,112 @@ class GenericKarl final {
         r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
       }
     } else {
-      const auto now = current::time::Now();
-      const auto from = [&]() -> std::chrono::microseconds {
-        if (r.url.query.has("from")) {
-          return current::FromString<std::chrono::microseconds>(r.url.query["from"]);
-        }
-        if (r.url.query.has("m")) {  // `m` stands for minutes.
-          return now - std::chrono::microseconds(
-                           static_cast<int64_t>(current::FromString<double>(r.url.query["m"]) * 1e6 * 60));
-        }
-        if (r.url.query.has("h")) {  // `h` stands for hours.
-          return now - std::chrono::microseconds(
-                           static_cast<int64_t>(current::FromString<double>(r.url.query["h"]) * 1e6 * 60 * 60));
-        }
-        if (r.url.query.has("d")) {  // `d` stands for days.
-          return now - std::chrono::microseconds(static_cast<int64_t>(
-                           current::FromString<double>(r.url.query["d"]) * 1e6 * 60 * 60 * 24));
-        }
-        // Five minutes by default.
-        return now - std::chrono::microseconds(static_cast<int64_t>(1e6 * 60 * 5));
-      }();
-      const auto to = [&]() -> std::chrono::microseconds {
-        if (r.url.query.has("to")) {
-          return current::FromString<std::chrono::microseconds>(r.url.query["to"]);
-        }
-        if (r.url.query.has("interval_us")) {
-          return from + current::FromString<std::chrono::microseconds>(r.url.query["interval_us"]);
-        }
-        // By the present moment by default.
-        return now;
-      }();
-      r(PrepareKarlStatus(from, to));
+      BuildStatusAndRespondWithIt(std::move(r));
     }
   }
 
-  KarlStatus PrepareKarlStatus(const std::chrono::microseconds from, const std::chrono::microseconds to) {
+  void BuildStatusAndRespondWithIt(Request r) {
+    // Non-POST, a.k.a. GET.
     const auto now = current::time::Now();
-    KarlStatus result;
+    const auto from = [&]() -> std::chrono::microseconds {
+      if (r.url.query.has("from")) {
+        return current::FromString<std::chrono::microseconds>(r.url.query["from"]);
+      }
+      if (r.url.query.has("m")) {  // `m` stands for minutes.
+        return now - std::chrono::microseconds(
+                         static_cast<int64_t>(current::FromString<double>(r.url.query["m"]) * 1e6 * 60));
+      }
+      if (r.url.query.has("h")) {  // `h` stands for hours.
+        return now - std::chrono::microseconds(
+                         static_cast<int64_t>(current::FromString<double>(r.url.query["h"]) * 1e6 * 60 * 60));
+      }
+      if (r.url.query.has("d")) {  // `d` stands for days.
+        return now - std::chrono::microseconds(static_cast<int64_t>(
+                         current::FromString<double>(r.url.query["d"]) * 1e6 * 60 * 60 * 24));
+      }
+      // Five minutes by default.
+      return now - std::chrono::microseconds(static_cast<int64_t>(1e6 * 60 * 5));
+    }();
+    const auto to = [&]() -> std::chrono::microseconds {
+      if (r.url.query.has("to")) {
+        return current::FromString<std::chrono::microseconds>(r.url.query["to"]);
+      }
+      if (r.url.query.has("interval_us")) {
+        return from + current::FromString<std::chrono::microseconds>(r.url.query["interval_us"]);
+      }
+      // By the present moment by default.
+      return now;
+    }();
+
+    // Codenames to resolve to `ClaireServiceKey`-s later, in a `ReadOnlyTransaction`.
+    std::unordered_set<std::string> codenames_to_resolve;
+
+    // The builder for the response.
+    struct ProtoReport {
+      bool up;
+      std::string uptime;
+    };
+    std::map<std::string, ProtoReport> report_for_codename;
     std::map<std::string, std::set<std::string>> codenames_per_service;
+
     for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
       if (e.idx_ts.us >= from && e.idx_ts.us < to) {
         const auto& keepalive = e.entry;
-        result.keepalives_per_codename[keepalive.codename] = current::strings::TimeIntervalAsHumanReadableString(
-                now - e.idx_ts.us) + " ago";
-        result.uptime_per_codename[keepalive.codename] = keepalive.uptime;
+
+        codenames_to_resolve.insert(keepalive.codename);
+
         codenames_per_service[keepalive.service].insert(keepalive.codename);
+        // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`, etc.
+        ProtoReport report;
+        report.up = (now - e.idx_ts.us) < up_threshold_;
+        report.uptime = keepalive.uptime + ", reported " +
+                        current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
+        report_for_codename[keepalive.codename] = report;
       }
     }
-    for (const auto& c : codenames_per_service) {
-      result.codenames_per_service[c.first].assign(c.second.begin(), c.second.end());
-    }
-    return result;
+
+    storage_.ReadOnlyTransaction(
+                 [this, codenames_to_resolve, report_for_codename, codenames_per_service](
+                     ImmutableFields<storage_t> fields) -> Response {
+                   std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
+                   KarlStatus result;
+                   for (const auto& codename : codenames_to_resolve) {
+                     resolved_codenames[codename] = [&]() -> ClaireServiceKey {
+                       const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
+                       if (Exists(resolved)) {
+                         return Value(resolved).location;
+                       } else {
+                         ClaireServiceKey key;
+                         key.ip = "zombie/" + codename;
+                         key.port = 0;
+                         return key;
+                       }
+                     }();
+                   }
+                   for (const auto& iterating_over_services : codenames_per_service) {
+                     const std::string& service = iterating_over_services.first;
+                     for (const auto& codename : iterating_over_services.second) {
+                       Node blob;
+                       const auto& rhs = report_for_codename.at(codename);
+                       blob.up = rhs.up;
+                       blob.service = service;
+                       blob.codename = codename;
+                       blob.location = resolved_codenames[codename];
+                       blob.url_status_page_proxied = external_url_ + "proxied/" + codename;
+                       blob.url_status_page_direct = blob.location.StatusPageURL();
+                       // DIMA: More per-codename reporting fields go here.
+                       blob.location = resolved_codenames[codename];
+                       blob.uptime_as_of_last_keepalive = rhs.uptime;
+                       result[blob.location.ip][codename].push_back(std::move(blob));
+                     }
+                   }
+                   return result;
+                 },
+                 std::move(r)).Detach();
   }
 
+  const std::string external_url_;
+  const std::chrono::microseconds up_threshold_;
   stream_t keepalives_stream_;
   storage_t storage_;
   const HTTPRoutesScope http_scope_;

@@ -72,6 +72,9 @@ CURRENT_STRUCT(Info) {
   bool operator==(const Info& rhs) const {
     return AsTuple() == rhs.AsTuple();
   }
+  bool operator!=(const Info& rhs) const {
+    return !operator==(rhs);
+  }
 };
 
 }  // namespace current::build
