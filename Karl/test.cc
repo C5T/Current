@@ -133,7 +133,7 @@ TEST(Karl, SmokeIsPrime) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
     auto& per_ip = status["127.0.0.1"];
@@ -186,7 +186,7 @@ TEST(Karl, SmokeAnnotator) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
 
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
@@ -245,7 +245,7 @@ TEST(Karl, SmokeFilter) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
     auto& per_ip = status["127.0.0.1"];
@@ -300,7 +300,7 @@ TEST(Karl, EndToEndTest) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
     auto& per_ip = status["127.0.0.1"];

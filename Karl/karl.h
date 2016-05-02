@@ -54,6 +54,8 @@ SOFTWARE.
 #include "../Storage/storage.h"
 #include "../Storage/persister/sherlock.h"
 
+#include "../Bricks/net/http/impl/server.h"
+
 #include "../Blocks/HTTP/api.h"
 
 namespace current {
@@ -358,8 +360,11 @@ class GenericKarl final {
       }
     }
 
+    const bool full_format = r.url.query.has("full");  // To avoid `JSONFormat::Minimalistic`, just in case.
+
     storage_.ReadOnlyTransaction(
                  [this,
+                  full_format,
                   codenames_to_resolve,
                   report_for_codename,
                   codenames_per_service,
@@ -404,7 +409,13 @@ class GenericKarl final {
                        result[blob.location.ip][codename] = std::move(blob);
                      }
                    }
-                   return result;
+                   if (full_format) {
+                     return result;
+                   } else {
+                     return Response(JSON<JSONFormat::Minimalistic>(result),
+                                     HTTPResponseCode.OK,
+                                     current::net::constants::kDefaultJSONContentType);
+                   }
                  },
                  std::move(r)).Detach();
   }
