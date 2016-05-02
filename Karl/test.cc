@@ -60,10 +60,8 @@ DEFINE_string(karl_test_storage_persistence_file, ".current/storage", "Local fil
 
 DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test forever.");
 
-using unittest_karl_t = current::karl::GenericKarl<current::karl::ClaireStatus, karl_unittest::is_prime>;
-
-using unittest_karl_status_t = current::karl::GenericKarlStatus<
-    Variant<current::karl::DefaultClaireServiceStatus, karl_unittest::is_prime>>;
+using unittest_karl_t = current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
+using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
 
 TEST(Karl, SmokeGenerator) {
   current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
@@ -90,7 +88,7 @@ TEST(Karl, SmokeGenerator) {
   {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0", FLAGS_karl_test_port))).body));
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
     auto& per_ip = status["127.0.0.1"];

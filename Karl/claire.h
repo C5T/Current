@@ -29,6 +29,8 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include "current_build.h"
+
 #include <atomic>
 #include <thread>
 #include <mutex>
@@ -329,7 +331,7 @@ class GenericClaire final {
   std::thread keepalive_thread_;
 };
 
-using Claire = GenericClaire<Variant<DefaultClaireServiceStatus>>;
+using Claire = GenericClaire<Variant<default_user_status::status>>;
 
 }  // namespace current::karl
 }  // namespace current

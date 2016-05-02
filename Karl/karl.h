@@ -427,7 +427,7 @@ class GenericKarl final {
   const HTTPRoutesScope http_scope_;
 };
 
-using Karl = GenericKarl<DefaultClaireServiceStatus>;
+using Karl = GenericKarl<default_user_status::status>;
 
 }  // namespace current::karl
 }  // namespace current
