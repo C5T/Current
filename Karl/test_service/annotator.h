@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef KARL_TEST_SERVICE_ANNOTATOR_H
 #define KARL_TEST_SERVICE_ANNOTATOR_H
 
+#include "http_subscriber.h"
 #include "schema.h"
 
 #include "../claire.h"
@@ -46,7 +47,8 @@ class ServiceAnnotator final {
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
-        thread_([this]() { Thread(); }),
+        http_stream_subscriber_(source_numbers_stream_,
+                                [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "annotator", port, {service_generator, service_is_prime}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
@@ -55,35 +57,19 @@ class ServiceAnnotator final {
     // In example "production" mode just start regular keepalives.
     claire_.Register();
 #endif
-  }
-
-  ~ServiceAnnotator() {
-    destructing_ = true;
-    thread_.join();
+    claire_.AddDependency(service_generator);
+    claire_.AddDependency(service_is_prime);
   }
 
   const std::string& ClaireCodename() const { return claire_.Codename(); }
 
  private:
-  void Thread() {
-    // Poor man's stream subscriber. -- D.K.
-    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as we coin the notion of `HTTPSherlockSusbcriber`.
-    int index = 0;
-    try {
-      while (!destructing_) {
-        const auto row = HTTP(GET(source_numbers_stream_ + "?i=" + current::ToString(index++) + "&n=1")).body;
-        const auto split = current::strings::Split(row, '\t');
-        assert(split.size() == 2u);
-        auto number = ParseJSON<Number>(split[1]);
-        const auto prime_result =
-            HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
-        assert(prime_result == "YES\n" || prime_result == "NO\n");
-        number.is_prime = (prime_result == "YES\n");
-        stream_.Publish(number);
-      }
-    } catch (current::net::NetworkException&) {
-      // Ignore for the purposes of this test. -- D.K.
-    }
+  void OnNumber(Number&& value) {
+    Number number(std::move(value));
+    const auto prime_result = HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
+    assert(prime_result == "YES\n" || prime_result == "NO\n");
+    number.is_prime = (prime_result == "YES\n");
+    stream_.Publish(std::move(number));
   }
 
   const std::string source_numbers_stream_;
@@ -91,7 +77,7 @@ class ServiceAnnotator final {
   current::sherlock::Stream<Number> stream_;
   const HTTPRoutesScope http_scope_;
   std::atomic_bool destructing_;
-  std::thread thread_;
+  HTTPStreamSubscriber<Number> http_stream_subscriber_;
   current::karl::Claire claire_;
 };
 

@@ -25,6 +25,7 @@ SOFTWARE.
 #ifndef KARL_TEST_SERVICE_FILTER_H
 #define KARL_TEST_SERVICE_FILTER_H
 
+#include "http_subscriber.h"
 #include "schema.h"
 
 #include "../karl.h"
@@ -45,8 +46,8 @@ class ServiceFilter final {
         stream_composites_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/primes", stream_primes_) +
                     HTTP(port).Register("/composites", stream_composites_)),
-        destructing_(false),
-        thread_([this]() { Thread(); }),
+        http_stream_subscriber_(source_annotated_numbers_stream_,
+                                [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
@@ -55,41 +56,23 @@ class ServiceFilter final {
     // In example "production" mode just start regular keepalives.
     claire_.Register();
 #endif
-  }
-
-  ~ServiceFilter() {
-    destructing_ = true;
-    thread_.join();
+    claire_.AddDependency(service_annotated);
   }
 
   const std::string& ClaireCodename() const { return claire_.Codename(); }
 
  private:
-  void Thread() {
-    // Poor man's stream subscriber. -- D.K.
-    // TODO(dkorolev) + TODO(mzhurovich): Revisit in Thailand as we coin the notion of `HTTPSherlockSusbcriber`.
-    int index = 0;
-    try {
-      while (!destructing_) {
-        const auto row =
-            HTTP(GET(source_annotated_numbers_stream_ + "?i=" + current::ToString(index++) + "&n=1")).body;
-        const auto split = current::strings::Split(row, '\t');
-        assert(split.size() == 2u);
-        auto number = ParseJSON<Number>(split[1]);
-        assert(Exists(number.is_prime));
-        (Value(number.is_prime) ? stream_primes_ : stream_composites_).Publish(number);
-      }
-    } catch (current::net::NetworkException&) {
-      // Ignore for the purposes of this test. -- D.K.
-    }
+  void OnNumber(Number&& value) {
+    const Number number(std::move(value));
+    assert(Exists(number.is_prime));
+    (Value(number.is_prime) ? stream_primes_ : stream_composites_).Publish(std::move(number));
   }
 
   const std::string source_annotated_numbers_stream_;
   current::sherlock::Stream<Number> stream_primes_;
   current::sherlock::Stream<Number> stream_composites_;
   const HTTPRoutesScope http_scope_;
-  std::atomic_bool destructing_;
-  std::thread thread_;
+  HTTPStreamSubscriber<Number> http_stream_subscriber_;
   current::karl::Claire claire_;
 };
 
