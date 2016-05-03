@@ -51,7 +51,7 @@ CURRENT_STRUCT(ClaireServiceKey) {
       : ip(rhs.ip), port(rhs.port), prefix(rhs.prefix) {}
   CURRENT_CONSTRUCTOR(ClaireServiceKey)(const std::string& url) {
     URL decomposed(url);
-    ip = current::net::ResolveIPFromHostName(decomposed.host);
+    ip = current::net::ResolveIPFromHostname(decomposed.host);
     port = decomposed.port;
     prefix = decomposed.path;
   }

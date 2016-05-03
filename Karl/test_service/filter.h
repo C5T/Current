@@ -46,7 +46,8 @@ class ServiceFilter final {
         stream_composites_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/primes", stream_primes_) +
                     HTTP(port).Register("/composites", stream_composites_)),
-        http_stream_subscriber_(source_annotated_numbers_stream_, [this](Number&& n) { OnNumber(std::move(n)); }),
+        http_stream_subscriber_(source_annotated_numbers_stream_,
+                                [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "filter", port, {service_annotated}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
@@ -55,7 +56,6 @@ class ServiceFilter final {
     // In example "production" mode just start regular keepalives.
     claire_.Register();
 #endif
-    claire_.AddDependency(service_annotated);
   }
 
   const std::string& ClaireCodename() const { return claire_.Codename(); }

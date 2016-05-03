@@ -47,7 +47,8 @@ class ServiceAnnotator final {
         stream_(current::sherlock::Stream<Number>()),
         http_scope_(HTTP(port).Register("/annotated", stream_)),
         destructing_(false),
-        http_stream_subscriber_(source_numbers_stream_, [this](Number&& n) { OnNumber(std::move(n)); }),
+        http_stream_subscriber_(source_numbers_stream_,
+                                [this](idxts_t, Number && n) { OnNumber(std::move(n)); }),
         claire_(karl, "annotator", port, {service_generator, service_is_prime}) {
 #ifdef CURRENT_MOCK_TIME
     // In unit test mode, wait for Karl's response and callback, and fail if Karl is not available.
@@ -56,8 +57,6 @@ class ServiceAnnotator final {
     // In example "production" mode just start regular keepalives.
     claire_.Register();
 #endif
-    claire_.AddDependency(service_generator);
-    claire_.AddDependency(service_is_prime);
   }
 
   const std::string& ClaireCodename() const { return claire_.Codename(); }
@@ -65,8 +64,7 @@ class ServiceAnnotator final {
  private:
   void OnNumber(Number&& value) {
     Number number(std::move(value));
-    const auto prime_result =
-        HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
+    const auto prime_result = HTTP(GET(is_prime_logic_endpoint_ + "?x=" + current::ToString(number.x))).body;
     assert(prime_result == "YES\n" || prime_result == "NO\n");
     number.is_prime = (prime_result == "YES\n");
     stream_.Publish(std::move(number));

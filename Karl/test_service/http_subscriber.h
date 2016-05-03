@@ -31,17 +31,24 @@ SOFTWARE.
 template <typename ENTRY>
 class HTTPStreamSubscriber {
  public:
-  HTTPStreamSubscriber(const std::string& remote_stream_url, std::function<void(ENTRY&&)> callback)
+  using callback_t = std::function<void(idxts_t, ENTRY&&)>;
+
+  HTTPStreamSubscriber(const std::string& remote_stream_url, callback_t callback)
       : remote_stream_url_(remote_stream_url),
         callback_(callback),
         destructing_(false),
         index_(0u),
         thread_([this]() { Thread(); }) {}
 
-  ~HTTPStreamSubscriber() {
+  virtual ~HTTPStreamSubscriber() {
     destructing_ = true;
-    const std::string terminate_url = remote_stream_url_ + "?terminate=" + terminate_id_;
-    HTTP(GET(terminate_url));
+    if (!terminate_id_.empty()) {
+      const std::string terminate_url = remote_stream_url_ + "?terminate=" + terminate_id_;
+      try {
+        HTTP(GET(terminate_url));
+      } catch (current::net::NetworkException&) {
+      }
+    }
     thread_.join();
   }
 
@@ -70,15 +77,23 @@ class HTTPStreamSubscriber {
       return;
     }
     const auto split = current::strings::Split(chunk, '\t');
-    assert(split.size() == 2u);
-    assert(ParseJSON<idxts_t>(split[0]).index == index_);
-    callback_(ParseJSON<ENTRY>(split[1]));
+    if (split.size() != 2u) {
+      std::cerr << "HTTPStreamSubscriber got malformed chunk: '" << chunk << "'." << std::endl;
+      assert(false);
+    }
+    const idxts_t idxts = ParseJSON<idxts_t>(split[0]);
+    if (idxts.index != index_) {
+      std::cerr << "HTTPStreamSubscriber expected index " << index_ << ", got " << idxts.index << '.'
+                << std::endl;
+      assert(false);
+    }
+    callback_(idxts, ParseJSON<ENTRY>(split[1]));
     ++index_;
   }
 
  private:
   const std::string remote_stream_url_;
-  std::function<void(ENTRY&&)> callback_;
+  callback_t callback_;
   std::atomic_bool destructing_;
   uint64_t index_;
   std::thread thread_;

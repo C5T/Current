@@ -502,7 +502,14 @@ class Socket final : public SocketHandle {
 };
 
 // Smart wrapper for system-allocated `addrinfo` pointers.
-using addrinfo_t = std::unique_ptr<struct addrinfo, std::function<void(struct addrinfo*)>>;
+namespace addrinfo_t_impl {
+struct Deleter {
+  void operator()(struct addrinfo* ptr) {
+    ::freeaddrinfo(ptr);
+  }
+};
+}
+using addrinfo_t = std::unique_ptr<struct addrinfo, addrinfo_t_impl::Deleter>;
 
 inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv = "") {
   struct addrinfo* result = nullptr;
@@ -518,10 +525,10 @@ inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv =
     freeaddrinfo(result);
     CURRENT_THROW(SocketResolveAddressException(gai_strerror(retval)));
   }
-  return addrinfo_t(result, [](struct addrinfo* p) { ::freeaddrinfo(p); });
+  return addrinfo_t(result);
 }
 
-inline std::string ResolveIPFromHostName(const std::string& hostname) {
+inline std::string ResolveIPFromHostname(const std::string& hostname) {
   auto addr_info = GetAddrInfo(hostname);
   // NOTE: Using the first known IP.
   struct sockaddr_in* p_addr_in = reinterpret_cast<struct sockaddr_in*>(addr_info->ai_addr);
