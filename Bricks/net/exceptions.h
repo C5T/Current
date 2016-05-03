@@ -38,7 +38,9 @@ struct NetworkException : Exception {
 };
 
 // TCP-level exceptions are derived from SocketException.
-struct SocketException : NetworkException {};
+struct SocketException : NetworkException {
+  using NetworkException::NetworkException;
+};
 
 #ifdef CURRENT_WINDOWS
 struct SocketWSAStartupException : SocketException {};
@@ -58,9 +60,13 @@ struct SocketAcceptException : ServerSocketException {};  // LCOV_EXCL_LINE -- n
 
 struct ConnectionResetByPeer : SocketException {};  // LCOV_EXCL_LINE
 
-struct ClientSocketException : SocketException {};
+struct ClientSocketException : SocketException {
+  using SocketException::SocketException;
+};
 struct SocketConnectException : ClientSocketException {};  // LCOV_EXCL_LINE -- not covered by unit tests.
-struct SocketResolveAddressException : ClientSocketException {};
+struct SocketResolveAddressException : ClientSocketException {
+  using ClientSocketException::ClientSocketException;
+};
 
 struct SocketFcntlException : SocketException {};
 struct SocketReadException : SocketException {};  // LCOV_EXCL_LINE -- TODO(dkorolev): We might want to test it.
@@ -79,8 +85,7 @@ struct EmptySocketReadException : EmptySocketException {};
 
 // HTTP-level exceptions are derived from HTTPException.
 struct HTTPException : NetworkException {
-  HTTPException() {}
-  HTTPException(const std::string& what) : NetworkException(what) {}
+  using NetworkException::NetworkException;
 };
 
 struct HTTPRedirectNotAllowedException : HTTPException {};

@@ -52,8 +52,7 @@ CURRENT_STRUCT(ClaireServiceKey) {
       : ip(rhs.ip), port(rhs.port), prefix(rhs.prefix) {}
   CURRENT_CONSTRUCTOR(ClaireServiceKey)(const std::string& url) {
     URL decomposed(url);
-    // TODO(dkorolev) + TODO(mzhurovich): This dirty hack should be fixed once and for all.
-    ip = decomposed.host == "localhost" ? "127.0.0.1" : decomposed.host;
+    ip = current::net::ResolveIPFromHostName(decomposed.host);
     port = decomposed.port;
     prefix = decomposed.path;
   }

@@ -52,6 +52,7 @@ using current::Singleton;
 using current::net::Socket;
 using current::net::Connection;
 using current::net::ClientSocket;
+using current::net::ResolveIPFromHostName;
 
 using current::net::AttemptedToUseMovedAwayConnection;
 using current::net::SocketBindException;
@@ -240,13 +241,17 @@ TEST(TCPTest, EchoLongMessageTestsDynamicBufferGrowth) {
 }
 
 // Don't run this ~1s test more than once in a loop.
-struct OnlyCheckForUnresolvableURLOnceSingleton {
+struct RunResolveAddressTestOnlyOnceSingleton {
   bool done = false;
 };
 
-TEST(TCPTest, ResolveAddressException) {
-  bool& done = Singleton<OnlyCheckForUnresolvableURLOnceSingleton>().done;
+TEST(TCPTest, ResolveAddress) {
+  bool& done = Singleton<RunResolveAddressTestOnlyOnceSingleton>().done;
   if (!done) {
+    EXPECT_EQ("127.0.0.1", ResolveIPFromHostName("localhost"));
+    EXPECT_EQ("127.0.0.1", ResolveIPFromHostName("127.0.0.1"));
+    EXPECT_EQ("8.8.8.8", ResolveIPFromHostName("8.8.8.8"));
+    ASSERT_THROW(ResolveIPFromHostName("someunknownhostname.domain"), SocketResolveAddressException);
     ASSERT_THROW(Connection(ClientSocket("999.999.999.999", 80)), SocketResolveAddressException);
     done = true;
   }
