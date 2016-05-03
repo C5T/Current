@@ -188,13 +188,9 @@ inline std::string InetAddrToString(const struct in_addr* in) {
 #ifndef CURRENT_WINDOWS
   const char* result = ::inet_ntop(AF_INET, reinterpret_cast<const void*>(in), buffer, sizeof(buffer));
 #else
-  // note: this will not support UTF-8 encoded domains in output; to support international domain names on Windows,
-  // replace this call with InetNtopW => WideCharToMultiByte(CP_UTF8, ...)
-  const char* result = ::inet_ntop(AF_INET,
-                                   const_cast<void *>(reinterpret_cast<const void*>(in)),
-                                   buffer,
-                                   sizeof(buffer));
-#endif // !CURRENT_WINDOWS
+  const char* result =
+      ::inet_ntop(AF_INET, const_cast<void*>(reinterpret_cast<const void*>(in)), buffer, sizeof(buffer));
+#endif  // !CURRENT_WINDOWS
   if (!result) {
     CURRENT_THROW(InetAddrToStringException());
   } else {
@@ -505,6 +501,33 @@ class Socket final : public SocketHandle {
   void operator=(Socket&&) = delete;
 };
 
+// Smart wrapper for system-allocated `addrinfo` pointers.
+using addrinfo_t = std::unique_ptr<struct addrinfo, std::function<void(struct addrinfo*)>>;
+
+inline addrinfo_t GetAddrInfo(const std::string& host, const std::string& serv = "") {
+  struct addrinfo* result = nullptr;
+  struct addrinfo hints;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &result);
+  if (!result) {
+    CURRENT_THROW(SocketResolveAddressException());
+  } else if (retval) {
+    freeaddrinfo(result);
+    CURRENT_THROW(SocketResolveAddressException(gai_strerror(retval)));
+  }
+  return addrinfo_t(result, [](struct addrinfo* p) { ::freeaddrinfo(p); });
+}
+
+inline std::string ResolveIPFromHostName(const std::string& hostname) {
+  auto addr_info = GetAddrInfo(hostname);
+  // NOTE: Using the first known IP.
+  struct sockaddr_in* p_addr_in = reinterpret_cast<struct sockaddr_in*>(addr_info->ai_addr);
+  return InetAddrToString(&(p_addr_in->sin_addr));
+}
+
 // POSIX allows numeric ports, as well as strings like "http".
 template <typename T>
 inline Connection ClientSocket(const std::string& host, T port_or_serv) {
@@ -512,22 +535,10 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
    public:
     inline explicit ClientSocket(const std::string& host, const std::string& serv)
         : SocketHandle(SocketHandle::NewHandle()) {
-      BRICKS_NET_LOG("S%05d getaddrinfo(%s@%s) ...\n", static_cast<SOCKET>(socket), host.c_str(), serv.c_str());
-      struct addrinfo hints;
-      memset(&hints, 0, sizeof(hints));
-      struct addrinfo* servinfo;
-      hints.ai_family = AF_INET;
-      hints.ai_socktype = SOCK_STREAM;
-      hints.ai_protocol = IPPROTO_TCP;
-      const int retval = ::getaddrinfo(host.c_str(), serv.c_str(), &hints, &servinfo);
-      if (retval || !servinfo) {
-        if (retval) {
-          // TODO(dkorolev): LOG(somewhere, strings::Printf("Error in getaddrinfo: %s\n",
-          // gai_strerror(retval)));
-        }
-        CURRENT_THROW(SocketResolveAddressException());
-      }
-      struct sockaddr* p_addr = servinfo->ai_addr;
+      BRICKS_NET_LOG("S%05d ", static_cast<SOCKET>(socket));
+      // Deliberately left non-const because of possible Windows issues. -- M.Z.
+      auto addr_info = GetAddrInfo(host, serv);
+      struct sockaddr* p_addr = addr_info->ai_addr;
       // TODO(dkorolev): Use a random address, not the first one. Ref. iteration:
       // for (struct addrinfo* p = servinfo; p != NULL; p = p->ai_next) {
       //   p->ai_addr;
@@ -554,8 +565,6 @@ inline Connection ClientSocket(const std::string& host, T port_or_serv) {
       local_ip_and_port.ip = InetAddrToString(&addr_client.sin_addr);
       local_ip_and_port.port = htons(addr_client.sin_port);
 
-      // TODO(dkorolev): Free this one, make use of Alex's ScopeGuard.
-      ::freeaddrinfo(servinfo);
       BRICKS_NET_LOG("S%05d connect() OK\n", static_cast<SOCKET>(socket));
     }
     IPAndPort local_ip_and_port;

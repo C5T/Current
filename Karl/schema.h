@@ -41,7 +41,6 @@ namespace current {
 namespace karl {
 
 CURRENT_STRUCT(ClaireServiceKey) {
-  // TODO(dkorolev)+TODO(mzhurovich): DNS / `/etc/hosts` must be resolved by Claire when reporting dependencies.
   CURRENT_FIELD(ip, std::string);
   CURRENT_FIELD(port, uint16_t);
   // TODO(dkorolev) + TODO(mzhurovich): Should or should not end with '/'?
@@ -52,8 +51,7 @@ CURRENT_STRUCT(ClaireServiceKey) {
       : ip(rhs.ip), port(rhs.port), prefix(rhs.prefix) {}
   CURRENT_CONSTRUCTOR(ClaireServiceKey)(const std::string& url) {
     URL decomposed(url);
-    // TODO(dkorolev) + TODO(mzhurovich): This dirty hack should be fixed once and for all.
-    ip = decomposed.host == "localhost" ? "127.0.0.1" : decomposed.host;
+    ip = current::net::ResolveIPFromHostName(decomposed.host);
     port = decomposed.port;
     prefix = decomposed.path;
   }
