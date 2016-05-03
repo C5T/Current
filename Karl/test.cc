@@ -66,7 +66,7 @@ using unittest_karl_t =
 using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
 
 TEST(Karl, SmokeGenerator) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
+  current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
@@ -74,10 +74,15 @@ TEST(Karl, SmokeGenerator) {
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(
-      FLAGS_karl_generator_test_port, std::chrono::microseconds(1), karl_locator);
+      FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
 
-  EXPECT_EQ("{\"index\":100,\"us\":100000000}\t{\"x\":100,\"is_prime\":null}\n",
-            HTTP(GET(Printf("http://localhost:%d/numbers?i=100&n=1", FLAGS_karl_generator_test_port))).body);
+  {
+    const auto fields = current::strings::Split(
+        HTTP(GET(Printf("http://localhost:%d/numbers?i=100&n=1", FLAGS_karl_generator_test_port))).body, '\t');
+    ASSERT_EQ(2u, fields.size());
+    EXPECT_EQ(100u, ParseJSON<idxts_t>(fields[0]).index);
+    EXPECT_EQ("{\"x\":100,\"is_prime\":null}\n", fields[1]);
+  }
 
   {
     current::karl::ClaireStatus status;
@@ -103,7 +108,7 @@ TEST(Karl, SmokeGenerator) {
 }
 
 TEST(Karl, SmokeIsPrime) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
+  current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
@@ -146,7 +151,7 @@ TEST(Karl, SmokeIsPrime) {
 }
 
 TEST(Karl, SmokeAnnotator) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
+  current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
@@ -154,7 +159,7 @@ TEST(Karl, SmokeAnnotator) {
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(
-      FLAGS_karl_generator_test_port, std::chrono::microseconds(1), karl_locator);
+      FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
   const karl_unittest::ServiceAnnotator annotator(FLAGS_karl_annotator_test_port,
                                                   Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
@@ -199,7 +204,7 @@ TEST(Karl, SmokeAnnotator) {
 }
 
 TEST(Karl, SmokeFilter) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
+  current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
@@ -207,7 +212,7 @@ TEST(Karl, SmokeFilter) {
       FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(
-      FLAGS_karl_generator_test_port, std::chrono::microseconds(1), karl_locator);
+      FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
   const karl_unittest::ServiceAnnotator annotator(FLAGS_karl_annotator_test_port,
                                                   Printf("http://localhost:%d", FLAGS_karl_generator_test_port),
@@ -259,7 +264,7 @@ TEST(Karl, SmokeFilter) {
 
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
 TEST(Karl, EndToEndTest) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(1000));
+  current::time::ResetToZero();
 
   if (FLAGS_karl_run_test_forever) {
     // Instructions:

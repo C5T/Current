@@ -34,13 +34,22 @@ SOFTWARE.
 #include <chrono>
 #include <mutex>
 
+#include "../exception.h"
+
 #include "../util/singleton.h"
 #include "../strings/fixed_size_serializer.h"
+#include "../strings/util.h"
 
 namespace current {
 namespace time {
 
 #ifdef CURRENT_MOCK_TIME
+
+struct InconsistentSetNowException : Exception {
+  InconsistentSetNowException(std::chrono::microseconds was, std::chrono::microseconds attempted)
+      : Exception("SetNow() attempted to change time back to " + ToString(attempted) + ' ' + " from " +
+                  ToString(was) + '.') {}
+};
 
 struct MockNowImpl {
   std::chrono::microseconds mock_now_value;
@@ -62,8 +71,19 @@ inline void SetNow(std::chrono::microseconds us,
                    std::chrono::microseconds max_us = std::chrono::microseconds(0)) {
   auto& impl = Singleton<MockNowImpl>();
   std::lock_guard<std::mutex> lock(impl.mutex);
-  impl.mock_now_value = us;
-  impl.max_mock_now_value = max_us;
+  if (us >= impl.mock_now_value) {
+    impl.mock_now_value = us;
+    impl.max_mock_now_value = max_us;
+  } else {
+    CURRENT_THROW(InconsistentSetNowException(impl.mock_now_value, us));
+  }
+}
+
+inline void ResetToZero() {
+  auto& impl = Singleton<MockNowImpl>();
+  std::lock_guard<std::mutex> lock(impl.mutex);
+  impl.mock_now_value = std::chrono::microseconds(0);
+  impl.max_mock_now_value = std::chrono::microseconds(1000ll * 1000ll * 1000ll);
 }
 
 template <typename T>

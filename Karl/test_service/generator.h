@@ -80,8 +80,8 @@ class ServiceGenerator final {
   void Thread() {
     while (!destructing_) {
 #ifdef CURRENT_MOCK_TIME
-      current::time::SetNow(std::chrono::microseconds(current_value_ * 1000ull * 1000ull),
-                            std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull - 1));
+      current::time::SetNow(std::chrono::microseconds((current_value_ + 1) * 1000ull * 1000ull),
+                            std::chrono::microseconds((current_value_ + 2) * 1000ull * 1000ull - 1));
 #endif
       stream_.Publish(Number(current_value_));
       ++current_value_;
