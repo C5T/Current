@@ -98,10 +98,10 @@ TEST(Karl, SmokeGenerator) {
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip = status["127.0.0.1"];
-    EXPECT_EQ(1u, per_ip.size());
-    ASSERT_TRUE(per_ip.count(generator.ClaireCodename())) << JSON(per_ip);
-    auto& per_codename = per_ip[generator.ClaireCodename()];
+    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, per_ip_services.size());
+    ASSERT_TRUE(per_ip_services.count(generator.ClaireCodename())) << JSON(per_ip_services);
+    auto& per_codename = per_ip_services[generator.ClaireCodename()];
     // As a lot of "time" has passed since the "last" keepalive, `up` would actually be `false`. Don't test it.
     EXPECT_EQ("generator", per_codename.service);
   }
@@ -141,11 +141,11 @@ TEST(Karl, SmokeIsPrime) {
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip = status["127.0.0.1"];
-    EXPECT_EQ(1u, per_ip.size());
-    ASSERT_TRUE(per_ip.count(is_prime.ClaireCodename())) << JSON(per_ip);
-    auto& per_codename = per_ip[is_prime.ClaireCodename()];
-    EXPECT_TRUE(per_codename.up);
+    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, per_ip_services.size());
+    ASSERT_TRUE(per_ip_services.count(is_prime.ClaireCodename())) << JSON(per_ip_services);
+    auto& per_codename = per_ip_services[is_prime.ClaireCodename()];
+    EXPECT_TRUE(Exists<current::karl::current_service_state::up>(per_codename.currently));
     EXPECT_EQ("is_prime", per_codename.service);
   }
 }
@@ -195,11 +195,11 @@ TEST(Karl, SmokeAnnotator) {
 
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip = status["127.0.0.1"];
-    EXPECT_EQ(3u, per_ip.size());
-    EXPECT_EQ("annotator", per_ip[annotator.ClaireCodename()].service);
-    EXPECT_EQ("generator", per_ip[generator.ClaireCodename()].service);
-    EXPECT_EQ("is_prime", per_ip[is_prime.ClaireCodename()].service);
+    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(3u, per_ip_services.size());
+    EXPECT_EQ("annotator", per_ip_services[annotator.ClaireCodename()].service);
+    EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
+    EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
   }
 }
 
@@ -253,12 +253,12 @@ TEST(Karl, SmokeFilter) {
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip = status["127.0.0.1"];
-    EXPECT_EQ(4u, per_ip.size());
-    EXPECT_EQ("annotator", per_ip[annotator.ClaireCodename()].service);
-    EXPECT_EQ("filter", per_ip[filter.ClaireCodename()].service);
-    EXPECT_EQ("generator", per_ip[generator.ClaireCodename()].service);
-    EXPECT_EQ("is_prime", per_ip[is_prime.ClaireCodename()].service);
+    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(4u, per_ip_services.size());
+    EXPECT_EQ("annotator", per_ip_services[annotator.ClaireCodename()].service);
+    EXPECT_EQ("filter", per_ip_services[filter.ClaireCodename()].service);
+    EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
+    EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
   }
 }
 
@@ -308,12 +308,12 @@ TEST(Karl, EndToEndTest) {
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
     EXPECT_EQ(1u, status.size());
     ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip = status["127.0.0.1"];
-    EXPECT_EQ(4u, per_ip.size());
-    EXPECT_EQ("annotator", per_ip[annotator.ClaireCodename()].service);
-    EXPECT_EQ("filter", per_ip[filter.ClaireCodename()].service);
-    EXPECT_EQ("generator", per_ip[generator.ClaireCodename()].service);
-    EXPECT_EQ("is_prime", per_ip[is_prime.ClaireCodename()].service);
+    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(4u, per_ip_services.size());
+    EXPECT_EQ("annotator", per_ip_services[annotator.ClaireCodename()].service);
+    EXPECT_EQ("filter", per_ip_services[filter.ClaireCodename()].service);
+    EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
+    EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
   }
 
   if (FLAGS_karl_run_test_forever) {
