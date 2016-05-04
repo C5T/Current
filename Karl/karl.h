@@ -99,12 +99,14 @@ CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
 };
 
+const uint64_t kUpdateServerInfoThresholdByTimeSkewDifference = 50000;
+
 // Per-server status info.
 CURRENT_STRUCT(ServerInfo) {
   CURRENT_FIELD(ip, std::string);
   CURRENT_USE_FIELD_AS_KEY(ip);
 
-  CURRENT_FIELD(last_time_skew, std::chrono::microseconds);
+  CURRENT_FIELD(behind_this_by, std::chrono::microseconds);
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, KarlInfo, KarlInfoDictionary);
@@ -161,7 +163,7 @@ CURRENT_STRUCT_T(ServiceToReport) {
 };
 
 CURRENT_STRUCT_T(ServerToReport) {
-  CURRENT_FIELD(last_estimated_time_skew, std::string);
+  CURRENT_FIELD(behind_this_by, std::string);
   CURRENT_FIELD(services, (std::map<std::string, ServiceToReport<T>>));
 };
 
@@ -286,68 +288,82 @@ class GenericKarl final {
           const std::string codename = body.codename;
 
           Optional<current::build::Info> optional_build = body.build;
-          Optional<std::chrono::microseconds> optional_time_skew;
+          Optional<std::chrono::microseconds> optional_behind_this_by;
           if (Exists(body.last_successful_ping_epoch_microseconds)) {
-            optional_time_skew = now - body.now - Value(body.last_successful_ping_epoch_microseconds) / 2;
+            optional_behind_this_by = now - body.now - Value(body.last_successful_ping_epoch_microseconds) / 2;
           }
 
-          storage_
-              .ReadWriteTransaction(
-                   [this, now, codename, service, location, dependencies, optional_build, optional_time_skew](
-                       MutableFields<storage_t> fields) -> Response {
-                     // Update per-server time skew.
-                     if (Exists(optional_time_skew)) {
-                       ServerInfo server;
-                       server.ip = location.ip;
-                       // Just in case load old value if we decide to add fields to `ServerInfo`.
-                       const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
-                       if (Exists(current_server_info)) {
-                         server = Value(current_server_info);
-                       }
-                       server.last_time_skew = Value(optional_time_skew);
-                       fields.servers.Add(server);
-                     }
-
-                     // Update the `DB` if "codename", "location", or "dependencies" differ.
-                     const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
-                     if ([&]() {
-                           if (!Exists(current_claire_info)) {
-                             return true;
-                           } else if (Exists(optional_build) &&
-                                      Value(current_claire_info).build != Value(optional_build)) {
-                             return true;
-                           } else if (Value(current_claire_info).location != location) {
-                             return true;
-                           } else {
-                             return false;
+          storage_.ReadWriteTransaction(
+                       [this,
+                        now,
+                        codename,
+                        service,
+                        location,
+                        dependencies,
+                        optional_build,
+                        optional_behind_this_by](MutableFields<storage_t> fields) -> Response {
+                         // Update per-server time skew.
+                         if (Exists(optional_behind_this_by)) {
+                           const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
+                           ServerInfo server;
+                           server.ip = location.ip;
+                           // Just in case load old value if we decide to add fields to `ServerInfo`.
+                           const ImmutableOptional<ServerInfo> current_server_info =
+                               fields.servers[location.ip];
+                           bool need_to_update = true;
+                           if (Exists(current_server_info)) {
+                             server = Value(current_server_info);
+                             const auto time_skew_difference = server.behind_this_by - behind_this_by;
+                             if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) <
+                                 kUpdateServerInfoThresholdByTimeSkewDifference) {
+                               need_to_update = false;
+                             }
                            }
-                         }()) {
-                       ClaireInfo claire;
-                       if (Exists(current_claire_info)) {
-                         // Do not overwrite `build` with `null`.
-                         claire = Value(current_claire_info);
-                       }
-                       claire.codename = codename;
+                           if (need_to_update) {
+                             server.behind_this_by = behind_this_by;
+                             fields.servers.Add(server);
+                           }
+                         }
 
-                       // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
-                       claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
-                       claire.url_status_page_direct = location.StatusPageURL();
+                         // Update the `DB` if "codename", "location", or "dependencies" differ.
+                         const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
+                         if ([&]() {
+                               if (!Exists(current_claire_info)) {
+                                 return true;
+                               } else if (Exists(optional_build) &&
+                                          Value(current_claire_info).build != Value(optional_build)) {
+                                 return true;
+                               } else if (Value(current_claire_info).location != location) {
+                                 return true;
+                               } else {
+                                 return false;
+                               }
+                             }()) {
+                           ClaireInfo claire;
+                           if (Exists(current_claire_info)) {
+                             // Do not overwrite `build` with `null`.
+                             claire = Value(current_claire_info);
+                           }
+                           claire.codename = codename;
 
-                       claire.service = service;
-                       claire.location = location;
+                           // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
+                           claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
+                           claire.url_status_page_direct = location.StatusPageURL();
 
-                       if (Exists(optional_build)) {
-                         claire.build = Value(optional_build);
-                       }
+                           claire.service = service;
+                           claire.location = location;
 
-                       claire.reported_timestamp = now;
+                           if (Exists(optional_build)) {
+                             claire.build = Value(optional_build);
+                           }
 
-                       fields.claires.Add(claire);
-                     }
-                     return Response("OK\n");
-                   },
-                   std::move(r))
-              .Detach();
+                           claire.reported_timestamp = now;
+
+                           fields.claires.Add(claire);
+                         }
+                         return Response("OK\n");
+                       },
+                       std::move(r)).Detach();
         } else {
           r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
         }
@@ -490,8 +506,12 @@ class GenericKarl final {
                      auto& server = iterating_over_reported_servers.second;
                      const auto persisted_server_info = fields.servers[ip];
                      if (Exists(persisted_server_info)) {
-                       server.last_estimated_time_skew = current::strings::Printf(
-                           "%.2lfms", 1e-3 * Value(persisted_server_info).last_time_skew.count());
+                       const int64_t behind_this_by_us = Value(persisted_server_info).behind_this_by.count();
+                       if (std::abs(behind_this_by_us) < 100000) {
+                         server.behind_this_by = "Less than +/-0.1s";
+                       } else {
+                         server.behind_this_by = current::strings::Printf("%.1lfs", 1e-6 * behind_this_by_us);
+                       }
                      }
                    }
                    if (full_format) {
