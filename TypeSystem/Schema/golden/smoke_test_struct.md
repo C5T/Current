@@ -1,10 +1,10 @@
 # Data Dictionary
 
 ### `Primitives`
-| **Field** | **Type** |
-| ---: | :--- |
-| `a` | Integer (8-bit unsigned) |
-| `b` | Integer (16-bit unsigned) |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `a` | Integer (8-bit unsigned) | It's the order of fields that matters. |
+| `b` | Integer (16-bit unsigned) | Field descriptions can be set in any order. |
 | `c` | Integer (32-bit unsigned) |
 | `d` | Integer (64-bit unsigned) |
 | `e` | Integer (8-bit signed) |
@@ -21,33 +21,33 @@
 
 
 ### `A`
-| **Field** | **Type** |
-| ---: | :--- |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
 
 
 ### `B`
-| **Field** | **Type** |
-| ---: | :--- |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
 | `b` | Integer (32-bit signed) |
 
 
 ### `B2`
-| **Field** | **Type** |
-| ---: | :--- |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
 | `a` | Integer (32-bit signed) |
 
 
 ### `X`
-| **Field** | **Type** |
-| ---: | :--- |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
 | `x` | Integer (32-bit signed) |
 
 
 ### `Y`
-| **Field** | **Type** |
-| ---: | :--- |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
 | `e` | Index `E`, underlying type `Integer (16-bit unsigned)` |
 
 
@@ -56,8 +56,8 @@ Algebraic type, `A` or `X` or `Y`
 
 
 ### `C`
-| **Field** | **Type** |
-| ---: | :--- |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
 | `e` | `Empty` |
 | `c` | Algebraic `A` / `X` / `Y` (a.k.a. `MyFreakingVariant`) |
 
@@ -67,12 +67,12 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 
 
 ### `FullTest`
-| **Field** | **Type** |
-| ---: | :--- |
-| `primitives` | `Primitives` |
+| **Field** | **Type** | **Description** |
+| ---: | :--- | :--- |
+| `primitives` | `Primitives` | A structure with a lot of primitive types. |
 | `v1` | Array of String |
 | `v2` | Array of `Primitives` |
 | `p` | Pair of String and `Primitives` |
 | `o` | `null` or `Primitives` |
-| `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) |
+| `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) | Field descriptions FTW. |
 

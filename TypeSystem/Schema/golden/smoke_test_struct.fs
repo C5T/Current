@@ -6,8 +6,8 @@ let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)
 *)
 
 type Primitives = {
-  a : byte
-  b : uint16
+  a : byte  // It's the order of fields that matters.
+  b : uint16  // Field descriptions can be set in any order.
   c : uint32
   d : uint64
   e : sbyte
@@ -64,10 +64,10 @@ type Variant_B_A_B_B2_C_Empty_E =
 | Empty
 
 type FullTest = {
-  primitives : Primitives
+  primitives : Primitives  // A structure with a lot of primitive types.
   v1 : string array
   v2 : Primitives array
   p : string * Primitives
   o : Primitives option
-  q : Variant_B_A_B_B2_C_Empty_E
+  q : Variant_B_A_B_B2_C_Empty_E  // Field descriptions FTW.
 }

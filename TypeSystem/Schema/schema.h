@@ -147,10 +147,14 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
     for (const auto& f : s.fields) {
       // Type name should be put into parentheses if it contains commas. Putting all type names
       // into parentheses won't hurt, I've added the condition purely for aesthetic purposes. -- D.K.
-      const std::string raw_type_name = type_name(f.first);
+      const std::string raw_type_name = type_name(f.type_id);
       const std::string type_name =
           raw_type_name.find(',') == std::string::npos ? raw_type_name : '(' + raw_type_name + ')';
-      os << "  CURRENT_FIELD(" << f.second << ", " << type_name << ");\n";
+      os << "  CURRENT_FIELD(" << f.name << ", " << type_name << ");\n";
+      if (Exists(f.description)) {
+        os << "  CURRENT_FIELD_DESCRIPTION(" << f.name << ", \""
+           << strings::EscapeForCPlusPlus(Value(f.description)) << "\");\n";
+      }
     }
     os << "};\n";
   }
@@ -181,7 +185,11 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
     }
     os << " {\n";
     for (const auto& f : s.fields) {
-      os << "  " << type_name(f.first) << " " << f.second << ";\n";
+      os << "  " << type_name(f.type_id) << " " << f.name << ';';
+      if (Exists(f.description)) {
+        os << "  // " << Value(f.description);
+      }
+      os << '\n';
     }
     os << "};\n";
   }
@@ -403,22 +411,16 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
 
     // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
     // all base class fields are hoisted to the top of the record.
-    void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
-        // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
-        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
-      }
-      for (const auto& f : s.fields) {
-        temporary_os << "  " << f.second << " : " << TypeName(f.first) << '\n';
-      }
-    }
-
     void RecursivelyListStructFieldsForFSharp(std::ostringstream& os, const ReflectedType_Struct& s) const {
       if (s.super_id != TypeID::CurrentStruct) {
         RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
       for (const auto& f : s.fields) {
-        os << "  " << f.second << " : " << TypeName(f.first) << '\n';
+        os << "  " << f.name << " : " << TypeName(f.type_id);
+        if (Exists(f.description)) {
+          os << "  // " << Value(f.description);
+        }
+        os << '\n';
       }
     }
     void operator()(const ReflectedType_Struct& s) const {
@@ -529,7 +531,11 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
         RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
       for (const auto& f : s.fields) {
-        temporary_os << "| `" << f.second << "` | " << TypeName(f.first) << " |\n";
+        temporary_os << "| `" << f.name << "` | " << TypeName(f.type_id) << " |";
+        if (Exists(f.description)) {
+          temporary_os << ' ' << Value(f.description) << " |";
+        }
+        temporary_os << '\n';
       }
     }
 
@@ -538,7 +544,8 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       RecursivelyListStructFields(temporary_os, s);
       const std::string fields = temporary_os.str();
       if (!fields.empty()) {
-        os_ << "\n### `" << s.name << "`\n| **Field** | **Type** |\n| ---: | :--- |\n" << fields << '\n';
+        os_ << "\n### `" << s.name << "`\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n"
+            << fields << '\n';
       }
     }
   };  // struct LanguageSyntax<Language::Markdown>::FullSchemaPrinter
@@ -685,8 +692,9 @@ struct LanguageSyntaxImpl<Language::JSON> final {
       }
       for (const auto& f : s.fields) {
         JSONSchemaObjectField field;
-        field.field = f.second;
-        field.as = TypeDescriptionForJSON(f.first);
+        field.field = f.name;
+        field.as = TypeDescriptionForJSON(f.type_id);
+        field.description = f.description;
         object.contains.push_back(std::move(field));
       }
     }
@@ -778,7 +786,7 @@ struct StructSchema final {
           Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
         }
         for (const auto& f : s.fields) {
-          Reflector().ReflectedTypeByTypeID(f.first).Call(*this);
+          Reflector().ReflectedTypeByTypeID(f.type_id).Call(*this);
         }
         schema_.order.push_back(s.type_id);
       }

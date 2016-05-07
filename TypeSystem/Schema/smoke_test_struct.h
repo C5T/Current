@@ -6,6 +6,7 @@ namespace SMOKE_TEST_STRUCT_NAMESPACE {
 
 CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(a, uint8_t);
+  CURRENT_FIELD_DESCRIPTION(a, "It's the order of fields that matters.");
   CURRENT_FIELD(b, uint16_t);
   CURRENT_FIELD(c, uint32_t);
   CURRENT_FIELD(d, uint64_t);
@@ -20,6 +21,7 @@ CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(m, bool);
   CURRENT_FIELD(n, std::chrono::microseconds);
   CURRENT_FIELD(o, std::chrono::milliseconds);
+  CURRENT_FIELD_DESCRIPTION(b, "Field descriptions can be set in any order.");
 };
 
 CURRENT_ENUM(E, uint16_t) { SOME, DUMMY, VALUES };
@@ -56,11 +58,13 @@ CURRENT_STRUCT(C) {
 
 CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(primitives, Primitives);
+  CURRENT_FIELD_DESCRIPTION(primitives, "A structure with a lot of primitive types.");
   CURRENT_FIELD(v1, std::vector<std::string>);
   CURRENT_FIELD(v2, std::vector<Primitives>);
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
   CURRENT_FIELD(q, (Variant<A, B, B2, C, Empty>));
+  CURRENT_FIELD_DESCRIPTION(q, "Field descriptions FTW.");
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 

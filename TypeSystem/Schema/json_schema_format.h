@@ -97,6 +97,7 @@ CURRENT_STRUCT(error) {
 
 CURRENT_STRUCT(JSONSchemaObjectField) {
   CURRENT_FIELD(field, std::string);
+  CURRENT_FIELD(description, Optional<std::string>);
   CURRENT_FIELD(as, variant_clean_type_names::type_variant_t);
 };
 

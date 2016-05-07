@@ -4,6 +4,7 @@
     "contains": [
       {
         "field": "a",
+        "description": "It's the order of fields that matters.",
         "as": {
           "primitive": {
             "type": "uint8_t",
@@ -13,6 +14,7 @@
       },
       {
         "field": "b",
+        "description": "Field descriptions can be set in any order.",
         "as": {
           "primitive": {
             "type": "uint16_t",
@@ -400,6 +402,7 @@
     "contains": [
       {
         "field": "primitives",
+        "description": "A structure with a lot of primitive types.",
         "as": {
           "object": {
             "kind": "Primitives"
@@ -463,6 +466,7 @@
       },
       {
         "field": "q",
+        "description": "Field descriptions FTW.",
         "as": {
           "algebraic": {
             "cases": [

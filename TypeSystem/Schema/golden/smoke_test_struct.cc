@@ -7,8 +7,8 @@
 
 namespace current_userspace {
 struct Primitives {
-  uint8_t a;
-  uint16_t b;
+  uint8_t a;  // It's the order of fields that matters.
+  uint16_t b;  // Field descriptions can be set in any order.
   uint32_t c;
   uint64_t d;
   int8_t e;
@@ -47,12 +47,12 @@ struct C {
 };
 using Variant_B_A_B_B2_C_Empty_E = Variant<A, B, B2, C, Empty>;
 struct FullTest {
-  Primitives primitives;
+  Primitives primitives;  // A structure with a lot of primitive types.
   std::vector<std::string> v1;
   std::vector<Primitives> v2;
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
-  Variant_B_A_B_B2_C_Empty_E q;
+  Variant_B_A_B_B2_C_Empty_E q;  // Field descriptions FTW.
 };
 }  // namespace current_userspace
 
