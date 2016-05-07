@@ -158,6 +158,8 @@ struct GenericConsumer {
 // TODO(mzhurovich): add separate event tests after Midichlorians clients refactoring.
 
 TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
+  current::time::ResetToZero();
+
   using namespace midichlorians_server_test;
 
   current::time::SetNow(std::chrono::microseconds(0));
@@ -215,6 +217,8 @@ TEST(MidichloriansServer, iOSEventsFromCPPSmokeTest) {
 
 #ifdef CURRENT_APPLE
 TEST(MidichloriansServer, iOSEventsFromNativeClientSmokeTest) {
+  current::time::ResetToZero();
+
   using namespace midichlorians_server_test;
   using namespace current::midichlorians::server;
 
@@ -288,6 +292,8 @@ POST MockPOSTRequest(const std::string& base_url,
 }
 
 TEST(MidichloriansServer, WebEventsFromCPPSmokeTest) {
+  current::time::ResetToZero();
+
   using namespace midichlorians_server_test;
 
   using namespace current::midichlorians::server;
