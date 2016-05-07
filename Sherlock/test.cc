@@ -170,6 +170,8 @@ inline bool CompareValuesMixedWithTerminate(const std::string& lhs,
 }  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeAndProcessThreeEntries) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   auto foo_stream = current::sherlock::Stream<Record>();
@@ -197,6 +199,8 @@ TEST(Sherlock, SubscribeAndProcessThreeEntries) {
 }
 
 TEST(Sherlock, SubscribeSynchronously) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   auto bar_stream = current::sherlock::Stream<Record>();
@@ -229,6 +233,8 @@ TEST(Sherlock, SubscribeSynchronously) {
 }
 
 TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   auto baz_stream = current::sherlock::Stream<Record>();
@@ -259,6 +265,8 @@ TEST(Sherlock, SubscribeHandleGoesOutOfScopeBeforeAnyProcessing) {
 }
 
 TEST(Sherlock, SubscribeProcessedThreeEntriesBecauseWeWaitInTheScope) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   auto meh_stream = current::sherlock::Stream<Record>();
@@ -312,6 +320,8 @@ using RecordsCollector = current::ss::StreamSubscriber<RecordsCollectorImpl, Rec
 }  // namespace sherlock_unittest
 
 TEST(Sherlock, SubscribeToStreamViaHTTP) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   auto exposed_stream = current::sherlock::Stream<RecordWithTimestamp>();
@@ -582,6 +592,8 @@ TEST(Sherlock, SubscribeToStreamViaHTTP) {
 }
 
 TEST(Sherlock, HTTPSubscriptionCanBeTerminated) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   auto exposed_stream = current::sherlock::Stream<Record>();
@@ -650,6 +662,8 @@ const std::string sherlock_golden_data =
     "{\"index\":2,\"us\":300}\t{\"x\":3}\n";
 
 TEST(Sherlock, PersistsToFile) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
@@ -673,6 +687,8 @@ TEST(Sherlock, PersistsToFile) {
 }
 
 TEST(Sherlock, ParsesFromFile) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   const std::string persistence_file_name = current::FileSystem::JoinPath(FLAGS_sherlock_test_tmpdir, "data");
@@ -701,6 +717,8 @@ TEST(Sherlock, ParsesFromFile) {
 }
 
 TEST(Sherlock, SubscribeWithFilterByType) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
 
   struct CollectorImpl {
@@ -781,6 +799,8 @@ TEST(Sherlock, SubscribeWithFilterByType) {
 }
 
 TEST(Sherlock, ReleaseAndAcquirePublisher) {
+  current::time::ResetToZero();
+
   using namespace sherlock_unittest;
   using Stream = current::sherlock::Stream<Record>;
 

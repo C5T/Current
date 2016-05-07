@@ -132,6 +132,8 @@ CURRENT_STORAGE(TestStorage) {
 }  // namespace transactional_storage_test
 
 TEST(TransactionalStorage, SmokeTest) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<JSONFilePersister>;
 
@@ -740,6 +742,8 @@ struct CurrentStorageTestMagicTypesExtractor {
 }  // namespace transactional_storage_test
 
 TEST(TransactionalStorage, FieldAccessors) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
@@ -809,6 +813,8 @@ TEST(TransactionalStorage, FieldAccessors) {
 }
 
 TEST(TransactionalStorage, Exceptions) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
@@ -918,6 +924,8 @@ TEST(TransactionalStorage, Exceptions) {
 }
 
 TEST(TransactionalStorage, ReplicationViaHTTP) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockStreamPersister>;
 
@@ -1085,6 +1093,8 @@ using StorageSherlockTestProcessor = current::ss::StreamSubscriber<StorageSherlo
 }  // namespace transactional_storage_test
 
 TEST(TransactionalStorage, InternalExposeStream) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
@@ -1116,6 +1126,8 @@ TEST(TransactionalStorage, InternalExposeStream) {
 }
 
 TEST(TransactionalStorage, GracefulShutdown) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
@@ -1174,6 +1186,8 @@ CURRENT_STORAGE(SimpleStorage) {
 
 // RESTful API test.
 TEST(TransactionalStorage, RESTfulAPITest) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
   using Storage = SimpleStorage<JSONFilePersister>;
@@ -1360,6 +1374,8 @@ CURRENT_STORAGE(PartiallyExposedStorage) {
 CURRENT_STORAGE_FIELD_EXCLUDE_FROM_REST(transactional_storage_test::SimplePostPersistedNotExposed);
 
 TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
 
@@ -1408,6 +1424,8 @@ TEST(TransactionalStorage, RESTfulAPIDoesNotExposeHiddenFieldsTest) {
 }
 
 TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using namespace current::storage::rest;
   using Storage = SimpleStorage<SherlockInMemoryStreamPersister>;
@@ -1431,6 +1449,8 @@ TEST(TransactionalStorage, ShuttingDownAPIReportsUpAsFalse) {
 }
 
 TEST(TransactionalStorage, UseExternallyProvidedSherlockStream) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
@@ -1470,6 +1490,8 @@ CURRENT_STRUCT(StreamEntryOutsideStorage) {
 }  // namespace transactional_storage_test
 
 TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using pre_storage_t = TestStorage<SherlockInMemoryStreamPersister>;
   using transaction_t = typename pre_storage_t::transaction_t;
@@ -1540,6 +1562,8 @@ TEST(TransactionalStorage, UseExternallyProvidedSherlockStreamOfBroaderType) {
 }
 
 TEST(TransactionalStorage, FollowingStorageFlipsToMaster) {
+  current::time::ResetToZero();
+
   using namespace transactional_storage_test;
   using Storage = SimpleStorage<SherlockStreamPersister>;
   using transaction_t = typename Storage::transaction_t;

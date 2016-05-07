@@ -87,6 +87,8 @@ CURRENT_STORAGE(StorageOfClients) {
 }  // namespace storage_docu
 
 TEST(StorageDocumentation, RESTifiedStorageExample) {
+  current::time::ResetToZero();
+
   using namespace current::storage::rest;
   using namespace storage_docu;
   using TestStorage = StorageOfClients<SherlockInMemoryStreamPersister>;
@@ -439,6 +441,8 @@ struct RESTWithMeta : current::storage::rest::AdvancedHypermedia {
 }  // namespace storage_docu
 
 TEST(StorageDocumentation, RESTFillingTransactionMetaExample) {
+  current::time::ResetToZero();
+
   using namespace current::storage::rest;
   using namespace storage_docu;
   using TestStorage = StorageOfClients<SherlockStreamPersister>;
