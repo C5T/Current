@@ -84,6 +84,8 @@ CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD(karl_build_info, build::Info, build::Info());
 };
 
+CURRENT_ENUM(ClaireRegisteredState, uint8_t){Active = 0u, Deregistered = 1u, DisconnectedByTimeout = 2u};
+
 // Per-service static info -- ideally, what changes once during its startup, [ WTF ] but also dependencies.
 CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(codename, std::string);
@@ -95,8 +97,15 @@ CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
 
-  CURRENT_FIELD(build, current::build::Info);
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(registered_state, ClaireRegisteredState);
+};
+
+CURRENT_STRUCT(ClaireBuildInfo) {
+  CURRENT_FIELD(codename, std::string);
+  CURRENT_USE_FIELD_AS_KEY(codename);
+
+  CURRENT_FIELD(build, current::build::Info);
 };
 
 const uint64_t kUpdateServerInfoThresholdByTimeSkewDifference = 50000;
@@ -111,11 +120,13 @@ CURRENT_STRUCT(ServerInfo) {
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, KarlInfo, KarlInfoDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ClaireInfo, ClaireInfoDictionary);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ClaireBuildInfo, BuildInfoDictionary);
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ServerInfo, ServerInfoDictionary);
 
 CURRENT_STORAGE(ServiceStorage) {
   CURRENT_STORAGE_FIELD(karl, KarlInfoDictionary);
   CURRENT_STORAGE_FIELD(claires, ClaireInfoDictionary);
+  CURRENT_STORAGE_FIELD(builds, BuildInfoDictionary);
   CURRENT_STORAGE_FIELD(servers, ServerInfoDictionary);
 };
 
@@ -225,17 +236,43 @@ class GenericKarl final {
 
  private:
   void Serve(Request r) {
-    if (r.method == "POST") {
-      const auto& qs = r.url.query;
-      // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
-      // via the URL from the inbound request and the port the service has provided,
-      // to confirm two-way communication.
+    if (r.method != "GET" && r.method != "POST" && r.method != "DELETE") {
+      r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
+      return;
+    }
+
+    const auto& qs = r.url.query;
+
+    if (r.method == "DELETE") {
+      const std::string ip = r.connection.RemoteIPAndPort().ip;
+      if (qs.has("codename")) {
+        const std::string codename = qs["codename"];
+        storage_.ReadWriteTransaction([codename](MutableFields<storage_t> fields) -> Response {
+          ClaireInfo claire;
+          const auto& current_claire_info = fields.claires[codename];
+          if (Exists(current_claire_info)) {
+            claire = Value(current_claire_info);
+          } else {
+            claire.codename = codename;
+          }
+          claire.registered_state = ClaireRegisteredState::Deregistered;
+          fields.claires.Add(claire);
+          return Response("OK\n");
+        }, std::move(r)).Detach();
+      } else {
+        // Respond with "OK" in any case.
+        r("OK\n");
+      }
+    } else if (r.method == "POST") {
       try {
         const std::string ip = r.connection.RemoteIPAndPort().ip;
         const std::string url = "http://" + ip + ':' + qs["port"] + "/.current";
 
+        // If `&confirm` is set, along with `codename` and `port`, Karl calls the service back
+        // via the URL from the inbound request and the port the service has provided,
+        // to confirm two-way communication.
         const std::string json = [&]() -> std::string {
-          if (r.method == "POST" && qs.has("confirm") && qs.has("port")) {
+          if (qs.has("confirm") && qs.has("port")) {
             // Send a GET request, with a random component in the URL to prevent caching.
             return HTTP(GET(url + "?all&rnd" + current::ToString(current::random::CSRandomUInt(1e9, 2e9))))
                 .body;
@@ -270,7 +307,7 @@ class GenericKarl final {
 #endif
 
               claire_status_t status;
-              // Initialize `ClaireStatus` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
+              // Initialize `ClaireState` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
               static_cast<ClaireStatus&>(status) = body;
               return status;
             }
@@ -280,7 +317,7 @@ class GenericKarl final {
             persisted_keepalive_t record;
             record.location = location;
             record.keepalive = status;
-            keepalives_stream_.Publish(record);
+            keepalives_stream_.Publish(std::move(record));
           }
 
           const auto now = current::time::Now();
@@ -325,13 +362,21 @@ class GenericKarl final {
                            }
                          }
 
+                         // Update the `DB` if the build information was not stored there yet.
+                         const ImmutableOptional<ClaireBuildInfo> current_claire_build_info =
+                             fields.builds[codename];
+                         if (!Exists(current_claire_build_info) ||
+                             (Exists(optional_build) &&
+                              Value(current_claire_build_info).build != Value(optional_build))) {
+                           ClaireBuildInfo build;
+                           build.codename = codename;
+                           build.build = Value(optional_build);
+                           fields.builds.Add(build);
+                         }
                          // Update the `DB` if "codename", "location", or "dependencies" differ.
                          const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
                          if ([&]() {
                                if (!Exists(current_claire_info)) {
-                                 return true;
-                               } else if (Exists(optional_build) &&
-                                          Value(current_claire_info).build != Value(optional_build)) {
                                  return true;
                                } else if (Value(current_claire_info).location != location) {
                                  return true;
@@ -353,11 +398,8 @@ class GenericKarl final {
                            claire.service = service;
                            claire.location = location;
 
-                           if (Exists(optional_build)) {
-                             claire.build = Value(optional_build);
-                           }
-
                            claire.reported_timestamp = now;
+                           claire.registered_state = ClaireRegisteredState::Active;
 
                            fields.claires.Add(claire);
                          }
@@ -452,11 +494,15 @@ class GenericKarl final {
       }
     }
 
-    const bool full_format = r.url.query.has("full");  // To avoid `JSONFormat::Minimalistic`, just in case.
+    // To avoid `JSONFormat::Minimalistic`, just in case.
+    const bool full_format = r.url.query.has("full");
+    // To list only the services that are currently in `Active` state.
+    const bool active_only = r.url.query.has("active_only");
 
     storage_.ReadOnlyTransaction(
                  [this,
                   full_format,
+                  active_only,
                   codenames_to_resolve,
                   report_for_codename,
                   codenames_per_service,
@@ -481,6 +527,13 @@ class GenericKarl final {
                      for (const auto& codename : iterating_over_services.second) {
                        ServiceToReport<runtime_status_variant_t> blob;
                        const auto& rhs = report_for_codename.at(codename);
+                       if (active_only) {
+                         const auto& persisted_claire = fields.claires[codename];
+                         if (Exists(persisted_claire) &&
+                             Value(persisted_claire).registered_state != ClaireRegisteredState::Active) {
+                           continue;
+                         }
+                       }
                        blob.currently = rhs.currently;
                        blob.service = service;
                        blob.codename = codename;

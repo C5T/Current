@@ -110,6 +110,11 @@ class GenericClaire final {
       keepalive_thread_terminating_ = true;
       keepalive_condition_variable_.notify_one();
       keepalive_thread_.join();
+      // Deregister self from Karl.
+      try {
+        HTTP(DELETE(karl_keepalive_route_));
+      } catch (net::NetworkException&) {
+      }
     }
   }
 

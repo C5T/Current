@@ -262,6 +262,68 @@ TEST(Karl, SmokeFilter) {
   }
 }
 
+TEST(Karl, Deregister) {
+  current::time::ResetToZero();
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  const unittest_karl_t karl(
+      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+
+  // No services registered.
+  {
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+    EXPECT_EQ(0u, status.size());
+  }
+
+  {
+    const karl_unittest::ServiceGenerator generator(
+        FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
+    // `generator` service is registered.
+    {
+      unittest_karl_status_t status;
+      ASSERT_NO_THROW(
+          status = ParseJSON<unittest_karl_status_t>(
+              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+      EXPECT_EQ(1u, status.size());
+      ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+      auto& per_ip_services = status["127.0.0.1"].services;
+      EXPECT_EQ(1u, per_ip_services.size());
+      EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
+    }
+
+    {
+      const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
+      // `generator` annd `is_prime` services are registered.
+      {
+        unittest_karl_status_t status;
+        ASSERT_NO_THROW(
+            status = ParseJSON<unittest_karl_status_t>(
+                HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+        EXPECT_EQ(1u, status.size());
+        ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
+        auto& per_ip_services = status["127.0.0.1"].services;
+        EXPECT_EQ(2u, per_ip_services.size());
+        EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
+        EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
+      }
+    }
+  }
+
+  // All services should be deregistered at this moment.
+  {
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+    EXPECT_EQ(0u, status.size()) << JSON(status);
+  }
+}
+
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
 TEST(Karl, EndToEndTest) {
   current::time::ResetToZero();
