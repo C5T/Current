@@ -87,25 +87,25 @@ TEST(Reflection, TypeID) {
 
   const ReflectedType_Struct& bar = Value<ReflectedType_Struct>(Reflector().ReflectType<Bar>());
   EXPECT_EQ(4u, bar.fields.size());
-  EXPECT_EQ(9319767778871345347ull, static_cast<uint64_t>(bar.fields[0].first));
-  EXPECT_EQ(9319865771553050731ull, static_cast<uint64_t>(bar.fields[1].first));
-  EXPECT_EQ(9311949877586199388ull, static_cast<uint64_t>(bar.fields[2].first));
-  EXPECT_EQ(9349351407460177576ull, static_cast<uint64_t>(bar.fields[3].first));
+  EXPECT_EQ(9319767778871345347ull, static_cast<uint64_t>(bar.fields[0].type_id));
+  EXPECT_EQ(9319865771553050731ull, static_cast<uint64_t>(bar.fields[1].type_id));
+  EXPECT_EQ(9311949877586199388ull, static_cast<uint64_t>(bar.fields[2].type_id));
+  EXPECT_EQ(9349351407460177576ull, static_cast<uint64_t>(bar.fields[3].type_id));
   EXPECT_EQ(bar.type_id, Value<ReflectedType_Struct>(Reflector().ReflectedTypeByTypeID(bar.type_id)).type_id);
 
   const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
   EXPECT_EQ(1u, self_a.fields.size());
   EXPECT_EQ(9205901389225534299ull, static_cast<uint64_t>(self_a.type_id));
-  EXPECT_EQ(9317324759808216579ull, static_cast<uint64_t>(self_a.fields[0].first));
+  EXPECT_EQ(9317324759808216579ull, static_cast<uint64_t>(self_a.fields[0].type_id));
   const ReflectedType_Struct& self_b = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingB>());
   EXPECT_EQ(1u, self_b.fields.size());
   EXPECT_EQ(9203772139816579809ull, static_cast<uint64_t>(self_b.type_id));
-  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_b.fields[0].first));
+  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_b.fields[0].type_id));
   const ReflectedType_Struct& self_c = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingC>());
   EXPECT_EQ(2u, self_c.fields.size());
   EXPECT_EQ(9200564679597442224ull, static_cast<uint64_t>(self_c.type_id));
-  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_c.fields[0].first));
-  EXPECT_EQ(9345487227046290999ull, static_cast<uint64_t>(self_c.fields[1].first));
+  EXPECT_EQ(9317324775776617427ull, static_cast<uint64_t>(self_c.fields[0].type_id));
+  EXPECT_EQ(9345487227046290999ull, static_cast<uint64_t>(self_c.fields[1].type_id));
 
   EXPECT_NE(static_cast<uint64_t>(Value<ReflectedType_Variant>(Reflector().ReflectType<FooBarBaz>()).type_id),
             static_cast<uint64_t>(

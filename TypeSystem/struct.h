@@ -188,7 +188,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     using SUPER = ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>,                             \
                                                ::current::reflection::DeclareFields,                       \
                                                super>;                                                     \
-    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                       \
   }
 
 #else  // CURRENT_WINDOWS
@@ -219,7 +219,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                        \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
-    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                       \
   }
 
 #endif  // CURRENT_WINDOWS
@@ -371,6 +371,14 @@ struct CurrentStructFieldsConsistency<T, -1> {
   static void CURRENT_REFLECTION(F&& CURRENT_CALL_F,                                                           \
                                  ::current::reflection::Index<::current::reflection::FieldTypeAndName, idx>) { \
     CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(), #name);                               \
+  }                                                                                                            \
+  template <class F>                                                                                           \
+  static void CURRENT_REFLECTION(                                                                              \
+      F&& CURRENT_CALL_F,                                                                                      \
+      ::current::reflection::Index<::current::reflection::FieldTypeAndNameAndIndex, idx>) {                    \
+    CURRENT_CALL_F(::current::reflection::TypeSelector<CF_TYPE(type)>(),                                       \
+                   #name,                                                                                      \
+                   ::current::reflection::SimpleIndex<idx>());                                                 \
   }                                                                                                            \
   template <class F, class SELF>                                                                               \
   static void CURRENT_REFLECTION(                                                                              \
