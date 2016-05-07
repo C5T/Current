@@ -43,12 +43,9 @@ CURRENT_STRUCT(Bar) {
   CURRENT_FIELD(v1, std::vector<uint64_t>);
   CURRENT_FIELD(v2, std::vector<Foo>);
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
-#ifndef CURRENT_WINDOWS
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
-#else
-  typedef std::map<std::string, std::string> t_map_string_string;
-  CURRENT_FIELD(v4, t_map_string_string);
-#endif
+  CURRENT_FIELD_DESCRIPTION(v1, "This is v1.");
+  CURRENT_FIELD_DESCRIPTION(v4, "This is v4.");
 };
 
 CURRENT_STRUCT(Baz) {
@@ -80,7 +77,7 @@ using current::reflection::Reflector;
 
 }  // namespace reflection_test
 
-TEST(Reflection, TypeID) {
+TEST(Reflection, StructAndVariant) {
   using namespace reflection_test;
   using current::reflection::ReflectedType_Struct;
   using current::reflection::ReflectedType_Variant;
@@ -91,6 +88,16 @@ TEST(Reflection, TypeID) {
   EXPECT_EQ(9319865771553050731ull, static_cast<uint64_t>(bar.fields[1].type_id));
   EXPECT_EQ(9311949877586199388ull, static_cast<uint64_t>(bar.fields[2].type_id));
   EXPECT_EQ(9349351407460177576ull, static_cast<uint64_t>(bar.fields[3].type_id));
+  EXPECT_EQ("v1", bar.fields[0].name);
+  EXPECT_EQ("v2", bar.fields[1].name);
+  EXPECT_EQ("v3", bar.fields[2].name);
+  EXPECT_EQ("v4", bar.fields[3].name);
+  EXPECT_TRUE(Exists(bar.fields[0].description));
+  EXPECT_EQ("This is v1.", Value(bar.fields[0].description));
+  EXPECT_FALSE(Exists(bar.fields[1].description));
+  EXPECT_FALSE(Exists(bar.fields[2].description));
+  EXPECT_TRUE(Exists(bar.fields[3].description));
+  EXPECT_EQ("This is v4.", Value(bar.fields[3].description));
   EXPECT_EQ(bar.type_id, Value<ReflectedType_Struct>(Reflector().ReflectedTypeByTypeID(bar.type_id)).type_id);
 
   const ReflectedType_Struct& self_a = Value<ReflectedType_Struct>(Reflector().ReflectType<SelfContainingA>());
