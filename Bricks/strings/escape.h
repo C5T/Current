@@ -49,6 +49,21 @@ inline std::string EscapeForCPlusPlus(const std::string& input) {
   return output;
 }
 
+// A poor man's version, does not have to be complete.
+inline std::string EscapeForMarkdown(const std::string& input) {
+  std::string output;
+  for (char c : input) {
+    if (c == '\n') {
+      output += "<br>";
+    } else if (c == '|') {  // Table separator in Markdown.
+      output += "&#124;";
+    } else {
+      output += c;
+    }
+  }
+  return output;
+}
+
 }  // namespace strings
 }  // namespace current
 

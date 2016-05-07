@@ -57,6 +57,7 @@ using current::strings::ChunkDB;
 using current::strings::RoundDoubleToString;
 using current::strings::TimeIntervalAsHumanReadableString;
 using current::strings::EscapeForCPlusPlus;
+using current::strings::EscapeForMarkdown;
 using current::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
@@ -642,9 +643,16 @@ TEST(TimeIntervalAsString, SmokeTest) {
 
 TEST(Util, Escape) {
   EXPECT_EQ("Smoke.", EscapeForCPlusPlus("Smoke."));
+  EXPECT_EQ("vertical|bar", EscapeForCPlusPlus("vertical|bar"));
   EXPECT_EQ("new\\nline", EscapeForCPlusPlus("new\nline"));
   EXPECT_EQ("t\\ts\\tv", EscapeForCPlusPlus("t\ts\tv"));
   EXPECT_EQ("Testing \\'quote\\' and \\\"quote\\\".", EscapeForCPlusPlus("Testing 'quote' and \"quote\"."));
+
+  EXPECT_EQ("Smoke.", EscapeForMarkdown("Smoke."));
+  EXPECT_EQ("vertical&#124;bar", EscapeForMarkdown("vertical|bar"));
+  EXPECT_EQ("new<br>line", EscapeForMarkdown("new\nline"));
+  EXPECT_EQ("t\ts\tv", EscapeForMarkdown("t\ts\tv"));
+  EXPECT_EQ("Testing 'quote' and \"quote\".", EscapeForMarkdown("Testing 'quote' and \"quote\"."));
 }
 
 TEST(IsStringType, StaticAsserts) {
