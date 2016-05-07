@@ -56,6 +56,7 @@ using current::strings::UniqueChunk;
 using current::strings::ChunkDB;
 using current::strings::RoundDoubleToString;
 using current::strings::TimeIntervalAsHumanReadableString;
+using current::strings::EscapeForCPlusPlus;
 using current::strings::is_string_type;
 
 TEST(StringPrintf, SmokeTest) {
@@ -637,6 +638,13 @@ TEST(TimeIntervalAsString, SmokeTest) {
 
   EXPECT_EQ("-1h 0m 0s",
             TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-60 * 60 * 1e6))));
+}
+
+TEST(Util, Escape) {
+  EXPECT_EQ("Smoke.", EscapeForCPlusPlus("Smoke."));
+  EXPECT_EQ("new\\nline", EscapeForCPlusPlus("new\nline"));
+  EXPECT_EQ("t\\ts\\tv", EscapeForCPlusPlus("t\ts\tv"));
+  EXPECT_EQ("Testing \\'quote\\' and \\\"quote\\\".", EscapeForCPlusPlus("Testing 'quote' and \"quote\"."));
 }
 
 TEST(IsStringType, StaticAsserts) {
