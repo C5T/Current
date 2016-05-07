@@ -53,7 +53,7 @@ struct GenericMapAccessor final {
   using key_t = typename MAP::key_type;
   const MAP& map_;
 
-  GenericMapAccessor(const MAP& map) : map_(map) {}
+  explicit GenericMapAccessor(const MAP& map) : map_(map) {}
 
   bool Empty() const { return map_.empty(); }
   size_t Size() const { return map_.size(); }
@@ -63,6 +63,7 @@ struct GenericMapAccessor final {
   iterator_t begin() const { return iterator_t(map_.cbegin()); }
   iterator_t end() const { return iterator_t(map_.cend()); }
 };
-}
+
+} // namespace current
 
 #endif  // BRICKS_UTIL_ITERATOR_H
