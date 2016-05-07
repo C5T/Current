@@ -744,8 +744,16 @@ CURRENT_STRUCT(SchemaInfo) {
   CURRENT_DEFAULT_CONSTRUCTOR(SchemaInfo) {}
   CURRENT_CONSTRUCTOR(SchemaInfo)(const SchemaInfo& x) : types(x.types), order(x.order) {}
   CURRENT_CONSTRUCTOR(SchemaInfo)(SchemaInfo && x) : types(std::move(x.types)), order(std::move(x.order)) {}
-  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo const& x) { types = x.types; order = x.order; return *this; }
-  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo && x) { types = std::move(x.types); order = std::move(x.order); return *this; }
+  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo const& x) {
+    types = x.types;
+    order = x.order;
+    return *this;
+  }
+  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo && x) {
+    types = std::move(x.types);
+    order = std::move(x.order);
+    return *this;
+  }
 
   template <Language L>
   std::string Describe(bool headers = true) const {
