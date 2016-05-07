@@ -28,6 +28,7 @@ SOFTWARE.
 #include "base64.h"
 #include "comparators.h"
 #include "crc32.h"
+#include "iterator.h"
 #include "lazy_instantiation.h"
 #include "make_scope_guard.h"
 #include "random.h"
@@ -515,6 +516,44 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("200:7", bar_y_q.InstantiateAsSharedPtrWithExtraParameter(200)->AsString());
   EXPECT_EQ("300:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(300)->AsString());
   EXPECT_EQ("400:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
+}
+
+TEST(Util, Iterator) {
+  typedef std::map<int, std::string> map1_t;
+  map1_t map1;
+  auto accessor1 = current::GenericMapAccessor<map1_t>(map1);
+  EXPECT_TRUE(accessor1.Empty());
+  EXPECT_EQ(0u, accessor1.Size());
+  EXPECT_EQ(accessor1.begin(), accessor1.end());
+  for (char c = 'a'; c <= 'z'; ++c) {
+    map1[c - 'a'] = c;
+  }
+  EXPECT_FALSE(accessor1.Empty());
+  EXPECT_EQ(26u, accessor1.Size());
+  EXPECT_FALSE(accessor1.begin() == accessor1.end());
+  std::string str1;
+  for (const auto& element : accessor1) {
+    str1 += current::ToString(element);
+  }
+  EXPECT_EQ("abcdefghijklmnopqrstuvwxyz", str1);
+
+  typedef std::map<int, std::unique_ptr<std::string>> map2_t;
+  map2_t map2;
+  auto accessor2 = current::GenericMapAccessor<map2_t>(map2);
+  EXPECT_TRUE(accessor2.Empty());
+  EXPECT_EQ(0u, accessor2.Size());
+  EXPECT_EQ(accessor2.begin(), accessor2.end());
+  for (auto it = accessor1.begin(), eit = accessor1.end(); it != eit; ++it) {
+    map2[it.key()] = std::make_unique<std::string>(*it);
+  }
+  EXPECT_FALSE(accessor2.Empty());
+  EXPECT_EQ(26u, accessor2.Size());
+  EXPECT_FALSE(accessor2.begin() == accessor2.end());
+  std::string str2;
+  for (const auto& element : accessor2) {
+    str2 += current::ToString(element);
+  }
+  EXPECT_EQ("abcdefghijklmnopqrstuvwxyz", str2);
 }
 
 TEST(AccumulativeScopedDeleter, Smoke) {
