@@ -114,6 +114,7 @@
       },
       {
         "field": "m",
+        "description": "Multiline\ndescriptions\ncan be used.",
         "as": {
           "primitive": {
             "type": "bool",

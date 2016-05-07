@@ -15,7 +15,7 @@
 | `j` | String |
 | `k` | Number (floating point, single precision) |
 | `l` | Number (floating point, double precision) |
-| `m` | `true` or `false` |
+| `m` | `true` or `false` | Multiline<br>descriptions<br>can be used. |
 | `n` | Time (microseconds since epoch) |
 | `o` | Time (milliseconds since epoch) |
 

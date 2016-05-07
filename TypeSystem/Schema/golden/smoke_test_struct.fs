@@ -6,7 +6,7 @@ let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)
 *)
 
 type Primitives = {
-  a : byte  // It's the order of fields that matters.
+  a : byte  // It\'s the order of fields that matters.
   b : uint16  // Field descriptions can be set in any order.
   c : uint32
   d : uint64
@@ -18,7 +18,7 @@ type Primitives = {
   j : string
   k : float
   l : double
-  m : bool
+  m : bool  // Multiline\ndescriptions\ncan be used.
   n : int64  // microseconds.
   o : int64  // milliseconds.
 }

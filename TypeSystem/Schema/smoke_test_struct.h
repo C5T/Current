@@ -19,6 +19,7 @@ CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(k, float);
   CURRENT_FIELD(l, double);
   CURRENT_FIELD(m, bool);
+  CURRENT_FIELD_DESCRIPTION(m, "Multiline\ndescriptions\ncan be used.");
   CURRENT_FIELD(n, std::chrono::microseconds);
   CURRENT_FIELD(o, std::chrono::milliseconds);
   CURRENT_FIELD_DESCRIPTION(b, "Field descriptions can be set in any order.");

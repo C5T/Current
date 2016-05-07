@@ -343,7 +343,7 @@
             {
               "type_id": "T9000000000000000011",
               "name": "m",
-              "description": null
+              "description": "Multiline\ndescriptions\ncan be used."
             },
             {
               "type_id": "T9000000000000000061",

@@ -7,7 +7,7 @@
 
 namespace current_userspace {
 struct Primitives {
-  uint8_t a;  // It's the order of fields that matters.
+  uint8_t a;  // It\'s the order of fields that matters.
   uint16_t b;  // Field descriptions can be set in any order.
   uint32_t c;
   uint64_t d;
@@ -19,7 +19,7 @@ struct Primitives {
   std::string j;
   float k;
   double l;
-  bool m;
+  bool m;  // Multiline\ndescriptions\ncan be used.
   std::chrono::microseconds n;
   std::chrono::milliseconds o;
 };

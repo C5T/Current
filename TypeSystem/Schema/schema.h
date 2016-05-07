@@ -187,7 +187,7 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
     for (const auto& f : s.fields) {
       os << "  " << type_name(f.type_id) << " " << f.name << ';';
       if (Exists(f.description)) {
-        os << "  // " << Value(f.description);
+        os << "  // " << strings::EscapeForCPlusPlus(Value(f.description));
       }
       os << '\n';
     }
@@ -418,7 +418,8 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       for (const auto& f : s.fields) {
         os << "  " << f.name << " : " << TypeName(f.type_id);
         if (Exists(f.description)) {
-          os << "  // " << Value(f.description);
+          // F# escaping: C++ is closer than Markdown, given F# comments don't need to escape '|'.
+          os << "  // " << strings::EscapeForCPlusPlus(Value(f.description));
         }
         os << '\n';
       }
@@ -533,7 +534,7 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       for (const auto& f : s.fields) {
         temporary_os << "| `" << f.name << "` | " << TypeName(f.type_id) << " |";
         if (Exists(f.description)) {
-          temporary_os << ' ' << Value(f.description) << " |";
+          temporary_os << ' ' << strings::EscapeForMarkdown(Value(f.description)) << " |";
         }
         temporary_os << '\n';
       }
