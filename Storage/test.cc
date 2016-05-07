@@ -197,7 +197,10 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_FALSE(fields.umany_to_umany.Cols().Empty());
         EXPECT_EQ(2u, fields.umany_to_umany.Rows().Size());
         EXPECT_EQ(3u, fields.umany_to_umany.Cols().Size());
+        EXPECT_EQ(2u, fields.umany_to_umany.Row(2).Size());
+        EXPECT_EQ(1u, fields.umany_to_umany.Col("too").Size());
         EXPECT_TRUE(fields.umany_to_umany.Rows().Has(1));
+        EXPECT_TRUE(fields.umany_to_umany.Row(3).Empty());
         EXPECT_TRUE(fields.umany_to_umany.Cols().Has("one"));
         EXPECT_TRUE(Exists(fields.umany_to_umany.Get(1, "one")));
         EXPECT_EQ(1, Value(fields.umany_to_umany.Get(1, "one")).phew);
@@ -273,8 +276,10 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_FALSE(fields.uone_to_umany.Cols().Empty());
         EXPECT_EQ(2u, fields.uone_to_umany.Rows().Size());
         EXPECT_EQ(4u, fields.uone_to_umany.Cols().Size());
+        EXPECT_EQ(2u, fields.uone_to_umany.Row(1).Size());
         EXPECT_TRUE(fields.uone_to_umany.Rows().Has(1));
         EXPECT_FALSE(fields.uone_to_umany.Rows().Has(3));
+        EXPECT_TRUE(fields.uone_to_umany.Row(3).Empty());
         EXPECT_TRUE(fields.uone_to_umany.Cols().Has("two"));
         EXPECT_FALSE(fields.uone_to_umany.Cols().Has("too"));
         EXPECT_TRUE(Exists(fields.uone_to_umany.GetEntryFromCol("two")));
@@ -373,6 +378,24 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
+      const auto result3 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+        std::set<std::string> data_set;
+        for (const auto& element : fields.umany_to_umany.Row(2)) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,too=3 2,two=2", current::strings::Join(data_set, ' '));
+        // Use vector instead of set and expect the same result, because the data is already sorted.
+        std::vector<std::string> data_vec;
+        for (const auto& element : fields.omany_to_omany.Row(2)) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result3));
     }
 
     // Iterate over a `OneToOne`, compare its ordered and unordered versions.
@@ -465,6 +488,24 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_EQ("fiv,2=10 one,1=1 six,1=6 two,2=4", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
+      const auto result3 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
+        std::set<std::string> data_set;
+        for (const auto& element : fields.uone_to_umany.Row(2)) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,fiv=10 2,two=4", current::strings::Join(data_set, ' '));
+        // Use vector instead of set and expect the same result, because the data is already sorted.
+        std::vector<std::string> data_vec;
+        for (const auto& element : fields.oone_to_omany.Row(2)) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
+      }).Go();
+      EXPECT_TRUE(WasCommitted(result3));
     }
 
     // Rollback a transaction involving a `ManyToMany`, `OneToOne` and `OneToMany`.

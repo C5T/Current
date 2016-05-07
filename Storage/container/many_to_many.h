@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/optional.h"
 #include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
+#include "../../Bricks/util/singleton.h"
 
 namespace current {
 namespace storage {
@@ -51,8 +52,10 @@ class GenericManyToMany {
   using whole_matrix_map_t = std::unordered_map<std::pair<row_t, col_t>,
                                                 std::unique_ptr<T>,
                                                 CurrentHashFunction<std::pair<row_t, col_t>>>;
-  using forward_map_t = ROW_MAP<row_t, COL_MAP<col_t, const T*>>;
-  using transposed_map_t = COL_MAP<col_t, ROW_MAP<row_t, const T*>>;
+  using row_elements_map_t = COL_MAP<col_t, const T*>;
+  using col_elements_map_t = ROW_MAP<row_t, const T*>;
+  using forward_map_t = ROW_MAP<row_t, row_elements_map_t>;
+  using transposed_map_t = COL_MAP<col_t, col_elements_map_t>;
   using rest_behavior_t = rest::behavior::Matrix;
 
   using DEPRECATED_T_(ROW) = row_t;
@@ -122,21 +125,18 @@ class GenericManyToMany {
     const T* operator->() const { return iterator->second; }
   };
 
-  template <typename OUTER_KEY, typename INNER_MAP>
+  template <typename MAP>
   struct InnerAccessor final {
-    using iterator_t = IteratorImpl<INNER_MAP>;
-    using INNER_KEY = typename INNER_MAP::key_type;
-    const OUTER_KEY key_;
-    const INNER_MAP& map_;
+    using iterator_t = IteratorImpl<MAP>;
+    using key_t = typename MAP::key_type;
+    const MAP& map_;
 
-    InnerAccessor(OUTER_KEY key, const INNER_MAP& map) : key_(key), map_(map) {}
+    InnerAccessor(const MAP& map) : map_(map) {}
 
     bool Empty() const { return map_.empty(); }
     size_t Size() const { return map_.size(); }
 
-    sfinae::CF<OUTER_KEY> key() const { return key_; }
-
-    bool Has(const INNER_KEY& x) const { return map_.find(x) != map_.end(); }
+    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
 
     iterator_t begin() const { return iterator_t(map_.cbegin()); }
     iterator_t end() const { return iterator_t(map_.cend()); }
@@ -156,9 +156,7 @@ class GenericManyToMany {
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
       sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
-      InnerAccessor<OUTER_KEY, INNER_MAP> operator*() const {
-        return InnerAccessor<OUTER_KEY, INNER_MAP>(iterator->first, iterator->second);
-      }
+      InnerAccessor<INNER_MAP> operator*() const { return InnerAccessor<INNER_MAP>(iterator->second); }
     };
 
     explicit OuterAccessor(const OUTER_MAP& map) : map_(map) {}
@@ -169,10 +167,10 @@ class GenericManyToMany {
 
     bool Has(const OUTER_KEY& x) const { return map_.find(x) != map_.end(); }
 
-    ImmutableOptional<InnerAccessor<OUTER_KEY, INNER_MAP>> operator[](OUTER_KEY key) const {
+    ImmutableOptional<InnerAccessor<INNER_MAP>> operator[](OUTER_KEY key) const {
       const auto iterator = map_.find(key);
       if (iterator != map_.end()) {
-        return std::move(std::make_unique<InnerAccessor<OUTER_KEY, INNER_MAP>>(key, iterator->second));
+        return std::move(std::make_unique<InnerAccessor<INNER_MAP>>(iterator->second));
       } else {
         return nullptr;
       }
@@ -185,6 +183,18 @@ class GenericManyToMany {
   OuterAccessor<forward_map_t> Rows() const { return OuterAccessor<forward_map_t>(forward_); }
 
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
+
+  InnerAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
+    const auto it = forward_.find(row);
+    return InnerAccessor<row_elements_map_t>(
+        it != forward_.end() ? it->second : current::ThreadLocalSingleton<row_elements_map_t>());
+  }
+
+  InnerAccessor<col_elements_map_t> Col(sfinae::CF<col_t> col) const {
+    const auto it = transposed_.find(col);
+    return InnerAccessor<col_elements_map_t>(
+        it != transposed_.end() ? it->second : current::ThreadLocalSingleton<col_elements_map_t>());
+  }
 
   // For REST, iterate over all the elements of the ManyToMany, in no particular order.
   using iterator_t = IteratorImpl<whole_matrix_map_t>;
