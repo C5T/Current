@@ -37,6 +37,12 @@ struct is_unique_ptr_impl {
   typedef T underlying_type;
   static T& extract(T& x) { return x; }
   static const T& extract(const T& x) { return x; }
+  static T& extract(T* x) { return *x; }
+  static const T& extract(const T* x) { return *x; }
+  static T* pointer(T& x) { return &x; }
+  static const T* pointer(const T& x) { return x; }
+  static T* pointer(T* x) { return x; }
+  static const T* pointer(const T* x) { return x; }
 };
 
 template <typename T, typename D>
@@ -45,6 +51,8 @@ struct is_unique_ptr_impl<std::unique_ptr<T, D>> {
   typedef T underlying_type;
   static T& extract(std::unique_ptr<T, D>& x) { return *x.get(); }
   static const T& extract(const std::unique_ptr<T, D>& x) { return *x.get(); }
+  static T* pointer(std::unique_ptr<T, D>& x) { return x.get(); }
+  static const T* pointer(const std::unique_ptr<T, D>& x) { return x.get(); }
 };
 
 template <typename T>
