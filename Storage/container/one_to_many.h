@@ -185,9 +185,9 @@ class GenericOneToMany {
   }
 
   GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
-    const auto it = forward_.find(row);
+    const auto cit = forward_.find(row);
     return GenericMapAccessor<row_elements_map_t>(
-        it != forward_.end() ? it->second : current::ThreadLocalSingleton<row_elements_map_t>());
+        cit != forward_.end() ? cit->second : current::ThreadLocalSingleton<row_elements_map_t>());
   }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
@@ -220,27 +220,45 @@ class GenericOneToMany {
 };
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using UnorderedOneToMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
+using UnorderedOneToUnorderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using OrderedOneToMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+using OrderedOneToOrderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedOneToOrderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedOneToUnorderedMany = GenericOneToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Unordered>;
 
 }  // namespace container
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedOneToMany<T, E1, E2>> {
-  static const char* HumanReadableName() { return "UnorderedOneToMany"; }
+struct StorageFieldTypeSelector<container::UnorderedOneToUnorderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToUnorderedMany"; }
 };
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedOneToMany<T, E1, E2>> {
-  static const char* HumanReadableName() { return "OrderedOneToMany"; }
+struct StorageFieldTypeSelector<container::OrderedOneToOrderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToOrderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedOneToOrderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToOrderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedOneToUnorderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToUnorderedMany"; }
 };
 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedOneToMany;
-using current::storage::container::OrderedOneToMany;
+using current::storage::container::UnorderedOneToUnorderedMany;
+using current::storage::container::OrderedOneToOrderedMany;
+using current::storage::container::UnorderedOneToOrderedMany;
+using current::storage::container::OrderedOneToUnorderedMany;
 
 #endif  // CURRENT_STORAGE_CONTAINER_ONE_TO_MANY_H

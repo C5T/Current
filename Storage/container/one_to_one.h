@@ -209,27 +209,45 @@ class GenericOneToOne {
 };
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using UnorderedOneToOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
+using UnorderedOneToUnorderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using OrderedOneToOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+using OrderedOneToOrderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedOneToOrderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedOneToUnorderedOne = GenericOneToOne<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Unordered>;
 
 }  // namespace container
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedOneToOne<T, E1, E2>> {
-  static const char* HumanReadableName() { return "UnorderedOneToOne"; }
+struct StorageFieldTypeSelector<container::UnorderedOneToUnorderedOne<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToUnorderedOne"; }
 };
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedOneToOne<T, E1, E2>> {
-  static const char* HumanReadableName() { return "OrderedOneToOne"; }
+struct StorageFieldTypeSelector<container::OrderedOneToOrderedOne<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToOrderedOne"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedOneToOrderedOne<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedOneToOrderedOne"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedOneToUnorderedOne<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedOneToUnorderedOne"; }
 };
 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedOneToOne;
-using current::storage::container::OrderedOneToOne;
+using current::storage::container::UnorderedOneToUnorderedOne;
+using current::storage::container::OrderedOneToOrderedOne;
+using current::storage::container::UnorderedOneToOrderedOne;
+using current::storage::container::OrderedOneToUnorderedOne;
 
 #endif  // CURRENT_STORAGE_CONTAINER_ONE_TO_ONE_H
