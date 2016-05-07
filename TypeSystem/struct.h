@@ -168,6 +168,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     using SUPER = ::current::reflection::SUPER<CURRENT_REFLECTION_HELPER<s>,                        \
                                                ::current::reflection::DeclareFields,                \
                                                super>;                                              \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
   }
 
 #define CURRENT_STRUCT_T_HELPERS(s, super)                                                                 \
@@ -187,6 +188,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     using SUPER = ::current::reflection::SUPER<CURRENT_REFLECTION_T_HELPER<s>,                             \
                                                ::current::reflection::DeclareFields,                       \
                                                super>;                                                     \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
   }
 
 #else  // CURRENT_WINDOWS
@@ -202,6 +204,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s; }                               \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                 \
     typedef CURRENT_STRUCT_IMPL_##s<::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
   }
 
 #define CURRENT_STRUCT_T_HELPERS(s, super)                                                                 \
@@ -216,6 +219,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
     constexpr static const char* CURRENT_STRUCT_NAME() { return #s "<>"; }                                 \
     constexpr static size_t CURRENT_FIELD_INDEX_BASE = __COUNTER__;                                        \
     typedef CURRENT_STRUCT_T_IMPL_##s<int, ::current::reflection::CountFields> CURRENT_FIELD_COUNT_STRUCT; \
+    static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(...) { return nullptr; }                \
   }
 
 #endif  // CURRENT_WINDOWS
@@ -315,11 +319,21 @@ struct CurrentStructFieldsConsistency<T, -1> {
 
 #define CURRENT_FIELD_WITH_NO_VALUE(name, type)                         \
   ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name; \
-  CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
+  constexpr static size_t CURRENT_FIELD_INDEX_##name =                  \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1; \
+  CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
 
 #define CURRENT_FIELD_WITH_VALUE(name, type, value)                                     \
   ::current::reflection::Field<INSTANTIATION_TYPE, CF_TYPE(type)> name{CF_TYPE(value)}; \
-  CURRENT_FIELD_REFLECTION(CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1, type, name)
+  constexpr static size_t CURRENT_FIELD_INDEX_##name =                                  \
+      CURRENT_EXPAND_MACRO(__COUNTER__) - CURRENT_FIELD_INDEX_BASE - 1;                 \
+  CURRENT_FIELD_REFLECTION(CURRENT_FIELD_INDEX_##name, type, name)
+
+#define CURRENT_FIELD_DESCRIPTION(name, description)                    \
+  static const char* CURRENT_REFLECTION_FIELD_DESCRIPTION(              \
+      ::current::reflection::SimpleIndex<CURRENT_FIELD_INDEX_##name>) { \
+    return description;                                                 \
+  }
 
 #define CURRENT_USE_FIELD_AS_KEY(field)                                       \
   using cf_key_t = current::copy_free<decltype(field)>;                       \
@@ -386,7 +400,7 @@ struct CurrentStructFieldsConsistency<T, -1> {
   template <typename INSTANTIATION_TYPE_IMPL = INSTANTIATION_TYPE,                                             \
             class =                                                                                            \
                 ENABLE_IF<std::is_same<INSTANTIATION_TYPE_IMPL, ::current::reflection::DeclareFields>::value>> \
-  CURRENT_STRUCT_IMPL_##s & operator=
+  CURRENT_STRUCT_IMPL_##s& operator=
 
 #define CURRENT_DEFAULT_CONSTRUCTOR(s) CURRENT_CONSTRUCTOR(s)()
 
@@ -421,6 +435,23 @@ struct FieldCounter {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
   enum { value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) };
+};
+
+struct FieldDescriptions {
+  using c_string_t = const char*;
+  template <typename T, int I>
+  static constexpr c_string_t DescriptionImpl(char) {
+    return nullptr;
+  }
+  template <typename T, int I>
+  static constexpr auto DescriptionImpl(int)
+      -> decltype(T::CURRENT_REFLECTION_FIELD_DESCRIPTION(SimpleIndex<I>()), c_string_t()) {
+    return T::CURRENT_REFLECTION_FIELD_DESCRIPTION(SimpleIndex<I>());
+  }
+  template <typename T, int I>
+  static const char* Description() {
+    return DescriptionImpl<T, I>(0);
+  }
 };
 
 template <typename T, bool IS_STRUCT>

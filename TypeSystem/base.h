@@ -54,6 +54,10 @@ class FieldNameAndPtr {};
 class FieldNameAndImmutableValue {};
 class FieldNameAndMutableValue {};
 
+// Simple index. TODO(dkorolev): Retire the copmlex `Index` below, it may speed up compilation.
+template <int N>
+struct SimpleIndex {};
+
 // Complex index: <HelperStruct, int Index>.
 template <class T, int N>
 struct Index {};

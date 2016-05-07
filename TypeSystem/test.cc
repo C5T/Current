@@ -58,6 +58,8 @@ CURRENT_STRUCT(Baz) {
   CURRENT_FIELD(v3, std::vector<std::vector<Foo>>);
   CURRENT_FIELD(v4, (std::map<std::string, std::string>));
   CURRENT_FIELD(v5, (std::map<Foo, int>));
+  CURRENT_FIELD_DESCRIPTION(v1, "We One.");
+  CURRENT_FIELD_DESCRIPTION(v4, "We Four.");
 };
 
 CURRENT_STRUCT(DerivedFromFoo, Foo) {
@@ -129,6 +131,22 @@ CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
 //               "`WrongUsesCOUNTERInternally` must not pass `IS_VALID_CURRENT_STRUCT` check.");
 
 }  // namespace struct_definition_test
+
+TEST(TypeSystemTest, FieldCounter) {
+  using namespace struct_definition_test;
+  EXPECT_EQ(1, current::reflection::FieldCounter<Foo>::value);
+  EXPECT_EQ(1, current::reflection::FieldCounter<Bar>::value);
+  EXPECT_EQ(5, current::reflection::FieldCounter<Baz>::value);
+}
+
+TEST(TypeSystemTest, FieldDescriptions) {
+  using namespace struct_definition_test;
+  EXPECT_STREQ("We One.", (current::reflection::FieldDescriptions::template Description<Baz, 0>()));
+  EXPECT_STREQ(nullptr, (current::reflection::FieldDescriptions::template Description<Baz, 1>()));
+  EXPECT_STREQ(nullptr, (current::reflection::FieldDescriptions::template Description<Baz, 2>()));
+  EXPECT_STREQ("We Four.", (current::reflection::FieldDescriptions::template Description<Baz, 3>()));
+  EXPECT_STREQ(nullptr, (current::reflection::FieldDescriptions::template Description<Baz, 4>()));
+}
 
 TEST(TypeSystemTest, ExistsAndValueSemantics) {
   {
