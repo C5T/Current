@@ -298,7 +298,7 @@ TEST(Karl, Deregister) {
 
     {
       const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
-      // `generator` annd `is_prime` services are registered.
+      // `generator` and `is_prime` services are registered.
       {
         unittest_karl_status_t status;
         ASSERT_NO_THROW(

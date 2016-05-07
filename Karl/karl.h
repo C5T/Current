@@ -260,8 +260,8 @@ class GenericKarl final {
           return Response("OK\n");
         }, std::move(r)).Detach();
       } else {
-        // Respond with "OK" in any case.
-        r("OK\n");
+        // Respond with "200 OK" in any case.
+        r("NOP\n");
       }
     } else if (r.method == "POST") {
       try {
@@ -307,7 +307,7 @@ class GenericKarl final {
 #endif
 
               claire_status_t status;
-              // Initialize `ClaireState` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
+              // Initialize `ClaireStatus` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
               static_cast<ClaireStatus&>(status) = body;
               return status;
             }
@@ -494,7 +494,7 @@ class GenericKarl final {
       }
     }
 
-    // To avoid `JSONFormat::Minimalistic`, just in case.
+    // To avoid `JSONFormat::Minimalistic`, at least for unit tests.
     const bool full_format = r.url.query.has("full");
     // To list only the services that are currently in `Active` state.
     const bool active_only = r.url.query.has("active_only");
