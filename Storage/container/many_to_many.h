@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/optional.h"
 #include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
+#include "../../Bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
 #include "../../Bricks/util/singleton.h"
 
 namespace current {
@@ -111,37 +112,6 @@ class GenericManyToMany {
   }
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
-  template <typename MAP>
-  struct IteratorImpl final {
-    using iterator_t = typename MAP::const_iterator;
-    using key_t = typename MAP::key_type;
-    iterator_t iterator;
-    explicit IteratorImpl(iterator_t iterator) : iterator(iterator) {}
-    void operator++() { ++iterator; }
-    bool operator==(const IteratorImpl& rhs) const { return iterator == rhs.iterator; }
-    bool operator!=(const IteratorImpl& rhs) const { return !operator==(rhs); }
-    sfinae::CF<key_t> key() const { return iterator->first; }
-    const T& operator*() const { return *iterator->second; }
-    const T* operator->() const { return iterator->second; }
-  };
-
-  template <typename MAP>
-  struct InnerAccessor final {
-    using iterator_t = IteratorImpl<MAP>;
-    using key_t = typename MAP::key_type;
-    const MAP& map_;
-
-    InnerAccessor(const MAP& map) : map_(map) {}
-
-    bool Empty() const { return map_.empty(); }
-    size_t Size() const { return map_.size(); }
-
-    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
-
-    iterator_t begin() const { return iterator_t(map_.cbegin()); }
-    iterator_t end() const { return iterator_t(map_.cend()); }
-  };
-
   template <typename OUTER_MAP>
   struct OuterAccessor final {
     using OUTER_KEY = typename OUTER_MAP::key_type;
@@ -156,7 +126,9 @@ class GenericManyToMany {
       bool operator==(const OuterIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const OuterIterator& rhs) const { return !operator==(rhs); }
       sfinae::CF<OUTER_KEY> key() const { return iterator->first; }
-      InnerAccessor<INNER_MAP> operator*() const { return InnerAccessor<INNER_MAP>(iterator->second); }
+      GenericMapAccessor<INNER_MAP> operator*() const {
+        return GenericMapAccessor<INNER_MAP>(iterator->second);
+      }
     };
 
     explicit OuterAccessor(const OUTER_MAP& map) : map_(map) {}
@@ -167,10 +139,10 @@ class GenericManyToMany {
 
     bool Has(const OUTER_KEY& x) const { return map_.find(x) != map_.end(); }
 
-    ImmutableOptional<InnerAccessor<INNER_MAP>> operator[](OUTER_KEY key) const {
+    ImmutableOptional<GenericMapAccessor<INNER_MAP>> operator[](OUTER_KEY key) const {
       const auto iterator = map_.find(key);
       if (iterator != map_.end()) {
-        return std::move(std::make_unique<InnerAccessor<INNER_MAP>>(iterator->second));
+        return std::move(std::make_unique<GenericMapAccessor<INNER_MAP>>(iterator->second));
       } else {
         return nullptr;
       }
@@ -184,20 +156,20 @@ class GenericManyToMany {
 
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
-  InnerAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
+  GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
     const auto it = forward_.find(row);
-    return InnerAccessor<row_elements_map_t>(
+    return GenericMapAccessor<row_elements_map_t>(
         it != forward_.end() ? it->second : current::ThreadLocalSingleton<row_elements_map_t>());
   }
 
-  InnerAccessor<col_elements_map_t> Col(sfinae::CF<col_t> col) const {
+  GenericMapAccessor<col_elements_map_t> Col(sfinae::CF<col_t> col) const {
     const auto it = transposed_.find(col);
-    return InnerAccessor<col_elements_map_t>(
+    return GenericMapAccessor<col_elements_map_t>(
         it != transposed_.end() ? it->second : current::ThreadLocalSingleton<col_elements_map_t>());
   }
 
   // For REST, iterate over all the elements of the ManyToMany, in no particular order.
-  using iterator_t = IteratorImpl<whole_matrix_map_t>;
+  using iterator_t = GenericMapIterator<whole_matrix_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }
 

@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/optional.h"
 #include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
+#include "../../Bricks/util/iterator.h"     // For `GenericMapIterator` and `GenericMapAccessor`.
 
 namespace current {
 namespace storage {
@@ -176,44 +177,14 @@ class GenericOneToOne {
   }
   void operator()(const DELETE_EVENT& e) { DoErase(std::make_pair(e.key.first, e.key.second)); }
 
-  template <typename MAP>
-  struct IteratorImpl final {
-    using iterator_t = typename MAP::const_iterator;
-    using key_t = typename MAP::key_type;
-    iterator_t iterator_;
-    explicit IteratorImpl(iterator_t iterator) : iterator_(iterator) {}
-    void operator++() { ++iterator_; }
-    bool operator==(const IteratorImpl& rhs) const { return iterator_ == rhs.iterator_; }
-    bool operator!=(const IteratorImpl& rhs) const { return !operator==(rhs); }
-    sfinae::CF<key_t> key() const { return iterator_->first; }
-    const T& operator*() const { return *iterator_->second; }
-    const T* operator->() const { return iterator_->second; }
-  };
+  const GenericMapAccessor<forward_map_t> Rows() const { return GenericMapAccessor<forward_map_t>(forward_); }
 
-  template <typename MAP>
-  struct MapAccessor final {
-    using iterator_t = IteratorImpl<MAP>;
-    using key_t = typename MAP::key_type;
-    const MAP& map_;
-
-    explicit MapAccessor(const MAP& map) : map_(map) {}
-
-    bool Empty() const { return map_.empty(); }
-
-    size_t Size() const { return map_.size(); }
-
-    bool Has(const key_t& x) const { return map_.find(x) != map_.end(); }
-
-    iterator_t begin() const { return iterator_t(map_.cbegin()); }
-    iterator_t end() const { return iterator_t(map_.cend()); }
-  };
-
-  const MapAccessor<forward_map_t> Rows() const { return MapAccessor<forward_map_t>(forward_); }
-
-  const MapAccessor<transposed_map_t> Cols() const { return MapAccessor<transposed_map_t>(transposed_); }
+  const GenericMapAccessor<transposed_map_t> Cols() const {
+    return GenericMapAccessor<transposed_map_t>(transposed_);
+  }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
-  using iterator_t = IteratorImpl<elements_map_t>;
+  using iterator_t = GenericMapIterator<elements_map_t>;
   iterator_t begin() const { return iterator_t(map_.begin()); }
   iterator_t end() const { return iterator_t(map_.end()); }
 
