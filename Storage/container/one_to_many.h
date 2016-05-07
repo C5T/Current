@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "../../TypeSystem/optional.h"
 #include "../../Bricks/util/comparators.h"  // For `CurrentHashFunction`.
+#include "../../Bricks/util/singleton.h"
 
 namespace current {
 namespace storage {
@@ -48,8 +49,9 @@ class GenericOneToMany {
   using col_t = sfinae::entry_col_t<T>;
   using key_t = std::pair<row_t, col_t>;
   using elements_map_t = std::unordered_map<key_t, std::unique_ptr<T>, CurrentHashFunction<key_t>>;
-  using forward_map_t = ROW_MAP<row_t, COL_MAP<col_t, const T*>>;
-  using transposed_map_t = COL_MAP<col_t, const T*>;
+  using row_elements_map_t = COL_MAP<col_t, const T*>;
+  using forward_map_t = ROW_MAP<row_t, row_elements_map_t>;
+  using transposed_map_t = row_elements_map_t;
   using rest_behavior_t = rest::behavior::Matrix;
 
   explicit GenericOneToMany(MutationJournal& journal) : journal_(journal) {}
@@ -181,7 +183,9 @@ class GenericOneToMany {
       bool operator==(const RowsIterator& rhs) const { return iterator == rhs.iterator; }
       bool operator!=(const RowsIterator& rhs) const { return !operator==(rhs); }
       sfinae::CF<key_t> key() const { return iterator->first; }
-      ElementsAccessor<elements_map_t> operator*() const { return ElementsAccessor<elements_map_t>(iterator->second); }
+      ElementsAccessor<elements_map_t> operator*() const {
+        return ElementsAccessor<elements_map_t>(iterator->second);
+      }
     };
 
     explicit RowsAccessor(const ROWS_MAP& map) : map_(map) {}
@@ -204,9 +208,15 @@ class GenericOneToMany {
     RowsIterator end() const { return RowsIterator(map_.cend()); }
   };
 
-  const RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
+  RowsAccessor<forward_map_t> Rows() const { return RowsAccessor<forward_map_t>(forward_); }
 
-  const ElementsAccessor<transposed_map_t> Cols() const { return ElementsAccessor<transposed_map_t>(transposed_); }
+  ElementsAccessor<transposed_map_t> Cols() const { return ElementsAccessor<transposed_map_t>(transposed_); }
+
+  ElementsAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
+    const auto it = forward_.find(row);
+    return ElementsAccessor<row_elements_map_t>(
+        it != forward_.end() ? it->second : current::ThreadLocalSingleton<row_elements_map_t>());
+  }
 
   // For REST, iterate over all the elements of the OneToMany, in no particular order.
   using iterator_t = IteratorImpl<elements_map_t>;
