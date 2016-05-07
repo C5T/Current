@@ -26,41 +26,60 @@ SOFTWARE.
 #define CURRENT_UTILS_NGINX_NGINX_H
 
 #include <cstdlib>
+#include <mutex>
 
 #include "config.h"
 
+#include "../../Bricks/dflags/dflags.h"
+#include "../../Bricks/file/file.h"
+#include "../../Bricks/util/singleton.h"
+
+#ifdef CURRENT_USER_NGINX_FLAG
+DECLARE_string(nginx);
+#endif
+
 namespace current {
 namespace nginx {
+namespace impl {
 
-class NginxInvoker {
+const std::string kDefaultNginxCommand = "nginx";
+
+class NginxInvokerImpl {
  public:
-  NginxInvoker(const std::string& nginx = "nginx") : nginx_(nginx) {
-    if (ExecNginx("-v") != 0) {
-      CURRENT_THROW(NginxNotAvailableException());
-    }
+  NginxInvokerImpl()
+      :
+#ifdef CURRENT_USER_NGINX_FLAG
+        nginx_(FLAGS_nginx)
+#else
+        nginx_(kDefaultNginxCommand)
+#endif
+  {
   }
 
-  bool IsFullConfigValid(const std::string& config_full_path) {
+  bool IsNginxAvailable() const { return ExecNginx("-v") == 0; }
+
+  bool IsFullConfigValid(const std::string& config_full_path) const {
     return ExecNginx("-t -c " + config_full_path) == 0;
   }
 
-  bool ReloadConfig() { return ExecNginx("-s reload") == 0; }
+  bool ReloadConfig() const { return ExecNginx("-s reload") == 0; }
 
  private:
-  int ExecNginx(const std::string& args) {
-#ifdef CURRENT_WINDOWS
-    const std::string dev_null = "NUL";
-#else
-    const std::string dev_null = "/dev/null";
-#endif
-    const std::string cmd_line = nginx_ + ' ' + args + " >" + dev_null + " 2>&1";
+  int ExecNginx(const std::string& args) const {
+    const std::string cmd_line = nginx_ + ' ' + args + " >" + FileSystem::NullDeviceName() + " 2>&1";
+    std::lock_guard<std::mutex> lock(mutex_);
     int result = std::system(cmd_line.c_str());
     return WEXITSTATUS(result);
   }
 
  private:
   const std::string nginx_;
+  mutable std::mutex mutex_;
 };
+
+}  // namespace current::nginx::impl
+
+inline impl::NginxInvokerImpl& NginxInvoker() { return Singleton<impl::NginxInvokerImpl>(); }
 
 }  // namespace current::nginx
 }  // namespace current

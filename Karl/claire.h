@@ -110,6 +110,11 @@ class GenericClaire final {
       keepalive_thread_terminating_ = true;
       keepalive_condition_variable_.notify_one();
       keepalive_thread_.join();
+      // Deregister self from Karl.
+      try {
+        HTTP(DELETE(karl_keepalive_route_));
+      } catch (net::NetworkException&) {
+      }
     }
   }
 
@@ -198,6 +203,7 @@ class GenericClaire final {
             " ago";
       }
       if (last_successful_keepalive_ping_.count()) {
+        status.last_successful_ping_epoch_microseconds = last_successful_keepalive_ping_;
         status.last_successful_keepalive_ping =
             current::strings::Printf("%.2lfms", 1e-3 * last_successful_keepalive_ping_.count());
       }

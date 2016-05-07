@@ -44,10 +44,6 @@ struct PortAlreadyUsedException : NginxConfigException {
       : NginxConfigException("Port " + current::ToString(port) + " was already used in this config.") {}
 };
 
-struct NginxNotAvailableException : NginxException {
-  using NginxException::NginxException;
-};
-
 }  // namespace current::nginx
 }  // namespace current
 

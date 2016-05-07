@@ -56,7 +56,6 @@ class ServiceFilter final {
     // In example "production" mode just start regular keepalives.
     claire_.Register();
 #endif
-    claire_.AddDependency(service_annotated);
   }
 
   const std::string& ClaireCodename() const { return claire_.Codename(); }

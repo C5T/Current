@@ -56,8 +56,10 @@ namespace current {
 struct FileSystem {
 #ifndef CURRENT_WINDOWS
   static constexpr char PathSeparatingSlash = '/';
+  static inline std::string NullDeviceName() { return "/dev/null"; }
 #else
   static constexpr char PathSeparatingSlash = '\\';
+  static inline std::string NullDeviceName() { return "NUL"; }
 #endif
   static inline std::string GetFileExtension(const std::string& file_name) {
     const size_t i = file_name.find_last_of("/\\.");
