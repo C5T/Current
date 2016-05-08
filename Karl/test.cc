@@ -396,6 +396,7 @@ TEST(Karl, DeregisterWithNginx) {
 
     // Check that `generator`'s status page is accessible via Nginx.
     {
+      std::cerr << "Waiting for generator via Nginx\n";
       current::karl::ClaireStatus status;
       // Must wait for Nginx config reload to take effect.
       while (true) {
@@ -406,11 +407,13 @@ TEST(Karl, DeregisterWithNginx) {
             break;
           }
         } catch (const current::net::NetworkException& e) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
       }
       EXPECT_EQ("generator", status.service);
     }
 
+    std::cerr << "Creating is_prime\n";
     {
       const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
       // The `generator` and `is_prime` services are registered.
@@ -431,6 +434,7 @@ TEST(Karl, DeregisterWithNginx) {
       }
       // Check that `is_prime`'s status page is accessible via Nginx.
       {
+        std::cerr << "Waiting for is_prime via Nginx\n";
         current::karl::ClaireStatus status;
         // Must wait for Nginx config reload to take effect.
         while (true) {
@@ -446,6 +450,8 @@ TEST(Karl, DeregisterWithNginx) {
         EXPECT_EQ("is_prime", status.service);
       }
     }
+    std::cerr << "Deleting is_prime\n";
+
     // The `generator` should be the only service registered.
     {
       unittest_karl_status_t status;
@@ -460,6 +466,7 @@ TEST(Karl, DeregisterWithNginx) {
     }
   }
 
+  std::cerr << "Both services are dead\n";
   // All services should be deregistered by this moment.
   {
     unittest_karl_status_t status;
