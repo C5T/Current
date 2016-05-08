@@ -518,7 +518,7 @@ TEST(Util, LazyInstantiation) {
   EXPECT_EQ("400:7", bar_y_q.InstantiateAsUniquePtrWithExtraParameter(400)->AsString());
 }
 
-TEST(Util, Iterator) {
+TEST(Util, GenericMapAccessor) {
   using map1_t = std::map<int, std::string>;
   map1_t map1;
   const auto accessor1 = current::GenericMapAccessor<map1_t>(map1);
