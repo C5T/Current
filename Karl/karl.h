@@ -94,13 +94,10 @@ CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
 
-  CURRENT_FIELD(url_status_page_proxied, std::string);
-  CURRENT_FIELD(url_status_page_direct, std::string);
-
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
-
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(url_status_page_direct, std::string);
   CURRENT_FIELD(registered_state, ClaireRegisteredState);
 };
 
@@ -171,8 +168,8 @@ CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD(location, ClaireServiceKey);
   CURRENT_FIELD(dependencies, std::vector<std::string>);             // Codenames.
   CURRENT_FIELD(unresolved_dependencies, std::vector<std::string>);  // Status page URLs.
-  CURRENT_FIELD(url_status_page_proxied, Optional<std::string>);
   CURRENT_FIELD(url_status_page_direct, std::string);
+  CURRENT_FIELD(url_status_page_proxied, Optional<std::string>);
   CURRENT_FIELD(runtime, Optional<T>);
 };
 
@@ -199,15 +196,10 @@ struct KarlNginxParameters {
   uint16_t port;
   std::string config_file;
   std::string route_prefix;
-  bool validate_full_config_on_every_update;
   KarlNginxParameters(uint16_t port,
                       const std::string& config_file,
-                      const std::string& route_prefix = "/proxied",
-                      bool validate_full_config_on_every_update = false)
-      : port(port),
-        config_file(config_file),
-        route_prefix(route_prefix),
-        validate_full_config_on_every_update(validate_full_config_on_every_update) {}
+                      const std::string& route_prefix = "/proxied")
+      : port(port), config_file(config_file), route_prefix(route_prefix) {}
 };
 
 template <class STORAGE>
@@ -215,10 +207,10 @@ class KarlNginxManager {
  protected:
   explicit KarlNginxManager(STORAGE& storage, const KarlNginxParameters& nginx_parameters)
       : storage_(storage),
-        using_nginx_(!nginx_parameters.config_file.empty()),
+        has_nginx_config_file_(!nginx_parameters.config_file.empty()),
         nginx_parameters_(nginx_parameters),
         need_to_update_nginx_(false) {
-    if (using_nginx_) {
+    if (has_nginx_config_file_) {
       if (!nginx::NginxInvoker().IsNginxAvailable()) {
         CURRENT_THROW(NginxRequestedButNotAvailableException());
       }
@@ -229,7 +221,7 @@ class KarlNginxManager {
   }
 
   void UpdateNginxIfNeeded() {
-    if (using_nginx_ && need_to_update_nginx_) {
+    if (has_nginx_config_file_ && need_to_update_nginx_) {
       std::string nginx_config;
       nginx::config::ServerDirective server(nginx_parameters_.port);
       storage_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
@@ -255,7 +247,7 @@ class KarlNginxManager {
         } catch (const current::FileException& e) {
 #ifdef EXTRA_KARL_LOGGING
           std::cerr << "Cannot write Nginx config file to '" << nginx_parameters_.config_file
-                    << "': " << e.what() << std::endl;
+                    << "': " << e.What() << std::endl;
 #endif
         }
       }
@@ -263,16 +255,19 @@ class KarlNginxManager {
   }
 
   virtual ~KarlNginxManager() {
-    if (using_nginx_) {
+    if (has_nginx_config_file_) {
       FileSystem::RmFile(nginx_parameters_.config_file, FileSystem::RmFileParameters::Silent);
-      nginx::NginxInvoker().ReloadConfig();
+      try {
+        nginx::NginxInvoker().ReloadConfig();
+      } catch (std::exception&) {
+      }
     }
   }
 
  protected:
   STORAGE& storage_;
-  bool using_nginx_;
-  KarlNginxParameters nginx_parameters_;
+  const bool has_nginx_config_file_;
+  const KarlNginxParameters nginx_parameters_;
   std::atomic_bool need_to_update_nginx_;
   std::string last_nginx_config_;
 };
@@ -287,17 +282,18 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
   using storage_t = ServiceStorage<SherlockStreamPersister>;
 
-  explicit GenericKarl(uint16_t port,
-                       const std::string& stream_persistence_file,
-                       const std::string& storage_persistence_file,
-                       const std::string& url = "/",
-                       const std::string& external_url = "http://localhost:7576",
-                       const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
-                       std::chrono::microseconds up_threshold = std::chrono::microseconds(1000ll * 1000ll * 45))
+  explicit GenericKarl(
+      uint16_t port,
+      const std::string& stream_persistence_file,
+      const std::string& storage_persistence_file,
+      const std::string& url = "/",
+      const std::string& external_url = "http://localhost:7576",
+      const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
+      std::chrono::microseconds service_timeout_interval = std::chrono::microseconds(1000ll * 1000ll * 45))
       : KarlNginxManager(storage_, nginx_parameters),
         destructing_(false),
         external_url_(external_url),
-        up_threshold_(up_threshold),
+        service_timeout_interval_(service_timeout_interval),
         keepalives_stream_(stream_persistence_file),
         storage_(storage_persistence_file),
         state_update_thread_([this]() { StateUpdateThread(); }),
@@ -310,8 +306,16 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       if (!stream_persister.Empty()) {
         self_info.persisted_keepalives_info = stream_persister.LastPublishedIndexAndTimestamp();
       }
-
       fields.karl.Add(self_info);
+
+      const auto now = current::time::Now();
+      // Pre-populate services marked as `Active` due to abrupt shutdown into cache.
+      // This will help to eventually mark non-active services as `DisconnectedByTimeout`.
+      for (const auto& claire : fields.claires) {
+        if (claire.registered_state == ClaireRegisteredState::Active) {
+          services_keepalive_time_cache_[claire.codename] = now;
+        }
+      }
     }).Wait();
   }
 
@@ -323,6 +327,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       fields.karl.Add(self_info);
     }).Wait();
     if (state_update_thread_.joinable()) {
+      keepalive_cache_condition_variable_.notify_one();
       state_update_thread_.join();
     }
   }
@@ -338,14 +343,16 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   void StateUpdateThread() {
     while (!destructing_) {
       const auto now = current::time::Now();
-      std::set<std::string> timeouted_codenames;
+      std::unordered_set<std::string> timeouted_codenames;
+      std::chrono::microseconds most_recent_keepalive_time(0);
       {
         std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
         for (auto it = services_keepalive_time_cache_.cbegin(); it != services_keepalive_time_cache_.cend();) {
-          if ((now - it->second) > up_threshold_) {
+          if ((now - it->second) > service_timeout_interval_) {
             timeouted_codenames.insert(it->first);
             services_keepalive_time_cache_.erase(it++);
           } else {
+            most_recent_keepalive_time = std::max(it->second, most_recent_keepalive_time);
             ++it;
           }
         }
@@ -368,12 +375,21 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       }
       UpdateNginxIfNeeded();
 #ifdef CURRENT_MOCK_TIME
-      while (!destructing_ && !need_to_update_nginx_ && (current::time::Now() - now) < up_threshold_) {
+      while (!destructing_ && !need_to_update_nginx_ &&
+             (current::time::Now() - now) < service_timeout_interval_) {
         ;  // Spin lock.
       }
 #else
       std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
-      active_services_condition_variable_.wait_for(lock, up_threshold_);
+      if (most_recent_keepalive_time.count() != 0) {
+        const auto wait_interval =
+            service_timeout_interval_ - (current::time::Now() - most_recent_keepalive_time);
+        if (wait_interval.count() > 0) {
+          keepalive_cache_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
+        }
+      } else {
+        keepalive_cache_condition_variable_.wait(lock);
+      }
 #endif
     }
   }
@@ -408,7 +424,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
           services_keepalive_time_cache_.erase(codename);
         }
         need_to_update_nginx_ = true;
-        active_services_condition_variable_.notify_one();
+        keepalive_cache_condition_variable_.notify_one();
       } else {
         // Respond with "200 OK" in any case.
         r("NOP\n");
@@ -542,18 +558,12 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                              // Do not overwrite `build` with `null`.
                              claire = Value(current_claire_info);
                            }
+
                            claire.codename = codename;
-
-                           if (using_nginx_) {
-                             claire.url_status_page_proxied =
-                                 external_url_ + nginx_parameters_.route_prefix + '/' + codename;
-                           }
-                           claire.url_status_page_direct = location.StatusPageURL();
-
                            claire.service = service;
                            claire.location = location;
-
                            claire.reported_timestamp = now;
+                           claire.url_status_page_direct = location.StatusPageURL();
                            claire.registered_state = ClaireRegisteredState::Active;
 
                            fields.claires.Add(claire);
@@ -563,13 +573,14 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                        std::move(r)).Wait();
           {
             std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
-            if (services_keepalive_time_cache_.count(codename) == 0u) {
+            auto& placeholder = services_keepalive_time_cache_[codename];
+            if (placeholder.count() == 0) {
               need_to_update_nginx_ = true;
             }
-            services_keepalive_time_cache_[codename] = now;
+            placeholder = now;
           }
           if (need_to_update_nginx_) {
-            active_services_condition_variable_.notify_one();
+            keepalive_cache_condition_variable_.notify_one();
           }
         } else {
           r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
@@ -644,7 +655,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
         ProtoReport report;
         const std::string last_keepalive =
             current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
-        if ((now - e.idx_ts.us) < up_threshold_) {
+        if ((now - e.idx_ts.us) < service_timeout_interval_) {
           // Service is up.
           const auto projected_uptime_us = keepalive.uptime_epoch_microseconds + (now - e.idx_ts.us);
           report.currently = current_service_state::up(
@@ -711,8 +722,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                            blob.unresolved_dependencies.push_back(dep.StatusPageURL());
                          }
                        }
-                       // TODO(dk+mz): This should not be made twice, I assume.
-                       if (using_nginx_) {
+                       if (has_nginx_config_file_) {
                          blob.url_status_page_proxied =
                              external_url_ + nginx_parameters_.route_prefix + '/' + codename;
                        }
@@ -750,10 +760,10 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   std::atomic_bool destructing_;
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
-  std::condition_variable active_services_condition_variable_;
+  std::condition_variable keepalive_cache_condition_variable_;
 
   const std::string external_url_;
-  const std::chrono::microseconds up_threshold_;
+  const std::chrono::microseconds service_timeout_interval_;
   stream_t keepalives_stream_;
   storage_t storage_;
   std::thread state_update_thread_;
