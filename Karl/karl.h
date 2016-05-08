@@ -46,6 +46,7 @@ SOFTWARE.
 
 #include "../port.h"
 
+#include "exceptions.h"
 #include "schema.h"
 #include "locator.h"
 
@@ -55,6 +56,8 @@ SOFTWARE.
 #include "../Bricks/net/http/impl/server.h"
 
 #include "../Blocks/HTTP/api.h"
+
+#include "../Utils/Nginx/nginx.h"
 
 #ifdef EXTRA_KARL_LOGGING
 #include "../TypeSystem/Schema/schema.h"
@@ -91,13 +94,10 @@ CURRENT_STRUCT(ClaireInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
 
-  CURRENT_FIELD(url_status_page_proxied, std::string);
-  CURRENT_FIELD(url_status_page_direct, std::string);
-
   CURRENT_FIELD(service, std::string);
   CURRENT_FIELD(location, ClaireServiceKey);
-
   CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(url_status_page_direct, std::string);
   CURRENT_FIELD(registered_state, ClaireRegisteredState);
 };
 
@@ -168,8 +168,8 @@ CURRENT_STRUCT_T(ServiceToReport) {
   CURRENT_FIELD(location, ClaireServiceKey);
   CURRENT_FIELD(dependencies, std::vector<std::string>);             // Codenames.
   CURRENT_FIELD(unresolved_dependencies, std::vector<std::string>);  // Status page URLs.
-  CURRENT_FIELD(url_status_page_proxied, std::string);
   CURRENT_FIELD(url_status_page_direct, std::string);
+  CURRENT_FIELD(url_status_page_proxied, Optional<std::string>);
   CURRENT_FIELD(runtime, Optional<T>);
 };
 
@@ -192,8 +192,88 @@ CURRENT_STRUCT_T(KarlPersistedKeepalive) {
   CURRENT_FIELD(keepalive, T);
 };
 
+struct KarlNginxParameters {
+  uint16_t port;
+  std::string config_file;
+  std::string route_prefix;
+  KarlNginxParameters(uint16_t port,
+                      const std::string& config_file,
+                      const std::string& route_prefix = "/proxied")
+      : port(port), config_file(config_file), route_prefix(route_prefix) {}
+};
+
+template <class STORAGE>
+class KarlNginxManager {
+ protected:
+  explicit KarlNginxManager(STORAGE& storage, const KarlNginxParameters& nginx_parameters)
+      : storage_(storage),
+        has_nginx_config_file_(!nginx_parameters.config_file.empty()),
+        nginx_parameters_(nginx_parameters),
+        need_to_update_nginx_(false) {
+    if (has_nginx_config_file_) {
+      if (!nginx::NginxInvoker().IsNginxAvailable()) {
+        CURRENT_THROW(NginxRequestedButNotAvailableException());
+      }
+      if (nginx_parameters_.port == 0u) {
+        CURRENT_THROW(NginxParametersInvalidPortException());
+      }
+    }
+  }
+
+  void UpdateNginxIfNeeded() {
+    if (has_nginx_config_file_ && need_to_update_nginx_) {
+      std::string nginx_config;
+      nginx::config::ServerDirective server(nginx_parameters_.port);
+      storage_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
+        for (const auto& claire : fields.claires) {
+          if (claire.registered_state == ClaireRegisteredState::Active) {
+            server.CreateDefaultLocation(nginx_parameters_.route_prefix + '/' + claire.codename)
+                .Add(nginx::config::SimpleDirective("proxy_pass", claire.location.StatusPageURL()));
+          }
+        }
+      }).Go();
+      nginx_config = nginx::config::ConfigPrinter::AsString(server);
+      if (last_nginx_config_ != nginx_config) {
+        try {
+          FileSystem::WriteStringToFile(nginx_config, nginx_parameters_.config_file.c_str());
+          if (nginx::NginxInvoker().ReloadConfig()) {
+            last_nginx_config_ = nginx_config;
+            need_to_update_nginx_ = false;
+          } else {
+#ifdef EXTRA_KARL_LOGGING
+            std::cerr << "Nginx config reload failed." << std::endl;
+#endif
+          }
+        } catch (const current::FileException& e) {
+#ifdef EXTRA_KARL_LOGGING
+          std::cerr << "Cannot write Nginx config file to '" << nginx_parameters_.config_file
+                    << "': " << e.What() << std::endl;
+#endif
+        }
+      }
+    }
+  }
+
+  virtual ~KarlNginxManager() {
+    if (has_nginx_config_file_) {
+      FileSystem::RmFile(nginx_parameters_.config_file, FileSystem::RmFileParameters::Silent);
+      try {
+        nginx::NginxInvoker().ReloadConfig();
+      } catch (std::exception&) {
+      }
+    }
+  }
+
+ protected:
+  STORAGE& storage_;
+  const bool has_nginx_config_file_;
+  const KarlNginxParameters nginx_parameters_;
+  std::atomic_bool need_to_update_nginx_;
+  std::string last_nginx_config_;
+};
+
 template <typename... TS>
-class GenericKarl final {
+class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStreamPersister>> {
  public:
   using runtime_status_variant_t = Variant<TS...>;
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
@@ -202,16 +282,21 @@ class GenericKarl final {
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
   using storage_t = ServiceStorage<SherlockStreamPersister>;
 
-  explicit GenericKarl(uint16_t port,
-                       const std::string& stream_persistence_file,
-                       const std::string& storage_persistence_file,
-                       const std::string& url = "/",
-                       const std::string& external_url = "http://localhost:7576/",
-                       std::chrono::microseconds up_threshold = std::chrono::microseconds(1000ll * 1000ll * 45))
-      : external_url_(external_url),
-        up_threshold_(up_threshold),
+  explicit GenericKarl(
+      uint16_t port,
+      const std::string& stream_persistence_file,
+      const std::string& storage_persistence_file,
+      const std::string& url = "/",
+      const std::string& external_url = "http://localhost:7576",
+      const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
+      std::chrono::microseconds service_timeout_interval = std::chrono::microseconds(1000ll * 1000ll * 45))
+      : KarlNginxManager(storage_, nginx_parameters),
+        destructing_(false),
+        external_url_(external_url),
+        service_timeout_interval_(service_timeout_interval),
         keepalives_stream_(stream_persistence_file),
         storage_(storage_persistence_file),
+        state_update_thread_([this]() { StateUpdateThread(); }),
         http_scope_(HTTP(port).Register(url, [this](Request r) { return Serve(std::move(r)); })) {
     // Report this Karl as up and running.
     // Oh, look, I'm doing work in constructor body. Sigh. -- D.K.
@@ -221,20 +306,94 @@ class GenericKarl final {
       if (!stream_persister.Empty()) {
         self_info.persisted_keepalives_info = stream_persister.LastPublishedIndexAndTimestamp();
       }
-
       fields.karl.Add(self_info);
+
+      const auto now = current::time::Now();
+      // Pre-populate services marked as `Active` due to abrupt shutdown into cache.
+      // This will help to eventually mark non-active services as `DisconnectedByTimeout`.
+      for (const auto& claire : fields.claires) {
+        if (claire.registered_state == ClaireRegisteredState::Active) {
+          services_keepalive_time_cache_[claire.codename] = now;
+        }
+      }
     }).Wait();
   }
 
   ~GenericKarl() {
+    destructing_ = true;
     storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
       KarlInfo self_info;
       self_info.up = false;
       fields.karl.Add(self_info);
     }).Wait();
+    if (state_update_thread_.joinable()) {
+      keepalive_cache_condition_variable_.notify_one();
+      state_update_thread_.join();
+    }
   }
 
+  size_t ActiveServicesCount() const {
+    std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
+    return services_keepalive_time_cache_.size();
+  }
+
+  storage_t& InternalExposeStorage() { return storage_; }
+
  private:
+  void StateUpdateThread() {
+    while (!destructing_) {
+      const auto now = current::time::Now();
+      std::unordered_set<std::string> timeouted_codenames;
+      std::chrono::microseconds most_recent_keepalive_time(0);
+      {
+        std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
+        for (auto it = services_keepalive_time_cache_.cbegin(); it != services_keepalive_time_cache_.cend();) {
+          if ((now - it->second) > service_timeout_interval_) {
+            timeouted_codenames.insert(it->first);
+            services_keepalive_time_cache_.erase(it++);
+          } else {
+            most_recent_keepalive_time = std::max(it->second, most_recent_keepalive_time);
+            ++it;
+          }
+        }
+      }
+      if (!timeouted_codenames.empty()) {
+        storage_.ReadWriteTransaction([&timeouted_codenames](MutableFields<storage_t> fields) -> void {
+          for (const auto& codename : timeouted_codenames) {
+            const auto& current_claire_info = fields.claires[codename];
+            ClaireInfo claire;
+            if (Exists(current_claire_info)) {
+              claire = Value(current_claire_info);
+            } else {
+              claire.codename = codename;
+            }
+            claire.registered_state = ClaireRegisteredState::DisconnectedByTimeout;
+            fields.claires.Add(claire);
+          }
+        }).Wait();
+        need_to_update_nginx_ = true;
+      }
+      UpdateNginxIfNeeded();
+#ifdef CURRENT_MOCK_TIME
+      while (!destructing_ && !need_to_update_nginx_ &&
+             (current::time::Now() - now) < service_timeout_interval_) {
+        ;  // Spin lock.
+      }
+#else
+      std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
+      if (most_recent_keepalive_time.count() != 0) {
+        const auto wait_interval =
+            service_timeout_interval_ - (current::time::Now() - most_recent_keepalive_time);
+        if (wait_interval.count() > 0) {
+          keepalive_cache_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
+        }
+      } else {
+        keepalive_cache_condition_variable_.wait(lock);
+      }
+#endif
+    }
+  }
+
   void Serve(Request r) {
     if (r.method != "GET" && r.method != "POST" && r.method != "DELETE") {
       r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
@@ -259,6 +418,13 @@ class GenericKarl final {
           fields.claires.Add(claire);
           return Response("OK\n");
         }, std::move(r)).Detach();
+        {
+          // Delete this `codename` from cache.
+          std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
+          services_keepalive_time_cache_.erase(codename);
+        }
+        need_to_update_nginx_ = true;
+        keepalive_cache_condition_variable_.notify_one();
       } else {
         // Respond with "200 OK" in any case.
         r("NOP\n");
@@ -313,16 +479,16 @@ class GenericKarl final {
             }
           }();
 
+          const auto now = current::time::Now();
+          const std::string service = body.service;
+          const std::string codename = body.codename;
+
           {
             persisted_keepalive_t record;
             record.location = location;
             record.keepalive = status;
             keepalives_stream_.Publish(std::move(record));
           }
-
-          const auto now = current::time::Now();
-          const std::string service = body.service;
-          const std::string codename = body.codename;
 
           Optional<current::build::Info> optional_build = body.build;
           Optional<std::chrono::microseconds> optional_behind_this_by;
@@ -365,8 +531,8 @@ class GenericKarl final {
                          // Update the `DB` if the build information was not stored there yet.
                          const ImmutableOptional<ClaireBuildInfo> current_claire_build_info =
                              fields.builds[codename];
-                         if (!Exists(current_claire_build_info) ||
-                             (Exists(optional_build) &&
+                         if (Exists(optional_build) &&
+                             (!Exists(current_claire_build_info) ||
                               Value(current_claire_build_info).build != Value(optional_build))) {
                            ClaireBuildInfo build;
                            build.codename = codename;
@@ -380,6 +546,9 @@ class GenericKarl final {
                                  return true;
                                } else if (Value(current_claire_info).location != location) {
                                  return true;
+                               } else if (Value(current_claire_info).registered_state !=
+                                          ClaireRegisteredState::Active) {
+                                 return true;
                                } else {
                                  return false;
                                }
@@ -389,23 +558,30 @@ class GenericKarl final {
                              // Do not overwrite `build` with `null`.
                              claire = Value(current_claire_info);
                            }
+
                            claire.codename = codename;
-
-                           // TODO(mzhurovich): This one should work via `nginx`, I'd assume.
-                           claire.url_status_page_proxied = external_url_ + "proxied/" + codename;
-                           claire.url_status_page_direct = location.StatusPageURL();
-
                            claire.service = service;
                            claire.location = location;
-
                            claire.reported_timestamp = now;
+                           claire.url_status_page_direct = location.StatusPageURL();
                            claire.registered_state = ClaireRegisteredState::Active;
 
                            fields.claires.Add(claire);
                          }
                          return Response("OK\n");
                        },
-                       std::move(r)).Detach();
+                       std::move(r)).Wait();
+          {
+            std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
+            auto& placeholder = services_keepalive_time_cache_[codename];
+            if (placeholder.count() == 0) {
+              need_to_update_nginx_ = true;
+            }
+            placeholder = now;
+          }
+          if (need_to_update_nginx_) {
+            keepalive_cache_condition_variable_.notify_one();
+          }
         } else {
           r("Inconsistent URL/body parameters.\n", HTTPResponseCode.BadRequest);
         }
@@ -479,7 +655,7 @@ class GenericKarl final {
         ProtoReport report;
         const std::string last_keepalive =
             current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
-        if ((now - e.idx_ts.us) < up_threshold_) {
+        if ((now - e.idx_ts.us) < service_timeout_interval_) {
           // Service is up.
           const auto projected_uptime_us = keepalive.uptime_epoch_microseconds + (now - e.idx_ts.us);
           report.currently = current_service_state::up(
@@ -546,7 +722,10 @@ class GenericKarl final {
                            blob.unresolved_dependencies.push_back(dep.StatusPageURL());
                          }
                        }
-                       blob.url_status_page_proxied = external_url_ + "proxied/" + codename;
+                       if (has_nginx_config_file_) {
+                         blob.url_status_page_proxied =
+                             external_url_ + nginx_parameters_.route_prefix + '/' + codename;
+                       }
                        blob.url_status_page_direct = blob.location.StatusPageURL();
                        blob.location = resolved_codenames[codename];
                        blob.runtime = rhs.runtime;
@@ -578,10 +757,16 @@ class GenericKarl final {
                  std::move(r)).Detach();
   }
 
+  std::atomic_bool destructing_;
+  std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
+  mutable std::mutex services_keepalive_cache_mutex_;
+  std::condition_variable keepalive_cache_condition_variable_;
+
   const std::string external_url_;
-  const std::chrono::microseconds up_threshold_;
+  const std::chrono::microseconds service_timeout_interval_;
   stream_t keepalives_stream_;
   storage_t storage_;
+  std::thread state_update_thread_;
   const HTTPRoutesScope http_scope_;
 };
 

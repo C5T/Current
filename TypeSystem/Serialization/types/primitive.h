@@ -155,9 +155,9 @@ struct LoadFromJSONImpl<bool, J> {
 template <JSONFormat J>
 struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::milliseconds& destination, const std::string& path) {
-    uint64_t value_as_uint64;
-    LoadFromJSONImpl<uint64_t, J>::Load(source, value_as_uint64, path);
-    destination = std::chrono::milliseconds(value_as_uint64);
+    int64_t value_as_int64;
+    LoadFromJSONImpl<int64_t, J>::Load(source, value_as_int64, path);
+    destination = std::chrono::milliseconds(value_as_int64);
   }
 };
 
@@ -165,9 +165,9 @@ struct LoadFromJSONImpl<std::chrono::milliseconds, J> {
 template <JSONFormat J>
 struct LoadFromJSONImpl<std::chrono::microseconds, J> {
   static void Load(rapidjson::Value* source, std::chrono::microseconds& destination, const std::string& path) {
-    uint64_t value_as_uint64;
-    LoadFromJSONImpl<uint64_t, J>::Load(source, value_as_uint64, path);
-    destination = std::chrono::microseconds(value_as_uint64);
+    int64_t value_as_int64;
+    LoadFromJSONImpl<int64_t, J>::Load(source, value_as_int64, path);
+    destination = std::chrono::microseconds(value_as_int64);
   }
 };
 
@@ -199,12 +199,12 @@ struct SavePrimitiveTypeIntoBinary {
 
   // `std::chrono::milliseconds`.
   static void Save(std::ostream& ostream, const std::chrono::milliseconds& value) {
-    Save<uint64_t>(ostream, value.count());
+    Save<int64_t>(ostream, value.count());
   }
 
   // `std::chrono::microseconds`.
   static void Save(std::ostream& ostream, const std::chrono::microseconds& value) {
-    Save<uint64_t>(ostream, value.count());
+    Save<int64_t>(ostream, value.count());
   }
 
   // All other primitive types accessed via raw pointer.
