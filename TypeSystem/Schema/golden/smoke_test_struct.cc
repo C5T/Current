@@ -7,7 +7,10 @@
 
 namespace current_userspace {
 struct Primitives {
+  // It's the "order" of fields that matters.
   uint8_t a;
+
+  // Field descriptions can be set in any order.
   uint16_t b;
   uint32_t c;
   uint64_t d;
@@ -19,6 +22,10 @@ struct Primitives {
   std::string j;
   float k;
   double l;
+
+  // Multiline
+  // descriptions
+  // can be used.
   bool m;
   std::chrono::microseconds n;
   std::chrono::milliseconds o;
@@ -47,11 +54,14 @@ struct C {
 };
 using Variant_B_A_B_B2_C_Empty_E = Variant<A, B, B2, C, Empty>;
 struct FullTest {
+  // A structure with a lot of primitive types.
   Primitives primitives;
   std::vector<std::string> v1;
   std::vector<Primitives> v2;
   std::pair<std::string, Primitives> p;
   Optional<Primitives> o;
+
+  // Field | descriptions | FTW !
   Variant_B_A_B_B2_C_Empty_E q;
 };
 }  // namespace current_userspace

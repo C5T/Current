@@ -54,6 +54,8 @@ struct EventReceiver {
 };
 
 TEST(EventCollector, Smoke) {
+  current::time::ResetToZero();
+
   std::ostringstream os;
   EventReceiver er;
 

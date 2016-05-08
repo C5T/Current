@@ -41,7 +41,7 @@ DEFINE_string(event_store_test_tmpdir, ".", "Local path for the test to create t
 DEFINE_int32(event_store_test_port, PickPortForUnitTest(), "Local port to run the test against.");
 
 TEST(EventStore, SmokeWithInMemoryEventStore) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(100));
+  current::time::ResetToZero();
 
   using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
@@ -84,7 +84,7 @@ TEST(EventStore, SmokeWithInMemoryEventStore) {
 }
 
 TEST(EventStore, SmokeWithDiskPersistedEventStore) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(100));
+  current::time::ResetToZero();
 
   const std::string persistence_file_name =
       current::FileSystem::JoinPath(FLAGS_event_store_test_tmpdir, ".current_testdb");
@@ -145,7 +145,7 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
 }
 
 TEST(EventStore, SmokeWithHTTP) {
-  current::time::SetNow(std::chrono::microseconds(0), std::chrono::microseconds(100));
+  current::time::ResetToZero();
 
   using event_store_t = EventStore<EventStoreDB, Event, EventOutsideStorage, SherlockInMemoryStreamPersister>;
   using db_t = event_store_t::event_store_storage_t;
