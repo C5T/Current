@@ -62,6 +62,12 @@ inline const PrimitiveTypesListImpl& PrimitiveTypesList() {
   return current::Singleton<PrimitiveTypesListImpl>();
 }
 
+inline void AppendAsMultilineCommentIndentedTwoSpaces(std::ostream& os, const std::string& description) {
+  for (const auto& line : strings::Split(description, '\n')) {
+    os << "  // " << line << '\n';
+  }
+}
+
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
 enum class Language : int {
   begin = 0,
@@ -184,12 +190,16 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
       os << " : " << type_name(s.super_id);
     }
     os << " {\n";
+    bool first_field = true;
     for (const auto& f : s.fields) {
-      os << "  " << type_name(f.type_id) << " " << f.name << ';';
       if (Exists(f.description)) {
-        os << "  // " << strings::EscapeForCPlusPlus(Value(f.description));
+        if (!first_field) {
+          os << '\n';
+        }
+        AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
       }
-      os << '\n';
+      os << "  " << type_name(f.type_id) << " " << f.name << ";\n";
+      first_field = false;
     }
     os << "};\n";
   }
@@ -415,13 +425,16 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
       if (s.super_id != TypeID::CurrentStruct) {
         RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
+      bool first_field = true;
       for (const auto& f : s.fields) {
-        os << "  " << f.name << " : " << TypeName(f.type_id);
         if (Exists(f.description)) {
-          // F# escaping: C++ is closer than Markdown, given F# comments don't need to escape '|'.
-          os << "  // " << strings::EscapeForCPlusPlus(Value(f.description));
+          if (!first_field) {
+            os << '\n';
+          }
+          AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
         }
-        os << '\n';
+        os << "  " << f.name << " : " << TypeName(f.type_id) << '\n';
+        first_field = false;
       }
     }
     void operator()(const ReflectedType_Struct& s) const {

@@ -74,5 +74,5 @@ Algebraic type, `A` or `B` or `B2` or `C` or `Empty`
 | `v2` | Array of `Primitives` |
 | `p` | Pair of String and `Primitives` |
 | `o` | `null` or `Primitives` |
-| `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) | Field descriptions FTW. |
+| `q` | Algebraic `A` / `B` / `B2` / `C` / `Empty` (a.k.a. `Variant_B_A_B_B2_C_Empty_E`) | Field &#124; descriptions &#124; FTW ! |
 

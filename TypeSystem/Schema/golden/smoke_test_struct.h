@@ -57,7 +57,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
   CURRENT_FIELD(q, Variant_B_A_B_B2_C_Empty_E);
-  CURRENT_FIELD_DESCRIPTION(q, "Field descriptions FTW.");
+  CURRENT_FIELD_DESCRIPTION(q, "Field | descriptions | FTW !");
 };
 }  // namespace current_userspace
 

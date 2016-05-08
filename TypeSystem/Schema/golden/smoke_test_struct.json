@@ -467,7 +467,7 @@
       },
       {
         "field": "q",
-        "description": "Field descriptions FTW.",
+        "description": "Field | descriptions | FTW !",
         "as": {
           "algebraic": {
             "cases": [

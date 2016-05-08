@@ -65,7 +65,7 @@ CURRENT_STRUCT(FullTest) {
   CURRENT_FIELD(p, (std::pair<std::string, Primitives>));
   CURRENT_FIELD(o, Optional<Primitives>);
   CURRENT_FIELD(q, (Variant<A, B, B2, C, Empty>));
-  CURRENT_FIELD_DESCRIPTION(q, "Field descriptions FTW.");
+  CURRENT_FIELD_DESCRIPTION(q, "Field | descriptions | FTW !");
   CURRENT_CONSTRUCTOR(FullTest)(Variant<A, B, B2, C, Empty> q) : q(q) {}
 };
 
