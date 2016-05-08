@@ -39,6 +39,14 @@ struct ClaireRegistrationException : KarlException {
       : KarlException(service + " @ " + route) {}
 };
 
+struct NginxRequestedButNotAvailableException : KarlException {
+  using KarlException::KarlException;
+};
+
+struct NginxParametersInvalidPortException : KarlException {
+  using KarlException::KarlException;
+};
+
 }  // namespace current::karl
 }  // namespace current
 
