@@ -177,6 +177,7 @@ struct LoadVariantCurrent {
 
    private:
     struct GenericDeserializer {
+      virtual ~GenericDeserializer() = default;
       virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
     };
 
@@ -271,6 +272,7 @@ struct LoadVariantMinimalistic {
 
    private:
     struct GenericDeserializerMinimalistic {
+      virtual ~GenericDeserializerMinimalistic() = default;
       virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
     };
 
@@ -335,6 +337,7 @@ struct LoadVariantFSharp {
 
    private:
     struct GenericDeserializerFSharp {
+      virtual ~GenericDeserializerFSharp() = default;
       virtual void Deserialize(rapidjson::Value* source, VARIANT& destination, const std::string& path) = 0;
     };
 

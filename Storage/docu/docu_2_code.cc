@@ -75,6 +75,8 @@ CURRENT_STORAGE(ExampleStorageDefinition) {
 }  // namespace storage_docu
 
 TEST(StorageDocumentation, BasicInMemoryUsage) {
+  current::time::ResetToZero();
+
   using namespace storage_docu;
   using ExampleStorage = ExampleStorageDefinition<SherlockInMemoryStreamPersister>;
 
@@ -114,14 +116,14 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
     const auto result3 = storage.ReadWriteTransaction([](MutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(2u, data.users.Size());
-      current::time::SetNow(std::chrono::microseconds(3001ull));
+      current::time::SetNow(std::chrono::microseconds(4));
       data.users.Erase(static_cast<UserID>(102));
       EXPECT_EQ(1u, data.users.Size());
     }).Go();
     EXPECT_TRUE(WasCommitted(result3));
 
     // Confirm the non-reverted deleted user was indeed deleted.
-    current::time::SetNow(std::chrono::microseconds(4));
+    current::time::SetNow(std::chrono::microseconds(5));
     const auto result4 = storage.ReadOnlyTransaction([](ImmutableFields<ExampleStorage> data) {
       EXPECT_FALSE(data.users.Empty());
       EXPECT_EQ(1u, data.users.Size());
@@ -137,6 +139,8 @@ TEST(StorageDocumentation, BasicInMemoryUsage) {
 }
 
 TEST(StorageDocumentation, BasicUsage) {
+  current::time::ResetToZero();
+
   using namespace storage_docu;
   using current::storage::TransactionMetaFields;
   using ExampleStorage = ExampleStorageDefinition<SherlockStreamPersister>;

@@ -36,6 +36,7 @@ SOFTWARE.
 #include "../base.h"
 #include "../enum.h"
 #include "../struct.h"
+#include "../optional.h"
 #include "../variant.h"
 
 #include "../../Bricks/template/enable_if.h"
@@ -140,12 +141,20 @@ CURRENT_STRUCT(ReflectedType_Variant, ReflectedTypeBase) {
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Variant) {}
 };
 
-using StructFieldsVector = std::vector<std::pair<TypeID, std::string>>;
+CURRENT_STRUCT(ReflectedType_Struct_Field) {
+  CURRENT_FIELD(type_id, TypeID);
+  CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD(description, Optional<std::string>);
+  CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct_Field){};
+  CURRENT_CONSTRUCTOR(ReflectedType_Struct_Field)(
+      TypeID type_id, const std::string& name, const Optional<std::string> description)
+      : type_id(type_id), name(name), description(description) {}
+};
 
 CURRENT_STRUCT(ReflectedType_Struct, ReflectedTypeBase) {
   CURRENT_FIELD(name, std::string);
   CURRENT_FIELD(super_id, TypeID);
-  CURRENT_FIELD(fields, StructFieldsVector);
+  CURRENT_FIELD(fields, std::vector<ReflectedType_Struct_Field>);
   CURRENT_DEFAULT_CONSTRUCTOR(ReflectedType_Struct) {}
 };
 
@@ -170,15 +179,15 @@ inline TypeID CalculateTypeID(const ReflectedType_Struct& s, bool is_incomplete 
     // since we don't know their real `type_id`-s.
     // At this moment, reflected types of the fields should be empty.
     for (const auto& f : s.fields) {
-      assert(f.first == TypeID::INVALID_TYPE);
-      hash ^= current::ROL64(current::CRC32(f.second), i + 19u);
+      assert(f.type_id == TypeID::INVALID_TYPE);
+      hash ^= current::ROL64(current::CRC32(f.name), i + 19u);
       ++i;
     }
     return static_cast<TypeID>(TYPEID_INCOMPLETE_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);
   } else {
     for (const auto& f : s.fields) {
-      assert(f.first != TypeID::INVALID_TYPE);
-      hash ^= ROL64(f.first, i + 17u) ^ current::ROL64(current::CRC32(f.second), i + 29u);
+      assert(f.type_id != TypeID::INVALID_TYPE);
+      hash ^= ROL64(f.type_id, i + 17u) ^ current::ROL64(current::CRC32(f.name), i + 29u);
       ++i;
     }
     return static_cast<TypeID>(TYPEID_STRUCT_TYPE + hash % TYPEID_TYPE_RANGE);

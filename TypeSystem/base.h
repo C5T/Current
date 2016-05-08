@@ -47,12 +47,17 @@ struct CountFieldsImplementationType {
 
 // Helper structs for reflection.
 class FieldTypeAndName {};
+class FieldTypeAndNameAndIndex {};
 
 template <typename SELF>
 class FieldNameAndPtr {};
 
 class FieldNameAndImmutableValue {};
 class FieldNameAndMutableValue {};
+
+// Simple index. TODO(dkorolev): Retire the complex `Index` below, it may speed up compilation.
+template <int N>
+struct SimpleIndex {};
 
 // Complex index: <HelperStruct, int Index>.
 template <class T, int N>

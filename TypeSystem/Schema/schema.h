@@ -62,6 +62,12 @@ inline const PrimitiveTypesListImpl& PrimitiveTypesList() {
   return current::Singleton<PrimitiveTypesListImpl>();
 }
 
+inline void AppendAsMultilineCommentIndentedTwoSpaces(std::ostream& os, const std::string& description) {
+  for (const auto& line : strings::Split(description, '\n')) {
+    os << "  // " << line << '\n';
+  }
+}
+
 // Metaprogramming to make it easy to add support for new programming languages to include in the schema.
 enum class Language : int {
   begin = 0,
@@ -147,10 +153,14 @@ struct CurrentStructPrinter<CPPLanguageSelector::CurrentStructs> {
     for (const auto& f : s.fields) {
       // Type name should be put into parentheses if it contains commas. Putting all type names
       // into parentheses won't hurt, I've added the condition purely for aesthetic purposes. -- D.K.
-      const std::string raw_type_name = type_name(f.first);
+      const std::string raw_type_name = type_name(f.type_id);
       const std::string type_name =
           raw_type_name.find(',') == std::string::npos ? raw_type_name : '(' + raw_type_name + ')';
-      os << "  CURRENT_FIELD(" << f.second << ", " << type_name << ");\n";
+      os << "  CURRENT_FIELD(" << f.name << ", " << type_name << ");\n";
+      if (Exists(f.description)) {
+        os << "  CURRENT_FIELD_DESCRIPTION(" << f.name << ", \""
+           << strings::EscapeForCPlusPlus(Value(f.description)) << "\");\n";
+      }
     }
     os << "};\n";
   }
@@ -180,8 +190,16 @@ struct CurrentStructPrinter<CPPLanguageSelector::NativeStructs> {
       os << " : " << type_name(s.super_id);
     }
     os << " {\n";
+    bool first_field = true;
     for (const auto& f : s.fields) {
-      os << "  " << type_name(f.first) << " " << f.second << ";\n";
+      if (Exists(f.description)) {
+        if (!first_field) {
+          os << '\n';
+        }
+        AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
+      }
+      os << "  " << type_name(f.type_id) << " " << f.name << ";\n";
+      first_field = false;
     }
     os << "};\n";
   }
@@ -403,22 +421,20 @@ struct LanguageSyntaxImpl<Language::FSharp> final {
 
     // When dumping a `CURRENT_STRUCT` as an F# record, since inheritance is not supported by Newtonsoft.JSON,
     // all base class fields are hoisted to the top of the record.
-    void RecursivelyListStructFields(std::ostringstream& temporary_os, const ReflectedType_Struct& s) const {
-      if (s.super_id != TypeID::CurrentStruct) {
-        // TODO(dkorolev): Check that `at()` and `Value<>` succeeded.
-        RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
-      }
-      for (const auto& f : s.fields) {
-        temporary_os << "  " << f.second << " : " << TypeName(f.first) << '\n';
-      }
-    }
-
     void RecursivelyListStructFieldsForFSharp(std::ostringstream& os, const ReflectedType_Struct& s) const {
       if (s.super_id != TypeID::CurrentStruct) {
         RecursivelyListStructFieldsForFSharp(os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
+      bool first_field = true;
       for (const auto& f : s.fields) {
-        os << "  " << f.second << " : " << TypeName(f.first) << '\n';
+        if (Exists(f.description)) {
+          if (!first_field) {
+            os << '\n';
+          }
+          AppendAsMultilineCommentIndentedTwoSpaces(os, Value(f.description));
+        }
+        os << "  " << f.name << " : " << TypeName(f.type_id) << '\n';
+        first_field = false;
       }
     }
     void operator()(const ReflectedType_Struct& s) const {
@@ -529,7 +545,11 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
         RecursivelyListStructFields(temporary_os, Value<ReflectedType_Struct>(types_.at(s.super_id)));
       }
       for (const auto& f : s.fields) {
-        temporary_os << "| `" << f.second << "` | " << TypeName(f.first) << " |\n";
+        temporary_os << "| `" << f.name << "` | " << TypeName(f.type_id) << " |";
+        if (Exists(f.description)) {
+          temporary_os << ' ' << strings::EscapeForMarkdown(Value(f.description)) << " |";
+        }
+        temporary_os << '\n';
       }
     }
 
@@ -538,7 +558,8 @@ struct LanguageSyntaxImpl<Language::Markdown> final {
       RecursivelyListStructFields(temporary_os, s);
       const std::string fields = temporary_os.str();
       if (!fields.empty()) {
-        os_ << "\n### `" << s.name << "`\n| **Field** | **Type** |\n| ---: | :--- |\n" << fields << '\n';
+        os_ << "\n### `" << s.name << "`\n| **Field** | **Type** | **Description** |\n| ---: | :--- | :--- |\n"
+            << fields << '\n';
       }
     }
   };  // struct LanguageSyntax<Language::Markdown>::FullSchemaPrinter
@@ -685,8 +706,9 @@ struct LanguageSyntaxImpl<Language::JSON> final {
       }
       for (const auto& f : s.fields) {
         JSONSchemaObjectField field;
-        field.field = f.second;
-        field.as = TypeDescriptionForJSON(f.first);
+        field.field = f.name;
+        field.as = TypeDescriptionForJSON(f.type_id);
+        field.description = f.description;
         object.contains.push_back(std::move(field));
       }
     }
@@ -744,8 +766,16 @@ CURRENT_STRUCT(SchemaInfo) {
   CURRENT_DEFAULT_CONSTRUCTOR(SchemaInfo) {}
   CURRENT_CONSTRUCTOR(SchemaInfo)(const SchemaInfo& x) : types(x.types), order(x.order) {}
   CURRENT_CONSTRUCTOR(SchemaInfo)(SchemaInfo && x) : types(std::move(x.types)), order(std::move(x.order)) {}
-  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo const& x) { types = x.types; order = x.order; return *this; }
-  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo && x) { types = std::move(x.types); order = std::move(x.order); return *this; }
+  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo const& x) {
+    types = x.types;
+    order = x.order;
+    return *this;
+  }
+  CURRENT_ASSIGN_OPER(SchemaInfo)(SchemaInfo && x) {
+    types = std::move(x.types);
+    order = std::move(x.order);
+    return *this;
+  }
 
   template <Language L>
   std::string Describe(bool headers = true) const {
@@ -770,7 +800,7 @@ struct StructSchema final {
           Reflector().ReflectedTypeByTypeID(s.super_id).Call(*this);
         }
         for (const auto& f : s.fields) {
-          Reflector().ReflectedTypeByTypeID(f.first).Call(*this);
+          Reflector().ReflectedTypeByTypeID(f.type_id).Call(*this);
         }
         schema_.order.push_back(s.type_id);
       }

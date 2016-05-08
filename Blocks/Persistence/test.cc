@@ -56,6 +56,8 @@ CURRENT_STRUCT(StorableString) {
 }  // namespace persistence_test
 
 TEST(PersistenceLayer, Memory) {
+  current::time::ResetToZero();
+
   using namespace persistence_test;
 
   using IMPL = current::persistence::Memory<std::string>;
@@ -131,14 +133,17 @@ TEST(PersistenceLayer, MemoryExceptions) {
   static_assert(!current::ss::IsEntryPersister<IMPL, int>::value, "");
 
   {
+    current::time::ResetToZero();
     // Time goes back.
     IMPL impl;
     impl.Publish("2", std::chrono::microseconds(2));
+    current::time::ResetToZero();
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
   }
 
   {
+    current::time::ResetToZero();
     // Time staying the same is as bad as time going back.
     current::time::SetNow(std::chrono::microseconds(3));
     IMPL impl;
@@ -152,6 +157,7 @@ TEST(PersistenceLayer, MemoryExceptions) {
   }
 
   {
+    current::time::ResetToZero();
     IMPL impl;
     impl.Publish("1", std::chrono::microseconds(1));
     impl.Publish("2", std::chrono::microseconds(2));
@@ -202,6 +208,8 @@ TEST(PersistenceLayer, MemoryIteratorCanNotOutliveMemoryBlock) {
 }
 
 TEST(PersistenceLayer, File) {
+  current::time::ResetToZero();
+
   using namespace persistence_test;
 
   using IMPL = current::persistence::File<StorableString>;
@@ -318,16 +326,19 @@ TEST(PersistenceLayer, FileExceptions) {
       current::FileSystem::JoinPath(FLAGS_persistence_test_tmpdir, "data");
 
   {
+    current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     // Time goes back.
     IMPL impl(persistence_file_name);
     current::time::SetNow(std::chrono::microseconds(2));
     impl.Publish("2");
+    current::time::ResetToZero();
     current::time::SetNow(std::chrono::microseconds(1));
     ASSERT_THROW(impl.Publish("1"), current::persistence::InconsistentTimestampException);
   }
 
   {
+    current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     // Time staying the same is as bad as time going back.
     current::time::SetNow(std::chrono::microseconds(3));
@@ -337,12 +348,14 @@ TEST(PersistenceLayer, FileExceptions) {
   }
 
   {
+    current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     IMPL impl(persistence_file_name);
     ASSERT_THROW(impl.LastPublishedIndexAndTimestamp(), current::persistence::NoEntriesPublishedYet);
   }
 
   {
+    current::time::ResetToZero();
     const auto file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
     IMPL impl(persistence_file_name);
     current::time::SetNow(std::chrono::microseconds(1));
@@ -365,6 +378,8 @@ inline StorableString LargeTestStorableString(int index) {
 
 template <typename IMPL, int N = 1000>
 void IteratorPerformanceTest(IMPL& impl, bool publish = true) {
+  current::time::ResetToZero();
+
   // Populate many entries. Skip if testing the "resume from an existing file" mode.
   if (publish) {
     EXPECT_EQ(0u, impl.Size());
