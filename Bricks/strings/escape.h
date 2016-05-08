@@ -38,8 +38,6 @@ inline std::string EscapeForCPlusPlus(const std::string& input) {
       output += "\\n";
     } else if (c == '\t') {
       output += "\\t";
-    } else if (c == '\'') {
-      output += "\\\'";
     } else if (c == '\"') {
       output += "\\\"";
     } else {

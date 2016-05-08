@@ -283,7 +283,7 @@
             {
               "type_id": "T9000000000000000021",
               "name": "a",
-              "description": "It's the order of fields that matters."
+              "description": "It's the \"order\" of fields that matters."
             },
             {
               "type_id": "T9000000000000000022",

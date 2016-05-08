@@ -8,7 +8,7 @@
 namespace current_userspace {
 CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(a, uint8_t);
-  CURRENT_FIELD_DESCRIPTION(a, "It\'s the order of fields that matters.");
+  CURRENT_FIELD_DESCRIPTION(a, "It's the \"order\" of fields that matters.");
   CURRENT_FIELD(b, uint16_t);
   CURRENT_FIELD_DESCRIPTION(b, "Field descriptions can be set in any order.");
   CURRENT_FIELD(c, uint32_t);

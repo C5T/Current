@@ -6,7 +6,7 @@ namespace SMOKE_TEST_STRUCT_NAMESPACE {
 
 CURRENT_STRUCT(Primitives) {
   CURRENT_FIELD(a, uint8_t);
-  CURRENT_FIELD_DESCRIPTION(a, "It's the order of fields that matters.");
+  CURRENT_FIELD_DESCRIPTION(a, "It's the \"order\" of fields that matters.");
   CURRENT_FIELD(b, uint16_t);
   CURRENT_FIELD(c, uint32_t);
   CURRENT_FIELD(d, uint64_t);

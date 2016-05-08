@@ -6,7 +6,7 @@ let inline ParseJSON (s : string) : 'T = JsonConvert.DeserializeObject<'T>(s)
 *)
 
 type Primitives = {
-  // It's the order of fields that matters.
+  // It's the "order" of fields that matters.
   a : byte
 
   // Field descriptions can be set in any order.

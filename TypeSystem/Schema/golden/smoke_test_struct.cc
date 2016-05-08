@@ -7,7 +7,7 @@
 
 namespace current_userspace {
 struct Primitives {
-  // It's the order of fields that matters.
+  // It's the "order" of fields that matters.
   uint8_t a;
 
   // Field descriptions can be set in any order.

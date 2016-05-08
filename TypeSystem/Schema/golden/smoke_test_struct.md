@@ -3,7 +3,7 @@
 ### `Primitives`
 | **Field** | **Type** | **Description** |
 | ---: | :--- | :--- |
-| `a` | Integer (8-bit unsigned) | It's the order of fields that matters. |
+| `a` | Integer (8-bit unsigned) | It's the "order" of fields that matters. |
 | `b` | Integer (16-bit unsigned) | Field descriptions can be set in any order. |
 | `c` | Integer (32-bit unsigned) |
 | `d` | Integer (64-bit unsigned) |

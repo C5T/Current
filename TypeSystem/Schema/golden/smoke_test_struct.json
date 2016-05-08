@@ -4,7 +4,7 @@
     "contains": [
       {
         "field": "a",
-        "description": "It's the order of fields that matters.",
+        "description": "It's the \"order\" of fields that matters.",
         "as": {
           "primitive": {
             "type": "uint8_t",
