@@ -100,10 +100,6 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
 
       // First section, codename and up/down status.
       {
-        const auto url = service.url_status_page_direct;
-        const auto body = tiny_text_begin + "codename" + tiny_text_end + "<BR/>" + small_link_begin + codename +
-                          small_link_end + width_marker;
-
         struct up_down_renderer {
           std::chrono::microseconds now;
           const std::string& codename;
@@ -128,6 +124,11 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
         };
         up_down_renderer up_down(now, codename);
         service.currently.Call(up_down);
+
+        // const auto url = service.url_status_page_direct;
+        const auto url = "./live/" + codename;
+        const auto body = tiny_text_begin + "codename" + tiny_text_end + "<BR/>" + small_link_begin + codename +
+                          small_link_end + width_marker;
 
         os << "<TR><TD ROWSPAN='" << up_down.cells.size() + 1 << "' HREF='" << url << "'>" << body << "</TD>";
         os << up_down.cells[0] << "</TR>";
