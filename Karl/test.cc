@@ -391,7 +391,7 @@ TEST(Karl, DeregisterWithNginx) {
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
       ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied));
       generator_proxied_status_url = Value(per_ip_services[generator.ClaireCodename()].url_status_page_proxied);
-      EXPECT_EQ(karl_nginx_base_url + "/proxied/" + generator.ClaireCodename(), generator_proxied_status_url);
+      EXPECT_EQ(karl_nginx_base_url + "/live/" + generator.ClaireCodename(), generator_proxied_status_url);
     }
 
     // Check that `generator`'s status page is accessible via Nginx.
@@ -428,7 +428,7 @@ TEST(Karl, DeregisterWithNginx) {
         EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
         ASSERT_TRUE(Exists(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied));
         is_prime_proxied_status_url = Value(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied);
-        EXPECT_EQ(karl_nginx_base_url + "/proxied/" + is_prime.ClaireCodename(), is_prime_proxied_status_url);
+        EXPECT_EQ(karl_nginx_base_url + "/live/" + is_prime.ClaireCodename(), is_prime_proxied_status_url);
       }
       // Check that `is_prime`'s status page is accessible via Nginx.
       {
@@ -582,7 +582,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   }
 
   const std::string proxied_url =
-      "http://localhost:" + current::ToString(FLAGS_karl_nginx_port) + "/proxied/" + claire.codename;
+      "http://localhost:" + current::ToString(FLAGS_karl_nginx_port) + "/live/" + claire.codename;
   {
     // Must wait for Nginx config reload to take effect.
     while (true) {

@@ -89,7 +89,7 @@ class NginxManager {
  public:
   explicit NginxManager(const std::string& config_file) : config_file_(config_file) {
     try {
-      FileSystem::WriteStringToFile("", config_file_.c_str());
+      FileSystem::WriteStringToFile("# File is writable", config_file_.c_str(), true);
     } catch (current::FileException&) {
       CURRENT_THROW(CannotWriteConfigFileException(config_file_));
     }
@@ -144,13 +144,7 @@ class NginxManager {
     }
   }
 
-  virtual ~NginxManager() {
-    try {
-      FileSystem::WriteStringToFile("# This file is managed by Current and has been cleaned up",
-                                    config_file_.c_str());
-    } catch (std::exception&) {
-    }
-  }
+  virtual ~NginxManager() {}
 
  private:
   const std::string config_file_;

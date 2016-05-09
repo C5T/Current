@@ -198,7 +198,7 @@ struct KarlNginxParameters {
   std::string route_prefix;
   KarlNginxParameters(uint16_t port,
                       const std::string& config_file,
-                      const std::string& route_prefix = "/proxied")
+                      const std::string& route_prefix = "/live")
       : port(port), config_file(config_file), route_prefix(route_prefix) {}
 };
 
@@ -223,9 +223,11 @@ class KarlNginxManager {
   }
 
   void UpdateNginxIfNeeded() {
+   // To spawn Nginx `server` at startup even if the storage is empty.
+    static bool first_run = true;
     if (has_nginx_config_file_) {
       const uint64_t current_stream_size = storage_.InternalExposeStream().InternalExposePersister().Size();
-      if (current_stream_size != last_reflected_state_stream_size_) {
+      if (first_run || current_stream_size != last_reflected_state_stream_size_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
         server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_port_));
         storage_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
@@ -238,6 +240,7 @@ class KarlNginxManager {
         }).Go();
         nginx_manager_->UpdateConfig(std::move(server));
         last_reflected_state_stream_size_ = current_stream_size;
+        first_run = false;
       }
     }
   }
