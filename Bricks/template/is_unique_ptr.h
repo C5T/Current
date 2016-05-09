@@ -35,16 +35,24 @@ template <typename T>
 struct is_unique_ptr_impl {
   enum { value = false };
   typedef T underlying_type;
-  static T& extract(T& x) { return x; }
-  static const T& extract(const T& x) { return x; }
+  static T& Extract(T& x) { return x; }
+  static const T& Extract(const T& x) { return x; }
+  static T& Extract(T* x) { return *x; }
+  static const T& Extract(const T* x) { return *x; }
+  static T* Pointer(T& x) { return &x; }
+  static const T* Pointer(const T& x) { return x; }
+  static T* Pointer(T* x) { return x; }
+  static const T* Pointer(const T* x) { return x; }
 };
 
 template <typename T, typename D>
 struct is_unique_ptr_impl<std::unique_ptr<T, D>> {
   enum { value = true };
   typedef T underlying_type;
-  static T& extract(std::unique_ptr<T, D>& x) { return *x.get(); }
-  static const T& extract(const std::unique_ptr<T, D>& x) { return *x.get(); }
+  static T& Extract(std::unique_ptr<T, D>& x) { return *x.get(); }
+  static const T& Extract(const std::unique_ptr<T, D>& x) { return *x.get(); }
+  static T* Pointer(std::unique_ptr<T, D>& x) { return x.get(); }
+  static const T* Pointer(const std::unique_ptr<T, D>& x) { return x.get(); }
 };
 
 template <typename T>
