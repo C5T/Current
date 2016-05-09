@@ -17,5 +17,8 @@ int main(int argc, char **argv) {
                                  "http://localhost:" + current::ToString(FLAGS_nginx_port),
                                  nginx_parameters);
   std::cout << "Karl up, http://localhost:" << kDefaultKarlPort << '/' << std::endl;
+  if (!FLAGS_nginx_config.empty()) {
+    std::cout << "Karl's Nginx is serving on http://localhost:" << FLAGS_nginx_port << '/' << std::endl;
+  }
   HTTP(kDefaultKarlPort).Join();
 }

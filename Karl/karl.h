@@ -205,10 +205,11 @@ struct KarlNginxParameters {
 template <class STORAGE>
 class KarlNginxManager {
  protected:
-  explicit KarlNginxManager(STORAGE& storage, const KarlNginxParameters& nginx_parameters)
+  explicit KarlNginxManager(STORAGE& storage, const KarlNginxParameters& nginx_parameters, uint16_t karl_port)
       : storage_(storage),
         has_nginx_config_file_(!nginx_parameters.config_file.empty()),
         nginx_parameters_(nginx_parameters),
+        karl_port_(karl_port),
         last_reflected_state_stream_size_(0u) {
     if (has_nginx_config_file_) {
       if (!nginx::NginxInvoker().IsNginxAvailable()) {
@@ -226,11 +227,12 @@ class KarlNginxManager {
       const uint64_t current_stream_size = storage_.InternalExposeStream().InternalExposePersister().Size();
       if (current_stream_size != last_reflected_state_stream_size_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
+        server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_port_));
         storage_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
           for (const auto& claire : fields.claires) {
             if (claire.registered_state == ClaireRegisteredState::Active) {
-              server.CreateDefaultLocation(nginx_parameters_.route_prefix + '/' + claire.codename)
-                  .Add(nginx::config::SimpleDirective("proxy_pass", claire.location.StatusPageURL()));
+              server.CreateProxyPassLocation(nginx_parameters_.route_prefix + '/' + claire.codename,
+                                             claire.location.StatusPageURL());
             }
           }
         }).Go();
@@ -246,6 +248,7 @@ class KarlNginxManager {
   STORAGE& storage_;
   const bool has_nginx_config_file_;
   const KarlNginxParameters nginx_parameters_;
+  uint16_t karl_port_;
   std::unique_ptr<nginx::NginxManager> nginx_manager_;
 
  private:
@@ -270,7 +273,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       const std::string& external_url = "http://localhost:7576",
       const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
       std::chrono::microseconds service_timeout_interval = std::chrono::microseconds(1000ll * 1000ll * 45))
-      : KarlNginxManager(storage_, nginx_parameters),
+      : KarlNginxManager(storage_, nginx_parameters, port),
         destructing_(false),
         external_url_(external_url),
         service_timeout_interval_(service_timeout_interval),
