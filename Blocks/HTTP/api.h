@@ -38,6 +38,7 @@ SOFTWARE.
 #include "request.h"
 #include "response.h"
 #include "types.h"
+#include "favicon.h"
 
 #include "../../Bricks/util/singleton.h"
 #include "../../Bricks/template/weed.h"

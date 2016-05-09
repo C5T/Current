@@ -60,6 +60,7 @@ struct Node {
     size_t order_key;
     std::string label;
     std::map<std::string, Optional<std::string>> params;
+    bool html = false;
     Impl(const std::string& label) : label(label) {}
   };
   std::shared_ptr<Impl> impl;
@@ -79,6 +80,11 @@ struct Node {
     return Set("shape", std::forward<T>(shape));
   }
 
+  Node& HTML() {
+    impl->html = true;
+    return *this;
+  }
+
   Optional<std::string>& operator[](const std::string& param) { return impl->params[param]; }
 };
 
@@ -92,9 +98,31 @@ struct Edge {
 
 struct Group {
   std::vector<std::shared_ptr<Node::Impl>> nodes;
+  std::map<std::string, std::string> params;
+  std::map<std::string, std::string> graph;  // ex. "style" = "dashed".
   Group() = default;
   Group& Add(const Node& node) {
     nodes.push_back(node);
+    return *this;
+  }
+  Group& Label(const std::string& value) {
+    params["label"] = value;
+    return *this;
+  }
+  Group& LabelLoc(const std::string& value) {
+    params["labelloc"] = value;
+    return *this;
+  }
+  Group& FontName(const std::string& value) {
+    params["fontname"] = value;
+    return *this;
+  }
+  Group& FontSize(const std::string& value) {
+    params["fontsize"] = value;
+    return *this;
+  }
+  Group& GraphStyle(const std::string& new_style) {
+    graph["style"] = new_style;
     return *this;
   }
   Group& operator+=(const Node& node) {
@@ -107,6 +135,7 @@ enum class GraphDirected : bool { Undirected = false, Directed = true };
 
 template <GraphDirected DIRECTED>
 struct GenericGraph {
+  Optional<std::string> title;
   std::map<std::string, Optional<std::string>> params;
   std::vector<std::shared_ptr<Node::Impl>> nodes;
   std::vector<Edge> edges;
@@ -119,6 +148,12 @@ struct GenericGraph {
   void RankDirLR() { RankDir() = "LR"; }
 
   GenericGraph() = default;
+
+  template<typename T>
+  GenericGraph& Title(T&& value) {
+    title = std::forward<T>(value);
+    return *this;
+  }
 
   GenericGraph& Add(const Node& node) {
     nodes.push_back(node.impl);
@@ -158,14 +193,23 @@ struct GenericGraph {
     }
 
     std::ostringstream os;
-    os << ((DIRECTED == GraphDirected::Directed) ? "digraph" : "graph") << " {\n";
+    os << ((DIRECTED == GraphDirected::Directed) ? "digraph" : "graph") << ' ';
+    if (Exists(title)) {
+      os << '\"' << Escape(Value(title)) << "\" ";
+    }
+    os << "{\n";
     for (const auto& param : params) {
       if (Exists(param.second)) {
         os << "  " << param.first << "=\"" << Escape(Value(param.second)) << "\";\n";
       }
     }
     for (const auto& node : nodes) {
-      os << "  node" << node_index[node.get()] << " [ label=\"" << Escape(node->label) << "\" ";
+      os << "  node" << node_index[node.get()];
+      if (!node->html) {
+        os << " [ label=\"" << Escape(node->label) << "\" ";
+      } else {
+        os << " [ label=<" << node->label << "> ";
+      }
       for (const auto& node_param : node->params) {
         if (Exists(node_param.second)) {
           os << node_param.first << "=\"" << Escape(Value(node_param.second)) << "\" ";
@@ -180,6 +224,16 @@ struct GenericGraph {
       os << "  subgraph cluster_" << (group_index + 1) << " {\n";
       for (const auto& node : group.nodes) {
         os << "    node" << node_index[node.get()] << ";\n";
+      }
+      for (const auto& param : group.params) {
+        os << "    " << param.first << "=\"" << Escape(param.second) << "\";\n";
+      }
+      if (!group.graph.empty()) {
+        os << "    graph [";
+        for (const auto& kv : group.graph) {
+          os << ' ' << kv.first << "=\"" + Escape(kv.second) << '\"';
+        }
+        os << " ];\n";
       }
       os << "  }\n";
     }

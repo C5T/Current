@@ -55,6 +55,7 @@ namespace current {
 namespace net {
 
 // HTTP constants to parse the header and extract method, URL, headers and body.
+// TODO(dkorolev): Move these constants away from this `.../impl/...` file.
 namespace constants {
 
 constexpr static const char kCRLF[] = "\r\n";
@@ -62,6 +63,8 @@ constexpr const size_t kCRLFLength = strings::CompileTimeStringLength(kCRLF);
 
 constexpr const char* kDefaultContentType = "text/plain";
 constexpr const char* kDefaultJSONContentType = "application/json; charset=utf-8";
+// TODO(dkorolev): Make use of this constant everywhere.
+constexpr const char* kDefaultHTMLContentType = "text/html; charset=utf-8";
 
 constexpr const char kHeaderKeyValueSeparator[] = ": ";
 constexpr const size_t kHeaderKeyValueSeparatorLength =

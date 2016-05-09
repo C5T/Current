@@ -1,0 +1,18 @@
+digraph {
+  node1 [ label="{follower|{foo|bar}}" shape="record" ];
+  node2 [ label="{master|{foo|bar}}" shape="record" ];
+  node3 [ label="{follower|{foo|bar}}" shape="record" ];
+  subgraph cluster_1 {
+    node1;
+    node2;
+    label="10.0.0.1";
+    graph [ style="dashed" ];
+  }
+  subgraph cluster_2 {
+    node3;
+    label="10.0.0.2";
+    graph [ style="dashed" ];
+  }
+  node1 -> node2;
+  node3 -> node2;
+}

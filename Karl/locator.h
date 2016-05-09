@@ -29,7 +29,7 @@ SOFTWARE.
 
 #include "../port.h"
 
-#include "schema.h"
+#include "schema_claire.h"
 #include "constants.h"
 
 #include "../Bricks/strings/util.h"

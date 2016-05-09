@@ -202,4 +202,25 @@ struct PortForUnitTestPicker {
 // force Mac builds to use POSIX HTTP client implementation.
 #define CURRENT_APPLE_HTTP_CLIENT_POSIX
 
+// Make sure `__DATE__` and `__TIME__` parsing works on both Windows and Ubuntu.
+// TL;DR: Ubuntu doesn't have `std::get_time()` until gcc 5, while MSVS doesn't have strptime.
+// Below is the workaround from http://stackoverflow.com/questions/321849/strptime-equivalent-on-windows.
+#ifdef CURRENT_WINDOWS
+#include <iomanip>
+#include <sstream>
+namespace enable_strptime_on_windows {
+const char* strptime(const char* input_string, const char* input_format, tm* output_tm) {
+  std::istringstream input(input_string);
+  input.imbue(std::locale(setlocale(LC_ALL, nullptr)));
+  input >> std::get_time(output_tm, input_format);
+  if (input.fail()) {
+    return nullptr;
+  } else {
+    return input_string + input.tellg();
+  }
+}
+}  // namespace enable_strptime_on_windows
+using namespace enable_strptime_on_windows;
+#endif  // CURRENT_WINDOWS
+
 #endif

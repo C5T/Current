@@ -57,6 +57,16 @@ inline std::string TimeIntervalAsHumanReadableString(std::chrono::microseconds u
   }
 }
 
+inline std::string TimeDifferenceAsHumanReadableString(std::chrono::microseconds dt) {
+  if (std::abs(dt.count()) < 50 * 1000) {
+    return "just now";
+  } else if (dt.count() < 0) {
+    return TimeIntervalAsHumanReadableString(-dt) + " ago";
+  } else {
+    return TimeIntervalAsHumanReadableString(+dt) + " into the future";
+  }
+}
+
 }  // namespace strings
 }  // namespace current
 

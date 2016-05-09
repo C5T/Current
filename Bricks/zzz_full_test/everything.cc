@@ -12,6 +12,7 @@
 #define CURRENT_MOCK_TIME
 
 #include "./dflags/test.cc"
+#include "./dot/test.cc"
 #include "./file/test.cc"
 #include "./graph/test.cc"
 #include "./net/http/headers/test.cc"
