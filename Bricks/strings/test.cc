@@ -56,6 +56,7 @@ using current::strings::UniqueChunk;
 using current::strings::ChunkDB;
 using current::strings::RoundDoubleToString;
 using current::strings::TimeIntervalAsHumanReadableString;
+using current::strings::TimeDifferenceAsHumanReadableString;
 using current::strings::EscapeForCPlusPlus;
 using current::strings::EscapeForMarkdown;
 using current::strings::is_string_type;
@@ -634,11 +635,25 @@ TEST(TimeIntervalAsString, SmokeTest) {
 
   EXPECT_EQ("-0s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(-1)));
   EXPECT_EQ("-1s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-1e6))));
-  EXPECT_EQ("-1s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-1e6 - 1))));
-  EXPECT_EQ("-0s", TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-1e6 + 1))));
+  EXPECT_EQ("-1s",
+            TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-1e6 - 1))));
+  EXPECT_EQ("-0s",
+            TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-1e6 + 1))));
 
   EXPECT_EQ("-1h 0m 0s",
             TimeIntervalAsHumanReadableString(std::chrono::microseconds(static_cast<int64_t>(-60 * 60 * 1e6))));
+}
+
+TEST(TimeDifferenceAsHumanReadableString, SmokeTest) {
+  EXPECT_EQ("just now", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(0)));
+  EXPECT_EQ("just now", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(+49999)));
+  EXPECT_EQ("just now", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(-49999)));
+  EXPECT_EQ("0s into the future", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(+50000)));
+  EXPECT_EQ("0s ago", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(-50000)));
+
+  const int64_t _4242 = 1000ll * 1000ll * (60 * 42 + 42);
+  EXPECT_EQ("42m 42s into the future", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(+_4242)));
+  EXPECT_EQ("42m 42s ago", TimeDifferenceAsHumanReadableString(std::chrono::microseconds(-_4242)));
 }
 
 TEST(Util, Escape) {
