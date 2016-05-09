@@ -396,7 +396,6 @@ TEST(Karl, DeregisterWithNginx) {
 
     // Check that `generator`'s status page is accessible via Nginx.
     {
-      std::cerr << "Waiting for generator via Nginx\n";
       current::karl::ClaireStatus status;
       // Must wait for Nginx config reload to take effect.
       while (true) {
@@ -407,13 +406,12 @@ TEST(Karl, DeregisterWithNginx) {
             break;
           }
         } catch (const current::net::NetworkException& e) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       EXPECT_EQ("generator", status.service);
     }
 
-    std::cerr << "Creating is_prime\n";
     {
       const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
       // The `generator` and `is_prime` services are registered.
@@ -434,7 +432,6 @@ TEST(Karl, DeregisterWithNginx) {
       }
       // Check that `is_prime`'s status page is accessible via Nginx.
       {
-        std::cerr << "Waiting for is_prime via Nginx\n";
         current::karl::ClaireStatus status;
         // Must wait for Nginx config reload to take effect.
         while (true) {
@@ -446,11 +443,11 @@ TEST(Karl, DeregisterWithNginx) {
             }
           } catch (const current::net::NetworkException& e) {
           }
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         EXPECT_EQ("is_prime", status.service);
       }
     }
-    std::cerr << "Deleting is_prime\n";
 
     // The `generator` should be the only service registered.
     {
@@ -466,7 +463,6 @@ TEST(Karl, DeregisterWithNginx) {
     }
   }
 
-  std::cerr << "Both services are dead\n";
   // All services should be deregistered by this moment.
   {
     unittest_karl_status_t status;
@@ -480,10 +476,10 @@ TEST(Karl, DeregisterWithNginx) {
   {
     // Must wait for Nginx config reload to take effect.
     while (HTTP(GET(is_prime_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      ;  // Spin lock.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Spin lock.
     }
     while (HTTP(GET(generator_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      ;  // Spin lock.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Spin lock.
     }
   }
 }
@@ -523,18 +519,16 @@ TEST(Karl, DisconnectedByTimout) {
 
   current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
                         std::chrono::microseconds(101 * 1000 * 1000));
-  while (karl.ActiveServicesCount() > 0u) {
-    ;  // Spin lock.
-  }
-  {
-    const auto result = karl.InternalExposeStorage()
-                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-                              EXPECT_EQ(current::karl::ClaireRegisteredState::DisconnectedByTimeout,
-                                        Value(fields.claires[claire.codename]).registered_state);
-                            })
-                            .Go();
-    EXPECT_TRUE(WasCommitted(result));
+  bool is_timeouted_persisted = false;
+  while (!is_timeouted_persisted) {
+    is_timeouted_persisted =
+        Value(karl.InternalExposeStorage()
+                  .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                    EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                    return Value(fields.claires[claire.codename]).registered_state ==
+                           current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                  })
+                  .Go());
   }
 }
 
@@ -600,23 +594,22 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
         }
       } catch (const current::net::NetworkException& e) {
       }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
 
   current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
                         std::chrono::microseconds(101 * 1000 * 1000));
-  while (karl.ActiveServicesCount() > 0u) {
-    ;  // Spin lock.
-  }
-  {
-    const auto result = karl.InternalExposeStorage()
-                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-                              EXPECT_EQ(current::karl::ClaireRegisteredState::DisconnectedByTimeout,
-                                        Value(fields.claires[claire.codename]).registered_state);
-                            })
-                            .Go();
-    EXPECT_TRUE(WasCommitted(result));
+  bool is_timeouted_persisted = false;
+  while (!is_timeouted_persisted) {
+    is_timeouted_persisted =
+        Value(karl.InternalExposeStorage()
+                  .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                    EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                    return Value(fields.claires[claire.codename]).registered_state ==
+                           current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                  })
+                  .Go());
   }
 
   // This is a bit flaky.
