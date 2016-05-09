@@ -49,10 +49,9 @@ struct GenericRenderer {
   const std::chrono::microseconds now;
   GenericRenderer(std::ostream& os, std::chrono::microseconds now) : os(os), now(now) {}
 
-  template<typename T>
+  template <typename T>
   void operator()(const T& user_status) {
     user_status.Render(os, now);
-    //os << "<TR><TD COLSPAN='2'>" << reflection::CurrentTypeName<T>() << "</TD></TR>";
   }
 };
 
@@ -118,11 +117,12 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
                             up.last_keepalive_received + medium_link_end + "</TD>");
           }
           void operator()(const current_service_state::down& down) {
-            cells.push_back("<TD>" + medium_text_begin + "started " +
-                            strings::TimeDifferenceAsHumanReadableString(down.start_time_epoch_microseconds - now) +
-                            medium_text_end + "</TD>");
-            cells.push_back("<TD HREF='./snapshot/" + codename + "?nobuild'>" + medium_link_begin + "down, last seen " +
-                            down.last_keepalive_received + medium_link_end + "</TD>");
+            cells.push_back(
+                "<TD>" + medium_text_begin + "started " +
+                strings::TimeDifferenceAsHumanReadableString(down.start_time_epoch_microseconds - now) +
+                medium_text_end + "</TD>");
+            cells.push_back("<TD HREF='./snapshot/" + codename + "?nobuild'>" + medium_link_begin +
+                            "down, last seen " + down.last_keepalive_received + medium_link_end + "</TD>");
           }
         };
         up_down_renderer up_down(now, codename);
@@ -159,7 +159,7 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
           if (service.build_time_epoch_microseconds.count()) {
             const auto text = "built " + strings::TimeDifferenceAsHumanReadableString(
                                              service.build_time_epoch_microseconds - now);
-            const auto url = "./build/" + codename;
+            const auto url = "https://github.com/dkorolev/Current/commit/" + service.git_commit;
             const auto body = medium_link_begin + text + medium_link_end;
             cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
           }
@@ -182,14 +182,9 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
       // Final section, user report.
       if (Exists(service.runtime)) {
         Value(service.runtime).Call(GenericRenderer(os, now));
-        /*
-        os << "<TR><TD COLSPAN='2'>...more...</TD></TR>";
-        os << "<TR><TD COLSPAN='2'>...info...</TD></TR>";
-        os << "<TR><TD COLSPAN='2'>...here...</TD></TR>";
-
-        */
       }
       os << "</TABLE>";
+
       graph += (services[service.codename] = Node(os.str()).HTML().Shape("none"));
       machines[ip].push_back(service.codename);
     }

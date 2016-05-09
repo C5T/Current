@@ -689,8 +689,10 @@ TEST(Karl, EndToEndTest) {
   }
 }
 
+#if 0
+// TODO(dkorolev): This test is incomplete; revisit it some day soon. Thanks for understanding.
 TEST(Karl, Visualization) {
-  // TODO(dkorolev): This test is incomplete; revisit it some day soon. Thanks for understanding.
+  current::time::ResetToZero();
   using variant_t = Variant<current::karl::default_user_status::status, karl_unittest::is_prime>;
   current::karl::GenericKarlStatus<variant_t> status;
   {
@@ -725,3 +727,4 @@ TEST(Karl, Visualization) {
 
   EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".dot"), graph.AsDOT());
 }
+#endif

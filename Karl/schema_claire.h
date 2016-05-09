@@ -111,12 +111,14 @@ CURRENT_STRUCT(status) {
   CURRENT_FIELD(message, std::string, "OK");
   CURRENT_FIELD(details, (std::map<std::string, std::string>));
 
+  // clang-format off
   void Render(std::ostream& os, std::chrono::microseconds) const {
     os << "<TR><TD COLSPAN='2'>" << message << "</TD></TR>";
     for (const auto& kv : details) {
       os << "<TR><TD>" << kv.first << "</TD><TD>" << kv.second << "</TD></TR>";
     }
   }
+  // clang-format on
 };
 }  // namespace current::karl::default_user_status
 

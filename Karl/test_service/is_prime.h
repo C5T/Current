@@ -40,9 +40,12 @@ CURRENT_STRUCT(is_prime) {
   CURRENT_FIELD(test, std::string, "PASS");
   CURRENT_FIELD(requests, uint64_t, 0ull);
   CURRENT_CONSTRUCTOR(is_prime)(uint64_t requests = 0ull) : requests(requests) {}
+  // clang-format off
   void Render(std::ostream& os, std::chrono::microseconds) const {
-    os << "<TR><TD COLSPAN='2'>" << "IsPrime test: " << test << ", requests: " << requests << "</TD></TR>";
+    os << "<TR><TD COLSPAN='2'>"
+       << "IsPrime test: " << test << ", requests: " << requests << "</TD></TR>";
   }
+  // clang-format on
 };
 
 class ServiceIsPrime final {
