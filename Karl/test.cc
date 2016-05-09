@@ -360,6 +360,8 @@ TEST(Karl, DeregisterWithNginx) {
                              FLAGS_karl_test_storage_persistence_file,
                              "/",
                              karl_nginx_base_url,
+                             "Test",
+                             "https://github.com/dkorolev/Current",
                              nginx_parameters);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
 
@@ -550,6 +552,8 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
                        FLAGS_karl_test_storage_persistence_file,
                        "/",
                        karl_nginx_base_url,
+                       "Test",
+                       "https://github.com/dkorolev/Current",
                        nginx_parameters);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
 
@@ -646,8 +650,13 @@ TEST(Karl, EndToEndTest) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
+  const unittest_karl_t karl(FLAGS_karl_test_port,
+                             FLAGS_karl_test_stream_persistence_file,
+                             FLAGS_karl_test_storage_persistence_file,
+                             "/",
+                             "http://localhost:{port}",
+                             "Karl's Unit Test",
+                             "https://github.com/dkorolev/Current");
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
   const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port,
                                                   std::chrono::microseconds(10000),  // 100 per second.

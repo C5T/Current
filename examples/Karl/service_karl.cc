@@ -17,6 +17,8 @@ int main(int argc, char **argv) {
       ".current/storage",
       "/",
       "http://localhost:" + current::ToString(FLAGS_nginx_port),
+      "Karl's Example",
+      "https://github.com/dkorolev/Current",
       nginx_parameters);
   std::cout << "Karl up, http://localhost:" << kDefaultKarlPort << '/' << std::endl;
   if (!FLAGS_nginx_config.empty()) {

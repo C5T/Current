@@ -154,10 +154,14 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       const std::string& storage_persistence_file,
       const std::string& url = "/",
       const std::string& external_url = "http://localhost:{port}",
+      const std::string& svg_name = "Karl",
+      const std::string& github_repo_url = "",
       const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
       std::chrono::microseconds service_timeout_interval = std::chrono::microseconds(1000ll * 1000ll * 45))
       : KarlNginxManager(storage_, nginx_parameters, port),
         destructing_(false),
+        svg_name_(svg_name),
+        github_repo_url_(github_repo_url),
         external_url_(external_url == "http://localhost:{port}"
                           ? current::strings::Printf("http://localhost:%d", port)
                           : external_url),
@@ -740,12 +744,12 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                      return Response(
                          "<!doctype html>"
                          "<head><link rel='icon' href='./favicon.png'></head>"
-                         "<body>" + Render(result).AsSVG() + "</body>",
+                         "<body>" + Render(result, svg_name_, github_repo_url_).AsSVG() + "</body>",
                          HTTPResponseCode.OK,
                          net::constants::kDefaultHTMLContentType);
                      // clang-format on
                    } else if (response_type == ResponseType::DOT) {
-                     return Response(Render(result).AsDOT());
+                     return Response(Render(result, svg_name_, github_repo_url_).AsDOT());
                    } else {
                      return result;
                    }
@@ -762,6 +766,9 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   std::mutex latest_keepalive_index_mutex_;
   // Plus one to have `0` == "no keepalives", and avoid the corner case of record at index 0 being the one.
   std::unordered_map<std::string, uint64_t> latest_keepalive_index_plus_one_;
+
+  const std::string svg_name_ = "Karl";
+  const std::string github_repo_url_ = "";
 
   const std::string external_url_;
   const std::chrono::microseconds service_timeout_interval_;

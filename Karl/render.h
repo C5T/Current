@@ -58,7 +58,8 @@ struct GenericRenderer {
 // Render Karl's status page as a GraphViz directed graph.
 template <typename INNER_STATUSES_VARIANT>
 inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STATUSES_VARIANT>& status,
-                                const std::string& title = "Graph") {
+                                const std::string& title = "Graph",
+                                const std::string& github_repo_url = "") {
   using namespace graphviz;
 
   std::chrono::microseconds now = status.now;
@@ -159,15 +160,26 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
           if (service.build_time_epoch_microseconds.count()) {
             const auto text = "built " + strings::TimeDifferenceAsHumanReadableString(
                                              service.build_time_epoch_microseconds - now);
-            const auto url = "https://github.com/dkorolev/Current/commit/" + service.git_commit;
-            const auto body = medium_link_begin + text + medium_link_end;
-            cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
+            if (!github_repo_url.empty()) {
+              const auto url = github_repo_url + "/commit/" + service.git_commit;
+              const auto body = medium_link_begin + text + medium_link_end;
+              cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
+            } else {
+              const auto body = medium_text_begin + text + medium_text_end;
+              cells.push_back("<TD>" + body + "</TD>");
+            }
           }
           {
-            const auto text = service.git_branch + ", " + (service.git_dirty ? "dirty" : "clean");
-            const auto url = "https://github.com/dkorolev/Current/tree/" + service.git_branch;
-            const auto body = medium_link_begin + text + medium_link_end;
-            cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
+            if (!github_repo_url.empty()) {
+              const auto text = service.git_branch + ", " + (service.git_dirty ? "dirty" : "clean");
+              const auto url = github_repo_url + "/tree/" + service.git_branch;
+              const auto body = medium_link_begin + text + medium_link_end;
+              cells.push_back("<TD HREF='" + url + "'>" + body + "</TD>");
+            } else {
+              const auto text = service.git_branch + ", " + (service.git_dirty ? "dirty" : "clean");
+              const auto body = medium_text_begin + text + medium_text_end;
+              cells.push_back("<TD>" + body + "</TD>");
+            }
           }
         }
 
