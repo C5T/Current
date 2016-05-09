@@ -1,0 +1,15 @@
+digraph {
+  rankdir="RL";
+  node1 [ label="{{service|AAAAAA}|blah|blah}" shape="record" ];
+  subgraph cluster_1 {
+    node1;
+    label="10.0.0.1
+local time synchnorized";
+    graph [ style="dashed" ];
+  }
+  subgraph cluster_2 {
+    label="10.0.0.2
+0m 42s";
+    graph [ style="dashed" ];
+  }
+}

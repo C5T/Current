@@ -22,9 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// TODO(dkorolev): Test dependency resolution to codenames.
-// TODO(dkorolev): Test runtime status.
-
 #define CURRENT_MOCK_TIME
 #define EXTRA_KARL_LOGGING  // Make sure the schema dump part compiles. -- D.K.
 
@@ -67,6 +64,8 @@ DEFINE_string(karl_test_storage_persistence_file, ".current/storage", "Local fil
 
 DEFINE_bool(karl_run_test_forever, false, "Set to `true` to run the Karl test forever.");
 
+DEFINE_bool(karl_overwrite_golden_files, false, "Set to true to have SVG golden files created/overwritten.");
+
 using unittest_karl_t =
     current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
 using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
@@ -102,9 +101,9 @@ TEST(Karl, SmokeGenerator) {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
-    EXPECT_EQ(1u, status.size()) << JSON(status);
-    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& per_ip_services = status.machines["127.0.0.1"].services;
     EXPECT_EQ(1u, per_ip_services.size());
     ASSERT_TRUE(per_ip_services.count(generator.ClaireCodename())) << JSON(per_ip_services);
     auto& per_codename = per_ip_services[generator.ClaireCodename()];
@@ -145,9 +144,9 @@ TEST(Karl, SmokeIsPrime) {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
-    EXPECT_EQ(1u, status.size()) << JSON(status);
-    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& per_ip_services = status.machines["127.0.0.1"].services;
     EXPECT_EQ(1u, per_ip_services.size());
     ASSERT_TRUE(per_ip_services.count(is_prime.ClaireCodename())) << JSON(per_ip_services);
     auto& per_codename = per_ip_services[is_prime.ClaireCodename()];
@@ -199,9 +198,9 @@ TEST(Karl, SmokeAnnotator) {
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
 
-    EXPECT_EQ(1u, status.size()) << JSON(status);
-    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& per_ip_services = status.machines["127.0.0.1"].services;
     EXPECT_EQ(3u, per_ip_services.size());
     EXPECT_EQ("annotator", per_ip_services[annotator.ClaireCodename()].service);
     EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
@@ -257,9 +256,9 @@ TEST(Karl, SmokeFilter) {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
-    EXPECT_EQ(1u, status.size()) << JSON(status);
-    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& per_ip_services = status.machines["127.0.0.1"].services;
     EXPECT_EQ(4u, per_ip_services.size());
     EXPECT_EQ("annotator", per_ip_services[annotator.ClaireCodename()].service);
     EXPECT_EQ("filter", per_ip_services[filter.ClaireCodename()].service);
@@ -283,7 +282,7 @@ TEST(Karl, Deregister) {
     ASSERT_NO_THROW(
         status = ParseJSON<unittest_karl_status_t>(
             HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-    EXPECT_TRUE(status.empty()) << JSON(status);
+    EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
   {
@@ -295,9 +294,9 @@ TEST(Karl, Deregister) {
       ASSERT_NO_THROW(
           status = ParseJSON<unittest_karl_status_t>(
               HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-      EXPECT_EQ(1u, status.size()) << JSON(status);
-      ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-      auto& per_ip_services = status["127.0.0.1"].services;
+      EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+      ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+      auto& per_ip_services = status.machines["127.0.0.1"].services;
       EXPECT_EQ(1u, per_ip_services.size());
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
     }
@@ -310,9 +309,9 @@ TEST(Karl, Deregister) {
         ASSERT_NO_THROW(
             status = ParseJSON<unittest_karl_status_t>(
                 HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-        EXPECT_EQ(1u, status.size()) << JSON(status);
-        ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-        auto& per_ip_services = status["127.0.0.1"].services;
+        EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+        ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+        auto& per_ip_services = status.machines["127.0.0.1"].services;
         EXPECT_EQ(2u, per_ip_services.size());
         EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
         EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
@@ -324,9 +323,9 @@ TEST(Karl, Deregister) {
       ASSERT_NO_THROW(
           status = ParseJSON<unittest_karl_status_t>(
               HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-      EXPECT_EQ(1u, status.size()) << JSON(status);
-      ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-      auto& per_ip_services = status["127.0.0.1"].services;
+      EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+      ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+      auto& per_ip_services = status.machines["127.0.0.1"].services;
       EXPECT_EQ(1u, per_ip_services.size());
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
     }
@@ -338,7 +337,7 @@ TEST(Karl, Deregister) {
     ASSERT_NO_THROW(
         status = ParseJSON<unittest_karl_status_t>(
             HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-    EXPECT_TRUE(status.empty()) << JSON(status);
+    EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 }
 
@@ -370,7 +369,7 @@ TEST(Karl, DeregisterWithNginx) {
     ASSERT_NO_THROW(
         status = ParseJSON<unittest_karl_status_t>(
             HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-    EXPECT_TRUE(status.empty()) << JSON(status);
+    EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
   std::string generator_proxied_status_url;
@@ -384,9 +383,9 @@ TEST(Karl, DeregisterWithNginx) {
       ASSERT_NO_THROW(
           status = ParseJSON<unittest_karl_status_t>(
               HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-      EXPECT_EQ(1u, status.size()) << JSON(status);
-      ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-      auto& per_ip_services = status["127.0.0.1"].services;
+      EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+      ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+      auto& per_ip_services = status.machines["127.0.0.1"].services;
       EXPECT_EQ(1u, per_ip_services.size());
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
       ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied));
@@ -420,9 +419,9 @@ TEST(Karl, DeregisterWithNginx) {
         ASSERT_NO_THROW(
             status = ParseJSON<unittest_karl_status_t>(
                 HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-        EXPECT_EQ(1u, status.size()) << JSON(status);
-        ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-        auto& per_ip_services = status["127.0.0.1"].services;
+        EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+        ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+        auto& per_ip_services = status.machines["127.0.0.1"].services;
         EXPECT_EQ(2u, per_ip_services.size());
         EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
         EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
@@ -455,9 +454,9 @@ TEST(Karl, DeregisterWithNginx) {
       ASSERT_NO_THROW(
           status = ParseJSON<unittest_karl_status_t>(
               HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-      EXPECT_EQ(1u, status.size()) << JSON(status);
-      ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-      auto& per_ip_services = status["127.0.0.1"].services;
+      EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+      ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+      auto& per_ip_services = status.machines["127.0.0.1"].services;
       EXPECT_EQ(1u, per_ip_services.size());
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
     }
@@ -469,7 +468,7 @@ TEST(Karl, DeregisterWithNginx) {
     ASSERT_NO_THROW(
         status = ParseJSON<unittest_karl_status_t>(
             HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
-    EXPECT_TRUE(status.empty()) << JSON(status);
+    EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
   // Check that both proxied services are removed from Nginx config.
@@ -672,9 +671,9 @@ TEST(Karl, EndToEndTest) {
     unittest_karl_status_t status;
     ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
                         HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
-    EXPECT_EQ(1u, status.size()) << JSON(status);
-    ASSERT_TRUE(status.count("127.0.0.1")) << JSON(status);
-    auto& per_ip_services = status["127.0.0.1"].services;
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& per_ip_services = status.machines["127.0.0.1"].services;
     EXPECT_EQ(4u, per_ip_services.size());
     EXPECT_EQ("annotator", per_ip_services[annotator.ClaireCodename()].service);
     EXPECT_EQ("filter", per_ip_services[filter.ClaireCodename()].service);
@@ -688,4 +687,41 @@ TEST(Karl, EndToEndTest) {
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
   }
+}
+
+TEST(Karl, Visualization) {
+  // TODO(dkorolev): This test is incomplete; revisit it some day soon. Thanks for understanding.
+  using variant_t = Variant<current::karl::default_user_status::status, karl_unittest::is_prime>;
+  current::karl::GenericKarlStatus<variant_t> status;
+  {
+    current::karl::ServerToReport<variant_t>& server1 = status.machines["10.0.0.1"];
+    server1.time_skew = "local time synchnorized";
+    {
+      current::karl::ServiceToReport<variant_t> master;
+      master.currently = current::karl::current_service_state::up(
+          std::chrono::microseconds(123), "just now", std::chrono::microseconds(456), "up 1d 20h 42m 27s");
+      master.service = "service";
+      master.codename = "AAAAAA";
+      master.location = current::karl::ClaireServiceKey("10.0.0.1:10001");
+      master.dependencies = {};
+      master.url_status_page_proxied = "http://127.0.0.1:7576/AAAAAA";
+      master.url_status_page_direct = "http://10.0.0.1:10001/.current";
+      master.runtime = karl_unittest::is_prime(100);
+      server1.services[master.codename] = master;
+    }
+  }
+  {
+    current::karl::ServerToReport<variant_t>& server2 = status.machines["10.0.0.2"];
+    server2.time_skew = "0m 42s";
+  }
+
+  const auto graph = Render(status);
+
+  const auto filename_prefix = current::FileSystem::JoinPath("golden", "viz");
+  if (FLAGS_karl_overwrite_golden_files) {
+    current::FileSystem::WriteStringToFile(graph.AsDOT(), (filename_prefix + ".dot").c_str());
+    current::FileSystem::WriteStringToFile(graph.AsSVG(), (filename_prefix + ".svg").c_str());
+  }
+
+  EXPECT_EQ(current::FileSystem::ReadFileAsString(filename_prefix + ".dot"), graph.AsDOT());
 }

@@ -34,7 +34,7 @@ SOFTWARE.
 #include <mutex>
 #include <condition_variable>
 
-#include "schema.h"
+#include "schema_claire.h"
 #include "locator.h"
 #include "exceptions.h"
 
@@ -179,6 +179,8 @@ class GenericClaire final {
 
     status.service = service_;
     status.codename = codename_;
+    status.start_time_epoch_microseconds = us_start_;
+
     status.local_port = port_;
     status.dependencies.assign(dependencies_.begin(), dependencies_.end());
 

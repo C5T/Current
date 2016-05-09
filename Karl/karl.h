@@ -47,13 +47,16 @@ SOFTWARE.
 #include "../port.h"
 
 #include "exceptions.h"
-#include "schema.h"
+#include "schema_karl.h"
+#include "schema_claire.h"
 #include "locator.h"
+#include "render.h"
 
 #include "../Storage/storage.h"
 #include "../Storage/persister/sherlock.h"
 
 #include "../Bricks/net/http/impl/server.h"
+#include "../Bricks/util/base64.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -65,127 +68,6 @@ SOFTWARE.
 
 namespace current {
 namespace karl {
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// Karl's persisted storage schema.
-//
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// System info, startup/teardown.
-CURRENT_STRUCT(KarlInfo) {
-  CURRENT_FIELD(timestamp, std::chrono::microseconds, current::time::Now());
-  CURRENT_USE_FIELD_AS_KEY(timestamp);
-
-  // `true` for starting up, `false` for a graceful shutdown.
-  CURRENT_FIELD(up, bool, true);
-
-  // The information on the `Stream` of keepalives received, as seen by Karl upon starting up or tearing down.
-  CURRENT_FIELD(persisted_keepalives_info, Optional<idxts_t>);
-
-  // The `build::Info` of this Karl itself.
-  CURRENT_FIELD(karl_build_info, build::Info, build::Info());
-};
-
-CURRENT_ENUM(ClaireRegisteredState, uint8_t){Active = 0u, Deregistered = 1u, DisconnectedByTimeout = 2u};
-
-// Per-service static info -- ideally, what changes once during its startup, [ WTF ] but also dependencies.
-CURRENT_STRUCT(ClaireInfo) {
-  CURRENT_FIELD(codename, std::string);
-  CURRENT_USE_FIELD_AS_KEY(codename);
-
-  CURRENT_FIELD(service, std::string);
-  CURRENT_FIELD(location, ClaireServiceKey);
-  CURRENT_FIELD(reported_timestamp, std::chrono::microseconds);
-  CURRENT_FIELD(url_status_page_direct, std::string);
-  CURRENT_FIELD(registered_state, ClaireRegisteredState);
-};
-
-CURRENT_STRUCT(ClaireBuildInfo) {
-  CURRENT_FIELD(codename, std::string);
-  CURRENT_USE_FIELD_AS_KEY(codename);
-
-  CURRENT_FIELD(build, current::build::Info);
-};
-
-const uint64_t kUpdateServerInfoThresholdByTimeSkewDifference = 50000;
-
-// Per-server status info.
-CURRENT_STRUCT(ServerInfo) {
-  CURRENT_FIELD(ip, std::string);
-  CURRENT_USE_FIELD_AS_KEY(ip);
-
-  CURRENT_FIELD(behind_this_by, std::chrono::microseconds);
-};
-
-CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, KarlInfo, KarlInfoDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ClaireInfo, ClaireInfoDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ClaireBuildInfo, BuildInfoDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, ServerInfo, ServerInfoDictionary);
-
-CURRENT_STORAGE(ServiceStorage) {
-  CURRENT_STORAGE_FIELD(karl, KarlInfoDictionary);
-  CURRENT_STORAGE_FIELD(claires, ClaireInfoDictionary);
-  CURRENT_STORAGE_FIELD(builds, BuildInfoDictionary);
-  CURRENT_STORAGE_FIELD(servers, ServerInfoDictionary);
-};
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// Karl's HTTP response(s) schema.
-//
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-namespace current_service_state {
-
-CURRENT_STRUCT(up) {
-  CURRENT_FIELD(last_keepalive_received, std::string);
-  CURRENT_FIELD(uptime, std::string);
-
-  CURRENT_DEFAULT_CONSTRUCTOR(up) {}
-  CURRENT_CONSTRUCTOR(up)(const std::string& last_keepalive_received, const std::string& uptime)
-      : last_keepalive_received(last_keepalive_received), uptime(uptime) {}
-};
-
-CURRENT_STRUCT(down) {
-  CURRENT_FIELD(last_keepalive_received, std::string);
-  CURRENT_FIELD(last_confirmed_uptime, std::string);
-
-  CURRENT_DEFAULT_CONSTRUCTOR(down) {}
-  CURRENT_CONSTRUCTOR(down)(const std::string& last_keepalive_received,
-                            const std::string& last_confirmed_uptime)
-      : last_keepalive_received(last_keepalive_received), last_confirmed_uptime(last_confirmed_uptime) {}
-};
-
-using state_variant_t = Variant<up, down>;
-
-}  // namespace current::karl::current_service_state
-
-CURRENT_STRUCT_T(ServiceToReport) {
-  CURRENT_FIELD(currently, current_service_state::state_variant_t);
-  CURRENT_FIELD(service, std::string);
-  CURRENT_FIELD(codename, std::string);
-  CURRENT_FIELD(location, ClaireServiceKey);
-  CURRENT_FIELD(dependencies, std::vector<std::string>);             // Codenames.
-  CURRENT_FIELD(unresolved_dependencies, std::vector<std::string>);  // Status page URLs.
-  CURRENT_FIELD(url_status_page_direct, std::string);
-  CURRENT_FIELD(url_status_page_proxied, Optional<std::string>);
-  CURRENT_FIELD(runtime, Optional<T>);
-};
-
-CURRENT_STRUCT_T(ServerToReport) {
-  CURRENT_FIELD(behind_this_by, std::string);
-  CURRENT_FIELD(services, (std::map<std::string, ServiceToReport<T>>));
-};
-
-template <typename RUNTIME_STATUS_VARIANT>
-using GenericKarlStatus = std::map<std::string, ServerToReport<RUNTIME_STATUS_VARIANT>>;
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// Karl's implementation.
-//
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CURRENT_STRUCT_T(KarlPersistedKeepalive) {
   CURRENT_FIELD(location, ClaireServiceKey);
@@ -271,17 +153,29 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       const std::string& stream_persistence_file,
       const std::string& storage_persistence_file,
       const std::string& url = "/",
-      const std::string& external_url = "http://localhost:7576",
+      const std::string& external_url = "http://localhost:{port}",
       const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
       std::chrono::microseconds service_timeout_interval = std::chrono::microseconds(1000ll * 1000ll * 45))
       : KarlNginxManager(storage_, nginx_parameters, port),
         destructing_(false),
-        external_url_(external_url),
+        external_url_(external_url == "http://localhost:{port}"
+                          ? current::strings::Printf("http://localhost:%d", port)
+                          : external_url),
         service_timeout_interval_(service_timeout_interval),
         keepalives_stream_(stream_persistence_file),
         storage_(storage_persistence_file),
         state_update_thread_([this]() { StateUpdateThread(); }),
-        http_scope_(HTTP(port).Register(url, [this](Request r) { return Serve(std::move(r)); })) {
+        // TODO(mzhurovich): `/up` ?
+        http_scope_(HTTP(port).Register(url,
+                                        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                        [this](Request r) { Serve(std::move(r)); }) +
+                    HTTP(port).Register(url + "build",
+                                        URLPathArgs::CountMask::One,
+                                        [this](Request r) { ServeBuild(std::move(r)); }) +
+                    HTTP(port).Register(url + "snapshot",
+                                        URLPathArgs::CountMask::One,
+                                        [this](Request r) { ServeSnapshot(std::move(r)); }) +
+                    HTTP(port).Register(url + "favicon.png", http::CurrentFaviconHandler())) {
     // Report this Karl as up and running.
     // Oh, look, I'm doing work in constructor body. Sigh. -- D.K.
     storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
@@ -376,7 +270,9 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
 
   void Serve(Request r) {
     if (r.method != "GET" && r.method != "POST" && r.method != "DELETE") {
-      r(current::net::DefaultMethodNotAllowedMessage(), HTTPResponseCode.MethodNotAllowed, "text/html");
+      r(current::net::DefaultMethodNotAllowedMessage(),
+        HTTPResponseCode.MethodNotAllowed,
+        net::constants::kDefaultHTMLContentType);
       return;
     }
 
@@ -466,7 +362,10 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
             persisted_keepalive_t record;
             record.location = location;
             record.keepalive = status;
-            keepalives_stream_.Publish(std::move(record));
+            {
+              std::lock_guard<std::mutex> lock(latest_keepalive_index_mutex_);
+              latest_keepalive_index_plus_one_[codename] = keepalives_stream_.Publish(std::move(record)).index;
+            }
           }
 
           Optional<current::build::Info> optional_build = body.build;
@@ -576,8 +475,64 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
     }
   }
 
+  void ServeBuild(Request r) {
+    const auto codename = r.url_path_args[0];
+    storage_.ReadOnlyTransaction([this, codename](ImmutableFields<storage_t> fields) -> Response {
+      const auto result = fields.builds[codename];
+      if (Exists(result)) {
+        return Value(result);
+      } else {
+        return Response(current_service_state::Error("Codename '" + codename + "' not found."),
+                        HTTPResponseCode.NotFound);
+      }
+    }, std::move(r)).Detach();
+  }
+
+  void ServeSnapshot(Request r) {
+    const auto codename = r.url_path_args[0];
+
+    uint64_t& index_placeholder = [&]() {
+      std::lock_guard<std::mutex> lock(latest_keepalive_index_mutex_);
+      return std::ref(latest_keepalive_index_plus_one_[codename]);
+    }();
+
+    uint64_t index = index_placeholder;
+    if (!index) {
+      // If no latest keepalive index in cache, go through the whole log.
+      for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
+        if (e.entry.keepalive.codename == codename) {
+          index = e.idx_ts.index + 1;
+        }
+      }
+      if (index) {
+        std::lock_guard<std::mutex> lock(latest_keepalive_index_mutex_);
+        index_placeholder = std::max(index_placeholder, index);
+      }
+    }
+
+    if (index) {
+      const auto e = (*keepalives_stream_.InternalExposePersister().Iterate(index - 1).begin());
+      if (!r.url.query.has("nobuild")) {
+        r(JSON<JSONFormat::Minimalistic>(SnapshotOfKeepalive<runtime_status_variant_t>(
+              e.idx_ts.us - current::time::Now(), e.entry.keepalive)),
+          HTTPResponseCode.OK,
+          current::net::constants::kDefaultJSONContentType);
+      } else {
+        auto tmp = e.entry.keepalive;
+        tmp.build = nullptr;
+        r(JSON<JSONFormat::Minimalistic>(
+              SnapshotOfKeepalive<runtime_status_variant_t>(e.idx_ts.us - current::time::Now(), tmp)),
+          HTTPResponseCode.OK,
+          current::net::constants::kDefaultJSONContentType);
+      }
+    } else {
+      r(current_service_state::Error("No keepalives from '" + codename + "' have been received."),
+        HTTPResponseCode.NotFound);
+    }
+  }
+
   void BuildStatusAndRespondWithIt(Request r) {
-    // Non-POST, a.k.a. GET.
+    // For a GET response, compile the status page and return it.
     const auto now = current::time::Now();
     const auto from = [&]() -> std::chrono::microseconds {
       if (r.url.query.has("from")) {
@@ -624,7 +579,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
 
     for (const auto& e : keepalives_stream_.InternalExposePersister().Iterate()) {
       if (e.idx_ts.us >= from && e.idx_ts.us < to) {
-        const claire_status_t keepalive = e.entry.keepalive;
+        const claire_status_t& keepalive = e.entry.keepalive;
 
         codenames_to_resolve.insert(keepalive.codename);
         service_key_into_codename[e.entry.location] = keepalive.codename;
@@ -638,10 +593,15 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
           // Service is up.
           const auto projected_uptime_us = keepalive.uptime_epoch_microseconds + (now - e.idx_ts.us);
           report.currently = current_service_state::up(
-              last_keepalive, current::strings::TimeIntervalAsHumanReadableString(projected_uptime_us));
+              keepalive.start_time_epoch_microseconds,
+              last_keepalive,
+              e.idx_ts.us,
+              current::strings::TimeIntervalAsHumanReadableString(projected_uptime_us));
         } else {
           // Service is down.
-          report.currently = current_service_state::down(last_keepalive, keepalive.uptime);
+          // TODO(dkorolev): Graceful shutdown case for `done`.
+          report.currently = current_service_state::down(
+              keepalive.start_time_epoch_microseconds, last_keepalive, e.idx_ts.us, keepalive.uptime);
         }
         report.dependencies = keepalive.dependencies;
         report.runtime = keepalive.runtime;
@@ -649,21 +609,49 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       }
     }
 
-    // To avoid `JSONFormat::Minimalistic`, at least for unit tests.
-    const bool full_format = r.url.query.has("full");
     // To list only the services that are currently in `Active` state.
     const bool active_only = r.url.query.has("active_only");
 
+    enum class ResponseType { JSONFull, JSONMinimalistic, DOT, HTML };
+    const auto response_type = [&r]() -> ResponseType {
+      if (r.url.query.has("full")) {
+        return ResponseType::JSONFull;
+      }
+      if (r.url.query.has("json")) {
+        return ResponseType::JSONMinimalistic;
+      }
+      if (r.url.query.has("dot")) {
+        return ResponseType::DOT;
+      }
+      const char* kAcceptHeader = "Accept";
+      if (r.headers.Has(kAcceptHeader)) {
+        for (const auto& h : strings::Split(r.headers[kAcceptHeader].value, ',')) {
+          if (strings::Split(h, ';').front() == "text/html") {  // Allow "text/html; charset=...", etc.
+            return ResponseType::HTML;
+          }
+        }
+      }
+      return ResponseType::JSONMinimalistic;
+    }();
+
+    const std::string external_url = external_url_;
     storage_.ReadOnlyTransaction(
                  [this,
-                  full_format,
+                  now,
+                  from,
+                  to,
                   active_only,
+                  response_type,
+                  external_url,
                   codenames_to_resolve,
                   report_for_codename,
                   codenames_per_service,
                   service_key_into_codename](ImmutableFields<storage_t> fields) -> Response {
                    std::unordered_map<std::string, ClaireServiceKey> resolved_codenames;
                    karl_status_t result;
+                   result.now = now;
+                   result.from = from;
+                   result.to = to;
                    for (const auto& codename : codenames_to_resolve) {
                      resolved_codenames[codename] = [&]() -> ClaireServiceKey {
                        const ImmutableOptional<ClaireInfo> resolved = fields.claires[codename];
@@ -701,6 +689,19 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                            blob.unresolved_dependencies.push_back(dep.StatusPageURL());
                          }
                        }
+
+                       {
+                         const auto optional_build = fields.builds[codename];
+                         if (Exists(optional_build)) {
+                           const auto& info = Value(optional_build).build;
+                           blob.build_time = info.build_time;
+                           blob.build_time_epoch_microseconds = info.build_time_epoch_microseconds;
+                           blob.git_commit = info.git_commit_hash;
+                           blob.git_branch = info.git_branch;
+                           blob.git_dirty = !info.git_dirty_files.empty();
+                         }
+                       }
+
                        if (has_nginx_config_file_) {
                          blob.url_status_page_proxied =
                              external_url_ + nginx_parameters_.route_prefix + '/' + codename;
@@ -708,29 +709,45 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                        blob.url_status_page_direct = blob.location.StatusPageURL();
                        blob.location = resolved_codenames[codename];
                        blob.runtime = rhs.runtime;
-                       result[blob.location.ip].services[codename] = std::move(blob);
+                       result.machines[blob.location.ip].services[codename] = std::move(blob);
                      }
                    }
                    // Update per-server time skew information.
-                   for (auto& iterating_over_reported_servers : result) {
+                   for (auto& iterating_over_reported_servers : result.machines) {
                      const std::string& ip = iterating_over_reported_servers.first;
                      auto& server = iterating_over_reported_servers.second;
                      const auto persisted_server_info = fields.servers[ip];
                      if (Exists(persisted_server_info)) {
                        const int64_t behind_this_by_us = Value(persisted_server_info).behind_this_by.count();
                        if (std::abs(behind_this_by_us) < 100000) {
-                         server.behind_this_by = "Less than +/-0.1s";
+                         server.time_skew = "NTP OK";
+                       } else if (behind_this_by_us > 0) {
+                         server.time_skew =
+                             current::strings::Printf("behind by %.1lfs", 1e-6 * behind_this_by_us);
                        } else {
-                         server.behind_this_by = current::strings::Printf("%.1lfs", 1e-6 * behind_this_by_us);
+                         server.time_skew =
+                             current::strings::Printf("ahead by %.1lfs", 1e-6 * behind_this_by_us);
                        }
                      }
                    }
-                   if (full_format) {
-                     return result;
-                   } else {
+                   result.generation_time = current::time::Now() - now;
+                   if (response_type == ResponseType::JSONMinimalistic) {
                      return Response(JSON<JSONFormat::Minimalistic>(result),
                                      HTTPResponseCode.OK,
                                      current::net::constants::kDefaultJSONContentType);
+                   } else if (response_type == ResponseType::HTML) {
+                     // clang-format off
+                     return Response(
+                         "<!doctype html>"
+                         "<head><link rel='icon' href='./favicon.png'></head>"
+                         "<body>" + Render(result).AsSVG() + "</body>",
+                         HTTPResponseCode.OK,
+                         net::constants::kDefaultHTMLContentType);
+                     // clang-format on
+                   } else if (response_type == ResponseType::DOT) {
+                     return Response(Render(result).AsDOT());
+                   } else {
+                     return result;
                    }
                  },
                  std::move(r)).Detach();
@@ -740,6 +757,11 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
   std::condition_variable update_thread_condition_variable_;
+
+  // codename -> stream index of the most recent keepalive from this codename.
+  std::mutex latest_keepalive_index_mutex_;
+  // Plus one to have `0` == "no keepalives", and avoid the corner case of record at index 0 being the one.
+  std::unordered_map<std::string, uint64_t> latest_keepalive_index_plus_one_;
 
   const std::string external_url_;
   const std::chrono::microseconds service_timeout_interval_;
