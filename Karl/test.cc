@@ -391,7 +391,7 @@ TEST(Karl, DeregisterWithNginx) {
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
       ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied));
       generator_proxied_status_url = Value(per_ip_services[generator.ClaireCodename()].url_status_page_proxied);
-      EXPECT_EQ(karl_nginx_base_url + "/proxied/" + generator.ClaireCodename(), generator_proxied_status_url);
+      EXPECT_EQ(karl_nginx_base_url + "/live/" + generator.ClaireCodename(), generator_proxied_status_url);
     }
 
     // Check that `generator`'s status page is accessible via Nginx.
@@ -407,6 +407,7 @@ TEST(Karl, DeregisterWithNginx) {
           }
         } catch (const current::net::NetworkException& e) {
         }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
       EXPECT_EQ("generator", status.service);
     }
@@ -427,7 +428,7 @@ TEST(Karl, DeregisterWithNginx) {
         EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
         ASSERT_TRUE(Exists(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied));
         is_prime_proxied_status_url = Value(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied);
-        EXPECT_EQ(karl_nginx_base_url + "/proxied/" + is_prime.ClaireCodename(), is_prime_proxied_status_url);
+        EXPECT_EQ(karl_nginx_base_url + "/live/" + is_prime.ClaireCodename(), is_prime_proxied_status_url);
       }
       // Check that `is_prime`'s status page is accessible via Nginx.
       {
@@ -442,10 +443,12 @@ TEST(Karl, DeregisterWithNginx) {
             }
           } catch (const current::net::NetworkException& e) {
           }
+          std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         EXPECT_EQ("is_prime", status.service);
       }
     }
+
     // The `generator` should be the only service registered.
     {
       unittest_karl_status_t status;
@@ -473,10 +476,10 @@ TEST(Karl, DeregisterWithNginx) {
   {
     // Must wait for Nginx config reload to take effect.
     while (HTTP(GET(is_prime_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      ;  // Spin lock.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Spin lock.
     }
     while (HTTP(GET(generator_proxied_status_url)).code != HTTPResponseCode.NotFound) {
-      ;  // Spin lock.
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));  // Spin lock.
     }
   }
 }
@@ -516,18 +519,16 @@ TEST(Karl, DisconnectedByTimout) {
 
   current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
                         std::chrono::microseconds(101 * 1000 * 1000));
-  while (karl.ActiveServicesCount() > 0u) {
-    ;  // Spin lock.
-  }
-  {
-    const auto result = karl.InternalExposeStorage()
-                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-                              EXPECT_EQ(current::karl::ClaireRegisteredState::DisconnectedByTimeout,
-                                        Value(fields.claires[claire.codename]).registered_state);
-                            })
-                            .Go();
-    EXPECT_TRUE(WasCommitted(result));
+  bool is_timeouted_persisted = false;
+  while (!is_timeouted_persisted) {
+    is_timeouted_persisted =
+        Value(karl.InternalExposeStorage()
+                  .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                    EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                    return Value(fields.claires[claire.codename]).registered_state ==
+                           current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                  })
+                  .Go());
   }
 }
 
@@ -581,7 +582,7 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   }
 
   const std::string proxied_url =
-      "http://localhost:" + current::ToString(FLAGS_karl_nginx_port) + "/proxied/" + claire.codename;
+      "http://localhost:" + current::ToString(FLAGS_karl_nginx_port) + "/live/" + claire.codename;
   {
     // Must wait for Nginx config reload to take effect.
     while (true) {
@@ -593,23 +594,22 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
         }
       } catch (const current::net::NetworkException& e) {
       }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
 
   current::time::SetNow(std::chrono::microseconds(100 * 1000 * 1000),
                         std::chrono::microseconds(101 * 1000 * 1000));
-  while (karl.ActiveServicesCount() > 0u) {
-    ;  // Spin lock.
-  }
-  {
-    const auto result = karl.InternalExposeStorage()
-                            .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) {
-                              ASSERT_TRUE(Exists(fields.claires[claire.codename]));
-                              EXPECT_EQ(current::karl::ClaireRegisteredState::DisconnectedByTimeout,
-                                        Value(fields.claires[claire.codename]).registered_state);
-                            })
-                            .Go();
-    EXPECT_TRUE(WasCommitted(result));
+  bool is_timeouted_persisted = false;
+  while (!is_timeouted_persisted) {
+    is_timeouted_persisted =
+        Value(karl.InternalExposeStorage()
+                  .ReadOnlyTransaction([&](ImmutableFields<unittest_karl_t::storage_t> fields) -> bool {
+                    EXPECT_TRUE(Exists(fields.claires[claire.codename]));
+                    return Value(fields.claires[claire.codename]).registered_state ==
+                           current::karl::ClaireRegisteredState::DisconnectedByTimeout;
+                  })
+                  .Go());
   }
 
   // This is a bit flaky.

@@ -86,9 +86,11 @@ CURRENT_STRUCT(LocationDirective, BlockDirective) {
 };
 // clang-format on
 
-inline LocationDirective DefaultLocationDirective(const std::string& location) {
+inline LocationDirective ProxyPassLocationDirective(const std::string& location,
+                                                    const std::string& proxy_pass_to) {
   LocationDirective result(location);
-  result.Add(SimpleDirective("proxy_set_header", "X-Real-IP $remote_addr"))
+  result.Add(SimpleDirective("proxy_pass", proxy_pass_to))
+      .Add(SimpleDirective("proxy_set_header", "X-Real-IP $remote_addr"))
       .Add(SimpleDirective("proxy_set_header", "X-Forwarded-For $proxy_add_x_forwarded_for"))
       .Add(SimpleDirective("proxy_pass_request_headers", "on"));
   return result;
@@ -106,8 +108,8 @@ CURRENT_STRUCT(ServerDirective, BlockDirective) {
     return SUPER::Create(LocationDirective(location));
   }
 
-  LocationDirective& CreateDefaultLocation(const std::string& location) {
-    return SUPER::Create(DefaultLocationDirective(location));
+  LocationDirective& CreateProxyPassLocation(const std::string& location, const std::string& proxy_pass_to) {
+    return SUPER::Create(ProxyPassLocationDirective(location, proxy_pass_to));
   }
 };
 

@@ -45,7 +45,7 @@ TEST(Nginx, FullConfig) {
   auto& server = config.http.CreateServer(8910);
   EXPECT_THROW(config.http.CreateServer(8910), current::nginx::PortAlreadyUsedException);
   server.Add(SimpleDirective("server_name", "myserver"));
-  server.CreateDefaultLocation("/").Add(SimpleDirective("proxy_pass", "http://127.0.0.1:8888/"));
+  server.CreateProxyPassLocation("/", "http://127.0.0.1:8888/");
   auto& complex_location = server.CreateLocation("~ /a|/b");
   complex_location.Add(LocationDirective("~ /a")).Add(LocationDirective("~ /b"));
   const std::string nginx_config = ConfigPrinter::AsString(config);

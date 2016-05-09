@@ -44,6 +44,19 @@ struct PortAlreadyUsedException : NginxConfigException {
       : NginxConfigException("Port " + current::ToString(port) + " was already used in this config.") {}
 };
 
+struct NginxManagerException : NginxException {
+  using NginxException::NginxException;
+};
+
+struct CannotWriteConfigFileException : NginxManagerException {
+  explicit CannotWriteConfigFileException(const std::string& filename)
+      : NginxManagerException("Failed to write to the config file '" + filename + "'") {}
+};
+
+struct NginxReloadConfigFailedException : NginxManagerException {
+  using NginxManagerException::NginxManagerException;
+};
+
 }  // namespace current::nginx
 }  // namespace current
 
