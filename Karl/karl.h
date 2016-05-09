@@ -196,9 +196,7 @@ struct KarlNginxParameters {
   uint16_t port;
   std::string config_file;
   std::string route_prefix;
-  KarlNginxParameters(uint16_t port,
-                      const std::string& config_file,
-                      const std::string& route_prefix = "/live")
+  KarlNginxParameters(uint16_t port, const std::string& config_file, const std::string& route_prefix = "/live")
       : port(port), config_file(config_file), route_prefix(route_prefix) {}
 };
 
@@ -223,7 +221,7 @@ class KarlNginxManager {
   }
 
   void UpdateNginxIfNeeded() {
-   // To spawn Nginx `server` at startup even if the storage is empty.
+    // To spawn Nginx `server` at startup even if the storage is empty.
     static bool first_run = true;
     if (has_nginx_config_file_) {
       const uint64_t current_stream_size = storage_.InternalExposeStream().InternalExposePersister().Size();
@@ -251,7 +249,7 @@ class KarlNginxManager {
   STORAGE& storage_;
   const bool has_nginx_config_file_;
   const KarlNginxParameters nginx_parameters_;
-  uint16_t karl_port_;
+  const uint16_t karl_port_;
   std::unique_ptr<nginx::NginxManager> nginx_manager_;
 
  private:
@@ -313,7 +311,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       fields.karl.Add(self_info);
     }).Wait();
     if (state_update_thread_.joinable()) {
-      keepalive_cache_condition_variable_.notify_one();
+      update_thread_condition_variable_.notify_one();
       state_update_thread_.join();
     }
   }
@@ -367,10 +365,10 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
         const auto wait_interval =
             service_timeout_interval_ - (current::time::Now() - most_recent_keepalive_time);
         if (wait_interval.count() > 0) {
-          keepalive_cache_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
+          update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
         }
       } else {
-        keepalive_cache_condition_variable_.wait(lock);
+        update_thread_condition_variable_.wait(lock);
       }
 #endif
     }
@@ -405,7 +403,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
           std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
           services_keepalive_time_cache_.erase(codename);
         }
-        keepalive_cache_condition_variable_.notify_one();
+        update_thread_condition_variable_.notify_one();
       } else {
         // Respond with "200 OK" in any case.
         r("NOP\n");
@@ -557,7 +555,8 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
             auto& placeholder = services_keepalive_time_cache_[codename];
             if (placeholder.count() == 0) {
               placeholder = now;
-              keepalive_cache_condition_variable_.notify_one();
+              // Notify the thread only if the new codename has appeared in the cache.
+              update_thread_condition_variable_.notify_one();
             } else {
               placeholder = now;
             }
@@ -740,7 +739,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   std::atomic_bool destructing_;
   std::unordered_map<std::string, std::chrono::microseconds> services_keepalive_time_cache_;
   mutable std::mutex services_keepalive_cache_mutex_;
-  std::condition_variable keepalive_cache_condition_variable_;
+  std::condition_variable update_thread_condition_variable_;
 
   const std::string external_url_;
   const std::chrono::microseconds service_timeout_interval_;

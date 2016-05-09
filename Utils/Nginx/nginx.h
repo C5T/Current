@@ -85,27 +85,35 @@ class NginxInvokerImpl final {
 
 inline impl::NginxInvokerImpl& NginxInvoker() { return Singleton<impl::NginxInvokerImpl>(); }
 
+CURRENT_STRUCT(NginxManagerMagicNumbers) {
+  CURRENT_FIELD(endpoint_number, std::string);
+  CURRENT_FIELD(response_number, std::string);
+  CURRENT_DEFAULT_CONSTRUCTOR(NginxManagerMagicNumbers)
+      : endpoint_number(SHA256("Random location " +
+                               ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))),
+        response_number(SHA256("Random response " +
+                               ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())))) {}
+};
+
 class NginxManager {
  public:
   explicit NginxManager(const std::string& config_file) : config_file_(config_file) {
     try {
-      FileSystem::WriteStringToFile("# File is writable", config_file_.c_str(), true);
+      FileSystem::WriteStringToFile("# The file is writable\n", config_file_.c_str(), true);
     } catch (current::FileException&) {
       CURRENT_THROW(CannotWriteConfigFileException(config_file_));
     }
   }
 
+  virtual ~NginxManager() {}
+
   template <typename SERVER_DIRECTIVE>
   void UpdateConfig(SERVER_DIRECTIVE&& server_directive) {
     std::unique_lock<std::mutex> lock(mutex_);
     SERVER_DIRECTIVE directive(std::forward<SERVER_DIRECTIVE>(server_directive));
-    const std::string endpoint_number =
-        SHA256("Random location " + ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())));
-    const std::string response_number =
-        SHA256("Random response " + ToString(random::CSRandomUInt64(0u, std::numeric_limits<uint64_t>::max())));
-    magic_numbers_ = std::make_pair(endpoint_number, response_number);
-    directive.CreateLocation("/" + endpoint_number)
-        .Add(config::SimpleDirective("return", "200 \"" + response_number + "\""));
+    magic_numbers_ = NginxManagerMagicNumbers();
+    directive.CreateLocation("/" + magic_numbers_.endpoint_number)
+        .Add(config::SimpleDirective("return", "200 \"" + magic_numbers_.response_number + "\""));
     try {
       FileSystem::WriteStringToFile(config::ConfigPrinter::AsString(directive), config_file_.c_str());
     } catch (current::FileException&) {
@@ -114,21 +122,24 @@ class NginxManager {
     if (!NginxInvoker().ReloadConfig()) {
       CURRENT_THROW(NginxReloadConfigFailedException());
     }
-    const std::string magic_url = Printf("http://localhost:%d/%s", directive.port, endpoint_number.c_str());
+    const std::string magic_url =
+        Printf("http://localhost:%d/%s", directive.port, magic_numbers_.endpoint_number.c_str());
     bool updated = false;
 #ifndef CURRENT_MOCK_TIME
     size_t update_retries = 100u;
 #else
     size_t update_retries = 10u;
 #endif
-    auto WaitForNextRetry = [&update_retries]() {
-      --update_retries;
+    const auto WaitForNextRetry = [&update_retries]() {
+      if (update_retries > 0u) {
+        --update_retries;
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
     };
     while (!updated && update_retries > 0u) {
       try {
         const auto response = HTTP(GET(magic_url));
-        if (response.code == HTTPResponseCode.OK && response.body == response_number) {
+        if (response.code == HTTPResponseCode.OK && response.body == magic_numbers_.response_number) {
           updated = true;
         } else {
           WaitForNextRetry();
@@ -144,12 +155,15 @@ class NginxManager {
     }
   }
 
-  virtual ~NginxManager() {}
+  NginxManagerMagicNumbers GetMagicNumbers() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return magic_numbers_;
+  }
 
  private:
   const std::string config_file_;
-  std::pair<std::string, std::string> magic_numbers_;
-  std::mutex mutex_;
+  NginxManagerMagicNumbers magic_numbers_;
+  mutable std::mutex mutex_;
 };
 
 }  // namespace current::nginx
