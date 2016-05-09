@@ -1,0 +1,3 @@
+digraph "Test" {
+  node1 [ label=<<TABLE CELLBORDER='0'><TR><TD HREF='http://current.ai'>link</TD></TR><TR><TD>text</TD></TR></TABLE>> shape="none" ];
+}

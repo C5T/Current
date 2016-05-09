@@ -113,6 +113,25 @@ TEST(GraphViz, Record) {
               .Add(Node("mixed|{can|be|used}|as well").Shape("record")));
 }
 
+TEST(GraphViz, HTMLWithHyperlink) {
+  using namespace current::graphviz;
+
+  // To enable parts of GraphViz graph nodes contain hyperlinks (i.e., to enable more than one link per node),
+  // one has to make node label of its custom "HTML" type: http://www.graphviz.org/content/node-shapes#html
+  //
+  // TL;DR: Instead of entering text as the string, output as quoted string in the ".dot" file,
+  // enter GraphViz's pseudo-HTML and output it using the `<` + `>` syntax instead of quotes.
+  //
+  // Then use the `<TABLE>` tag and its sub-sub-tag `<TD>`, which can contain the `HREF='...'` parameter
+  // to create hyperlinks.
+
+  RunTest(DiGraph().Title("Test").Add(
+      Node(
+          "<TABLE CELLBORDER='0'><TR><TD HREF='http://current.ai'>link</TD></TR><TR><TD>text</TD></TR></TABLE>")
+          .HTML()
+          .Shape("none")));
+}
+
 TEST(GraphViz, Grouping) {
   using namespace current::graphviz;
 
@@ -140,6 +159,28 @@ TEST(GraphViz, Grouping) {
   g += Edge(b, e);
   g += Edge(b, f);
   g += Edge(c, e);
+
+  RunTest(g);
+}
+
+TEST(GraphViz, ExampleTopologyOutput) {
+  using namespace current::graphviz;
+
+  const auto s1a = Node("{follower|{foo|bar}}").Shape("record");
+  const auto s1b = Node("{master|{foo|bar}}").Shape("record");
+  const auto s2a = Node("{follower|{foo|bar}}").Shape("record");
+
+  DiGraph g;
+
+  g += s1a;
+  g += s1b;
+  g += s2a;
+
+  g += Edge(s1a, s1b);
+  g += Edge(s2a, s1b);
+
+  g += Group().Label("10.0.0.1").GraphStyle("dashed").Add(s1a).Add(s1b);
+  g += Group().Label("10.0.0.2").GraphStyle("dashed").Add(s2a);
 
   RunTest(g);
 }
