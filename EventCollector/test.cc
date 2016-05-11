@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../Current/port.h"
+#include "../port.h"
 
 #include <string>
 #include <sstream>
@@ -33,10 +33,10 @@ SOFTWARE.
 
 #include "event_collector.h"
 
-#include "../../Current/Bricks/strings/printf.h"
+#include "../Bricks/strings/printf.h"
 
-#include "../../Current/Bricks/dflags/dflags.h"
-#include "../../Current/3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../Bricks/dflags/dflags.h"
+#include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
 DEFINE_int32(event_collector_test_port, PickPortForUnitTest(), "Local port to run the test.");
 

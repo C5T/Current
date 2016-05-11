@@ -65,9 +65,12 @@ echo -e -n "\033[0m"
   # Compile and run The Big Test.
   cd "$FULL_TEST_DIR_NAME"
 
+  # Generate the `current_build.h` file.
+  (ln -sf ../scripts/MakefileWithCurrentBuild Makefile ; make current_build > /dev/null ; unlink Makefile)
+
   echo -e "\033[0m"
   echo -n -e "\033[1mCompiling all tests together: \033[0m\033[31m"
-  g++ $CPPFLAGS -I .. "$ALL_TESTS_TOGETHER.cc" -o "$ALL_TESTS_TOGETHER" $LDFLAGS
+  g++ $CPPFLAGS -I . -I .. "$ALL_TESTS_TOGETHER.cc" -o "$ALL_TESTS_TOGETHER" $LDFLAGS
   echo -e "\033[32m\033[1mOK.\033[0m"
 
   echo -e "\033[1mRunning the tests and generating coverage info.\033[0m"
