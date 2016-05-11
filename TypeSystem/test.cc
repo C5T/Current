@@ -38,6 +38,7 @@ SOFTWARE.
 #include "Reflection/test.cc"
 #include "Serialization/test.cc"
 #include "Schema/test.cc"
+#include "Evolution/test.cc"
 
 namespace struct_definition_test {
 
