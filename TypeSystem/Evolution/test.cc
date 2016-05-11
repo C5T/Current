@@ -61,6 +61,9 @@ template <typename INTO>
 struct Evolve<type_evolution_test::from::SimpleStruct, INTO> {
   using from_t = type_evolution_test::from::SimpleStruct;
   using into_t = INTO;
+  static_assert(IS_CURRENT_STRUCT(into_t), "Must evolve a `CURRENT_STRUCT` into a `CURRENT_STRUCT`.");
+  static_assert(current::reflection::FieldCounter<into_t>::value == 2,
+                "Must evolve into a `CURRENT_STRUCT` with the same number of fields.");
   static into_t Go(const from_t& from) {
     into_t into;
     into.x = Evolve<decltype(from.x), decltype(into.x)>::Go(from.x);
@@ -106,6 +109,9 @@ template <typename INTO>
 struct Evolve<type_evolution_test::from::StructWithStruct, INTO> {
   using from_t = type_evolution_test::from::StructWithStruct;
   using into_t = INTO;
+  static_assert(IS_CURRENT_STRUCT(into_t), "Must evolve a `CURRENT_STRUCT` into a `CURRENT_STRUCT`.");
+  static_assert(current::reflection::FieldCounter<into_t>::value == 1,
+                "Must evolve into a `CURRENT_STRUCT` with the same number of fields.");
   static into_t Go(const from_t& from) {
     into_t into;
     into.s = Evolve<decltype(from.s), decltype(into.s)>::Go(from.s);
