@@ -99,7 +99,7 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(last_keepalive_status, std::string);
   CURRENT_FIELD(last_successful_keepalive, Optional<std::string>);
   CURRENT_FIELD(last_successful_keepalive_ping, Optional<std::string>);
-  CURRENT_FIELD(last_successful_ping_epoch_microseconds, Optional<std::chrono::microseconds>);
+  CURRENT_FIELD(last_successful_keepalive_ping_us, Optional<std::chrono::microseconds>);
 
   CURRENT_FIELD(build, Optional<build::Info>);
 };

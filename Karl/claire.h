@@ -205,7 +205,7 @@ class GenericClaire final {
             " ago";
       }
       if (last_successful_keepalive_ping_.count()) {
-        status.last_successful_ping_epoch_microseconds = last_successful_keepalive_ping_;
+        status.last_successful_keepalive_ping_us = last_successful_keepalive_ping_;
         status.last_successful_keepalive_ping =
             current::strings::Printf("%.2lfms", 1e-3 * last_successful_keepalive_ping_.count());
       }

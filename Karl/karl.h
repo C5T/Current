@@ -374,8 +374,8 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
 
           Optional<current::build::Info> optional_build = body.build;
           Optional<std::chrono::microseconds> optional_behind_this_by;
-          if (Exists(body.last_successful_ping_epoch_microseconds)) {
-            optional_behind_this_by = now - body.now - Value(body.last_successful_ping_epoch_microseconds) / 2;
+          if (Exists(body.last_successful_keepalive_ping_us)) {
+            optional_behind_this_by = now - body.now - Value(body.last_successful_keepalive_ping_us) / 2;
           }
 
           storage_.ReadWriteTransaction(
