@@ -43,4 +43,18 @@ struct Evolve<T, T> {
 
 }  // namespace ::type_evolution
 
+#define EVOLVE(FROM, INTO, ...)            \
+  namespace type_evolution {               \
+  template <>                              \
+  struct Evolve<FROM, INTO> {              \
+    using from_t = FROM;                   \
+    using into_t = INTO;                   \
+    static into_t Go(const from_t& from) { \
+      into_t into;                         \
+      __VA_ARGS__;                         \
+      return into;                         \
+    }                                      \
+  };                                       \
+  }  // namespace ::type_evolution
+
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
