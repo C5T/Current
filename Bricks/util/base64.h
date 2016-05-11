@@ -26,6 +26,7 @@ SOFTWARE.
 #define BRICKS_UTIL_BASE64_H
 
 #include <string>
+#include <cctype>
 
 #include "../exception.h"
 

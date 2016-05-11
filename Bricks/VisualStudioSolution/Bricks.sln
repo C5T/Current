@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22310.1
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dflags", "..\dflags\dflags.vcxproj", "{BC21003C-3EE5-422E-BCAB-A970F98DA2DA}"
 EndProject
@@ -13,21 +13,19 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "util", "..\util\util.vcxpro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "time", "..\time\time.vcxproj", "{0F872F9D-B681-479E-9A4C-FEB022FA7085}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_url", "..\net\url\net_url.vcxproj", "{2845C793-827A-4F05-83A4-EC400E25B8DA}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_url", "..\..\Blocks\URL\net_url.vcxproj", "{2845C793-827A-4F05-83A4-EC400E25B8DA}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "file", "..\file\file.vcxproj", "{3C30A84C-326D-4878-99C9-5C07E7E76074}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_tcp", "..\net\tcp\net_tcp.vcxproj", "{113032DF-5117-4519-8787-CA22F376C096}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cerealize", "..\cerealize\cerealize.vcxproj", "{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_http", "..\net\http\net_http.vcxproj", "{9FC2310C-944E-4425-869D-7C2A61DC8A55}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_api", "..\net\api\net_api.vcxproj", "{48AC2552-330F-42E2-BE8C-321C7649FD70}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "net_api", "..\..\Blocks\HTTP\net_api.vcxproj", "{48AC2552-330F-42E2-BE8C-321C7649FD70}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zzz_full_test", "..\zzz_full_test\zzz_full_test.vcxproj", "{C6F9851F-C5CD-474B-862A-44E97D5B27F7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mq_inmemory", "..\mq\inmemory\mq_inmemory.vcxproj", "{065E91AC-94A0-4411-83FB-48EFD1A4C091}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mmq", "..\..\Blocks\mmq\mmq.vcxproj", "{065E91AC-94A0-4411-83FB-48EFD1A4C091}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -101,14 +99,6 @@ Global
 		{113032DF-5117-4519-8787-CA22F376C096}.Release|Win32.Build.0 = Release|Win32
 		{113032DF-5117-4519-8787-CA22F376C096}.Release|x64.ActiveCfg = Release|x64
 		{113032DF-5117-4519-8787-CA22F376C096}.Release|x64.Build.0 = Release|x64
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|Win32.ActiveCfg = Debug|Win32
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|Win32.Build.0 = Debug|Win32
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|x64.ActiveCfg = Debug|x64
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Debug|x64.Build.0 = Debug|x64
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|Win32.ActiveCfg = Release|Win32
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|Win32.Build.0 = Release|Win32
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|x64.ActiveCfg = Release|x64
-		{65A47D1C-902D-4521-AC3E-3B54CC07DCD3}.Release|x64.Build.0 = Release|x64
 		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Debug|Win32.ActiveCfg = Debug|Win32
 		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Debug|Win32.Build.0 = Debug|Win32
 		{9FC2310C-944E-4425-869D-7C2A61DC8A55}.Debug|x64.ActiveCfg = Debug|x64

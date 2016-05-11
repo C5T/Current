@@ -37,6 +37,8 @@ SOFTWARE.
 namespace current {
 namespace http {
 
+struct Request;
+
 template <typename T>
 constexpr static bool HasRespondViaHTTP(char) {
   return false;
