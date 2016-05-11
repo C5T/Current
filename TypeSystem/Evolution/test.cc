@@ -35,8 +35,6 @@ SOFTWARE.
 
 #include "../Serialization/json.h"
 
-#include "../../Bricks/template/pod.h"
-
 #include "../../3rdparty/gtest/gtest-main.h"
 
 namespace type_evolution_test {
@@ -87,6 +85,51 @@ TEST(TypeEvolutionTest, SimpleStruct) {
   {
     into::SimpleStruct converted = type_evolution::Evolve<from::SimpleStruct, into::SimpleStruct>::Go(from);
     EXPECT_EQ("{\"x\":101,\"y\":102}", JSON(converted));
+  }
+}
+
+namespace type_evolution_test {
+
+namespace from {
+CURRENT_STRUCT(StructWithStruct) { CURRENT_FIELD(s, SimpleStruct); };
+}  // namespace type_evolution_test::from
+
+namespace into {
+CURRENT_STRUCT(StructWithStruct) { CURRENT_FIELD(s, SimpleStruct); };
+}  // namespace type_evolution_test::into
+
+}  // namespace type_evolution_test
+
+namespace type_evolution {
+
+template <typename INTO>
+struct Evolve<type_evolution_test::from::StructWithStruct, INTO> {
+  using from_t = type_evolution_test::from::StructWithStruct;
+  using into_t = INTO;
+  static into_t Go(const from_t& from) {
+    into_t into;
+    into.s = Evolve<decltype(from.s), decltype(into.s)>::Go(from.s);
+    return into;
+  }
+};
+
+}  // namespace ::type_evolution
+
+TEST(TypeEvolutionTest, StructWithStruct) {
+  using namespace type_evolution_test;
+
+  from::StructWithStruct from;
+  EXPECT_EQ("{\"s\":{\"x\":101,\"y\":102}}", JSON(from));
+
+  {
+    into::StructWithStruct into;
+    EXPECT_EQ("{\"s\":{\"x\":201,\"y\":202}}", JSON(into));
+  }
+
+  {
+    into::StructWithStruct converted =
+        type_evolution::Evolve<from::StructWithStruct, into::StructWithStruct>::Go(from);
+    EXPECT_EQ("{\"s\":{\"x\":101,\"y\":102}}", JSON(converted));
   }
 }
 
