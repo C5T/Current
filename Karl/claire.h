@@ -22,12 +22,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// NOTE: Local `current_build.h` must be included before Karl/Claire headers.
+// NOTE(mzhurovich): Local `current_build.h` must be included before Karl/Claire headers.
+// NOTE(dkorolev): Why the hell? :-)
 
 #ifndef KARL_CLAIRE_H
 #define KARL_CLAIRE_H
 
 #include "../port.h"
+
+#ifdef CURRENT_TEST_COMPILATION
+#include "current_build.h"
+#endif
 
 #include <atomic>
 #include <thread>

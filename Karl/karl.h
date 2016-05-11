@@ -39,12 +39,17 @@ SOFTWARE.
 // The conventional wisdom is that Karl can start with both 1) and 2) missing. After one keepalive cycle,
 // which is under half a minute, it would regain the state of the fleet, as long as all keepalives go to it.
 
-// NOTE: Local `current_build.h` must be included before Karl/Claire headers.
+// NOTE(mzhurovich): Local `current_build.h` must be included before Karl/Claire headers.
+// NOTE(dkorolev): Why the hell? :-)
 
 #ifndef KARL_KARL_H
 #define KARL_KARL_H
 
 #include "../port.h"
+
+#ifdef CURRENT_TEST_COMPILATION
+#include "current_build.h"
+#endif
 
 #include "exceptions.h"
 #include "schema_karl.h"
