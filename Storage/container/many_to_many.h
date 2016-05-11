@@ -157,15 +157,15 @@ class GenericManyToMany {
   OuterAccessor<transposed_map_t> Cols() const { return OuterAccessor<transposed_map_t>(transposed_); }
 
   GenericMapAccessor<row_elements_map_t> Row(sfinae::CF<row_t> row) const {
-    const auto it = forward_.find(row);
+    const auto cit = forward_.find(row);
     return GenericMapAccessor<row_elements_map_t>(
-        it != forward_.end() ? it->second : current::ThreadLocalSingleton<row_elements_map_t>());
+        cit != forward_.end() ? cit->second : current::ThreadLocalSingleton<row_elements_map_t>());
   }
 
   GenericMapAccessor<col_elements_map_t> Col(sfinae::CF<col_t> col) const {
-    const auto it = transposed_.find(col);
+    const auto cit = transposed_.find(col);
     return GenericMapAccessor<col_elements_map_t>(
-        it != transposed_.end() ? it->second : current::ThreadLocalSingleton<col_elements_map_t>());
+        cit != transposed_.end() ? cit->second : current::ThreadLocalSingleton<col_elements_map_t>());
   }
 
   // For REST, iterate over all the elements of the ManyToMany, in no particular order.
@@ -202,27 +202,45 @@ class GenericManyToMany {
 };
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using UnorderedManyToMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
+using UnorderedManyToUnorderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Unordered>;
 
 template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
-using OrderedManyToMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+using OrderedManyToOrderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using UnorderedManyToOrderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Unordered, Ordered>;
+
+template <typename T, typename UPDATE_EVENT, typename DELETE_EVENT>
+using OrderedManyToUnorderedMany = GenericManyToMany<T, UPDATE_EVENT, DELETE_EVENT, Ordered, Unordered>;
 
 }  // namespace container
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::UnorderedManyToMany<T, E1, E2>> {
-  static const char* HumanReadableName() { return "UnorderedManyToMany"; }
+struct StorageFieldTypeSelector<container::UnorderedManyToUnorderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedManyToUnorderedMany"; }
 };
 
 template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
-struct StorageFieldTypeSelector<container::OrderedManyToMany<T, E1, E2>> {
-  static const char* HumanReadableName() { return "OrderedManyToMany"; }
+struct StorageFieldTypeSelector<container::OrderedManyToOrderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedManyToOrderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::UnorderedManyToOrderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "UnorderedManyToOrderedMany"; }
+};
+
+template <typename T, typename E1, typename E2>  // Entry, update event, delete event.
+struct StorageFieldTypeSelector<container::OrderedManyToUnorderedMany<T, E1, E2>> {
+  static const char* HumanReadableName() { return "OrderedManyToUnorderedMany"; }
 };
 
 }  // namespace storage
 }  // namespace current
 
-using current::storage::container::UnorderedManyToMany;
-using current::storage::container::OrderedManyToMany;
+using current::storage::container::UnorderedManyToUnorderedMany;
+using current::storage::container::OrderedManyToOrderedMany;
+using current::storage::container::UnorderedManyToOrderedMany;
+using current::storage::container::OrderedManyToUnorderedMany;
 
 #endif  // CURRENT_STORAGE_CONTAINER_MANY_TO_MANY_H

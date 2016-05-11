@@ -112,21 +112,33 @@ CURRENT_STRUCT(Cell) {
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, Record, RecordDictionary);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToMany, Cell, CellManyToManyUnordered);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOne, Cell, CellOneToOneUnordered);
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToMany, Cell, CellOneToManyUnordered);
-CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToMany, Cell, CellManyToManyOrdered);
-CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOne, Cell, CellOneToOneOrdered);
-CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToMany, Cell, CellOneToManyOrdered);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, Cell, CellUnorderedManyToUnorderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToOrderedMany, Cell, CellOrderedManyToOrderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToOrderedMany, Cell, CellUnorderedManyToOrderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedManyToUnorderedMany, Cell, CellOrderedManyToUnorderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedOne, Cell, CellUnorderedOneToUnorderedOne);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedOne, Cell, CellOrderedOneToOrderedOne);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOrderedOne, Cell, CellUnorderedOneToOrderedOne);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToUnorderedOne, Cell, CellOrderedOneToUnorderedOne);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToUnorderedMany, Cell, CellUnorderedOneToUnorderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToOrderedMany, Cell, CellOrderedOneToOrderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedOneToOrderedMany, Cell, CellUnorderedOneToOrderedMany);
+CURRENT_STORAGE_FIELD_ENTRY(OrderedOneToUnorderedMany, Cell, CellOrderedOneToUnorderedMany);
 
 CURRENT_STORAGE(TestStorage) {
   CURRENT_STORAGE_FIELD(d, RecordDictionary);
-  CURRENT_STORAGE_FIELD(umany_to_umany, CellManyToManyUnordered);
-  CURRENT_STORAGE_FIELD(uone_to_uone, CellOneToOneUnordered);
-  CURRENT_STORAGE_FIELD(uone_to_umany, CellOneToManyUnordered);
-  CURRENT_STORAGE_FIELD(omany_to_omany, CellManyToManyOrdered);
-  CURRENT_STORAGE_FIELD(oone_to_oone, CellOneToOneOrdered);
-  CURRENT_STORAGE_FIELD(oone_to_omany, CellOneToManyOrdered);
+  CURRENT_STORAGE_FIELD(umany_to_umany, CellUnorderedManyToUnorderedMany);
+  CURRENT_STORAGE_FIELD(omany_to_omany, CellOrderedManyToOrderedMany);
+  CURRENT_STORAGE_FIELD(umany_to_omany, CellUnorderedManyToOrderedMany);
+  CURRENT_STORAGE_FIELD(omany_to_umany, CellOrderedManyToUnorderedMany);
+  CURRENT_STORAGE_FIELD(uone_to_uone, CellUnorderedOneToUnorderedOne);
+  CURRENT_STORAGE_FIELD(oone_to_oone, CellOrderedOneToOrderedOne);
+  CURRENT_STORAGE_FIELD(uone_to_oone, CellUnorderedOneToOrderedOne);
+  CURRENT_STORAGE_FIELD(oone_to_uone, CellOrderedOneToUnorderedOne);
+  CURRENT_STORAGE_FIELD(uone_to_umany, CellUnorderedOneToUnorderedMany);
+  CURRENT_STORAGE_FIELD(oone_to_omany, CellOrderedOneToOrderedMany);
+  CURRENT_STORAGE_FIELD(uone_to_omany, CellUnorderedOneToOrderedMany);
+  CURRENT_STORAGE_FIELD(oone_to_umany, CellOrderedOneToUnorderedMany);
 };
 
 }  // namespace transactional_storage_test
@@ -142,7 +154,7 @@ TEST(TransactionalStorage, SmokeTest) {
   const auto persistence_file_remover = current::FileSystem::ScopedRmFile(persistence_file_name);
 
   {
-    EXPECT_EQ(7u, Storage::FIELDS_COUNT);
+    EXPECT_EQ(13u, Storage::FIELDS_COUNT);
     Storage storage(persistence_file_name);
 
     // Fill a `Dictionary` container.
@@ -304,6 +316,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.omany_to_omany.Empty());
         for (const auto& element : fields.umany_to_umany) {
           fields.omany_to_omany.Add(element);
+          fields.umany_to_omany.Add(element);
+          fields.omany_to_umany.Add(element);
         }
         EXPECT_EQ(fields.umany_to_umany.Size(), fields.omany_to_omany.Size());
       }).Go();
@@ -313,6 +327,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.oone_to_oone.Empty());
         for (const auto& element : fields.uone_to_uone) {
           fields.oone_to_oone.Add(element);
+          fields.uone_to_oone.Add(element);
+          fields.oone_to_uone.Add(element);
         }
         EXPECT_EQ(fields.uone_to_uone.Size(), fields.oone_to_oone.Size());
       }).Go();
@@ -322,6 +338,8 @@ TEST(TransactionalStorage, SmokeTest) {
         EXPECT_TRUE(fields.oone_to_omany.Empty());
         for (const auto& element : fields.uone_to_umany) {
           fields.oone_to_omany.Add(element);
+          fields.uone_to_omany.Add(element);
+          fields.oone_to_umany.Add(element);
         }
       }).Go();
       EXPECT_TRUE(WasCommitted(result3));
@@ -351,7 +369,32 @@ TEST(TransactionalStorage, SmokeTest) {
           }
         }
         EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
-
+        data_vec.clear();
+        std::multiset<int32_t> rows;
+        for (const auto& row : fields.umany_to_omany.Rows()) {
+          rows.insert(current::storage::sfinae::GetRow(*row.begin()));
+        }
+        for (const auto& row : rows) {
+          for (const auto& element : fields.umany_to_omany.Row(row)) {
+            data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                               current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                               current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        for (const auto& row : fields.omany_to_umany.Rows()) {
+          int32_t row_value = current::storage::sfinae::GetRow(*row.begin());
+          std::multiset<std::string> cols;
+          for (const auto& element : row) {
+            cols.insert(current::storage::sfinae::GetCol(element));
+          }
+          for (const auto& col_value : cols) {
+            data_vec.push_back(current::ToString(row_value) + ',' + current::ToString(col_value) + '=' +
+                               current::ToString(Value(fields.omany_to_umany.Get(row_value, col_value)).phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
       const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
@@ -376,6 +419,32 @@ TEST(TransactionalStorage, SmokeTest) {
           }
         }
         EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        for (const auto& col : fields.umany_to_omany.Cols()) {
+          std::string col_value = current::storage::sfinae::GetCol(*col.begin());
+          std::multiset<int32_t> rows;
+          for (const auto& element : col) {
+            rows.insert(current::storage::sfinae::GetRow(element));
+          }
+          for (const auto& row_value : rows) {
+            data_vec.push_back(current::ToString(col_value) + ',' + current::ToString(row_value) + '=' +
+                               current::ToString(Value(fields.umany_to_omany.Get(row_value, col_value)).phew));
+          }
+        }
+        EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        std::multiset<std::string> cols;
+        for (const auto& col : fields.omany_to_umany.Cols()) {
+          cols.insert(current::storage::sfinae::GetCol(*col.begin()));
+        }
+        for (const auto& col : cols) {
+          for (const auto& element : fields.omany_to_umany.Col(col)) {
+            data_vec.push_back(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                               current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                               current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("one,1=1 too,2=3 two,2=2", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
       const auto result3 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
@@ -394,6 +463,20 @@ TEST(TransactionalStorage, SmokeTest) {
                              current::ToString(element.phew));
         }
         EXPECT_EQ("2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        for (const auto& element : fields.umany_to_omany.Row(2)) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,too=3 2,two=2", current::strings::Join(data_vec, ' '));
+        data_set.clear();
+        for (const auto& element : fields.omany_to_umany.Row(2)) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,too=3 2,two=2", current::strings::Join(data_set, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result3));
     }
@@ -413,6 +496,20 @@ TEST(TransactionalStorage, SmokeTest) {
         // Use vector instead of set and expect the same result, because the data is already sorted.
         std::vector<std::string> data_vec;
         for (const auto& element : fields.oone_to_oone.Rows()) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("1,one=1 3,too=4 4,fiv=5", current::strings::Join(data_vec, ' '));
+        data_set.clear();
+        for (const auto& element : fields.uone_to_oone.Rows()) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("1,one=1 3,too=4 4,fiv=5", current::strings::Join(data_set, ' '));
+        data_vec.clear();
+        for (const auto& element : fields.oone_to_uone.Rows()) {
           data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
                              current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
                              current::ToString(element.phew));
@@ -438,6 +535,20 @@ TEST(TransactionalStorage, SmokeTest) {
                              current::ToString(element.phew));
         }
         EXPECT_EQ("fiv,4=5 one,1=1 too,3=4", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        for (const auto& element : fields.uone_to_oone.Cols()) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("fiv,4=5 one,1=1 too,3=4", current::strings::Join(data_vec, ' '));
+        data_set.clear();
+        for (const auto& element : fields.oone_to_uone.Cols()) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("fiv,4=5 one,1=1 too,3=4", current::strings::Join(data_set, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
     }
@@ -466,6 +577,32 @@ TEST(TransactionalStorage, SmokeTest) {
           }
         }
         EXPECT_EQ("1,one=1 1,six=6 2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        std::multiset<int32_t> rows;
+        for (const auto& row : fields.uone_to_omany.Rows()) {
+          rows.insert(current::storage::sfinae::GetRow(*row.begin()));
+        }
+        for (const auto& row : rows) {
+          for (const auto& element : fields.uone_to_omany.Row(row)) {
+            data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                               current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                               current::ToString(element.phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 1,six=6 2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        for (const auto& row : fields.oone_to_umany.Rows()) {
+          int32_t row_value = current::storage::sfinae::GetRow(*row.begin());
+          std::multiset<std::string> cols;
+          for (const auto& element : row) {
+            cols.insert(current::storage::sfinae::GetCol(element));
+          }
+          for (const auto& col_value : cols) {
+            data_vec.push_back(current::ToString(row_value) + ',' + current::ToString(col_value) + '=' +
+                               current::ToString(Value(fields.oone_to_umany.Get(row_value, col_value)).phew));
+          }
+        }
+        EXPECT_EQ("1,one=1 1,six=6 2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result1));
       const auto result2 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
@@ -485,7 +622,20 @@ TEST(TransactionalStorage, SmokeTest) {
                              current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
                              current::ToString(element.phew));
         }
+        data_vec.clear();
+        for (const auto& element : fields.uone_to_omany.Cols()) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        data_set.clear();
         EXPECT_EQ("fiv,2=10 one,1=1 six,1=6 two,2=4", current::strings::Join(data_vec, ' '));
+        for (const auto& element : fields.oone_to_umany.Cols()) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetCol(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetRow(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("fiv,2=10 one,1=1 six,1=6 two,2=4", current::strings::Join(data_set, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result2));
       const auto result3 = storage.ReadOnlyTransaction([](ImmutableFields<Storage> fields) {
@@ -504,6 +654,20 @@ TEST(TransactionalStorage, SmokeTest) {
                              current::ToString(element.phew));
         }
         EXPECT_EQ("2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
+        data_vec.clear();
+        for (const auto& element : fields.uone_to_omany.Row(2)) {
+          data_vec.push_back(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                             current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                             current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,fiv=10 2,two=4", current::strings::Join(data_vec, ' '));
+        data_set.clear();
+        for (const auto& element : fields.oone_to_umany.Row(2)) {
+          data_set.insert(current::ToString(current::storage::sfinae::GetRow(element)) + ',' +
+                          current::ToString(current::storage::sfinae::GetCol(element)) + '=' +
+                          current::ToString(element.phew));
+        }
+        EXPECT_EQ("2,fiv=10 2,two=4", current::strings::Join(data_set, ' '));
       }).Go();
       EXPECT_TRUE(WasCommitted(result3));
     }
@@ -788,15 +952,21 @@ TEST(TransactionalStorage, FieldAccessors) {
   using namespace transactional_storage_test;
   using Storage = TestStorage<SherlockInMemoryStreamPersister>;
 
-  EXPECT_EQ(7u, Storage::FIELDS_COUNT);
+  EXPECT_EQ(13u, Storage::FIELDS_COUNT);
   Storage storage;
   EXPECT_EQ("d", storage(::current::storage::FieldNameByIndex<0>()));
   EXPECT_EQ("umany_to_umany", storage(::current::storage::FieldNameByIndex<1>()));
-  EXPECT_EQ("uone_to_uone", storage(::current::storage::FieldNameByIndex<2>()));
-  EXPECT_EQ("uone_to_umany", storage(::current::storage::FieldNameByIndex<3>()));
-  EXPECT_EQ("omany_to_omany", storage(::current::storage::FieldNameByIndex<4>()));
-  EXPECT_EQ("oone_to_oone", storage(::current::storage::FieldNameByIndex<5>()));
-  EXPECT_EQ("oone_to_omany", storage(::current::storage::FieldNameByIndex<6>()));
+  EXPECT_EQ("omany_to_omany", storage(::current::storage::FieldNameByIndex<2>()));
+  EXPECT_EQ("umany_to_omany", storage(::current::storage::FieldNameByIndex<3>()));
+  EXPECT_EQ("omany_to_umany", storage(::current::storage::FieldNameByIndex<4>()));
+  EXPECT_EQ("uone_to_uone", storage(::current::storage::FieldNameByIndex<5>()));
+  EXPECT_EQ("oone_to_oone", storage(::current::storage::FieldNameByIndex<6>()));
+  EXPECT_EQ("uone_to_oone", storage(::current::storage::FieldNameByIndex<7>()));
+  EXPECT_EQ("oone_to_uone", storage(::current::storage::FieldNameByIndex<8>()));
+  EXPECT_EQ("uone_to_umany", storage(::current::storage::FieldNameByIndex<9>()));
+  EXPECT_EQ("oone_to_omany", storage(::current::storage::FieldNameByIndex<10>()));
+  EXPECT_EQ("uone_to_omany", storage(::current::storage::FieldNameByIndex<11>()));
+  EXPECT_EQ("oone_to_umany", storage(::current::storage::FieldNameByIndex<12>()));
 
   {
     std::string s;
@@ -809,7 +979,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<1, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("umany_to_umany, UnorderedManyToMany, Cell", s);
+    EXPECT_EQ("umany_to_umany, UnorderedManyToUnorderedMany, Cell", s);
   }
 
   {
@@ -817,7 +987,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<2, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("uone_to_uone, UnorderedOneToOne, Cell", s);
+    EXPECT_EQ("omany_to_omany, OrderedManyToOrderedMany, Cell", s);
   }
 
   {
@@ -825,7 +995,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<3, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("uone_to_umany, UnorderedOneToMany, Cell", s);
+    EXPECT_EQ("umany_to_omany, UnorderedManyToOrderedMany, Cell", s);
   }
 
   {
@@ -833,7 +1003,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<4, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("omany_to_omany, OrderedManyToMany, Cell", s);
+    EXPECT_EQ("omany_to_umany, OrderedManyToUnorderedMany, Cell", s);
   }
 
   {
@@ -841,7 +1011,7 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<5, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("oone_to_oone, OrderedOneToOne, Cell", s);
+    EXPECT_EQ("uone_to_uone, UnorderedOneToUnorderedOne, Cell", s);
   }
 
   {
@@ -849,7 +1019,55 @@ TEST(TransactionalStorage, FieldAccessors) {
     EXPECT_EQ(42,
               storage(::current::storage::FieldNameAndTypeByIndexAndReturn<6, int>(),
                       CurrentStorageTestMagicTypesExtractor(s)));
-    EXPECT_EQ("oone_to_omany, OrderedOneToMany, Cell", s);
+    EXPECT_EQ("oone_to_oone, OrderedOneToOrderedOne, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<7, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("uone_to_oone, UnorderedOneToOrderedOne, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<8, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("oone_to_uone, OrderedOneToUnorderedOne, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<9, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("uone_to_umany, UnorderedOneToUnorderedMany, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<10, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("oone_to_omany, OrderedOneToOrderedMany, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<11, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("uone_to_omany, UnorderedOneToOrderedMany, Cell", s);
+  }
+
+  {
+    std::string s;
+    EXPECT_EQ(42,
+              storage(::current::storage::FieldNameAndTypeByIndexAndReturn<12, int>(),
+                      CurrentStorageTestMagicTypesExtractor(s)));
+    EXPECT_EQ("oone_to_umany, OrderedOneToUnorderedMany, Cell", s);
   }
 }
 
@@ -1215,7 +1433,7 @@ CURRENT_STRUCT(SimpleLike, SimpleLikeBase) {
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, SimpleUser, SimpleUserPersisted);  // Ordered for list view.
 CURRENT_STORAGE_FIELD_ENTRY(UnorderedDictionary, SimplePost, SimplePostPersisted);
 // TODO(dkorolev): Ordered `ManyToMany` too.
-CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToMany, SimpleLike, SimpleLikePersisted);
+CURRENT_STORAGE_FIELD_ENTRY(UnorderedManyToUnorderedMany, SimpleLike, SimpleLikePersisted);
 
 CURRENT_STORAGE(SimpleStorage) {
   CURRENT_STORAGE_FIELD(user, SimpleUserPersisted);

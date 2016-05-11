@@ -139,23 +139,41 @@ namespace storage {
     using DEPRECATED_T_(PERSISTED_EVENT_2) = persisted_event_2_t;                      \
   }
 
-#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToMany(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedManyToMany, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToUnorderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedManyToUnorderedMany, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_OrderedManyToMany(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedManyToMany, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedManyToOrderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedManyToOrderedMany, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToOne(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToOne, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedManyToOrderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedManyToOrderedMany, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToOne(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToOne, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedManyToUnorderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedManyToUnorderedMany, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToMany(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToMany, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToUnorderedOne(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToUnorderedOne, entry_type, entry_name)
 
-#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToMany(entry_type, entry_name) \
-  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToMany, entry_type, entry_name)
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToOrderedOne(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToOrderedOne, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToOrderedOne(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToOrderedOne, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToUnorderedOne(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToUnorderedOne, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToUnorderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToUnorderedMany, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToOrderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToOrderedMany, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_UnorderedOneToOrderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(UnorderedOneToOrderedMany, entry_type, entry_name)
+
+#define CURRENT_STORAGE_FIELD_ENTRY_OrderedOneToUnorderedMany(entry_type, entry_name) \
+  CURRENT_STORAGE_FIELD_ENTRY_Matrix_IMPL(OrderedOneToUnorderedMany, entry_type, entry_name)
 
 #define CURRENT_STORAGE_FIELD_ENTRY(container, entry_type, entry_name) \
   CURRENT_STORAGE_FIELD_ENTRY_##container(entry_type, entry_name)
