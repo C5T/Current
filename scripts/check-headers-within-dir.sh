@@ -7,7 +7,7 @@
 
 set -u -e
 
-CPPFLAGS="-std=c++11 -g -Wall -W -DCURRENT_TEST_COMPILATION"
+CPPFLAGS="-std=c++11 -g -Wall -W -DCURRENT_MAKE_CHECK_MODE"
 LDFLAGS="-pthread"
 
 if [ $(uname) = "Darwin" ] ; then

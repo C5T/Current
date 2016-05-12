@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include "../port.h"
 
-#ifdef CURRENT_TEST_COMPILATION
+#ifdef CURRENT_MAKE_CHECK_MODE
 #include "current_build.h"
 #endif
 
