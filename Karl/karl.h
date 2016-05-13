@@ -39,12 +39,18 @@ SOFTWARE.
 // The conventional wisdom is that Karl can start with both 1) and 2) missing. After one keepalive cycle,
 // which is under half a minute, it would regain the state of the fleet, as long as all keepalives go to it.
 
-// NOTE: Local `current_build.h` must be included before Karl/Claire headers.
+// NOTE: The user must `#include` their local `current_build.h` header prior to Karl/Claire headers.
 
 #ifndef KARL_KARL_H
 #define KARL_KARL_H
 
 #include "../port.h"
+
+// The `current_build.h` file from this local `Current/Karl` dir makes no sense for external users of Karl.
+// Nonetheless, top-level `make test` and `make check` should pass out of the box.
+#ifdef CURRENT_MAKE_CHECK_MODE
+#include "current_build.mock.h"
+#endif
 
 #include "exceptions.h"
 #include "schema_karl.h"
@@ -374,8 +380,8 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
 
           Optional<current::build::Info> optional_build = body.build;
           Optional<std::chrono::microseconds> optional_behind_this_by;
-          if (Exists(body.last_successful_ping_epoch_microseconds)) {
-            optional_behind_this_by = now - body.now - Value(body.last_successful_ping_epoch_microseconds) / 2;
+          if (Exists(body.last_successful_keepalive_ping_us)) {
+            optional_behind_this_by = now - body.now - Value(body.last_successful_keepalive_ping_us) / 2;
           }
 
           storage_.ReadWriteTransaction(

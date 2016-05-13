@@ -22,12 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// NOTE: Local `current_build.h` must be included before Karl/Claire headers.
+// NOTE: The user must `#include` their local `current_build.h` header prior to Karl/Claire headers.
 
 #ifndef KARL_CLAIRE_H
 #define KARL_CLAIRE_H
 
 #include "../port.h"
+
+// The `current_build.h` file from this local `Current/Karl` dir makes no sense for external users of Karl.
+// Nonetheless, top-level `make test` and `make check` should pass out of the box.
+#ifdef CURRENT_MAKE_CHECK_MODE
+#include "current_build.mock.h"
+#endif
 
 #include <atomic>
 #include <thread>
@@ -205,7 +211,7 @@ class GenericClaire final {
             " ago";
       }
       if (last_successful_keepalive_ping_.count()) {
-        status.last_successful_ping_epoch_microseconds = last_successful_keepalive_ping_;
+        status.last_successful_keepalive_ping_us = last_successful_keepalive_ping_;
         status.last_successful_keepalive_ping =
             current::strings::Printf("%.2lfms", 1e-3 * last_successful_keepalive_ping_.count());
       }

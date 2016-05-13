@@ -44,7 +44,7 @@
 #error "The 'MidichloriansDataDictionary.h' file should not be included prior to 'MidichloriansImpl.h'."
 #endif  // CURRENT_MIDICHLORIANS_DATA_DICTIONARY_H
 
-#ifndef CURRENT_TEST_COMPILATION
+#ifndef CURRENT_MAKE_CHECK_MODE
 
 #define COMPILE_MIDICHLORIANS_DATA_DICTIONARY_FOR_IOS_CLIENT
 #include "../../MidichloriansDataDictionary.h"
@@ -79,9 +79,9 @@ using current::midichlorians::ios::ios_events_t;
 
 #else
 
-// In `CURRENT_TEST_COMPILATION` mode, still compile the data dictionary header.
+// In `CURRENT_MAKE_CHECK_MODE` mode, still compile the data dictionary header.
 #include "../../MidichloriansDataDictionary.h"
 
-#endif  // CURRENT_TEST_COMPILATION
+#endif  // CURRENT_MAKE_CHECK_MODE
 
 #endif  // CURRENT_MIDICHLORIANS_CLIENT_IOS_IMPL_H

@@ -90,9 +90,9 @@ inline std::string ToStdString(JNIEnv* env, jstring str) {
 #endif  // LINK_JAVA_ON_LOAD_INTO_SOURCE
 
 #else  // defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
-#ifndef CURRENT_TEST_COMPILATION
+#ifndef CURRENT_MAKE_CHECK_MODE
 #error "`java_wrapper.h` should only be compiled on Java and Android."
-#endif  // CURRENT_TEST_COMPILATION
+#endif  // CURRENT_MAKE_CHECK_MODE
 
 #endif  // defined(CURRENT_JAVA) || defined(CURRENT_ANDROID)
 

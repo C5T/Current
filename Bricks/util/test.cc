@@ -46,13 +46,14 @@ SOFTWARE.
 #include <thread>
 
 TEST(Util, BasicException) {
+  std::string golden;
   try {
+    golden = current::strings::Printf("test.cc:%d\tcurrent::Exception(\"Foo\")\tFoo", __LINE__ + 1);
     CURRENT_THROW(current::Exception("Foo"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:49\tcurrent::Exception(\"Foo\")\tFoo";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
@@ -63,13 +64,14 @@ struct TestException : current::Exception {
 };
 
 TEST(Util, CustomException) {
+  std::string golden;
   try {
+    golden = current::strings::Printf("test.cc:%d\tTestException(\"Bar\", \"Baz\")\tBar&Baz", __LINE__ + 1);
     CURRENT_THROW(TestException("Bar", "Baz"));
     ASSERT_TRUE(false);
   } catch (current::Exception& e) {
     // Relative path prefix will be here when measuring code coverage, take it out.
     const std::string actual = e.What();
-    const std::string golden = "test.cc:66\tTestException(\"Bar\", \"Baz\")\tBar&Baz";
     ASSERT_GE(actual.length(), golden.length());
     EXPECT_EQ(golden, actual.substr(actual.length() - golden.length()));
   }
