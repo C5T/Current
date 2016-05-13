@@ -22,16 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-// NOTE(mzhurovich): Local `current_build.h` must be included before Karl/Claire headers.
-// NOTE(dkorolev): Why the hell? :-)
-
 #ifndef KARL_CLAIRE_H
 #define KARL_CLAIRE_H
 
 #include "../port.h"
 
+// The `current_build.h` file from this local `Current/Karl` dir makes no sense for external users of Karl.
+// Nonetheless, top-level `make test` and `make check` should pass out of the box.
 #ifdef CURRENT_MAKE_CHECK_MODE
-#include "current_build.h"
+#include "current_build.mock.h"
 #endif
 
 #include <atomic>

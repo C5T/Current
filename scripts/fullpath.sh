@@ -7,11 +7,11 @@ set -u -e
 
 SOURCE="$1"
 while [ -h "$SOURCE" ]; do  # Resolve $SOURCE until the file is no longer a symlink.
-  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-  SOURCE="$(readlink "$SOURCE")"
+  DIR=$(cd -P "$(dirname "$SOURCE")" && pwd)
+  SOURCE=$(readlink "$SOURCE")
   [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"  # If $SOURCE was a relative symlink, we need to resolve it 
                                                   # relative to the path where the symlink file was located.
 done
-DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+DIR=$(cd -P "$(dirname "$SOURCE")" && pwd)
 
-echo "$DIR/$(basename "$1")"
+echo $DIR/$(basename "$1")
