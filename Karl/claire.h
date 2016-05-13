@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
+// NOTE: The user must `#include` their local `current_build.h` header prior to Karl/Claire headers.
+
 #ifndef KARL_CLAIRE_H
 #define KARL_CLAIRE_H
 
