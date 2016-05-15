@@ -438,12 +438,27 @@ struct SuperTypeImpl {
 template <typename T>
 using SuperType = typename SuperTypeImpl<T>::type;
 
-template <typename T>
+enum class FieldCounterPolicy { ThisStructOnly, IncludingSuperFields };
+
+template <typename T, FieldCounterPolicy POLICY = FieldCounterPolicy::ThisStructOnly>
 struct FieldCounter {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  enum { value = (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) };
+  enum {
+    value = (POLICY == FieldCounterPolicy::ThisStructOnly)
+                ? (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
+                : (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) +
+                      FieldCounter<SuperType<T>, POLICY>::value
+  };
 };
+
+template <FieldCounterPolicy POLICY>
+struct FieldCounter<CurrentStruct, POLICY> {
+  enum { value = 0 };
+};
+
+template <typename T>
+using TotalFieldCounter = FieldCounter<T, FieldCounterPolicy::IncludingSuperFields>;
 
 struct FieldDescriptions {
   using c_string_t = const char*;

@@ -31,30 +31,62 @@ SOFTWARE.
 
 #include "../../Bricks/template/pod.h"
 
+#define CURRENT_NAMESPACE(ns)                                   \
+  struct CURRENT_NAMESPACE_HELPER_##ns {                        \
+    static const char* CURRENT_NAMESPACE_NAME() { return #ns; } \
+  };                                                            \
+  struct ns : CURRENT_NAMESPACE_HELPER_##ns
+
+#define CURRENT_NAMESPACE_TYPE(external, ...) using external = __VA_ARGS__
+
+namespace current {
 namespace type_evolution {
 
-template <typename FROM, typename INTO>
+struct NaturalEvolutor {};
+
+template <typename FROM_NAMESPACE, typename FROM_TYPE, typename EVOLUTOR = NaturalEvolutor>
 struct Evolve;
 
-template <typename T>
-struct Evolve<T, T> {
-  static current::copy_free<T> Go(current::copy_free<T> x) { return x; }
+// Identity evolutors for primitive types.
+#define CURRENT_DECLARE_PRIMITIVE_TYPE(typeid_index, cpp_type, current_type, fs_type, md_type) \
+  template <typename FROM_NAMESPACE, typename EVOLUTOR>                                        \
+  struct Evolve<FROM_NAMESPACE, cpp_type, EVOLUTOR> {                                          \
+    template <typename>                                                                        \
+    static cpp_type Go(cpp_type from) {                                                        \
+      return from;                                                                             \
+    }                                                                                          \
+  };
+#include "../primitive_types.dsl.h"
+#undef CURRENT_DECLARE_PRIMITIVE_TYPE
+
+// Default evolutor for Variants.
+template <typename DESTINATION_VARIANT, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
+struct VariantTypedEvolutor {
+  DESTINATION_VARIANT& into;
+  explicit VariantTypedEvolutor(DESTINATION_VARIANT& into) : into(into) {}
+  template <typename T>
+  void operator()(const T& value) {
+    into = Evolve<FROM_NAMESPACE, T, EVOLUTOR>::template Go<INTO>(value);
+  }
 };
 
-}  // namespace ::type_evolution
+}  // namespace current::type_evolution
+}  // namespace current
 
-#define EVOLVE(FROM, INTO, ...)            \
-  namespace type_evolution {               \
-  template <>                              \
-  struct Evolve<FROM, INTO> {              \
-    using from_t = FROM;                   \
-    using into_t = INTO;                   \
-    static into_t Go(const from_t& from) { \
-      into_t into;                         \
-      __VA_ARGS__;                         \
-      return into;                         \
-    }                                      \
-  };                                       \
-  }  // namespace ::type_evolution
+#define CURRENT_TYPE_EVOLUTOR(evolutor, from_namespace, type_name, ...)                  \
+  namespace current {                                                                    \
+  namespace type_evolution {                                                             \
+  struct evolutor;                                                                       \
+  template <>                                                                            \
+  struct Evolve<from_namespace, from_namespace::type_name, evolutor> {                   \
+    template <typename INTO>                                                             \
+    static typename INTO::type_name Go(const typename from_namespace::type_name& from) { \
+      typename INTO::type_name into;                                                     \
+      __VA_ARGS__;                                                                       \
+      return into;                                                                       \
+    }                                                                                    \
+  };                                                                                     \
+  }                                                                                      \
+  }
 
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
