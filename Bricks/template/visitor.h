@@ -25,9 +25,9 @@ SOFTWARE.
 #ifndef BRICKS_TEMPLATE_VISITOR_H
 #define BRICKS_TEMPLATE_VISITOR_H
 
-#ifndef CURRENT_TEST_COMPILATION
+#ifndef CURRENT_MAKE_CHECK_MODE
 #error "`visitor.h` is being deprecated now."
-#endif  // CURRENT_TEST_COMPILATION
+#endif  // CURRENT_MAKE_CHECK_MODE
 
 #if 0
 

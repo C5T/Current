@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef CURRENT_TEST_COMPILATION
+#ifndef CURRENT_MAKE_CHECK_MODE
 
 #import <Foundation/Foundation.h>
 
@@ -47,4 +47,4 @@ SOFTWARE.
 
 @end
 
-#endif  // CURRENT_TEST_COMPILATION
+#endif  // CURRENT_MAKE_CHECK_MODE

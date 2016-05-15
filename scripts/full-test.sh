@@ -17,8 +17,8 @@ fi
 
 # NOTE: FULL_TEST_DIR must be resolved from the current working directory.
 
-CURRENT_SCRIPTS_DIR=$( dirname "${BASH_SOURCE[0]}" )
-RUN_DIR_FULL_PATH=$( "$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD" )
+CURRENT_SCRIPTS_DIR="$(dirname "${BASH_SOURCE[0]}")"
+RUN_DIR_FULL_PATH="$("$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD")"
 
 FULL_TEST_DIR_NAME="zzz_full_test"  # The `zzz` prefix guarantees the full test directory is down the list.
 FULL_TEST_DIR_FULL_PATH="$RUN_DIR_FULL_PATH/$FULL_TEST_DIR_NAME"
@@ -56,8 +56,8 @@ done
 # Allow this one test to rule them all to access all the `golden/` files.
 mkdir -p "$GOLDEN_FULL_PATH"
 echo -e "\n\n\033[0m\033[1mGolden files\033[0m: \033[35m"
-for dirname in $(find . -iname "$GOLDEN_DIR_NAME" -type d | grep -v "/3rdparty/" | grep -v "/.current/" | grep -v "/sandbox/" | grep -v "$FULL_TEST_DIR_NAME"); do
-  (cd $dirname; for filename in * ; do cp -v "$PWD/$filename" "$GOLDEN_FULL_PATH" ; done)
+for dir in $(find . -iname "$GOLDEN_DIR_NAME" -type d | grep -v "/3rdparty/" | grep -v "/.current/" | grep -v "/sandbox/" | grep -v "$FULL_TEST_DIR_NAME"); do
+  (cd $dir; for filename in * ; do cp -v "$PWD/$filename" "$GOLDEN_FULL_PATH" ; done)
 done
 echo -e -n "\033[0m"
 

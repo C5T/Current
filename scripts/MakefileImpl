@@ -60,16 +60,16 @@ clean:
 
 .current/%: %.cc *.h
 	@(mkdir -p .current)
-	${CPLUSPLUS} ${CPPFLAGS} -o $@ $< ${LDFLAGS}
+	${CPLUSPLUS} ${CPPFLAGS} -o "$@" "$<" ${LDFLAGS}
 
 indent:
-	${CURRENT_SCRIPTS_DIR_FULL_PATH}/indent.sh
+	"${CURRENT_SCRIPTS_DIR_FULL_PATH}/indent.sh"
 
 check:
-	${CURRENT_SCRIPTS_DIR_FULL_PATH}/check-headers.sh
+	"${CURRENT_SCRIPTS_DIR_FULL_PATH}/check-headers.sh"
 
 coverage:
-	${CURRENT_SCRIPTS_DIR_FULL_PATH}/coverage-report.sh
+	"${CURRENT_SCRIPTS_DIR_FULL_PATH}/coverage-report.sh"
 
 wc:
 	echo -n "Total files: " ; (find . -name '*.cc' ; find . -iname '*.h') | grep -v "/3rdparty/" | grep -v "/.current/" | grep -v "/zzz_full_test/" | wc -l

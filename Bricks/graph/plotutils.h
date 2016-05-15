@@ -1,3 +1,3 @@
-#ifndef CURRENT_TEST_COMPILATION
+#ifndef CURRENT_MAKE_CHECK_MODE
 #error "Bricks `plotutils` binding has been deprecated. Please use the `gnuplot` one instead."
-#endif  // CURRENT_TEST_COMPILATION
+#endif  // CURRENT_MAKE_CHECK_MODE
