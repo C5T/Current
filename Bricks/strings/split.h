@@ -130,10 +130,11 @@ struct DefaultSeparator<ByLines> {
 }  // namespace impl
 
 template <typename SEPARATOR, typename PROCESSOR>
-inline size_t Split(const std::string& s,
-                    SEPARATOR&& separator,
-                    PROCESSOR&& processor,
-                    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
+inline std::enable_if_t<!std::is_same<PROCESSOR, EmptyFields>::value, size_t> Split(
+    const std::string& s,
+    SEPARATOR&& separator,
+    PROCESSOR&& processor,
+    EmptyFields empty_fields_strategy = EmptyFields::Skip) {
   size_t i = 0;
   size_t j = 0;
   size_t n = 0;
