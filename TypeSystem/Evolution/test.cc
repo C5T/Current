@@ -58,8 +58,8 @@ CURRENT_STRUCT(StructWithStruct) {
 };
 
 CURRENT_STRUCT(StructWithVector) {
-  CURRENT_FIELD(numbers, std::vector<std::string>);
-  CURRENT_DEFAULT_CONSTRUCTOR(StructWithVector) : numbers({"-1", "112"}) {}
+  CURRENT_FIELD(numerical_ids, std::vector<int32_t>);
+  CURRENT_DEFAULT_CONSTRUCTOR(StructWithVector) : numerical_ids({8, 50}) {}
 };
 
 CURRENT_STRUCT(StructWithVariant) {
@@ -133,12 +133,12 @@ struct Evolve<type_evolution_test::SchemaV1, type_evolution_test::SchemaV1::Stru
             reflection::TotalFieldCounter<typename INTO::StructWithVector>::value,
         "Total field count for `StructWithVector` must match.");
     typename INTO::StructWithVector into;
-    into.numbers.clear();
-    into.numbers.reserve(from.numbers.size());
-    for (const auto& cit : from.numbers) {
-      into.numbers.push_back(Evolve<type_evolution_test::SchemaV1,
-                                    typename decltype(from.numbers)::value_type,
-                                    EVOLUTOR>::template Go<INTO>(cit));
+    into.numerical_ids.clear();
+    into.numerical_ids.reserve(from.numerical_ids.size());
+    for (const auto& cit : from.numerical_ids) {
+      into.numerical_ids.push_back(Evolve<type_evolution_test::SchemaV1,
+                                          typename decltype(from.numerical_ids)::value_type,
+                                          EVOLUTOR>::template Go<INTO>(cit));
     }
     return into;
   }
@@ -191,10 +191,10 @@ CURRENT_TYPE_EVOLUTOR(V1ToV2Evolutor,
                       type_evolution_test::SchemaV1,
                       StructWithVector,
                       {
-                        into.numbers.clear();
-                        into.numbers.reserve(from.numbers.size());
-                        for (const auto& cit : from.numbers) {
-                          into.numbers.push_back(current::FromString<int32_t>(cit));
+                        into.string_ids.clear();
+                        into.string_ids.reserve(from.numerical_ids.size());
+                        for (const auto& cit : from.numerical_ids) {
+                          into.string_ids.push_back('@' + current::ToString(cit));
                         }
                       });
 
@@ -224,9 +224,10 @@ CURRENT_STRUCT(StructWithStruct) {
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithStruct) {}
 };
 
+// `StructWithVector` should evolve from `vector<int32_t> numerical_ids` in `SchemaV1` into `string_ids`.
 CURRENT_STRUCT(StructWithVector) {
-  CURRENT_FIELD(numbers, std::vector<int32_t>);
-  CURRENT_DEFAULT_CONSTRUCTOR(StructWithVector) : numbers({8, 50}) {}
+  CURRENT_FIELD(string_ids, std::vector<std::string>);
+  CURRENT_DEFAULT_CONSTRUCTOR(StructWithVector) : string_ids({"@-1", "@112"}) {}
 };
 
 CURRENT_STRUCT(StructWithVariant) {
@@ -234,6 +235,7 @@ CURRENT_STRUCT(StructWithVariant) {
   CURRENT_DEFAULT_CONSTRUCTOR(StructWithVariant) {}
 };
 
+// `Name` should evolve from two separate fields in `SchemaV1` into one full name field.
 CURRENT_STRUCT(Name) {
   CURRENT_FIELD(full, std::string, "Friedrich Engels");
   CURRENT_DEFAULT_CONSTRUCTOR(Name) {}
@@ -309,21 +311,21 @@ TEST(TypeEvolutionTest, StructWithVector) {
   using namespace type_evolution_test;
   {
     const SchemaV1::StructWithVector from;
-    EXPECT_EQ("-1,112", current::strings::Join(from.numbers, ','));
+    EXPECT_EQ("8,50", current::strings::Join(from.numerical_ids, ','));
     const SchemaV2::StructWithVector into;
-    EXPECT_EQ("8,50", current::strings::Join(into.numbers, ','));
+    EXPECT_EQ("@-1,@112", current::strings::Join(into.string_ids, ','));
   }
   {
     using current::type_evolution::V1ToV2Evolutor;
     const SchemaV1::StructWithVector original;
-    // The default evolution won't compile because the type of `StructWithVector.numbers` changes from
-    // `SchemaV1` to `SchemaV2`.
+    // The default evolution won't compile because `vector<int32_t> numerical_ids` changes to
+    // `vector<string> string_ids`.
     // const SchemaV2::StructWithVector converted = current::type_evolution::Evolve<SchemaV1,
     // SchemaV1::StructWithVector>::template Go<SchemaV2>(original);
     const SchemaV2::StructWithVector converted =
         current::type_evolution::Evolve<SchemaV1, SchemaV1::StructWithVector, V1ToV2Evolutor>::template Go<
             SchemaV2>(original);
-    EXPECT_EQ("-1,112", current::strings::Join(converted.numbers, ','));
+    EXPECT_EQ("@8,@50", current::strings::Join(converted.string_ids, ','));
   }
 }
 
