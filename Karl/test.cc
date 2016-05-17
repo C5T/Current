@@ -646,6 +646,9 @@ TEST(Karl, EndToEndTest) {
     std::cerr << "IsPrime    :: localhost:" << FLAGS_karl_is_prime_test_port << "/is_prime?x=42\n";
     std::cerr << "Annotator  :: localhost:" << FLAGS_karl_annotator_test_port << "/annotated\n";
     std::cerr << "Filter     :: localhost:" << FLAGS_karl_filter_test_port << "/primes\n";
+    if (!FLAGS_karl_nginx_config_file.empty()) {
+      std::cerr << "Nginx view :: localhost:" << FLAGS_karl_nginx_port << '\n';
+    }
   }
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);

@@ -507,10 +507,13 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
   void ServeFleetStatus(Request r) { BuildStatusAndRespondWithIt(std::move(r)); }
 
   void ServeKarlStatus(Request r) {
-    if (r.url.query.has("parameters") || r.url.query.has("params") || r.url.query.has("p")) {
+    if (r.url.query.has("parameters") || r.url.query.has("params") || r.url.query.has("p") ||
+        r.url.query.has("full") || r.url.query.has("f")) {
       r(KarlUpStatus(parameters_));
     } else {
-      r(KarlUpStatus());
+      r(JSON<JSONFormat::Minimalistic>(KarlUpStatus()),
+        HTTPResponseCode.OK,
+        current::net::constants::kDefaultJSONContentType);
     }
   }
 
