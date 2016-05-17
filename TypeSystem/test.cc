@@ -38,6 +38,7 @@ SOFTWARE.
 #include "Reflection/test.cc"
 #include "Serialization/test.cc"
 #include "Schema/test.cc"
+#include "Evolution/test.cc"
 
 namespace struct_definition_test {
 
@@ -134,9 +135,22 @@ CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
 
 TEST(TypeSystemTest, FieldCounter) {
   using namespace struct_definition_test;
-  EXPECT_EQ(1, current::reflection::FieldCounter<Foo>::value);
-  EXPECT_EQ(1, current::reflection::FieldCounter<Bar>::value);
-  EXPECT_EQ(5, current::reflection::FieldCounter<Baz>::value);
+  {
+    EXPECT_EQ(0, current::reflection::FieldCounter<Empty>::value);
+    EXPECT_EQ(0, current::reflection::FieldCounter<EmptyDerived>::value);
+    EXPECT_EQ(1, current::reflection::FieldCounter<Foo>::value);
+    EXPECT_EQ(1, current::reflection::FieldCounter<Bar>::value);
+    EXPECT_EQ(5, current::reflection::FieldCounter<Baz>::value);
+    EXPECT_EQ(1, current::reflection::FieldCounter<DerivedFromFoo>::value);
+  }
+  {
+    EXPECT_EQ(0, current::reflection::TotalFieldCounter<Empty>::value);
+    EXPECT_EQ(0, current::reflection::TotalFieldCounter<EmptyDerived>::value);
+    EXPECT_EQ(1, current::reflection::TotalFieldCounter<Foo>::value);
+    EXPECT_EQ(1, current::reflection::TotalFieldCounter<Bar>::value);
+    EXPECT_EQ(5, current::reflection::TotalFieldCounter<Baz>::value);
+    EXPECT_EQ(2, current::reflection::TotalFieldCounter<DerivedFromFoo>::value);
+  }
 }
 
 TEST(TypeSystemTest, FieldDescriptions) {
