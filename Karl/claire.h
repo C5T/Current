@@ -43,6 +43,7 @@ SOFTWARE.
 #include "schema_claire.h"
 #include "locator.h"
 #include "exceptions.h"
+#include "respond_with_schema.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -51,14 +52,6 @@ SOFTWARE.
 
 namespace current {
 namespace karl {
-
-// TODO(dkorolev): Eventually migrate this into `Blocks/HTTP`.
-template <typename T, current::reflection::Language L>
-void RespondWithSchema(Request r) {
-  current::reflection::StructSchema schema;
-  schema.AddType<T>();
-  r(schema.GetSchemaInfo().Describe<L>());
-}
 
 // No need for `CURRENT_FIELD_DESCRIPTION`-s in this structure. -- D.K.
 CURRENT_STRUCT(InternalKeepaliveAttemptResult) {
@@ -224,10 +217,8 @@ class GenericClaire final {
     status.now = now;
 
 #ifndef CURRENT_MOCK_TIME
-    // With mock time, can result in negatives in `status.uptime`, which
-    // would kill `ParseJSON`. -- D.K.
-    status.uptime_epoch_microseconds = now - us_start_;
-    status.uptime = current::strings::TimeIntervalAsHumanReadableString(status.uptime_epoch_microseconds);
+    // With mock time, can result in negatives in `status.uptime`, which would kill `ParseJSON`. -- D.K.
+    status.uptime = current::strings::TimeIntervalAsHumanReadableString(now - us_start_);
 
     {
       std::lock_guard<std::mutex> lock(status_mutex_);

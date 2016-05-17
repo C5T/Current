@@ -57,6 +57,7 @@ SOFTWARE.
 #include "schema_claire.h"
 #include "locator.h"
 #include "render.h"
+#include "respond_with_schema.h"
 
 #include "../Storage/storage.h"
 #include "../Storage/persister/sherlock.h"
@@ -287,7 +288,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
       std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
       if (most_recent_keepalive_time.count() != 0) {
         const auto wait_interval =
-            service_timeout_interval_ - (current::time::Now() - most_recent_keepalive_time);
+            parameters_.service_timeout_interval - (current::time::Now() - most_recent_keepalive_time);
         if (wait_interval.count() > 0) {
           update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
         }
@@ -504,7 +505,23 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
     }
   }
 
-  void ServeFleetStatus(Request r) { BuildStatusAndRespondWithIt(std::move(r)); }
+  void ServeFleetStatus(Request r) {
+    const auto& qs = r.url.query;
+    if (qs.has("schema")) {
+      using uber_t = Variant<karl_status_t, claire_status_t, persisted_keepalive_t, KarlParameters>;
+      const auto& schema = qs["schema"];
+      using L = current::reflection::Language;
+      if (schema == "md") {
+        RespondWithSchema<uber_t, L::Markdown>(std::move(r));
+      } else if (schema == "fs") {
+        RespondWithSchema<uber_t, L::FSharp>(std::move(r));
+      } else {
+        RespondWithSchema<uber_t, L::JSON>(std::move(r));
+      }
+    } else {
+      BuildStatusAndRespondWithIt(std::move(r));
+    }
+  }
 
   void ServeKarlStatus(Request r) {
     if (r.url.query.has("parameters") || r.url.query.has("params") || r.url.query.has("p") ||
