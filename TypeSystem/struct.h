@@ -444,17 +444,16 @@ template <typename T, FieldCounterPolicy POLICY = FieldCounterPolicy::ThisStruct
 struct FieldCounter {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  enum {
-    value = (POLICY == FieldCounterPolicy::ThisStructOnly)
-                ? (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
-                : (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) +
-                      FieldCounter<SuperType<T>, POLICY>::value
-  };
+  static constexpr size_t value =
+      (POLICY == FieldCounterPolicy::ThisStructOnly)
+          ? (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
+          : (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) +
+                FieldCounter<SuperType<T>, POLICY>::value;
 };
 
 template <FieldCounterPolicy POLICY>
 struct FieldCounter<CurrentStruct, POLICY> {
-  enum { value = 0 };
+  static constexpr size_t value = 0;
 };
 
 template <typename T>
