@@ -601,7 +601,8 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
             current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
         if ((now - e.idx_ts.us) < service_timeout_interval_) {
           // Service is up.
-          const auto projected_uptime_us = keepalive.uptime_epoch_microseconds + (now - e.idx_ts.us);
+          const auto projected_uptime_us =
+              (keepalive.now - keepalive.start_time_epoch_microseconds) + (now - e.idx_ts.us);
           report.currently = current_service_state::up(
               keepalive.start_time_epoch_microseconds,
               last_keepalive,

@@ -52,7 +52,14 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
-inline std::string KeepaliveAttemptResultAsString(const KeepaliveAttemptResult& result) {
+// No need for `CURRENT_FIELD_DESCRIPTION`-s in this structure. -- D.K.
+CURRENT_STRUCT(InternalKeepaliveAttemptResult) {
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(status, KeepaliveAttemptStatus, KeepaliveAttemptStatus::Unknown);
+  CURRENT_FIELD(http_code, uint16_t, static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode));
+};
+
+inline std::string KeepaliveAttemptResultAsString(const InternalKeepaliveAttemptResult& result) {
   if (result.status == KeepaliveAttemptStatus::Unknown) {
     return "Unknown";
   } else if (result.status == KeepaliveAttemptStatus::Success) {
@@ -331,7 +338,7 @@ class GenericClaire final {
 
   mutable std::mutex status_mutex_;
   status_generator_t status_generator_;
-  KeepaliveAttemptResult last_keepalive_attempt_result_;
+  InternalKeepaliveAttemptResult last_keepalive_attempt_result_;
   std::chrono::microseconds last_successful_keepalive_timestamp_ = std::chrono::microseconds(0);
   std::chrono::microseconds last_successful_keepalive_ping_ = std::chrono::microseconds(0);
 

@@ -48,9 +48,16 @@ namespace karl {
 
 CURRENT_STRUCT(ClaireServiceKey) {
   CURRENT_FIELD(ip, std::string);
+  CURRENT_FIELD_DESCRIPTION(ip, "The IP address of the server on which the service is running.");
+
   CURRENT_FIELD(port, uint16_t);
+  CURRENT_FIELD_DESCRIPTION(port, "The local port on which the service is running.");
+
   // TODO(dkorolev) + TODO(mzhurovich): Should or should not end with '/'?
   CURRENT_FIELD(prefix, std::string, "");
+  CURRENT_FIELD_DESCRIPTION(prefix,
+                            "The URL prefix for the status page of the service, "
+                            "in cases when multiple services share the same port.");
 
   CURRENT_DEFAULT_CONSTRUCTOR(ClaireServiceKey) {}
   CURRENT_CONSTRUCTOR(ClaireServiceKey)(const ClaireServiceKey& rhs)
@@ -81,34 +88,54 @@ CURRENT_ENUM(KeepaliveAttemptStatus, uint8_t) {
 };
 // clang-format on
 
-CURRENT_STRUCT(KeepaliveAttemptResult) {
-  CURRENT_FIELD(timestamp, std::chrono::microseconds);
-  CURRENT_FIELD(status, KeepaliveAttemptStatus, KeepaliveAttemptStatus::Unknown);
-  CURRENT_FIELD(http_code, uint16_t, static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode));
-};
-
 // The generic status.
 // Persisted by Karl, except for the `build` part, which is only persisted on the first call, or if changed.
 CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(service, std::string);
+  CURRENT_FIELD_DESCRIPTION(service, "The name of the service, as christened by its intelligent designer.");
+
   CURRENT_FIELD(codename, std::string);
+  CURRENT_FIELD_DESCRIPTION(codename,
+                            "The codename of the service instance, assigned randomly at its startup.");
+
   CURRENT_FIELD(local_port, uint16_t);
+  CURRENT_FIELD_DESCRIPTION(local_port, "The local port on which this server is listening.");
 
   // Dependencies as "ip:port[/prefix]" for now.
   CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
+  CURRENT_FIELD_DESCRIPTION(
+      dependencies,
+      "The list of dependencies for this service. Will become arrows as the fleet is being visualized.");
 
   CURRENT_FIELD(now, std::chrono::microseconds);  // To calculated time skew as well.
+  CURRENT_FIELD_DESCRIPTION(now,
+                            "Unix epoch microseconds, local time the keepalive was generated on the machine "
+                            "running the service. Used to estimate time skew.");
   CURRENT_FIELD(start_time_epoch_microseconds, std::chrono::microseconds);
-  CURRENT_FIELD(uptime_epoch_microseconds, std::chrono::microseconds);
+  CURRENT_FIELD_DESCRIPTION(start_time_epoch_microseconds,
+                            "Unix epoch microseconds from which the uptime of this binary is counted.");
   CURRENT_FIELD(uptime, std::string);
+  CURRENT_FIELD_DESCRIPTION(uptime, "The uptime of this service, human-readable.");
 
   CURRENT_FIELD(last_keepalive_sent, std::string);
+  CURRENT_FIELD_DESCRIPTION(last_keepalive_sent, "When was the last keepalive sent, human-readable.");
   CURRENT_FIELD(last_keepalive_status, std::string);
+  CURRENT_FIELD_DESCRIPTION(last_keepalive_status,
+                            "Whether the last keepalive sent succeeded, human-readable.");
   CURRENT_FIELD(last_successful_keepalive, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(last_successful_keepalive,
+                            "When did the last successful keepalive happen, human-readable.");
   CURRENT_FIELD(last_successful_keepalive_ping, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(last_successful_keepalive_ping,
+                            "Ping as measured during the last successful keepalive, human-readable.");
   CURRENT_FIELD(last_successful_keepalive_ping_us, Optional<std::chrono::microseconds>);
+  CURRENT_FIELD_DESCRIPTION(last_successful_keepalive_ping_us,
+                            "Ping as measured during the last successful keepalive, in microseconds.");
 
   CURRENT_FIELD(build, Optional<build::Info>);
+  CURRENT_FIELD_DESCRIPTION(build,
+                            "The JSON containing the build info collected and imprinted "
+                            "into the binary running the service as it was built.");
 };
 
 namespace default_user_status {
