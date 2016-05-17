@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
 #define CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
 
+#include <chrono>
+
 #include "../struct.h"
 #include "../variant.h"
 
