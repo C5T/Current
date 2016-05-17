@@ -153,12 +153,9 @@ class GenericClaire final {
   void RemoveDependency(const ClaireServiceKey& service) { dependencies_.erase(service); }
 
   void Register(status_generator_t status_filler = nullptr, bool require_karls_confirmation = false) {
-    // Register this Claire with Karl and spawn the thread to send regular
-    // keepalives.
-    // If `require_karls_confirmation` is true, throw if Karl can be not
-    // be reached.
-    // If `require_karls_confirmation` is false, just start the keepalives
-    // thread.
+    // Register this Claire with Karl and spawn the thread to send regular keepalives.
+    // If `require_karls_confirmation` is true, throw if Karl can not be reached.
+    // If `require_karls_confirmation` is false, just start the keepalives thread.
     std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
       {
@@ -169,8 +166,7 @@ class GenericClaire final {
       if (require_karls_confirmation) {
         const std::string route = karl_keepalive_route_ + "&confirm";
         // The call to `SendKeepaliveToKarl` is blocking.
-        // With "&confirm" at the end, the call to Karl would require Karl
-        // calling Claire back.
+        // With "&confirm" at the end, the call to Karl would require Karl calling Claire back.
         // Can throw, the exception should propagate up.
         SendKeepaliveToKarl(lock, karl_keepalive_route_ + "&confirm");
       }
@@ -268,11 +264,9 @@ class GenericClaire final {
 
   // Sends a keepalive message to Karl.
   // Blocking, and can throw.
-  // Possibly via a custom `route`: adding "&confirm", for example, would
-  // require Karl to crawl Claire back.
+  // Possibly via a custom `route`: adding "&confirm", for example, would require Karl to crawl Claire back.
   void SendKeepaliveToKarl(std::unique_lock<std::mutex>&, const std::string& route) {
-    // Basically, throw in case of any error, and throw only one type:
-    // `ClaireRegistrationException`.
+    // Basically, throw in case of any error, and throw only one type: `ClaireRegistrationException`.
     const auto keepalive_body = GenerateKeepaliveStatus();
 
     try {
@@ -302,8 +296,9 @@ class GenericClaire final {
     } catch (const current::Exception&) {
       last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::CouldNotConnect;
     }
-    // TODO(dk+mz): Should it really throw in keepalive thread? It will
-    // crash the binary.
+    // OK to throw here. In the thread that sends repeated keepalives, this exception would be caught,
+    // and if an exception is thrown during the initial registration, it is an emergency unless the user
+    // decides otherwise.
     CURRENT_THROW(ClaireRegistrationException(service_, route));
   }
 
@@ -319,8 +314,7 @@ class GenericClaire final {
       std::unique_lock<std::mutex> lock(keepalive_mutex_);
 
       // Have the interval normalized a bit.
-      // TODO(dkorolev): Parameter or named constant for keepalive
-      // frequency?
+      // TODO(dkorolev): Parameter or named constant for keepalive frequency?
       const std::chrono::microseconds projected_next_keepalive =
           last_keepalive_attempt_result_.timestamp +
           std::chrono::microseconds(current::random::CSRandomUInt64(20e6 * 0.9, 20e6 * 1.1));
@@ -338,8 +332,7 @@ class GenericClaire final {
       try {
         SendKeepaliveToKarl(lock, karl_keepalive_route_);
       } catch (const ClaireRegistrationException&) {
-        // Ignore exceptions if there's a problem talking to Karl. He'll
-        // come back. He's Karl.
+        // Ignore exceptions if there's a problem talking to Karl. He'll come back. He's Karl.
       }
     }
   }
