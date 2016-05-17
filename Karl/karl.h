@@ -111,9 +111,7 @@ class KarlNginxManager {
       const uint64_t current_stream_size = storage_ref_.InternalExposeStream().InternalExposePersister().Size();
       if (first_run || current_stream_size != last_reflected_state_stream_size_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
-        server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_keepalives_port_));
-        server.CreateProxyPassLocation("/public/",
-                                       Printf("http://localhost:%d/public/", karl_fleet_view_port_));
+        server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));
         storage_ref_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
           for (const auto& claire : fields.claires) {
             if (claire.registered_state == ClaireRegisteredState::Active) {
@@ -151,11 +149,13 @@ struct KarlBase {
   const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
   storage_t storage_;
 
+ protected:
   explicit KarlBase(const KarlParameters& parameters)
       : parameters_(parameters),
-        actual_public_url_(parameters_.public_url == kDefaultFleetViewURL
-                               ? current::strings::Printf(kDefaultFleetViewURL, parameters_.fleet_view_port)
-                               : parameters_.public_url),
+        actual_public_url_(
+            parameters_.public_url == kDefaultFleetViewURL
+                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
+                : parameters_.public_url),
         storage_(parameters_.storage_persistence_file) {}
 };
 
@@ -624,7 +624,8 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
         service_key_into_codename[e.entry.location] = keepalive.codename;
 
         codenames_per_service[keepalive.service].insert(keepalive.codename);
-        // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`, etc.
+        // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`,
+        // etc.
         ProtoReport report;
         const std::string last_keepalive =
             current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";

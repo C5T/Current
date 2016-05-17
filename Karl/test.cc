@@ -365,23 +365,11 @@ TEST(Karl, DeregisterWithNginx) {
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
 
-  const current::karl::KarlNginxParameters nginx_parameters(FLAGS_karl_nginx_port,
-                                                            FLAGS_karl_nginx_config_file);
-  const std::string karl_nginx_base_url = "http://localhost:" + current::ToString(FLAGS_karl_nginx_port);
-  /*
-  // DIMA
-  const unittest_karl_t karl(FLAGS_karl_test_port,
-                             FLAGS_karl_test_stream_persistence_file,
-                             FLAGS_karl_test_storage_persistence_file,
-                             "/",
-                             karl_nginx_base_url,
-                             "Test",
-                             "https://github.com/dkorolev/Current",
-                             nginx_parameters);
-  */
-  auto params = UnittestKarlParameters();
-  const unittest_karl_t karl(params);
+  unittest_karl_t karl(UnittestKarlParameters().SetNginxParameters(
+      current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file)));
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
+
+  const std::string karl_nginx_base_url = "http://localhost:" + current::ToString(FLAGS_karl_nginx_port);
 
   // No services registered.
   {
@@ -408,7 +396,8 @@ TEST(Karl, DeregisterWithNginx) {
       auto& per_ip_services = status.machines["127.0.0.1"].services;
       EXPECT_EQ(1u, per_ip_services.size());
       EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
-      ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied));
+      ASSERT_TRUE(Exists(per_ip_services[generator.ClaireCodename()].url_status_page_proxied))
+          << JSON(per_ip_services);
       generator_proxied_status_url = Value(per_ip_services[generator.ClaireCodename()].url_status_page_proxied);
       EXPECT_EQ(karl_nginx_base_url + "/live/" + generator.ClaireCodename(), generator_proxied_status_url);
     }
@@ -445,7 +434,8 @@ TEST(Karl, DeregisterWithNginx) {
         EXPECT_EQ(2u, per_ip_services.size());
         EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
         EXPECT_EQ("is_prime", per_ip_services[is_prime.ClaireCodename()].service);
-        ASSERT_TRUE(Exists(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied));
+        ASSERT_TRUE(Exists(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied))
+            << JSON(per_ip_services);
         is_prime_proxied_status_url = Value(per_ip_services[is_prime.ClaireCodename()].url_status_page_proxied);
         EXPECT_EQ(karl_nginx_base_url + "/live/" + is_prime.ClaireCodename(), is_prime_proxied_status_url);
       }
@@ -561,23 +551,11 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
 
-  const current::karl::KarlNginxParameters nginx_parameters(FLAGS_karl_nginx_port,
-                                                            FLAGS_karl_nginx_config_file);
-  const std::string karl_nginx_base_url = "http://localhost:" + current::ToString(FLAGS_karl_nginx_port);
-  auto params = UnittestKarlParameters();
-  /*
-  TODO(dkorolev): DIMA: Fix this test.
-  unittest_karl_t karl(FLAGS_karl_test_port,
-                       FLAGS_karl_test_stream_persistence_file,
-                       FLAGS_karl_test_storage_persistence_file,
-                       "/",
-                       karl_nginx_base_url,
-                       "Test",
-                       "https://github.com/dkorolev/Current",
-                       nginx_parameters);
-  */
-  unittest_karl_t karl(params);
+  unittest_karl_t karl(UnittestKarlParameters().SetNginxParameters(
+      current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file)));
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
+
+  const std::string karl_nginx_base_url = "http://localhost:" + current::ToString(FLAGS_karl_nginx_port);
 
   current::karl::ClaireStatus claire;
   claire.service = "unittest";
@@ -663,7 +641,6 @@ TEST(Karl, EndToEndTest) {
     // * IsPrime: Exposing a single endpoint; curl `?x=42` or `?x=43` to test.
     // * Karl: Displaying status; curl ``.
     // TODO(dkorolev): Have Karl expose the DOT/SVG, over the desired period of time. And test it.
-    std::cerr << "Keepalives :: localhost:" << FLAGS_karl_test_keepalives_port << "?schema=md\n";  // Need this?
     std::cerr << "Fleet view :: localhost:" << FLAGS_karl_test_fleet_view_port << '\n';
     std::cerr << "Generator  :: localhost:" << FLAGS_karl_generator_test_port << "/numbers\n";
     std::cerr << "IsPrime    :: localhost:" << FLAGS_karl_is_prime_test_port << "/is_prime?x=42\n";
@@ -674,16 +651,12 @@ TEST(Karl, EndToEndTest) {
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
   auto params = UnittestKarlParameters();
-  /*
-  TODO(dkorolev): DIMA: Fix this test.
-  const unittest_karl_t karl(FLAGS_karl_test_port,
-                             FLAGS_karl_test_stream_persistence_file,
-                             FLAGS_karl_test_storage_persistence_file,
-                             "/",
-                             "http://localhost:{port}",
-                             "Karl's Unit Test",
-                             "https://github.com/dkorolev/Current");
-  */
+  if (!FLAGS_karl_nginx_config_file.empty()) {
+    params.SetNginxParameters(
+        current::karl::KarlNginxParameters(FLAGS_karl_nginx_port, FLAGS_karl_nginx_config_file));
+  }
+  params.svg_name = "Karl's Unit Test";
+  params.github_repo_url = "https://github.com/dkorolev/Current";
   const unittest_karl_t karl(params);
   const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port,

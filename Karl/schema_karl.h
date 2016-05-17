@@ -49,7 +49,7 @@ CURRENT_STRUCT(KarlNginxParameters) {
       : port(port), config_file(config_file), route_prefix(route_prefix) {}
 };
 
-constexpr static const char* kDefaultFleetViewURL = "http://localhost:%d/public/";
+constexpr static const char* kDefaultFleetViewURL = "http://localhost:%d";  // Defaults to the nginx port.
 constexpr static std::chrono::microseconds k45Seconds = std::chrono::microseconds(1000ll * 1000ll * 45);
 
 CURRENT_STRUCT(KarlParameters) {
@@ -63,10 +63,10 @@ CURRENT_STRUCT(KarlParameters) {
   CURRENT_FIELD_DESCRIPTION(
       storage_persistence_file,
       "The file name to store the persisted event log of keepalives post-processed into servers and services.");
-  CURRENT_FIELD(keepalives_url, std::string);
+  CURRENT_FIELD(keepalives_url, std::string, "/");
   CURRENT_FIELD_DESCRIPTION(keepalives_url,
                             "The endpoint to listen to keepalives on, on the `keepalives_port` port.");
-  CURRENT_FIELD(fleet_view_url, std::string, "/public/");
+  CURRENT_FIELD(fleet_view_url, std::string, "/");
   CURRENT_FIELD_DESCRIPTION(fleet_view_url, "The endpoint to listen to fleet view requests on.");
   CURRENT_FIELD(public_url, std::string, kDefaultFleetViewURL);
   CURRENT_FIELD_DESCRIPTION(public_url,
@@ -83,6 +83,12 @@ CURRENT_STRUCT(KarlParameters) {
   CURRENT_FIELD_DESCRIPTION(service_timeout_interval,
                             "The default period of keepalive-free inactivity, after which a service is "
                             "considered down for fleet browsability purposes.");
+
+  // TODO(dkorolev): More dot-notation setters here.
+  KarlParameters& SetNginxParameters(const KarlNginxParameters& value) {
+    nginx_parameters = value;
+    return *this;
+  }
 };
 
 // Karl's persisted storage schema.
