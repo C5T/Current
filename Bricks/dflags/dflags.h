@@ -288,7 +288,7 @@ class FlagRegisterer : public FlagRegistererBase {
 #define DEFINE_flag(type, name, default_value, description) \
   type FLAGS_##name = default_value;                        \
   ::dflags::FlagRegisterer<type> REGISTERER_##name(         \
-      std::ref(FLAGS_##name), #name, #type, default_value, description)
+      std::ref(FLAGS_##name), #name, #type, FLAGS_##name, description)
 
 #define DEFINE_int8(name, default_value, description) DEFINE_flag(int8_t, name, default_value, description)
 #define DEFINE_uint8(name, default_value, description) DEFINE_flag(uint8_t, name, default_value, description)
