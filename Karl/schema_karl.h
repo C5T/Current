@@ -84,7 +84,34 @@ CURRENT_STRUCT(KarlParameters) {
                             "The default period of keepalive-free inactivity, after which a service is "
                             "considered down for fleet browsability purposes.");
 
-  // TODO(dkorolev): More dot-notation setters here.
+  KarlParameters& SetKeepalivesPort(uint16_t port) {
+    keepalives_port = port;
+    return *this;
+  }
+  KarlParameters& SetFleetViewPort(uint16_t port) {
+    fleet_view_port = port;
+    return *this;
+  }
+  KarlParameters& SetStreamFile(const std::string& value) {
+    stream_persistence_file = value;
+    return *this;
+  }
+  KarlParameters& SetStorageFile(const std::string& value) {
+    storage_persistence_file = value;
+    return *this;
+  }
+  KarlParameters& SetPublicURL(const std::string& value) {
+    public_url = value;
+    return *this;
+  }
+  KarlParameters& SetSVGName(const std::string& value) {
+    svg_name = value;
+    return *this;
+  }
+  KarlParameters& SetGitHubURL(const std::string& value) {
+    github_repo_url = value;
+    return *this;
+  }
   KarlParameters& SetNginxParameters(const KarlNginxParameters& value) {
     nginx_parameters = value;
     return *this;
