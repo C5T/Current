@@ -54,7 +54,7 @@ struct Evolve;
   template <typename FROM_NAMESPACE, typename EVOLUTOR>                                        \
   struct Evolve<FROM_NAMESPACE, cpp_type, EVOLUTOR> {                                          \
     template <typename>                                                                        \
-    static cpp_type Go(cpp_type from) {                                                        \
+    static current::copy_free<cpp_type> Go(current::copy_free<cpp_type> from) {                \
       return from;                                                                             \
     }                                                                                          \
   };
