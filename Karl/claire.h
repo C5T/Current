@@ -52,6 +52,14 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
+// TODO(dkorolev): Eventually migrate this into `Blocks/HTTP`.
+template <typename T, current::reflection::Language L>
+void RespondWithSchema(Request r) {
+  current::reflection::StructSchema schema;
+  schema.AddType<T>();
+  r(schema.GetSchemaInfo().Describe<L>());
+}
+
 // No need for `CURRENT_FIELD_DESCRIPTION`-s in this structure. -- D.K.
 CURRENT_STRUCT(InternalKeepaliveAttemptResult) {
   CURRENT_FIELD(timestamp, std::chrono::microseconds);
@@ -95,25 +103,37 @@ class GenericClaire final {
         http_scope_(HTTP(port).Register("/.current",
                                         [this](Request r) {
                                           const auto& qs = r.url.query;
-                                          const bool all = qs.has("all") || qs.has("a");
-                                          const bool build = qs.has("build") || qs.has("b");
-                                          const bool runtime = qs.has("runtime") || qs.has("r");
-                                          if (!all && build) {
-                                            r(build::Info());
-                                          } else if (!all && runtime) {
-                                            r(([this]() -> Response {
-                                              std::lock_guard<std::mutex> lock(status_mutex_);
-                                              if (status_generator_) {
-                                                return Response(status_generator_());
-                                              } else {
-                                                return Response("Not ready.\n",
-                                                                HTTPResponseCode.ServiceUnavailable);
-                                              }
-                                            })());
+                                          if (qs.has("schema")) {
+                                            const auto& schema = qs["schema"];
+                                            using L = current::reflection::Language;
+                                            if (schema == "md") {
+                                              RespondWithSchema<specific_status_t, L::Markdown>(std::move(r));
+                                            } else if (schema == "fs") {
+                                              RespondWithSchema<specific_status_t, L::FSharp>(std::move(r));
+                                            } else {
+                                              RespondWithSchema<specific_status_t, L::JSON>(std::move(r));
+                                            }
                                           } else {
-                                            // Don't use `JSONFormat::Minimalistic` to support type evolution
-                                            // of how to report/aggregate/render statuses on the Karl side.
-                                            r(GenerateKeepaliveStatus(all));
+                                            const bool all = qs.has("all") || qs.has("a");
+                                            const bool build = qs.has("build") || qs.has("b");
+                                            const bool runtime = qs.has("runtime") || qs.has("r");
+                                            if (!all && build) {
+                                              r(build::Info());
+                                            } else if (!all && runtime) {
+                                              r(([this]() -> Response {
+                                                std::lock_guard<std::mutex> lock(status_mutex_);
+                                                if (status_generator_) {
+                                                  return Response(status_generator_());
+                                                } else {
+                                                  return Response("Not ready.\n",
+                                                                  HTTPResponseCode.ServiceUnavailable);
+                                                }
+                                              })());
+                                            } else {
+                                              // Don't use `JSONFormat::Minimalistic` to support type evolution
+                                              // of how to report/aggregate/render statuses on the Karl side.
+                                              r(GenerateKeepaliveStatus(all));
+                                            }
                                           }
                                         })),
         keepalive_thread_terminating_(false) {}
@@ -140,9 +160,12 @@ class GenericClaire final {
   void RemoveDependency(const ClaireServiceKey& service) { dependencies_.erase(service); }
 
   void Register(status_generator_t status_filler = nullptr, bool require_karls_confirmation = false) {
-    // Register this Claire with Karl and spawn the thread to send regular keepalives.
-    // If `require_karls_confirmation` is true, throw if Karl can be not be reached.
-    // If `require_karls_confirmation` is false, just start the keepalives thread.
+    // Register this Claire with Karl and spawn the thread to send regular
+    // keepalives.
+    // If `require_karls_confirmation` is true, throw if Karl can be not
+    // be reached.
+    // If `require_karls_confirmation` is false, just start the keepalives
+    // thread.
     std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
       {
@@ -153,7 +176,8 @@ class GenericClaire final {
       if (require_karls_confirmation) {
         const std::string route = karl_keepalive_route_ + "&confirm";
         // The call to `SendKeepaliveToKarl` is blocking.
-        // With "&confirm" at the end, the call to Karl would require Karl calling Claire back.
+        // With "&confirm" at the end, the call to Karl would require Karl
+        // calling Claire back.
         // Can throw, the exception should propagate up.
         SendKeepaliveToKarl(lock, karl_keepalive_route_ + "&confirm");
       }
@@ -200,7 +224,8 @@ class GenericClaire final {
     status.now = now;
 
 #ifndef CURRENT_MOCK_TIME
-    // With mock time, can result in negatives in `status.uptime`, which would kill `ParseJSON`. -- D.K.
+    // With mock time, can result in negatives in `status.uptime`, which
+    // would kill `ParseJSON`. -- D.K.
     status.uptime_epoch_microseconds = now - us_start_;
     status.uptime = current::strings::TimeIntervalAsHumanReadableString(status.uptime_epoch_microseconds);
 
@@ -252,9 +277,11 @@ class GenericClaire final {
 
   // Sends a keepalive message to Karl.
   // Blocking, and can throw.
-  // Possibly via a custom `route`: adding "&confirm", for example, would require Karl to crawl Claire back.
+  // Possibly via a custom `route`: adding "&confirm", for example, would
+  // require Karl to crawl Claire back.
   void SendKeepaliveToKarl(std::unique_lock<std::mutex>&, const std::string& route) {
-    // Basically, throw in case of any error, and throw only one type: `ClaireRegistrationException`.
+    // Basically, throw in case of any error, and throw only one type:
+    // `ClaireRegistrationException`.
     const auto keepalive_body = GenerateKeepaliveStatus();
 
     try {
@@ -284,7 +311,8 @@ class GenericClaire final {
     } catch (const current::Exception&) {
       last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::CouldNotConnect;
     }
-    // TODO(dk+mz): Should it really throw in keepalive thread? It will crash the binary.
+    // TODO(dk+mz): Should it really throw in keepalive thread? It will
+    // crash the binary.
     CURRENT_THROW(ClaireRegistrationException(service_, route));
   }
 
@@ -300,7 +328,8 @@ class GenericClaire final {
       std::unique_lock<std::mutex> lock(keepalive_mutex_);
 
       // Have the interval normalized a bit.
-      // TODO(dkorolev): Parameter or named constant for keepalive frequency?
+      // TODO(dkorolev): Parameter or named constant for keepalive
+      // frequency?
       const std::chrono::microseconds projected_next_keepalive =
           last_keepalive_attempt_result_.timestamp +
           std::chrono::microseconds(current::random::CSRandomUInt64(20e6 * 0.9, 20e6 * 1.1));
@@ -318,7 +347,8 @@ class GenericClaire final {
       try {
         SendKeepaliveToKarl(lock, karl_keepalive_route_);
       } catch (const ClaireRegistrationException&) {
-        // Ignore exceptions if there's a problem talking to Karl. He'll come back. He's Karl.
+        // Ignore exceptions if there's a problem talking to Karl. He'll
+        // come back. He's Karl.
       }
     }
   }
