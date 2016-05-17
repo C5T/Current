@@ -136,20 +136,20 @@ CURRENT_STRUCT(WrongUsesCOUNTERInternally) {
 TEST(TypeSystemTest, FieldCounter) {
   using namespace struct_definition_test;
   {
-    EXPECT_EQ(0, current::reflection::FieldCounter<Empty>::value);
-    EXPECT_EQ(0, current::reflection::FieldCounter<EmptyDerived>::value);
-    EXPECT_EQ(1, current::reflection::FieldCounter<Foo>::value);
-    EXPECT_EQ(1, current::reflection::FieldCounter<Bar>::value);
-    EXPECT_EQ(5, current::reflection::FieldCounter<Baz>::value);
-    EXPECT_EQ(1, current::reflection::FieldCounter<DerivedFromFoo>::value);
+    EXPECT_EQ(0u, current::reflection::FieldCounter<Empty>::value + 0u);
+    EXPECT_EQ(0u, current::reflection::FieldCounter<EmptyDerived>::value + 0u);
+    EXPECT_EQ(1u, current::reflection::FieldCounter<Foo>::value + 0u);
+    EXPECT_EQ(1u, current::reflection::FieldCounter<Bar>::value + 0u);
+    EXPECT_EQ(5u, current::reflection::FieldCounter<Baz>::value + 0u);
+    EXPECT_EQ(1u, current::reflection::FieldCounter<DerivedFromFoo>::value + 0u);
   }
   {
-    EXPECT_EQ(0, current::reflection::TotalFieldCounter<Empty>::value);
-    EXPECT_EQ(0, current::reflection::TotalFieldCounter<EmptyDerived>::value);
-    EXPECT_EQ(1, current::reflection::TotalFieldCounter<Foo>::value);
-    EXPECT_EQ(1, current::reflection::TotalFieldCounter<Bar>::value);
-    EXPECT_EQ(5, current::reflection::TotalFieldCounter<Baz>::value);
-    EXPECT_EQ(2, current::reflection::TotalFieldCounter<DerivedFromFoo>::value);
+    EXPECT_EQ(0u, current::reflection::TotalFieldCounter<Empty>::value + 0u);
+    EXPECT_EQ(0u, current::reflection::TotalFieldCounter<EmptyDerived>::value + 0u);
+    EXPECT_EQ(1u, current::reflection::TotalFieldCounter<Foo>::value + 0u);
+    EXPECT_EQ(1u, current::reflection::TotalFieldCounter<Bar>::value + 0u);
+    EXPECT_EQ(5u, current::reflection::TotalFieldCounter<Baz>::value + 0u);
+    EXPECT_EQ(2u, current::reflection::TotalFieldCounter<DerivedFromFoo>::value + 0u);
   }
 }
 

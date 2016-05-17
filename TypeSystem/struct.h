@@ -89,20 +89,20 @@ struct FieldImpl<CountFields, T> {
 template <typename INSTANTIATION_TYPE, typename T>
 using Field = typename FieldImpl<INSTANTIATION_TYPE, T>::type;
 
-// Check if `CURRENT_REFLECTION(f, Index<FieldType, i>)` can be called for i = [0, N).
-template <typename T, int N>
+// Check if `CURRENT_REFLECTION(f, Index<FieldType, i>)` can be called for i = [1, N].
+template <typename T, size_t N>
 struct CurrentStructFieldsConsistency {
   struct Dummy {};
   constexpr static bool CheckField(char) { return false; }
   constexpr static auto CheckField(int)
-      -> decltype(T::CURRENT_REFLECTION(Dummy(), Index<FieldTypeAndName, N>()), bool()) {
+      -> decltype(T::CURRENT_REFLECTION(Dummy(), Index<FieldTypeAndName, N - 1u>()), bool()) {
     return true;
   }
-  constexpr static bool Check() { return CheckField(0) && CurrentStructFieldsConsistency<T, N - 1>::Check(); }
+  constexpr static bool Check() { return CheckField(0) && CurrentStructFieldsConsistency<T, N - 1u>::Check(); }
 };
 
 template <typename T>
-struct CurrentStructFieldsConsistency<T, -1> {
+struct CurrentStructFieldsConsistency<T, 0u> {
   constexpr static bool Check() { return true; }
 };
 
@@ -420,10 +420,9 @@ struct CurrentStructFieldsConsistency<T, -1> {
 
 #define CURRENT_DEFAULT_CONSTRUCTOR_T(s) CURRENT_CONSTRUCTOR_T(s)()
 
-#define IS_VALID_CURRENT_STRUCT(s)                                                                      \
-  ::current::reflection::CurrentStructFieldsConsistency<s,                                              \
-                                                        ::current::reflection::FieldCounter<s>::value - \
-                                                            1>::Check()
+#define IS_VALID_CURRENT_STRUCT(s)                                                                          \
+  ::current::reflection::CurrentStructFieldsConsistency<s, ::current::reflection::FieldCounter<s>::value>:: \
+      Check()
 
 namespace current {
 namespace reflection {
@@ -444,17 +443,16 @@ template <typename T, FieldCounterPolicy POLICY = FieldCounterPolicy::ThisStruct
 struct FieldCounter {
   static_assert(IS_CURRENT_STRUCT(T),
                 "`FieldCounter` must be called with the type defined via `CURRENT_STRUCT` macro.");
-  enum {
-    value = (POLICY == FieldCounterPolicy::ThisStructOnly)
-                ? (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
-                : (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) +
-                      FieldCounter<SuperType<T>, POLICY>::value
-  };
+  constexpr static size_t value =
+      (POLICY == FieldCounterPolicy::ThisStructOnly)
+          ? (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType))
+          : (sizeof(typename T::CURRENT_FIELD_COUNT_STRUCT) / sizeof(CountFieldsImplementationType)) +
+                FieldCounter<SuperType<T>, POLICY>::value;
 };
 
 template <FieldCounterPolicy POLICY>
 struct FieldCounter<CurrentStruct, POLICY> {
-  enum { value = 0 };
+  constexpr static size_t value = 0u;
 };
 
 template <typename T>

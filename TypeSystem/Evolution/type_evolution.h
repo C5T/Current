@@ -26,6 +26,8 @@ SOFTWARE.
 #ifndef CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
 #define CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
 
+#include <chrono>
+
 #include "../struct.h"
 #include "../variant.h"
 
@@ -52,41 +54,28 @@ struct Evolve;
   template <typename FROM_NAMESPACE, typename EVOLUTOR>                                        \
   struct Evolve<FROM_NAMESPACE, cpp_type, EVOLUTOR> {                                          \
     template <typename>                                                                        \
-    static cpp_type Go(cpp_type from) {                                                        \
-      return from;                                                                             \
+    static void Go(current::copy_free<cpp_type> from, cpp_type& into) {                        \
+      into = from;                                                                             \
     }                                                                                          \
   };
 #include "../primitive_types.dsl.h"
 #undef CURRENT_DECLARE_PRIMITIVE_TYPE
 
-// Default evolutor for Variants.
-template <typename DESTINATION_VARIANT, typename FROM_NAMESPACE, typename INTO, typename EVOLUTOR>
-struct VariantTypedEvolutor {
-  DESTINATION_VARIANT& into;
-  explicit VariantTypedEvolutor(DESTINATION_VARIANT& into) : into(into) {}
-  template <typename T>
-  void operator()(const T& value) {
-    into = Evolve<FROM_NAMESPACE, T, EVOLUTOR>::template Go<INTO>(value);
-  }
-};
-
 }  // namespace current::type_evolution
 }  // namespace current
 
-#define CURRENT_TYPE_EVOLUTOR(evolutor, from_namespace, type_name, ...)                  \
-  namespace current {                                                                    \
-  namespace type_evolution {                                                             \
-  struct evolutor;                                                                       \
-  template <>                                                                            \
-  struct Evolve<from_namespace, from_namespace::type_name, evolutor> {                   \
-    template <typename INTO>                                                             \
-    static typename INTO::type_name Go(const typename from_namespace::type_name& from) { \
-      typename INTO::type_name into;                                                     \
-      __VA_ARGS__;                                                                       \
-      return into;                                                                       \
-    }                                                                                    \
-  };                                                                                     \
-  }                                                                                      \
+#define CURRENT_TYPE_EVOLUTOR(evolutor, from_namespace, type_name, ...)                              \
+  namespace current {                                                                                \
+  namespace type_evolution {                                                                         \
+  struct evolutor;                                                                                   \
+  template <>                                                                                        \
+  struct Evolve<from_namespace, from_namespace::type_name, evolutor> {                               \
+    template <typename INTO>                                                                         \
+    static void Go(const typename from_namespace::type_name& from, typename INTO::type_name& into) { \
+      __VA_ARGS__;                                                                                   \
+    }                                                                                                \
+  };                                                                                                 \
+  }                                                                                                  \
   }
 
 #endif  // CURRENT_TYPE_SYSTEM_EVOLUTION_TYPE_EVOLUTION_H
