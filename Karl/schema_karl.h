@@ -78,7 +78,7 @@ CURRENT_STRUCT(KarlParameters) {
   CURRENT_FIELD_DESCRIPTION(github_repo_url,
                             "The top-level GitHub repo URL to have git commit hashes browsable.");
   CURRENT_FIELD(nginx_parameters, KarlNginxParameters, KarlNginxParameters(0, ""));
-  CURRENT_FIELD_DESCRIPTION(nginx_parameters, "Nginx manager confix.");
+  CURRENT_FIELD_DESCRIPTION(nginx_parameters, "Nginx manager config.");
   CURRENT_FIELD(service_timeout_interval, std::chrono::microseconds, k45Seconds);
   CURRENT_FIELD_DESCRIPTION(service_timeout_interval,
                             "The default period of keepalive-free inactivity, after which a service is "
