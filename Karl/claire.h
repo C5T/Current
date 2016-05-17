@@ -43,6 +43,7 @@ SOFTWARE.
 #include "schema_claire.h"
 #include "locator.h"
 #include "exceptions.h"
+#include "respond_with_schema.h"
 
 #include "../Blocks/HTTP/api.h"
 
@@ -52,7 +53,14 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
-inline std::string KeepaliveAttemptResultAsString(const KeepaliveAttemptResult& result) {
+// No need for `CURRENT_FIELD_DESCRIPTION`-s in this structure. -- D.K.
+CURRENT_STRUCT(InternalKeepaliveAttemptResult) {
+  CURRENT_FIELD(timestamp, std::chrono::microseconds);
+  CURRENT_FIELD(status, KeepaliveAttemptStatus, KeepaliveAttemptStatus::Unknown);
+  CURRENT_FIELD(http_code, uint16_t, static_cast<uint16_t>(net::HTTPResponseCodeValue::InvalidCode));
+};
+
+inline std::string KeepaliveAttemptResultAsString(const InternalKeepaliveAttemptResult& result) {
   if (result.status == KeepaliveAttemptStatus::Unknown) {
     return "Unknown";
   } else if (result.status == KeepaliveAttemptStatus::Success) {
@@ -88,25 +96,37 @@ class GenericClaire final {
         http_scope_(HTTP(port).Register("/.current",
                                         [this](Request r) {
                                           const auto& qs = r.url.query;
-                                          const bool all = qs.has("all") || qs.has("a");
-                                          const bool build = qs.has("build") || qs.has("b");
-                                          const bool runtime = qs.has("runtime") || qs.has("r");
-                                          if (!all && build) {
-                                            r(build::Info());
-                                          } else if (!all && runtime) {
-                                            r(([this]() -> Response {
-                                              std::lock_guard<std::mutex> lock(status_mutex_);
-                                              if (status_generator_) {
-                                                return Response(status_generator_());
-                                              } else {
-                                                return Response("Not ready.\n",
-                                                                HTTPResponseCode.ServiceUnavailable);
-                                              }
-                                            })());
+                                          if (qs.has("schema")) {
+                                            const auto& schema = qs["schema"];
+                                            using L = current::reflection::Language;
+                                            if (schema == "md") {
+                                              RespondWithSchema<specific_status_t, L::Markdown>(std::move(r));
+                                            } else if (schema == "fs") {
+                                              RespondWithSchema<specific_status_t, L::FSharp>(std::move(r));
+                                            } else {
+                                              RespondWithSchema<specific_status_t, L::JSON>(std::move(r));
+                                            }
                                           } else {
-                                            // Don't use `JSONFormat::Minimalistic` to support type evolution
-                                            // of how to report/aggregate/render statuses on the Karl side.
-                                            r(GenerateKeepaliveStatus(all));
+                                            const bool all = qs.has("all") || qs.has("a");
+                                            const bool build = qs.has("build") || qs.has("b");
+                                            const bool runtime = qs.has("runtime") || qs.has("r");
+                                            if (!all && build) {
+                                              r(build::Info());
+                                            } else if (!all && runtime) {
+                                              r(([this]() -> Response {
+                                                std::lock_guard<std::mutex> lock(status_mutex_);
+                                                if (status_generator_) {
+                                                  return Response(status_generator_());
+                                                } else {
+                                                  return Response("Not ready.\n",
+                                                                  HTTPResponseCode.ServiceUnavailable);
+                                                }
+                                              })());
+                                            } else {
+                                              // Don't use `JSONFormat::Minimalistic` to support type evolution
+                                              // of how to report/aggregate/render statuses on the Karl side.
+                                              r(GenerateKeepaliveStatus(all));
+                                            }
                                           }
                                         })),
         keepalive_thread_terminating_(false) {}
@@ -134,7 +154,7 @@ class GenericClaire final {
 
   void Register(status_generator_t status_filler = nullptr, bool require_karls_confirmation = false) {
     // Register this Claire with Karl and spawn the thread to send regular keepalives.
-    // If `require_karls_confirmation` is true, throw if Karl can be not be reached.
+    // If `require_karls_confirmation` is true, throw if Karl can not be reached.
     // If `require_karls_confirmation` is false, just start the keepalives thread.
     std::unique_lock<std::mutex> lock(keepalive_mutex_);
     if (!in_beacon_mode_) {
@@ -194,8 +214,7 @@ class GenericClaire final {
 
 #ifndef CURRENT_MOCK_TIME
     // With mock time, can result in negatives in `status.uptime`, which would kill `ParseJSON`. -- D.K.
-    status.uptime_epoch_microseconds = now - us_start_;
-    status.uptime = current::strings::TimeIntervalAsHumanReadableString(status.uptime_epoch_microseconds);
+    status.uptime = current::strings::TimeIntervalAsHumanReadableString(now - us_start_);
 
     {
       std::lock_guard<std::mutex> lock(status_mutex_);
@@ -277,7 +296,9 @@ class GenericClaire final {
     } catch (const current::Exception&) {
       last_keepalive_attempt_result_.status = KeepaliveAttemptStatus::CouldNotConnect;
     }
-    // TODO(dk+mz): Should it really throw in keepalive thread? It will crash the binary.
+    // OK to throw here. In the thread that sends repeated keepalives, this exception would be caught,
+    // and if an exception is thrown during the initial registration, it is an emergency unless the user
+    // decides otherwise.
     CURRENT_THROW(ClaireRegistrationException(service_, route));
   }
 
@@ -331,7 +352,7 @@ class GenericClaire final {
 
   mutable std::mutex status_mutex_;
   status_generator_t status_generator_;
-  KeepaliveAttemptResult last_keepalive_attempt_result_;
+  InternalKeepaliveAttemptResult last_keepalive_attempt_result_;
   std::chrono::microseconds last_successful_keepalive_timestamp_ = std::chrono::microseconds(0);
   std::chrono::microseconds last_successful_keepalive_ping_ = std::chrono::microseconds(0);
 

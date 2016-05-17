@@ -57,6 +57,7 @@ SOFTWARE.
 #include "schema_claire.h"
 #include "locator.h"
 #include "render.h"
+#include "respond_with_schema.h"
 
 #include "../Storage/storage.h"
 #include "../Storage/persister/sherlock.h"
@@ -80,22 +81,18 @@ CURRENT_STRUCT_T(KarlPersistedKeepalive) {
   CURRENT_FIELD(keepalive, T);
 };
 
-struct KarlNginxParameters {
-  uint16_t port;
-  std::string config_file;
-  std::string route_prefix;
-  KarlNginxParameters(uint16_t port, const std::string& config_file, const std::string& route_prefix = "/live")
-      : port(port), config_file(config_file), route_prefix(route_prefix) {}
-};
-
 template <class STORAGE>
 class KarlNginxManager {
  protected:
-  explicit KarlNginxManager(STORAGE& storage, const KarlNginxParameters& nginx_parameters, uint16_t karl_port)
-      : storage_(storage),
+  explicit KarlNginxManager(STORAGE& storage,
+                            const KarlNginxParameters& nginx_parameters,
+                            uint16_t karl_keepalives_port,
+                            uint16_t karl_fleet_view_port)
+      : storage_ref_(storage),
         has_nginx_config_file_(!nginx_parameters.config_file.empty()),
         nginx_parameters_(nginx_parameters),
-        karl_port_(karl_port),
+        karl_keepalives_port_(karl_keepalives_port),
+        karl_fleet_view_port_(karl_fleet_view_port),
         last_reflected_state_stream_size_(0u) {
     if (has_nginx_config_file_) {
       if (!nginx::NginxInvoker().IsNginxAvailable()) {
@@ -112,11 +109,11 @@ class KarlNginxManager {
     // To spawn Nginx `server` at startup even if the storage is empty.
     static bool first_run = true;
     if (has_nginx_config_file_) {
-      const uint64_t current_stream_size = storage_.InternalExposeStream().InternalExposePersister().Size();
+      const uint64_t current_stream_size = storage_ref_.InternalExposeStream().InternalExposePersister().Size();
       if (first_run || current_stream_size != last_reflected_state_stream_size_) {
         nginx::config::ServerDirective server(nginx_parameters_.port);
-        server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_port_));
-        storage_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
+        server.CreateProxyPassLocation("/", Printf("http://localhost:%d/", karl_fleet_view_port_));
+        storage_ref_.ReadOnlyTransaction([this, &server](ImmutableFields<STORAGE> fields) -> void {
           for (const auto& claire : fields.claires) {
             if (claire.registered_state == ClaireRegisteredState::Active) {
               server.CreateProxyPassLocation(nginx_parameters_.route_prefix + '/' + claire.codename,
@@ -134,58 +131,82 @@ class KarlNginxManager {
   virtual ~KarlNginxManager() {}
 
  protected:
-  STORAGE& storage_;
+  STORAGE& storage_ref_;
   const bool has_nginx_config_file_;
   const KarlNginxParameters nginx_parameters_;
-  const uint16_t karl_port_;
+  const uint16_t karl_keepalives_port_;
+  const uint16_t karl_fleet_view_port_;
   std::unique_ptr<nginx::NginxManager> nginx_manager_;
 
  private:
   uint64_t last_reflected_state_stream_size_;
 };
 
+// This class is to have the `Storage` initialized before `KarlNginxManager`.
+struct KarlBase {
+  using storage_t = ServiceStorage<SherlockStreamPersister>;
+
+  const KarlParameters parameters_;
+  const std::string actual_public_url_;  // Derived from `parameters_` upon construction.
+  storage_t storage_;
+
+ protected:
+  explicit KarlBase(const KarlParameters& parameters)
+      : parameters_(parameters),
+        actual_public_url_(
+            parameters_.public_url == kDefaultFleetViewURL
+                ? current::strings::Printf(kDefaultFleetViewURL, parameters_.nginx_parameters.port)
+                : parameters_.public_url),
+        storage_(parameters_.storage_persistence_file) {}
+};
+
 template <typename... TS>
-class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStreamPersister>> {
+class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStorage<SherlockStreamPersister>> {
  public:
   using runtime_status_variant_t = Variant<TS...>;
   using claire_status_t = ClaireServiceStatus<runtime_status_variant_t>;
   using karl_status_t = GenericKarlStatus<runtime_status_variant_t>;
   using persisted_keepalive_t = KarlPersistedKeepalive<claire_status_t>;
   using stream_t = sherlock::Stream<persisted_keepalive_t, current::persistence::File>;
-  using storage_t = ServiceStorage<SherlockStreamPersister>;
+  using storage_t = KarlBase::storage_t;
 
-  explicit GenericKarl(
-      uint16_t port,
-      const std::string& stream_persistence_file,
-      const std::string& storage_persistence_file,
-      const std::string& url = "/",
-      const std::string& external_url = "http://localhost:{port}",
-      const std::string& svg_name = "Karl",
-      const std::string& github_repo_url = "",
-      const KarlNginxParameters& nginx_parameters = KarlNginxParameters(0, ""),
-      std::chrono::microseconds service_timeout_interval = std::chrono::microseconds(1000ll * 1000ll * 45))
-      : KarlNginxManager(storage_, nginx_parameters, port),
+  explicit GenericKarl(const KarlParameters& parameters)
+      : KarlBase(parameters),
+        KarlNginxManager(KarlBase::storage_,
+                         parameters.nginx_parameters,
+                         parameters.keepalives_port,
+                         parameters.fleet_view_port),
         destructing_(false),
-        svg_name_(svg_name),
-        github_repo_url_(github_repo_url),
-        external_url_(external_url == "http://localhost:{port}"
-                          ? current::strings::Printf("http://localhost:%d", port)
-                          : external_url),
-        service_timeout_interval_(service_timeout_interval),
-        keepalives_stream_(stream_persistence_file),
-        storage_(storage_persistence_file),
+        keepalives_stream_(parameters_.stream_persistence_file),
         state_update_thread_([this]() { StateUpdateThread(); }),
-        // TODO(mzhurovich): `/up` ?
-        http_scope_(HTTP(port).Register(url,
-                                        URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
-                                        [this](Request r) { Serve(std::move(r)); }) +
-                    HTTP(port).Register(url + "build",
-                                        URLPathArgs::CountMask::One,
-                                        [this](Request r) { ServeBuild(std::move(r)); }) +
-                    HTTP(port).Register(url + "snapshot",
-                                        URLPathArgs::CountMask::One,
-                                        [this](Request r) { ServeSnapshot(std::move(r)); }) +
-                    HTTP(port).Register(url + "favicon.png", http::CurrentFaviconHandler())) {
+        http_scope_(HTTP(parameters_.keepalives_port)
+                        .Register(parameters_.keepalives_url,
+                                  URLPathArgs::CountMask::None | URLPathArgs::CountMask::One,
+                                  [this](Request r) { AcceptKeepaliveViaHTTP(std::move(r)); }) +
+                    HTTP(parameters_.fleet_view_port)
+                        .Register(parameters_.fleet_view_url,
+                                  URLPathArgs::CountMask::None,
+                                  [this](Request r) { ServeFleetStatus(std::move(r)); }) +
+                    HTTP(parameters_.fleet_view_port)
+                        .Register(parameters_.fleet_view_url + "status",
+                                  URLPathArgs::CountMask::None,
+                                  [this](Request r) { ServeKarlStatus(std::move(r)); }) +
+                    HTTP(parameters_.fleet_view_port)
+                        .Register(parameters_.fleet_view_url + "build",
+                                  URLPathArgs::CountMask::One,
+                                  [this](Request r) { ServeBuild(std::move(r)); }) +
+                    HTTP(parameters_.fleet_view_port)
+                        .Register(parameters_.fleet_view_url + "snapshot",
+                                  URLPathArgs::CountMask::One,
+                                  [this](Request r) { ServeSnapshot(std::move(r)); }) +
+                    HTTP(parameters_.fleet_view_port)
+                        .Register(parameters_.fleet_view_url + "favicon.png", http::CurrentFaviconHandler())) {
+    if (parameters_.keepalives_port == parameters_.fleet_view_port) {
+      std::cerr << "It's advised to start Karl with two different ports: "
+                << "one to accept keepalives and one to serve status. "
+                << "Please fix this and restart the binary. Thanks." << std::endl;
+      std::exit(-1);
+    }
     // Report this Karl as up and running.
     // Oh, look, I'm doing work in constructor body. Sigh. -- D.K.
     storage_.ReadWriteTransaction([this](MutableFields<storage_t> fields) {
@@ -236,7 +257,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       {
         std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
         for (auto it = services_keepalive_time_cache_.cbegin(); it != services_keepalive_time_cache_.cend();) {
-          if ((now - it->second) > service_timeout_interval_) {
+          if ((now - it->second) > parameters_.service_timeout_interval) {
             timeouted_codenames.insert(it->first);
             services_keepalive_time_cache_.erase(it++);
           } else {
@@ -267,7 +288,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       std::unique_lock<std::mutex> lock(services_keepalive_cache_mutex_);
       if (most_recent_keepalive_time.count() != 0) {
         const auto wait_interval =
-            service_timeout_interval_ - (current::time::Now() - most_recent_keepalive_time);
+            parameters_.service_timeout_interval - (current::time::Now() - most_recent_keepalive_time);
         if (wait_interval.count() > 0) {
           update_thread_condition_variable_.wait_for(lock, wait_interval + std::chrono::microseconds(1));
         }
@@ -278,7 +299,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
     }
   }
 
-  void Serve(Request r) {
+  void AcceptKeepaliveViaHTTP(Request r) {
     if (r.method != "GET" && r.method != "POST" && r.method != "DELETE") {
       r(current::net::DefaultMethodNotAllowedMessage(),
         HTTPResponseCode.MethodNotAllowed,
@@ -314,7 +335,8 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
         // Respond with "200 OK" in any case.
         r("NOP\n");
       }
-    } else if (r.method == "POST") {
+    } else {
+      // Accepting keepalives as either POST or GET now, no harm in this. -- D.K.
       try {
         const std::string ip = r.connection.RemoteIPAndPort().ip;
         const std::string url = "http://" + ip + ':' + qs["port"] + "/.current";
@@ -480,8 +502,35 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       } catch (const Exception&) {
         r("Karl registration error.\n", HTTPResponseCode.InternalServerError);
       }
+    }
+  }
+
+  void ServeFleetStatus(Request r) {
+    const auto& qs = r.url.query;
+    if (qs.has("schema")) {
+      using uber_t = Variant<karl_status_t, claire_status_t, persisted_keepalive_t, KarlParameters>;
+      const auto& schema = qs["schema"];
+      using L = current::reflection::Language;
+      if (schema == "md") {
+        RespondWithSchema<uber_t, L::Markdown>(std::move(r));
+      } else if (schema == "fs") {
+        RespondWithSchema<uber_t, L::FSharp>(std::move(r));
+      } else {
+        RespondWithSchema<uber_t, L::JSON>(std::move(r));
+      }
     } else {
       BuildStatusAndRespondWithIt(std::move(r));
+    }
+  }
+
+  void ServeKarlStatus(Request r) {
+    if (r.url.query.has("parameters") || r.url.query.has("params") || r.url.query.has("p") ||
+        r.url.query.has("full") || r.url.query.has("f")) {
+      r(KarlUpStatus(parameters_));
+    } else {
+      r(JSON<JSONFormat::Minimalistic>(KarlUpStatus()),
+        HTTPResponseCode.OK,
+        current::net::constants::kDefaultJSONContentType);
     }
   }
 
@@ -595,13 +644,15 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
         service_key_into_codename[e.entry.location] = keepalive.codename;
 
         codenames_per_service[keepalive.service].insert(keepalive.codename);
-        // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`, etc.
+        // DIMA: More per-codename reporting fields go here; tailored to specific type, `.Call(populator)`,
+        // etc.
         ProtoReport report;
         const std::string last_keepalive =
             current::strings::TimeIntervalAsHumanReadableString(now - e.idx_ts.us) + " ago";
-        if ((now - e.idx_ts.us) < service_timeout_interval_) {
+        if ((now - e.idx_ts.us) < parameters_.service_timeout_interval) {
           // Service is up.
-          const auto projected_uptime_us = keepalive.uptime_epoch_microseconds + (now - e.idx_ts.us);
+          const auto projected_uptime_us =
+              (keepalive.now - keepalive.start_time_epoch_microseconds) + (now - e.idx_ts.us);
           report.currently = current_service_state::up(
               keepalive.start_time_epoch_microseconds,
               last_keepalive,
@@ -644,7 +695,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
       return ResponseType::JSONMinimalistic;
     }();
 
-    const std::string external_url = external_url_;
+    const std::string public_url = actual_public_url_;
     storage_.ReadOnlyTransaction(
                  [this,
                   now,
@@ -652,7 +703,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                   to,
                   active_only,
                   response_type,
-                  external_url,
+                  public_url,
                   codenames_to_resolve,
                   report_for_codename,
                   codenames_per_service,
@@ -714,7 +765,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
 
                        if (has_nginx_config_file_) {
                          blob.url_status_page_proxied =
-                             external_url_ + nginx_parameters_.route_prefix + '/' + codename;
+                             actual_public_url_ + nginx_parameters_.route_prefix + '/' + codename;
                        }
                        blob.url_status_page_direct = blob.location.StatusPageURL();
                        blob.location = resolved_codenames[codename];
@@ -750,12 +801,12 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
                      return Response(
                          "<!doctype html>"
                          "<head><link rel='icon' href='./favicon.png'></head>"
-                         "<body>" + Render(result, svg_name_, github_repo_url_).AsSVG() + "</body>",
+                         "<body>" + Render(result, parameters_.svg_name, parameters_.github_repo_url).AsSVG() + "</body>",
                          HTTPResponseCode.OK,
                          net::constants::kDefaultHTMLContentType);
                      // clang-format on
                    } else if (response_type == ResponseType::DOT) {
-                     return Response(Render(result, svg_name_, github_repo_url_).AsDOT());
+                     return Response(Render(result, parameters_.svg_name, parameters_.github_repo_url).AsDOT());
                    } else {
                      return result;
                    }
@@ -773,13 +824,7 @@ class GenericKarl final : private KarlNginxManager<ServiceStorage<SherlockStream
   // Plus one to have `0` == "no keepalives", and avoid the corner case of record at index 0 being the one.
   std::unordered_map<std::string, uint64_t> latest_keepalive_index_plus_one_;
 
-  const std::string svg_name_ = "Karl";
-  const std::string github_repo_url_ = "";
-
-  const std::string external_url_;
-  const std::chrono::microseconds service_timeout_interval_;
   stream_t keepalives_stream_;
-  storage_t storage_;
   std::thread state_update_thread_;
   const HTTPRoutesScope http_scope_;
 };
