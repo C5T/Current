@@ -35,7 +35,7 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
-// Karl's startup parameters.
+// Karl's nginx setup parameters.
 CURRENT_STRUCT(KarlNginxParameters) {
   CURRENT_FIELD(port, uint16_t);
   CURRENT_FIELD_DESCRIPTION(port, "The port for keepalives- and browsability-enabling nginx to listen on.");
@@ -49,9 +49,9 @@ CURRENT_STRUCT(KarlNginxParameters) {
       : port(port), config_file(config_file), route_prefix(route_prefix) {}
 };
 
+// Karl's startup parameters.
 constexpr static const char* kDefaultFleetViewURL = "http://localhost:%d";  // Defaults to the nginx port.
 constexpr static std::chrono::microseconds k45Seconds = std::chrono::microseconds(1000ll * 1000ll * 45);
-
 CURRENT_STRUCT(KarlParameters) {
   CURRENT_FIELD(keepalives_port, uint16_t);
   CURRENT_FIELD_DESCRIPTION(keepalives_port, "The port on which keepalives are listened to.");
