@@ -43,7 +43,12 @@ SOFTWARE.
 
 #include "../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_uint16(karl_test_port, PickPortForUnitTest(), "Local test port for the `Karl` master service.");
+DEFINE_uint16(karl_test_keepalives_port,
+              PickPortForUnitTest(),
+              "Local test port for the `Karl` keepalive listener.");
+DEFINE_uint16(karl_test_fleet_view_port,
+              PickPortForUnitTest(),
+              "Local test port for the `Karl` fleet view listener.");
 DEFINE_uint16(karl_generator_test_port, PickPortForUnitTest(), "Local test port for the `generator` service.");
 DEFINE_uint16(karl_is_prime_test_port, PickPortForUnitTest(), "Local test port for the `is_prime` service.");
 DEFINE_uint16(karl_annotator_test_port, PickPortForUnitTest(), "Local test port for the `annotator` service.");
@@ -70,14 +75,22 @@ using unittest_karl_t =
     current::karl::GenericKarl<current::karl::default_user_status::status, karl_unittest::is_prime>;
 using unittest_karl_status_t = typename unittest_karl_t::karl_status_t;
 
+static current::karl::KarlParameters UnittestKarlParameters() {
+  current::karl::KarlParameters params;
+  params.keepalives_port = FLAGS_karl_test_keepalives_port;
+  params.fleet_view_port = FLAGS_karl_test_fleet_view_port;
+  params.stream_persistence_file = FLAGS_karl_test_stream_persistence_file;
+  params.storage_persistence_file = FLAGS_karl_test_storage_persistence_file;
+  return params;
+}
+
 TEST(Karl, SmokeGenerator) {
   current::time::ResetToZero();
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
 
@@ -99,8 +112,9 @@ TEST(Karl, SmokeGenerator) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -117,9 +131,8 @@ TEST(Karl, SmokeIsPrime) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
   EXPECT_EQ("YES\n", HTTP(GET(Printf("http://localhost:%d/is_prime?x=2", FLAGS_karl_is_prime_test_port))).body);
   EXPECT_EQ("YES\n",
@@ -142,8 +155,9 @@ TEST(Karl, SmokeIsPrime) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -160,9 +174,8 @@ TEST(Karl, SmokeAnnotator) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
@@ -195,8 +208,9 @@ TEST(Karl, SmokeAnnotator) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
 
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
@@ -213,9 +227,8 @@ TEST(Karl, SmokeFilter) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), karl_locator);
   const karl_unittest::ServiceIsPrime is_prime(FLAGS_karl_is_prime_test_port, karl_locator);
@@ -254,8 +267,9 @@ TEST(Karl, SmokeFilter) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -272,16 +286,15 @@ TEST(Karl, Deregister) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  const unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
 
   // No services registered.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                        FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -291,9 +304,9 @@ TEST(Karl, Deregister) {
     // The `generator` service is registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(
-          status = ParseJSON<unittest_karl_status_t>(
-              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                          FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -306,9 +319,9 @@ TEST(Karl, Deregister) {
       // The `generator` and `is_prime` services are registered.
       {
         unittest_karl_status_t status;
-        ASSERT_NO_THROW(
-            status = ParseJSON<unittest_karl_status_t>(
-                HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+        ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                            FLAGS_karl_test_fleet_view_port))).body));
         EXPECT_EQ(1u, status.machines.size()) << JSON(status);
         ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
         auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -320,9 +333,9 @@ TEST(Karl, Deregister) {
     // The `generator` should be the only service registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(
-          status = ParseJSON<unittest_karl_status_t>(
-              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                          FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -334,9 +347,9 @@ TEST(Karl, Deregister) {
   // All services should be deregistered by this moment.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                        FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 }
@@ -355,6 +368,8 @@ TEST(Karl, DeregisterWithNginx) {
   const current::karl::KarlNginxParameters nginx_parameters(FLAGS_karl_nginx_port,
                                                             FLAGS_karl_nginx_config_file);
   const std::string karl_nginx_base_url = "http://localhost:" + current::ToString(FLAGS_karl_nginx_port);
+  /*
+  // DIMA
   const unittest_karl_t karl(FLAGS_karl_test_port,
                              FLAGS_karl_test_stream_persistence_file,
                              FLAGS_karl_test_storage_persistence_file,
@@ -363,14 +378,17 @@ TEST(Karl, DeregisterWithNginx) {
                              "Test",
                              "https://github.com/dkorolev/Current",
                              nginx_parameters);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  */
+  auto params = UnittestKarlParameters();
+  const unittest_karl_t karl(params);
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
 
   // No services registered.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                        FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -382,9 +400,9 @@ TEST(Karl, DeregisterWithNginx) {
     // The `generator` service is registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(
-          status = ParseJSON<unittest_karl_status_t>(
-              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                          FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -418,9 +436,9 @@ TEST(Karl, DeregisterWithNginx) {
       // The `generator` and `is_prime` services are registered.
       {
         unittest_karl_status_t status;
-        ASSERT_NO_THROW(
-            status = ParseJSON<unittest_karl_status_t>(
-                HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+        ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                            FLAGS_karl_test_fleet_view_port))).body));
         EXPECT_EQ(1u, status.machines.size()) << JSON(status);
         ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
         auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -453,9 +471,9 @@ TEST(Karl, DeregisterWithNginx) {
     // The `generator` should be the only service registered.
     {
       unittest_karl_status_t status;
-      ASSERT_NO_THROW(
-          status = ParseJSON<unittest_karl_status_t>(
-              HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+      ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                          HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                          FLAGS_karl_test_fleet_view_port))).body));
       EXPECT_EQ(1u, status.machines.size()) << JSON(status);
       ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
       auto& per_ip_services = status.machines["127.0.0.1"].services;
@@ -467,9 +485,9 @@ TEST(Karl, DeregisterWithNginx) {
   // All services should be deregistered by this moment.
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(
-        status = ParseJSON<unittest_karl_status_t>(
-            HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                        FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
@@ -490,9 +508,8 @@ TEST(Karl, DisconnectedByTimout) {
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
-  unittest_karl_t karl(
-      FLAGS_karl_test_port, FLAGS_karl_test_stream_persistence_file, FLAGS_karl_test_storage_persistence_file);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
 
   current::karl::ClaireStatus claire;
   claire.service = "unittest";
@@ -547,6 +564,9 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
   const current::karl::KarlNginxParameters nginx_parameters(FLAGS_karl_nginx_port,
                                                             FLAGS_karl_nginx_config_file);
   const std::string karl_nginx_base_url = "http://localhost:" + current::ToString(FLAGS_karl_nginx_port);
+  auto params = UnittestKarlParameters();
+  /*
+  TODO(dkorolev): DIMA: Fix this test.
   unittest_karl_t karl(FLAGS_karl_test_port,
                        FLAGS_karl_test_stream_persistence_file,
                        FLAGS_karl_test_storage_persistence_file,
@@ -555,7 +575,9 @@ TEST(Karl, DisconnectedByTimoutWithNginx) {
                        "Test",
                        "https://github.com/dkorolev/Current",
                        nginx_parameters);
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  */
+  unittest_karl_t karl(params);
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
 
   current::karl::ClaireStatus claire;
   claire.service = "unittest";
@@ -641,15 +663,19 @@ TEST(Karl, EndToEndTest) {
     // * IsPrime: Exposing a single endpoint; curl `?x=42` or `?x=43` to test.
     // * Karl: Displaying status; curl ``.
     // TODO(dkorolev): Have Karl expose the DOT/SVG, over the desired period of time. And test it.
-    std::cerr << "Karl      :: localhost:" << FLAGS_karl_test_port << '\n';
-    std::cerr << "Generator :: localhost:" << FLAGS_karl_generator_test_port << "/numbers\n";
-    std::cerr << "IsPrime   :: localhost:" << FLAGS_karl_is_prime_test_port << "/is_prime?x=42\n";
-    std::cerr << "Annotator :: localhost:" << FLAGS_karl_annotator_test_port << "/annotated\n";
-    std::cerr << "Filter    :: localhost:" << FLAGS_karl_filter_test_port << "/primes\n";
+    std::cerr << "Keepalives :: localhost:" << FLAGS_karl_test_keepalives_port << "?schema=md\n";  // Need this?
+    std::cerr << "Fleet view :: localhost:" << FLAGS_karl_test_fleet_view_port << '\n';
+    std::cerr << "Generator  :: localhost:" << FLAGS_karl_generator_test_port << "/numbers\n";
+    std::cerr << "IsPrime    :: localhost:" << FLAGS_karl_is_prime_test_port << "/is_prime?x=42\n";
+    std::cerr << "Annotator  :: localhost:" << FLAGS_karl_annotator_test_port << "/annotated\n";
+    std::cerr << "Filter     :: localhost:" << FLAGS_karl_filter_test_port << "/primes\n";
   }
 
   const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
   const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  auto params = UnittestKarlParameters();
+  /*
+  TODO(dkorolev): DIMA: Fix this test.
   const unittest_karl_t karl(FLAGS_karl_test_port,
                              FLAGS_karl_test_stream_persistence_file,
                              FLAGS_karl_test_storage_persistence_file,
@@ -657,7 +683,9 @@ TEST(Karl, EndToEndTest) {
                              "http://localhost:{port}",
                              "Karl's Unit Test",
                              "https://github.com/dkorolev/Current");
-  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_port));
+  */
+  const unittest_karl_t karl(params);
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d", FLAGS_karl_test_keepalives_port));
   const karl_unittest::ServiceGenerator generator(FLAGS_karl_generator_test_port,
                                                   std::chrono::microseconds(10000),  // 100 per second.
                                                   karl_locator);
@@ -678,8 +706,9 @@ TEST(Karl, EndToEndTest) {
 
   {
     unittest_karl_status_t status;
-    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
-                        HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_port))).body));
+    ASSERT_NO_THROW(
+        status = ParseJSON<unittest_karl_status_t>(
+            HTTP(GET(Printf("http://localhost:%d?from=0&full", FLAGS_karl_test_fleet_view_port))).body));
     EXPECT_EQ(1u, status.machines.size()) << JSON(status);
     ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
     auto& per_ip_services = status.machines["127.0.0.1"].services;

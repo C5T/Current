@@ -35,6 +35,56 @@ SOFTWARE.
 namespace current {
 namespace karl {
 
+// Karl's startup parameters.
+CURRENT_STRUCT(KarlNginxParameters) {
+  CURRENT_FIELD(port, uint16_t);
+  CURRENT_FIELD_DESCRIPTION(port, "The port for keepalives- and browsability-enabling nginx to listen on.");
+  CURRENT_FIELD(config_file, std::string);
+  CURRENT_FIELD_DESCRIPTION(config_file, "The nginx config file to manipulate.");
+  CURRENT_FIELD(route_prefix, std::string);
+  CURRENT_FIELD_DESCRIPTION(route_prefix, "Non-standard top-level route, if set.");
+
+  CURRENT_CONSTRUCTOR(KarlNginxParameters)(
+      uint16_t port, const std::string& config_file, const std::string& route_prefix = "/live")
+      : port(port), config_file(config_file), route_prefix(route_prefix) {}
+};
+
+constexpr static const char* kDefaultFleetViewURL = "http://localhost:%d/public/";
+constexpr static std::chrono::microseconds k45Seconds = std::chrono::microseconds(1000ll * 1000ll * 45);
+
+CURRENT_STRUCT(KarlParameters) {
+  CURRENT_FIELD(keepalives_port, uint16_t);
+  CURRENT_FIELD_DESCRIPTION(keepalives_port, "The port on which keepalives are listened to.");
+  CURRENT_FIELD(fleet_view_port, uint16_t);
+  CURRENT_FIELD_DESCRIPTION(fleet_view_port, "The port fleet browsability requests are served from.");
+  CURRENT_FIELD(stream_persistence_file, std::string);
+  CURRENT_FIELD_DESCRIPTION(stream_persistence_file, "The file name to store the stream of keepalives.");
+  CURRENT_FIELD(storage_persistence_file, std::string);
+  CURRENT_FIELD_DESCRIPTION(
+      storage_persistence_file,
+      "The file name to store the persisted event log of keepalives post-processed into servers and services.");
+  CURRENT_FIELD(keepalives_url, std::string);
+  CURRENT_FIELD_DESCRIPTION(keepalives_url,
+                            "The endpoint to listen to keepalives on, on the `keepalives_port` port.");
+  CURRENT_FIELD(fleet_view_url, std::string, "/public/");
+  CURRENT_FIELD_DESCRIPTION(fleet_view_url, "The endpoint to listen to fleet view requests on.");
+  CURRENT_FIELD(public_url, std::string, kDefaultFleetViewURL);
+  CURRENT_FIELD_DESCRIPTION(public_url,
+                            "The prefix of the URL to append to have the JSONs containing per-service proxies "
+                            "URLs browsable in one click.");
+  CURRENT_FIELD(svg_name, std::string, "Karl");
+  CURRENT_FIELD_DESCRIPTION(svg_name, "The top-level image name on the GraphViz-rendered SVG.");
+  CURRENT_FIELD(github_repo_url, std::string, "");
+  CURRENT_FIELD_DESCRIPTION(github_repo_url,
+                            "The top-level GitHub repo URL to have git commit hashes browsable.");
+  CURRENT_FIELD(nginx_parameters, KarlNginxParameters, KarlNginxParameters(0, ""));
+  CURRENT_FIELD_DESCRIPTION(nginx_parameters, "Nginx manager confix.");
+  CURRENT_FIELD(service_timeout_interval, std::chrono::microseconds, k45Seconds);
+  CURRENT_FIELD_DESCRIPTION(service_timeout_interval,
+                            "The default period of keepalive-free inactivity, after which a service is "
+                            "considered down for fleet browsability purposes.");
+};
+
 // Karl's persisted storage schema.
 
 // System info, startup/teardown.
@@ -258,6 +308,13 @@ CURRENT_STRUCT_T(GenericKarlStatus) {
                             "How long did the generation of this report take, in microseconds.");
   CURRENT_FIELD(machines, (std::map<std::string, ServerToReport<T>>));
   CURRENT_FIELD_DESCRIPTION(machines, "The actual report, grouped by servers.");
+};
+
+CURRENT_STRUCT(KarlUpStatus) {
+  CURRENT_FIELD(up, bool, true);
+  CURRENT_FIELD(parameters, Optional<KarlParameters>);
+  CURRENT_DEFAULT_CONSTRUCTOR(KarlUpStatus) {}
+  CURRENT_CONSTRUCTOR(KarlUpStatus)(const KarlParameters& parameters) : parameters(parameters) {}
 };
 
 CURRENT_STRUCT_T(SnapshotOfKeepalive) {
