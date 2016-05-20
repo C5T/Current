@@ -75,7 +75,13 @@ struct PersistenceMemoryBlockNoLongerAvailable : InGracefulShutdownException {
 };
 
 struct PersistenceFileNoLongerAvailable : InGracefulShutdownException {
-  using InGracefulShutdownException::InGracefulShutdownException;
+  explicit PersistenceFileNoLongerAvailable(const std::string& filename)
+      : InGracefulShutdownException("Persistence file no longer available: `" + filename + "`.") {}
+};
+
+struct PersistenceFileNotWritable : InGracefulShutdownException {
+  explicit PersistenceFileNotWritable(const std::string& filename)
+      : InGracefulShutdownException("Persistence file not writable: `" + filename + "`.") {}
 };
 
 }  // namespace peristence

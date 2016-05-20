@@ -31,7 +31,8 @@ namespace current {
 namespace karl {
 namespace constants {
 
-constexpr static uint16_t kDefaultKarlPort = 7576;  // ASCII { 'K', 'L' }.
+constexpr static uint16_t kDefaultKarlPort = 7576;           // ASCII { 'K', 'L' }.
+constexpr static uint16_t kDefaultKarlFleetViewPort = 7577;  // ASCII { 'K', 'M' }.
 
 }  // namespace current::karl::constants
 }  // namespace current::karl
