@@ -25,7 +25,8 @@ SOFTWARE.
 #define CURRENT_MOCK_TIME
 #define EXTRA_KARL_LOGGING  // Make sure the schema dump part compiles. -- D.K.
 
-#include "current_build.h"
+#include "current.build"
+
 #include "karl.h"
 
 #include "test_service/generator.h"

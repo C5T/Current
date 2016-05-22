@@ -6,7 +6,7 @@
 
 # TODO(dkorolev): Add a top-level 'make update' target to update from GitHub.
 
-.PHONY: test all indent clean check coverage 
+.PHONY: test all indent clean check coverage phony_current_build
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
@@ -43,20 +43,20 @@ default: all
 		find .current/ -perm +111 -type f -exec "{}" ";" ; \
 	fi
 
-test: current_build .current/test
+test: phony_current_build .current/test
 	.current/test --current_runtime_arch=${OS}
 
-debug: current_build
+debug: phony_current_build
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)
 
-all: current_build ${BIN}
+all: phony_current_build ${BIN}
 
 clean:
 	find . -type d -name .current | xargs rm -rf
 	find . -type l -name '.current_*' | xargs rm -f
 	find . -type l -name '.current_*.*' | xargs rm -f
 	find . -name core | xargs rm -f
-	rm -f current_build.h
+	rm -f current.build
 
 .current/%: %.cc *.h
 	@(mkdir -p .current)

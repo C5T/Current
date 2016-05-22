@@ -1,4 +1,5 @@
+# In `Makefile`, do nothing for `current.build`. Use `MakefileWithCurrentBuild` to have it created.
+
 include $(shell readlink "${PWD}/Makefile")Impl
 
-# In `Makefile`, do nothing for `current_build.h`. Use `MakefileWithCurrentBuild` to have it created.
-current_build:
+phony_current_build:

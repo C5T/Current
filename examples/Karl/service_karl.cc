@@ -22,7 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "current_build.h"
+#include "current.build"
+
 #include "../../Karl/test_service/is_prime.h"
 #include "../../Karl/karl.h"
 #include "../../Bricks/dflags/dflags.h"

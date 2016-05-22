@@ -1,10 +1,11 @@
+# Create or update `current.build`. Use the plain `Makefile` if there is no need in that file.
+
 SCRIPTS_DIR := $(shell dirname "$(shell readlink "${PWD}/Makefile")")
 include ${SCRIPTS_DIR}/MakefileImpl
 
-# Create or update `current_build.h`. Use the plain `Makefile` if there is no need in this file.
-current_build:
+phony_current_build:
 	@(\
 	  export CPLUSPLUS="$(CPLUSPLUS)"; \
 	  export CPPFLAGS="$(CPPFLAGS)"; \
 	  export LDFLAGS="$(LDFLAGS)"; \
-	"${SCRIPTS_DIR}/gen-current-build.sh" current_build.h) || (echo '`gen-current-build.sh` failed.' && exit 1)
+	"${SCRIPTS_DIR}/gen-current-build.sh" current.build) || (echo '`gen-current-build.sh` failed.' && exit 1)

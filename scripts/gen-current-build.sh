@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Generates the `current_build.h` header. Only updates the file if it has been changed.
+# Generates the `current.build` header. Only updates the file
+# if it has been changed (even though this logic is unnecessary now as it's not an `.h` file. -- D.K.)
 
 SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
 
