@@ -22,31 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#ifndef SERVER_H
-#define SERVER_H
+#include "../../../current.h"
+#include "../../../Bricks/dflags/dflags.h"
 
-#include "../../current.h"
+#include "server.h"
 
-CURRENT_STRUCT(AddResult) {
-  CURRENT_FIELD(sum, int64_t);
-  CURRENT_CONSTRUCTOR(AddResult)(int64_t sum = 0) : sum(sum) {}
-};
+using namespace current;
 
-class BenchmarkTestServer {
- public:
-  BenchmarkTestServer(int port, const std::string& route)
-      : port_(port),
-        scope_(HTTP(port).Register(route,
-                                   [](Request r) {
-                                     r(AddResult(current::FromString<int64_t>(r.url.query["a"]) +
-                                                 current::FromString<int64_t>(r.url.query["b"])));
-                                   })) {}
+DEFINE_string(benchmark_local_route, "/add", "The route spawn the server on.");
+DEFINE_int32(benchmark_local_port, PickPortForUnitTest(), "The local port to spawn the server on.");
 
-  void Join() { HTTP(port_).Join(); }
+int main(int argc, char** argv) {
+  ParseDFlags(&argc, &argv);
 
- private:
-  const int port_;
-  HTTPRoutesScope scope_;
-};
-
-#endif  // SERVER_H
+  BenchmarkTestServer(FLAGS_benchmark_local_port, FLAGS_benchmark_local_route).Join();
+}

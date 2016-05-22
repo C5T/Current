@@ -22,18 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "../../current.h"
-#include "../../Bricks/dflags/dflags.h"
-
 #include "server.h"
 
-using namespace current;
+#include "../../../Bricks/dflags/dflags.h"
+#include "../../../3rdparty/gtest/gtest-main-with-dflags.h"
 
-DEFINE_string(benchmark_local_route, "/add", "The route spawn the server on.");
-DEFINE_int32(benchmark_local_port, PickPortForUnitTest(), "The local port to spawn the server on.");
+DEFINE_int32(benchmark_test_local_port, PickPortForUnitTest(), "The local port to spawn test server on.");
 
-int main(int argc, char** argv) {
-  ParseDFlags(&argc, &argv);
+TEST(BenchmarkTest, OneAndOne) {
+  BenchmarkTestServer server(FLAGS_benchmark_test_local_port, "/add");
+  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=1&b=1", FLAGS_benchmark_test_local_port)));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(2, ParseJSON<AddResult>(response.body).sum);
+}
 
-  BenchmarkTestServer(FLAGS_benchmark_local_port, FLAGS_benchmark_local_route).Join();
+TEST(BenchmarkTest, TenAndTen) {
+  BenchmarkTestServer server(FLAGS_benchmark_test_local_port, "/add");
+  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=10&b=10", FLAGS_benchmark_test_local_port)));
+  EXPECT_EQ(200, static_cast<int>(response.code));
+  EXPECT_EQ(20, ParseJSON<AddResult>(response.body).sum);
 }
