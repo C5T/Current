@@ -35,7 +35,7 @@ DEFINE_string(scenario, "", "Benchmarking scenario to run. Leave empty for synop
 DEFINE_double(seconds, 2.5, "Run the load test for this many seconds.");
 
 DEFINE_int32(threads,
-             100,
+             24,
              "The number of threads to run requests from. NOTE: As individual queries are run synchronously, "
              "the measurement may be imprecise when run against a high-latency network,"
              "as more time would be spent waiting than running. Thus, this tool is only good for local tests.");
