@@ -32,29 +32,34 @@ SOFTWARE.
 #include "../../../Bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
-DEFINE_uint16(simple_http_local_port, 9999, "Local port for `current_http_server` to use.");
+DEFINE_uint16(simple_http_local_port_begin, 9800, "Local port range for `current_http_server` to use.");
+DEFINE_uint16(simple_http_local_port_end, 9825, "Local port range for `current_http_server` to use.");
 DEFINE_string(simple_http_local_route, "/perftest", "Local route for `current_http_server` to use.");
 DEFINE_string(simple_http_test_body,
-              "OK\n",
+              "+current -nginx\n",
               "Golden HTTP body to return for the `current_http_server` scenario.");
 #else
-DECLARE_uint16(simple_http_local_port);
+DECLARE_uint16(simple_http_local_port_begin);
+DECLARE_uint16(simple_http_local_port_end);
 DECLARE_string(simple_http_local_route);
 DECLARE_string(simple_http_test_body);
 #endif
 
 SCENARIO(current_http_server, "Use Current's HTTP stack for simple HTTP client-server handshake.") {
-  const std::string url_;
+  std::vector<std::string> urls;
   HTTPRoutesScope scope;
 
-  current_http_server()
-      : url_("localhost:" + current::strings::ToString(FLAGS_simple_http_local_port) +
-             FLAGS_simple_http_local_route),
-        scope(HTTP(FLAGS_simple_http_local_port)
-                  .Register(FLAGS_simple_http_local_route, [](Request r) { r(FLAGS_simple_http_test_body); })) {
+  current_http_server() {
+    const auto handler = [](Request r) { r(FLAGS_simple_http_test_body); };
+    for (uint16_t port = FLAGS_simple_http_local_port_begin; port < FLAGS_simple_http_local_port_end; ++port) {
+      scope += HTTP(port).Register(FLAGS_simple_http_local_route, handler);
+      urls.push_back("localhost:" + current::strings::ToString(port) + FLAGS_simple_http_local_route);
+    }
   }
 
-  void RunOneQuery() override { assert(HTTP(GET(url_)).body == FLAGS_simple_http_test_body); }
+  void RunOneQuery() override {
+    assert(HTTP(GET(urls[rand() % urls.size()])).body == FLAGS_simple_http_test_body);
+  }
 };
 
 REGISTER_SCENARIO(current_http_server);
