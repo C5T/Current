@@ -1,7 +1,8 @@
 # Create or update `current.build`. Use the plain `Makefile` if there is no need in that file.
 
-SCRIPTS_DIR := $(shell dirname "$(shell readlink "${PWD}/Makefile")")
-include ${SCRIPTS_DIR}/MakefileImpl
+.PHONY: phony_current_build
+
+include $(shell readlink "${PWD}/Makefile")Impl
 
 phony_current_build:
 	@(\
