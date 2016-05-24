@@ -38,16 +38,18 @@ SOFTWARE.
 DEFINE_string(nginx_client_config_file_prefix,
               "/etc/nginx/sites-enabled/current_perftest_",
               "The nginx config to use.");
-DEFINE_uint16(nginx_client_local_port_begin, 9700, "Local port range for `simple_nginx_client` to use.");
-DEFINE_uint16(nginx_client_local_port_end, 9725, "Local port range for `simple_nginx_client` to use.");
+DEFINE_uint16(nginx_client_local_port, 9750, "Local port range for `simple_nginx_client` to use.");
+DEFINE_uint16(nginx_client_local_top_port,
+              9799,
+              "If nonzero, use ports from `--nginx_client_local_port,` up to this one.");
 DEFINE_string(nginx_client_local_route, "/perftest", "Local route for `simple_nginx_client` to use.");
 DEFINE_string(nginx_client_test_body,
               "+nginx -current\n",
               "Golden HTTP body to return for the `simple_nginx_client` scenario.");
 #else
 DECLARE_string(nginx_client_config_file_prefix);
-DECLARE_uint16(nginx_client_local_port_begin);
-DECLARE_uint16(nginx_client_local_port_end);
+DECLARE_uint16(nginx_client_local_port);
+DECLARE_uint16(nginx_client_local_top_port);
 DECLARE_string(nginx_client_local_route);
 DECLARE_string(nginx_client_test_body);
 #endif
@@ -58,7 +60,8 @@ SCENARIO(simple_nginx_client, "Use Current's HTTP client to access an nginx-cont
   simple_nginx_client() {
     using namespace current::nginx::config;
 
-    for (uint16_t port = FLAGS_nginx_client_local_port_begin; port < FLAGS_nginx_client_local_port_end;
+    for (uint16_t port = FLAGS_nginx_client_local_port;
+         port <= std::max(FLAGS_nginx_client_local_port, FLAGS_nginx_client_local_top_port);
          ++port) {
       current::nginx::NginxManager nginx(FLAGS_nginx_client_config_file_prefix +
                                          current::strings::ToString(port));

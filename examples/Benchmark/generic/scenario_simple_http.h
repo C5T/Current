@@ -32,15 +32,17 @@ SOFTWARE.
 #include "../../../Bricks/dflags/dflags.h"
 
 #ifndef CURRENT_MAKE_CHECK_MODE
-DEFINE_uint16(simple_http_local_port_begin, 9800, "Local port range for `current_http_server` to use.");
-DEFINE_uint16(simple_http_local_port_end, 9825, "Local port range for `current_http_server` to use.");
+DEFINE_uint16(simple_http_local_port, 9700, "Local port range for `current_http_server` to use.");
+DEFINE_uint16(simple_http_local_top_port,
+              9749,
+              "If nonzero, use ports from `--simple_http_local_port` up to this one.");
 DEFINE_string(simple_http_local_route, "/perftest", "Local route for `current_http_server` to use.");
 DEFINE_string(simple_http_test_body,
               "+current -nginx\n",
               "Golden HTTP body to return for the `current_http_server` scenario.");
 #else
-DECLARE_uint16(simple_http_local_port_begin);
-DECLARE_uint16(simple_http_local_port_end);
+DECLARE_uint16(simple_http_local_port);
+DECLARE_uint16(simple_http_local_top_port);
 DECLARE_string(simple_http_local_route);
 DECLARE_string(simple_http_test_body);
 #endif
@@ -51,7 +53,9 @@ SCENARIO(current_http_server, "Use Current's HTTP stack for simple HTTP client-s
 
   current_http_server() {
     const auto handler = [](Request r) { r(FLAGS_simple_http_test_body); };
-    for (uint16_t port = FLAGS_simple_http_local_port_begin; port < FLAGS_simple_http_local_port_end; ++port) {
+    for (uint16_t port = FLAGS_simple_http_local_port;
+         port <= std::max(FLAGS_simple_http_local_top_port, FLAGS_simple_http_local_port);
+         ++port) {
       scope += HTTP(port).Register(FLAGS_simple_http_local_route, handler);
       urls.push_back("localhost:" + current::strings::ToString(port) + FLAGS_simple_http_local_route);
     }
