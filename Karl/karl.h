@@ -246,7 +246,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
     return services_keepalive_time_cache_.size();
   }
 
-  storage_t& InternalExposeStorage() { return storage_; }
+  const storage_t& InternalExposeStorage() const { return storage_; }
 
  private:
   void StateUpdateThread() {

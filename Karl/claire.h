@@ -90,46 +90,12 @@ class GenericClaire final {
         codename_(GenerateRandomCodename()),
         port_(port),
         dependencies_(ParseDependencies(dependencies)),
-        karl_keepalive_route_(karl_.address_port_route + "?codename=" + codename_ + "&port=" +
-                              current::ToString(port_)),
+        karl_keepalive_route_(KarlKeepaliveRoute(karl_, codename_, port_)),
         us_start_(current::time::Now()),
-        http_scope_(HTTP(port).Register("/.current",
-                                        [this](Request r) {
-                                          const auto& qs = r.url.query;
-                                          if (qs.has("schema")) {
-                                            const auto& schema = qs["schema"];
-                                            using L = current::reflection::Language;
-                                            if (schema == "md") {
-                                              RespondWithSchema<specific_status_t, L::Markdown>(std::move(r));
-                                            } else if (schema == "fs") {
-                                              RespondWithSchema<specific_status_t, L::FSharp>(std::move(r));
-                                            } else {
-                                              RespondWithSchema<specific_status_t, L::JSON>(std::move(r));
-                                            }
-                                          } else {
-                                            const bool all = qs.has("all") || qs.has("a");
-                                            const bool build = qs.has("build") || qs.has("b");
-                                            const bool runtime = qs.has("runtime") || qs.has("r");
-                                            if (!all && build) {
-                                              r(build::Info());
-                                            } else if (!all && runtime) {
-                                              r(([this]() -> Response {
-                                                std::lock_guard<std::mutex> lock(status_mutex_);
-                                                if (status_generator_) {
-                                                  return Response(status_generator_());
-                                                } else {
-                                                  return Response("Not ready.\n",
-                                                                  HTTPResponseCode.ServiceUnavailable);
-                                                }
-                                              })());
-                                            } else {
-                                              // Don't use `JSONFormat::Minimalistic` to support type evolution
-                                              // of how to report/aggregate/render statuses on the Karl side.
-                                              r(GenerateKeepaliveStatus(all));
-                                            }
-                                          }
-                                        })),
+        http_scope_(HTTP(port).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
         keepalive_thread_terminating_(false) {}
+
+  GenericClaire() = delete;
 
   virtual ~GenericClaire() {
     if (keepalive_thread_.joinable()) {
@@ -185,6 +151,12 @@ class GenericClaire final {
       codename += static_cast<char>(current::random::CSRandomInt('A', 'Z'));
     }
     return codename;
+  }
+
+  static std::string KarlKeepaliveRoute(const Locator& karl_locator,
+                                        const std::string& codename,
+                                        uint16_t port) {
+    return karl_locator.address_port_route + "?codename=" + codename + "&port=" + current::ToString(port);
   }
 
   static std::set<ClaireServiceKey> ParseDependencies(const std::vector<std::string>& dependencies) {
@@ -337,16 +309,73 @@ class GenericClaire final {
     }
   }
 
-  GenericClaire() = delete;
+  void ServeCurrent(Request r) {
+    if (r.method == "GET") {
+      const auto& qs = r.url.query;
+      if (qs.has("schema")) {
+        const auto& schema = qs["schema"];
+        using L = current::reflection::Language;
+        if (schema == "md") {
+          RespondWithSchema<specific_status_t, L::Markdown>(std::move(r));
+        } else if (schema == "fs") {
+          RespondWithSchema<specific_status_t, L::FSharp>(std::move(r));
+        } else {
+          RespondWithSchema<specific_status_t, L::JSON>(std::move(r));
+        }
+      } else {
+        const bool all = qs.has("all") || qs.has("a");
+        const bool build = qs.has("build") || qs.has("b");
+        const bool runtime = qs.has("runtime") || qs.has("r");
+        if (!all && build) {
+          r(build::Info());
+        } else if (!all && runtime) {
+          r(([this]() -> Response {
+            std::lock_guard<std::mutex> lock(status_mutex_);
+            if (status_generator_) {
+              return Response(status_generator_());
+            } else {
+              return Response("Not ready.\n", HTTPResponseCode.ServiceUnavailable);
+            }
+          })());
+        } else {
+          // Don't use `JSONFormat::Minimalistic` to support type evolution
+          // of how to report/aggregate/render statuses on the Karl side.
+          r(GenerateKeepaliveStatus(all));
+        }
+      }
+    } else if (r.method == "POST") {
+      if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
+        URL karl_url(r.url.query["report_to"]);
+        if (!karl_url.host.empty()) {
+          {
+            std::lock_guard<std::mutex> lock(keepalive_mutex_);
+            karl_ = Locator(karl_url.ComposeURL());
+            karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
+          }
+          keepalive_condition_variable_.notify_one();
+          r("Now reporting to '" + karl_.address_port_route + "'.\n");
+        } else {
+          r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);
+        }
+      } else {
+        r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);
+      }
+    } else {
+      r(current::net::DefaultMethodNotAllowedMessage(),
+        HTTPResponseCode.MethodNotAllowed,
+        net::constants::kDefaultHTMLContentType);
+    }
+  }
 
+ private:
   std::atomic_bool in_beacon_mode_;
 
-  const Locator karl_;
+  Locator karl_;
   const std::string service_;
   const std::string codename_;
   const int port_;
   std::set<ClaireServiceKey> dependencies_;
-  const std::string karl_keepalive_route_;
+  std::string karl_keepalive_route_;
 
   const std::chrono::microseconds us_start_;
 

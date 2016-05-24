@@ -43,7 +43,7 @@ struct Locator {
 };
 
 inline Locator LocalKarl() {
-  return Locator("http://localhost:" + current::ToString(constants::kDefaultKarlPort));
+  return Locator("http://localhost:" + current::ToString(constants::kDefaultKarlPort) + '/');
 };
 
 }  // namespace current::karl
