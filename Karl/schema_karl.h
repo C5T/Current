@@ -135,7 +135,7 @@ CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD_DESCRIPTION(persisted_keepalives_info,
                             "Details on the stream which stores the received keepalives.");
 
-  CURRENT_FIELD(karl_build_info, build::Info, build::Info());
+  CURRENT_FIELD(karl_build_info, build::BuildInfo, build::BuildInfo());
   CURRENT_FIELD_DESCRIPTION(karl_build_info, "Build information of Karl itself.");
 };
 
@@ -169,7 +169,7 @@ CURRENT_STRUCT(ClaireBuildInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
 
-  CURRENT_FIELD(build, current::build::Info);
+  CURRENT_FIELD(build, current::build::BuildInfo);
 };
 
 const uint64_t kUpdateServerInfoThresholdByTimeSkewDifference = 50000;

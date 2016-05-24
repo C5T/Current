@@ -74,7 +74,7 @@ inline const std::vector<std::string>& GitDiffNames() {
   return result;
 }
 
-CURRENT_STRUCT(Info) {
+CURRENT_STRUCT(BuildInfo) {
   CURRENT_FIELD(build_time, std::string, __DATE__ ", " __TIME__);
   CURRENT_FIELD(build_dir, std::string, "$PWD");
   CURRENT_FIELD(build_user, std::string, "$(whoami)");
@@ -115,10 +115,10 @@ CURRENT_STRUCT(Info) {
       linker_flags,
       compiler_info);
   }
-  bool operator==(const Info& rhs) const {
+  bool operator==(const BuildInfo& rhs) const {
     return AsTuple() == rhs.AsTuple();
   }
-  bool operator!=(const Info& rhs) const {
+  bool operator!=(const BuildInfo& rhs) const {
     return !operator==(rhs);
   }
 };

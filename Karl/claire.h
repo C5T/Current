@@ -210,7 +210,7 @@ class GenericClaire final {
 #endif
 
     if (fill_current_build) {
-      status.build = build::Info();
+      status.build = build::BuildInfo();
     }
   }
 
@@ -327,7 +327,7 @@ class GenericClaire final {
         const bool build = qs.has("build") || qs.has("b");
         const bool runtime = qs.has("runtime") || qs.has("r");
         if (!all && build) {
-          r(build::Info());
+          r(build::BuildInfo());
         } else if (!all && runtime) {
           r(([this]() -> Response {
             std::lock_guard<std::mutex> lock(status_mutex_);
