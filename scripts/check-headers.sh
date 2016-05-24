@@ -7,7 +7,7 @@ set -u -e
 CURRENT_SCRIPTS_RELATIVE_DIR=$(dirname "${BASH_SOURCE[0]}")
 CURRENT_SCRIPTS_DIR=$("$CURRENT_SCRIPTS_RELATIVE_DIR/fullpath.sh" "$CURRENT_SCRIPTS_RELATIVE_DIR")
 
-CURRENT_BUILD=current_build.mock.h
+CURRENT_BUILD=current_build.h.mock
 RESOLVED_PWD=$(dirname "$("$CURRENT_SCRIPTS_DIR/fullpath.sh" "$PWD/$CURRENT_BUILD")")
 
 echo -e "\033[1m\033[34mTesting all headers to comply with the header-only paradigm.\033[0m"

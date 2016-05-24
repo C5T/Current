@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "current.build"
+#include "current_build.h"
 
 #include "../../Karl/test_service/is_prime.h"
 #include "../../Karl/karl.h"
