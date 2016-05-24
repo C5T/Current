@@ -22,23 +22,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "server.h"
+#ifndef SERVER_H
+#define SERVER_H
 
-#include "../../Bricks/dflags/dflags.h"
-#include "../../3rdparty/gtest/gtest-main-with-dflags.h"
+#include "../../../current.h"
 
-DEFINE_int32(benchmark_test_local_port, PickPortForUnitTest(), "The local port to spawn test server on.");
+CURRENT_STRUCT(AddResult) {
+  CURRENT_FIELD(sum, int64_t);
+  CURRENT_CONSTRUCTOR(AddResult)(int64_t sum = 0) : sum(sum) {}
+};
 
-TEST(BenchmarkTest, OneAndOne) {
-  BenchmarkTestServer server(FLAGS_benchmark_test_local_port, "/add");
-  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=1&b=1", FLAGS_benchmark_test_local_port)));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ(2, ParseJSON<AddResult>(response.body).sum);
-}
+class BenchmarkTestServer {
+ public:
+  BenchmarkTestServer(int port, const std::string& route)
+      : port_(port),
+        scope_(HTTP(port).Register(route,
+                                   [](Request r) {
+                                     r(AddResult(current::FromString<int64_t>(r.url.query["a"]) +
+                                                 current::FromString<int64_t>(r.url.query["b"])));
+                                   }) +
+              HTTP(port).Register("/perftest",
+                                   [](Request r) { r("perftest ok\n");})) {}
 
-TEST(BenchmarkTest, TenAndTen) {
-  BenchmarkTestServer server(FLAGS_benchmark_test_local_port, "/add");
-  const auto response = HTTP(GET(Printf("http://localhost:%d/add?a=10&b=10", FLAGS_benchmark_test_local_port)));
-  EXPECT_EQ(200, static_cast<int>(response.code));
-  EXPECT_EQ(20, ParseJSON<AddResult>(response.body).sum);
-}
+  void Join() { HTTP(port_).Join(); }
+
+ private:
+  const int port_;
+  HTTPRoutesScope scope_;
+};
+
+#endif  // SERVER_H
