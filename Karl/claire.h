@@ -144,6 +144,20 @@ class GenericClaire final {
 
   const std::string& Codename() const { return codename_; }
 
+  Locator GetKarlLocator() const {
+    std::lock_guard<std::mutex> lock(keepalive_mutex_);
+    return karl_;
+  }
+
+  void SetKarlLocator(const Locator& new_karl_locator) {
+    {
+      std::lock_guard<std::mutex> lock(keepalive_mutex_);
+      karl_ = new_karl_locator;
+      karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
+    }
+    keepalive_condition_variable_.notify_one();
+  }
+
  private:
   static std::string GenerateRandomCodename() {
     std::string codename;
@@ -345,15 +359,11 @@ class GenericClaire final {
       }
     } else if (r.method == "POST") {
       if (r.url.query.has("report_to") && !r.url.query["report_to"].empty()) {
-        URL karl_url(r.url.query["report_to"]);
-        if (!karl_url.host.empty()) {
-          {
-            std::lock_guard<std::mutex> lock(keepalive_mutex_);
-            karl_ = Locator(karl_url.ComposeURL());
-            karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
-          }
-          keepalive_condition_variable_.notify_one();
-          r("Now reporting to '" + karl_.address_port_route + "'.\n");
+        URL decomposed_karl_url(r.url.query["report_to"]);
+        if (!decomposed_karl_url.host.empty()) {
+          const std::string karl_url = decomposed_karl_url.ComposeURL();
+          SetKarlLocator(Locator(karl_url));
+          r("Now reporting to '" + karl_url + "'.\n");
         } else {
           r("Valid URL parameter `report_to` required.\n", HTTPResponseCode.BadRequest);
         }
@@ -388,7 +398,7 @@ class GenericClaire final {
   const HTTPRoutesScope http_scope_;
 
   std::atomic_bool keepalive_thread_terminating_;
-  std::mutex keepalive_mutex_;
+  mutable std::mutex keepalive_mutex_;
   std::condition_variable keepalive_condition_variable_;
   std::thread keepalive_thread_;
 };

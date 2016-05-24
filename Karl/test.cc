@@ -674,7 +674,7 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
     EXPECT_TRUE(status.machines.empty()) << JSON(status);
   }
 
-  const karl_unittest::ServiceGenerator generator(
+  karl_unittest::ServiceGenerator generator(
       FLAGS_karl_generator_test_port, std::chrono::microseconds(1000), primary_karl_locator);
   // The `generator` service is registered in the primary `Karl`.
   {
@@ -699,6 +699,8 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
     const std::string expected_body =
         Printf("Now reporting to '%s'.\n", secondary_karl_locator.address_port_route.c_str());
     EXPECT_EQ(expected_body, response.body);
+    EXPECT_EQ(secondary_karl_locator.address_port_route,
+              generator.Claire().GetKarlLocator().address_port_route);
   }
 
   while (secondary_karl.ActiveServicesCount() == 0u) {
@@ -732,6 +734,28 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
                     })
                     .Go());
     }
+  }
+
+  // Make `generator` report to the `primary_karl`.
+  {
+    generator.Claire().SetKarlLocator(primary_karl_locator);
+    EXPECT_EQ(primary_karl_locator.address_port_route, generator.Claire().GetKarlLocator().address_port_route);
+  }
+
+  while (primary_karl.ActiveServicesCount() == 0u) {
+    ;  // Spin lock.
+  }
+  // The `generator` service is again registered as active in the primary `Karl`.
+  {
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                        FLAGS_karl_test_fleet_view_port))).body));
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& per_ip_services = status.machines["127.0.0.1"].services;
+    EXPECT_EQ(1u, per_ip_services.size());
+    EXPECT_EQ("generator", per_ip_services[generator.ClaireCodename()].service);
   }
 }
 
