@@ -1,4 +1,4 @@
-# Create or update `current.build`. Use the plain `Makefile` if there is no need in that file.
+# Create or update `current_build.h`. Use the plain `Makefile` if there is no need in that file.
 
 .PHONY: phony_current_build
 

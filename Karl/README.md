@@ -46,7 +46,7 @@ The general ideas behind Karl and Claire are:
   Karl persists all keepalive messages, except for build info which is only stored if it is different from the previously reported one from the binary with this codename. Effectively, "which is only stored once", as build info does not change at runtime.
 
 * **Binary info**
-  Service name, build date/time, compiler/environment info, git branch and commit hash, and whether the build was performed from a vanilla branch, etc. Generated at build time by a custom `Makefile` (`current.build`, ref. `Current/scripts/MakefileWithCurrentBuild`).
+  Service name, build date/time, compiler/environment info, git branch and commit hash, and whether the build was performed from a vanilla branch, etc. Generated at build time by a custom `Makefile` (`current_build.h`, ref. `Current/scripts/MakefileWithCurrentBuild`).
 
 * **Generic runtime info**
   The generic part of Claire binary status: codename, uptime and local time, the time of the last keepalive accepted by Karl if already in talking-to-Karl mode.
