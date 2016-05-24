@@ -6,7 +6,7 @@
 
 # TODO(dkorolev): Add a top-level 'make update' target to update from GitHub.
 
-.PHONY: test all indent clean check coverage 
+.PHONY: test all indent clean check coverage phony_current_build
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
