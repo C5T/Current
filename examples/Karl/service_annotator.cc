@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *******************************************************************************/
 
-#include "current.build"
+#include "current_build.h"
 
 #include "../../Blocks/HTTP/api.h"
 #include "../../Bricks/dflags/dflags.h"

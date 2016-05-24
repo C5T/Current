@@ -1,4 +1,4 @@
-# In `Makefile`, do nothing for `current.build`. Use `MakefileWithCurrentBuild` to have it created.
+# In `Makefile`, do nothing for `current_build.h`. Use `MakefileWithCurrentBuild` to have it created.
 
 include $(shell readlink "${PWD}/Makefile")Impl
 

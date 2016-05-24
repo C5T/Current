@@ -8,4 +8,4 @@ phony_current_build:
 	  export CPLUSPLUS="$(CPLUSPLUS)"; \
 	  export CPPFLAGS="$(CPPFLAGS)"; \
 	  export LDFLAGS="$(LDFLAGS)"; \
-	"${SCRIPTS_DIR}/gen-current-build.sh" current.build) || (echo '`gen-current-build.sh` failed.' && exit 1)
+	"${SCRIPTS_DIR}/gen-current-build.sh" current_build.h) || (echo '`gen-current-build.sh` failed.' && exit 1)

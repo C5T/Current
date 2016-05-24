@@ -39,17 +39,17 @@ SOFTWARE.
 // The conventional wisdom is that Karl can start with both 1) and 2) missing. After one keepalive cycle,
 // which is under half a minute, it would regain the state of the fleet, as long as all keepalives go to it.
 
-// NOTE: The user must `#include` their local `current.build` header prior to Karl/Claire headers.
+// NOTE: The user must `#include` their local `current_build.h` header prior to Karl/Claire headers.
 
 #ifndef KARL_KARL_H
 #define KARL_KARL_H
 
 #include "../port.h"
 
-// The `current.build` file from this local `Current/Karl` dir makes no sense for external users of Karl.
+// The `current_build.h` file from this local `Current/Karl` dir makes no sense for external users of Karl.
 // Nonetheless, top-level `make test` and `make check` should pass out of the box.
 #ifdef CURRENT_MAKE_CHECK_MODE
-#include "current.build.mock"
+#include "current_build.h.mock"
 #endif
 
 #include "exceptions.h"

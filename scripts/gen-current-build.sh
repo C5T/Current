@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Generates the `current.build` header. Only updates the file
-# if it has been changed (even though this logic is unnecessary now as it's not an `.h` file. -- D.K.)
+# Generates the `current_build.h` header.
 
 SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
 
@@ -44,7 +43,7 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-cat >$1.tmp << EOF
+cat >$1 << EOF
 // clang-format off
 
 #ifndef CURRENT_BUILD_H
@@ -131,9 +130,9 @@ CURRENT_STRUCT(Info) {
 
 // clang-format on
 
-/*
-$ # Extra pieces of data to force \`make\` rebuild the code as repository state changes.
+// Not to make it to the structure above, but for the human reader to be able to look into later.
 
+/*
 $ git diff --name_only
 $GIT_DIFF_NAMES_MULTILINE
 
@@ -144,14 +143,3 @@ $ git diff --no-ext-diff | md5sum
 $GIT_DIFF_MD5SUM
 */
 EOF
-
-if ! [ -f $1 ] ; then
-  echo "scripts/gen-current-build.sh > $1"  # New.
-  mv $1.tmp $1
-elif ! diff -q $1.tmp $1 > /dev/null 2>&1 ; then
-  # Updated file; overwrite.
-  echo "rm $1 && scripts/gen-current-build.sh > $1"  # Overwrite.
-  mv -f $1.tmp $1
-else
-  rm $1.tmp  # Ignore.
-fi

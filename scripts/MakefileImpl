@@ -6,12 +6,20 @@
 
 # TODO(dkorolev): Add a top-level 'make update' target to update from GitHub.
 
-.PHONY: test all indent clean check coverage phony_current_build
+.PHONY: test all indent clean check coverage 
 
 # Need to know where to invoke scripts from, since `Makefile` can be a relative path symlink.
 MAKEFILE_NAME = $(lastword $(MAKEFILE_LIST))
 CURRENT_SCRIPTS_DIR := $(patsubst %\,%,$(patsubst %/,%,$(dir $(shell readlink "$(MAKEFILE_NAME)" || echo "$(MAKEFILE_NAME)"))))
 CURRENT_SCRIPTS_DIR_FULL_PATH := $(shell "$(CURRENT_SCRIPTS_DIR)/fullpath.sh" "$(CURRENT_SCRIPTS_DIR)" )
+
+# Trust me, I'm an engineer. -- D.K.
+# TODO(mzhurovich): Please test on Mac.
+# `_DEPS`: To appear on the right hand side of make target definition.
+# `_LIST`: To pass as a parameter to an external tool, as necessary.
+# The magic with echo + quotes is to handle spaces correctly. "Works on my machine!" -- D.K.
+LOCAL_HEADERS_DEPS=$(shell find . -maxdepth 1 -name '*.h' -exec echo '{}' ';' | grep -v "current_build.h" | sort -g)
+LOCAL_HEADERS_LIST=$(shell find . -maxdepth 1 -name '*.h' -exec echo '"{}"' ';' | grep -v "current_build.h" | sort -g)
 
 CPLUSPLUS?=g++
 CPPFLAGS=-std=c++11 -Wall -W
@@ -43,22 +51,23 @@ default: all
 		find .current/ -perm +111 -type f -exec "{}" ";" ; \
 	fi
 
-test: phony_current_build .current/test
+test: .current/test
 	.current/test --current_runtime_arch=${OS}
 
-debug: phony_current_build
+debug: 
 	ulimit -c unlimited && touch test.cc && rm -f core && make ./.current/test && (./.current/test && echo OK || gdb ./.current/test core)
 
-all: phony_current_build ${BIN}
+all: ${BIN}
 
 clean:
 	find . -type d -name .current | xargs rm -rf
+	find . -type f -name 'current_build.h' | xargs rm -f
+	find . -type f -name 'current_build.h.*' | xargs rm -f
+	find . -type f -name core | xargs rm -f
 	find . -type l -name '.current_*' | xargs rm -f
 	find . -type l -name '.current_*.*' | xargs rm -f
-	find . -name core | xargs rm -f
-	rm -f current.build
 
-.current/%: %.cc *.h
+.current/%: %.cc ${LOCAL_HEADERS_DEPS} phony_current_build
 	@(mkdir -p .current)
 	${CPLUSPLUS} ${CPPFLAGS} -o "$@" "$<" ${LDFLAGS}
 
