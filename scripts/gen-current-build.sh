@@ -14,7 +14,7 @@ if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 
-COMPILER_INFO="$($CPLUSPLUS --version 2>&1)"
+COMPILER_INFO="$($CPLUSPLUS -v 2>&1)"
 if [[ $? -ne 0 ]]; then
 	exit 1
 fi
@@ -76,17 +76,41 @@ inline const std::vector<std::string>& GitDiffNames() {
 
 CURRENT_STRUCT(BuildInfo) {
   CURRENT_FIELD(build_time, std::string, __DATE__ ", " __TIME__);
+  CURRENT_FIELD_DESCRIPTION(build_time, "The date and time of the build, in 'mmm dd yyyy, hh:mm:ss' format.");
+
   CURRENT_FIELD(build_dir, std::string, "$PWD");
+  CURRENT_FIELD_DESCRIPTION(build_dir, "The working directory at the moment of building the binary.");
+
   CURRENT_FIELD(build_user, std::string, "$(whoami)");
+  CURRENT_FIELD_DESCRIPTION(build_user, "The system ID of the user who built the binary (\`whoami\`).");
+
   CURRENT_FIELD(build_time_epoch_microseconds, std::chrono::microseconds, std::chrono::microseconds(1000ull * 1000ull * $EPOCH_SECONDS));
+  CURRENT_FIELD_DESCRIPTION(build_time_epoch_microseconds, "Unix epoch microseconds of when the binary was built.");
+
   CURRENT_FIELD(git_commit_hash, std::string, kGitCommit);
+  CURRENT_FIELD_DESCRIPTION(git_commit_hash, "The hash of the Git commit used for building the binary.");
+
   CURRENT_FIELD(git_dirty_files, (std::vector<std::string>), GitDiffNames());
+  CURRENT_FIELD_DESCRIPTION(git_dirty_files, "The list of the Git dirty files.");
+
   CURRENT_FIELD(git_branch, std::string, kGitBranch);
+  CURRENT_FIELD_DESCRIPTION(git_branch, "The name of the Git branch used for building the binary.");
+
   CURRENT_FIELD(os, std::string, kOS);
+  CURRENT_FIELD_DESCRIPTION(os, "The information about the operating system.");
+
   CURRENT_FIELD(compiler, std::string, kCompiler);
+  CURRENT_FIELD_DESCRIPTION(compiler, "The command used to invoke the compiler.");
+
   CURRENT_FIELD(compiler_flags, std::string, kCompilerFlags);
+  CURRENT_FIELD_DESCRIPTION(compiler_flags, "The flags passed to the compiler.");
+
   CURRENT_FIELD(linker_flags, std::string, kLinkerFlags);
+  CURRENT_FIELD_DESCRIPTION(linker_flags, "The flags passed to the linker.");
+
   CURRENT_FIELD(compiler_info, std::string, kCompilerInfo);
+  CURRENT_FIELD_DESCRIPTION(compiler_info, "The output of the \`\$CPLUSPLUS -v\` command.");
+
   std::tuple<
     std::string,
     std::string,
