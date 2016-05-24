@@ -1,8 +1,11 @@
+# Create or update `current_build.h`. Use the plain `Makefile` if there is no need in that file.
+
+.PHONY: phony_current_build
+
 SCRIPTS_DIR := $(shell dirname "$(shell readlink "${PWD}/Makefile")")
 include ${SCRIPTS_DIR}/MakefileImpl
 
-# Create or update `current_build.h`. Use the plain `Makefile` if there is no need in this file.
-current_build:
+phony_current_build:
 	@(\
 	  export CPLUSPLUS="$(CPLUSPLUS)"; \
 	  export CPPFLAGS="$(CPPFLAGS)"; \

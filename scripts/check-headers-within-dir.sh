@@ -26,7 +26,7 @@ TMP_STDERR="$PWD/.current_stderr.txt"
 rm -f "$PWD"/.current_*.cc "$PWD"/.current_*.o "$PWD"/.current_.txt "$SOURCE_FILE"
 
 echo -e -n "\033[1mCompiling\033[0m: "
-for i in $(ls *.h | grep -v ".cc.h$" | grep -v "^current_build.mock.h$") ; do
+for i in $(ls *.h | grep -v ".cc.h$" | grep -v "^current_build.h") ; do
   echo -e -n "\033[36m"
   echo -n "$i "
   echo -e -n "\033[31m"

@@ -66,7 +66,7 @@ echo -e -n "\033[0m"
   cd "$FULL_TEST_DIR_NAME"
 
   # Generate the `current_build.h` file.
-  (ln -sf ../scripts/MakefileWithCurrentBuild Makefile ; make current_build > /dev/null ; unlink Makefile)
+  (ln -sf ../scripts/MakefileWithCurrentBuild Makefile ; make phony_current_build > /dev/null ; unlink Makefile)
 
   echo -e "\033[0m"
   echo -n -e "\033[1mCompiling all tests together: \033[0m\033[31m"

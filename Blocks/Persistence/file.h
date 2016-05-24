@@ -128,7 +128,9 @@ class FilePersister {
         : filename(filename),
           appender(filename, std::ofstream::app),
           end(ValidateFileAndInitializeNext(filename, offset)) {
-      assert(appender.good());
+      if (!appender.good()) {
+        CURRENT_THROW(PersistenceFileNotWritable(filename));
+      }
     }
 
     // Replay the file but ignore its contents. Used to initialize `end` at startup.
@@ -197,10 +199,12 @@ class FilePersister {
         }
       }
 
-      // `operator*` relies each entry will be requested at most once. -- D.K.
+      // `operator*` relies on the fact each entry will be requested at most once.
+      // The range-based for-loop works fine. -- D.K.
       Entry operator*() const {
         if (!valid_) {
-          CURRENT_THROW(PersistenceFileNoLongerAvailable());
+          CURRENT_THROW(PersistenceFileNoLongerAvailable(
+              file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
         }
         Entry result;
         bool found = false;
@@ -223,7 +227,8 @@ class FilePersister {
 
       void operator++() {
         if (!valid_) {
-          CURRENT_THROW(PersistenceFileNoLongerAvailable());
+          CURRENT_THROW(PersistenceFileNoLongerAvailable(
+              file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
         }
         ++i_;
       }
@@ -241,7 +246,8 @@ class FilePersister {
 
     Iterator begin() const {
       if (!valid_) {
-        CURRENT_THROW(PersistenceFileNoLongerAvailable());
+        CURRENT_THROW(PersistenceFileNoLongerAvailable(
+            file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       if (begin_ == end_) {
         return Iterator(
@@ -252,7 +258,8 @@ class FilePersister {
     }
     Iterator end() const {
       if (!valid_) {
-        CURRENT_THROW(PersistenceFileNoLongerAvailable());
+        CURRENT_THROW(PersistenceFileNoLongerAvailable(
+            file_persister_impl_.ObjectAccessorDespitePossiblyDestructing().filename));
       }
       if (begin_ == end_) {
         return Iterator(

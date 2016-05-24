@@ -26,6 +26,7 @@ SOFTWARE.
 #define EXTRA_KARL_LOGGING  // Make sure the schema dump part compiles. -- D.K.
 
 #include "current_build.h"
+
 #include "karl.h"
 
 #include "test_service/generator.h"
