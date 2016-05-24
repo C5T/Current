@@ -63,8 +63,8 @@ void Run(const SCENARIO& scenario) {
     size_t queries_completed_within_desired_timeframe_;
     std::thread thread_;
 
-    // The thread function runs the queries continuously. It only count the queries
-    // completed witin the originally desired number of seconds in the final number.
+    // The thread function runs the queries continuously. It only counts the queries
+    // completed within the originally desired number of seconds in the final number.
     void ThreadFunction() {
       while (true) {
         scenario_->RunOneQuery();

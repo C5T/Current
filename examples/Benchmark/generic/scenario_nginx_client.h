@@ -63,7 +63,6 @@ SCENARIO(simple_nginx_client, "Use Current's HTTP client to access an nginx-cont
       current::nginx::NginxManager nginx(FLAGS_nginx_client_config_file_prefix +
                                          current::strings::ToString(port));
 
-      FullConfig config;
       current::nginx::config::ServerDirective server_directive(port);
       server_directive.CreateLocation(FLAGS_nginx_client_local_route)
           .Add(SimpleDirective(

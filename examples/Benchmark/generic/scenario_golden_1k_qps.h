@@ -44,14 +44,14 @@ DECLARE_double(golden_qps);
 // clang-format off
 SCENARIO(golden_1kqps, "golden 1000 QPS") {
   // Don't use `current::time::Now()`, as it's:
-  // a) under am unnecessary mutex, and
+  // a) under an unnecessary mutex, and
   // b) guaranteed to increase by at least 1 per call.
   static std::chrono::microseconds LocalNow() {
     return std::chrono::duration_cast<std::chrono::microseconds>(
         std::chrono::system_clock::now().time_since_epoch());
   }
 
-  void RunOneQuery() override{
+  void RunOneQuery() override {
     // Carefully make sure the next query completes execution in exactly 1000us after the previous one.
     // Configurable via `--golden_qps`.
     const auto sleep_us = std::chrono::microseconds(static_cast<int64_t>(1e6 / FLAGS_golden_qps));
