@@ -50,13 +50,14 @@ TEST(EventStore, SmokeWithInMemoryEventStore) {
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
-  const auto add_event_result = event_store.event_store_storage.ReadWriteTransaction([](MutableFields<db_t> fields) {
-    EXPECT_TRUE(fields.events.Empty());
-    Event event;
-    event.key = "id";
-    event.body.some_event_data = "foo";
-    fields.events.Add(event);
-  }).Go();
+  const auto add_event_result =
+      event_store.event_store_storage.ReadWriteTransaction([](MutableFields<db_t> fields) {
+        EXPECT_TRUE(fields.events.Empty());
+        Event event;
+        event.key = "id";
+        event.body.some_event_data = "foo";
+        fields.events.Add(event);
+      }).Go();
   EXPECT_TRUE(WasCommitted(add_event_result));
 
   const auto verify_event_added_result =
@@ -98,13 +99,14 @@ TEST(EventStore, SmokeWithDiskPersistedEventStore) {
 
     EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
-    const auto add_event_result = event_store.event_store_storage.ReadWriteTransaction([](MutableFields<db_t> fields) {
-      EXPECT_TRUE(fields.events.Empty());
-      Event event;
-      event.key = "another_id";
-      event.body.some_event_data = "bar";
-      fields.events.Add(event);
-    }).Go();
+    const auto add_event_result =
+        event_store.event_store_storage.ReadWriteTransaction([](MutableFields<db_t> fields) {
+          EXPECT_TRUE(fields.events.Empty());
+          Event event;
+          event.key = "another_id";
+          event.body.some_event_data = "bar";
+          fields.events.Add(event);
+        }).Go();
     EXPECT_TRUE(WasCommitted(add_event_result));
 
     const auto verify_event_added_result =
@@ -160,13 +162,14 @@ TEST(EventStore, SmokeWithHTTP) {
 
   EXPECT_EQ(0u, event_store.readonly_nonstorage_event_log_persister.Size());
 
-  const auto add_event_result = event_store.event_store_storage.ReadWriteTransaction([](MutableFields<db_t> fields) {
-    EXPECT_TRUE(fields.events.Empty());
-    Event event;
-    event.key = "http1";
-    event.body.some_event_data = "yeah1";
-    fields.events.Add(event);
-  }).Go();
+  const auto add_event_result =
+      event_store.event_store_storage.ReadWriteTransaction([](MutableFields<db_t> fields) {
+        EXPECT_TRUE(fields.events.Empty());
+        Event event;
+        event.key = "http1";
+        event.body.some_event_data = "yeah1";
+        fields.events.Add(event);
+      }).Go();
   EXPECT_TRUE(WasCommitted(add_event_result));
 
   {

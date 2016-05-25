@@ -41,8 +41,7 @@ class BenchmarkTestServer {
                                      r(AddResult(current::FromString<int64_t>(r.url.query["a"]) +
                                                  current::FromString<int64_t>(r.url.query["b"])));
                                    }) +
-              HTTP(port).Register("/perftest",
-                                   [](Request r) { r("perftest ok\n");})) {}
+               HTTP(port).Register("/perftest", [](Request r) { r("perftest ok\n"); })) {}
 
   void Join() { HTTP(port_).Join(); }
 

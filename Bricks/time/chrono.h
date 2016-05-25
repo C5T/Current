@@ -140,7 +140,8 @@ struct FixedSizeSerializer<std::chrono::microseconds> {
 
 }  // namespace current::strings
 
-inline std::string FormatDateTime(std::chrono::microseconds t, const char* format_string = "%Y/%m/%d %H:%M:%S") {
+inline std::string FormatDateTime(std::chrono::microseconds t,
+                                  const char* format_string = "%Y/%m/%d %H:%M:%S") {
   std::chrono::time_point<std::chrono::system_clock> tp(t);
   time_t tt = std::chrono::system_clock::to_time_t(tp);
   char buf[1025];

@@ -95,14 +95,16 @@ struct EventStore final {
       } else {
         const std::string key = r.url_path_args[0];
         // The transaction should ultimately be under a `ScopeOwnedBySomeoneElse<Impl>` primitive. -- D.K.
-        event_store_storage.ReadOnlyTransaction([key](ImmutableFields<event_store_storage_t> fields) -> Response {
-          const auto event = fields.events[key];
-          if (Exists(event)) {
-            return Value(event);
-          } else {
-            return Response("Not found.\n", HTTPResponseCode.NotFound);
-          }
-        }, std::move(r)).Wait();
+        event_store_storage.ReadOnlyTransaction(
+                                [key](ImmutableFields<event_store_storage_t> fields) -> Response {
+                                  const auto event = fields.events[key];
+                                  if (Exists(event)) {
+                                    return Value(event);
+                                  } else {
+                                    return Response("Not found.\n", HTTPResponseCode.NotFound);
+                                  }
+                                },
+                                std::move(r)).Wait();
       }
     } else if (r.method == "POST") {
       if (!r.url_path_args.empty()) {

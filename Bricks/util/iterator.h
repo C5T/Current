@@ -64,6 +64,6 @@ struct GenericMapAccessor final {
   iterator_t end() const { return iterator_t(map_.cend()); }
 };
 
-} // namespace current
+}  // namespace current
 
 #endif  // BRICKS_UTIL_ITERATOR_H
