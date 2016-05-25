@@ -2,6 +2,7 @@
 
 .PHONY: phony_current_build
 
-include $(shell readlink "${PWD}/Makefile")Impl
+SCRIPTS_DIR := $(shell dirname "$(shell readlink "${PWD}/Makefile")")
+include ${SCRIPTS_DIR}/MakefileImpl
 
 phony_current_build:
