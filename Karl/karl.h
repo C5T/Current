@@ -31,7 +31,7 @@ SOFTWARE.
 //    period of time. Most commonly it's the past five minutes.
 //
 // 2) The `Storage`, over a separate stream, to retain the information which may be required outside the
-//    "visualized" time window. Includes Karl's launch history, and per-service codename -> build::Info.
+//    "visualized" time window. Includes Karl's launch history, and per-service codename -> build::BuildInfo.
 //
 // TODO(dkorolev) + TODO(mzhurovich): Stuff like nginx config for fresh start lives in the Storage part, right?
 //                                    We'll need to have GenericKarl accept custom storage type then.
@@ -246,7 +246,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
     return services_keepalive_time_cache_.size();
   }
 
-  storage_t& InternalExposeStorage() { return storage_; }
+  const storage_t& InternalExposeStorage() const { return storage_; }
 
  private:
   void StateUpdateThread() {
@@ -400,7 +400,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
             }
           }
 
-          Optional<current::build::Info> optional_build = body.build;
+          Optional<current::build::BuildInfo> optional_build = body.build;
           Optional<std::chrono::microseconds> optional_behind_this_by;
           if (Exists(body.last_successful_keepalive_ping_us)) {
             optional_behind_this_by = now - body.now - Value(body.last_successful_keepalive_ping_us) / 2;

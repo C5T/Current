@@ -76,6 +76,8 @@ class ServiceGenerator final {
 
   const std::string& ClaireCodename() const { return claire_.Codename(); }
 
+  current::karl::Claire& Claire() { return claire_; }
+
  private:
   void Thread() {
     while (!destructing_) {

@@ -135,7 +135,7 @@ CURRENT_STRUCT(KarlInfo) {
   CURRENT_FIELD_DESCRIPTION(persisted_keepalives_info,
                             "Details on the stream which stores the received keepalives.");
 
-  CURRENT_FIELD(karl_build_info, build::Info, build::Info());
+  CURRENT_FIELD(karl_build_info, build::BuildInfo, build::BuildInfo());
   CURRENT_FIELD_DESCRIPTION(karl_build_info, "Build information of Karl itself.");
 };
 
@@ -169,7 +169,7 @@ CURRENT_STRUCT(ClaireBuildInfo) {
   CURRENT_FIELD(codename, std::string);
   CURRENT_USE_FIELD_AS_KEY(codename);
 
-  CURRENT_FIELD(build, current::build::Info);
+  CURRENT_FIELD(build, current::build::BuildInfo);
 };
 
 const uint64_t kUpdateServerInfoThresholdByTimeSkewDifference = 50000;
@@ -217,7 +217,7 @@ CURRENT_STRUCT(up) {
       "Unix epoch microseconds of the most recent keepalive message received from this service.");
   CURRENT_FIELD(uptime, std::string);
   CURRENT_FIELD_DESCRIPTION(uptime,
-                            "The uptime of the service as of right before it went offline, human-readable.");
+                            "The uptime of the service based on the most recent keepalive, human-readable.");
 
   CURRENT_DEFAULT_CONSTRUCTOR(up) {}
   CURRENT_CONSTRUCTOR(up)(const std::chrono::microseconds start_time_epoch_microseconds,
@@ -237,7 +237,7 @@ CURRENT_STRUCT(down) {
 
   CURRENT_FIELD(last_keepalive_received, std::string);
   CURRENT_FIELD_DESCRIPTION(last_keepalive_received,
-                            "Time elapsed ince the most recent keepalive message was received from this "
+                            "Time elapsed since the most recent keepalive message was received from this "
                             "service before it went offline, human-readable.");
   CURRENT_FIELD(last_keepalive_received_epoch_microseconds, std::chrono::microseconds);
   CURRENT_FIELD_DESCRIPTION(last_keepalive_received_epoch_microseconds,

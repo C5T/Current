@@ -132,7 +132,7 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD_DESCRIPTION(last_successful_keepalive_ping_us,
                             "Ping as measured during the last successful keepalive, in microseconds.");
 
-  CURRENT_FIELD(build, Optional<build::Info>);
+  CURRENT_FIELD(build, Optional<build::BuildInfo>);
   CURRENT_FIELD_DESCRIPTION(build,
                             "The JSON containing the build info collected and imprinted "
                             "into the binary running the service as it was built.");
