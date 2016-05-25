@@ -182,6 +182,8 @@ class GenericClaire final : private DummyClaireNotifiable {
     keepalive_condition_variable_.notify_one();
   }
 
+  ClaireStatus& BoilerplateStatus() { return boilerplate_status_; }
+
  private:
   static std::string GenerateRandomCodename() {
     std::string codename;
@@ -263,7 +265,7 @@ class GenericClaire final : private DummyClaireNotifiable {
   }
 
   specific_status_t GenerateKeepaliveStatus(bool fill_current_build = true) const {
-    specific_status_t status;
+    specific_status_t status(boilerplate_status_);
     FillKeepaliveStatus(status, fill_current_build);
     return status;
   }
@@ -416,6 +418,7 @@ class GenericClaire final : private DummyClaireNotifiable {
 
   mutable std::mutex status_mutex_;
   status_generator_t status_generator_;
+  ClaireStatus boilerplate_status_;
   InternalKeepaliveAttemptResult last_keepalive_attempt_result_;
   std::chrono::microseconds last_successful_keepalive_timestamp_ = std::chrono::microseconds(0);
   std::chrono::microseconds last_successful_keepalive_ping_ = std::chrono::microseconds(0);

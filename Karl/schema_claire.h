@@ -165,6 +165,9 @@ CURRENT_STRUCT(status) {
 // and once as `ClaireServiceStatus<T>`, where `T` is a `Variant` containing the client-, service-side blob.
 // clang-format off
 CURRENT_STRUCT_T_DERIVED(ClaireServiceStatus, ClaireStatus) {
+  CURRENT_DEFAULT_CONSTRUCTOR_T(ClaireServiceStatus) {}
+  CURRENT_CONSTRUCTOR_T(ClaireServiceStatus)(const ClaireStatus& base_status) : SUPER(base_status) {}
+
   CURRENT_FIELD(runtime, Optional<T>);  // `T` is a `Variant<>` which should be `Optional<>`.
 };
 
