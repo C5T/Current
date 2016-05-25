@@ -504,9 +504,7 @@ class Socket final : public SocketHandle {
 // Smart wrapper for system-allocated `addrinfo` pointers.
 namespace addrinfo_t_impl {
 struct Deleter {
-  void operator()(struct addrinfo* ptr) {
-    ::freeaddrinfo(ptr);
-  }
+  void operator()(struct addrinfo* ptr) { ::freeaddrinfo(ptr); }
 };
 }
 using addrinfo_t = std::unique_ptr<struct addrinfo, addrinfo_t_impl::Deleter>;

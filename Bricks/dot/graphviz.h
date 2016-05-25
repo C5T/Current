@@ -149,7 +149,7 @@ struct GenericGraph {
 
   GenericGraph() = default;
 
-  template<typename T>
+  template <typename T>
   GenericGraph& Title(T&& value) {
     title = std::forward<T>(value);
     return *this;
