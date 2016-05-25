@@ -101,6 +101,12 @@ CURRENT_STRUCT(ClaireStatus) {
   CURRENT_FIELD(local_port, uint16_t);
   CURRENT_FIELD_DESCRIPTION(local_port, "The local port on which this server is listening.");
 
+  CURRENT_FIELD(cloud_instance_name, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(cloud_instance_name, "The name of the instance in the cloud.");
+
+  CURRENT_FIELD(cloud_availability_group, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(cloud_availability_group, "The availability group in the cloud.");
+
   // Dependencies as "ip:port[/prefix]" for now.
   CURRENT_FIELD(dependencies, std::vector<ClaireServiceKey>);
   CURRENT_FIELD_DESCRIPTION(
@@ -159,6 +165,9 @@ CURRENT_STRUCT(status) {
 // and once as `ClaireServiceStatus<T>`, where `T` is a `Variant` containing the client-, service-side blob.
 // clang-format off
 CURRENT_STRUCT_T_DERIVED(ClaireServiceStatus, ClaireStatus) {
+  CURRENT_DEFAULT_CONSTRUCTOR_T(ClaireServiceStatus) {}
+  CURRENT_CONSTRUCTOR_T(ClaireServiceStatus)(const ClaireStatus& base_status) : SUPER(base_status) {}
+
   CURRENT_FIELD(runtime, Optional<T>);  // `T` is a `Variant<>` which should be `Optional<>`.
 };
 

@@ -177,9 +177,21 @@ const uint64_t kUpdateServerInfoThresholdByTimeSkewDifference = 50000;
 // Per-server status info.
 CURRENT_STRUCT(ServerInfo) {
   CURRENT_FIELD(ip, std::string);
+  CURRENT_FIELD_DESCRIPTION(ip, "The IP address of the server.");
   CURRENT_USE_FIELD_AS_KEY(ip);
 
   CURRENT_FIELD(behind_this_by, std::chrono::microseconds);
+  CURRENT_FIELD_DESCRIPTION(behind_this_by,
+                            "How much this server is behind the server that generated this report "
+                            "local-time-wise.");
+
+  CURRENT_FIELD(cloud_instance_name, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(cloud_instance_name,
+                            "The name of the instance in the cloud as reported by any of the services.");
+
+  CURRENT_FIELD(cloud_availability_group, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(cloud_availability_group,
+                            "The availability group in the cloud as reported by any of the services.");
 };
 
 CURRENT_STORAGE_FIELD_ENTRY(OrderedDictionary, KarlInfo, KarlInfoDictionary);
@@ -324,6 +336,15 @@ CURRENT_STRUCT_T(ServerToReport) {
   CURRENT_FIELD_DESCRIPTION(
       time_skew,
       "Whether this server is on par, ahead, or behind the server that generated this report local-time-wise.");
+
+  CURRENT_FIELD(cloud_instance_name, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(cloud_instance_name,
+                            "The name of the instance in the cloud as reported by any of the services.");
+
+  CURRENT_FIELD(cloud_availability_group, Optional<std::string>);
+  CURRENT_FIELD_DESCRIPTION(cloud_availability_group,
+                            "The availability group in the cloud as reported by any of the services.");
+
   CURRENT_FIELD(services, (std::map<std::string, ServiceToReport<T>>));
   CURRENT_FIELD_DESCRIPTION(services, "The list of services running on this server.");
 };

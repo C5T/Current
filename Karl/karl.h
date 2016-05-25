@@ -354,19 +354,17 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
           }
         }();
 
-        const auto body = ParseJSON<ClaireStatus>(json);
-        if ((!qs.has("codename") || body.codename == qs["codename"]) &&
-            (!qs.has("port") || body.local_port == current::FromString<uint16_t>(qs["port"]))) {
+        const auto parsed_status = ParseJSON<ClaireStatus>(json);
+        if ((!qs.has("codename") || parsed_status.codename == qs["codename"]) &&
+            (!qs.has("port") || parsed_status.local_port == current::FromString<uint16_t>(qs["port"]))) {
           ClaireServiceKey location;
           location.ip = ip;
-          location.port = body.local_port;
+          location.port = parsed_status.local_port;
           location.prefix = "/";  // TODO(dkorolev) + TODO(mzhurovich): Add support for `qs["prefix"]`.
-
-          const auto dependencies = body.dependencies;
 
           // If the received status can be parsed in detail, including the "runtime" variant, persist it.
           // If no, no big deal, keep the top-level one regardless.
-          const auto status = [&]() -> claire_status_t {
+          const auto detailed_parsed_status = [&]() -> claire_status_t {
             try {
               return ParseJSON<claire_status_t>(json);
             } catch (const TypeSystemParseJSONException&) {
@@ -381,61 +379,75 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
 
               claire_status_t status;
               // Initialize `ClaireStatus` from `ClaireServiceStatus`, keep the `Variant<...> runtime` empty.
-              static_cast<ClaireStatus&>(status) = body;
+              static_cast<ClaireStatus&>(status) = parsed_status;
               return status;
             }
           }();
 
           const auto now = current::time::Now();
-          const std::string service = body.service;
-          const std::string codename = body.codename;
 
           {
             persisted_keepalive_t record;
             record.location = location;
-            record.keepalive = status;
+            record.keepalive = detailed_parsed_status;
             {
               std::lock_guard<std::mutex> lock(latest_keepalive_index_mutex_);
-              latest_keepalive_index_plus_one_[codename] = keepalives_stream_.Publish(std::move(record)).index;
+              latest_keepalive_index_plus_one_[parsed_status.codename] =
+                  keepalives_stream_.Publish(std::move(record)).index;
             }
           }
 
-          Optional<current::build::BuildInfo> optional_build = body.build;
           Optional<std::chrono::microseconds> optional_behind_this_by;
-          if (Exists(body.last_successful_keepalive_ping_us)) {
-            optional_behind_this_by = now - body.now - Value(body.last_successful_keepalive_ping_us) / 2;
+          if (Exists(parsed_status.last_successful_keepalive_ping_us)) {
+            optional_behind_this_by =
+                now - parsed_status.now - Value(parsed_status.last_successful_keepalive_ping_us) / 2;
           }
 
           storage_.ReadWriteTransaction(
-                       [this,
-                        now,
-                        codename,
-                        service,
-                        location,
-                        dependencies,
-                        optional_build,
-                        optional_behind_this_by](MutableFields<storage_t> fields) -> Response {
-                         // Update per-server time skew.
+                       [this, now, location, &parsed_status, optional_behind_this_by](
+                           MutableFields<storage_t> fields) -> Response {
+                         const auto& service = parsed_status.service;
+                         const auto& codename = parsed_status.codename;
+                         const auto& optional_build = parsed_status.build;
+                         const auto& optional_instance = parsed_status.cloud_instance_name;
+                         const auto& optional_av_group = parsed_status.cloud_availability_group;
+
+                         // Update per-server information in the `DB`.
+                         ServerInfo server;
+                         server.ip = location.ip;
+                         bool need_to_update_server_info = false;
+                         const ImmutableOptional<ServerInfo> current_server_info = fields.servers[location.ip];
+                         if (Exists(current_server_info)) {
+                           server = Value(current_server_info);
+                         }
+                         // Check the instance name.
+                         if (Exists(optional_instance)) {
+                           if (!Exists(server.cloud_instance_name) ||
+                               Value(server.cloud_instance_name) != Value(optional_instance)) {
+                             server.cloud_instance_name = Value(optional_instance);
+                             need_to_update_server_info = true;
+                           }
+                         }
+                         // Check the availability group.
+                         if (Exists(optional_av_group)) {
+                           if (!Exists(server.cloud_availability_group) ||
+                               Value(server.cloud_availability_group) != Value(optional_av_group)) {
+                             server.cloud_availability_group = Value(optional_av_group);
+                             need_to_update_server_info = true;
+                           }
+                         }
+                         // Check the time skew.
                          if (Exists(optional_behind_this_by)) {
                            const std::chrono::microseconds behind_this_by = Value(optional_behind_this_by);
-                           ServerInfo server;
-                           server.ip = location.ip;
-                           // Just in case load old value if we decide to add fields to `ServerInfo`.
-                           const ImmutableOptional<ServerInfo> current_server_info =
-                               fields.servers[location.ip];
-                           bool need_to_update = true;
-                           if (Exists(current_server_info)) {
-                             server = Value(current_server_info);
-                             const auto time_skew_difference = server.behind_this_by - behind_this_by;
-                             if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) <
-                                 kUpdateServerInfoThresholdByTimeSkewDifference) {
-                               need_to_update = false;
-                             }
-                           }
-                           if (need_to_update) {
+                           const auto time_skew_difference = server.behind_this_by - behind_this_by;
+                           if (static_cast<uint64_t>(std::abs(time_skew_difference.count())) >=
+                               kUpdateServerInfoThresholdByTimeSkewDifference) {
                              server.behind_this_by = behind_this_by;
-                             fields.servers.Add(server);
+                             need_to_update_server_info = true;
                            }
+                         }
+                         if (need_to_update_server_info) {
+                           fields.servers.Add(server);
                          }
 
                          // Update the `DB` if the build information was not stored there yet.
@@ -449,6 +461,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
                            build.build = Value(optional_build);
                            fields.builds.Add(build);
                          }
+
                          // Update the `DB` if "codename", "location", or "dependencies" differ.
                          const ImmutableOptional<ClaireInfo> current_claire_info = fields.claires[codename];
                          if ([&]() {
@@ -483,7 +496,7 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
                        std::move(r)).Wait();
           {
             std::lock_guard<std::mutex> lock(services_keepalive_cache_mutex_);
-            auto& placeholder = services_keepalive_time_cache_[codename];
+            auto& placeholder = services_keepalive_time_cache_[parsed_status.codename];
             if (placeholder.count() == 0) {
               placeholder = now;
               // Notify the thread only if the new codename has appeared in the cache.
@@ -773,13 +786,16 @@ class GenericKarl final : private KarlBase, private KarlNginxManager<ServiceStor
                        result.machines[blob.location.ip].services[codename] = std::move(blob);
                      }
                    }
-                   // Update per-server time skew information.
+                   // Update per-server information.
                    for (auto& iterating_over_reported_servers : result.machines) {
                      const std::string& ip = iterating_over_reported_servers.first;
                      auto& server = iterating_over_reported_servers.second;
-                     const auto persisted_server_info = fields.servers[ip];
-                     if (Exists(persisted_server_info)) {
-                       const int64_t behind_this_by_us = Value(persisted_server_info).behind_this_by.count();
+                     const auto& optional_persisted_server_info = fields.servers[ip];
+                     if (Exists(optional_persisted_server_info)) {
+                       const auto& persisted_server_info = Value(optional_persisted_server_info);
+                       server.cloud_instance_name = persisted_server_info.cloud_instance_name;
+                       server.cloud_availability_group = persisted_server_info.cloud_availability_group;
+                       const int64_t behind_this_by_us = persisted_server_info.behind_this_by.count();
                        if (std::abs(behind_this_by_us) < 100000) {
                          server.time_skew = "NTP OK";
                        } else if (behind_this_by_us > 0) {

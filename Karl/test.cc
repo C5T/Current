@@ -759,6 +759,80 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
+namespace karl_unittest {
+
+struct ClaireNotifiable : current::karl::IClaireNotifiable {
+  std::vector<std::string> karl_urls;
+  void OnKarlLocatorChanged(const current::karl::Locator& locator) override {
+    karl_urls.push_back(locator.address_port_route);
+  }
+};
+
+}  // namespace karl_unittest
+
+TEST(Karl, ClaireNotifiesUserObject) {
+  using namespace karl_unittest;
+
+  current::time::ResetToZero();
+
+  current::karl::Locator karl("http://localhost:12345/");
+  ClaireNotifiable notifications_receiver;
+  const uint16_t claire_port = PickPortForUnitTest();
+  current::karl::Claire claire(karl, "unittest", claire_port, notifications_receiver);
+
+  // Switch Claire's Karl locator via HTTP request.
+  {
+    const std::string karl_url = "http://host1:10000/";
+    const std::string report_to_url =
+        Printf("http://localhost:%d/.current?report_to=%s", claire_port, karl_url.c_str());
+    const auto response = HTTP(POST(report_to_url, ""));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(karl_url, claire.GetKarlLocator().address_port_route);
+  }
+
+  // Switch Claire's Karl locator by calling the member function.
+  {
+    const std::string karl_url = "http://host2:10001/";
+    claire.SetKarlLocator(current::karl::Locator(karl_url));
+    EXPECT_EQ(karl_url, claire.GetKarlLocator().address_port_route);
+  }
+
+  EXPECT_EQ("http://host1:10000/,http://host2:10001/",
+            current::strings::Join(notifications_receiver.karl_urls, ','));
+}
+
+TEST(Karl, ModifiedClaireBoilerplateStatus) {
+  current::time::ResetToZero();
+
+  const auto stream_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_stream_persistence_file);
+  const auto storage_file_remover = current::FileSystem::ScopedRmFile(FLAGS_karl_test_storage_persistence_file);
+  const unittest_karl_t karl(UnittestKarlParameters());
+  const current::karl::Locator karl_locator(Printf("http://localhost:%d/", FLAGS_karl_test_keepalives_port));
+  const uint16_t claire_port = PickPortForUnitTest();
+  current::karl::Claire claire(karl_locator, "unittest", claire_port);
+  claire.BoilerplateStatus().cloud_instance_name = "test_instance";
+  claire.BoilerplateStatus().cloud_availability_group = "us-west-1";
+  claire.Register(nullptr, true);
+
+  // Modified boilerplate status is propagated to Karl.
+  {
+    unittest_karl_status_t status;
+    ASSERT_NO_THROW(status = ParseJSON<unittest_karl_status_t>(
+                        HTTP(GET(Printf("http://localhost:%d?from=0&full&active_only",
+                                        FLAGS_karl_test_fleet_view_port))).body));
+    EXPECT_EQ(1u, status.machines.size()) << JSON(status);
+    ASSERT_TRUE(status.machines.count("127.0.0.1")) << JSON(status);
+    auto& server = status.machines["127.0.0.1"];
+    auto& per_ip_services = server.services;
+    EXPECT_EQ(1u, per_ip_services.size());
+    EXPECT_EQ("unittest", per_ip_services[claire.Codename()].service);
+    ASSERT_TRUE(Exists(server.cloud_instance_name));
+    EXPECT_EQ("test_instance", Value(server.cloud_instance_name));
+    ASSERT_TRUE(Exists(server.cloud_availability_group));
+    EXPECT_EQ("us-west-1", Value(server.cloud_availability_group));
+  }
+}
+
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
 TEST(Karl, EndToEndTest) {
   current::time::ResetToZero();
