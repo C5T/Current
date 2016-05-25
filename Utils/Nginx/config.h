@@ -41,7 +41,9 @@ namespace config {
 
 CURRENT_STRUCT(SimpleDirective) {
   CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD_DESCRIPTION(name, "Nginx simple directive name.");
   CURRENT_FIELD(parameters, std::string);
+  CURRENT_FIELD_DESCRIPTION(parameters, "Nginx simple directive parameters.");
   CURRENT_DEFAULT_CONSTRUCTOR(SimpleDirective){};
   CURRENT_CONSTRUCTOR(SimpleDirective)(const std::string& name, const std::string& parameters)
       : name(name), parameters(parameters) {}
@@ -56,8 +58,11 @@ using directives_t = Variant<SimpleDirective, BlockDirective, ServerDirective, L
 // clang-format off
 CURRENT_STRUCT(BlockDirective) {
   CURRENT_FIELD(name, std::string);
+  CURRENT_FIELD_DESCRIPTION(name, "Nginx block directive name.");
   CURRENT_FIELD(parameters, std::string);
+  CURRENT_FIELD_DESCRIPTION(parameters, "Nginx block directive parameters.");
   CURRENT_FIELD(directives, std::vector<directives_t>);
+  CURRENT_FIELD_DESCRIPTION(directives, "The array of Nginx directives contained in this block directive.");
   CURRENT_DEFAULT_CONSTRUCTOR(BlockDirective) {}
   CURRENT_CONSTRUCTOR(BlockDirective)(const std::string& name,
                                       std::initializer_list<directives_t> directives = {})
@@ -99,6 +104,7 @@ inline LocationDirective ProxyPassLocationDirective(const std::string& location,
 // clang-format off
 CURRENT_STRUCT(ServerDirective, BlockDirective) {
   CURRENT_FIELD(port, uint16_t, 0u);
+  CURRENT_FIELD_DESCRIPTION(port, "The port for Nginx to listen to as part of this block directive.");
   CURRENT_DEFAULT_CONSTRUCTOR(ServerDirective) : SUPER("server") {}
   CURRENT_CONSTRUCTOR(ServerDirective)(uint16_t port) : SUPER("server"), port(port) {
     SUPER::Add(SimpleDirective("listen", current::ToString(port)));
@@ -132,7 +138,9 @@ using full_config_directives_t = Variant<SimpleDirective, BlockDirective>;
 // clang-format off
 CURRENT_STRUCT(FullConfig) {
   CURRENT_FIELD(directives, std::vector<full_config_directives_t>);
+  CURRENT_FIELD_DESCRIPTION(directives, "The array of Nginx directives.");
   CURRENT_FIELD(http, HttpDirective);
+  CURRENT_FIELD_DESCRIPTION(http, "The Nginx directive describing HTTP configuration spanning zero, one, or more ports.");
 
   template <typename T>
   FullConfig& Add(T&& directive) {
