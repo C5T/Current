@@ -110,27 +110,37 @@ struct RESTfulGETInput : RESTfulGenericInput<STORAGE> {
   const FIELD& field;
   const std::string field_name;
   const std::string url_key;
+  const StorageRole role;
+  const bool export_requested;
 
   RESTfulGETInput(const RESTfulGenericInput<STORAGE>& input,
                   immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
-                  const std::string& url_key)
+                  const std::string& url_key,
+                  const StorageRole role,
+                  const bool export_requested)
       : RESTfulGenericInput<STORAGE>(input),
         fields(fields),
         field(field),
         field_name(field_name),
-        url_key(url_key) {}
+        url_key(url_key),
+        role(role),
+        export_requested(export_requested) {}
   RESTfulGETInput(RESTfulGenericInput<STORAGE>&& input,
                   immutable_fields_t fields,
                   const FIELD& field,
                   const std::string& field_name,
-                  const std::string& url_key)
+                  const std::string& url_key,
+                  const StorageRole role,
+                  const bool export_requested)
       : RESTfulGenericInput<STORAGE>(std::move(input)),
         fields(fields),
         field(field),
         field_name(field_name),
-        url_key(url_key) {}
+        url_key(url_key),
+        role(role),
+        export_requested(export_requested) {}
 };
 
 template <typename STORAGE, typename FIELD, typename ENTRY>

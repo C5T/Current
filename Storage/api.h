@@ -152,22 +152,31 @@ struct RESTfulDataHandlerGenerator {
                   storage, restful_url_prefix, data_url_component, schema_url_component);
               if (request.method == "GET") {
                 GETHandler handler;
+                const bool export_requested = request.url.query.has("export");
                 handler.Enter(
                     std::move(request),
                     // Capture by reference since this lambda is supposed to run synchronously.
-                    [&handler, &generic_input, &field_name](Request request, const std::string& url_key) {
+                    [&storage, &handler, &generic_input, &field_name, export_requested](
+                        Request request, const std::string& url_key) {
                       const specific_field_t& field =
                           generic_input.storage(::current::storage::ImmutableFieldByIndex<INDEX>());
                       generic_input.storage.ReadOnlyTransaction(
                                                 // Capture local variables by value for safe async transactions.
-                                                [handler, generic_input, &field, url_key, field_name](
-                                                    immutable_fields_t fields) -> Response {
+                                                [&storage,
+                                                 handler,
+                                                 generic_input,
+                                                 &field,
+                                                 url_key,
+                                                 field_name,
+                                                 export_requested](immutable_fields_t fields) -> Response {
                                                   using GETInput = RESTfulGETInput<STORAGE, specific_field_t>;
                                                   GETInput input(std::move(generic_input),
                                                                  fields,
                                                                  field,
                                                                  field_name,
-                                                                 url_key);
+                                                                 url_key,
+                                                                 storage.GetRole(),
+                                                                 export_requested);
                                                   return handler.Run(input);
                                                 },
                                                 std::move(request)).Detach();

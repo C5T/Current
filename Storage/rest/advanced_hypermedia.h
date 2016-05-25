@@ -110,52 +110,79 @@ struct AdvancedHypermedia : Hypermedia {
         const ImmutableOptional<ENTRY> result = input.field[current::FromString<KEY>(input.url_key)];
         if (Exists(result)) {
           const auto& value = Value(result);
-          return (brief ? Response(FormatAsAdvancedHypermediaRecord<brief_entry_t>(value, input),
+          if (!input.export_requested) {
+            return (brief
+                        ? Response(FormatAsAdvancedHypermediaRecord<brief_entry_t>(value, input),
                                    HTTPResponseCode.OK)
                         : Response(FormatAsAdvancedHypermediaRecord<ENTRY>(value, input), HTTPResponseCode.OK));
+          } else {
+            // Export requested via `?export`, dump the raw JSON record.
+            return value;
+          }
         } else {
           return ErrorResponse(
               ResourceNotFoundError("Resource with requested key not found.", {{"key", input.url_key}}),
               HTTPResponseCode.NotFound);
         }
       } else {
-        // Collection view. `data` is an array of `AdvancedHypermediaRESTRecordResponse<brief_entry_t>`.
-        using data_entry_t = AdvancedHypermediaRESTRecordResponse<brief_entry_t>;
-        AdvancedHypermediaRESTContainerResponse<data_entry_t> response;
-        response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
-        const auto GenPageURL = [&](uint64_t i, uint64_t n) {
-          return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) + "&n=" +
-                 current::ToString(n);
-        };
-        // Poor man's pagination.
-        uint64_t i = 0;
-        bool has_previous_page = false;
-        bool has_next_page = false;
-        for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
-          if (i >= query_i && i < query_i + query_n) {
-            response.data.push_back(FormatAsAdvancedHypermediaRecord<brief_entry_t>(element, input, false));
-          } else if (i < query_i) {
-            has_previous_page = true;
-          } else if (i >= query_i + query_n) {
-            has_next_page = true;
+        // Collection view.
+        if (!input.export_requested) {
+          // Default, paginated, collection view.
+          // `data` is an array of `AdvancedHypermediaRESTRecordResponse<brief_entry_t>`.
+          using data_entry_t = AdvancedHypermediaRESTRecordResponse<brief_entry_t>;
+          AdvancedHypermediaRESTContainerResponse<data_entry_t> response;
+          response.url_directory = input.restful_url_prefix + "/data/" + input.field_name;
+          const auto GenPageURL = [&](uint64_t i, uint64_t n) {
+            return input.restful_url_prefix + "/data/" + input.field_name + "?i=" + current::ToString(i) +
+                   "&n=" + current::ToString(n);
+          };
+          // Poor man's pagination.
+          uint64_t i = 0;
+          bool has_previous_page = false;
+          bool has_next_page = false;
+          for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+            if (i >= query_i && i < query_i + query_n) {
+              response.data.push_back(FormatAsAdvancedHypermediaRecord<brief_entry_t>(element, input, false));
+            } else if (i < query_i) {
+              has_previous_page = true;
+            } else if (i >= query_i + query_n) {
+              has_next_page = true;
+            }
+            ++i;
           }
-          ++i;
+          if (query_i > i) {
+            query_i = i;
+          }
+          response.url = GenPageURL(query_i, query_n);
+          response.i = query_i;
+          response.n = std::min(query_n, i - query_i);
+          response.total = i;
+          if (has_previous_page) {
+            response.url_previous_page = GenPageURL(query_i >= query_n ? query_i - query_n : 0, query_n);
+          }
+          if (has_next_page) {
+            response.url_next_page =
+                GenPageURL(query_i + query_n * 2 > i ? i - query_n : query_i + query_n, query_n);
+          }
+          return Response(response, HTTPResponseCode.OK);
+        } else {
+          // Export requested via `?export`, dump all the records.
+          // Slow. Only available off the followers.
+          if (input.role != StorageRole::Follower) {
+            return ErrorResponse(
+                HypermediaRESTError("NotFollowerMode", "Can only request full export from a Follower storage."),
+                HTTPResponseCode.Forbidden);
+          } else {
+            // Sadly, the `Response` must be returned.
+            // Have to create it in memory for now. -- D.K.
+            // TODO(dkorolev): Migrate to a better way.
+            std::ostringstream result;
+            for (const auto& element : PerStorageFieldType<PARTICULAR_FIELD>::Iterate(input.field)) {
+              result << JSON<JSONFormat::Minimalistic>(element) << '\n';
+            }
+            return result.str();
+          }
         }
-        if (query_i > i) {
-          query_i = i;
-        }
-        response.url = GenPageURL(query_i, query_n);
-        response.i = query_i;
-        response.n = std::min(query_n, i - query_i);
-        response.total = i;
-        if (has_previous_page) {
-          response.url_previous_page = GenPageURL(query_i >= query_n ? query_i - query_n : 0, query_n);
-        }
-        if (has_next_page) {
-          response.url_next_page =
-              GenPageURL(query_i + query_n * 2 > i ? i - query_n : query_i + query_n, query_n);
-        }
-        return Response(response, HTTPResponseCode.OK);
       }
     }
   };
