@@ -255,7 +255,7 @@ struct CurrentStructFieldsConsistency<T, 0u> {
 
 #define CURRENT_STRUCT_T_DERIVED(s, base)                                                 \
   static_assert(IS_CURRENT_STRUCT(base), #base " must be derived from `CurrentStruct`."); \
-  CURRENT_STRUCT_T_HELPERS(s, ::current::CurrentStruct);                                  \
+  CURRENT_STRUCT_T_HELPERS(s, base);                                                      \
   template <typename T, typename INSTANTIATION_TYPE>                                      \
   struct CURRENT_STRUCT_T_IMPL_##s                                                        \
       : CURRENT_STRUCT_T_SUPER_HELPER_##s,                                                \
