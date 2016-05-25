@@ -759,6 +759,46 @@ TEST(Karl, ChangeKarlWhichClaireReportsTo) {
   }
 }
 
+namespace karl_unittest {
+
+struct ClaireNotifiable : current::karl::IClaireNotifiable {
+  std::vector<std::string> karl_urls;
+  void OnKarlLocatorChanged(const current::karl::Locator& locator) override {
+    karl_urls.push_back(locator.address_port_route);
+  }
+};
+
+}  // namespace karl_unittest
+
+TEST(Karl, ClaireNotifiesUserObject) {
+  using namespace karl_unittest;
+
+  current::karl::Locator karl("http://localhost:12345/");
+  ClaireNotifiable notifications_receiver;
+  const uint16_t claire_port = PickPortForUnitTest();
+  current::karl::Claire claire(karl, "unittest", claire_port, notifications_receiver);
+
+  // Switch Claire's Karl locator via HTTP request.
+  {
+    const std::string karl_url = "http://host1:10000/";
+    const std::string report_to_url =
+        Printf("http://localhost:%d/.current?report_to=%s", claire_port, karl_url.c_str());
+    const auto response = HTTP(POST(report_to_url, ""));
+    EXPECT_EQ(200, static_cast<int>(response.code));
+    EXPECT_EQ(karl_url, claire.GetKarlLocator().address_port_route);
+  }
+
+  // Switch Claire's Karl locator by calling the member function.
+  {
+    const std::string karl_url = "http://host2:10001/";
+    claire.SetKarlLocator(current::karl::Locator(karl_url));
+    EXPECT_EQ(karl_url, claire.GetKarlLocator().address_port_route);
+  }
+
+  EXPECT_EQ("http://host1:10000/,http://host2:10001/",
+            current::strings::Join(notifications_receiver.karl_urls, ','));
+}
+
 // To run a `curl`-able test: ./.current/test --karl_run_test_forever --gtest_filter=Karl.EndToEndTest
 TEST(Karl, EndToEndTest) {
   current::time::ResetToZero();

@@ -74,8 +74,23 @@ inline std::string KeepaliveAttemptResultAsString(const InternalKeepaliveAttempt
   }
 }
 
+// Interface to implement for receiving notifications from Claire.
+class IClaireNotifiable {
+ public:
+  IClaireNotifiable() = default;
+  virtual ~IClaireNotifiable() = default;
+  // Claire has been requested to change its Karl locator.
+  virtual void OnKarlLocatorChanged(const Locator& locator) = 0;
+};
+
+// Dummy class with no-op functions. Used by Claire if no custom notifiable class provided.
+class DummyClaireNotifiable : public IClaireNotifiable {
+ public:
+  void OnKarlLocatorChanged(const Locator&) override {}
+};
+
 template <class T>
-class GenericClaire final {
+class GenericClaire final : private DummyClaireNotifiable {
  public:
   using specific_status_t = ClaireServiceStatus<T>;
   using status_generator_t = std::function<T()>;
@@ -83,6 +98,7 @@ class GenericClaire final {
   GenericClaire(Locator karl,
                 const std::string& service,
                 uint16_t port,
+                IClaireNotifiable& notifiable,
                 std::vector<std::string> dependencies = std::vector<std::string>())
       : in_beacon_mode_(false),
         karl_(karl),
@@ -91,9 +107,16 @@ class GenericClaire final {
         port_(port),
         dependencies_(ParseDependencies(dependencies)),
         karl_keepalive_route_(KarlKeepaliveRoute(karl_, codename_, port_)),
+        notifiable_ref_(notifiable),
         us_start_(current::time::Now()),
         http_scope_(HTTP(port).Register("/.current", [this](Request r) { ServeCurrent(std::move(r)); })),
         keepalive_thread_terminating_(false) {}
+
+  GenericClaire(Locator karl,
+                const std::string& service,
+                uint16_t port,
+                std::vector<std::string> dependencies = std::vector<std::string>())
+      : GenericClaire(karl, service, port, *this, dependencies) {}
 
   GenericClaire() = delete;
 
@@ -154,6 +177,7 @@ class GenericClaire final {
       std::lock_guard<std::mutex> lock(keepalive_mutex_);
       karl_ = new_karl_locator;
       karl_keepalive_route_ = KarlKeepaliveRoute(karl_, codename_, port_);
+      notifiable_ref_.OnKarlLocatorChanged(new_karl_locator);
     }
     keepalive_condition_variable_.notify_one();
   }
@@ -386,6 +410,7 @@ class GenericClaire final {
   const int port_;
   std::set<ClaireServiceKey> dependencies_;
   std::string karl_keepalive_route_;
+  IClaireNotifiable& notifiable_ref_;
 
   const std::chrono::microseconds us_start_;
 
