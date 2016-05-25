@@ -154,7 +154,8 @@ inline graphviz::DiGraph Render(const current::karl::GenericKarlStatus<INNER_STA
         std::vector<std::string> cells;
         {
           {
-            const auto text = std::string("build of ") + current::FormatDateTime(now);
+            const auto text =
+                std::string("build of ") + current::FormatDateTime(service.build_time_epoch_microseconds);
             const auto body = medium_text_begin + text + medium_text_end;
             cells.push_back("<TD>" + body + "</TD>");
           }
