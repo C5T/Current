@@ -63,6 +63,7 @@ clean:
 	find . -type d -name .current | xargs rm -rf
 	find . -type f -name 'current_build.h' | xargs rm -f
 	find . -type f -name 'current_build.h.*' | xargs rm -f
+	find . -type f -name '.current_std???.txt' | xargs rm -f
 	find . -type f -name core | xargs rm -f
 	find . -type l -name '.current_*' | xargs rm -f
 	find . -type l -name '.current_*.*' | xargs rm -f
